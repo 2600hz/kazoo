@@ -98,6 +98,7 @@
          ,endpoints = [] :: wh_json:objects()
          ,outbound_call_id :: api_binary()
          }).
+-type fsm_state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -632,7 +633,7 @@ ringing({originate_failed, _E}, #state{agent_proc=Srv
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     webseq:note(self(), right, <<"ready">>),
-    {next_state, ready, clear_call(State)};
+    {next_state, ready, clear_call(State, ready)};
 
 ringing({channel_bridged, CallId}, #state{member_call_id=CallId
                                           ,agent_proc=Srv
@@ -665,7 +666,7 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     webseq:note(self(), right, <<"ready">>),
-    {next_state, ready, clear_call(State)};
+    {next_state, ready, clear_call(State, ready)};
 
 ringing({channel_hungup, CallId}, #state{agent_proc=Srv
                                          ,acct_id=AcctId
@@ -684,7 +685,7 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     webseq:note(self(), right, <<"ready">>),
-    {next_state, ready, clear_call(State)};
+    {next_state, ready, clear_call(State, ready)};
 
 ringing({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                      ,agent_proc=Srv
@@ -705,7 +706,7 @@ ringing({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
     webseq:note(self(), right, <<"member call hungup - DTMF">>),
 
     webseq:note(self(), right, <<"ready">>),
-    {next_state, ready, clear_call(State)};
+    {next_state, ready, clear_call(State, ready)};
 ringing({dtmf_pressed, DTMF}, #state{caller_exit_key=_ExitKey}=State) ->
     lager:debug("caller pressed ~s, exit key is ~s", [DTMF, _ExitKey]),
     {next_state, ringing, State};
@@ -777,7 +778,7 @@ answered({dialplan_error, _App}, #state{agent_proc=Srv
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     webseq:note(self(), right, <<"ready">>),
-    {next_state, ready, clear_call(State)};
+    {next_state, ready, clear_call(State, ready)};
 
 answered({channel_bridged, CallId}, #state{member_call_id=CallId
                                            ,agent_proc=Srv
@@ -894,7 +895,7 @@ wrapup({timeout, Ref, ?WRAPUP_FINISHED}, #state{wrapup_ref=Ref
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
 
     webseq:note(self(), right, <<"ready">>),
-    {next_state, ready, clear_call(State)};
+    {next_state, ready, clear_call(State, ready)};
 
 wrapup({sync_req, JObj}, #state{agent_proc=Srv
                                 ,wrapup_ref=Ref
@@ -970,7 +971,7 @@ paused({timeout, Ref, ?PAUSE_MESSAGE}, #state{sync_ref=Ref
     webseq:note(self(), right, <<"wrapup timer finished - timeout">>),
 
     webseq:note(self(), right, <<"ready">>),
-    {next_state, ready, clear_call(State#state{sync_ref=undefined})};
+    {next_state, ready, clear_call(State#state{sync_ref=undefined}, ready)};
 paused({resume}, #state{acct_id=AcctId
                         ,agent_id=AgentId
                         ,agent_proc=Srv
@@ -989,7 +990,7 @@ paused({resume}, #state{acct_id=AcctId
 
     webseq:note(self(), right, <<"wrapup timer finished - resumed">>),
     webseq:note(self(), right, <<"ready">>),
-    {next_state, ready, clear_call(State)};
+    {next_state, ready, clear_call(State, ready)};
 
 paused({sync_req, JObj}, #state{agent_proc=Srv
                                 ,wrapup_ref=Ref
@@ -1056,7 +1057,7 @@ outbound({channel_hungup, CallId}, #state{agent_proc=Srv
         _ ->
             acdc_stats:agent_ready(AcctId, AgentId),
             webseq:note(self(), right, <<"ready">>),
-            {next_state, ready, clear_call(State), hibernate}
+            {next_state, ready, clear_call(State, ready), hibernate}
     end;
 
 outbound({leg_destroyed, CallId}, #state{agent_proc=Srv
@@ -1075,7 +1076,7 @@ outbound({leg_destroyed, CallId}, #state{agent_proc=Srv
         _ ->
             acdc_stats:agent_ready(AcctId, AgentId),
             webseq:note(self(), right, <<"ready">>),
-            {next_state, ready, clear_call(State), hibernate}
+            {next_state, ready, clear_call(State, ready), hibernate}
     end;
 
 outbound({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
@@ -1091,7 +1092,7 @@ outbound({pause, Timeout}, #state{acct_id=AcctId
     acdc_stats:agent_paused(AcctId, AgentId, Timeout),
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_FLASH),
     webseq:note(self(), right, <<"paused">>),
-    {next_state, paused, clear_call(State#state{sync_ref=Ref})};
+    {next_state, paused, clear_call(State#state{sync_ref=Ref}, paused)};
 
 outbound({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                        ,call_status_failures=Failures
@@ -1107,7 +1108,7 @@ outbound({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
         _ ->
             acdc_stats:agent_ready(AcctId, AgentId),
             webseq:note(self(), right, <<"ready">>),
-            {next_state, ready, clear_call(State), hibernate}
+            {next_state, ready, clear_call(State, ready), hibernate}
     end;
 outbound({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                        ,call_status_failures=Failures
@@ -1135,7 +1136,7 @@ outbound({call_status, JObj}, #state{call_status_failures=Failures
                                               }}
     end;
 
-outbound(_Msg, #state{}=State) ->
+outbound(_Msg, State) ->
     lager:debug("ignoring msg in outbound: ~p", [_Msg]),
     {next_state, outbound, State}.
 
@@ -1322,8 +1323,7 @@ time_left(Ref) when is_reference(Ref) ->
 time_left(false) -> undefined;
 time_left(Ms) when is_integer(Ms) -> Ms div 1000.
 
-clear_call(State) ->
-    clear_call(State, ready).
+-spec clear_call/2 :: (fsm_state(), atom()) -> fsm_state().
 clear_call(#state{fsm_call_id=FSMCallId
                   ,call_status_ref=CSRef
                   ,wrapup_ref=WRef
@@ -1398,7 +1398,7 @@ maybe_stop_timer(ConnRef) ->
 maybe_stop_timer(TimerRef, true) -> maybe_stop_timer(TimerRef);
 maybe_stop_timer(_, false) -> ok.
     
--spec wrapup_left/1 :: (#state{} | reference() | 'undefined') -> non_neg_integer() | 'false'.
+-spec wrapup_left/1 :: (fsm_state() | reference() | 'undefined') -> non_neg_integer() | 'false'.
 wrapup_left(undefined) -> 0;
 wrapup_left(WRef) when is_reference(WRef) -> erlang:read_timer(WRef);
 wrapup_left(#state{wrapup_ref=WRef}) -> wrapup_left(WRef).
