@@ -1047,9 +1047,17 @@ outbound({channel_hungup, CallId}, #state{agent_proc=Srv
                                          }=State) ->
     lager:debug("outbound channel ~s hungup, ready for action", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
-    acdc_stats:agent_ready(AcctId, AgentId),
-    webseq:note(self(), right, <<"ready">>),
-    {next_state, ready, clear_call(State), hibernate};
+
+    case wrapup_left(State) of
+        N when is_integer(N), N > 0 ->
+            acdc_stats:agent_wrapup(AcctId, AgentId, N),
+            webseq:note(self(), right, <<"wrapup">>),
+            {next_state, wrapup, clear_call(State, wrapup), hibernate};
+        _ ->
+            acdc_stats:agent_ready(AcctId, AgentId),
+            webseq:note(self(), right, <<"ready">>),
+            {next_state, ready, clear_call(State), hibernate}
+    end;
 
 outbound({leg_destroyed, CallId}, #state{agent_proc=Srv
                                          ,outbound_call_id=CallId
@@ -1058,9 +1066,17 @@ outbound({leg_destroyed, CallId}, #state{agent_proc=Srv
                                         }=State) ->
     lager:debug("outbound leg ~s destroyed", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
-    acdc_stats:agent_ready(AcctId, AgentId),
-    webseq:note(self(), right, <<"ready">>),
-    {next_state, ready, clear_call(State), hibernate};
+
+    case wrapup_left(State) of
+        N when is_integer(N), N > 0 ->
+            acdc_stats:agent_wrapup(AcctId, AgentId, N),
+            webseq:note(self(), right, <<"wrapup">>),
+            {next_state, wrapup, clear_call(State, wrapup), hibernate};
+        _ ->
+            acdc_stats:agent_ready(AcctId, AgentId),
+            webseq:note(self(), right, <<"ready">>),
+            {next_state, ready, clear_call(State), hibernate}
+    end;
 
 outbound({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("agent won, but can't process this right now (on outbound call)"),
@@ -1083,9 +1099,16 @@ outbound({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                        ,agent_id=AgentId
                                                       }=State) when Failures > 3 ->
     lager:debug("outbound call status failed ~b times, call is probably down", [Failures]),
-    acdc_stats:agent_ready(AcctId, AgentId),
-    webseq:note(self(), right, <<"ready">>),
-    {next_state, ready, clear_call(State), hibernate};
+    case wrapup_left(State) of
+        N when is_integer(N), N > 0 ->
+            acdc_stats:agent_wrapup(AcctId, AgentId, N),
+            webseq:note(self(), right, <<"wrapup">>),
+            {next_state, wrapup, clear_call(State, wrapup), hibernate};
+        _ ->
+            acdc_stats:agent_ready(AcctId, AgentId),
+            webseq:note(self(), right, <<"ready">>),
+            {next_state, ready, clear_call(State), hibernate}
+    end;
 outbound({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                        ,call_status_failures=Failures
                                                        ,agent_proc=Srv
@@ -1236,9 +1259,9 @@ terminate(_Reason, _StateName, #state{agent_proc=Srv
                                       ,acct_id=AcctId
                                       ,agent_id=AgentId
                                      }) ->
+    lager:debug("acdc agent fsm terminating while in ~s: ~p", [_StateName, _Reason]),
     acdc_agent:stop(Srv),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID),
-    lager:debug("acdc agent fsm terminating while in ~s: ~p", [_StateName, _Reason]).
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1299,17 +1322,23 @@ time_left(Ref) when is_reference(Ref) ->
 time_left(false) -> undefined;
 time_left(Ms) when is_integer(Ms) -> Ms div 1000.
 
+clear_call(State) ->
+    clear_call(State, ready).
 clear_call(#state{fsm_call_id=FSMCallId
                   ,call_status_ref=CSRef
                   ,wrapup_ref=WRef
-                 }=State) ->
+                 }=State
+          ,NextState
+          )->
     put(callid, FSMCallId),
 
+    ReadyForAction = (NextState =/= wrapup),
+
     _ = maybe_stop_timer(CSRef),
-    _ = maybe_stop_timer(WRef),
+    _ = maybe_stop_timer(WRef, ReadyForAction),
 
     State#state{wrapup_timeout = 0
-                ,wrapup_ref = undefined
+                ,wrapup_ref = case ReadyForAction of true -> undefined; false -> WRef end
                 ,member_call = undefined
                 ,member_call_id = undefined
                 ,member_call_start = undefined
@@ -1360,7 +1389,16 @@ hangup_call(#state{wrapup_timeout=WrapupTimeout
     start_wrapup_timer(WrapupTimeout).
 
 -spec maybe_stop_timer/1 :: (reference() | 'undefined') -> 'ok'.
+-spec maybe_stop_timer/2 :: (reference() | 'undefined', boolean()) -> 'ok'.
 maybe_stop_timer(undefined) -> ok;
 maybe_stop_timer(ConnRef) ->
     _ = gen_fsm:cancel_timer(ConnRef),
     ok.
+
+maybe_stop_timer(TimerRef, true) -> maybe_stop_timer(TimerRef);
+maybe_stop_timer(_, false) -> ok.
+    
+-spec wrapup_left/1 :: (#state{} | reference() | 'undefined') -> non_neg_integer() | 'false'.
+wrapup_left(undefined) -> 0;
+wrapup_left(WRef) when is_reference(WRef) -> erlang:read_timer(WRef);
+wrapup_left(#state{wrapup_ref=WRef}) -> wrapup_left(WRef).
