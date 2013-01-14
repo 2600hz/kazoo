@@ -42,7 +42,7 @@ exec(Call, Resp) ->
             {error, Call}
     end.
 
--spec exec_elements/2 :: (whapps_call:call(), [#xmlElement{},...]) ->
+-spec exec_elements/2 :: (whapps_call:call(), xml_els()) ->
                                  {'error', whapps_call:call()} |
                                  {'request', whapps_call:call()} |
                                  {'stop', whapps_call:call()}.
@@ -174,6 +174,7 @@ req_params(Call) ->
 %%------------------------------------------------------------------------------
 %% Verbs
 %%------------------------------------------------------------------------------
+-spec dial/3 :: (whapps_call:call(), xml_els(), xml_els()) -> {'stop' | 'ok', whapps_call:call()}.
 dial(Call, [#xmlText{type=text}|_]=DialMeTxts, Attrs) ->
     whapps_call_command:answer(Call),
     DialMe = xml_text_to_binary(DialMeTxts),
@@ -352,7 +353,6 @@ gather(Call, SubActions, Attrs) ->
                       )
     of
         {stop, C} -> gather(C, Attrs);
-        {ok, C} -> gather(C, Attrs);
         Other ->
             lager:debug("other: ~p", [Other]),
             Other
