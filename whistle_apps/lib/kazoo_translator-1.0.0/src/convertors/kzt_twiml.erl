@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, 2600Hz
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -181,39 +181,46 @@ dial(Call, [#xmlText{type=text}|_]=DialMeTxts, Attrs) ->
 
     Props = kzt_util:attributes_to_proplist(Attrs),
 
-    Call1 = setup_call_for_dial(Call, Props),
+    Call1 = setup_call_for_dial(whapps_call:set_request(request_id(DialMe, Call), Call)
+                                ,Props),
 
     OffnetProps = wh_json:from_list(
-                    [{<<"Timeout">>, Timeout}
-                     ,{<<"Media">>, media_processing(RecordCall, HangupDTMF)}
+                    [{<<"Timeout">>, kzt_util:get_call_timeout(Call1)}
+                     ,{<<"Media">>, media_processing(Call1)}
                     ]),
 
     ok = kzt_util:offnet_req(OffnetProps, Call1),
 
-    {ok, Call2} = kzt_receiver:wait_for_offnet(kzt_util:update_call_status(?STATUS_RINGING, Call1)),
+    {ok, Call2} = kzt_receiver:wait_for_offnet(
+                    kzt_util:update_call_status(?STATUS_RINGING, Call1)
+                   ),
     maybe_end_dial(Call2);
 dial(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
     lager:debug("dialing endpoints"),
 
     Props = kzt_util:attributes_to_proplist(Attrs),
+    Call1 = setup_call_for_dial(Call, Props),
 
-    case xml_elements_to_endpoints(Call, Endpoints) of
+    case xml_elements_to_endpoints(Call1, Endpoints) of
         [] ->
             lager:debug("no endpoints were available"),
-            {stop, Call};
+            {stop, Call1};
         EPs ->
             lager:debug("endpoints created, sending dial"),
             Timeout = dial_timeout(Props),
             IgnoreEarlyMedia = cf_util:ignore_early_media(EPs),
             Strategy = dial_strategy(Props),
+
             whapps_call_command:bridge(EPs
                                        ,Timeout
                                        ,Strategy
                                        ,IgnoreEarlyMedia
-                                       ,Call
+                                       ,Call1
                                       ),
-            {ok, Call1} = kzt_receiver:wait_for_offnet(kzt_util:update_call_status(?STATUS_RINGING, Call)),
-            maybe_end_dial(Call1)
+            {ok, Call2} = kzt_receiver:wait_for_offnet(
+                            kzt_util:update_call_status(?STATUS_RINGING, Call1)
+                           ),
+            maybe_end_dial(Call2)
     end.
 
 setup_call_for_dial(Call, Props) ->
@@ -221,13 +228,13 @@ setup_call_for_dial(Call, Props) ->
     RecordCall = should_record_call(Props),
     HangupDTMF = hangup_dtmf(Props),
 
-    Setters = [{fun whapps_call:set_request/2, request_id(DialMe, Call)}
-               ,{fun whapps_call:set_caller_id_number/2, caller_id(Props, Call)}
+    Setters = [{fun whapps_call:set_caller_id_number/2, caller_id(Props, Call)}
                ,{fun kzt_util:set_hangup_dtmf/2, HangupDTMF}
                ,{fun kzt_util:set_record_call/2, RecordCall}
                ,{fun kzt_util:set_call_timeout/2, Timeout}
                ,{fun kzt_util:set_call_time_limit/2, timelimit_s(Props)}
               ],
+
     lists:foldl(fun({F, V}, C) when is_function(F, 2) -> F(V, C) end
                 ,Call
                 ,Setters
@@ -487,6 +494,9 @@ finish_dtmf(Props) when is_list(Props) ->
             true = lists:member(DTMF, ?ANY_DIGIT),
             DTMF
     end.
+
+media_processing(Call) ->
+    media_processing(kzt_util:get_record_call(Call), kzt_util:get_hangup_dtmf(Call)).
 
 media_processing(false, undefined) -> <<"bypass">>;
 media_processing(_ShouldRecord, _HangupDTMF) -> <<"process">>.
