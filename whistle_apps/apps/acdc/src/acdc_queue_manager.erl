@@ -39,6 +39,11 @@
 
 -define(SERVER, ?MODULE).
 
+%% rr :: Round Robin
+%% mi :: Most Idle
+-type queue_strategy() :: 'rr' | 'mi'.
+-type queue_strategy_state() :: queue() | ne_binaries().
+
 -record(state, {
           ignored_member_calls = dict:new() :: dict()
           ,acct_id :: api_binary()
@@ -46,6 +51,7 @@
           ,supervisor :: pid()
           ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
           ,strategy_state :: queue_strategy_state() % based on the strategy
+          ,enter_when_empty = 'true' :: boolean() % allow caller into queue if no agents are logged in
          }).
 
 -define(BINDINGS(A, Q), [{conf, [{doc_type, <<"queue">>}
@@ -110,13 +116,28 @@ start_link(Super, AcctId, QueueId) ->
 
 handle_member_call(JObj, Props) ->
     true = wapi_acdc_queue:member_call_v(JObj),
+    _ = wh_util:put_callid(JObj),
 
+    case are_agents_available(props:get_value(server, Props)
+                              ,props:get_value(enter_when_empty, Props)
+                             )
+    of
+        false ->
+            lager:info("no agents are available to take the call, cancel queueing");
+        true ->
+            start_queue_call(JObj, Props)
+    end.
+
+are_agents_available(Srv, EnterWhenEmpty) ->
+    agents_available(Srv) > 0 orelse EnterWhenEmpty.
+
+start_queue_call(JObj, Props) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
 
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
-    lager:debug("member call for ~s:~s: ~s", [AcctId, QueueId, whapps_call:call_id(Call)]),
+    lager:debug("member call for ~s: ~s", [QueueId, whapps_call:call_id(Call)]),
 
     acdc_stats:call_waiting(AcctId, QueueId
                             ,whapps_call:call_id(Call)
@@ -153,7 +174,9 @@ handle_agent_change(JObj, Prop) ->
         <<"available">> ->
             gen_listener:cast(props:get_value(server, Prop), {agent_available, JObj});
         <<"ringing">> ->
-            gen_listener:cast(props:get_value(server, Prop), {agent_ringing, JObj})
+            gen_listener:cast(props:get_value(server, Prop), {agent_ringing, JObj});
+        <<"unavailable">> ->
+            gen_listener:cast(props:get_value(server, Prop), {agent_unavailable, JObj})
     end.
 
 should_ignore_member_call(Srv, Call, CallJObj) ->
@@ -170,6 +193,9 @@ strategy(Srv) ->
     gen_listener:call(Srv, strategy).
 next_winner(Srv) ->
     gen_listener:call(Srv, next_winner).
+
+agents_available(Srv) ->
+    gen_listener:call(Srv, agents_available).
 
 pick_winner(Srv, Resps) ->
     pick_winner(Srv, Resps, strategy(Srv), next_winner(Srv)).
@@ -207,6 +233,7 @@ init([Super, AcctId, QueueId]) ->
        ,supervisor=Super
        ,strategy = Strategy
        ,strategy_state = create_strategy_state(Strategy, AcctDb, QueueId)
+       ,enter_when_empty = wh_json:get_boolean_value(<<"enter_when_empty">>, QueueJObj, true)
       }}.
 
 %%--------------------------------------------------------------------
@@ -226,7 +253,7 @@ init([Super, AcctId, QueueId]) ->
 handle_call({should_ignore_member_call, K}, _, #state{ignored_member_calls=Dict}=State) ->
     case catch dict:fetch(K, Dict) of
         {'EXIT', _} -> {reply, false, State};
-        _Res -> {reply, true, State#state{ignored_member_calls=dict:erase(K, Dict)}}
+        _Res -> {reply, true, State#state{ignored_member_calls=dict:erase(K, Dict)}, hibernate}
     end;
 
 handle_call(config, _, #state{acct_id=AcctId
@@ -235,15 +262,26 @@ handle_call(config, _, #state{acct_id=AcctId
     {reply, {AcctId, QueueId}, State};
 
 handle_call(strategy, _, #state{strategy=Strategy}=State) ->
-    {reply, Strategy, State};
+    {reply, Strategy, State, hibernate};
 
-handle_call(next_winner, _, #state{strategy_state=undefined}=State) ->
+handle_call(agents_available, _, #state{strategy_state=undefined}=State) ->
+    {reply, 0, State};
+handle_call(agents_available, _, #state{strategy_state=[]}=State) ->
+    {reply, 0, State};
+handle_call(agents_available, _, #state{strategy_state=[_|_]}=State) ->
+    {reply, 1, State};
+handle_call(agents_available, _, #state{strategy_state=SS}=State) ->
+    {reply, queue:len(SS), State};
+
+handle_call(next_winner, _, #state{strategy='mi'}=State) ->
     {reply, undefined, State};
-handle_call(next_winner, _, #state{strategy_state=SS}=State) ->
+handle_call(next_winner, _, #state{strategy='rr'
+                                   ,strategy_state=SS
+                                  }=State) ->
     case queue:out(SS) of
         {{value, Winner}, SS1} ->
             lager:debug("agent queue: ~p ~s", [queue:to_list(SS1), Winner]),
-            {reply, Winner, State#state{strategy_state=queue:in(Winner, SS1)}};
+            {reply, Winner, State#state{strategy_state=queue:in(Winner, SS1)}, hibernate};
         {empty, _} ->
             {reply, undefined, State}
     end;
@@ -336,8 +374,8 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
-handle_event(_JObj, _State) ->
-    {reply, []}.
+handle_event(_JObj, #state{enter_when_empty=EnterWhenEmpty}) ->
+    {reply, [{enter_when_empty, EnterWhenEmpty}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -434,8 +472,8 @@ update_strategy_with_agent('rr', AgentQueue, AgentId) ->
     case queue:member(AgentId, AgentQueue) of
         true -> AgentQueue;
         false -> queue:in(AgentId, AgentQueue)
-    end;            
-update_strategy_with_agent('mi', _, _) -> 
+    end;
+update_strategy_with_agent('mi', _, _) ->
    undefined.
 
 maybe_update_strategy('mi', StrategyState, _AgentId) -> StrategyState;
@@ -482,5 +520,18 @@ create_strategy_state('rr', AgentQ, AcctDb, QueueId) ->
             queue:join(AgentQ, Q);
         {error, _E} -> lager:debug("error: ~p", [_E]), AgentQ
     end;
-create_strategy_state('mi', _, _, _) ->
-    undefined.
+create_strategy_state('mi', undefined, AcctDb, QueueId) ->
+    create_strategy_state('mi', [], AcctDb, QueueId);
+create_strategy_state('mi', AgentL, AcctDb, QueueId) ->
+    case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
+        {ok, []} -> lager:debug("no agents around"), AgentL;
+        {ok, JObjs} ->
+            lists:foldl(fun(JObj, Acc) ->
+                                Id = wh_json:get_value(<<"id">>, JObj),
+                                case lists:member(Id, Acc) of
+                                    true -> Acc;
+                                    false -> [Id | Acc]
+                                end
+                        end, AgentL, JObjs);
+        {error, _E} -> lager:debug("error: ~p", [_E]), AgentL
+    end.
