@@ -363,6 +363,7 @@ handle_cast({queue_name, Q}, State) ->
 
 handle_cast({queue_login, Q}, #state{agent_queues=Qs
                                      ,acct_id=AcctId
+                                     ,agent_id=AgentId
                                     }=State) ->
     case lists:member(Q, Qs) of
         true ->
@@ -370,17 +371,18 @@ handle_cast({queue_login, Q}, #state{agent_queues=Qs
             {noreply, State};
         false ->
             lager:debug("adding binding (logging in) to queue ~s", [Q]),
-            login_to_queue(AcctId, Q),
+            login_to_queue(AcctId, AgentId, Q),
             {noreply, State#state{agent_queues=[Q|Qs]}}
     end;
 
 handle_cast({queue_logout, Q}, #state{agent_queues=Qs
                                       ,acct_id=AcctId
+                                      ,agent_id=AgentId
                                      }=State) ->
     case lists:member(Q, Qs) of
         true ->
             lager:debug("removing binding (logging out) from queue ~s", [Q]),
-            logout_from_queue(AcctId, Q),
+            logout_from_queue(AcctId, AgentId, Q),
             {noreply, State#state{agent_queues=lists:delete(Q, Qs)}};
         false ->
             lager:debug("not logged into queue ~s", [Q]),
@@ -389,9 +391,10 @@ handle_cast({queue_logout, Q}, #state{agent_queues=Qs
 
 handle_cast(bind_to_member_reqs, #state{agent_queues=Qs
                                         ,acct_id=AcctId
+                                        ,agent_id=AgentId
                                        }=State) ->
     lager:debug("binding to queues: ~p", [Qs]),
-    _ = [login_to_queue(AcctId, Q) || Q <- Qs],
+    _ = [login_to_queue(AcctId, AgentId, Q) || Q <- Qs],
     {noreply, State};
 
 handle_cast({channel_hungup, CallId}, #state{call=Call
@@ -680,6 +683,24 @@ handle_event(_JObj, #state{fsm_pid=FSM
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+terminate(Reason, #state{agent_queues=Queues
+                          ,acct_id=AcctId
+                          ,agent_id=AgentId
+                         }
+         ) when Reason == normal; Reason == shutdown ->
+    Prop = [{<<"Account-ID">>, AcctId}
+            ,{<<"Agent-ID">>, AgentId}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+
+    _ = [wapi_acdc_queue:publish_agent_change(
+           [{<<"Queue-ID">>, QueueId}
+            ,{<<"Change">>, <<"unavailable">>}
+            | Prop
+           ])
+         || QueueId <- Queues
+        ],
+    lager:debug("agent process going down: ~p", [Reason]);
 terminate(_Reason, _State) ->
     lager:debug("agent process going down: ~p", [_Reason]).
 
@@ -848,19 +869,33 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
 
     wapi_resource:publish_originate_req(Prop).
 
--spec login_to_queue/2 :: (ne_binary(), ne_binary()) -> 'ok'.
-login_to_queue(AcctId, Q) ->
+-spec login_to_queue/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+login_to_queue(AcctId, AgentId, QueueId) ->
     gen_listener:add_binding(self(), acdc_queue, [{restrict_to, [member_connect_req]}
-                                                  ,{queue_id, Q}
+                                                  ,{queue_id, QueueId}
                                                   ,{account_id, AcctId}
-                                                 ]).
+                                                 ]),
+    Prop = [{<<"Account-ID">>, AcctId}
+            ,{<<"Agent-ID">>, AgentId}
+            ,{<<"Queue-ID">>, QueueId}
+            ,{<<"Change">>, <<"available">>}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_acdc_queue:publish_agent_change(Prop).
 
--spec logout_from_queue/2 :: (ne_binary(), ne_binary()) -> 'ok'.
-logout_from_queue(AcctId, Q) ->
+-spec logout_from_queue/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+logout_from_queue(AcctId, AgentId, QueueId) ->
     gen_listener:rm_binding(self(), acdc_queue, [{restrict_to, [member_connect_req]}
-                                                 ,{queue_id, Q}
+                                                 ,{queue_id, QueueId}
                                                  ,{account_id, AcctId}
-                                                ]).
+                                                ]),
+    Prop = [{<<"Account-ID">>, AcctId}
+            ,{<<"Agent-ID">>, AgentId}
+            ,{<<"Queue-ID">>, QueueId}
+            ,{<<"Change">>, <<"unavailable">>}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_acdc_queue:publish_agent_change(Prop).
 
 update_my_queues_of_change(AcctId, AgentId, Qs) ->
     Props = [{<<"Account-ID">>, AcctId}
