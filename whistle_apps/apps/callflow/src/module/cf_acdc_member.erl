@@ -115,7 +115,6 @@ process_message(Call, _, Start, _Wait, JObj, {<<"member">>, <<"call_cancel">>}) 
                ),
     cf_exe:continue(Call);
 process_message(Call, Timeout, Start, Wait, _JObj, _Type) ->
-    %%lager:info("recv unhandled message: ~p: ~s", [_Type, wh_json:get_value(<<"Application-Name">>, _JObj)]),
     wait_for_bridge(Call, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start).
 
 -spec reduce_timeout/2 :: (max_wait(), integer()) -> max_wait().
