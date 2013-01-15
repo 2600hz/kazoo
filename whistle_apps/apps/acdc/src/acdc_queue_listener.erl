@@ -150,7 +150,7 @@ cancel_member_call(Srv, MemberCallJObj, Delivery) ->
 ignore_member_call(Srv, Call, Delivery) ->
     gen_listener:cast(Srv, {ignore_member_call, Call, Delivery}).
 
--spec send_sync_req/2 :: (pid(), queue_strategy()) -> 'ok'.
+-spec send_sync_req/2 :: (pid(), ne_binary()) -> 'ok'.
 send_sync_req(Srv, Type) ->
     gen_listener:cast(Srv, {send_sync_req, Type}).
 
