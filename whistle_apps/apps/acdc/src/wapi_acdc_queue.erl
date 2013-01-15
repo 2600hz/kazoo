@@ -28,6 +28,7 @@
 
 -export([agent_change_available/0
          ,agent_change_ringing/0
+         ,agent_change_unavailable/0
         ]).
 
 -export([bind_q/2
@@ -553,12 +554,15 @@ agent_change_routing_key(AcctId, QueueId) ->
 
 -define(AGENT_CHANGE_AVAILABLE, <<"available">>).
 -define(AGENT_CHANGE_RINGING, <<"ringing">>).
+-define(AGENT_CHANGE_UNAVAILABLE, <<"unavailable">>).
 -define(AGENT_CHANGES, [?AGENT_CHANGE_AVAILABLE
                         ,?AGENT_CHANGE_RINGING
+                        ,?AGENT_CHANGE_UNAVAILABLE
                        ]).
 
 agent_change_available() -> ?AGENT_CHANGE_AVAILABLE.
 agent_change_ringing() -> ?AGENT_CHANGE_RINGING.
+agent_change_unavailable() -> ?AGENT_CHANGE_UNAVAILABLE().
 
 -define(AGENT_CHANGE_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Queue-ID">>, <<"Change">>]).
 -define(OPTIONAL_AGENT_CHANGE_HEADERS, [<<"Process-ID">>]).
