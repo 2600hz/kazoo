@@ -123,7 +123,8 @@ handle_member_call(JObj, Props) ->
                              )
     of
         false ->
-            lager:info("no agents are available to take the call, cancel queueing");
+            lager:info("no agents are available to take the call, cancel queueing"),
+            gen_listener:cast(props:get_value(server, Props), {reject_member_call, JObj});
         true ->
             start_queue_call(JObj, Props)
     end.
@@ -355,6 +356,18 @@ handle_cast({agent_ringing, JObj}, #state{strategy=Strategy
     StrategyState1 = maybe_update_strategy(Strategy, StrategyState, AgentId),
     lager:debug("agent queue: ~p", [queue:to_list(StrategyState1)]),
     {noreply, State#state{strategy_state=StrategyState1}, hibernate};
+
+handle_cast({reject_member_call, JObj}, State) ->
+    Prop = [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            ,{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj)}
+            ,{<<"Queue-ID">>, wh_json:get_value(<<"Queue-ID">>, JObj)}
+            ,{<<"Reason">>, <<"no agents">>}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    Q = wh_json:get_value(<<"Server-ID">>, JObj),
+    catch wapi_acdc_queue:publish_member_call_cancel(Q, Prop),
+    {noreply, State};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
