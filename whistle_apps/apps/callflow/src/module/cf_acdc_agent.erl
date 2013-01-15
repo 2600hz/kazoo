@@ -85,7 +85,6 @@ maybe_update_status(Call, _AgentId, _Status, _NewStatus, _Data) ->
     lager:debug("agent ~s: invalid status change from ~s to ~s", [_AgentId, _Status, _NewStatus]),
     play_agent_invalid(Call).
 
-
 maybe_pause_agent(Call, AgentId, <<"login">>, Data) ->
     pause_agent(Call, AgentId, Data);
 maybe_pause_agent(Call, AgentId, <<"busy">>, Data) ->
