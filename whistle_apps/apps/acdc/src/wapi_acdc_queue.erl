@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -39,7 +39,7 @@
          ,publish_shared_member_call/1, publish_shared_member_call/3, publish_shared_member_call/4
          ,publish_member_call_failure/2, publish_member_call_failure/3
          ,publish_member_call_success/2, publish_member_call_success/3
-         ,publish_member_call_cancel/1, publish_member_call_cancel/2
+         ,publish_member_call_cancel/2, publish_member_call_cancel/3
          ,publish_member_connect_req/1, publish_member_connect_req/2
          ,publish_member_connect_resp/2, publish_member_connect_resp/3
          ,publish_member_connect_win/2, publish_member_connect_win/3
@@ -690,13 +690,13 @@ publish_member_call(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
 
--spec publish_member_call_cancel/1 :: (api_terms()) -> 'ok'.
--spec publish_member_call_cancel/2 :: (api_terms(), ne_binary()) -> 'ok'.
-publish_member_call_cancel(JObj) ->
-    publish_member_call_cancel(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_member_call_cancel(API, ContentType) ->
+-spec publish_member_call_cancel/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_member_call_cancel/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_member_call_cancel(Queue, JObj) ->
+    publish_member_call_cancel(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_member_call_cancel(Queue, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_CANCEL_VALUES, fun member_call_cancel/1),
-    amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
+    amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 publish_shared_member_call(JObj) ->
     publish_shared_member_call(wh_json:get_value(<<"Account-ID">>, JObj)
