@@ -50,55 +50,56 @@ caller_id(Attribute, Call) ->
     of
         true ->
             lager:debug("retaining original caller id"),
-            {whapps_call:caller_id_number(Call)
-             ,whapps_call:caller_id_name(Call)};
+            Number = whapps_call:caller_id_number(Call),
+            Name = whapps_call:caller_id_name(Call),
+            maybe_normalize_cid(Number, Name, false, Attribute, Call);
         false ->
-            maybe_get_endpoint_cid(Attribute, Call)
+            maybe_get_endpoint_cid(true, Attribute, Call)
     end.
 
--spec maybe_get_endpoint_cid/2 :: (ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
-maybe_get_endpoint_cid(Attribute, Call) ->
+-spec maybe_get_endpoint_cid/3 :: (boolean(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+maybe_get_endpoint_cid(Validate, Attribute, Call) ->
     case cf_endpoint:get(Call) of
         {error, _R} ->
             lager:debug("unable to get endpoint: ~p", [_R]),
-            maybe_normalize_cid(undefined, undefined, wh_json:new(), Attribute, Call);
+            maybe_normalize_cid(undefined, undefined, Validate, Attribute, Call);
         {ok, JObj} ->
             Number = get_cid_or_default(Attribute, <<"number">>, JObj),
             Name = get_cid_or_default(Attribute, <<"name">>, JObj),
-            maybe_normalize_cid(Number, Name, JObj, Attribute, Call)
+            maybe_normalize_cid(Number, Name, Validate, Attribute, Call)
     end.
 
--spec maybe_normalize_cid/5 :: (api_binary(), api_binary(), wh_json:object(), ne_binary(), whapps_call:call()) ->
+-spec maybe_normalize_cid/5 :: (api_binary(), api_binary(), boolean(), ne_binary(), whapps_call:call()) ->
                                        {api_binary(), api_binary()}.
-maybe_normalize_cid(undefined, Name, Endpoint, Attribute, Call) ->
-    maybe_normalize_cid(whapps_call:caller_id_number(Call), Name, Endpoint, Attribute, Call);
-maybe_normalize_cid(Number, undefined, Endpoint, Attribute, Call) ->
-    maybe_normalize_cid(Number, whapps_call:caller_id_name(Call), Endpoint, Attribute, Call);
-maybe_normalize_cid(Number, Name, Endpoint, Attribute, Call) ->
-    maybe_prefix_cid_number(wh_util:to_binary(Number), Name, Endpoint, Attribute, Call).
+maybe_normalize_cid(undefined, Name, Validate, Attribute, Call) ->
+    maybe_normalize_cid(whapps_call:caller_id_number(Call), Name, Validate, Attribute, Call);
+maybe_normalize_cid(Number, undefined, Validate, Attribute, Call) ->
+    maybe_normalize_cid(Number, whapps_call:caller_id_name(Call), Validate, Attribute, Call);
+maybe_normalize_cid(Number, Name, Validate, Attribute, Call) ->
+    maybe_prefix_cid_number(wh_util:to_binary(Number), Name, Validate, Attribute, Call).
 
--spec maybe_prefix_cid_number/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), whapps_call:call()) ->
+-spec maybe_prefix_cid_number/5 :: (ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
                                            {api_binary(), api_binary()}.
-maybe_prefix_cid_number(Number, Name, Endpoint, Attribute, Call) ->
+maybe_prefix_cid_number(Number, Name, Validate, Attribute, Call) ->
     case whapps_call:kvs_fetch(prepend_cid_number, Call) of
-        undefined -> maybe_prefix_cid_name(Number, Name, Endpoint, Attribute, Call);
+        undefined -> maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call);
         Prefix ->
             Prefixed = <<(wh_util:to_binary(Prefix))/binary, Number/binary>>,
-            maybe_prefix_cid_name(Prefixed, Name, Endpoint, Attribute, Call)
+            maybe_prefix_cid_name(Prefixed, Name, Validate, Attribute, Call)
     end.
 
--spec maybe_prefix_cid_name/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), whapps_call:call()) ->
+-spec maybe_prefix_cid_name/5 :: (ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
                                          {api_binary(), api_binary()}.
-maybe_prefix_cid_name(Number, Name, Endpoint, Attribute, Call) ->
+maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call) ->
     case whapps_call:kvs_fetch(prepend_cid_name, Call) of
-        undefined -> maybe_ensure_cid_valid(Number, Name, Endpoint, Attribute, Call);
+        undefined -> maybe_ensure_cid_valid(Number, Name, Validate, Attribute, Call);
         Prefix ->
             Prefixed = <<(wh_util:to_binary(Prefix))/binary, Name/binary>>,
-            maybe_ensure_cid_valid(Number, Prefixed, Endpoint, Attribute, Call)
+            maybe_ensure_cid_valid(Number, Prefixed, Validate, Attribute, Call)
     end.
 
--spec maybe_ensure_cid_valid/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
-maybe_ensure_cid_valid(Number, Name, _, <<"external">>, Call) ->
+-spec maybe_ensure_cid_valid/5 :: (ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+maybe_ensure_cid_valid(Number, Name, true, <<"external">>, Call) ->
     case whapps_config:get_is_true(<<"callflow">>, <<"ensure_valid_caller_id">>, false) of
         true -> ensure_valid_caller_id(Number, Name, Call);
         false ->
