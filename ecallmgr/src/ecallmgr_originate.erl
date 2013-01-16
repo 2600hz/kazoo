@@ -132,7 +132,7 @@ handle_originate_execute(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([Node, JObj]) ->
     _ = wh_util:put_callid(JObj),
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    ServerId = wh_json:get_ne_value(<<"Server-ID">>, JObj),
     bind_to_events(freeswitch:version(Node), Node),
     case wapi_resource:originate_req_v(JObj) of
         false ->
@@ -265,14 +265,14 @@ handle_cast({originate_ready}, #state{originate_req=JObj
     case ecallmgr_call_sup:start_control_process(Node, UUID, ServerId) of
         {ok, CtrlPid} when is_pid(CtrlPid) ->
             CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
-            publish_originate_ready(CtrlQ, UUID, JObj, Q, ServerId),
+            _ = publish_originate_ready(CtrlQ, UUID, JObj, Q, ServerId),
             {noreply, State#state{control_pid=CtrlPid
                                   ,tref=erlang:send_after(?REPLY_TIMEOUT, self(), {abandon_originate})
                                  }, hibernate};
         _Else ->
             lager:debug("failed to start cc process: ~p", [_Else]),
             Error = <<"failed to preemptively start a call control process">>,
-            publish_error(Error, UUID, JObj, ServerId),
+            _ = publish_error(Error, UUID, JObj, ServerId),
             {stop, normal, State}
     end;
 
@@ -295,13 +295,7 @@ handle_cast({originate_execute}, #state{dialstrings=Dialstrings
             lager:debug("originate is executing, waiting for completion"),
             erlang:monitor_node(Node, true),
             bind_to_call_events(CallId),
-
-            Resp = wh_json:from_list([{<<"Call-ID">>, CallId}
-                                      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                     ]),
-            wapi_resource:publish_originate_started(ServerId, Resp),
-
+            _ = publish_originate_started(ServerId, CallId, JObj),
             {noreply, State#state{uuid=CallId}};
         {error, Error} ->
             lager:debug("failed to originate: ~p", [Error]),
@@ -310,25 +304,19 @@ handle_cast({originate_execute}, #state{dialstrings=Dialstrings
     end;
 
 handle_cast({bridge_execute_complete, JObj}, #state{server_id=ServerId}=State) ->
-    Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
-                               ,{<<"Event-Name">>, <<"originate_resp">>}
-                              ], JObj),
     lager:debug("received bridge complete event, sending originate response"),
-    wapi_resource:publish_originate_resp(ServerId, Resp),
+    _ = publish_originate_resp(ServerId, JObj),
     {stop, normal, State};
 
 handle_cast({channel_destroy, JObj}, #state{server_id=ServerId}=State) ->
-    Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
-                               ,{<<"Event-Name">>, <<"originate_resp">>}
-                              ], JObj),
     lager:debug("received channel destroy event, sending originate response"),
-    wapi_resource:publish_originate_resp(ServerId, Resp),
+    _ = publish_originate_resp(ServerId, JObj),
     {stop, normal, State};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {noreply, State, hibernate}.
-
+    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -561,11 +549,7 @@ create_uuid(JObj, Node) ->
     case wh_json:get_binary_value(<<"Outbound-Call-ID">>, JObj) of
         undefined ->
             UUID = create_uuid(Node),
-            wapi_resource:publish_originate_uuid(wh_json:get_value(<<"Server-ID">>, JObj)
-                                                 ,[{<<"Outgoing-Call-ID">>, UUID}
-                                                   ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                                  ]),
+            _ = publish_originate_uuid(wh_json:get_ne_value(<<"Server-ID">>, JObj), UUID, JObj),
             UUID;
         CallId ->
             put(callid, CallId),
@@ -588,7 +572,8 @@ get_unset_vars(JObj) ->
         Unset -> [string:join(Unset, "^"), "^"]
     end.
 
--spec publish_error/4 :: (ne_binary(), 'undefined' | ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec publish_error/4 :: (ne_binary(), 'undefined' | ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
+publish_error(_, _, _, undefined) -> ok;
 publish_error(Error, UUID, Request, ServerId) ->
     lager:debug("originate error: ~s", [Error]),
     E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request)}
@@ -599,7 +584,8 @@ publish_error(Error, UUID, Request, ServerId) ->
         ],
     wh_api:publish_error(ServerId, props:filter_undefined(E)).
 
--spec publish_originate_ready/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), ne_binary()) -> 'ok'.
+-spec publish_originate_ready/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), api_binary()) -> 'ok'.
+publish_originate_ready(_, _, _, _, undefined) -> ok;
 publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
     lager:debug("originate command is ready, waiting for originate_execute"),
     Props = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, UUID)}
@@ -608,3 +594,29 @@ publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
              | wh_api:default_headers(Q, <<"dialplan">>, <<"originate_ready">>, ?APP_NAME, ?APP_VERSION)
             ],
     wapi_dialplan:publish_originate_ready(ServerId, Props).
+
+-spec publish_originate_resp/2 :: (api_binary(), wh_json:object()) -> 'ok'.
+publish_originate_resp(undefined, _) -> ok;
+publish_originate_resp(ServerId, JObj) ->
+    Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
+                               ,{<<"Event-Name">>, <<"originate_resp">>}
+                              ], JObj),
+    wapi_resource:publish_originate_resp(ServerId, Resp).
+
+-spec publish_originate_started/3 :: (api_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+publish_originate_started(undefined, _, _) -> ok;
+publish_originate_started(ServerId, CallId, JObj) ->
+    Resp = wh_json:from_list([{<<"Call-ID">>, CallId}
+                              ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             ]),
+    wapi_resource:publish_originate_started(ServerId, Resp).
+
+-spec publish_originate_uuid/3 :: (api_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+publish_originate_uuid(undefined, _, _) -> ok;
+publish_originate_uuid(ServerId, UUID, JObj) ->
+    Resp = [{<<"Outgoing-Call-ID">>, UUID}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_resource:publish_originate_uuid(ServerId, Resp).
