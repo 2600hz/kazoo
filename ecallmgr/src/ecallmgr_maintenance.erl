@@ -76,7 +76,7 @@ flush_registrar() ->
 
 -spec show_calls/0 :: () -> 'no_return'.
 show_calls() ->
-    EventWorkers = gproc:lookup_pids({p, l, call_events}),
+    EventWorkers = gproc:lookup_pids({p, l, call_events_processes}),
     io:format("Call Event Process: ~p ~n", [length(EventWorkers)]),
     _ = [io:format("    ~p: ~s ~s~n", [EventWorker
                                        ,ecallmgr_call_events:node(EventWorker)
