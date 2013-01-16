@@ -250,7 +250,9 @@ get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
                                                                              ,wh_util:to_list(ecallmgr_util:media_path(V, extant, get(callid), wh_json:new()))
                                                                              ,"'"
                                                                             ]) | Acc];
-                            {_, Prefix} -> [encode_fs_val(Prefix, V) | Acc]
+                            {_, Prefix} -> 
+                                Val = ecallmgr_util:maybe_sanitize_fs_value(K, V),
+                                [encode_fs_val(Prefix, Val) | Acc]
                         end
                 end, Vars, wh_json:to_proplist(JObj));
 
@@ -312,7 +314,9 @@ get_channel_vars({<<"Forward-IP">>, V}, Vars) ->
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         false -> Vars;
-        {_, Prefix} -> [encode_fs_val(Prefix, V) | Vars]
+        {_, Prefix} ->
+            Val = ecallmgr_util:maybe_sanitize_fs_value(AMQPHeader, V),
+            [encode_fs_val(Prefix, Val) | Vars]
     end;
 get_channel_vars(_, Vars) ->
     Vars.
