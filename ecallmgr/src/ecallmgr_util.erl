@@ -29,7 +29,7 @@
 -export([fax_filename/1
          ,recording_filename/1
         ]).
-
+-export([maybe_sanitize_fs_value/2]).
 -export([lookup_media/3, lookup_media/4, lookup_media/5]).
 
 -include("ecallmgr.hrl").
@@ -277,9 +277,29 @@ get_fs_kv(Key, Val, _) ->
         false ->
             list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "=", wh_util:to_list(Val)]);
         {_, Prefix} ->
-            list_to_binary([Prefix, "=", wh_util:to_list(Val), ""])
+            V = maybe_sanitize_fs_value(Key, Val),
+            list_to_binary([Prefix, "=", wh_util:to_list(V), ""])
     end.
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_sanitize_fs_value/2 :: (text(), text()) -> binary().
+maybe_sanitize_fs_value(<<"Outgoing-Caller-ID-Name">>, Val) ->
+    re:replace(Val, <<"[^a-zA-Z0-9]">>, <<"">>, [global, {return, binary}]);
+maybe_sanitize_fs_value(<<"Outgoing-Callee-ID-Name">>, Val) ->
+    re:replace(Val, <<"[^a-zA-Z0-9]">>, <<"">>, [global, {return, binary}]);
+maybe_sanitize_fs_value(<<"Caller-ID-Name">>, Val) ->
+    re:replace(Val, <<"[^a-zA-Z0-9]">>, <<"">>, [global, {return, binary}]);
+maybe_sanitize_fs_value(<<"Callee-ID-Name">>, Val) ->
+    re:replace(Val, <<"[^a-zA-Z0-9]">>, <<"">>, [global, {return, binary}]);
+maybe_sanitize_fs_value(Key, Val) when not is_binary(Key) ->
+    maybe_sanitize_fs_value(wh_util:to_binary(Key), Val);
+maybe_sanitize_fs_value(Key, Val) when not is_binary(Val) ->
+    maybe_sanitize_fs_value(Key, wh_util:to_binary(Val));
+maybe_sanitize_fs_value(_, Val) -> Val.
+     
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
