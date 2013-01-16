@@ -74,6 +74,7 @@
                       ,discovery_event = wh_json:new()
                       ,last_dtmf = <<>>
                      }).
+-type participant() :: #participant{}.
 
 %%%===================================================================
 %%% API
@@ -86,7 +87,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Call) ->    
+start_link(Call) ->
     CallId = whapps_call:call_id(Call),
     Bindings = [{call, [{callid, CallId}]}
                 ,{self, []}
@@ -106,11 +107,11 @@ conference(Srv) ->
 set_conference(Conference, Srv) ->
     gen_server:cast(Srv, {set_conference, Conference}).
 
--spec discovery_event/1 :: (pid()) -> {ok, wh_json:json_object()}.
+-spec discovery_event/1 :: (pid()) -> {ok, wh_json:object()}.
 discovery_event(Srv) ->
     gen_server:call(Srv, {get_discovery_event}, 500).
 
--spec set_discovery_event/2 :: (wh_json:json_object(), pid()) -> 'ok'.
+-spec set_discovery_event/2 :: (wh_json:object(), pid()) -> 'ok'.
 set_discovery_event(DiscoveryEvent, Srv) ->
     gen_server:cast(Srv, {set_discovery_event, DiscoveryEvent}).
 
@@ -122,10 +123,10 @@ call(Srv) ->
 join_local(Srv) ->
     gen_server:cast(Srv, join_local).
 
--spec join_remote/2 :: (pid(), wh_json:json_object()) -> 'ok'.
+-spec join_remote/2 :: (pid(), wh_json:object()) -> 'ok'.
 join_remote(Srv, JObj) ->
     gen_server:cast(Srv, {join_remote, JObj}).
-        
+
 -spec mute/1 :: (pid()) -> 'ok'.
 mute(Srv) ->
     gen_server:cast(Srv, mute).
@@ -160,9 +161,9 @@ dtmf(Srv, Digit) ->
 
 -spec consume_call_events/1 :: (pid()) -> 'ok'.
 consume_call_events(Srv) ->
-    gen_server:cast(Srv, {add_consumer, self()}).    
+    gen_server:cast(Srv, {add_consumer, self()}).
 
--spec relay_amqp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec relay_amqp/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 relay_amqp(JObj, Props) ->
     _ = [whapps_call_command:relay_event(Pid, JObj)
          || Pid <- props:get_value(call_event_consumers, Props, [])
@@ -176,14 +177,14 @@ relay_amqp(JObj, Props) ->
             dtmf(Srv, Digit)
     end.
 
--spec handle_participants_resp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_participants_resp/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_participants_resp(JObj, Props) ->
     true = wapi_conference:participants_resp_v(JObj),
     Srv = props:get_value(server, Props),
     Participants = wh_json:get_value(<<"Participants">>, JObj, wh_json:new()),
     gen_server:cast(Srv, {sync_participant, Participants}).
 
--spec handle_conference_error/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_conference_error/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_conference_error(JObj, Props) ->
     true = wapi_conference:conference_error_v(JObj),
     case wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj) of
@@ -194,7 +195,7 @@ handle_conference_error(JObj, Props) ->
             ok
     end.
 
--spec handle_authn_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_authn_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_authn_req(JObj, Props) ->
     true = wapi_authn:req_v(JObj),
     BridgeRequest = props:get_value(bridge_request, Props),
@@ -207,22 +208,22 @@ handle_authn_req(JObj, Props) ->
     end,
     ok.
 
--spec handle_route_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_route_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_route_req(JObj, Props) ->
     true = wapi_route:req_v(JObj),
     BridgeRequest = props:get_value(bridge_request, Props),
     case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
         [BridgeRequest, _] ->
-            Srv = props:get_value(server, Props),    
+            Srv = props:get_value(server, Props),
             gen_server:cast(Srv, {route_req, JObj});
         _Else -> ok
     end,
     ok.
 
--spec handle_route_win/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_route_win/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_route_win(JObj, Props) ->
     true = wapi_route:win_v(JObj),
-    Srv = props:get_value(server, Props),    
+    Srv = props:get_value(server, Props),
     gen_server:cast(Srv, {route_win, JObj}),
     ok.
 
@@ -339,7 +340,7 @@ handle_cast({route_win, JObj}, #participant{conference=Conference, bridge=Bridge
                   lager:debug("answering conference call"),
                   whapps_call_command:answer(B),
                   ConferenceId = whapps_conference:id(Conference),
-                  case whapps_conference:moderator(Conference) of 
+                  case whapps_conference:moderator(Conference) of
                       true ->
                           lager:debug("moderator is joining remote conference ~s", [ConferenceId]),
                           whapps_call_command:conference(ConferenceId, <<"false">>, <<"false">>, <<"true">>, B);
@@ -490,18 +491,22 @@ code_change(_OldVsn, Participant, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec find_participant/2 :: (proplist(), ne_binary()) -> {ok, wh_json:json_object()} |
-                                                         {error, not_found}.
-find_participant([], _) ->
-    {error, not_found};
+-spec find_participant/2 :: (wh_proplist(), ne_binary()) ->
+                                    {'ok', wh_json:object()} |
+                                    {'error', 'not_found'}.
+find_participant([], _) -> {error, not_found};
 find_participant([{_, Participant}|Participants], CallId) ->
     case wh_json:get_value(<<"Call-ID">>, Participant) of
         CallId -> {ok, Participant};
         _Else -> find_participant(Participants, CallId)
     end.
 
--spec sync_participant/3 :: (wh_json:json_object(), whapps_call:call(), #participant{}) -> #participant{}.
-sync_participant(Participants, Call, #participant{in_conference=false, conference=Conference, join_attempts=JoinAttempts}=Participant) ->
+-spec sync_participant/3 :: (wh_json:object(), whapps_call:call(), participant()) -> participant().
+sync_participant(Participants, Call, #participant{in_conference=false
+                                                  ,conference=Conference
+                                                  ,join_attempts=JoinAttempts
+                                                 }=Participant
+                ) ->
     Moderator = whapps_conference:moderator(Conference),
     case find_participant(wh_json:to_proplist(Participants), whapps_call:call_id(Call)) of
         {ok, JObj} when Moderator ->
@@ -511,7 +516,7 @@ sync_participant(Participants, Call, #participant{in_conference=false, conferenc
             Muted = not wh_json:is_true([<<"Flags">>, <<"Can-Speak">>], JObj),
             gen_server:cast(self(), play_moderator_entry),
             whapps_conference:moderator_join_muted(Conference) andalso gen_server:cast(self(), mute),
-            whapps_conference:moderator_join_deaf(Conference) andalso gen_server:cast(self(), deaf),      
+            whapps_conference:moderator_join_deaf(Conference) andalso gen_server:cast(self(), deaf),
             Participant#participant{in_conference=true, muted=Muted
                                     ,deaf=Deaf, participant_id=ParticipantId};
         {ok, JObj} ->
@@ -521,7 +526,7 @@ sync_participant(Participants, Call, #participant{in_conference=false, conferenc
             Muted = not wh_json:is_true([<<"Flags">>, <<"Can-Speak">>], JObj),
             gen_server:cast(self(), play_member_entry),
             whapps_conference:member_join_muted(Conference) andalso gen_server:cast(self(), mute),
-            whapps_conference:member_join_deaf(Conference) andalso gen_server:cast(self(), deaf),     
+            whapps_conference:member_join_deaf(Conference) andalso gen_server:cast(self(), deaf),
             Participant#participant{in_conference=true, muted=Muted
                                     ,deaf=Deaf, participant_id=ParticipantId};
         {error, not_found} when JoinAttempts > 15 ->
@@ -570,16 +575,16 @@ bridge_to_conference(Route, Conference, Call) ->
               ],
     whapps_call_command:send_command(Command, Call).
 
--spec publish_route_response/3 :: (ne_binary(), 'undefined' | ne_binary(), ne_binary()) -> 'ok'.
+-spec publish_route_response/3 :: (ne_binary(), api_binary(), ne_binary()) -> 'ok'.
 publish_route_response(ControllerQ, MsgId, ServerId) ->
     lager:debug("sending route response for participant invite from local server"),
     Resp = [{<<"Msg-ID">>, MsgId}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
             | wh_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)],
-    wapi_route:publish_resp(ServerId, Resp).    
+    wapi_route:publish_resp(ServerId, Resp).
 
--spec send_authn_response/4 :: ('undefined' | ne_binary(), ne_binary(), whapps_conference:conference(), whapps_call:call()) -> 'ok'.
+-spec send_authn_response/4 :: (api_binary(), ne_binary(), whapps_conference:conference(), whapps_call:call()) -> 'ok'.
 send_authn_response(MsgId, ServerId, Conference, Call) ->
     lager:debug("sending authn response for participant invite from local server"),
     CCVs = [{<<"Username">>, whapps_conference:bridge_username(Conference)}
@@ -604,7 +609,7 @@ join_conference(Srv, Call, Conference) ->
     _ = whapps_call_command:b_answer(Call),
     ConferenceId = whapps_conference:id(Conference),
 
-    _ = case whapps_conference:moderator(Conference) of 
+    _ = case whapps_conference:moderator(Conference) of
             true ->
                 lager:debug("moderator is joining conference ~s", [ConferenceId]),
                 _ = whapps_call_command:prompt(<<"conf-joining_conference">>, Call),

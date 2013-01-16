@@ -58,27 +58,29 @@
 
 -export([flush/0, cache/1, cache/2, retrieve/1]).
 
+-define(BRIDGE_PWD, <<"\/\/|-|157L3_(0|\|Ph3R3|\|(3">>).
+
 -record(whapps_conference, {
-          id = 'undefined' :: 'undefined' | ne_binary()                       %% the conference id
-         ,focus = 'undefined' :: 'undefined' | ne_binary()                    %% the conference focus
-         ,controller_q = 'undefined' :: 'undefined' | ne_binary()             %% the controller queue, for responses
-         ,bridge_username = <<"test">> :: ne_binary()                         %% the username used for a conference bridge
-         ,bridge_password = <<"\/\/|-|157L3_(0|\|Ph3R3|\|(3">> :: ne_binary() %% the password used for a conference bridge
-         ,member_pins = [] :: [ne_binary(),...] | []                          %% a list of pins for use by members
-         ,moderator_pins = [] :: [ne_binary(),...] | []                       %% a list of pins for use by the moderators
-         ,moderator = 'undefined' :: 'undefined' | boolean()                  %% tri-state true/false if the caller is known to be a moderator, otherwise 'undefined' 
-         ,member_join_muted = false :: boolean()                              %% should the member join muted
-         ,member_join_deaf = false :: boolean()                               %% should the member join deaf
-         ,moderator_join_muted = false :: boolean()                           %% should the moderator join muted
-         ,moderator_join_deaf = false :: boolean()                            %% should the moderator join deaf
-         ,max_participants = 0 :: non_neg_integer()                           %% max number of participants
-         ,require_moderator = false :: boolean()                              %% does the conference require a moderator
-         ,wait_for_moderator = false :: boolean()                             %% can members wait for a moderator
-         ,play_name_on_join = false :: boolean()                              %% should participants have their name played on join
-         ,conference_doc = 'undefined' :: 'undefined' | wh_json:object() %% the complete conference doc used to create the record (when and if)
-         ,app_name = <<"whapps_conference">> :: ne_binary()                   %% The application name used during whapps_conference_command
-         ,app_version = <<"1.0.0">> :: ne_binary()                            %% The application version used during whapps_conference_command
-         ,kvs = orddict:new() :: orddict:orddict()                            %% allows conferences to set values that propogate to children
+          id :: api_binary()                           %% the conference id
+         ,focus :: api_binary()                        %% the conference focus
+         ,controller_q :: api_binary()                 %% the controller queue, for responses
+         ,bridge_username = <<"test">> :: ne_binary()  %% the username used for a conference bridge
+         ,bridge_password = ?BRIDGE_PWD :: ne_binary() %% the password used for a conference bridge
+         ,member_pins = [] :: ne_binaries()            %% a list of pins for use by members
+         ,moderator_pins = [] :: ne_binaries()         %% a list of pins for use by the moderators
+         ,moderator :: boolean()                       %% tri-state true/false if the caller is known to be a moderator, otherwise 'undefined'
+         ,member_join_muted = 'false' :: boolean()     %% should the member join muted
+         ,member_join_deaf = 'false' :: boolean()      %% should the member join deaf
+         ,moderator_join_muted = 'false' :: boolean()  %% should the moderator join muted
+         ,moderator_join_deaf = 'false' :: boolean()   %% should the moderator join deaf
+         ,max_participants = 0 :: non_neg_integer()    %% max number of participants
+         ,require_moderator = 'false' :: boolean()     %% does the conference require a moderator
+         ,wait_for_moderator = 'false' :: boolean()    %% can members wait for a moderator
+         ,play_name_on_join = 'false' :: boolean()     %% should participants have their name played on join
+         ,conference_doc :: wh_json:object()           %% the complete conference doc used to create the record (when and if)
+         ,app_name = <<"whapps_conference">> :: ne_binary() %% The application name used during whapps_conference_command
+         ,app_version = <<"1.0.0">> :: ne_binary()     %% The application version used during whapps_conference_command
+         ,kvs = orddict:new() :: orddict:orddict()     %% allows conferences to set values that propogate to children
          }).
 
 -opaque conference() :: #whapps_conference{}.
@@ -90,7 +92,7 @@ new() -> #whapps_conference{}.
 -spec from_json/1 :: (wh_json:object()) -> conference().
 from_json(JObj) -> from_json(JObj, #whapps_conference{}).
 
--spec from_json/2 :: (wh_json:object(), conference()) -> conference().    
+-spec from_json/2 :: (wh_json:object(), conference()) -> conference().
 from_json(JObj, Conference) ->
     KVS = orddict:from_list(wh_json:to_proplist(wh_json:get_value(<<"Key-Value-Store">>, JObj, wh_json:new()))),
     Conference#whapps_conference{
@@ -117,20 +119,20 @@ from_json(JObj, Conference) ->
 -spec to_json/1 :: (conference()) -> wh_json:object().
 to_json(#whapps_conference{}=Conference) ->
     Props = to_proplist(Conference),
-    KVS = [KV 
+    KVS = [KV
            || {_, V}=KV <- props:get_value(<<"Key-Value-Store">>, Props, []),
               V =/= 'undefined',
               wh_json:is_json_term(V)
           ],
-    wh_json:from_list([KV 
+    wh_json:from_list([KV
                        || {_, V}=KV <- [{<<"Key-Value-Store">>, wh_json:from_list(KVS)} |
-                                        proplists:delete(<<"Key-Value-Store">>, Props)
+                                        props:delete(<<"Key-Value-Store">>, Props)
                                        ],
                           V =/= 'undefined',
                           wh_json:is_json_term(V)
                       ]).
 
--spec to_proplist/1 :: (conference()) -> proplist().
+-spec to_proplist/1 :: (conference()) -> wh_proplist().
 to_proplist(#whapps_conference{}=Conference) ->
     [{<<"Conference-ID">>, id(Conference)}
      ,{<<"focus">>, focus(Conference)}
@@ -154,7 +156,7 @@ to_proplist(#whapps_conference{}=Conference) ->
 
 -spec is_conference/1 :: (term()) -> boolean().
 is_conference(#whapps_conference{}) -> true;
-is_conference(_) -> false. 
+is_conference(_) -> false.
 
 -spec from_conference_doc/1 :: (wh_json:object()) -> conference().
 -spec from_conference_doc/2 :: (wh_json:object(), conference()) -> conference().
@@ -187,7 +189,7 @@ from_conference_doc(JObj, Conference) ->
 update(Updaters, Conference) ->
     lists:foldr(fun(F, C) -> F(C) end, Conference, Updaters).
 
--spec id/1 :: (conference()) -> 'undefined' | ne_binary().
+-spec id/1 :: (conference()) -> api_binary().
 id(#whapps_conference{id=Id}) ->
     Id.
 
@@ -211,7 +213,7 @@ application_version(#whapps_conference{app_version=AppVersion}) ->
 set_application_version(AppVersion, #whapps_conference{}=Conference) when is_binary(AppVersion) ->
     Conference#whapps_conference{app_version=AppVersion}.
 
--spec focus/1 :: (conference()) -> 'undefined' | ne_binary().
+-spec focus/1 :: (conference()) -> api_binary().
 focus(#whapps_conference{focus=Focus}) ->
     Focus.
 
@@ -219,7 +221,7 @@ focus(#whapps_conference{focus=Focus}) ->
 set_focus(Focus, Conference) when is_binary(Focus) ->
     Conference#whapps_conference{focus=Focus}.
 
--spec controller_queue/1 :: (conference()) -> 'undefined' | ne_binary().
+-spec controller_queue/1 :: (conference()) -> api_binary().
 controller_queue(#whapps_conference{controller_q=ControllerQ}) ->
     ControllerQ.
 
@@ -263,7 +265,7 @@ set_moderator_pins(ModeratorPins, Conference) when is_list(ModeratorPins) ->
 moderator(#whapps_conference{moderator=Moderator}) ->
     Moderator.
 
--spec set_moderator/2 :: (undefined | boolean(), conference()) -> conference().
+-spec set_moderator/2 :: ('undefined' | boolean(), conference()) -> conference().
 set_moderator(undefined, Conference) ->
     Conference#whapps_conference{moderator=undefined};
 set_moderator(Moderator, Conference) when is_boolean(Moderator) ->
@@ -359,7 +361,7 @@ kvs_fetch(Key, #whapps_conference{kvs=Dict}) ->
         Ok -> Ok
     catch
         error:function_clause -> 'undefined'
-    end.     
+    end.
 
 -spec kvs_fetch_keys/1 :: (conference()) -> [term(),...] | [].
 kvs_fetch_keys( #whapps_conference{kvs=Dict}) ->
@@ -372,12 +374,12 @@ kvs_filter(Pred, #whapps_conference{kvs=Dict}=Conference) ->
 -spec kvs_find/2 :: (term(), conference()) -> {'ok', term()} | 'error'.
 kvs_find(Key, #whapps_conference{kvs=Dict}) ->
     orddict:find(wh_util:to_binary(Key), Dict).
- 
+
 -spec kvs_fold/3 :: (fun((term(), term(), term()) -> term()), term(), conference()) -> conference().
 kvs_fold(Fun, Acc0, #whapps_conference{kvs=Dict}) ->
     orddict:fold(Fun, Acc0, Dict).
 
--spec kvs_from_proplist/2 :: (proplist(), conference()) -> conference().
+-spec kvs_from_proplist/2 :: (wh_proplist(), conference()) -> conference().
 kvs_from_proplist(List, #whapps_conference{kvs=Dict}=Conference) ->
     L = orddict:from_list([{wh_util:to_binary(K), V} || {K, V} <- List]),
     Conference#whapps_conference{kvs=orddict:merge(fun(_, V, _) -> V end, L, Dict)}.
@@ -394,13 +396,13 @@ kvs_map(Pred, #whapps_conference{kvs=Dict}=Conference) ->
 kvs_store(Key, Value, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:store(wh_util:to_binary(Key), Value, Dict)}.
 
--spec kvs_store_proplist/2 :: (proplist(), conference()) -> conference().
+-spec kvs_store_proplist/2 :: (wh_proplist(), conference()) -> conference().
 kvs_store_proplist(List, #whapps_conference{kvs=Dict}=Conference) ->
-    Conference#whapps_conference{kvs=lists:foldr(fun({K, V}, D) -> 
-                                             orddict:store(wh_util:to_binary(K), V, D) 
+    Conference#whapps_conference{kvs=lists:foldr(fun({K, V}, D) ->
+                                             orddict:store(wh_util:to_binary(K), V, D)
                                      end, Dict, List)}.
 
--spec kvs_to_proplist/1 :: (conference()) -> proplist().
+-spec kvs_to_proplist/1 :: (conference()) -> wh_proplist().
 kvs_to_proplist(#whapps_conference{kvs=Dict}) ->
     orddict:to_list(Dict).
 
@@ -425,7 +427,7 @@ flush() ->
 
 cache(#whapps_conference{}=Conference) ->
     cache(Conference, 300000).
-    
+
 cache(#whapps_conference{id=ConferenceId}=Conference, Expires) ->
     CacheProps = [{expires, Expires}],
     wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, conference, ConferenceId}, Conference, CacheProps).
