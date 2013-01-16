@@ -39,7 +39,7 @@
          ,publish_shared_member_call/1, publish_shared_member_call/3, publish_shared_member_call/4
          ,publish_member_call_failure/2, publish_member_call_failure/3
          ,publish_member_call_success/2, publish_member_call_success/3
-         ,publish_member_call_cancel/2, publish_member_call_cancel/3
+         ,publish_member_call_cancel/1, publish_member_call_cancel/2
          ,publish_member_connect_req/1, publish_member_connect_req/2
          ,publish_member_connect_resp/2, publish_member_connect_resp/3
          ,publish_member_connect_win/2, publish_member_connect_win/3
@@ -60,8 +60,6 @@
 %%------------------------------------------------------------------------------
 %% Member Call
 %%------------------------------------------------------------------------------
--define(MEMBER_CALL_KEY, "acdc.member.call."). % append queue ID
-
 -define(MEMBER_CALL_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call">>]).
 -define(OPTIONAL_MEMBER_CALL_HEADERS, []).
 -define(MEMBER_CALL_VALUES, [{<<"Event-Category">>, <<"member">>}
@@ -100,17 +98,17 @@ member_call_routing_key(JObj) ->
     member_call_routing_key(AcctId, Id).
 
 member_call_routing_key(AcctId, QueueId) ->
-    <<?MEMBER_CALL_KEY, AcctId/binary, ".", QueueId/binary>>.
+    <<"acdc.member.call.", AcctId/binary, ".", QueueId/binary>>.
 
 %%------------------------------------------------------------------------------
 %% Member Call Fail - if the queue is unable to properly handle the call
 %%  (queue is full, empty, wait timeout expires, etc)
 %%------------------------------------------------------------------------------
--define(MEMBER_CALL_FAIL_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>]).
+-define(MEMBER_CALL_FAIL_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call-ID">>]).
 -define(OPTIONAL_MEMBER_CALL_FAIL_HEADERS, [<<"Failure-Reason">>, <<"Process-ID">>, <<"Agent-ID">>]).
 -define(MEMBER_CALL_FAIL_VALUES, [{<<"Event-Category">>, <<"member">>}
                                   ,{<<"Event-Name">>, <<"call_fail">>}
-                            ]).
+                                 ]).
 -define(MEMBER_CALL_FAIL_TYPES, []).
 
 -spec member_call_failure/1 :: (api_terms()) ->
@@ -188,9 +186,6 @@ member_call_cancel_v(JObj) ->
 %%------------------------------------------------------------------------------
 %% Member Connect Request
 %%------------------------------------------------------------------------------
-%% acdc.member.connect_req.acct_id.queue_id
--define(MEMBER_CONNECT_REQ_KEY, "acdc.member.connect_req.").
-
 -define(MEMBER_CONNECT_REQ_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call-ID">>]).
 -define(OPTIONAL_MEMBER_CONNECT_REQ_HEADERS, [<<"Process-ID">>]).
 -define(MEMBER_CONNECT_REQ_VALUES, [{<<"Event-Category">>, <<"member">>}
@@ -228,7 +223,7 @@ member_connect_req_routing_key(JObj) ->
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     member_connect_req_routing_key(AcctId, Id).
 member_connect_req_routing_key(AcctId, QID) ->
-    <<?MEMBER_CONNECT_REQ_KEY, AcctId/binary, ".", QID/binary>>.
+    <<"acdc.member.connect_req.", AcctId/binary, ".", QID/binary>>.
 
 
 %%------------------------------------------------------------------------------
@@ -377,7 +372,6 @@ member_hungup_v(JObj) ->
 %% Sync Req/Resp
 %%   Depending on the queue strategy, get the other queue's strategy state
 %%------------------------------------------------------------------------------
--define(SYNC_REQ_KEY, "acdc.queue.sync_req.").
 -spec sync_req_routing_key/1 :: (wh_json:object() |
                                  wh_proplist()
                                 ) -> ne_binary().
@@ -392,7 +386,7 @@ sync_req_routing_key(JObj) ->
     sync_req_routing_key(AcctId, Id).
 
 sync_req_routing_key(AcctId, QID) ->
-    <<?SYNC_REQ_KEY, AcctId/binary, ".", QID/binary>>.
+    <<"acdc.queue.sync_req.", AcctId/binary, ".", QID/binary>>.
 
 -define(SYNC_REQ_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>]).
 -define(OPTIONAL_SYNC_REQ_HEADERS, [<<"Process-ID">>]).
@@ -448,7 +442,6 @@ sync_resp_v(JObj) ->
 %% Stats Req/Resp
 %%   Query for the current stats
 %%------------------------------------------------------------------------------
--define(STATS_REQ_KEY, "acdc.queue.stats_req.").
 -spec stats_req_routing_key/1 :: (wh_json:object() |
                                   wh_proplist() |
                                   ne_binary()
@@ -459,16 +452,16 @@ stats_req_routing_key(Props) when is_list(Props) ->
     AcctId = props:get_value(<<"Account-ID">>, Props),
     stats_req_routing_key(AcctId, Id);
 stats_req_routing_key(AcctId) when is_binary(AcctId) ->
-    <<?STATS_REQ_KEY, AcctId/binary>>;
+    <<"acdc.queue.stats_req.", AcctId/binary>>;
 stats_req_routing_key(JObj) ->
     Id = wh_json:get_value(<<"Queue-ID">>, JObj, <<"*">>),
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     stats_req_routing_key(AcctId, Id).
 
 stats_req_routing_key(AcctId, undefined) ->
-    <<?STATS_REQ_KEY, AcctId/binary>>;
+    <<"acdc.queue.stats_req.", AcctId/binary>>;
 stats_req_routing_key(AcctId, QID) ->
-    <<?STATS_REQ_KEY, AcctId/binary, ".", QID/binary>>.
+    <<"acdc.queue.stats_req.", AcctId/binary, ".", QID/binary>>.
 
 -spec stats_req_publish_key/1 :: (wh_json:object() | wh_proplist() | ne_binary()) -> ne_binary().
 stats_req_publish_key(Props) when is_list(Props) ->
@@ -538,8 +531,6 @@ stats_resp_v(JObj) ->
 %%   available: when an agent logs in, tell its configured queues
 %%   ringing: when an agent is being run, forward queues' round robin
 %%------------------------------------------------------------------------------
--define(AGENT_CHANGE_REQ_KEY, <<"acdc.queue.agent_change.">>).
-
 agent_change_publish_key(Prop) when is_list(Prop) ->
     agent_change_routing_key(props:get_value(<<"Account-ID">>, Prop)
                              ,props:get_value(<<"Queue-ID">>, Prop)
@@ -550,7 +541,7 @@ agent_change_publish_key(JObj) ->
                             ).
 
 agent_change_routing_key(AcctId, QueueId) ->
-    <<?AGENT_CHANGE_REQ_KEY/binary, AcctId/binary, ".", QueueId/binary>>.
+    <<"acdc.queue.agent_change.", AcctId/binary, ".", QueueId/binary>>.
 
 -define(AGENT_CHANGE_AVAILABLE, <<"available">>).
 -define(AGENT_CHANGE_RINGING, <<"ringing">>).
@@ -562,7 +553,7 @@ agent_change_routing_key(AcctId, QueueId) ->
 
 agent_change_available() -> ?AGENT_CHANGE_AVAILABLE.
 agent_change_ringing() -> ?AGENT_CHANGE_RINGING.
-agent_change_unavailable() -> ?AGENT_CHANGE_UNAVAILABLE().
+agent_change_unavailable() -> ?AGENT_CHANGE_UNAVAILABLE.
 
 -define(AGENT_CHANGE_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Queue-ID">>, <<"Change">>]).
 -define(OPTIONAL_AGENT_CHANGE_HEADERS, [<<"Process-ID">>]).
@@ -690,13 +681,13 @@ publish_member_call(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
 
--spec publish_member_call_cancel/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_member_call_cancel/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_member_call_cancel(Queue, JObj) ->
-    publish_member_call_cancel(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_member_call_cancel(Queue, API, ContentType) ->
+-spec publish_member_call_cancel/1 :: (api_terms()) -> 'ok'.
+-spec publish_member_call_cancel/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_member_call_cancel(JObj) ->
+    publish_member_call_cancel(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_member_call_cancel(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_CANCEL_VALUES, fun member_call_cancel/1),
-    amqp_util:targeted_publish(Queue, Payload, ContentType).
+    amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
 
 publish_shared_member_call(JObj) ->
     publish_shared_member_call(wh_json:get_value(<<"Account-ID">>, JObj)
