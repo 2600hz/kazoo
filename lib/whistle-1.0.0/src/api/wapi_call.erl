@@ -153,7 +153,7 @@
 
 %% Usurp Call Event Publisher
 -define(PUBLISHER_USURP_CONTROL_HEADERS, [<<"Call-ID">>, <<"Reference">>]).
--define(OPTIONAL_PUBLISHER_USURP_CONTROL_HEADERS, [<<"Reason">>]).
+-define(OPTIONAL_PUBLISHER_USURP_CONTROL_HEADERS, [<<"Reason">>, <<"Media-Node">>]).
 -define(PUBLISHER_USURP_CONTROL_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                          ,{<<"Event-Name">>, <<"usurp_publisher">>}
                                         ]).
