@@ -109,11 +109,6 @@ process_message(Call, Timeout, Start, Wait, JObj, {<<"call_event">>, <<"DTMF">>}
 process_message(Call, _, Start, _Wait, _JObj, {<<"member">>, <<"call_success">>}) ->
     lager:info("call was processed by queue (took ~b s)", [wh_util:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
-process_message(Call, _, Start, _Wait, JObj, {<<"member">>, <<"call_cancel">>}) ->
-    lager:info("call was cancelled by queue (took ~b s): ~s, continuing callflow"
-                ,[wh_util:elapsed_s(Start), wh_json:get_value(<<"Reason">>, JObj)]
-               ),
-    cf_exe:continue(Call);
 process_message(Call, Timeout, Start, Wait, _JObj, _Type) ->
     wait_for_bridge(Call, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start).
 
