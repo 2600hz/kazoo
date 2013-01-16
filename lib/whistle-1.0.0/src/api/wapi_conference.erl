@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
@@ -61,7 +61,7 @@
 
 %% Conference Search Request
 -define(SEARCH_REQ_HEADERS, [<<"Conference-ID">>]).
--define(OPTIONAL_SEARCH_REQ_HEADERS, []).
+-define(OPTIONAL_SEARCH_REQ_HEADERS, [<<"Conversation-ID">>]).
 -define(SEARCH_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                             ,{<<"Event-Name">>, <<"search_req">>}
                            ]).
@@ -72,6 +72,7 @@
 -define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"Switch-URL">>, <<"Switch-External-IP">>, <<"Rate">>
                                            ,<<"UUID">>, <<"Running">>, <<"Answered">>, <<"Dynamic">>
                                            ,<<"Run-Time">>, <<"Participants">>, <<"Locked">>
+                                           ,<<"Conversation-ID">>
                                       ]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
                              ,{<<"Event-Name">>, <<"search_resp">>}
@@ -82,6 +83,7 @@
 -define(DISCOVERY_REQ_HEADERS, [<<"Call">>]).
 -define(OPTIONAL_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>
                                              ,<<"Conference-Doc">> % ad-hoc conferencing
+                                             ,<<"Conversation-ID">>
                                         ]).
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"discovery_req">>}
@@ -306,7 +308,7 @@
                         ]).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -326,7 +328,7 @@ search_req_v(JObj) ->
     search_req_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -346,7 +348,7 @@ search_resp_v(JObj) ->
     search_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -366,7 +368,7 @@ discovery_req_v(JObj) ->
     discovery_req_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -384,9 +386,9 @@ deaf_participant_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?DEAF_PARTICIPANT_HEADERS, ?DEAF_PARTICIPANT_VALUES, ?DEAF_PARTICIPANT_TYPES);
 deaf_participant_v(JObj) ->
     deaf_participant_v(wh_json:to_proplist(JObj)).
- 
+
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -406,7 +408,7 @@ participant_energy_v(JObj) ->
     participant_energy_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -426,7 +428,7 @@ kick_v(JObj) ->
     kick_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -446,7 +448,7 @@ participants_req_v(JObj) ->
     participants_req_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -466,7 +468,7 @@ participants_resp_v(JObj) ->
     participants_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -486,7 +488,7 @@ lock_v(JObj) ->
     lock_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -506,7 +508,7 @@ mute_participant_v(JObj) ->
     mute_participant_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -526,7 +528,7 @@ play_v(JObj) ->
     play_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -546,7 +548,7 @@ record_v(JObj) ->
     record_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -566,7 +568,7 @@ relate_participants_v(JObj) ->
     relate_participants_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -586,7 +588,7 @@ set_v(JObj) ->
     set_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -606,7 +608,7 @@ stop_play_v(JObj) ->
     stop_play_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -626,7 +628,7 @@ undeaf_participant_v(JObj) ->
     undeaf_participant_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -646,7 +648,7 @@ unlock_v(JObj) ->
     unlock_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -666,7 +668,7 @@ unmute_participant_v(JObj) ->
     unmute_participant_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -686,7 +688,7 @@ participant_volume_in_v(JObj) ->
     participant_volume_in_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -706,7 +708,7 @@ participant_volume_out_v(JObj) ->
     participant_volume_out_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -726,11 +728,11 @@ conference_error_v(JObj) ->
     conference_error_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Bind a queue to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
+-spec bind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     amqp_util:conference_exchange(),
     bind_to_q(Queue, props:get_value(restrict_to, Props)).
@@ -755,11 +757,11 @@ bind_to_q(_Q, []) ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Unbind a queue from the conference exhange
 %% @end
 %%--------------------------------------------------------------------
--spec unbind_q/2 :: (binary(), proplist()) -> 'ok'.
+-spec unbind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     amqp_util:conference_exchange(),
     unbind_from_q(Queue, props:get_value(restrict_to, Props)).
@@ -784,7 +786,7 @@ unbind_from_q(_Q, []) ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -797,7 +799,7 @@ publish_search_req(Req, ContentType) ->
     amqp_util:conference_publish(Payload, discovery, undefined, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -810,7 +812,7 @@ publish_search_resp(Queue, Resp, ContentType) ->
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -823,7 +825,7 @@ publish_discovery_req(Req, ContentType) ->
     amqp_util:conference_publish(Payload, discovery, undefined, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -836,7 +838,7 @@ publish_deaf_participant(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -849,7 +851,7 @@ publish_participant_energy(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -862,7 +864,7 @@ publish_kick(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -875,7 +877,7 @@ publish_participants_req(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -888,7 +890,7 @@ publish_participants_resp(Queue, Resp, ContentType) ->
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -901,7 +903,7 @@ publish_lock(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -914,7 +916,7 @@ publish_mute_participant(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -927,7 +929,7 @@ publish_play(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -940,7 +942,7 @@ publish_record(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -953,7 +955,7 @@ publish_relate_participants(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -966,7 +968,7 @@ publish_set(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -979,7 +981,7 @@ publish_stop_play(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -992,7 +994,7 @@ publish_undeaf_participant(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -1005,7 +1007,7 @@ publish_unlock(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -1018,7 +1020,7 @@ publish_unmute_participant(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -1031,7 +1033,7 @@ publish_participant_volume_in(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -1044,7 +1046,7 @@ publish_participant_volume_out(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -1056,10 +1058,8 @@ publish_error(Queue, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?CONFERENCE_ERROR_VALUES, fun ?MODULE:conference_error/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
-
-
 %%--------------------------------------------------------------------
-%% @doc 
+%% @doc
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
