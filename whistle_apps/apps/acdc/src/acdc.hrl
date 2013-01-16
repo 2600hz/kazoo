@@ -13,11 +13,6 @@
 
 -define(ACDC_CACHE, acdc_cache).
 
-%% rr :: Round Robin
-%% mi :: Most Idle
--type queue_strategy() :: 'rr' | 'mi'.
--type queue_strategy_state() :: 'undefined' | queue().
-
 -define(ABANDON_TIMEOUT, 'timeout').
 -define(ABANDON_EXIT, 'member_exit').
 -define(ABANDON_HANGUP, 'member_hangup').
