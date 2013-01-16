@@ -40,8 +40,10 @@ handle_member_retry(JObj, Props) ->
     true = wapi_acdc_queue:member_connect_retry_v(JObj),
     acdc_queue_fsm:member_connect_retry(props:get_value(fsm_pid, Props), JObj).
 
-handle_config_change(JObj, _Props) ->
+handle_config_change(JObj, Props) ->
     true = wapi_conf:doc_update_v(JObj),
+
+    acdc_queue_manager:handle_config_change(props:get_value(server, Props), JObj),
 
     handle_queue_change(wh_json:get_value(<<"Doc">>, JObj)
                         ,wh_json:get_value(<<"Account-ID">>, JObj)
