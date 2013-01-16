@@ -85,13 +85,13 @@ start_link(Node, CallId) ->
 
 graceful_shutdown(Node, UUID) ->
     _ = [gen_listener:cast(Pid, {graceful_shutdown})
-         || Pid <- gproc:lookup_pids({p, l, {call_events, Node, UUID}})
+         || Pid <- gproc:lookup_pids({p, l, {call_event, Node, UUID}})
         ],
     ok.
 
 shutdown(Node, UUID) ->
     _ = [gen_listener:cast(Pid, {shutdown})
-         || Pid <- gproc:lookup_pids({p, l, {call_events, Node, UUID}})
+         || Pid <- gproc:lookup_pids({p, l, {call_event, Node, UUID}})
         ],
     ok.
 
@@ -127,6 +127,8 @@ handle_publisher_usurp(JObj, Props) ->
     Ref = props:get_value(reference, Props),
     Node = wh_util:to_binary(props:get_value(node, Props)),
 
+    lager:debug("recieved publisher usurp for ~s on ~s (if ~s != ~s)", [wh_json:get_value(<<"Call-ID">>, JObj), wh_json:get_value(<<"Media-Node">>, JObj), Ref, wh_json:get_value(<<"Reference">>, JObj)]),
+
     case CallId =:= wh_json:get_value(<<"Call-ID">>, JObj)
         andalso Node =:= wh_json:get_value(<<"Media-Node">>, JObj)
         andalso Ref =/= wh_json:get_value(<<"Reference">>, JObj)
@@ -159,8 +161,9 @@ init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
 
     erlang:monitor_node(Node, true),
 
-    true = gproc:reg({p, l, call_events}),
-    true = gproc:reg({p, l, {call_event, Node, CallId} }),
+    true = gproc:reg({p, l, call_events_processes}),
+    true = gproc:reg({p, l, {call_events_process, Node, CallId}}),
+    true = gproc:reg({p, l, {call_event, Node, CallId}}),
     true = gproc:reg({p, l, {events, Node, <<"sofia::move_released">>}}),
     true = gproc:reg({p, l, {events, Node, <<"sofia::move_complete">>}}),
 
@@ -216,6 +219,7 @@ handle_cast({update_node, Node}, #state{node=Node}=State) ->
 handle_cast({update_node, Node}, #state{node=OldNode, callid=CallId}=State) ->
     lager:debug("node has changed from ~s to ~s", [OldNode, Node]),
     erlang:monitor_node(OldNode, false),
+    _ = gproc:unreg({p, l, {call_events_process, OldNode, CallId}}),
     _ = gproc:unreg({p, l, {call_event, OldNode, CallId}}),
     _ = gproc:unreg({p, l, {events, OldNode, <<"sofia::move_released">>}}),
     _ = gproc:unreg({p, l, {events, OldNode, <<"sofia::move_complete">>}}),
@@ -307,6 +311,7 @@ handle_info(timeout, #state{node=Node
             {stop, normal, State};
         {ok, <<"true">>} ->
             lager:debug("processing call events from ~s", [Node]),
+            true = gproc:reg({p, l, {call_events_process, Node, CallId}}),
             true = gproc:reg({p, l, {call_event, Node, CallId}}),
             true = gproc:reg({p, l, {events, Node, <<"sofia::move_released">>}}),
             true = gproc:reg({p, l, {events, Node, <<"sofia::move_complete">>}}),
