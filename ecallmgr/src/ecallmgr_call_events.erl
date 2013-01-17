@@ -44,11 +44,10 @@
          ,code_change/3
         ]).
 
--define(BINDINGS, [{call, [{restrict_to, [publisher_usurp]}]}]).
 -define(RESPONDERS, [{{?MODULE, handle_publisher_usurp}, [{<<"call_event">>, <<"usurp_publisher">>}]}]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(CONSUME_OPTIONS, [{no_local, true}]).
 
 -define(SERVER, ?MODULE).
 
@@ -76,6 +75,10 @@
 %%--------------------------------------------------------------------
 -spec start_link/2 :: (atom(), ne_binary()) -> startlink_ret().
 start_link(Node, CallId) ->
+    Bindings = [{call, [{callid, CallId}
+                        ,{restrict_to, [publisher_usurp]}
+                       ]}
+               ],
     gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
                                       ,{responders, ?RESPONDERS}
                                       ,{queue_name, ?QUEUE_NAME}
