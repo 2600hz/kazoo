@@ -68,6 +68,7 @@
           ,max_message_length :: pos_integer()
           ,keys = #keys{} :: vm_keys()
           ,transcribe_voicemail = 'false' :: boolean()
+          ,notifications :: wh_json:object()
           ,delete_after_notify = 'false' :: boolean()
          }).
 -type mailbox() :: #mailbox{}.
@@ -216,11 +217,9 @@ find_mailbox(Box, Call, Loop) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec compose_voicemail/2 :: (mailbox(), whapps_call:call()) ->
-                                     'ok' |
-                                     {'branch', _}.
+                                     'ok' | {'branch', _}.
 -spec compose_voicemail/3 :: (mailbox(), boolean(), whapps_call:call()) ->
-                                     'ok' |
-                                     {'branch', _}.
+                                     'ok' | {'branch', _}.
 compose_voicemail(#mailbox{owner_id=OwnerId}=Box, Call) ->
     IsOwner = case whapps_call:kvs_fetch(owner_id, Call) of
                   <<>> -> false;
@@ -238,11 +237,16 @@ compose_voicemail(#mailbox{exists=false}, _, Call) ->
     lager:debug("attempted to compose voicemail for missing mailbox"),
     _ = whapps_call_command:b_prompt(<<"vm-not_available_no_voicemail">>, Call),
     ok;
-compose_voicemail(#mailbox{max_message_count=Count, message_count=Count}, _, Call) when Count > 0 ->
+compose_voicemail(#mailbox{max_message_count=Count
+                           ,message_count=Count
+                          }, _, Call) when Count > 0 ->
     lager:debug("voicemail box is full, cannot hold more messages"),
     _ = whapps_call_command:b_prompt(<<"vm-mailbox_full">>, Call),
     ok;
-compose_voicemail(#mailbox{keys=#keys{login=Login, operator=Operator}}=Box, _, Call) ->
+compose_voicemail(#mailbox{keys=#keys{login=Login
+                                      ,operator=Operator
+                                     }
+                          }=Box, _, Call) ->
     lager:debug("playing mailbox greeting to caller"),
     _ = play_greeting(Box, Call),
     _ = play_instructions(Box, Call),
@@ -280,9 +284,10 @@ compose_voicemail(#mailbox{keys=#keys{login=Login, operator=Operator}}=Box, _, C
 %% @end
 %%--------------------------------------------------------------------
 -spec play_greeting/2 :: (mailbox(), whapps_call:call()) -> ne_binary() | 'ok'.
-play_greeting(#mailbox{skip_greeting=true}, _) ->
-    ok;
-play_greeting(#mailbox{unavailable_media_id=undefined, mailbox_number=Mailbox}, Call) ->
+play_greeting(#mailbox{skip_greeting=true}, _) -> ok;
+play_greeting(#mailbox{unavailable_media_id=undefined
+                       ,mailbox_number=Mailbox
+                      }, Call) ->
     lager:debug("mailbox has no greeting, playing the generic"),
     whapps_call_command:audio_macro([{prompt, <<"vm-person">>}
                                      ,{say, Mailbox}
@@ -302,8 +307,7 @@ play_greeting(#mailbox{unavailable_media_id=Id}, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec play_instructions/2 :: (mailbox(), whapps_call:call()) -> ne_binary() | 'ok'.
-play_instructions(#mailbox{skip_instructions=true}, _) ->
-    ok;
+play_instructions(#mailbox{skip_instructions=true}, _) -> ok;
 play_instructions(#mailbox{skip_instructions=false}, Call) ->
     whapps_call_command:prompt(<<"vm-record_message">>, Call).
 
@@ -375,11 +379,9 @@ setup_mailbox(Box, Call) ->
 %%--------------------------------------------------------------------
 -spec main_menu/2 :: (mailbox(), whapps_call:call()) -> 'ok'.
 -spec main_menu/3 :: (mailbox(), whapps_call:call(), non_neg_integer()) -> 'ok'.
-
 main_menu(#mailbox{is_setup=false}=Box, Call) ->
     main_menu(setup_mailbox(Box, Call), Call, 1);
-main_menu(Box, Call) ->
-    main_menu(Box, Call, 1).
+main_menu(Box, Call) -> main_menu(Box, Call, 1).
 
 main_menu(_, Call, Loop) when Loop > 4 ->
     %% If there have been too may loops with no action from the caller this
@@ -387,16 +389,25 @@ main_menu(_, Call, Loop) when Loop > 4 ->
     lager:debug("entered main menu with too many invalid entries"),
     _ = whapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
     ok;
-main_menu(#mailbox{owner_id=OwnerId, keys=#keys{hear_new=HearNew, hear_saved=HearSaved, configure=Configure, exit=Exit}}=Box, Call, Loop) ->
+main_menu(#mailbox{owner_id=OwnerId
+                   ,keys=#keys{hear_new=HearNew
+                               ,hear_saved=HearSaved
+                               ,configure=Configure
+                               ,exit=Exit
+                              }
+                  }=Box, Call, Loop) ->
     lager:debug("playing mailbox main menu"),
     _ = whapps_call_command:b_flush(Call),
     AccountDb = whapps_call:account_db(Call),
+
     Messages = get_messages(Box, Call),
     New = count_messages(Messages, ?FOLDER_NEW),
     Saved = count_messages(Messages, ?FOLDER_SAVED),
+
     lager:debug("mailbox has ~p new and ~p saved messages", [New, Saved]),
     NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved)
-                                             ++ [{prompt, <<"vm-main_menu">>}], Call),
+                                             ++ [{prompt, <<"vm-main_menu">>}]
+                                             ,Call),
     case whapps_call_command:collect_digits(1, 5000, 2000, NoopId, Call) of
         {error, _} ->
             lager:debug("error during mailbox main menu"),
@@ -409,14 +420,14 @@ main_menu(#mailbox{owner_id=OwnerId, keys=#keys{hear_new=HearNew, hear_saved=Hea
         {ok, HearNew} ->
             lager:debug("playing all messages in folder: ~s", [?FOLDER_NEW]),
             Folder = get_folder(Messages, ?FOLDER_NEW),
-            case play_messages(Folder, length(Folder), Box, Call) of
+            case play_messages(Folder, New, Box, Call) of
                 ok -> ok;
                 _Else -> main_menu(Box, Call)
             end;
         {ok, HearSaved} ->
             lager:debug("playing all messages in folder: ~s", [?FOLDER_SAVED]),
             Folder = get_folder(Messages, ?FOLDER_SAVED),
-            case play_messages(Folder, length(Folder), Box, Call) of
+            case play_messages(Folder, Saved, Box, Call) of
                 ok -> ok;
                 _Else ->  main_menu(Box, Call)
             end;
@@ -436,7 +447,7 @@ main_menu(#mailbox{owner_id=OwnerId, keys=#keys{hear_new=HearNew, hear_saved=Hea
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec message_count_prompts/2 :: (integer(), integer()) -> proplist().
+-spec message_count_prompts/2 :: (integer(), integer()) -> wh_proplist().
 message_count_prompts(0, 0) ->
     [{prompt, <<"vm-no_messages">>}];
 message_count_prompts(1, 0) ->
@@ -495,7 +506,8 @@ message_count_prompts(New, Saved) ->
 %% menu utill
 %% @end
 %%--------------------------------------------------------------------
--spec play_messages/4 :: (wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) -> 'ok' | 'complete'.
+-spec play_messages/4 :: (wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
+                                 'ok' | 'complete'.
 play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
     Message = get_message(H, Call),
     lager:debug("playing mailbox message ~p (~s)", [Count, Message]),
@@ -737,7 +749,13 @@ change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
 new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
                                              ,owner_id=OwnerId
                                              ,transcribe_voicemail=MaybeTranscribe
-                                             ,delete_after_notify=DeleteAfterNotify
+                                             ,delete_after_notify=true
+                                            }=Box, Call) ->
+    ok;
+new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
+                                             ,owner_id=OwnerId
+                                             ,transcribe_voicemail=MaybeTranscribe
+                                             ,delete_after_notify=false
                                             }=Box, Call) ->
     lager:debug("saving new ~bms voicemail message and metadata", [Length]),
     CallID = cf_exe:callid(Call),
@@ -782,7 +800,6 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
        ,{<<"Voicemail-Length">>, Length}
        ,{<<"Voicemail-Transcription">>, Transcription}
        ,{<<"Call-ID">>, CallID}
-       ,{<<"Delete-After-Notify">>, DeleteAfterNotify}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]),
     timer:sleep(1000),
@@ -812,7 +829,7 @@ maybe_transcribe(Call, MediaId, true) ->
 maybe_transcribe(_, _, false) ->
     undefined.
 
--spec maybe_transcribe/4 :: (ne_binary(), wh_json:object(), binary(), 'undefined' | ne_binary()) ->
+-spec maybe_transcribe/4 :: (ne_binary(), wh_json:object(), binary(), api_binary()) ->
                                     'undefined' | wh_json:object().
 maybe_transcribe(_, _, _, undefined) -> undefined;
 maybe_transcribe(_, _, <<>>, _) -> undefined;
@@ -834,7 +851,7 @@ maybe_transcribe(_, _, _, _ContentType) ->
     lager:debug("un-ASR-able content type: ~s", [_ContentType]),
     undefined.
 
--spec is_valid_transcription/3 :: (ne_binary() | 'undefined', binary(), wh_json:object()) ->
+-spec is_valid_transcription/3 :: (api_binary(), binary(), wh_json:object()) ->
                                           wh_json:object() | 'undefined'.
 is_valid_transcription(<<"success">>, ?NE_BINARY, Resp) -> Resp;
 is_valid_transcription(_Res, _Txt, _) ->
@@ -921,7 +938,7 @@ get_mailbox_profile(Data, Call) ->
                                          );
                     MMC -> MMC
                 end,
-            MsgCount = length(wh_json:get_value(<<"messages">>, JObj, [])),
+            MsgCount = count_non_deleted_messages(wh_json:get_value(<<"messages">>, JObj, [])),
 
             lager:debug("mailbox limited to ~p voicemail messages (has ~b currently)", [MaxMessageCount, MsgCount]),
 
@@ -958,6 +975,8 @@ get_mailbox_profile(Data, Call) ->
                          MsgCount
                      ,transcribe_voicemail =
                          wh_json:is_true(<<"transcribe">>, JObj, false)
+                     ,notifications =
+                         wh_json:get_value(<<"notifications">>, JObj)
                      ,delete_after_notify =
                          wh_json:is_true(<<"delete_after_notify">>, JObj, false)
                     };
@@ -1215,6 +1234,18 @@ get_message(Message, Call) ->
 -spec count_messages/2 :: (wh_json:objects(), ne_binary()) -> non_neg_integer().
 count_messages(Messages, Folder) ->
     lists:sum([1 || Message <- Messages, wh_json:get_value(<<"folder">>, Message) =:= Folder]).
+
+-spec count_non_deleted_messages/1 :: (wh_json:objects()) -> non_neg_integer().
+-spec count_non_deleted_messages/2 :: (wh_json:objects(), non_neg_integer()) -> non_neg_integer().
+count_non_deleted_messages(L) ->
+    count_non_deleted_messages(L, 0).
+count_non_deleted_messages([], Count) ->
+    Count;
+count_non_deleted_messages([MsgMeta|Messages], Count) ->
+    case wh_json:get_value(<<"folder">>, MsgMeta) of
+        ?FOLDER_DELETED -> count_non_deleted_messages(Messages, Count);
+        _ -> count_non_deleted_messages(Messages, Count+1)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
