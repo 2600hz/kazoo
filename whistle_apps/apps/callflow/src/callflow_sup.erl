@@ -26,6 +26,7 @@
 -define(CACHE(), {?CALLFLOW_CACHE, {wh_cache, start_link, [?CALLFLOW_CACHE]}, permanent, 5000, worker, [wh_cache]}).
 -define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
 -define(CHILDREN, [?CACHE()
+                   ,?CHILD(cf_shared_listener, worker)
                    ,?CHILD(cf_listener, worker)
                    ,?CHILD(cf_exe_sup, supervisor)
                   ]).

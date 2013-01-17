@@ -228,7 +228,7 @@ wait_for_cdr(#ts_callflow_state{aleg_callid=ALeg}=State, Timeout) ->
                 ignore -> wait_for_cdr(State, Timeout)
             end
     after Timeout ->
-            case whapps_call_command:b_call_status(ALeg) of
+            case whapps_call_command:b_channel_status(ALeg) of
                 {error, _} -> {timeout, State};
                 _ -> wait_for_cdr(State, Timeout)
             end
@@ -308,9 +308,8 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
                ,{<<"Insert-At">>, <<"now">>}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, JSON} = wapi_dialplan:hangup(Command),
-    lager:debug("Sending hangup to ~s: ~s", [CtlQ, JSON]),
-    wapi_dialplan:publish_action(CtlQ, JSON, <<"application/json">>).
+    lager:debug("Sending hangup to ~s: ~p", [CtlQ, Command]),                                                                                  
+    wapi_dialplan:publish_command(CtlQ, Command).
 
 %%%-----------------------------------------------------------------------------
 %%% Data access functions

@@ -85,7 +85,7 @@ get_fs_app(Node, UUID, JObj, <<"tts">>) ->
                     App = play(Node, UUID, wh_json:set_value(<<"Media-Name">>, <<"tts://", SayMe/binary>>, JObj)),
                     lager:debug("app to use: ~p", [App]),
                     [App
-                     ,{"application", ecallmgr_util:create_masquerade_event(<<"tts">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
+                     ,{"event", ecallmgr_util:create_masquerade_event(<<"tts">>, <<"CHANNEL_EXECUTE_COMPLETE">>, false)}
                     ]
             end
     end;

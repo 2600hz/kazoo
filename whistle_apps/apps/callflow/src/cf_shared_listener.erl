@@ -1,16 +1,16 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Listener for authn_req, reg_success, and reg_query AMQP requests
+%%% Listener for route requests that can be fulfilled by callflows
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(registrar_listener).
+-module(cf_shared_listener).
 
 -behaviour(gen_listener).
 
--export([start_link/0, stop/1]).
+-export([start_link/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -20,17 +20,19 @@
          ,code_change/3
         ]).
 
--include("reg.hrl").
-
--define(RESPONDERS, [{{reg_query, req_query_req}, [{<<"directory">>, <<"reg_query">>}]}]).
--define(BINDINGS, [{registration, [{retrict_to, [reg_success]}]}
-                   ,{self, []}
-                  ]).
+-include("callflow.hrl").
 
 -define(SERVER, ?MODULE).
--define(REG_QUEUE_NAME, <<"">>).
--define(REG_QUEUE_OPTIONS, []).
--define(REG_CONSUME_OPTIONS, []).
+
+-define(RESPONDERS, [{{cf_util, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
+                     ,{{cf_util, presence_mwi_query}, [{<<"notification">>, <<"mwi_query">>}]}
+                    ]).
+-define(BINDINGS, [{notifications, [{restrict_to, [presence_probe, mwi_query]}]}
+                   ,{self, []}
+                  ]).
+-define(QUEUE_NAME, <<"callflow_listener">>).
+-define(QUEUE_OPTIONS, [{exclusive, false}]).
+-define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 %%%===================================================================
 %%% API
@@ -44,16 +46,13 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link({local, ?SERVER}, ?MODULE, [{responders, ?RESPONDERS}
-                                                        ,{bindings, ?BINDINGS}
-                                                        ,{queue_name, ?REG_QUEUE_NAME}
-                                                        ,{queue_options, ?REG_QUEUE_OPTIONS}
-                                                        ,{consume_options, ?REG_CONSUME_OPTIONS}
-                                                       ], []).
-
--spec stop/1 :: (pid()) -> 'ok'.
-stop(Srv) ->
-    gen_listener:stop(Srv).
+    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
+                                      ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                      ,{basic_qos, 1}
+                                     ], []).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -72,7 +71,7 @@ stop(Srv) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    lager:debug("starting new registrar server"),
+    lager:debug("starting new callflow shared queue server"),
     {ok, []}.
 
 %%--------------------------------------------------------------------
@@ -116,6 +115,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -142,7 +142,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
-    lager:debug("registrar server ~p termination", [_Reason]).
+    lager:debug("callflow shared queue server ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

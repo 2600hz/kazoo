@@ -17,9 +17,21 @@
 
 -include("whistle_apps.hrl").
 
--export([create/1, create/2, create/3, create/4
-         ,asr_freeform/1, asr_freeform/2, asr_freeform/3, asr_freeform/4
-         ,asr_commands/2, asr_commands/3, asr_commands/4, asr_commands/5
+-export([create/1
+         ,create/2
+         ,create/3
+         ,create/4
+         ,create/5
+        ]).
+-export([asr_freeform/1
+         ,asr_freeform/2
+         ,asr_freeform/3
+         ,asr_freeform/4
+        ]).
+-export([asr_commands/2
+         ,asr_commands/3
+         ,asr_commands/4
+         ,asr_commands/5
         ]).
 
 -define(MOD_CONFIG_CAT, <<"speech">>).

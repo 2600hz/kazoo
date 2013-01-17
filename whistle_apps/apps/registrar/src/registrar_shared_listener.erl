@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(registrar_listener).
+-module(registrar_shared_listener).
 
 -behaviour(gen_listener).
 
@@ -22,15 +22,22 @@
 
 -include("reg.hrl").
 
--define(RESPONDERS, [{{reg_query, req_query_req}, [{<<"directory">>, <<"reg_query">>}]}]).
--define(BINDINGS, [{registration, [{retrict_to, [reg_success]}]}
+-define(RESPONDERS, [{reg_authn_req, [{<<"directory">>, <<"authn_req">>}]}
+                     ,{reg_success, [{<<"directory">>, <<"reg_success">>}]}
+                     ,{{reg_query, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
+                     ,{{reg_route_req, handle_route_req}, [{<<"dialplan">>, <<"route_req">>}]}
+                    ]).
+-define(BINDINGS, [{authn, []}
+                   ,{registration, [{retrict_to, [reg_success]}]}
+                   ,{notifications, [{restrict_to, [presence_probe]}]}
+                   ,{route, []}
                    ,{self, []}
                   ]).
 
 -define(SERVER, ?MODULE).
--define(REG_QUEUE_NAME, <<"">>).
--define(REG_QUEUE_OPTIONS, []).
--define(REG_CONSUME_OPTIONS, []).
+-define(REG_QUEUE_NAME, <<"registrar_listener">>).
+-define(REG_QUEUE_OPTIONS, [{exclusive, false}]).
+-define(REG_CONSUME_OPTIONS, [{exclusive, false}]).
 
 %%%===================================================================
 %%% API
@@ -49,6 +56,7 @@ start_link() ->
                                                         ,{queue_name, ?REG_QUEUE_NAME}
                                                         ,{queue_options, ?REG_QUEUE_OPTIONS}
                                                         ,{consume_options, ?REG_CONSUME_OPTIONS}
+                                                        ,{basic_qos, 1}
                                                        ], []).
 
 -spec stop/1 :: (pid()) -> 'ok'.
@@ -72,7 +80,7 @@ stop(Srv) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    lager:debug("starting new registrar server"),
+    lager:debug("starting new registrar shared queue server"),
     {ok, []}.
 
 %%--------------------------------------------------------------------
@@ -142,7 +150,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
-    lager:debug("registrar server ~p termination", [_Reason]).
+    lager:debug("registrar shared queue server ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

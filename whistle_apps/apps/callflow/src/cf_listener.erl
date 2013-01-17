@@ -29,13 +29,9 @@
 
 -define(RESPONDERS, [{cf_route_req, [{<<"dialplan">>, <<"route_req">>}]}
                      ,{cf_route_win, [{<<"dialplan">>, <<"route_win">>}]}
-                     ,{{cf_util, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
-                     ,{{cf_util, presence_mwi_query}, [{<<"notification">>, <<"mwi_query">>}]}
-                     ,{{cf_util, handle_doc_change}, [{<<"configuration">>, <<"*">>}]}
                     ]).
 -define(BINDINGS, [{route, []}
                    ,{self, []}
-                   ,{conf, [{doc_type, <<"device">>}]} % get alerts about device updates
                   ]).
 -define(QUEUE_NAME, <<"">>).
 -define(QUEUE_OPTIONS, []).
@@ -93,16 +89,6 @@ stop() ->
 init([]) ->
     process_flag(trap_exit, true),
     lager:debug("starting new callflow listener"),
-    Self = self(),
-    spawn(fun() -> 
-                  QueueName = <<"callflow_presence_probe">>,
-                  Options = [{queue_options, [{exclusive, false}]}
-                             ,{consume_options, [{exclusive, false}]}
-                             ,{basic_qos, 1}
-                            ],
-                  Bindings= [{notifications, [{restrict_to, [presence_probe, mwi_query]}]}],
-                  gen_listener:add_queue(Self, QueueName, Options, Bindings)
-          end),
     {ok, []}.
 
 %%--------------------------------------------------------------------

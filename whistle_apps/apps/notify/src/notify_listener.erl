@@ -12,11 +12,16 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, stop/1]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([start_link/0]).
+-export([stop/1]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("notify.hrl").
 
@@ -35,7 +40,20 @@
                      ,{notify_transaction, [{<<"notification">>, <<"transaction">>}]}
                      ,{notify_system_alert, [{<<"notification">>, <<"system_alert">>}]}
                     ]).
--define(BINDINGS, [{notifications, []}
+
+-define(RESTRICT_TO, [new_voicemail
+                      ,new_fax
+                      ,deregister
+                      ,pwd_recovery
+                      ,new_account
+                      ,cnam_requests
+                      ,port_request
+                      ,low_balance
+                      ,transaction
+                      ,system_alerts
+                     ]).
+
+-define(BINDINGS, [{notifications, [{restrict_to, ?RESTRICT_TO}]}
                    ,{self, []}
                   ]).
 -define(QUEUE_NAME, <<"notify_listener">>).
@@ -83,7 +101,7 @@ stop(Srv) ->
 %%--------------------------------------------------------------------
 init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
-    lager:debug("starting new vm notify process"),
+    lager:debug("starting new notify server"),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -153,7 +171,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("vm notify process ~p termination", [_Reason]).
+    lager:debug("notify server ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
