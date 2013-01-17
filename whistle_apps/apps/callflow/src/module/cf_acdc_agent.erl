@@ -100,7 +100,7 @@ logout_agent(Call, AgentId) ->
     update_agent_status(Call, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1).
 
 pause_agent(Call, AgentId, Timeout) when is_integer(Timeout) ->
-    play_agent_pause(Call),
+    _ = play_agent_pause(Call),
     update_agent_status(Call, AgentId, <<"paused">>, fun wapi_acdc_agent:publish_pause/1, Timeout);
 pause_agent(Call, AgentId, Data) ->
     Timeout = wh_json:get_integer_value(<<"timeout">>
