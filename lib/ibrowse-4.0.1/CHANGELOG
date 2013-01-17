@@ -1,5 +1,8 @@
 CONTRIBUTIONS & CHANGE HISTORY
 ==============================
+07-08-2012 - v4.0.1
+             * Fix issue 67 properly.
+
 03-08-2012 - v4.0.0
              * Fixed a regression in handling HEAD.
                https://github.com/cmullaparthi/ibrowse/issues/67

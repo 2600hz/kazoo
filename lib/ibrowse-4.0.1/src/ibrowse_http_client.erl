@@ -995,8 +995,12 @@ chunk_request_body(Body, _ChunkSize, Acc) when is_list(Body) ->
     lists:reverse(["\r\n", LastChunk, Chunk | Acc]).
 
 
-parse_response(_Data, #state{cur_req = undefined}=State) ->
+parse_response(<<>>, #state{cur_req = undefined}=State) ->
     State#state{status = idle};
+parse_response(Data, #state{cur_req = undefined}=State) ->
+    do_trace("Data left to process when no pending request. ~1000.p~n", [Data]),
+    {error, data_in_status_idle};
+
 parse_response(Data, #state{reply_buffer = Acc, reqs = Reqs,
                             cur_req = CurReq} = State) ->
     #request{from=From, stream_to=StreamTo, req_id=ReqId,

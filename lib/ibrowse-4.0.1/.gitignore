@@ -1,0 +1,6 @@
+ebin/
+*~
+.eunit/
+test/
+*beam
+

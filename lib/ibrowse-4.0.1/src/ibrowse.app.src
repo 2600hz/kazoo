@@ -1,6 +1,6 @@
 {application, ibrowse,
         [{description, "Erlang HTTP client application"},
-         {vsn, "4.0.0"},
+         {vsn, "4.0.1"},
          {modules, [ ibrowse, 
 		     ibrowse_http_client, 
 		     ibrowse_app, 
