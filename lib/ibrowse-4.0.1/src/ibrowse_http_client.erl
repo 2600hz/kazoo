@@ -1055,21 +1055,12 @@ parse_response(Data, #state{reply_buffer = Acc, reqs = Reqs,
                                    {error, proxy_tunnel_failed}),
                     {error, proxy_tunnel_failed};
                 _ when Method =:= head,
-                       Head_response_with_body =:= true ->
-                    %% This is not supposed to happen, but it does. An
-                    %% Apache server was observed to send an "empty"
-                    %% body, but in a Chunked-Transfer-Encoding way,
-                    %% which meant there was still a body.
-                    %% Issue #67 on Github
-                    {_, Reqs_1} = queue:out(Reqs),
-                    send_async_headers(ReqId, StreamTo, Give_raw_headers, State_1),
-                    State_1_1 = do_reply(State_1, From, StreamTo, ReqId, Resp_format,
-                                         {ok, StatCode, Headers_1, []}),
-                    cancel_timer(T_ref, {eat_message, {req_timedout, From}}),
-                    State_2 = reset_state(State_1_1),
-                    State_3 = set_cur_request(State_2#state{reqs = Reqs_1}),
-                    parse_response(Data_1, State_3);
-                _ when Method =:= head ->
+                       Head_response_with_body =:= false ->
+                    %% This (HEAD response with body) is not supposed
+                    %% to happen, but it does. An Apache server was
+                    %% observed to send an "empty" body, but in a
+                    %% Chunked-Transfer-Encoding way, which meant
+                    %% there was still a body.  Issue #67 on Github
                     {_, Reqs_1} = queue:out(Reqs),
                     send_async_headers(ReqId, StreamTo, Give_raw_headers, State_1),
                     State_1_1 = do_reply(State_1, From, StreamTo, ReqId, Resp_format,
