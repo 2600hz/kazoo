@@ -287,13 +287,13 @@ get_fs_kv(Key, Val, _) ->
 %%--------------------------------------------------------------------
 -spec maybe_sanitize_fs_value/2 :: (text(), text()) -> binary().
 maybe_sanitize_fs_value(<<"Outgoing-Caller-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9]">>, <<"">>, [global, {return, binary}]);
+    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<"">>, [global, {return, binary}]);
 maybe_sanitize_fs_value(<<"Outgoing-Callee-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9]">>, <<"">>, [global, {return, binary}]);
+    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<"">>, [global, {return, binary}]);
 maybe_sanitize_fs_value(<<"Caller-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9]">>, <<"">>, [global, {return, binary}]);
+    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<"">>, [global, {return, binary}]);
 maybe_sanitize_fs_value(<<"Callee-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9]">>, <<"">>, [global, {return, binary}]);
+    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<"">>, [global, {return, binary}]);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Key) ->
     maybe_sanitize_fs_value(wh_util:to_binary(Key), Val);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Val) ->

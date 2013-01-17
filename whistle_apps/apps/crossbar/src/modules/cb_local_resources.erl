@@ -193,7 +193,7 @@ maybe_aggregate_resource(#cb_context{resp_status=success, doc=JObj}=Context) ->
 maybe_aggregate_resource(_) -> false.
 
 -spec maybe_remove_aggregate/2 :: (ne_binary(), #cb_context{}) -> boolean().
-maybe_remove_aggregate(ResourceId, #cb_context{resp_status=success, doc=JObj}) ->
+maybe_remove_aggregate(ResourceId, #cb_context{resp_status=success}) ->
     case couch_mgr:open_doc(?WH_SIP_DB, ResourceId) of
         {ok, JObj} ->
             couch_mgr:del_doc(?WH_SIP_DB, JObj),

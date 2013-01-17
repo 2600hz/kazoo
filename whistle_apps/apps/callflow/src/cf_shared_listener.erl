@@ -6,14 +6,11 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(cf_listener).
+-module(cf_shared_listener).
 
 -behaviour(gen_listener).
 
 -export([start_link/0]).
--export([stop/0]).
--export([pause/0]).
--export([resume/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -27,15 +24,15 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{cf_route_req, [{<<"dialplan">>, <<"route_req">>}]}
-                     ,{cf_route_win, [{<<"dialplan">>, <<"route_win">>}]}
+-define(RESPONDERS, [{{cf_util, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
+                     ,{{cf_util, presence_mwi_query}, [{<<"notification">>, <<"mwi_query">>}]}
                     ]).
--define(BINDINGS, [{route, []}
+-define(BINDINGS, [{notifications, [{restrict_to, [presence_probe, mwi_query]}]}
                    ,{self, []}
                   ]).
--define(QUEUE_NAME, <<"">>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_NAME, <<"callflow_listener">>).
+-define(QUEUE_OPTIONS, [{exclusive, false}]).
+-define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 %%%===================================================================
 %%% API
@@ -54,22 +51,8 @@ start_link() ->
                                       ,{queue_name, ?QUEUE_NAME}
                                       ,{queue_options, ?QUEUE_OPTIONS}
                                       ,{consume_options, ?CONSUME_OPTIONS}
+                                      ,{basic_qos, 1}
                                      ], []).
-
--spec pause/0 :: () -> 'ok'.
-pause() ->
-    {ok, Srv} = callflow_sup:listener_proc(),
-    gen_listener:rm_responder(Srv, cf_route_req).
-
--spec resume/0 :: () -> 'ok'.
-resume() ->
-    {ok, Srv} = callflow_sup:listener_proc(),
-    gen_listener:add_responder(Srv, cf_route_req, [{<<"dialplan">>, <<"route_req">>}]).
-
--spec stop/0 :: () -> 'ok'.
-stop() ->
-    {ok, Srv} = callflow_sup:listener_proc(),
-    gen_listener:stop(Srv).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -88,7 +71,7 @@ stop() ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    lager:debug("starting new callflow listener"),
+    lager:debug("starting new callflow shared queue server"),
     {ok, []}.
 
 %%--------------------------------------------------------------------
@@ -132,7 +115,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    lager:info("unhandled message: ~p", [_Info]),
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -159,7 +142,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
-    lager:info("callflow listner ~p termination", [_Reason]).
+    lager:debug("callflow shared queue server ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

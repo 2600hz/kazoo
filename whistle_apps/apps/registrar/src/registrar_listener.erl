@@ -22,15 +22,8 @@
 
 -include("reg.hrl").
 
--define(RESPONDERS, [{reg_authn_req, [{<<"directory">>, <<"authn_req">>}]}
-                     ,{reg_success, [{<<"directory">>, <<"reg_success">>}]}
-                     ,{{reg_query, req_query_req}, [{<<"directory">>, <<"reg_query">>}]}
-                     ,{{reg_query, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
-                     ,{{reg_route_req, handle_route_req}, [{<<"dialplan">>, <<"route_req">>}]}
-                    ]).
--define(BINDINGS, [{authn, []}
-                   ,{registration, []}
-                   ,{route, []}
+-define(RESPONDERS, [{{reg_query, req_query_req}, [{<<"directory">>, <<"reg_query">>}]}]).
+-define(BINDINGS, [{registration, [{retrict_to, [reg_success]}]}
                    ,{self, []}
                   ]).
 
@@ -80,16 +73,6 @@ stop(Srv) ->
 init([]) ->
     process_flag(trap_exit, true),
     lager:debug("starting new registrar server"),
-    Self = self(),
-    spawn(fun() -> 
-                  QueueName = <<"registrar_presence_probe">>,
-                  Options = [{queue_options, [{exclusive, false}]}
-                             ,{consume_options, [{exclusive, false}]}
-                             ,{basic_qos, 1}
-                            ],
-                  Bindings = [{notifications, [{restrict_to, [presence_probe]}]}],
-                  gen_listener:add_queue(Self, QueueName, Options, Bindings)
-          end),
     {ok, []}.
 
 %%--------------------------------------------------------------------
