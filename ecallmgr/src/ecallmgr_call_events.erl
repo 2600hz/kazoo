@@ -79,7 +79,7 @@ start_link(Node, CallId) ->
                         ,{restrict_to, [publisher_usurp]}
                        ]}
                ],
-    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
+    gen_listener:start_link(?MODULE, [{bindings, Bindings}
                                       ,{responders, ?RESPONDERS}
                                       ,{queue_name, ?QUEUE_NAME}
                                       ,{queue_options, ?QUEUE_OPTIONS}
