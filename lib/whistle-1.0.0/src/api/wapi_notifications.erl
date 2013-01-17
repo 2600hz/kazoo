@@ -76,12 +76,12 @@
                            ]).
 -define(OPTIONAL_VOICEMAIL_HEADERS, [<<"Voicemail-Length">>, <<"Call-ID">>
                                      ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
-                                     ,<<"Voicemail-Transcription">>, <<"Delete-After-Notify">>
+                                     ,<<"Voicemail-Transcription">>
                                     ]).
 -define(VOICEMAIL_VALUES, [{<<"Event-Category">>, <<"notification">>}
                            ,{<<"Event-Name">>, <<"new_voicemail">>}
                           ]).
--define(VOICEMAIL_TYPES, [{<<"Delete-After-Notify">>, fun wh_util:is_boolean/1}]).
+-define(VOICEMAIL_TYPES, []).
 
 %% Notify New Fax
 -define(FAX_HEADERS, [<<"From-User">>, <<"From-Realm">>
