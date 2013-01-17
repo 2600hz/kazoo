@@ -64,37 +64,7 @@ handle_req(JObj, _) ->
 
             build_and_send_email(TxtBody, HTMLBody, Subject, Email
                                  ,props:filter_undefined(Props)
-                                ),
-            maybe_remove_voicemail(AcctDB, JObj, VMBox)
-    end.
-
-maybe_remove_voicemail(AcctDb, NotifyJObj, VMBoxJObj) ->
-    BoxDeleteFlag = wh_json:is_true(<<"delete_after_notify">>, VMBoxJObj, false),
-    maybe_remove_voicemail(AcctDb, VMBoxJObj
-                           ,wh_json:get_value(<<"Voicemail-Name">>, NotifyJObj)
-                           ,wh_json:is_true(<<"Delete-After-Notify">>, NotifyJObj, BoxDeleteFlag)
-                          ).
-
-maybe_remove_voicemail(_, _, _, false) -> ok;
-maybe_remove_voicemail(AcctDb, VMBoxJObj, MediaId, true) -> 
-    lager:debug("moving voicemail ~s to deleted folder", [MediaId]),
-
-    Messages = [update_msg_folder(MediaId, Message) || Message <- wh_json:get_value(<<"messages">>, VMBoxJObj, [])],
-    case couch_mgr:ensure_saved(AcctDb, wh_json:set_value(<<"messages">>, Messages, VMBoxJObj)) of
-        {ok, _} -> lager:debug("voicemail box saved");
-        {error, _E} -> lager:debug("failed to save voicemail box: ~p", [_E])
-    end,
-
-    {ok, MediaDoc} = couch_mgr:open_doc(AcctDb, MediaId),
-    case couch_mgr:ensure_saved(AcctDb, wh_json:set_value(<<"pvt_deleted">>, true, MediaDoc)) of
-        {ok, _} -> lager:debug("media doc updated");
-        {error, _Err} -> lager:debug("failed to update media doc: ~p", [_Err])
-    end.
-
-update_msg_folder(MediaId, Message) ->    
-    case wh_json:get_value(<<"media_id">>, Message) =:= MediaId of
-        false -> Message;
-        true -> wh_json:set_value(<<"folder">>, <<"deleted">>, Message)
+                                )
     end.
 
 %%--------------------------------------------------------------------
