@@ -40,14 +40,18 @@ handle_req(JObj, _Props) ->
 
     lager:debug("new voicemail left, sending to email if enabled"),
 
+    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
+
     {ok, VMBox} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"Voicemail-Box">>, JObj)),
     {ok, UserJObj} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"owner_id">>, VMBox)),
 
     case {wh_json:get_ne_value(<<"email">>, UserJObj), wh_json:is_true(<<"vm_to_email_enabled">>, UserJObj)} of
         {undefined, _} ->
+            notify_util:send_update(RespQ, <<"failed">>, <<"not configured">>),
             lager:debug("no email found for user ~s", [wh_json:get_value(<<"username">>, UserJObj)]);
         {_Email, false} ->
+            notify_util:send_update(RespQ, <<"failed">>, <<"not configured">>),
             lager:debug("voicemail to email disabled for ~s", [_Email]);
         {Email, true} ->
             lager:debug("VM->Email enabled for user, sending to ~s", [Email]),
@@ -68,8 +72,6 @@ handle_req(JObj, _Props) ->
 
             CustomSubjectTemplate = wh_json:get_value(?EMAIL_SUBJECT_TEMPLATE_KEY, AcctObj),
             {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-
-            RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
 
             build_and_send_email(TxtBody, HTMLBody, Subject, Email
                                  ,props:filter_undefined(Props)
