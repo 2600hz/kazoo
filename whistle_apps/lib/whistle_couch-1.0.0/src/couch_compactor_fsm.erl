@@ -792,12 +792,17 @@ get_nodes() ->
     {ok, Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
     shuffle([wh_json:get_value(<<"id">>, Node) || Node <- Nodes]).
 
--spec shuffle/1 :: ([ne_binary(),...]) -> [ne_binary(),...].
+-spec shuffle/1 :: (ne_binaries()) -> ne_binaries().
 shuffle(L) ->
     [O || {_, O} <- lists:keysort(1, [{random:uniform(), N} || N <- L])].
 
 encode_db(D) ->
-    binary:replace(D, <<"/">>, <<"%2f">>, [global]).
+    SRs = [{<<"/">>, <<"%2F">>}
+           ,{<<"+">>, <<"%2B">>}
+          ],
+    lists:foldl(fun({S, R}, B) ->
+                        binary:replace(B, S, R, [global])
+                end, D, SRs).
 
 encode_design_doc(Design) ->
     binary:replace(Design, <<"_design/">>, <<>>, [global]).

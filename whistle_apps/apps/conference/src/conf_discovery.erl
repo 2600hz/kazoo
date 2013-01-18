@@ -1,5 +1,5 @@
 %%%============================================================================
-%%% @copyright (C) 2011-2012 VoIP Inc
+%%% @copyright (C) 2011-2013 2600Hz Inc
 %%% @doc
 %%% This module is responsible for the second stage in the conference process:
 %%% 1. Determine if an arbitrary call (on an arbitrary server) is for a
@@ -11,6 +11,7 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson <karl@2600hz.org>
+%%%   James Aimonetti <james@2600hz.org>
 %%%============================================================================
 -module(conf_discovery).
 
