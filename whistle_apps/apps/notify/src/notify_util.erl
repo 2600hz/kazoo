@@ -8,7 +8,7 @@
 -module(notify_util).
 
 -export([send_email/3
-         ,send_update/2, send_update/3
+         ,send_update/3, send_update/4
          ,render_template/3
          ,normalize_proplist/1
          ,json_to_template_props/1
@@ -44,9 +44,10 @@ send_email(From, To, Email) ->
     Self = self(),
 
     gen_smtp_client:send({From, [To], Encoded}, [{relay, Relay}]
-                         ,fun(X) -> put(callid, ReqId),
-                                    lager:debug("email relay responded: ~p", [X]),
-                                    Self ! {relay_response, X}
+                         ,fun(X) ->
+                                  put(callid, ReqId),
+                                  lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
+                                  Self ! {relay_response, X}
                           end),
 %% The callback will receive either `{ok, Receipt}' where Receipt is the SMTP server's receipt
 %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
@@ -57,17 +58,19 @@ send_email(From, To, Email) ->
     after 10000 -> {error, timeout}
     end.
 
--spec send_update/2 :: (api_binary(), ne_binary()) -> 'ok'.
--spec send_update/3 :: (api_binary(), ne_binary(), api_binary()) -> 'ok'.
-send_update(RespQ, Status) ->
-    send_update(RespQ, Status, undefined).
-send_update(undefined, _, _) -> ok;
-send_update(RespQ, Status, Msg) ->
+-spec send_update/3 :: (api_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_update/4 :: (api_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+send_update(RespQ, MsgId, Status) ->
+    send_update(RespQ, MsgId, Status, undefined).
+send_update(undefined, _, _, _) -> lager:debug("no response queue to send update");
+send_update(RespQ, MsgId, Status, Msg) ->
     Prop = props:filter_undefined(
              [{<<"Status">>, Status}
               ,{<<"Failure-Message">>, Msg}
+              ,{<<"Msg-ID">>, MsgId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    lager:debug("notification update sending to ~s", [RespQ]),
     wapi_notifications:publish_notify_update(RespQ, Prop).
 
 %%--------------------------------------------------------------------

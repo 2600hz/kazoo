@@ -43,7 +43,10 @@ handle_req(JObj, _Props) ->
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
 
+    lager:debug("loading vm box ~s", [wh_json:get_value(<<"Voicemail-Box">>, JObj)]),
     {ok, VMBox} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"Voicemail-Box">>, JObj)),
+
+    lager:debug("loading owner ~s", [wh_json:get_value(<<"owner_id">>, VMBox)]),
     {ok, UserJObj} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"owner_id">>, VMBox)),
 
     case {wh_json:get_ne_value(<<"email">>, UserJObj), wh_json:is_true(<<"vm_to_email_enabled">>, UserJObj)} of
@@ -75,7 +78,7 @@ handle_req(JObj, _Props) ->
 
             build_and_send_email(TxtBody, HTMLBody, Subject, Email
                                  ,props:filter_undefined(Props)
-                                 ,RespQ
+                                 ,{RespQ, wh_json:get_value(<<"Msg-ID">>, JObj)}
                                 )
     end.
 
@@ -121,10 +124,10 @@ create_template_props(Event, Docs, Account) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email/6 :: (iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist(), api_binary()) -> 'ok'.
-build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, RespQ) when is_list(To) ->
-    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, RespQ) || T <- To];
-build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, RespQ) ->
+-spec build_and_send_email/6 :: (iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist(), {api_binary(), ne_binary()}) -> 'ok'.
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Resp) when is_list(To) ->
+    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, Resp) || T <- To];
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),
     Service = props:get_value(<<"service">>, Props),
     DB = props:get_value(<<"account_db">>, Props),
@@ -166,8 +169,8 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, RespQ) ->
               ]
             },
     case notify_util:send_email(From, To, Email) of
-        ok -> notify_util:send_update(RespQ, <<"completed">>);
-        {error, Reason} -> notify_util:send_update(RespQ, <<"failed">>, Reason)
+        ok -> notify_util:send_update(RespQ, MsgId, <<"completed">>);
+        {error, Reason} -> notify_util:send_update(RespQ, MsgId, <<"failed">>, Reason)
     end.
 
 %%--------------------------------------------------------------------
