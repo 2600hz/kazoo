@@ -22,34 +22,34 @@
 -record(keys, {
           %% Compose Voicemail
           operator = <<"0">>
-              ,login = <<"*">>
+          ,login = <<"*">>
 
-              %% Record Review
-              ,save = <<"1">>
-              ,listen = <<"2">>
-              ,record = <<"3">>
+          %% Record Review
+          ,save = <<"1">>
+          ,listen = <<"2">>
+          ,record = <<"3">>
 
-              %% Main Menu
-              ,hear_new = <<"1">>
-              ,hear_saved = <<"2">>
-              ,configure = <<"5">>
-              ,exit = <<"#">>
+          %% Main Menu
+          ,hear_new = <<"1">>
+          ,hear_saved = <<"2">>
+          ,configure = <<"5">>
+          ,exit = <<"#">>
 
-              %% Config Menu
-              ,rec_unavailable  = <<"1">>
-              ,rec_name = <<"2">>
-              ,set_pin = <<"3">>
-              ,return_main = <<"0">>
+          %% Config Menu
+          ,rec_unavailable  = <<"1">>
+          ,rec_name = <<"2">>
+          ,set_pin = <<"3">>
+          ,return_main = <<"0">>
 
-              %% Post playbak
-              ,keep = <<"1">>
-              ,replay = <<"2">>
-              ,delete = <<"7">>
+          %% Post playbak
+          ,keep = <<"1">>
+          ,replay = <<"2">>
+          ,delete = <<"7">>
          }).
 -type vm_keys() :: #keys{}.
 
 -record(mailbox, {
-           mailbox_id :: api_binary()
+          mailbox_id :: api_binary()
           ,mailbox_number = <<>> :: binary()
           ,exists = false :: boolean()
           ,skip_instructions = 'false' :: boolean()
@@ -745,21 +745,25 @@ change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new_message/4 :: (ne_binary(), pos_integer(), mailbox(), whapps_call:call()) -> 'ok'.
-new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
-                                             ,owner_id=OwnerId
-                                             ,transcribe_voicemail=MaybeTranscribe
-                                            }=Box, Call) ->
+-spec new_message/4 :: (ne_binary(), pos_integer(), mailbox(), whapps_call:call()) -> any().
+new_message(AttachmentName, Length, Box, Call) ->
     lager:debug("saving new ~bms voicemail message and metadata", [Length]),
-    CallID = cf_exe:callid(Call),
-    AccountDb = whapps_call:account_db(Call),
-    MediaId = message_media_doc(AccountDb, Box),
+    MediaId = message_media_doc(whapps_call:account_db(Call), Box),
 
-    {ok, StoreJObj} = store_recording(AttachmentName, MediaId, Call),
-    lager:debug("store: ~p", [StoreJObj]),
+    case store_recording(AttachmentName, MediaId, Call) of
+        {ok, StoreJObj} ->
+            AR = wh_json:get_value(<<"Application-Response">>, StoreJObj),
+            update_mailbox(Box, Call, MediaId, Length, AR);
+        {error, FailJObj} ->
+            lager:debug("failed to store media: ~p", [FailJObj])
+    end.
 
-    Status = wh_json:get_value([<<"Application-Response">>, <<"Status-Code">>], StoreJObj),
-    Loc = wh_json:get_value([<<"Application-Response">>, <<"Headers">>, <<"Location">>], StoreJObj),
+update_mailbox(#mailbox{mailbox_id=Id
+                        ,owner_id=OwnerId
+                        ,transcribe_voicemail=MaybeTranscribe
+                       }=Box, Call, MediaId, Length, ARJObj) ->
+    Status = wh_json:get_value(<<"Status-Code">>, ARJObj),
+    Loc = wh_json:get_value([<<"Headers">>, <<"Location">>], ARJObj),
     lager:debug("stored voicemail message (~s) ~s", [Status, Loc]),
 
     Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),
@@ -768,7 +772,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
             ,{<<"From-Realm">>, whapps_call:from_realm(Call)}
             ,{<<"To-User">>, whapps_call:to_user(Call)}
             ,{<<"To-Realm">>, whapps_call:to_realm(Call)}
-            ,{<<"Account-DB">>, AccountDb}
+            ,{<<"Account-DB">>, whapps_call:account_db(Call)}
             ,{<<"Voicemail-Box">>, Id}
             ,{<<"Voicemail-Name">>, MediaId}
             ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
@@ -776,10 +780,11 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
             ,{<<"Voicemail-Timestamp">>, new_timestamp()}
             ,{<<"Voicemail-Length">>, Length}
             ,{<<"Voicemail-Transcription">>, Transcription}
-            ,{<<"Call-ID">>, CallID}
+            ,{<<"Call-ID">>, whapps_call:call_id(Call)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
 
+    lager:debug("sending notification"),
     _ = case whapps_util:amqp_pool_request(Prop
                                            ,fun wapi_notifications:publish_voicemail/1
                                            ,fun wapi_notifications:notify_update_v/1
@@ -787,12 +792,14 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
                                           )
         of
             {ok, UpdateJObj} ->
+                lager:debug("notification update received: ~p", [UpdateJObj]),
                 maybe_save_meta(Length, Box, Call, MediaId, UpdateJObj);
-            {error, _} ->
+            {error, _E} ->
+                lager:debug("notification error: ~p", [_E]),
                 save_meta(Length, Box, Call, MediaId),
                 timer:sleep(1000)
         end,
-    cf_util:update_mwi(OwnerId, AccountDb).
+    cf_util:update_mwi(OwnerId, whapps_call:account_db(Call)).
 
 maybe_save_meta(Length, #mailbox{delete_after_notify=false}=Box, Call, MediaId, _UpdateJObj) ->
     save_meta(Length, Box, Call, MediaId);
@@ -1116,9 +1123,15 @@ review_recording(AttachmentName, AllowOperator
                                    {'error', wh_json:object()}.
 store_recording(AttachmentName, DocId, Call) ->
     lager:debug("storing recording ~s in doc ~s", [AttachmentName, DocId]),
-    whapps_call_command:b_store(AttachmentName
-                                ,get_new_attachment_url(AttachmentName, DocId, Call)
-                                ,Call).
+    {ok, StoreJObj} = whapps_call_command:b_store(AttachmentName
+                                                  ,get_new_attachment_url(AttachmentName, DocId, Call)
+                                                  ,Call),
+    case wh_json:get_value(<<"Application-Response">>, StoreJObj) of
+        <<"failure">> ->
+            lager:debug("seems store failed"),
+            {error, StoreJObj};
+        _ -> {ok, StoreJObj}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
