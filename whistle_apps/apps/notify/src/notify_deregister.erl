@@ -43,17 +43,17 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:object(), proplist()) -> any().
 handle_req(JObj, _Props) ->
     true = wapi_notifications:deregister_v(JObj),
-    whapps_util:put_callid(JObj),
+    _ = whapps_util:put_callid(JObj),
 
     lager:debug("endpoint has become unregistered, sending email notification"),
 
     {ok, Account} = notify_util:get_account_doc(JObj),
 
     lager:debug("creating deregisted notice"),
-    
+
     Props = create_template_props(JObj, Account),
 
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"deregister">>, <<"email_text_template">>], Account),
@@ -64,9 +64,9 @@ handle_req(JObj, _Props) ->
 
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"deregister">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-  
+
     To = wh_json:get_value([<<"notifications">>, <<"deregister">>, <<"send_to">>], Account
-                           ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),  
+                           ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
     build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
 
 %%--------------------------------------------------------------------
@@ -75,7 +75,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props/2 :: (wh_json:json_object(), wh_json:json_objects()) -> proplist().
+-spec create_template_props/2 :: (wh_json:object(), wh_json:object()) -> wh_proplist().
 create_template_props(Event, Account) ->
     [{<<"last_registration">>, notify_util:json_to_template_props(Event)}
      ,{<<"account">>, notify_util:json_to_template_props(Account)}
@@ -88,10 +88,9 @@ create_template_props(Event, Account) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
+-spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
-    ok;
+    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),
@@ -109,5 +108,4 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
                }
               ]
             },
-    notify_util:send_email(From, To, Email),
-    ok.
+    notify_util:send_email(From, To, Email).

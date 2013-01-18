@@ -43,10 +43,10 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     true = wapi_notifications:low_balance_v(JObj),
-    whapps_util:put_callid(JObj),
+    _ = whapps_util:put_callid(JObj),
 
     lager:debug("account has a low balance, sending email notification"),
 
@@ -75,7 +75,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props/2 :: (wh_json:json_object(), wh_json:json_objects()) -> proplist().
+-spec create_template_props/2 :: (wh_json:object(), wh_json:objects()) -> wh_proplist().
 create_template_props(Event, Account) ->
     [{<<"current_balance">>, notify_util:json_to_template_props(Event)}
      ,{<<"account">>, notify_util:json_to_template_props(Account)}
@@ -87,10 +87,9 @@ create_template_props(Event, Account) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
+-spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
-    ok;
+    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),
@@ -108,5 +107,4 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
                }
               ]
             },
-    notify_util:send_email(From, To, Email),
-    ok.
+    notify_util:send_email(From, To, Email).
