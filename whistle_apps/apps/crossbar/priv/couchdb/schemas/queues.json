@@ -23,7 +23,7 @@
          "name":"Agent Ring Timeout",
          "description":"In seconds, how long to ring an agent before progressing to the next agent available",
          "type":"integer",
-         "default":5,
+         "default":15,
          "minimum":1
       },
       "max_queue_size":{
