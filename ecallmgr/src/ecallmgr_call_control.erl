@@ -323,8 +323,12 @@ handle_cast({transferee, JObj}, #state{other_legs=Legs
             lager:debug("updating callid from ~s to ~s", [PrevCallId, NewCallId]),
             put(callid, NewCallId),
             lager:debug("removing call event bindings for ~s", [PrevCallId]),
+            _ = (catch gproc:unreg({p, l, {call_event, Node, PrevCallId}})),
+            _ = (catch gproc:unreg({p, l, {call_control, PrevCallId}})),
             gen_listener:rm_binding(self(), call, [{callid, PrevCallId}]),
             lager:debug("binding to new call events"),
+            true = gproc:reg({p, l, {call_control, Node, NewCallId}}),
+            true = gproc:reg({p, l, {call_event, Node, NewCallId}}),
             gen_listener:add_binding(self(), call, [{callid, NewCallId}]),
             lager:debug("ensuring event listener exists"),
             _ = ecallmgr_call_sup:start_event_process(Node, NewCallId),
@@ -691,7 +695,7 @@ handle_transfer(Props, _Node, CallId) ->
             gen_listener:cast(self(), {transferer, wh_json:from_list(Props)})
     end,
     case
-        props:get_value(<<"Type">>, Props) =:= <<"BLIND_TRANSFER">>
+        props:get_value(<<"Type">>, Props) =/= <<"BLIND_TRANSFER">>
         andalso props:get_value(<<"Replaces">>, Props) =:= CallId
     of
         false -> ok;
@@ -782,7 +786,7 @@ insert_command(#state{node=Node
             execute_control_request(JObj, State),
             CommandQ
     end;
-insert_command(#state{node=Node, callid=CallId}, flush, JObj) ->
+insert_command(_, flush, JObj) ->
     lager:debug("received control queue flush command, clearing all waiting commands"),
     insert_command_into_queue(queue:new(), tail, JObj);
 insert_command(#state{command_q=CommandQ}, head, JObj) ->
