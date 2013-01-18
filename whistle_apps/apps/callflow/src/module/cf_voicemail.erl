@@ -788,7 +788,7 @@ update_mailbox(#mailbox{mailbox_id=Id
     _ = case whapps_util:amqp_pool_request(Prop
                                            ,fun wapi_notifications:publish_voicemail/1
                                            ,fun wapi_notifications:notify_update_v/1
-                                           ,5000
+                                           ,15000
                                           )
         of
             {ok, UpdateJObj} ->
