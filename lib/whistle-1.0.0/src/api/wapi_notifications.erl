@@ -11,39 +11,45 @@
 
 -export([bind_q/2, unbind_q/1, unbind_q/2]).
 
--export([voicemail/1, voicemail_v/1]).
--export([fax/1, fax_v/1]).
--export([mwi_update/1, mwi_update_v/1]).
--export([mwi_query/1, mwi_query_v/1]).
--export([register/1, register_v/1]).
--export([deregister/1, deregister_v/1]).
--export([presence_probe/1, presence_probe_v/1]).
--export([presence_update/1, presence_update_v/1]).
--export([pwd_recovery/1, pwd_recovery_v/1]).
--export([new_account/1, new_account_v/1]).
--export([port_request/1, port_request_v/1]).
--export([ported/1, ported_v/1]).
--export([cnam_request/1, cnam_request_v/1]).
--export([low_balance/1, low_balance_v/1]).
--export([transaction/1, transaction_v/1]).
--export([system_alert/1, system_alert_v/1]).
+-export([voicemail/1, voicemail_v/1
+         ,fax/1, fax_v/1
+         ,mwi_update/1, mwi_update_v/1
+         ,mwi_query/1, mwi_query_v/1
+         ,register/1, register_v/1
+         ,deregister/1, deregister_v/1
+         ,presence_probe/1, presence_probe_v/1
+         ,presence_update/1, presence_update_v/1
+         ,pwd_recovery/1, pwd_recovery_v/1
+         ,new_account/1, new_account_v/1
+         ,port_request/1, port_request_v/1
+         ,ported/1, ported_v/1
+         ,cnam_request/1, cnam_request_v/1
+         ,low_balance/1, low_balance_v/1
+         ,transaction/1, transaction_v/1
+         ,system_alert/1, system_alert_v/1
 
--export([publish_voicemail/1, publish_voicemail/2]).
--export([publish_fax/1, publish_fax/2]).
--export([publish_mwi_update/1, publish_mwi_update/2]).
--export([publish_mwi_query/1, publish_mwi_query/2]).
--export([publish_register/1, publish_register/2]).
--export([publish_deregister/1, publish_deregister/2]).
--export([publish_presence_probe/1, publish_presence_probe/2]).
--export([publish_presence_update/1, publish_presence_update/2]).
--export([publish_pwd_recovery/1, publish_pwd_recovery/2]).
--export([publish_new_account/1, publish_new_account/2]).
--export([publish_port_request/1, publish_port_request/2]).
--export([publish_ported/1, publish_ported/2]).
--export([publish_cnam_request/1, publish_cnam_request/2]).
--export([publish_low_balance/1, publish_low_balance/2]).
--export([publish_transaction/1, publish_transaction/2]).
--export([publish_system_alert/1, publish_system_alert/2]).
+         %% published on completion of notification
+         ,notify_update/1, notify_update_v/1
+        ]).
+
+-export([publish_voicemail/1, publish_voicemail/2
+         ,publish_fax/1, publish_fax/2
+         ,publish_mwi_update/1, publish_mwi_update/2
+         ,publish_mwi_query/1, publish_mwi_query/2
+         ,publish_register/1, publish_register/2
+         ,publish_deregister/1, publish_deregister/2
+         ,publish_presence_probe/1, publish_presence_probe/2
+         ,publish_presence_update/1, publish_presence_update/2
+         ,publish_pwd_recovery/1, publish_pwd_recovery/2
+         ,publish_new_account/1, publish_new_account/2
+         ,publish_port_request/1, publish_port_request/2
+         ,publish_ported/1, publish_ported/2
+         ,publish_cnam_request/1, publish_cnam_request/2
+         ,publish_low_balance/1, publish_low_balance/2
+         ,publish_transaction/1, publish_transaction/2
+         ,publish_system_alert/1, publish_system_alert/2
+         ,publish_notify_update/2, publish_notify_update/3
+        ]).
 
 -include_lib("wh_api.hrl").
 
@@ -76,12 +82,12 @@
                            ]).
 -define(OPTIONAL_VOICEMAIL_HEADERS, [<<"Voicemail-Length">>, <<"Call-ID">>
                                      ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
-                                     ,<<"Voicemail-Transcription">>, <<"Delete-After-Notify">>
+                                     ,<<"Voicemail-Transcription">>
                                     ]).
 -define(VOICEMAIL_VALUES, [{<<"Event-Category">>, <<"notification">>}
                            ,{<<"Event-Name">>, <<"new_voicemail">>}
                           ]).
--define(VOICEMAIL_TYPES, [{<<"Delete-After-Notify">>, fun wh_util:is_boolean/1}]).
+-define(VOICEMAIL_TYPES, []).
 
 %% Notify New Fax
 -define(FAX_HEADERS, [<<"From-User">>, <<"From-Realm">>
@@ -236,6 +242,14 @@
                               ,{<<"Event-Name">>, <<"system_alert">>}
                              ]).
 -define(SYSTEM_ALERT_TYPES, []).
+
+-define(NOTIFY_UPDATE_HEADERS, [<<"Status">>]).
+-define(OPTIONAL_NOTIFY_UPDATE_HEADERS, [<<"Failure-Message">>]).
+-define(NOTIFY_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                               ,{<<"Event-Name">>, <<"update">>}
+                               ,{<<"Status">>, [<<"completed">>, <<"failed">>]}
+                              ]).
+-define(NOTIFY_UPDATE_TYPES, []).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -543,6 +557,25 @@ system_alert_v(Prop) when is_list(Prop) ->
 system_alert_v(JObj) ->
     system_alert_v(wh_json:to_proplist(JObj)).
 
+%%--------------------------------------------------------------------
+%% @doc System alert notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+notify_update(Prop) when is_list(Prop) ->
+    case notify_update_v(Prop) of
+        true -> wh_api:build_message(Prop, ?NOTIFY_UPDATE_HEADERS, ?OPTIONAL_NOTIFY_UPDATE_HEADERS);
+        false -> {error, "Proplist failed validation for notify_update"}
+    end;
+notify_update(JObj) ->
+    notify_update(wh_json:to_proplist(JObj)).
+
+-spec notify_update_v/1 :: (api_terms()) -> boolean().
+notify_update_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?NOTIFY_UPDATE_HEADERS, ?NOTIFY_UPDATE_VALUES, ?NOTIFY_UPDATE_TYPES);
+notify_update_v(JObj) ->
+    notify_update_v(wh_json:to_proplist(JObj)).
+
 -spec bind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     amqp_util:notifications_exchange(),
@@ -802,3 +835,11 @@ publish_system_alert(JObj) ->
 publish_system_alert(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?SYSTEM_ALERT_VALUES, fun ?MODULE:system_alert/1),
     amqp_util:notifications_publish(?NOTIFY_SYSTEM_ALERT, Payload, ContentType).
+
+-spec publish_notify_update/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_notify_update/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_notify_update(RespQ, JObj) ->
+    publish_notify_update(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_notify_update(RespQ, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?NOTIFY_UPDATE_VALUES, fun ?MODULE:notify_update/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).

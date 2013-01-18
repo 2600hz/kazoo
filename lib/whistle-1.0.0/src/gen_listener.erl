@@ -120,13 +120,14 @@ behaviour_info(_) ->
          ,responders = [] :: listener_utils:responders() %% { {EvtCat, EvtName}, Module }
          ,bindings = [] :: bindings() %% {authentication, [{key, value},...]}
          ,params = [] :: wh_proplist()
-         ,module = 'undefined' :: atom()
-         ,module_state = 'undefined' :: term()
-         ,module_timeout_ref = 'undefined' :: 'undefined' | reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
+         ,module :: atom()
+         ,module_state :: term()
+         ,module_timeout_ref :: reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
          ,active_responders = [] :: [pid(),...] | [] %% list of pids processing requests
          ,other_queues = [] :: [{ne_binary(), {wh_proplist(), wh_proplist()}},...] | [] %% {QueueName, {proplist(), wh_proplist()}}
          ,last_call_event = [] :: wh_proplist()
          }).
+-type state() :: #state{}.
 
 -define(TIMEOUT_RETRY_CONN, 5000).
 -define(CALLBACK_TIMEOUT_MSG, callback_timeout).
@@ -245,7 +246,7 @@ rm_binding(Srv, Binding, Props) ->
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
--spec init/1 :: ([atom() | wh_proplist(),...]) -> {'ok', #state{}}.
+-spec init/1 :: ([atom() | wh_proplist(),...]) -> {'ok', state()}.
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
     put(callid, Module),
@@ -268,11 +269,11 @@ init([Module, Params, InitArgs]) ->
                 ,module_timeout_ref=TimeoutRef
                }}.
 
--type gen_l_handle_call_ret() :: {'reply', term(), #state{}, gen_server_timeout()} |
-                                 {'noreply', #state{}, gen_server_timeout()} |
-                                 {'stop', term(), #state{}} | {'stop', term(), term(), #state{}}.
+-type gen_l_handle_call_ret() :: {'reply', term(), state(), gen_server_timeout()} |
+                                 {'noreply', state(), gen_server_timeout()} |
+                                 {'stop', term(), state()} | {'stop', term(), term(), state()}.
 
--spec handle_call/3 :: (term(), {pid(), reference()}, #state{}) -> gen_l_handle_call_ret().
+-spec handle_call/3 :: (term(), {pid(), reference()}, state()) -> gen_l_handle_call_ret().
 handle_call({add_queue, QueueName, QueueProps, Bindings}, _From, State) ->
     {Q, S} = add_other_queue(QueueName, QueueProps, Bindings, State),
     {reply, {ok, Q}, S};
@@ -287,19 +288,29 @@ handle_call(responders, _From, #state{responders=Rs}=State) ->
 handle_call(is_consuming, _From, #state{is_consuming=IsC}=State) ->
     {reply, IsC, State};
 
-handle_call(Request, From, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
+handle_call(Request, From, #state{module=Module
+                                  ,module_state=ModState
+                                  ,module_timeout_ref=OldRef
+                                 }=State) ->
     _ = stop_timer(OldRef),
     case catch Module:handle_call(Request, From, ModState) of
         {reply, Reply, ModState1} ->
-            {reply, Reply, State#state{module_state=ModState1, module_timeout_ref=undefined}, hibernate};
-        {reply, Reply, ModState1, Timeout} when is_integer(Timeout) andalso Timeout >= 0 ->
-            Ref = start_timer(Timeout),
-            {reply, Reply, State#state{module_state=ModState1, module_timeout_ref=Ref}, hibernate};
+            {reply, Reply, State#state{module_state=ModState1
+                                       ,module_timeout_ref=undefined
+                                      }
+             ,hibernate};            
+        {reply, Reply, ModState1, Timeout} ->
+            {reply, Reply, State#state{module_state=ModState1
+                                       ,module_timeout_ref=start_timer(Timeout)
+                                      }
+             ,hibernate};
         {noreply, ModState1} ->
             {noreply, State#state{module_state=ModState1}, hibernate};
         {noreply, ModState1, Timeout} ->
-            Ref = start_timer(Timeout),
-            {noreply, State#state{module_state=ModState1, module_timeout_ref=Ref}, hibernate};
+            {noreply, State#state{module_state=ModState1
+                                  ,module_timeout_ref=start_timer(Timeout)
+                                 }
+             ,hibernate};
         {stop, Reason, ModState1} ->
             {stop, Reason, State#state{module_state=ModState1}};
         {stop, Reason, Reply, ModState1} ->
@@ -309,8 +320,7 @@ handle_call(Request, From, #state{module=Module, module_state=ModState, module_t
             {stop, Why, State}
     end.
 
--spec handle_cast/2 :: (term(), #state{}) -> handle_cast_ret().
-
+-spec handle_cast/2 :: (term(), state()) -> handle_cast_ret().
 handle_cast({init_amqp, Params, Responders, Bindings}, State) ->
     case start_amqp(Params) of
         {error, _E} ->
@@ -318,26 +328,26 @@ handle_cast({init_amqp, Params, Responders, Bindings}, State) ->
             _ = [add_responder(self(), Mod, Evts) || {Mod, Evts} <- Responders],
 
             {noreply
-             ,State#state{
-                responders=[]
-                ,bindings=Bindings
-                ,params=lists:keydelete(responders, 1
-                                        ,lists:keydelete(bindings, 1, Params))
-                ,is_consuming=false
-               }};
+             ,State#state{responders=[]
+                          ,bindings=Bindings
+                          ,params=lists:keydelete(responders, 1
+                                                  ,lists:keydelete(bindings, 1, Params)
+                                                 )
+                          ,is_consuming=false
+                         }};
         {ok, Q} ->
             _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
             _ = [add_responder(self(), Mod, Evts) || {Mod, Evts} <- Responders],
             _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],
             {noreply
-             ,State#state{
-                queue=Q
-                ,responders=[]
-                ,bindings=Bindings
-                ,params=lists:keydelete(responders, 1
-                                        ,lists:keydelete(bindings, 1, Params))
-                ,is_consuming=false
-               }
+             ,State#state{queue=Q
+                          ,responders=[]
+                          ,bindings=Bindings
+                          ,params=lists:keydelete(responders, 1
+                                                  ,lists:keydelete(bindings, 1, Params)
+                                                 )
+                          ,is_consuming=false
+                         }
              ,hibernate}
     end;
 
@@ -350,7 +360,9 @@ handle_cast({nack, Delivery}, State) ->
     {noreply, State};
 
 handle_cast({rm_queue, QueueName}, #state{other_queues=OtherQueues}=State) ->
-    _ = [remove_binding(Binding, Props, QueueName) || {Binding, Props} <- props:get_value(QueueName, OtherQueues, [])],
+    _ = [remove_binding(Binding, Props, QueueName)
+         || {Binding, Props} <- props:get_value(QueueName, OtherQueues, [])
+        ],
     {noreply, State#state{other_queues=props:delete(QueueName, OtherQueues)}};
 
 handle_cast(stop, #state{active_responders=[]}=State) ->
@@ -358,16 +370,24 @@ handle_cast(stop, #state{active_responders=[]}=State) ->
 handle_cast(stop, #state{queue=undefined}=State) ->
     self() ! stop, % put a message in the queue to check length again
     {noreply, State, 50};
-handle_cast(stop, #state{queue=Q, bindings=Bindings}=State) ->
+handle_cast(stop, #state{queue=Q
+                         ,bindings=Bindings
+                        }=State) ->
     self() ! stop, % put a message in the queue to check length again
     _ = [remove_binding(Binding, Props, Q) || {Binding, Props} <- Bindings],
     {noreply, State#state{queue=undefined}, 0};
 
 handle_cast({add_responder, Responder, Keys}, #state{responders=Responders}=State) ->
-    {noreply, State#state{responders=listener_utils:add_responder(Responders, Responder, Keys)}, hibernate};
+    {noreply
+     ,State#state{responders=listener_utils:add_responder(Responders, Responder, Keys)}
+     ,hibernate
+    };
 
 handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State) ->
-    {noreply, State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}, hibernate};
+    {noreply
+     ,State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}
+     ,hibernate
+    };
 
 handle_cast({add_binding, _, _}=AddBinding, #state{is_consuming=false
                                                    ,queue = undefined
@@ -379,28 +399,28 @@ handle_cast({add_binding, _, _}=AddBinding, #state{is_consuming=false}=State) ->
     lager:debug("not consuming yet, put binding to end of message queue after ~b ms", [Time]),
     ?MODULE:delayed_cast(self(), AddBinding, Time),
     {noreply, State};
-handle_cast({add_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
+handle_cast({add_binding, Binding, Props}, #state{queue=Q
+                                                  ,bindings=Bs
+                                                 }=State) ->
     case lists:keyfind(Binding, 1, Bs) of
         false ->
             create_binding(Binding, Props, Q),
-            {noreply, State#state{bindings=[{Binding, Props}|Bs]}};
-        {_, P} ->
-            case Props =:= P of
-                true ->
-                    {noreply, State};
-                false ->
-                    create_binding(Binding, Props, Q),
-                    {noreply, State#state{bindings=[{Binding, Props}|Bs]}}
-            end
+            {noreply, State#state{bindings=[{Binding, Props}|Bs]}, hibernate};
+        {_, Props} -> {noreply, State};
+        {_, _P} ->
+            create_binding(Binding, Props, Q),
+            {noreply, State#state{bindings=[{Binding, Props}|Bs]}, hibernate}
     end;
 
-handle_cast({rm_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
+handle_cast({rm_binding, Binding, Props}, #state{queue=Q
+                                                 ,bindings=Bs
+                                                }=State) ->
     KeepBs = lists:filter(fun({B, P}) when B =:= Binding, P =:= Props ->
                                   remove_binding(B, P, Q),
                                   false;
                              (_) -> true
                           end, Bs),
-    {noreply, State#state{bindings=KeepBs}};
+    {noreply, State#state{bindings=KeepBs}, hibernate};
 
 handle_cast({add_queue, QueueName, QueueProps, Bindings}, State) ->
     {_, S} = add_other_queue(QueueName, QueueProps, Bindings, State),
@@ -416,23 +436,26 @@ handle_cast(Message, #state{module=Module
             {noreply, State#state{module_state=ModState1}, hibernate};
         {noreply, ModState1, Timeout} ->
             Ref = start_timer(Timeout),
-            {noreply, State#state{module_state=ModState1, module_timeout_ref=Ref}, hibernate};
+            {noreply, State#state{module_state=ModState1
+                                  ,module_timeout_ref=Ref
+                                 }
+             ,hibernate
+            };
         {stop, Reason, ModState1} ->
             {stop, Reason, State#state{module_state=ModState1}};
         {'EXIT', {Reason, ST}} ->
             lager:debug("exception: ~p", [Reason]),
-            _ = [lager:debug("st: ~p", [T]) || T <- ST],
+            wh_util:log_stacktrace(ST),
             {stop, Reason, State}
     end.
 
--spec handle_info/2 :: (term(), #state{}) -> handle_info_ret().
+-spec handle_info/2 :: (term(), state()) -> handle_info_ret().
 handle_info({#'basic.deliver'{}=BD, #amqp_msg{props = #'P_basic'{content_type=CT}
                                               ,payload = Payload
                                              }}
             ,State) ->
     case catch handle_event(Payload, CT, BD, State) of
-        #state{}=S ->
-            {noreply, S, hibernate};
+        #state{}=S -> {noreply, S, hibernate};
         {'EXIT', Why} ->
             lager:alert("exception: ~p", [Why]),
             {stop, Why, State}
@@ -440,7 +463,10 @@ handle_info({#'basic.deliver'{}=BD, #amqp_msg{props = #'P_basic'{content_type=CT
 
 handle_info({'EXIT', Pid, _Reason}=Message, #state{active_responders=ARs}=State) ->
     case lists:member(Pid, ARs) of
-        true -> {noreply, State#state{active_responders=lists:delete(Pid, ARs)}, hibernate};
+        true -> {noreply
+                 ,State#state{active_responders=lists:delete(Pid, ARs)}
+                 ,hibernate
+                };
         false -> handle_callback_info(Message, State)
     end;
 
@@ -461,14 +487,20 @@ handle_info({amqp_channel_event, restarted}, #state{params=Params
                  || {Name, {Bind, Props}} <- OtherQueues
                 ],
             _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
-            {noreply, State#state{queue=Q, is_consuming=false, bindings=[], other_queues=[]}, hibernate};
+            {noreply, State#state{queue=Q
+                                  ,is_consuming=false
+                                  ,bindings=[]
+                                  ,other_queues=[]
+                                 }
+             ,hibernate
+            };
         {error, _R} ->
             _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
-            {noreply, State#state{queue = undefined, is_consuming=false}, hibernate}
+            {noreply, State#state{queue=undefined, is_consuming=false}, hibernate}
     end;
 handle_info({amqp_channel_event, _Reason}, State) ->
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
-    {noreply, State#state{queue = undefined, is_consuming=false}, hibernate};
+    {noreply, State#state{queue=undefined, is_consuming=false}, hibernate};
 
 handle_info({'$maybe_connect_amqp', Timeout}, #state{bindings=Bindings
                                                      ,params=Params
@@ -483,11 +515,21 @@ handle_info({'$maybe_connect_amqp', Timeout}, #state{bindings=Bindings
                  || {Name, {Bind, Props}} <- OtherQueues
                 ],
             _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
-            {noreply, State#state{queue=Q, is_consuming=false, bindings=[], other_queues=[]}, hibernate};
+            {noreply, State#state{queue=Q
+                                  ,is_consuming=false
+                                  ,bindings=[]
+                                  ,other_queues=[]
+                                 }
+             ,hibernate
+            };
         {error, _E} ->
             lager:debug("failed to start AMQP back up, waiting a bit(~p ms) to try again", [Timeout]),
             _Ref = erlang:send_after(Timeout, self(), {'$maybe_connect_amqp', next_timeout(Timeout)}),
-            {noreply, State#state{queue = undefined, is_consuming=false}, hibernate}
+            {noreply, State#state{queue=undefined
+                                  ,is_consuming=false
+                                 }
+             ,hibernate
+            }
     end;
 
 handle_info(#'basic.consume_ok'{}, S) ->
@@ -516,7 +558,11 @@ handle_callback_info(Message, #state{module=Module
             {noreply, State#state{module_state=ModState1}, hibernate};
         {noreply, ModState1, Timeout} ->
             Ref = start_timer(Timeout),
-            {noreply, State#state{module_state=ModState1, module_timeout_ref=Ref}, hibernate};
+            {noreply, State#state{module_state=ModState1
+                                  ,module_timeout_ref=Ref
+                                 }
+             ,hibernate
+            };
         {stop, Reason, ModState1} ->
             {stop, Reason, State#state{module_state=ModState1}};
         {'EXIT', Why} ->
@@ -547,7 +593,7 @@ terminate(Reason, #state{module=Module
                   end, Bs),
     lager:debug("~s terminated cleanly, going down", [Module]).
 
--spec handle_event/4 :: (ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) ->  #state{}.
+-spec handle_event/4 :: (ne_binary(), ne_binary(), #'basic.deliver'{}, state()) ->  state().
 handle_event(Payload, <<"application/json">>, BD, State) ->
     JObj = wh_json:decode(Payload),
     process_req(State, JObj, BD);
@@ -555,7 +601,7 @@ handle_event(Payload, <<"application/erlang">>, BD, State) ->
     JObj = binary_to_term(Payload),
     process_req(State, JObj, BD).
 
--spec process_req/3 :: (#state{}, wh_json:object(), #'basic.deliver'{}) -> #state{}.
+-spec process_req/3 :: (state(), wh_json:object(), #'basic.deliver'{}) -> state().
 process_req(#state{responders=Responders, active_responders=ARs}=State, JObj, BD) ->
     case handle_callback_event(State, JObj) of
         ignore -> State;
@@ -586,7 +632,7 @@ process_req(Props, Responders, JObj, BD) ->
                ],
     wait_for_handlers(Handlers).
 
--spec handle_callback_event/2 :: (#state{}, wh_json:object()) -> 'ignore' | wh_proplist().
+-spec handle_callback_event/2 :: (state(), wh_json:object()) -> 'ignore' | wh_proplist().
 handle_callback_event(#state{module=Module, module_state=ModState, queue=Queue, other_queues=OtherQueues}, JObj) ->
     OtherQueueNames = props:get_keys(OtherQueues),
     case catch Module:handle_event(JObj, ModState) of
@@ -706,7 +752,7 @@ next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
 next_timeout(Timeout) ->
     (Timeout * 2) + random:uniform(100).
 
--spec add_other_queue/4 :: (binary(), wh_proplist(), wh_proplist(), #state{}) -> {ne_binary(), #state{}}.
+-spec add_other_queue/4 :: (binary(), wh_proplist(), wh_proplist(), state()) -> {ne_binary(), state()}.
 add_other_queue(<<>>, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
     {ok, Q} = start_amqp(QueueProps),
     _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],

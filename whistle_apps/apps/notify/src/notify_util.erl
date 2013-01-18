@@ -1,6 +1,5 @@
-
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%% @end
 %%% @contributors
@@ -8,18 +7,20 @@
 %%%-------------------------------------------------------------------
 -module(notify_util).
 
--export([send_email/3]).
--export([render_template/3]).
--export([normalize_proplist/1]).
--export([json_to_template_props/1]).
--export([get_service_props/2, get_service_props/3]).
--export([get_rep_email/1]).
--export([compile_default_text_template/2]).
--export([compile_default_html_template/2]).
--export([compile_default_subject_template/2]).
--export([compile_default_template/3]).
--export([find_admin/1]).
--export([get_account_doc/1]).
+-export([send_email/3
+         ,send_update/3, send_update/4
+         ,render_template/3
+         ,normalize_proplist/1
+         ,json_to_template_props/1
+         ,get_service_props/2, get_service_props/3
+         ,get_rep_email/1
+         ,compile_default_text_template/2
+         ,compile_default_html_template/2
+         ,compile_default_subject_template/2
+         ,compile_default_template/3
+         ,find_admin/1
+         ,get_account_doc/1
+        ]).
 
 -include("notify.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
@@ -30,20 +31,47 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_email/3 :: (ne_binary(), 'undefined' | binary(), term()) -> 'ok'.
-send_email(_, undefined, _) ->
-    ok;
-send_email(_, <<>>, _) ->
-    ok;
+-spec send_email/3 :: (ne_binary(), 'undefined' | binary(), term()) ->
+                              'ok' | {'error', _}.
+send_email(_, undefined, _) -> ok;
+send_email(_, <<>>, _) -> ok;
 send_email(From, To, Email) ->
     Encoded = mimemail:encode(Email),
     Relay = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
     lager:debug("sending email to ~s from ~s via ~s", [To, From, Relay]),
     ReqId = get(callid),
+
+    Self = self(),
+
     gen_smtp_client:send({From, [To], Encoded}, [{relay, Relay}]
-                         ,fun(X) -> put(callid, ReqId),
-                                    lager:debug("email relay responded: ~p", [X])
-                          end).
+                         ,fun(X) ->
+                                  put(callid, ReqId),
+                                  lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
+                                  Self ! {relay_response, X}
+                          end),
+%% The callback will receive either `{ok, Receipt}' where Receipt is the SMTP server's receipt
+%% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
+    receive
+        {relay_response, {ok, _Msg}} -> ok;
+        {relay_response, {error, _Type, Message}} -> {error, Message};
+        {relay_response, {exit, Reason}} -> {error, Reason}
+    after 10000 -> {error, timeout}
+    end.
+
+-spec send_update/3 :: (api_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_update/4 :: (api_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+send_update(RespQ, MsgId, Status) ->
+    send_update(RespQ, MsgId, Status, undefined).
+send_update(undefined, _, _, _) -> lager:debug("no response queue to send update");
+send_update(RespQ, MsgId, Status, Msg) ->
+    Prop = props:filter_undefined(
+             [{<<"Status">>, Status}
+              ,{<<"Failure-Message">>, Msg}
+              ,{<<"Msg-ID">>, MsgId}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    lager:debug("notification update sending to ~s", [RespQ]),
+    wapi_notifications:publish_notify_update(RespQ, Prop).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -51,9 +79,8 @@ send_email(From, To, Email) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props/1 :: ('undefined' | wh_json:json_object()) -> 'undefined' | proplist().
-json_to_template_props(undefined) ->
-    undefined;
+-spec json_to_template_props/1 :: ('undefined' | wh_json:object()) -> 'undefined' | wh_proplist().
+json_to_template_props(undefined) -> undefined;
 json_to_template_props(JObj) ->
     normalize_proplist(wh_json:recursive_to_proplist(JObj)).
 
@@ -63,7 +90,7 @@ json_to_template_props(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_proplist/1 :: (proplist()) -> proplist().
+-spec normalize_proplist/1 :: (wh_proplist()) -> wh_proplist().
 normalize_proplist(Props) ->
     [normalize_proplist_element(Elem) || Elem <- Props].
 
@@ -108,7 +135,9 @@ compile_default_template(TemplateModule, Category, Key) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec render_template/3 :: (ne_binary() | 'undefined', atom(), proplist()) -> {'ok', iolist()} | {'error', term()}.
+-spec render_template/3 :: (api_binary(), atom(), wh_proplist()) ->
+                                   {'ok', iolist()} |
+                                   {'error', term()}.
 render_template(undefined, DefaultTemplate, Props) ->
     lager:debug("rendering default ~s template", [DefaultTemplate]),
     DefaultTemplate:render(Props);
@@ -140,8 +169,8 @@ render_template(Template, DefaultTemplate, Props) ->
 %% in the event, parent account notification object, and then default.
 %% @end
 %%--------------------------------------------------------------------
--spec get_service_props/2 :: (wh_json:json_object(), ne_binary()) -> proplist().
--spec get_service_props/3 :: (wh_json:json_object(), wh_json:json_object(), ne_binary()) -> proplist().
+-spec get_service_props/2 :: (wh_json:object(), ne_binary()) -> wh_proplist().
+-spec get_service_props/3 :: (wh_json:object(), wh_json:object(), ne_binary()) -> wh_proplist().
 
 get_service_props(Account, ConfigCat) ->
     get_service_props(wh_json:new(), Account, ConfigCat).
@@ -192,7 +221,7 @@ get_service_props(Request, Account, ConfigCat) ->
 %% account object
 %% @end
 %%--------------------------------------------------------------------
--spec get_rep_email/1 :: (wh_json:json_object()) -> 'undefined' | ne_binary().
+-spec get_rep_email/1 :: (wh_json:object()) -> api_binary().
 get_rep_email(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     case wh_json:get_value(<<"pvt_tree">>, JObj, []) of
@@ -200,8 +229,7 @@ get_rep_email(JObj) ->
         Tree -> get_rep_email(lists:reverse(Tree), AccountId)
     end.
 
-get_rep_email([], _) ->
-    undefined;
+get_rep_email([], _) -> undefined;
 get_rep_email([Parent|Parents], AccountId) ->
     ParentDb = wh_util:format_account_id(Parent, encoded),
     ViewOptions = [include_docs
@@ -230,20 +258,18 @@ get_rep_email([Parent|Parents], AccountId) ->
 %% a sub account object or sub account db name.
 %% @end
 %%--------------------------------------------------------------------
--type account_ids() :: [ne_binary(),...]|[].
--spec find_admin/1 :: (api_binary() | account_ids() | wh_json:json_object()) -> wh_json:json_object().
-find_admin(undefined) ->
-    wh_json:new();
-find_admin([]) ->
-    wh_json:new();
+-type account_ids() :: ne_binaries().
+-spec find_admin/1 :: (api_binary() | account_ids() | wh_json:object()) -> wh_json:object().
+find_admin(undefined) -> wh_json:new();
+find_admin([]) -> wh_json:new();
 find_admin(Account) when is_binary(Account) ->
     AccountDb = wh_util:format_account_id(Account, encoded),
     AccountId = wh_util:format_account_id(Account, raw),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-	{error, _} -> find_admin([AccountId]);
-	{ok, JObj} ->
-	    Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
-	    find_admin([AccountId | lists:reverse(Tree)])
+        {error, _} -> find_admin([AccountId]);
+        {ok, JObj} ->
+            Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
+            find_admin([AccountId | lists:reverse(Tree)])
     end;
 find_admin([AcctId|Tree]) ->
     AccountDb = wh_util:format_account_id(AcctId),
@@ -253,22 +279,22 @@ find_admin([AcctId|Tree]) ->
     case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {ok, Users} ->
             case [User
-		  || User <- Users
-			 ,wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
-			 ,wh_json:get_ne_value([<<"doc">>, <<"email">>], User) =/= undefined
-		 ]
-	    of
+                  || User <- Users
+                         ,wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
+                         ,wh_json:get_ne_value([<<"doc">>, <<"email">>], User) =/= undefined
+                 ]
+            of
                 [] -> find_admin(Tree);
                 [Admin|_] -> wh_json:get_value(<<"doc">>, Admin)
             end;
         _E ->
             lager:debug("faild to find users in ~s: ~p", [AccountDb, _E]),
-	    find_admin(Tree)
+            find_admin(Tree)
     end;
 find_admin(Account) ->
     find_admin([ wh_json:get_value(<<"pvt_account_id">>, Account)
-		 | lists:reverse(wh_json:get_value(<<"pvt_tree">>, Account, []))
-	       ]).
+                 | lists:reverse(wh_json:get_value(<<"pvt_tree">>, Account, []))
+               ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -276,9 +302,10 @@ find_admin(Account) ->
 %% given a notification event try to open the account definition doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_doc/1 :: (wh_json:json_object()) -> {'ok', wh_json:json_object()} |
-                                                      {'error', term()} |
-                                                      'undefined'.
+-spec get_account_doc/1 :: (wh_json:object()) ->
+                                   {'ok', wh_json:object()} |
+                                   {'error', term()} |
+                                   'undefined'.
 get_account_doc(JObj) ->
     case {wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Account-ID">>, JObj)} of
         {undefined, undefined} -> undefined;

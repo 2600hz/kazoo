@@ -28,10 +28,10 @@ init() ->
     {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     true = wapi_notifications:fax_v(JObj),
-    whapps_util:put_callid(JObj),
+    _ = whapps_util:put_callid(JObj),
 
     lager:debug("new fax left, sending to email if enabled"),
     lager:debug("notification: ~p", [JObj]),
@@ -79,9 +79,8 @@ handle_req(JObj, _Props) ->
                 _ -> lager:debug("built and sent")
             catch
                 C:R ->
-                    ST = erlang:get_stacktrace(),
                     lager:debug("failed: ~s:~p", [C, R]),
-                    [lager:debug("st: ~p", [S]) || S <- ST]
+                    lager:log_stacktrace()
             end
     end.
 
@@ -91,7 +90,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props/3 :: (wh_json:json_object(), wh_json:json_objects(), wh_json:json_objects()) -> proplist().
+-spec create_template_props/3 :: (wh_json:object(), wh_json:objects(), wh_json:object()) -> wh_proplist().
 create_template_props(Event, Docs, Account) ->
     Now = wh_util:current_tstamp(),
 
@@ -128,10 +127,9 @@ create_template_props(Event, Docs, Account) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
+-spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
-    ok;
+    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     To = props:get_value(<<"email_address">>, Props),
@@ -161,8 +159,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
                 }
               ]
             },
-    notify_util:send_email(From, To, Email),
-    ok.
+    notify_util:send_email(From, To, Email).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -246,13 +243,13 @@ convert_to_tiff(AttachmentBin, Props) ->
 convert_to_pdf(AttachmentBin, Props) ->
     TiffFile = tmp_file_name(<<"tiff">>),
     PDFFile = tmp_file_name(<<"pdf">>),    
-    file:write_file(TiffFile, AttachmentBin),
+    _ = file:write_file(TiffFile, AttachmentBin),
     Cmd = io_lib:format("tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"", [PDFFile, TiffFile]),
-    os:cmd(Cmd),
-    file:delete(TiffFile),
+    _ = os:cmd(Cmd),
+    _ = file:delete(TiffFile),
     case file:read_file(PDFFile) of
         {ok, PDFBin} ->
-            file:delete(PDFFile),
+            _ = file:delete(PDFFile),
             {<<"application/pdf">>, get_file_name(Props, "pdf"), PDFBin};
         {error, _R}=E ->
             lager:debug("unable to convert tiff: ~p", [_R]),

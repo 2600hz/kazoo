@@ -32,7 +32,7 @@
 %%--------------------------------------------------------------------
 -spec init/0 :: () -> 'ok'.
 init() ->
-    put(callid, ?LOG_SYSTEM_ID),
+    _ = put(callid, ?LOG_SYSTEM_ID),
 
     %% ensure the vm template can compile, otherwise crash the processes
     {ok, _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
@@ -67,7 +67,7 @@ start_crawler() ->
 %% Handles AMQP request comming from gen_listener (reg_resp)
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     true = wapi_registration:query_resp_v(JObj),
     AccountId = case wh_json:is_true(<<"Multiple">>, JObj) of
@@ -89,7 +89,7 @@ handle_req(JObj, _Props) ->
 %% another process does it first (ie: generating a 409 conflict).
 %% @end
 %%--------------------------------------------------------------------
--spec notify_initial_registration/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec notify_initial_registration/2 :: (ne_binary(), wh_json:object()) -> 'ok'.
 notify_initial_registration(AccountDb, JObj) ->
     Account = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>]
                                 ,true
@@ -109,7 +109,7 @@ notify_initial_registration(AccountDb, JObj) ->
 %% another process does it first (ie: generating a 409 conflict).
 %% @end
 %%--------------------------------------------------------------------
--spec notify_initial_call/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec notify_initial_call/2 :: (ne_binary(), wh_json:object()) -> any().
 notify_initial_call(AccountDb, JObj) ->
     Account = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]
                                 ,true
@@ -146,7 +146,7 @@ first_occurrence_notice(Account, Occurrence) ->
                            ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
     RepEmail = notify_util:get_rep_email(Account),
 
-    build_and_send_email(TxtBody, HTMLBody, Subject, To, Props),
+    _ = build_and_send_email(TxtBody, HTMLBody, Subject, To, Props),
     build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props).
 
 %%--------------------------------------------------------------------
@@ -155,7 +155,7 @@ first_occurrence_notice(Account, Occurrence) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props/2 :: (wh_json:json_object(), ne_binary()) -> proplist().
+-spec create_template_props/2 :: (wh_json:object(), ne_binary()) -> proplist().
 create_template_props(Account, Occurrence) ->
     Admin = notify_util:find_admin(Account),
     [{<<"event">>, Occurrence}
@@ -170,10 +170,9 @@ create_template_props(Account, Occurrence) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), 'undefined' | binary() | [ne_binary(),...], proplist()) -> 'ok'.
+-spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), api_binary() | ne_binaries(), wh_proplist()) -> any().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
-    ok;
+    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),
@@ -191,8 +190,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
                }
               ]
             },
-    notify_util:send_email(From, To, Email),
-    ok.
+    notify_util:send_email(From, To, Email).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -228,7 +226,7 @@ crawler_loop() ->
 %% the response comes in a notification will be sent.
 %% @end
 %%--------------------------------------------------------------------
--spec test_for_initial_occurrences/1 :: (wh_json:json_object()) -> 'ok'.
+-spec test_for_initial_occurrences/1 :: (wh_json:object()) -> 'ok'.
 test_for_initial_occurrences(Result) ->
     Realm = wh_json:get_value([<<"value">>, <<"realm">>], Result),
     {ok, Srv} = notify_sup:listener_proc(),

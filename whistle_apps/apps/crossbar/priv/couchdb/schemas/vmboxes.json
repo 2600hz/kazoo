@@ -55,6 +55,7 @@
       "delete_after_notify":{
         "name":"Delete After Notification",
         "description":"Delete the voicemail after the notification has been sent",
+        "warning":"Voicemail is not stored in the database if this option is selected",
         "type":"boolean",
         "default":"false"
       },

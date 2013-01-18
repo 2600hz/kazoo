@@ -167,10 +167,9 @@ find_oldest_doc([First|Docs]) ->
 %% in the requested encoding
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_accounts/0 :: () -> [ne_binary(),...] | [].
--spec get_all_accounts/1 :: ('unencoded' | 'encoded' | 'raw') -> [ne_binary(),...] | [].
-get_all_accounts() ->
-    get_all_accounts(?REPLICATE_ENCODING).
+-spec get_all_accounts/0 :: () -> ne_binaries().
+-spec get_all_accounts/1 :: ('unencoded' | 'encoded' | 'raw') -> ne_binaries().
+get_all_accounts() -> get_all_accounts(?REPLICATE_ENCODING).
 
 get_all_accounts(Encoding) ->
     {ok, Databases} = couch_mgr:db_info(),
@@ -250,8 +249,7 @@ get_accounts_by_name(Name) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_event_type/1 :: (wh_json:object()) -> {ne_binary(), ne_binary()}.
-get_event_type(JObj) ->
-    wh_util:get_event_type(JObj).
+get_event_type(JObj) -> wh_util:get_event_type(JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -260,9 +258,8 @@ get_event_type(JObj) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (wh_json:object()) -> ne_binary() | 'undefined'.
-put_callid(JObj) ->
-    wh_util:put_callid(JObj).
+-spec put_callid/1 :: (wh_json:object()) -> api_binary().
+put_callid(JObj) -> wh_util:put_callid(JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -338,9 +335,9 @@ get_view_json(Path) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_views/2 :: (ne_binary(), proplist()) -> 'ok'.
--spec update_views/3 :: (ne_binary(), proplist(), boolean()) -> 'ok'.
--spec update_views/4 :: (wh_json:objects(), ne_binary(), proplist(), boolean()) -> 'ok'.
+-spec update_views/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
+-spec update_views/3 :: (ne_binary(), wh_proplist(), boolean()) -> 'ok'.
+-spec update_views/4 :: (wh_json:objects(), ne_binary(), wh_proplist(), boolean()) -> 'ok'.
 
 update_views(Db, Views) ->
     update_views(Db, Views, false).
@@ -386,7 +383,7 @@ update_views([Found|Finds], Db, Views, Remove) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_aggregate_device/2 :: (ne_binary(), ne_binary() | 'undefined') -> 'ok'.
+-spec add_aggregate_device/2 :: (ne_binary(), api_binary()) -> 'ok'.
 add_aggregate_device(_, undefined) -> ok;
 add_aggregate_device(Db, Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
@@ -406,7 +403,7 @@ add_aggregate_device(Db, Device) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec rm_aggregate_device/2 :: (ne_binary(), 'undefined' | ne_binary()) -> 'ok'.
+-spec rm_aggregate_device/2 :: (ne_binary(), api_binary()) -> 'ok'.
 rm_aggregate_device(_, undefined) -> ok;
 rm_aggregate_device(Db, Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
@@ -501,10 +498,8 @@ try_split(Key, JObj) ->
         undefined -> undefined;
         Bin when is_binary(Bin) ->
             case binary:split(Bin, <<"@">>) of
-                [<<"nouser">>, _] ->
-                    undefined;
-                [_, _]=Dest ->
-                    list_to_tuple(Dest)
+                [<<"nouser">>, _] -> undefined;
+                [_, _]=Dest -> list_to_tuple(Dest)
             end
     end.
 

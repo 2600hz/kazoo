@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP, INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Various ways to notify things of stuff
 %%% @end
-%%% Created :  3 May 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(notify).
 
@@ -21,7 +21,7 @@
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    start_deps(),
+    _ = start_deps(),
     notify_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -32,7 +32,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec start/0 :: () -> 'ok'.
 start() ->
-    start_deps(),
+    _ = start_deps(),
     application:start(notify).
 
 %%--------------------------------------------------------------------
@@ -51,9 +51,7 @@ stop() ->
 %% Ensures that all dependencies for this app are already running
 %% @end
 %%--------------------------------------------------------------------
--spec start_deps/0 :: () -> 'ok'.
+-spec start_deps/0 :: () -> _.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    wh_util:ensure_started(sasl), % logging
-    wh_util:ensure_started(crypto), % random
-    wh_util:ensure_started(whistle_amqp). % amqp wrapper
+    [wh_util:ensure_started(App) || App <- [sasl, crypto, whistle_amqp]].

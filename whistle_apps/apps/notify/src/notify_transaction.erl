@@ -40,14 +40,14 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:transaction_v(JObj),
-    whapps_util:put_callid(JObj),
-    lager:debug("creating transaction notice"),   
+    _ = whapps_util:put_callid(JObj),
+    lager:debug("creating transaction notice"),
     {ok, Account} = notify_util:get_account_doc(JObj),
     Props = create_template_props(JObj, Account),
-    {ok, TxtBody} = notify_util:render_template(undefined, ?DEFAULT_TEXT_TMPL, Props),    
+    {ok, TxtBody} = notify_util:render_template(undefined, ?DEFAULT_TEXT_TMPL, Props),
     {ok, HTMLBody} = notify_util:render_template(undefined, ?DEFAULT_HTML_TMPL, Props),
     To = whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>),
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"transaction">>, <<"email_subject_template">>], Account),
@@ -60,7 +60,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props/2 :: (wh_json:json_object(), wh_json:json_object()) -> proplist().
+-spec create_template_props/2 :: (wh_json:object(), wh_json:object()) -> wh_proplist().
 create_template_props(Event, Account) ->
     props:filter_empty([{<<"account">>, notify_util:json_to_template_props(Account)}
                         ,{<<"plan">>, notify_util:json_to_template_props(wh_json:get_value(<<"Service-Plan">>, Event))}
@@ -95,5 +95,4 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
                }
               ]
             },
-    notify_util:send_email(From, To, Email),
-    ok.
+    notify_util:send_email(From, To, Email).
