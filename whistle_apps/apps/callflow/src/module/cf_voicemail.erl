@@ -749,13 +749,6 @@ change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
 new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
                                              ,owner_id=OwnerId
                                              ,transcribe_voicemail=MaybeTranscribe
-                                             ,delete_after_notify=true
-                                            }=Box, Call) ->
-    ok;
-new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
-                                             ,owner_id=OwnerId
-                                             ,transcribe_voicemail=MaybeTranscribe
-                                             ,delete_after_notify=false
                                             }=Box, Call) ->
     lager:debug("saving new ~bms voicemail message and metadata", [Length]),
     CallID = cf_exe:callid(Call),
@@ -769,41 +762,64 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
     Loc = wh_json:get_value([<<"Application-Response">>, <<"Headers">>, <<"Location">>], StoreJObj),
     lager:debug("stored voicemail message (~s) ~s", [Status, Loc]),
 
-    Tstamp = new_timestamp(),
+    Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),
+
+    Prop = [{<<"From-User">>, whapps_call:from_user(Call)}
+            ,{<<"From-Realm">>, whapps_call:from_realm(Call)}
+            ,{<<"To-User">>, whapps_call:to_user(Call)}
+            ,{<<"To-Realm">>, whapps_call:to_realm(Call)}
+            ,{<<"Account-DB">>, AccountDb}
+            ,{<<"Voicemail-Box">>, Id}
+            ,{<<"Voicemail-Name">>, MediaId}
+            ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+            ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+            ,{<<"Voicemail-Timestamp">>, new_timestamp()}
+            ,{<<"Voicemail-Length">>, Length}
+            ,{<<"Voicemail-Transcription">>, Transcription}
+            ,{<<"Call-ID">>, CallID}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+
+    _ = case whapps_util:amqp_pool_request(Prop
+                                           ,fun wapi_notifications:publish_voicemail/1
+                                           ,fun wapi_notifications:notify_update_v/1
+                                           ,5000
+                                          )
+        of
+            {ok, UpdateJObj} ->
+                maybe_save_meta(Length, Box, Call, MediaId, UpdateJObj);
+            {error, _} ->
+                save_meta(Length, Box, Call, MediaId)
+        end,
+    timer:sleep(1000),
+    cf_util:update_mwi(OwnerId, AccountDb).
+
+maybe_save_meta(Length, #mailbox{delete_after_notify=false}=Box, Call, MediaId, _UpdateJObj) ->
+    save_meta(Length, Box, Call, MediaId);
+maybe_save_meta(Length, #mailbox{delete_after_notify=true}=Box, Call, MediaId, UpdateJObj) ->
+    case wh_json:get_value(<<"Status">>, UpdateJObj) of
+        <<"completed">> ->
+            lager:debug("attachment was sent out via notification, deleting"),
+            couch_mgr:del_doc(whapps_call:account_db(Call), MediaId);
+        <<"failed">> ->
+            lager:debug("attachment failed to send out via notification: ~s", [wh_json:get_value(<<"Failure-Message">>, UpdateJObj)]),
+            save_meta(Length, Box, Call, MediaId)
+    end.
+
+save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
     Metadata = wh_json:from_list(
-                 [{<<"timestamp">>, Tstamp}
+                 [{<<"timestamp">>, new_timestamp()}
                   ,{<<"from">>, whapps_call:from(Call)}
                   ,{<<"to">>, whapps_call:to(Call)}
                   ,{<<"caller_id_number">>, whapps_call:caller_id_number(Call)}
                   ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
-                  ,{<<"call_id">>, CallID}
+                  ,{<<"call_id">>, whapps_call:call_id(Call)}
                   ,{<<"folder">>, ?FOLDER_NEW}
                   ,{<<"length">>, Length}
                   ,{<<"media_id">>, MediaId}
                  ]),
-    {ok, BoxJObj} = save_metadata(Metadata, AccountDb, Id),
-    lager:debug("stored voicemail metadata for ~s: ~p", [MediaId, BoxJObj]),
-
-    Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),
-
-    wapi_notifications:publish_voicemail(
-      [{<<"From-User">>, whapps_call:from_user(Call)}
-       ,{<<"From-Realm">>, whapps_call:from_realm(Call)}
-       ,{<<"To-User">>, whapps_call:to_user(Call)}
-       ,{<<"To-Realm">>, whapps_call:to_realm(Call)}
-       ,{<<"Account-DB">>, AccountDb}
-       ,{<<"Voicemail-Box">>, Id}
-       ,{<<"Voicemail-Name">>, MediaId}
-       ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
-       ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
-       ,{<<"Voicemail-Timestamp">>, Tstamp}
-       ,{<<"Voicemail-Length">>, Length}
-       ,{<<"Voicemail-Transcription">>, Transcription}
-       ,{<<"Call-ID">>, CallID}
-       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-      ]),
-    timer:sleep(1000),
-    cf_util:update_mwi(OwnerId, AccountDb).
+    {ok, BoxJObj} = save_metadata(Metadata, whapps_call:account_db(Call), Id),
+    lager:debug("stored voicemail metadata for ~s: ~p", [MediaId, BoxJObj]).
 
 -spec maybe_transcribe/3 :: (whapps_call:call(), ne_binary(), boolean()) ->
                                     'undefined' | wh_json:object().
@@ -1358,9 +1374,8 @@ tmp_file() ->
 %% with year 0.
 %% @end
 %%--------------------------------------------------------------------
--spec new_timestamp/0 :: () -> ne_binary().
-new_timestamp() ->
-    wh_util:to_binary(wh_util:current_tstamp()).
+-spec new_timestamp/0 :: () -> pos_integer().
+new_timestamp() -> wh_util:current_tstamp().
 
 %%--------------------------------------------------------------------
 %% @private
