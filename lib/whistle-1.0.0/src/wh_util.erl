@@ -20,7 +20,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--export([log_stacktrace/0]).
+-export([log_stacktrace/0, log_stacktrace/1]).
 -export([format_account_id/1, format_account_id/2]).
 -export([current_account_balance/1]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
@@ -81,8 +81,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec log_stacktrace/0 :: () -> 'ok'.
+-spec log_stacktrace/1 :: (list()) -> 'ok'.
 log_stacktrace() ->
     ST = erlang:get_stacktrace(),
+    log_stacktrace(ST).
+log_stacktrace(ST) ->
     lager:debug("stacktrace:"),
     _ = [lager:debug("~p", [Line]) || Line <- ST],
     ok.
@@ -143,7 +146,7 @@ format_account_id(AccountId, raw) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec current_account_balance/1 :: (api_binary()) -> integer().
-current_account_balance(undefined) -> 0;
+current_account_balance('undefined') -> 0;
 current_account_balance(Ledger) ->
     LedgerDb = wh_util:format_account_id(Ledger, encoded),
     ViewOptions = [{<<"reduce">>, true}],
@@ -174,10 +177,8 @@ current_account_balance(Ledger) ->
 is_in_account_hierarchy(CheckFor, InAccount) ->
     is_in_account_hierarchy(CheckFor, InAccount, false).
 
-is_in_account_hierarchy(undefined, _, _) ->
-    false;
-is_in_account_hierarchy(_, undefined, _) ->
-    false;
+is_in_account_hierarchy('undefined', _, _) -> false;
+is_in_account_hierarchy(_, 'undefined', _) -> false;
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
     CheckId = wh_util:format_account_id(CheckFor, raw),
     AccountId = wh_util:format_account_id(InAccount, raw),
@@ -208,7 +209,7 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_system_admin/1 :: (api_binary()) -> boolean().
-is_system_admin(undefined) -> false;
+is_system_admin('undefined') -> false;
 is_system_admin(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
     AccountDb = wh_util:format_account_id(Account, encoded),
@@ -228,12 +229,11 @@ is_system_admin(Account) ->
 %% false.
 %% @end
 %%--------------------------------------------------------------------
--spec is_account_enabled/1 :: (api_binary()) -> boolean().
-is_account_enabled(undefined) ->
-    true;
+-spec is_account_enabled/1 :: (api_binary()) -> 'true'. %boolean().
+is_account_enabled('undefined') -> 'true';
 is_account_enabled(AccountId) ->
     %% See WHISTLE-1201
-    true.
+    'true'.
 %%    case wh_cache:peek({?MODULE, is_account_enabled, AccountId}) of
 %%        {ok, Enabled} ->
 %%            lager:debug("account ~s enabled flag is ~s", [AccountId, Enabled]),
@@ -266,15 +266,13 @@ get_account_realm(AccountId) ->
       ,wh_util:format_account_id(AccountId, raw)
      ).
 
-get_account_realm(undefined, _) ->
-    undefined;
+get_account_realm('undefined', _) -> 'undefined';
 get_account_realm(Db, AccountId) ->
     case couch_mgr:open_cache_doc(Db, AccountId) of
-        {ok, JObj} ->
-            wh_json:get_ne_value(<<"realm">>, JObj);
+        {ok, JObj} -> wh_json:get_ne_value(<<"realm">>, JObj);
         {error, R} ->
             lager:debug("error while looking up account realm in ~s: ~p", [AccountId, R]),
-            undefined
+            'undefined'
     end.
 
 %%--------------------------------------------------------------------
@@ -287,7 +285,7 @@ get_account_realm(Db, AccountId) ->
 -spec try_load_module/1 :: (string() | binary()) -> atom() | 'false'.
 try_load_module(Name) ->
     try to_atom(Name) of
-        undefined -> false;
+        'undefined' -> false;
         Module ->
             {module, Module} = code:ensure_loaded(Module),
             Module
@@ -423,12 +421,11 @@ get_xml_value(Paths, Xml) ->
             iolist_to_binary([wh_util:to_binary(Value)
                               || #xmlText{value=Value} <- Values
                              ]);
-        _Else ->
-            undefined
+        _Else -> 'undefined'
     catch
         _E:_R ->
             lager:debug("~s getting value of '~s': ~p", [_E, Path, _R]),
-            undefined
+            'undefined'
     end.
 
 %% must be a term that can be changed to a list
@@ -612,7 +609,7 @@ is_empty(<<"NULL">>) -> true;
 is_empty(<<"undefined">>) -> true;
 is_empty(null) -> true;
 is_empty(false) -> true;
-is_empty(undefined) -> true;
+is_empty('undefined') -> true;
 is_empty(Float) when is_float(Float), Float == 0.0 -> true;
 is_empty(MaybeJObj) ->
     case wh_json:is_json_object(MaybeJObj) of
@@ -627,16 +624,14 @@ is_proplist(_) ->
     false.
 
 -spec to_lower_binary/1 :: (term()) -> api_binary().
-to_lower_binary(undefined) ->
-    undefined;
+to_lower_binary('undefined') -> 'undefined';
 to_lower_binary(Bin) when is_binary(Bin) ->
     << <<(to_lower_char(B))>> || <<B>> <= Bin>>;
 to_lower_binary(Else) ->
     to_lower_binary(to_binary(Else)).
 
 -spec to_lower_string/1 :: (term()) -> 'undefined' | list().
-to_lower_string(undefined) ->
-    undefined;
+to_lower_string('undefined') -> 'undefined';
 to_lower_string(L) when is_list(L) ->
     [to_lower_char(C) || C <- L];
 to_lower_string(Else) ->
@@ -658,16 +653,14 @@ to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we o
 to_lower_char(C) -> C.
 
 -spec to_upper_binary/1 :: (term()) -> api_binary().
-to_upper_binary(undefined) ->
-    undefined;
+to_upper_binary('undefined') -> 'undefined';
 to_upper_binary(Bin) when is_binary(Bin) ->
     << <<(to_upper_char(B))>> || <<B>> <= Bin>>;
 to_upper_binary(Else) ->
     to_upper_binary(to_binary(Else)).
 
 -spec to_upper_string/1 :: (term()) -> 'undefined' | list().
-to_upper_string(undefined) ->
-    undefined;
+to_upper_string('undefined') -> 'undefined';
 to_upper_string(L) when is_list(L) ->
     [to_upper_char(C) || C <- L];
 to_upper_string(Else) ->
@@ -708,7 +701,7 @@ strip_right_binary(<<>>, _) -> <<>>.
 
 -spec binary_md5/1 :: (text()) -> ne_binary().
 binary_md5(Text) ->
-    to_hex(erlang:md5(to_binary(Text))).
+    to_hex_binary(erlang:md5(to_binary(Text))).
 
 -spec a1hash/3 :: (ne_binary(), ne_binary(), ne_binary()) -> nonempty_string().
 a1hash(User, Realm, Password) ->
@@ -722,13 +715,11 @@ floor(X) when X < 0 ->
         true -> T;
         false -> T - 1
     end;
-floor(X) ->
-    trunc(X).
+floor(X) -> trunc(X).
 
 %% found via trapexit
 -spec ceiling/1 :: (integer() | float()) -> integer().
-ceiling(X) when X < 0 ->
-    trunc(X);
+ceiling(X) when X < 0 -> trunc(X);
 ceiling(X) ->
     T = trunc(X),
     case X - T =:= 0 of
@@ -770,10 +761,8 @@ write_pid(FileName) ->
 -spec ensure_started/1 :: (atom()) -> 'ok' | {'error', term()}.
 ensure_started(App) when is_atom(App) ->
     case application:start(App) of
-        ok ->
-            ok;
-        {error, {already_started, App}} ->
-            ok;
+        ok -> ok;
+        {error, {already_started, App}} -> ok;
         E -> E
     end.
 
