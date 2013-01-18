@@ -96,7 +96,6 @@ handle(Data, Call) ->
         <<"check">> ->
             whapps_call_command:answer(Call),
             check_mailbox(get_mailbox_profile(Data, Call), Call),
-            lager:debug("check voicemail complete"),
             cf_exe:continue(Call);
         _ ->
             cf_exe:continue(Call)
@@ -751,9 +750,8 @@ new_message(AttachmentName, Length, Box, Call) ->
     MediaId = message_media_doc(whapps_call:account_db(Call), Box),
 
     case store_recording(AttachmentName, MediaId, Call) of
-        {ok, StoreJObj} ->
-            AR = wh_json:get_value(<<"Application-Response">>, StoreJObj),
-            update_mailbox(Box, Call, MediaId, Length, AR);
+        {ok, _StoreJObj} ->
+            update_mailbox(Box, Call, MediaId, Length);
         {error, FailJObj} ->
             lager:debug("failed to store media: ~p", [FailJObj])
     end.
@@ -761,11 +759,7 @@ new_message(AttachmentName, Length, Box, Call) ->
 update_mailbox(#mailbox{mailbox_id=Id
                         ,owner_id=OwnerId
                         ,transcribe_voicemail=MaybeTranscribe
-                       }=Box, Call, MediaId, Length, ARJObj) ->
-    Status = wh_json:get_value(<<"Status-Code">>, ARJObj),
-    Loc = wh_json:get_value([<<"Headers">>, <<"Location">>], ARJObj),
-    lager:debug("stored voicemail message (~s) ~s", [Status, Loc]),
-
+                       }=Box, Call, MediaId, Length) ->
     Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),
 
     Prop = [{<<"From-User">>, whapps_call:from_user(Call)}
@@ -784,7 +778,6 @@ update_mailbox(#mailbox{mailbox_id=Id
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
 
-    lager:debug("sending notification"),
     _ = case whapps_util:amqp_pool_request(Prop
                                            ,fun wapi_notifications:publish_voicemail/1
                                            ,fun wapi_notifications:notify_update_v/1
@@ -792,12 +785,10 @@ update_mailbox(#mailbox{mailbox_id=Id
                                           )
         of
             {ok, UpdateJObj} ->
-                lager:debug("notification update received: ~p", [UpdateJObj]),
                 maybe_save_meta(Length, Box, Call, MediaId, UpdateJObj);
             {error, _E} ->
                 lager:debug("notification error: ~p", [_E]),
-                save_meta(Length, Box, Call, MediaId),
-                timer:sleep(1000)
+                save_meta(Length, Box, Call, MediaId)
         end,
     cf_util:update_mwi(OwnerId, whapps_call:account_db(Call)).
 
@@ -806,7 +797,7 @@ maybe_save_meta(Length, #mailbox{delete_after_notify=false}=Box, Call, MediaId, 
 maybe_save_meta(Length, #mailbox{delete_after_notify=true}=Box, Call, MediaId, UpdateJObj) ->
     case wh_json:get_value(<<"Status">>, UpdateJObj) of
         <<"completed">> ->
-            lager:debug("attachment was sent out via notification, deleting"),
+            lager:debug("attachment was sent out via notification, deleting media file"),
             couch_mgr:del_doc(whapps_call:account_db(Call), MediaId);
         <<"failed">> ->
             lager:debug("attachment failed to send out via notification: ~s", [wh_json:get_value(<<"Failure-Message">>, UpdateJObj)]),
@@ -825,8 +816,8 @@ save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
                   ,{<<"length">>, Length}
                   ,{<<"media_id">>, MediaId}
                  ]),
-    {ok, BoxJObj} = save_metadata(Metadata, whapps_call:account_db(Call), Id),
-    lager:debug("stored voicemail metadata for ~s: ~p", [MediaId, BoxJObj]).
+    {ok, _BoxJObj} = save_metadata(Metadata, whapps_call:account_db(Call), Id),
+    lager:debug("stored voicemail metadata for ~s", [MediaId]).
 
 -spec maybe_transcribe/3 :: (whapps_call:call(), ne_binary(), boolean()) ->
                                     'undefined' | wh_json:object().
