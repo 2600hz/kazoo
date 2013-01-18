@@ -789,9 +789,9 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
             {ok, UpdateJObj} ->
                 maybe_save_meta(Length, Box, Call, MediaId, UpdateJObj);
             {error, _} ->
-                save_meta(Length, Box, Call, MediaId)
+                save_meta(Length, Box, Call, MediaId),
+                timer:sleep(1000)
         end,
-    timer:sleep(1000),
     cf_util:update_mwi(OwnerId, AccountDb).
 
 maybe_save_meta(Length, #mailbox{delete_after_notify=false}=Box, Call, MediaId, _UpdateJObj) ->
