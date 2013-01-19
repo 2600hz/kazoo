@@ -249,6 +249,7 @@ channel_resume(UUID, NewNode, Evt) ->
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
                                        ,{"channel_id", wh_util:to_list(UUID)}
                                        ,{"metadata", wh_util:to_list(Meta)}
+                                       ,{"technology", wh_util:to_list(props:get_value(<<"technology">>, Evt))}
                                       ]) of
         ok ->
             lager:debug("sent sofia::move_request with metadata to ~s for ~s", [NewNode, UUID]),
