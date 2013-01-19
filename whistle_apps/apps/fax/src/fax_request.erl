@@ -227,7 +227,7 @@ maybe_store_fax(Call, OwnerId, RecvJObj) ->
 
 -spec fax_fields/1 :: (wh_json:object()) -> wh_proplist().
 fax_fields(JObj) ->
-    [{K,V} || {<<"Fax-", K/binary>>, V} <- wh_json:to_proplist(JObj)].
+    [{K,V} || {<<"Fax-", _/binary>> = K, V} <- wh_json:to_proplist(JObj)].
 
 store_fax(Call, OwnerId, JObj) ->
     FaxFile = tmp_file(),
