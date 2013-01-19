@@ -25,18 +25,21 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
--spec set_value/3 :: (wh_proplist_key(), wh_proplist_value(), wh_proplist()) -> wh_proplist().
+-spec set_value/3 :: (wh_proplist_key(), wh_proplist_value(), wh_proplist()) ->
+                             wh_proplist().
 set_value(K, V, Prop) ->
     [{K, V} | [KV || {Key, _}=KV <- Prop, K =/= Key]].
 
--spec filter/2 :: (fun(({wh_proplist_key(), wh_proplist_value()}) -> boolean()), wh_proplist()) -> wh_proplist().
+-type filter_fun() :: fun(({wh_proplist_key(), wh_proplist_value()}) -> boolean()).
+-spec filter/2 :: (filter_fun(), wh_proplist()) -> wh_proplist().
 filter(Fun, Prop) when is_function(Fun, 1), is_list(Prop) ->
     lists:filter(Fun, Prop).
 
+-spec filter_empty/1 :: (wh_proplist()) -> wh_proplist().
 filter_empty(Prop) ->
     [KV || {_, V}=KV <- Prop, (not wh_util:is_empty(V))].
 
--spec filter_undefined/1 :: (proplist()) -> proplist().
+-spec filter_undefined/1 :: (wh_proplist()) -> wh_proplist().
 filter_undefined(Prop) ->
     [KV || {_, V}=KV <- Prop, V =/= undefined].
 
