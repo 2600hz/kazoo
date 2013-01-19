@@ -20,7 +20,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle/2 :: (wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     lager:debug("receive fax for owner: ~s", [wh_json:get_value(<<"owner_id">>, Data)]),
     wapi_fax:publish_req(
