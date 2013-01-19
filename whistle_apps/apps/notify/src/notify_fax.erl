@@ -117,8 +117,14 @@ create_template_props(Event, Docs, Account) ->
                    ,{<<"fax_id">>, wh_json:get_value(<<"Fax-ID">>, Event)}
                    ,{<<"fax_media">>, wh_json:get_value(<<"Fax-Name">>, Event)}
                    ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
+                   | fax_values(Event)
                   ]}
      ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
+    ].
+
+fax_values(Event) ->
+    [{wh_json:normalize_key(K), V}
+     || {<<"Fax-", K/binary>>, V} <- wh_json:to_proplist(Event)
     ].
 
 %%--------------------------------------------------------------------

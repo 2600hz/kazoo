@@ -95,8 +95,8 @@
                           ,<<"Account-DB">>, <<"Fax-ID">>
                      ]).
 -define(OPTIONAL_FAX_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Call-ID">>
-                                   ,<<"Total-Pages">>, <<"Transferred-Pages">>
-                                   ,<<"Transfer-Rate">>, <<"Result-Text">>, <<"ECM-Used">>
+                                   ,<<"Fax-Total-Pages">>, <<"Fax-Transferred-Pages">>
+                                   ,<<"Fax-Transfer-Rate">>, <<"Fax-Result-Text">>, <<"ECM-Used">>
                                    ,<<"Owner-ID">>, <<"Fax-Timestamp">>
                               ]).
 -define(FAX_VALUES, [{<<"Event-Category">>, <<"notification">>}
