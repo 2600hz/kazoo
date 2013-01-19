@@ -431,11 +431,17 @@ create_event(EventName, ApplicationName, Props) ->
 -spec create_event_props/3 :: (binary(), api_binary(), wh_proplist()) -> wh_proplist().
 create_event_props(EventName, ApplicationName, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
+
     {Mega,Sec,Micro} = erlang:now(),
     Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
+
+    %% Unix-epoch, in microseconds
+    FSTimestamp = props:get_integer_value(<<"Event-Date-Timestamp">>, Props, Timestamp),
+    NormalizedFSTimestamp = wh_util:unix_seconds_to_gregorian_seconds(FSTimestamp div 1000000),
+
     props:filter_undefined(
-      [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
-       ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
+      [{<<"Msg-ID">>, wh_util:to_binary(FSTimestamp)}
+       ,{<<"Timestamp">>, NormalizedFSTimestamp}
        ,{<<"Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
        ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
        ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
