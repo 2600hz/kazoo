@@ -55,7 +55,7 @@ start_link(Call, JObj) ->
                            ]
                           ,[Call, JObj]).
 
--spec relay_event/2 :: (wh_json:json_object(), proplist()) -> any().
+-spec relay_event/2 :: (wh_json:object(), wh_proplist()) -> any().
 relay_event(JObj, Props) ->
     case props:get_value(handler, Props) of
         undefined -> ignore;
@@ -140,7 +140,7 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
--spec handle_event/2 :: (wh_json:json_object(), #state{}) -> {'reply', proplist()}.
+-spec handle_event/2 :: (wh_json:object(), #state{}) -> {'reply', wh_proplist()}.
 handle_event(_JObj, #state{handler=Handler}) ->
     {reply, [{handler,Handler}]}.
 
@@ -173,14 +173,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_action/1 :: (wh_json:json_object()) -> 'receive' | 'transmit'.
+-spec get_action/1 :: (wh_json:object()) -> 'receive' | 'transmit'.
 get_action(JObj) ->
     case wh_json:get_value(<<"Action">>, JObj) of
         <<"transmit">> -> 'transmit';
         _ -> 'receive'
     end.
 
--spec receive_fax/2 :: (whapps_call:call(), ne_binary() | 'undefined') -> any().
+-spec receive_fax/2 :: (whapps_call:call(), api_binary()) -> any().
 receive_fax(Call, OwnerId) ->
     put(callid, whapps_call:call_id(Call)),
 
@@ -218,14 +218,14 @@ maybe_store_fax(Call, OwnerId, RecvJObj) ->
                      ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
                      ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
                      ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-                     ,{<<"Fax-Timestamp">>, wh_json:get_value(<<"Timestamp">>, RecvJObj)}
+                     ,{<<"Fax-Timestamp">>, wh_util:current_tstamp()}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ]));
         _E ->
             lager:debug("store fax other resp: ~p", [_E])
     end.
 
--spec fax_fields/1 :: (wh_json:json_object()) -> proplist().
+-spec fax_fields/1 :: (wh_json:object()) -> wh_proplist().
 fax_fields(JObj) ->
     [{K,V} || {<<"Fax-", K/binary>>, V} <- wh_json:to_proplist(JObj)].
 
@@ -271,7 +271,7 @@ create_fax_doc(Call, OwnerId, JObj) ->
     {ok, Doc1} = couch_mgr:save_doc(AccountDb, Doc),
     wh_json:get_value(<<"_id">>, Doc1).
 
--spec fax_properties/1 :: (wh_json:json_object()) -> proplist().
+-spec fax_properties/1 :: (wh_json:object()) -> wh_proplist().
 fax_properties(JObj) ->
     [{wh_json:normalize_key(K), V} || {<<"Fax-", K/binary>>, V} <- wh_json:to_proplist(JObj)].
 
