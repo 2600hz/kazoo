@@ -294,6 +294,15 @@ handle_call(next_winner, _, #state{strategy='rr'
             {reply, undefined, State}
     end;
 
+handle_call(current_agents, _, #state{strategy='rr'
+                                      ,strategy_state=Q
+                                      }=State) ->
+    {reply, queue:to_list(Q), State};
+handle_call(current_agents, _, #state{strategy='mi'
+                                      ,strategy_state=L
+                                      }=State) ->
+    {reply, L, State};
+
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -487,12 +496,14 @@ start_agent_and_worker(WorkersSup, AcctId, QueueId, AgentJObj) ->
                                {wh_json:objects()
                                 ,wh_json:objects()
                                }.
-pick_winner(_, [], _, _) -> 'undefined';
+pick_winner(_, [], _, _) ->
+    lager:debug("no agent responses are left to choose from"),
+    'undefined';
 pick_winner(Mgr, CRs, 'rr', AgentId) ->
     case split_agents(AgentId, CRs) of
         {[], _O} ->
             lager:debug("oops, agent ~s appears to have not responded; try again", [AgentId]),
-            pick_winner(Mgr, CRs, 'rr', next_winner(Mgr));
+            pick_winner(Mgr, remove_unknown_agents(Mgr, CRs), 'rr', next_winner(Mgr));
         {Winners, OtherAgents} ->
             lager:debug("found winning responders for agent: ~s", [AgentId]),
             {Winners, OtherAgents}
@@ -548,6 +559,20 @@ maybe_update_strategy('rr', StrategyState, AgentId) ->
 sort_agent(A, B) ->
     wh_json:get_integer_value(<<"Idle-Time">>, A, 0) >
         wh_json:get_integer_value(<<"Idle-Time">>, B, 0).
+
+%% Handle when an agent process has responded to the connect_req
+%% but then the agent logs out of their phone (removing the agent
+%% from the list in the queue manager).
+%% Otherwise CRs will never be empty
+-spec remove_unknown_agents/2 :: (pid(), wh_json:objects()) -> wh_json:objects().
+remove_unknown_agents(Mgr, CRs) ->
+    case gen_listener:call(Mgr, current_agents) of
+        [] -> [];
+        Agents ->
+            [CR || CR <- CRs,
+                   lists:member(wh_json:get_value(<<"Agent-ID">>, CR), Agents)
+            ]
+    end.
 
 -spec split_agents/2 :: (ne_binary(), wh_json:objects()) ->
                                 {wh_json:objects(), wh_json:objects()}.
