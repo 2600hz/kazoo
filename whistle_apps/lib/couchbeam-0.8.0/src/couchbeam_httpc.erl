@@ -6,6 +6,7 @@
 -module(couchbeam_httpc).
 
 -include_lib("ibrowse/include/ibrowse.hrl").
+-compile([{parse_transform, switchblade_transform}]).
 
 -export([request/4, request/5, request/6,
         request_stream/4, request_stream/5, request_stream/6,
@@ -62,15 +63,14 @@ request_stream(Pid, Method, Url, Options, Headers, Body) ->
     {Headers1, Options1} = maybe_oauth_header(Method, Url, Headers,
         Options),
     {ok, ReqPid} = ibrowse_http_client:start_link(Url),
+
     case ibrowse:send_req_direct(ReqPid, Url, Headers1, Method, Body,
                                  [{stream_to, Pid},
                                   {response_format, binary},
                                   {inactivity_timeout, infinity}|Options1],
                                  ?TIMEOUT) of
-        {ibrowse_req_id, ReqId} ->
-            {ok, ReqId};
-        Error ->
-            Error
+        {ibrowse_req_id, ReqId} -> {ok, ReqId};
+        Error -> Error
     end.
 
 maybe_oauth_header(Method, Url, Headers, Options) ->
@@ -85,12 +85,12 @@ maybe_oauth_header(Method, Url, Headers, Options) ->
 
 clean_mailbox_req(ReqId) ->
     receive
-    {ibrowse_async_response, ReqId, _} ->
-        clean_mailbox_req(ReqId);
-    {ibrowse_async_response_end, ReqId} ->
-        clean_mailbox_req(ReqId)
+        {ibrowse_async_response, ReqId, _O} ->
+            clean_mailbox_req(ReqId);
+        {ibrowse_async_response_end, ReqId} ->
+            clean_mailbox_req(ReqId)
     after 0 ->
-        ok
+            ok
     end.
 
 redirect_url(RespHeaders, OrigUrl) ->
