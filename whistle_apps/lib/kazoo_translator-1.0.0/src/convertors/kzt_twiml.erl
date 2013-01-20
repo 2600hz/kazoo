@@ -459,6 +459,22 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='User'
             lager:debug("failed to add user ~s: ~p", [UserId, _E]),
             xml_elements_to_endpoints(Call, EPs, Acc)
     end;
+xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
+                                             ,content=Number
+                                             ,attributes=Attrs
+                                            }
+                                 | EPs], Acc) ->
+    Props = kzt_util:attributes_to_proplist(Attrs),
+
+    SendDigits = props:get_value(sendDigis, Props),
+    Url = props:get_value(url, Props),
+    Method = props:get_value(method, Props),
+
+    DialMe = wmn_util:to_e164(xml_text_to_binary(Number)),
+
+    lager:debug("maybe add number ~s: send ~s, skipping", [DialMe, SendDigits]),
+    xml_elements_to_endpoints(Call, EPs, Acc);
+
 xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
     lager:debug("unknown endpoint: ~p", [_Xml]),
     xml_elements_to_endpoints(Call, EPs, Acc).
