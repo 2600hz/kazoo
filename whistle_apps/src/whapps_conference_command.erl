@@ -65,7 +65,7 @@ participant_energy(ParticipantId, EnergyLevel, Conference) ->
     send_command(Command, Conference).
 
 -spec kick/1 :: (whapps_conference:conference()) -> 'ok'.
--spec kick/2 :: (undefined | ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec kick/2 :: (api_binary(), whapps_conference:conference()) -> 'ok'.
 
 kick(Conference) ->
     kick(undefined, Conference).
@@ -93,7 +93,7 @@ mute_participant(ParticipantId, Conference) ->
     send_command(Command, Conference).
 
 -spec prompt/2 :: (ne_binary(), whapps_conference:conference()) -> 'ok'.
--spec prompt/3 :: (ne_binary(), undefined | ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec prompt/3 :: (ne_binary(), api_binary(), whapps_conference:conference()) -> 'ok'.
 
 prompt(Media, Conference) ->
     prompt(Media, undefined, Conference).
@@ -102,7 +102,7 @@ prompt(Media, ParticipantId, Conference) ->
 
 
 -spec play/2 :: (ne_binary(), whapps_conference:conference()) -> 'ok'.
--spec play/3 :: (ne_binary(), undefined | ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec play/3 :: (ne_binary(), api_binary(), whapps_conference:conference()) -> 'ok'.
 
 play(Media, Conference) ->
     play(Media, undefined, Conference).
@@ -119,7 +119,7 @@ record(Conference) ->
     send_command(Command, Conference).
 
 -spec relate_participants/3 :: (ne_binary(), ne_binary(), whapps_conference:conference()) -> 'ok'.
--spec relate_participants/4 :: (ne_binary(), ne_binary(), undefined | ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec relate_participants/4 :: (ne_binary(), ne_binary(), api_binary(), whapps_conference:conference()) -> 'ok'.
 
 relate_participants(ParticipantId, OtherParticipantId, Conference) ->
     relate_participants(ParticipantId, OtherParticipantId, undefined, Conference).
@@ -133,8 +133,8 @@ relate_participants(ParticipantId, OtherParticipantId, Relationship, Conference)
     send_command(Command, Conference).    
 
 -spec stop_play/1 :: (whapps_conference:conference()) -> 'ok'.
--spec stop_play/2 :: (undefined | ne_binary(), whapps_conference:conference()) -> 'ok'.
--spec stop_play/3 :: (undefined | ne_binary(), undefined | ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec stop_play/2 :: (api_binary(), whapps_conference:conference()) -> 'ok'.
+-spec stop_play/3 :: (api_binary(), api_binary(), whapps_conference:conference()) -> 'ok'.
 
 stop_play(Conference) ->
     stop_play(undefined, Conference).
