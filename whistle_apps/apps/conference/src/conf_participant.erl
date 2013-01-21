@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012 VoIP Inc
+%%% @copyright (C) 2013 2600Hz Inc
 %%% @doc
 %%% Conference participant process
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(conf_participant).
 
@@ -58,20 +59,20 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--record(participant, {participant_id = 0
-                      ,call = 'undefined'
-                      ,bridge = 'undefined'
-                      ,bridge_request = 'undefined'
-                      ,moderator = 'false'
-                      ,muted = 'false'
-                      ,deaf = 'false'
-                      ,waiting_for_mod = 'false'
-                      ,call_event_consumers = []
-                      ,in_conference = 'false'
-                      ,join_attempts = 0
+-record(participant, {participant_id = 0 :: integer()
+                      ,call :: whapps_call:call()
+                      ,bridge
+                      ,bridge_request
+                      ,moderator = 'false' :: boolean()
+                      ,muted = 'false' :: boolean()
+                      ,deaf = 'false' :: boolean()
+                      ,waiting_for_mod = 'false' :: boolean()
+                      ,call_event_consumers = [] :: list()
+                      ,in_conference = 'false' :: boolean()
+                      ,join_attempts = 0 :: integer()
                       ,conference = whapps_conference:new()
                       ,discovery_event = wh_json:new()
-                      ,last_dtmf = <<>>
+                      ,last_dtmf = <<>> :: binary()
                      }).
 -type participant() :: #participant{}.
 
@@ -244,12 +245,16 @@ handle_route_win(JObj, Props) ->
 init([Call]) ->
     process_flag(trap_exit, true),
     put(callid, whapps_call:call_id(Call)),
-    Self = self(),
-    spawn(fun() ->
-                  ControllerQ = gen_listener:queue_name(Self),
-                  gen_listener:cast(Self, {controller_queue, ControllerQ})
-          end),
+    _ = get_my_queue(),
     {ok, #participant{call=Call}}.
+
+get_my_queue() ->
+    get_my_queue(self()).
+get_my_queue(Srv) ->
+    spawn(fun() ->
+                  ControllerQ = gen_listener:queue_name(Srv),
+                  gen_listener:cast(Srv, {controller_queue, ControllerQ})
+          end).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -286,6 +291,9 @@ handle_call(_Request, _From, Participant) ->
 %%--------------------------------------------------------------------
 handle_cast(hungup, Participant) ->
     {stop, {shutdown, hungup}, Participant};
+handle_cast({controller_queue, undefined}, Participant) ->
+    _ = get_my_queue(),
+    {noreply, Participant};
 handle_cast({controller_queue, ControllerQ}, #participant{call=Call}=Participant) ->
     {noreply, Participant#participant{call=whapps_call:set_controller_queue(ControllerQ, Call)}};
 handle_cast({add_consumer, Consumer}, #participant{call_event_consumers=Consumers}=Participant) ->
