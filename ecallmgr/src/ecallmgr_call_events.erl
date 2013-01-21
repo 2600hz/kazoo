@@ -160,6 +160,7 @@ handle_publisher_usurp(JObj, Props) ->
 -spec init/1 :: ([atom() | ne_binary(),...]) -> {'ok', #state{}}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
+
     gen_listener:cast(self(), init),
 
     {ok, #state{node=Node, callid=CallId}}.

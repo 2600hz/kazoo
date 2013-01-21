@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% When connecting to a FreeSWITCH node, we create three processes: one to
@@ -9,6 +9,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Karl Anderson
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_nodes).
 
@@ -285,20 +286,20 @@ channel_resume(UUID, NewNode) ->
 channel_resume(UUID, NewNode, Evt) ->
     Meta = fix_metadata(props:get_value(<<"metadata">>, Evt)),
 
-    case freeswitch:sendevent_custom(NewNode, 'sofia::move_request'
+    case freeswitch:sendevent_custom(NewNode, 'channel_move::move_request'
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
                                        ,{"channel_id", wh_util:to_list(UUID)}
                                        ,{"metadata", wh_util:to_list(Meta)}
                                        ,{"technology", wh_util:to_list(props:get_value(<<"technology">>, Evt))}
                                       ]) of
         ok ->
-            lager:debug("sent sofia::move_request with metadata to ~s for ~s", [NewNode, UUID]),
+            lager:debug("sent channel_move::move_request with metadata to ~s for ~s", [NewNode, UUID]),
             true;
         {error, _E} ->
-            lager:debug("failed to send custom event sofia::move_request: ~p", [_E]),
+            lager:debug("failed to send custom event channel_move::move_request: ~p", [_E]),
             false;
         timeout ->
-            lager:debug("timed out sending custom event sofia::move_request"),
+            lager:debug("timed out sending custom event channel_move::move_request"),
             false
     end.
 
@@ -324,7 +325,7 @@ fix_metadata(Meta) ->
 wait_for_channel_completion(UUID, NewNode) ->
     lager:debug("waiting for confirmation from ~s of channel_move", [NewNode]),
     receive
-        {channel_move_completed, _Node, UUID, _Evt} ->
+        {channel_move_complete, _Node, UUID, _Evt} ->
             lager:debug("confirmation of channel_move received for ~s, success!", [_Node]),
             _ = ecallmgr_call_sup:start_event_process(NewNode, UUID),
             true
@@ -336,18 +337,19 @@ wait_for_channel_completion(UUID, NewNode) ->
 channel_teardown_sbd(UUID, OriginalNode) ->
     catch gproc:reg({p, l, {channel_move, OriginalNode, UUID}}),
 
-    case freeswitch:sendevent_custom(OriginalNode, 'sofia::move_request'
+    case freeswitch:sendevent_custom(OriginalNode, 'channel_move::move_request'
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
                                        ,{"channel_id", wh_util:to_list(UUID)}
+                                       ,{"technology", "sofia"}
                                       ]) of
         ok ->
-            lager:debug("sent sofia::move_request to ~s for ~s", [OriginalNode, UUID]),
+            lager:debug("sent channel_move::move_request to ~s for ~s", [OriginalNode, UUID]),
             true;
         {error, _E} ->
-            lager:debug("failed to send custom event sofia::move_request: ~p", [_E]),
+            lager:debug("failed to send custom event channel_move::move_request: ~p", [_E]),
             false;
         timeout ->
-            lager:debug("timed out sending custom event sofia::move_request"),
+            lager:debug("timed out sending custom event channel_move::move_request"),
             false
     end.
 

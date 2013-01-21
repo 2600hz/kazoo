@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2013, 2600Hz INC
 %%% @doc
 %%% Manage a FreeSWITCH node and its resources
 %%% @end
@@ -109,7 +109,7 @@ handle_reload_gtws(_JObj, Props) ->
             ,?DEFAULT_FS_PROFILE
             ," rescan"
            ],
-    case wh_util:is_true(ecallmgr_config:get(<<"process_gateways">>, false)) 
+    case wh_util:is_true(ecallmgr_config:get(<<"process_gateways">>, false))
         andalso freeswitch:bgapi(Node, sofia, lists:flatten(Args))
     of
         false -> ok;
@@ -155,7 +155,7 @@ init([Node, Options]) ->
     lager:info("starting new fs node listener for ~s", [Node]),
     case bind_to_events(props:get_value(client_version, Options), Node) of
         {error, Reason} ->
-            lager:critical("unable to establish node bindings: ~p", [Reason]),  
+            lager:critical("unable to establish node bindings: ~p", [Reason]),
             {stop, Reason};
         ok ->
             gproc:reg({p, l, fs_node}),
@@ -172,7 +172,7 @@ bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
 bind_to_events(_, Node) ->
     case freeswitch:register_event_handler(Node) of
         timeout -> {error, timeout};
-        ok -> 
+        ok ->
             case freeswitch:event(Node, ?FS_EVENTS) of
                 timeout -> {error, timeout};
                 Else -> Else
@@ -293,11 +293,17 @@ process_event(UUID, Props, Node) ->
 process_event(<<"CHANNEL_CREATE">> = EventName, UUID, Props, Node) ->
     _ = maybe_start_event_listener(Node, UUID),
     maybe_send_event(EventName, UUID, Props, Node);
-process_event(<<"sofia::move_released">> = EventName, _, Props, Node) ->
-    UUID = props:get_value(<<"old_node_channel_uuid">>, Props),    
+process_event(<<"channel_move::move_released">> = EventName, _, Props, Node) ->
+    UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
+    gproc:send({p, l, {channel_move, Node, UUID}}
+               ,{channel_move_released, Node, UUID, Props}
+              ),
     maybe_send_event(EventName, UUID, Props, Node);
-process_event(<<"sofia::move_complete">> = EventName, _, Props, Node) ->
-    UUID = props:get_value(<<"old_node_channel_uuid">>, Props),    
+process_event(<<"channel_move::move_complete">> = EventName, _, Props, Node) ->
+    UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
+    gproc:send({p, l, {channel_move, Node, UUID}}
+               ,{channel_move_complete, Node, UUID, Props}
+              ),
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(EventName, UUID, Props, Node) ->
     maybe_send_event(EventName, UUID, Props, Node).
@@ -309,7 +315,7 @@ maybe_send_event(EventName, UUID, Props, Node) ->
         false ->
             gproc:send({p, l, {event, Node, EventName}}, {event, [UUID | Props]}),
             maybe_send_call_event(UUID, Props, Node)
-    end.    
+    end.
 
 -spec maybe_send_call_event/3 :: (api_binary(), wh_proplist(), atom()) -> any().
 maybe_send_call_event(undefined, _, _) -> ok;
@@ -435,7 +441,7 @@ show_channels_as_json(Node) ->
                     Keys = binary:split(Header, <<"|||">>, [global]),
                     [wh_json:from_list(lists:zip(Keys, Values))
                      || Line <- Rest
-                            ,((Values = binary:split(Line, <<"|||">>, [global])) =/= [Line]) 
+                            ,((Values = binary:split(Line, <<"|||">>, [global])) =/= [Line])
                     ]
             end;
         {error, _} -> [];
@@ -449,4 +455,3 @@ maybe_start_event_listener(Node, UUID) ->
             ecallmgr_call_sup:start_event_process(Node, UUID);
         _E -> ok
     end.
- 
