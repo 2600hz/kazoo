@@ -158,6 +158,15 @@ init([Node, Options]) ->
             lager:critical("unable to establish node bindings: ~p", [Reason]),
             {stop, Reason};
         ok ->
+            lager:debug("event handler registered on node ~s", [Node]),            
+            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
+                                         ,'SESSION_HEARTBEAT', 'CUSTOM'
+                                         ,'sofia::register', 'sofia::transfer'
+                                         ,'channel_move::move_released', 'channel_move::move_complete'
+                                         ,'whistle::broadcast'
+                                         ,'loopback::bowout'
+                                        ]),
+            lager:debug("bound to switch events on node ~s", [Node]),
             gproc:reg({p, l, fs_node}),
             run_start_cmds(Node),
             sync_channels(self()),

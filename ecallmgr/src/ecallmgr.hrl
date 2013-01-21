@@ -19,6 +19,7 @@
 
 -define(SIP_INTERFACE, "sofia/sipinterface_1/").
 -define(DEFAULT_FS_PROFILE, "sipinterface_1").
+-define(DEFAULT_FS_TECHNOLOGY, "sofia").
 -define(DEFAULT_FS_DIALPLAN, "XML").
 
 -define(LOCAL_MEDIA_PATH, "/tmp/").

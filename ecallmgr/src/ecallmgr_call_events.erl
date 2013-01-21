@@ -219,8 +219,8 @@ handle_cast({update_node, Node}, #state{node=OldNode, callid=CallId}=State) ->
     erlang:monitor_node(OldNode, false),
     _ = gproc:unreg({p, l, {call_events_process, OldNode, CallId}}),
     _ = gproc:unreg({p, l, {call_event, OldNode, CallId}}),
-    _ = gproc:unreg({p, l, {events, OldNode, <<"sofia::move_released">>}}),
-    _ = gproc:unreg({p, l, {events, OldNode, <<"sofia::move_complete">>}}),
+    _ = gproc:unreg({p, l, {events, OldNode, <<"channel_move::move_released">>}}),
+    _ = gproc:unreg({p, l, {events, OldNode, <<"channel_move::move_complete">>}}),
     {noreply, State#state{node=Node}, 0};
 handle_cast({passive}, State) ->
     lager:debug("publisher has been usurp'd by newer process on another ecallmgr, moving to passive mode", []),
