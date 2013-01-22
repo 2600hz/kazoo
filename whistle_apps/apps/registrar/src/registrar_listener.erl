@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Listener for authn_req, reg_success, and reg_query AMQP requests
 %%% @end
@@ -23,7 +23,7 @@
 -include("reg.hrl").
 
 -define(RESPONDERS, [{{reg_query, req_query_req}, [{<<"directory">>, <<"reg_query">>}]}]).
--define(BINDINGS, [{registration, [{retrict_to, [reg_success]}]}
+-define(BINDINGS, [{registration, [{retrict_to, [reg_success, reg_query]}]}
                    ,{self, []}
                   ]).
 
@@ -52,8 +52,7 @@ start_link() ->
                                                        ], []).
 
 -spec stop/1 :: (pid()) -> 'ok'.
-stop(Srv) ->
-    gen_listener:stop(Srv).
+stop(Srv) -> gen_listener:stop(Srv).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -72,7 +71,7 @@ stop(Srv) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    lager:debug("starting new registrar server"),
+    lager:debug("starting new registrar listener"),
     {ok, []}.
 
 %%--------------------------------------------------------------------
@@ -116,6 +115,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -142,7 +142,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
-    lager:debug("registrar server ~p termination", [_Reason]).
+    lager:debug("registrar listener ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
