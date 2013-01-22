@@ -233,7 +233,7 @@ publish_query_err(Queue, Resp, ContentType) ->
 %% @doc Special access to the API keys
 %% @end
 %%--------------------------------------------------------------------
--spec success_keys/0 :: () -> [ne_binary(),...].
+-spec success_keys/0 :: () -> ne_binaries().
 success_keys() ->
     ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS.
 
