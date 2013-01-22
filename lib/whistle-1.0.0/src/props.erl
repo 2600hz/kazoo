@@ -16,8 +16,8 @@
          ,get_integer_value/2, get_integer_value/3
          ,get_atom_value/2, get_atom_value/3
          ,get_binary_value/2, get_binary_value/3
-         ,get_is_true/2, get_is_true/3
-         ,get_is_false/2, get_is_false/3
+         ,get_is_true/2, get_is_true/3, is_true/2, is_true/3
+         ,get_is_false/2, get_is_false/3, is_false/2, is_false/3
          ,get_keys/1
          ,set_value/3
          ,unique/1
@@ -59,53 +59,59 @@ get_value(Key, Prop, Default) when is_list(Prop) ->
                 true -> true;
                 false -> Default
             end;
-        {Key, V} -> % only return V if a two-tuple is found
-            V;
-        Other when is_tuple(Other) -> % otherwise return the default
-            Default
+        {Key, V} -> V; % only return V if a two-tuple is found
+        Other when is_tuple(Other) -> Default % otherwise return the default
     end.
 
--spec get_is_true/2 :: (wh_proplist_key(), wh_proplist()) -> 'undefined' | boolean().
+-spec get_is_true/2 :: (wh_proplist_key(), wh_proplist()) -> api_boolean().
 -spec get_is_true/3 :: (wh_proplist_key(), wh_proplist(), Default) -> Default | boolean().
-get_is_true(Key, Prop) ->
-    get_is_true(Key, Prop, undefined).
-get_is_true(Key, Prop, Default) ->
-    case get_value(Key, Prop, Default) of
-        Default -> Default;
+get_is_true(Key, Prop) -> is_true(Key, Prop).
+get_is_true(Key, Prop, Default) -> is_true(Key, Prop, Default).
+
+-spec is_true/2 :: (wh_proplist_key(), wh_proplist()) -> api_boolean().
+-spec is_true/3 :: (wh_proplist_key(), wh_proplist(), Default) -> Default | boolean().
+is_true(Key, Prop) ->
+    is_true(Key, Prop, 'undefined').
+is_true(Key, Prop, Default) ->
+    case get_value(Key, Prop) of
+        'undefined' -> Default;
         V -> wh_util:is_true(V)
     end.
 
--spec get_is_false/2 :: (wh_proplist_key(), wh_proplist()) -> 'undefined' | boolean().
+-spec get_is_false/2 :: (wh_proplist_key(), wh_proplist()) -> api_boolean().
 -spec get_is_false/3 :: (wh_proplist_key(), wh_proplist(), Default) -> Default | boolean().
-get_is_false(Key, Prop) ->
-    get_is_false(Key, Prop, undefined).
-get_is_false(Key, Prop, Default) ->
-    case get_value(Key, Prop, Default) of
-        Default -> Default;
+get_is_false(Key, Prop) -> is_false(Key, Prop).
+get_is_false(Key, Prop, Default) -> is_false(Key, Prop, Default).
+
+is_false(Key, Prop) ->
+    is_false(Key, Prop, 'undefined').
+is_false(Key, Prop, Default) ->
+    case get_value(Key, Prop) of
+        'undefined' -> Default;
         V -> wh_util:is_false(V)
     end.
 
 -spec get_integer_value/2 :: (wh_proplist_key(), wh_proplist()) ->
-                                     integer() | 'undefined'.
+                                     api_integer().
 -spec get_integer_value/3 :: (wh_proplist_key(), wh_proplist(), Default) ->
                                      integer() | Default.
 get_integer_value(Key, Prop) ->
-    get_integer_value(Key, Prop, undefined).
+    get_integer_value(Key, Prop, 'undefined').
 get_integer_value(Key, Prop, Default) ->
-    case ?MODULE:get_value(Key, Prop, Default) of
-        Default -> Default;
+    case ?MODULE:get_value(Key, Prop) of
+        'undefined' -> Default;
         Val -> wh_util:to_integer(Val)
     end.
 
 -spec get_atom_value/2 :: (wh_proplist_key(), wh_proplist()) ->
-                                  atom() | 'undefined'.
+                                  atom().
 -spec get_atom_value/3 :: (wh_proplist_key(), wh_proplist(), Default) ->
                                   atom() | Default.
 get_atom_value(Key, Prop) ->
-    get_atom_value(Key, Prop, undefined).
+    get_atom_value(Key, Prop, 'undefined').
 get_atom_value(Key, Prop, Default) ->
-    case ?MODULE:get_value(Key, Prop, Default) of
-        Default -> Default;
+    case ?MODULE:get_value(Key, Prop) of
+        'undefined' -> Default;
         Val -> wh_util:to_atom(Val)
     end.
 
@@ -113,10 +119,10 @@ get_atom_value(Key, Prop, Default) ->
 -spec get_binary_value/3 :: (wh_proplist_key(), wh_proplist(), Default) ->
                                     ne_binary() | Default.
 get_binary_value(Key, Prop) ->
-    get_binary_value(Key, Prop, undefined).
+    get_binary_value(Key, Prop, 'undefined').
 get_binary_value(Key, Prop, Default) ->
-    case ?MODULE:get_value(Key, Prop, Default) of
-        Default -> Default;
+    case ?MODULE:get_value(Key, Prop) of
+        'undefined' -> Default;
         V -> wh_util:to_binary(V)
     end.
 
