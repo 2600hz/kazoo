@@ -15,7 +15,7 @@
 init() ->
     ok.
 
--spec handle_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
     true = wapi_registration:success_v(ApiJObj),
     _ = wh_util:put_callid(ApiJObj),
@@ -72,7 +72,7 @@ handle_req(ApiJObj, _Props) ->
 
     lager:debug("cached registration ~s@~s for ~p s", [Username, Realm, Expires]).
 
--spec send_new_register/1 :: (wh_json:json_object()) -> 'ok'.
+-spec send_new_register/1 :: (wh_json:object()) -> 'ok'.
 send_new_register(JObj) ->
     Updaters = [fun(J) -> wh_json:set_value(<<"Event-Name">>,  <<"register">>, J) end
                 ,fun(J) -> wh_json:set_value(<<"Event-Category">>, <<"notification">>, J) end 

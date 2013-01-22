@@ -82,7 +82,7 @@ success(Prop) when is_list(Prop) ->
 success(JObj) ->
     success(wh_json:to_proplist(JObj)).
 
--spec success_v/1 :: (wh_json:json_object() | proplist()) -> boolean().
+-spec success_v/1 :: (api_terms()) -> boolean().
 success_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?REG_SUCCESS_HEADERS, ?REG_SUCCESS_VALUES, ?REG_SUCCESS_TYPES);
 success_v(JObj) ->
@@ -152,7 +152,7 @@ query_err_v(JObj) ->
 %% @doc Setup and tear down bindings for authn gen_listeners
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
+-spec bind_q/2 :: (binary(), wh_proplist()) -> 'ok'.
 bind_q(Q, Props) ->
     amqp_util:callmgr_exchange(),
 
@@ -173,7 +173,7 @@ bind_q(_, [], _) ->
     ok.
 
 -spec unbind_q/1 :: (ne_binary()) -> 'ok'.
--spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+-spec unbind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Q) ->
     unbind_q(Q, []).
 unbind_q(Q, Props) ->
