@@ -48,6 +48,8 @@ http_method(Method) ->
     case wh_util:to_atom(Method) of
         get -> get;
         post -> post;
+        'GET' -> get;
+        'POST' -> post;
         undefined -> post
     end.
 
