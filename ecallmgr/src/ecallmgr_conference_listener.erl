@@ -185,7 +185,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
 %% TODO: Flush cache on conference end
 -spec get_conference_focus(ne_binary()) -> atom().
 get_conference_focus(ConferenceId) ->
