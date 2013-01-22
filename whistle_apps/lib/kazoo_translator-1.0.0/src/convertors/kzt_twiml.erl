@@ -183,7 +183,8 @@ dial(Call, [#xmlText{type=text}|_]=DialMeTxts, Attrs) ->
     Props = kzt_util:attributes_to_proplist(Attrs),
 
     Call1 = setup_call_for_dial(whapps_call:set_request(request_id(DialMe, Call), Call)
-                                ,Props),
+                                ,Props
+                               ),
 
     OffnetProps = wh_json:from_list(
                     [{<<"Timeout">>, kzt_util:get_call_timeout(Call1)}
@@ -196,6 +197,52 @@ dial(Call, [#xmlText{type=text}|_]=DialMeTxts, Attrs) ->
                     kzt_util:update_call_status(?STATUS_RINGING, Call1)
                    ),
     maybe_end_dial(Call2);
+dial(Call, [#xmlElement{name='Conference'
+                        ,content=ConfIdTxts
+                        ,attributes=ConfAttrs
+                       }], DialAttrs) ->
+    ConfId = xml_text_to_binary(ConfIdTxts),
+
+    ConfProps = kzt_util:attributes_to_proplist(ConfAttrs),
+    DialProps = kzt_util:attributes_to_proplist(DialAttrs),
+
+    _StartMuted = props:is_true(muted, ConfProps, false),
+    _PlayBeep = props:is_true(beep, ConfProps, true),
+    _StartConfOnEnter = props:is_true(startConferenceOnEnter, ConfProps, true),
+    _EndConfOnExit = props:is_true(endConferenceOnExit, ConfProps, false),
+
+    %% Will need to support fetching media OR TwiML
+    _WaitUrl = props:get_value(waitUrl, ConfProps),
+    _WaitMethod = kzt_util:http_method(ConfProps),
+
+    _MaxParticipants = get_max_participants(ConfProps),
+
+    Call1 = setup_call_for_dial(Call, DialProps),
+
+    lager:debug("dial into conference ~s, unsupported", [ConfId]),
+    {stop, Call1};
+
+dial(Call, [#xmlElement{name='Queue'
+                        ,content=QueueIdTxts
+                        ,attributes=QueueAttrs
+                       }], DialAttrs) ->
+    DialProps = kzt_util:attributes_to_proplist(DialAttrs),
+
+    QueueId = xml_text_to_binary(QueueIdTxts),
+    QueueProps = kzt_util:attributes_to_proplist(QueueAttrs),
+
+    %% Fetch TwiML to play to caller before connecting agent
+    _Url = props:get_value(url, QueueProps),
+    _Method = kzt_util:http_method(QueueProps),
+
+    Call1 = setup_call_for_dial(
+              kzt_util:set_queue_sid(QueueId, Call)
+              ,DialProps
+             ),
+
+    lager:debug("dial into queue ~s, unsupported", [QueueId]),
+    {stop, Call1};
+
 dial(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
     lager:debug("dialing endpoints"),
 
@@ -225,14 +272,10 @@ dial(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
     end.
 
 setup_call_for_dial(Call, Props) ->
-    Timeout = timeout_s(Props),
-    RecordCall = should_record_call(Props),
-    HangupDTMF = hangup_dtmf(Props),
-
     Setters = [{fun whapps_call:set_caller_id_number/2, caller_id(Props, Call)}
-               ,{fun kzt_util:set_hangup_dtmf/2, HangupDTMF}
-               ,{fun kzt_util:set_record_call/2, RecordCall}
-               ,{fun kzt_util:set_call_timeout/2, Timeout}
+               ,{fun kzt_util:set_hangup_dtmf/2, hangup_dtmf(Props)}
+               ,{fun kzt_util:set_record_call/2, should_record_call(Props)}
+               ,{fun kzt_util:set_call_timeout/2, timeout_s(Props)}
                ,{fun kzt_util:set_call_time_limit/2, timelimit_s(Props)}
               ],
 
@@ -398,8 +441,9 @@ gather_finished(Call, Props) ->
             {request, lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters)}
     end.
 
-record_call(Call, Props) ->
-    ok.
+record_call(Call, _Props) ->
+    lager:debug("record_call not implemented"),
+    {stop, Call}.
 
 %%------------------------------------------------------------------------------
 %% Nouns
@@ -545,6 +589,11 @@ get_engine(Props) ->
         undefined -> whapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_provider">>, <<"flite">>);
         Engine -> Engine
     end.
+
+get_max_participants(Props) when is_list(Props) ->
+    get_max_participants(props:get_integer_value(maxParticipants, Props, 40));
+get_max_participants(N) when is_integer(N), N =< 40, N > 0 -> N.
+
 
 %% limit pause to 1 hour (3600000 ms)
 -spec pause_for/1 :: (wh_proplist()) -> 1000..3600000.
