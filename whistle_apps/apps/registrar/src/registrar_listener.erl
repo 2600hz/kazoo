@@ -23,7 +23,7 @@
 -include("reg.hrl").
 
 -define(RESPONDERS, [{{reg_query, req_query_req}, [{<<"directory">>, <<"reg_query">>}]}]).
--define(BINDINGS, [{registration, [{retrict_to, [reg_success, reg_query]}]}
+-define(BINDINGS, [{registration, [{retrict_to, [reg_query]}]}
                    ,{self, []}
                   ]).
 
