@@ -20,10 +20,13 @@
 -type api_binaries() :: [api_binary(),...] | [] | 'undefined'.
 -type api_object() :: wh_json:object() | 'undefined'.
 -type api_objects() :: wh_json:objects() | 'undefined'.
+-type api_boolean() :: boolean() | 'undefined'.
 
+-type api_number() :: number() | 'undefined'.
 -type api_integer() :: integer() | 'undefined'.
 -type api_pos_integer() :: pos_integer() | 'undefined'.
 -type api_non_neg_integer() :: non_neg_integer() | 'undefined'.
+-type api_float() :: float() | 'undefined'.
 
 -type wh_deeplist() :: iolist(). %[term() | wh_deeplist()].
 
