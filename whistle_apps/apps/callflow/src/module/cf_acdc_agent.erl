@@ -51,6 +51,7 @@ find_agent_status(Call, AgentId) ->
 fix_agent_status(<<"resume">>) -> <<"login">>;
 fix_agent_status(<<"ready">>) -> <<"login">>;
 fix_agent_status(<<"wrapup">>) -> <<"login">>;
+fix_agent_status(<<"busy">>) -> <<"login">>;
 fix_agent_status(Status) -> Status.
 
 fix_data_status(<<"pause">>) -> <<"paused">>;
@@ -60,19 +61,21 @@ maybe_update_status(Call, AgentId, _Curr, <<"logout">>, _Data) ->
     lager:debug("agent ~s wants to log out (currently: ~s)", [AgentId, _Curr]),
     logout_agent(Call, AgentId),
     play_agent_logged_out(Call);
-
-maybe_update_status(Call, AgentId, <<"login">>, <<"login">>, _Data) ->
-    lager:debug("agent ~s is already logged in", [AgentId]),
-    _ = play_agent_logged_in_already(Call),
-    send_new_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1, undefined);
-maybe_update_status(Call, AgentId, FromStatus, <<"paused">>, Data) ->
-    maybe_pause_agent(Call, AgentId, FromStatus, Data);
-
+maybe_update_status(Call, AgentId, <<"logout">>, <<"resume">>, _Data) ->
+    lager:debug("agent ~s is logged out, resuming doesn't make sense", [AgentId]),
+    play_agent_invalid(Call);
 maybe_update_status(Call, AgentId, <<"logout">>, <<"login">>, _Data) ->
     lager:debug("agent ~s wants to log in", [AgentId]),
     login_agent(Call, AgentId),
     play_agent_logged_in(Call);
 
+maybe_update_status(Call, AgentId, <<"login">>, <<"login">>, _Data) ->
+    lager:debug("agent ~s is already logged in", [AgentId]),
+    _ = play_agent_logged_in_already(Call),
+    send_new_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1, undefined);
+
+maybe_update_status(Call, AgentId, FromStatus, <<"paused">>, Data) ->
+    maybe_pause_agent(Call, AgentId, FromStatus, Data);
 maybe_update_status(Call, AgentId, <<"paused">>, <<"resume">>, _Data) ->
     lager:debug("agent ~s is coming back from pause", [AgentId]),
     resume_agent(Call, AgentId),
@@ -81,13 +84,12 @@ maybe_update_status(Call, AgentId, <<"paused">>, <<"login">>, _Data) ->
     lager:debug("agent ~s is coming back from pause", [AgentId]),
     resume_agent(Call, AgentId),
     play_agent_resume(Call);
+
 maybe_update_status(Call, _AgentId, _Status, _NewStatus, _Data) ->
     lager:debug("agent ~s: invalid status change from ~s to ~s", [_AgentId, _Status, _NewStatus]),
     play_agent_invalid(Call).
 
 maybe_pause_agent(Call, AgentId, <<"login">>, Data) ->
-    pause_agent(Call, AgentId, Data);
-maybe_pause_agent(Call, AgentId, <<"busy">>, Data) ->
     pause_agent(Call, AgentId, Data);
 maybe_pause_agent(Call, _AgentId, FromStatus, _Data) ->
     lager:debug("unable to go from ~s to paused", [FromStatus]),
