@@ -196,7 +196,7 @@ do_sofia_conf(Node, Id) ->
                                         ,wh_json:from_list(default_sip_profiles())),
     try ecallmgr_fs_xml:sip_profiles_xml(DefaultProfiles) of 
         {ok, ConfigXml} ->        
-            lager:debug("sending XML to ~s: ~s", [Node, ConfigXml]),
+            lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
             freeswitch:fetch_reply(Node, Id, erlang:iolist_to_binary(ConfigXml))
     catch
         _E:_R ->

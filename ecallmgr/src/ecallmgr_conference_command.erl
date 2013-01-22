@@ -12,7 +12,7 @@
 
 -include("ecallmgr.hrl").
 
--spec exec/3 :: (atom(), ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec exec/3 :: (atom(), ne_binary(), wh_json:object()) -> 'ok'.
 exec(Focus, ConferenceId, JObj) ->
     App = wh_json:get_value(<<"Application-Name">>, JObj),
     case get_conf_command(App, Focus, ConferenceId, JObj) of
@@ -27,12 +27,12 @@ exec(Focus, ConferenceId, JObj) ->
             send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj)
     end.
 
--spec get_conf_command/4 :: (ne_binary(), atom(), ne_binary(), wh_json:json_object()) -> {ne_binary(), binary()} | 
-                                                                                         {'error', ne_binary()} |
-                                                                                         {'noop', wh_json:json_object()}.
+-spec get_conf_command/4 :: (ne_binary(), atom(), ne_binary(), wh_json:object()) -> {ne_binary(), binary()} |
+                                                                                    {'error', ne_binary()} |
+                                                                                    {'noop', wh_json:object()}.
 get_conf_command(<<"deaf_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:deaf_participant_v(JObj) of
-        false -> 
+        false ->
             {'error', <<"conference deaf_participant failed to execute as JObj did not validate.">>};
         true ->
             {<<"deaf">>, wh_json:get_binary_value(<<"Participant">>, JObj)}
@@ -85,7 +85,7 @@ get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
             UUID = wh_json:get_ne_value(<<"Call-ID">>, JObj, ConferenceId),
             Media = list_to_binary(["'", ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID, JObj), "'"]),
             Args = case wh_json:get_value(<<"Participant">>, JObj) of
-                       undefined -> Media;                       
+                       undefined -> Media;
                        Participant -> list_to_binary([Media, " ", Participant])
                    end,
             {<<"play">>, Args}
@@ -173,9 +173,8 @@ get_conf_command(<<"participant_volume_out">>, _Focus, _ConferenceId, JObj) ->
             {<<"volume_out">>, Args}
     end.
 
--spec send_response/4 :: (ne_binary(), tuple(), undefined | ne_binary(), wh_json:json_object()) -> ok.
-send_response(_, _, undefined, _) ->
-    ok;
+-spec send_response/4 :: (ne_binary(), tuple(), api_binary(), wh_json:object()) -> ok.
+send_response(_, _, undefined, _) -> ok;
 send_response(_, {ok, <<"Non-Existant ID", _/binary>> = Msg}, RespQ, Command) ->
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
              ,{<<"Error-Message">>, binary:replace(Msg, <<"\n">>, <<>>)}
