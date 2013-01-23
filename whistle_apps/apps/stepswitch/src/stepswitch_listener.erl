@@ -143,6 +143,8 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({document_changes, <<"_design/", _/binary>>, _}, State) ->
+    {noreply, State, hibernate};
 handle_info({document_changes, DocId, [Changes]}, #state{resrcs=Resrcs}=State) ->
     Rev = wh_json:get_value(<<"rev">>, Changes),
     case lists:keysearch(DocId, #resrc.id, Resrcs) of
@@ -151,6 +153,8 @@ handle_info({document_changes, DocId, [Changes]}, #state{resrcs=Resrcs}=State) -
             lager:info("reloading offnet resource ~s", [DocId]),
             {noreply, State#state{resrcs=update_resrc(DocId, Resrcs)}, hibernate}
     end;
+handle_info({document_deleted, <<"_design/", _/binary>>}, State) ->
+    {noreply, State, hibernate};
 handle_info({document_deleted, DocId}, #state{resrcs=Resrcs}=State) ->
     case lists:keyfind(DocId, #resrc.id, Resrcs) of
         false -> {noreply, State};
