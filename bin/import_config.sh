@@ -1,4 +1,7 @@
-ear
+#!/bin/bash
+
+fWelcome () {
+    clear
     echo "======================================================="
     echo " _  _  _ _     _ _____    _    _______ _       _______ "
     echo "| || || | |   | (_____)  | |  (_______) |     (_______)"
@@ -11,9 +14,9 @@ ear
     echo
 }
 
-fWelcome
-
 cd `dirname $0`
+
+fWelcome
 
 if [ -f $1/whistle_apps/lib/whistle_couch-1.0.0/priv/startup.config ];
 then
