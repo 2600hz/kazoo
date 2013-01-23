@@ -14,8 +14,66 @@
 
 -export([get_provision_defaults/1]).
 -export([send_provisioning_template/2]).
+-export([get_merged_device/1]).
+
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".provisioner_templates">>).
+
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Do awesome provisioning
+%% @end
+%%--------------------------------------------------------------------
+get_merged_device(Context) ->
+    case merge_device(Context) of
+        {ok, Data} ->
+            {ok, Context#cb_context{doc=Data}};
+        {error, R} ->
+            {error, R}
+    end.
+
+merge_device(#cb_context{doc=JObj, account_id=AccountId}) ->
+    case get_account(AccountId) of
+        {ok, Account} ->
+            Owner = get_owner(wh_json:get_value(<<"owner_id">>, JObj), AccountId),
+            Merge = wh_json:merge_recursive(Account, JObj),
+            Merge1 = wh_json:merge_recursive(Merge, Owner),
+            Merge2 = wh_json:set_value(<<"account_id">>, AccountId, Merge1),
+            Final = wh_json:public_fields(Merge2),
+            {ok, Final};
+        {error, R} ->
+            {error, R}
+    end.
+
+get_owner(OwnerId, AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    case wh_util:is_empty(OwnerId) of
+        true ->
+            wh_json:new();
+        false ->
+            case couch_mgr:open_doc(AccountDb, OwnerId) of
+                {ok, Owner} ->
+                    Owner;
+                {error, R} ->
+                    lager:debug("unable to open user definition ~s/~s: ~p", [AccountDb, OwnerId, R]),
+                    wh_json:new()
+            end         
+    end.
+
+get_account(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {ok, Account} ->
+            {ok, Account};
+        {error, R} ->
+            lager:debug("unable to open account definition ~s/~s: ~p", [AccountDb, AccountId, R]),
+            {error, R}
+    end.
+    
+    
 
 %%--------------------------------------------------------------------
 %% @public
@@ -275,3 +333,6 @@ get_provision_defaults(#cb_context{doc=JObj}=Context) ->
             lager:debug("could not get provisioning template defaults: ~p", [_R]),
             crossbar_util:response(error, <<"Error retrieving content from external site">>, 500, Context)
     end.
+
+
+

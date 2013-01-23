@@ -148,6 +148,7 @@ merge_recursive(JObj1, ?JSON_WRAPPER(Prop2), Keys) ->
                 end, JObj1, props:get_keys(Prop2));
 merge_recursive(JObj1, Value, Keys) ->
     set_value(lists:reverse(Keys), Value, JObj1).
+
 -spec to_proplist/1 :: (object() | objects()) -> json_proplist() | [json_proplist(),...].
 -spec to_proplist/2 :: (json_string() | json_strings(), object() | objects()) -> json_proplist() | [json_proplist(),...].
 %% Convert a json object to a proplist
@@ -463,6 +464,8 @@ set_value(Key, Value, JObj) ->
 %%     set_value1(Key, Value, JObjs).
 
 -spec set_value1/3 :: (json_strings() | [integer(),...], json_term(), object() | objects()) -> object() | objects().
+set_value1([Key|_]=Keys, Value, []) when not is_integer(Key) ->
+    set_value1(Keys, Value, new());
 set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
     Key1 = wh_util:to_integer(Key),
     case Key1 > length(JObjs) of

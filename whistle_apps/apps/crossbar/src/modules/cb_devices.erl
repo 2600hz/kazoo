@@ -27,7 +27,7 @@
          ,get_all_acl_ips/0
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include_lib("crossbar.hrl").
 
 -define(QUICKCALL_URL, [{<<"devices">>, [_, <<"quickcall">>, _]}
                         ,{?WH_ACCOUNTS_DB, [_]}
@@ -36,6 +36,8 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
 -define(CB_LIST, <<"devices/crossbar_listing">>).
+
+-define(MOD_FULL_PROVISIONER, <<"crossbar.devices">>).
 
 %%%===================================================================
 %%% API
@@ -464,12 +466,49 @@ do_simple_provision(#cb_context{doc=JObj}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% post data to a provisiong server
+%% @end
+%%--------------------------------------------------------------------
+-spec do_full_provision/1 :: (#cb_context{}) -> 'ok'.
+do_full_provision(#cb_context{doc=JObj}) ->
+    case whapps_config:get_string(?MOD_FULL_PROVISIONER, <<"provisioning_url">>) of
+        undefined -> ok;
+        Url ->
+            Headers = [{K, V}
+                       || {K, V} <- [{"Host", whapps_config:get_string(?MOD_FULL_PROVISIONER, <<"provisioning_url">>)}
+                                     ,{"User-Agent", wh_util:to_list(erlang:node())}
+                                     ,{"Content-Type", "application/json"}
+                                    ]
+                              ,V =/= undefined
+                      ],
+            HTTPOptions = [],
+            Body = wh_json:encode(JObj),
+            lager:debug("posting to ~s with ~s", [Url, Body]),
+            ibrowse:send_req(Url, Headers, post, Body, HTTPOptions)
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_provision/1 :: (cb_context:context()) -> boolean().
 maybe_provision(#cb_context{resp_status=success}=Context) ->
-    spawn(fun() -> do_simple_provision(Context) end),
+    case whapps_config:get_binary(?MOD_FULL_PROVISIONER, <<"provisioning_type">>) of
+        <<"full_provisioner">> ->
+            spawn(fun() ->
+                          case provisioner_util:get_merged_device(Context) of
+                              {error, _R} ->
+                                  false;
+                              {ok, Context1} ->
+                                  do_full_provision(Context1)
+                          end
+                  end);
+        _  ->
+            spawn(fun() -> do_simple_provision(Context) end)
+    end,
     true;
 maybe_provision(_) -> false.
  
@@ -480,7 +519,7 @@ maybe_aggregate_device(#cb_context{resp_status=success, doc=JObj}=Context) ->
             DeviceId = wh_json:get_value(<<"_id">>, JObj),
             maybe_remove_aggreate(DeviceId, Context);
         true -> 
-            lager:debug("adding device to the sip auth aggregate"),
+            lager:debug("adding device to the sip auth aggregate"),            
             couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
             wapi_switch:publish_reload_acls(),
             true
