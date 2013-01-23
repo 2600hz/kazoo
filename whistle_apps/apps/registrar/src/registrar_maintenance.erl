@@ -22,8 +22,7 @@
 local_summary() ->
     {ok, Registrations} = reg_util:fetch_all_registrations(),
     _ = do_summary(Registrations, fun print_summary/1),
-    io:format("~nTotal registrations: ~b~n", [length(Registrations)]),
-    ok.
+    io:format("~nTotal registrations: ~b~n", [length(Registrations)]).
 
 -spec local_summary/1 :: (ne_binary()) -> 'ok'.
 local_summary(Realm) when not is_binary(Realm) ->
@@ -31,8 +30,7 @@ local_summary(Realm) when not is_binary(Realm) ->
 local_summary(Realm) ->
     {ok, Registrations} = reg_util:lookup_registrations(Realm),
     _ = do_summary(Registrations, fun print_summary/1),
-    io:format("~nTotal registrations: ~b~n", [length(Registrations)]),
-    ok.
+    io:format("~nTotal registrations: ~b~n", [length(Registrations)]).
 
 -spec local_summary/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 local_summary(Realm, Username) when not is_binary(Realm) ->
@@ -53,7 +51,7 @@ local_summary(Realm, Username) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec do_summary/2 :: (list(), fun((wh_json:json_object()) -> 'ok')) -> ['ok',...].
+-spec do_summary/2 :: (list(), fun((wh_json:object()) -> 'ok')) -> ['ok',...].
 do_summary(Registrations, PrintFun) ->
     [PrintFun(Registration) || Registration <- Registrations].
 
@@ -63,7 +61,7 @@ do_summary(Registrations, PrintFun) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_summary/1 :: (wh_json:json_object()) -> 'ok'.
+-spec print_summary/1 :: (wh_json:object()) -> 'ok'.
 print_summary(Registration) ->
     Username = wh_json:get_value(<<"Username">>, Registration),
     Realm = wh_json:get_value(<<"Realm">>, Registration),
