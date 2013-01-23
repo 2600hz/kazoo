@@ -122,6 +122,7 @@ agent_status(?NE_BINARY = AcctId, AgentId, ReturnDoc) ->
     Opts = [{endkey, [AgentId, 0]}
             ,{startkey, [AgentId, wh_json:new()]}
             ,{limit, 1}
+            ,{r, 2}
             ,descending
             | case ReturnDoc of true -> [include_docs]; false -> [] end
            ],

@@ -105,7 +105,7 @@
 %%%===================================================================
 %%--------------------------------------------------------------------
 %% @doc
-%%   When a queue receives a call and needs an agent, it will send a 
+%%   When a queue receives a call and needs an agent, it will send a
 %%   member_connect_req. The agent will respond (if possible) with a
 %%   member_connect_resp payload or ignore the request
 %% @end
@@ -116,7 +116,7 @@ member_connect_req(FSM, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%   When a queue receives a call and needs an agent, it will send a 
+%%   When a queue receives a call and needs an agent, it will send a
 %%   member_connect_req. The agent will respond (if possible) with a
 %%   member_connect_resp payload or ignore the request
 %% @end
@@ -308,7 +308,6 @@ init([AcctId, AgentId, Supervisor, Props, IsThief]) ->
                       ,agent_id=AgentId
                       ,fsm_call_id=FSMCallId
                      }}.
-
 
 wait_for_listener(Supervisor, FSM, Props, IsThief) ->
     case acdc_agent_sup:agent(Supervisor) of
@@ -579,7 +578,7 @@ ringing({originate_uuid, ACallId}, #state{agent_proc=Srv}=State) ->
     lager:debug("recv agent call id ~s", [ACallId]),
     acdc_agent:agent_call_id(Srv, ACallId),
     {next_state, ringing, State#state{agent_call_id=ACallId}};
-    
+
 ringing({originate_started, ACallId}, #state{agent_proc=Srv
                                           ,member_call_id=MCallId
                                          }=State) ->
@@ -1296,7 +1295,7 @@ clear_call(#state{fsm_call_id=FSMCallId
 -spec current_call/4 :: (whapps_call:call() | 'undefined', atom(), ne_binary(), 'undefined' | wh_now()) ->
                                 wh_json:object() | 'undefined'.
 current_call(undefined, _, _, _) -> undefined;
-current_call(Call, AgentState, QueueId, Start) -> 
+current_call(Call, AgentState, QueueId, Start) ->
     wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
                        ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
                        ,{<<"caller_id_number">>, whapps_call:caller_id_name(Call)}
@@ -1341,7 +1340,7 @@ maybe_stop_timer(ConnRef) ->
 
 maybe_stop_timer(TimerRef, true) -> maybe_stop_timer(TimerRef);
 maybe_stop_timer(_, false) -> ok.
-    
+
 -spec wrapup_left/1 :: (fsm_state() | reference() | 'undefined') -> non_neg_integer() | 'false'.
 wrapup_left(undefined) -> 0;
 wrapup_left(WRef) when is_reference(WRef) -> erlang:read_timer(WRef);
