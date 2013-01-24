@@ -255,9 +255,9 @@ handle_info(Info, State) ->
 %% Description: Shutdown the server
 %% Returns: any (ignored by gen_server)
 %%--------------------------------------------------------------------
-terminate(_Reason, State) ->
+terminate(_Reason, #state{prev_req_id = Prev_req_id}=State) ->
     do_close(State),
-    ok.
+    ets:delete(ibrowse_stream, {req_id_pid, Prev_req_id}).
 
 %%--------------------------------------------------------------------
 %% Func: code_change/3
@@ -562,13 +562,13 @@ do_send_body(Body, State, _TE) ->
 
 do_send_body1(Source, Resp, State, TE) ->
     case Resp of
-		{ok, Data} when Data == []; Data == <<>> ->
-			do_send_body({Source}, State, TE);
+                {ok, Data} when Data == []; Data == <<>> ->
+                        do_send_body({Source}, State, TE);
         {ok, Data} ->
             do_send(maybe_chunked_encode(Data, TE), State),
             do_send_body({Source}, State, TE);
-		{ok, Data, New_source_state} when Data == []; Data == <<>> ->
-			do_send_body({Source, New_source_state}, State, TE);
+                {ok, Data, New_source_state} when Data == []; Data == <<>> ->
+                        do_send_body({Source, New_source_state}, State, TE);
         {ok, Data, New_source_state} ->
             do_send(maybe_chunked_encode(Data, TE), State),
             do_send_body({Source, New_source_state}, State, TE);
@@ -1013,37 +1013,37 @@ parse_response(Data, #state{reply_buffer = Acc, reqs = Reqs,
             ConnClose = to_lower(get_value("connection", LCHeaders, "false")),
             IsClosing = is_connection_closing(HttpVsn, ConnClose),
             State_0 = case IsClosing of
-			  true ->
-			      shutting_down(State),
-			      State#state{is_closing = IsClosing};
-			  false ->
-			      State
-		      end,
+                          true ->
+                              shutting_down(State),
+                              State#state{is_closing = IsClosing};
+                          false ->
+                              State
+                      end,
             Give_raw_headers = get_value(give_raw_headers, Options, false),
             State_1 = case Give_raw_headers of
                           true ->
                               State_0#state{recvd_headers=Headers_1, status=get_body,
-					    reply_buffer = <<>>,
-					    status_line = Status_line,
-					    raw_headers = Raw_headers,
-					    http_status_code=StatCode};
+                                            reply_buffer = <<>>,
+                                            status_line = Status_line,
+                                            raw_headers = Raw_headers,
+                                            http_status_code=StatCode};
                           false ->
                               State_0#state{recvd_headers=Headers_1, status=get_body,
-					    reply_buffer = <<>>,
-					    http_status_code=StatCode}
+                                            reply_buffer = <<>>,
+                                            http_status_code=StatCode}
                       end,
             put(conn_close, ConnClose),
             TransferEncoding = to_lower(get_value("transfer-encoding", LCHeaders, "false")),
-	    Head_response_with_body = lists:member({workaround, head_response_with_body}, Options),
+            Head_response_with_body = lists:member({workaround, head_response_with_body}, Options),
             case get_value("content-length", LCHeaders, undefined) of
                 _ when Method == connect,
                        hd(StatCode) == $2 ->
                     {_, Reqs_1} = queue:out(Reqs),
                     cancel_timer(T_ref),
                     upgrade_to_ssl(set_cur_request(State_0#state{reqs = Reqs_1,
-								 recvd_headers = [],
-								 status = idle
-								}));
+                                                                 recvd_headers = [],
+                                                                 status = idle
+                                                                }));
                 _ when Method == connect ->
                     {_, Reqs_1} = queue:out(Reqs),
                     do_error_reply(State#state{reqs = Reqs_1},
@@ -1064,7 +1064,7 @@ parse_response(Data, #state{reply_buffer = Acc, reqs = Reqs,
                     State_2 = reset_state(State_1_1),
                     State_3 = set_cur_request(State_2#state{reqs = Reqs_1}),
                     parse_response(Data_1, State_3);
-		_ when Method =:= head ->
+                _ when Method =:= head ->
                     {_, Reqs_1} = queue:out(Reqs),
                     send_async_headers(ReqId, StreamTo, Give_raw_headers, State_1),
                     State_1_1 = do_reply(State_1, From, StreamTo, ReqId, Resp_format,
