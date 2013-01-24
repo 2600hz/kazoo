@@ -419,11 +419,11 @@ handle_info({connect, Timeout}, #state{broker=Broker, broker_name=Name}=State) -
     Params = wh_amqp_broker:params(Broker),
     case amqp_connection:start(Params) of
         {error, auth_failure} ->
-            lager:debug("authentication failure coonection to broker '~s',  will retry in ~p", [Name, Timeout]),
+            lager:warning("amqp authentication failure with '~s', will retry in ~p", [Name, Timeout]),
             _Ref = erlang:send_after(Timeout, self(), {connect, next_timeout(Timeout)}),
             {noreply, State#state{connection=undefined}, hibernate};
         {error, _Reason} ->
-            lager:debug("failed to connect to AMQP broker '~s' will retry in ~p: ~p", [Name, Timeout, _Reason]),
+            lager:warning("failed to connect to '~s' will retry in ~p: ~p", [Name, Timeout, _Reason]),
             _Ref = erlang:send_after(Timeout, self(), {connect, next_timeout(Timeout)}),
             {noreply, State#state{connection=undefined}, hibernate};
         {ok, Connection} ->
@@ -433,12 +433,12 @@ handle_info({connect, Timeout}, #state{broker=Broker, broker_name=Name}=State) -
                 #wh_amqp_channel{}=MiscChannel = start_channel(Connection),
                 ets:insert(Name, PublishChannel#wh_amqp_channel{consumer = publish}),
                 ets:insert(Name, MiscChannel#wh_amqp_channel{consumer = misc}),
-                lager:info("connected to AMQP broker '~s'", [Name]),
+                lager:info("connected successfully to '~s'", [Name]),
                 gen_server:cast(wh_amqp_mgr, {broker_available, Name}),
                 {noreply, State#state{connection = {Connection, Ref}}, hibernate}
             catch
                 _:_ ->
-                    lager:debug("unable to initialize publish channel on AMQP broker '~s' will retry in ~p", [Name, Timeout]),
+                    lager:warning("unable to initialize amqp publish channel on '~s' will retry in ~p", [Name, Timeout]),
                     erlang:demonitor(Ref, [flush]),
                     _Ref = erlang:send_after(Timeout, self(), {connect, next_timeout(Timeout)}),
                     {noreply, State#state{connection=undefined}, hibernate}

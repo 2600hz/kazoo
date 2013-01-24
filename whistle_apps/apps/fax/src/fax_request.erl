@@ -289,7 +289,7 @@ attachment_url(Call, File, FaxDocId) ->
               {ok, R} -> <<"?rev=", R/binary>>;
               _ -> <<>>
           end,
-    list_to_binary([couch_mgr:get_url(), AccountDb, "/", FaxDocId, "/", File, Rev]).
+    list_to_binary([wh_couch_connections:get_url(), AccountDb, "/", FaxDocId, "/", File, Rev]).
 
 
 -spec tmp_file/0 :: () -> ne_binary().

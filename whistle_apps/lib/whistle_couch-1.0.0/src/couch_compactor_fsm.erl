@@ -198,7 +198,7 @@ init([]) ->
 
     maybe_start_auto_compaction_job(),
 
-    {ok, ready, #state{cookie=wh_util:to_atom(couch_config:fetch(<<"bigcouch_cookie">>, <<"monster">>), true)
+	{ok, ready, #state{cookie=wh_util:to_atom(wh_couch_connections:get_node_cookie(), true)
                        ,conn=undefined
                        ,admin_conn=undefined
                       }}.
@@ -891,7 +891,7 @@ wait_for_compaction(AdminConn, S, {ok, ShardData}) ->
 get_node_connections(N, Cookie) ->
     [_, Host] = binary:split(N, <<"@">>),
 
-    {User,Pass} = couch_mgr:get_creds(),
+    {User,Pass} = wh_couch_connections:get_creds(),
     {Port, AdminPort} = get_ports(wh_util:to_atom(N, true), Cookie),
 
     get_node_connections(Host, Port, User, Pass, AdminPort).
@@ -904,19 +904,19 @@ get_node_connections(Host, Port, User, Pass, AdminPort) ->
 get_ports(Node, Cookie) ->
     erlang:set_cookie(Node, Cookie),
     case net_adm:ping(Node) =:= pong andalso get_ports(Node) of
-        false -> {couch_mgr:get_port(), couch_mgr:get_admin_port()};
+        false -> {wh_couch_connections:get_port(), wh_couch_connections:get_admin_port()};
         Ports -> Ports
     end.
 
 get_ports(Node) ->
-    try {get_port(Node, ["chttpd", "port"], fun couch_mgr:get_port/0)
-         ,get_port(Node, ["httpd", "port"], fun couch_mgr:get_admin_port/0)
+    try {get_port(Node, ["chttpd", "port"], fun wh_couch_connections:get_port/0)
+         ,get_port(Node, ["httpd", "port"], fun wh_couch_connections:get_admin_port/0)
         } of
         Ports -> Ports
     catch
         _E:_R ->
             lager:debug("failed to get ports: ~s: ~p", [_E, _R]),
-            {couch_mgr:get_port(), couch_mgr:get_admin_port()}
+            {wh_couch_connections:get_port(), wh_couch_connections:get_admin_port()}
     end.
 
 get_port(Node, Key, DefaultFun) ->

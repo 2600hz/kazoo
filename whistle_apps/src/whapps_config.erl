@@ -21,9 +21,8 @@
 -export([get_non_empty/2, get_non_empty/3, get_non_empty/4]).
 
 -export([set/3, set/4, set_default/3]).
--export([flush/0, flush/1, flush/2, flush/3
-         ,import/1, couch_ready/0
-        ]).
+-export([flush/0, flush/1, flush/2, flush/3]).
+-export([import/1]).
 
 -type config_category() :: ne_binary() | nonempty_string() | atom().
 -type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
@@ -369,9 +368,6 @@ fetch_category(Category, Cache) ->
 -spec fetch_db_config/2 :: (ne_binary(), atom()) -> fetch_ret().
 fetch_db_config(Category, Cache) ->
     lager:debug("fetch db config for ~s", [Category]),
-    fetch_db_config(Category, Cache, wh_cache:fetch_local(Cache, couch_ready_key())).
-
-fetch_db_config(Category, Cache, {ok, true}) ->
     case couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj}=Ok ->
             wh_cache:store_local(Cache, category_key(Category), JObj),
@@ -382,10 +378,7 @@ fetch_db_config(Category, Cache, {ok, true}) ->
         {error, _E} ->
             lager:debug("could not fetch config ~s from db: ~p", [Category, _E]),
             {ok, wh_json:new()}
-    end;
-fetch_db_config(_Category, _Cache, _) ->
-    lager:debug("couch_mgr not ready to query db"),
-    {'error', 'not_found'}.
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -401,16 +394,16 @@ fetch_file_config(Category, Cache) ->
         {ok, Terms} ->
             JObj = config_terms_to_json(Terms),
             UpdateFun = fun(J) ->
-                                lager:debug("initializing ~s from ~s", [Category, File]),
+                                lager:info("initializing ~s system config with defaults from ~s", [Category, File]),
                                 DefaultConfig = wh_json:get_value(<<"default">>, J, wh_json:new()),
                                 wh_json:merge_jobjs(DefaultConfig, JObj)
                         end,
             update_category_node(Category, <<"default">>, UpdateFun, Cache);
         {error, enoent} ->
-            lager:debug("failed to find a file for category ~s, ignoring", [Category]),
+            lager:warning("failed to find defaults for category ~s, ignoring", [Category]),
             {ok, wh_json:new()};
         {error, _E} ->
-            lager:debug("initializing category ~s without configuration: ~p", [Category, _E]),
+            lager:warning("initializing ~s system config without defaults: ~p", [Category, _E]),
             UpdateFun = fun(J) ->
                                 wh_json:set_value(<<"default">>, wh_json:new(), J)
                         end,
@@ -461,22 +454,18 @@ do_set(Category0, Keys, Value, Node0) ->
 -spec update_category_node/4 :: (ne_binary(), ne_binary(), update_fun(), atom()) ->
                                         {'ok', wh_json:object()}.
 update_category_node(Category, Node, UpdateFun, Cache) ->
-    DBReady = case wh_cache:fetch_local(Cache, couch_ready_key()) of
-                  {ok, true} -> true;
-                  _ -> false
-              end,
-    case DBReady andalso couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
+    case couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj} ->
             case wh_json:set_value(Node, UpdateFun(JObj), JObj) of
                 JObj -> {ok, JObj};
                 UpdatedCat -> update_category(Category, UpdatedCat, Cache)
             end;
-        {error, _E} ->
-            lager:debug("failed to find category in DB: ~p", [_E]),
+        {error, not_found} ->
+            lager:debug("failed to find category in DB", []),
             NewCat = wh_json:set_value(Node, UpdateFun(wh_json:new()), wh_json:new()),
             update_category(Category, NewCat, Cache);
-        false ->
-            lager:debug("couch_mgr hasn't started; just cache the json object"),
+        {error, _Reason} ->
+            lager:warning("failed to find ~s in system config (just updating cache): ~p", [Category, _Reason]),
             case wh_cache:peek_local(Cache, category_key(Category)) of
                 {ok, JObj} ->
                     case wh_json:set_value(Node, UpdateFun(JObj), JObj) of
@@ -511,9 +500,11 @@ update_category(Category, JObj, Cache, Looped) ->
             lager:debug("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),
             cache_jobj(Cache, Category, SavedJObj);
         {error, not_found} when not Looped ->
+            lager:debug("attempting to create ~s DB", [?WH_CONFIG_DB]),
             couch_mgr:db_create(?WH_CONFIG_DB),
             update_category(Category, JObj, Cache, true);
-        {error, _} ->
+        {error, _R} ->
+            lager:warning("unable to update ~s system config doc: ~p", [Category, _R]),
             cache_jobj(Cache, Category, JObj1)
     end.
 
@@ -570,20 +561,6 @@ category_to_file(<<"crossbar.shared_auth">>) ->
     [code:lib_dir(crossbar, priv), "/shared_auth/shared_auth.config"];
 category_to_file(_) ->
     undefined.
-
-couch_ready() ->
-    case whereis(couch_mgr) =:= self() of
-        true ->
-            wh_cache:store_local(?WHAPPS_CONFIG_CACHE, couch_ready_key(), true
-                                 ,fun(_, _, _) ->
-                                          couch_mgr:load_configs()
-                                  end);
-        false ->
-            ok
-    end.
-
-couch_ready_key() ->
-    {?MODULE, couch_mgr_ready}.
 
 -spec category_key/1 :: (Cat) -> {?MODULE, Cat}.
 category_key(Category) ->

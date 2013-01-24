@@ -1,16 +1,11 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% Karls Hackity Hack....
-%%% We want to block during startup until we have a AMQP connection
-%%% but due to the way wh_amqp_mgr is structured we cant block in
-%%% init there.  So this module will bootstrap wh_amqp_mgr
-%%% and block until a connection becomes available, after that it
-%%% removes itself....
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(wh_amqp_bootstrap).
+-module(wh_couch_bootstrap).
 
 -behaviour(gen_server).
 
@@ -23,11 +18,9 @@
          ,code_change/3
         ]).
 
--include("amqp_util.hrl").
+-include_lib("whistle_couch/include/wh_couch.hrl").
 
 -define(SERVER, ?MODULE).
--define(STARTUP_FILE, [code:lib_dir(whistle_amqp, priv), "/startup.config"]).
-
 -record(state, {}).
 
 %%%===================================================================
@@ -61,17 +54,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
-    Init = get_config(),
-    UseFederation = props:get_value(use_federation, Init, false),
-    URIs = case props:get_value(amqp_uri, Init, ?DEFAULT_AMQP_URI) of
-               URI = "amqp://"++_ -> [URI];
-               URI = "amqps://"++_ -> [URI];
-               URI when is_list(URI) -> URI
-           end,
-    _ = [gen_server:cast(wh_amqp_mgr, {add_broker, Uri, UseFederation}) || Uri <- URIs],
-    lager:info("waiting for first amqp connection...", []),
-    wh_amqp_mgr:wait_for_available_host(),
-    lager:debug("connected to: ~p", [wh_amqp_mgr:get_connection()]),
+    {ok, Config} = get_config(),
+    wh_couch_connections:add(Config),
+    lager:info("waiting for first bigcouch/haproxy connection...", []),
+    wh_couch_connections:wait_for_connection(),
     {ok, #state{}, 100}.
 
 %%--------------------------------------------------------------------
@@ -115,7 +101,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, State) ->
-    _ = wh_amqp_sup:stop_bootstrap(),
+%%    _ = wh_couch_sup:stop_bootstrap(),
     {noreply, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -133,7 +119,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("amqp bootstrap terminating: ~p", [_Reason]).
+    lager:debug("couch bootstrap terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -151,14 +137,30 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec get_config/0 :: () -> wh_proplist().
 get_config() ->
-    case file:consult(?STARTUP_FILE) of
+    case file:consult(?CONFIG_FILE_PATH) of
         {ok, Startup} ->
-            lager:info("successfully loaded amqp config ~s", [?STARTUP_FILE]),
-            Startup;
-        {error, enoent} ->
-            lager:error("amqp config ~s is missing", [?STARTUP_FILE]),
-            [];
-        {error, _E} ->
-            lager:error("failed to load amqp config ~s: ~p", [?STARTUP_FILE, _E]),
-            []
+            lager:info("successfully loaded couch config ~s", [?CONFIG_FILE_PATH]),
+            DefaultHost = props:get_value(default_couch_host, Startup),
+            CouchHost = props:get_value(couch_host, Startup),
+            {ok, lists:foldr(fun(Props, C) -> import_config(Props, C) end
+                             ,#wh_couch_connection{}
+                             ,[DefaultHost, CouchHost])};
+        {error, enoent}=E ->
+            lager:error("couch config ~s is missing", [?CONFIG_FILE_PATH]),
+            E;
+        {error, _E}=E ->
+            lager:error("failed to load couch config ~s: ~p", [?CONFIG_FILE_PATH, _E]),
+            E
     end.
+
+import_config({Host}, Connection) ->
+    wh_couch_connection:config(Host, Connection);
+import_config({Host, Port}, Connection) ->
+    wh_couch_connection:config(Host, Port, Connection);
+import_config({Host, User, Pass}, Connection) ->
+    wh_couch_connection:config(Host, User, Pass, Connection);
+import_config({Host, Port, User, Pass}, Connection) ->
+    wh_couch_connection:config(Host, Port, User, Pass, Connection);
+import_config({Host, Port, User, Pass, AdminPort}, Connection) ->
+    Connection;
+import_config(undefined, Connection) -> Connection.

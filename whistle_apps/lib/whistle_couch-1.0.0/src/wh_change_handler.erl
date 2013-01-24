@@ -7,7 +7,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(change_handler).
+-module(wh_change_handler).
 
 -behaviour(gen_changes).
 
