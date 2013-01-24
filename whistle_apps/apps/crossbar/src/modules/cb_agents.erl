@@ -54,6 +54,7 @@
 -define(AGENT_STATUS_HANDLING, <<"handling">>).
 -define(AGENT_STATUS_WRAPUP, <<"wrapup">>).
 -define(AGENT_STATUS_PAUSED, <<"paused">>).
+-define(AGENT_STATUS_LOGIN, <<"login">>).
 -define(AGENT_STATUS_LOGOUT, <<"logout">>).
 
 -define(CB_LIST, <<"agents/crossbar_listing">>).
@@ -380,6 +381,7 @@ add_stat(Stat, {Compressed, Global, PerAgent}, ?STAT_AGENTS_MISSED = Status) ->
     };
 add_stat(Stat, {Compressed, Global, PerAgent}, Status) when
       Status =:= ?AGENT_STATUS_READY;
+      Status =:= ?AGENT_STATUS_LOGIN;
       Status =:= ?AGENT_STATUS_BUSY;
       Status =:= ?AGENT_STATUS_LOGOUT;
       Status =:= ?AGENT_STATUS_PAUSED;
@@ -433,6 +435,9 @@ complex_agent_status(Stat, ?AGENT_STATUS_LOGOUT = Status, AID) ->
       [{[AID, <<"current">>, <<"status">>], Status}
        ,{[AID, <<"current">>, <<"status_started">>], wh_json:get_value(<<"timestamp">>, Stat)}
       ]);
+complex_agent_status(_Stat, ?AGENT_STATUS_LOGIN = _Status, AID) ->
+    props:filter_undefined(
+      [{[AID, <<"current">>, <<"status">>], ?AGENT_STATUS_READY}]);
 complex_agent_status(Stat, ?AGENT_STATUS_HANDLING = Status, AID) ->
     props:filter_undefined(
       [{[AID, <<"current">>, <<"status">>], Status}

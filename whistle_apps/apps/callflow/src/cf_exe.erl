@@ -51,7 +51,7 @@
 
 -record(state, {call = whapps_call:new() :: whapps_call:call()
                 ,flow = wh_json:new() :: wh_json:object()
-                ,cf_module_pid = 'undefined' :: 'undefined' | pid()
+                ,cf_module_pid :: pid()
                 ,status = <<"sane">> :: ne_binary()
                }).
 
@@ -256,15 +256,19 @@ init([Call]) ->
 
     Flow = whapps_call:kvs_fetch(cf_flow, Call),
     Self = self(),
-    spawn(fun() ->
-                  ControllerQ = queue_name(Self),
-                  gen_listener:cast(Self, {controller_queue, ControllerQ})
-          end),
+    my_queue(Self),
     Updaters = [fun(C) -> whapps_call:kvs_store(cf_exe_pid, Self, C) end
                 ,fun(C) -> whapps_call:call_id_helper(fun cf_exe:callid/2, C) end
                 ,fun(C) -> whapps_call:control_queue_helper(fun cf_exe:control_queue/2, C) end
                ],
     {ok, #state{call=lists:foldr(fun(F, C) -> F(C) end, Call, Updaters), flow=Flow}}.
+
+my_queue() ->
+    my_queue(self()).
+my_queue(Srv) ->
+    spawn(fun() ->
+                  gen_listener:cast(Srv, {controller_queue, queue_name(Srv)})
+          end).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -387,6 +391,9 @@ handle_cast({add_event_listener, {M, F, A}}, #state{call=Call}=State) ->
             {noreply, State}
     end;
 
+handle_cast({controller_queue, undefined}, State) ->
+    my_queue(),
+    {noreply, State};
 handle_cast({controller_queue, ControllerQ}, #state{call=Call}=State) ->
     {noreply, launch_cf_module(State#state{call=whapps_call:set_controller_queue(ControllerQ, Call)})};
 
