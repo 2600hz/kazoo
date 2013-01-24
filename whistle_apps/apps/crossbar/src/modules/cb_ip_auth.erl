@@ -67,7 +67,7 @@ resource_exists() -> true.
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate/1 :: (#cb_context{}) -> 'false' | {'true', #cb_context{}}.
-authenticate(#cb_context{req_nouns=[{<<"ip_auth">>, _}], client_ip=IpKey}=Context) ->
+authenticate(#cb_context{req_nouns=[{<<"ip_auth">>, _}]}) ->
     lager:debug("request is for the ip_auth module", []),
     true;
 authenticate(#cb_context{client_ip=IpKey}=Context) ->
