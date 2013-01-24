@@ -40,6 +40,7 @@ handle(Data, Call) ->
 
                 maybe_update_status(Call, AgentId, Status, NewStatus, Data)
         end,
+    lager:info("finished with acdc agent callflow"),
     cf_exe:continue(Call).
 
 -spec find_agent_status/2 :: (whapps_call:call() | ne_binary(), ne_binary()) -> ne_binary().
