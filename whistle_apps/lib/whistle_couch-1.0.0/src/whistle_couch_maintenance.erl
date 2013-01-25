@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(couch_maintenance).
+-module(whistle_couch_maintenance).
 
 -export([start_auto_compaction/0
          ,stop_auto_compaction/0
@@ -20,7 +20,7 @@
          ,compact_db/2
 
          ,test_connection/0
-         ,test_admin_connection/0
+         ,test_admin_connection/0         
         ]).
 
 start_auto_compaction() ->
@@ -51,7 +51,7 @@ cancel_compaction_jobs() ->
     couch_compactor_fsm:cancel_all_jobs().
 
 test_connection() ->
-    couch_mgr:test_conn().
+    wh_couch_connections:test_conn().
 
 test_admin_connection() ->
-    couch_mgr:test_admin_conn().
+    wh_couch_connections:test_admin_conn().

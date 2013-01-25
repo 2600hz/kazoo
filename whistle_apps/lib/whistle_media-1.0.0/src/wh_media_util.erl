@@ -13,7 +13,7 @@
 -include("whistle_media.hrl").
     
 base_url(Host) ->            
-    Port = couch_mgr:get_port(),
+    Port = wh_couch_connections:get_port(),
     base_url(Host, Port).
 
 base_url(Host, Port) ->
@@ -23,7 +23,7 @@ base_url(Host, Port, direct_playback) ->
     case whapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_playback">>, false) of    
         false -> build_url(Host, Port, [], []);
         true ->
-            {Username, Password} = couch_mgr:get_creds(),
+            {Username, Password} = wh_couch_connections:get_creds(),
             build_url(Host, Port, Username, Password)
     end;
 base_url(Host, Port, proxy_playback) ->
@@ -38,7 +38,7 @@ base_url(Host, Port, direct_store) ->
     case whapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_store">>, true) of
         false -> build_url(Host, Port, [], []);
         true ->
-            {Username, Password} = couch_mgr:get_creds(),
+            {Username, Password} = wh_couch_connections:get_creds(),
             build_url(Host, Port, Username, Password)
     end;
 base_url(Host, Port, proxy_store) ->

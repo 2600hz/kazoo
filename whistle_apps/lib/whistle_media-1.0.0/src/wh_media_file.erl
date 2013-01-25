@@ -107,12 +107,12 @@ maybe_local_haproxy_uri(JObj, Db, Id, Attachment) ->
         false -> maybe_media_manager_proxy_uri(JObj, Db, Id, Attachment);
         true ->
             lager:debug("using local haproxy as proxy"),
-            DefaultHost = case couch_mgr:get_host() of
+            DefaultHost = case wh_couch_connections:get_host() of
                               "localhost" -> wh_network_utils:get_hostname();
                               Else -> Else
                           end,
             Host = whapps_config:get_binary(?CONFIG_CAT, <<"bigcouch_host">>, wh_util:to_binary(DefaultHost)),
-            Port = whapps_config:get_binary(?CONFIG_CAT, <<"bigcouch_port">>, couch_mgr:get_port()),
+            Port = whapps_config:get_binary(?CONFIG_CAT, <<"bigcouch_port">>, wh_couch_connections:get_port()),
             StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
             Permissions = case StreamType =:= <<"store">> of
                               true -> direct_store;

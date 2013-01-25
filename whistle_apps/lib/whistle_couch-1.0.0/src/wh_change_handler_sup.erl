@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(change_mgr_sup).
+-module(wh_change_handler_sup).
 
 -behaviour(supervisor).
 
@@ -57,7 +57,7 @@ start_handler(Db, Options) ->
 %%--------------------------------------------------------------------
 init([]) ->
     RestartStrategy = simple_one_for_one,
-    MaxRestarts = 1,
+    MaxRestarts = 3,
     MaxSecondsBetweenRestarts = 5,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
@@ -66,8 +66,8 @@ init([]) ->
     Shutdown = 2000,
     Type = worker,
 
-    AChild = {change_handler, {change_handler, start_link, []},
-              Restart, Shutdown, Type, [change_handler]},
+    AChild = {wh_change_handler, {wh_change_handler, start_link, []},
+              Restart, Shutdown, Type, [wh_change_handler]},
 
     {ok, {SupFlags, [AChild]}}.
 

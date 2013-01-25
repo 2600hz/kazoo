@@ -29,4 +29,4 @@ single_attachment_url(AccountDb, MediaId, AttachmentName) ->
               {ok, R} -> <<"?rev=", R/binary>>;
               _ -> <<>>
           end,
-    list_to_binary([couch_mgr:get_url(), AccountDb, <<"/">>, MediaId, <<"/">>, AttachmentName, Rev]).
+    list_to_binary([wh_couch_connections:get_url(), AccountDb, <<"/">>, MediaId, <<"/">>, AttachmentName, Rev]).

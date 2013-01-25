@@ -7,19 +7,14 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(change_handler).
+-module(wh_change_handler).
 
--behaviour(gen_changes).
+-behaviour(wh_gen_changes).
 
-%% API
--export([start_link/2
-         ,stop/1
-         ,add_listener/2, add_listener/3
-         ,rm_listener/3
-         ,alert_listeners/2 % internal
-        ]).
-
-%% gen_server callbacks
+-export([start_link/2]).
+-export([stop/1]).
+-export([add_listener/3]).
+-export([rm_listener/3]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -28,6 +23,7 @@
          ,terminate/2
          ,code_change/3
         ]).
+-export([alert_listeners/2]).
 
 -include("wh_couch.hrl").
 
@@ -38,6 +34,7 @@
           ,monitor_ref = 'undefined' :: 'undefined' | reference()
           ,doc = <<>> :: binary()
          }).
+
 -record(state, {
           listeners = [] :: [#listener{},...] | []
           ,db = <<>> :: binary()
@@ -56,22 +53,22 @@
 %%--------------------------------------------------------------------
 -spec start_link/2 :: (db(), proplist()) -> startlink_ret().
 start_link(#db{name=DbName}=Db, Options) ->
-    gen_changes:start_link(?MODULE, Db, [continuous % we want the continuous feed
-                                         ,{heartbeat, 500} % keep the connection alive
-                                         | Options
-                                        ], [DbName]).
+    wh_gen_changes:start_link(?MODULE, Db, [longpoll % we want the continuous feed
+                                            ,{heartbeat, 500} % keep the connection alive
+                                            | Options
+                                           ], [DbName]).
 
+-spec stop/1 :: (atom() | pid()) -> 'ok'.
 stop(Srv) ->
-    gen_changes:stop(Srv).
+    wh_gen_changes:stop(Srv).
 
-add_listener(Srv, Pid) ->
-    add_listener(Srv, Pid, <<>>).
-
+-spec add_listener/3 :: (atom() | pid(), pid(), binary()) -> 'added' | 'exists'.
 add_listener(Srv, Pid, Doc) ->
-    gen_changes:cast(Srv, {add_listener, Pid, Doc}).
+    wh_gen_changes:call(Srv, {add_listener, Pid, Doc}).
 
+-spec rm_listener/3 :: (atom() | pid(), pid(), binary()) -> 'ok'.
 rm_listener(Srv, Pid, Doc) ->
-    gen_changes:cast(Srv, {rm_listener, Pid, Doc}).
+    wh_gen_changes:cast(Srv, {rm_listener, Pid, Doc}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -107,6 +104,16 @@ init([DbName]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({add_listener, Pid, Doc}, _From, #state{listeners=Ls}=State) ->
+    case lists:any(fun(#listener{pid=Pid1, doc=Doc1}) when Pid =:= Pid1 andalso Doc =:= Doc1 -> true;
+                      (_) -> false
+                   end, Ls) of
+        true -> {reply, exists, State};
+        false ->
+            lager:debug("adding listener(~p) for ~s", [Pid, case Doc of <<>> -> <<"_all_docs">>; Else -> Else end]),
+            Ref = erlang:monitor(process, Pid),
+            {reply, added, State#state{listeners=[#listener{pid=Pid,doc=Doc,monitor_ref=Ref} | Ls]}, hibernate}
+    end;
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -120,20 +127,14 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({add_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
-    case lists:any(fun(#listener{pid=Pid1, doc=Doc1}) when Pid =:= Pid1 andalso Doc =:= Doc1 -> true;
-                      (_) -> false
-                   end, Ls) of
-        true -> {noreply, State};
-        false ->
-            lager:debug("adding listener(~p) for ~s", [Pid, case Doc of <<>> -> <<"_all_docs">>; Else -> Else end]),
-            Ref = erlang:monitor(process, Pid),
-            {noreply, State#state{listeners=[#listener{pid=Pid,doc=Doc,monitor_ref=Ref} | Ls]}, hibernate}
-    end;
 handle_cast({rm_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
     lager:debug("remove listener(~p) for ~s", [Pid, case Doc of <<>> -> <<"_all_docs">>; Else -> Else end]),
-    Ls1 = [ V || V <- Ls, keep_listener(V, Doc, Pid)],
-    {noreply, State#state{listeners=Ls1}, hibernate}.
+    case [ V || V <- Ls, keep_listener(V, Doc, Pid)] of
+        [] ->
+            {stop, normal, State#state{listeners=[]}};
+        Ls1 ->
+            {noreply, State#state{listeners=Ls1}, hibernate}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -147,8 +148,12 @@ handle_cast({rm_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _Ref, process, Pid, Info}, #state{listeners=Ls}=State) ->
     lager:debug("change listener(~p) went down: ~p", [Pid, Info]),
-    Ls1 = [ V || V <- Ls, keep_listener(V, Pid)],
-    {noreply, State#state{listeners=Ls1}, hibernate};
+    case [ V || V <- Ls, keep_listener(V, Pid)] of
+        [] ->
+            {stop, normal, State#state{listeners=[]}};
+        Ls1 ->
+            {noreply, State#state{listeners=Ls1}, hibernate}
+    end;
 handle_info({error, {_, connection_closed}}, State) ->
     lager:debug("connection closed on us, so sad"),
     {stop, connection_closed, State};
@@ -218,6 +223,7 @@ keep_listener(#listener{pid=Pid, doc=Doc, monitor_ref=Ref}, Doc, Pid) ->
     false;
 keep_listener(_, _, _) -> true.
 
+-spec alert_listeners/2 :: (wh_json:object(), [#listener{},...]) -> 'ok'.
 alert_listeners(JObj, Ls) ->
     DocID = wh_json:get_value(<<"id">>, JObj),
     Msg = case wh_json:is_true(<<"deleted">>, JObj, false) of
@@ -229,8 +235,10 @@ alert_listeners(JObj, Ls) ->
                   {document_deleted, DocID}
           end,
 
-    [ Pid ! Msg || #listener{pid=Pid, doc=D} <- Ls, is_listener_interested(D, DocID)].
+    _ = [ Pid ! Msg || #listener{pid=Pid, doc=D} <- Ls, is_listener_interested(D, DocID)],
+    ok.
 
+-spec is_listener_interested/2 :: (binary(), binary()) -> boolean().
 is_listener_interested(<<>>, _) -> true;
 is_listener_interested(DocID, DocID) -> true;
 is_listener_interested(_, _) -> false.

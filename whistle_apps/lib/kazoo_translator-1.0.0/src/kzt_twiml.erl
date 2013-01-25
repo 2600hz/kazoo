@@ -1103,7 +1103,7 @@ store_url(Call, JObj) ->
     MediaName = wh_json:get_value(<<"name">>, JObj),
 
     Rev = wh_json:get_value(<<"_rev">>, JObj),
-    list_to_binary([couch_mgr:get_url(), AccountDb
+    list_to_binary([wh_couch_connections:get_url(), AccountDb
                     ,"/", MediaId
                     ,"/", MediaName
                     ,"?rev=", Rev

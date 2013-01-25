@@ -22,6 +22,8 @@
          ,cancel_all_jobs/0
          ,start_auto_compaction/0
          ,stop_auto_compaction/0
+         ,compact_automatically/0
+         ,compact_automatically/1
         ]).
 
 %% Internal
@@ -62,7 +64,6 @@
 -record(state, {
           nodes :: ne_binaries()
           ,dbs :: ne_binaries()
-          ,cookie :: atom()
           ,wait_ref :: reference()
 
           ,current_node :: ne_binary()
@@ -149,10 +150,10 @@ cancel_all_jobs() ->
 start_auto_compaction() ->
     case is_compactor_running() of
         true ->
-            case couch_config:fetch(<<"compact_automatically">>, false) of
+            case compact_automatically() of
                 true -> {ok, already_started};
                 false ->
-                    _ = couch_config:store(<<"compact_automatically">>, true),
+                    _ = compact_automatically(true),
                     compact()
             end;
         false -> {'error', 'compactor_down'}
@@ -162,10 +163,10 @@ start_auto_compaction() ->
 stop_auto_compaction() ->
     case is_compactor_running() of
         true ->
-            case couch_config:fetch(<<"compact_automatically">>, false) of
+            case compact_automatically() of
                 false -> {ok, already_stopped};
                 true ->
-                    _ = couch_config:store(<<"compact_automatically">>, false),
+                    _ = compact_automatically(false),
                     {ok, updated}
             end;
         false -> {'error', 'compactor_down'}
@@ -195,11 +196,8 @@ is_compactor_running() ->
 init([]) ->
     _ = random:seed(erlang:now()),
     put(callid, ?MODULE),
-
-    maybe_start_auto_compaction_job(),
-
-    {ok, ready, #state{cookie=wh_util:to_atom(couch_config:fetch(<<"bigcouch_cookie">>, <<"monster">>), true)
-                       ,conn=undefined
+    self() ! '$maybe_start_auto_compaction_job',
+    {ok, ready, #state{conn=undefined
                        ,admin_conn=undefined
                       }}.
 
@@ -306,11 +304,11 @@ queue_job({req_compact_db, Node, Db}, P, Jobs) ->
 %%--------------------------------------------------------------------
 compact({compact, N}, #state{conn=undefined
                              ,admin_conn=undefined
-                             ,cookie=Cookie
                              ,nodes=[]
                              ,current_job_pid=P
                              ,current_job_ref=Ref
                             }=State) ->
+    Cookie = wh_couch_connections:get_node_cookie(),
     try get_node_connections(N, Cookie) of
         {Conn, AdminConn} ->
             gen_fsm:send_event(self(), {compact, N}),
@@ -332,9 +330,9 @@ compact({compact, N}, #state{conn=undefined
     end;
 compact({compact, N}=Msg, #state{conn=undefined
                                  ,admin_conn=undefined
-                                 ,cookie=Cookie
                                  ,nodes=[Node|Ns]
                                 }=State) ->
+    Cookie = wh_couch_connections:get_node_cookie(),
     try get_node_connections(N, Cookie) of
         {Conn, AdminConn} ->
             gen_fsm:send_event(self(), Msg),
@@ -353,11 +351,11 @@ compact({compact, N}=Msg, #state{conn=undefined
 
 compact({compact_db, N, D}=Msg, #state{conn=undefined
                                        ,admin_conn=undefined
-                                       ,cookie=Cookie
                                        ,nodes=[]
                                        ,current_job_pid=P
                                        ,current_job_ref=Ref
                                       }=State) ->
+    Cookie = wh_couch_connections:get_node_cookie(),
     try get_node_connections(N, Cookie) of
         {Conn, AdminConn} ->
             gen_fsm:send_event(self(), Msg),
@@ -382,9 +380,9 @@ compact({compact_db, N, D}=Msg, #state{conn=undefined
 
 compact({compact_db, N, D}=Msg, #state{conn=undefined
                                        ,admin_conn=undefined
-                                       ,cookie=Cookie
                                        ,nodes=[Node|Ns]
                                       }=State) ->
+    Cookie = wh_couch_connections:get_node_cookie(),
     try get_node_connections(N, Cookie) of
         {Conn, AdminConn} ->
             gen_fsm:send_event(self(), Msg),
@@ -755,6 +753,9 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+handle_info('$maybe_start_auto_compaction_job', CurrentState, State) ->
+    maybe_start_auto_compaction_job(),
+    {next_state, CurrentState, State};
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled msg for ~s: ~p", [StateName, _Info]),
     {next_state, StateName, State}.
@@ -833,11 +834,7 @@ db_design_docs(Conn, D) ->
 
 compact_shards(AdminConn, Ss, DDs) ->
     Ps = [spawn_monitor(?MODULE, compact_shard, [AdminConn, Shard, DDs]) || Shard <- Ss],
-
-    MaxWait = wh_util:to_integer(
-                couch_config:fetch(<<"max_wait_for_compaction_pid">>, ?MAX_WAIT_FOR_COMPACTION_PID)
-               ),
-
+    MaxWait = max_wait_for_compaction(),
     wait_for_pids(MaxWait, Ps).
 
 wait_for_pids(_, []) -> ok;
@@ -878,20 +875,20 @@ wait_for_compaction(AdminConn, S) ->
 
 wait_for_compaction(_AdminConn, _S, {error, db_not_found}) -> ok;
 wait_for_compaction(AdminConn, S, {error, _E}) ->
-    ok = timer:sleep(couch_config:fetch(<<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL)),
+    ok = timer:sleep(sleep_between_poll()),
     wait_for_compaction(AdminConn, S);
 wait_for_compaction(AdminConn, S, {ok, ShardData}) ->
     case wh_json:is_true(<<"compact_running">>, ShardData, false) of
         false -> ok;
         true ->
-            ok = timer:sleep(couch_config:fetch(<<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL)),
+            ok = timer:sleep(sleep_between_poll()),
             wait_for_compaction(AdminConn, S)
     end.
 
 get_node_connections(N, Cookie) ->
     [_, Host] = binary:split(N, <<"@">>),
 
-    {User,Pass} = couch_mgr:get_creds(),
+    {User,Pass} = wh_couch_connections:get_creds(),
     {Port, AdminPort} = get_ports(wh_util:to_atom(N, true), Cookie),
 
     get_node_connections(Host, Port, User, Pass, AdminPort).
@@ -904,19 +901,19 @@ get_node_connections(Host, Port, User, Pass, AdminPort) ->
 get_ports(Node, Cookie) ->
     erlang:set_cookie(Node, Cookie),
     case net_adm:ping(Node) =:= pong andalso get_ports(Node) of
-        false -> {couch_mgr:get_port(), couch_mgr:get_admin_port()};
+        false -> {wh_couch_connections:get_port(), wh_couch_connections:get_admin_port()};
         Ports -> Ports
     end.
 
 get_ports(Node) ->
-    try {get_port(Node, ["chttpd", "port"], fun couch_mgr:get_port/0)
-         ,get_port(Node, ["httpd", "port"], fun couch_mgr:get_admin_port/0)
+    try {get_port(Node, ["chttpd", "port"], fun wh_couch_connections:get_port/0)
+         ,get_port(Node, ["httpd", "port"], fun wh_couch_connections:get_admin_port/0)
         } of
         Ports -> Ports
     catch
         _E:_R ->
             lager:debug("failed to get ports: ~s: ~p", [_E, _R]),
-            {couch_mgr:get_port(), couch_mgr:get_admin_port()}
+            {wh_couch_connections:get_port(), wh_couch_connections:get_admin_port()}
     end.
 
 get_port(Node, Key, DefaultFun) ->
@@ -932,10 +929,15 @@ maybe_send_update(P, Ref, Update) when is_pid(P) ->
     end;
 maybe_send_update(_,_,_) -> ok.
 
-maybe_start_auto_compaction_job() ->
-    case couch_config:fetch(<<"compact_automatically">>, false) of
-        true -> gen_fsm:send_event(self(), compact);
-        false -> ok
+maybe_start_auto_compaction_job() ->    
+    case compact_automatically() 
+        andalso (catch wh_couch_connections:test_admin_conn()) 
+    of
+        {ok, _} ->
+            gen_fsm:send_event(self(), compact);
+        _ -> 
+            erlang:send_after(60000, self(), '$maybe_start_auto_compaction_job'),
+            ok
     end.
 
 -spec queued_jobs_status/1 :: (queue()) -> 'none' | [wh_proplist(),...].
@@ -944,3 +946,30 @@ queued_jobs_status(Jobs) ->
         [] -> none;
         Js -> [[{job, J}, {requested_by, P}] || {J, P, _} <- Js]
     end.
+
+max_wait_for_compaction() ->
+    try whapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pid">>, ?MAX_WAIT_FOR_COMPACTION_PID) of
+        Time -> wh_util:to_integer(Time)
+    catch
+        _:_ -> ?MAX_WAIT_FOR_COMPACTION_PID
+    end.
+
+sleep_between_poll() ->
+    try whapps_config:get(?CONFIG_CAT, <<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL) of
+        Time -> wh_util:to_integer(Time)
+    catch
+        _:_ -> ?SLEEP_BETWEEN_POLL
+    end.
+
+compact_automatically() ->
+    Default = wh_util:is_true(wh_cache:fetch_local(?WH_COUCH_CACHE, <<"compact_automatically">>)),
+    try wh_util:is_true(whapps_config:get(?CONFIG_CAT, <<"compact_automatically">>, Default)) of
+        WhappsConfig -> WhappsConfig
+    catch
+        _:_ -> Default
+    end.
+
+compact_automatically(Boolean) ->
+    _ = (catch whapps_config:set(?CONFIG_CAT, <<"compact_automatically">>, Boolean)),
+    wh_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, Boolean, infinity).
+

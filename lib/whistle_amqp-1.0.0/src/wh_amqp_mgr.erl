@@ -183,7 +183,7 @@ handle_cast({add_broker, URI, UseFederation}, #state{brokers=Brokers}=State) ->
 
     case catch lists:foldl(fun(F, B) -> F(B) end, wh_amqp_broker:new(), Builders) of
         {'EXIT', _} ->
-            lager:error("failed to parse AMQP broker URI '~p', dropping", [URI]),
+            lager:error("failed to parse amqp URI '~p', dropping", [URI]),
             {noreply, State};
         Broker ->
             Name = wh_amqp_broker:name(Broker),
@@ -191,7 +191,6 @@ handle_cast({add_broker, URI, UseFederation}, #state{brokers=Brokers}=State) ->
 
             case wh_amqp_connection_sup:add(Broker) of
                 {ok, _} ->
-                    lager:info("added connection to broker ~s(~p)", [Name, Priority]),
                     _Ref = erlang:monitor(process, Name),
                     {noreply, State#state{brokers=dict:store(Name, {Broker, Priority}, Brokers)}, hibernate};
                 {error, {already_started, _}} ->
@@ -199,7 +198,7 @@ handle_cast({add_broker, URI, UseFederation}, #state{brokers=Brokers}=State) ->
                     _Ref = erlang:monitor(process, Name),
                     {noreply, State#state{brokers=dict:store(Name, {Broker, Priority}, Brokers)}, hibernate};
                 {error, {Reason, _}} ->
-                    lager:info("unable to start AMQP connection to '~s': ~p", [Name, Reason]),
+                    lager:warning("unable to start amqp connection to '~s': ~p", [Name, Reason]),
                     _ = wh_amqp_connection_sup:remove(Broker),
                     {noreply, State}
             end
