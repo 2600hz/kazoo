@@ -88,13 +88,13 @@
          ,call_status_ref :: reference()
          ,call_status_failures = 0 :: integer()
          ,member_call :: whapps_call:call()
-         ,member_call_id :: ne_binary()
-         ,member_call_queue_id :: ne_binary()
+         ,member_call_id :: api_binary()
+         ,member_call_queue_id :: api_binary()
          ,member_call_start :: wh_now()
          ,caller_exit_key = <<"#">> :: ne_binary()
-         ,agent_call_id :: ne_binary()
-         ,next_status :: ne_binary()
-         ,fsm_call_id :: ne_binary() % used when no call-ids are available
+         ,agent_call_id :: api_binary()
+         ,next_status :: api_binary()
+         ,fsm_call_id :: api_binary() % used when no call-ids are available
          ,endpoints = [] :: wh_json:objects()
          ,outbound_call_id :: api_binary()
          }).
@@ -186,7 +186,10 @@ originate_resp(FSM, JObj) ->
 originate_started(FSM, JObj) ->
     gen_fsm:send_event(FSM, {originate_started, wh_json:get_value(<<"Call-ID">>, JObj)}).
 originate_uuid(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {originate_uuid, wh_json:get_value(<<"Outgoing-Call-ID">>, JObj)}).
+    gen_fsm:send_event(FSM, {originate_uuid
+                             ,wh_json:get_value(<<"Outgoing-Call-ID">>, JObj)
+                             ,wh_json:get_value(<<"Outgoing-Call-Control-Queue">>, JObj)
+                            }).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -574,14 +577,14 @@ ringing({originate_ready, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:originate_execute(Srv, JObj),
     {next_state, ringing, State#state{agent_call_id=CallId}};
 
-ringing({originate_uuid, ACallId}, #state{agent_proc=Srv}=State) ->
-    lager:debug("recv agent call id ~s", [ACallId]),
-    acdc_agent:agent_call_id(Srv, ACallId),
+ringing({originate_uuid, ACallId, ACtrlQ}, #state{agent_proc=Srv}=State) ->
+    lager:debug("recv agent call ~s(~s)", [ACallId, ACtrlQ]),
+    acdc_agent:agent_call_id(Srv, ACallId, ACtrlQ),
     {next_state, ringing, State#state{agent_call_id=ACallId}};
 
 ringing({originate_started, ACallId}, #state{agent_proc=Srv
-                                          ,member_call_id=MCallId
-                                         }=State) ->
+                                             ,member_call_id=MCallId
+                                            }=State) ->
     lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
     acdc_agent:agent_call_id(Srv, ACallId),
     acdc_agent:member_connect_accepted(Srv),
@@ -636,7 +639,7 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
     lager:debug("agent did not answer their phone in time: ~s", [CallId]),
 
     acdc_agent:member_connect_retry(Srv, MCallId),
-    acdc_agent:channel_hungup(Srv, CallId),
+    acdc_agent:channel_hungup(Srv, MCallId),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, MCallId),
     acdc_stats:agent_ready(AcctId, AgentId),
@@ -652,10 +655,9 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
                                          ,agent_id=AgentId
                                          ,member_call_id=CallId
                                          ,member_call_queue_id=QueueId
-                                         ,agent_call_id=AgentCallId
                                         }=State) ->
     lager:debug("caller's channel (~s) has gone down, stop agent's call", [CallId]),
-    acdc_agent:channel_hungup(Srv, AgentCallId),
+    acdc_agent:channel_hungup(Srv, CallId),
 
     acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_HANGUP),
     acdc_stats:agent_ready(AcctId, AgentId),

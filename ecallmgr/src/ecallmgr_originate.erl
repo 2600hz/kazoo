@@ -201,12 +201,30 @@ handle_cast({maybe_update_node, Node}, #state{node=_OldNode}=State) ->
     lager:debug("updating node from ~s to ~s", [_OldNode, Node]),
     {noreply, State#state{node=Node}, hibernate};
 
-handle_cast({create_uuid}, #state{node=Node, originate_req=JObj}=State) ->
+handle_cast({create_uuid}, #state{node=Node
+                                  ,originate_req=JObj
+                                 }=State) ->
     UUID = create_uuid(JObj, Node),
+    put(callid, UUID),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {UUID, start_listener}, true),
-    {noreply, State#state{uuid=UUID}, hibernate};
 
-handle_cast({get_originate_action}, #state{originate_req=JObj, node=Node}=State) ->
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    {ok, Pid} = ecallmgr_call_sup:start_control_process(Node, UUID, ServerId),
+    lager:debug("started control proc: ~p with srv ~s and uuid ~s", [Pid, ServerId, UUID]),
+    ControlQueue = ecallmgr_call_control:queue_name(Pid),
+    lager:debug("ctrl queue ~s", [ControlQueue]),
+
+    _ = publish_originate_uuid(ServerId, UUID, JObj, ControlQueue),
+
+    {noreply, State#state{uuid=UUID
+                          ,server_id=ServerId
+                         }
+     ,hibernate
+    };
+
+handle_cast({get_originate_action}, #state{originate_req=JObj
+                                           ,node=Node
+                                          }=State) ->
     gen_listener:cast(self(), {build_originate_args}),
     ApplicationName = wh_json:get_value(<<"Application-Name">>, JObj),
 
@@ -218,7 +236,9 @@ handle_cast({get_originate_action}, #state{originate_req=JObj, node=Node}=State)
     {noreply, State#state{action=Action
                           ,app=ApplicationName
                           ,node=UseNode
-                         }};
+                         }
+    ,hibernate
+    };
 
 handle_cast({build_originate_args}, #state{uuid=undefined}=State) ->
     gen_listener:cast(self(), {create_uuid}),
@@ -295,7 +315,8 @@ handle_cast({originate_execute}, #state{dialstrings=Dialstrings
             lager:debug("originate is executing, waiting for completion"),
             erlang:monitor_node(Node, true),
             bind_to_call_events(CallId),
-            _ = publish_originate_started(ServerId, CallId, JObj),
+            CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
+            _ = publish_originate_started(ServerId, CallId, JObj, CtrlQ),
             {noreply, State#state{uuid=CallId}};
         {error, Error} ->
             lager:debug("failed to originate: ~p", [Error]),
@@ -547,13 +568,8 @@ create_uuid(Node) ->
 
 create_uuid(JObj, Node) ->
     case wh_json:get_binary_value(<<"Outbound-Call-ID">>, JObj) of
-        undefined ->
-            UUID = create_uuid(Node),
-            _ = publish_originate_uuid(wh_json:get_ne_value(<<"Server-ID">>, JObj), UUID, JObj),
-            UUID;
-        CallId ->
-            put(callid, CallId),
-            CallId
+        undefined -> create_uuid(Node);
+        CallId -> CallId
     end.
 
 -spec get_unset_vars/1 :: (wh_json:object()) -> string().
@@ -603,20 +619,25 @@ publish_originate_resp(ServerId, JObj) ->
                               ], JObj),
     wapi_resource:publish_originate_resp(ServerId, Resp).
 
--spec publish_originate_started/3 :: (api_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-publish_originate_started(undefined, _, _) -> ok;
-publish_originate_started(ServerId, CallId, JObj) ->
-    Resp = wh_json:from_list([{<<"Call-ID">>, CallId}
-                              ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                             ]),
+-spec publish_originate_started/4 :: (api_binary(), ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
+publish_originate_started(undefined, _, _, _) -> ok;
+publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
+    Resp = wh_json:from_list(
+             props:filter_undefined(
+               [{<<"Call-ID">>, CallId}
+                ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                ,{<<"Control-Queue">>, CtrlQ}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ])),
     wapi_resource:publish_originate_started(ServerId, Resp).
 
--spec publish_originate_uuid/3 :: (api_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-publish_originate_uuid(undefined, _, _) -> ok;
-publish_originate_uuid(ServerId, UUID, JObj) ->
-    Resp = [{<<"Outgoing-Call-ID">>, UUID}
-            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
+-spec publish_originate_uuid/4 :: (api_binary(), ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
+publish_originate_uuid(undefined, _, _, _) -> ok;
+publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
+    Resp = props:filter_undefined(
+             [{<<"Outgoing-Call-ID">>, UUID}
+              ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+              ,{<<"Outgoing-Call-Control-Queue">>, CtrlQueue}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
     wapi_resource:publish_originate_uuid(ServerId, Resp).

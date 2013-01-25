@@ -121,7 +121,7 @@
 
 %% Origintate UUID
 -define(ORIGINATE_UUID_HEADERS, [<<"Outgoing-Call-ID">>]).
--define(OPTIONAL_ORIGINATE_UUID_HEADERS, []).
+-define(OPTIONAL_ORIGINATE_UUID_HEADERS, [<<"Outgoing-Call-Control-Queue">>]).
 -define(ORIGINATE_UUID_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                    ,{<<"Event-Name">>, <<"originate_uuid">>}
                                   ]).
