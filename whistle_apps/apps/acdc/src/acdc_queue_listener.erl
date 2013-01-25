@@ -343,7 +343,7 @@ handle_cast({timeout_member_call}, #state{delivery=Delivery
 
     acdc_util:unbind_from_call_events(Call),
     acdc_queue_shared:ack(Pid, Delivery),
-    send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId),
+    send_member_call_failure(Q, AcctId, QueueId, whapps_call:call_id(Call), MyId, AgentId),
 
     {noreply, clear_call_state(State), hibernate};
 
@@ -366,7 +366,7 @@ handle_cast({exit_member_call}, #state{delivery=Delivery
 
     acdc_util:unbind_from_call_events(Call),
     acdc_queue_shared:ack(Pid, Delivery),
-    send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId, <<"Caller exited the queue via DTMF">>),
+    send_member_call_failure(Q, AcctId, QueueId, whapps_call:call_id(Call), MyId, AgentId, <<"Caller exited the queue via DTMF">>),
 
     {noreply, clear_call_state(State), hibernate};
 
@@ -557,15 +557,16 @@ send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, CallId) ->
              ]),
     publish(Q, Resp, fun wapi_acdc_queue:publish_member_call_success/2).
 
-send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId) ->
-    send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId, undefined).
-send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId, Reason) ->
+send_member_call_failure(Q, AcctId, QueueId, CallId, MyId, AgentId) ->
+    send_member_call_failure(Q, AcctId, QueueId, CallId, MyId, AgentId, undefined).
+send_member_call_failure(Q, AcctId, QueueId, CallId, MyId, AgentId, Reason) ->
     Resp = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Process-ID">>, MyId}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Failure-Reason">>, Reason}
+              ,{<<"Call-ID">>, CallId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     publish(Q, Resp, fun wapi_acdc_queue:publish_member_call_failure/2).

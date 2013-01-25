@@ -786,10 +786,13 @@ add_stat(Stat, {Compressed, Global, PerQueue}, ?STAT_AGENTS_MISSED) ->
     CID = wh_json:get_value(<<"call_id">>, Stat),
     AID = wh_json:get_value(<<"agent_id">>, Stat),
 
-    TStamp = wh_json:get_value(<<"timestamp">>, Stat),
+    TStamp = wh_json:get_binary_value(<<"timestamp">>, Stat),
 
     K = [QID, CID, <<"agents_tried">>],
-    AgentsTried = wh_json:set_value(wh_util:to_binary(TStamp), AID, wh_json:get_value(K, Compressed, wh_json:new())),
+    AgentTried = wh_json:from_list([{<<"agent_id">>, AID}
+                                    ,{<<"reason">>, wh_json:get_value(<<"miss_reason">>, Stat, <<"missed">>)}
+                                   ]),
+    AgentsTried = wh_json:set_value(TStamp, AgentTried, wh_json:get_value(K, Compressed, wh_json:new())),
 
     NumAgentsTried = length(wh_json:get_keys(AgentsTried)),
 

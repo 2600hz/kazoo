@@ -594,18 +594,20 @@ ringing({originate_started, ACallId}, #state{agent_proc=Srv
                                        ,agent_call_id=ACallId
                                       }};
 
-ringing({originate_failed, _E}, #state{agent_proc=Srv
+ringing({originate_failed, E}, #state{agent_proc=Srv
                                          ,acct_id=AcctId
                                          ,agent_id=AgentId
                                          ,member_call_queue_id=QueueId
                                          ,member_call_id=CallId
                                         }=State) ->
-    lager:debug("ringing agent failed: ~s", [wh_json:get_value(<<"Error-Message">>, _E)]),
     acdc_agent:member_connect_retry(Srv, CallId),
 
-    webseq:note(self(), right, [<<"ringing failed: ">>, wh_json:get_value(<<"Error-Message">>, _E)]),
+    ErrReason = missed_reason(wh_json:get_value(<<"Error-Message">>, E)),
 
-    acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
+    lager:debug("ringing agent failed: ~s", [ErrReason]),
+    webseq:note(self(), right, [<<"ringing failed: ">>, ErrReason]),
+
+    acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId, ErrReason),
     acdc_stats:agent_ready(AcctId, AgentId),
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
@@ -1365,3 +1367,11 @@ start_outbound_call_handling(Call, #state{agent_proc=Srv
                 ,call_status_ref=start_call_status_timer()
                 ,call_status_failures=0
                }.
+
+missed_reason(<<"-ERR ", Reason/binary>>) ->
+    missed_reason(binary:replace(Reason, <<"\n">>, <<>>, [global]));
+missed_reason(<<"ALLOTTED_TIMEOUT">>) -> <<"timeout">>;
+missed_reason(<<"NO_USER_RESPONSE">>) -> <<"rejected">>;
+missed_reason(<<"CALL_REJECTED">>) -> <<"rejected">>;
+missed_reason(<<"USER_BUSY">>) -> <<"rejected">>;
+missed_reason(Reason) -> Reason.
