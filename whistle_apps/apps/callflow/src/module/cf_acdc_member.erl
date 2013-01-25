@@ -57,6 +57,7 @@ maybe_enter_queue(Call, MemberCall, QueueId, MaxWait, false) ->
     lager:info("asking for an agent, waiting up to ~p ms", [MaxWait]),
 
     cf_exe:send_amqp(Call, MemberCall, fun wapi_acdc_queue:publish_member_call/1),
+    whapps_call_command:flush_dtmf(Call),
     wait_for_bridge(whapps_call:kvs_store(queue_id, QueueId, Call), MaxWait).
 
 -spec wait_for_bridge/2 :: (whapps_call:call(), max_wait()) -> 'ok'.
@@ -101,6 +102,8 @@ process_message(Call, Timeout, Start, Wait, JObj, {<<"call_event">>, <<"DTMF">>}
         true ->
             lager:info("caller pressed the exit key(~s), moving to next callflow action", [DigitPressed]),
             cancel_member_call(Call, <<"dtmf_exit">>),
+            whapps_call_command:flush_dtmf(Call),
+            timer:sleep(1000),
             cf_exe:continue(Call);
         false ->
             lager:info("caller pressed ~s, ignoring", [DigitPressed]),
