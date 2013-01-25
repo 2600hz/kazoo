@@ -43,13 +43,16 @@
 start_link(#wh_couch_connection{}=Connection) ->
     gen_server:start_link(?MODULE, [Connection], []).
 
+-spec config/0 :: () -> #wh_couch_connection{}.
 config() -> config(undefined).
-     
+
+-spec config/1 :: ('undefined' | string()) -> #wh_couch_connection{}.
 config(undefined) -> 
     #wh_couch_connection{};
 config(URI) ->
     config(URI, #wh_couch_connection{}).
 
+-spec config/2 :: (string(), integer() | string() | #wh_couch_connection{}) -> #wh_couch_connection{}.
 config(URI, #wh_couch_connection{}=Connection) ->
     case http_uri:parse(URI) of
         {error, no_scheme} ->
@@ -64,6 +67,7 @@ config(URI, #wh_couch_connection{}=Connection) ->
 config(Host, Port) ->
     config(Host, Port, #wh_couch_connection{}).
 
+-spec config/3 :: (string(), integer() | string(), #wh_couch_connection{} | string()) -> #wh_couch_connection{}.
 config(Host, Port, #wh_couch_connection{}=Connection) ->
     Connection#wh_couch_connection{host = Host
                                    ,port = wh_util:to_integer(Port)
@@ -71,6 +75,7 @@ config(Host, Port, #wh_couch_connection{}=Connection) ->
 config(Host, User, Pass) ->
     config(Host, User, Pass, #wh_couch_connection{}).
 
+-spec config/4 :: (string(), integer() | string(), string(), #wh_couch_connection{} | string()) -> #wh_couch_connection{}.
 config(Host, User, Pass, #wh_couch_connection{}=Connection) ->
     Connection#wh_couch_connection{host = Host
                                    ,username = User
@@ -79,6 +84,7 @@ config(Host, User, Pass, #wh_couch_connection{}=Connection) ->
 config(Host, Port, User, Pass) ->    
     config(Host, Port, User, Pass, #wh_couch_connection{}).
 
+-spec config/5 :: (string(), integer(), string(), string(), #wh_couch_connection{}) -> #wh_couch_connection{}.
 config(Host, Port, User, Pass, #wh_couch_connection{}=Connection) ->
     Connection#wh_couch_connection{host = Host
                                    ,port = wh_util:to_integer(Port)
@@ -86,6 +92,7 @@ config(Host, Port, User, Pass, #wh_couch_connection{}=Connection) ->
                                    ,password = Pass
                                   }.
 
+-spec set_admin/2 :: (boolean(), #wh_couch_connection{}) -> #wh_couch_connection{}.
 set_admin(IsAdmin, #wh_couch_connection{}=Connection) ->
     Connection#wh_couch_connection{admin=wh_util:is_true(IsAdmin)}.
     
@@ -148,37 +155,28 @@ handle_cast(_Msg, Connection) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(maintain_connection, #wh_couch_connection{connection = undefined}=Connection) ->
+handle_info(maintain_connection, #wh_couch_connection{connected = false}=Connection) ->
     case maybe_reconnect(Connection) of
         {error, _} ->
             erlang:send_after(1000, self(), maintain_connection),
             {noreply, Connection};
         {ok, C} ->
             self() ! maintain_connection,
-            {noreply, C}
+            {noreply, connection_established(C)}
     end;
-handle_info(maintain_connection, #wh_couch_connection{ready = false
-                                                      ,connection = Conn
+handle_info(maintain_connection, #wh_couch_connection{ready = Ready
+                                                      ,server = Server
                                                      }=Connection) ->
-    C = case couch_util:server_info(Conn) of
-            {ok, _} ->
-                wh_couch_connections:update(Connection#wh_couch_connection{ready = true}),
-                Connection#wh_couch_connection{ready = true};
-            _Else ->
-                Connection
-        end,
-    erlang:send_after(1000, self(), maintain_connection),
-    {noreply, C};
-handle_info(maintain_connection, #wh_couch_connection{connection = Conn}=Connection) ->
-    case couch_util:server_info(Conn) of
-        {ok, _} -> 
+    case couch_util:server_info(Server) of
+        {ok, _} when not Ready -> 
+            erlang:send_after(5000, self(), maintain_connection),
+            {noreply, connection_ready(Connection)};
+        {ok, _} ->
             erlang:send_after(5000, self(), maintain_connection),
             {noreply, Connection};
-        _Else ->
-            C = Connection#wh_couch_connection{ready = false, connection = undefined},
-            wh_couch_connections:update(C),
-            self() ! maintain_connection,
-            {noreply, C}
+        _Else -> 
+            erlang:send_after(1000, self(), maintain_connection),
+            {noreply, reset_connection(Connection)}
     end;
 handle_info(_Info, Connection) ->
     {noreply, Connection}.
@@ -215,10 +213,14 @@ code_change(_OldVsn, Connection, _Extra) ->
 maybe_reconnect(#wh_couch_connection{host = Host, port = Port
                                      ,username = User, password = Pass}=Connection) ->
     try couch_util:get_new_connection(Host, Port, User, Pass) of
-        Conn -> {ok, Connection#wh_couch_connection{connection = Conn}}
+        #server{}=Server ->
+            {ok, Connection#wh_couch_connection{server = Server}}
     catch
         error:{badmatch,{error,{conn_failed,{error,econnrefused}}}} ->
             lager:info("connection to BigCouch at ~s:~p refused. Is BigCouch/HAProxy running at these host:port combos?", [Host, Port]),
+            {error, conn_failed};
+        error:{badmatch,{error,{conn_failed,{error,timeout}}}} ->
+            lager:info("network error connecting to BigCouch at ~s:~p. Is BigCouch/HAProxy running at these host:port combos?", [Host, Port]),
             {error, conn_failed};
         error:{badmatch,{error,{ok,Status,_,_}}} ->
             lager:info("received HTTP error ~p from BigCouch/HAProxy at ~s:~p.", [Status, Host, Port]),
@@ -226,13 +228,34 @@ maybe_reconnect(#wh_couch_connection{host = Host, port = Port
         _:Reason ->
             ST = erlang:get_stacktrace(),
             lager:info("failed to connect to BigCouch/HAProxy at ~s:~p: ~p", [Host, Port, Reason]),
-            _ = [lager:info("st: ~p", [S]) || S <- ST],
+            _ = [lager:debug("st: ~p", [S]) || S <- ST],
             {error, Reason}
     end.    
 
-split_user_info([]) -> {"", ""};
+-spec split_user_info/1 :: (string()) -> {string(), string()}.
+split_user_info([]) -> {"", ""}; 
 split_user_info(UserInfo) ->
     case string:tokens(UserInfo, ":") of
         [Username] -> {Username, ""};
         [Username, Password] -> {Username, Password}
     end.
+
+-spec connection_established/1 :: (#wh_couch_connection{}) -> #wh_couch_connection{}.
+connection_established(Connection) ->    
+    Connection#wh_couch_connection{connected = true}.
+
+-spec connection_ready/1 :: (#wh_couch_connection{}) -> #wh_couch_connection{}.
+connection_ready(Connection) ->
+    C = Connection#wh_couch_connection{ready = true},
+    wh_couch_connections:update(C),
+    C.    
+
+-spec reset_connection/1 :: (#wh_couch_connection{}) -> #wh_couch_connection{}.
+reset_connection(Connection) ->
+    C = Connection#wh_couch_connection{connected = false, ready = false
+                                       ,server = #server{}},
+    %% TODO: this is disabled for the moment to maintain backward
+    %% compatablity with couch_mgr which always assumed the connection
+    %% was available
+%%    wh_couch_connections:update(C),
+    C.

@@ -66,7 +66,13 @@ restart_app(App) when is_atom(App) ->
 
 -spec running_apps/0 :: () -> [atom(),...] | [].
 running_apps() ->
-    [ App || {App, _, _, _} <- supervisor:which_children(whapps_sup) ].
+    try supervisor:which_children(whapps_sup) of
+        Apps ->
+            [ App || {App, _, _, _} <- Apps ]
+    catch
+        _:_ ->
+            "whapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses"
+    end. 
 
 initialize_whapps() ->
     case whapps_config:get(?MODULE, <<"cookie">>) of

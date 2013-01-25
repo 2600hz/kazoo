@@ -73,7 +73,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:debug("starting new stepswitch outbound responder"),
-    _ = couch_mgr:add_change_handler(?RESOURCES_DB),
+    _ = wh_couch_connections:add_change_handler(?RESOURCES_DB),
     stepswitch_maintenance:refresh(),
     {ok, #state{resrcs=get_resrcs()}}.
 

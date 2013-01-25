@@ -20,7 +20,7 @@
          ,compact_db/2
 
          ,test_connection/0
-         ,test_admin_connection/0
+         ,test_admin_connection/0         
         ]).
 
 start_auto_compaction() ->

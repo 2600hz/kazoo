@@ -250,7 +250,7 @@ do_load_fixtures_from_folder(DbName, [F|Fs]) ->
 %%--------------------------------------------------------------------
 -spec db_exists/1 :: (text()) -> boolean().
 db_exists(DbName) when ?VALID_DBNAME ->
-    couch_util:db_exists(wh_couch_connections:get_conn(), DbName);
+    couch_util:db_exists(wh_couch_connections:get_server(), DbName);
 db_exists(DbName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> db_exists(Db);
@@ -269,10 +269,10 @@ db_exists(DbName) ->
                                couchbeam_error().
 
 db_info() ->
-    couch_util:db_info(wh_couch_connections:get_conn()).
+    couch_util:db_info(wh_couch_connections:get_server()).
 
 admin_db_info() ->
-    couch_util:db_info(wh_couch_connections:get_admin_conn()).
+    couch_util:db_info(wh_couch_connections:get_admin_server()).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -286,7 +286,7 @@ admin_db_info() ->
                                      couchbeam_error().
 
 db_info(DbName) when ?VALID_DBNAME ->
-    couch_util:db_info(wh_couch_connections:get_conn(), DbName);
+    couch_util:db_info(wh_couch_connections:get_server(), DbName);
 db_info(DbName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> db_info(Db);
@@ -294,7 +294,7 @@ db_info(DbName) ->
     end.
 
 admin_db_info(DbName) when ?VALID_DBNAME ->
-    couch_util:db_info(wh_couch_connections:get_admin_conn(), DbName);
+    couch_util:db_info(wh_couch_connections:get_admin_server(), DbName);
 admin_db_info(DbName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> admin_db_info(Db);
@@ -315,7 +315,7 @@ admin_db_info(DbName) ->
                                      couchbeam_error().
 
 design_info(DbName, DesignName) when ?VALID_DBNAME ->
-    couch_util:design_info(wh_couch_connections:get_conn(), DbName, DesignName);
+    couch_util:design_info(wh_couch_connections:get_server(), DbName, DesignName);
 design_info(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> design_info(Db, DesignName);
@@ -323,7 +323,7 @@ design_info(DbName, DesignName) ->
     end.
 
 admin_design_info(DbName, DesignName) when ?VALID_DBNAME ->
-    couch_util:design_info(wh_couch_connections:get_admin_conn(), DbName, DesignName);
+    couch_util:design_info(wh_couch_connections:get_admin_server(), DbName, DesignName);
 admin_design_info(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> admin_design_info(Db, DesignName);
@@ -334,7 +334,7 @@ admin_design_info(DbName, DesignName) ->
 -spec admin_design_compact/2 :: (ne_binary(), ne_binary()) -> boolean().
 
 design_compact(DbName, DesignName) when ?VALID_DBNAME->
-    couch_util:design_compact(wh_couch_connections:get_conn(), DbName, DesignName);
+    couch_util:design_compact(wh_couch_connections:get_server(), DbName, DesignName);
 design_compact(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> design_compact(Db, DesignName);
@@ -342,7 +342,7 @@ design_compact(DbName, DesignName) ->
     end.
 
 admin_design_compact(DbName, DesignName) when ?VALID_DBNAME ->
-    couch_util:design_compact(wh_couch_connections:get_admin_conn(), DbName, DesignName);
+    couch_util:design_compact(wh_couch_connections:get_admin_server(), DbName, DesignName);
 admin_design_compact(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> admin_design_compact(Db, DesignName);
@@ -353,7 +353,7 @@ admin_design_compact(DbName, DesignName) ->
 -spec admin_db_view_cleanup/1 :: (ne_binary()) -> boolean().
 
 db_view_cleanup(DbName) when ?VALID_DBNAME ->
-    couch_util:db_view_cleanup(wh_couch_connections:get_conn(), DbName);
+    couch_util:db_view_cleanup(wh_couch_connections:get_server(), DbName);
 db_view_cleanup(DbName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> db_view_cleanup(Db);
@@ -361,7 +361,7 @@ db_view_cleanup(DbName) ->
     end.
 
 admin_db_view_cleanup(DbName) when ?VALID_DBNAME ->
-    couch_util:db_view_cleanup(wh_couch_connections:get_admin_conn(), DbName);
+    couch_util:db_view_cleanup(wh_couch_connections:get_admin_server(), DbName);
 admin_db_view_cleanup(DbName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> admin_db_view_cleanup(Db);
@@ -407,7 +407,7 @@ admin_db_view_cleanup(DbName) ->
 db_replicate(Prop) when is_list(Prop) ->
     db_replicate(wh_json:from_list(Prop));
 db_replicate(JObj) ->
-    couch_util:db_replicate(wh_couch_connections:get_conn(), JObj).
+    couch_util:db_replicate(wh_couch_connections:get_server(), JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -422,7 +422,7 @@ db_create(DbName) ->
     db_create(DbName, []).
 
 db_create(DbName, Options) when ?VALID_DBNAME ->
-    couch_util:db_create(wh_couch_connections:get_conn(), DbName, Options);
+    couch_util:db_create(wh_couch_connections:get_server(), DbName, Options);
 db_create(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> db_create(Db, Options);
@@ -439,7 +439,7 @@ db_create(DbName, Options) ->
 -spec admin_db_compact/1 :: (text()) -> boolean().
 
 db_compact(DbName) when ?VALID_DBNAME ->
-    couch_util:db_compact(wh_couch_connections:get_conn(), DbName);
+    couch_util:db_compact(wh_couch_connections:get_server(), DbName);
 db_compact(DbName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> db_compact(Db);
@@ -447,7 +447,7 @@ db_compact(DbName) ->
     end.
 
 admin_db_compact(DbName) when ?VALID_DBNAME ->
-    couch_util:db_compact(wh_couch_connections:get_admin_conn(), DbName);
+    couch_util:db_compact(wh_couch_connections:get_admin_server(), DbName);
 admin_db_compact(DbName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> admin_db_compact(Db);
@@ -462,7 +462,7 @@ admin_db_compact(DbName) ->
 %%--------------------------------------------------------------------
 -spec db_delete/1 :: (text()) -> boolean().
 db_delete(DbName) when ?VALID_DBNAME ->
-    couch_util:db_delete(wh_couch_connections:get_conn(), DbName);
+    couch_util:db_delete(wh_couch_connections:get_server(), DbName);
 db_delete(DbName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> db_delete(Db);
@@ -492,7 +492,7 @@ open_cache_doc(DbName, DocId) ->
     open_cache_doc(DbName, DocId, []).
 
 open_cache_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
-    couch_util:open_cache_doc(wh_couch_connections:get_conn(), DbName, DocId, Options);
+    couch_util:open_cache_doc(wh_couch_connections:get_server(), DbName, DocId, Options);
 open_cache_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> open_cache_doc(Db, DocId, Options);
@@ -504,7 +504,7 @@ open_cache_doc(DbName, DocId, Options) ->
 flush_cache_doc(DbName, DocId) ->
     flush_cache_doc(DbName, DocId, []).
 flush_cache_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
-    couch_util:flush_cache_doc(wh_couch_connections:get_conn(), DbName, DocId, Options);
+    couch_util:flush_cache_doc(wh_couch_connections:get_server(), DbName, DocId, Options);
 flush_cache_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> flush_cache_doc(Db, DocId, Options);
@@ -529,7 +529,7 @@ open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
 open_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
-    couch_util:open_doc(wh_couch_connections:get_conn(), DbName, DocId, Options);
+    couch_util:open_doc(wh_couch_connections:get_server(), DbName, DocId, Options);
 open_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> open_doc(Db, DocId, Options);
@@ -549,7 +549,7 @@ admin_open_doc(DbName, DocId) ->
     admin_open_doc(DbName, DocId, []).
 
 admin_open_doc(DbName, DocId, Options) when ?VALID_DBNAME->
-    couch_util:open_doc(wh_couch_connections:get_admin_conn(), DbName, DocId, Options);
+    couch_util:open_doc(wh_couch_connections:get_admin_server(), DbName, DocId, Options);
 admin_open_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> admin_open_doc(Db, DocId, Options);
@@ -565,7 +565,7 @@ all_docs(DbName) ->
     all_docs(DbName, []).
 
 all_docs(DbName, Options) when ?VALID_DBNAME ->
-    couch_util:all_docs(wh_couch_connections:get_conn(), DbName, Options);
+    couch_util:all_docs(wh_couch_connections:get_server(), DbName, Options);
 all_docs(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> all_docs(Db, Options);
@@ -582,7 +582,7 @@ admin_all_docs(DbName) ->
     admin_all_docs(DbName, []).
 
 admin_all_docs(DbName, Options) when ?VALID_DBNAME ->
-    couch_util:all_docs(wh_couch_connections:get_admin_conn(), DbName, Options);
+    couch_util:all_docs(wh_couch_connections:get_admin_server(), DbName, Options);
 admin_all_docs(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> admin_all_docs(Db, Options);
@@ -598,7 +598,7 @@ all_design_docs(DbName) ->
     all_design_docs(DbName, []).
 
 all_design_docs(DbName, Options) when ?VALID_DBNAME ->
-    couch_util:all_design_docs(wh_couch_connections:get_conn(), DbName, Options);
+    couch_util:all_design_docs(wh_couch_connections:get_server(), DbName, Options);
 all_design_docs(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> all_design_docs(Db, Options);
@@ -616,7 +616,7 @@ all_design_docs(DbName, Options) ->
                                   couchbeam_error().
 lookup_doc_rev(_DbName, undefined) -> {error, not_found};
 lookup_doc_rev(DbName, DocId) when ?VALID_DBNAME ->
-    couch_util:lookup_doc_rev(wh_couch_connections:get_conn(), DbName, DocId);
+    couch_util:lookup_doc_rev(wh_couch_connections:get_server(), DbName, DocId);
 lookup_doc_rev(DbName, DocId) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> lookup_doc_rev(Db, DocId);
@@ -650,7 +650,7 @@ ensure_saved(DbName, Doc) ->
     ensure_saved(DbName, Doc, []).
 
 ensure_saved(DbName, Doc, Options) when ?VALID_DBNAME ->
-    couch_util:ensure_saved(wh_couch_connections:get_conn(), DbName, Doc, Options);
+    couch_util:ensure_saved(wh_couch_connections:get_server(), DbName, Doc, Options);
 ensure_saved(DbName, Doc, Options) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> ensure_saved(Db, Doc, Options);
@@ -661,7 +661,7 @@ ensure_saved(DbName, Doc, Options) ->
                             {'ok', wh_json:object()} |
                             couchbeam_error().
 save_doc(DbName, Doc, Options) when ?VALID_DBNAME ->
-    couch_util:save_doc(wh_couch_connections:get_conn(), DbName, Doc, Options);
+    couch_util:save_doc(wh_couch_connections:get_server(), DbName, Doc, Options);
 save_doc(DbName, Doc, Options) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> save_doc(Db, Doc, Options);
@@ -679,7 +679,7 @@ save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 
 save_docs(DbName, Docs, Options) when is_list(Docs) andalso ?VALID_DBNAME ->
-    couch_util:save_docs(wh_couch_connections:get_conn(), DbName, Docs, Options);
+    couch_util:save_docs(wh_couch_connections:get_server(), DbName, Docs, Options);
 save_docs(DbName, Docs, Options) when is_list(Docs) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> save_docs(Db, Docs, Options);
@@ -728,7 +728,7 @@ update_doc(DbName, Id, UpdateProps, CreateProps) ->
 del_doc(DbName, Doc) when is_list(Doc) ->
     del_docs(DbName, Doc);
 del_doc(DbName, Doc) when ?VALID_DBNAME ->
-    couch_util:del_doc(wh_couch_connections:get_conn(), DbName, Doc);
+    couch_util:del_doc(wh_couch_connections:get_server(), DbName, Doc);
 del_doc(DbName, Doc) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> del_doc(Db, Doc);
@@ -744,7 +744,7 @@ del_doc(DbName, Doc) ->
 -spec del_docs/2 :: (text(), wh_json:objects()) ->
                             {'ok', wh_json:objects()}.
 del_docs(DbName, Docs) when is_list(Docs) andalso ?VALID_DBNAME ->
-    couch_util:del_docs(wh_couch_connections:get_conn(), DbName, Docs);
+    couch_util:del_docs(wh_couch_connections:get_server(), DbName, Docs);
 del_docs(DbName, Docs) when is_list(Docs) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> del_docs(Db, Docs);
@@ -758,7 +758,7 @@ del_docs(DbName, Docs) when is_list(Docs) ->
                                     {'ok', ne_binary()} |
                                     couchbeam_error().
 fetch_attachment(DbName, DocId, AName) when ?VALID_DBNAME ->
-    couch_util:fetch_attachment(wh_couch_connections:get_conn(), DbName, DocId, AName);
+    couch_util:fetch_attachment(wh_couch_connections:get_server(), DbName, DocId, AName);
 fetch_attachment(DbName, DocId, AName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> fetch_attachment(Db, DocId, AName);
@@ -769,7 +769,7 @@ fetch_attachment(DbName, DocId, AName) ->
                                      {'ok', reference()} |
                                      {'error', term()}.
 stream_attachment(DbName, DocId, AName) when ?VALID_DBNAME ->
-    couch_util:stream_attachment(wh_couch_connections:get_conn(), DbName, DocId, AName, self());
+    couch_util:stream_attachment(wh_couch_connections:get_server(), DbName, DocId, AName, self());
 stream_attachment(DbName, DocId, AName) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> stream_attachment(Db, DocId, AName);
@@ -787,7 +787,7 @@ put_attachment(DbName, DocId, AName, Contents) ->
     put_attachment(DbName, DocId, AName, Contents, []).
 
 put_attachment(DbName, DocId, AName, Contents, Options) when ?VALID_DBNAME ->
-    couch_util:put_attachment(wh_couch_connections:get_conn(), DbName, DocId, AName, Contents, Options);
+    couch_util:put_attachment(wh_couch_connections:get_server(), DbName, DocId, AName, Contents, Options);
 put_attachment(DbName, DocId, AName, Contents, Options) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> put_attachment(Db, DocId, AName, Contents, Options);
@@ -804,7 +804,7 @@ delete_attachment(DbName, DocId, AName) ->
     delete_attachment(DbName, DocId, AName, []).
 
 delete_attachment(DbName, DocId, AName, Options) when ?VALID_DBNAME ->
-    couch_util:delete_attachment(wh_couch_connections:get_conn(), DbName, DocId, AName, Options);
+    couch_util:delete_attachment(wh_couch_connections:get_server(), DbName, DocId, AName, Options);
 delete_attachment(DbName, DocId, AName, Options) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> delete_attachment(Db, DocId, AName, Options);
@@ -833,7 +833,7 @@ get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
 get_results(DbName, DesignDoc, Options) when ?VALID_DBNAME ->
-    couch_util:get_results(wh_couch_connections:get_conn(), DbName, DesignDoc, Options);
+    couch_util:get_results(wh_couch_connections:get_server(), DbName, DesignDoc, Options);
 get_results(DbName, DesignDoc, Options) ->
     case maybe_convert_dbname(DbName) of
         {ok, Db} -> get_results(Db, DesignDoc, Options);
@@ -841,7 +841,7 @@ get_results(DbName, DesignDoc, Options) ->
     end.
 
 get_results_count(DbName, DesignDoc, Options) ->
-    couch_util:get_results_count(wh_couch_connections:get_conn(), DbName, DesignDoc, Options).
+    couch_util:get_results_count(wh_couch_connections:get_server(), DbName, DesignDoc, Options).
 
 -spec get_result_keys/1 :: (wh_json:objects()) -> [wh_json:json_string(),...] | [].
 get_result_keys(JObjs) ->

@@ -17,6 +17,8 @@
 
 -define(FIXTURES_FOLDER, "fixtures").
 
+-define(CONFIG_CAT, <<"whistle_couch">>).
+
 -type couchbeam_errors() :: 'not_found' | 'conflict' | 'failed' |
                             'precondition_failed' | 'db_not_reachable' |
                             'db_not_found' | 'worker_is_dead' | 'invalid_db_name' |
@@ -56,10 +58,10 @@
                               ,port = ?DEFAULT_PORT
                               ,username = ""
                               ,password = ""
+                              ,connected = false
                               ,ready = false
                               ,admin = false
-                              ,connection = undefined
-                              ,change_handlers = dict:new()
+                              ,server = #server{}
                              }).
 
 -define(WH_COUCH_HRL, true).

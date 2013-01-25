@@ -17,12 +17,12 @@
          ,get_host/0
          ,get_port/0
          ,get_creds/0
-         ,get_conn/0
+         ,get_server/0
          ,test_conn/0
         ]).
 -export([get_admin_url/0
          ,get_admin_port/0
-         ,get_admin_conn/0
+         ,get_admin_server/0
          ,test_admin_conn/0
         ]).
 -export([get_node_cookie/0
@@ -38,10 +38,13 @@
 -export([add_change_handler/1
          ,add_change_handler/2
          ,add_change_handler/3
+        ]).
+-export([rm_change_handler/1
          ,rm_change_handler/2
+         ,rm_change_handler/3
         ]).
 
--include_lib("whistle_couch/include/wh_couch.hrl").
+-include_lib("wh_couch.hrl").
 
 -record(state, {cookie = change_me}).
 
@@ -60,12 +63,15 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+-spec update/1 :: (#wh_couch_connection{}) -> 'ok'.
 update(#wh_couch_connection{}=Connection) ->
     gen_server:cast(?MODULE, {update_connection, Connection}).
 
+-spec add/1 :: (#wh_couch_connection{}) -> 'ok'.
 add(#wh_couch_connection{}=Connection) ->
     gen_server:cast(?MODULE, {add_connection, Connection}).
 
+-spec wait_for_connection/0 :: () -> 'ok'.
 wait_for_connection() ->    
     try test_conn() of
         _ -> ok
@@ -75,6 +81,7 @@ wait_for_connection() ->
             wait_for_connection()
     end.    
 
+-spec get_host/0 :: () -> string().
 get_host() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
                                        ,host = '$3', _ = '_'}
@@ -84,6 +91,7 @@ get_host() ->
     {[Host], _} = ets:select(?MODULE, MatchSpec, 1),
     Host.
 
+-spec get_port/0 :: () -> integer().
 get_port() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
                                        ,port = '$3', _ = '_'}
@@ -93,6 +101,7 @@ get_port() ->
     {[Port], _} = ets:select(?MODULE, MatchSpec, 1),
     Port.
 
+-spec get_admin_port/0 :: () -> integer().
 get_admin_port() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
                                        ,port = '$3', _ = '_'}
@@ -102,6 +111,7 @@ get_admin_port() ->
     {[AdminPort], _} = ets:select(?MODULE, MatchSpec, 1),
     AdminPort.
 
+-spec get_creds/0 :: () -> {string(), string()}.
 get_creds() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
                                        ,username = '$3', password = '$4'
@@ -112,23 +122,25 @@ get_creds() ->
     {[Creds], _} = ets:select(?MODULE, MatchSpec, 1),
     Creds.
 
-get_conn() ->
+-spec get_server/0 :: () -> #server{}.
+get_server() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
-                                       ,connection = '$3', _ = '_'}
+                                       ,server = '$3', _ = '_'}
                   ,['$1', {'not','$2'}]
                   ,['$3']
                  }],
-    {[Connection], _} = ets:select(?MODULE, MatchSpec, 1),
-    Connection.
+    {[Server], _} = ets:select(?MODULE, MatchSpec, 1),
+    Server.
 
-get_admin_conn() ->
+-spec get_admin_server/0 :: () -> #server{}.
+get_admin_server() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
-                                       ,connection = '$3', _ = '_'}
+                                       ,server = '$3', _ = '_'}
                   ,['$1', '$2']
                   ,['$3']
                  }],
-    {[AdminConnection], _} = ets:select(?MODULE, MatchSpec, 1),
-    AdminConnection.
+    {[AdminServer], _} = ets:select(?MODULE, MatchSpec, 1),
+    AdminServer.
 
 -spec get_url/0 :: () -> ne_binary() | 'undefined'.
 get_url() ->
@@ -155,36 +167,62 @@ get_admin_url() ->
     get_url(Host, Port, Username, Password).
 
 test_conn() ->
-    couch_util:server_info(get_conn()).
+    couch_util:server_info(get_server()).
 
 test_admin_conn() ->
-    couch_util:server_info(get_admin_conn()).
+    couch_util:server_info(get_admin_server()).
 
-add_change_handler(DBName) ->
-    lager:debug("add change handler for DB: ~s", [DBName]),
-    gen_server:cast(?MODULE, {add_change_handler, wh_util:to_binary(DBName), <<>>, self()}).
+-spec add_change_handler/1 :: (ne_binary()) -> 'ok'.
+add_change_handler(DbName) ->
+    add_change_handler(DbName, self()).
 
-add_change_handler(DBName, Pid) when is_pid(Pid) ->
-    lager:debug("add change handler for DB: ~s", [DBName]),
-    gen_server:cast(?MODULE, {add_change_handler, wh_util:to_binary(DBName), <<>>, Pid});
-add_change_handler(DBName, DocID) ->
-    lager:debug("add change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
-    gen_server:cast(?MODULE, {add_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID), self()}).
+-spec add_change_handler/2 :: (ne_binary(), pid() | binary()) -> 'ok'.
+add_change_handler(DbName, Pid) when is_pid(Pid) ->
+    add_change_handler(DbName, Pid, <<>>);
+add_change_handler(DbName, DocId) ->
+    add_change_handler(DbName, self(), DocId).
 
-add_change_handler(DBName, DocID, Pid) ->
-    lager:debug("add change handler for Pid: ~p for DB: ~s and Doc: ~s", [Pid, DBName, DocID]),
-    gen_server:cast(?MODULE, {add_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID), Pid}).
+-spec add_change_handler/3 :: (ne_binary(), pid(), binary()) -> 'ok'.
+add_change_handler(DbName, Pid, DocId) ->
+    lager:debug("add change listener ~p for ~s/~s", [Pid, DbName, DocId]),
+    ServerName = wh_gen_changes:server_name(DbName),
+    case catch wh_change_handler:add_listener(ServerName, Pid, DocId) of
+        {'EXIT', {noproc, {gen_server, call, _}}} ->
+            Db = couch_util:get_db(get_server(), DbName),
+            {ok, _} = wh_change_handler_sup:start_handler(Db, []),
+            add_change_handler(DbName);
+        added -> ok;
+        exists -> ok
+    end.
 
-rm_change_handler(DBName, DocID) ->
-    lager:debug("rm change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
-    gen_server:call(?MODULE, {rm_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID)}).
+-spec rm_change_handler/1 :: (ne_binary()) -> 'ok'.
+rm_change_handler(DbName) ->
+    rm_change_handler(DbName, self()).
+
+-spec rm_change_handler/2 :: (ne_binary(), pid() | binary()) -> 'ok'.
+rm_change_handler(DbName, Pid) when is_pid(Pid) ->
+    rm_change_handler(DbName, Pid, <<>>);
+rm_change_handler(DbName, DocId) ->
+    rm_change_handler(DbName, self(), DocId).
+
+-spec rm_change_handler/3 :: (ne_binary(), pid(), binary()) -> 'ok'.
+rm_change_handler(DbName, Pid, DocId) ->
+    lager:debug("remove change listener ~p for ~s/~s", [Pid, DbName, DocId]),
+    ServerName = wh_gen_changes:server_name(DbName),
+    wh_change_handler:rm_listener(ServerName, Pid, DocId).
 
 -spec get_node_cookie/0 :: () -> atom().
 get_node_cookie() ->
-    gen_server:call(?MODULE, node_cookie).
+    Default = gen_server:call(?MODULE, node_cookie),
+    try whapps_config:get(?CONFIG_CAT, <<"bigcouch_cookie">>, Default) of
+        Cookie -> wh_util:to_atom(Cookie, true)
+    catch
+        _:_ -> wh_util:to_atom(Default, true)
+    end.
 
 -spec set_node_cookie/1 :: (atom()) -> 'ok'.
 set_node_cookie(Cookie) when is_atom(Cookie) ->
+    _ = (catch whapps_config:set(?CONFIG_CAT, <<"bigcouch_cookie">>, wh_util:to_binary(Cookie))),
     gen_server:cast(?MODULE, {node_cookie, Cookie}).
 
 %%%===================================================================
@@ -306,31 +344,3 @@ get_url(H, P, User, Pwd) ->
     list_to_binary(["http://", wh_util:to_binary(User), ":", wh_util:to_binary(Pwd)
                     ,"@", H, ":", wh_util:to_binary(P), "/"
                    ]).
-
--spec maybe_start_change_handler/3 :: (ne_binary(), pid(), #state{}) -> #state{}.
-maybe_start_change_handler(DbName, Pid, State) ->
-    Conn = get_conn(),
-    case couch_util:db_info(Conn, DbName) of
-        {error, _} ->
-            lager:notice("unable to fetch database info for ~s", [DbName]),
-            State;
-        {ok, JObj} ->
-            UpdateSeq = wh_json:get_value(<<"update_seq">>, JObj),
-            Db = couch_util:get_db(Conn, DbName)
-%%            start_change_handler(Db, UpdateSeq, Pid, State)
-    end.
-
-%%-spec start_change_handler/4 :: (#db{}, list(), pid(), #state{}) -> #state{}.
-%%start_change_handler(#db{name=DbName}=Db, [SeqNumber, Seq], Pid, #state{change_handlers=CH}=State) ->
-%%    Since = <<"[", (wh_util:to_binary(SeqNumber))/binary, ",\"", Seq/binary, "\"]">>,
-%%    case change_mgr_sup:start_handler(Db, [{since, wh_util:to_list(Since)}]) of
-%%        {ok, Srv} ->
-%%            lager:debug("started change handler(~p) ~s at sequence ~p", [Srv, DbName, SeqNumber]),
-%%            SrvRef = erlang:monitor(process, Srv),
-%%            change_handler:add_listener(Srv, Pid),
-%%            State#state{change_handlers=dict:store(wh_util:to_binary(DbName), {Srv, SrvRef}, CH)};
-%%        _Else ->
-%%            lager:notice("failed to start ~s change handler: ~p", [DbName, _Else]),          
-%%            State
-%%    end.
-    

@@ -57,7 +57,7 @@ start_handler(Db, Options) ->
 %%--------------------------------------------------------------------
 init([]) ->
     RestartStrategy = simple_one_for_one,
-    MaxRestarts = 1,
+    MaxRestarts = 3,
     MaxSecondsBetweenRestarts = 5,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},

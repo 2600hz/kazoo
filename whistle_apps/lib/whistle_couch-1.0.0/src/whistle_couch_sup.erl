@@ -22,7 +22,7 @@
                    ,{wh_couch_connection_sup, supervisor}
                    ,{wh_change_handler_sup, supervisor}
                    ,{wh_couch_connections, worker}
-%%                   ,{couch_compactor_fsm, worker}
+                   ,{couch_compactor_fsm, worker}
                    ,{wh_couch_bootstrap, worker}
                   ]).
 
