@@ -13,7 +13,7 @@
 %% Stats API
 -export([call_processed/5
          ,call_abandoned/4
-         ,call_missed/4
+         ,call_missed/4, call_missed/5
          ,call_handled/4
          ,call_waiting/3, call_waiting/5
 
@@ -52,14 +52,15 @@
                      | 'abandoned'. % caller left the queue (hangup or dtmf exit)
 
 -record(call_stat, {
-          call_id :: ne_binary()
-          ,acct_id :: ne_binary()
-          ,queue_id :: ne_binary()
-          ,agent_id :: ne_binary() % the handling agent
+          call_id :: api_binary()
+          ,acct_id :: api_binary()
+          ,queue_id :: api_binary()
+          ,agent_id :: api_binary() % the handling agent
           ,timestamp = wh_util:current_tstamp() :: integer()
           ,wait_time :: integer() % how long was caller on hold
           ,talk_time :: integer() % how long was agent connected to caller
           ,abandon_reason :: abandon_reason()
+          ,miss_reason :: api_binary() % why did the agent miss the call
           ,status :: call_status()
           ,caller_id_name :: api_binary()
           ,caller_id_number :: api_binary()
@@ -67,12 +68,12 @@
 -type call_stat() :: #call_stat{}.
 
 -record(agent_stat, {
-          agent_id :: ne_binary()
-          ,acct_id :: ne_binary()
+          agent_id :: api_binary()
+          ,acct_id :: api_binary()
           ,timestamp = wh_util:current_tstamp() :: integer()
           ,status :: 'ready' | 'logout' | 'paused' | 'wrapup' | 'busy' | 'handling'
           ,wait_time :: integer()
-          ,call_id :: ne_binary()
+          ,call_id :: api_binary()
          }).
 -type agent_stat() :: #agent_stat{}.
 
@@ -109,11 +110,15 @@ call_abandoned(AcctId, QueueId, CallId, Reason) ->
 %% Agent was rung for a call, and failed to pickup in time
 -spec call_missed/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 call_missed(AcctId, QueueId, AgentId, CallId) ->
+    call_missed(AcctId, QueueId, AgentId, CallId, undefined).
+-spec call_missed/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+call_missed(AcctId, QueueId, AgentId, CallId, MissReason) ->
     gen_listener:cast(?MODULE, {store, #call_stat{acct_id=AcctId
                                                   ,queue_id=QueueId
                                                   ,call_id=CallId
                                                   ,agent_id=AgentId
                                                   ,status='missed'
+                                                  ,miss_reason=MissReason
                                                  }
                                }).
 
@@ -304,6 +309,7 @@ stat_to_jobj(#call_stat{call_id=CallId
                         ,status=Status
                         ,caller_id_name=CName
                         ,caller_id_number=CNum
+                        ,miss_reason=MissReason
                        }, Prefix) ->
     wh_json:from_list(
       props:filter_undefined(
@@ -316,6 +322,7 @@ stat_to_jobj(#call_stat{call_id=CallId
          ,{<<"talk_time">>, TalkTime}
          ,{<<"abandon_reason">>, AR}
          ,{<<"status">>, Status}
+         ,{<<"miss_reason">>, MissReason}
          ,{<<"caller_id_name">>, CName}
          ,{<<"caller_id_number">>, CNum}
          ,{<<"pvt_type">>, <<"call_partial">>}
