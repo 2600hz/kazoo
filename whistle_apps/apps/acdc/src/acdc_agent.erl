@@ -32,7 +32,7 @@
          ,stop/1
          ,fsm_started/2
          ,add_endpoint_bindings/3
-         ,agent_call_id/2
+         ,agent_call_id/3
         ]).
 
 %% gen_server callbacks
@@ -67,6 +67,7 @@
          ,is_thief = false :: boolean()
          ,agent :: agent()
          ,agent_call_id :: api_binary()
+         ,agent_call_queue :: api_binary()
          }).
 
 -type agent() :: whapps_call:call() | wh_json:object().
@@ -197,8 +198,8 @@ monitor_call(Srv, Call) ->
 channel_hungup(Srv, CallId) ->
     gen_listener:cast(Srv, {channel_hungup, CallId}).
 
-agent_call_id(Srv, ACallId) ->
-    gen_listener:cast(Srv, {agent_call_id, ACallId}).
+agent_call_id(Srv, ACallId, ACtrlQ) ->
+    gen_listener:cast(Srv, {agent_call_id, ACallId, ACtrlQ}).
 
 originate_execute(Srv, JObj) ->
     gen_listener:cast(Srv, {originate_execute, JObj}).
@@ -396,7 +397,9 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
                                              ,record_calls=ShouldRecord
                                              ,is_thief=IsThief
                                              ,agent_call_id=ACallId
+                                             ,agent_call_queue=ACtrlQ
                                              ,agent_id=AgentId
+                                             ,my_q=MyQ
                                             }=State) ->
     CCallId = call_id(Call),
     case CallId of
@@ -406,6 +409,7 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
             acdc_util:unbind_from_call_events(ACallId),
 
             maybe_stop_recording(Call, ShouldRecord),
+            stop_agent_leg(MyQ, ACallId, ACtrlQ),
 
             put(callid, AgentId),
             case IsThief of
@@ -414,6 +418,7 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
                                           ,msg_queue_id='undefined'
                                           ,acdc_queue_id='undefined'
                                           ,agent_call_id='undefined'
+                                          ,agent_call_queue='undefined'
                                          }
                      ,hibernate};
                 true ->
@@ -422,8 +427,9 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
                     {noreply, State}
             end;
         ACallId ->
-            lager:debug("agent channel ~s hungup", [ACallId]),
+            lager:debug("agent channel ~s hungup/needs hanging up", [ACallId]),
             acdc_util:unbind_from_call_events(ACallId),
+            stop_agent_leg(MyQ, ACallId, ACtrlQ),
             {noreply, State#state{agent_call_id='undefined'}, hibernate};
         _CallId ->
             lager:debug("unknown call id ~s for channel_hungup, ignoring", [_CallId]),
@@ -570,15 +576,17 @@ handle_cast({outbound_call, Call}, State) ->
     lager:debug("bound to agent's outbound call"),
     {noreply, State#state{call=Call}, hibernate};
 
-handle_cast({agent_call_id, ACallId}, #state{call=Call
-                                             ,record_calls=ShouldRecord
-                                            }=State) ->
-    lager:debug("agent call id set: ~s", [ACallId]),
+handle_cast({agent_call_id, ACallId, ACtrlQ}, #state{call=Call
+                                                     ,record_calls=ShouldRecord
+                                                    }=State) ->
+    lager:debug("agent call id set: ~s using ctrl ~s", [ACallId, ACtrlQ]),
 
     acdc_util:bind_to_call_events(ACallId),
     maybe_start_recording(Call, ShouldRecord),
 
-    {noreply, State#state{agent_call_id=ACallId}, hibernate};
+    {noreply, State#state{agent_call_id=ACallId
+                          ,agent_call_queue=ACtrlQ
+                         }, hibernate};
 
 handle_cast({join_agent, ACallId}, #state{call=Call
                                           ,record_calls=ShouldRecord
@@ -1037,3 +1045,12 @@ is_thief(Agent) -> not wh_json:is_json_object(Agent).
 
 handle_fsm_started(_FSMPid) ->
     gen_listener:cast(self(), bind_to_member_reqs).
+
+stop_agent_leg(MyQ, ACallId, ACtrlQ) ->
+    Command = [{<<"Application-Name">>, <<"hangup">>}
+               ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Call-ID">>, ACallId}
+               | wh_api:default_headers(MyQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    wapi_dialplan:publish_command(ACtrlQ, Command).
+    

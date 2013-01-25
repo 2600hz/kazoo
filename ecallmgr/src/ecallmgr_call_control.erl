@@ -154,11 +154,11 @@ hostname(Srv) ->
     [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
     Hostname.
 
--spec queue_name/1 :: (pid()) -> ne_binary().
-queue_name(Srv) ->
-    gen_listener:queue_name(Srv).
+-spec queue_name/1 :: (pid() | 'undefined') -> api_binary().
+queue_name(Srv) when is_pid(Srv) -> gen_listener:queue_name(Srv);
+queue_name(_) -> undefined.
 
--spec other_legs/1 :: (pid()) -> [] | [ne_binary(),...].
+-spec other_legs/1 :: (pid()) -> ne_binaries().
 other_legs(Srv) ->
     gen_listener:call(Srv, {other_legs}, 1000).
 
@@ -990,6 +990,7 @@ publish_callid_update(PrevCallId, NewCallId, CtrlQ) ->
               ,{<<"Control-Queue">>, CtrlQ}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
+
     wapi_call:publish_callid_update(PrevCallId, Update).
 
 -spec publish_control_transfer/2 :: (ne_binary(), ne_binary()) -> 'ok'.
