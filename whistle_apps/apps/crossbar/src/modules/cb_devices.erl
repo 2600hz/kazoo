@@ -471,7 +471,7 @@ do_simple_provision(#cb_context{doc=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec do_full_provision/1 :: (#cb_context{}) -> 'ok'.
 do_full_provision(#cb_context{doc=JObj}) ->
-    case whapps_config:get_string(?MOD_FULL_PROVISIONER, <<"provisioning_url">>) of
+    case whapps_config:get_binary(?MOD_FULL_PROVISIONER, <<"provisioning_url">>) of
         undefined -> ok;
         Url ->
             Headers = [{K, V}
@@ -481,10 +481,12 @@ do_full_provision(#cb_context{doc=JObj}) ->
                                     ]
                               ,V =/= undefined
                       ],
-            HTTPOptions = [],
             Body = wh_json:encode(JObj),
-            lager:debug("posting to ~s with ~s", [Url, Body]),
-            ibrowse:send_req(Url, Headers, post, Body, HTTPOptions)
+            AccountId = wh_util:to_binary(wh_json:get_value(<<"account_id">>, JObj)),
+            Mac = binary:replace(wh_util:to_binary(wh_json:get_value(<<"mac_address">>, JObj)), <<":">>, <<"">>, [global]),
+            FullUrl = wh_util:to_lower_string(<<Url/binary, <<"/">>/binary, AccountId/binary, <<"/">>/binary, Mac/binary>>),
+            lager:debug("posting to ~p with ~p", [FullUrl, JObj]), 
+            ibrowse:send_req(FullUrl, Headers, post, Body, [])
     end.
 
 
@@ -495,15 +497,20 @@ do_full_provision(#cb_context{doc=JObj}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_provision/1 :: (cb_context:context()) -> boolean().
-maybe_provision(#cb_context{resp_status=success}=Context) ->
+maybe_provision(#cb_context{resp_status=success, doc=JObj}=Context) ->
     case whapps_config:get_binary(?MOD_FULL_PROVISIONER, <<"provisioning_type">>) of
         <<"full_provisioner">> ->
             spawn(fun() ->
-                          case provisioner_util:get_merged_device(Context) of
-                              {error, _R} ->
+                          case wh_json:get_value(<<"mac_address">>, JObj) of
+                              undefined -> 
                                   false;
-                              {ok, Context1} ->
-                                  do_full_provision(Context1)
+                              _ ->
+                                  case provisioner_util:get_merged_device(Context) of
+                                      {error, _R} ->
+                                          false;
+                                      {ok, Context1} ->
+                                          do_full_provision(Context1)
+                                  end
                           end
                   end);
         _  ->
