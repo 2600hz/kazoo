@@ -35,5 +35,5 @@
 -define(APP_NAME, <<"translator">>).
 -define(APP_VERSION, <<"0.4.0">>).
 
--define(KZ_HRL, true).
+-define(KZT_HRL, true).
 -endif.
