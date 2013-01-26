@@ -16,7 +16,14 @@
 
 -include("../callflow.hrl").
 
--type max_wait() :: integer() | 'infinity'.
+-type max_wait() :: pos_integer() | 'infinity'.
+
+-record(member_call, {call :: whapps_call:call()
+                      ,queue_id :: api_binary()
+                      ,config_data = [] :: wh_proplist()
+                      ,max_wait = 60000 :: max_wait()
+                     }).
+-type member_call() :: #member_call{}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -47,56 +54,75 @@ handle(Data, Call) ->
 
     lager:info("max size: ~p curr size: ~p", [MaxQueueSize, CurrQueueSize]),
 
-    maybe_enter_queue(Call1, MemberCall, QueueId, MaxWait, is_queue_full(MaxQueueSize, CurrQueueSize)).
+    maybe_enter_queue(#member_call{call=Call1
+                                   ,config_data=MemberCall
+                                   ,queue_id=QueueId
+                                   ,max_wait=MaxWait
+                                  }
+                      ,is_queue_full(MaxQueueSize, CurrQueueSize)
+                     ).
 
--spec maybe_enter_queue/5 :: (whapps_call:call(), wh_proplist(), ne_binary(), max_wait(), boolean()) -> 'ok'.
-maybe_enter_queue(Call, _, _, _, true) ->
+-spec maybe_enter_queue/2 :: (member_call(), boolean()) -> any().
+maybe_enter_queue(#member_call{call=Call}, true) ->
     lager:info("queue has reached max size"),
     cf_exe:continue(Call);
-maybe_enter_queue(Call, MemberCall, QueueId, MaxWait, false) ->
+maybe_enter_queue(#member_call{call=Call
+                               ,config_data=MemberCall
+                               ,queue_id=QueueId
+                               ,max_wait= MaxWait
+                              }=MC
+                  ,false) ->
     lager:info("asking for an agent, waiting up to ~p ms", [MaxWait]),
 
     cf_exe:send_amqp(Call, MemberCall, fun wapi_acdc_queue:publish_member_call/1),
     whapps_call_command:flush_dtmf(Call),
-    wait_for_bridge(whapps_call:kvs_store(queue_id, QueueId, Call), MaxWait).
+    wait_for_bridge(MC#member_call{call=whapps_call:kvs_store(queue_id, QueueId, Call)}, MaxWait).
 
--spec wait_for_bridge/2 :: (whapps_call:call(), max_wait()) -> 'ok'.
--spec wait_for_bridge/3 :: (whapps_call:call(), max_wait(), wh_now()) -> 'ok'.
-wait_for_bridge(Call, Timeout) ->
-    wait_for_bridge(Call, Timeout, erlang:now()).
-wait_for_bridge(Call, Timeout, Start) ->
+-spec wait_for_bridge/2 :: (member_call(), max_wait()) -> 'ok'.
+-spec wait_for_bridge/3 :: (member_call(), max_wait(), wh_now()) -> 'ok'.
+wait_for_bridge(MC, Timeout) ->
+    wait_for_bridge(MC, Timeout, erlang:now()).
+wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
     Wait = erlang:now(),
     receive
         {amqp_msg, JObj} ->
-            process_message(Call, Timeout, Start, Wait, JObj, wh_util:get_event_type(JObj));
+            process_message(MC, Timeout, Start, Wait, JObj, wh_util:get_event_type(JObj));
         _Msg ->
             lager:info("popping msg off: ~p", [_Msg]),
-            wait_for_bridge(Call, Timeout, Start)
+            wait_for_bridge(MC, Timeout, Start)
     after Timeout ->
             lager:info("failed to handle the call in time, proceeding"),
             cancel_member_call(Call, <<"member_timeout">>),
             cf_exe:continue(Call)
     end.
 
--spec process_message/6 :: (whapps_call:call(), max_wait(), wh_now()
+-spec process_message/6 :: (member_call(), max_wait(), wh_now()
                             ,wh_now(), wh_json:json_object()
                             ,{ne_binary(), ne_binary()}
                            ) -> 'ok'.
-process_message(Call, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}) ->
+process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}) ->
     lager:info("member was bridged to agent, yay! took ~b s", [wh_util:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
-process_message(Call, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_HANGUP_COMPLETE">>}) ->
+process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_HANGUP_COMPLETE">>}) ->
     lager:info("member hungup while waiting in the queue (was there ~b s)", [wh_util:elapsed_s(Start)]),
     cancel_member_call(Call, <<"member_hungup">>),
     cf_exe:stop(Call);
-process_message(Call, _, Start, _Wait, JObj, {<<"member">>, <<"call_fail">>}) ->
-    Failure = wh_json:get_value(<<"Failure-Reason">>, JObj),
-    lager:info("call failed to be processed: ~s (took ~b s)"
-                ,[Failure, wh_util:elapsed_s(Start)]
-               ),
-    cancel_member_call(Call, Failure),
-    cf_exe:continue(Call);
-process_message(Call, Timeout, Start, Wait, JObj, {<<"call_event">>, <<"DTMF">>}) ->
+process_message(#member_call{call=Call
+                             ,queue_id=QueueId
+                            }=MC, Timeout, Start, Wait, JObj, {<<"member">>, <<"call_fail">>}) ->
+    case QueueId =:= wh_json:get_value(<<"Queue-ID">>, JObj) of
+        true ->
+            Failure = wh_json:get_value(<<"Failure-Reason">>, JObj),
+            lager:info("call failed to be processed: ~s (took ~b s)"
+                       ,[Failure, wh_util:elapsed_s(Start)]
+                      ),
+            cancel_member_call(Call, Failure),
+            cf_exe:continue(Call);
+        false ->
+            lager:debug("failure json was for a different queue, ignoring"),
+            wait_for_bridge(MC, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start)
+    end;
+process_message(#member_call{call=Call}=MC, Timeout, Start, Wait, JObj, {<<"call_event">>, <<"DTMF">>}) ->
     DigitPressed = wh_json:get_value(<<"DTMF-Digit">>, JObj),
     case DigitPressed =:= whapps_call:kvs_fetch(caller_exit_key, Call) of
         true ->
@@ -107,13 +133,13 @@ process_message(Call, Timeout, Start, Wait, JObj, {<<"call_event">>, <<"DTMF">>}
             cf_exe:continue(Call);
         false ->
             lager:info("caller pressed ~s, ignoring", [DigitPressed]),
-            wait_for_bridge(Call, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start)
+            wait_for_bridge(MC, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start)
     end;
-process_message(Call, _, Start, _Wait, _JObj, {<<"member">>, <<"call_success">>}) ->
+process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"member">>, <<"call_success">>}) ->
     lager:info("call was processed by queue (took ~b s)", [wh_util:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
-process_message(Call, Timeout, Start, Wait, _JObj, _Type) ->
-    wait_for_bridge(Call, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start).
+process_message(MC, Timeout, Start, Wait, _JObj, _Type) ->
+    wait_for_bridge(MC, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start).
 
 -spec reduce_timeout/2 :: (max_wait(), integer()) -> max_wait().
 reduce_timeout('infinity', _) -> 'infinity';
