@@ -369,8 +369,8 @@ sync({timeout, Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref
                                                     ,agent_id=AgentId
                                                    }=State) when is_reference(Ref) ->
     lager:debug("done waiting for sync responses"),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
 
     {next_state, ready, State#state{sync_ref=Ref}};
 sync({timeout, Ref, ?RESYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
@@ -408,9 +408,9 @@ sync({sync_resp, JObj}, #state{sync_ref=Ref
         ready ->
             lager:debug("other agent is in ready state, joining"),
             _ = erlang:cancel_timer(Ref),
-            acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
             acdc_stats:agent_ready(AcctId, AgentId),
-            {next_state, ready, State#state{sync_ref=undefined}};
+            acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+            {next_state, ready, State#state{sync_ref=undefined}, hibernate};
         {'EXIT', _} ->
             lager:debug("other agent sent unusable state, ignoring"),
             {next_state, sync, State};
@@ -999,6 +999,7 @@ outbound({channel_hungup, CallId}, #state{agent_proc=Srv
             {next_state, wrapup, clear_call(State, wrapup), hibernate};
         _ ->
             acdc_stats:agent_ready(AcctId, AgentId),
+            acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
             webseq:note(self(), right, <<"ready">>),
             {next_state, ready, clear_call(State, ready), hibernate}
     end;
@@ -1018,6 +1019,7 @@ outbound({leg_destroyed, CallId}, #state{agent_proc=Srv
             {next_state, wrapup, clear_call(State, wrapup), hibernate};
         _ ->
             acdc_stats:agent_ready(AcctId, AgentId),
+            acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
             webseq:note(self(), right, <<"ready">>),
             {next_state, ready, clear_call(State, ready), hibernate}
     end;
@@ -1050,6 +1052,7 @@ outbound({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
             {next_state, wrapup, clear_call(State, wrapup), hibernate};
         _ ->
             acdc_stats:agent_ready(AcctId, AgentId),
+            acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
             webseq:note(self(), right, <<"ready">>),
             {next_state, ready, clear_call(State, ready), hibernate}
     end;
