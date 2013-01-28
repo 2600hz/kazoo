@@ -107,7 +107,7 @@ handle_discovery_req(JObj, Props) ->
                  end
                 ,fun(C) -> whapps_conference:set_application_version(<<"2.0.0">>, C) end
                 ,fun(C) -> whapps_conference:set_application_name(<<"conferences">>, C) end
-                ,fun(C0) ->
+                ,fun(_) ->
                          case wh_json:get_value(<<"Conference-Doc">>, JObj) of
                              undefined ->
                                  {ok, C} = validate_conference_id(wh_json:get_value(<<"Conference-ID">>, JObj), Call),
@@ -115,7 +115,7 @@ handle_discovery_req(JObj, Props) ->
                              Doc ->
                                  N = wh_json:get_value(<<"name">>, Doc),
                                  lager:debug("conf doc (~s) set instead of conf id", [N]),
-                                 whapps_conference:set_id(N, C0)
+                                 whapps_conference:set_id(N, create_conference(Doc, <<"none">>))
                          end
                  end
                ],
