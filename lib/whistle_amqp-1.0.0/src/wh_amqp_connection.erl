@@ -50,9 +50,9 @@
               ,consume_ret/0
              ]).
 
--record(state, {connection = 'undefined' :: 'undefined' | {pid(), reference()}
-                ,broker = 'undefined' :: 'undefined' | wh_amqp_broker:broker()
-                ,broker_name = 'undefined' :: atom()
+-record(state, {connection :: {pid(), reference()}
+                ,broker :: wh_amqp_broker:broker()
+                ,broker_name :: atom()
                }).
 
 %%%===================================================================

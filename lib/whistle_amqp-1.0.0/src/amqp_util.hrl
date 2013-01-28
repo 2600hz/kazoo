@@ -12,7 +12,7 @@
 -define(AMQP_DEBUG, false).
 
 %% see http://www.rabbitmq.com/uri-spec.html
--define(DEFAULT_AMQP_URI, "amqp://guest:guest@localhost:5672/").
+-define(DEFAULT_AMQP_URI, "amqp://guest:guest@localhost:5672").
 
 %% Targeted Exchange
 %% - Any process that needs a dedicated queue to be reached at creates one on this exchange
