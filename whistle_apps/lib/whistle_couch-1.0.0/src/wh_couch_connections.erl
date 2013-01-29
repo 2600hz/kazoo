@@ -190,7 +190,7 @@ add_change_handler(DbName, Pid, DocId) ->
         {'EXIT', {noproc, {gen_server, call, _}}} ->
             Db = couch_util:get_db(get_server(), DbName),
             {ok, _} = wh_change_handler_sup:start_handler(Db, []),
-            add_change_handler(DbName);
+            add_change_handler(DbName, Pid, DocId);
         added -> ok;
         exists -> ok
     end.
