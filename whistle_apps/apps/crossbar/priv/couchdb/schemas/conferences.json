@@ -12,6 +12,18 @@
          "minLength":1,
          "maxLength":128
       },
+      "play_welcome":{
+        "name":"Play Welcome Prompt",
+        "description":"Should the caller hear the 'Welcome' prompt on connection",
+        "type":"boolean",
+        "default":true
+      },
+      "play_entry_tone":{
+        "name":"Play Welcome Tone",
+        "description":"Should the caller hear an entry tone when joining the conference",
+        "type":"boolean",
+        "default":true
+      },
       "member":{
          "description":"Defines the discovery properties for a member",
          "type":"object",
@@ -59,6 +71,12 @@
                "description":"Determines if a member should be prompted to record their name on entry for later playback",
                "type":"boolean",
                "default":false
+            },
+            "play_entry_prompt":{
+                "name":"Play Entry Prompt (member)",
+                "description":"Toggle whether to announce to the caller than they're entering a conference",
+                "type":"boolean",
+                "default":true"
             }
          },
          "default":{
