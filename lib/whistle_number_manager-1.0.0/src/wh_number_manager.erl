@@ -414,7 +414,7 @@ list_attachments(Number, AuthBy) ->
                          {ok, wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())}
                  end
                ], 
-    lists:foldl(fun(F, J) -> F(J) end, ok, Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -446,7 +446,7 @@ fetch_attachment(Number, Name, AuthBy) ->
                          couch_mgr:fetch_attachment(Db, Num, Name)
                  end
                ],
-    lists:foldl(fun(F, J) -> F(J) end, ok, Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -479,7 +479,7 @@ put_attachment(Number, Name, Content, Options, AuthBy) ->
                          couch_mgr:put_attachment(Db, Num, Name, Content, [{rev, Rev}|Options])
                  end
                ],
-    lists:foldl(fun(F, J) -> F(J) end, ok, Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -511,7 +511,7 @@ delete_attachment(Number, Name, AuthBy) ->
                          couch_mgr:delete_attachment(Db, Num, Name)
                  end
                ],
-    lists:foldl(fun(F, J) -> F(J) end, ok, Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -524,6 +524,7 @@ get_public_fields(Number, AuthBy) ->
     lager:debug("attempting to get public fields for number ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
                 ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) when AuthBy =:= system -> N;
                     (#number{assigned_to=AssignedTo}=N) ->
                          case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
                              false -> wnm_number:error_unauthorized(N);
@@ -538,7 +539,7 @@ get_public_fields(Number, AuthBy) ->
                          {ok, wh_json:public_fields(JObj)}
                  end
                ], 
-    lists:foldl(fun(F, J) -> F(J) end, ok, Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
