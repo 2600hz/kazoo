@@ -55,8 +55,7 @@ start_link() ->
                                       ,{consume_options, ?SYSCONF_CONSUME_OPTIONS}
                                      ], []).
 
-stop(Srv) ->
-    gen_listener:stop(Srv).
+stop(Srv) -> gen_listener:stop(Srv).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -155,7 +154,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
-    lager:debug("sysconf server ~p termination", [_Reason]).
+    lager:debug("sysconf server terminated: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
