@@ -3,6 +3,9 @@
 *.sasl
 */ebin/*.beam
 */ebin/*.app
+ecallmgr/test
+whistle_apps/apps/*/test
+lib/*/test
 lib/*/ebin/*.beam
 lib/*/ebin/*.app
 lib/*/priv/*.so
