@@ -1,8 +1,9 @@
-PROJECT=ecallmgr
+PROJECT = ecallmgr
 ROOT = ..
 DIALYZER = dialyzer
 
-ERLC_OPTS = -Werror +debug_info +warn_export_all # +bin_opt_info 
+ERLC_OPTS = -Werror +debug_info +warn_export_all \
+	-I $(ROOT)/lib  # +bin_opt_info
 
 DIRS = . \
 	$(ROOT)/lib/whistle-1.0.0 \
@@ -25,15 +26,26 @@ ebin/$(PROJECT).app: src/*.erl
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ -pa $(ROOT)/lib \
 		src/switchblade_transform.erl $?
 
+compile-test: test/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> test/$(PROJECT).app
+	-@$(MAKE) test/$(PROJECT).app
+
+test/$(PROJECT).app: src/*.erl
+	@mkdir -p test/
+	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
+
 clean:
 	rm -r ebin/*
 	rm -f test/*.beam
 	rm -f erl_crash.dump
 
-test: clean app eunit
 
-eunit:
-	erl -noshell -pa ebin -eval "eunit:test()" -s init stop
+test: clean compile-test eunit
+
+eunit: compile-test
+	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
 
 build-plt:
 	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \

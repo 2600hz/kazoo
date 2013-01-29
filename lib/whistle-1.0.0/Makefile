@@ -1,30 +1,48 @@
+PROJECT = whistle
 ROOT = ../..
 DIALYZER = dialyzer
-REBAR = $(ROOT)/bin/rebar
 
-DIRS =  . \
-	$(ROOT)/lib/whistle_amqp-1.0.0 \
-	$(ROOT)/whistle_apps/lib/whistle_couch-1.0.0
+ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/lib # +bin_opt_info
 
-all: app
+DIRS = . \
+	$(ROOT)/lib/whistle_amqp-1.0.0
 
-app: compile
+.PHONY: all compile clean
 
-compile:
-	@$(REBAR) compile
+all: compile
 
-deps:
-	@$(REBAR) get-deps
+MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+
+compile: ebin/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> ebin/$(PROJECT).app
+	-@$(MAKE) ebin/$(PROJECT).app
+
+ebin/$(PROJECT).app: src/*.erl
+	@mkdir -p ebin/
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ -pa $(ROOT)/lib \
+		src/switchblade_transform.erl $?
+
+compile-test: test/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> test/$(PROJECT).app
+	-@$(MAKE) test/$(PROJECT).app
+
+test/$(PROJECT).app: src/*.erl
+	@mkdir -p test/
+	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
 
 clean:
-	@$(REBAR) clean
+	rm -f ebin/*
 	rm -f test/*.beam
 	rm -f erl_crash.dump
 
-test: clean app eunit
+test: clean compile-test eunit
 
-eunit:
-	@$(REBAR) eunit skip_deps=true
+eunit: compile-test
+	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
 
 build-plt:
 	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
@@ -34,6 +52,3 @@ dialyze:
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
                 --plt $(ROOT)/.platform_dialyzer.plt --no_native \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
-
-docs:
-	@$(REBAR) doc skip_deps=true
