@@ -1211,21 +1211,21 @@ b_say(Say, Type, Method, Language, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec conference/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
--spec conference/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
--spec conference/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
--spec conference/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec conference/3 :: (ne_binary(), boolean(), whapps_call:call()) -> 'ok'.
+-spec conference/4 :: (ne_binary(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
+-spec conference/5 :: (ne_binary(), boolean(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
 
 -spec b_conference/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_conference/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_conference/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_conference/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_conference/3 :: (ne_binary(), boolean(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_conference/4 :: (ne_binary(), boolean(), boolean(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_conference/5 :: (ne_binary(), boolean(), boolean(), boolean(), whapps_call:call()) -> whapps_api_std_return().
 
 conference(ConfId, Call) ->
-    conference(ConfId, <<"false">>, Call).
+    conference(ConfId, 'false', Call).
 conference(ConfId, Mute, Call) ->
-    conference(ConfId, Mute, <<"false">>, Call).
+    conference(ConfId, Mute, 'false', Call).
 conference(ConfId, Mute, Deaf, Call) ->
-    conference(ConfId, Mute, Deaf, <<"false">>, Call).
+    conference(ConfId, Mute, Deaf, 'false', Call).
 conference(ConfId, Mute, Deaf, Moderator, Call) ->
     Command = [{<<"Application-Name">>, <<"conference">>}
                ,{<<"Conference-ID">>, ConfId}
@@ -1236,11 +1236,11 @@ conference(ConfId, Mute, Deaf, Moderator, Call) ->
     send_command(Command, Call).
 
 b_conference(ConfId, Call) ->
-    b_conference(ConfId, <<"false">>, Call).
+    b_conference(ConfId, 'false', Call).
 b_conference(ConfId, Mute, Call) ->
-    b_conference(ConfId, Mute, <<"false">>, Call).
+    b_conference(ConfId, Mute, 'false', Call).
 b_conference(ConfId, Mute, Deaf, Call) ->
-    b_conference(ConfId, Mute, Deaf, <<"false">>, Call).
+    b_conference(ConfId, Mute, Deaf, 'false', Call).
 b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
     conference(ConfId, Mute, Deaf, Moderator, Call),
     wait_for_message(<<"conference">>, <<"CHANNEL_EXECUTE">>).
