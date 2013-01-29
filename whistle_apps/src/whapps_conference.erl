@@ -35,6 +35,9 @@
 -export([require_moderator/1, set_require_moderator/2]).
 -export([wait_for_moderator/1, set_wait_for_moderator/2]).
 -export([play_name_on_join/1, set_play_name_on_join/2]).
+-export([play_entry_prompt/1, set_play_entry_prompt/2]).
+-export([play_entry_tone/1, set_play_entry_tone/2]).
+-export([play_welcome/1, set_play_welcome/2]).
 -export([conference_doc/1, set_conference_doc/2]).
 
 -export([kvs_append/3
@@ -77,6 +80,9 @@
          ,require_moderator = 'false' :: boolean()     %% does the conference require a moderator
          ,wait_for_moderator = 'false' :: boolean()    %% can members wait for a moderator
          ,play_name_on_join = 'false' :: boolean()     %% should participants have their name played on join
+         ,play_entry_prompt = 'true' :: boolean()      %% Play prompt telling caller they're entering the conference
+         ,play_entry_tone = 'true' :: boolean()        %% Play tone telling caller they've entered the conference
+         ,play_welcome = 'true' :: boolean()           %% Play prompt welcoming caller to the conference
          ,conference_doc :: wh_json:object()           %% the complete conference doc used to create the record (when and if)
          ,app_name = <<"whapps_conference">> :: ne_binary() %% The application name used during whapps_conference_command
          ,app_version = <<"1.0.0">> :: ne_binary()     %% The application version used during whapps_conference_command
@@ -112,6 +118,9 @@ from_json(JObj, Conference) ->
       ,require_moderator = wh_json:is_true(<<"Require-Moderator">>, JObj, require_moderator(Conference))
       ,wait_for_moderator = wh_json:is_true(<<"Wait-For-Moderator">>, JObj, wait_for_moderator(Conference))
       ,play_name_on_join = wh_json:is_true(<<"Play-Name-On-Join">>, JObj, play_name_on_join(Conference))
+      ,play_entry_prompt = wh_json:is_true(<<"Play-Entry-Prompt">>, JObj, play_entry_prompt(Conference))
+      ,play_entry_tone = wh_json:is_true(<<"Play-Entry-Tone">>, JObj, play_entry_tone(Conference))
+      ,play_welcome = wh_json:is_true(<<"Play-Welcome">>, JObj, play_welcome(Conference))
       ,conference_doc = wh_json:is_true(<<"Conference-Doc">>, JObj, conference_doc(Conference))
       ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Conference#whapps_conference.kvs, KVS)
      }.
@@ -150,6 +159,9 @@ to_proplist(#whapps_conference{}=Conference) ->
      ,{<<"Require-Moderator">>, require_moderator(Conference)}
      ,{<<"Wait-For-Moderator">>, wait_for_moderator(Conference)}
      ,{<<"Play-Name-On-Join">>, play_name_on_join(Conference)}
+     ,{<<"Play-Entry-Prompt">>, play_entry_prompt(Conference)}
+     ,{<<"Play-Entry-Tone">>, play_entry_tone(Conference)}
+     ,{<<"Play-Welcome">>, play_welcome(Conference)}
      ,{<<"Conference-Doc">>, conference_doc(Conference)}
      ,{<<"Key-Value-Store">>, kvs_to_proplist(Conference)}
     ].
@@ -177,6 +189,9 @@ from_conference_doc(JObj, Conference) ->
       ,member_join_muted = wh_json:is_true(<<"join_muted">>, Member, member_join_muted(Conference))
       ,member_join_deaf = wh_json:is_true(<<"join_deaf">>, Member, member_join_deaf(Conference))
       ,play_name_on_join = wh_json:is_true(<<"play_name">>, Member, play_name_on_join(Conference))
+      ,play_entry_prompt = wh_json:is_true(<<"play_entry_prompt">>, Member, play_entry_prompt(Conference))
+      ,play_entry_tone = wh_json:is_true(<<"play_entry_tone">>, JObj, play_entry_tone(Conference))
+      ,play_welcome = wh_json:is_true(<<"play_welcome">>, JObj, play_welcome(Conference))
       ,moderator_join_muted = wh_json:is_true(<<"join_muted">>, Moderator, moderator_join_muted(Conference))
       ,moderator_join_deaf = wh_json:is_true(<<"join_deaf">>, Moderator, moderator_join_deaf(Conference))
       ,max_participants = wh_json:get_integer_value(<<"max_participants">>, JObj, max_participants(Conference))
@@ -330,14 +345,33 @@ set_wait_for_moderator(WaitForModerator, Conference) when is_boolean(WaitForMode
 -spec play_name_on_join/1 :: (conference()) -> boolean().
 play_name_on_join(#whapps_conference{play_name_on_join=PlayNameOnJoin}) ->
     PlayNameOnJoin.
-
 -spec set_play_name_on_join/2 :: (boolean(), conference()) -> conference().
 set_play_name_on_join(PlayNameOnJoin, Conference) when is_boolean(PlayNameOnJoin) ->
     Conference#whapps_conference{play_name_on_join=PlayNameOnJoin}.
 
+-spec play_entry_prompt/1 :: (conference()) -> boolean().
+play_entry_prompt(#whapps_conference{play_entry_prompt=ShouldPlay}) ->
+    ShouldPlay.
+-spec set_play_entry_prompt/2 :: (boolean(), conference()) -> conference().
+set_play_entry_prompt(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
+    Conference#whapps_conference{play_entry_prompt=ShouldPlay}.
+
+-spec play_entry_tone/1 :: (conference()) -> boolean().
+play_entry_tone(#whapps_conference{play_entry_tone=ShouldPlay}) ->
+    ShouldPlay.
+-spec set_play_entry_tone/2 :: (boolean(), conference()) -> conference().
+set_play_entry_tone(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
+    Conference#whapps_conference{play_entry_tone=ShouldPlay}.
+
+-spec play_welcome/1 :: (conference()) -> boolean().
+play_welcome(#whapps_conference{play_welcome=ShouldPlay}) ->
+    ShouldPlay.
+-spec set_play_welcome/2 :: (boolean(), conference()) -> conference().
+set_play_welcome(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
+    Conference#whapps_conference{play_welcome=ShouldPlay}.
+
 -spec conference_doc/1 :: (conference()) -> 'undefined' | wh_json:object().
-conference_doc(#whapps_conference{conference_doc=JObj}) ->
-    JObj.
+conference_doc(#whapps_conference{conference_doc=JObj}) -> JObj.
 
 -spec set_conference_doc/2 :: (wh_json:object(), conference()) -> conference().
 set_conference_doc(JObj, Conference) ->
