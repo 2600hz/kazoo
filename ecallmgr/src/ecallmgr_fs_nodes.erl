@@ -76,6 +76,8 @@
                ,client_version :: 'undefined' | ne_binary()
                ,options = [] :: wh_proplist()
               }).
+-type fs_node() :: #node{}.
+-type fs_nodes() :: [fs_node(),...] | [].
 
 -record(astats, {billing_ids=sets:new() :: set()
                  ,outbound_flat_rate=sets:new() :: set()
@@ -85,8 +87,7 @@
                  ,resource_consumers=sets:new() :: set()
                 }).
 
--record(state, {nodes = dict:new()
-                ,self = self()
+-record(state, {nodes = [] :: fs_nodes()
                 ,preconfigured_lookup :: pid()
                }).
 
