@@ -87,9 +87,8 @@
                                         ]).
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"discovery_req">>}
-                               ,{<<"Moderator">>, [<<"true">>, <<"false">>]}
                               ]).
--define(DISCOVERY_REQ_TYPES, []).
+-define(DISCOVERY_REQ_TYPES, [{<<"Moderator">>, fun wh_util:is_boolean/1}]).
 
 %% Conference Deaf
 -define(DEAF_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant">>]).
