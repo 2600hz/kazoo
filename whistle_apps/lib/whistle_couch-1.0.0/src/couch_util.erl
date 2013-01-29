@@ -252,8 +252,9 @@ do_fetch_results(Db, DesignDoc, Options) ->
       ).
 
 format_error({failure, 404}) -> not_found;
+format_error({http_error, {status, 504}}) -> gateway_timeout;
 format_error(E) ->
-    lager:debug("unfomatted error: ~p", [E]),
+    lager:debug("unformatted error: ~p", [E]),
     E.
 
 -spec do_fetch_results_count/3 :: (db(), ne_binary() | 'all_docs' | 'design_docs', wh_proplist()) ->
