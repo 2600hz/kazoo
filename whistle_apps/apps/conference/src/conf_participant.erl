@@ -357,14 +357,10 @@ handle_cast({route_win, JObj}, #participant{conference=Conference
                       lager:debug("answering conference call"),
                       whapps_call_command:answer(B),
                       ConferenceId = whapps_conference:id(Conference),
-                      case whapps_conference:moderator(Conference) of
-                          true ->
-                              lager:debug("moderator is joining remote conference ~s", [ConferenceId]),
-                              whapps_call_command:conference(ConferenceId, <<"false">>, <<"false">>, <<"true">>, B);
-                          false ->
-                              lager:debug("member is joining remote conference ~s", [ConferenceId]),
-                              whapps_call_command:conference(ConferenceId, <<"false">>, <<"false">>, <<"false">>, B)
-                      end,
+
+                      lager:debug("joining as moderation: ~s", [whapps_conference:moderator(Conference)]),
+
+                      whapps_call_command:conference(ConferenceId, 'false', 'false', whapps_conference:moderator(Conference), B),
                       lager:debug("requesting conference participants"),
                       whapps_conference_command:participants(Conference)
               end),
@@ -377,10 +373,12 @@ handle_cast({sync_participant, Participants}, #participant{bridge='undefined'
 handle_cast({sync_participant, Participants}, #participant{bridge=Bridge}=Participant) ->
     {noreply, sync_participant(Participants, Bridge, Participant)};
 handle_cast(play_member_entry, #participant{conference=Conference}=Participant) ->
-    whapps_conference_command:play(<<"tone_stream://%(200,0,500,600,700)">>, Conference),
+    _ = whapps_conference:play_entry_tone(Conference) andalso
+        whapps_conference_command:play(<<"tone_stream://%(200,0,500,600,700)">>, Conference),
     {noreply, Participant};
 handle_cast(play_moderator_entry, #participant{conference=Conference}=Participant) ->
-    whapps_conference_command:play(<<"tone_stream://%(200,0,500,600,700)">>, Conference),
+    _ = whapps_conference:play_entry_tone(Conference) andalso
+        whapps_conference_command:play(<<"tone_stream://%(200,0,500,600,700)">>, Conference),
     {noreply, Participant};
 handle_cast({dtmf, Digit}, #participant{last_dtmf = <<"*">>}=Participant) ->
     case Digit of
@@ -438,8 +436,9 @@ handle_cast(toggle_deaf, #participant{deaf='true'}=Participant) ->
 handle_cast(toggle_deaf, #participant{deaf='false'}=Participant) ->
     deaf(self()),
     {noreply, Participant};
-handle_cast(hangup, Participant) ->
+handle_cast(hangup, #participant{call=Call}=Participant) ->
     lager:debug("received in-conference command, hangup participant"),
+    whapps_call_command:hangup(Call),
     {noreply, Participant};
 handle_cast(_Cast, Participant) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
@@ -648,16 +647,12 @@ join_conference(Srv, Call, Conference) ->
     _ = whapps_call_command:b_answer(Call),
     ConferenceId = whapps_conference:id(Conference),
 
-    _ = case whapps_conference:moderator(Conference) of
-            true ->
-                lager:debug("moderator is joining conference ~s", [ConferenceId]),
-                _ = whapps_call_command:prompt(<<"conf-joining_conference">>, Call),
-                whapps_call_command:b_conference(ConferenceId, <<"false">>, <<"false">>, <<"true">>, Call);
-            false ->
-                lager:debug("member is joining conference ~s", [ConferenceId]),
-            _ = whapps_call_command:prompt(<<"conf-joining_conference">>, Call),
-                whapps_call_command:b_conference(ConferenceId, <<"false">>, <<"false">>, <<"false">>, Call)
-        end,
+    _ = whapps_conference:play_entry_prompt(Conference) andalso
+        whapps_call_command:prompt(<<"conf-joining_conference">>, Call),
+
+    lager:debug("caller is a moderation: ~s and playing entry: ~s", [whapps_conference:moderator(Conference), whapps_conference:play_entry_prompt(Conference)]),
+
+    whapps_call_command:b_conference(ConferenceId, 'false', 'false', whapps_conference:moderator(Conference), Call),
 
     lager:debug("requesting conference participants"),
     whapps_conference_command:participants(Conference).

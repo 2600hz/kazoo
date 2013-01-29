@@ -78,7 +78,6 @@ handle_discovery_req(JObj, Props) ->
 
     conf_participant:consume_call_events(Srv),
     whapps_call_command:answer(Call),
-    _ = whapps_call_command:b_prompt(<<"conf-welcome">>, Call),
 
     Updaters = [fun(C1) ->
                         {ok, C2} = validate_conference_pin(C1, Call),
@@ -129,7 +128,12 @@ handle_discovery_req(JObj, Props) ->
     %% Contrasted with the #participant{} in conf_participant, which is the "read-only" version
     %% of what's going on in the actual conference
     try whapps_conference:update(Updaters, Conf0) of
-        Conference -> search_for_conference(Conference, Srv)
+        Conference ->
+            lager:debug("playing welcome prompt: ~s", [whapps_conference:play_welcome(Conference)]),
+            _ = whapps_conference:play_welcome(Conference) andalso
+                whapps_call_command:b_prompt(<<"conf-welcome">>, Call),
+
+            search_for_conference(Conference, Srv)
     catch
         _:_E ->
             lager:debug("failed to update conference record: ~p", [_E]),
@@ -178,8 +182,7 @@ handle_search_error(JObj, _Props) ->
             %% TODO: send discovery error
             %%    {ok, DiscoveryReq} = conf_participant:discovery_event(Srv),
             ok
-    end,
-    ok.
+    end.
 
 -spec handle_search_resp/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_search_resp(JObj, _Props) ->
