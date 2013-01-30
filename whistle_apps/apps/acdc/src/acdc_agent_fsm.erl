@@ -471,7 +471,6 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
                                          ,endpoints=EPs
                                          ,agent_proc_id=MyId
                                          ,agent_id=AgentId
-                                         ,acct_id=AcctId
                                         }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     CallId = whapps_call:call_id(Call),
@@ -487,7 +486,6 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
             lager:debug("trying to ring agent ~s to connect to caller", [AgentId]),
 
             acdc_agent:bridge_to_member(Srv, Call, JObj, EPs),
-            acdc_stats:agent_handling(AcctId, AgentId, CallId),
 
             webseq:evt(self(), CallId, <<"bridge">>),
             webseq:note(self(), right, <<"ringing">>),
@@ -584,12 +582,15 @@ ringing({originate_uuid, ACallId, ACtrlQ}, #state{agent_proc=Srv}=State) ->
 
 ringing({originate_started, ACallId}, #state{agent_proc=Srv
                                              ,member_call_id=MCallId
+                                             ,acct_id=AcctId
+                                             ,agent_id=AgentId
                                             }=State) ->
     lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
     acdc_agent:member_connect_accepted(Srv),
 
     webseq:evt(self(), MCallId, <<"bridged to member">>),
     webseq:note(self(), right, <<"answered">>),
+    acdc_stats:agent_handling(AcctId, AgentId, MCallId),
 
     {next_state, answered, State#state{call_status_ref=start_call_status_timer()
                                        ,call_status_failures=0
@@ -618,12 +619,17 @@ ringing({originate_failed, E}, #state{agent_proc=Srv
 
 ringing({channel_bridged, CallId}, #state{member_call_id=CallId
                                           ,agent_proc=Srv
+                                          ,acct_id=AcctId
+                                          ,agent_id=AgentId
                                          }=State) ->
     lager:debug("agent phone has been connected to caller"),
     acdc_agent:member_connect_accepted(Srv),
 
     webseq:evt(self(), CallId, <<"bridged to member">>),
     webseq:note(self(), right, <<"answered">>),
+
+    acdc_stats:agent_handling(AcctId, AgentId, CallId),
+
     {next_state, answered, State#state{call_status_ref=start_call_status_timer()
                                       ,call_status_failures=0
                                       }};
@@ -694,6 +700,8 @@ ringing({dtmf_pressed, DTMF}, #state{caller_exit_key=_ExitKey}=State) ->
 ringing({channel_answered, ACallId}, #state{agent_call_id=ACallId
                                             ,agent_proc=Srv
                                             ,member_call_id=MCallId
+                                            ,acct_id=AcctId
+                                            ,agent_id=AgentId
                                            }=State) ->
     lager:debug("agent answered phone on ~s, connecting to caller", [ACallId]),
     acdc_agent:join_agent(Srv, ACallId),
@@ -701,6 +709,9 @@ ringing({channel_answered, ACallId}, #state{agent_call_id=ACallId
     webseq:evt(self(), MCallId, <<"agent answered line, bridging to member">>),
 
     webseq:note(self(), right, <<"answered">>),
+
+    acdc_stats:agent_handling(AcctId, AgentId, MCallId),
+
     {next_state, answered, State#state{call_status_ref=start_call_status_timer()
                                        ,call_status_failures=0
                                       }};
