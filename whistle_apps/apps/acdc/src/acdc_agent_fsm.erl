@@ -586,7 +586,6 @@ ringing({originate_started, ACallId}, #state{agent_proc=Srv
                                              ,member_call_id=MCallId
                                             }=State) ->
     lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
-    acdc_agent:agent_call_id(Srv, ACallId),
     acdc_agent:member_connect_accepted(Srv),
 
     webseq:evt(self(), MCallId, <<"bridged to member">>),

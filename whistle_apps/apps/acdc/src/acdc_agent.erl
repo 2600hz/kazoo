@@ -1046,6 +1046,9 @@ is_thief(Agent) -> not wh_json:is_json_object(Agent).
 handle_fsm_started(_FSMPid) ->
     gen_listener:cast(self(), bind_to_member_reqs).
 
+stop_agent_leg(undefined, _, _) -> ok;
+stop_agent_leg(_, undefined, _) -> ok;
+stop_agent_leg(_, _, undefined) -> ok;
 stop_agent_leg(MyQ, ACallId, ACtrlQ) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
                ,{<<"Insert-At">>, <<"now">>}
