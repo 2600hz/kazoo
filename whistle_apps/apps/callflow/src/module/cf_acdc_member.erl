@@ -93,6 +93,14 @@ wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
     after Timeout ->
             lager:info("failed to handle the call in time, proceeding"),
             cancel_member_call(Call, <<"member_timeout">>),
+
+            Cmd = [{<<"Application-Name">>, <<"play">>}
+                   ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+                   ,{<<"Media-Name">>, <<"silence_stream://50">>}
+                   ,{<<"Insert-At">>, <<"now">>}
+                  ],
+            whapps_call_command:send_command(Cmd, Call),
+
             cf_exe:continue(Call)
     end.
 
