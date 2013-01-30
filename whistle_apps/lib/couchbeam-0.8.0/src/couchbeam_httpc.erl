@@ -6,7 +6,6 @@
 -module(couchbeam_httpc).
 
 -include_lib("ibrowse/include/ibrowse.hrl").
--compile([{parse_transform, switchblade_transform}]).
 
 -export([request/4, request/5, request/6,
         request_stream/4, request_stream/5, request_stream/6,
