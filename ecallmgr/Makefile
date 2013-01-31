@@ -23,8 +23,7 @@ compile: ebin/$(PROJECT).app
 
 ebin/$(PROJECT).app: src/*.erl
 	@mkdir -p ebin/
-	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ -pa $(ROOT)/lib \
-		src/switchblade_transform.erl $?
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ -pa $(ROOT)/lib $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
