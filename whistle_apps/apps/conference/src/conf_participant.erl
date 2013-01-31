@@ -59,7 +59,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--record(participant, {participant_id = 0 :: integer()
+-record(participant, {participant_id = 0 :: non_neg_integer()
                       ,call :: whapps_call:call()
                       ,bridge
                       ,bridge_request
@@ -666,7 +666,7 @@ join_conference(Srv, Call, Conference) ->
 
     lager:debug("caller is a moderation: ~s and playing entry: ~s", [whapps_conference:moderator(Conference), whapps_conference:play_entry_prompt(Conference)]),
 
-    whapps_call_command:b_conference(ConferenceId, 'false', 'false', whapps_conference:moderator(Conference), Call),
+    _ = whapps_call_command:b_conference(ConferenceId, 'false', 'false', whapps_conference:moderator(Conference), Call),
 
     lager:debug("requesting conference participants"),
     whapps_conference_command:participants(Conference).
