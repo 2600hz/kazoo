@@ -9,7 +9,7 @@
 
 -behaviour(supervisor).
 
--include_lib("conference/src/conference.hrl").
+-include("conference.hrl").
 
 -export([start_link/0]).
 -export([listener_proc/0]).

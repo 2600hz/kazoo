@@ -1,7 +1,8 @@
 {application, conference,
  [
-  {description, ""},
-  {vsn, "1"},
+  {description, "Conferencing Service Provider"},
+  {vsn, "1.0.0"},
+  {modules, []},
   {registered, []},
   {applications, [
                   kernel,
