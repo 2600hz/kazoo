@@ -469,10 +469,10 @@ do_simple_provision(#cb_context{doc=JObj}=Context) ->
 %% post data to a provisiong server
 %% @end
 %%--------------------------------------------------------------------
--spec do_full_provision/1 :: (#cb_context{}) -> 'ok'.
+-spec do_full_provision/1 :: (#cb_context{}) -> boolean().
 do_full_provision(#cb_context{doc=JObj}) ->
     case whapps_config:get_binary(?MOD_FULL_PROVISIONER, <<"provisioning_url">>) of
-        undefined -> ok;
+        undefined -> false;
         Url ->
             Headers = [{K, V}
                        || {K, V} <- [{"Host", whapps_config:get_string(?MOD_FULL_PROVISIONER, <<"provisioning_url">>)}
@@ -486,7 +486,8 @@ do_full_provision(#cb_context{doc=JObj}) ->
             Mac = binary:replace(wh_util:to_binary(wh_json:get_value(<<"mac_address">>, JObj)), <<":">>, <<"">>, [global]),
             FullUrl = wh_util:to_lower_string(<<Url/binary, <<"/">>/binary, AccountId/binary, <<"/">>/binary, Mac/binary>>),
             lager:debug("posting to ~p with ~p", [FullUrl, JObj]), 
-            ibrowse:send_req(FullUrl, Headers, post, Body, [])
+            ibrowse:send_req(FullUrl, Headers, post, Body, []),
+            true
     end.
 
 

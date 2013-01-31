@@ -27,6 +27,7 @@
 %% Do awesome provisioning
 %% @end
 %%--------------------------------------------------------------------
+-spec get_merged_device/1 :: (cb_context:context()) -> {ok, cb_context:context()} | {error, binary()}.
 get_merged_device(Context) ->
     case merge_device(Context) of
         {ok, Data} ->
@@ -35,6 +36,7 @@ get_merged_device(Context) ->
             {error, R}
     end.
 
+-spec merge_device/1 :: (cb_context:context()) -> {ok, wh_json:json_object()} | {error, binary()}.
 merge_device(#cb_context{doc=JObj, account_id=AccountId}) ->
     case get_account(AccountId) of
         {ok, Account} ->
@@ -48,6 +50,7 @@ merge_device(#cb_context{doc=JObj, account_id=AccountId}) ->
             {error, R}
     end.
 
+-spec get_owner/2 :: (ne_binary(), ne_binary()) -> wh_json:json_object().
 get_owner(OwnerId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     case wh_util:is_empty(OwnerId) of
@@ -63,6 +66,7 @@ get_owner(OwnerId, AccountId) ->
             end         
     end.
 
+-spec get_account/1 :: (ne_binary()) -> wh_json:json_object().
 get_account(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_doc(AccountDb, AccountId) of
