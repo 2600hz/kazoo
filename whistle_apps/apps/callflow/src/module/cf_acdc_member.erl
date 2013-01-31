@@ -94,13 +94,7 @@ wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
             lager:info("failed to handle the call in time, proceeding"),
             cancel_member_call(Call, <<"member_timeout">>),
 
-            Cmd = [{<<"Application-Name">>, <<"play">>}
-                   ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-                   ,{<<"Media-Name">>, <<"silence_stream://50">>}
-                   ,{<<"Insert-At">>, <<"now">>}
-                  ],
-            whapps_call_command:send_command(Cmd, Call),
-
+            stop_hold_music(Call),
             cf_exe:continue(Call)
     end.
 
@@ -125,6 +119,7 @@ process_message(#member_call{call=Call
                        ,[Failure, wh_util:elapsed_s(Start)]
                       ),
             cancel_member_call(Call, Failure),
+            stop_hold_music(Call),
             cf_exe:continue(Call);
         false ->
             lager:debug("failure json was for a different queue, ignoring"),
@@ -178,3 +173,11 @@ cancel_member_call(Call, Reason) ->
                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                  ]),
     wapi_acdc_queue:publish_member_call_cancel(Req).
+
+stop_hold_music(Call) ->
+    Cmd = [{<<"Application-Name">>, <<"play">>}
+           ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+           ,{<<"Media-Name">>, <<"silence_stream://50">>}
+           ,{<<"Insert-At">>, <<"now">>}
+          ],
+    whapps_call_command:send_command(Cmd, Call).
