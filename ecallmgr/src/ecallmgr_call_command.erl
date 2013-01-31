@@ -316,6 +316,52 @@ get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
             ]
     end;
 
+get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
+    Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
+    case wapi_dialplan:page_v(JObj) of
+        false -> {'error', <<"page failed to execute as JObj did not validate">>};
+        true when Endpoints =:= [] -> {'error', <<"page request had no endpoints">>};
+        true ->
+            PageId = <<"page_", (wh_util:rand_hex_binary(8))/binary>>,
+            Routines = [fun(DP) ->
+                                [{"application", <<"set api_hangup_hook=conference ", PageId/binary, " kick all">>}
+                                 ,{"application", <<"export sip_invite_params=intercom=true">>}
+                                 ,{"application", <<"export sip_auto_answer=true">>}
+                                 ,{"application", <<"set conference_auto_outcall_flags=mute">>}
+                                 |DP
+                                ]
+                        end
+                        ,fun(DP) ->
+                                 CIDName = wh_json:get_ne_value(<<"Caller-ID-Name">>, JObj, <<"$${effective_caller_id_name}">>),                                 
+                                 [{"application", <<"set conference_auto_outcall_caller_id_name=", CIDName/binary>>}|DP]
+                         end
+                        ,fun(DP) ->
+                                 CIDNumber = wh_json:get_ne_value(<<"Caller-ID-Number">>, JObj, <<"$${effective_caller_id_number}">>),
+                                 [{"application", <<"set conference_auto_outcall_caller_id_number=", CIDNumber/binary>>}|DP]
+                         end
+                        ,fun(DP) ->
+                                 Timeout = wh_json:get_binary_value(<<"Timeout">>, JObj, <<"5">>),
+                                 [{"application", <<"set conference_auto_outcall_timeout=", Timeout/binary>>}|DP]
+                         end
+                        ,fun(DP) ->
+                                 lists:foldl(fun(Channel, D) ->
+                                                     [{"application", <<"conference_set_auto_outcall "
+                                                                        ,"{sip_auto_answer=true}"
+                                                                        ,Channel/binary>>}
+                                                      |D
+                                                     ]
+                                             end, DP, ecallmgr_util:build_simple_channels(Endpoints))
+                         end
+                        ,fun(DP) ->
+                                 [{"application", <<"conference ", PageId/binary, "@default">>}
+                                  ,{"application", <<"park">>}
+                                  |DP
+                                 ]
+                         end
+                       ],
+            {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Routines)}
+    end;
+
 get_fs_app(_Node, _UUID, _JObj, <<"park">>) ->
     {<<"park">>, <<>>};
 
@@ -360,116 +406,116 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
 
             DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
 
-            Generators = [fun(DP) ->
-                                  case wh_json:get_integer_value(<<"Timeout">>, JObj) of
-                                      undefined ->
-                                          DP;
-                                      TO when TO > 2 ->
-                                          lager:debug("bridge will be attempted for ~p seconds", [TO]),
-                                          [{"application", "set call_timeout=" ++ wh_util:to_list(TO)}|DP];
-                                      _ ->
-                                          lager:debug("bridge timeout invalid overwritting with 20 seconds", []),
-                                          [{"application", "set call_timeout=20"}|DP]
-                                  end
+            Routines = [fun(DP) ->
+                                case wh_json:get_integer_value(<<"Timeout">>, JObj) of
+                                    undefined ->
+                                        DP;
+                                    TO when TO > 2 ->
+                                        lager:debug("bridge will be attempted for ~p seconds", [TO]),
+                                        [{"application", "set call_timeout=" ++ wh_util:to_list(TO)}|DP];
+                                    _ ->
+                                        lager:debug("bridge timeout invalid overwritting with 20 seconds", []),
+                                        [{"application", "set call_timeout=20"}|DP]
+                                end
                           end
-                          ,fun(DP) ->
-                                   case wh_json:get_value(<<"Ringback">>, JObj) of
-                                       undefined -> DP;
-                                       Ringback ->
-                                           Stream = ecallmgr_util:media_path(Ringback, extant, UUID, JObj),
-                                           lager:debug("bridge has custom ringback: ~s", [Stream]),
-                                           [{"application", <<"set ringback=", Stream/binary>>},
-                                            {"application", "set instant_ringback=true"}
-                                            |DP
-                                           ]
-                                   end
-                           end
-                          ,fun(DP) ->
-                                   case wh_json:get_value(<<"Hold-Media">>, JObj) of
-                                       undefined ->
-                                           case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
-                                               undefined ->
-                                                   case ecallmgr_fs_nodes:channel_import_moh(UUID) of
-                                                       true -> 
-                                                           [{"application", "export hold_music=${hold_music}"}
-                                                            ,{"application", "set import=hold_music"}
-                                                            |DP
-                                                           ];
-                                                       false -> DP
-                                                   end;
-                                               Media ->
-                                                   Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
-                                                   lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
-                                                   [{"application", <<"set hold_music=", Stream/binary>>}|DP]
-                                           end;
-                                       Media ->
-                                           Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
-                                           lager:debug("bridge has custom music-on-hold: ~s", [Stream]),
-                                           [{"application", <<"set hold_music=", Stream/binary>>}|DP]
-                                   end
-                           end
-                          ,fun(DP) ->
-                                   case wh_json:is_true(<<"Secure-RTP">>, JObj, false) of
-                                       true -> [{"application", "set sip_secure_media=true"}|DP];
-                                       false -> DP
-                                   end
-                           end
-                          ,fun(DP) ->
-                                   case wh_json:get_value(<<"Media">>, JObj) of
-                                       <<"process">> ->
-                                           lager:debug("bridge will process media through host switch"),
-                                           [{"application", "set bypass_media=false"}|DP];
-                                       <<"bypass">> ->
-                                           lager:debug("bridge will connect the media peer-to-peer"),
-                                           [{"application", "set bypass_media=true"}|DP];
-                                       _ ->
-                                           DP
-                                   end
-                           end
-                          ,fun(DP) ->
-                                   CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
-                                   case wh_json:is_json_object(CCVs) of
-                                       true ->
-                                           [{"application", <<"set ", Var/binary, "=", (wh_util:to_binary(V))/binary>>}
-                                            || {K, V} <- wh_json:to_proplist(CCVs),
-                                               (Var = props:get_value(K, ?SPECIAL_CHANNEL_VARS)) =/= undefined
-                                           ] ++ DP;
-                                       _ ->
-                                           DP
-                                   end
-                           end
-                          ,fun(DP) ->
-                                   [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
-                                    ,{"application", "set continue_on_fail=true"}
-                                    |DP
-                                   ]
-                           end
-                          ,fun(DP) ->
-                                   Props = case wh_json:find(<<"Force-Fax">>, Endpoints, wh_json:get_value(<<"Force-Fax">>, JObj)) of
-                                               undefined -> [{[<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], wh_util:rand_hex_binary(16)}];
-                                               Direction -> [{[<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], wh_util:rand_hex_binary(16)}
-                                                             ,{[<<"Custom-Channel-Vars">>, <<"Force-Fax">>], Direction}
-                                                            ]
-                                           end,
-                                   BridgeCmd = list_to_binary(["bridge "
-                                                               ,ecallmgr_fs_xml:get_channel_vars(wh_json:set_values(Props, JObj))
-                                                               ,DialStrings
-                                                              ]),
-                                   [{"application", BridgeCmd}|DP]
-                           end
-                          ,fun(DP) ->
-                                   [{"application", ecallmgr_util:create_masquerade_event(<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
-                                    ,{"application", "park "}
-                                    |DP
-                                   ]
-                           end
-                         ],
+                        ,fun(DP) ->
+                                 case wh_json:get_value(<<"Ringback">>, JObj) of
+                                     undefined -> DP;
+                                     Ringback ->
+                                         Stream = ecallmgr_util:media_path(Ringback, extant, UUID, JObj),
+                                         lager:debug("bridge has custom ringback: ~s", [Stream]),
+                                         [{"application", <<"set ringback=", Stream/binary>>},
+                                          {"application", "set instant_ringback=true"}
+                                          |DP
+                                         ]
+                                 end
+                         end
+                        ,fun(DP) ->
+                                 case wh_json:get_value(<<"Hold-Media">>, JObj) of
+                                     undefined ->
+                                         case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
+                                             undefined ->
+                                                 case ecallmgr_fs_nodes:channel_import_moh(UUID) of
+                                                     true -> 
+                                                         [{"application", "export hold_music=${hold_music}"}
+                                                          ,{"application", "set import=hold_music"}
+                                                          |DP
+                                                         ];
+                                                     false -> DP
+                                                 end;
+                                             Media ->
+                                                 Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
+                                                 lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
+                                                 [{"application", <<"set hold_music=", Stream/binary>>}|DP]
+                                         end;
+                                     Media ->
+                                         Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
+                                         lager:debug("bridge has custom music-on-hold: ~s", [Stream]),
+                                         [{"application", <<"set hold_music=", Stream/binary>>}|DP]
+                                 end
+                         end
+                        ,fun(DP) ->
+                                 case wh_json:is_true(<<"Secure-RTP">>, JObj, false) of
+                                     true -> [{"application", "set sip_secure_media=true"}|DP];
+                                     false -> DP
+                                 end
+                         end
+                        ,fun(DP) ->
+                                 case wh_json:get_value(<<"Media">>, JObj) of
+                                     <<"process">> ->
+                                         lager:debug("bridge will process media through host switch"),
+                                         [{"application", "set bypass_media=false"}|DP];
+                                     <<"bypass">> ->
+                                         lager:debug("bridge will connect the media peer-to-peer"),
+                                         [{"application", "set bypass_media=true"}|DP];
+                                     _ ->
+                                         DP
+                                 end
+                         end
+                        ,fun(DP) ->
+                                 CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+                                 case wh_json:is_json_object(CCVs) of
+                                     true ->
+                                         [{"application", <<"set ", Var/binary, "=", (wh_util:to_binary(V))/binary>>}
+                                          || {K, V} <- wh_json:to_proplist(CCVs),
+                                             (Var = props:get_value(K, ?SPECIAL_CHANNEL_VARS)) =/= undefined
+                                         ] ++ DP;
+                                     _ ->
+                                         DP
+                                 end
+                         end
+                        ,fun(DP) ->
+                                 [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
+                                  ,{"application", "set continue_on_fail=true"}
+                                  |DP
+                                 ]
+                         end
+                        ,fun(DP) ->
+                                 Props = case wh_json:find(<<"Force-Fax">>, Endpoints, wh_json:get_value(<<"Force-Fax">>, JObj)) of
+                                             undefined -> [{[<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], wh_util:rand_hex_binary(16)}];
+                                             Direction -> [{[<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], wh_util:rand_hex_binary(16)}
+                                                           ,{[<<"Custom-Channel-Vars">>, <<"Force-Fax">>], Direction}
+                                                          ]
+                                         end,
+                                 BridgeCmd = list_to_binary(["bridge "
+                                                             ,ecallmgr_fs_xml:get_channel_vars(wh_json:set_values(Props, JObj))
+                                                             ,DialStrings
+                                                            ]),
+                                 [{"application", BridgeCmd}|DP]
+                         end
+                        ,fun(DP) ->
+                                 [{"application", ecallmgr_util:create_masquerade_event(<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
+                                  ,{"application", "park "}
+                                  |DP
+                                 ]
+                         end
+                       ],
             case DialStrings of
                 <<>> ->
                     {error, <<"registrar returned no endpoints">>};
                 _ ->
                     lager:debug("creating bridge dialplan"),
-                    {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
+                    {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Routines)}
             end
     end;
 

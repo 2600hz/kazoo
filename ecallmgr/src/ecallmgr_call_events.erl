@@ -546,6 +546,17 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
     ];
+event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"conference">>, Prop) ->
+    case props:get_value(<<"variable_current_application_data">>, Prop) of
+        <<"page_", _/binary>> ->
+            [{<<"Application-Name">>, <<"page">>}
+             ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
+            ];
+        _Else ->
+            [{<<"Application-Name">>, <<"conference">>}
+             ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
+            ]
+    end;            
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"record">>, Prop) ->
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}

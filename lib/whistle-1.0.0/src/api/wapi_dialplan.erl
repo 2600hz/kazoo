@@ -20,6 +20,7 @@
 -export([optional_bridge_req_endpoint_headers/0]).
 
 -export([bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1
+         ,page/1, page_v/1
          ,store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
          ,store_http_resp/1, store_http_resp_v/1
          ,noop/1, noop_v/1
@@ -156,6 +157,34 @@ bridge_endpoint_v(Prop) when is_list(Prop) ->
     wh_api:validate_message(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?BRIDGE_REQ_ENDPOINT_VALUES, ?BRIDGE_REQ_ENDPOINT_TYPES);
 bridge_endpoint_v(JObj) ->
     bridge_endpoint_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Page a call - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec page/1 :: (api_terms()) -> api_formatter_return().
+page(Prop) when is_list(Prop) ->
+    EPs = [begin
+               {ok, EPProps} = bridge_endpoint_headers(EP),
+               wh_json:from_list(EPProps)
+           end
+           || EP <- props:get_value(<<"Endpoints">>, Prop, []),
+              bridge_endpoint_v(EP)
+          ],
+    Prop1 = [ {<<"Endpoints">>, EPs} | props:delete(<<"Endpoints">>, Prop)],
+    case page_v(Prop1) of
+        true -> wh_api:build_message(Prop1, ?PAGE_REQ_HEADERS, ?OPTIONAL_PAGE_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for page_req"}
+    end;
+page(JObj) ->
+    page(wh_json:to_proplist(JObj)).
+
+-spec page_v/1 :: (api_terms()) -> boolean().
+page_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PAGE_REQ_HEADERS, ?PAGE_REQ_VALUES, ?PAGE_REQ_TYPES);
+page_v(JObj) ->
+    page_v(wh_json:to_proplist(JObj)).
 
 -spec store/1 :: (api_terms()) -> {'ok', proplist()} | {'error', string()}.
 store(Prop) when is_list(Prop) ->

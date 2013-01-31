@@ -86,7 +86,7 @@
                        ,call_id_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
                        ,control_q :: whapps_api_binary()                   %% The control queue provided on route win
                        ,control_q_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
-                       ,controller_q :: whapps_api_binary()                %%
+                       ,controller_q = <<>> :: binary()                    %%
                        ,caller_id_name = <<"Unknown">> :: ne_binary()      %% The caller name
                        ,caller_id_number = <<"0000000000">> :: ne_binary() %% The caller number
                        ,callee_id_name = <<>> :: binary()                  %% The callee name

@@ -33,6 +33,7 @@
          ,b_receive_fax/1
         ]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
+-export([page/2, page/3, page/4, page/5, page/6]).
 -export([hold/1, hold/2
          ,b_hold/1, b_hold/2, b_hold/3
         ]).
@@ -70,6 +71,7 @@
 -export([b_answer/1, b_hangup/1, b_hangup/2, b_fetch/1, b_fetch/2]).
 -export([b_ring/1]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
+-export([b_page/2, b_page/3, b_page/4, b_page/5, b_page/6]).
 -export([b_play/2, b_play/3]).
 -export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
@@ -520,6 +522,55 @@ b_hangup(false, Call) ->
 b_hangup(true, Call) ->
     hangup(true, Call),
     wait_for_unbridge().
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level wh_api request to page the call
+%% @end
+%%--------------------------------------------------------------------
+-spec page/2 :: (wh_json:objects(), whapps_call:call()) -> 'ok'.
+-spec page/3 :: (wh_json:objects(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec page/4 :: (wh_json:objects(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec page/5 :: (wh_json:objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec page/6 :: (wh_json:objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), wh_json:object(), whapps_call:call()) -> 'ok'.
+
+-spec b_page/2 :: (wh_json:objects(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_page/3 :: (wh_json:objects(), whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_page/4 :: (wh_json:objects(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_page/5 :: (wh_json:objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_page/6 :: (wh_json:objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), wh_json:object(), whapps_call:call()) -> whapps_api_std_return().
+
+page(Endpoints, Call) ->
+    page(Endpoints, ?DEFAULT_TIMEOUT, Call).
+page(Endpoints, Timeout, Call) ->
+    page(Endpoints, Timeout, undefined, Call).
+page(Endpoints, Timeout, CIDName, Call) ->
+    page(Endpoints, Timeout, CIDName, undefined, Call).
+page(Endpoints, Timeout, CIDName, CIDNumber, Call) ->
+    page(Endpoints, Timeout, CIDName, CIDNumber, undefined, Call).
+page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
+    Command = [{<<"Application-Name">>, <<"page">>}
+               ,{<<"Endpoints">>, Endpoints}
+               ,{<<"Timeout">>, Timeout}
+               ,{<<"Caller-ID-Name">>, CIDName}
+               ,{<<"Caller-ID-Number">>, CIDNumber}
+               ,{<<"SIP-Headers">>, SIPHeaders}
+              ],
+    send_command(Command, Call).
+
+b_page(Endpoints, Call) ->
+    b_page(Endpoints, ?DEFAULT_TIMEOUT, Call).
+b_page(Endpoints, Timeout, Call) ->
+    b_page(Endpoints, Timeout, undefined, Call).
+b_page(Endpoints, Timeout, CIDName, Call) ->
+    b_page(Endpoints, Timeout, CIDName, undefined, Call).
+b_page(Endpoints, Timeout, CIDName, CIDNumber, Call) ->
+    b_page(Endpoints, Timeout, CIDName, CIDNumber, undefined, Call).
+b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
+    page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call),
+    wait_for_application(<<"page">>).
 
 %%--------------------------------------------------------------------
 %% @public

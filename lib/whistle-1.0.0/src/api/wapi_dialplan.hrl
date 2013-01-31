@@ -77,6 +77,23 @@
                                     ,{<<"Bypass-Media">>, fun wh_util:is_boolean/1}
                                    ]).
 
+%% Page Request
+-define(PAGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
+-define(OPTIONAL_PAGE_REQ_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                        ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+                                        ,<<"Timeout">>, <<"Insert-At">>
+                                        ,<<"Custom-Channel-Vars">>, <<"SIP-Headers">>
+                                   ]).
+-define(PAGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                          ,{<<"Event-Name">>, <<"command">>}
+                          ,{<<"Application-Name">>, <<"page">>}
+                          ,?INSERT_AT_TUPLE
+                         ]).
+-define(PAGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
+                         ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                         ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+                        ]).
+
 %% Store Request
 -define(STORE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>, <<"Media-Transfer-Method">>
                                 ,<<"Media-Transfer-Destination">>

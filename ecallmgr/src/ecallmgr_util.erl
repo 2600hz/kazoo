@@ -22,6 +22,7 @@
 -export([is_node_up/1, is_node_up/2]).
 -export([build_bridge_string/1, build_bridge_string/2]).
 -export([build_channel/1]).
+-export([build_simple_channels/1]).
 -export([create_masquerade_event/2, create_masquerade_event/3]).
 -export([media_path/3, media_path/4, media_path/5]).
 -export([unserialize_fs_array/1]).
@@ -52,6 +53,7 @@
                           ,channel_selection = <<"a">> :: ne_binary()
                           ,interface = <<"RR">> :: ne_binary() % for Skype
                           ,channel_vars = ["[",[],"]"] :: iolist()
+                          ,include_channel_vars = true
                          }).
 
 %%--------------------------------------------------------------------
@@ -343,18 +345,19 @@ build_bridge_string(Endpoints) ->
     build_bridge_string(Endpoints, <<"|">>).
 
 build_bridge_string(Endpoints, Seperator) ->
-    KeyedEPs = [endpoint_jobj_to_record(Endpoint)
-                || Endpoint <- Endpoints
-                       ,wapi_dialplan:bridge_endpoint_v(Endpoint)
-               ],
     %% De-dup the bridge strings by matching those with the same
     %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route
-    BridgeStrings = build_bridge_channels(KeyedEPs, []),
+    BridgeStrings = build_bridge_channels(Endpoints),
     %% NOTE: dont use binary_join here as it will crash on an empty list...
     wh_util:join_binary(lists:reverse(BridgeStrings), Seperator).
 
--spec endpoint_jobj_to_record/1 :: (wh_json:json_object()) -> #bridge_endpoint{}.
+-spec endpoint_jobj_to_record/1 :: (wh_json:json_object()) -> #bridge_endpoint{}. 
+-spec endpoint_jobj_to_record/2 :: (wh_json:json_object(), boolean()) -> #bridge_endpoint{}. 
+
 endpoint_jobj_to_record(Endpoint) ->
+    endpoint_jobj_to_record(Endpoint, true).
+
+endpoint_jobj_to_record(Endpoint, IncludeVars) ->
     ToUser = wh_json:get_ne_value(<<"To-User">>, Endpoint),
     #bridge_endpoint{invite_format = wh_json:get_ne_value(<<"Invite-Format">>, Endpoint, <<"username">>)
                      ,endpoint_type = wh_json:get_ne_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>)
@@ -371,6 +374,7 @@ endpoint_jobj_to_record(Endpoint) ->
                      ,channel_selection = get_endpoint_channel_selection(Endpoint)
                      ,interface = get_endpoint_interface(Endpoint)
                      ,channel_vars = ecallmgr_fs_xml:get_leg_vars(Endpoint)
+                     ,include_channel_vars = IncludeVars
                     }.
 
 -spec get_endpoint_span/1 :: (wh_json:json_object()) -> ne_binary().
@@ -395,8 +399,24 @@ get_endpoint_interface(Endpoint) ->
 -type bridge_channels() :: [] | [bridge_channel(),...].
 -type build_return() :: bridge_channel() | {'worker', pid()}.
 -type bridge_endpoints() :: [#bridge_endpoint{},...] | [].
--spec build_bridge_channels/2 :: (bridge_endpoints(), [build_return(),...] | []) -> bridge_channels().
 
+-spec build_simple_channels/1 :: (bridge_endpoints()) -> bridge_channels().
+build_simple_channels(Endpoints) ->
+    KeyedEPs = [endpoint_jobj_to_record(Endpoint, false)
+                || Endpoint <- Endpoints
+                       ,wapi_dialplan:bridge_endpoint_v(Endpoint)
+               ],
+    build_bridge_channels(KeyedEPs, []).
+
+-spec build_bridge_channels/1 :: (bridge_endpoints()) -> bridge_channels().
+build_bridge_channels(Endpoints) ->
+    KeyedEPs = [endpoint_jobj_to_record(Endpoint)
+                || Endpoint <- Endpoints
+                       ,wapi_dialplan:bridge_endpoint_v(Endpoint)
+               ],
+    build_bridge_channels(KeyedEPs, []).
+
+-spec build_bridge_channels/2 :: (bridge_endpoints(), [build_return(),...] | []) -> bridge_channels().
 %% If the Invite-Format is "route" then we have been handed a sip route, do that now
 build_bridge_channels([#bridge_endpoint{invite_format = <<"route">>}=Endpoint|Endpoints], Channels) ->
     case build_channel(Endpoint) of
@@ -584,6 +604,9 @@ maybe_set_interface(Contact, _) ->
     <<?SIP_INTERFACE, Contact/binary>>.
 
 -spec append_channel_vars/2 :: (ne_binary(), #bridge_endpoint{}) -> ne_binary().
+append_channel_vars(Contact, #bridge_endpoint{include_channel_vars=false}) ->
+    false = wh_util:is_empty(Contact),
+    Contact;
 append_channel_vars(Contact, #bridge_endpoint{channel_vars=["[",[],"]"]}) ->
     false = wh_util:is_empty(Contact),
     Contact;

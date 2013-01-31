@@ -188,6 +188,7 @@
                                ,{<<"record">>, <<"record_call">>}
                                ,{<<"presence">>, <<"presence">>}
                                ,{<<"privacy">>, <<"privacy">>}
+                               ,{<<"conference">>, <<"page">>}
                               ]).
 
 -define(CALL_EVENTS, [<<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
