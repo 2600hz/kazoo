@@ -11,7 +11,9 @@
 
 -compile({no_auto_import, [error/1]}).
 
--include_lib("whistle/src/api/wapi_dialplan.hrl").
+%% Accessors
+
+-include("wapi_dialplan.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
 -export([v/1]).

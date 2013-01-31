@@ -28,7 +28,7 @@
          ,convert_units/3
         ]).
 
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 %% tracked in hundred-ths of a cent
 -define(DOLLAR_TO_UNIT, 10000).

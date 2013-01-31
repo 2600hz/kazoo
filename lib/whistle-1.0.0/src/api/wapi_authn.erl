@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%% Handles authentication requests, responses, queue bindings
 %%% @end
@@ -21,7 +21,7 @@
          ,req_event_type/0
         ]).
 
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 -define(KEY_AUTHN_REQ, <<"authn.req">>). %% corresponds to the authn_req/1 api call
 

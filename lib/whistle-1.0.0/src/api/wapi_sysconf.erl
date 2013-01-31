@@ -24,7 +24,7 @@
          ,publish_flush_req/1, publish_flush_req/2
         ]).
 
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 -define(SYSCONF_VALUES, [{<<"Event-Category">>, <<"sysconf">>}]).
 

@@ -11,7 +11,7 @@
 -export([search_req/1, search_req_v/1]).
 -export([search_resp/1, search_resp_v/1]).
 -export([discovery_req/1, discovery_req_v/1]).
-%% -export([discovery_resp/1, discovery_resp_v/1]).
+-export([discovery_resp/1, discovery_resp_v/1]).
 -export([deaf_participant/1, deaf_participant_v/1]).
 -export([participant_energy/1, participant_energy_v/1]).
 -export([kick/1, kick_v/1]).
@@ -36,7 +36,7 @@
 -export([publish_search_req/1, publish_search_req/2]).
 -export([publish_search_resp/2, publish_search_resp/3]).
 -export([publish_discovery_req/1, publish_discovery_req/2]).
-%% -export([publish_discovery_resp/1, publish_discovery_resp/2]).
+-export([publish_discovery_resp/2, publish_discovery_resp/3]).
 -export([publish_deaf_participant/2, publish_deaf_participant/3]).
 -export([publish_participant_energy/2, publish_participant_energy/3]).
 -export([publish_kick/2, publish_kick/3]).
@@ -57,11 +57,11 @@
 -export([publish_error/2, publish_error/3]).
 -export([publish_command/2, publish_command/3]).
 
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 %% Conference Search Request
 -define(SEARCH_REQ_HEADERS, [<<"Conference-ID">>]).
--define(OPTIONAL_SEARCH_REQ_HEADERS, [<<"Conversation-ID">>]).
+-define(OPTIONAL_SEARCH_REQ_HEADERS, []).
 -define(SEARCH_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                             ,{<<"Event-Name">>, <<"search_req">>}
                            ]).
@@ -72,7 +72,6 @@
 -define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"Switch-URL">>, <<"Switch-External-IP">>, <<"Rate">>
                                            ,<<"UUID">>, <<"Running">>, <<"Answered">>, <<"Dynamic">>
                                            ,<<"Run-Time">>, <<"Participants">>, <<"Locked">>
-                                           ,<<"Conversation-ID">>
                                       ]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
                              ,{<<"Event-Name">>, <<"search_resp">>}
@@ -82,13 +81,22 @@
 %% Conference Discovery Request
 -define(DISCOVERY_REQ_HEADERS, [<<"Call">>]).
 -define(OPTIONAL_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>
-                                             ,<<"Conference-Doc">> % ad-hoc conferencing
-                                             ,<<"Conversation-ID">>
+                                         ,<<"Conference-Doc">> % ad-hoc conferencing
                                         ]).
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"discovery_req">>}
                               ]).
 -define(DISCOVERY_REQ_TYPES, [{<<"Moderator">>, fun wh_util:is_boolean/1}]).
+
+%% Conference Discovery Request
+-define(DISCOVERY_RESP_HEADERS, [<<"Participant-ID">>]).
+-define(OPTIONAL_DISCOVERY_RESP_HEADERS, [<<"Conference-ID">>, <<"Participant-Control-Queue">>
+                                         ]).
+-define(DISCOVERY_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                                ,{<<"Event-Name">>, <<"discovery_resp">>}
+                              ]).
+-define(DISCOVERY_RESP_TYPES, []).
+
 
 %% Conference Deaf
 -define(DEAF_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant">>]).
@@ -365,6 +373,26 @@ discovery_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?DISCOVERY_REQ_HEADERS, ?DISCOVERY_REQ_VALUES, ?DISCOVERY_REQ_TYPES);
 discovery_req_v(JObj) ->
     discovery_req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec discovery_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+discovery_resp(Prop) when is_list(Prop) ->
+    case discovery_resp_v(Prop) of
+        true -> wh_api:build_message(Prop, ?DISCOVERY_RESP_HEADERS, ?OPTIONAL_DISCOVERY_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for discovery resp"}
+    end;
+discovery_resp(JObj) ->
+    discovery_resp(wh_json:to_proplist(JObj)).
+
+-spec discovery_resp_v/1 :: (api_terms()) -> boolean().
+discovery_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?DISCOVERY_RESP_HEADERS, ?DISCOVERY_RESP_VALUES, ?DISCOVERY_RESP_TYPES);
+discovery_resp_v(JObj) ->
+    discovery_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -822,6 +850,19 @@ publish_discovery_req(JObj) ->
 publish_discovery_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?DISCOVERY_REQ_VALUES, fun ?MODULE:discovery_req/1),
     amqp_util:conference_publish(Payload, discovery, undefined, [], ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Publish the response to requestor
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_discovery_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_discovery_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_discovery_resp(Q, JObj) ->
+    publish_discovery_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_discovery_resp(Q, Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?DISCOVERY_RESP_VALUES, fun ?MODULE:discovery_resp/1),
+    amqp_util:targeted_publish(Q, Payload, ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc

@@ -23,7 +23,7 @@
          ,publish_query_err/2, publish_query_err/3
         ]).
 
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 %% Registration Success
 -define(REG_SUCCESS_HEADERS, [<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>, <<"Username">>, <<"Realm">>]).

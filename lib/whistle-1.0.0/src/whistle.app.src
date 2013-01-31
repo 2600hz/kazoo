@@ -1,7 +1,8 @@
 {application, whistle
  ,[
    {description, "Whistle Helpers"}
-   ,{vsn, "0.2.0"}
+   ,{vsn, "1.0.0"}
+   ,{modules, []}
    ,{registered, []}
    ,{applications
      ,[
@@ -11,10 +12,10 @@
        ,sasl
       ]}
    ,{mod, { whistle_app
-	    ,[
+            ,[
 
-	     ]
-	  }
+             ]
+          }
     }
    ,{env, []}
  ]}.

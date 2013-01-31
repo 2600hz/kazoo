@@ -7,7 +7,7 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 %% For dialplan messages, an optional insert-at tuple is common across all requests
 -define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).

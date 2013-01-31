@@ -15,7 +15,7 @@
 -export([publish_reload_acls/0]).
 -export([publish_reload_gateways/0]).
 
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 %% request to reload acl
 -define(RELOAD_ACLS_HEADERS, []).

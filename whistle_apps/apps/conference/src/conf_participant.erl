@@ -306,8 +306,22 @@ handle_cast({remove_consumer, Consumer}, #participant{call_event_consumers=Consu
 handle_cast({set_conference, Conference}, Participant) ->
     lager:debug("received conference record for conference ~s", [whapps_conference:id(Conference)]),
     {noreply, Participant#participant{conference=Conference}};
-handle_cast({set_discovery_event, DiscoveryEvent}, Participant) ->
-    {noreply, Participant#participant{discovery_event=DiscoveryEvent}};
+
+handle_cast({set_discovery_event, DiscoveryEvent}=Req
+            ,#participant{call=Call
+                         ,participant_id=MyId
+                          ,conference=Conference
+                         }=Participant) ->
+    case whapps_call:controller_queue(Call) of
+        undefined ->
+            _ = get_my_queue(),
+            gen_listener:cast(self(), Req),
+            {noreply, Participant};
+        MyQ ->
+            notify_requestor(MyQ, MyId, DiscoveryEvent, whapps_conference:id(Conference)),
+            {noreply, Participant#participant{discovery_event=DiscoveryEvent}}
+    end;
+
 handle_cast(join_local, #participant{call=Call
                                      ,conference=DiscoveryConference
                                     }=Participant) ->
@@ -634,7 +648,7 @@ send_authn_response(MsgId, ServerId, Conference, Call) ->
     Resp = [{<<"Msg-ID">>, MsgId}
             ,{<<"Auth-Password">>, whapps_conference:bridge_password(Conference)}
             ,{<<"Auth-Method">>, <<"password">>}
-            ,{<<"Custom-Channel-Vars">>, wh_json:from_list([CCV || {_, V}=CCV <- CCVs, V =/= 'undefined' ])}
+            ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     wapi_authn:publish_resp(ServerId, Resp).
 
@@ -656,3 +670,16 @@ join_conference(Srv, Call, Conference) ->
 
     lager:debug("requesting conference participants"),
     whapps_conference_command:participants(Conference).
+
+notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
+    case wh_json:get_value(<<"Server-ID">>, DiscoveryEvent) of
+        undefined -> ok;
+        <<>> -> ok;
+        RequestorQ ->
+            Resp = [{<<"Conference-ID">>, ConferenceId}
+                    ,{<<"Participant-ID">>, MyId}
+                    ,{<<"Participant-Control-Queue">>, MyQ}
+                   ],
+            wapi_conference:publish_discovery_resp(RequestorQ, Resp)
+    end.
+            

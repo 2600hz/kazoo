@@ -16,7 +16,7 @@
 -export([bind_q/2]).
 -export([unbind_q/1, unbind_q/2]).
 
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 %% Offnet Resource Request
 -define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Resource-Type">>, <<"To-DID">>

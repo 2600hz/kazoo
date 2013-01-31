@@ -51,7 +51,7 @@
          ,publish_notify_update/2, publish_notify_update/3
         ]).
 
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 -define(NOTIFY_VOICEMAIL_NEW, <<"notifications.voicemail.new">>).
 -define(NOTIFY_FAX_NEW, <<"notifications.fax.new">>).

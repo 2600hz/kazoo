@@ -39,7 +39,7 @@
 
 -export([get_status/1]).
 
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 %% Routing key prefix for rating
 -define(KEY_RATING_REQ, <<"call.rating">>).

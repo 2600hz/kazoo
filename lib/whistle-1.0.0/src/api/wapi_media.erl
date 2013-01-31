@@ -17,7 +17,7 @@
 -export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
          ,publish_error/2, publish_error/3]).
 
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 %% Media Request - when streaming is needed
 -define(MEDIA_REQ_HEADERS, [<<"Media-Name">>]).

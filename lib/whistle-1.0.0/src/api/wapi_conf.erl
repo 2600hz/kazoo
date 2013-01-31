@@ -19,7 +19,7 @@
 -type action() :: 'created' | 'edited' | 'deleted'.
 -export_type([action/0]).
 
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 -define(CONF_DOC_UPDATE_HEADERS, [<<"ID">>, <<"Rev">>, <<"Database">>]).
 -define(OPTIONAL_CONF_DOC_UPDATE_HEADERS, [<<"Account-ID">>, <<"Type">>, <<"Version">>

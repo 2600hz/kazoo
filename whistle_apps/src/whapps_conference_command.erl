@@ -28,7 +28,7 @@
 -export([participant_volume_in/3]).
 -export([participant_volume_out/3]).
 
--spec search/1 :: (whapps_conference:conference()) -> 'undefined'.
+-spec search/1 :: (whapps_conference:conference()) -> ne_binary().
 -spec search/2 :: (SearchId, whapps_conference:conference()) -> SearchId.
 
 search(Conference) ->
@@ -46,7 +46,7 @@ search(SearchId, Conference) ->
               ,{<<"Msg-ID">>, SearchId}
               | wh_api:default_headers(Q, AppName, AppVersion)
              ],
-    wapi_conference:publish_search_req(Search), 
+    wapi_conference:publish_search_req(Search),
     SearchId.
 
 -spec deaf_participant/2 :: (ne_binary(), whapps_conference:conference()) -> 'ok'.
@@ -100,7 +100,6 @@ prompt(Media, Conference) ->
 prompt(Media, ParticipantId, Conference) ->
     play(whapps_util:get_prompt(Media, undefined), ParticipantId, Conference).
 
-
 -spec play/2 :: (ne_binary(), whapps_conference:conference()) -> 'ok'.
 -spec play/3 :: (ne_binary(), api_binary(), whapps_conference:conference()) -> 'ok'.
 
@@ -111,7 +110,7 @@ play(Media, ParticipantId, Conference) ->
                ,{<<"Media-Name">>, Media}
                ,{<<"Participant">>, ParticipantId}
               ],
-    send_command(Command, Conference).    
+    send_command(Command, Conference).
 
 -spec record/1 :: (whapps_conference:conference()) -> 'ok'.
 record(Conference) ->
@@ -130,7 +129,7 @@ relate_participants(ParticipantId, OtherParticipantId, Relationship, Conference)
                ,{<<"Other-Participant">>, OtherParticipantId}
                ,{<<"Relationship">>, Relationship}
               ],
-    send_command(Command, Conference).    
+    send_command(Command, Conference).
 
 -spec stop_play/1 :: (whapps_conference:conference()) -> 'ok'.
 -spec stop_play/2 :: (api_binary(), whapps_conference:conference()) -> 'ok'.

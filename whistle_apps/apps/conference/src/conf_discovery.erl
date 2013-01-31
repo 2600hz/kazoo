@@ -112,7 +112,7 @@ handle_discovery_req(JObj, Props) ->
                                  {ok, C} = validate_conference_id(wh_json:get_value(<<"Conference-ID">>, JObj), Call),
                                  C;
                              Doc ->
-                                 N = wh_json:get_value(<<"name">>, Doc),
+                                 N = wh_json:get_value(<<"name">>, Doc, wh_util:rand_hex_binary(8)),
                                  lager:debug("conf doc (~s) set instead of conf id", [N]),
                                  whapps_conference:set_id(N, create_conference(Doc, <<"none">>))
                          end
@@ -129,7 +129,7 @@ handle_discovery_req(JObj, Props) ->
     %% of what's going on in the actual conference
     try whapps_conference:update(Updaters, Conf0) of
         Conference ->
-            lager:debug("playing welcome prompt: ~s", [whapps_conference:play_welcome(Conference)]),
+            lager:info("should play welcome prompt: ~s", [whapps_conference:play_welcome(Conference)]),
             _ = whapps_conference:play_welcome(Conference) andalso
                 whapps_call_command:b_prompt(<<"conf-welcome">>, Call),
 

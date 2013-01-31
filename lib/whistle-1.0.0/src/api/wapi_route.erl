@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(wapi_route).
 
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 -export([req/1, req_v/1
          ,resp/1, resp_v/1
