@@ -27,6 +27,8 @@
          ,from_json/1
         ]).
 
+-define(WH_TRANSACTION_DB, some_db).
+
 -record(wh_transaction, {
           % or customer ID and pvt ?
           account_id :: ne_binary()
@@ -137,10 +139,10 @@ save(#wh_transaction{}=Transaction) ->
     Errors = validate_funs(Transaction),
     case validate(Errors) of
         {true, _} ->
-            _Transaction1 = set_private_properties(Transaction),
-            save;
-        {false, _R} ->
-            dont_save
+            Transaction1 = set_private_properties(Transaction),
+            couch_mgr:save_doc(?WH_TRANSACTION_DB, to_json(Transaction1));
+        {false, R} ->
+            {error, R}
     end.
 
 %%--------------------------------------------------------------------
@@ -149,8 +151,8 @@ save(#wh_transaction{}=Transaction) ->
 %% Fetch a transaction from the database
 %% @end
 %%--------------------------------------------------------------------
-fetch(ID) ->
-    ok.
+fetch(Id) ->
+    couch_mgr:open_doc(?WH_TRANSACTION_DB, Id).
 
 %%--------------------------------------------------------------------
 %%
