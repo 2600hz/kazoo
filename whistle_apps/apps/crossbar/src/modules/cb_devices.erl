@@ -474,20 +474,15 @@ do_full_provision(#cb_context{doc=JObj}) ->
     case whapps_config:get_binary(?MOD_FULL_PROVISIONER, <<"provisioning_url">>) of
         undefined -> false;
         Url ->
-            Headers = [{K, V}
-                       || {K, V} <- [{"Host", whapps_config:get_string(?MOD_FULL_PROVISIONER, <<"provisioning_url">>)}
-                                     ,{"User-Agent", wh_util:to_list(erlang:node())}
-                                     ,{"Content-Type", "application/json"}
-                                    ]
-                              ,V =/= undefined
-                      ],
-            Body = wh_json:encode(JObj),
+            Headers = [{"Content-Type", "application/json"}],
+            Body = wh_util:to_lower_string(wh_json:encode(JObj)),
             AccountId = wh_util:to_binary(wh_json:get_value(<<"account_id">>, JObj)),
             Mac = binary:replace(wh_util:to_binary(wh_json:get_value(<<"mac_address">>, JObj)), <<":">>, <<"">>, [global]),
             FullUrl = wh_util:to_lower_string(<<Url/binary, <<"/">>/binary, AccountId/binary, <<"/">>/binary, Mac/binary>>),
-            lager:debug("posting to ~p with ~p", [FullUrl, JObj]), 
-            ibrowse:send_req(FullUrl, Headers, post, Body, []),
-            true
+            lager:debug("Posting to: ~p  Data: ~p", [FullUrl, Body]),
+            Res = ibrowse:send_req(FullUrl, Headers, put, Body, [{inactivity_timeout, 10000}]),
+            lager:debug("Response from server: ~p", [Res]),
+            true 
     end.
 
 
