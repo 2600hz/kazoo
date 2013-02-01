@@ -269,6 +269,7 @@ store_stat(#agent_stat{acct_id=AcctId}=Stat, Prefix) ->
 store_stat(?NE_BINARY = AcctId, JObj) ->
     case couch_mgr:save_doc(db_name(AcctId), JObj) of
         {ok, _} -> ok;
+        {error, conflict} -> ok;
         {error, _E} ->
             lager:debug("error saving: ~p", [_E]),
             timer:sleep(250 + random:uniform(100)),
