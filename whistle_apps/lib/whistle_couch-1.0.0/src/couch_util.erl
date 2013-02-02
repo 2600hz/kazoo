@@ -93,13 +93,11 @@ get_new_conn(Host, Port, Opts) ->
     Conn = couchbeam:server_connection(wh_util:to_list(Host), Port, "", Opts),
     lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
     {'ok', ConnData} = server_info(Conn),
-
     CouchVersion = wh_json:get_value(<<"version">>, ConnData),
     BigCouchVersion = wh_json:get_value(<<"bigcouch">>, ConnData),
     lager:info("connected successfully to ~s:~b", [Host, Port]),
-    lager:debug("responding CouchDB version: ~s", [CouchVersion]),
-    is_binary(BigCouchVersion) andalso lager:info("responding BigCouch version: ~s", [BigCouchVersion]),
-
+    lager:debug("responding CouchDB version: ~p", [CouchVersion]),
+    lager:debug("responding BigCouch version: ~p", [BigCouchVersion]),
     Conn.
 
 server_info(#server{}=Conn) ->

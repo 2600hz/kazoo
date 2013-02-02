@@ -54,7 +54,6 @@ start_link() ->
                              ,{queue_name, ?QUEUE_NAME}
                              ,{queue_options, ?QUEUE_OPTIONS}
                              ,{consume_options, ?CONSUME_OPTIONS}
-                             ,{basic_qos, 1}
                             ], []).
 
 -spec conferences_on_node/1 :: (atom()) -> wh_json:json_object().

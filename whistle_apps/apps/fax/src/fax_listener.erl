@@ -50,7 +50,6 @@ start_link() ->
                                       ,{queue_name, ?QUEUE_NAME}       % optional to include
                                       ,{queue_options, ?QUEUE_OPTIONS} % optional to include
                                       ,{consume_options, ?CONSUME_OPTIONS} % optional to include
-                                      ,{basic_qos, 1}                % only needed if prefetch controls
                                      ], []).
 
 -spec new_request/3 :: (wh_json:json_object(), proplist(), _) -> sup_startchild_ret().

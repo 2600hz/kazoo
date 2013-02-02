@@ -78,7 +78,6 @@ start_link() ->
                                       ,{queue_name, ?QUEUE_NAME}
                                       ,{queue_options, ?QUEUE_OPTIONS}
                                       ,{consume_options, ?CONSUME_OPTIONS}
-                                      ,{basic_qos, 1} %% process one notification at a time (will round-robin amongst notify whapps)
                                      ], []).
 
 stop(Srv) ->

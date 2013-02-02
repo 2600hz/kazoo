@@ -29,14 +29,12 @@
                      ,{sysconf_set, [{<<"sysconf">>, <<"set_req">>}]}
                      ,{sysconf_flush, [{<<"sysconf">>, <<"flush_req">>}]}
                     ]).
--define(BINDINGS, [
-                   {sysconf, []}
-                  ]).
+-define(BINDINGS, [{sysconf, []}]).
 
 -define(SERVER, ?MODULE).
--define(SYSCONF_QUEUE_NAME, <<>>).
--define(SYSCONF_QUEUE_OPTIONS, []).
--define(SYSCONF_CONSUME_OPTIONS, []).
+-define(SYSCONF_QUEUE_NAME, <<"sysconf_listener">>).
+-define(SYSCONF_QUEUE_OPTIONS, [{exclusive, false}]).
+-define(SYSCONF_CONSUME_OPTIONS, [{exclusive, false}]).
 
 %%%===================================================================
 %%% API

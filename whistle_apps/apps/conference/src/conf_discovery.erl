@@ -63,7 +63,6 @@ start_link() ->
                              ,{queue_name, ?QUEUE_NAME}
                              ,{queue_options, ?QUEUE_OPTIONS}
                              ,{consume_options, ?CONSUME_OPTIONS}
-                             ,{basic_qos, 1}
                             ], []).
 
 -spec handle_discovery_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.

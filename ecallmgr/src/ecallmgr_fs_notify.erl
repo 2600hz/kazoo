@@ -69,7 +69,6 @@ start_link(Node, Options) ->
                               ,{queue_name, ?QUEUE_NAME}
                               ,{queue_options, ?QUEUE_OPTIONS}
                               ,{consume_options, ?CONSUME_OPTIONS}
-                              ,{basic_qos, 1}
                              ]
                             ,[Node, Options]).
 
@@ -203,7 +202,6 @@ bind_to_notify_presence(Node) ->
                   QueueName = <<"ecallmgr_fs_notify_presence">>,
                   QOptions = [{queue_options, [{exclusive, false}]}
                               ,{consume_options, [{exclusive, false}]}
-                              ,{basic_qos, 1}
                              ],
                   Bindings= [{notifications, [{restrict_to, [presence_update]}]}],
                   case gen_listener:add_queue(Self, QueueName, QOptions, Bindings) of
