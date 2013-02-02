@@ -3,15 +3,18 @@ PROJECT = kazoo_translator
 ROOT = ../../..
 DIALYZER = dialyzer
 
+LIB_EBINS = $(shell find $(ROOT)/lib -maxdepth 2 -name ebin -print)
+WHAPPS_LIB_EBINS = $(shell find $(ROOT)/whistle_apps/lib -maxdepth 2 -name ebin -print)
+
 DIRS =  . \
 	$(ROOT)/lib/whistle-1.0.0 \
 	$(ROOT)/lib/whistle_amqp-1.0.0 \
 	$(ROOT)/whistle_apps/lib/whistle_couch-1.0.0 \
 	$(ROOT)/whistle_apps
 
-DIALYZER = dialyzer
-
 ERLC_OPTS = +debug_info +warn_export_all \
+	$(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN)) \
+	$(foreach WHAPPS_LIB_EBIN,$(WHAPPS_LIB_EBINS),-pa $(WHAPPS_LIB_EBIN)) \
 	-I $(ROOT)/lib -I $(ROOT)/whistle_apps/lib # +bin_opt_info 
 
 .PHONY: all compile clean
