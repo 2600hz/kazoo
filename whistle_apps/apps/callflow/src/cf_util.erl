@@ -11,6 +11,8 @@
 
 -include("callflow.hrl").
 
+-define(OWNER_KEY(Db, User), {?MODULE, owner_id, Db, User}).
+
 -export([presence_probe/2]).
 -export([presence_mwi_query/2]).
 -export([update_mwi/1, update_mwi/2, update_mwi/4]).
@@ -42,25 +44,15 @@ presence_probe(JObj, _Props) ->
                     ],
     [Fun(Subscription, {FromUser, FromRealm}, {ToUser, ToRealm}, JObj) || Fun <- ProbeRepliers].
 
--spec presence_mwi_update/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) ->
-                                       'ok'.
+-spec presence_mwi_update/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) -> 'ok'.
 presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, JObj) ->
     case whapps_util:get_account_by_realm(FromRealm) of
         {ok, AccountDb} ->
-            ViewOptions = [include_docs
-                           ,{key, FromUser}
-                          ],
-            case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
-                {ok, []} ->
-                    lager:debug("sip credentials not in account db ~s", [AccountDb]),
-                    ok;
-                {ok, [Device]} ->
+            case maybe_get_owner_id(AccountDb, FromUser) of
+                {ok, OwnerId} ->
                     lager:debug("replying to mwi presence probe"),
-                    OwnerId = wh_json:get_value([<<"doc">>, <<"owner_id">>], Device),
                     presence_mwi_resp(FromUser, FromRealm, OwnerId, AccountDb, JObj);
-                {error, _R} ->
-                    lager:debug("unable to lookup sip credentials for owner id: ~p", [_R]),
-                    ok
+                _Else -> ok
             end;
         _E ->
             lager:debug("failed to find the account for realm ~s: ~p", [FromRealm, _E]),
@@ -69,8 +61,7 @@ presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, JObj) ->
 presence_mwi_update(_, _, _, _) ->
     ok.
 
--spec presence_parking_slot/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) ->
-                                         'ok'.
+-spec presence_parking_slot/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) -> 'ok'.
 presence_parking_slot(<<"message-summary">>, _, _, _) -> ok;
 presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
     case whapps_util:get_account_by_realm(FromRealm) of
@@ -99,22 +90,27 @@ manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, Event) ->
             case couch_mgr:open_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
                 {error, _} -> ok;
                 {ok, JObj} ->
-                    PresenceId = <<ToUser/binary, "@", ToRealm/binary>>,
-                    case wh_json:get_value(PresenceId, JObj) of
-                        undefined -> ok;
-                        State ->
-                            PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
-                                              ,{<<"State">>, State}
-                                              ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(PresenceId))}
-                                              ,{<<"Switch-Nodename">>, wh_json:get_ne_value(<<"Switch-Nodename">>, Event)}
-                                              ,{<<"Subscription-Call-ID">>, wh_json:get_ne_value(<<"Subscription-Call-ID">>, Event)}
-                                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                             ],
-                            wapi_notifications:publish_presence_update(PresenceUpdate)
-                        end
+                    manual_presence_resp(JObj, ToUser, ToRealm, Event)
             end;
         _E -> ok
     end.
+
+-spec manual_presence_resp/4 :: (wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+manual_presence_resp(JObj, ToUser, ToRealm, Event) ->    
+    PresenceId = <<ToUser/binary, "@", ToRealm/binary>>,
+    case wh_json:get_value(PresenceId, JObj) of
+        undefined -> ok;
+        State ->
+            PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
+                              ,{<<"State">>, State}
+                              ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(PresenceId))}
+                              ,{<<"Switch-Nodename">>, wh_json:get_ne_value(<<"Switch-Nodename">>, Event)}
+                              ,{<<"Subscription-Call-ID">>, wh_json:get_ne_value(<<"Subscription-Call-ID">>, Event)}
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             ],
+            wapi_notifications:publish_presence_update(PresenceUpdate)
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -128,16 +124,11 @@ presence_mwi_query(JObj, _Props) ->
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     case whapps_util:get_account_by_realm(Realm) of
         {ok, AccountDb} ->
-            ViewOptions = [include_docs
-                           ,{key, Username}
-                          ],
-            case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
-                {ok, []} ->  ok;
-                {ok, [Device]} ->
+            case maybe_get_owner_id(AccountDb, Username) of
+                {ok, OwnerId} ->
                     lager:debug("replying to mwi query"),
-                    OwnerId = wh_json:get_value([<<"doc">>, <<"owner_id">>], Device),
                     presence_mwi_resp(Username, Realm, OwnerId, AccountDb, JObj);
-                {error, _R} -> ok
+                _Else -> ok
             end;
         _Else -> ok
     end.
@@ -178,7 +169,7 @@ presence_mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
             lager:debug("updating MWI for owner ~s: (~b/~b)", [OwnerId, New, Saved]),
             wapi_notifications:publish_mwi_update(Command);
         {error, _R} ->
-            lager:debug("unable to lookup vm counts by owner: ~p", [_R]),
+            lager:warning("unable to lookup vm counts by owner: ~p", [_R]),
             ok
     end.
 
@@ -210,7 +201,7 @@ update_mwi(OwnerId, AccountDb) ->
                     ],
             update_mwi(props:get_value(<<"new">>, Props, 0), props:get_value(<<"saved">>, Props, 0), OwnerId, AccountDb);
         {error, _R} ->
-            lager:debug("unable to lookup vm counts by owner: ~p", [_R]),
+            lager:warning("unable to lookup vm counts by owner: ~p", [_R]),
             ok
     end.
 
@@ -239,7 +230,7 @@ update_mwi(New, Saved, OwnerId, AccountDb) ->
                           end, Devices),
             ok;
         {error, _R} ->
-            lager:debug("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
+            lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
             ok
     end.
 
@@ -328,7 +319,7 @@ get_operator_callflow(Account) ->
         {ok, [JObj|_]} ->
             {ok, wh_json:get_value([<<"doc">>, <<"flow">>], JObj, wh_json:new())};
         {error, _R}=E ->
-            lager:debug("unable to find operator callflow in ~s: ~p", [Account, _R]),
+            lager:warning("unable to find operator callflow in ~s: ~p", [Account, _R]),
             E
     end.
 
@@ -395,6 +386,32 @@ maybe_use_nomatch(Number, Db) ->
 
 is_digit(X) when X >= $0, X =< $9 -> true;
 is_digit(_) -> false.
+
+-spec maybe_get_owner_id/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
+maybe_get_owner_id(AccountDb, SIPUser) ->
+    case wh_cache:peek_local(?CALLFLOW_CACHE, ?OWNER_KEY(AccountDb, SIPUser)) of
+        {ok, _}=Ok -> Ok;
+        {error, not_found} -> 
+            get_owner_id(AccountDb, SIPUser)
+    end.        
+
+-spec get_owner_id/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
+get_owner_id(AccountDb, SIPUser) ->
+    ViewOptions = [include_docs
+                   ,{key, SIPUser}
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
+        {ok, [JObj]} ->
+            OwnerId = wh_json:get_value([<<"doc">>, <<"owner_id">>], JObj),
+            wh_cache:store_local(?CALLFLOW_CACHE, ?OWNER_KEY(AccountDb, SIPUser), OwnerId),
+            {ok, OwnerId};
+        {ok, []} ->
+            lager:debug("sip credentials not in account db ~s", [AccountDb]),
+            {error, not_found};
+        {error, _R} ->
+            lager:warning("unable to lookup sip credentials for owner id: ~p", [_R]),
+            ok
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private
