@@ -40,39 +40,40 @@
                              {'error', 'badarg' | 'session_attach_failed' | 'badsession' | 'baduuid'} |
                              'timeout'.
 
--record(sip_subscription, {key=undefined
-                           ,to=undefined
-                           ,from=undefined
-                           ,node=undefined
-                           ,expires=300
-                           ,timestamp=wh_util:current_tstamp()
+-record(sip_subscription, {key
+                           ,to :: api_binary()
+                           ,from :: api_binary()
+                           ,node :: atom()
+                           ,expires = 300 :: pos_integer()
+                           ,timestamp = wh_util:current_tstamp() :: pos_integer()
                           }).
 
--record(channel, {uuid = undefined
-                  ,destination = undefined
-                  ,direction = undefined
-                  ,account_id = undefined
-                  ,account_billing = undefined
-                  ,authorizing_id = undefined
-                  ,authorizing_type = undefined
-                  ,owner_id = undefined
-                  ,resource_id = undefined
-                  ,presence_id = undefined
-                  ,billing_id = undefined
-                  ,bridge_id = undefined
-                  ,reseller_id = undefined
-                  ,reseller_billing = undefined
-                  ,realm = undefined
-                  ,username = undefined
-                  ,import_moh = undefined
-                  ,answered = false
-                  ,node = undefined
-                  ,former_node = undefined
-                  ,timestamp = undefined
-                  ,profile = undefined
-                  ,context = undefined
-                  ,dialplan = undefined
-                  ,precedence = 5
+-record(channel, {uuid :: api_binary()
+                  ,destination :: api_binary()
+                  ,direction :: api_binary()
+                  ,account_id :: api_binary()
+                  ,account_billing :: api_binary()
+                  ,authorizing_id :: api_binary()
+                  ,authorizing_type :: api_binary()
+                  ,owner_id :: api_binary()
+                  ,resource_id :: api_binary()
+                  ,presence_id :: api_binary()
+                  ,billing_id :: api_binary()
+                  ,bridge_id :: api_binary()
+                  ,reseller_id :: api_binary()
+                  ,reseller_billing :: api_binary()
+                  ,realm :: api_binary()
+                  ,username :: api_binary()
+                  ,import_moh :: api_binary()
+                  ,answered = 'false'
+                  ,other_leg :: api_binary()
+                  ,node :: atom()
+                  ,former_node :: atom()
+                  ,timestamp :: pos_integer()
+                  ,profile :: api_binary()
+                  ,context :: api_binary()
+                  ,dialplan :: api_binary()
+                  ,precedence = 5 :: pos_integer()
                  }).
 
 -type channel() :: #channel{}.

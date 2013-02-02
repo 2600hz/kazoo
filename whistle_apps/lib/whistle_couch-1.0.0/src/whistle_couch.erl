@@ -38,7 +38,7 @@ start() ->
 -spec start_deps/0 :: () -> any().
 start_deps() ->
     whistle_couch_deps:ensure(?MODULE),
-    [begin lager:info("starting ~s", [Dep]), wh_util:ensure_started(Dep) end || Dep <- ?DEPS].
+    [wh_util:ensure_started(Dep) || Dep <- ?DEPS].
 
 %% @spec stop() -> ok
 %% @doc Stop the couch server.

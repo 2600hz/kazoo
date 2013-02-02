@@ -30,6 +30,7 @@
 -export([channel_node/1, channel_set_node/2
          ,channel_former_node/1
          ,channel_move/3
+         ,channel_bridged/1, channel_set_bridged/2
         ]).
 -export([channel_account_summary/1]).
 -export([channel_match_presence/1]).
@@ -201,6 +202,18 @@ channel_node(UUID) ->
     case ets:select(ecallmgr_channels, MatchSpec) of
         [Node] -> {ok, Node};
         _ -> {error, not_found}
+    end.
+
+-spec channel_bridged/1 :: (ne_binary()) -> boolean().
+channel_bridged(UUID) ->
+    MatchSpec = [{#channel{uuid = '$1', other_leg = '$2', _ = '_'}
+                  ,[{'=:=', '$1', {const, UUID}}]
+                  ,['$2']}
+                ],
+    case ets:select(ecallmgr_channels, MatchSpec) of
+        [undefined] -> lager:debug("not bridged: undefined"), false;
+        [Bin] when is_binary(Bin) -> lager:debug("bridged: ~s", [Bin]), true;
+        _E -> lager:debug("not bridged: ~p", [_E]), false
     end.
 
 -spec channel_former_node/1 :: (ne_binary()) -> {'ok', atom()} |
@@ -424,6 +437,10 @@ channel_set_precedence(UUID, Value) ->
 -spec channel_set_answered/2 :: (ne_binary(), boolean()) -> 'ok'.
 channel_set_answered(UUID, Answered) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.answered, (not wh_util:is_empty(Answered))}}).
+
+-spec channel_set_bridged/2 :: (ne_binary(), api_binary()) -> 'ok'.
+channel_set_bridged(UUID, OtherUUID) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.other_leg, OtherUUID}}).
 
 -spec channel_set_import_moh/2 :: (ne_binary(), boolean()) -> 'ok'.
 channel_set_import_moh(UUID, Import) ->
@@ -711,6 +728,14 @@ handle_info({event, [UUID | Props]}, State) ->
         <<"CHANNEL_DESTROY">> ->  ?MODULE:destroy_channel(Props, Node);
         <<"sofia::move_complete">> -> ?MODULE:channel_set_node(Node, UUID);
         <<"CHANNEL_ANSWER">> -> ?MODULE:channel_set_answered(UUID, true);
+        <<"CHANNEL_BRIDGE">> ->
+            OtherLeg = get_other_leg(UUID, Props),
+            ?MODULE:channel_set_bridged(UUID, OtherLeg),
+            ?MODULE:channel_set_bridged(OtherLeg, UUID);
+        <<"CHANNEL_UNBRIDGE">> ->
+            OtherLeg = get_other_leg(UUID, Props),
+            ?MODULE:channel_set_bridged(UUID, undefined),
+            ?MODULE:channel_set_bridged(OtherLeg, undefined);
         <<"CHANNEL_EXECUTE_COMPLETE">> ->
             Data = props:get_value(<<"Application-Data">>, Props),
             case props:get_value(<<"Application">>, Props) of
@@ -719,7 +744,7 @@ handle_info({event, [UUID | Props]}, State) ->
                 <<"multiset">> -> process_channel_multiset(UUID, Data);
                 _Else -> ok
             end;
-        _Else -> ok
+        _Else -> lager:debug("else: ~p", [_Else])
     end,
     {noreply, State};
 handle_info(expire_sip_subscriptions, Cache) ->
@@ -1117,3 +1142,16 @@ classify_channel(#channel{direction = <<"outbound">>, billing_id=BillingId}
                            ,#astats{resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) ->
     AStats#astats{resource_consumers=sets:add_element(BillingId, ResourceConsumers)
                   ,billing_ids=sets:add_element(BillingId, BillingIds)}.
+
+get_other_leg(UUID, Props) ->
+    get_other_leg(UUID, Props, props:get_value(<<"Other-Leg-Unique-ID">>, Props)).
+
+get_other_leg(UUID, Props, undefined) ->
+    get_other_leg_1(UUID
+                    ,props:get_value(<<"Bridge-A-Unique-ID">>, Props)
+                    ,props:get_value(<<"Bridge-A-Unique-ID">>, Props)
+                   );
+get_other_leg(_UUID, _Props, OtherLeg) -> OtherLeg.
+
+get_other_leg_1(UUID, UUID, OtherLeg) -> OtherLeg;
+get_other_leg_1(UUID, OtherLeg, UUID) -> OtherLeg.
