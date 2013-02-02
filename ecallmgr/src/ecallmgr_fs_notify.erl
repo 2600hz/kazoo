@@ -72,11 +72,11 @@ start_link(Node, Options) ->
                              ]
                             ,[Node, Options]).
 
--spec presence_update(wh_json:json_object(), wh_proplist()) -> any().
+-spec presence_update(wh_json:object(), wh_proplist()) -> any().
 presence_update(JObj, _Props) ->
     do_presence_update(wh_json:get_value(<<"State">>, JObj), JObj).
 
--spec do_presence_update(api_binary(), wh_json:json_object()) -> any().
+-spec do_presence_update(api_binary(), wh_json:object()) -> any().
 do_presence_update(undefined, JObj) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
     Switch = wh_json:get_value(<<"Switch-Nodename">>, JObj),
@@ -106,7 +106,7 @@ do_presence_update(State, JObj) ->
             end,
     relay_presence('PRESENCE_IN', PresenceId, Event, node(), Switch).
 
--spec mwi_update(wh_json:json_object(), wh_proplist()) -> no_return().
+-spec mwi_update(wh_json:object(), wh_proplist()) -> no_return().
 mwi_update(JObj, Props) ->
     _ = wh_util:put_callid(JObj),
 
@@ -167,13 +167,13 @@ init([Node, Options]) ->
 bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
     _ = case ecallmgr_config:get(<<"distribute_presence">>, true) of
             false -> ok;
-            true -> 
+            true ->
                 ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
                 bind_to_notify_presence(Node)
-        end,                     
+        end,
     case ecallmgr_config:get(<<"distribute_message_query">>, true) of
         false -> ok;
-        true -> 
+        true ->
             ok = freeswitch:event(Node, ['MESSAGE_QUERY'])
     end;
 bind_to_events(_, Node) ->
@@ -208,7 +208,7 @@ bind_to_notify_presence(Node) ->
                       {error, _E} -> lager:debug("failed to add queue ~s to ~p: ~p", [QueueName, Self, _E])
                   end
           end).
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -353,8 +353,8 @@ maybe_handle_presence_out(Props, Node) ->
         _Else -> ok
     end.
 
--spec confirmed_presence_event(ne_binary(), wh_json:json_object()) -> wh_proplist().
--spec confirmed_presence_event(ne_binary(), ne_binary(), wh_json:json_object()) -> wh_proplist().
+-spec confirmed_presence_event(ne_binary(), wh_json:object()) -> wh_proplist().
+-spec confirmed_presence_event(ne_binary(), ne_binary(), wh_json:object()) -> wh_proplist().
 
 confirmed_presence_event(PresenceId, JObj) ->
     UniqueId = case wh_json:get_ne_value(<<"Call-ID">>, JObj) of
@@ -379,8 +379,8 @@ confirmed_presence_event(PresenceId, UniqueId, JObj) ->
      ,{"Caller-Caller-ID-Name", wh_json:get_string_value(<<"Caller-ID-Name">>, JObj)}
     ].
 
--spec early_presence_event(ne_binary(), wh_json:json_object()) -> wh_proplist().
--spec early_presence_event(ne_binary(), ne_binary(), wh_json:json_object()) -> wh_proplist().
+-spec early_presence_event(ne_binary(), wh_json:object()) -> wh_proplist().
+-spec early_presence_event(ne_binary(), ne_binary(), wh_json:object()) -> wh_proplist().
 
 early_presence_event(PresenceId, JObj) ->
     UniqueId = case wh_json:get_ne_value(<<"Call-ID">>, JObj) of
@@ -405,8 +405,8 @@ early_presence_event(PresenceId, UniqueId, JObj) ->
      ,{"Caller-Caller-ID-Name", wh_json:get_string_value(<<"Caller-ID-Name">>, JObj)}
     ].
 
--spec terminated_presence_event(ne_binary(), wh_json:json_object()) -> wh_proplist().
--spec terminated_presence_event(ne_binary(), ne_binary(), wh_json:json_object()) -> wh_proplist().
+-spec terminated_presence_event(ne_binary(), wh_json:object()) -> wh_proplist().
+-spec terminated_presence_event(ne_binary(), ne_binary(), wh_json:object()) -> wh_proplist().
 
 terminated_presence_event(PresenceId, JObj) ->
     UniqueId = case wh_json:get_ne_value(<<"Call-ID">>, JObj) of
