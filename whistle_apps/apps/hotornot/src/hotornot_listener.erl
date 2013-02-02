@@ -28,7 +28,7 @@
 
 -define(BINDINGS, [ {rate, []} ]).
 -define(RESPONDERS, [{hon_rater, [{<<"rate">>, <<"req">>}]}]).
--define(QUEUE_NAME, <<"hotornot_rating">>).
+-define(QUEUE_NAME, <<"hotornot_listerner">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
 
@@ -45,13 +45,11 @@
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [
-                                      {bindings, ?BINDINGS}
+    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
                                       ,{responders, ?RESPONDERS}
                                       ,{queue_name, ?QUEUE_NAME}
                                       ,{queue_options, ?QUEUE_OPTIONS}
                                       ,{consume_options, ?CONSUME_OPTIONS}
-                                      ,{basic_qos, 1}
                                      ], []).
 
 -spec stop/1 :: (pid() | atom()) -> 'ok'.

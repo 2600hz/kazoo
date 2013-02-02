@@ -32,8 +32,8 @@
                      ,{stepswitch_outbound, [{<<"resource">>, <<"offnet_req">>}]}
                      ,{stepswitch_authn_req, [{<<"directory">>, <<"authn_req">>}]}
                     ]).
--define(QUEUE_NAME, ?RESOURCE_QUEUE_NAME).
--define(QUEUE_OPTIONS, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
+-define(QUEUE_NAME, <<"stepswitch_listener">>).
+-define(QUEUE_OPTIONS, [{exclusive, false}, {nowait, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 %%%===================================================================
@@ -53,7 +53,6 @@ start_link() ->
                                                         ,{queue_name, ?QUEUE_NAME}
                                                         ,{queue_options, ?QUEUE_OPTIONS}
                                                         ,{consume_options, ?CONSUME_OPTIONS}
-                                                        ,{basic_qos, 1}
                                                        ], []).
 
 %%%===================================================================

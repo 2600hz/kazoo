@@ -32,7 +32,7 @@
                   ]).
 
 -define(SERVER, ?MODULE).
--define(ROUTE_QUEUE_NAME, <<"ts_responder.route.queue">>).
+-define(ROUTE_QUEUE_NAME, <<"trunkstore_listener">>).
 -define(ROUTE_QUEUE_OPTIONS, [{exclusive, false}]).
 -define(ROUTE_CONSUME_OPTIONS, [{exclusive, false}]).
 
@@ -53,7 +53,6 @@ start_link() ->
                                       ,{queue_name, ?ROUTE_QUEUE_NAME}
                                       ,{queue_options, ?ROUTE_QUEUE_OPTIONS}
                                       ,{consume_options, ?ROUTE_CONSUME_OPTIONS}
-                                      ,{basic_qos, 1}
                                      ], []).
 
 stop(Srv) ->

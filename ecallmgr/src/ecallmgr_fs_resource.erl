@@ -63,9 +63,8 @@ start_link(Node, Options) ->
                               ,{queue_name, ?QUEUE_NAME}
                               ,{queue_options, ?QUEUE_OPTIONS}
                               ,{consume_options, ?CONSUME_OPTIONS}
-                              ,{basic_qos, 1}
-                             ]
-                            ,[Node, Options]).
+                             ],
+                            [Node, Options]).
 
 -spec handle_originate_req/2 :: (wh_json:object(), wh_proplist()) -> sup_startchild_ret().
 handle_originate_req(JObj, Props) ->
