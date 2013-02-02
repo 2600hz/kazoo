@@ -2,7 +2,12 @@ PROJECT = conference
 ROOT = ../../..
 DIALYZER = dialyzer
 
-ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/lib # +bin_opt_info
+LIB_EBINS = $(shell find $(ROOT)/lib -maxdepth 2 -name ebin -print)
+WHAPPS_LIB_EBINS = $(shell find $(ROOT)/whistle_apps/lib -maxdepth 2 -name ebin -print)
+
+ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/lib \
+	$(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN)) \
+	$(foreach WHAPPS_LIB_EBIN,$(WHAPPS_LIB_EBINS),-pa $(WHAPPS_LIB_EBIN))
 
 DIRS = . \
         $(ROOT)/lib/whistle-1.0.0 \
