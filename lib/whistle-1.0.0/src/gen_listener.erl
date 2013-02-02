@@ -126,6 +126,7 @@ behaviour_info(_) ->
          ,active_responders = [] :: [pid(),...] | [] %% list of pids processing requests
          ,other_queues = [] :: [{ne_binary(), {wh_proplist(), wh_proplist()}},...] | [] %% {QueueName, {proplist(), wh_proplist()}}
          ,last_call_event = [] :: wh_proplist()
+         ,start_params = [] :: wh_proplist()
          }).
 -type state() :: #state{}.
 
@@ -267,6 +268,7 @@ init([Module, Params, InitArgs]) ->
     {ok, #state{module=Module
                 ,module_state=ModState
                 ,module_timeout_ref=TimeoutRef
+                ,start_params = Params
                }}.
 
 -type gen_l_handle_call_ret() :: {'reply', term(), state(), gen_server_timeout()} |
@@ -321,7 +323,7 @@ handle_call(Request, From, #state{module=Module
     end.
 
 -spec handle_cast/2 :: (term(), state()) -> handle_cast_ret().
-handle_cast({init_amqp, Params, Responders, Bindings}, State) ->
+handle_cast({init_amqp, Params, Responders, Bindings}, #state{is_consuming=false}=State) ->
     case start_amqp(Params) of
         {error, _E} ->
             _R = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_channel_event, initial_conn_failed}),
@@ -350,6 +352,8 @@ handle_cast({init_amqp, Params, Responders, Bindings}, State) ->
                          }
              ,hibernate}
     end;
+handle_cast({init_amqp, _, _, _}, State) ->
+    {noreply, State};    
 
 handle_cast({ack, Delivery}, State) ->
     amqp_util:basic_ack(Delivery),
@@ -394,9 +398,12 @@ handle_cast({add_binding, _, _}=AddBinding, #state{is_consuming=false
                                                   }=State) ->
     lager:debug("no queue name and we're not consuming...ignoring the add_binding: ~p", [AddBinding]),
     {noreply, State};
-handle_cast({add_binding, _, _}=AddBinding, #state{is_consuming=false}=State) ->
+handle_cast({add_binding, _, _}=AddBinding, #state{is_consuming=false, start_params=Params}=State) ->
     Time = ?BIND_WAIT + (crypto:rand_uniform(100, 500)), % wait 100 + [100,500) ms before replaying the binding request
     lager:debug("not consuming yet, put binding to end of message queue after ~b ms", [Time]),
+    Responders = props:get_value(responders, Params, []),
+    Bindings = props:get_value(bindings, Params, []),
+    gen_server:cast(self(), {init_amqp, Params, Responders, Bindings}),
     ?MODULE:delayed_cast(self(), AddBinding, Time),
     {noreply, State};
 handle_cast({add_binding, Binding, Props}, #state{queue=Q
