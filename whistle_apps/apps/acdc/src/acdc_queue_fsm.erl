@@ -56,6 +56,7 @@
 -record(state, {
           queue_proc :: pid()
          ,manager_proc :: pid()
+         ,worker_sup_proc :: pid()
          ,connect_resps = [] :: wh_json:objects()
          ,collect_ref :: reference()
          ,acct_id :: ne_binary()
@@ -100,8 +101,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link/3 :: (pid(), pid(), wh_json:object()) -> startlink_ret().
-start_link(MgrPid, ListenerPid, QueueJObj) ->
-    gen_fsm:start_link(?MODULE, [MgrPid, ListenerPid, QueueJObj], []).
+start_link(WorkerSup, MgrPid, QueueJObj) ->
+    gen_fsm:start_link(?MODULE, [WorkerSup, MgrPid, QueueJObj], []).
 
 refresh(FSM, QueueJObj) ->
     gen_fsm:send_all_state_event(FSM, {refresh, QueueJObj}).
@@ -176,7 +177,7 @@ status(FSM) ->
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
-init([MgrPid, ListenerPid, QueueJObj]) ->
+init([WorkerSup, MgrPid, QueueJObj]) ->
     QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
     AcctId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
     AcctDb = wh_json:get_value(<<"pvt_account_db">>, QueueJObj),
@@ -185,8 +186,10 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
 
     webseq:reg_who(self(), iolist_to_binary([<<"qFSM">>, pid_to_list(self())])),
 
-    {ok, ready, #state{queue_proc=ListenerPid
-                       ,manager_proc=MgrPid
+    fetch_my_listener(WorkerSup),
+
+    {ok, ready, #state{manager_proc=MgrPid
+                       ,worker_sup_proc=WorkerSup
                        ,acct_id=AcctId
                        ,acct_db=AcctDb
                        ,queue_id=QueueId
@@ -211,6 +214,14 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+ready({queue_proc, undefined}, #state{worker_sup_proc=WorkerSup}=State) ->
+    lager:debug("don't have queue listener yet"),
+    fetch_my_listener(WorkerSup),
+    {next_state, ready, State};
+ready({queue_proc, Srv}, #state{queue_proc=_QueueSrv}=State) ->
+    lager:debug("we have our listener pid now: ~p (~p)", [Srv, _QueueSrv]),
+    {next_state, ready, State#state{queue_proc=Srv}};
+
 ready({member_call, CallJObj, Delivery}, #state{queue_proc=QueueSrv
                                                 ,manager_proc=MgrSrv
                                                 ,connection_timeout=ConnTimeout
@@ -244,7 +255,7 @@ ready({agent_resp, _Resp}, State) ->
     lager:debug("someone jumped the gun, or was slow on the draw"),
     {next_state, ready, State};
 ready({accepted, _AcceptJObj}, State) ->
-    lager:debug("weird to receive an acceptance"),
+    lager:debug("weird to receive an acceptance from ~s", [wh_json:get_value(<<"Process-ID">>, _AcceptJObj)]),
     {next_state, ready, State};
 ready({retry, _RetryJObj}, State) ->
     lager:debug("weird to receive a retry when we're just hanging here"),
@@ -270,6 +281,14 @@ ready(current_call, _, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+connect_req({queue_proc, undefined}, #state{worker_sup_proc=WorkerSup}=State) ->
+    lager:debug("don't have queue listener yet"),
+    fetch_my_listener(WorkerSup),
+    {next_state, connect_req, State};
+connect_req({queue_proc, Srv}, #state{queue_proc=_QueueSrv}=State) ->
+    lager:debug("we have our listener pid now: ~p (~p)", [Srv, _QueueSrv]),
+    {next_state, connect_req, State#state{queue_proc=Srv}};
+
 connect_req({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while processing a different member"),
 
@@ -407,6 +426,14 @@ connect_req(current_call, _, #state{member_call=Call
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+connecting({queue_proc, undefined}, #state{worker_sup_proc=WorkerSup}=State) ->
+    lager:debug("don't have queue listener yet"),
+    fetch_my_listener(WorkerSup),
+    {next_state, connecting, State};
+connecting({queue_proc, Srv}, #state{queue_proc=_QueueSrv}=State) ->
+    lager:debug("we have our listener pid now: ~p (~p)", [Srv, _QueueSrv]),
+    {next_state, connecting, State#state{queue_proc=Srv}};
+
 connecting({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while connecting"),
     acdc_queue_listener:cancel_member_call(Srv, CallJObj, Delivery),
@@ -708,3 +735,10 @@ win_or_monitor(A, W) ->
         true -> <<"win">>;
         false -> <<"monitor">>
     end.
+
+fetch_my_listener(WorkerSup) ->
+    Self = self(),
+    _ = spawn(fun() ->
+                      gen_fsm:send_event(Self, {queue_proc, acdc_queue_worker_sup:queue(WorkerSup)})
+              end),
+    ok.

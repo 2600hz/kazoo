@@ -189,9 +189,10 @@ init([WorkerSup, MgrPid, AcctId, QueueId]) ->
                                                ,QueueId
                                               ),
 
-    fetch_my_queue(),
+    _ = fetch_my_queue(),
 
     gen_listener:cast(self(), {start_friends, QueueJObj}),
+    lager:debug("start friends"),
 
     {ok, #state{
        queue_id = QueueId
@@ -244,6 +245,7 @@ handle_cast({start_friends, QueueJObj}, #state{worker_sup=WorkerSup
                                                ,acct_id=AcctId
                                                ,queue_id=QueueId
                                               }=State) ->
+    lager:debug("start friends"),
     case find_pid_from_supervisor(acdc_queue_worker_sup:start_fsm(WorkerSup, MgrPid, QueueJObj)) of
         {ok, FSMPid} ->
             lager:debug("started queue FSM: ~p", [FSMPid]),
@@ -651,5 +653,9 @@ publish(Q, Req, F) ->
 
 fetch_my_queue() ->
     Self = self(),
-    _ = spawn(fun() -> gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)}) end),
+    _ = spawn(fun() ->
+                      lager:debug("getting my ~p queue", [Self]),
+                      gen_listener:cast(Self, {queue_name, Q = gen_listener:queue_name(Self)}),
+                      lager:debug("got my ~p queue ~s", [Self, Q])
+              end),
     ok.

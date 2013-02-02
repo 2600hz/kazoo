@@ -48,7 +48,7 @@ stop(WorkerSup) ->
 
 -spec queue/1 :: (pid()) -> pid() | 'undefined'.
 queue(WorkerSup) ->
-    case child_of_type(WorkerSup, acdc_queue) of
+    case child_of_type(WorkerSup, acdc_queue_listener) of
         [] -> undefined;
         [P] -> P
     end.
@@ -73,8 +73,7 @@ fsm(WorkerSup) ->
 
 -spec start_fsm/3 :: (pid(), pid(), wh_json:object()) -> sup_startchild_ret().
 start_fsm(WorkerSup, MgrPid, QueueJObj) ->
-    ListenerPid = self(),
-    supervisor:start_child(WorkerSup, ?CHILD(acdc_queue_fsm, [MgrPid, ListenerPid, QueueJObj])).
+    supervisor:start_child(WorkerSup, ?CHILD(acdc_queue_fsm, [WorkerSup, MgrPid, QueueJObj])).
 
 -spec child_of_type/2 :: (pid(), atom()) -> list(pid()).
 child_of_type(WorkerSup, T) ->
