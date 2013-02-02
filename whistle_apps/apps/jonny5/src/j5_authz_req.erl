@@ -23,12 +23,12 @@ handle_req(JObj, Props) ->
     Limits = j5_util:get_limits(AccountId),
 
     Routines = [fun maybe_ignore_limits/3
+                ,fun maybe_no_limits/3
                 ,fun maybe_hard_limit/3
                 ,fun maybe_allotments/3
                 ,fun maybe_flat_rate/3
                 ,fun maybe_per_minute/3
                 ,fun maybe_soft_limit/3
-                ,fun maybe_no_limits/3
                ],
 
     send_resp(JObj
@@ -86,20 +86,20 @@ maybe_soft_limit({error, _}=E, Limits, JObj) ->
 maybe_soft_limit(Else, _, _) -> Else.
 
 -spec maybe_no_limits/3 :: (authz_resp(), #limits{}, wh_json:json_object()) -> authz_resp().
-maybe_no_limits({error, _}=E, _, JObj) ->
+maybe_no_limits({ok, limits_enabled}=Ok, _, JObj) ->
     [Number, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
     case wnm_util:classify_number(Number) of
         <<"emergency">> -> 
             lager:debug("allowing emergency call", []),
             {ok, limits_disabled};
-        <<"tollfree">> -> 
+        <<"tollfree_us">> -> 
             case wh_json:get_value(<<"Call-Direction">>, JObj) of
-                <<"inbound">> ->
+                <<"outbound">> ->
                     lager:debug("allowing inbound tollfree call", []),
                     {ok, limits_disabled};
-                _Else -> E
+                _Else -> Ok
             end;
-        _Else -> E
+        _Else -> Ok
     end;
 maybe_no_limits(Else, _, _) -> Else.
 
