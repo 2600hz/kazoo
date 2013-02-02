@@ -289,7 +289,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 process_event(UUID, Props, Node) ->
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
-    process_event(EventName, UUID, props:set_value(<<"start">>, erlang:now(), Props), Node).
+    process_event(EventName, UUID, Props, Node).
 
 process_event(<<"CHANNEL_CREATE">> = EventName, UUID, Props, Node) ->
     _ = maybe_start_event_listener(Node, UUID),
