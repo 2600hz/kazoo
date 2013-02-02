@@ -19,6 +19,7 @@
 -export([sync_channels/1]).
 -export([flush_node_channels/1]).
 -export([flush_registrar/0]).
+-export([flush_authn/0]).
 -export([status/0]).
 
 -include("ecallmgr.hrl").
@@ -73,6 +74,10 @@ flush_node_channels(Node) ->
 -spec flush_registrar/0 :: () -> 'ok'.
 flush_registrar() ->
     wh_cache:flush_local(?ECALLMGR_REG_CACHE).
+
+-spec flush_authn/0 :: () -> 'ok'.
+flush_authn() ->
+    wh_cache:flush_local(?ECALLMGR_AUTHN_CACHE).
 
 -spec show_calls/0 :: () -> 'no_return'.
 show_calls() ->

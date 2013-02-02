@@ -30,9 +30,7 @@ reg_success(Props, Node) ->
     wh_cache:store_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username), Contact, ecallmgr_util:get_expires(Props)),
     wh_cache:store_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username), Node, ecallmgr_util:get_expires(Props)).
 
--spec lookup_contact/2 :: (ne_binary(), ne_binary()) ->
-                                  {'ok', ne_binary()} |
-                                  {'error', 'timeout'}.
+-spec lookup_contact/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'timeout'}.
 lookup_contact(Realm, Username) ->
     case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username)) of
         {ok, Contact} -> {ok, Contact};
@@ -45,23 +43,36 @@ lookup_contact(Realm, Username) ->
             end
     end.
 
--spec endpoint_node/2 :: (ne_binary(), ne_binary()) ->
-                                 {'ok', atom()} |
-                                 {'error', 'not_found'}.
+-spec endpoint_node/2 :: (ne_binary(), ne_binary()) -> {'ok', atom()} | {'error', 'not_found'}.
 endpoint_node(Realm, Username) ->
     wh_cache:fetch_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username)).
 
--spec lookup/3 :: (ne_binary(), ne_binary(), [ne_binary(),...]) ->
-                          wh_proplist() |
-                          {'error', 'timeout'}.
+-spec lookup/3 :: (ne_binary(), ne_binary(), [ne_binary(),...]) -> wh_proplist() | {'error', 'timeout'}. 
 lookup(Realm, Username, Fields) ->
+    case maybe_query_registrar(Realm, Username) of
+        {error, _R} -> {error, timeout};
+        {ok, Props} when Fields =:= [] -> Props;
+        {ok, Props} ->
+            FilterFun = fun({K, _}=V, Acc) ->
+                                case lists:member(K, Fields) of
+                                    true -> [V | Acc];
+                                    false -> Acc
+                                end
+                        end,
+            lists:foldr(FilterFun, [], Props)
+    end.
+
+-spec maybe_query_registrar/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_proplist()} | {'error', _}. 
+maybe_query_registrar(Realm, Username) ->
+    case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?LOOKUP_KEY(Realm, Username)) of
+        {ok, _}=Ok -> Ok;
+        {error, not_found} ->
+            query_registrar(Realm, Username)
+    end.    
+
+-spec query_registrar/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_proplist()} | {'error', _}. 
+query_registrar(Realm, Username) ->
     lager:debug("looking up registration information for ~s@~s", [Username, Realm]),
-    FilterFun = fun({K, _}=V, Acc) ->
-                        case lists:member(K, Fields) of
-                            true -> [V | Acc];
-                            false -> Acc
-                        end
-                end,
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,[{<<"Username">>, Username}
                                     ,{<<"Realm">>, Realm}
@@ -76,6 +87,7 @@ lookup(Realm, Username, Fields) ->
             {error, timeout};
         {ok, RespJObj} ->
             lager:debug("received registration information"),
-            RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RespJObj, wh_json:new())),
-            lists:foldr(FilterFun, [], RegFields)
+            Props = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RespJObj, wh_json:new())),
+            wh_cache:store_local(?ECALLMGR_REG_CACHE, ?LOOKUP_KEY(Realm, Username), Props),
+            {ok, Props}
     end.

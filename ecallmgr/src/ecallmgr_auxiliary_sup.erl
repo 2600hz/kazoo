@@ -22,6 +22,7 @@
 
 -define(CHILDREN, [{?ECALLMGR_UTIL_CACHE, cache}
                    ,{?ECALLMGR_REG_CACHE, cache}
+                   ,{?ECALLMGR_AUTHN_CACHE, cache}
                    ,{?ECALLMGR_CALL_CACHE, cache}
                    ,{ecallmgr_query, worker}
                    ,{ecallmgr_conference_listener, worker}

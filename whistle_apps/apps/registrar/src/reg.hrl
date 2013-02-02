@@ -11,5 +11,17 @@
 
 -define(REGISTRAR_CACHE, registrar_cache).
 
+-record(auth_user, {realm
+                    ,username
+                    ,password
+                    ,account_id
+                    ,account_db
+                    ,authorizing_type
+                    ,authorizing_id
+                    ,method
+                    ,owner_id
+                    ,suppress_unregister_notifications
+                   }).
+
 -define(REG_HRL, true).
 -endif.
