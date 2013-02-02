@@ -2,7 +2,10 @@ PROJECT = ecallmgr
 ROOT = ..
 DIALYZER = dialyzer
 
+LIB_EBINS = $(shell find $(ROOT)/lib -maxdepth 2 -name ebin -print)
+
 ERLC_OPTS = -Werror +debug_info +warn_export_all \
+	$(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN)) \
 	-I $(ROOT)/lib  # +bin_opt_info
 
 DIRS = . \
