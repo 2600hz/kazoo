@@ -266,7 +266,7 @@ is_system_admin(Account) ->
 %%--------------------------------------------------------------------
 -spec is_account_enabled/1 :: (api_binary()) -> 'true'. %boolean().
 is_account_enabled('undefined') -> 'true';
-is_account_enabled(AccountId) ->
+is_account_enabled(_AccountId) ->
     %% See WHISTLE-1201
     'true'.
 %%    case wh_cache:peek({?MODULE, is_account_enabled, AccountId}) of

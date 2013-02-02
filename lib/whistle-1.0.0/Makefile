@@ -2,7 +2,10 @@ PROJECT = whistle
 ROOT = ../..
 DIALYZER = dialyzer
 
-ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/lib # +bin_opt_info
+LIB_EBINS = $(shell find $(ROOT)/lib -maxdepth 2 -name ebin -print)
+
+ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/lib \
+	$(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN)) # +bin_opt_info
 
 DIRS = . \
 	$(ROOT)/lib/whistle_amqp-1.0.0
@@ -33,7 +36,7 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl src/api/*.erl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
+	erlc -v $(ERLC_OPTS) -o test/ -pa test/  $?
 
 clean:
 	rm -f ebin/*
