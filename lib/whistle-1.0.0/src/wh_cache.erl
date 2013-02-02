@@ -40,7 +40,7 @@
 -include_lib("whistle/include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
--define(EXPIRES, 3600). %% an hour
+-define(EXPIRES, fun() -> crypto:rand_uniform(3585, 3600) end()). %% 45 minutes to an hour
 -define(EXPIRE_PERIOD, 10000).
 -define(DEFAULT_WAIT_TIMEOUT, 5).
 
