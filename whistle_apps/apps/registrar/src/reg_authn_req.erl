@@ -16,22 +16,23 @@ init() ->
     ok.
 
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
-handle_req(ApiJObj, _Props) ->
-    true = wapi_authn:req_v(ApiJObj),
+handle_req(JObj, _Props) ->
+    true = wapi_authn:req_v(JObj),
 
-    put(callid, wh_json:get_value(<<"Msg-ID">>, ApiJObj, <<"000000000000">>)),
+    put(callid, wh_json:get_value(<<"Msg-ID">>, JObj, <<"000000000000">>)),
 
-    AuthU = wapi_authn:get_auth_user(ApiJObj),
-    AuthR = wapi_authn:get_auth_realm(ApiJObj),
+    Username = wapi_authn:get_auth_user(JObj),
+    Realm = wapi_authn:get_auth_realm(JObj),
 
-    lager:debug("trying to authenticate ~s@~s", [AuthU, AuthR]),
+    lager:debug("trying to authenticate ~s@~s", [Username, Realm]),
 
-    case reg_util:lookup_auth_user(AuthU, AuthR) of
-        {ok, AuthJObj} ->
-            send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj);
+    case reg_util:lookup_auth_user(Username, Realm) of
+        {ok, #auth_user{}=AuthUser} ->
+            send_auth_resp(AuthUser, JObj);
         {error, not_found} ->            
-            lager:debug("user ~s@~s is unknown", [AuthU, AuthR]),
-            send_auth_error(ApiJObj)
+            IPAddress = wh_json:get_value(<<"Orig-IP">>, JObj),
+            lager:info("auth failure for ~s@~s from ip ~s", [Username, Realm, IPAddress]),
+            send_auth_error(JObj)
     end.
 
 %%-----------------------------------------------------------------------------
@@ -41,30 +42,18 @@ handle_req(ApiJObj, _Props) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_auth_resp/4  :: (wh_json:json_object(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
-send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
-    AuthValue = wh_json:get_value(<<"value">>, AuthJObj),
-    AuthDoc = wh_json:get_value(<<"doc">>, AuthJObj),
-    Category = wh_json:get_value(<<"Event-Category">>, ApiJObj),
-
-    CCVs = [{<<"Username">>, AuthU}
-            ,{<<"Realm">>, AuthR}
-            ,{<<"Account-ID">>, get_account_id(AuthDoc)}
-            ,{<<"Authorizing-Type">>, wh_json:get_value(<<"authorizing_type">>, AuthValue, <<"anonymous">>)}
-            ,{<<"Inception">>, <<"on-net">>}
-            ,{<<"Authorizing-ID">>, wh_json:get_value(<<"_id">>, AuthDoc)}
-            ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, AuthDoc)}            
-           ],
-
-    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
-            ,{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthValue)}
-            ,{<<"Auth-Method">>, get_auth_method(AuthValue)}
-            ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
+-spec send_auth_resp/2  :: (#auth_user{}, wh_json:json_object()) -> 'ok'.
+send_auth_resp(#auth_user{password=Password, method=Method}=AuthUser, JObj) ->
+    Category = wh_json:get_value(<<"Event-Category">>, JObj),
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            ,{<<"Auth-Password">>, Password}
+            ,{<<"Auth-Method">>, Method}
+            ,{<<"Custom-Channel-Vars">>, create_ccvs(AuthUser)}
             | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
            ],
     
     lager:debug("sending SIP authentication reply, with credentials"),
-    wapi_authn:publish_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp).
+    wapi_authn:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -74,38 +63,21 @@ send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec send_auth_error/1 :: (wh_json:json_object()) -> 'ok'.
-send_auth_error(ApiJObj) ->
-    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
+send_auth_error(JObj) ->
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("sending SIP authentication error"),
-    wapi_authn:publish_error(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp).
+    wapi_authn:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% extract the account id from the auth document, using the newer pvt field
-%% when present but failing back to reformating the older db name pvt.
-%% @end
-%%-----------------------------------------------------------------------------
--spec get_account_id/1  :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
-get_account_id(AuthDoc) ->
-    case wh_json:get_value(<<"pvt_account_id">>, AuthDoc) of
-        undefined ->
-            case wh_json:get_value(<<"pvt_account_db">>, AuthDoc) of
-                undefined -> undefined;
-                AcctDb -> wh_util:format_account_id(AcctDb, raw)
-            end;
-        AcctId -> AcctId
-    end.
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% extract a normalized method from the view results
-%% @end
-%%-----------------------------------------------------------------------------
--spec get_auth_method/1  :: (wh_json:json_object()) -> ne_binary().
-get_auth_method(AuthValue) ->
-    Method = wh_json:get_binary_value(<<"method">>, AuthValue, <<"password">>),
-    wh_util:to_lower_binary(Method).
+-spec create_ccvs/1 :: (#auth_user{}) -> wh_json:object().
+create_ccvs(#auth_user{}=AuthUser) ->    
+    Props = [{<<"Username">>, AuthUser#auth_user.username}
+             ,{<<"Realm">>, AuthUser#auth_user.realm}
+             ,{<<"Account-ID">>, AuthUser#auth_user.account_id}
+             ,{<<"Authorizing-ID">>, AuthUser#auth_user.authorizing_id}
+             ,{<<"Authorizing-Type">>, AuthUser#auth_user.authorizing_type}
+             ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
+             ,{<<"Inception">>, <<"on-net">>}
+            ],
+    wh_json:from_list(props:filter_undefined(Props)).

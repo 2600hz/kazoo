@@ -24,6 +24,7 @@
         ]).
 
 -define(SERVER, ?MODULE).
+-define(CREDS_KEY(Realm, Username), {?MODULE, authn, Username, Realm}).
 
 -include("ecallmgr.hrl").
 
@@ -206,45 +207,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec lookup_user/4 :: (atom(), ne_binary(), ne_binary(), wh_proplist()) ->
-                               fs_handlecall_ret().
-lookup_user(Node, ID, Method,  Data) ->
-    put(callid, ID),
+-spec lookup_user/4 :: (atom(), ne_binary(), ne_binary(), wh_proplist()) -> fs_handlecall_ret().
+lookup_user(Node, Id, Method,  Data) ->
+    put(callid, Id),
     %% build req for rabbit
-    DomainName = props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Realm">>, Data)),
-    UserId = props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data)),
-    lager:debug("looking up credentials of ~s@~s for a ~s", [UserId, DomainName, Method]),
-    Req = [{<<"Msg-ID">>, ID}
-           ,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
-           ,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
-           ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Data)}
-           ,{<<"Method">>, Method}
-           ,{<<"Auth-User">>, UserId}
-           ,{<<"Auth-Realm">>, DomainName}
-           ,{<<"Media-Server">>, wh_util:to_binary(Node)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,props:filter_undefined(Req)
-                                  ,fun wapi_authn:publish_req/1
-                                  ,fun wapi_authn:resp_v/1),
-    {ok, Xml} = handle_lookup_resp(ReqResp, DomainName, UserId, Method),
+    Realm = props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Realm">>, Data)),
+    Username = props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data)),
+    ReqResp = maybe_query_registrar(Realm, Username, Node, Id, Method, Data),
+    {ok, Xml} = handle_lookup_resp(Method, Realm, Username, ReqResp),
     lager:debug("sending XML to ~w: ~s", [Node, Xml]),
-    freeswitch:fetch_reply(Node, ID, iolist_to_binary(Xml)).    
+    freeswitch:fetch_reply(Node, Id, iolist_to_binary(Xml)).    
 
-handle_lookup_resp({error, _R}, _, _, _) ->
+-spec handle_lookup_resp/4 :: (ne_binary(), ne_binary(), ne_binary(), {'ok', wh_json:object()} | {'error', _}) -> {'ok', _}.
+handle_lookup_resp(<<"reverse-lookup">>, Realm, Username, {ok, JObj}) ->
+    Props = [{<<"Domain-Name">>, Realm}
+             ,{<<"User-ID">>, Username}
+            ],
+    ecallmgr_fs_xml:reverse_authn_resp_xml(wh_json:set_values(Props, JObj));
+handle_lookup_resp(_, Realm, Username, {ok, JObj}) ->
+    Props = [{<<"Domain-Name">>, Realm}
+             ,{<<"User-ID">>, Username}
+            ],
+    ecallmgr_fs_xml:authn_resp_xml(wh_json:set_values(Props, JObj));
+handle_lookup_resp(_, _, _, {error, _R}) ->
     lager:debug("authn request lookup failed: ~p", [_R]),
-    ecallmgr_fs_xml:route_not_found();
-handle_lookup_resp({ok, RespJObj}, DomainName, UserId, <<"reverse-lookup">>) ->
-    Props = [{<<"Domain-Name">>, DomainName}
-             ,{<<"User-ID">>, UserId}
-            ],
-    ecallmgr_fs_xml:reverse_authn_resp_xml(wh_json:set_values(Props, RespJObj));
-handle_lookup_resp({ok, RespJObj}, DomainName, UserId, _) ->
-    Props = [{<<"Domain-Name">>, DomainName}
-             ,{<<"User-ID">>, UserId}
-            ],
-    ecallmgr_fs_xml:authn_resp_xml(wh_json:set_values(Props, RespJObj)).
+    ecallmgr_fs_xml:route_not_found().
     
 -spec publish_register_event/1 :: (wh_proplist()) -> 'ok'.
 publish_register_event(Data) ->
@@ -267,3 +254,36 @@ publish_register_event(Data) ->
                         ,ApiProp
                         ,fun wapi_registration:publish_success/1
                        ).
+
+-spec maybe_query_registrar/6 :: (ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:object()} | {'error', _}.
+maybe_query_registrar(Realm, Username, Node, Id, Method, Data) ->
+    case wh_cache:peek_local(?ECALLMGR_AUTHN_CACHE, ?CREDS_KEY(Realm, Username)) of
+        {ok, _}=Ok -> Ok;
+        {error, not_found} ->
+            query_registrar(Realm, Username, Node, Id, Method, Data)
+end.
+
+-spec query_registrar/6 :: (ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:object()} | {'error', _}.
+query_registrar(Realm, Username, Node, Id, Method, Data) ->
+    lager:debug("looking up credentials of ~s@~s for a ~s", [Username, Realm, Method]),
+    Req = [{<<"Msg-ID">>, Id}
+           ,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
+           ,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
+           ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Data)}
+           ,{<<"Method">>, Method}
+           ,{<<"Auth-User">>, Username}
+           ,{<<"Auth-Realm">>, Realm}
+           ,{<<"Media-Server">>, wh_util:to_binary(Node)}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                                  ,props:filter_undefined(Req)
+                                  ,fun wapi_authn:publish_req/1
+                                  ,fun wapi_authn:resp_v/1),
+    case ReqResp of
+        {error, _}=E -> E;
+        {ok, JObj}=Ok ->
+            lager:debug("received authn information"),
+            wh_cache:store_local(?ECALLMGR_AUTHN_CACHE, ?CREDS_KEY(Realm, Username), JObj),
+            Ok
+    end.

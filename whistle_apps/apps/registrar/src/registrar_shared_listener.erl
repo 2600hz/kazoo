@@ -56,7 +56,6 @@ start_link() ->
                                                         ,{queue_name, ?REG_QUEUE_NAME}
                                                         ,{queue_options, ?REG_QUEUE_OPTIONS}
                                                         ,{consume_options, ?REG_CONSUME_OPTIONS}
-                                                        ,{basic_qos, 1}
                                                        ], []).
 
 -spec stop/1 :: (pid()) -> 'ok'.
