@@ -160,31 +160,9 @@ handle_publisher_usurp(JObj, Props) ->
 -spec init/1 :: ([atom() | ne_binary(),...]) -> {'ok', #state{}}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
-    TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
+    gen_listener:cast(self(), init),
 
-    erlang:monitor_node(Node, true),
-
-    true = gproc:reg({p, l, call_events_processes}),
-    true = gproc:reg({p, l, {call_events_process, Node, CallId}}),
-    true = gproc:reg({p, l, {call_event, Node, CallId}}),
-    true = gproc:reg({p, l, {events, Node, <<"sofia::move_released">>}}),
-    true = gproc:reg({p, l, {events, Node, <<"sofia::move_complete">>}}),
-
-    Ref = wh_util:rand_hex_binary(12),
-    Usurp = [{<<"Call-ID">>, CallId}
-             ,{<<"Media-Node">>, Node}
-             ,{<<"Reference">>, Ref}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    wapi_call:publish_usurp_publisher(CallId, Usurp),
-
-    lager:debug("starting call events listener"),
-    {'ok', #state{node=Node
-                  ,callid=CallId
-                  ,sanity_check_tref=TRef
-                  ,ref = Ref
-                 }
-    }.
+    {ok, #state{node=Node, callid=CallId}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -217,6 +195,22 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(init, #state{node=Node, callid=CallId}=State) ->
+    erlang:monitor_node(Node, true),
+    TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
+    true = gproc:reg({p, l, call_events_processes}),
+    true = gproc:reg({p, l, {call_events_process, Node, CallId}}),
+    true = gproc:reg({p, l, {call_event, Node, CallId}}),
+    true = gproc:reg({p, l, {events, Node, <<"sofia::move_released">>}}),
+    true = gproc:reg({p, l, {events, Node, <<"sofia::move_complete">>}}),
+    Ref = wh_util:rand_hex_binary(12),
+    Usurp = [{<<"Call-ID">>, CallId}
+             ,{<<"Media-Node">>, Node}
+             ,{<<"Reference">>, Ref}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    wapi_call:publish_usurp_publisher(CallId, Usurp),
+    {noreply, State#state{sanity_check_tref=TRef, ref = Ref}};
 handle_cast({update_node, Node}, #state{node=Node}=State) ->
     {noreply, State};
 handle_cast({update_node, Node}, #state{node=OldNode, callid=CallId}=State) ->

@@ -222,28 +222,14 @@ handle_call_events(JObj, Props) ->
 init([Node, CallId, WhAppQ]) ->
     put(callid, CallId),
     lager:debug("starting call control listener"),
-    erlang:monitor_node(Node, true),
-    gproc:reg({p, l, call_control}),
-    gproc:reg({p, l, {call_control, CallId}}),
-    bind_to_events(Node, CallId),
-    TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
+    gen_listener:cast(self(), init),
     {ok, #state{node=Node
                 ,callid=CallId
                 ,command_q=queue:new()
                 ,self=self()
                 ,controller_q=WhAppQ
                 ,start_time=erlang:now()
-                ,sanity_check_tref=TRef
-               }
-    }.
-
-bind_to_events(Node, CallId) ->
-    true = gproc:reg({p, l, {call_event, Node, CallId}}),
-    true = gproc:reg({p, l, {event, Node, <<"CHANNEL_CREATE">>}}),
-    true = gproc:reg({p, l, {event, Node, <<"CHANNEL_DESTROY">>}}),
-    true = gproc:reg({p, l, {event, Node, <<"sofia::transfer">>}}),
-    true = gproc:reg({p, l, {event, Node, <<"whistle::masquerade">>}}),
-    true = gproc:reg({p, l, {event, Node, <<"whistle::noop">>}}).
+               }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -278,6 +264,13 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(init, #state{node=Node, callid=CallId}=State) ->
+    erlang:monitor_node(Node, true),
+    gproc:reg({p, l, call_control}),
+    gproc:reg({p, l, {call_control, CallId}}),
+    bind_to_events(Node, CallId),
+    TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
+    {noreply, State#state{sanity_check_tref=TRef}};
 handle_cast({controller_queue, ControllerQ}, State) ->
     lager:debug("updating controller queue to ~s", [ControllerQ]),
     {noreply, State#state{controller_q=ControllerQ}};
@@ -1002,3 +995,12 @@ publish_control_transfer(ControllerQ, CallId) ->
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
     wapi_call:publish_control_transfer(ControllerQ, Transfer).
+
+-spec bind_to_events/2 :: (atom(), ne_binary()) -> true.
+bind_to_events(Node, CallId) ->
+    true = gproc:reg({p, l, {call_event, Node, CallId}}),
+    true = gproc:reg({p, l, {event, Node, <<"CHANNEL_CREATE">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"CHANNEL_DESTROY">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"sofia::transfer">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"whistle::masquerade">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"whistle::noop">>}}).
