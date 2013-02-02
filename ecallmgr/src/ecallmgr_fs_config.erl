@@ -155,7 +155,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_config_req/3 :: (atom(), ne_binary(), ne_binary()) -> fs_sendmsg_ret().
+-spec handle_config_req(atom(), ne_binary(), ne_binary()) -> fs_sendmsg_ret().
 handle_config_req(Node, ID, <<"acl.conf">>) ->
     put(callid, ID),
     SysconfResp = ecallmgr_config:fetch(<<"acls">>, wh_json:new()),
@@ -218,7 +218,7 @@ default_sip_profile() ->
      ,{<<"Gateways">>, wh_json:from_list(default_sip_gateways())}
     ].
 
--spec default_sip_settings/0 :: () -> wh_proplist().
+-spec default_sip_settings() -> wh_proplist().
 default_sip_settings() ->
     [{<<"message-threads">>, <<"10">>}
      ,{<<"auth-calls">>, <<"true">>}

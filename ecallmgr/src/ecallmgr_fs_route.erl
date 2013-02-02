@@ -161,7 +161,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+-spec process_route_req(atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 process_route_req(Node, FSID, CallId, Props) ->
     put(callid, CallId),
     lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
@@ -196,7 +196,7 @@ search_for_route(Node, FSID, CallId, Props) ->
     end.
 
 %% Reply with a 402 for unauthzed calls
--spec reply_forbidden/2 :: (atom(), ne_binary()) -> 'ok'.
+-spec reply_forbidden(atom(), ne_binary()) -> 'ok'.
 reply_forbidden(Node, FSID) ->
     {ok, XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
                                                 ,{<<"Route-Error-Code">>, <<"402">>}
@@ -209,7 +209,7 @@ reply_forbidden(Node, FSID) ->
         timeout -> lager:error("received no reply from node ~s, timeout", [Node])
     end.
 
--spec reply_affirmative/5 :: (atom(), ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
+-spec reply_affirmative(atom(), ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
 reply_affirmative(Node, FSID, CallId, RespJObj, Props) ->
     {ok, XML} = ecallmgr_fs_xml:route_resp_xml(RespJObj),
     ServerQ = wh_json:get_value(<<"Server-ID">>, RespJObj),
@@ -234,7 +234,7 @@ reply_affirmative(Node, FSID, CallId, RespJObj, Props) ->
         timeout -> lager:error("received no reply from node ~s, timeout", [Node])
     end.
 
--spec start_control_and_events/4 :: (atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec start_control_and_events(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 start_control_and_events(Node, CallId, SendTo, CCVs) ->
         {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallId, SendTo),
         {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, CallId),
@@ -247,7 +247,7 @@ start_control_and_events(Node, CallId, SendTo, CCVs) ->
                   ],
     send_control_queue(SendTo, CtlProp).
 
--spec send_control_queue/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
+-spec send_control_queue(ne_binary(), wh_proplist()) -> 'ok'.
 send_control_queue(SendTo, CtlProp) ->
     lager:debug("sending route_win to ~s", [SendTo]),
     wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
@@ -255,7 +255,7 @@ send_control_queue(SendTo, CtlProp) ->
                         ,fun(P) -> wapi_route:publish_win(SendTo, P) end
                        ).
 
--spec route_req/4 :: (ne_binary(), ne_binary(), wh_proplist(), atom()) -> wh_proplist().
+-spec route_req(ne_binary(), ne_binary(), wh_proplist(), atom()) -> wh_proplist().
 route_req(CallId, FSID, Props, Node) ->
     [{<<"Msg-ID">>, FSID}
      ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props,

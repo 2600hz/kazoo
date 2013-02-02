@@ -23,23 +23,23 @@
 
 -include("ecallmgr.hrl").
 
--spec add_fs_node/1 :: (string() | binary() | atom()) -> 'ok'.
+-spec add_fs_node(string() | binary() | atom()) -> 'ok'.
 add_fs_node(Node) when not is_atom(Node) ->
     add_fs_node(wh_util:to_atom(Node, true));
 add_fs_node(Node) ->
     ecallmgr_fs_nodes:add(Node).
 
--spec remove_fs_node/1 :: (string() | binary() | atom()) -> 'ok'.
+-spec remove_fs_node(string() | binary() | atom()) -> 'ok'.
 remove_fs_node(Node) when not is_atom(Node) ->
     remove_fs_node(wh_util:to_atom(Node, true));
 remove_fs_node(Node) ->
     ecallmgr_fs_nodes:remove(Node).
 
--spec list_fs_nodes/0 :: () -> [atom(),...] | [].
+-spec list_fs_nodes() -> [atom(),...] | [].
 list_fs_nodes() ->
     ecallmgr_fs_nodes:connected().
 
--spec show_channels/0 :: () -> 'no_return'.
+-spec show_channels() -> 'no_return'.
 show_channels() ->
     case ecallmgr_fs_nodes:show_channels() of
         [] -> io:format("no channels~n", []);
@@ -57,8 +57,8 @@ do_show_channels([Channel|Channels]) ->
     io:format("~s~n", [Values]),
     do_show_channels(Channels).
 
--spec sync_channels/0 :: () -> 'ok'.
--spec sync_channels/1 :: (string() | binary() | atom()) -> 'ok'.
+-spec sync_channels() -> 'ok'.
+-spec sync_channels(string() | binary() | atom()) -> 'ok'.
 
 sync_channels() ->
     ecallmgr_fs_nodes:sync_channels().
@@ -66,15 +66,15 @@ sync_channels() ->
 sync_channels(Node) ->
     ecallmgr_fs_nodes:sync_channels(Node).
 
--spec flush_node_channels/1 :: (string() | binary() | atom()) -> 'ok'.
+-spec flush_node_channels(string() | binary() | atom()) -> 'ok'.
 flush_node_channels(Node) ->
     ecallmgr_fs_nodes:flush_node_channels(Node).
 
--spec flush_registrar/0 :: () -> 'ok'.
+-spec flush_registrar() -> 'ok'.
 flush_registrar() ->
     wh_cache:flush_local(?ECALLMGR_REG_CACHE).
 
--spec show_calls/0 :: () -> 'no_return'.
+-spec show_calls() -> 'no_return'.
 show_calls() ->
     EventWorkers = gproc:lookup_pids({p, l, call_events_processes}),
     io:format("Call Event Process: ~p ~n", [length(EventWorkers)]),
@@ -92,7 +92,7 @@ show_calls() ->
          || ControlWorker <- ControlWorkers],    
     no_return.
 
--spec status/0 :: () -> no_return.
+-spec status() -> no_return.
 status() ->
     FolsomMetrics = folsom_metrics:get_metrics(),
     FsMetrics = lists:foldl(fun(FMetric, Acc) ->

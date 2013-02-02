@@ -46,16 +46,16 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
--spec lookup_media/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
+-spec lookup_media(ne_binary(), ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
                                                                              {'error', 'timeout'}.
--spec lookup_media/4 :: (ne_binary() , 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
+-spec lookup_media(ne_binary() , 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
                                                                                                 {'error', 'timeout'}.
 lookup_media(MediaName, CallId, JObj) ->
     request_media(MediaName, new, CallId, JObj).
 lookup_media(MediaName, Type, CallId, JObj) ->
     request_media(MediaName, Type, CallId, JObj).
 
--spec is_local/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_local'}.
+-spec is_local(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_local'}.
 is_local(MediaName, CallId) ->
     gen_server:call(?MODULE, {is_local, MediaName, CallId}).
 
@@ -208,7 +208,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec request_media/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
+-spec request_media(ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
                                                                                                 {'error', 'timeout'}.
 request_media(MediaName, Type, CallID, JObj) ->
     case gen_server:call(?MODULE, {lookup_local, MediaName, CallID}, infinity) of
@@ -222,7 +222,7 @@ request_media(MediaName, Type, CallID, JObj) ->
             lookup_remote(MediaName, Type, CallID, JObj)
     end.
 
--spec lookup_remote/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
+-spec lookup_remote(ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
                                                                                                 {'error', 'timeout'}.
 lookup_remote(MediaName, extant, CallID, JObj) ->
     Request = wh_json:set_values(
@@ -245,7 +245,7 @@ lookup_remote(MediaName, new, CallID, JObj) ->
                 ,JObj),
     lookup_remote(MediaName, Request).
 
--spec lookup_remote/2 :: (ne_binary(), api_terms()) -> {'ok', binary()} |
+-spec lookup_remote(ne_binary(), api_terms()) -> {'ok', binary()} |
                                                        {'error', 'timeout'}.
 lookup_remote(MediaName, Request) ->
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL

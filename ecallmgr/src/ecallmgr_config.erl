@@ -19,8 +19,8 @@
 -include("ecallmgr.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
--spec flush/0 :: () -> 'ok'.
--spec flush/1 :: (wh_json:json_string()) -> 'ok' | {'error', _}.
+-spec flush() -> 'ok'.
+-spec flush(wh_json:json_string()) -> 'ok' | {'error', _}.
 
 flush() ->
     wh_cache:flush_local(?ECALLMGR_UTIL_CACHE).
@@ -47,9 +47,9 @@ flush(Key, Node) ->
                         ,fun wapi_sysconf:publish_flush_req/1
                        ).
     
--spec get/1 :: (wh_json:json_string()) -> wh_json:json_term() | 'undefined'.
--spec get/2 :: (wh_json:json_string(), Default) -> wh_json:json_term() | Default.
--spec get/3 :: (wh_json:json_string(), Default, wh_json:json_string() | atom()) -> wh_json:json_term() | Default.
+-spec get(wh_json:json_string()) -> wh_json:json_term() | 'undefined'.
+-spec get(wh_json:json_string(), Default) -> wh_json:json_term() | Default.
+-spec get(wh_json:json_string(), Default, wh_json:json_string() | atom()) -> wh_json:json_term() | Default.
 
 get(Key) ->
     get(Key, undefined).
@@ -71,9 +71,9 @@ get(Key, Default, Node) ->
             Value
     end.
 
--spec fetch/1 :: (wh_json:json_string()) -> wh_json:json_term() | 'undefined'.
--spec fetch/2 :: (wh_json:json_string(), Default) -> wh_json:json_term() | Default.
--spec fetch/3 :: (wh_json:json_string(), Default, wh_json:json_string() | atom()) -> wh_json:json_term() | Default.
+-spec fetch(wh_json:json_string()) -> wh_json:json_term() | 'undefined'.
+-spec fetch(wh_json:json_string(), Default) -> wh_json:json_term() | Default.
+-spec fetch(wh_json:json_string(), Default, wh_json:json_string() | atom()) -> wh_json:json_term() | Default.
 
 fetch(Key) ->
     fetch(Key, undefined).
@@ -107,8 +107,8 @@ fetch(Key, Default, Node) ->
             get_response_value(JObj, Default)
     end.
 
--spec set/2 :: (wh_json:json_string(), wh_json:json_term()) -> 'ok'.
--spec set/3 :: (wh_json:json_string(), wh_json:json_term(), wh_json:json_string() | atom()) -> 'ok'.
+-spec set(wh_json:json_string(), wh_json:json_term()) -> 'ok'.
+-spec set(wh_json:json_string(), wh_json:json_term(), wh_json:json_string() | atom()) -> 'ok'.
 
 set(Key, Value) ->
     set(Key, Value, wh_util:to_binary(node())).
@@ -137,7 +137,7 @@ set(Key, Value, Node) ->
             lager:debug("set config for key '~s' to new value: ~p", [Key, Value])
     end.
 
--spec get_response_value/2 :: (wh_json:json_object(), term()) -> term().
+-spec get_response_value(wh_json:json_object(), term()) -> term().
 get_response_value(JObj, Default) ->
     case wh_json:get_value(<<"Value">>, JObj) of
         undefined -> Default;

@@ -115,7 +115,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/3 :: (atom(), ne_binary(), api_binary()) -> startlink_ret().
+-spec start_link(atom(), ne_binary(), api_binary()) -> startlink_ret().
 start_link(Node, CallId, WhAppQ) ->
     %% We need to become completely decoupled from ecallmgr_call_events
     %% because the call_events process might have been spun up with A->B
@@ -136,58 +136,58 @@ start_link(Node, CallId, WhAppQ) ->
                                      ]
                             ,[Node, CallId, WhAppQ]).
 
--spec stop/1 :: (pid()) -> 'ok'.
+-spec stop(pid()) -> 'ok'.
 stop(Srv) ->
     gen_listener:stop(Srv).
 
--spec callid/1 :: (pid()) -> ne_binary().
+-spec callid(pid()) -> ne_binary().
 callid(Srv) ->
     gen_listener:call(Srv, {callid}, 1000).
 
--spec node/1 :: (pid()) -> ne_binary().
+-spec node(pid()) -> ne_binary().
 node(Srv) ->
     gen_listener:call(Srv, {node}, 1000).
 
--spec hostname/1 :: (pid()) -> binary().
+-spec hostname(pid()) -> binary().
 hostname(Srv) ->
     Node = ?MODULE:node(Srv),
     [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
     Hostname.
 
--spec queue_name/1 :: (pid() | 'undefined') -> api_binary().
+-spec queue_name(pid() | 'undefined') -> api_binary().
 queue_name(Srv) when is_pid(Srv) -> gen_listener:queue_name(Srv);
 queue_name(_) -> undefined.
 
--spec other_legs/1 :: (pid()) -> ne_binaries().
+-spec other_legs(pid()) -> ne_binaries().
 other_legs(Srv) ->
     gen_listener:call(Srv, {other_legs}, 1000).
 
--spec event_execute_complete/3 :: (pid(), ne_binary(), ne_binary()) -> 'ok'.
+-spec event_execute_complete(pid(), ne_binary(), ne_binary()) -> 'ok'.
 event_execute_complete(Srv, CallId, App) ->
     gen_listener:cast(Srv, {event_execute_complete, CallId, App, wh_json:new()}).
 
--spec update_node/2 :: (atom(), ne_binary() | [pid(),...] | []) -> 'ok'.
+-spec update_node(atom(), ne_binary() | [pid(),...] | []) -> 'ok'.
 update_node(Node, CallId) when is_binary(CallId) ->
     update_node(Node, gproc:lookup_pids({p, l, {call_control, CallId}}));
 update_node(Node, Pids) when is_list(Pids) ->
     _ = [gen_listener:cast(Srv, {update_node, Node}) || Srv <- Pids],
     ok.
 
--spec control_procs/1 :: (ne_binary()) -> [pid(),...] | [].
+-spec control_procs(ne_binary()) -> [pid(),...] | [].
 control_procs(CallId) ->
     gproc:lookup_pids({p, l, {call_control, CallId}}).
 
--spec handle_call_command/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_call_command(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_command(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_listener:cast(Srv, {dialplan, JObj}).
 
--spec handle_conference_command/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_conference_command(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_conference_command(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_listener:cast(Srv, {dialplan, JObj}).
 
--spec handle_call_events/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_call_events(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value(server, Props),
     put(callid, wh_json:get_value(<<"Call-ID">>, JObj)),
@@ -696,7 +696,7 @@ handle_transfer(Props, _Node, CallId) ->
             gen_listener:cast(self(), {transferee, wh_json:from_list(Props)})
     end.
 
--spec flush_group_id/3 :: (queue(), api_binary(), ne_binary()) -> queue().
+-spec flush_group_id(queue(), api_binary(), ne_binary()) -> queue().
 flush_group_id(CmdQ, undefined, _) -> CmdQ;
 flush_group_id(CmdQ, GroupId, AppName) ->
     Filter = wh_json:from_list([{<<"Application-Name">>, AppName}
@@ -704,7 +704,7 @@ flush_group_id(CmdQ, GroupId, AppName) ->
                                ]),
     maybe_filter_queue([Filter], CmdQ).
 
--spec forward_queue/1 :: (#state{}) -> {'ok', 'undefined'} |
+-spec forward_queue(#state{}) -> {'ok', 'undefined'} |
                                        {'ok', ne_binary(), queue(), wh_json:object(), binary()}.
 forward_queue(#state{callid = CallId
                      ,is_node_up = INU
@@ -733,7 +733,7 @@ forward_queue(#state{callid = CallId
     end.
 
 %% execute all commands in JObj immediately, irregardless of what is running (if anything).
--spec insert_command/3 :: (#state{}, insert_at_options(), wh_json:object()) -> queue().
+-spec insert_command(#state{}, insert_at_options(), wh_json:object()) -> queue().
 insert_command(#state{node=Node
                       ,callid=CallId
                       ,command_q=CommandQ
@@ -790,7 +790,7 @@ insert_command(Q, Pos, _) ->
     lager:debug("received command for an unknown queue position: ~p", [Pos]),
     Q.
 
--spec insert_command_into_queue/3 :: (queue(), 'tail' | 'head', wh_json:object()) -> queue().
+-spec insert_command_into_queue(queue(), 'tail' | 'head', wh_json:object()) -> queue().
 insert_command_into_queue(Q, Position, JObj) ->
     InsertFun = queue_insert_fun(Position),
     case wh_json:get_value(<<"Application-Name">>, JObj) of
@@ -820,7 +820,7 @@ queue_insert_fun(head) ->
     fun queue:in_r/2.
 
 %% See Noop documentation for Filter-Applications to get an idea of this function's purpose
--spec maybe_filter_queue/2 :: ('undefined' | list(), queue()) -> queue().
+-spec maybe_filter_queue('undefined' | list(), queue()) -> queue().
 maybe_filter_queue(undefined, CommandQ) -> CommandQ;
 maybe_filter_queue([], CommandQ) -> CommandQ;
 maybe_filter_queue([AppName|T]=Apps, CommandQ) when is_binary(AppName) ->
@@ -856,11 +856,11 @@ maybe_filter_queue([AppJObj|T]=Apps, CommandQ) ->
             end
     end.
 
--spec is_post_hangup_command/1 :: (ne_binary()) -> boolean().
+-spec is_post_hangup_command(ne_binary()) -> boolean().
 is_post_hangup_command(AppName) ->
     lists:member(AppName, ?POST_HANGUP_COMMANDS).
 
--spec execute_control_request/2 :: (wh_json:object(), #state{}) -> 'ok'.
+-spec execute_control_request(wh_json:object(), #state{}) -> 'ok'.
 execute_control_request(Cmd, #state{node=Node
                                     ,callid=CallId
                                     ,self=Srv
@@ -917,11 +917,11 @@ execute_control_request(Cmd, #state{node=Node
             ok
     end.
 
--spec send_error_resp/2 :: (ne_binary(), wh_json:object()) -> 'ok'.
+-spec send_error_resp(ne_binary(), wh_json:object()) -> 'ok'.
 send_error_resp(CallId, Cmd) ->
     send_error_resp(CallId, Cmd, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>).
 
--spec send_error_resp/3 :: (ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec send_error_resp(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 send_error_resp(CallId, Cmd, Msg) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd)}
             ,{<<"Error-Message">>, Msg}
@@ -932,7 +932,7 @@ send_error_resp(CallId, Cmd, Msg) ->
     lager:debug("sending execution error: ~p", [Resp]),
     wapi_dialplan:publish_error(CallId, Resp).
 
--spec get_keep_alive_ref/1 :: (#state{}) -> 'undefined' | reference().
+-spec get_keep_alive_ref(#state{}) -> 'undefined' | reference().
 get_keep_alive_ref(#state{is_call_up=true}) -> undefined;
 get_keep_alive_ref(#state{keep_alive_ref=undefined
                           ,is_call_up=false
@@ -951,7 +951,7 @@ get_keep_alive_ref(#state{keep_alive_ref=TRef
     lager:debug("reset post hangup keep alive timer"),
     erlang:send_after(?KEEP_ALIVE, self(), keep_alive_expired).
 
--spec publish_leg_addition/1 :: (wh_json:object()) -> 'ok'.
+-spec publish_leg_addition(wh_json:object()) -> 'ok'.
 publish_leg_addition(JObj) ->
     Props = case wh_json:get_value(<<"Event-Name">>, JObj) of
                 <<"CHANNEL_BRIDGE">> -> wh_json:to_proplist(JObj);
@@ -963,7 +963,7 @@ publish_leg_addition(JObj) ->
         _Else -> ecallmgr_call_events:publish_event(Event)
     end.
 
--spec publish_leg_removal/1 :: (wh_json:object()) -> 'ok'.
+-spec publish_leg_removal(wh_json:object()) -> 'ok'.
 publish_leg_removal(JObj) ->
     Props = case wh_json:get_value(<<"Event-Name">>, JObj) of
                 <<"CHANNEL_UNBRIDGE">> -> wh_json:to_proplist(JObj);
@@ -975,7 +975,7 @@ publish_leg_removal(JObj) ->
         _Else -> ecallmgr_call_events:publish_event(Event)
     end.
 
--spec publish_callid_update/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec publish_callid_update(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 publish_callid_update(PrevCallId, NewCallId, CtrlQ) ->
     lager:debug("sending callid update to ~s instead of ~s", [NewCallId, PrevCallId]),
     Update = [{<<"Call-ID">>, NewCallId}
@@ -986,7 +986,7 @@ publish_callid_update(PrevCallId, NewCallId, CtrlQ) ->
 
     wapi_call:publish_callid_update(PrevCallId, Update).
 
--spec publish_control_transfer/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+-spec publish_control_transfer(ne_binary(), ne_binary()) -> 'ok'.
 publish_control_transfer(undefined, CallId) ->
     lager:debug("no whapp queue known for control transfer for ~s", [CallId]);
 publish_control_transfer(ControllerQ, CallId) ->
@@ -996,7 +996,7 @@ publish_control_transfer(ControllerQ, CallId) ->
                ],
     wapi_call:publish_control_transfer(ControllerQ, Transfer).
 
--spec bind_to_events/2 :: (atom(), ne_binary()) -> true.
+-spec bind_to_events(atom(), ne_binary()) -> true.
 bind_to_events(Node, CallId) ->
     true = gproc:reg({p, l, {call_event, Node, CallId}}),
     true = gproc:reg({p, l, {event, Node, <<"CHANNEL_CREATE">>}}),

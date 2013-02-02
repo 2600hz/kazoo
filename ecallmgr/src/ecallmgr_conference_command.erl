@@ -12,7 +12,7 @@
 
 -include("ecallmgr.hrl").
 
--spec exec/3 :: (atom(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec exec(atom(), ne_binary(), wh_json:object()) -> 'ok'.
 exec(Focus, ConferenceId, JObj) ->
     App = wh_json:get_value(<<"Application-Name">>, JObj),
     case get_conf_command(App, Focus, ConferenceId, JObj) of
@@ -27,7 +27,7 @@ exec(Focus, ConferenceId, JObj) ->
             send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj)
     end.
 
--spec get_conf_command/4 :: (ne_binary(), atom(), ne_binary(), wh_json:object()) -> {ne_binary(), binary()} |
+-spec get_conf_command(ne_binary(), atom(), ne_binary(), wh_json:object()) -> {ne_binary(), binary()} |
                                                                                     {'error', ne_binary()} |
                                                                                     {'noop', wh_json:object()}.
 get_conf_command(<<"deaf_participant">>, _Focus, _ConferenceId, JObj) ->
@@ -173,7 +173,7 @@ get_conf_command(<<"participant_volume_out">>, _Focus, _ConferenceId, JObj) ->
             {<<"volume_out">>, Args}
     end.
 
--spec send_response/4 :: (ne_binary(), tuple(), api_binary(), wh_json:object()) -> ok.
+-spec send_response(ne_binary(), tuple(), api_binary(), wh_json:object()) -> ok.
 send_response(_, _, undefined, _) -> ok;
 send_response(_, {ok, <<"Non-Existant ID", _/binary>> = Msg}, RespQ, Command) ->
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}

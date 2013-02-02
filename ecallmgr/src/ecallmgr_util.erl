@@ -63,7 +63,7 @@
 %% send the SendMsg proplist to the freeswitch node
 %% @end
 %%--------------------------------------------------------------------
--spec send_cmd/4 :: (atom(), ne_binary(), ne_binary() | string(), ne_binary() | string()) -> send_cmd_ret().
+-spec send_cmd(atom(), ne_binary(), ne_binary() | string(), ne_binary() | string()) -> send_cmd_ret().
 send_cmd(Node, UUID, App, Args) when not is_list(App) ->
     send_cmd(Node, UUID, wh_util:to_list(App), Args);
 send_cmd(Node, UUID, "xferext", Dialplan) ->
@@ -136,7 +136,7 @@ send_cmd(Node, UUID, AppName, Args) ->
                                     ,{"execute-app-arg", wh_util:to_list(Args)}
                                    ]).
 
--spec maybe_update_channel_cache/2 :: (string(), ne_binary()) -> 'ok'.
+-spec maybe_update_channel_cache(string(), ne_binary()) -> 'ok'.
 maybe_update_channel_cache("ecallmgr_Account-ID=" ++ Value, UUID) ->
     ecallmgr_fs_nodes:channel_set_account_id(UUID, Value);
 maybe_update_channel_cache("ecallmgr_Billing-ID=" ++ Value, UUID) ->
@@ -162,14 +162,14 @@ maybe_update_channel_cache("ecallmgr_Precedence=" ++ Value, UUID) ->
 maybe_update_channel_cache(_, _) ->
     ok.
 
--spec get_expires/1 :: (wh_proplist()) -> integer().
+-spec get_expires(wh_proplist()) -> integer().
 get_expires(Props) ->
     Expiry = wh_util:to_integer(props:get_value(<<"Expires">>, Props
                                                 ,props:get_value(<<"expires">>, Props, 300))),
     round(Expiry * 1.25).
 
--spec get_interface_properties/1 :: (atom()) -> wh_proplist().
--spec get_interface_properties/2 :: (atom(), string() | ne_binary()) -> wh_proplist().
+-spec get_interface_properties(atom()) -> wh_proplist().
+-spec get_interface_properties(atom(), string() | ne_binary()) -> wh_proplist().
 
 get_interface_properties(Node) ->
     get_interface_properties(Node, ?DEFAULT_FS_PROFILE).
@@ -188,7 +188,7 @@ get_interface_properties(Node, Interface) ->
     end.
 
 %% retrieves the sip address for the 'to' field
--spec get_sip_to/1 :: (wh_proplist()) -> ne_binary().
+-spec get_sip_to(wh_proplist()) -> ne_binary().
 get_sip_to(Prop) ->
     list_to_binary([props:get_value(<<"sip_to_user">>, Prop
                                     ,props:get_value(<<"variable_sip_to_user">>, Prop, "nouser"))
@@ -198,7 +198,7 @@ get_sip_to(Prop) ->
                    ]).
 
 %% retrieves the sip address for the 'from' field
--spec get_sip_from/1 :: (wh_proplist()) -> ne_binary().
+-spec get_sip_from(wh_proplist()) -> ne_binary().
 get_sip_from(Prop) ->
     list_to_binary([props:get_value(<<"sip_from_user">>, Prop
                                     ,props:get_value(<<"variable_sip_from_user">>, Prop, "nouser"))
@@ -208,7 +208,7 @@ get_sip_from(Prop) ->
                    ]).
 
 %% retrieves the sip address for the 'request' field
--spec get_sip_request/1 :: (wh_proplist()) -> ne_binary().
+-spec get_sip_request(wh_proplist()) -> ne_binary().
 get_sip_request(Prop) ->
     list_to_binary([props:get_value(<<"Hunt-Destination-Number">>, Prop
                                     ,props:get_value(<<"Caller-Destination-Number">>, Prop, "nouser"))
@@ -217,12 +217,12 @@ get_sip_request(Prop) ->
                                                  ,props:get_value(<<"variable_sip_auth_realm">>, Prop, ?DEFAULT_DOMAIN))
                    ]).
 
--spec get_orig_ip/1 :: (wh_proplist()) -> ne_binary().
+-spec get_orig_ip(wh_proplist()) -> ne_binary().
 get_orig_ip(Prop) ->
     props:get_value(<<"X-AUTH-IP">>, Prop, props:get_value(<<"ip">>, Prop)).
 
 %% Extract custom channel variables to include in the event
--spec custom_channel_vars/1 :: (wh_proplist()) -> wh_proplist().
+-spec custom_channel_vars(wh_proplist()) -> wh_proplist().
 custom_channel_vars(Prop) ->
     lists:foldl(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
                    ({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
@@ -233,11 +233,11 @@ custom_channel_vars(Prop) ->
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
--spec eventstr_to_proplist/1 :: (ne_binary() | nonempty_string()) -> wh_proplist().
+-spec eventstr_to_proplist(ne_binary() | nonempty_string()) -> wh_proplist().
 eventstr_to_proplist(EvtStr) ->
     [to_kv(X, ": ") || X <- string:tokens(wh_util:to_list(EvtStr), "\n")].
 
--spec to_kv/2 :: (nonempty_string(), nonempty_string()) -> {ne_binary(), ne_binary()}.
+-spec to_kv(nonempty_string(), nonempty_string()) -> {ne_binary(), ne_binary()}.
 to_kv(X, Separator) ->
     [K, V] = string:tokens(X, Separator),
     [{V1,[]}] = mochiweb_util:parse_qs(V),
@@ -247,7 +247,7 @@ fix_value("Event-Date-Timestamp", TStamp) ->
     wh_util:microseconds_to_seconds(wh_util:to_integer(TStamp));
 fix_value(_K, V) -> V.
 
--spec unserialize_fs_array/1 :: (api_binary()) -> [ne_binary(),...] | [].
+-spec unserialize_fs_array(api_binary()) -> [ne_binary(),...] | [].
 unserialize_fs_array(undefined) -> [];
 unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
     binary:split(Serialized, <<"|:">>, [global]);
@@ -255,19 +255,19 @@ unserialize_fs_array(_) -> [].
 
 %% convert a raw FS list of vars  to a proplist
 %% "Event-Name=NAME,Event-Timestamp=1234" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
--spec varstr_to_proplist/1 :: (nonempty_string()) -> wh_proplist().
+-spec varstr_to_proplist(nonempty_string()) -> wh_proplist().
 varstr_to_proplist(VarStr) ->
     [to_kv(X, "=") || X <- string:tokens(wh_util:to_list(VarStr), ",")].
 
--spec get_setting/1 :: (wh_json:json_string()) -> {'ok', term()}.
--spec get_setting/2 :: (wh_json:json_string(), Default) -> {'ok', term() | Default}.
+-spec get_setting(wh_json:json_string()) -> {'ok', term()}.
+-spec get_setting(wh_json:json_string(), Default) -> {'ok', term() | Default}.
 get_setting(Setting) -> {ok, ecallmgr_config:get(Setting)}.
 get_setting(Setting, Default) -> {ok, ecallmgr_config:get(Setting, Default)}.
 
--spec is_node_up/1 :: (atom()) -> boolean().
+-spec is_node_up(atom()) -> boolean().
 is_node_up(Node) -> ecallmgr_fs_nodes:is_node_up(Node).
 
--spec is_node_up/2 :: (atom(), ne_binary()) -> boolean().
+-spec is_node_up(atom(), ne_binary()) -> boolean().
 is_node_up(Node, UUID) ->
     ecallmgr_fs_nodes:is_node_up(Node) andalso ecallmgr_fs_nodes:channel_exists(UUID).
 
@@ -277,7 +277,7 @@ is_node_up(Node, UUID) ->
 %% set channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec get_fs_kv/3 :: (ne_binary(), ne_binary(), ne_binary()) -> binary().
+-spec get_fs_kv(ne_binary(), ne_binary(), ne_binary()) -> binary().
 get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
     list_to_binary(["hold_music="
                     ,wh_util:to_list(media_path(Media, extant, UUID, wh_json:new()))
@@ -295,7 +295,7 @@ get_fs_kv(Key, Val, _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_sanitize_fs_value/2 :: (text(), text()) -> binary().
+-spec maybe_sanitize_fs_value(text(), text()) -> binary().
 maybe_sanitize_fs_value(<<"Outgoing-Caller-ID-Name">>, Val) ->
     re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<"">>, [global, {return, binary}]);
 maybe_sanitize_fs_value(<<"Outgoing-Callee-ID-Name">>, Val) ->
@@ -315,7 +315,7 @@ maybe_sanitize_fs_value(_, Val) -> Val.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set/3 :: (atom(), ne_binary(), wh_proplist() | ne_binary()) -> ecallmgr_util:send_cmd_ret().
+-spec set(atom(), ne_binary(), wh_proplist() | ne_binary()) -> ecallmgr_util:send_cmd_ret().
 set(_, _, []) ->
     ok;
 set(Node, UUID, [{K, V}]) ->
@@ -333,7 +333,7 @@ set(Node, UUID, Arg) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec export/3 :: (atom(), ne_binary(), binary()) -> ecallmgr_util:send_cmd_ret().
+-spec export(atom(), ne_binary(), binary()) -> ecallmgr_util:send_cmd_ret().
 export(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).
 
@@ -352,8 +352,8 @@ export(Node, UUID, Arg) ->
 -type build_return() :: bridge_channel() | {'worker', pid()}.
 -type bridge_endpoints() :: [#bridge_endpoint{},...] | [].
 
--spec build_bridge_string/1 :: (wh_json:json_objects()) -> ne_binary().
--spec build_bridge_string/2 :: (wh_json:json_objects(), ne_binary()) -> ne_binary().
+-spec build_bridge_string(wh_json:objects()) -> ne_binary().
+-spec build_bridge_string(wh_json:objects(), ne_binary()) -> ne_binary().
 build_bridge_string(Endpoints) ->
     build_bridge_string(Endpoints, <<"|">>).
 
@@ -364,9 +364,8 @@ build_bridge_string(Endpoints, Seperator) ->
     %% NOTE: dont use binary_join here as it will crash on an empty list...
     wh_util:join_binary(lists:reverse(BridgeStrings), Seperator).
 
-
--spec endpoint_jobjs_to_records/1 :: (wh_json:objects()) -> [] | [#bridge_endpoint{},...]. 
--spec endpoint_jobjs_to_records/2 :: (wh_json:objects(), boolean()) -> [] | [#bridge_endpoint{},...]. 
+-spec endpoint_jobjs_to_records(wh_json:objects()) -> bridge_endpoints().
+-spec endpoint_jobjs_to_records(wh_json:objects(), boolean()) -> bridge_endpoints().
 
 endpoint_jobjs_to_records(Endpoints) ->
     endpoint_jobjs_to_records(Endpoints, true).
@@ -400,8 +399,8 @@ endpoint_key(Endpoint) ->
      ,wh_json:get_value(<<"Route">>, Endpoint)
     ].
     
--spec endpoint_jobj_to_record/1 :: (wh_json:json_object()) -> #bridge_endpoint{}. 
--spec endpoint_jobj_to_record/2 :: (wh_json:json_object(), boolean()) -> #bridge_endpoint{}. 
+-spec endpoint_jobj_to_record(wh_json:json_object()) -> #bridge_endpoint{}. 
+-spec endpoint_jobj_to_record(wh_json:json_object(), boolean()) -> #bridge_endpoint{}. 
 
 endpoint_jobj_to_record(Endpoint) ->
     endpoint_jobj_to_record(Endpoint, true).
@@ -427,35 +426,35 @@ endpoint_jobj_to_record(Endpoint, IncludeVars) ->
                      ,include_channel_vars = IncludeVars
                     }.
 
--spec get_endpoint_span/1 :: (wh_json:json_object()) -> ne_binary().
+-spec get_endpoint_span(wh_json:json_object()) -> ne_binary().
 get_endpoint_span(Endpoint) ->
     wh_json:get_binary_value([<<"Endpoint-Options">>, <<"Span">>], Endpoint, <<"1">>).
 
--spec get_endpoint_channel_selection/1 :: (wh_json:json_object()) -> ne_binary().
+-spec get_endpoint_channel_selection(wh_json:json_object()) -> ne_binary().
 get_endpoint_channel_selection(Endpoint) ->
     case wh_json:get_binary_value([<<"Endpoint-Options">>, <<"Span">>], Endpoint) of
         <<"descending">> -> <<"A">>;
         _Else -> <<"a">>
     end.
 
--spec get_endpoint_interface/1 :: (wh_json:json_object()) -> ne_binary().
+-spec get_endpoint_interface(wh_json:json_object()) -> ne_binary().
 get_endpoint_interface(Endpoint) ->
     case wh_json:is_true([<<"Endpoint-Options">>, <<"Skype-RR">>], Endpoint, false) of
         false -> wh_json:get_value([<<"Endpoint-Options">>, <<"Skype-Interface">>], Endpoint);
         true -> <<"RR">>
     end.
 
--spec build_simple_channels/1 :: (bridge_endpoints()) -> bridge_channels().
+-spec build_simple_channels(bridge_endpoints()) -> bridge_channels().
 build_simple_channels(Endpoints) ->
     EPs = endpoint_jobjs_to_records(Endpoints, false),
     build_bridge_channels(EPs, []).
 
--spec build_bridge_channels/1 :: (bridge_endpoints()) -> bridge_channels().
+-spec build_bridge_channels(bridge_endpoints()) -> bridge_channels().
 build_bridge_channels(Endpoints) ->
     EPs = endpoint_jobjs_to_records(Endpoints),
     build_bridge_channels(EPs, []).
 
--spec build_bridge_channels/2 :: (bridge_endpoints(), [build_return(),...] | []) -> bridge_channels().
+-spec build_bridge_channels(bridge_endpoints(), [build_return(),...] | []) -> bridge_channels().
 %% If the Invite-Format is "route" then we have been handed a sip route, do that now
 build_bridge_channels([#bridge_endpoint{invite_format = <<"route">>}=Endpoint|Endpoints], Channels) ->
     case build_channel(Endpoint) of
@@ -481,7 +480,7 @@ build_bridge_channels([], IntermediateResults) ->
                         [Channel|Channels]
                 end, [], IntermediateResults).
 
--spec maybe_collect_worker_channel/2 :: (pid(), bridge_channels()) -> bridge_channels().
+-spec maybe_collect_worker_channel(pid(), bridge_channels()) -> bridge_channels().
 maybe_collect_worker_channel(Pid, Channels) ->
     receive
         {Pid, {error, _}} ->
@@ -501,7 +500,7 @@ build_channel(#bridge_endpoint{endpoint_type = <<"sip">>}=Endpoint) ->
 build_channel(EndpointJObj) ->
     build_channel(endpoint_jobj_to_record(EndpointJObj)).
 
--spec build_freetdm_channel/1 :: (#bridge_endpoint{}) ->
+-spec build_freetdm_channel(#bridge_endpoint{}) ->
                                          {'ok', bridge_channel()} |
                                          {'error', 'number_not_provided'}.
 build_freetdm_channel(#bridge_endpoint{number=undefined}) ->
@@ -518,7 +517,7 @@ build_freetdm_channel(#bridge_endpoint{invite_format = <<"1npan">>, number=Numbe
 build_freetdm_channel(#bridge_endpoint{number=Number, span=Span, channel_selection=ChannelSelection}) ->
     {ok, <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", Number/binary>>}.
 
--spec build_skype_channel/1 :: (#bridge_endpoint{}) ->
+-spec build_skype_channel(#bridge_endpoint{}) ->
                                        {'ok', bridge_channel()} |
                                        {'error', 'number_not_provided'}.
 build_skype_channel(#bridge_endpoint{user=undefined}) ->
@@ -526,7 +525,7 @@ build_skype_channel(#bridge_endpoint{user=undefined}) ->
 build_skype_channel(#bridge_endpoint{user=User, interface=IFace}) ->
     {ok, <<"skypopen/", IFace/binary, "/", User/binary>>}.
 
--spec build_sip_channel/1 :: (#bridge_endpoint{}) ->
+-spec build_sip_channel(#bridge_endpoint{}) ->
                                      {'ok', bridge_channel()} |
                                      {'error', _}.
 build_sip_channel(Endpoint) ->
@@ -549,7 +548,7 @@ build_sip_channel(Endpoint) ->
             {error, invalid}
     end.
 
--spec get_sip_contact/1 :: (#bridge_endpoint{}) -> ne_binary().
+-spec get_sip_contact(#bridge_endpoint{}) -> ne_binary().
 get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) ->
     Route;
 get_sip_contact(#bridge_endpoint{ip_address=undefined
@@ -561,7 +560,7 @@ get_sip_contact(#bridge_endpoint{ip_address=undefined
 get_sip_contact(#bridge_endpoint{ip_address=IPAddress}) ->
     IPAddress.
 
--spec maybe_clean_contact/2 :: (ne_binary(), #bridge_endpoint{}) -> ne_binary().
+-spec maybe_clean_contact(ne_binary(), #bridge_endpoint{}) -> ne_binary().
 maybe_clean_contact(<<"sip:", Contact/binary>>, Endpoint) ->
     maybe_clean_contact(Contact, Endpoint);
 maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
@@ -569,7 +568,7 @@ maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
 maybe_clean_contact(Contact, _) ->
     re:replace(Contact, <<"^.*?[^=]sip:">>, <<>>, [{return, binary}]).
 
--spec ensure_username_present/2 :: (ne_binary(), #bridge_endpoint{}) -> ne_binary().
+-spec ensure_username_present(ne_binary(), #bridge_endpoint{}) -> ne_binary().
 ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
     Contact;
 ensure_username_present(Contact, Endpoint) ->
@@ -579,7 +578,7 @@ ensure_username_present(Contact, Endpoint) ->
             <<(guess_username(Endpoint))/binary, "@", Contact/binary>>
     end.
 
--spec guess_username/1 :: (#bridge_endpoint{}) -> ne_binary().
+-spec guess_username(#bridge_endpoint{}) -> ne_binary().
 guess_username(#bridge_endpoint{number=Number}) when is_binary(Number) ->
     Number;
 guess_username(#bridge_endpoint{username=Username}) when is_binary(Username) ->
@@ -589,7 +588,7 @@ guess_username(#bridge_endpoint{user=User}) when is_binary(User) ->
 guess_username(_) ->
     <<"kazoo">>.
 
--spec maybe_replace_fs_path/2 :: (ne_binary(), #bridge_endpoint{}) -> ne_binary().
+-spec maybe_replace_fs_path(ne_binary(), #bridge_endpoint{}) -> ne_binary().
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address=undefined}) ->
     Contact;
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address = <<"sip:", _/binary>> = Proxy}) ->
@@ -602,7 +601,7 @@ maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address = <<"sip:", _/bina
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address=Proxy}=Endpoint) ->
     maybe_replace_fs_path(Contact, Endpoint#bridge_endpoint{proxy_address = <<"sip:", Proxy/binary>>}).
 
--spec maybe_replace_transport/2 :: (ne_binary(), #bridge_endpoint{}) -> ne_binary().
+-spec maybe_replace_transport(ne_binary(), #bridge_endpoint{}) -> ne_binary().
 maybe_replace_transport(Contact, #bridge_endpoint{transport=undefined}) ->
     Contact;
 maybe_replace_transport(Contact, #bridge_endpoint{transport=Transport}) ->
@@ -613,7 +612,7 @@ maybe_replace_transport(Contact, #bridge_endpoint{transport=Transport}) ->
         Updated -> Updated
     end.
 
--spec maybe_format_user/2 :: (ne_binary(), #bridge_endpoint{}) -> ne_binary().
+-spec maybe_format_user(ne_binary(), #bridge_endpoint{}) -> ne_binary().
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"username">>
                                             ,user=User
                                            }) when User =/= 'undefined' ->
@@ -634,7 +633,7 @@ maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"1npan">>, number=
 maybe_format_user(Contact, _) ->
     Contact.
 
--spec maybe_set_interface/2 :: (ne_binary(), #bridge_endpoint{}) -> ne_binary().
+-spec maybe_set_interface(ne_binary(), #bridge_endpoint{}) -> ne_binary().
 maybe_set_interface(<<"sofia/", _/binary>>=Contact, _) ->
     Contact;
 maybe_set_interface(<<"loopback/", _/binary>>=Contact, _) ->
@@ -644,7 +643,7 @@ maybe_set_interface(Contact, #bridge_endpoint{sip_interface=undefined}) ->
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface=SIPInterface}) ->
     <<SIPInterface/binary, Contact/binary>>.
 
--spec append_channel_vars/2 :: (ne_binary(), #bridge_endpoint{}) -> ne_binary().
+-spec append_channel_vars(ne_binary(), #bridge_endpoint{}) -> ne_binary().
 append_channel_vars(Contact, #bridge_endpoint{include_channel_vars=false}) ->
     false = wh_util:is_empty(Contact),
     Contact;
@@ -660,7 +659,7 @@ append_channel_vars(Contact, #bridge_endpoint{channel_vars=ChannelVars}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create_masquerade_event/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+-spec create_masquerade_event(ne_binary(), ne_binary()) -> ne_binary().
 create_masquerade_event(Application, EventName) ->
     create_masquerade_event(Application, EventName, true).
 
@@ -678,9 +677,9 @@ create_masquerade_event(Application, EventName, Boolean) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec media_path/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> ne_binary().
--spec media_path/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> ne_binary().
--spec media_path/5 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object(), atom()) -> ne_binary().
+-spec media_path(ne_binary(), ne_binary(), wh_json:json_object()) -> ne_binary().
+-spec media_path(ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> ne_binary().
+-spec media_path(ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object(), atom()) -> ne_binary().
 media_path(MediaName, UUID, JObj) ->
     media_path(MediaName, new, UUID, JObj).
 media_path(MediaName, Type, UUID, JObj) ->
@@ -708,14 +707,14 @@ media_path(MediaName, Type, UUID, JObj, Cache) ->
             wh_util:to_binary(get_fs_playback(Url))
     end.
 
--spec fax_filename/1 :: (ne_binary()) -> file:filename().
+-spec fax_filename(ne_binary()) -> file:filename().
 fax_filename(UUID) ->
     Ext = ecallmgr_config:get(<<"default_fax_extension">>, <<".tiff">>),
     filename:join([ecallmgr_config:get(<<"fax_file_path">>, <<"/tmp/">>)
                    ,<<(amqp_util:encode(UUID))/binary, Ext/binary>>
                   ]).
 
--spec recording_filename/1 :: (ne_binary()) -> file:filename().
+-spec recording_filename(ne_binary()) -> file:filename().
 recording_filename(<<"local_stream://", MediaName/binary>>) ->
     recording_filename(MediaName);
 recording_filename(MediaName) ->
@@ -746,7 +745,7 @@ recording_extension(MediaName) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_fs_playback/1 :: (ne_binary()) -> ne_binary().
+-spec get_fs_playback(ne_binary()) -> ne_binary().
 get_fs_playback(<<?LOCAL_MEDIA_PATH, _/binary>> = URI) ->
     URI;
 get_fs_playback(URI) ->
@@ -781,23 +780,23 @@ maybe_playback_via_http_cache(URI) ->
 
 %% given a proplist of a FS event, return the Whistle-equivalent app name(s).
 %% a FS event could have multiple Whistle equivalents
--spec convert_fs_evt_name/1 :: (ne_binary()) -> [ne_binary(),...] | [].
+-spec convert_fs_evt_name(ne_binary()) -> [ne_binary(),...] | [].
 convert_fs_evt_name(EvtName) ->
     [ WhAppEvt || {FSEvt, WhAppEvt} <- ?FS_APPLICATION_NAMES, FSEvt =:= EvtName].
 
 %% given a Whistle Dialplan Application name, return the FS-equivalent event name
 %% A Whistle Dialplan Application name is 1-to-1 with the FS-equivalent
--spec convert_whistle_app_name/1 :: (ne_binary()) -> [ne_binary(),...] | [].
+-spec convert_whistle_app_name(ne_binary()) -> [ne_binary(),...] | [].
 convert_whistle_app_name(App) ->
     [EvtName || {EvtName, AppName} <- ?FS_APPLICATION_NAMES, App =:= AppName].
 
--spec lookup_media/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) ->
+-spec lookup_media(ne_binary(), ne_binary(), wh_json:json_object()) ->
                                 {'ok', binary()} |
                                 {'error', any()}.
--spec lookup_media/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), 'new' | 'extant') ->
+-spec lookup_media(ne_binary(), ne_binary(), wh_json:json_object(), 'new' | 'extant') ->
                                 {'ok', binary()} |
                                 {'error', any()}.
--spec lookup_media/5 :: (ne_binary(), ne_binary(), wh_json:json_object(), 'new' | 'extant', atom()) ->
+-spec lookup_media(ne_binary(), ne_binary(), wh_json:json_object(), 'new' | 'extant', atom()) ->
                                 {'ok', binary()} |
                                 {'error', any()}.
 lookup_media(MediaName, CallId, JObj) ->

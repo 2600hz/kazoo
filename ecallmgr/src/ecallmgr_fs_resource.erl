@@ -50,8 +50,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/1 :: (atom()) -> startlink_ret().
--spec start_link/2 :: (atom(), wh_proplist()) -> startlink_ret().
+-spec start_link(atom()) -> startlink_ret().
+-spec start_link(atom(), wh_proplist()) -> startlink_ret().
 
 start_link(Node) ->
     start_link(Node, []).
@@ -66,7 +66,7 @@ start_link(Node, Options) ->
                              ],
                             [Node, Options]).
 
--spec handle_originate_req/2 :: (wh_json:object(), wh_proplist()) -> sup_startchild_ret().
+-spec handle_originate_req(wh_json:object(), wh_proplist()) -> sup_startchild_ret().
 handle_originate_req(JObj, Props) ->
     _ = wh_util:put_callid(JObj),
     Node = props:get_value(node, Props),

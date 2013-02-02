@@ -61,7 +61,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (atom(), wh_json:object()) -> startlink_ret().
+-spec start_link(atom(), wh_json:object()) -> startlink_ret().
 start_link(Node, JObj) ->
     gen_listener:start_link(?MODULE
                             ,[{bindings, ?BINDINGS}
@@ -78,7 +78,7 @@ start_link(Node, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call_events/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_call_events(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value(server, Props),
     case props:get_value(uuid, Props) =:=  wh_json:get_binary_value(<<"Call-ID">>, JObj)
@@ -101,7 +101,7 @@ handle_call_events(JObj, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_originate_execute/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_originate_execute(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_originate_execute(JObj, Props) ->
     true = wapi_dialplan:originate_execute_v(JObj),
     Srv = props:get_value(server, Props),
@@ -426,7 +426,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_originate_action/2 :: (ne_binary(), wh_json:object()) -> ne_binary().
+-spec get_originate_action(ne_binary(), wh_json:object()) -> ne_binary().
 get_originate_action(<<"fax">>, JObj) ->
     lager:debug("got originate with action fax"),
     Data = wh_json:get_value(<<"Application-Data">>, JObj),
@@ -469,7 +469,7 @@ get_bridge_action(JObj) ->
             list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", Channel, "' inline"])
     end.
 
--spec maybe_update_node/2 :: (wh_json:object(), atom()) -> atom().
+-spec maybe_update_node(wh_json:object(), atom()) -> atom().
 maybe_update_node(JObj, Node) ->
     case wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj) of
         undefined -> Node;
@@ -492,7 +492,7 @@ get_eavesdrop_action(JObj) ->
         undefined -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>
     end.
 
--spec build_originate_args/3 :: (ne_binary(), wh_json:objects(), wh_json:object()) -> ne_binary().
+-spec build_originate_args(ne_binary(), wh_json:objects(), wh_json:object()) -> ne_binary().
 build_originate_args(Action, Endpoints, JObj) ->
     lager:debug("building originate command arguments"),
     DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
@@ -506,7 +506,7 @@ build_originate_args(Action, Endpoints, JObj) ->
                            ], JObj),
     list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).
 
--spec originate_execute/2 :: (atom(), ne_binary()) ->
+-spec originate_execute(atom(), ne_binary()) ->
                                      {'ok', ne_binary()} |
                                      {'error', ne_binary()}.
 originate_execute(Node, Dialstrings) ->
@@ -527,7 +527,7 @@ originate_execute(Node, Dialstrings) ->
             {error, <<"Originate timed out waiting for the switch to reply">>}
     end.
 
--spec bind_to_call_events/1 :: (ne_binary()) -> 'ok'.
+-spec bind_to_call_events(ne_binary()) -> 'ok'.
 bind_to_call_events(CallId) ->
     lager:debug("binding to call events for ~s", [CallId]),
     Options = [{callid, CallId}
@@ -535,13 +535,13 @@ bind_to_call_events(CallId) ->
               ],
     gen_listener:add_binding(self(), call, Options).
 
--spec unbind_from_call_events/0 :: () -> 'ok'.
+-spec unbind_from_call_events() -> 'ok'.
 unbind_from_call_events() ->
     lager:debug("unbind from call events"),
     gen_listener:rm_binding(self(), call, []).
 
 
--spec update_uuid/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+-spec update_uuid(ne_binary(), ne_binary()) -> 'ok'.
 update_uuid(OldUUID, NewUUID) ->
     put(callid, NewUUID),
     lager:debug("updating call id from ~s to ~s", [OldUUID, NewUUID]),
@@ -549,8 +549,8 @@ update_uuid(OldUUID, NewUUID) ->
     bind_to_call_events(NewUUID),
     ok.
 
--spec create_uuid/1 :: (atom()) -> ne_binary().
--spec create_uuid/2 :: (wh_json:object(), atom()) -> ne_binary().
+-spec create_uuid(atom()) -> ne_binary().
+-spec create_uuid(wh_json:object(), atom()) -> ne_binary().
 
 create_uuid(Node) ->
     case freeswitch:api(Node, 'create_uuid', " ") of
@@ -572,7 +572,7 @@ create_uuid(JObj, Node) ->
         CallId -> CallId
     end.
 
--spec get_unset_vars/1 :: (wh_json:object()) -> string().
+-spec get_unset_vars(wh_json:object()) -> string().
 get_unset_vars(JObj) ->
     %% Refactor (Karl wishes he had unit tests here for you to use)
     ExportProps = [{K, <<>>} || K <- wh_json:get_value(<<"Export-Custom-Channel-Vars">>, JObj, [])],
@@ -588,7 +588,7 @@ get_unset_vars(JObj) ->
         Unset -> [string:join(Unset, "^"), "^"]
     end.
 
--spec publish_error/4 :: (ne_binary(), 'undefined' | ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
+-spec publish_error(ne_binary(), 'undefined' | ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
 publish_error(_, _, _, undefined) -> ok;
 publish_error(Error, UUID, Request, ServerId) ->
     lager:debug("originate error: ~s", [Error]),
@@ -600,7 +600,7 @@ publish_error(Error, UUID, Request, ServerId) ->
         ],
     wh_api:publish_error(ServerId, props:filter_undefined(E)).
 
--spec publish_originate_ready/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), api_binary()) -> 'ok'.
+-spec publish_originate_ready(ne_binary(), ne_binary(), wh_json:object(), ne_binary(), api_binary()) -> 'ok'.
 publish_originate_ready(_, _, _, _, undefined) -> ok;
 publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
     lager:debug("originate command is ready, waiting for originate_execute"),
@@ -611,7 +611,7 @@ publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
             ],
     wapi_dialplan:publish_originate_ready(ServerId, Props).
 
--spec publish_originate_resp/2 :: (api_binary(), wh_json:object()) -> 'ok'.
+-spec publish_originate_resp(api_binary(), wh_json:object()) -> 'ok'.
 publish_originate_resp(undefined, _) -> ok;
 publish_originate_resp(ServerId, JObj) ->
     Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
@@ -619,7 +619,7 @@ publish_originate_resp(ServerId, JObj) ->
                               ], JObj),
     wapi_resource:publish_originate_resp(ServerId, Resp).
 
--spec publish_originate_started/4 :: (api_binary(), ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
+-spec publish_originate_started(api_binary(), ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
 publish_originate_started(undefined, _, _, _) -> ok;
 publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
     Resp = wh_json:from_list(
@@ -631,7 +631,7 @@ publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
                ])),
     wapi_resource:publish_originate_started(ServerId, Resp).
 
--spec publish_originate_uuid/4 :: (api_binary(), ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
+-spec publish_originate_uuid(api_binary(), ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
 publish_originate_uuid(undefined, _, _, _) -> ok;
 publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
     Resp = props:filter_undefined(

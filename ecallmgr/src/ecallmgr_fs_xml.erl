@@ -19,7 +19,7 @@
 
 -include("ecallmgr.hrl").
 
--spec acl_xml/1 :: (wh_json:object()) -> {'ok', iolist()}.
+-spec acl_xml(wh_json:object()) -> {'ok', iolist()}.
 acl_xml(AclsJObj) ->
     AclsFold = lists:foldl(fun arrange_acl_node/2, orddict:new(), wh_json:to_proplist(AclsJObj)),
 
@@ -38,25 +38,27 @@ sip_profiles_xml(JObj) ->
 
     SectionEl = section_el(<<"configuration">>, ConfigEl),
 
-    {ok, xmerl:export([SectionEl], fs_xml)}.    
+    {ok, xmerl:export([SectionEl], fs_xml)}.
 
--spec authn_resp_xml/1 :: (api_terms()) -> {'ok', iolist()}.
--spec authn_resp_xml/2 :: (ne_binary(), wh_json:object()) -> {'ok', iolist()}.
+-spec authn_resp_xml(api_terms()) -> {'ok', iolist()}.
+-spec authn_resp_xml(ne_binary(), wh_json:object()) -> {'ok', xml_els()}.
 authn_resp_xml([_|_]=RespProp) ->
-    authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp), wh_json:from_list(RespProp));
+    authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp)
+                   ,wh_json:from_list(RespProp)
+                  );
 authn_resp_xml(JObj) ->
     DomainName = wh_json:get_value(<<"Domain-Name">>, JObj),
     UserId = wh_json:get_value(<<"User-ID">>, JObj),
 
     case authn_resp_xml(wh_json:get_value(<<"Auth-Method">>, JObj), JObj) of
-        {error, ErrorXml} -> {ok, ErrorXml};
+        {ok, []}=OK -> OK;
         {ok, Elements} ->
-            UserEl = user_el(wh_json:get_value(<<"Auth-Username">>, JObj, UserId), Elements),            
+            UserEl = user_el(wh_json:get_value(<<"Auth-Username">>, JObj, UserId), Elements),
             DomainEl = domain_el(wh_json:get_value(<<"Auth-Realm">>, JObj, DomainName), UserEl),
             SectionEl = section_el(<<"directory">>, DomainEl),
             {ok, xmerl:export([SectionEl], fs_xml)}
     end.
-    
+
 authn_resp_xml(<<"password">>, JObj) ->
     PassEl = param_el(<<"password">>, wh_json:get_value(<<"Auth-Password">>, JObj)),
     ParamsEl = params_el([PassEl]),
@@ -74,25 +76,28 @@ authn_resp_xml(<<"a1-hash">>, JObj) ->
 
     {ok, [VariablesEl, ParamsEl]};
 authn_resp_xml(<<"ip">>, _JObj) ->
-    {error, empty_response()};
+    empty_response();
 authn_resp_xml(_Method, _JObj) ->
     lager:debug("unknown method ~s", [_Method]),
-    {error, empty_response()}.
+    empty_response().
 
--spec reverse_authn_resp_xml/1 :: (api_terms()) -> {'ok', iolist()}.
--spec reverse_authn_resp_xml/2 :: (ne_binary(), wh_json:json_object()) -> {'ok'|'error', iolist()}.
+-spec reverse_authn_resp_xml(api_terms()) -> {'ok', iolist()}.
+-spec reverse_authn_resp_xml(ne_binary(), wh_json:json_object()) ->
+                                    {'ok', xml_els()}.
 reverse_authn_resp_xml([_|_]=RespProp) ->
-    reverse_authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp), wh_json:from_list(RespProp));
+    reverse_authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp)
+                           ,wh_json:from_list(RespProp)
+                          );
 reverse_authn_resp_xml(JObj) ->
     case reverse_authn_resp_xml(wh_json:get_value(<<"Auth-Method">>, JObj), JObj) of
-        {error, ErrorXml} -> {ok, ErrorXml};
+        {ok, []}=OK -> OK;
         {ok, Elements} ->
-            UserEl = user_el(wh_json:get_value(<<"User-ID">>, JObj), Elements),            
+            UserEl = user_el(wh_json:get_value(<<"User-ID">>, JObj), Elements),
             DomainEl = domain_el(wh_json:get_value(<<"Domain-Name">>, JObj), UserEl),
             SectionEl = section_el(<<"directory">>, DomainEl),
             {ok, xmerl:export([SectionEl], fs_xml)}
     end.
-    
+
 reverse_authn_resp_xml(<<"password">>, JObj) ->
     UserId = wh_json:get_value(<<"User-ID">>, JObj),
 
@@ -107,13 +112,13 @@ reverse_authn_resp_xml(<<"password">>, JObj) ->
     {ok, [VariablesEl, ParamsEl]};
 reverse_authn_resp_xml(_Method, _JObj) ->
     lager:debug("unknown method ~s", [_Method]),
-    {error, empty_response()}.
+    empty_response().
 
--spec empty_response/0 :: () -> {'ok', []}.
+-spec empty_response() -> {'ok', []}.
 empty_response() ->
     {ok, ""}. %"<document type=\"freeswitch/xml\"></document>").
 
--spec route_resp_xml/1 :: (api_terms()) -> {'ok', iolist()}.
+-spec route_resp_xml(api_terms()) -> {'ok', iolist()}.
 route_resp_xml([_|_]=RespProp) ->
     route_resp_xml(wh_json:from_list(RespProp));
 route_resp_xml(RespJObj) ->
@@ -123,7 +128,7 @@ route_resp_xml(RespJObj) ->
                   ).
 
 %% Prop = Route Response
--spec route_resp_xml/3 :: (ne_binary(), wh_json:objects(), wh_json:object()) -> {'ok', iolist()}.
+-spec route_resp_xml(ne_binary(), wh_json:objects(), wh_json:object()) -> {'ok', iolist()}.
 route_resp_xml(<<"bridge">>, Routes, _JObj) ->
     lager:debug("creating a bridge XML response"),
     LogEl = route_resp_log_winning_node(),
@@ -204,22 +209,22 @@ route_resp_xml(<<"error">>, _Routes, JObj) ->
     SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
     {ok, xmerl:export([SectionEl], fs_xml)}.
 
--spec route_not_found/0 :: () -> {'ok', iolist()}.
+-spec route_not_found() -> {'ok', iolist()}.
 route_not_found() ->
     ResultEl = result_el(<<"not found">>),
     SectionEl = section_el(<<"result">>, <<"Route Not Found">>, ResultEl),
     {ok, xmerl:export([SectionEl], fs_xml)}.
 
--spec route_resp_log_winning_node/0 :: () -> xml_el().
+-spec route_resp_log_winning_node() -> xml_el().
 route_resp_log_winning_node() ->
     action_el(<<"log">>, [<<"NOTICE log|${uuid}|", (wh_util:to_binary(node()))/binary, " won call control">>]).
 
--spec route_resp_ringback/0 :: () -> xml_el().
+-spec route_resp_ringback() -> xml_el().
 route_resp_ringback() ->
     {ok, RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
     action_el(<<"set">>, <<"ringback=", (wh_util:to_binary(RBSetting))/binary>>).
 
--spec route_resp_pre_park_action/1 :: (wh_json:object()) -> 'undefined' | xml_el().
+-spec route_resp_pre_park_action(wh_json:object()) -> 'undefined' | xml_el().
 route_resp_pre_park_action(JObj) ->
     case wh_json:get_value(<<"Pre-Park">>, JObj) of
         <<"ring_ready">> -> action_el(<<"ring_ready">>);
@@ -227,18 +232,18 @@ route_resp_pre_park_action(JObj) ->
         _Else -> undefined
     end.
 
--spec get_leg_vars/1 :: (wh_json:object() | wh_proplist()) -> [nonempty_string(),...].
+-spec get_leg_vars(wh_json:object() | wh_proplist()) -> [nonempty_string(),...].
 get_leg_vars([_|_]=Prop) ->
     ["[", string:join([wh_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"];
 get_leg_vars(JObj) -> get_leg_vars(wh_json:to_proplist(JObj)).
 
--spec get_channel_vars/1 :: (wh_json:object() | wh_proplist()) -> iolist().
+-spec get_channel_vars(wh_json:object() | wh_proplist()) -> iolist().
 get_channel_vars([_|_]=Prop) ->
     P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
     ["{", string:join([wh_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
 get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 
--spec get_channel_vars/2 :: ({binary(), binary() | wh_json:object()}, [binary(),...] | []) -> iolist().
+-spec get_channel_vars({binary(), binary() | wh_json:object()}, [binary(),...] | []) -> iolist().
 get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
     lists:foldl(fun({<<"Force-Fax">>, Direction}, Acc) ->
                         [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
@@ -250,7 +255,7 @@ get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
                                                                              ,wh_util:to_list(ecallmgr_util:media_path(V, extant, get(callid), wh_json:new()))
                                                                              ,"'"
                                                                             ]) | Acc];
-                            {_, Prefix} -> 
+                            {_, Prefix} ->
                                 Val = ecallmgr_util:maybe_sanitize_fs_value(K, V),
                                 [encode_fs_val(Prefix, Val) | Acc]
                         end
@@ -264,12 +269,12 @@ get_channel_vars({<<"SIP-Headers">>, SIPJObj}, Vars) ->
 
 get_channel_vars({<<"To-User">>, Username}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Username"
-                     ,"='", wh_util:to_list(Username), "'"]) 
+                     ,"='", wh_util:to_list(Username), "'"])
      | Vars
     ];
 get_channel_vars({<<"To-Realm">>, Realm}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Realm"
-                     ,"='", wh_util:to_list(Realm), "'"]) 
+                     ,"='", wh_util:to_list(Realm), "'"])
      | Vars
     ];
 
@@ -301,8 +306,7 @@ get_channel_vars({<<"Timeout">>, V}, Vars) ->
     case wh_util:to_integer(V) of
         TO when TO > 0 ->
             [ <<"call_timeout=", (wh_util:to_binary(TO))/binary>> | Vars];
-        _Else ->
-            Vars
+        _Else -> Vars
     end;
 
 get_channel_vars({<<"Forward-IP">>, <<"sip:", _/binary>>=V}, Vars) ->
@@ -328,7 +332,7 @@ escape(V, C) ->
 encode(C, C) -> [$\\, C];
 encode(C, _) -> C.
 
--spec get_channel_params/1 :: (wh_json:object()) -> wh_json:json_proplist().
+-spec get_channel_params(wh_json:object()) -> wh_json:json_proplist().
 get_channel_params(JObj) ->
     CV0 = case wh_json:get_value(<<"Tenant-ID">>, JObj) of
               undefined -> [];
@@ -345,7 +349,7 @@ get_channel_params(JObj) ->
                         [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]
                 end, CV1, Custom).
 
--spec arrange_acl_node/2 :: ({ne_binary(), wh_json:object()}, orddict:orddict()) -> orddict:orddict().
+-spec arrange_acl_node({ne_binary(), wh_json:object()}, orddict:orddict()) -> orddict:orddict().
 arrange_acl_node({_, JObj}, Dict) ->
     AclList = wh_json:get_value(<<"network-list-name">>, JObj),
 
@@ -363,7 +367,7 @@ arrange_acl_node({_, JObj}, Dict) ->
 %%%-------------------------------------------------------------------
 %% XML record creators and helpers
 %%%-------------------------------------------------------------------
--spec acl_node_el/2 :: (xml_attrib_value(), xml_attrib_value()) -> xml_el().
+-spec acl_node_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 acl_node_el(Type, CIDR) ->
     #xmlElement{name='node'
                 ,attributes=[xml_attrib(type, Type)
@@ -371,9 +375,9 @@ acl_node_el(Type, CIDR) ->
                             ]
                }.
 
--spec acl_list_el/1 :: (xml_attrib_value()) -> xml_el().
--spec acl_list_el/2 :: (xml_attrib_value(), xml_attrib_value()) -> xml_el().
--spec acl_list_el/3 :: (xml_attrib_value(), xml_attrib_value(), xml_els()) -> xml_el().
+-spec acl_list_el(xml_attrib_value()) -> xml_el().
+-spec acl_list_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
+-spec acl_list_el(xml_attrib_value(), xml_attrib_value(), xml_els()) -> xml_el().
 acl_list_el(Name) ->
     acl_list_el(Name, <<"deny">>).
 acl_list_el(Name, Default) ->
@@ -386,7 +390,7 @@ acl_list_el(Name, Default, Children) ->
                 ,content=Children
                }.
 
--spec network_list_el/1 :: (xml_els()) -> xml_el().
+-spec network_list_el(xml_els()) -> xml_el().
 network_list_el(ListsEls) ->
     #xmlElement{name='network-lists', content=ListsEls}.
 
@@ -403,8 +407,8 @@ config_el(Name, Desc, Content) ->
                 ,content=Content
                }.
 
--spec section_el/2 :: (xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
--spec section_el/3 :: (xml_attrib_value(), xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
+-spec section_el(xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
+-spec section_el(xml_attrib_value(), xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
 section_el(Name, #xmlElement{}=Content) ->
     section_el(Name, [Content]);
 section_el(Name, Content) ->
@@ -423,7 +427,7 @@ section_el(Name, Desc, Content) ->
                 ,content=Content
                }.
 
--spec domain_el/2 :: (xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
+-spec domain_el(xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
 domain_el(Name, Child) when not is_list(Child) ->
     domain_el(Name, [Child]);
 domain_el(Name, Children) ->
@@ -432,20 +436,20 @@ domain_el(Name, Children) ->
                 ,content=Children
                }.
 
--spec user_el/2 :: (xml_attrib_value(), xml_els()) -> xml_el().
+-spec user_el(xml_attrib_value(), xml_els()) -> xml_el().
 user_el(Id, Children) ->
     #xmlElement{name='user'
                 ,attributes=[xml_attrib(id, Id)]
                 ,content=Children
                }.
 
--spec params_el/1 :: (xml_els()) -> xml_el().
+-spec params_el(xml_els()) -> xml_el().
 params_el(Children) ->
     #xmlElement{name='params'
                 ,content=Children
                }.
 
--spec param_el/2 :: (xml_attrib_value(), xml_attrib_value()) -> xml_el().
+-spec param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 param_el(Name, Value) ->
     #xmlElement{name='param'
                 ,attributes=[xml_attrib(name, Name)
@@ -453,13 +457,13 @@ param_el(Name, Value) ->
                             ]
                }.
 
--spec variables_el/1 :: (xml_els()) -> xml_el().
+-spec variables_el(xml_els()) -> xml_el().
 variables_el(Children) ->
     #xmlElement{name='variables'
                 ,content=Children
                }.
 
--spec variable_el/2 :: (xml_attrib_value(), xml_attrib_value()) -> xml_el().
+-spec variable_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 variable_el(Name, Value) ->
     #xmlElement{name='variable'
                 ,attributes=[xml_attrib(name, Name)
@@ -467,15 +471,15 @@ variable_el(Name, Value) ->
                             ]
                }.
 
--spec context_el/2 :: (xml_attrib_value(), xml_els()) -> xml_el().
+-spec context_el(xml_attrib_value(), xml_els()) -> xml_el().
 context_el(Name, Children) ->
     #xmlElement{name='context'
                 ,attributes=[xml_attrib(name, Name)]
                 ,content=Children
                }.
 
--spec extension_el/1 :: (xml_els()) -> xml_el().
--spec extension_el/3 :: (xml_attrib_value(), xml_attrib_value() | 'undefined', xml_els()) -> xml_el().
+-spec extension_el(xml_els()) -> xml_el().
+-spec extension_el(xml_attrib_value(), xml_attrib_value() | 'undefined', xml_els()) -> xml_el().
 extension_el(Children) ->
     #xmlElement{name='extension'
                 ,content=Children
@@ -494,7 +498,7 @@ extension_el(Name, Continue, Children) ->
                 ,content=Children
                }.
 
--spec condition_el/1 :: (xml_el() | xml_els()) -> xml_el().
+-spec condition_el(xml_el() | xml_els()) -> xml_el().
 condition_el(Child) when not is_list(Child) ->
     condition_el([Child]);
 condition_el(Children) ->
@@ -502,8 +506,8 @@ condition_el(Children) ->
                 ,content=Children
                }.
 
--spec action_el/1 :: (xml_attrib_value()) -> xml_el().
--spec action_el/2 :: (xml_attrib_value(), xml_attrib_value()) -> xml_el().
+-spec action_el(xml_attrib_value()) -> xml_el().
+-spec action_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 action_el(App) ->
     #xmlElement{name='action'
                 ,attributes=[xml_attrib(application, App)]
@@ -515,17 +519,17 @@ action_el(App, Data) ->
                             ]
                }.
 
--spec result_el/1 :: (xml_attrib_value()) -> xml_el().
+-spec result_el(xml_attrib_value()) -> xml_el().
 result_el(Status) ->
     #xmlElement{name='result'
                 ,attributes=[xml_attrib(status, Status)]
                }.
 
--spec prepend_child/2 :: (xml_el(), xml_el()) -> xml_el().
+-spec prepend_child(xml_el(), xml_el()) -> xml_el().
 prepend_child(#xmlElement{content=Contents}=El, Child) ->
     El#xmlElement{content=[Child|Contents]}.
 
--spec xml_attrib/2 :: (xml_attrib_name(), xml_attrib_value()) -> xml_attrib().
+-spec xml_attrib(xml_attrib_name(), xml_attrib_value()) -> xml_attrib().
 xml_attrib(Name, Value) when is_atom(Name) ->
     #xmlAttribute{name=Name, value=wh_util:to_list(Value)}.
 
@@ -540,7 +544,7 @@ sofia_profiles_el(JObj) ->
                                   ]
                           end, [], wh_json:get_keys(JObj)),
     #xmlElement{name='profiles', content=Content}.
-    
+
 sofia_profile_el(JObj) ->
     Settings = wh_json:get_value(<<"Settings">>, JObj, wh_json:new()),
     Gateways = wh_json:get_value(<<"Gateways">>, JObj, wh_json:new()),
@@ -549,7 +553,7 @@ sofia_profile_el(JObj) ->
                 }
      ,#xmlElement{name='gateways'
                   ,content=sofia_gateways_el(Gateways)
-                 }            
+                 }
     ].
 
 sofia_settings_el(JObj) ->
@@ -565,7 +569,7 @@ sofia_settings_el(JObj) ->
                         ]
                 end, [], wh_json:get_keys(JObj)).
 
-sofia_gateways_el(JObj) -> 
+sofia_gateways_el(JObj) ->
     lists:foldl(fun(Key, Xml) ->
                         Gateway = wh_json:get_value(Key, JObj),
                         [#xmlElement{name='gateway'
@@ -577,7 +581,7 @@ sofia_gateways_el(JObj) ->
                 end, [], wh_json:get_keys(JObj)).
 
 sofia_gateway_el(JObj) ->
-    lists:foldl(fun(<<"Variables">>, Xml) -> 
+    lists:foldl(fun(<<"Variables">>, Xml) ->
                         Variables = wh_json:get_value(<<"Variables">>, JObj),
                         [#xmlElement{name='variables'
                                      ,content=sofia_gateway_vars_el(Variables)
@@ -607,8 +611,7 @@ sofia_gateway_vars_el(JObj) ->
                                     }
                          | Xml
                         ]
-                end, [], wh_json:get_keys(JObj)).    
-
+                end, [], wh_json:get_keys(JObj)).
 
 sofia_gateways_xml_to_json(Xml) ->
     lists:foldl(fun sofia_gateway_xml_to_json/2
@@ -636,7 +639,7 @@ sofia_gateway_xml_to_json(Xml, JObj) ->
             ],
     wh_json:set_value(Id, wh_json:from_list(Props), JObj).
 
--spec sofia_gateway_vars_xml_to_json/2 :: (xml_el() | xml_els(), wh_json:object()) -> wh_json:object().
+-spec sofia_gateway_vars_xml_to_json(xml_el() | xml_els(), wh_json:object()) -> wh_json:object().
 sofia_gateway_vars_xml_to_json(#xmlElement{}=Xml, JObj) ->
     sofia_gateway_vars_xml_to_json([Xml], JObj);
 sofia_gateway_vars_xml_to_json([], JObj) ->

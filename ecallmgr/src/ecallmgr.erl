@@ -18,12 +18,12 @@
 %% Starts the app for inclusion in a supervisor tree
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
     ecallmgr_sup:start_link().
 
--spec start/0 :: () -> 'ok' | {'error', term()}.
+-spec start() -> 'ok' | {'error', term()}.
 start() ->
     _ = start_deps(),
     application:start(ecallmgr, permanent).
@@ -34,7 +34,7 @@ start() ->
 %% Stop the app
 %% @end
 %%--------------------------------------------------------------------
--spec stop/0 :: () -> 'ok'.
+-spec stop() -> 'ok'.
 stop() ->
     application:stop(ecallmgr).
 
@@ -44,7 +44,7 @@ stop() ->
 %% Ensures that all dependencies for this app are already running
 %% @end
 %%--------------------------------------------------------------------
--spec start_deps/0 :: () -> 'ok'.
+-spec start_deps() -> 'ok'.
 start_deps() ->
     lager:start(),
     _ = [wh_util:ensure_started(App) || App <- [sasl, crypto, whistle_amqp, gproc, ibrowse, whistle_stats]],

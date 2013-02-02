@@ -73,7 +73,7 @@
 %% @spec start_link() -> {'ok', Pid} | ignore | {'error', Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (atom(), ne_binary()) -> startlink_ret().
+-spec start_link(atom(), ne_binary()) -> startlink_ret().
 start_link(Node, CallId) ->
     Bindings = [{call, [{callid, CallId}
                         ,{restrict_to, [publisher_usurp]}
@@ -98,33 +98,33 @@ shutdown(Node, UUID) ->
         ],
     ok.
 
--spec callid/1 :: (pid()) -> ne_binary().
+-spec callid(pid()) -> ne_binary().
 callid(Srv) ->
     gen_listener:call(Srv, {callid}, 1000).
 
--spec node/1 :: (pid()) -> ne_binary().
+-spec node(pid()) -> ne_binary().
 node(Srv) ->
     gen_listener:call(Srv, {node}, 1000).
 
 update_node(Srv, Node) ->
     gen_listener:cast(Srv, {update_node, Node}).
 
--spec transfer/3 :: (pid(), atom(), wh_proplist()) -> 'ok'.
+-spec transfer(pid(), atom(), wh_proplist()) -> 'ok'.
 transfer(Srv, TransferType, Props) ->
     gen_listener:cast(Srv, {TransferType, Props}).
 
--spec queue_name/1 :: (pid()) -> ne_binary().
+-spec queue_name(pid()) -> ne_binary().
 queue_name(Srv) ->
     gen_listener:queue_name(Srv).
 
--spec to_json/1 :: (proplist()) -> wh_json:object().
+-spec to_json(proplist()) -> wh_json:object().
 to_json(Props) ->
     Masqueraded = is_masquerade(Props),
     EventName = get_event_name(Props, Masqueraded),
     ApplicationName = get_event_application(Props, Masqueraded),
     wh_json:from_list(create_event(EventName, ApplicationName, Props)).
 
--spec handle_publisher_usurp/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_publisher_usurp(wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_publisher_usurp(JObj, Props) ->
     CallId = props:get_value(call_id, Props),
     Ref = props:get_value(reference, Props),
@@ -157,7 +157,7 @@ handle_publisher_usurp(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: ([atom() | ne_binary(),...]) -> {'ok', #state{}}.
+-spec init([atom() | ne_binary(),...]) -> {'ok', #state{}}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
 
@@ -384,7 +384,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_process_channel_destroy/3 :: (atom(), ne_binary(), wh_proplist()) -> 'ok'.
+-spec maybe_process_channel_destroy(atom(), ne_binary(), wh_proplist()) -> 'ok'.
 maybe_process_channel_destroy(Node, CallId, Props) ->
     case ecallmgr_fs_nodes:channel_node(CallId) of
         {ok, Node} -> process_channel_destroy(Node, CallId, Props);
@@ -394,14 +394,14 @@ maybe_process_channel_destroy(Node, CallId, Props) ->
             publish_event(create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props))
     end.
 
--spec process_channel_destroy/3 :: (atom(), ne_binary(), wh_proplist()) -> 'ok'.
+-spec process_channel_destroy(atom(), ne_binary(), wh_proplist()) -> 'ok'.
 process_channel_destroy(_, _, Props) ->
     EventName = props:get_value(<<"Event-Name">>, Props),
     ApplicationName = props:get_value(<<"Application">>, Props),
     publish_event(create_event(EventName, ApplicationName, Props)),
     gen_server:cast(self(), {graceful_shutdown}).
 
--spec process_channel_event/1 :: (wh_proplist()) -> 'ok'.
+-spec process_channel_event(wh_proplist()) -> 'ok'.
 process_channel_event(Props) ->
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
                              props:get_value(<<"Unique-ID">>, Props)),
@@ -418,12 +418,12 @@ process_channel_event(Props) ->
             publish_event(create_event(EventName, ApplicationName, Props))
     end.
 
--spec create_event/3 :: (ne_binary(), api_binary(), wh_proplist()) -> wh_proplist().
+-spec create_event(ne_binary(), api_binary(), wh_proplist()) -> wh_proplist().
 create_event(EventName, ApplicationName, Props) ->
     wh_api:default_headers(?EVENT_CAT, EventName, ?APP_NAME, ?APP_VERSION)
         ++ create_event_props(EventName, ApplicationName, Props).
 
--spec create_event_props/3 :: (binary(), api_binary(), wh_proplist()) -> wh_proplist().
+-spec create_event_props(binary(), api_binary(), wh_proplist()) -> wh_proplist().
 create_event_props(EventName, ApplicationName, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
 
@@ -471,11 +471,11 @@ create_event_props(EventName, ApplicationName, Props) ->
        | event_specific(EventName, ApplicationName, Props)
       ]).
 
--spec is_channel_moving/1 :: (proplist()) -> boolean().
+-spec is_channel_moving(proplist()) -> boolean().
 is_channel_moving(Props) ->
     wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)).
 
--spec publish_event/1 :: (proplist()) -> 'ok'.
+-spec publish_event(proplist()) -> 'ok'.
 publish_event(Props) ->
     %% call_control publishes channel create/destroy on the control
     %% events queue by calling create_event then this directly.
@@ -500,7 +500,7 @@ publish_event(Props) ->
     end,
     wapi_call:publish_event(CallId, Props).
 
--spec is_masquerade/1 :: (wh_proplist()) -> boolean().
+-spec is_masquerade(wh_proplist()) -> boolean().
 is_masquerade(Props) ->
     case props:get_value(<<"Event-Subclass">>, Props) of
         %% If this is a event created by whistle, then use
@@ -510,11 +510,11 @@ is_masquerade(Props) ->
         _Else -> false
     end.
 
--spec get_event_name/2 :: (wh_proplist(), boolean()) -> api_binary().
+-spec get_event_name(wh_proplist(), boolean()) -> api_binary().
 get_event_name(Props, true) -> props:get_value(<<"whistle_event_name">>, Props);
 get_event_name(Props, false) -> props:get_value(<<"Event-Name">>, Props).
 
--spec get_event_application/2 :: (wh_proplist(), boolean()) -> api_binary().
+-spec get_event_application(wh_proplist(), boolean()) -> api_binary().
 get_event_application(Props, true) ->
     %% when the evet is masqueraded override the actual application
     %% with what whistle wants the event to be
@@ -524,7 +524,7 @@ get_event_application(Props, false) ->
                     ,props:get_value(<<"Event-Subclass">>, Props)).
 
 %% return a proplist of k/v pairs specific to the event
--spec event_specific/3 :: (binary(), api_binary(), wh_proplist()) -> wh_proplist().
+-spec event_specific(binary(), api_binary(), wh_proplist()) -> wh_proplist().
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"playback">> = Application, Prop) ->
     %% if the playback was terminated as a result of DTMF, include it
     [{<<"DTMF-Digit">>, props:get_value(<<"variable_playback_terminator_used">>, Prop)}
@@ -585,11 +585,11 @@ event_specific(_Evt, Application, Prop) ->
      ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
     ].
 
--spec silence_terminated/1 :: ('undefined' | integer()) -> 'undefined' | boolean().
+-spec silence_terminated('undefined' | integer()) -> 'undefined' | boolean().
 silence_terminated(undefined) -> undefined;
 silence_terminated(Hits) when is_integer(Hits) -> Hits =:= 0.
 
--spec get_fs_var/4 :: (atom(), ne_binary(), ne_binary(), binary()) -> binary().
+-spec get_fs_var(atom(), ne_binary(), ne_binary(), binary()) -> binary().
 get_fs_var(Node, CallId, Var, Default) ->
     case freeswitch:api(Node, uuid_getvar, wh_util:to_list(<<CallId/binary, " ", Var/binary>>)) of
         {'ok', <<"_undef_">>} -> Default;
@@ -598,7 +598,7 @@ get_fs_var(Node, CallId, Var, Default) ->
         _ -> Default
     end.
 
--spec should_publish/3 :: (ne_binary(), ne_binary(), boolean()) -> boolean().
+-spec should_publish(ne_binary(), ne_binary(), boolean()) -> boolean().
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, false) ->
     lager:debug("suppressing bridge execute complete in favour the whistle masquerade of this event"),
     false;
@@ -613,7 +613,7 @@ should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
 should_publish(EventName, _, _) ->
     lists:member(EventName, ?CALL_EVENTS).
 
--spec get_transfer_history/1 :: (wh_proplist()) -> wh_json:json_object().
+-spec get_transfer_history(wh_proplist()) -> wh_json:json_object().
 get_transfer_history(Props) ->
     SerializedHistory = props:get_value(<<"variable_transfer_history">>, Props),
     Hist = [HistJObj
@@ -621,7 +621,7 @@ get_transfer_history(Props) ->
                (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, [global]))) =/= undefined],
     wh_json:from_list(Hist).
 
--spec create_trnsf_history_object/1 :: (list()) -> {ne_binary(), wh_json:json_object()} | 'undefined'.
+-spec create_trnsf_history_object(list()) -> {ne_binary(), wh_json:json_object()} | 'undefined'.
 create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
     [Transferee, Transferer] = binary:split(Props, <<"/">>),
     Trans = [{<<"Call-ID">>, CallId}
@@ -644,14 +644,14 @@ create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
 create_trnsf_history_object(_) ->
     undefined.
 
--spec get_channel_state/1 :: (wh_proplist()) -> ne_binary().
+-spec get_channel_state(wh_proplist()) -> ne_binary().
 get_channel_state(Prop) ->
     case props:get_value(props:get_value(<<"Channel-State">>, Prop), ?FS_CHANNEL_STATES) of
         undefined -> <<"unknown">>;
         ChannelState -> ChannelState
     end.
 
--spec get_hangup_cause/1 :: (wh_proplist()) -> api_binary().
+-spec get_hangup_cause(wh_proplist()) -> api_binary().
 get_hangup_cause(Props) ->
     Causes = case props:get_value(<<"variable_current_application">>, Props) of
                  <<"bridge">> ->
@@ -661,23 +661,23 @@ get_hangup_cause(Props) ->
              end,
     find_event_value(Causes, Props).
 
--spec get_disposition/1 :: (wh_proplist()) -> api_binary().
+-spec get_disposition(wh_proplist()) -> api_binary().
 get_disposition(Props) ->
     find_event_value([<<"variable_endpoint_disposition">>
                           ,<<"variable_originate_disposition">>
                      ], Props).
 
--spec get_hangup_code/1 :: (wh_proplist()) -> api_binary().
+-spec get_hangup_code(wh_proplist()) -> api_binary().
 get_hangup_code(Props) ->
     find_event_value([<<"variable_proto_specific_hangup_cause">>
                           ,<<"variable_last_bridge_proto_specific_hangup_cause">>
                      ], Props).
 
--spec find_event_value/2 :: ([ne_binary(),...], wh_proplist()) -> api_binary().
+-spec find_event_value([ne_binary(),...], wh_proplist()) -> api_binary().
 find_event_value(Keys, Props) ->
     find_event_value(Keys, Props, undefined).
 
--spec find_event_value/3 :: ([ne_binary(),...], wh_proplist(), term()) -> term().
+-spec find_event_value([ne_binary(),...], wh_proplist(), term()) -> term().
 find_event_value([], _, Default) -> Default;
 find_event_value([H|T], Props, Default) ->
     Value = props:get_value(H, Props),
@@ -686,8 +686,8 @@ find_event_value([H|T], Props, Default) ->
         false -> Value
     end.
 
--spec swap_call_legs/1 :: (wh_proplist() | wh_json:json_object()) -> wh_proplist().
--spec swap_call_legs/2 :: (wh_proplist(), wh_proplist()) -> wh_proplist().
+-spec swap_call_legs(wh_proplist() | wh_json:json_object()) -> wh_proplist().
+-spec swap_call_legs(wh_proplist(), wh_proplist()) -> wh_proplist().
 
 swap_call_legs(Props) when is_list(Props) ->
     swap_call_legs(Props, []);

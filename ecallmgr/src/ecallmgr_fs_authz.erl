@@ -55,8 +55,8 @@ start_link(Node) ->
 start_link(Node, Options) ->
     gen_server:start_link(?MODULE, [Node, Options], []).
 
--spec kill_channel/2 :: (wh_proplist(), atom()) -> 'ok'.
--spec kill_channel/3 :: (ne_binary(), ne_binary(), atom()) -> 'ok'.
+-spec kill_channel(wh_proplist(), atom()) -> 'ok'.
+-spec kill_channel(ne_binary(), ne_binary(), atom()) -> 'ok'.
 
 kill_channel(Props, Node) ->
     Direction = props:get_value(<<"Call-Direction">>, Props),
@@ -73,13 +73,13 @@ kill_channel(<<"outbound">>, CallId, Node) ->
     _ = freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
     ok.
 
--spec handle_channel_create/3 :: (wh_proplist(), ne_binary(), atom()) -> 'ok'.
+-spec handle_channel_create(wh_proplist(), ne_binary(), atom()) -> 'ok'.
 handle_channel_create(Props, CallId, Node) ->
     put(callid, CallId),
     Authorized = maybe_authorize_channel(Props, Node),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized).
 
--spec handle_session_heartbeat/2 :: (wh_proplist(), atom()) -> 'ok'.
+-spec handle_session_heartbeat(wh_proplist(), atom()) -> 'ok'.
 handle_session_heartbeat(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put(callid, CallId),
@@ -220,7 +220,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_authorize_channel/2 :: (wh_proplist(), atom()) -> boolean().
+-spec maybe_authorize_channel(wh_proplist(), atom()) -> boolean().
 maybe_authorize_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
@@ -228,7 +228,7 @@ maybe_authorize_channel(Props, Node) ->
         false -> is_authz_enabled(Props, CallId, Node)
     end.
 
--spec is_authz_enabled/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec is_authz_enabled(wh_proplist(), ne_binary(), atom()) -> boolean().
 is_authz_enabled(Props, CallId, Node) ->
     case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)) of
         true ->
@@ -238,7 +238,7 @@ is_authz_enabled(Props, CallId, Node) ->
             allow_call(Props, CallId, Node)
     end.
 
--spec is_global_resource/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec is_global_resource(wh_proplist(), ne_binary(), atom()) -> boolean().
 is_global_resource(Props, CallId, Node) ->
     GlobalResource = props:get_value(?GET_CCV(<<"Global-Resource">>), Props, true),
     case wh_util:is_true(GlobalResource) of
@@ -248,7 +248,7 @@ is_global_resource(Props, CallId, Node) ->
             allow_call(Props, CallId, Node)
     end.
         
--spec is_consuming_resource/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec is_consuming_resource(wh_proplist(), ne_binary(), atom()) -> boolean().
 is_consuming_resource(Props, CallId, Node) ->
     case props:get_value(<<"Call-Direction">>, Props) of
         <<"outbound">> ->
@@ -267,14 +267,14 @@ is_consuming_resource(Props, CallId, Node) ->
             end
     end.
 
--spec set_heartbeat_on_answer/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec set_heartbeat_on_answer(wh_proplist(), ne_binary(), atom()) -> boolean().
 set_heartbeat_on_answer(Props, CallId, Node) ->
     %% Ensure that even if the call is answered while we are authorizing it
     %% the session will hearbeat.
     'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
     ensure_account_id_exists(Props, CallId, Node).
 
--spec ensure_account_id_exists/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec ensure_account_id_exists(wh_proplist(), ne_binary(), atom()) -> boolean().
 ensure_account_id_exists(Props, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Account-ID">>), Props) of
         undefined ->
@@ -291,7 +291,7 @@ ensure_account_id_exists(Props, CallId, Node) ->
             authorize_account(Props, CallId, Node)
     end.
 
--spec update_account_id/4 :: (wh_proplist(), wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec update_account_id(wh_proplist(), wh_proplist(), ne_binary(), atom()) -> boolean().
 update_account_id(Resp, Props, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Account-ID">>), Resp) of
         undefined -> update_reseller_id(Resp, Props, CallId, Node);
@@ -300,7 +300,7 @@ update_account_id(Resp, Props, CallId, Node) ->
             update_reseller_id(Resp, [{?GET_CCV(<<"Account-ID">>), AccountId}|Props], CallId, Node)
     end.
 
--spec update_reseller_id/4 :: (wh_proplist(), wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec update_reseller_id(wh_proplist(), wh_proplist(), ne_binary(), atom()) -> boolean().
 update_reseller_id(Resp, Props, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Reseller-ID">>), Resp) of
         undefined -> authorize_account(Props, CallId, Node);
@@ -309,7 +309,7 @@ update_reseller_id(Resp, Props, CallId, Node) ->
             authorize_account([{?GET_CCV(<<"Reseller-ID">>), ResellerId}|Props], CallId, Node)
     end.
 
--spec authorize_account/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec authorize_account(wh_proplist(), ne_binary(), atom()) -> boolean().
 authorize_account(Props, CallId, Node) ->
     AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
     case authorize(AccountId, Props) of
@@ -322,7 +322,7 @@ authorize_account(Props, CallId, Node) ->
             authorize_reseller(Props, CallId, Node)
     end.
 
--spec authorize_reseller/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec authorize_reseller(wh_proplist(), ne_binary(), atom()) -> boolean().
 authorize_reseller(Props, CallId, Node) ->
     ResellerId = props:get_value(?GET_CCV(<<"Reseller-ID">>), Props),
     AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
@@ -338,23 +338,23 @@ authorize_reseller(Props, CallId, Node) ->
             rate_call(Props, CallId, Node)
     end.
         
--spec rate_call/3 :: (wh_proplist(), ne_binary(), atom()) -> 'true'.
+-spec rate_call(wh_proplist(), ne_binary(), atom()) -> 'true'.
 rate_call(Props, CallId, Node) ->
     spawn(?MODULE, rate_channel, [Props, Node]),
     allow_call(Props, CallId, Node).
 
--spec allow_call/3 :: (wh_proplist(), ne_binary(), atom()) -> 'true'.
+-spec allow_call(wh_proplist(), ne_binary(), atom()) -> 'true'.
 allow_call(_, _, _) ->
     lager:debug("channel authorization succeeded, allowing call", []),
     true.
 
--spec maybe_deny_call/3 :: (wh_proplist(), api_binary(), atom()) -> boolean().
+-spec maybe_deny_call(wh_proplist(), api_binary(), atom()) -> boolean().
 maybe_deny_call(Props, _, Node) ->
     DryRun = wh_util:is_true(ecallmgr_config:get(<<"authz_dry_run">>, false)),
     _ = DryRun orelse spawn(?MODULE, kill_channel, [Props, Node]),
     DryRun orelse false.
 
--spec rate_channel/2 :: (wh_proplist(), atom()) -> 'ok'.
+-spec rate_channel(wh_proplist(), atom()) -> 'ok'.
 rate_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put(callid, CallId),
@@ -369,7 +369,7 @@ rate_channel(Props, Node) ->
         {ok, RespJObj} -> set_rating_ccvs(RespJObj, Node)
     end.
 
--spec authorize/2 :: (api_binary(), wh_proplist()) ->
+-spec authorize(api_binary(), wh_proplist()) ->
                              {'ok', ne_binary()} |
                              {'error', 'account_limited'} |
                              {'error', 'default_is_deny'}.
@@ -392,7 +392,7 @@ authorize(AccountId, Props) ->
             end
     end.
 
--spec reauthorize/3 :: (api_binary(), ne_binary(), wh_proplist()) ->
+-spec reauthorize(api_binary(), ne_binary(), wh_proplist()) ->
                                {'ok', wh_json:object()} |
                                {'error', _}.
 reauthorize(undefined, _, _) -> {error, no_account};
@@ -414,7 +414,7 @@ reauthorize(AccountId, Type, Props) ->
             end
     end.
 
--spec identify_account/2 :: (api_binary(), wh_proplist()) ->
+-spec identify_account(api_binary(), wh_proplist()) ->
                                     {'ok', wh_proplist()} |
                                     {'error', 'unidentified_channel' | 'not_required'}.
 identify_account(_, Props) ->
@@ -441,7 +441,7 @@ identify_account(_, Props) ->
             end
     end.
 
--spec attempt_reauthorization/5 :: ('account'|'reseller', api_binary(), ne_binary(), wh_proplist(), atom()) -> 'ok'.
+-spec attempt_reauthorization('account'|'reseller', api_binary(), ne_binary(), wh_proplist(), atom()) -> 'ok'.
 attempt_reauthorization(Billing, AccountId, Type, Props, Node) ->
     case reauthorize(AccountId, Type, Props) of
         {error, account_limited} -> 
@@ -455,14 +455,14 @@ attempt_reauthorization(Billing, AccountId, Type, Props, Node) ->
         _Else -> ok
     end.
 
--spec maybe_update_ccvs/3 :: ('undefined' | wh_json:object(), ne_binary(), atom()) -> 'ok'.
+-spec maybe_update_ccvs('undefined' | wh_json:object(), ne_binary(), atom()) -> 'ok'.
 maybe_update_ccvs(undefined, _, _) ->
     ok;
 maybe_update_ccvs(CCVs, CallId, Node) ->
     ChannelVars = wh_json:to_proplist(CCVs),
     ecallmgr_util:set(Node, CallId, ChannelVars).
 
--spec maybe_update_billing_type/5 :: (account|reseller, ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
+-spec maybe_update_billing_type(account|reseller, ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
 maybe_update_billing_type(_, Type, Type, _, _) ->
     ok;
 maybe_update_billing_type(account, _, Type, CallId, Node) ->
@@ -470,7 +470,7 @@ maybe_update_billing_type(account, _, Type, CallId, Node) ->
 maybe_update_billing_type(reseller, _, Type, CallId, Node) ->
     ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-Billing">>, Type)).
         
--spec should_reauth/2 :: (ne_binary(), proplist()) -> ne_binary() | 'false'.
+-spec should_reauth(ne_binary(), proplist()) -> ne_binary() | 'false'.
 should_reauth(BillingVar, Props) ->
     case props:get_value(BillingVar, Props) of
         <<"allotment">> = A -> A;
@@ -478,7 +478,7 @@ should_reauth(BillingVar, Props) ->
         _ -> false
     end.
 
--spec authz_default/0 :: () -> {'ok', ne_binary()} |
+-spec authz_default() -> {'ok', ne_binary()} |
                                {'error', 'account_limited'}.
 authz_default() ->
     case ecallmgr_config:get(<<"authz_default_action">>, <<"deny">>) of
@@ -489,7 +489,7 @@ authz_default() ->
             {ok, DefaultType}
     end.
 
--spec set_rating_ccvs/2 :: (wh_json:object(), atom()) -> 'ok'.
+-spec set_rating_ccvs(wh_json:object(), atom()) -> 'ok'.
 set_rating_ccvs(JObj, Node) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
@@ -503,7 +503,7 @@ set_rating_ccvs(JObj, Node) ->
                            end, <<>>, ?RATE_VARS),
     'ok' = ecallmgr_util:send_cmd(Node, CallId, "multiset", <<"^^", Multiset/binary>>).
 
--spec authz_req/2 :: (ne_binary(), wh_proplist()) -> wh_proplist().
+-spec authz_req(ne_binary(), wh_proplist()) -> wh_proplist().
 authz_req(AccountId, Props) ->
     [{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, Props, <<"noname">>)}
      ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, Props, <<"0000000000">>)}
@@ -518,7 +518,7 @@ authz_req(AccountId, Props) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec reauthz_req/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> wh_proplist().
+-spec reauthz_req(ne_binary(), ne_binary(), wh_proplist()) -> wh_proplist().
 reauthz_req(AccountId, Type, Props) ->
     [{<<"Timestamp">>, get_time_value(<<"Event-Date-Timestamp">>, Props)}
      ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, Props, <<"noname">>)}
@@ -540,7 +540,7 @@ reauthz_req(AccountId, Type, Props) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec authz_identify_req/1 :: (wh_proplist()) -> wh_proplist().
+-spec authz_identify_req(wh_proplist()) -> wh_proplist().
 authz_identify_req(Props) ->
     [{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props,
                                             props:get_value(<<"Caller-Caller-ID-Name">>, Props, <<"Unknown">>))}
@@ -555,7 +555,7 @@ authz_identify_req(Props) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec rating_req/2 :: (ne_binary(), wh_proplist()) -> wh_proplist().
+-spec rating_req(ne_binary(), wh_proplist()) -> wh_proplist().
 rating_req(CallId, Props) ->
     AccountId = props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Account-ID">>, Props),
     [{<<"To-DID">>, props:get_value(<<"Caller-Destination-Number">>, Props)}
@@ -567,7 +567,7 @@ rating_req(CallId, Props) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec get_time_value/2 :: (ne_binary(), wh_proplist()) -> non_neg_integer().
+-spec get_time_value(ne_binary(), wh_proplist()) -> non_neg_integer().
 get_time_value(Key, Props) ->
     V = props:get_value(Key, Props, 0),
     wh_util:unix_seconds_to_gregorian_seconds(wh_util:microseconds_to_seconds(V)).

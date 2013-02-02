@@ -49,7 +49,7 @@ start_link(Node) ->
 start_link(Node, Options) ->
     gen_server:start_link(?MODULE, [Node, Options], []).
 
--spec handle_sucessful_registration/2 :: (proplist(), atom()) -> 'ok'.
+-spec handle_sucessful_registration(proplist(), atom()) -> 'ok'.
 handle_sucessful_registration(Props, Node) ->
     lager:debug("received registration event"),
     ecallmgr_registrar:reg_success(Props, Node),
@@ -206,7 +206,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec lookup_user/4 :: (atom(), ne_binary(), ne_binary(), wh_proplist()) -> fs_handlecall_ret().
+-spec lookup_user(atom(), ne_binary(), ne_binary(), wh_proplist()) -> fs_handlecall_ret().
 lookup_user(Node, Id, Method,  Data) ->
     put(callid, Id),
     %% build req for rabbit
@@ -217,7 +217,7 @@ lookup_user(Node, Id, Method,  Data) ->
     lager:debug("sending XML to ~w: ~s", [Node, Xml]),
     freeswitch:fetch_reply(Node, Id, iolist_to_binary(Xml)).    
 
--spec handle_lookup_resp/4 :: (ne_binary(), ne_binary(), ne_binary(), {'ok', wh_json:object()} | {'error', _}) -> {'ok', _}.
+-spec handle_lookup_resp(ne_binary(), ne_binary(), ne_binary(), {'ok', wh_json:object()} | {'error', _}) -> {'ok', _}.
 handle_lookup_resp(<<"reverse-lookup">>, Realm, Username, {ok, JObj}) ->
     Props = [{<<"Domain-Name">>, Realm}
              ,{<<"User-ID">>, Username}
@@ -232,7 +232,7 @@ handle_lookup_resp(_, _, _, {error, _R}) ->
     lager:debug("authn request lookup failed: ~p", [_R]),
     ecallmgr_fs_xml:route_not_found().
     
--spec publish_register_event/1 :: (wh_proplist()) -> 'ok'.
+-spec publish_register_event(wh_proplist()) -> 'ok'.
 publish_register_event(Data) ->
     ApiProp = lists:foldl(fun(K, Api) ->
                                   case props:get_value(wh_util:to_lower_binary(K), Data) of
@@ -254,7 +254,7 @@ publish_register_event(Data) ->
                         ,fun wapi_registration:publish_success/1
                        ).
 
--spec maybe_query_registrar/6 :: (ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec maybe_query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:object()} | {'error', _}.
 maybe_query_registrar(Realm, Username, Node, Id, Method, Data) ->
     case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?CREDS_KEY(Realm, Username)) of
         {ok, _}=Ok -> Ok;
@@ -262,7 +262,7 @@ maybe_query_registrar(Realm, Username, Node, Id, Method, Data) ->
             query_registrar(Realm, Username, Node, Id, Method, Data)
 end.
 
--spec query_registrar/6 :: (ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:object()} | {'error', _}.
 query_registrar(Realm, Username, Node, Id, Method, Data) ->
     lager:debug("looking up credentials of ~s@~s for a ~s", [Username, Realm, Method]),
     Req = [{<<"Msg-ID">>, Id}

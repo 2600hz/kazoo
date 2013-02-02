@@ -48,7 +48,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({local, ?SERVER}, ?MODULE, [{responders, ?RESPONDERS}
                                                         ,{bindings, ?BINDINGS}
@@ -57,7 +57,7 @@ start_link() ->
                                                         ,{consume_options, ?CONSUME_OPTIONS}
                                                        ], []).
 
--spec handle_channel_status/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_channel_status(wh_json:json_object(), proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
     true = wapi_call:channel_status_req_v(JObj),
     _ = wh_util:put_callid(JObj),
@@ -92,7 +92,7 @@ handle_channel_status(JObj, _Props) ->
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
--spec handle_call_status/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_call_status(wh_json:json_object(), proplist()) -> 'ok'.
 handle_call_status(JObj, _Props) ->
     true = wapi_call:call_status_req_v(JObj),
     _ = wh_util:put_callid(JObj),
@@ -236,7 +236,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec create_call_status_resp/2 :: (wh_proplist(), boolean()) -> wh_proplist().
+-spec create_call_status_resp(wh_proplist(), boolean()) -> wh_proplist().
 create_call_status_resp(Props, true) ->
     {OLCIName, OLCINum} = case props:get_value(<<"Other-Leg-Direction">>, Props) of
                                <<"outbound">> ->
@@ -292,7 +292,7 @@ create_call_status_resp(Props, false) ->
      ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)].
 
--spec uuid_dump/2 :: (atom(), string() | binary()) ->
+-spec uuid_dump(atom(), string() | binary()) ->
                              {'ok', wh_proplist()} |
                              'error'.
 uuid_dump(Node, UUID) ->

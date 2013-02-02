@@ -13,7 +13,7 @@
 
 -include("ecallmgr.hrl").
 
--spec exec_cmd/4 :: (atom(), ne_binary(), wh_json:json_object(), pid()) ->
+-spec exec_cmd(atom(), ne_binary(), wh_json:json_object(), pid()) ->
                             'ok' |
                             'error' |
                             ecallmgr_util:send_cmd_ret() |
@@ -48,7 +48,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 %% @end
 %%--------------------------------------------------------------------
 -type fs_app() :: {ne_binary(), ne_binary() | 'noop'}.
--spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) ->
+-spec get_fs_app(atom(), ne_binary(), wh_json:json_object(), ne_binary()) ->
                               fs_app() |
                               {'return', 'error'} |
                               {'error', ne_binary()} |
@@ -687,7 +687,7 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_call_pickup_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) ->
+-spec get_call_pickup_app(atom(), ne_binary(), wh_json:json_object(), ne_binary()) ->
                                        {ne_binary(), ne_binary()}.
 get_call_pickup_app(Node, UUID, JObj, Target) ->
     _ = case wh_json:is_true(<<"Park-After-Pickup">>, JObj, false) of
@@ -716,7 +716,7 @@ get_call_pickup_app(Node, UUID, JObj, Target) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_http/6 :: (atom(), ne_binary(), ne_binary(), 'put' | 'post', 'store' | 'fax', wh_json:json_object()) -> any().
+-spec stream_over_http(atom(), ne_binary(), ne_binary(), 'put' | 'post', 'store' | 'fax', wh_json:json_object()) -> any().
 stream_over_http(Node, UUID, File, Method, Type, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
@@ -754,7 +754,7 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
         fax -> send_store_fax_call_event(UUID, Result)
     end.
             
--spec send_fs_store/3 :: (atom(), ne_binary(), 'put' | 'post') -> fs_api_ret().
+-spec send_fs_store(atom(), ne_binary(), 'put' | 'post') -> fs_api_ret().
 send_fs_store(Node, Args, put) ->
     freeswitch:api(Node, http_put, wh_util:to_list(Args));
 send_fs_store(Node, Args, post) ->
@@ -765,7 +765,7 @@ send_fs_store(Node, Args, post) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_terminators/1 :: ('undefined' | binary() | list()) -> {ne_binary(), ne_binary()}.
+-spec get_terminators('undefined' | binary() | list()) -> {ne_binary(), ne_binary()}.
 get_terminators(Ts) -> 
     case wh_util:is_empty(Ts) of
         true -> {<<"playback_terminators">>, <<"none">>};
@@ -777,7 +777,7 @@ get_terminators(Ts) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_terminators/3 :: (atom(), ne_binary(), 'undefined' | binary() | list()) -> ecallmgr_util:send_cmd_ret().
+-spec set_terminators(atom(), ne_binary(), 'undefined' | binary() | list()) -> ecallmgr_util:send_cmd_ret().
 set_terminators(Node, UUID, Ts) -> 
     {K, V} = get_terminators(Ts),
     ecallmgr_util:set(Node, UUID, <<K/binary, "=", V/binary>>).
@@ -787,7 +787,7 @@ set_terminators(Node, UUID, Ts) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_fetch_call_event/3 :: (atom(), ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec send_fetch_call_event(atom(), ne_binary(), wh_json:json_object()) -> 'ok'.
 send_fetch_call_event(Node, UUID, JObj) ->
     try
         Prop = case wh_util:is_true(wh_json:get_value(<<"From-Other-Leg">>, JObj)) of
@@ -830,7 +830,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_store_call_event/3 :: (atom(), ne_binary(), wh_json:json_object() | ne_binary()) -> 'ok'.
+-spec send_store_call_event(atom(), ne_binary(), wh_json:json_object() | ne_binary()) -> 'ok'.
 send_store_call_event(Node, UUID, MediaTransResults) ->
     Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
     Prop = try freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
@@ -863,7 +863,7 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                end,
     wapi_call:publish_event(UUID, EvtProp2).
 
--spec send_store_fax_call_event/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+-spec send_store_fax_call_event(ne_binary(), ne_binary()) -> 'ok'.
 send_store_fax_call_event(UUID, Results) ->
     Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
     Prop = [{<<"Msg-ID">>, Timestamp}
@@ -874,7 +874,7 @@ send_store_fax_call_event(UUID, Results) ->
            ],
     wapi_call:publish_event(UUID, Prop).
 
--spec create_dialplan_move_ccvs/4 :: (ne_binary(), atom(), ne_binary(), proplist()) -> proplist().
+-spec create_dialplan_move_ccvs(ne_binary(), atom(), ne_binary(), proplist()) -> proplist().
 create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
     case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
         {'ok', Result} ->
@@ -898,7 +898,7 @@ create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
             DP
     end.
 
--spec play/3 :: (atom(), ne_binary(), wh_json:json_object()) -> {ne_binary(), ne_binary()}.
+-spec play(atom(), ne_binary(), wh_json:json_object()) -> {ne_binary(), ne_binary()}.
 play(Node, UUID, JObj) ->
     Vars = case wh_json:get_value(<<"Group-ID">>, JObj) of
                undefined -> 
@@ -913,13 +913,21 @@ play(Node, UUID, JObj) ->
     F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE),
 
     %% if Leg is set, use uuid_broadcast; otherwise use playback
-    case wh_json:get_value(<<"Leg">>, JObj) of
-        <<"A">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" aleg">>])};
-        <<"B">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" bleg">>])};
-        <<"Both">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" both">>])};
-        _ -> {<<"playback">>, F}
+    case ecallmgr_fs_nodes:channel_bridged(UUID) of
+        false -> {<<"playback">>, F};
+        true -> play_bridged(UUID, JObj, F)
     end.
 
+-spec play_bridged(ne_binary(), wh_json:object(), ne_binary()) -> {ne_binary(), ne_binary()}.
+play_bridged(UUID, JObj, F) ->
+    case wh_json:get_value(<<"Leg">>, JObj) of
+        <<"B">> ->    {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" bleg">>])};
+        <<"A">> ->    {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" aleg">>])};
+        <<"Both">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" both">>])};
+        undefined ->  {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" both">>])}
+    end.
+
+-spec tts_flite(atom(), ne_binary(), wh_json:object()) -> {ne_binary(), ne_binary()}.
 tts_flite(Node, UUID, JObj) ->
     TTSVoice = tts_flite_voice(wh_json:get_value(<<"Voice">>, JObj)),
 
@@ -930,6 +938,6 @@ tts_flite(Node, UUID, JObj) ->
                                       ]),
     {<<"speak">>, wh_json:get_value(<<"Text">>, JObj)}.
 
--spec tts_flite_voice/1 :: (api_binary()) -> ne_binary().
+-spec tts_flite_voice(api_binary()) -> ne_binary().
 tts_flite_voice(<<"male">>) -> <<"rms">>;
 tts_flite_voice(_) -> <<"slt">>.

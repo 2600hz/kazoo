@@ -87,6 +87,7 @@
                  ,inbound_per_minute=sets:new() :: set()
                  ,resource_consumers=sets:new() :: set()
                 }).
+-type astats() :: #astats{}.
 
 -record(state, {nodes = [] :: fs_nodes()
                 ,preconfigured_lookup :: pid()
@@ -100,9 +101,9 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% returns ok or {error, some_error_atom_explaining_more}
--spec add/1 :: (atom()) -> 'ok' | {'error', 'no_connection'}.
--spec add/2 :: (atom(), wh_proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
--spec add/3 :: (atom(), atom(), wh_proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
+-spec add(atom()) -> 'ok' | {'error', 'no_connection'}.
+-spec add(atom(), wh_proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
+-spec add(atom(), atom(), wh_proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
 
 add(Node) ->
     add(Node, []).
@@ -117,19 +118,20 @@ add(Node, Cookie, Opts) ->
                                                           | props:delete(cookie, Opts)
                                                          ]}, 60000).
 
--spec remove/1 :: (atom()) -> 'ok'.
-remove(Node) ->
-    gen_server:cast(?MODULE, {rm_fs_node, Node}).
-
--spec nodeup/1 :: (atom()) -> 'ok'.
+-spec nodeup(atom()) -> 'ok'.
 nodeup(Node) ->
     gen_server:cast(?MODULE, {fs_nodeup, Node}).
 
--spec connected/0 :: () -> [atom(),...] | [].
+%% returns ok or {error, some_error_atom_explaining_more}
+-spec remove(atom()) -> 'ok'.
+remove(Node) ->
+    gen_server:cast(?MODULE, {rm_fs_node, Node}).
+
+-spec connected() -> [atom(),...] | [].
 connected() ->
     gen_server:call(?MODULE, connected_nodes).
 
--spec is_node_up/1 :: (atom()) -> boolean().
+-spec is_node_up(atom()) -> boolean().
 is_node_up(Node) ->
     gen_server:call(?MODULE, {is_node_up, Node}).
 
@@ -164,27 +166,27 @@ status() ->
         ],
     ok.
 
--spec all_nodes_connected/0 :: () -> boolean().
+-spec all_nodes_connected() -> boolean().
 all_nodes_connected() ->
     length(ecallmgr_config:get(<<"fs_nodes">>, [])) =:= length(connected()).
 
--spec account_summary/1 :: (ne_binary()) -> wh_json:json_object().
+-spec account_summary(ne_binary()) -> wh_json:object().
 account_summary(AccountId) ->
     summarize_account_usage(channel_account_summary(AccountId)).
 
--spec show_channels/0 :: () -> wh_json:json_objects().
+-spec show_channels() -> wh_json:objects().
 show_channels() ->
     ets:foldl(fun(Channel, Acc) ->
                       [channel_record_to_json(Channel) | Acc]
               end, [], ecallmgr_channels).
 
--spec new_channel/2 :: (wh_proplist(), atom()) -> 'ok'.
+-spec new_channel(wh_proplist(), atom()) -> 'ok'.
 new_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put(callid, CallId),
     gen_server:cast(?MODULE, {new_channel, props_to_channel_record(Props, Node)}).
 
--spec fetch_channel/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} |
+-spec fetch_channel(ne_binary()) -> {'ok', wh_json:object()} |
                                           {'error', 'not_found'}.
 fetch_channel(UUID) ->
     case ets:lookup(ecallmgr_channels, UUID) of
@@ -192,7 +194,7 @@ fetch_channel(UUID) ->
         _Else -> {error, not_found}
     end.
 
--spec channel_node/1 :: (ne_binary()) -> {'ok', atom()} |
+-spec channel_node(ne_binary()) -> {'ok', atom()} |
                                          {'error', _}.
 channel_node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', node = '$2', _ = '_'}
@@ -204,7 +206,7 @@ channel_node(UUID) ->
         _ -> {error, not_found}
     end.
 
--spec channel_bridged/1 :: (ne_binary()) -> boolean().
+-spec channel_bridged(ne_binary()) -> boolean().
 channel_bridged(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', other_leg = '$2', _ = '_'}
                   ,[{'=:=', '$1', {const, UUID}}]
@@ -216,7 +218,7 @@ channel_bridged(UUID) ->
         _E -> lager:debug("not bridged: ~p", [_E]), false
     end.
 
--spec channel_former_node/1 :: (ne_binary()) -> {'ok', atom()} |
+-spec channel_former_node(ne_binary()) -> {'ok', atom()} |
                                                 {'error', _}.
 channel_former_node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', former_node = '$2', _ = '_'}
@@ -229,11 +231,11 @@ channel_former_node(UUID) ->
         _ -> {error, not_found}
     end.
 
--spec channel_exists/1 :: (ne_binary()) -> boolean().
+-spec channel_exists(ne_binary()) -> boolean().
 channel_exists(UUID) ->
     ets:member(ecallmgr_channels, UUID).
 
--spec channel_import_moh/1 :: (ne_binary()) -> boolean().
+-spec channel_import_moh(ne_binary()) -> boolean().
 channel_import_moh(UUID) ->
     try ets:lookup_element(ecallmgr_channels, UUID, #channel.import_moh) of
         Import -> Import
@@ -241,7 +243,7 @@ channel_import_moh(UUID) ->
         error:badarg -> false
     end.
 
--spec channel_account_summary/1 :: (ne_binary()) -> channels().
+-spec channel_account_summary(ne_binary()) -> channels().
 channel_account_summary(AccountId) ->
     MatchSpec = [{#channel{direction = '$1', account_id = '$2', account_billing = '$7'
                            ,authorizing_id = '$3', resource_id = '$4', billing_id = '$5'
@@ -252,7 +254,7 @@ channel_account_summary(AccountId) ->
                 ],
     ets:select(ecallmgr_channels, MatchSpec).
 
--spec channel_match_presence/1 :: (ne_binary()) -> wh_proplist_kv(ne_binary(), atom()).
+-spec channel_match_presence(ne_binary()) -> wh_proplist_kv(ne_binary(), atom()).
 channel_match_presence(PresenceId) ->
     MatchSpec = [{#channel{uuid = '$1', presence_id = '$2', node = '$3',  _ = '_'}
                   ,[{'=:=', '$2', {const, PresenceId}}]
@@ -280,8 +282,8 @@ channel_move(UUID, ONode, NNode) ->
     end.
 
 %% listens for the event from FS with the XML
--spec channel_resume/2 :: (ne_binary(), atom()) -> boolean().
--spec channel_resume/3 :: (ne_binary(), atom(), wh_proplist()) -> boolean().
+-spec channel_resume(ne_binary(), atom()) -> boolean().
+-spec channel_resume(ne_binary(), atom(), wh_proplist()) -> boolean().
 channel_resume(UUID, NewNode) ->
     catch gproc:reg({p, l, {channel_move, NewNode, UUID}}),
     lager:debug("waiting for message with metadata for channel ~s from ~s", [UUID, NewNode]),
@@ -368,85 +370,85 @@ channel_teardown_sbd(UUID, OriginalNode) ->
             false
     end.
 
--spec channel_set_account_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+-spec channel_set_account_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_account_id(UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_id, Value}});
 channel_set_account_id(UUID, Value) ->
     channel_set_account_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_billing_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+-spec channel_set_billing_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_billing_id(UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.billing_id, Value}});
 channel_set_billing_id(UUID, Value) ->
     channel_set_billing_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_account_billing/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+-spec channel_set_account_billing(ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_account_billing(UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_billing, Value}});
 channel_set_account_billing(UUID, Value) ->
     channel_set_account_billing(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_reseller_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+-spec channel_set_reseller_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_reseller_id(UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_id, Value}});
 channel_set_reseller_id(UUID, Value) ->
     channel_set_reseller_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_reseller_billing/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+-spec channel_set_reseller_billing(ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_reseller_billing(UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_billing, Value}});
 channel_set_reseller_billing(UUID, Value) ->
     channel_set_reseller_billing(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_resource_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+-spec channel_set_resource_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_resource_id(UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.resource_id, Value}});
 channel_set_resource_id(UUID, Value) ->
     channel_set_resource_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_authorizing_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+-spec channel_set_authorizing_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_authorizing_id(UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_id, Value}});
 channel_set_authorizing_id(UUID, Value) ->
     channel_set_authorizing_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_authorizing_type/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+-spec channel_set_authorizing_type(ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_authorizing_type(UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_type, Value}});
 channel_set_authorizing_type(UUID, Value) ->
     channel_set_authorizing_type(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_owner_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+-spec channel_set_owner_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_owner_id(UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.owner_id, Value}});
 channel_set_owner_id(UUID, Value) ->
     channel_set_owner_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_presence_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+-spec channel_set_presence_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_presence_id(UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.presence_id, Value}});
 channel_set_presence_id(UUID, Value) ->
     channel_set_presence_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_precedence/2 :: (ne_binary(), string() | ne_binary() | integer()) -> 'ok'.
+-spec channel_set_precedence(ne_binary(), string() | ne_binary() | integer()) -> 'ok'.
 channel_set_precedence(UUID, Value) when is_integer(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.precedence, Value}});
 channel_set_precedence(UUID, Value) ->
     channel_set_precedence(UUID, wh_util:to_integer(Value)).
 
--spec channel_set_answered/2 :: (ne_binary(), boolean()) -> 'ok'.
+-spec channel_set_answered(ne_binary(), boolean()) -> 'ok'.
 channel_set_answered(UUID, Answered) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.answered, (not wh_util:is_empty(Answered))}}).
 
--spec channel_set_bridged/2 :: (ne_binary(), api_binary()) -> 'ok'.
+-spec channel_set_bridged(ne_binary(), api_binary()) -> 'ok'.
 channel_set_bridged(UUID, OtherUUID) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.other_leg, OtherUUID}}).
 
--spec channel_set_import_moh/2 :: (ne_binary(), boolean()) -> 'ok'.
+-spec channel_set_import_moh(ne_binary(), boolean()) -> 'ok'.
 channel_set_import_moh(UUID, Import) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.import_moh, Import}}).
 
--spec channels_by_auth_id/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', wh_json:objects()}.
+-spec channels_by_auth_id(ne_binary()) -> {'error', 'not_found'} | {'ok', wh_json:objects()}.
 channels_by_auth_id(AuthorizingId) ->
     MatchSpec = [{#channel{authorizing_id = '$1', _ = '_'}
                   ,[{'=:=', '$1', {const, AuthorizingId}}]
@@ -459,7 +461,7 @@ channels_by_auth_id(AuthorizingId) ->
             {ok, [channel_record_to_json(Channel) || Channel <- Channels]}
     end.
 
--spec get_call_precedence/1 :: (ne_binary()) -> integer().
+-spec get_call_precedence(ne_binary()) -> integer().
 get_call_precedence(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', precedence = '$2', _ = '_'}
                   ,[{'=:=', '$1', {const, UUID}}]
@@ -470,7 +472,7 @@ get_call_precedence(UUID) ->
         _ -> 5
     end.
 
--spec channel_set_node/2 :: (atom(), ne_binary()) -> 'ok'.
+-spec channel_set_node(atom(), ne_binary()) -> 'ok'.
 channel_set_node(Node, UUID) ->
     Updates = case channel_node(UUID) of
                   {error, not_found} -> [{#channel.node, Node}];
@@ -483,12 +485,12 @@ channel_set_node(Node, UUID) ->
     lager:debug("updaters: ~p", [Updates]),
     gen_server:cast(?MODULE, {channel_update, UUID, Updates}).
 
--spec destroy_channel/2 :: (wh_proplist(), atom()) -> 'ok'.
+-spec destroy_channel(wh_proplist(), atom()) -> 'ok'.
 destroy_channel(Props, Node) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
     gen_server:cast(?MODULE, {destroy_channel, UUID, Node}).
 
--spec props_to_channel_record/2 :: (wh_proplist(), atom()) -> channel().
+-spec props_to_channel_record(wh_proplist(), atom()) -> channel().
 props_to_channel_record(Props, Node) ->
     #channel{uuid=props:get_value(<<"Unique-ID">>, Props)
              ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
@@ -510,7 +512,7 @@ props_to_channel_record(Props, Node) ->
                                     ,props:get_value(<<"variable_domain_name">>, Props))
              ,username=props:get_value(?GET_CCV(<<"Username">>), Props
                                        ,props:get_value(<<"variable_user_name">>, Props))
-             ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined
+             ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'
              ,answered=props:get_value(<<"Answer-State">>, Props) =:= <<"answered">>
              ,node=Node
              ,timestamp=wh_util:current_tstamp()
@@ -519,7 +521,7 @@ props_to_channel_record(Props, Node) ->
              ,dialplan=props:get_value(<<"Caller-Dialplan">>, Props, ?DEFAULT_FS_DIALPLAN)
             }.
 
--spec channel_record_to_json/1 :: (channel()) -> wh_json:json_object().
+-spec channel_record_to_json(channel()) -> wh_json:object().
 channel_record_to_json(Channel) ->
     wh_json:from_list([{<<"uuid">>, Channel#channel.uuid}
                        ,{<<"destination">>, Channel#channel.destination}
@@ -546,8 +548,8 @@ channel_record_to_json(Channel) ->
                        ,{<<"dialplan">>, Channel#channel.dialplan}
                       ]).
 
--spec sync_channels/0 :: () -> 'ok'.
--spec sync_channels/1 :: (string() | binary() | atom()) -> 'ok'.
+-spec sync_channels() -> 'ok'.
+-spec sync_channels(string() | binary() | atom()) -> 'ok'.
 
 sync_channels() ->
     _ = [ecallmgr_fs_node:sync_channels(Srv)
@@ -563,7 +565,7 @@ sync_channels(Node) ->
         ],
     ok.
 
--spec flush_node_channels/1 :: (string() | binary() | atom()) -> 'ok'.
+-spec flush_node_channels(string() | binary() | atom()) -> 'ok'.
 flush_node_channels(Node) ->
     gen_server:cast(?MODULE, {flush_node_channels, wh_util:to_atom(Node, true)}).
 
@@ -1013,14 +1015,14 @@ start_node_stats(#node{node=NodeName}) ->
     wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".last_connected">>),
     ok.
 
--spec process_channel_multiset/2 :: (ne_binary(), ne_binary()) -> any().
+-spec process_channel_multiset(ne_binary(), ne_binary()) -> any().
 process_channel_multiset(UUID, Datas) ->
     [process_channel_update(UUID, Data)
      || Data <- binary:split(Datas, <<"|">>, [global])
     ].
 
--spec process_channel_update/2 :: (ne_binary(), ne_binary()) -> any().
--spec process_channel_update/3 :: (ne_binary(), ne_binary(), ne_binary()) -> any().
+-spec process_channel_update(ne_binary(), ne_binary()) -> any().
+-spec process_channel_update(ne_binary(), ne_binary(), ne_binary()) -> any().
 
 process_channel_update(UUID, Data) ->
     case binary:split(Data, <<"=">>) of
@@ -1045,14 +1047,14 @@ process_channel_update(UUID, Var, Value) ->
         _:_ -> ok
     end.
 
--spec get_node_from_props/1 :: (wh_proplist()) -> atom().
+-spec get_node_from_props(wh_proplist()) -> atom().
 get_node_from_props(Props) ->
     case props:get_value(<<"ecallmgr_node">>, Props) of
         undefined -> guess_node_from_props(Props);
         Node -> wh_util:to_atom(Node, true)
     end.
 
--spec guess_node_from_props/1 :: (wh_proplist()) -> atom().
+-spec guess_node_from_props(wh_proplist()) -> atom().
 guess_node_from_props(Props) ->
     wh_util:to_atom(<<"freeswitch@", (props:get_value(<<"FreeSWITCH-Hostname">>, Props))/binary>>, true).
 
@@ -1082,8 +1084,9 @@ start_node_from_config(MaybeJObj) ->
             ?MODULE:add(wh_util:to_atom(Node, true), wh_util:to_atom(Cookie, true))
     end.
 
--spec build_channel_record/2 :: (atom(), ne_binary()) -> {'ok', channel()} |
-                                                         {'error', 'timeout' | 'badarg'}.
+-spec build_channel_record(atom(), ne_binary()) ->
+                                        {'ok', channel()} |
+                                        {'error', 'timeout' | 'badarg'}.
 build_channel_record(Node, UUID) ->
     case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
         {ok, Dump} ->
@@ -1093,19 +1096,20 @@ build_channel_record(Node, UUID) ->
         timeout -> {error, timeout}
     end.
 
--spec summarize_account_usage/1 :: (channels()) -> wh_json:json_object().
+-spec summarize_account_usage(channels()) -> wh_json:object().
 summarize_account_usage(Channels) ->
     AStats = lists:foldr(fun classify_channel/2, #astats{}, Channels),
-    wh_json:from_list([{<<"Calls">>, sets:size(AStats#astats.billing_ids)}
-                       ,{<<"Channels">>,  length(Channels)}
-                       ,{<<"Outbound-Flat-Rate">>, sets:size(AStats#astats.outbound_flat_rate)}
-                       ,{<<"Inbound-Flat-Rate">>, sets:size(AStats#astats.inbound_flat_rate)}
-                       ,{<<"Outbound-Per-Minute">>, sets:size(AStats#astats.outbound_per_minute)}
-                       ,{<<"Inbound-Per-Minute">>, sets:size(AStats#astats.inbound_per_minute)}
-                       ,{<<"Resource-Consuming-Calls">>, sets:size(AStats#astats.resource_consumers)}
-                      ]).
+    wh_json:from_list(
+      [{<<"Calls">>, sets:size(AStats#astats.billing_ids)}
+       ,{<<"Channels">>,  length(Channels)}
+       ,{<<"Outbound-Flat-Rate">>, sets:size(AStats#astats.outbound_flat_rate)}
+       ,{<<"Inbound-Flat-Rate">>, sets:size(AStats#astats.inbound_flat_rate)}
+       ,{<<"Outbound-Per-Minute">>, sets:size(AStats#astats.outbound_per_minute)}
+       ,{<<"Inbound-Per-Minute">>, sets:size(AStats#astats.inbound_per_minute)}
+       ,{<<"Resource-Consuming-Calls">>, sets:size(AStats#astats.resource_consumers)}
+      ]).
 
--spec classify_channel/2 :: (channel(), #astats{}) -> #astats{}.
+-spec classify_channel(channel(), astats()) -> astats().
 classify_channel(#channel{billing_id=undefined, uuid=UUID}=Channel, AStats) ->
     classify_channel(Channel#channel{billing_id=wh_util:to_hex_binary(crypto:md5(UUID))}, AStats);
 classify_channel(#channel{bridge_id=undefined, billing_id=BillingId}=Channel, AStats) ->

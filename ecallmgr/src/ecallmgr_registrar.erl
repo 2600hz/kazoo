@@ -20,7 +20,7 @@
 
 -include("ecallmgr.hrl").
 
--spec reg_success/2 :: (wh_proplist(), atom()) -> 'ok'.
+-spec reg_success(wh_proplist(), atom()) -> 'ok'.
 reg_success(Props, Node) ->
     Username = props:get_value(<<"username">>, Props),
     Realm = props:get_value(<<"realm">>, Props),
@@ -31,7 +31,7 @@ reg_success(Props, Node) ->
     Contact = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
     wh_cache:store_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username), Contact, CacheProps).
 
--spec lookup_contact/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'timeout'}.
+-spec lookup_contact(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'timeout'}.
 lookup_contact(Realm, Username) ->
     case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username)) of
         {ok, Contact} -> {ok, Contact};
@@ -44,7 +44,7 @@ lookup_contact(Realm, Username) ->
             end
     end.
 
--spec endpoint_node/2 :: (ne_binary(), ne_binary()) -> {'ok', atom()} | {'error', 'not_found'}.
+-spec endpoint_node(ne_binary(), ne_binary()) -> {'ok', atom()} | {'error', 'not_found'}.
 endpoint_node(Realm, Username) ->
     case wh_cache:fetch_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username)) of
         {ok, Node} -> {ok, Node};
@@ -57,7 +57,7 @@ endpoint_node(Realm, Username) ->
             end
     end.
 
--spec lookup/3 :: (ne_binary(), ne_binary(), [ne_binary(),...]) -> wh_proplist() | {'error', 'timeout'}. 
+-spec lookup(ne_binary(), ne_binary(), [ne_binary(),...]) -> wh_proplist() | {'error', 'timeout'}. 
 lookup(Realm, Username, Fields) ->
     case maybe_query_registrar(Realm, Username) of
         {error, _R} -> {error, timeout};
@@ -72,7 +72,7 @@ lookup(Realm, Username, Fields) ->
             lists:foldr(FilterFun, [], Props)
     end.
 
--spec maybe_query_registrar/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_proplist()} | {'error', _}. 
+-spec maybe_query_registrar(ne_binary(), ne_binary()) -> {'ok', wh_proplist()} | {'error', _}. 
 maybe_query_registrar(Realm, Username) ->
     case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?LOOKUP_KEY(Realm, Username)) of
         {ok, _}=Ok -> Ok;
@@ -80,7 +80,7 @@ maybe_query_registrar(Realm, Username) ->
             query_registrar(Realm, Username)
     end.    
 
--spec query_registrar/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_proplist()} | {'error', _}. 
+-spec query_registrar(ne_binary(), ne_binary()) -> {'ok', wh_proplist()} | {'error', _}. 
 query_registrar(Realm, Username) ->
     lager:debug("looking up registration information for ~s@~s", [Username, Realm]),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL

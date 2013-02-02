@@ -28,7 +28,7 @@
 %% Starts the supervisor
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (atom(), proplist()) -> startlink_ret().
+-spec start_link(atom(), proplist()) -> startlink_ret().
 start_link(Node, Options) ->
     supervisor:start_link({local, Node}, ?MODULE, [Node, Options]).
 

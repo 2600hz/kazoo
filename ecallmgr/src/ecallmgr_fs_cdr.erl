@@ -181,14 +181,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec publish/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
+-spec publish(ne_binary(), wh_proplist()) -> 'ok'.
 publish(UUID, Props) ->
     put(callid, UUID),
     CDR = create_cdr(Props),
     lager:debug("publising cdr: ~p", [CDR]),
     wapi_call:publish_cdr(UUID, CDR).
 
--spec create_cdr/1 :: (wh_proplist()) -> wh_proplist().
+-spec create_cdr(wh_proplist()) -> wh_proplist().
 create_cdr(Props) ->
     DefProp = wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION),
     ApiProp = add_values(?FS_TO_WHISTLE_MAP, DefProp, Props),
@@ -197,7 +197,7 @@ create_cdr(Props) ->
         _ -> ApiProp
     end.
 
--spec add_values/3 :: (fs_to_whistle_map(), wh_proplist(), wh_proplist()) -> wh_proplist().
+-spec add_values(fs_to_whistle_map(), wh_proplist(), wh_proplist()) -> wh_proplist().
 add_values(Mappings, BaseProp, ChannelProp) ->
     lists:foldl(fun({Fun, WK}, WApi) when is_function(Fun) ->
                         [{WK, Fun(ChannelProp)} | WApi];
@@ -221,7 +221,7 @@ add_values(Mappings, BaseProp, ChannelProp) ->
                         end
                 end, BaseProp, Mappings).
 
--spec get_first_value/2 :: (ne_binaries(), wh_proplist()) -> api_binary().
+-spec get_first_value(ne_binaries(), wh_proplist()) -> api_binary().
 get_first_value([], _) -> 'undefined';
 get_first_value([FSKey|T], ChannelProp) ->
     case props:get_value(FSKey, ChannelProp) of

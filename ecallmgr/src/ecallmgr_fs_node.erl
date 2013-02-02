@@ -63,8 +63,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/1 :: (atom()) -> {'ok', pid()} | {'error', term()}.
--spec start_link/2 :: (atom(), proplist()) -> {'ok', pid()} | {'error', term()}.
+-spec start_link(atom()) -> {'ok', pid()} | {'error', term()}.
+-spec start_link(atom(), proplist()) -> {'ok', pid()} | {'error', term()}.
 
 start_link(Node) ->
     start_link(Node, []).
@@ -77,11 +77,11 @@ start_link(Node, Options) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Node, Options]).
 
--spec sync_channels/1 :: (pid()) -> 'ok'.
+-spec sync_channels(pid()) -> 'ok'.
 sync_channels(Srv) ->
     gen_server:cast(Srv, {sync_channels}).
 
--spec hostname/1 :: (pid()) -> 'undefined' | ne_binary().
+-spec hostname(pid()) -> 'undefined' | ne_binary().
 hostname(Srv) ->
     case fs_node(Srv) of
         undefined -> undefined;
@@ -90,7 +90,7 @@ hostname(Srv) ->
             Hostname
     end.
 
--spec handle_reload_acls/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_reload_acls(wh_json:json_object(), proplist()) -> 'ok'.
 handle_reload_acls(_JObj, Props) ->
     Node = props:get_value(node, Props),
     case freeswitch:bgapi(Node, reloadacl, "") of
@@ -102,7 +102,7 @@ handle_reload_acls(_JObj, Props) ->
             lager:debug("reloadacl failed with error: timeout")
     end.
 
--spec handle_reload_gtws/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_reload_gtws(wh_json:json_object(), proplist()) -> 'ok'.
 handle_reload_gtws(_JObj, Props) ->
     Node = props:get_value(node, Props),
     Args = ["profile "
@@ -121,14 +121,14 @@ handle_reload_gtws(_JObj, Props) ->
             lager:debug("sofia ~s failed with error: timeout", [Args])
     end.
 
--spec fs_node/1 :: (pid()) -> atom().
+-spec fs_node(pid()) -> atom().
 fs_node(Srv) ->
     case catch(gen_server:call(Srv, node, ?FS_TIMEOUT)) of
         {'EXIT', _} -> undefined;
         Else -> Else
     end.
 
--spec show_channels/1 :: (pid() | atom()) -> wh_json:json_objects().
+-spec show_channels(pid() | atom()) -> wh_json:json_objects().
 show_channels(Srv) when is_pid(Srv) ->
     show_channels(fs_node(Srv));
 show_channels(Node) ->
@@ -216,7 +216,7 @@ handle_call(node, _From, #state{node=Node}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast/2 :: (term(), #state{}) -> {'noreply', #state{}}.
+-spec handle_cast(term(), #state{}) -> {'noreply', #state{}}.
 handle_cast({sync_channels}, #state{node=Node}=State) ->
     Calls = [wh_json:get_value(<<"uuid">>, J)
              || J <- show_channels_as_json(Node)
@@ -292,8 +292,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_event/3 :: (api_binary(), wh_proplist(), atom()) -> 'ok'.
--spec process_event/4 :: (ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+-spec process_event(api_binary(), wh_proplist(), atom()) -> 'ok'.
+-spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 
 process_event(UUID, Props, Node) ->
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
@@ -317,7 +317,7 @@ process_event(<<"channel_move::move_complete">> = EventName, _, Props, Node) ->
 process_event(EventName, UUID, Props, Node) ->
     maybe_send_event(EventName, UUID, Props, Node).
 
--spec maybe_send_event/4 :: (ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+-spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 maybe_send_event(EventName, UUID, Props, Node) ->
     case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
         true -> ok;
@@ -326,7 +326,7 @@ maybe_send_event(EventName, UUID, Props, Node) ->
             maybe_send_call_event(UUID, Props, Node)
     end.
 
--spec maybe_send_call_event/3 :: (api_binary(), wh_proplist(), atom()) -> any().
+-spec maybe_send_call_event(api_binary(), wh_proplist(), atom()) -> any().
 maybe_send_call_event(undefined, _, _) -> ok;
 maybe_send_call_event(CallId, Props, Node) ->
     gproc:send({p, l, {call_event, Node, CallId}}, {event, [CallId | Props]}).
@@ -336,7 +336,7 @@ maybe_send_call_event(CallId, Props, Node) ->
                       {'timeout', {atom(), ne_binary()}}.
 -type cmd_results() :: [cmd_result(),...] | [].
 
--spec run_start_cmds/1 :: (atom()) -> pid().
+-spec run_start_cmds(atom()) -> pid().
 run_start_cmds(Node) ->
     spawn_link(fun() ->
                        timer:sleep(5000),
@@ -348,7 +348,7 @@ run_start_cmds(Node) ->
                        end
                end).
 
--spec process_cmds/2 :: (atom(), wh_json:json_object() | [] | [ne_binary(),...]) -> cmd_results().
+-spec process_cmds(atom(), wh_json:json_object() | [] | [ne_binary(),...]) -> cmd_results().
 process_cmds(_, []) ->
     lager:info("no freeswitch commands to run, seems suspect. Is your ecallmgr connected to the same AMQP as the whapps running sysconf?"),
     [];
@@ -364,8 +364,8 @@ process_cmds(Node, Cmds) ->
             run_start_cmds(Node)
     end.
 
--spec process_cmd/3 :: (atom(), wh_json:json_object(), cmd_results()) -> cmd_results().
--spec process_cmd/4 :: (atom(), ne_binary(), ne_binary(), cmd_results()) -> cmd_results().
+-spec process_cmd(atom(), wh_json:json_object(), cmd_results()) -> cmd_results().
+-spec process_cmd(atom(), ne_binary(), ne_binary(), cmd_results()) -> cmd_results().
 process_cmd(Node, JObj, Acc0) ->
     lists:foldl(fun({ApiCmd, ApiArg}, Acc) ->
                         process_cmd(Node, ApiCmd, ApiArg, Acc)
@@ -426,13 +426,13 @@ was_not_successful_cmd({ok, _, _}) ->
 was_not_successful_cmd(_) ->
     true.
 
--spec print_api_responses/1 :: (cmd_results()) -> 'ok'.
+-spec print_api_responses(cmd_results()) -> 'ok'.
 print_api_responses(Res) ->
     lager:debug("start cmd results:"),
     _ = [ print_api_response(ApiRes) || ApiRes <- lists:flatten(Res)],
     lager:debug("end cmd results").
 
--spec print_api_response/1 :: (cmd_result()) -> 'ok'.
+-spec print_api_response(cmd_result()) -> 'ok'.
 print_api_response({ok, {Cmd, Args}, Res}) ->
     lager:debug("ok: ~s(~s) => ~s", [Cmd, Args, Res]);
 print_api_response({error, {Cmd, Args}, Res}) ->
@@ -440,7 +440,7 @@ print_api_response({error, {Cmd, Args}, Res}) ->
 print_api_response({timeout, {Cmd, Arg}}) ->
     lager:debug("timeout: ~s(~s)", [Cmd, Arg]).
 
--spec show_channels_as_json/1 :: (atom()) -> wh_json:json_objects().
+-spec show_channels_as_json(atom()) -> wh_json:json_objects().
 show_channels_as_json(Node) ->
     case freeswitch:api(Node, show, "channels as delim |||") of
         {ok, Lines} ->
@@ -457,7 +457,7 @@ show_channels_as_json(Node) ->
         timeout -> []
     end.
 
--spec maybe_start_event_listener/2 :: (atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
+-spec maybe_start_event_listener(atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
 maybe_start_event_listener(Node, UUID) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, start_listener}) of
         {ok, true} ->
