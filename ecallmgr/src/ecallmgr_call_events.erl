@@ -202,8 +202,8 @@ handle_cast(init, #state{node=Node, callid=CallId}=State) ->
     true = gproc:reg({p, l, call_events_processes}),
     true = gproc:reg({p, l, {call_events_process, Node, CallId}}),
     true = gproc:reg({p, l, {call_event, Node, CallId}}),
-    true = gproc:reg({p, l, {events, Node, <<"sofia::move_released">>}}),
-    true = gproc:reg({p, l, {events, Node, <<"sofia::move_complete">>}}),
+    true = gproc:reg({p, l, {events, Node, <<"channel_move::move_released">>}}),
+    true = gproc:reg({p, l, {events, Node, <<"channel_move::move_complete">>}}),
     Ref = wh_util:rand_hex_binary(12),
     Usurp = [{<<"Call-ID">>, CallId}
              ,{<<"Media-Node">>, Node}
@@ -265,7 +265,7 @@ handle_info({event, [CallId | Props]}, #state{node=Node, callid=CallId}=State) -
         {<<"CHANNEL_DESTROY">>, _} ->
             maybe_process_channel_destroy(Node, CallId, Props),
             {noreply, State};
-        {<<"sofia::move_released">>, _} ->
+        {<<"channel_move::move_released">>, _} ->
             lager:debug("channel move released call on our node", []),
             {stop, normal, State};
         {_, _} ->
@@ -311,8 +311,8 @@ handle_info(timeout, #state{node=Node
             lager:debug("processing call events from ~s", [Node]),
             true = gproc:reg({p, l, {call_events_process, Node, CallId}}),
             true = gproc:reg({p, l, {call_event, Node, CallId}}),
-            true = gproc:reg({p, l, {events, Node, <<"sofia::move_released">>}}),
-            true = gproc:reg({p, l, {events, Node, <<"sofia::move_complete">>}}),
+            true = gproc:reg({p, l, {events, Node, <<"channel_move::move_released">>}}),
+            true = gproc:reg({p, l, {events, Node, <<"channel_move::move_complete">>}}),
             Usurp = [{<<"Call-ID">>, CallId}
                      ,{<<"Media-Node">>, Node}
                      ,{<<"Reference">>, Ref}

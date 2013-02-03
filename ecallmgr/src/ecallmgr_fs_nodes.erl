@@ -728,7 +728,7 @@ handle_info({event, [UUID | Props]}, State) ->
     case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
         <<"CHANNEL_CREATE">> -> ?MODULE:new_channel(Props, Node);
         <<"CHANNEL_DESTROY">> ->  ?MODULE:destroy_channel(Props, Node);
-        <<"sofia::move_complete">> -> ?MODULE:channel_set_node(Node, UUID);
+        <<"channel_move::move_complete">> -> ?MODULE:channel_set_node(Node, UUID);
         <<"CHANNEL_ANSWER">> -> ?MODULE:channel_set_answered(UUID, true);
         <<"CHANNEL_BRIDGE">> ->
             OtherLeg = get_other_leg(UUID, Props),
