@@ -8,7 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(registrar_maintenance).
 
--export([local_summary/0, local_summary/1, local_summary/2]).
+-export([local_summary/0, local_summary/1, local_summary/2
+         ,flush_realm_registrations/1
+        ]).
 
 -include("reg.hrl").
 
@@ -31,8 +33,7 @@ local_summary(Realm) when not is_binary(Realm) ->
 local_summary(Realm) ->
     {ok, Registrations} = reg_util:lookup_registrations(Realm),
     _ = do_summary(Registrations, fun print_summary/1),
-    io:format("~nTotal registrations: ~b~n", [length(Registrations)]),
-    ok.
+    io:format("~nTotal registrations: ~b~n", [length(Registrations)]).
 
 -spec local_summary(ne_binary(), ne_binary()) -> 'ok'.
 local_summary(Realm, Username) when not is_binary(Realm) ->
@@ -46,6 +47,16 @@ local_summary(Realm, Username) ->
             {error, not_found} ->
                 io:format("registration not found")
         end.
+
+flush_realm_registrations(Realm) ->
+    case reg_util:lookup_registrations(Realm) of
+        {ok, []} -> io:format("no registrations found for realm ~s~n", [Realm]);
+        {error, _E}-> io:format("error flushing realm ~s: ~p", [Realm, _E]);
+        {ok, Regs} ->
+            [reg_util:remove_registration(Realm, wh_json:get_value(<<"Username">>, Registration))
+             || Registration <- Regs
+            ]
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private
