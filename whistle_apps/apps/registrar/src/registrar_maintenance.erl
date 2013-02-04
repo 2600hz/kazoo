@@ -18,14 +18,14 @@
 %% look up a cached registration by realm and optionally username
 %% @end
 %%-----------------------------------------------------------------------------
--spec local_summary/0 :: () -> 'ok'.
+-spec local_summary() -> 'ok'.
 local_summary() ->
     {ok, Registrations} = reg_util:fetch_all_registrations(),
     _ = do_summary(Registrations, fun print_summary/1),
     io:format("~nTotal registrations: ~b~n", [length(Registrations)]),
     ok.
 
--spec local_summary/1 :: (ne_binary()) -> 'ok'.
+-spec local_summary(ne_binary()) -> 'ok'.
 local_summary(Realm) when not is_binary(Realm) ->
     local_summary(wh_util:to_binary(Realm));
 local_summary(Realm) ->
@@ -34,7 +34,7 @@ local_summary(Realm) ->
     io:format("~nTotal registrations: ~b~n", [length(Registrations)]),
     ok.
 
--spec local_summary/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+-spec local_summary(ne_binary(), ne_binary()) -> 'ok'.
 local_summary(Realm, Username) when not is_binary(Realm) ->
     local_summary(wh_util:to_binary(Realm), Username);
 local_summary(Realm, Username) when not is_binary(Username) ->
@@ -53,7 +53,7 @@ local_summary(Realm, Username) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec do_summary/2 :: (list(), fun((wh_json:json_object()) -> 'ok')) -> ['ok',...].
+-spec do_summary(list(), fun((wh_json:json_object()) -> 'ok')) -> ['ok',...].
 do_summary(Registrations, PrintFun) ->
     [PrintFun(Registration) || Registration <- Registrations].
 
@@ -63,7 +63,7 @@ do_summary(Registrations, PrintFun) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_summary/1 :: (wh_json:json_object()) -> 'ok'.
+-spec print_summary(wh_json:json_object()) -> 'ok'.
 print_summary(Registration) ->
     Username = wh_json:get_value(<<"Username">>, Registration),
     Realm = wh_json:get_value(<<"Realm">>, Registration),
@@ -80,7 +80,7 @@ print_summary(Registration) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_details/1 :: (api_terms()) -> ['ok',...].
+-spec print_details(api_terms()) -> ['ok',...].
 print_details(Registration) when is_list(Registration) ->
     [io:format("~s: ~s~n", [K, wh_util:to_list(V)]) || {K, V} <- Registration];
 print_details(Registration) ->

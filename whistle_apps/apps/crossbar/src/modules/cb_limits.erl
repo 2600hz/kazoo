@@ -43,7 +43,7 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods() -> http_methods().
 allowed_methods() ->
     ['GET', 'POST'].
 
@@ -55,7 +55,7 @@ allowed_methods() ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists() -> 'true'.
 resource_exists() ->
     true.
 
@@ -103,7 +103,7 @@ authd_account_allowed_updates(AccountId, AuthAccountId) ->
 %% Bill for devices
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_services/1 :: (#cb_context{}) -> #cb_context{}.
+-spec reconcile_services(#cb_context{}) -> #cb_context{}.
 reconcile_services(#cb_context{req_verb = <<"get">>}=Context) ->
     Context;
 reconcile_services(#cb_context{account_id=AccountId}=Context) ->
@@ -119,13 +119,13 @@ reconcile_services(#cb_context{account_id=AccountId}=Context) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_limit(Context);
 validate(#cb_context{req_verb = <<"post">>}=Context) ->
     update_limits(Context).
 
--spec post/1 :: (#cb_context{}) -> #cb_context{}.
+-spec post(#cb_context{}) -> #cb_context{}.
 post(Context) ->
     crossbar_doc:save(Context).
 
@@ -138,7 +138,7 @@ post(Context) ->
 %% Load a Limit document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_limit/1 :: (#cb_context{}) -> #cb_context{}.
+-spec load_limit(#cb_context{}) -> #cb_context{}.
 load_limit(Context) ->
     maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context)).
 
@@ -149,7 +149,7 @@ load_limit(Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update_limits/1 :: (#cb_context{}) -> #cb_context{}.
+-spec update_limits(#cb_context{}) -> #cb_context{}.
 update_limits(#cb_context{}=Context) ->
     cb_context:validate_request_data(<<"limits">>, Context, fun on_successful_validation/1).
 
@@ -159,7 +159,7 @@ update_limits(#cb_context{}=Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation/1 :: (#cb_context{}) -> #cb_context{}.
+-spec on_successful_validation(#cb_context{}) -> #cb_context{}.
 on_successful_validation(#cb_context{}=Context) ->
     maybe_handle_load_failure(crossbar_doc:load_merge(?PVT_TYPE, Context)).
 
@@ -169,7 +169,7 @@ on_successful_validation(#cb_context{}=Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_handle_load_failure/1 :: (#cb_context{}) -> #cb_context{}.
+-spec maybe_handle_load_failure(#cb_context{}) -> #cb_context{}.
 maybe_handle_load_failure(#cb_context{resp_error_code=404, req_data=Data}=Context) ->
     NewLimits = wh_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}
                                    ,{<<"_id">>, ?PVT_TYPE}

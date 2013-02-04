@@ -47,7 +47,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Menu = get_menu_profile(Data, Call),
     whapps_call_command:answer(Call),
@@ -61,7 +61,7 @@ handle(Data, Call) ->
 %% digits are routable
 %% @end
 %%--------------------------------------------------------------------
--spec menu_loop/2 :: (menu(), whapps_call:call()) -> 'ok'.
+-spec menu_loop(menu(), whapps_call:call()) -> 'ok'.
 menu_loop(#cf_menu_data{retries=Retries}=Menu, Call) when Retries =< 0 ->
     lager:info("maxium number of retries reached"),
     _ = whapps_call_command:flush_dtmf(Call),
@@ -122,7 +122,7 @@ menu_loop(#cf_menu_data{retries=Retries, max_length=MaxLength, timeout=Timeout
 %% The primary sequence logic to route the collected digits
 %% @end
 %%--------------------------------------------------------------------
--spec try_match_digits/3 :: (binary(), menu(), whapps_call:call()) -> boolean().
+-spec try_match_digits(binary(), menu(), whapps_call:call()) -> boolean().
 try_match_digits(Digits, Menu, Call) ->
     lager:info("trying to match digits ~s", [Digits]),
     is_callflow_child(Digits, Menu, Call)
@@ -137,7 +137,7 @@ try_match_digits(Digits, Menu, Call) ->
 %% Check if the digits are a exact match for the auto-attendant children
 %% @end
 %%--------------------------------------------------------------------
--spec is_callflow_child/3 :: (ne_binary(), menu(), whapps_call:call()) -> boolean().
+-spec is_callflow_child(ne_binary(), menu(), whapps_call:call()) -> boolean().
 is_callflow_child(Digits, _, Call) ->
     case cf_exe:attempt(Digits, Call) of
         {attempt_resp, ok} ->
@@ -153,7 +153,7 @@ is_callflow_child(Digits, _, Call) ->
 %% Check if hunting is enabled
 %% @end
 %%--------------------------------------------------------------------
--spec is_hunt_enabled/3 :: (ne_binary(), menu(), whapps_call:call()) -> boolean().
+-spec is_hunt_enabled(ne_binary(), menu(), whapps_call:call()) -> boolean().
 is_hunt_enabled(_, #cf_menu_data{hunt=Hunt}, _) ->
     Hunt.
 
@@ -163,7 +163,7 @@ is_hunt_enabled(_, #cf_menu_data{hunt=Hunt}, _) ->
 %% Check whitelist hunt digit patterns
 %% @end
 %%--------------------------------------------------------------------
--spec is_hunt_allowed/3 :: (ne_binary(), menu(), whapps_call:call()) -> boolean().
+-spec is_hunt_allowed(ne_binary(), menu(), whapps_call:call()) -> boolean().
 is_hunt_allowed(_, #cf_menu_data{hunt_allow = <<>>}, _) ->
     lager:info("hunt_allow implicitly accepted digits"),
     true;
@@ -184,7 +184,7 @@ is_hunt_allowed(Digits, #cf_menu_data{hunt_allow=RegEx}, _) ->
 %% Check blacklisted hunt digit patterns
 %% @end
 %%--------------------------------------------------------------------
--spec is_hunt_denied/3 :: (ne_binary(), menu(), whapps_call:call()) -> boolean().
+-spec is_hunt_denied(ne_binary(), menu(), whapps_call:call()) -> boolean().
 is_hunt_denied(_, #cf_menu_data{hunt_deny = <<>>}, _) ->
     lager:info("hunt_deny implicitly accepted digits"),
     false;
@@ -205,7 +205,7 @@ is_hunt_denied(Digits, #cf_menu_data{hunt_deny=RegEx}, _) ->
 %% Hunt for a callflow with these numbers
 %% @end
 %%--------------------------------------------------------------------
--spec hunt_for_callflow/3 :: (ne_binary(), menu(), whapps_call:call()) -> boolean().
+-spec hunt_for_callflow(ne_binary(), menu(), whapps_call:call()) -> boolean().
 hunt_for_callflow(Digits, Menu, Call) ->
     AccountId = whapps_call:account_id(Call),
     lager:info("hunting for ~s in account ~s", [Digits, AccountId]),
@@ -227,7 +227,7 @@ hunt_for_callflow(Digits, Menu, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec record_greeting/3 :: (binary(), menu(), whapps_call:call()) -> {'ok', menu()} |
+-spec record_greeting(binary(), menu(), whapps_call:call()) -> {'ok', menu()} |
                                                                      {'error', wh_json:json_object()}.
 record_greeting(AttachmentName, #cf_menu_data{greeting_id=undefined}=Menu, Call) ->
     MediaId = recording_media_doc(<<"greeting">>, Menu, Call),
@@ -271,7 +271,7 @@ record_greeting(AttachmentName, #cf_menu_data{greeting_id=MediaId}=Menu, Call) -
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec play_invalid_prompt/2 :: (menu(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
+-spec play_invalid_prompt(menu(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
                                                                {'error', atom()}.
 play_invalid_prompt(#cf_menu_data{invalid_media=false}, _) ->
     {ok, wh_json:new()};
@@ -286,7 +286,7 @@ play_invalid_prompt(#cf_menu_data{invalid_media=Id}, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec play_transferring_prompt/2 :: (menu(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
+-spec play_transferring_prompt(menu(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
                                                                     {'error', atom()}.
 play_transferring_prompt(#cf_menu_data{transfer_media=false}, _) ->
     {ok, wh_json:new()};
@@ -301,7 +301,7 @@ play_transferring_prompt(#cf_menu_data{transfer_media=Id}, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec play_exit_prompt/2 :: (menu(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
+-spec play_exit_prompt(menu(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
                                                             {'error', atom()}.
 play_exit_prompt(#cf_menu_data{exit_media=false}, _) ->
     {ok, wh_json:new()};
@@ -316,7 +316,7 @@ play_exit_prompt(#cf_menu_data{exit_media=Id}, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_prompt/2 :: (menu(), whapps_call:call()) -> ne_binary().
+-spec get_prompt(menu(), whapps_call:call()) -> ne_binary().
 get_prompt(#cf_menu_data{greeting_id=undefined}, Call) ->
     whapps_util:get_prompt(<<"menu-no_prompt">>, Call);
 get_prompt(#cf_menu_data{greeting_id = <<"local_stream://", _/binary>> = ID}, _) ->
@@ -329,7 +329,7 @@ get_prompt(#cf_menu_data{greeting_id=Id}, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording/3 :: (binary(), binary(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
+-spec store_recording(binary(), binary(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
                                                                        {'error', wh_json:json_object()}.
 store_recording(AttachmentName, MediaId, Call) ->
     lager:info("storing recording ~s as media ~s", [AttachmentName, MediaId]),
@@ -341,7 +341,7 @@ store_recording(AttachmentName, MediaId, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_new_attachment_url/3 :: (binary(), binary(), whapps_call:call()) -> ne_binary().
+-spec get_new_attachment_url(binary(), binary(), whapps_call:call()) -> ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     _ = case couch_mgr:open_doc(AccountDb, MediaId) of
@@ -363,7 +363,7 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec tmp_file/0 :: () -> ne_binary().
+-spec tmp_file() -> ne_binary().
 tmp_file() ->
      <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>.
 
@@ -373,7 +373,7 @@ tmp_file() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec review_recording/3 :: (ne_binary(), menu(), whapps_call:call()) -> {'ok', 'record' | 'save' | 'no_selection'}.
+-spec review_recording(ne_binary(), menu(), whapps_call:call()) -> {'ok', 'record' | 'save' | 'no_selection'}.
 review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey, record=RecordKey, save=SaveKey}}=Menu, Call) ->
     lager:info("playing menu greeting review options"),
 
@@ -399,7 +399,7 @@ review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey, reco
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec recording_media_doc/3 :: (binary(), menu(), whapps_call:call()) -> binary().
+-spec recording_media_doc(binary(), menu(), whapps_call:call()) -> binary().
 recording_media_doc(Type, #cf_menu_data{name=MenuName, menu_id=Id}, Call) ->
     AccountDb = whapps_call:account_db(Call),
     Name = <<MenuName/binary, " menu ", Type/binary >>,
@@ -419,7 +419,7 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName, menu_id=Id}, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc/4 :: (list() | binary(), wh_json:json_term(), menu() | binary(),  whapps_call:call() | binary()) -> 'ok' | {'error', atom()}.
+-spec update_doc(list() | binary(), wh_json:json_term(), menu() | binary(),  whapps_call:call() | binary()) -> 'ok' | {'error', atom()}.
 update_doc(Key, Value, #cf_menu_data{menu_id=Id}, Db) ->
     update_doc(Key, Value, Id, Db);
 update_doc(Key, Value, Id, Call) when is_tuple(Call) ->
@@ -445,7 +445,7 @@ update_doc(Key, Value, Id, Db) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_menu_profile/2 :: (wh_json:json_object(), whapps_call:call()) -> menu().
+-spec get_menu_profile(wh_json:json_object(), whapps_call:call()) -> menu().
 get_menu_profile(Data, Call) ->
     Id = wh_json:get_value(<<"id">>, Data),
     AccountDb = whapps_call:account_db(Call),

@@ -21,7 +21,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     _ = offnet_req(Data, Call),
     case wait_for_offnet() of
@@ -39,7 +39,7 @@ handle(Data, Call) ->
             end
     end.
 
--spec offnet_req/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec offnet_req(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 offnet_req(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
@@ -85,7 +85,7 @@ offnet_req(Data, Call) ->
 %% otherwise
 %% @end
 %%--------------------------------------------------------------------
--spec get_to_did/2 :: (wh_json:json_object(), whapps_call:call()) -> ne_binary().
+-spec get_to_did(wh_json:json_object(), whapps_call:call()) -> ne_binary().
 get_to_did(Data, Call) ->
     case wh_json:is_true(<<"do_not_normalize">>, Data) of
         false -> whapps_call:request_user(Call);
@@ -101,7 +101,7 @@ get_to_did(Data, Call) ->
 %% Consume Erlang messages and return on offnet response
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_offnet/0 :: () -> {ne_binary(), ne_binary() | 'undefined'}.
+-spec wait_for_offnet() -> {ne_binary(), ne_binary() | 'undefined'}.
 wait_for_offnet() ->
     receive
         {amqp_msg, JObj} ->
@@ -132,7 +132,7 @@ wait_for_offnet() ->
 %% build a json object of those now.
 %% @end
 %%--------------------------------------------------------------------
--spec build_sip_headers/2 :: (wh_json:json_object(), whapps_call:call()) -> 'undefined' | wh_json:json_object().
+-spec build_sip_headers(wh_json:json_object(), whapps_call:call()) -> 'undefined' | wh_json:json_object().
 build_sip_headers(Data, Call) ->
     Builders = [fun(J) ->
                         case wh_json:is_true(<<"emit_account_id">>, Data) of

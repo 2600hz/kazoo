@@ -37,19 +37,19 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (ne_binary(), ne_binary()) -> startlink_ret().
+-spec start_link(ne_binary(), ne_binary()) -> startlink_ret().
 start_link(AcctId, QueueId) ->
     supervisor:start_link(?MODULE, [AcctId, QueueId]).
 
--spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
+-spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Super) ->
     supervisor:terminate_child(acdc_queues_sup, Super).
 
--spec manager/1 :: (pid()) -> pid() | 'undefined'.
+-spec manager(pid()) -> pid() | 'undefined'.
 manager(Super) ->
     hd([P || {_, P, worker, _} <- supervisor:which_children(Super)]).
 
--spec workers_sup/1 :: (pid()) -> pid() | 'undefined'.
+-spec workers_sup(pid()) -> pid() | 'undefined'.
 workers_sup(Super) ->
     hd([P || {_, P, supervisor, _} <- supervisor:which_children(Super)]).
 
@@ -70,7 +70,7 @@ workers_sup(Super) ->
 %%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: (list()) -> sup_init_ret().
+-spec init(list()) -> sup_init_ret().
 init(Args) ->
     RestartStrategy = one_for_all,
     MaxRestarts = 2,

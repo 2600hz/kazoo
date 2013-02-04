@@ -33,7 +33,7 @@
 %% Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.configs">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.configs">>, ?MODULE, resource_exists),
@@ -50,7 +50,7 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
+-spec allowed_methods(path_token()) -> http_methods() | [].
 allowed_methods(_) ->
     ['GET', 'PUT', 'POST', 'DELETE'].
 
@@ -63,8 +63,8 @@ allowed_methods(_) ->
 %%    /configs/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'false'.
--spec resource_exists/1 :: (path_tokens()) -> 'true'.
+-spec resource_exists() -> 'false'.
+-spec resource_exists(path_tokens()) -> 'true'.
 resource_exists() -> false.
 resource_exists(_) -> true.
 
@@ -78,7 +78,7 @@ resource_exists(_) -> true.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context, Config) ->
     read(Config, Context);
 validate(#cb_context{req_verb = <<"put">>}=Context, Config) ->
@@ -96,7 +96,7 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Config) ->
 %% the resource into the resp_data, resp_headers, etc...
 %% @end
 %%--------------------------------------------------------------------
--spec get/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec get(#cb_context{}, path_token()) -> #cb_context{}.
 get(#cb_context{}=Context, _) ->
     Context.
 
@@ -106,7 +106,7 @@ get(#cb_context{}=Context, _) ->
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec put(#cb_context{}, path_token()) -> #cb_context{}.
 put(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
 
@@ -117,7 +117,7 @@ put(#cb_context{}=Context, _) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
 
@@ -127,7 +127,7 @@ post(#cb_context{}=Context, _) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token()) -> #cb_context{}.
 delete(#cb_context{}=Context, _) ->
     crossbar_doc:delete(Context).
 
@@ -137,7 +137,7 @@ delete(#cb_context{}=Context, _) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec create(ne_binary(), #cb_context{}) -> #cb_context{}.
 create(Config, #cb_context{req_data=JObj, db_name=Db}=Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
     case couch_mgr:lookup_doc_rev(Db, Id) of
@@ -153,7 +153,7 @@ create(Config, #cb_context{req_data=JObj, db_name=Db}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read(ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Config, Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
     crossbar_doc:load(Id, Context).
@@ -165,7 +165,7 @@ read(Config, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
 update(Config, #cb_context{}=Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
     OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C) end,

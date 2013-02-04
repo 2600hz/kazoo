@@ -106,8 +106,8 @@ cleanup_loop(#state{cleanup_interval=CleanupInterval}=State) ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     ['PUT'].
 allowed_methods(_) ->
@@ -121,8 +121,8 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 
@@ -135,27 +135,27 @@ resource_exists(_) -> true.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (cb_context:context()) -> cb_context:context().
--spec validate/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
     validate_new_signup(Context#cb_context{db_name=?SIGNUP_DB}).
 
 validate(#cb_context{req_verb = <<"post">>}=Context, ActivationKey) ->
     check_activation_key(ActivationKey, Context#cb_context{db_name=?SIGNUP_DB}).
 
--spec authorize/1 :: (cb_context:context()) -> 'true'.
+-spec authorize(cb_context:context()) -> 'true'.
 authorize(#cb_context{req_nouns=[{<<"signup">>,[]}]}) ->
     true;
 authorize(#cb_context{req_nouns=[{<<"signup">>,[_]}]}) ->
     true.
 
--spec authenticate/1 :: (cb_context:context()) -> 'true'.
+-spec authenticate(cb_context:context()) -> 'true'.
 authenticate(#cb_context{req_nouns=[{<<"signup">>,[]}]}) ->
     true;
 authenticate(#cb_context{req_nouns=[{<<"signup">>,[_]}]}) ->
     true.
 
--spec post/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(#cb_context{doc=JObj}=Context, _) ->
     case activate_signup(JObj) of
         {ok, Account, User} ->
@@ -169,7 +169,7 @@ post(#cb_context{doc=JObj}=Context, _) ->
             cb_context:add_system_error(datastore_fault, Context)
     end.
 
--spec put/1 :: (cb_context:context()) -> cb_context:context().
+-spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     case crossbar_doc:save(Context#cb_context{db_name=?SIGNUP_DB}) of
         #cb_context{resp_status=success}=Context1 ->
@@ -190,7 +190,7 @@ put(Context) ->
 %% Create a new signup document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_new_signup/1 :: (cb_context:context()) -> cb_context:context().
+-spec validate_new_signup(cb_context:context()) -> cb_context:context().
 validate_new_signup(#cb_context{req_data=JObj}=Context) ->
     {AccountErrors, Account} = validate_account(wh_json:get_value(<<"account">>, JObj), Context),
     {UserErrors, User} = validate_user(wh_json:get_value(<<"user">>, JObj), Context),
@@ -213,7 +213,7 @@ validate_new_signup(#cb_context{req_data=JObj}=Context) ->
 %% Determines if the account realm is unique and if the account is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_account/2 :: (wh_json:json_object() | 'undefined', cb_context:context()) ->
+-spec validate_account(wh_json:json_object() | 'undefined', cb_context:context()) ->
                                     {path_tokens(), wh_json:json_object() | 'undefined'}.
 validate_account(undefined, _) ->
     lager:debug("signup did not contain an account definition"),
@@ -239,7 +239,7 @@ validate_account(Account, Context) ->
 %% Determines if the user object is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_user/2 :: (wh_json:json_object() | 'undefined', cb_context:context()) ->
+-spec validate_user(wh_json:json_object() | 'undefined', cb_context:context()) ->
                                  {path_tokens(), 'undefined' | wh_json:json_object()}.
 validate_user(undefined, _) ->
     lager:debug("signup did not contain an user definition"),
@@ -260,7 +260,7 @@ validate_user(User, Context) ->
 %% generates a random activation key
 %% @end
 %%--------------------------------------------------------------------
--spec create_activation_key/0 :: () -> ne_binary().
+-spec create_activation_key() -> ne_binary().
 create_activation_key() ->
     ActivationKey =
         wh_util:to_hex_binary(crypto:rand_bytes(32)),
@@ -273,7 +273,7 @@ create_activation_key() ->
 %% Load a signup document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec check_activation_key/2 :: (ne_binary(), cb_context:context()) -> cb_context:context().
+-spec check_activation_key(ne_binary(), cb_context:context()) -> cb_context:context().
 check_activation_key(ActivationKey, Context) ->
     case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_KEYS, [{<<"key">>, ActivationKey}
                                                                    ,{<<"include_docs">>, true}]) of
@@ -294,7 +294,7 @@ check_activation_key(ActivationKey, Context) ->
 %% Activate signup document by creating an account and user
 %% @end
 %%--------------------------------------------------------------------
--spec activate_signup/1 :: (wh_json:json_object()) ->
+-spec activate_signup(wh_json:json_object()) ->
                                    {'ok', wh_json:json_object(), wh_json:json_object()} |
                                    {'error', 'creation_failed' | 'account_undefined' | 'user_undefined'}.
 activate_signup(JObj) ->
@@ -311,7 +311,7 @@ activate_signup(JObj) ->
 %% Create the account defined on the signup document
 %% @end
 %%--------------------------------------------------------------------
--spec activate_account/1 :: ('undefined' | wh_json:json_object()) ->
+-spec activate_account('undefined' | wh_json:json_object()) ->
                                     {'ok', wh_json:json_object()} |
                                     {'error', 'creation_failed' | 'account_undefined'}.
 activate_account(undefined) ->
@@ -336,7 +336,7 @@ activate_account(Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec activate_user/2 :: (wh_json:json_object(), 'undefined' | wh_json:json_object()) ->
+-spec activate_user(wh_json:json_object(), 'undefined' | wh_json:json_object()) ->
                                  {'ok', wh_json:json_object(), wh_json:json_object()} |
                                  {'error', 'user_undefined' | 'creation_failed'}.
 activate_user(_, undefined) ->
@@ -363,7 +363,7 @@ activate_user(Account, User) ->
 %% then exectute it now.
 %% @end
 %%--------------------------------------------------------------------
--spec exec_register_command/2 :: (cb_context:context(), #state{}) -> 'ok' | string().
+-spec exec_register_command(cb_context:context(), #state{}) -> 'ok' | string().
 exec_register_command(_, #state{register_cmd=undefined}) ->
     ok;
 exec_register_command(Context, #state{register_cmd=CmdTmpl}) ->
@@ -377,7 +377,7 @@ exec_register_command(Context, #state{register_cmd=CmdTmpl}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_activation_email/2 :: (cb_context:context(), #state{}) -> {'ok', pid()} | {'error', term()}.
+-spec send_activation_email(cb_context:context(), #state{}) -> {'ok', pid()} | {'error', term()}.
 send_activation_email(#cb_context{doc=JObj, req_id=ReqId}=Context, #state{activation_email_subject=SubjectTmpl
                                                                           ,activation_email_from=FromTmpl}=State) ->
     Props = template_props(Context),
@@ -412,7 +412,7 @@ send_activation_email(#cb_context{doc=JObj, req_id=ReqId}=Context, #state{activa
 %% if they have been provided
 %% @end
 %%--------------------------------------------------------------------
--spec create_body/3 :: (#state{}, proplist(), [] | [mail_message_body(),...]) -> [] | [mail_message_body(),...].
+-spec create_body(#state{}, proplist(), [] | [mail_message_body(),...]) -> [] | [mail_message_body(),...].
 create_body(#state{activation_email_html=Tmpl}=State, Props, Body) when Tmpl =/= undefined ->
     case Tmpl:render(Props) of
         {ok, Content} ->
@@ -446,7 +446,7 @@ create_body(_, _, Body) ->
 %% create a proplist to provide to the templates during render
 %% @end
 %%--------------------------------------------------------------------
--spec template_props/1 :: (cb_context:context()) -> [{ne_binary(), proplist() | ne_binary()},...].
+-spec template_props(cb_context:context()) -> [{ne_binary(), proplist() | ne_binary()},...].
 template_props(#cb_context{doc=JObj
                            ,req_data=Data
                            ,raw_host=RawHost
@@ -475,7 +475,7 @@ template_props(#cb_context{doc=JObj
 %% accounts and completed signups
 %% @end
 %%--------------------------------------------------------------------
--spec is_unique_realm/1 :: (binary() | 'undefined') -> boolean().
+-spec is_unique_realm(binary() | 'undefined') -> boolean().
 is_unique_realm(undefined) -> false;
 is_unique_realm(<<>>) -> false;
 is_unique_realm(Realm) ->
@@ -496,7 +496,7 @@ is_unique_realm(Realm) ->
 %% the db load.
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_signups/1 :: (#state{}) -> 'ok'.
+-spec cleanup_signups(#state{}) -> 'ok'.
 cleanup_signups(#state{signup_lifespan=Lifespan}) ->
     lager:debug("cleaning up signups"),
     Expiration = calendar:datetime_to_gregorian_seconds(calendar:universal_time()) + Lifespan,
@@ -516,7 +516,7 @@ cleanup_signups(#state{signup_lifespan=Lifespan}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec init_state/0 :: () -> #state{}.
+-spec init_state() -> #state{}.
 init_state() ->
     case get_configs() of
         {ok, Terms} ->
@@ -542,7 +542,7 @@ init_state() ->
             #state{}
     end.
 
--spec get_configs/0 :: () -> {'ok', proplist()} | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
+-spec get_configs() -> {'ok', proplist()} | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
                                                    | {integer(), module(), term()}}.
 get_configs() ->
     file:consult(lists:flatten(?SIGNUP_CONF)).
@@ -555,7 +555,7 @@ get_configs() ->
 %% @end
 %%--------------------------------------------------------------------
 -type template_name() :: 'cb_signup_email_from' | 'cb_signup_email_html' | 'cb_signup_email_plain' | 'cb_signup_email_subject' | 'cb_signup_register_cmd'.
--spec compile_template/2 :: ('undefined' | string() | ne_binary(), template_name()) -> 'undefined' | template_name().
+-spec compile_template('undefined' | string() | ne_binary(), template_name()) -> 'undefined' | template_name().
 compile_template(undefined, _) ->
     undefined;
 compile_template(Template, Name) when not is_binary(Template) ->
@@ -577,7 +577,7 @@ compile_template(Template, Name) ->
 %% Compiles template string or path, normalizing the return
 %% @end
 %%--------------------------------------------------------------------
--spec do_compile_template/2 :: (nonempty_string() | ne_binary(), template_name()) -> 'undefined' | template_name().
+-spec do_compile_template(nonempty_string() | ne_binary(), template_name()) -> 'undefined' | template_name().
 do_compile_template(Template, Name) ->
     case erlydtl:compile(Template, Name) of
         {ok, Name} ->

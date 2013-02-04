@@ -22,7 +22,7 @@
 %% ===================================================================
 %% API functions
 %% ===================================================================
--spec start_link/0 :: () -> {'ok', pid()} | 'ignore' | {'error', term()}.
+-spec start_link() -> {'ok', pid()} | 'ignore' | {'error', term()}.
 start_link() ->
     _ = trunkstore:start_deps(),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).

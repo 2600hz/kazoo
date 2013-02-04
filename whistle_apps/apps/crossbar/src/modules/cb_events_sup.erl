@@ -37,13 +37,13 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
--spec start_srv/2 :: (AccountID, UserID) -> sup_startchild_ret() when
+-spec start_srv(AccountID, UserID) -> sup_startchild_ret() when
       AccountID :: binary(),
       UserID :: binary().
 start_srv(AccountID, UserID) when is_binary(AccountID), is_binary(UserID) ->
     supervisor:start_child(?MODULE, ?CHILD(AccountID, UserID)).
 
--spec find_srv/2 :: (AccountID, UserID) -> sup_startchild_ret() when
+-spec find_srv(AccountID, UserID) -> sup_startchild_ret() when
       AccountID :: binary(),
       UserID :: binary().
 find_srv(AccountID, UserID) when is_binary(AccountID), is_binary(UserID) ->

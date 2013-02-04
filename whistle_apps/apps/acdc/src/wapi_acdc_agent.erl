@@ -57,7 +57,7 @@
                          ]).
 -define(SYNC_REQ_TYPES, []).
 
--spec sync_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec sync_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 sync_req(Props) when is_list(Props) ->
     case sync_req_v(Props) of
         true -> wh_api:build_message(Props, ?SYNC_REQ_HEADERS, ?OPTIONAL_SYNC_REQ_HEADERS);
@@ -66,14 +66,14 @@ sync_req(Props) when is_list(Props) ->
 sync_req(JObj) ->
     sync_req(wh_json:to_proplist(JObj)).
 
--spec sync_req_v/1 :: (api_terms()) -> boolean().
+-spec sync_req_v(api_terms()) -> boolean().
 sync_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?SYNC_REQ_HEADERS, ?SYNC_REQ_VALUES, ?SYNC_REQ_TYPES);
 sync_req_v(JObj) ->
     sync_req_v(wh_json:to_proplist(JObj)).
 
--spec sync_req_routing_key/1 :: (wh_json:object() | wh_proplist()) -> ne_binary().
--spec sync_req_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+-spec sync_req_routing_key(wh_json:object() | wh_proplist()) -> ne_binary().
+-spec sync_req_routing_key(ne_binary(), ne_binary()) -> ne_binary().
 sync_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Agent-ID">>, Props, <<"*">>),
     AcctId = props:get_value(<<"Account-ID">>, Props, <<"*">>),
@@ -103,7 +103,7 @@ sync_req_routing_key(AcctId, Id) ->
                           ]).
 -define(SYNC_RESP_TYPES, []).
 
--spec sync_resp/1 :: (api_terms()) -> {'ok', iolist()} |
+-spec sync_resp(api_terms()) -> {'ok', iolist()} |
                                       {'error', string()}.
 sync_resp(Props) when is_list(Props) ->
     case sync_resp_v(Props) of
@@ -113,7 +113,7 @@ sync_resp(Props) when is_list(Props) ->
 sync_resp(JObj) ->
     sync_resp(wh_json:to_proplist(JObj)).
 
--spec sync_resp_v/1 :: (api_terms()) -> boolean().
+-spec sync_resp_v(api_terms()) -> boolean().
 sync_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?SYNC_RESP_HEADERS, ?SYNC_RESP_VALUES, ?SYNC_RESP_TYPES);
 sync_resp_v(JObj) ->
@@ -135,7 +135,7 @@ sync_resp_v(JObj) ->
                           ]).
 -define(STATS_REQ_TYPES, []).
 
--spec stats_req/1 :: (api_terms()) -> {'ok', iolist()} |
+-spec stats_req(api_terms()) -> {'ok', iolist()} |
                                       {'error', string()}.
 stats_req(Props) when is_list(Props) ->
     case stats_req_v(Props) of
@@ -145,14 +145,14 @@ stats_req(Props) when is_list(Props) ->
 stats_req(JObj) ->
     stats_req(wh_json:to_proplist(JObj)).
 
--spec stats_req_v/1 :: (api_terms()) -> boolean().
+-spec stats_req_v(api_terms()) -> boolean().
 stats_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?STATS_REQ_HEADERS, ?STATS_REQ_VALUES, ?STATS_REQ_TYPES);
 stats_req_v(JObj) ->
     stats_req_v(wh_json:to_proplist(JObj)).
 
--spec stats_req_routing_key/1 :: (wh_json:object() | wh_proplist() | ne_binary()) -> ne_binary().
--spec stats_req_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+-spec stats_req_routing_key(wh_json:object() | wh_proplist() | ne_binary()) -> ne_binary().
+-spec stats_req_routing_key(ne_binary(), ne_binary()) -> ne_binary().
 stats_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Account-ID">>, Props, <<"*">>),
     AgentId = props:get_value(<<"Agent-ID">>, Props, <<"*">>),
@@ -164,7 +164,7 @@ stats_req_routing_key(JObj) ->
     AgentId = wh_json:get_value(<<"Agent-ID">>, JObj, <<"*">>),
     stats_req_routing_key(Id, AgentId).
 
--spec stats_req_publish_key/1 :: (wh_json:object() | wh_proplist() | ne_binary()) -> ne_binary().
+-spec stats_req_publish_key(wh_json:object() | wh_proplist() | ne_binary()) -> ne_binary().
 stats_req_publish_key(Props) when is_list(Props) ->
     stats_req_routing_key(props:get_value(<<"Account-ID">>, Props)
                           ,props:get_value(<<"Agent-ID">>, Props)
@@ -187,7 +187,7 @@ stats_req_routing_key(Id, AgentId) ->
                            ]).
 -define(STATS_RESP_TYPES, [{<<"Stats">>, fun wh_json:is_json_object/1}]).
 
--spec stats_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec stats_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 stats_resp(Props) when is_list(Props) ->
     case stats_resp_v(Props) of
         true -> wh_api:build_message(Props, ?STATS_RESP_HEADERS, ?OPTIONAL_STATS_RESP_HEADERS);
@@ -196,7 +196,7 @@ stats_resp(Props) when is_list(Props) ->
 stats_resp(JObj) ->
     stats_resp(wh_json:to_proplist(JObj)).
 
--spec stats_resp_v/1 :: (api_terms()) -> boolean().
+-spec stats_resp_v(api_terms()) -> boolean().
 stats_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?STATS_RESP_HEADERS, ?STATS_RESP_VALUES, ?STATS_RESP_TYPES);
 stats_resp_v(JObj) ->
@@ -219,7 +219,7 @@ stats_resp_v(JObj) ->
 -define(LOGIN_QUEUE_VALUES, [{<<"Event-Name">>, <<"login_queue">>} | ?AGENT_VALUES]).
 -define(LOGOUT_QUEUE_VALUES, [{<<"Event-Name">>, <<"logout_queue">>} | ?AGENT_VALUES]).
 
--spec login/1 :: (api_terms()) ->
+-spec login(api_terms()) ->
                          {'ok', iolist()} |
                          {'error', string()}.
 login(Props) when is_list(Props) ->
@@ -230,13 +230,13 @@ login(Props) when is_list(Props) ->
 login(JObj) ->
     login(wh_json:to_proplist(JObj)).
 
--spec login_v/1 :: (api_terms()) -> boolean().
+-spec login_v(api_terms()) -> boolean().
 login_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AGENT_HEADERS, ?LOGIN_VALUES, ?AGENT_TYPES);
 login_v(JObj) ->
     login_v(wh_json:to_proplist(JObj)).
 
--spec login_queue/1 :: (api_terms()) ->
+-spec login_queue(api_terms()) ->
                                {'ok', iolist()} |
                                {'error', string()}.
 login_queue(Props) when is_list(Props) ->
@@ -247,14 +247,14 @@ login_queue(Props) when is_list(Props) ->
 login_queue(JObj) ->
     login_queue(wh_json:to_proplist(JObj)).
 
--spec login_queue_v/1 :: (api_terms()) -> boolean().
+-spec login_queue_v(api_terms()) -> boolean().
 login_queue_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AGENT_HEADERS, ?LOGIN_QUEUE_VALUES, ?AGENT_TYPES);
 login_queue_v(JObj) ->
     login_queue_v(wh_json:to_proplist(JObj)).
 
 
--spec logout/1 :: (api_terms()) ->
+-spec logout(api_terms()) ->
                          {'ok', iolist()} |
                          {'error', string()}.
 logout(Props) when is_list(Props) ->
@@ -265,13 +265,13 @@ logout(Props) when is_list(Props) ->
 logout(JObj) ->
     logout(wh_json:to_proplist(JObj)).
 
--spec logout_v/1 :: (api_terms()) -> boolean().
+-spec logout_v(api_terms()) -> boolean().
 logout_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AGENT_HEADERS, ?LOGOUT_VALUES, ?AGENT_TYPES);
 logout_v(JObj) ->
     logout_v(wh_json:to_proplist(JObj)).
 
--spec logout_queue/1 :: (api_terms()) ->
+-spec logout_queue(api_terms()) ->
                                 {'ok', iolist()} |
                                 {'error', string()}.
 logout_queue(Props) when is_list(Props) ->
@@ -282,13 +282,13 @@ logout_queue(Props) when is_list(Props) ->
 logout_queue(JObj) ->
     logout_queue(wh_json:to_proplist(JObj)).
 
--spec logout_queue_v/1 :: (api_terms()) -> boolean().
+-spec logout_queue_v(api_terms()) -> boolean().
 logout_queue_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AGENT_HEADERS, ?LOGOUT_QUEUE_VALUES, ?AGENT_TYPES);
 logout_queue_v(JObj) ->
     logout_queue_v(wh_json:to_proplist(JObj)).
 
--spec pause/1 :: (api_terms()) ->
+-spec pause(api_terms()) ->
                          {'ok', iolist()} |
                          {'error', string()}.
 pause(Props) when is_list(Props) ->
@@ -299,13 +299,13 @@ pause(Props) when is_list(Props) ->
 pause(JObj) ->
     pause(wh_json:to_proplist(JObj)).
 
--spec pause_v/1 :: (api_terms()) -> boolean().
+-spec pause_v(api_terms()) -> boolean().
 pause_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AGENT_HEADERS, ?PAUSE_VALUES, ?AGENT_TYPES);
 pause_v(JObj) ->
     pause_v(wh_json:to_proplist(JObj)).
 
--spec resume/1 :: (api_terms()) ->
+-spec resume(api_terms()) ->
                           {'ok', iolist()} |
                           {'error', string()}.
 resume(Props) when is_list(Props) ->
@@ -316,14 +316,14 @@ resume(Props) when is_list(Props) ->
 resume(JObj) ->
     resume(wh_json:to_proplist(JObj)).
 
--spec resume_v/1 :: (api_terms()) -> boolean().
+-spec resume_v(api_terms()) -> boolean().
 resume_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AGENT_HEADERS, ?RESUME_VALUES, ?AGENT_TYPES);
 resume_v(JObj) ->
     resume_v(wh_json:to_proplist(JObj)).
 
--spec agent_status_routing_key/1 :: (wh_proplist()) -> ne_binary().
--spec agent_status_routing_key/3 :: (ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec agent_status_routing_key(wh_proplist()) -> ne_binary().
+-spec agent_status_routing_key(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 agent_status_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Agent-ID">>, Props, <<"*">>),
     AcctId = props:get_value(<<"Account-ID">>, Props, <<"*">>),
@@ -337,8 +337,8 @@ agent_status_routing_key(AcctId, AgentId, Status) ->
 %% Bind/Unbind the queue as appropriate
 %%------------------------------------------------------------------------------
 
--spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
--spec bind_q/3 :: (binary(), {ne_binary(), ne_binary(), ne_binary()}, 'undefined' | list()) -> 'ok'.
+-spec bind_q(binary(), proplist()) -> 'ok'.
+-spec bind_q(binary(), {ne_binary(), ne_binary(), ne_binary()}, 'undefined' | list()) -> 'ok'.
 bind_q(Q, Props) ->
     AgentId = props:get_value(agent_id, Props, <<"*">>),
     AcctId = props:get_value(account_id, Props, <<"*">>),
@@ -370,8 +370,8 @@ bind_q(Q, Ids, [_|T]) ->
 bind_q(_, _, []) ->
     ok.
 
--spec unbind_q/2 :: (binary(), proplist()) -> 'ok'.
--spec unbind_q/3 :: (binary(), {ne_binary(), ne_binary(), ne_binary()}, 'undefined' | list()) -> 'ok'.
+-spec unbind_q(binary(), proplist()) -> 'ok'.
+-spec unbind_q(binary(), {ne_binary(), ne_binary(), ne_binary()}, 'undefined' | list()) -> 'ok'.
 unbind_q(Q, Props) ->
     AgentId = props:get_value(agent_id, Props, <<"*">>),
     AcctId = props:get_value(account_id, Props, <<"*">>),
@@ -403,80 +403,80 @@ unbind_q(_, _, []) ->
 %%------------------------------------------------------------------------------
 %% Publishers for convenience
 %%------------------------------------------------------------------------------
--spec publish_sync_req/1 :: (api_terms()) -> 'ok'.
--spec publish_sync_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
+-spec publish_sync_req(api_terms()) -> 'ok'.
+-spec publish_sync_req(api_terms(), ne_binary()) -> 'ok'.
 publish_sync_req(JObj) ->
     publish_sync_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_sync_req(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?SYNC_REQ_VALUES, fun sync_req/1),
     amqp_util:whapps_publish(sync_req_routing_key(API), Payload, ContentType).
 
--spec publish_sync_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_sync_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_sync_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_sync_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_sync_resp(Q, JObj) ->
     publish_sync_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_sync_resp(Q, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?SYNC_RESP_VALUES, fun sync_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
--spec publish_stats_req/1 :: (api_terms()) -> 'ok'.
--spec publish_stats_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
+-spec publish_stats_req(api_terms()) -> 'ok'.
+-spec publish_stats_req(api_terms(), ne_binary()) -> 'ok'.
 publish_stats_req(JObj) ->
     publish_stats_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_stats_req(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?STATS_REQ_VALUES, fun stats_req/1),
     amqp_util:whapps_publish(stats_req_publish_key(API), Payload, ContentType).
 
--spec publish_stats_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_stats_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_stats_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_stats_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_stats_resp(Q, JObj) ->
     publish_stats_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_stats_resp(Q, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?STATS_RESP_VALUES, fun stats_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
--spec publish_login/1 :: (api_terms()) -> 'ok'.
--spec publish_login/2 :: (api_terms(), ne_binary()) -> 'ok'.
+-spec publish_login(api_terms()) -> 'ok'.
+-spec publish_login(api_terms(), ne_binary()) -> 'ok'.
 publish_login(JObj) ->
     publish_login(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_login(API, ContentType) ->
     {ok, Payload} = login((API1 = wh_api:prepare_api_payload(API, ?LOGIN_VALUES))),
     amqp_util:whapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
--spec publish_logout/1 :: (api_terms()) -> 'ok'.
--spec publish_logout/2 :: (api_terms(), ne_binary()) -> 'ok'.
+-spec publish_logout(api_terms()) -> 'ok'.
+-spec publish_logout(api_terms(), ne_binary()) -> 'ok'.
 publish_logout(JObj) ->
     publish_logout(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_logout(API, ContentType) ->
     {ok, Payload} = logout((API1 = wh_api:prepare_api_payload(API, ?LOGOUT_VALUES))),
     amqp_util:whapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
--spec publish_login_queue/1 :: (api_terms()) -> 'ok'.
--spec publish_login_queue/2 :: (api_terms(), ne_binary()) -> 'ok'.
+-spec publish_login_queue(api_terms()) -> 'ok'.
+-spec publish_login_queue(api_terms(), ne_binary()) -> 'ok'.
 publish_login_queue(JObj) ->
     publish_login_queue(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_login_queue(API, ContentType) ->
     {ok, Payload} = login_queue((API1 = wh_api:prepare_api_payload(API, ?LOGIN_QUEUE_VALUES))),
     amqp_util:whapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
--spec publish_logout_queue/1 :: (api_terms()) -> 'ok'.
--spec publish_logout_queue/2 :: (api_terms(), ne_binary()) -> 'ok'.
+-spec publish_logout_queue(api_terms()) -> 'ok'.
+-spec publish_logout_queue(api_terms(), ne_binary()) -> 'ok'.
 publish_logout_queue(JObj) ->
     publish_logout_queue(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_logout_queue(API, ContentType) ->
     {ok, Payload} = logout_queue((API1 = wh_api:prepare_api_payload(API, ?LOGOUT_QUEUE_VALUES))),
     amqp_util:whapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
--spec publish_pause/1 :: (api_terms()) -> 'ok'.
--spec publish_pause/2 :: (api_terms(), ne_binary()) -> 'ok'.
+-spec publish_pause(api_terms()) -> 'ok'.
+-spec publish_pause(api_terms(), ne_binary()) -> 'ok'.
 publish_pause(JObj) ->
     publish_pause(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_pause(API, ContentType) ->
     {ok, Payload} = pause((API1 = wh_api:prepare_api_payload(API, ?PAUSE_VALUES))),
     amqp_util:whapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
--spec publish_resume/1 :: (api_terms()) -> 'ok'.
--spec publish_resume/2 :: (api_terms(), ne_binary()) -> 'ok'.
+-spec publish_resume(api_terms()) -> 'ok'.
+-spec publish_resume(api_terms(), ne_binary()) -> 'ok'.
 publish_resume(JObj) ->
     publish_resume(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resume(API, ContentType) ->

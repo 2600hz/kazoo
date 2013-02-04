@@ -26,7 +26,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     whapps_call_command:answer(Call),
     _ = case find_agent(Call) of
@@ -43,7 +43,7 @@ handle(Data, Call) ->
     lager:info("finished with acdc agent callflow"),
     cf_exe:continue(Call).
 
--spec find_agent_status/2 :: (whapps_call:call() | ne_binary(), ne_binary()) -> ne_binary().
+-spec find_agent_status(whapps_call:call() | ne_binary(), ne_binary()) -> ne_binary().
 find_agent_status(?NE_BINARY = AcctId, AgentId) ->
     fix_agent_status(acdc_util:agent_status(AcctId, AgentId));
 find_agent_status(Call, AgentId) ->
@@ -133,7 +133,7 @@ update_agent_status(Call, AgentId, Status, PubFun, Timeout) ->
     lager:debug("updated agent status to ~s(~s), publishing update", [Status, NewStatus]),
     send_new_status(Call, AgentId, PubFun, Timeout).
 
--spec send_new_status/4 :: (whapps_call:call(), ne_binary(), wh_amqp_worker:publish_fun(), integer() | 'undefined') -> 'ok'.
+-spec send_new_status(whapps_call:call(), ne_binary(), wh_amqp_worker:publish_fun(), integer() | 'undefined') -> 'ok'.
 send_new_status(Call, AgentId, PubFun, Timeout) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, whapps_call:account_id(Call)}

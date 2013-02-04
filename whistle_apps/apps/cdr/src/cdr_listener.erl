@@ -55,7 +55,7 @@ start_link() ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], []).
 
--spec handle_cdr/2 :: (wh_json:object(), proplist()) -> no_return().
+-spec handle_cdr(wh_json:object(), proplist()) -> no_return().
 handle_cdr(JObj, _Props) ->
     true = wapi_call:cdr_v(JObj),
     wh_util:put_callid(JObj),

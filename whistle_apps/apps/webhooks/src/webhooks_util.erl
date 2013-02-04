@@ -12,7 +12,7 @@
 
 -include("webhooks.hrl").
 
--spec api_call/2 :: (hook_types(), fun((atom()) -> Resp)) -> Resp | {'error', 'non_existing' | 'undefined' | atom()}.
+-spec api_call(hook_types(), fun((atom()) -> Resp)) -> Resp | {'error', 'non_existing' | 'undefined' | atom()}.
 api_call(BindEvent, ApiFun) when is_function(ApiFun, 1) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_list(BindEvent)]),
     try

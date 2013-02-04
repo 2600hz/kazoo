@@ -37,34 +37,34 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/1 :: (wh_json:object()) -> startlink_ret().
--spec start_link/2 :: (whapps_call:call(), ne_binary()) -> startlink_ret().
+-spec start_link(wh_json:object()) -> startlink_ret().
+-spec start_link(whapps_call:call(), ne_binary()) -> startlink_ret().
 start_link(AgentJObj) ->
     supervisor:start_link(?MODULE, [AgentJObj]).
 
 start_link(ThiefCall, QueueId) ->
     supervisor:start_link(?MODULE, [ThiefCall, QueueId]).
 
--spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
+-spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Supervisor) ->
     supervisor:terminate_child(acdc_agents_sup, Supervisor).
 
--spec agent/1 :: (pid()) -> pid() | 'undefined'.
+-spec agent(pid()) -> pid() | 'undefined'.
 agent(Super) ->
     case child_of_type(Super, acdc_agent) of
         [] -> undefined;
         [P] -> P
     end.
 
--spec fsm/1 :: (pid()) -> pid() | 'undefined'.
+-spec fsm(pid()) -> pid() | 'undefined'.
 fsm(Super) ->
     case child_of_type(Super, acdc_agent_fsm) of
         [] -> undefined;
         [P] -> P
     end.
 
--spec start_fsm/3 :: (pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
--spec start_fsm/4 :: (pid(), ne_binary(), ne_binary(), wh_proplist()) -> sup_startchild_ret().
+-spec start_fsm(pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
+-spec start_fsm(pid(), ne_binary(), ne_binary(), wh_proplist()) -> sup_startchild_ret().
 start_fsm(Super, AcctId, AgentId) ->
     start_fsm(Super, AcctId, AgentId, []).
 start_fsm(Super, AcctId, AgentId, Props) ->
@@ -75,7 +75,7 @@ start_fsm(Super, AcctId, AgentId, Props) ->
         P when is_pid(P) -> {ok, P}
     end.
 
--spec child_of_type/2 :: (pid(), atom()) -> list(pid()).
+-spec child_of_type(pid(), atom()) -> list(pid()).
 child_of_type(Super, T) ->
     [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(Super), T =:= Type].
 
@@ -96,7 +96,7 @@ child_of_type(Super, T) ->
 %%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: (list()) -> sup_init_ret().
+-spec init(list()) -> sup_init_ret().
 init(Args) ->
     RestartStrategy = one_for_all,
     MaxRestarts = 2,

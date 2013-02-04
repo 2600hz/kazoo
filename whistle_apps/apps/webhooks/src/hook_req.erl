@@ -255,10 +255,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec send_http_req/2 :: (iolist() | ne_binary(), #state{}) -> 'ignore' |
+-spec send_http_req(iolist() | ne_binary(), #state{}) -> 'ignore' |
                                                                {'ok', wh_json:json_object()} |
                                                                {'error', 'retries_exceeded' | term()}.
--spec send_http_req/3 :: (iolist() | ne_binary(), #state{}, non_neg_integer()) -> 'ignore' |
+-spec send_http_req(iolist() | ne_binary(), #state{}, non_neg_integer()) -> 'ignore' |
                                                                                   {'ok', wh_json:json_object()} |
                                                                                   {'error', 'retries_exceeded' | term()}.
 send_http_req(JSON, #state{callback_attempts=Attempts}=State) ->
@@ -290,7 +290,7 @@ send_http_req_once(JSON, #state{callback_uri=CB_URI
             E
     end.
 
--spec uri/3 :: (http_methods(), nonempty_string(), iolist() | ne_binary()) -> nonempty_string().
+-spec uri(http_methods(), nonempty_string(), iolist() | ne_binary()) -> nonempty_string().
 uri(get, URI, JSON) ->
     JSON_QS = wh_json:to_querystring(wh_json:decode(JSON)),
     case mochiweb_util:urlsplit(URI) of
@@ -302,7 +302,7 @@ uri(get, URI, JSON) ->
 uri(_, URI, _) ->
     URI.
 
--spec encode_event/2 :: (hook_types(), wh_json:json_object()) -> {'ok', iolist() | ne_binary()} | {'error', string() | 'unhandled_event'}.
+-spec encode_event(hook_types(), wh_json:json_object()) -> {'ok', iolist() | ne_binary()} | {'error', string() | 'unhandled_event'}.
 encode_event(route, JObj) ->
     case wh_util:get_event_type(JObj) of
         {<<"call_event">>, _} ->
@@ -332,7 +332,7 @@ encode_event(authz, JObj) ->
             {error, unhandled_event}
     end.
 
--spec process_resp/3 :: (nonempty_string(), proplist(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'retry' | 'unsupported_content_type'} | 'ignore'.
+-spec process_resp(nonempty_string(), proplist(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'retry' | 'unsupported_content_type'} | 'ignore'.
 process_resp(_, _, <<>>) ->
     lager:debug("no response to decode"),
     ignore;
@@ -344,35 +344,35 @@ process_resp(_Status, _RespHeaders, _RespBody) ->
     {error, retry}.
 
 %% Should convert from ContentType to a JSON binary (like xml -> Erlang XML -> Erlang JSON -> json)
--spec decode_to_json/2 :: (nonempty_string(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'unsupported_content_type'}.
+-spec decode_to_json(nonempty_string(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'unsupported_content_type'}.
 decode_to_json("application/json" ++ _, JSON) ->
     {ok, wh_json:decode(JSON)};
 decode_to_json(_ContentType, _RespBody) ->
     lager:debug("unhandled content type: ~s", [_ContentType]),
     {error, unsupported_content_type}.
 
--spec encode_req/2 :: (hook_types(), wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec encode_req(hook_types(), wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
 encode_req(BindEvent, JObj) ->
     case webhooks_util:api_call(BindEvent, fun(ApiMod) -> ApiMod:req(JObj) end) of
         {ok, _}=OK -> OK;
         {error, _}=Err -> Err
     end.
 
--spec is_valid_req/2 :: (wh_json:json_object(), hook_types()) -> boolean().
+-spec is_valid_req(wh_json:json_object(), hook_types()) -> boolean().
 is_valid_req(JObj, BindEvent) ->
     case webhooks_util:api_call(BindEvent, fun(ApiMod) -> ApiMod:req_v(JObj) end) of
         true -> true;
         _ -> false
     end.
 
--spec send_amqp_resp/3 :: (ne_binary(), wh_json:json_object(), hook_types()) -> 'ok'.
+-spec send_amqp_resp(ne_binary(), wh_json:json_object(), hook_types()) -> 'ok'.
 send_amqp_resp(RespQ, RespJObj, route) ->
     {<<"dialplan">>, <<"route_resp">>} = wh_util:get_event_type(RespJObj),
     wapi_route:publish_resp(RespQ, RespJObj);
 send_amqp_resp(RespQ, RespJObj, BindEvent) ->
     webhooks_util:api_call(BindEvent, fun(ApiMod) -> ApiMod:publish_resp(RespQ, RespJObj) end).
 
--spec send_amqp_event_resp/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec send_amqp_event_resp(ne_binary(), wh_json:json_object()) -> 'ok'.
 send_amqp_event_resp(RespQ, RespJObj) ->
     case wh_util:get_event_type(RespJObj) of
         {<<"dialplan">>, <<"command">>} ->

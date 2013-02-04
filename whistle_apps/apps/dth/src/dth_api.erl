@@ -20,7 +20,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec blacklist_req/1 :: (api_terms()) -> {'ok', iolist()} |
+-spec blacklist_req(api_terms()) -> {'ok', iolist()} |
                                           {'error', string()}.
 blacklist_req(Prop) when is_list(Prop) ->
     case blacklist_req_v(Prop) of
@@ -30,7 +30,7 @@ blacklist_req(Prop) when is_list(Prop) ->
 blacklist_req(JObj) ->
     blacklist_req(wh_json:to_proplist(JObj)).
 
--spec blacklist_req_v/1 :: (api_terms()) -> boolean().
+-spec blacklist_req_v(api_terms()) -> boolean().
 blacklist_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?DTH_BLACKLIST_REQ_HEADERS, ?DTH_BLACKLIST_REQ_VALUES, ?DTH_BLACKLIST_REQ_TYPES);
 blacklist_req_v(JObj) ->
@@ -41,7 +41,7 @@ blacklist_req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec blacklist_resp/1 :: (api_terms()) -> {'ok', iolist()} |
+-spec blacklist_resp(api_terms()) -> {'ok', iolist()} |
                                            {'error', string()}.
 blacklist_resp(Prop) when is_list(Prop) ->
     case blacklist_resp_v(Prop) of
@@ -52,7 +52,7 @@ blacklist_resp(JObj) ->
     blacklist_resp(wh_json:to_proplist(JObj)).
 
 
--spec blacklist_resp_v/1 :: (api_terms()) -> boolean().
+-spec blacklist_resp_v(api_terms()) -> boolean().
 blacklist_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?DTH_BLACKLIST_RESP_HEADERS, ?DTH_BLACKLIST_RESP_VALUES, ?DTH_BLACKLIST_RESP_TYPES);
 blacklist_resp_v(JObj) ->

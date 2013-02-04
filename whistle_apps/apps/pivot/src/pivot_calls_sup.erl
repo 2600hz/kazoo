@@ -34,15 +34,15 @@
 %% Starts the supervisor
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec new/2 :: (whapps_call:call(), wh_json:json_object()) -> sup_startchild_ret().
+-spec new(whapps_call:call(), wh_json:json_object()) -> sup_startchild_ret().
 new(Call, JObj) ->
     supervisor:start_child(?MODULE, [Call, JObj]).
 
--spec workers/0 :: () -> [pid(),...] | [].
+-spec workers() -> [pid(),...] | [].
 workers() ->
     [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE)].
 

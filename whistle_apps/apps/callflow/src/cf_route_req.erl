@@ -12,7 +12,7 @@
 
 -export([handle_req/2]).
 
--spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Options) ->
     Call = whapps_call:from_route_req(JObj),
     case is_binary(whapps_call:account_id(Call)) andalso callflow_should_respond(Call) of
@@ -47,7 +47,7 @@ handle_req(JObj, Options) ->
 %% determine if callflows should respond to a route request
 %% @end
 %%-----------------------------------------------------------------------------
--spec callflow_should_respond/1 :: (whapps_call:call()) -> boolean().
+-spec callflow_should_respond(whapps_call:call()) -> boolean().
 callflow_should_respond(Call) ->
     case whapps_call:authorizing_type(Call) of
         <<"user">> -> true;
@@ -66,7 +66,7 @@ callflow_should_respond(Call) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_route_response/4 :: (wh_json:object(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec send_route_response(wh_json:object(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 send_route_response(JObj, Q, Defer, Call) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
@@ -84,7 +84,7 @@ send_route_response(JObj, Q, Defer, Call) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec pre_park_action/1 :: (whapps_call:call()) -> ne_binary().
+-spec pre_park_action(whapps_call:call()) -> ne_binary().
 pre_park_action(Call) ->
     case whapps_config:get_is_true(<<"callflow">>, <<"ring_ready_offnet">>, true)
         andalso whapps_call:inception(Call) =:= <<"off-net">>
@@ -101,7 +101,7 @@ pre_park_action(Call) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec maybe_send_defered_route_response/3 :: (wh_json:object(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec maybe_send_defered_route_response(wh_json:object(), ne_binary(), whapps_call:call()) -> 'ok'.
 maybe_send_defered_route_response(JObj, ControllerQ, Call) ->
     AccountId = whapps_call:account_id(Call),
     case cf_util:lookup_callflow(<<"0">>, AccountId) of
@@ -122,7 +122,7 @@ maybe_send_defered_route_response(JObj, ControllerQ, Call) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec cache_call/4 :: (wh_json:object(), boolean(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec cache_call(wh_json:object(), boolean(), ne_binary(), whapps_call:call()) -> 'ok'.
 cache_call(Flow, NoMatch, ControllerQ, Call) ->
     Updaters = [fun(C) ->
                         Props = [{cf_flow_id, wh_json:get_value(<<"_id">>, Flow)}

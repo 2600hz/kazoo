@@ -56,17 +56,17 @@ start_link() ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], []).
 
--spec pause/0 :: () -> 'ok'.
+-spec pause() -> 'ok'.
 pause() ->
     {ok, Srv} = callflow_sup:listener_proc(),
     gen_listener:rm_responder(Srv, cf_route_req).
 
--spec resume/0 :: () -> 'ok'.
+-spec resume() -> 'ok'.
 resume() ->
     {ok, Srv} = callflow_sup:listener_proc(),
     gen_listener:add_responder(Srv, cf_route_req, [{<<"dialplan">>, <<"route_req">>}]).
 
--spec stop/0 :: () -> 'ok'.
+-spec stop() -> 'ok'.
 stop() ->
     {ok, Srv} = callflow_sup:listener_proc(),
     gen_listener:stop(Srv).
@@ -157,7 +157,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (term(), term()) -> 'ok'.
+-spec terminate(term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
     lager:info("callflow listner ~p termination", [_Reason]).
 

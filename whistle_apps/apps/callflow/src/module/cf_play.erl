@@ -18,7 +18,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     AccountId = whapps_call:account_id(Call),
     case wh_json:get_value(<<"id">>, Data) of
@@ -37,7 +37,7 @@ handle(Data, Call) ->
             cf_exe:continue(Call)
     end.
 
--spec play/3 :: (wh_json:json_object(), whapps_call:call(), ne_binary()) -> 'ok'.
+-spec play(wh_json:json_object(), whapps_call:call(), ne_binary()) -> 'ok'.
 play(Data, Call, Media) ->
     case wh_json:is_false(<<"answer">>, Data) of
         true -> ok;

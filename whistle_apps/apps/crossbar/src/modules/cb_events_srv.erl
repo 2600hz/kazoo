@@ -54,46 +54,46 @@ start_link(AccountID, UserID) ->
 			    ,[AccountID, UserID]
 			   ).
 
--spec subscribe/3 :: (Srv, Sub, Options) -> 'ok' | {'error', 'unknown' | 'already_present'} when
+-spec subscribe(Srv, Sub, Options) -> 'ok' | {'error', 'unknown' | 'already_present'} when
       Srv :: pid(),
       Sub :: atom(),
       Options :: proplist().
 subscribe(Srv, Sub, Options) ->
     gen_listener:call(Srv, {subscribe, wh_util:to_atom(Sub), Options}).
 
--spec unsubscribe/2 :: (Srv, Sub) -> 'ok' when
+-spec unsubscribe(Srv, Sub) -> 'ok' when
       Srv :: pid(),
       Sub :: atom().
 unsubscribe(Srv, Sub) ->
     gen_listener:cast(Srv, {unsubscribe, wh_util:to_atom(Sub)}).
 
--spec subscriptions/1 :: (Srv) -> {'ok', [queue_bindings:bind_types(),...] | []} when
+-spec subscriptions(Srv) -> {'ok', [queue_bindings:bind_types(),...] | []} when
       Srv :: pid().
 subscriptions(Srv) ->
     gen_listener:call(Srv, subscriptions).
 
--spec fetch/1 :: (Srv) -> {wh_json:json_objects(), Overflow :: boolean()} when
+-spec fetch(Srv) -> {wh_json:json_objects(), Overflow :: boolean()} when
       Srv :: pid().
 fetch(Srv) ->
     gen_listener:call(Srv, fetch).
 
--spec get_maxevents/1 :: (Srv) -> integer() when
+-spec get_maxevents(Srv) -> integer() when
       Srv :: pid().
 get_maxevents(Srv) ->
     gen_listener:call(Srv, get_maxevents).
 
--spec set_maxevents/2 :: (Srv, Max) -> {'ok', EventsDropped :: non_neg_integer()} when
+-spec set_maxevents(Srv, Max) -> {'ok', EventsDropped :: non_neg_integer()} when
       Srv :: pid(),
       Max :: pos_integer().
 set_maxevents(Srv, Max) when Max > 0 ->
     gen_listener:call(Srv, {set_maxevents, Max}).
 
--spec stop/1 :: (Srv) -> 'ok' when
+-spec stop(Srv) -> 'ok' when
       Srv :: pid().
 stop(Srv) ->
     gen_listener:stop(Srv).
 
--spec handle_req/2 :: (JObj, Props) -> 'ok' when
+-spec handle_req(JObj, Props) -> 'ok' when
       JObj :: wh_json:json_object(),
       Props :: proplist().
 handle_req(JObj, Props) ->
@@ -223,7 +223,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (term(), #state{}) -> ok.
+-spec terminate(term(), #state{}) -> ok.
 terminate(_Reason, _) ->
     lager:debug("termination: ~p", [_Reason]).
 

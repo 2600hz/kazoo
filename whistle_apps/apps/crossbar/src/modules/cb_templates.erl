@@ -44,8 +44,8 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     ['GET'].
 allowed_methods(_) ->
@@ -59,8 +59,8 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 
@@ -73,8 +73,8 @@ resource_exists(_) -> true.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = <<"get">>}=Context) ->
     summary(Context).
 
@@ -113,7 +113,7 @@ account_created(#cb_context{doc=JObj, account_id=AccountId, db_name=AccountDb}) 
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec summary(#cb_context{}) -> #cb_context{}.
 summary(Context) ->
     case couch_mgr:db_info() of
         {ok, Dbs} ->
@@ -133,7 +133,7 @@ summary(Context) ->
 %% for this account
 %% @end
 %%--------------------------------------------------------------------
--spec load_template_db/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_template_db(ne_binary(), #cb_context{}) -> #cb_context{}.
 load_template_db([TemplateName], Context) ->
     load_template_db(TemplateName, Context);
 load_template_db(TemplateName, Context) ->
@@ -156,7 +156,7 @@ load_template_db(TemplateName, Context) ->
 %% Format the template/db name into a raw, unencoded or encoded form.
 %% @end
 %%--------------------------------------------------------------------
--spec format_template_name/2 :: (ne_binary(), encoded | raw) -> ne_binary().
+-spec format_template_name(ne_binary(), encoded | raw) -> ne_binary().
 format_template_name(<<"template%2F", _/binary>> = TemplateName, encoded) ->
     TemplateName;
 format_template_name(<<"template/", TemplateName/binary>>, encoded) ->
@@ -177,7 +177,7 @@ format_template_name(TemplateName, raw) ->
 %% used as an 'account'
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_db/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec create_template_db(ne_binary(), #cb_context{}) -> #cb_context{}.
 create_template_db(TemplateName, Context) ->
     TemplateDb = format_template_name(TemplateName, encoded),
     case couch_mgr:db_create(TemplateDb) of
@@ -198,7 +198,7 @@ create_template_db(TemplateName, Context) ->
 %% documents into the account
 %% @end
 %%--------------------------------------------------------------------
--spec import_template/3 :: (undefined | ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec import_template(undefined | ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 import_template(undefined, _, _) ->
     ok;
 import_template(TemplateName, AccountId, AccountDb) ->
@@ -223,7 +223,7 @@ import_template(TemplateName, AccountId, AccountDb) ->
 %% account database, correcting the pvt fields.
 %% @end
 %%--------------------------------------------------------------------
--spec import_template_docs/4 :: ([] | [ne_binary(),...], ne_binary(), ne_binary(), ne_binary()) -> ok.
+-spec import_template_docs([] | [ne_binary(),...], ne_binary(), ne_binary(), ne_binary()) -> ok.
 import_template_docs([], _, _, _) ->
     ok;
 import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->

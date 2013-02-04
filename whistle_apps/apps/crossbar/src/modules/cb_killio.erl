@@ -37,7 +37,7 @@
 %% Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.killio">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.killio">>, ?MODULE, resource_exists),
@@ -52,7 +52,7 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?TOKEN_CALL) ->
     ['PUT', 'POST'].
 
@@ -65,7 +65,7 @@ allowed_methods(?TOKEN_CALL) ->
 %%    /killio/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(?TOKEN_CALL) -> true.
 
 %%--------------------------------------------------------------------
@@ -79,7 +79,7 @@ resource_exists(?TOKEN_CALL) -> true.
 %% @end
 %%--------------------------------------------------------------------
 
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"put">>}=Context, ?TOKEN_CALL) ->
     setup_call(Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, ?TOKEN_CALL) ->
@@ -91,7 +91,7 @@ validate(#cb_context{req_verb = <<"post">>}=Context, ?TOKEN_CALL) ->
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec put(#cb_context{}, path_token()) -> #cb_context{}.
 put(#cb_context{}=Context, ?TOKEN_CALL) ->
     start_call(Context).
 
@@ -102,7 +102,7 @@ put(#cb_context{}=Context, ?TOKEN_CALL) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{}=Context, ?TOKEN_CALL) ->
     start_call(Context).
 

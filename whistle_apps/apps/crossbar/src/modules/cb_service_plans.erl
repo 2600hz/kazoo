@@ -33,7 +33,7 @@
 %% Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.service_plans">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.service_plans">>, ?MODULE, resource_exists),
@@ -48,8 +48,8 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods() | [].
--spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
+-spec allowed_methods() -> http_methods() | [].
+-spec allowed_methods(path_token()) -> http_methods() | [].
 allowed_methods() ->
     ['GET'].
 allowed_methods(_) -> 
@@ -65,8 +65,8 @@ allowed_methods(_) ->
 %%    /service_plans/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 
@@ -80,8 +80,8 @@ resource_exists(_) -> true.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, encoded),
@@ -123,7 +123,7 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, PlanId) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{account_id=AccountId}=Context, <<"synchronization">>) ->
     wh_service_sync:sync(AccountId),
     Context#cb_context{resp_status=success};
@@ -151,7 +151,7 @@ post(#cb_context{account_id=AccountId}=Context, PlanId) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token()) -> #cb_context{}.
 delete(#cb_context{account_id=AccountId}=Context, PlanId) ->
     Routines = [fun(S) -> wh_services:delete_service_plan(PlanId, S) end
                 ,fun(S) -> wh_services:save(S) end
@@ -167,7 +167,7 @@ delete(#cb_context{account_id=AccountId}=Context, PlanId) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -178,7 +178,7 @@ normalize_view_results(JObj, Acc) ->
 %% Check if you have the permission to update or delete service plans
 %% @end
 %%--------------------------------------------------------------------
--spec is_reseler/1 :: (#cb_context{}) -> {ok, ne_binary()} | boolean().
+-spec is_reseler(#cb_context{}) -> {ok, ne_binary()} | boolean().
 is_reseler(#cb_context{auth_account_id=AuthAccountId, account_id=AccountId}) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
     case AuthAccountId =:= ResellerId of
@@ -194,7 +194,7 @@ is_reseler(#cb_context{auth_account_id=AuthAccountId, account_id=AccountId}) ->
 %% Check if you have the permission to update or delete service plans
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_allow_change/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec maybe_allow_change(#cb_context{}, path_token()) -> #cb_context{}.
 maybe_allow_change(#cb_context{}=Context, PlanId) ->
     case is_reseler(Context) of
         {ok, ResellerId} ->
@@ -209,7 +209,7 @@ maybe_allow_change(#cb_context{}=Context, PlanId) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec check_plan_id/3 :: (#cb_context{}, path_token(), ne_binary()) -> #cb_context{}.
+-spec check_plan_id(#cb_context{}, path_token(), ne_binary()) -> #cb_context{}.
 check_plan_id(#cb_context{}=Context, PlanId, ResellerId) ->
     ResellerDb = wh_util:format_account_id(ResellerId, encoded),
     case crossbar_doc:load(PlanId, Context#cb_context{db_name=ResellerDb}) of
@@ -225,7 +225,7 @@ check_plan_id(#cb_context{}=Context, PlanId, ResellerId) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec is_service_plan/3 :: (#cb_context{}, path_token(), wh_json:object()) -> #cb_context{}.
+-spec is_service_plan(#cb_context{}, path_token(), wh_json:object()) -> #cb_context{}.
 is_service_plan(#cb_context{}=Context, PlanId, JObj) ->
     case wh_json:get_value(<<"pvt_type">>, JObj) =:= <<>> of
         true -> Context#cb_context{resp_status=success};

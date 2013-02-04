@@ -49,9 +49,9 @@ authenticate(#cb_context{req_nouns=[{<<"schemas">>,_}]}) ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
--spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     ['GET'].
 allowed_methods(_) ->
@@ -67,9 +67,9 @@ allowed_methods(_, ?VALIDATION_PATH_TOKEN) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
--spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() ->
     true.
 resource_exists(_) ->
@@ -86,9 +86,9 @@ resource_exists(_, ?VALIDATION_PATH_TOKEN) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     lager:debug("load summary of schemas from ~s", [?WH_SCHEMA_DB]),
     summary(Context#cb_context{db_name = ?WH_SCHEMA_DB}).
@@ -110,7 +110,7 @@ validate(#cb_context{}=Context, Id, ?VALIDATION_PATH_TOKEN) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read(ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
@@ -121,7 +121,7 @@ read(Id, Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec summary(#cb_context{}) -> #cb_context{}.
 summary(Context) ->
     crossbar_doc:load_docs(Context, fun normalize_view_results/2).
 
@@ -131,7 +131,7 @@ summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     case wh_json:get_value(<<"id">>, JObj) of
         <<"_design/", _/binary>> -> Acc;

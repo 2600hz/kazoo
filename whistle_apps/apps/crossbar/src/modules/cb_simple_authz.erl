@@ -30,7 +30,7 @@
 init() ->
     crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize).
 
--spec authorize/1 :: (#cb_context{}) -> boolean().
+-spec authorize(#cb_context{}) -> boolean().
 authorize(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB,[]}]
                       ,req_verb=Verb
                      }=Context
@@ -61,7 +61,7 @@ authorize(#cb_context{auth_account_id=AuthAccountId}=Context) ->
 %% as the account id that has been authorized to make the request.
 %% @end
 %%--------------------------------------------------------------------
--spec account_is_descendant/2 :: (boolean(), #cb_context{}) -> boolean().
+-spec account_is_descendant(boolean(), #cb_context{}) -> boolean().
 account_is_descendant(true, _) ->
     true;
 account_is_descendant(false, #cb_context{auth_account_id=undefined}) ->
@@ -112,7 +112,7 @@ account_is_descendant(false, #cb_context{auth_account_id=AuthAccountId, req_noun
 %% by the list above) or if it is and the account is a superduper admin.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_if_sys_admin_mod/2 :: (boolean(), #cb_context{}) -> boolean().
+-spec allowed_if_sys_admin_mod(boolean(), #cb_context{}) -> boolean().
 allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
     case is_sys_admin_mod(Context) of
         %% if this is request is not made to a system admin module then this
@@ -136,7 +136,7 @@ allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
 %% Returns true if the request contains a system admin module.
 %% @end
 %%--------------------------------------------------------------------
--spec is_sys_admin_mod/1 :: (#cb_context{}) -> boolean().
+-spec is_sys_admin_mod(#cb_context{}) -> boolean().
 is_sys_admin_mod(#cb_context{req_nouns=Nouns}) ->
     lists:any(fun(E) -> E end
               ,[props:get_value(Mod, Nouns) =/= undefined || Mod <- ?SYS_ADMIN_MODS]).

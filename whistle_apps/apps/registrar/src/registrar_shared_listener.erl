@@ -56,7 +56,7 @@ start_link() ->
                                                         ,{consume_options, ?REG_CONSUME_OPTIONS}
                                                        ], []).
 
--spec stop/1 :: (pid()) -> 'ok'.
+-spec stop(pid()) -> 'ok'.
 stop(Srv) ->
     gen_listener:stop(Srv).
 
@@ -145,7 +145,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (term(), term()) -> 'ok'.
+-spec terminate(term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
     lager:debug("registrar shared queue server ~p termination", [_Reason]).
 

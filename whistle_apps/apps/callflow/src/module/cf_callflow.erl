@@ -18,7 +18,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data, Call) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(whapps_call:account_db(Call), Id) of

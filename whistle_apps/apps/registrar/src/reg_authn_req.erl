@@ -15,7 +15,7 @@
 init() ->
     ok.
 
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req(wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_authn:req_v(JObj),
 
@@ -62,7 +62,7 @@ send_auth_resp(#auth_user{password=Password, method=Method}=AuthUser, JObj) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_auth_error/1 :: (wh_json:json_object()) -> 'ok'.
+-spec send_auth_error(wh_json:json_object()) -> 'ok'.
 send_auth_error(JObj) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -70,7 +70,7 @@ send_auth_error(JObj) ->
     lager:debug("sending SIP authentication error"),
     wapi_authn:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
--spec create_ccvs/1 :: (#auth_user{}) -> wh_json:object().
+-spec create_ccvs(#auth_user{}) -> wh_json:object().
 create_ccvs(#auth_user{}=AuthUser) ->    
     Props = [{<<"Username">>, AuthUser#auth_user.username}
              ,{<<"Realm">>, AuthUser#auth_user.realm}

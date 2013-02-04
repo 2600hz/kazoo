@@ -30,7 +30,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     QueueId = wh_json:get_value(<<"id">>, Data),
     lager:info("sending call to queue ~s", [QueueId]),
@@ -62,7 +62,7 @@ handle(Data, Call) ->
                       ,is_queue_full(MaxQueueSize, CurrQueueSize)
                      ).
 
--spec maybe_enter_queue/2 :: (member_call(), boolean()) -> any().
+-spec maybe_enter_queue(member_call(), boolean()) -> any().
 maybe_enter_queue(#member_call{call=Call}, true) ->
     lager:info("queue has reached max size"),
     cf_exe:continue(Call);
@@ -78,8 +78,8 @@ maybe_enter_queue(#member_call{call=Call
     whapps_call_command:flush_dtmf(Call),
     wait_for_bridge(MC#member_call{call=whapps_call:kvs_store(queue_id, QueueId, Call)}, MaxWait).
 
--spec wait_for_bridge/2 :: (member_call(), max_wait()) -> 'ok'.
--spec wait_for_bridge/3 :: (member_call(), max_wait(), wh_now()) -> 'ok'.
+-spec wait_for_bridge(member_call(), max_wait()) -> 'ok'.
+-spec wait_for_bridge(member_call(), max_wait(), wh_now()) -> 'ok'.
 wait_for_bridge(MC, Timeout) ->
     wait_for_bridge(MC, Timeout, erlang:now()).
 wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
@@ -98,7 +98,7 @@ wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
             cf_exe:continue(Call)
     end.
 
--spec process_message/6 :: (member_call(), max_wait(), wh_now()
+-spec process_message(member_call(), max_wait(), wh_now()
                             ,wh_now(), wh_json:json_object()
                             ,{ne_binary(), ne_binary()}
                            ) -> 'ok'.
@@ -144,19 +144,19 @@ process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"member">>, 
 process_message(MC, Timeout, Start, Wait, _JObj, _Type) ->
     wait_for_bridge(MC, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start).
 
--spec reduce_timeout/2 :: (max_wait(), integer()) -> max_wait().
+-spec reduce_timeout(max_wait(), integer()) -> max_wait().
 reduce_timeout('infinity', _) -> 'infinity';
 reduce_timeout(T, R) -> T-R.
 
 %% convert from seconds to milliseconds, or infinity
--spec max_wait/1 :: (integer()) -> max_wait().
+-spec max_wait(integer()) -> max_wait().
 max_wait(N) when N < 1 -> infinity;
 max_wait(N) -> N * 1000.
 
 max_queue_size(N) when is_integer(N), N > 0 -> N;
 max_queue_size(_) -> 0.
 
--spec is_queue_full/2 :: (non_neg_integer(), non_neg_integer()) -> boolean().
+-spec is_queue_full(non_neg_integer(), non_neg_integer()) -> boolean().
 is_queue_full(0, _) -> false;
 is_queue_full(MaxQueueSize, CurrQueueSize) -> CurrQueueSize >= MaxQueueSize.
 

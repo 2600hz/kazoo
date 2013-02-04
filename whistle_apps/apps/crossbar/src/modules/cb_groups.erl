@@ -34,7 +34,7 @@
 %% Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.groups">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.groups">>, ?MODULE, resource_exists),
@@ -50,8 +50,8 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods() | [].
--spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
+-spec allowed_methods() -> http_methods() | [].
+-spec allowed_methods(path_token()) -> http_methods() | [].
 allowed_methods() ->
     ['GET', 'PUT'].
 allowed_methods(_) ->
@@ -66,8 +66,8 @@ allowed_methods(_) ->
 %%    /groups/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 
@@ -81,8 +81,8 @@ resource_exists(_) -> true.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
@@ -101,7 +101,7 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
+-spec put(#cb_context{}) -> #cb_context{}.
 put(#cb_context{}=Context) ->
     crossbar_doc:save(Context).
 
@@ -112,7 +112,7 @@ put(#cb_context{}=Context) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
 
@@ -122,7 +122,7 @@ post(#cb_context{}=Context, _) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token()) -> #cb_context{}.
 delete(#cb_context{}=Context, _) ->
     crossbar_doc:delete(Context).
 
@@ -132,7 +132,7 @@ delete(#cb_context{}=Context, _) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (#cb_context{}) -> #cb_context{}.
+-spec create(#cb_context{}) -> #cb_context{}.
 create(#cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
     cb_context:validate_request_data(<<"groups">>, Context, OnSuccess).
@@ -143,7 +143,7 @@ create(#cb_context{}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read(ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
@@ -154,7 +154,7 @@ read(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
 update(Id, #cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"groups">>, Context, OnSuccess).
@@ -166,7 +166,7 @@ update(Id, #cb_context{}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec summary(#cb_context{}) -> #cb_context{}.
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -176,7 +176,7 @@ summary(Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
 on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
     Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"group">>, JObj)};
 on_successful_validation(Id, #cb_context{}=Context) ->
@@ -188,6 +188,6 @@ on_successful_validation(Id, #cb_context{}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].

@@ -55,8 +55,8 @@ init_db() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     ['GET', 'PUT', 'POST'].
 allowed_methods(_) ->
@@ -70,12 +70,12 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 
--spec content_types_accepted/1 :: (#cb_context{}) -> #cb_context{}.
+-spec content_types_accepted(#cb_context{}) -> #cb_context{}.
 content_types_accepted(#cb_context{req_verb = <<"post">>}=Context) ->
     Context#cb_context{content_types_accepted = [{from_binary, ?UPLOAD_MIME_TYPES}]}.
 
@@ -88,8 +88,8 @@ content_types_accepted(#cb_context{req_verb = <<"post">>}=Context) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context#cb_context{db_name=?WH_RATES_DB});
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
@@ -104,8 +104,8 @@ validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
     read(Id, Context#cb_context{db_name=?WH_RATES_DB}).
 
--spec post/1 :: (#cb_context{}) -> #cb_context{}.
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(#cb_context{}) -> #cb_context{}.
+-spec post(#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{}=Context) ->
     _ = init_db(),
     spawn(fun() -> upload_csv(Context) end),
@@ -113,11 +113,11 @@ post(#cb_context{}=Context) ->
 post(#cb_context{}=Context, _RateId) ->
     crossbar_doc:save(Context).
 
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
+-spec put(#cb_context{}) -> #cb_context{}.
 put(#cb_context{}=Context) ->
     crossbar_doc:save(Context).
 
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token()) -> #cb_context{}.
 delete(#cb_context{}=Context, _RateId) ->
     crossbar_doc:delete(Context).
 
@@ -130,7 +130,7 @@ delete(#cb_context{}=Context, _RateId) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (#cb_context{}) -> #cb_context{}.
+-spec create(#cb_context{}) -> #cb_context{}.
 create(#cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
     cb_context:validate_request_data(<<"rates">>, Context, OnSuccess).
@@ -141,7 +141,7 @@ create(#cb_context{}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read(ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
@@ -152,7 +152,7 @@ read(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
 update(Id, #cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"rates">>, Context, OnSuccess).
@@ -163,7 +163,7 @@ update(Id, #cb_context{}=Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
 on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
     Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"rate">>, JObj)};
 on_successful_validation(Id, #cb_context{}=Context) ->
@@ -177,7 +177,7 @@ on_successful_validation(Id, #cb_context{}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec summary(#cb_context{}) -> #cb_context{}.
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -188,7 +188,7 @@ summary(Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec check_uploaded_file/1 :: (#cb_context{}) -> #cb_context{}.
+-spec check_uploaded_file(#cb_context{}) -> #cb_context{}.
 check_uploaded_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
     lager:debug("checking file ~s", [_Name]),
     case wh_json:get_value(<<"contents">>, File) of
@@ -208,7 +208,7 @@ check_uploaded_file(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -218,7 +218,7 @@ normalize_view_results(JObj, Acc) ->
 %% Convert the file, based on content-type, to rate documents
 %% @end
 %%--------------------------------------------------------------------
--spec process_upload_file/1 :: (#cb_context{}) -> {'ok', {non_neg_integer(), wh_json:json_objects()}}.
+-spec process_upload_file(#cb_context{}) -> {'ok', {non_neg_integer(), wh_json:json_objects()}}.
 process_upload_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
     lager:debug("converting file ~s", [_Name]),
     convert_file(wh_json:get_binary_value([<<"headers">>, <<"content_type">>], File)
@@ -226,7 +226,7 @@ process_upload_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
                  ,Context
                 ).
 
--spec convert_file/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> {'ok', {non_neg_integer(), wh_json:json_objects()}}.
+-spec convert_file(ne_binary(), ne_binary(), #cb_context{}) -> {'ok', {non_neg_integer(), wh_json:json_objects()}}.
 convert_file(<<"text/csv">>, FileContents, Context) ->
     csv_to_rates(FileContents, Context);
 convert_file(<<"text/comma-separated-values">>, FileContents, Context) ->
@@ -235,7 +235,7 @@ convert_file(ContentType, _, _) ->
     lager:debug("unknown content type: ~s", [ContentType]),
     throw({unknown_content_type, ContentType}).
 
--spec csv_to_rates/2 :: (ne_binary(), #cb_context{}) -> {'ok', {integer(), wh_json:json_objects()}}.
+-spec csv_to_rates(ne_binary(), #cb_context{}) -> {'ok', {integer(), wh_json:json_objects()}}.
 csv_to_rates(CSV, Context) ->
     BulkInsert = couch_util:max_bulk_insert(),
     ecsv:process_csv_binary_with(CSV
@@ -245,7 +245,7 @@ csv_to_rates(CSV, Context) ->
                                  ,{0, []}
                                 ).
 
--spec process_row/2 :: ([string(),...], {integer(), wh_json:json_objects()}) -> {integer(), wh_json:json_objects()}.
+-spec process_row([string(),...], {integer(), wh_json:json_objects()}) -> {integer(), wh_json:json_objects()}.
 process_row([Prefix, ISO, Desc, Rate], Acc) ->
     process_row([Prefix, ISO, Desc, Rate, Rate], Acc);
 process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
@@ -286,11 +286,11 @@ process_row(_Row, Acc) ->
     lager:debug("ignoring row ~p", [_Row]),
     Acc.
 
--spec strip_quotes/1 :: (ne_binary()) -> ne_binary().
+-spec strip_quotes(ne_binary()) -> ne_binary().
 strip_quotes(Bin) ->
     binary:replace(Bin, [<<"\"">>, <<"\'">>], <<>>, [global]).
 
--spec constrain_weight/1 :: (integer()) -> 1..100.
+-spec constrain_weight(integer()) -> 1..100.
 constrain_weight(X) when X =< 0 -> 1;
 constrain_weight(X) when X >= 100 -> 100;
 constrain_weight(X) -> X.
@@ -313,7 +313,7 @@ save_processed_rates(Context, Cnt) ->
                   lager:debug("saved up to ~b docs (took ~b ms)", [Cnt, wh_util:elapsed_ms(Now)])
           end).
 
--spec process_row/5 :: (#cb_context{}, [string(),...], integer(), wh_json:json_objects(), integer()) -> {integer(), wh_json:json_objects()}.
+-spec process_row(#cb_context{}, [string(),...], integer(), wh_json:json_objects(), integer()) -> {integer(), wh_json:json_objects()}.
 process_row(Context, Row, Cnt, RateDocs, BulkInsert) ->
     RateDocs1 = case Cnt > 1 andalso (Cnt rem BulkInsert) =:= 0 of
                     false -> RateDocs;

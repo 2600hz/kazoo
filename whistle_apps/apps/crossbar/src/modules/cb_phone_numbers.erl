@@ -68,7 +68,7 @@ init() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec populate_phone_numbers/1 :: (cb_context:context()) -> 'ok'.
+-spec populate_phone_numbers(cb_context:context()) -> 'ok'.
 populate_phone_numbers(#cb_context{db_name=AccountDb, account_id=AccountId}) ->
     PVTs = [{<<"_id">>, ?WNM_PHONE_NUMBER_DOC}
             ,{<<"pvt_account_db">>, AccountDb}
@@ -90,10 +90,10 @@ populate_phone_numbers(#cb_context{db_name=AccountDb, account_id=AccountId}) ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
--spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
--spec allowed_methods/3 :: (path_token(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     ['GET'].
 
@@ -122,10 +122,10 @@ allowed_methods(_, ?PORT_DOCS, _) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
--spec resource_exists/2 :: (path_token(), path_token()) -> boolean().
--spec resource_exists/3 :: (path_token(), path_token(), path_token()) -> boolean().
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> boolean().
+-spec resource_exists(path_token(), path_token(), path_token()) -> boolean().
 resource_exists() -> true.
 
 resource_exists(_) -> true.
@@ -145,7 +145,7 @@ resource_exists(_, _, _) -> false.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_accepted/4 :: (cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+-spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 content_types_accepted(#cb_context{req_verb = <<"put">>}=Context, _Number, ?PORT_DOCS, _Name) ->
     Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]};
 content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _Number, ?PORT_DOCS, _Name) ->
@@ -158,7 +158,7 @@ content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _Number, ?POR
 %% known, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate/1 :: (cb_context:context()) -> 'true'.
+-spec authenticate(cb_context:context()) -> 'true'.
 authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>}) -> true.
 
 %%--------------------------------------------------------------------
@@ -168,7 +168,7 @@ authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authorize/1 :: (cb_context:context()) -> 'true'.
+-spec authorize(cb_context:context()) -> 'true'.
 authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>}) -> true.
 
 %%--------------------------------------------------------------------
@@ -180,10 +180,10 @@ authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (cb_context:context()) -> cb_context:context().
--spec validate/2 :: (cb_context:context(), path_token()) -> cb_context:context().
--spec validate/3 :: (cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate/4 :: (cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
 validate(#cb_context{req_verb = <<"get">>, account_id=undefined}=Context) ->
     find_numbers(Context);
@@ -225,8 +225,8 @@ validate(Context, _, ?PORT_DOCS, _) ->
     Message = <<"please provide a single port document per request">>,
     cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
 
--spec post/2 :: (cb_context:context(), path_token()) -> cb_context:context().
--spec post/4 :: (cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(#cb_context{doc=JObj, auth_account_id=AuthBy}=Context, Number) ->
     Result = wh_number_manager:set_public_fields(Number, JObj, AuthBy),
     set_response(Result, Number, Context).
@@ -234,9 +234,9 @@ post(#cb_context{doc=JObj, auth_account_id=AuthBy}=Context, Number) ->
 post(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
     put_attachments(Number, Context, Files).
 
--spec put/2 :: (cb_context:context(), path_token()) -> cb_context:context().
--spec put/3 :: (cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec put/4 :: (cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number) ->
     Result = wh_number_manager:create_number(Number, AssignTo, AuthBy, JObj),
     set_response(Result, Number, Context).
@@ -256,8 +256,8 @@ put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS) ->
 put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
     put_attachments(Number, Context, Files).
 
--spec delete/2 :: (cb_context:context(), path_token()) -> cb_context:context().
--spec delete/4 :: (cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+-spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
 delete(#cb_context{auth_account_id=AuthBy}=Context, Number) ->
     Result = wh_number_manager:release_number(Number, AuthBy),
@@ -278,7 +278,7 @@ delete(#cb_context{auth_account_id=AuthBy}=Context, Number, ?PORT_DOCS, Name) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers/1 :: (cb_context:context()) -> cb_context:context().
+-spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(#cb_context{query_json=JObj}=Context) ->
     OnSuccess = fun(C) ->
                         Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
@@ -297,7 +297,7 @@ find_numbers(#cb_context{query_json=JObj}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary/1 :: (cb_context:context()) -> cb_context:context().
+-spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     case crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context) of
         #cb_context{resp_error_code=404}=C ->
@@ -311,7 +311,7 @@ summary(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read/2 :: (ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
     Result = wh_number_manager:get_public_fields(Number, AuthBy),
     set_response(Result, Number, Context).
@@ -322,7 +322,7 @@ read(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request/1 :: (cb_context:context()) -> cb_context:context().
+-spec validate_request(cb_context:context()) -> cb_context:context().
 validate_request(Context) ->
     check_phone_number_schema(Context).
 
@@ -335,7 +335,7 @@ check_phone_number_schema(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec validate_delete/1 :: (cb_context:context()) -> cb_context:context().
+-spec validate_delete(cb_context:context()) -> cb_context:context().
 validate_delete(#cb_context{}=Context) ->
     Context#cb_context{resp_status=success
                        ,doc=undefined
@@ -347,7 +347,7 @@ validate_delete(#cb_context{}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec list_attachments/2 :: (ne_binary(), cb_context:context()) -> cb_context:context().
+-spec list_attachments(ne_binary(), cb_context:context()) -> cb_context:context().
 list_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
     Result = wh_number_manager:list_attachments(Number, AuthBy),
     set_response(Result, Number, Context).
@@ -358,7 +358,7 @@ list_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec put_attachments/3 :: (ne_binary(), cb_context:context(), wh_proplist()) -> cb_context:context().
+-spec put_attachments(ne_binary(), cb_context:context(), wh_proplist()) -> cb_context:context().
 put_attachments(_, Context, []) ->
     Context#cb_context{resp_status=success};
 put_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context, [{Filename, FileObj}|Files]) ->
@@ -380,7 +380,7 @@ put_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context, [{Filename,
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_response/3 :: (operation_return(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec set_response(operation_return(), ne_binary(), cb_context:context()) -> cb_context:context().
 set_response({ok, Doc}, _, Context) ->
     crossbar_util:response(Doc, Context);
 set_response({Error, Reason}, _, Context) ->

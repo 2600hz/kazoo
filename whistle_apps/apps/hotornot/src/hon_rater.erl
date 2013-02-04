@@ -14,7 +14,7 @@
 
 init() -> whapps_maintenance:refresh(?WH_RATES_DB).
 
--spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_rate:req_v(JObj),
     _ = wh_util:put_callid(JObj),
@@ -27,7 +27,7 @@ handle_req(JObj, _Props) ->
                                   )
     end.
 
--spec get_rate_data/1 :: (wh_json:object()) ->
+-spec get_rate_data(wh_json:object()) ->
                                  {'ok', wh_proplist()} |
                                  {'error', 'no_rate_found'}.
 get_rate_data(JObj) ->
@@ -55,7 +55,7 @@ get_rate_data(JObj) ->
             end
     end.
 
--spec maybe_get_rate_discount/1 :: (wh_json:object()) -> api_binary().
+-spec maybe_get_rate_discount(wh_json:object()) -> api_binary().
 maybe_get_rate_discount(JObj) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     AccountDb = wh_util:format_account_id(AccountId, encoded),
@@ -70,7 +70,7 @@ maybe_get_rate_discount(JObj) ->
             wh_json:get_value([<<"pvt_discounts">>, Classification, <<"percentage">>], Def)
     end.
 
--spec rate_resp/2 :: (wh_json:object(), wh_json:object()) -> wh_proplist().
+-spec rate_resp(wh_json:object(), wh_json:object()) -> wh_proplist().
 rate_resp(Rate, JObj) ->
     lager:debug("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
     BaseCost = wapi_money:base_call_cost(wh_json:get_float_value(<<"rate_cost">>, Rate, 0.01)

@@ -230,7 +230,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec attempt_to_acquire_job/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} |
+-spec attempt_to_acquire_job(ne_binary()) -> {'ok', wh_json:json_object()} |
                                                    {'error', term()}.
 attempt_to_acquire_job(Id) ->
     case couch_mgr:open_doc(?WH_FAXES, Id) of
@@ -248,7 +248,7 @@ attempt_to_acquire_job(Id) ->
             end
     end.
         
--spec bump_modified/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} | {'error', _}.
+-spec bump_modified(ne_binary()) -> {'ok', wh_json:json_object()} | {'error', _}.
 bump_modified(JobId) ->
     case couch_mgr:open_doc(?WH_FAXES, JobId) of
         {error, _}=E -> E;
@@ -263,7 +263,7 @@ bump_modified(JobId) ->
             end
     end.    
      
--spec release_failed_job/3 :: ('fetch_failed', string(), wh_json:json_object()) -> 'failure';
+-spec release_failed_job('fetch_failed', string(), wh_json:json_object()) -> 'failure';
                               ('bad_file', ne_binary(), wh_json:json_object()) -> 'failure';
                               ('fetch_error', {atom(), _}, wh_json:json_object()) -> 'failure';
                               ('tx_resp', wh_json:json_object(), wh_json:json_object()) -> 'failure';
@@ -357,7 +357,7 @@ release_failed_job(job_timeout, _Error, JObj) ->
              ],
     release_job(Result, JObj).
 
--spec release_successful_job/2 :: (wh_json:json_object(), wh_json:json_object()) -> 'ok'.
+-spec release_successful_job(wh_json:json_object(), wh_json:json_object()) -> 'ok'.
 release_successful_job(Resp, JObj) ->
     Result = [{<<"success">>, wh_json:is_true([<<"Resource-Response">>, <<"Fax-Success">>], Resp, false)}
               ,{<<"result_code">>, wh_json:get_value([<<"Resource-Response">>, <<"Fax-Result-Code">>], Resp, 0)}
@@ -371,7 +371,7 @@ release_successful_job(Resp, JObj) ->
              ],
     release_job(Result, JObj).
 
--spec release_job/2 :: (proplist(), wh_json:json_object()) -> 'ok' | 'failure'.
+-spec release_job(proplist(), wh_json:json_object()) -> 'ok' | 'failure'.
 release_job(Result, JObj) ->
     Success = props:get_value(<<"success">>, Result, false),
     Updaters = [fun(J) -> wh_json:set_value(<<"tx_result">>, wh_json:from_list(Result), J) end
@@ -398,11 +398,11 @@ release_job(Result, JObj) ->
     couch_mgr:ensure_saved(?WH_FAXES, lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters)),
     case Success of true -> ok; false -> failure end.
 
--spec elapsed_time/1 :: (wh_json:json_object()) -> non_neg_integer().
+-spec elapsed_time(wh_json:json_object()) -> non_neg_integer().
 elapsed_time(JObj) ->
     wh_util:current_tstamp() - wh_json:get_integer_value(<<"pvt_created">>, JObj, wh_util:current_tstamp()).
 
--spec execute_job/2 :: (wh_json:json_object(), ne_binary()) -> 'ok' | 'failure'.
+-spec execute_job(wh_json:json_object(), ne_binary()) -> 'ok' | 'failure'.
 execute_job(JObj, Q) ->
     JobId = wh_json:get_value(<<"_id">>, JObj),
     case fetch_document(JObj) of
@@ -419,7 +419,7 @@ execute_job(JObj, Q) ->
             release_failed_job(fetch_error, Reason, JObj)
     end.
 
--spec fetch_document/1 :: (wh_json:json_object()) -> {'ok', string(), proplist(), ne_binary()} |
+-spec fetch_document(wh_json:json_object()) -> {'ok', string(), proplist(), ne_binary()} |
                                                      {'error', term()}.
 fetch_document(JObj) ->
     FetchRequest = wh_json:get_value(<<"document">>, JObj),    
@@ -436,7 +436,7 @@ fetch_document(JObj) ->
     lager:debug("making ~s request to '~s'", [Method, Url]),
     ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions).
 
--spec prepare_contents/3 :: (ne_binary(), proplist(), ne_binary()) -> {'ok', ne_binary()} | {'error', ne_binary()}.
+-spec prepare_contents(ne_binary(), proplist(), ne_binary()) -> {'ok', ne_binary()} | {'error', ne_binary()}.
 prepare_contents(JobId, RespHeaders, RespContent) ->
     lager:debug("preparing fax contents", []),   
     TmpDir = whapps_config:get_binary(?CONFIG_CAT, <<"file_cache_path">>, <<"/tmp/">>),
@@ -465,7 +465,7 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             {error, list_to_binary(["file type '", Else, "' is unsupported"])}
     end.
 
--spec normalize_content_type/1 :: (string() | ne_binary()) -> ne_binary().
+-spec normalize_content_type(string() | ne_binary()) -> ne_binary().
 normalize_content_type(<<"image/tif">>) -> <<"image/tiff">>;
 normalize_content_type(<<"image/x-tif">>) -> <<"image/tiff">>;
 normalize_content_type(<<"image/tiff">>) -> <<"image/tiff">>;
@@ -483,7 +483,7 @@ normalize_content_type(<<Else/binary>>) ->
 normalize_content_type(CT) ->
     normalize_content_type(wh_util:to_binary(CT)).
 
--spec send_fax/3 :: (ne_binary(), wh_json:json_object(), ne_binary()) -> 'ok'.
+-spec send_fax(ne_binary(), wh_json:json_object(), ne_binary()) -> 'ok'.
 send_fax(JobId, JObj, Q) ->
     IgnoreEarlyMedia = wh_util:to_binary(whapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, false)),
     Request = [{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
@@ -503,13 +503,13 @@ send_fax(JobId, JObj, Q) ->
               ],
     wapi_offnet_resource:publish_req(Request).
 
--spec get_proxy_url/1 :: (ne_binary()) -> ne_binary().
+-spec get_proxy_url(ne_binary()) -> ne_binary().
 get_proxy_url(JobId) ->
     Hostname = wh_network_utils:get_hostname(),
     Port = whapps_config:get_binary(?CONFIG_CAT, <<"port">>),
     list_to_binary(["http://", Hostname, ":", Port, "/fax/", JobId, ".tiff"]).
     
--spec reset/1 :: (#state{}) -> #state{}.
+-spec reset(#state{}) -> #state{}.
 reset(#state{keep_alive=KeepAliveRef}=State) when is_reference(KeepAliveRef) ->
     erlang:cancel_timer(KeepAliveRef),
     reset(State#state{keep_alive=undefined});

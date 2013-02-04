@@ -19,7 +19,7 @@
 %% Starts the app for inclusion in a supervisor tree
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
     notify_sup:start_link().
@@ -30,7 +30,7 @@ start_link() ->
 %% Starts the app
 %% @end
 %%--------------------------------------------------------------------
--spec start/0 :: () -> 'ok'.
+-spec start() -> 'ok'.
 start() ->
     _ = start_deps(),
     application:start(notify).
@@ -41,7 +41,7 @@ start() ->
 %% Stop the app
 %% @end
 %%--------------------------------------------------------------------
--spec stop/0 :: () -> 'ok'.
+-spec stop() -> 'ok'.
 stop() ->
     ok = application:stop(notify).
 
@@ -51,7 +51,7 @@ stop() ->
 %% Ensures that all dependencies for this app are already running
 %% @end
 %%--------------------------------------------------------------------
--spec start_deps/0 :: () -> _.
+-spec start_deps() -> _.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     [wh_util:ensure_started(App) || App <- [sasl, crypto, whistle_amqp]].

@@ -23,10 +23,10 @@
 %% Fetches a endpoint defintion from the database or cache
 %% @end
 %%--------------------------------------------------------------------
--spec get/1 :: (whapps_call:call()) ->
+-spec get(whapps_call:call()) ->
                        {'ok', wh_json:object()} |
                        {'error', term()}.
--spec get/2 :: (api_binary(), ne_binary() | whapps_call:call()) ->
+-spec get(api_binary(), ne_binary() | whapps_call:call()) ->
                        {'ok', wh_json:object()} |
                        {'error', term()}.
 get(Call) ->
@@ -43,7 +43,7 @@ get(EndpointId, AccountDb) when is_binary(AccountDb) ->
 get(EndpointId, Call) ->
     get(EndpointId, whapps_call:account_db(Call)).
 
--spec maybe_fetch_endpoint/2 :: (ne_binary(), ne_binary()) -> wh_jobj_return().
+-spec maybe_fetch_endpoint(ne_binary(), ne_binary()) -> wh_jobj_return().
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, EndpointId) of
         {ok, JObj} ->
@@ -53,7 +53,7 @@ maybe_fetch_endpoint(EndpointId, AccountDb) ->
             E
     end.
 
--spec maybe_have_endpoint/3 :: (wh_json:object(), ne_binary(), ne_binary()) ->  wh_jobj_return().
+-spec maybe_have_endpoint(wh_json:object(), ne_binary(), ne_binary()) ->  wh_jobj_return().
 maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
     case wh_json:get_value(<<"pvt_type">>, JObj) of
         <<"device">> ->
@@ -171,7 +171,7 @@ merge_call_restrictions([Key|Keys], Account, Endpoint, Owner) ->
             merge_call_restrictions(Keys, Account, Endpoint, Owner)
     end.
 
--spec create_endpoint_name/4 :: (api_binary(), api_binary(), api_binary(), api_binary()) -> api_binary().
+-spec create_endpoint_name(api_binary(), api_binary(), api_binary(), api_binary()) -> api_binary().
 create_endpoint_name(undefined, undefined, undefined, Account) -> Account;
 create_endpoint_name(undefined, undefined, Endpoint, _) -> Endpoint;
 create_endpoint_name(First, undefined, _, _) -> First;
@@ -184,7 +184,7 @@ create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 %% Flush the callflow cache
 %% @end
 %%--------------------------------------------------------------------
--spec flush/2 :: (ne_binary(), ne_binary()) -> any().
+-spec flush(ne_binary(), ne_binary()) -> any().
 flush(Db, Id) -> wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}).
 
 %%--------------------------------------------------------------------
@@ -202,10 +202,10 @@ flush(Db, Id) -> wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}).
                       | 'invalid_endpoint_id' | 'not_found' | 'owner_called_self'
                       | 'do_not_disturb'.
 
--spec build/2 :: (api_binary() | wh_json:object(), whapps_call:call()) ->
+-spec build(api_binary() | wh_json:object(), whapps_call:call()) ->
                          {'ok', wh_json:objects()} |
                          {'error', build_errors()}.
--spec build/3 :: (api_binary() | wh_json:object(), 'undefined' | wh_json:object(), whapps_call:call()) ->
+-spec build(api_binary() | wh_json:object(), 'undefined' | wh_json:object(), whapps_call:call()) ->
                          {'ok', wh_json:objects()} |
                          {'error', build_errors()}.
 
@@ -227,7 +227,7 @@ build(Endpoint, Properties, Call) ->
         {error, _}=E -> E
     end.
 
--spec should_create_endpoint/3 :: (wh_json:object(), wh_json:object(), whapps_call:call()) ->
+-spec should_create_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                           'ok' | {'error', _}.
 should_create_endpoint(Endpoint, Properties, Call) ->
     Routines = [fun maybe_owner_called_self/3
@@ -239,7 +239,7 @@ should_create_endpoint(Endpoint, Properties, Call) ->
 
 -type ep_routine_v() :: fun((wh_json:object(), wh_json:object(), whapps_call:call()) -> 'ok' | any()).
 -type ep_routines_v() :: [ep_routine_v(),...] | [].
--spec should_create_endpoint/4 :: (ep_routines_v(), wh_json:object(), wh_json:object(),  whapps_call:call()) ->
+-spec should_create_endpoint(ep_routines_v(), wh_json:object(), wh_json:object(),  whapps_call:call()) ->
                                           'ok' | {'error', _}.
 should_create_endpoint([], _, _, _) -> ok;
 should_create_endpoint([Routine|Routines], Endpoint, Properties, Call) when is_function(Routine, 3) ->
@@ -248,7 +248,7 @@ should_create_endpoint([Routine|Routines], Endpoint, Properties, Call) when is_f
         Else -> Else
     end.
 
--spec maybe_owner_called_self/3 :: (wh_json:object(), wh_json:object(),  whapps_call:call()) ->
+-spec maybe_owner_called_self(wh_json:object(), wh_json:object(),  whapps_call:call()) ->
                                            'ok' |
                                            {'error', 'owner_called_self'}.
 maybe_owner_called_self(Endpoint, Properties, Call) ->
@@ -266,7 +266,7 @@ maybe_owner_called_self(Endpoint, Properties, Call) ->
             {error, owner_called_self}
     end.
 
--spec maybe_endpoint_called_self/3 :: (wh_json:object(), wh_json:object(),  whapps_call:call()) ->
+-spec maybe_endpoint_called_self(wh_json:object(), wh_json:object(),  whapps_call:call()) ->
                                               'ok' |
                                               {'error', 'endpoint_called_self'}.
 maybe_endpoint_called_self(Endpoint, Properties, Call) ->
@@ -284,7 +284,7 @@ maybe_endpoint_called_self(Endpoint, Properties, Call) ->
             {error, endpoint_called_self}
     end.
 
--spec maybe_endpoint_disabled/3 :: (wh_json:object(), wh_json:object(), whapps_call:call()) ->
+-spec maybe_endpoint_disabled(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                            'ok' |
                                            {'error', 'endpoint_disabled'}.
 maybe_endpoint_disabled(Endpoint, _, _) ->
@@ -296,7 +296,7 @@ maybe_endpoint_disabled(Endpoint, _, _) ->
             {error, endpoint_disabled}
     end.
 
--spec maybe_do_not_disturb/3 :: (wh_json:object(), wh_json:object(),  whapps_call:call()) ->
+-spec maybe_do_not_disturb(wh_json:object(), wh_json:object(),  whapps_call:call()) ->
                                         'ok' |
                                         {'error', 'do_not_disturb'}.
 maybe_do_not_disturb(Endpoint, _, _) ->
@@ -316,7 +316,7 @@ maybe_do_not_disturb(Endpoint, _, _) ->
 %% bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoints/3 :: (wh_json:object(), wh_json:object(), whapps_call:call()) ->
+-spec create_endpoints(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                     {'ok', wh_json:objects()} |
                                     {'error', 'no_endpoints'}.
 create_endpoints(Endpoint, Properties, Call) ->
@@ -333,7 +333,7 @@ create_endpoints(Endpoint, Properties, Call) ->
 
 -type ep_routine() :: fun((wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                  {'error', _} | wh_json:object()).
--spec try_create_endpoint/5 :: (ep_routine(), wh_json:objects(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
+-spec try_create_endpoint(ep_routine(), wh_json:objects(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                        wh_json:objects().
 try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_function(Routine, 3) ->
     try Routine(Endpoint, Properties, Call) of
@@ -346,7 +346,7 @@ try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_func
             Endpoints
     end.
 
--spec maybe_create_fwd_endpoint/3 :: (wh_json:object(), wh_json:object(), whapps_call:call()) ->
+-spec maybe_create_fwd_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                              wh_json:object() |
                                              {'error', 'cf_not_appropriate'}.
 maybe_create_fwd_endpoint(Endpoint, Properties, Call) ->
@@ -363,7 +363,7 @@ maybe_create_fwd_endpoint(Endpoint, Properties, Call) ->
             create_call_fwd_endpoint(Endpoint, Properties, CallFowarding, Call)
     end.
 
--spec maybe_create_endpoint/3 :: (wh_json:object(), wh_json:object(), whapps_call:call()) ->
+-spec maybe_create_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                          wh_json:object() |
                                          {'error', 'cf_substitute'}.
 maybe_create_endpoint(Endpoint, Properties, Call) ->
@@ -376,7 +376,7 @@ maybe_create_endpoint(Endpoint, Properties, Call) ->
             maybe_create_endpoint(get_endpoint_type(Endpoint), Endpoint, Properties, Call)
     end.
 
--spec maybe_create_endpoint/4 :: (ne_binary(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
+-spec maybe_create_endpoint(ne_binary(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                          wh_json:object().
 maybe_create_endpoint(<<"sip">>, Endpoint, Properties, Call) ->
     lager:info("building a SIP endpoint"),
@@ -385,14 +385,14 @@ maybe_create_endpoint(<<"skype">>, Endpoint, Properties, Call) ->
     lager:info("building a Skype endpoint"),
     create_skype_endpoint(Endpoint, Properties, Call).
 
--spec get_endpoint_type/1 :: (wh_json:object()) -> ne_binary().
+-spec get_endpoint_type(wh_json:object()) -> ne_binary().
 get_endpoint_type(Endpoint) ->
     case wh_json:get_value(<<"endpoint_type">>, Endpoint) of
         undefined -> guess_endpoint_type(Endpoint);
         Type -> Type
     end.
 
--spec guess_endpoint_type/1 :: (wh_json:object()) -> ne_binary().
+-spec guess_endpoint_type(wh_json:object()) -> ne_binary().
 guess_endpoint_type(Endpoint) ->
     guess_endpoint_type(Endpoint, [<<"sip">>, <<"skype">>]).
 guess_endpoint_type(Endpoint, [Type|Types]) ->
@@ -410,7 +410,7 @@ guess_endpoint_type(_Endpoint, []) -> <<"sip">>.
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec create_sip_endpoint/3 :: (wh_json:object(), wh_json:object(), whapps_call:call()) ->
+-spec create_sip_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                        wh_json:object().
 create_sip_endpoint(Endpoint, Properties, Call) ->
     CIDName = whapps_call:caller_id_name(Call),
@@ -481,7 +481,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec create_skype_endpoint/3 :: (wh_json:object(), wh_json:object(), whapps_call:call()) ->
+-spec create_skype_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                          wh_json:object().
 create_skype_endpoint(Endpoint, Properties, _Call) ->
     SkypeJObj = wh_json:get_value(<<"skype">>, Endpoint),
@@ -496,18 +496,18 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
     wh_json:from_list(props:filter_undefined(Prop)).
 
 
--spec invite_format/1 :: (wh_json:object()) -> ne_binary().
+-spec invite_format(wh_json:object()) -> ne_binary().
 invite_format(SIPJObj) ->
     wh_json:get_value(<<"invite_format">>, SIPJObj, <<"username">>).
 
--spec to_did/2 :: (wh_json:object(), whapps_call:call()) -> api_binary().
+-spec to_did(wh_json:object(), whapps_call:call()) -> api_binary().
 to_did(Endpoint, Call) ->
     wh_json:get_value([<<"sip">>, <<"number">>]
                       ,Endpoint
                       ,whapps_call:request_user(Call)
                      ).
 
--spec to_user/2 :: (wh_json:object(), wh_json:object()) -> api_binary().
+-spec to_user(wh_json:object(), wh_json:object()) -> api_binary().
 to_user(SIPJObj, Properties) ->
     case wh_json:get_ne_value(<<"static_invite">>, Properties) of
         undefined ->
@@ -518,7 +518,7 @@ to_user(SIPJObj, Properties) ->
         To -> To
     end.
 
--spec to_username/1 :: (wh_json:object()) -> api_binary().
+-spec to_username(wh_json:object()) -> api_binary().
 to_username(SIPJObj) ->
     wh_json:get_value(<<"username">>, SIPJObj).
 
@@ -532,7 +532,7 @@ to_username(SIPJObj) ->
 %% the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec create_call_fwd_endpoint/4 :: (wh_json:object(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
+-spec create_call_fwd_endpoint(wh_json:object(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                             wh_json:object().
 create_call_fwd_endpoint(Endpoint, Properties, CallFwd, Call) ->
     lager:info("call forwarding endpoint to ~s", [wh_json:get_value(<<"number">>, CallFwd)]),
@@ -596,8 +596,8 @@ generate_sip_headers(Endpoint, Call) ->
 %% call.
 %% @end
 %%--------------------------------------------------------------------
--spec generate_ccvs/2 :: (wh_json:object(), whapps_call:call()) -> wh_json:object().
--spec generate_ccvs/3 :: (wh_json:object(), whapps_call:call(), 'undefined' | wh_json:object()) -> wh_json:object().
+-spec generate_ccvs(wh_json:object(), whapps_call:call()) -> wh_json:object().
+-spec generate_ccvs(wh_json:object(), whapps_call:call(), 'undefined' | wh_json:object()) -> wh_json:object().
 
 generate_ccvs(Endpoint, Call) ->
     generate_ccvs(Endpoint, Call, undefined).
@@ -676,7 +676,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
 %% Conditionally formats the caller id number
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_format_caller_id_number/3 :: (wh_json:object(), ne_binary(), whapps_call:call()) -> ne_binary().
+-spec maybe_format_caller_id_number(wh_json:object(), ne_binary(), whapps_call:call()) -> ne_binary().
 maybe_format_caller_id_number(_Endpoint, CIDNum, _Call) ->
 %% TODO: MOVE FROM CF_ATTRIBUTES
     CIDNum.
@@ -691,6 +691,6 @@ maybe_format_caller_id_number(_Endpoint, CIDNum, _Call) ->
 %%            end
 %%    end.
 %%
-%%-spec format_caller_id_number_flag/3 :: (ne_binary(), term(), ne_binary()) -> ne_binary().
+%%-spec format_caller_id_number_flag(ne_binary(), term(), ne_binary()) -> ne_binary().
 %%format_caller_id_number_flag(<<"remove_plus">>, true, <<$+, CIDNum/binary>>) -> CIDNum;
 %%format_caller_id_number_flag(_Key, _Value, CIDNum) -> CIDNum.

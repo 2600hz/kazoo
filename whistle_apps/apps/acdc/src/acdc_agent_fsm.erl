@@ -110,7 +110,7 @@
 %%   member_connect_resp payload or ignore the request
 %% @end
 %%--------------------------------------------------------------------
--spec member_connect_req/2 :: (pid(), wh_json:object()) -> 'ok'.
+-spec member_connect_req(pid(), wh_json:object()) -> 'ok'.
 member_connect_req(FSM, JObj) ->
     gen_fsm:send_event(FSM, {member_connect_req, JObj}).
 
@@ -121,7 +121,7 @@ member_connect_req(FSM, JObj) ->
 %%   member_connect_resp payload or ignore the request
 %% @end
 %%--------------------------------------------------------------------
--spec member_connect_win/2 :: (pid(), wh_json:object()) -> 'ok'.
+-spec member_connect_win(pid(), wh_json:object()) -> 'ok'.
 member_connect_win(FSM, JObj) ->
     gen_fsm:send_event(FSM, {member_connect_win, JObj}).
 
@@ -132,7 +132,7 @@ member_connect_win(FSM, JObj) ->
 %%   for bridge and hangup events).
 %% @end
 %%--------------------------------------------------------------------
--spec call_event/4 :: (pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec call_event(pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, JObj) ->
     gen_fsm:send_event(FSM, {channel_bridged, callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, JObj) ->
@@ -167,7 +167,7 @@ call_event(_, _C, _E, _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_send_execute_complete/3 :: (pid(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec maybe_send_execute_complete(pid(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_send_execute_complete(FSM, <<"bridge">>, JObj) ->
     gen_fsm:send_event(FSM, {channel_unbridged, callid(JObj)});
 maybe_send_execute_complete(FSM, <<"call_pickup">>, JObj) ->
@@ -236,7 +236,7 @@ resume(FSM) ->
 refresh(FSM, AgentJObj) ->
     gen_fsm:send_all_state_event(FSM, {refresh, AgentJObj}).
 
--spec current_call/1 :: (pid()) -> 'undefined' | wh_json:object().
+-spec current_call(pid()) -> 'undefined' | wh_json:object().
 current_call(FSM) ->
     gen_fsm:sync_send_event(FSM, current_call).
 
@@ -252,9 +252,9 @@ status(FSM) ->
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (pid(), wh_json:object()) -> startlink_ret().
--spec start_link/3 :: (pid(), whapps_call:call(), ne_binary()) -> startlink_ret().
--spec start_link/4 :: (ne_binary(), ne_binary(), pid(), wh_proplist()) -> startlink_ret().
+-spec start_link(pid(), wh_json:object()) -> startlink_ret().
+-spec start_link(pid(), whapps_call:call(), ne_binary()) -> startlink_ret().
+-spec start_link(ne_binary(), ne_binary(), pid(), wh_proplist()) -> startlink_ret().
 
 start_link(Supervisor, AgentJObj) when is_pid(Supervisor) ->
     start_link(wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
@@ -1239,22 +1239,22 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec start_wrapup_timer/1 :: (integer()) -> reference().
+-spec start_wrapup_timer(integer()) -> reference().
 start_wrapup_timer(Timeout) when Timeout < 0 -> start_wrapup_timer(0); % send immediately
 start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout*1000, ?WRAPUP_FINISHED).
 
--spec start_sync_timer/0 :: () -> reference().
--spec start_sync_timer/1 :: (pid()) -> reference().
+-spec start_sync_timer() -> reference().
+-spec start_sync_timer(pid()) -> reference().
 start_sync_timer() ->
     gen_fsm:start_timer(?SYNC_RESPONSE_TIMEOUT, ?SYNC_RESPONSE_MESSAGE).
 start_sync_timer(P) ->
     erlang:start_timer(?SYNC_RESPONSE_TIMEOUT, P, ?SYNC_RESPONSE_MESSAGE).
 
--spec start_resync_timer/0 :: () -> reference().
+-spec start_resync_timer() -> reference().
 start_resync_timer() ->
     gen_fsm:start_timer(?RESYNC_RESPONSE_TIMEOUT, ?RESYNC_RESPONSE_MESSAGE).
 
--spec start_pause_timer/1 :: (pos_integer()) -> reference().
+-spec start_pause_timer(pos_integer()) -> reference().
 start_pause_timer(undefined) -> start_pause_timer(1);
 start_pause_timer(Timeout) ->
     gen_fsm:start_timer(Timeout * 1000, ?PAUSE_MESSAGE).
@@ -1262,14 +1262,14 @@ start_pause_timer(Timeout) ->
 start_call_status_timer() ->
     gen_fsm:start_timer(?CALL_STATUS_TIMEOUT, ?CALL_STATUS_MESSAGE).
 
--spec callid/1 :: (wh_json:object()) -> api_binary().
+-spec callid(wh_json:object()) -> api_binary().
 callid(JObj) ->
     case wh_json:get_value(<<"Call-ID">>, JObj) of
         undefined -> wh_json:get_value([<<"Call">>, <<"Call-ID">>], JObj);
         CallId -> CallId
     end.
 
--spec update_agent_status_to_resume/2 :: (ne_binary(), ne_binary()) ->
+-spec update_agent_status_to_resume(ne_binary(), ne_binary()) ->
                                                  {'ok', wh_json:object()}.
 update_agent_status_to_resume(AcctId, AgentId) ->
     Extra = [{<<"node">>, wh_util:to_binary(node())}
@@ -1283,7 +1283,7 @@ time_left(Ref) when is_reference(Ref) ->
 time_left(false) -> undefined;
 time_left(Ms) when is_integer(Ms) -> Ms div 1000.
 
--spec clear_call/2 :: (fsm_state(), atom()) -> fsm_state().
+-spec clear_call(fsm_state(), atom()) -> fsm_state().
 clear_call(#state{fsm_call_id=FSMCallId
                   ,call_status_ref=CSRef
                   ,wrapup_ref=WRef
@@ -1309,7 +1309,7 @@ clear_call(#state{fsm_call_id=FSMCallId
                 ,outbound_call_id = undefined
                }.
 
--spec current_call/4 :: (whapps_call:call() | 'undefined', atom(), ne_binary(), 'undefined' | wh_now()) ->
+-spec current_call(whapps_call:call() | 'undefined', atom(), ne_binary(), 'undefined' | wh_now()) ->
                                 wh_json:object() | 'undefined'.
 current_call(undefined, _, _, _) -> undefined;
 current_call(Call, AgentState, QueueId, Start) ->
@@ -1348,8 +1348,8 @@ hangup_call(#state{wrapup_timeout=WrapupTimeout
     acdc_stats:agent_wrapup(AcctId, AgentId, WrapupTimeout),
     start_wrapup_timer(WrapupTimeout).
 
--spec maybe_stop_timer/1 :: (reference() | 'undefined') -> 'ok'.
--spec maybe_stop_timer/2 :: (reference() | 'undefined', boolean()) -> 'ok'.
+-spec maybe_stop_timer(reference() | 'undefined') -> 'ok'.
+-spec maybe_stop_timer(reference() | 'undefined', boolean()) -> 'ok'.
 maybe_stop_timer(undefined) -> ok;
 maybe_stop_timer(ConnRef) ->
     _ = gen_fsm:cancel_timer(ConnRef),
@@ -1358,12 +1358,12 @@ maybe_stop_timer(ConnRef) ->
 maybe_stop_timer(TimerRef, true) -> maybe_stop_timer(TimerRef);
 maybe_stop_timer(_, false) -> ok.
 
--spec wrapup_left/1 :: (fsm_state() | reference() | 'undefined') -> non_neg_integer() | 'false'.
+-spec wrapup_left(fsm_state() | reference() | 'undefined') -> non_neg_integer() | 'false'.
 wrapup_left(undefined) -> 0;
 wrapup_left(WRef) when is_reference(WRef) -> erlang:read_timer(WRef);
 wrapup_left(#state{wrapup_ref=WRef}) -> wrapup_left(WRef).
 
--spec start_outbound_call_handling/2 :: (whapps_call:call(), fsm_state()) -> fsm_state().
+-spec start_outbound_call_handling(whapps_call:call(), fsm_state()) -> fsm_state().
 start_outbound_call_handling(Call, #state{agent_proc=Srv
                                           ,acct_id=AcctId
                                           ,agent_id=AgentId

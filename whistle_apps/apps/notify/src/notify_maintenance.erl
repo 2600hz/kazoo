@@ -13,7 +13,7 @@
 
 -export([refresh/0]).
 
--spec refresh/0 :: () -> ok.
+-spec refresh() -> ok.
 refresh() ->
     couch_mgr:db_create(?WH_ACCOUNTS_DB),
     Views = [whapps_util:get_view_json(notify, <<"views/notify.json">>)],

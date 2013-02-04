@@ -28,7 +28,7 @@
 %% initialize the module
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
     {ok, _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
@@ -42,7 +42,7 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req(wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:port_request_v(JObj),
     whapps_util:put_callid(JObj),
@@ -88,7 +88,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props/2 :: (wh_json:json_object(), wh_json:json_objects()) -> proplist().
+-spec create_template_props(wh_json:json_object(), wh_json:json_objects()) -> proplist().
 create_template_props(Event, Account) ->
     Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, Event)),
     [{<<"request">>, notify_util:json_to_template_props(Event)}
@@ -104,7 +104,7 @@ create_template_props(Event, Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_send_from/1 :: (wh_json:json_object()) -> ne_binary().
+-spec get_send_from(wh_json:json_object()) -> ne_binary().
 get_send_from(Admin) ->
     DefaultFrom = wh_util:to_binary(node()),
     case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"send_from_admin_email">>, true) of
@@ -118,7 +118,7 @@ get_send_from(Admin) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email/6 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist(), list()) -> 'ok'.
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist(), list()) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) when is_list(To)->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, Attachements) || T <- To],
     ok;
@@ -147,7 +147,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec get_attachments/4 :: (proplist(), ne_binary(), ne_binary(), list()) -> list().
+-spec get_attachments(proplist(), ne_binary(), ne_binary(), list()) -> list().
 get_attachments([], _, _, EmailAttachments) ->
     EmailAttachments;
 get_attachments([{AttachmentName, AttachmentJObj}|Attachments], Number, Db, EmailAttachments) ->
@@ -176,7 +176,7 @@ get_attachments([{AttachmentName, AttachmentJObj}|Attachments], Number, Db, Emai
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fix_attachment_name/1 :: (ne_binary() | list()) -> ne_binary().
+-spec fix_attachment_name(ne_binary() | list()) -> ne_binary().
 fix_attachment_name(Name) when is_binary(Name) ->
     fix_attachment_name(wh_util:to_list(Name));
 fix_attachment_name(Name) ->

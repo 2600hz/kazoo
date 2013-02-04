@@ -17,21 +17,21 @@
 
 -include("include/crossbar.hrl").
 
--spec pass_hashes/2 :: (ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+-spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->
     Creds = list_to_binary([Username, ":", Password]),
     SHA1 = wh_util:to_hex_binary(crypto:sha(Creds)),
     MD5 = wh_util:to_hex_binary(erlang:md5(Creds)),
     {MD5, SHA1}.
 
--spec update_mwi/2 :: ('undefined' | ne_binary(), ne_binary()) -> pid().
+-spec update_mwi('undefined' | ne_binary(), ne_binary()) -> pid().
 update_mwi(OwnerId, AccountDb) ->
     spawn(fun() ->
                   timer:sleep(1000),
                   cf_util:update_mwi(OwnerId, AccountDb) 
           end).
 
--spec get_devices_owned_by/2 :: (ne_binary(), ne_binary()) -> wh_json:objects().
+-spec get_devices_owned_by(ne_binary(), ne_binary()) -> wh_json:objects().
 get_devices_owned_by(OwnerID, DB) ->
     case couch_mgr:get_results(DB, <<"cf_attributes/owned">>, [{key, [OwnerID, <<"device">>]}
                                                                ,include_docs
@@ -199,7 +199,7 @@ get_caller_id_number(#cb_context{query_json=JObj}) ->
 %% Returns true if the request contains a system admin module.
 %% @end
 %%--------------------------------------------------------------------
--spec is_superduper_admin/1 :: (api_binary() | cb_context:context()) -> boolean().
+-spec is_superduper_admin(api_binary() | cb_context:context()) -> boolean().
 is_superduper_admin(undefined) -> false;
 is_superduper_admin(#cb_context{auth_account_id=AccountId}) ->
     is_superduper_admin(AccountId);

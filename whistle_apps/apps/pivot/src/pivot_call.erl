@@ -72,19 +72,19 @@ start_link(Call, JObj) ->
                                                     ]}
                                      ], [Call, JObj]).
 
--spec stop_call/2 :: (pid(), whapps_call:call()) -> 'ok'.
+-spec stop_call(pid(), whapps_call:call()) -> 'ok'.
 stop_call(Srv, Call) ->
     gen_listener:cast(Srv, {stop, Call}).
 
--spec new_request/4 :: (pid(), ne_binary(), http_method(), wh_json:json_object()) -> 'ok'.
+-spec new_request(pid(), ne_binary(), http_method(), wh_json:json_object()) -> 'ok'.
 new_request(Srv, Uri, Method, Params) ->
     gen_listener:cast(Srv, {request, Uri, Method, Params}).
 
--spec updated_call/2 :: (pid(), whapps_call:call()) -> 'ok'.
+-spec updated_call(pid(), whapps_call:call()) -> 'ok'.
 updated_call(Srv, Call) ->
     gen_listener:cast(Srv, {updated_call, Call}).
 
--spec handle_call_event/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_call_event(wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     case props:get_value(pid, Props) of
         P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
@@ -249,7 +249,7 @@ handle_info(_Info, State) ->
 %%                                    ignore
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event/2 :: (wh_json:json_object(), #state{}) -> gen_listener:handle_event_return().
+-spec handle_event(wh_json:json_object(), #state{}) -> gen_listener:handle_event_return().
 handle_event(_JObj, #state{response_pid=Pid}) ->
     {reply, [{pid, Pid}]}.
 
@@ -281,7 +281,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec send_req/4 :: (whapps_call:call(), nonempty_string() | ne_binary(), http_method(), wh_json:json_object()) ->
+-spec send_req(whapps_call:call(), nonempty_string() | ne_binary(), http_method(), wh_json:json_object()) ->
                             'ok' |
                             {'ok', ibrowse_req_id()} |
                             {'stop', whapps_call:call()}.
@@ -297,7 +297,7 @@ send_req(Call, Uri, post, BaseParams) ->
 
     send(Call, Uri, post, [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params)).
 
--spec send/5 :: (whapps_call:call(), iolist(), atom(), wh_proplist(), iolist()) -> 
+-spec send(whapps_call:call(), iolist(), atom(), wh_proplist(), iolist()) -> 
                         'ok' |
                         {'ok', ibrowse_req_id()} |
                         {'stop', whapps_call:call()}.
@@ -332,7 +332,7 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
             {stop, Call}
     end.
 
--spec handle_resp/4 :: (whapps_call:call(), ne_binary(), binary(), pid()) -> 'ok'.
+-spec handle_resp(whapps_call:call(), ne_binary(), binary(), pid()) -> 'ok'.
 handle_resp(Call, CT, RespBody, Srv) ->
     put(callid, whapps_call:call_id(Call)),
     case handle_resp(Call, CT, RespBody) of
@@ -368,7 +368,7 @@ handle_resp(Call, CT, RespBody) ->
             {stop, Call}
     end.
 
--spec uri/2 :: (ne_binary(), iolist()) -> iolist().
+-spec uri(ne_binary(), iolist()) -> iolist().
 uri(URI, QueryString) ->
     case mochiweb_util:urlsplit(wh_util:to_list(URI)) of
         {Scheme, Host, Path, [], Fragment} ->
@@ -377,7 +377,7 @@ uri(URI, QueryString) ->
             mochiweb_util:urlunsplit({Scheme, Host, Path, [QS, "&", QueryString], Fragment})
     end.
 
--spec init_req_params/2 :: (ne_binary(), whapps_call:call()) -> proplist().
+-spec init_req_params(ne_binary(), whapps_call:call()) -> proplist().
 init_req_params(Format, Call) ->
     FmtBin = <<"kzt_", Format/binary>>,
     try 

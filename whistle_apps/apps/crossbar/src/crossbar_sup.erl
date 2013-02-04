@@ -36,15 +36,15 @@
 %% Starts the supervisor
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec child_spec/1 :: (atom()) -> ?CHILD(atom, worker).
+-spec child_spec(atom()) -> ?CHILD(atom, worker).
 child_spec(Mod) ->
     ?CHILD(Mod, worker).
 
--spec find_proc/1 :: (atom()) -> pid().
+-spec find_proc(atom()) -> pid().
 find_proc(Mod) ->
     [P] = [P || {Mod1, P, _, _} <- supervisor:which_children(?MODULE), Mod =:= Mod1],
     P.
@@ -54,7 +54,7 @@ find_proc(Mod) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec upgrade/0 :: () -> 'ok'.
+-spec upgrade() -> 'ok'.
 upgrade() ->
     {ok, {_, Specs}} = init([]),
 

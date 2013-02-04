@@ -45,7 +45,7 @@ presence_update(AcctId, QueueId, State) ->
     whapps_call_command:presence(State, To).
 
 %% Returns the list of agents configured for the queue
--spec agents_in_queue/2 :: (ne_binary(), ne_binary()) -> wh_json:json_strings().
+-spec agents_in_queue(ne_binary(), ne_binary()) -> wh_json:json_strings().
 agents_in_queue(AcctDb, QueueId) ->
     case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
         {ok, []} -> [];
@@ -53,7 +53,7 @@ agents_in_queue(AcctDb, QueueId) ->
         {ok, As} -> [wh_json:get_value(<<"value">>, A) || A <- As]
     end.
 
--spec agent_devices/2 :: (ne_binary(), ne_binary()) -> wh_json:objects().
+-spec agent_devices(ne_binary(), ne_binary()) -> wh_json:objects().
 agent_devices(AcctDb, AgentId) ->
     case couch_mgr:get_results(AcctDb, <<"cf_attributes/owned">>, [{key, [AgentId, <<"device">>]}
                                                                    ,include_docs
@@ -63,7 +63,7 @@ agent_devices(AcctDb, AgentId) ->
         {error, _} -> []
     end.
 
--spec get_endpoints/2 :: (whapps_call:call(), ne_binary() | couch_mgr:get_results_return()) ->
+-spec get_endpoints(whapps_call:call(), ne_binary() | couch_mgr:get_results_return()) ->
                                  wh_json:objects().
 get_endpoints(Call, ?NE_BINARY = AgentId) ->
     AcctDb = whapps_call:account_db(Call),
@@ -89,7 +89,7 @@ get_endpoints(Call, {ok, Devices}) ->
                         end
                 end, [], EPDocs).
 
--spec get_endpoint/2 :: (whapps_call:call(), ne_binary()) -> wh_json:object() | 'undefined'.
+-spec get_endpoint(whapps_call:call(), ne_binary()) -> wh_json:object() | 'undefined'.
 get_endpoint(Call, ?NE_BINARY = EndpointId) ->
     case couch_mgr:open_doc(whapps_call:account_db(Call), EndpointId) of
         {ok, JObj} -> JObj;
@@ -97,8 +97,8 @@ get_endpoint(Call, ?NE_BINARY = EndpointId) ->
     end.
 
 %% Handles subscribing/unsubscribing from call events
--spec bind_to_call_events/1 :: (ne_binary() | whapps_call:call()) -> 'ok'.
--spec unbind_from_call_events/1 :: (api_binary() | whapps_call:call()) -> 'ok'.
+-spec bind_to_call_events(ne_binary() | whapps_call:call()) -> 'ok'.
+-spec unbind_from_call_events(api_binary() | whapps_call:call()) -> 'ok'.
 bind_to_call_events(?NE_BINARY = CallId) ->
     gen_listener:add_binding(self(), call, [{callid, CallId}
                                             ,{restrict_to, [events, error]}
@@ -114,8 +114,8 @@ unbind_from_call_events(?NE_BINARY = CallId) ->
 unbind_from_call_events(Call) ->
     unbind_from_call_events(whapps_call:call_id(Call)).
 
--spec agent_status/2 :: (ne_binary(), ne_binary()) -> ne_binary().
--spec agent_status/3 :: (ne_binary(), ne_binary(), boolean()) -> ne_binary() | wh_json:object().
+-spec agent_status(ne_binary(), ne_binary()) -> ne_binary().
+-spec agent_status(ne_binary(), ne_binary(), boolean()) -> ne_binary() | wh_json:object().
 agent_status(?NE_BINARY = AcctId, AgentId) ->
     agent_status(AcctId, AgentId, false).
 agent_status(?NE_BINARY = AcctId, AgentId, ReturnDoc) ->
@@ -151,9 +151,9 @@ update_agent_status(?NE_BINARY = AcctId, AgentId, Status, Options) ->
           ,AcctId),
     couch_mgr:save_doc(acdc_stats:db_name(AcctId), Doc).
 
--spec proc_id/0 :: () -> ne_binary().
--spec proc_id/1 :: (pid()) -> ne_binary().
--spec proc_id/2 :: (pid(), atom() | ne_binary()) -> ne_binary().
+-spec proc_id() -> ne_binary().
+-spec proc_id(pid()) -> ne_binary().
+-spec proc_id(pid(), atom() | ne_binary()) -> ne_binary().
 proc_id() -> proc_id(self()).
 proc_id(Pid) -> proc_id(Pid, node()).
 proc_id(Pid, Node) -> list_to_binary([wh_util:to_binary(Node), "-", pid_to_list(Pid)]).

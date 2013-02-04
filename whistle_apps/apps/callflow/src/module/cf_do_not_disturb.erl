@@ -27,7 +27,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     case maybe_build_dnd_record(Data, Call) of
         {error, _} ->
@@ -41,7 +41,7 @@ handle(Data, Call) ->
             cf_exe:continue(Call)
     end.            
 
--spec maybe_build_dnd_record/2 :: (wh_json:json_object(), whapps_call:call()) -> {'ok', #dnd{}} | {'error', _}.
+-spec maybe_build_dnd_record(wh_json:json_object(), whapps_call:call()) -> {'ok', #dnd{}} | {'error', _}.
 maybe_build_dnd_record(Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case maybe_get_data_id(AccountDb, Data, Call) of
@@ -54,7 +54,7 @@ maybe_build_dnd_record(Data, Call) ->
                      }}
     end.
 
--spec maybe_get_data_id/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_jobj_return().
+-spec maybe_get_data_id(ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_jobj_return().
 maybe_get_data_id(AccountDb, Data, Call) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case maybe_get_doc(AccountDb, Id) of
@@ -64,7 +64,7 @@ maybe_get_data_id(AccountDb, Data, Call) ->
         {ok, _}=Ok -> Ok
     end.
 
--spec maybe_get_owner/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_jobj_return().
+-spec maybe_get_owner(ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_jobj_return().
 maybe_get_owner(AccountDb, Data, Call) ->
     OwnerId = whapps_call:owner_id(Call),
     case maybe_get_doc(AccountDb, OwnerId) of
@@ -74,12 +74,12 @@ maybe_get_owner(AccountDb, Data, Call) ->
         {ok, _}=Ok -> Ok
     end.
 
--spec maybe_get_authorizing_device/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_jobj_return().
+-spec maybe_get_authorizing_device(ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_jobj_return().
 maybe_get_authorizing_device(AccountDb, _, Call) ->
     AuthorizingId = whapps_call:authorizing_id(Call),
     maybe_get_doc(AccountDb, AuthorizingId).
 
--spec maybe_get_doc/2 :: (api_binary(), api_binary()) -> wh_jobj_return().
+-spec maybe_get_doc(api_binary(), api_binary()) -> wh_jobj_return().
 maybe_get_doc(_, undefined) ->
     {error, no_device_id};
 maybe_get_doc(undefined, _) ->
@@ -99,7 +99,7 @@ maybe_get_doc(AccountDb, Id) ->
             E
     end.
 
--spec maybe_execute_action/3 :: (ne_binary(), #dnd{}, whapps_call:call()) -> any().
+-spec maybe_execute_action(ne_binary(), #dnd{}, whapps_call:call()) -> any().
 maybe_execute_action(<<"activate">>, #dnd{enabled=true}, Call) -> 
     lager:info("dnd is already enabled on this document", []),
     whapps_call_command:b_prompt(<<"dnd-activated">>, Call);
@@ -118,7 +118,7 @@ maybe_execute_action(_Action, _, Call) ->
     lager:info("dnd action ~s is invalid", [_Action]),
     whapps_call_command:b_prompt(<<"dnd-not_available">>, Call).
 
--spec activate_dnd/2 :: (#dnd{}, whapps_call:call()) -> any().
+-spec activate_dnd(#dnd{}, whapps_call:call()) -> any().
 activate_dnd(#dnd{jobj=JObj, account_db=AccountDb}, Call) ->
     case maybe_update_doc(true, JObj, AccountDb) of
         {error, _} -> ok;
@@ -126,7 +126,7 @@ activate_dnd(#dnd{jobj=JObj, account_db=AccountDb}, Call) ->
             whapps_call_command:b_prompt(<<"dnd-activated">>, Call)
     end.            
 
--spec deactivate_dnd/2 :: (#dnd{}, whapps_call:call()) -> any().
+-spec deactivate_dnd(#dnd{}, whapps_call:call()) -> any().
 deactivate_dnd(#dnd{jobj=JObj, account_db=AccountDb}, Call) ->
     case maybe_update_doc(false, JObj, AccountDb) of
         {error, _} -> ok;
@@ -134,7 +134,7 @@ deactivate_dnd(#dnd{jobj=JObj, account_db=AccountDb}, Call) ->
             whapps_call_command:b_prompt(<<"dnd-deactivated">>, Call)
     end.
 
--spec maybe_update_doc/3 :: (boolean(), wh_json:json_object(), ne_binary()) -> wh_jobj_return().
+-spec maybe_update_doc(boolean(), wh_json:json_object(), ne_binary()) -> wh_jobj_return().
 maybe_update_doc(Enabled, JObj, AccountDb) ->
     Updated = wh_json:set_value([<<"do_not_disturb">>, <<"enabled">>], Enabled, JObj),
     case couch_mgr:save_doc(AccountDb, Updated) of

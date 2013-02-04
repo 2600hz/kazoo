@@ -228,7 +228,7 @@ try_failover_e164(State, ToDID) ->
 %%--------------------------------------------------------------------
 %% Out-of-band functions
 %%--------------------------------------------------------------------
--spec get_endpoint_data/1 :: (wh_json:json_object()) -> {'endpoint', wh_json:json_object()}.
+-spec get_endpoint_data(wh_json:json_object()) -> {'endpoint', wh_json:json_object()}.
 get_endpoint_data(JObj) ->
     %% wh_timer:tick("inbound_route/1"),
     AcctId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
@@ -258,8 +258,8 @@ get_endpoint_data(JObj) ->
                                  ])
     }.
 
--spec routing_data/2 :: (ne_binary(), ne_binary()) -> [{<<_:48,_:_*8>>,_},...] | [].
--spec routing_data/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> [{<<_:48,_:_*8>>,_},...] | [].
+-spec routing_data(ne_binary(), ne_binary()) -> [{<<_:48,_:_*8>>,_},...] | [].
+-spec routing_data(ne_binary(), ne_binary(), wh_json:json_object()) -> [{<<_:48,_:_*8>>,_},...] | [].
 routing_data(ToDID, AcctID) ->
     case ts_util:lookup_did(ToDID, AcctID) of
         {ok, Settings} ->

@@ -39,12 +39,12 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec new/1 :: (wh_json:object()) -> sup_startchild_ret().
--spec new/2 :: (ne_binary(), ne_binary()) -> sup_startchild_ret().
+-spec new(wh_json:object()) -> sup_startchild_ret().
+-spec new(ne_binary(), ne_binary()) -> sup_startchild_ret().
 new(JObj) ->
     case find_agent_supervisor(wh_json:get_value(<<"pvt_account_id">>, JObj)
                                ,wh_json:get_value(<<"_id">>, JObj)
@@ -61,19 +61,19 @@ new(AcctId, AgentId) ->
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
 
--spec new_thief/2 :: (whapps_call:call(), ne_binary()) -> sup_startchild_ret().
+-spec new_thief(whapps_call:call(), ne_binary()) -> sup_startchild_ret().
 new_thief(Call, QueueId) ->
     supervisor:start_child(?MODULE, [Call, QueueId]).
 
--spec workers/0 :: () -> [pid(),...] | [].
+-spec workers() -> [pid(),...] | [].
 workers() ->
     [ Pid || {_, Pid, supervisor, [_]} <- supervisor:which_children(?MODULE)].
 
--spec find_acct_supervisors/1 :: (ne_binary()) -> [pid(),...] | [].
+-spec find_acct_supervisors(ne_binary()) -> [pid(),...] | [].
 find_acct_supervisors(AcctId) ->
     [Super || Super <- workers(), is_agent_in_acct(Super, AcctId)].
 
--spec is_agent_in_acct/2 :: (pid(), ne_binary()) -> boolean().
+-spec is_agent_in_acct(pid(), ne_binary()) -> boolean().
 is_agent_in_acct(Super, AcctId) ->
     case catch acdc_agent:config(acdc_agent_sup:agent(Super)) of
         {'EXIT', _} -> false;
@@ -81,8 +81,8 @@ is_agent_in_acct(Super, AcctId) ->
         _ -> false
     end.
 
--spec find_agent_supervisor/2 :: (api_binary(), api_binary()) -> pid() | 'undefined'.
--spec find_agent_supervisor/3 :: (api_binary(), api_binary(), [pid(),...] | []) -> pid() | 'undefined'.
+-spec find_agent_supervisor(api_binary(), api_binary()) -> pid() | 'undefined'.
+-spec find_agent_supervisor(api_binary(), api_binary(), [pid(),...] | []) -> pid() | 'undefined'.
 find_agent_supervisor(AcctId, AgentId) ->
     find_agent_supervisor(AcctId, AgentId, workers()).
 
@@ -114,7 +114,7 @@ find_agent_supervisor(AcctId, AgentId, [Super|Rest]) ->
 %%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: (list()) -> sup_init_ret().
+-spec init(list()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = simple_one_for_one,
     MaxRestarts = 1,

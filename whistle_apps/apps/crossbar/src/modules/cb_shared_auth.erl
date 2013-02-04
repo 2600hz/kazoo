@@ -57,7 +57,7 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods() -> http_methods().
 allowed_methods() ->
     ['PUT', 'GET'].
 
@@ -69,7 +69,7 @@ allowed_methods() ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists() -> 'true'.
 resource_exists() -> true.
 
 %%--------------------------------------------------------------------
@@ -77,7 +77,7 @@ resource_exists() -> true.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authorize/1 :: (#cb_context{}) -> boolean().
+-spec authorize(#cb_context{}) -> boolean().
 authorize(#cb_context{req_nouns=[{<<"shared_auth">>, _}]}) ->
     true;
 authorize(_) ->
@@ -88,7 +88,7 @@ authorize(_) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate/1 :: (#cb_context{}) -> boolean().
+-spec authenticate(#cb_context{}) -> boolean().
 authenticate(#cb_context{req_nouns=[{<<"shared_auth">>, []}], req_verb = <<"put">>}) ->
     true;
 authenticate(_) ->
@@ -119,7 +119,7 @@ authenticate(_) ->
 %% Failure here returns 400 or 401
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
 validate(#cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
     _ = cb_context:put_reqid(Context),
     XBarUrl = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
@@ -187,7 +187,7 @@ put(Context) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec create_local_token/1 :: (#cb_context{}) -> #cb_context{}.
+-spec create_local_token(#cb_context{}) -> #cb_context{}.
 create_local_token(#cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
     AccountId = wh_json:get_value([<<"account">>, <<"_id">>], JObj, <<>>),
     OwnerId = wh_json:get_value([<<"user">>, <<"_id">>], JObj, <<>>),
@@ -216,7 +216,7 @@ create_local_token(#cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
 %% the shared token and get the account/user for the token
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate_shared_token/2 :: (api_binary(), nonempty_string())
+-spec authenticate_shared_token(api_binary(), nonempty_string())
                                      -> {'ok', string() | binary()} | {'error', atom()} | {'forbidden', 'shared_token_rejected'}.
 authenticate_shared_token(undefined, _) ->
     {forbidden, missing_shared_token};
@@ -242,7 +242,7 @@ authenticate_shared_token(SharedToken, XBarUrl) ->
 %% an account and user, ensure those exist locally.
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_data/1 :: (wh_json:json_object()) -> boolean().
+-spec import_missing_data(wh_json:json_object()) -> boolean().
 import_missing_data(RemoteData) ->
     Account = wh_json:get_value(<<"account">>, RemoteData),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, Account),
@@ -258,7 +258,7 @@ import_missing_data(RemoteData) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account/2 :: (api_binary(), 'undefined' | wh_json:json_object()) -> boolean().
+-spec import_missing_account(api_binary(), 'undefined' | wh_json:json_object()) -> boolean().
 import_missing_account(undefined, _) ->
     lager:debug("shared auth reply did not define an account id"),
     false;
@@ -313,7 +313,7 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user/3 :: (api_binary(), api_binary(), 'undefined' | wh_json:json_object()) -> boolean().
+-spec import_missing_user(api_binary(), api_binary(), 'undefined' | wh_json:json_object()) -> boolean().
 import_missing_user(_, undefined, _) ->
     lager:debug("shared auth reply did not define an user id"),
     false;

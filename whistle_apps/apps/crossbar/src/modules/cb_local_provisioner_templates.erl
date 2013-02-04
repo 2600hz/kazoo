@@ -65,7 +65,7 @@ init() ->
 %% Add content types provided by this module
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/3 :: (#cb_context{}, path_token(), path_token()) -> crossbar_content_handlers().
+-spec content_types_provided(#cb_context{}, path_token(), path_token()) -> crossbar_content_handlers().
 content_types_provided(#cb_context{req_verb = <<"get">>, auth_account_id=AccountId}=Context, DocId, ?IMAGE_REQ) ->
     Db = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_doc(Db, DocId) of
@@ -87,7 +87,7 @@ content_types_provided(Context, _, _) ->
 %% Add content types accepted by this module
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_accepted/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec content_types_accepted(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 content_types_accepted(#cb_context{req_verb = <<"put">>}=Context, _, ?IMAGE_REQ) ->
     Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]};
 content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _, ?IMAGE_REQ) ->
@@ -104,9 +104,9 @@ content_types_accepted(Context, _, _) ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
--spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     ['GET', 'PUT'].
 allowed_methods(_) ->
@@ -122,9 +122,9 @@ allowed_methods(_, ?IMAGE_REQ) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
--spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() ->
     true.
 resource_exists(_) ->
@@ -141,8 +141,8 @@ resource_exists(_, ?IMAGE_REQ) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_provisioner_template_summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
@@ -164,7 +164,7 @@ validate(#cb_context{req_verb = <<"post">>}=Context, DocId, ?IMAGE_REQ) ->
 validate(#cb_context{req_verb = <<"delete">>}=Context, DocId, ?IMAGE_REQ) ->
     load_template_image(DocId, Context).
 
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{doc=JObj}=Context, DocId) ->
     %% see note at top of file
     Template = wh_json:get_value(<<"template">>, JObj),
@@ -180,7 +180,7 @@ post(#cb_context{doc=JObj}=Context, DocId) ->
         Else -> Else
     end.
                 
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
+-spec put(#cb_context{}) -> #cb_context{}.
 put(#cb_context{doc=JObj}=Context) ->
     %% see note at top of file
     Template = wh_json:get_value(<<"template">>, JObj),
@@ -197,25 +197,25 @@ put(#cb_context{doc=JObj}=Context) ->
         Else -> Else
     end.
 
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _) ->
     crossbar_doc:delete(Context).
 
--spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 post(#cb_context{req_files=[{_, JObj}]}=Context, DocId, ?IMAGE_REQ) ->
     Contents = wh_json:get_value(<<"contents">>, JObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], JObj, <<"application/octet-stream">>),
     Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
     crossbar_doc:save_attachment(DocId, ?IMAGE_REQ, Contents, Context, Opts).
 
--spec put/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec put(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 put(#cb_context{req_files=[{_, JObj}]}=Context, DocId, ?IMAGE_REQ) ->
     Contents = wh_json:get_value(<<"contents">>, JObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], JObj, <<"application/octet-stream">>),
     Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
     crossbar_doc:save_attachment(DocId, ?IMAGE_REQ, Contents, Context, Opts).
 
--spec delete/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 delete(Context, DocId, ?IMAGE_REQ) ->
     crossbar_doc:delete_attachment(DocId, ?IMAGE_REQ, Context).
 
@@ -229,7 +229,7 @@ delete(Context, DocId, ?IMAGE_REQ) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_template_image/2 :: (path_token(), #cb_context{}) -> #cb_context{}.
+-spec load_template_image(path_token(), #cb_context{}) -> #cb_context{}.
 load_template_image(DocId, Context) ->
     crossbar_doc:load_attachment(DocId, ?IMAGE_REQ, Context).
 
@@ -239,7 +239,7 @@ load_template_image(DocId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec upload_template_image/2 :: (path_token(), #cb_context{}) -> #cb_context{}.
+-spec upload_template_image(path_token(), #cb_context{}) -> #cb_context{}.
 upload_template_image(_, #cb_context{req_files=[]}=Context) ->
     Message = <<"please provide an image file">>,
     cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
@@ -256,7 +256,7 @@ upload_template_image(_, #cb_context{req_files=[_|_]}=Context) ->
 %% provision template summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_provisioner_template_summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec load_provisioner_template_summary(#cb_context{}) -> #cb_context{}.
 load_provisioner_template_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -266,7 +266,7 @@ load_provisioner_template_summary(Context) ->
 %% Create a new provision template document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create_provisioner_template/1 :: (#cb_context{}) -> #cb_context{}.
+-spec create_provisioner_template(#cb_context{}) -> #cb_context{}.
 create_provisioner_template(#cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
     cb_context:validate_request_data(<<"provisioner_templates">>, Context, OnSuccess).    
@@ -277,7 +277,7 @@ create_provisioner_template(#cb_context{}=Context) ->
 %% Load a provision template document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_provisioner_template/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_provisioner_template(ne_binary(), #cb_context{}) -> #cb_context{}.
 load_provisioner_template(DocId, Context) ->
     %% see note at top of file
     case crossbar_doc:load(DocId, Context) of
@@ -297,7 +297,7 @@ load_provisioner_template(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update_provisioner_template/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec update_provisioner_template(ne_binary(), #cb_context{}) -> #cb_context{}.
 update_provisioner_template(DocId, #cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
     cb_context:validate_request_data(<<"provisioner_templates">>, Context, OnSuccess).
@@ -308,7 +308,7 @@ update_provisioner_template(DocId, #cb_context{}=Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
 on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
     C = Context#cb_context{doc=wh_json:set_values([{<<"pvt_type">>, <<"provisioner_template">>}
                                                    ,{<<"pvt_provider">>, <<"provisioner.net">>}
@@ -324,6 +324,6 @@ on_successful_validation(DocId, #cb_context{}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].

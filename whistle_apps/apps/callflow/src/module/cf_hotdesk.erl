@@ -40,7 +40,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data, Call) ->
     {ok, H} = get_hotdesk_profile(wh_json:get_value(<<"id">>, Data), Call),
     Devices = cf_attributes:fetch_owned_by(H#hotdesk.owner_id, device, Call),
@@ -83,7 +83,7 @@ handle(Data, Call) ->
 %% Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints/3 :: ([ne_binary(),...], wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
+-spec bridge_to_endpoints([ne_binary(),...], wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
                                                                                          {'fail', wh_json:json_object()} |
                                                                                          {'error', term()}.
 bridge_to_endpoints(Devices, Data, Call) ->
@@ -107,8 +107,8 @@ bridge_to_endpoints(Devices, Data, Call) ->
 %% 3y) Is the pin valid?
 %% 3n) Login
 %%--------------------------------------------------------------------
--spec login/3 :: ([ne_binary(),...] | [], #hotdesk{}, whapps_call:call()) -> ok.
--spec login/5 :: ([ne_binary(),...] | [], #hotdesk{}, undefined | ne_binary(), whapps_call:call(), non_neg_integer()) -> ok.
+-spec login([ne_binary(),...] | [], #hotdesk{}, whapps_call:call()) -> ok.
+-spec login([ne_binary(),...] | [], #hotdesk{}, undefined | ne_binary(), whapps_call:call(), non_neg_integer()) -> ok.
 
 login(Devices, H, Call) ->
     login(Devices, H, whapps_call:authorizing_id(Call), Call, 1).
@@ -152,7 +152,7 @@ login(Devices, #hotdesk{require_pin=false}=H, _, Call, _) ->
 %% 3) Infrom the user
 %% @end
 %%--------------------------------------------------------------------
--spec do_login/3 :: ([ne_binary(),...] | [], #hotdesk{}, whapps_call:call()) -> ok.
+-spec do_login([ne_binary(),...] | [], #hotdesk{}, whapps_call:call()) -> ok.
 do_login(_, #hotdesk{keep_logged_in_elsewhere=true, owner_id=OwnerId, prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, Call) ->
     %% keep logged in elsewhere, so we update only the device used to call
     ok = set_device_owner(OwnerId, whapps_call:authorizing_id(Call), Call),
@@ -181,7 +181,7 @@ do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId
 %% 3) Infrom the user
 %% @end
 %%--------------------------------------------------------------------
--spec logout/3 :: ([ne_binary(),...], #hotdesk{}, whapps_call:call()) -> 'ok'.
+-spec logout([ne_binary(),...], #hotdesk{}, whapps_call:call()) -> 'ok'.
 logout(_, #hotdesk{keep_logged_in_elsewhere=true, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, Call) ->
     ok = set_device_owner(undefined, whapps_call:authorizing_id(Call), Call),
     _ = whapps_call_command:b_play(HotdeskLogout, Call),
@@ -201,9 +201,9 @@ logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{hotdes
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
--spec get_hotdesk_profile/2 :: (undefined | ne_binary(), whapps_call:call()) -> {ok, #hotdesk{}} |
+-spec get_hotdesk_profile(undefined | ne_binary(), whapps_call:call()) -> {ok, #hotdesk{}} |
                                                                                 {error, term()}.
--spec get_hotdesk_profile/3 :: (undefined | ne_binary(), whapps_call:call(), non_neg_integer()) -> {ok, #hotdesk{}} |
+-spec get_hotdesk_profile(undefined | ne_binary(), whapps_call:call(), non_neg_integer()) -> {ok, #hotdesk{}} |
                                                                                                    {error, term()}.
 
 get_hotdesk_profile(OwnerId, Call) ->
@@ -257,7 +257,7 @@ get_hotdesk_profile(OwnerId, Call, _) ->
 %% Reset owner_id for all specified devices
 %% @end
 %%--------------------------------------------------------------------
--spec logout_from_elsewhere/2 :: ([ne_binary(),...], whapps_call:call()) -> any().
+-spec logout_from_elsewhere([ne_binary(),...], whapps_call:call()) -> any().
 logout_from_elsewhere(Devices, Call) ->
     [set_device_owner(undefined, Device, Call) || Device <- Devices].
 
@@ -267,7 +267,7 @@ logout_from_elsewhere(Devices, Call) ->
 %% Set owner id for a specified device
 %% @end
 %%--------------------------------------------------------------------
--spec set_device_owner/3 :: ('undefined' | ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec set_device_owner('undefined' | ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 set_device_owner(undefined, Device, Call) ->
     AccountDb = whapps_call:account_db(Call),
     _ = case couch_mgr:open_doc(AccountDb, Device) of

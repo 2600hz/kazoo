@@ -35,7 +35,7 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
--spec process_account/1 :: (ne_binary()) -> 'ok' | {'error', _}. 
+-spec process_account(ne_binary()) -> 'ok' | {'error', _}. 
 process_account(Account) ->
     lager:debug("attempting to reconcile jonny5 credit/debit for account ~s", [Account]),
     AccountDb = wh_util:format_account_id(Account, encoded),
@@ -150,7 +150,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec correct_discrepancy/3 :: (ne_binary(), ne_binary(), integer()) -> wh_jobj_return().
+-spec correct_discrepancy(ne_binary(), ne_binary(), integer()) -> wh_jobj_return().
 correct_discrepancy(Ledger, CallId, Amount) ->
     put(callid, CallId),
     case maybe_get_cdr(Ledger, CallId) of
@@ -209,7 +209,7 @@ attempt_reconcile(JObj, Ledger, CallId, Amount) ->
             ok
     end.
 
--spec maybe_get_cdr/2 :: (ne_binary(), ne_binary()) -> wh_jobj_return().
+-spec maybe_get_cdr(ne_binary(), ne_binary()) -> wh_jobj_return().
 maybe_get_cdr(Ledger, CallId) ->
     LedgerDb = wh_util:format_account_id(Ledger, encoded),
     case couch_mgr:open_doc(LedgerDb, CallId) of
@@ -234,7 +234,7 @@ maybe_get_cdr(Ledger, CallId) ->
             E
     end.
 
--spec create_cdr/2 :: (ne_binary(), ne_binary()) -> wh_jobj_return().
+-spec create_cdr(ne_binary(), ne_binary()) -> wh_jobj_return().
 create_cdr(Ledger, CallId) ->
     %% Call is down but cdr was not saved, crash?
     AccountDb = wh_util:format_account_id(Ledger, encoded),
@@ -256,7 +256,7 @@ create_cdr(Ledger, CallId) ->
             ],
     {ok, wh_json:from_list(Props)}.
 
--spec call_has_ended/1 :: (ne_binary()) -> boolean().
+-spec call_has_ended(ne_binary()) -> boolean().
 call_has_ended(CallId) ->
     case whapps_call_command:b_channel_status(CallId) of
         {ok, _} ->
@@ -265,7 +265,7 @@ call_has_ended(CallId) ->
             true
     end.    
 
--spec reconcile_grace_period_exceeded/1 :: (wh_json:json_object()) -> boolean().
+-spec reconcile_grace_period_exceeded(wh_json:json_object()) -> boolean().
 reconcile_grace_period_exceeded(JObj) ->
     Current = wh_util:current_tstamp(),
     Modified = wh_json:get_integer_value(<<"pvt_modified">>, JObj, Current), 
@@ -303,7 +303,7 @@ discrepancy_doc_id(CallId) ->
     %% This needs to stay in sync with the write to ledger function in j5_util
     <<(wh_util:to_hex_binary(crypto:md5(CallId)))/binary, "-discrepancy">>.
 
--spec send_system_alert/4 :: (ne_binary(), ne_binary(), integer(), wh_json:json_object()) -> pid().
+-spec send_system_alert(ne_binary(), ne_binary(), integer(), wh_json:json_object()) -> pid().
 send_system_alert(Ledger, CallId, Amount, Entry) ->
     spawn(fun() ->
                   LedgerDb = wh_util:format_account_id(Ledger, encoded),
@@ -327,7 +327,7 @@ send_system_alert(Ledger, CallId, Amount, Entry) ->
                   wh_notify:system_alert("account $~p discrepancy / ~s (~s) / Call ~s", [Dollars, AccountName, LedgerId, CallId], Details)
           end).
 
--spec per_minute_discrepancy/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
+-spec per_minute_discrepancy(float(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 per_minute_discrepancy(Units, #limits{account_id=AccountId}=Limits, JObj) when Units > 0 ->
     Props = [{<<"reason">>, <<"jonny5 discrepancy correction">>}
              ,{<<"balance">>, j5_util:current_balance(AccountId)}

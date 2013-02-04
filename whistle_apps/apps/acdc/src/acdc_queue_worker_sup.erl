@@ -38,45 +38,45 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/3 :: (pid(), ne_binary(), ne_binary()) -> startlink_ret().
+-spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(MgrPid, AcctId, QueueId) ->
     supervisor:start_link(?MODULE, [MgrPid, AcctId, QueueId]).
 
--spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
+-spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(WorkerSup) ->
     supervisor:terminate_child(acdc_queues_sup, WorkerSup).
 
--spec queue/1 :: (pid()) -> pid() | 'undefined'.
+-spec queue(pid()) -> pid() | 'undefined'.
 queue(WorkerSup) ->
     case child_of_type(WorkerSup, acdc_queue) of
         [] -> undefined;
         [P] -> P
     end.
 
--spec shared_queue/1 :: (pid()) -> pid() | 'undefined'.
+-spec shared_queue(pid()) -> pid() | 'undefined'.
 shared_queue(WorkerSup) ->
     case child_of_type(WorkerSup, acdc_queue_shared) of
         [] -> undefined;
         [P] -> P
     end.
 
--spec start_shared_queue/4 :: (pid(), pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
+-spec start_shared_queue(pid(), pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
 start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId) ->
     supervisor:start_child(WorkerSup, ?CHILD(acdc_queue_shared, [FSMPid, AcctId, QueueId])).
 
--spec fsm/1 :: (pid()) -> pid() | 'undefined'.
+-spec fsm(pid()) -> pid() | 'undefined'.
 fsm(WorkerSup) ->
     case child_of_type(WorkerSup, acdc_queue_fsm) of
         [] -> undefined;
         [P] -> P
     end.
 
--spec start_fsm/3 :: (pid(), pid(), wh_json:object()) -> sup_startchild_ret().
+-spec start_fsm(pid(), pid(), wh_json:object()) -> sup_startchild_ret().
 start_fsm(WorkerSup, MgrPid, QueueJObj) ->
     ListenerPid = self(),
     supervisor:start_child(WorkerSup, ?CHILD(acdc_queue_fsm, [MgrPid, ListenerPid, QueueJObj])).
 
--spec child_of_type/2 :: (pid(), atom()) -> list(pid()).
+-spec child_of_type(pid(), atom()) -> list(pid()).
 child_of_type(WorkerSup, T) ->
     [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(WorkerSup), T =:= Type].
 
@@ -97,7 +97,7 @@ child_of_type(WorkerSup, T) ->
 %%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: (list()) -> sup_init_ret().
+-spec init(list()) -> sup_init_ret().
 init(Args) ->
     RestartStrategy = one_for_all,
     MaxRestarts = 2,

@@ -17,7 +17,7 @@
 %% Application callbacks
 %% ===================================================================
 
--spec start/2 :: (term(), term()) -> {'ok', pid()} | {'error', term()}.
+-spec start(term(), term()) -> {'ok', pid()} | {'error', term()}.
 start(_StartType, _StartArgs) ->
     case webhooks:start_link() of
 	{ok, P} -> {ok, P};

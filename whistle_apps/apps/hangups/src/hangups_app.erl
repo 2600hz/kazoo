@@ -19,7 +19,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start/2 :: (term(), term()) -> tuple(ok, pid()) | tuple(error, startlink_err()).
+-spec start(term(), term()) -> tuple(ok, pid()) | tuple(error, startlink_err()).
 start(_, _) ->
     case hangups:start_link() of
         {ok, P} -> {ok, P};
@@ -33,6 +33,6 @@ start(_, _) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop/1 :: (term()) -> ok.
+-spec stop(term()) -> ok.
 stop(_) ->
     ok.

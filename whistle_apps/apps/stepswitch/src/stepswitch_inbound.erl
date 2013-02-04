@@ -10,11 +10,11 @@
 
 -include("stepswitch.hrl").
 
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     'ok'.
 
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req(wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, _Prop) ->
     _ = whapps_util:put_callid(JObj),
     case wh_json:get_ne_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
@@ -31,8 +31,8 @@ handle_req(JObj, _Prop) ->
 %% handle a request inbound from offnet
 %% @end
 %%--------------------------------------------------------------------
--spec inbound_handler/1 :: (wh_json:json_object()) -> 'ok'.
--spec inbound_handler/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
+-spec inbound_handler(wh_json:json_object()) -> 'ok'.
+-spec inbound_handler(wh_json:json_object(), ne_binary()) -> 'ok'.
 inbound_handler(JObj) ->
     inbound_handler(JObj, get_dest_number(JObj)).
 inbound_handler(JObj, Number) ->
@@ -50,7 +50,7 @@ inbound_handler(JObj, Number) ->
 %% determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
--spec get_dest_number/1 :: (wh_json:json_object()) -> ne_binary().
+-spec get_dest_number(wh_json:json_object()) -> ne_binary().
 get_dest_number(JObj) ->
     {User, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     case whapps_config:get_is_true(<<"stepswitch">>, <<"assume_inbound_e164">>) of
@@ -70,7 +70,7 @@ get_dest_number(JObj) ->
 %% determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
--spec assume_e164/1 :: (ne_binary()) -> ne_binary().
+-spec assume_e164(ne_binary()) -> ne_binary().
 assume_e164(<<$+, _/binary>> = Number) ->
     Number;
 assume_e164(Number) ->
@@ -83,7 +83,7 @@ assume_e164(Number) ->
 %% account and authorizing  ID
 %% @end
 %%--------------------------------------------------------------------
--spec custom_channel_vars/2 :: (ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+-spec custom_channel_vars(ne_binary(), wh_json:json_object()) -> wh_json:json_object().
 custom_channel_vars(AccountId, JObj) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     RemoveKeys = [<<"Account-ID">>
@@ -102,7 +102,7 @@ custom_channel_vars(AccountId, JObj) ->
 %% relay a route request once populated with the new properties
 %% @end
 %%--------------------------------------------------------------------
--spec relay_route_req/3 :: (ne_binary(), proplist(), wh_json:json_object()) -> 'ok'.
+-spec relay_route_req(ne_binary(), proplist(), wh_json:json_object()) -> 'ok'.
 relay_route_req(AccountId, Props, JObj) ->
     Routines = [fun(J) -> custom_channel_vars(AccountId, J) end
                 ,fun(J) -> 

@@ -106,7 +106,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/3 :: (pid(), ne_binary(), ne_binary()) -> startlink_ret().
+-spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(Super, AcctId, QueueId) ->
     gen_listener:start_link(?MODULE
                             ,[{bindings, ?BINDINGS(AcctId, QueueId)}
@@ -471,7 +471,7 @@ start_secondary_queue(AcctId, QueueId) ->
 make_ignore_key(AcctId, QueueId, CallId) ->
     {AcctId, QueueId, CallId}.
 
--spec start_agent_and_worker/4 :: (pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec start_agent_and_worker(pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 start_agent_and_worker(WorkersSup, AcctId, QueueId, AgentJObj) ->
     acdc_queue_workers_sup:new_worker(WorkersSup, AcctId, QueueId),
 
@@ -489,7 +489,7 @@ start_agent_and_worker(WorkersSup, AcctId, QueueId, AgentJObj) ->
     end.
 
 %% Really sophisticated selection algorithm
--spec pick_winner/4 :: (pid(), wh_json:objects()
+-spec pick_winner(pid(), wh_json:objects()
                         ,queue_strategy(), api_binary()
                        ) ->
                                'undefined' |
@@ -515,7 +515,7 @@ pick_winner(_Mgr, CRs, 'mi', _) ->
 
     {[MostIdle|Same], Other}.
 
--spec update_strategy_with_agent/4 :: (queue_strategy(), queue_strategy_state(), ne_binary(), 'add' | 'remove') ->
+-spec update_strategy_with_agent(queue_strategy(), queue_strategy_state(), ne_binary(), 'add' | 'remove') ->
                                               queue_strategy_state().
 update_strategy_with_agent('rr', undefined, AgentId, 'add') ->
     queue:in(AgentId, queue:new());
@@ -555,7 +555,7 @@ maybe_update_strategy('rr', StrategyState, AgentId) ->
     end.
 
 %% If A's idle time is greater, it should come before B
--spec sort_agent/2 :: (wh_json:object(), wh_json:object()) -> boolean().
+-spec sort_agent(wh_json:object(), wh_json:object()) -> boolean().
 sort_agent(A, B) ->
     wh_json:get_integer_value(<<"Idle-Time">>, A, 0) >
         wh_json:get_integer_value(<<"Idle-Time">>, B, 0).
@@ -564,7 +564,7 @@ sort_agent(A, B) ->
 %% but then the agent logs out of their phone (removing the agent
 %% from the list in the queue manager).
 %% Otherwise CRs will never be empty
--spec remove_unknown_agents/2 :: (pid(), wh_json:objects()) -> wh_json:objects().
+-spec remove_unknown_agents(pid(), wh_json:objects()) -> wh_json:objects().
 remove_unknown_agents(Mgr, CRs) ->
     case gen_listener:call(Mgr, current_agents) of
         [] -> [];
@@ -574,19 +574,19 @@ remove_unknown_agents(Mgr, CRs) ->
             ]
     end.
 
--spec split_agents/2 :: (ne_binary(), wh_json:objects()) ->
+-spec split_agents(ne_binary(), wh_json:objects()) ->
                                 {wh_json:objects(), wh_json:objects()}.
 split_agents(AgentId, Rest) ->
     lists:partition(fun(R) ->
                             AgentId =:= wh_json:get_value(<<"Agent-ID">>, R)
                     end, Rest).
 
--spec get_strategy/1 :: (api_binary()) -> queue_strategy().
+-spec get_strategy(api_binary()) -> queue_strategy().
 get_strategy(<<"round_robin">>) -> 'rr';
 get_strategy(<<"most_idle">>) -> 'mi';
 get_strategy(_) -> 'rr'.
 
--spec create_strategy_state/4 :: (queue_strategy(), queue_strategy_state() | 'undefined', ne_binary(), ne_binary()) ->
+-spec create_strategy_state(queue_strategy(), queue_strategy_state() | 'undefined', ne_binary(), ne_binary()) ->
                                          queue_strategy_state().
 create_strategy_state(Strategy, AcctDb, QueueId) ->
     create_strategy_state(Strategy, undefined, AcctDb, QueueId).

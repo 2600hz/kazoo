@@ -35,7 +35,7 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods() -> http_methods().
 allowed_methods() ->
     ['GET'].
 
@@ -47,7 +47,7 @@ allowed_methods() ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists() -> 'true'.
 resource_exists() ->
     true.
 
@@ -60,7 +60,7 @@ resource_exists() ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     display_version(Context).
 
@@ -74,7 +74,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context) ->
 %% Display the current version of whistle
 %% @end
 %%--------------------------------------------------------------------
--spec display_version/1 :: (#cb_context{}) -> #cb_context{}.
+-spec display_version(#cb_context{}) -> #cb_context{}.
 display_version(Context) ->
     WhVsn = wh_json:set_value(<<"whistle_version">>, wh_util:whistle_version(), wh_json:new()),
     crossbar_util:response(WhVsn, Context).

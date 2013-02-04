@@ -61,9 +61,9 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
--spec allowed_methods/3 :: (path_token(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
     ['GET', 'PUT'].
@@ -84,9 +84,9 @@ allowed_methods(_, <<"quickcall">>, _) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
--spec resource_exists/3 :: (path_token(), path_token(), path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> true.
 resource_exists(_) -> true.
@@ -115,12 +115,12 @@ billing(Context) -> Context.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate/1 :: (cb_context:context()) -> 'true'.
+-spec authenticate(cb_context:context()) -> 'true'.
 authenticate(#cb_context{req_nouns=?DEVICES_QCALL_NOUNS, req_verb = <<"get">>}) ->
     lager:debug("authenticating request"),
     true.
 
--spec authorize/1 :: (cb_context:context()) -> 'true'.
+-spec authorize(cb_context:context()) -> 'true'.
 authorize(#cb_context{req_nouns=?DEVICES_QCALL_NOUNS, req_verb = <<"get">>}) ->
     lager:debug("authorizing request"),
     true.
@@ -131,7 +131,7 @@ authorize(#cb_context{req_nouns=?DEVICES_QCALL_NOUNS, req_verb = <<"get">>}) ->
 %% Bill for devices
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_services/1 :: (cb_context:context()) -> cb_context:context().
+-spec reconcile_services(cb_context:context()) -> cb_context:context().
 reconcile_services(#cb_context{req_verb = <<"get">>}=Context) ->
     Context;
 reconcile_services(#cb_context{account_id=AccountId}=Context) ->
@@ -147,8 +147,8 @@ reconcile_services(#cb_context{account_id=AccountId}=Context) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (cb_context:context()) -> cb_context:context().
--spec validate/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_device_summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
@@ -171,21 +171,21 @@ validate(#cb_context{req_verb = <<"get">>}=Context, DeviceId, <<"quickcall">>, _
             cb_modules_util:maybe_originate_quickcall(Context1)
     end.
 
--spec post/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(#cb_context{}=Context, _DeviceId) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_device(Context1),
     _ = provisioner_util:maybe_provision(Context1),
     Context1.
 
--spec put/1 :: (cb_context:context()) -> cb_context:context().
+-spec put(cb_context:context()) -> cb_context:context().
 put(#cb_context{}=Context) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_device(Context1),
     _ = provisioner_util:maybe_provision(Context1),
     Context1.
 
--spec delete/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(#cb_context{}=Context, DeviceId) ->
     Context1 = crossbar_doc:delete(Context),
     _ = maybe_remove_aggreate(DeviceId, Context),
@@ -202,7 +202,7 @@ delete(#cb_context{}=Context, DeviceId) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_device_summary/1 :: (cb_context:context()) -> cb_context:context().
+-spec load_device_summary(cb_context:context()) -> cb_context:context().
 load_device_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -212,11 +212,11 @@ load_device_summary(Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request/2 :: (api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(DeviceId, Context) ->
     prepare_outbound_flags(DeviceId, Context).
 
--spec prepare_outbound_flags/2 :: (api_binary(), cb_context:context()) -> cb_context:context().
+-spec prepare_outbound_flags(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_outbound_flags(DeviceId, #cb_context{req_data=JObj}=Context) -> 
     J = case wh_json:get_value(<<"outbound_flags">>, JObj) of
             [] -> JObj;
@@ -230,7 +230,7 @@ prepare_outbound_flags(DeviceId, #cb_context{req_data=JObj}=Context) ->
         end,
     prepare_device_realm(DeviceId, Context#cb_context{req_data=J}).
 
--spec prepare_device_realm/2 :: (api_binary(), cb_context:context()) -> cb_context:context().
+-spec prepare_device_realm(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_device_realm(DeviceId, #cb_context{req_data=JObj}=Context) ->
     AccountRealm = crossbar_util:get_account_realm(Context),
     Realm = wh_json:get_ne_value([<<"sip">>, <<"realm">>], JObj, AccountRealm),   
@@ -242,7 +242,7 @@ prepare_device_realm(DeviceId, #cb_context{req_data=JObj}=Context) ->
             validate_device_creds(Realm, DeviceId, cb_context:store(aggregate_device, true, Context))
     end.
 
--spec validate_device_creds/3 :: (ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_device_creds(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
 validate_device_creds(Realm, DeviceId, #cb_context{req_data=JObj}=Context) ->
     case wh_json:get_value([<<"sip">>, <<"method">>], JObj, <<"password">>) of
         <<"password">> -> validate_device_password(Realm, DeviceId, Context);
@@ -257,7 +257,7 @@ validate_device_creds(Realm, DeviceId, #cb_context{req_data=JObj}=Context) ->
             check_device_schema(DeviceId, C)
     end.
 
--spec validate_device_password/3 :: (ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_device_password(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
 validate_device_password(Realm, DeviceId, #cb_context{db_name=Db, req_data=JObj}=Context) ->
     Username = wh_json:get_ne_value([<<"sip">>, <<"username">>], JObj),
     case is_sip_creds_unique(Db, Realm, Username, DeviceId) of
@@ -270,7 +270,7 @@ validate_device_password(Realm, DeviceId, #cb_context{db_name=Db, req_data=JObj}
             check_device_schema(DeviceId, C)
     end.
 
--spec validate_device_ip/3 :: (ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_device_ip(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
 validate_device_ip(IP, DeviceId, Context) ->
     case is_ip_unique(IP, DeviceId) of
         true -> 
@@ -313,7 +313,7 @@ maybe_validate_quickcall(#cb_context{resp_status=success, doc=JObj, auth_token=A
 %% Load a device document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_device/2 :: (ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_device(ne_binary(), cb_context:context()) -> cb_context:context().
 load_device(DeviceId, Context) ->
     crossbar_doc:load(DeviceId, Context).
 
@@ -324,7 +324,7 @@ load_device(DeviceId, Context) ->
 %% Reads registered devices in registrations, then map to devices of the account
 %% @end
 %%--------------------------------------------------------------------
--spec load_device_status/1 :: (cb_context:context()) -> cb_context:context().
+-spec load_device_status(cb_context:context()) -> cb_context:context().
 load_device_status(Context) ->
     AccountRealm = crossbar_util:get_account_realm(Context),
     RegStatuses = lookup_regs(AccountRealm),
@@ -337,7 +337,7 @@ load_device_status(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -350,7 +350,7 @@ normalize_view_results(JObj, Acc) ->
 %% accurate enough for the status icons.
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_regs/1 :: (ne_binary()) -> wh_json:objects().
+-spec lookup_regs(ne_binary()) -> wh_json:objects().
 lookup_regs(AccountRealm) ->
     Req = [{<<"Realm">>, AccountRealm}
            ,{<<"Fields">>, [<<"Authorizing-ID">>]}
@@ -367,7 +367,7 @@ lookup_regs(AccountRealm) ->
         {ok, JObj} -> extract_device_registrations(JObj)
     end.
 
--spec extract_device_registrations/1 :: (wh_json:object()) -> wh_json:objects().
+-spec extract_device_registrations(wh_json:object()) -> wh_json:objects().
 extract_device_registrations(JObj) ->
     [wh_json:from_list([{<<"device_id">>, AuthorizingId}
                         ,{<<"registered">>, true}
@@ -382,7 +382,7 @@ extract_device_registrations(JObj) ->
 %% Check if the device sip creds are unique
 %% @end
 %%--------------------------------------------------------------------
--spec is_sip_creds_unique/4 :: (api_binary(), ne_binary(), ne_binary(), api_binary()) ->
+-spec is_sip_creds_unique(api_binary(), ne_binary(), ne_binary(), api_binary()) ->
                                        boolean().
 
 %% no account id and no doc id (ie initial create with no account)
@@ -457,7 +457,7 @@ maybe_aggregate_device(_) -> false.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_remove_aggreate/2 :: (ne_binary(), cb_context:context()) -> boolean().
+-spec maybe_remove_aggreate(ne_binary(), cb_context:context()) -> boolean().
 maybe_remove_aggreate(DeviceId, #cb_context{resp_status=success, doc=JObj}) ->
     case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
         {ok, JObj} ->
@@ -474,7 +474,7 @@ maybe_remove_aggreate(_, _) -> false.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_acl_ips/0 :: () -> ne_binaries().
+-spec get_all_acl_ips() -> ne_binaries().
 get_all_acl_ips() ->
     Req = [{<<"Category">>, <<"ecallmgr">>}
            ,{<<"Key">>, <<"acls">>}
@@ -494,7 +494,7 @@ get_all_acl_ips() ->
             extract_all_ips(wh_json:get_value(<<"Value">>, JObj, wh_json:new()))
     end.
 
--spec extract_all_ips/1 :: (wh_json:object()) -> ne_binaries().
+-spec extract_all_ips(wh_json:object()) -> ne_binaries().
 extract_all_ips(JObj) ->
     lists:foldr(fun(K, IPs) ->
                         case wh_json:get_value([K, <<"cidr">>], JObj) of

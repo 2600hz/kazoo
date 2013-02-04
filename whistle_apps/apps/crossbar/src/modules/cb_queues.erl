@@ -87,7 +87,7 @@
 %% Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.queues">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.queues">>, ?MODULE, resource_exists),
@@ -104,9 +104,9 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
--spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
     ['GET', 'PUT'].
@@ -131,9 +131,9 @@ allowed_methods(_QID, ?EAVESDROP_PATH_TOKEN) ->
 %%    /queues/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
--spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> true.
 
 resource_exists(_) -> true.
@@ -148,8 +148,8 @@ resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> true.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/1 :: (cb_context:context()) -> cb_context:context().
--spec content_types_provided/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec content_types_provided(cb_context:context()) -> cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
 content_types_provided(#cb_context{}=Context) -> Context.
 content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
     case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
@@ -173,9 +173,9 @@ content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (cb_context:context()) -> cb_context:context().
--spec validate/2 :: (cb_context:context(), path_token()) -> cb_context:context().
--spec validate/3 :: (cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
@@ -222,7 +222,7 @@ validate_eavesdrop_on_queue(#cb_context{req_data=Data}=Context, QueueId) ->
         {false, Context1} -> Context1
     end.
 
--spec all_true/1 :: ([{fun(), list()},...]) ->
+-spec all_true([{fun(), list()},...]) ->
                             'true' |
                             {'false', cb_context:context()}.
 all_true(Fs) ->
@@ -321,9 +321,9 @@ is_valid_endpoint_type(Context, CallMeJObj) ->
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put/1 :: (cb_context:context()) -> cb_context:context().
--spec put/2 :: (cb_context:context(), path_token()) -> cb_context:context().
--spec put/3 :: (cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec put(cb_context:context()) -> cb_context:context().
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context) ->
     lager:debug("saving new queue"),
     crossbar_doc:save(Context).
@@ -339,7 +339,7 @@ put(Context, QID, ?EAVESDROP_PATH_TOKEN) ->
            ],
     eavesdrop_req(Context, Prop).
 
--spec default_eavesdrop_req/1 :: (cb_context:context()) -> wh_proplist().
+-spec default_eavesdrop_req(cb_context:context()) -> wh_proplist().
 default_eavesdrop_req(Context) ->
     [{<<"Eavesdrop-Mode">>, cb_context:req_value(Context, <<"mode">>, <<"listen">>)}
      ,{<<"Account-ID">>, cb_context:account_id(Context)}
@@ -350,7 +350,7 @@ default_eavesdrop_req(Context) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec eavesdrop_req/2 :: (cb_context:context(), wh_proplist()) -> cb_context:context().
+-spec eavesdrop_req(cb_context:context(), wh_proplist()) -> cb_context:context().
 eavesdrop_req(Context, Prop) ->
     case whapps_util:amqp_pool_request(props:filter_undefined(Prop)
                                        ,fun wapi_resource:publish_eavesdrop_req/1
@@ -387,8 +387,8 @@ filter_response_fields(JObj) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post/2 :: (cb_context:context(), path_token()) -> cb_context:context().
--spec post/3 :: (cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
 post(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
@@ -400,8 +400,8 @@ post(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete/2 :: (cb_context:context(), path_token()) -> cb_context:context().
--spec delete/3 :: (cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(#cb_context{}=Context, _) ->
     crossbar_doc:delete(Context).
 delete(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
@@ -417,7 +417,7 @@ delete(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read/2 :: (ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     case crossbar_doc:load(Id, Context) of
         #cb_context{resp_status=success}=Context1 ->
@@ -431,7 +431,7 @@ read(Id, Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request/2 :: (api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(QueueId, Context) ->
     check_queue_schema(QueueId, Context).
 
@@ -508,7 +508,7 @@ maybe_add_queue_to_agent(Id, A) ->
     lager:debug("agent ~s queues: ~p", [wh_json:get_value(<<"_id">>, A), Qs]),
     wh_json:set_value(<<"queues">>, Qs, A).
 
--spec maybe_rm_agents/3 :: (ne_binary(), cb_context:context(), wh_json:json_strings()) -> cb_context:context().
+-spec maybe_rm_agents(ne_binary(), cb_context:context(), wh_json:json_strings()) -> cb_context:context().
 maybe_rm_agents(_Id, Context, []) ->
     lager:debug("no agents to remove from the queue ~s", [_Id]),
     Context#cb_context{resp_status=success};
@@ -543,7 +543,7 @@ maybe_rm_queue_from_agent(Id, A) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_all_queue_stats/1 :: (cb_context:context()) -> cb_context:context().
+-spec fetch_all_queue_stats(cb_context:context()) -> cb_context:context().
 fetch_all_queue_stats(Context) ->
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, 3600),
 
@@ -582,7 +582,7 @@ fetch_all_queue_stats(Context) ->
             cb_context:add_validation_error(<<"format">>, <<"enum">>, <<"enum:Value not found in enumerated list">>, Context)
     end.
 
--spec compress_stats/3 :: (cb_context:context(), integer(), integer()) -> cb_context:context().
+-spec compress_stats(cb_context:context(), integer(), integer()) -> cb_context:context().
 compress_stats(Context, From, To) ->
     case cb_context:resp_status(Context) of
         'success' ->
@@ -609,14 +609,14 @@ compress_stats(Context, From, To) ->
             end
     end.
 
--spec compress_stats/2 :: ('undefined' | wh_json:objects(), {wh_json:object(), wh_json:object(), wh_json:object()}) ->
+-spec compress_stats('undefined' | wh_json:objects(), {wh_json:object(), wh_json:object(), wh_json:object()}) ->
                                   wh_json:object().
 compress_stats(undefined, {Compressed, _, _}) -> Compressed;
 compress_stats([], {Compressed, Global, PerQueue}) -> accumulate_stats(Compressed, Global, PerQueue);
 compress_stats([Stat|Stats], {_Compressed, _Global, _PerQueue}=Res) ->
     compress_stats(Stats, add_stat(Stat, Res)).
 
--spec accumulate_stats/3 :: (wh_json:object(), wh_json:object(), wh_json:object()) ->
+-spec accumulate_stats(wh_json:object(), wh_json:object(), wh_json:object()) ->
                                     wh_json:object().
 accumulate_stats(Compressed, Global, PerQueue) ->
     AccCompressed = wh_json:map(fun accumulate_queue_stats/2, Compressed),
@@ -823,7 +823,7 @@ add_stat(Stat, {Compressed, Global, PerQueue}, ?STATUS_ABANDONED) ->
      ,wh_json:set_value([QID, CID, ?STAT_TIMESTAMP_ABANDONED], TStamp, PerQueue)
     }.
 
--spec get_caller_id_info/3 :: (wh_json:object(), ne_binary(), ne_binary()) -> wh_proplist().
+-spec get_caller_id_info(wh_json:object(), ne_binary(), ne_binary()) -> wh_proplist().
 get_caller_id_info(Stat, QID, CID) ->
     case {wh_json:get_value(<<"caller_id_name">>, Stat)
           ,wh_json:get_value(<<"caller_id_number">>, Stat)
@@ -845,7 +845,7 @@ get_caller_id_info(Stat, QID, CID) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary/1 :: (cb_context:context()) -> cb_context:context().
+-spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -855,7 +855,7 @@ summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 

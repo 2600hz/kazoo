@@ -10,7 +10,7 @@
 
 -export([handle/2]).
 
--spec handle/2 :: (wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     CaptureGroup = whapps_call:kvs_fetch(cf_capture_group, Call),
     AccountId = whapps_call:account_id(Call),
@@ -26,7 +26,7 @@ handle(Data, Call) ->
             cf_exe:stop(Call)
     end.
 
--spec update_request/2 :: (ne_binary(), {'ok', whapps_call:call()}) -> 'ok'.
+-spec update_request(ne_binary(), {'ok', whapps_call:call()}) -> 'ok'.
 update_request(CaptureGroup, {ok, Call}) ->
     Request = <<CaptureGroup/binary, "@"
                 ,(whapps_call:request_realm(Call))/binary>>,

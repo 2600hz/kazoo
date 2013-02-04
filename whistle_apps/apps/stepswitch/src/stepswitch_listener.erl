@@ -209,7 +209,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% Gets a list of all active resources from the DB
 %% @end
 %%--------------------------------------------------------------------
--spec get_resrcs/0 :: () -> [#resrc{}].
+-spec get_resrcs() -> [#resrc{}].
 get_resrcs() ->
     case couch_mgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, [include_docs]) of
         {ok, Resrcs} ->
@@ -226,7 +226,7 @@ get_resrcs() ->
 %% of resources
 %% @end
 %%--------------------------------------------------------------------
--spec update_resrc/2 :: (ne_binary(), [#resrc{},...] | []) -> [#resrc{},...] | [].
+-spec update_resrc(ne_binary(), [#resrc{},...] | []) -> [#resrc{},...] | [].
 update_resrc(DocId, Resrcs) ->
     lager:debug("received notification that resource ~s has changed", [DocId]),
     case couch_mgr:open_doc(?RESOURCES_DB, DocId) of
@@ -252,7 +252,7 @@ update_resrc(DocId, Resrcs) ->
 %% populates it with all enabled gateways
 %% @end
 %%--------------------------------------------------------------------
--spec create_resrc/1 :: (wh_json:json_object()) -> #resrc{}.
+-spec create_resrc(wh_json:json_object()) -> #resrc{}.
 create_resrc(JObj) ->
     Default = #resrc{},
     Id = wh_json:get_value(<<"_id">>, JObj),
@@ -284,7 +284,7 @@ create_resrc(JObj) ->
 %% Given a gateway JSON object it builds a gateway record
 %% @end
 %%--------------------------------------------------------------------
--spec create_gateway/2 :: (wh_json:json_object(), ne_binary()) -> #gateway{}.
+-spec create_gateway(wh_json:json_object(), ne_binary()) -> #gateway{}.
 create_gateway(JObj, Id) ->
     Default = #gateway{},
 
@@ -350,7 +350,7 @@ endpoint_options(_, _) ->
 %% which resource it was on).
 %% @end
 %%--------------------------------------------------------------------
--spec compile_rule/2 :: (ne_binary(), ne_binary()) -> re:mp() | 'error'.
+-spec compile_rule(ne_binary(), ne_binary()) -> re:mp() | 'error'.
 compile_rule(Rule, Id) ->
     case re:compile(Rule) of
         {ok, MP} ->
@@ -367,7 +367,7 @@ compile_rule(Rule, Id) ->
 %% constrain the weight on a scale from 1 to 100
 %% @end
 %%--------------------------------------------------------------------
--spec constrain_weight/1 :: (ne_binary() | integer()) -> integer().
+-spec constrain_weight(ne_binary() | integer()) -> integer().
 constrain_weight(W) when not is_integer(W) ->
     constrain_weight(wh_util:to_integer(W));
 constrain_weight(W) when W > 100 -> 100;
@@ -380,7 +380,7 @@ constrain_weight(W) -> W.
 %% Builds a list of tuples for humans from the lookup number request
 %% @end
 %%--------------------------------------------------------------------
--spec print_endpoints/3 :: (endpoints(), non_neg_integer(), list()) -> list().
+-spec print_endpoints(endpoints(), non_neg_integer(), list()) -> list().
 print_endpoints([], _, Acc) ->
     lists:reverse(Acc);
 print_endpoints([{_, GracePeriod, Number, [Gateway], _}|T], Delay, Acc0) ->
@@ -399,6 +399,6 @@ print_endpoints([{_, GracePeriod, Number, Gateways, _}|T], Delay, Acc0) ->
 %% Builds a tuple for humans from the lookup number request
 %% @end
 %%--------------------------------------------------------------------
--spec print_endpoint/3 :: (ne_binary(), #gateway{}, non_neg_integer()) -> {ne_binary(), non_neg_integer(), ne_binary()}.
+-spec print_endpoint(ne_binary(), #gateway{}, non_neg_integer()) -> {ne_binary(), non_neg_integer(), ne_binary()}.
 print_endpoint(Number, #gateway{resource_id=ResourceID}=Gateway, Delay) ->
     {ResourceID, Delay, stepswitch_util:get_dialstring(Gateway, Number)}.

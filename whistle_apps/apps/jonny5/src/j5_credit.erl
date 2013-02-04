@@ -13,14 +13,14 @@
 
 -include("jonny5.hrl").
 
--spec is_available/2 :: (#limits{}, wh_json:json_object()) -> boolean().
+-spec is_available(#limits{}, wh_json:json_object()) -> boolean().
 is_available(Limits, JObj) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Balance = j5_util:current_balance(AccountId),
     prepay_is_available(Limits, Balance, JObj) 
         orelse postpay_is_available(Limits, Balance, JObj).
 
--spec reauthorize/2 :: (#limits{}, wh_json:json_object()) -> 'ok'.
+-spec reauthorize(#limits{}, wh_json:json_object()) -> 'ok'.
 reauthorize(Limits, JObj) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
@@ -36,7 +36,7 @@ reauthorize(Limits, JObj) ->
             maybe_debit_next_minute(AccountId, Limits, JObj)
     end.
 
--spec reconcile_cdr/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec reconcile_cdr(ne_binary(), wh_json:json_object()) -> 'ok'.
 reconcile_cdr(Account, JObj) ->
     Cost = extract_cost(JObj),
     SessionId = j5_util:get_session_id(JObj),
@@ -53,7 +53,7 @@ reconcile_cdr(Account, JObj) ->
     end,
     ok.
     
--spec prepay_is_available/3 :: (#limits{}, integer(), wh_json:json_object()) -> boolean().
+-spec prepay_is_available(#limits{}, integer(), wh_json:json_object()) -> boolean().
 prepay_is_available(#limits{allow_prepay=false}, _, _) ->
     false;
 prepay_is_available(#limits{allow_prepay=true, reserve_amount=ReserveAmount}=Limits, Balance, JObj) ->
@@ -64,7 +64,7 @@ prepay_is_available(#limits{allow_prepay=true, reserve_amount=ReserveAmount}=Lim
             true
     end.
 
--spec postpay_is_available/3 :: (#limits{}, integer(), wh_json:json_object()) -> boolean().
+-spec postpay_is_available(#limits{}, integer(), wh_json:json_object()) -> boolean().
 postpay_is_available(#limits{allow_postpay=false}, _, _) ->
     false;
 postpay_is_available(#limits{allow_postpay=true, max_postpay_amount=MaxPostpay
@@ -76,14 +76,14 @@ postpay_is_available(#limits{allow_postpay=true, max_postpay_amount=MaxPostpay
             true
     end.
 
--spec maybe_debit_next_minute/3 :: (ne_binary(), #limits{}, wh_json:json_object()) -> boolean().
+-spec maybe_debit_next_minute(ne_binary(), #limits{}, wh_json:json_object()) -> boolean().
 maybe_debit_next_minute(Account, Limits, JObj) ->
     case debit_next_minute(Account, Limits, JObj) of
         true -> j5_reauthz_req:send_allow_resp(JObj);
         false -> j5_reauthz_req:send_deny_resp(JObj)
     end.
 
--spec debit_next_minute/3 :: (ne_binary(), #limits{}, wh_json:json_object()) -> boolean().
+-spec debit_next_minute(ne_binary(), #limits{}, wh_json:json_object()) -> boolean().
 debit_next_minute(Account, Limits, JObj) ->
     Debit = extract_cost(wh_json:set_value(<<"Billing-Seconds">>, 60, JObj)),
     case is_credit_still_available(j5_util:current_balance(Account) - Debit, Limits) of
@@ -96,7 +96,7 @@ debit_next_minute(Account, Limits, JObj) ->
             true
     end.
 
--spec is_credit_still_available/2 :: (integer(), #limits{}) -> boolean().
+-spec is_credit_still_available(integer(), #limits{}) -> boolean().
 is_credit_still_available(Balance, #limits{allow_prepay=true}) when Balance > 0 ->
     true;
 is_credit_still_available(Balance, #limits{allow_postpay=true, max_postpay_amount=MaxPostpay}) ->
@@ -104,7 +104,7 @@ is_credit_still_available(Balance, #limits{allow_postpay=true, max_postpay_amoun
 is_credit_still_available(_, _) ->
     false.
 
--spec extract_cost/1 :: (wh_json:json_object()) -> float().
+-spec extract_cost(wh_json:json_object()) -> float().
 extract_cost(JObj) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj)
@@ -128,14 +128,14 @@ extract_cost(JObj) ->
             Cost - Discount
     end.
 
--spec start_per_minute/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
+-spec start_per_minute(float(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 start_per_minute(Units, Limits, JObj) ->
     Props = [{<<"reason">>, <<"per_minute_channel">>}
              ,{<<"pvt_type">>, <<"debit">>}
             ], 
     j5_util:write_to_ledger(<<"start">>, Props, Units, Limits, JObj).
 
--spec tick_per_minute/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
+-spec tick_per_minute(float(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 tick_per_minute(Units, Limits, JObj) ->
     Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp()),
     Props = [{<<"reason">>, <<"per_minute_channel">>}
@@ -143,7 +143,7 @@ tick_per_minute(Units, Limits, JObj) ->
             ], 
     j5_util:write_to_ledger(wh_util:to_binary(Timestamp), Props, Units, Limits, JObj).
 
--spec end_per_minute/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
+-spec end_per_minute(float(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 end_per_minute(Units, Limits, JObj) when Units > 0 ->
     Props = [{<<"reason">>, <<"per_minute_channel">>}
              ,{<<"pvt_type">>, <<"debit">>}
@@ -157,7 +157,7 @@ end_per_minute(Units, Limits, JObj) when Units < 0 ->
 end_per_minute(_, _, _) ->
     {ok, wh_json:new()}.
 
--spec session_cost/2 :: (ne_binary(), ne_binary()) -> integer().
+-spec session_cost(ne_binary(), ne_binary()) -> integer().
 session_cost(SessionId, Ledger) ->
     LedgerDb = wh_util:format_account_id(Ledger, encoded),    
     ViewOptions = [reduce

@@ -50,7 +50,7 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods() -> http_methods().
 allowed_methods() ->
     ['PUT'].
 
@@ -65,7 +65,7 @@ allowed_methods(?INVITE_API, _) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists() -> 'true'.
 resource_exists() ->
     true.
 
@@ -81,7 +81,7 @@ resource_exists(?INVITE_API, _) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
 validate(#cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
     Generators = [fun(R) -> create_extensions(JObj, Context, R) end
                   ,fun(R) -> create_phone_numbers(JObj, Context, R) end
@@ -148,7 +148,7 @@ put(#cb_context{req_data=JObj, doc=Data}=Context) ->
 %% Any errors will also be collected.
 %% @end
 %%--------------------------------------------------------------------
--spec create_extensions/3 :: (wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}.
+-spec create_extensions(wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}.
 create_extensions(JObj, Context, Results) ->
     Extensions = wh_json:get_value(<<"extensions">>, JObj, []),
     create_extensions(Extensions, 1, Context, Results).
@@ -178,7 +178,7 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_account/3 :: (wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}.
+-spec create_account(wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}.
 create_account(JObj, Context, {Pass, Fail}) ->
     Account = wh_json:get_value(<<"account">>, JObj, wh_json:new()),
     Generators = [fun(J) ->
@@ -203,7 +203,7 @@ create_account(JObj, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_phone_numbers/3 :: (wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}.
+-spec create_phone_numbers(wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}.
 
 create_phone_numbers(JObj, Context, Results) ->
     PhoneNumbers = wh_json:get_value(<<"phone_numbers">>, JObj),
@@ -232,7 +232,7 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_braintree_cards/3 :: (wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}.
+-spec create_braintree_cards(wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}.
 create_braintree_cards(JObj, Context, {Pass, Fail}) ->
     Account = get_context_jobj(<<"accounts">>, Pass),
     case wh_json:get_value(<<"_id">>, Account) of
@@ -268,7 +268,7 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_user/4 :: (wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()})
+-spec create_user(wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()})
                        -> {proplist(), wh_json:json_object()}.
 create_user(JObj, Iteration, Context, {Pass, Fail}) ->
     User = wh_json:get_value(<<"user">>, JObj, wh_json:new()),
@@ -322,7 +322,7 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_device/4 :: (wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()})
+-spec create_device(wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()})
                          -> {proplist(), wh_json:json_object()}.
 create_device(JObj, Iteration, Context, {Pass, Fail}) ->
     Device = wh_json:get_value(<<"device">>, JObj, wh_json:new()),
@@ -386,7 +386,7 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_vmbox/4 :: (wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()})
+-spec create_vmbox(wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()})
                         -> {proplist(), wh_json:json_object()}.
 create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
     VMBox = wh_json:get_value(<<"vmbox">>, JObj, wh_json:new()),
@@ -439,7 +439,7 @@ create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
 %% to the error json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_exten_callflow/4 :: (wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()})
+-spec create_exten_callflow(wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()})
                                  -> {proplist(), wh_json:json_object()}.
 create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
     Callflow = wh_json:get_value(<<"callflow">>, JObj, wh_json:new()),
@@ -483,8 +483,8 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
 %% the objects.  Starts with the account :)
 %% @end
 %%--------------------------------------------------------------------
--spec populate_new_account/2 :: (proplist(), #cb_context{}) -> #cb_context{}.
--spec populate_new_account/3 :: (proplist(), ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+-spec populate_new_account(proplist(), #cb_context{}) -> #cb_context{}.
+-spec populate_new_account(proplist(), ne_binary(), wh_json:json_object()) -> wh_json:json_object().
 
 populate_new_account(Props, _) ->
     Context = props:get_value(?WH_ACCOUNTS_DB, Props),
@@ -573,7 +573,7 @@ prepare_props(Props) ->
 %% context records for a specific key.
 %% @end
 %%--------------------------------------------------------------------
--spec get_context_jobj/2 :: (ne_binary(), proplist()) -> wh_json:json_object().
+-spec get_context_jobj(ne_binary(), proplist()) -> wh_json:json_object().
 get_context_jobj(Key, Pass) ->
     case props:get_value(Key, Pass) of
         #cb_context{doc=JObj} -> JObj;
@@ -586,7 +586,7 @@ get_context_jobj(Key, Pass) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec create_response/1 :: (#cb_context{}) -> #cb_context{}.
+-spec create_response(#cb_context{}) -> #cb_context{}.
 create_response(#cb_context{doc=JObj, account_id=undefined}=Context) ->
     crossbar_util:response_invalid_data(JObj, Context);
 create_response(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
@@ -613,7 +613,7 @@ create_response(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec notfy_new_account/1 :: (wh_json:json_object()) -> ok.
+-spec notfy_new_account(wh_json:json_object()) -> ok.
 notfy_new_account(JObj) ->
     Notify = [{<<"Account-Name">>, wh_json:get_value(<<"name">>, JObj)}
               ,{<<"Account-Realm">>, wh_json:get_value(<<"realm">>, JObj)}
@@ -642,7 +642,7 @@ load_invite_code(Context, Id) ->
 save_invite_code(Context, Doc) ->
     crossbar_doc:save(Context#cb_context{db_name=?INVITE_DB, doc=Doc}).
 
--spec generate_username/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> ne_binary().
+-spec generate_username('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> ne_binary().
 generate_username(undefined, undefined, _) ->
     wh_util:rand_hex_binary(3);
 generate_username(undefined, _, undefined) ->

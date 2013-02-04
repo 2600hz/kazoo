@@ -24,7 +24,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec flush/0 :: () -> 'ok'.
+-spec flush() -> 'ok'.
 flush() ->
     wh_cache:flush_local(?CALLFLOW_CACHE).
 
@@ -34,7 +34,7 @@ flush() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec show_calls/0 :: () -> 'ok'.
+-spec show_calls() -> 'ok'.
 show_calls() ->
     do_show_calls(cf_exe_sup:workers(), 0).
 
@@ -54,7 +54,7 @@ do_show_calls([Srv|Srvs], Total) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec blocking_refresh/0 :: () -> 'ok'.
+-spec blocking_refresh() -> 'ok'.
 blocking_refresh() ->
     lists:foreach(fun(AccountDb) ->
                           refresh(AccountDb)
@@ -67,8 +67,8 @@ blocking_refresh() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec refresh/0 :: () -> 'started'.
--spec refresh/1 :: (binary() | string()) -> 'ok'.
+-spec refresh() -> 'started'.
+-spec refresh(binary() | string()) -> 'ok'.
 
 refresh() ->
     spawn(fun() ->
@@ -85,8 +85,8 @@ refresh(<<Account/binary>>) ->
 refresh(Account) ->
     refresh(wh_util:to_binary(Account)).
 
--spec migrate_recorded_name/0 :: () -> any().
--spec migrate_recorded_name/1 :: (ne_binary()) -> any().
+-spec migrate_recorded_name() -> any().
+-spec migrate_recorded_name(ne_binary()) -> any().
 migrate_recorded_name() ->
     [catch migrate_recorded_name(AccountDb) || AccountDb <- whapps_util:get_all_accounts(encoded)].
 migrate_recorded_name(Db) ->
@@ -98,8 +98,8 @@ migrate_recorded_name(Db) ->
         {ok, VMBoxes} -> [do_recorded_name_migration(Db, wh_json:get_value(<<"doc">>, VMBox)) || VMBox <- VMBoxes]
     end.
 
--spec do_recorded_name_migration/2 :: (ne_binary(), wh_json:json_object()) -> any().
--spec do_recorded_name_migration/3 :: (ne_binary(), wh_json:json_object(), 'undefined' | ne_binary()) -> any().
+-spec do_recorded_name_migration(ne_binary(), wh_json:json_object()) -> any().
+-spec do_recorded_name_migration(ne_binary(), wh_json:json_object(), 'undefined' | ne_binary()) -> any().
 do_recorded_name_migration(Db, VMBox) ->
     VMBoxId = wh_json:get_value(<<"_id">>, VMBox),
     case wh_json:get_value(?RECORDED_NAME_KEY, VMBox) of
@@ -134,7 +134,7 @@ do_recorded_name_migration(Db, MediaId, OwnerId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec migrate_menus/0:: () -> ['done' | 'error',...].
--spec migrate_menus/1 :: (ne_binary()) -> 'done' | 'error'.
+-spec migrate_menus(ne_binary()) -> 'done' | 'error'.
 migrate_menus() ->
     [ migrate_menus(Account) || Account <- whapps_util:get_all_accounts(raw) ].
 migrate_menus(Account) ->
@@ -177,7 +177,7 @@ do_menu_migration(Menu, Db) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create_media_doc/4 :: (binary(), binary(), binary(), binary()) -> binary().
+-spec create_media_doc(binary(), binary(), binary(), binary()) -> binary().
 create_media_doc(Name, SourceType, SourceId, Db) ->
     Props = [{<<"name">>, Name}
              ,{<<"description">>, <<SourceType/binary, " recorded/prompt media">>}
@@ -196,7 +196,7 @@ create_media_doc(Name, SourceType, SourceId, Db) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc/4 :: (list() | binary(), wh_json:json_term(), binary(), binary()) -> 'ok' | {'error', atom()}.
+-spec update_doc(list() | binary(), wh_json:json_term(), binary(), binary()) -> 'ok' | {'error', atom()}.
 update_doc(Key, Value, Id, Db) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->

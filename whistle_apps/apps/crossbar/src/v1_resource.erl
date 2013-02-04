@@ -49,14 +49,14 @@
 %%%===================================================================
 %%% Startup and shutdown of request
 %%%===================================================================
--spec init/3 :: ({'tcp' | 'ssl', 'http'}, #http_req{}, wh_proplist()) ->
+-spec init({'tcp' | 'ssl', 'http'}, #http_req{}, wh_proplist()) ->
                         {'upgrade', 'protocol', 'cowboy_http_rest'}.
 init({tcp, http}, _Req, _Opts) ->
     {upgrade, protocol, cowboy_http_rest};
 init({ssl, http}, _Req, _Opts) ->
     {upgrade, protocol, cowboy_http_rest}.
 
--spec rest_init/2 :: (#http_req{}, wh_proplist()) ->
+-spec rest_init(#http_req{}, wh_proplist()) ->
                              {'ok', #http_req{}, cb_context:context()}.
 rest_init(Req0, Opts) ->
     ReqId = case cowboy_http_req:header(<<"X-Request-Id">>, Req0) of
@@ -111,14 +111,14 @@ rest_terminate(Req, #cb_context{start=T1, resp_status=Status, auth_account_id=Ac
 %%%===================================================================
 %%% CowboyHTTPRest API Callbacks
 %%%===================================================================
--spec known_methods/2 :: (#http_req{}, cb_context:context()) ->
+-spec known_methods(#http_req{}, cb_context:context()) ->
                                  {http_methods(), #http_req{}, cb_context:context()}.
 known_methods(Req, Context) ->
     {?ALLOWED_METHODS, Req, Context#cb_context{allow_methods=?ALLOWED_METHODS
                                                ,allowed_methods=?ALLOWED_METHODS
                                               }}.
 
--spec allowed_methods/2 :: (#http_req{}, cb_context:context()) ->
+-spec allowed_methods(#http_req{}, cb_context:context()) ->
                                    {http_methods() | 'halt', #http_req{}, cb_context:context()}.
 allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
     {Tokens, Req1} = cowboy_http_req:path_info(Req0),
@@ -138,7 +138,7 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
             {Methods, Req1, Context#cb_context{allow_methods=Methods}}
     end.
 
--spec determine_http_verb/2 :: (#http_req{}, cb_context:context()) ->
+-spec determine_http_verb(#http_req{}, cb_context:context()) ->
                                        {http_methods() | 'halt', #http_req{}, cb_context:context()}.
 determine_http_verb(Req0, Context) ->
     {Method, Req1} = cowboy_http_req:method(Req0),
@@ -153,7 +153,7 @@ find_allowed_methods(Req0, #cb_context{allowed_methods=Methods
     AllowMethods = v1_util:allow_methods(Responses, Methods, Verb, Method),
     maybe_add_cors_headers(Req1, Context#cb_context{allow_methods=AllowMethods}).
 
--spec maybe_add_cors_headers/2 :: (#http_req{}, cb_context:context()) ->
+-spec maybe_add_cors_headers(#http_req{}, cb_context:context()) ->
                                           {http_methods() | 'halt', #http_req{}, cb_context:context()}.
 maybe_add_cors_headers(Req0, Context) ->
     case v1_util:is_cors_request(Req0) of
@@ -164,7 +164,7 @@ maybe_add_cors_headers(Req0, Context) ->
             maybe_allow_method(Req1, Context)
     end.
 
--spec check_preflight/2 :: (#http_req{}, cb_context:context()) ->
+-spec check_preflight(#http_req{}, cb_context:context()) ->
                                    {http_methods(), #http_req{}, cb_context:context()}.
 check_preflight(Req0, #cb_context{req_verb = <<"options">>}=Context) ->
     lager:debug("allowing OPTIONS request for CORS preflight"),
@@ -202,12 +202,12 @@ malformed_request(Req, #cb_context{req_nouns=Nouns}=Context) ->
             {false, Req, Context}
     end.
 
--spec is_authorized/2 :: (#http_req{}, cb_context:context()) ->
+-spec is_authorized(#http_req{}, cb_context:context()) ->
                                  {'true' | {'false', <<>>}, #http_req{}, cb_context:context()}.
 is_authorized(Req, Context) ->
     v1_util:is_authentic(Req, Context).
 
--spec forbidden/2 :: (#http_req{}, cb_context:context()) ->
+-spec forbidden(#http_req{}, cb_context:context()) ->
                              {'false', #http_req{}, cb_context:context()}.
 forbidden(Req0, Context0) ->
     case v1_util:is_permitted(Req0, Context0) of
@@ -216,12 +216,12 @@ forbidden(Req0, Context0) ->
             {not IsPermitted, Req1, Context1}
     end.
 
--spec valid_content_headers/2 :: (#http_req{}, cb_context:context()) ->
+-spec valid_content_headers(#http_req{}, cb_context:context()) ->
                                          {'true', #http_req{}, cb_context:context()}.
 valid_content_headers(Req, Context) ->
     {true, Req, Context}.
 
--spec known_content_type/2 :: (#http_req{}, cb_context:context()) ->
+-spec known_content_type(#http_req{}, cb_context:context()) ->
                                       {boolean(), #http_req{}, cb_context:context()}.
 known_content_type(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     {true, Req, Context};
@@ -239,12 +239,12 @@ known_content_type(Req, Context) ->
                  end,
     v1_util:is_known_content_type(Req2, Context).
 
--spec valid_entity_length/2 :: (#http_req{}, cb_context:context()) ->
+-spec valid_entity_length(#http_req{}, cb_context:context()) ->
                                        {'true', #http_req{}, cb_context:context()}.
 valid_entity_length(Req, Context) ->
     {true, Req, Context}.
 
--spec options/2 :: (#http_req{}, cb_context:context()) ->
+-spec options(#http_req{}, cb_context:context()) ->
                            {'ok', #http_req{}, cb_context:context()}.
 options(Req0, Context) ->
     case v1_util:is_cors_request(Req0) of
@@ -261,7 +261,7 @@ options(Req0, Context) ->
 -type content_type_callbacks() :: [{{ne_binary(), ne_binary(), wh_proplist()}, atom()} |
                                    {ne_binary(), atom()}
                                    ,...] | [].
--spec content_types_provided/2 :: (#http_req{}, cb_context:context()) ->
+-spec content_types_provided(#http_req{}, cb_context:context()) ->
                                           {content_type_callbacks(), #http_req{}, cb_context:context()}.
 content_types_provided(Req, #cb_context{req_nouns=Nouns}=Context0) ->
     lager:debug("run: content_types_provided"),
@@ -289,7 +289,7 @@ content_types_provided(Req, Context, CTPs) ->
     lager:debug("ctp: ~p", [CTP]),
     {CTP, Req, Context}.
 
--spec content_types_accepted/2 :: (#http_req{}, cb_context:context()) ->
+-spec content_types_accepted(#http_req{}, cb_context:context()) ->
                                           {content_type_callbacks(), #http_req{}, cb_context:context()}.
 content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     lager:debug("run: content_types_accepted"),
@@ -305,7 +305,7 @@ content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
         {CT, Req1} -> content_types_accepted(CT, Req1, Context1)
     end.
 
--spec default_content_types_accepted/2 :: (#http_req{}, cb_context:context()) ->
+-spec default_content_types_accepted(#http_req{}, cb_context:context()) ->
                                                   {[{'undefined', atom()},...], #http_req{}, cb_context:context()}.
 default_content_types_accepted(Req, #cb_context{content_types_accepted=CTAs}=Context) ->
     CTA = [ {undefined, Fun}
@@ -321,7 +321,7 @@ default_content_types_accepted(Req, #cb_context{content_types_accepted=CTAs}=Con
 
     {CTA, Req, Context}.
 
--spec content_types_accepted/3 :: (content_type(), #http_req{}, cb_context:context()) ->
+-spec content_types_accepted(content_type(), #http_req{}, cb_context:context()) ->
                                           {[{content_type(), atom()},...], #http_req{}, cb_context:context()}.
 content_types_accepted(CT, Req, #cb_context{content_types_accepted=CTAs}=Context) ->
     CTA = lists:foldl(fun({Fun, L}, Acc) ->
@@ -336,7 +336,7 @@ content_types_accepted(CT, Req, #cb_context{content_types_accepted=CTAs}=Context
                       end, [], CTAs),
     {CTA, Req, Context}.
 
--spec languages_provided/2 :: (#http_req{}, cb_context:context()) ->
+-spec languages_provided(#http_req{}, cb_context:context()) ->
                                       {ne_binaries(), #http_req{}, cb_context:context()}.
 languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     lager:debug("run: languages_provided"),
@@ -354,7 +354,7 @@ languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
             {LangsProvided ++ [A], Req2, Context1}
     end.
 
-%% -spec charsets_provided/2 :: (#http_req{}, cb_context:context()) -> {[ne_binary(),...], #http_req{}, cb_context:context()}.
+%% -spec charsets_provided(#http_req{}, cb_context:context()) -> {[ne_binary(),...], #http_req{}, cb_context:context()}.
 %% charsets_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
 %%     lager:debug("run: charsets_provided"),
 %%     {Req1, #cb_context{charsets_provided=CharsetsProvided}=Context1} = 
@@ -368,7 +368,7 @@ languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
 charsets_provided(_Req, _Context) ->
     no_call.
 
--spec encodings_provided/2 :: (#http_req{}, cb_context:context()) ->
+-spec encodings_provided(#http_req{}, cb_context:context()) ->
                                       {ne_binaries(), #http_req{}, cb_context:context()}.
 encodings_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     lager:debug("run: encodings_provided"),
@@ -381,7 +381,7 @@ encodings_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                     end, {Req0, Context0}, Nouns),
     {EncodingsProvided, Req1, Context1}.
 
--spec resource_exists/2 :: (#http_req{}, cb_context:context()) ->
+-spec resource_exists(#http_req{}, cb_context:context()) ->
                                    {boolean(), #http_req{}, cb_context:context()}.
 resource_exists(Req, #cb_context{req_nouns=[{<<"404">>,_}|_]}=Context) ->
     lager:debug("failed to tokenize request, returning 404"),
@@ -408,19 +408,19 @@ resource_exists(Req0, Context0) ->
             {false, Req0, Context0}
     end.
 
--spec moved_temporarily/2 :: (#http_req{}, cb_context:context()) ->
+-spec moved_temporarily(#http_req{}, cb_context:context()) ->
                                      {'false', #http_req{}, cb_context:context()}.
 moved_temporarily(Req, Context) ->
     lager:debug("run: moved_temporarily"),
     {false, Req, Context}.
 
--spec moved_permanently/2 :: (#http_req{}, cb_context:context()) ->
+-spec moved_permanently(#http_req{}, cb_context:context()) ->
                                      {'false', #http_req{}, cb_context:context()}.
 moved_permanently(Req, Context) ->
     lager:debug("run: moved_permanently"),
     {false, Req, Context}.
 
--spec previously_existed/2 :: (#http_req{}, cb_context:context()) ->
+-spec previously_existed(#http_req{}, cb_context:context()) ->
                                       {'false', #http_req{}, cb_context:context()}.
 previously_existed(Req, State) ->
     lager:debug("run: previously_existed"),
@@ -429,20 +429,20 @@ previously_existed(Req, State) ->
 %% If we're tunneling PUT through POST, 
 %% we need to allow POST to create a non-existent resource
 %% AKA, 201 Created header set
--spec allow_missing_post/2 :: (#http_req{}, cb_context:context()) ->
+-spec allow_missing_post(#http_req{}, cb_context:context()) ->
                                       {boolean(), #http_req{}, cb_context:context()}.
 allow_missing_post(Req0, #cb_context{req_verb=_Verb}=Context) ->
     lager:debug("run: allow_missing_post when req_verb = ~s", [_Verb]),
     {Method, Req1} = cowboy_http_req:method(Req0),
     {Method =:= 'POST', Req1, Context}.
 
--spec delete_resource/2 :: (#http_req{}, cb_context:context()) ->
+-spec delete_resource(#http_req{}, cb_context:context()) ->
                                    {boolean() | 'halt', #http_req{}, cb_context:context()}.
 delete_resource(Req, Context) ->
     lager:debug("run: delete_resource"),
     v1_util:execute_request(Req, Context).
 
--spec delete_completed/2 :: (#http_req{}, cb_context:context()) ->
+-spec delete_completed(#http_req{}, cb_context:context()) ->
                                     {boolean(), #http_req{}, cb_context:context()}.
 delete_completed(Req, Context) ->
     lager:debug("run: delete_completed"),
@@ -450,7 +450,7 @@ delete_completed(Req, Context) ->
 
 %% If allow_missing_post returned true (cause it was a POST) and PUT has been tunnelled,
 %% POST is a create
--spec post_is_create/2 :: (#http_req{}, cb_context:context()) ->
+-spec post_is_create(#http_req{}, cb_context:context()) ->
                                   {boolean(), #http_req{}, cb_context:context()}.
 post_is_create(Req, #cb_context{req_verb = <<"put">>}=Context) ->
     lager:debug("treating post request as a create"),
@@ -460,7 +460,7 @@ post_is_create(Req, Context) ->
     {false, Req, Context}.
 
 %% set the location header
--spec create_path/2 :: (#http_req{}, cb_context:context()) ->
+-spec create_path(#http_req{}, cb_context:context()) ->
                                {ne_binary(), #http_req{}, cb_context:context()}.
 create_path(Req, #cb_context{resp_headers=RespHeaders}=Context) ->
     lager:debug("run: create_path"),
@@ -469,7 +469,7 @@ create_path(Req, #cb_context{resp_headers=RespHeaders}=Context) ->
     lager:debug("setting path to: ~s", [Path]),
     {crossbar_util:get_path(Req, Path), Req, Context}.
 
--spec process_post/2 :: (#http_req{}, cb_context:context()) ->
+-spec process_post(#http_req{}, cb_context:context()) ->
                                 {boolean(), #http_req{}, cb_context:context()}.
 process_post(Req0, Context0) ->
     lager:debug("run: process_post"),
@@ -482,7 +482,7 @@ process_post(Req0, Context0) ->
             Else
     end.
 
--spec is_conflict/2 :: (#http_req{}, cb_context:context()) ->
+-spec is_conflict(#http_req{}, cb_context:context()) ->
                                {boolean(), #http_req{}, cb_context:context()}.
 is_conflict(Req, #cb_context{resp_error_code=409}=Context) ->
     lager:debug("request resulted in conflict"),
@@ -491,7 +491,7 @@ is_conflict(Req, Context) ->
     lager:debug("run: is_conflict: false"),
     {false, Req, Context}.
 
--spec from_binary/2 :: (#http_req{}, cb_context:context()) ->
+-spec from_binary(#http_req{}, cb_context:context()) ->
                                {boolean(), #http_req{}, cb_context:context()}.
 from_binary(Req0, Context0) ->
     lager:debug("run: from_binary"),
@@ -504,7 +504,7 @@ from_binary(Req0, Context0) ->
             Else
     end.
 
--spec from_json/2 :: (#http_req{}, cb_context:context()) ->
+-spec from_json(#http_req{}, cb_context:context()) ->
                              {boolean(), #http_req{}, cb_context:context()}.
 from_json(Req0, Context0) ->
     lager:debug("run: from_json"),
@@ -517,7 +517,7 @@ from_json(Req0, Context0) ->
             Else
     end.
 
--spec from_form/2 :: (#http_req{}, cb_context:context()) ->
+-spec from_form(#http_req{}, cb_context:context()) ->
                              {boolean(), #http_req{}, cb_context:context()}.
 from_form(Req0, Context0) ->
     lager:debug("run: from_form"),
@@ -530,14 +530,14 @@ from_form(Req0, Context0) ->
             Else
     end.
 
--spec to_json/2 :: (#http_req{}, cb_context:context()) ->
+-spec to_json(#http_req{}, cb_context:context()) ->
                            {iolist() | ne_binary() | 'halt', #http_req{}, cb_context:context()}.
 to_json(Req, Context) ->
     Event = <<"v1_resource.to_json">>,
     _ = crossbar_bindings:map(Event, {Req, Context}),
     v1_util:create_pull_response(Req, Context).
 
--spec to_binary/2 :: (#http_req{}, cb_context:context()) ->
+-spec to_binary(#http_req{}, cb_context:context()) ->
                              {binary(), #http_req{}, cb_context:context()}.
 to_binary(Req, #cb_context{resp_data=RespData}=Context) ->
     Event = <<"v1_resource.to_binary">>,
@@ -545,7 +545,7 @@ to_binary(Req, #cb_context{resp_data=RespData}=Context) ->
     lager:debug("responding to_binary"),
     {RespData, v1_util:set_resp_headers(Req, Context), Context}.
 
--spec to_csv/2 :: (#http_req{}, cb_context:context()) ->
+-spec to_csv(#http_req{}, cb_context:context()) ->
                           {iolist(), #http_req{}, cb_context:context()}.
 to_csv(Req, #cb_context{resp_data=RespData
                         ,resp_headers=RespHeaders
@@ -560,28 +560,28 @@ to_csv(Req, #cb_context{resp_data=RespData
 
     {RespBody, v1_util:set_resp_headers(Req, Context#cb_context{resp_headers=RespHeaders1}), Context}.
 
--spec json_objs_to_csv/1 :: (wh_json:json_objects()) -> iolist().
+-spec json_objs_to_csv(wh_json:json_objects()) -> iolist().
 json_objs_to_csv([]) -> [];
 json_objs_to_csv([J|JObjs]) ->
     [csv_header(J), [json_to_csv(JObj) || JObj <- JObjs]].
 
--spec csv_header/1 :: (wh_json:json_object()) -> iolist().
+-spec csv_header(wh_json:json_object()) -> iolist().
 csv_header(JObj) ->
     csv_ize(wh_json:get_keys(JObj)).
 
--spec csv_ize/1 :: (wh_json:keys()) -> iolist().
+-spec csv_ize(wh_json:keys()) -> iolist().
 csv_ize([F|Rest]) ->
     [<<"\"">>, wh_util:to_binary(F), <<"\"">>
      ,[[<<",\"">>, wh_util:to_binary(V), <<"\"">>] || V <- Rest]
      ,<<"\n">>
     ].
 
--spec json_to_csv/1 :: (wh_json:json_object()) -> iolist().
+-spec json_to_csv(wh_json:json_object()) -> iolist().
 json_to_csv(JObj) ->
     {Vs, _} = wh_json:get_values(correct_jobj(JObj)),
     csv_ize(Vs).
 
--spec correct_jobj/1 :: (wh_json:object()) -> wh_json:object().
+-spec correct_jobj(wh_json:object()) -> wh_json:object().
 correct_jobj(JObj) ->
     Prop = wh_json:to_proplist(JObj),
     L = lists:map(fun(X) -> correct_proplist(X) end, Prop),
@@ -592,13 +592,13 @@ correct_proplist({K}) ->
 correct_proplist(T) ->
     T.
 
--spec multiple_choices/2 :: (#http_req{}, cb_context:context()) ->
+-spec multiple_choices(#http_req{}, cb_context:context()) ->
                                     {'false', #http_req{}, cb_context:context()}.
 multiple_choices(Req, Context) ->
     lager:debug("has resp_body: ~s", [cowboy_http_req:has_resp_body(Req)]),
     {false, Req, Context}.
 
--spec generate_etag/2 :: (#http_req{}, cb_context:context()) ->
+-spec generate_etag(#http_req{}, cb_context:context()) ->
                                  {ne_binary(), #http_req{}, cb_context:context()}.
 generate_etag(Req0, Context0) ->
     Event = <<"v1_resource.etag">>,
@@ -617,7 +617,7 @@ generate_etag(Req0, Context0) ->
             {list_to_binary([$", Tag, $"]), Req1, Context1#cb_context{resp_etag=Tag}}
     end.
 
--spec expires/2 :: (#http_req{}, cb_context:context()) ->
+-spec expires(#http_req{}, cb_context:context()) ->
                            {wh_datetime(), #http_req{}, cb_context:context()}.
 expires(Req, #cb_context{resp_expires=Expires}=Context) ->
     Event = <<"v1_resource.expires">>,

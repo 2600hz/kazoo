@@ -103,7 +103,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/4 :: (pid(), pid(), ne_binary(), ne_binary()) -> startlink_ret().
+-spec start_link(pid(), pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(WorkerSup, MgrPid, AcctId, QueueId) ->
     gen_listener:start_link(?MODULE
                             ,[{bindings, [{acdc_queue, [{restrict_to, [sync_req]}
@@ -150,7 +150,7 @@ cancel_member_call(Srv, MemberCallJObj, Delivery) ->
 ignore_member_call(Srv, Call, Delivery) ->
     gen_listener:cast(Srv, {ignore_member_call, Call, Delivery}).
 
--spec send_sync_req/2 :: (pid(), ne_binary()) -> 'ok'.
+-spec send_sync_req(pid(), ne_binary()) -> 'ok'.
 send_sync_req(Srv, Type) ->
     gen_listener:cast(Srv, {send_sync_req, Type}).
 
@@ -519,7 +519,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec send_member_connect_req/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_member_connect_req(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
     lager:debug("sending req via ~s", [MyQ]),
     Req = props:filter_undefined(
@@ -532,7 +532,7 @@ send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
             ]),
     publish(Req, fun wapi_acdc_queue:publish_member_connect_req/1).
 
--spec send_member_connect_win/8 :: (wh_json:object(), pos_integer(), pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_member_connect_win(wh_json:object(), pos_integer(), pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_win(RespJObj, RingTimeout, AgentWrapup, Call, QueueId, MyQ, MyId, CallerExitKey) ->
     CallJSON = whapps_call:to_json(Call),
     Q = wh_json:get_value(<<"Server-ID">>, RespJObj),
@@ -596,7 +596,7 @@ publish_sync_resp(Strategy, StrategyState, ReqJObj, Id) ->
              ]),
     publish(wh_json:get_value(<<"Server-ID">>, ReqJObj), Resp, fun wapi_acdc_queue:publish_sync_resp/2).
 
--spec maybe_nack/3 :: (whapps_call:call(), #'basic.deliver'{}, pid()) -> boolean().
+-spec maybe_nack(whapps_call:call(), #'basic.deliver'{}, pid()) -> boolean().
 maybe_nack(Call, Delivery, SharedPid) ->
     case is_call_alive(Call) of
         true ->
@@ -611,7 +611,7 @@ maybe_nack(Call, Delivery, SharedPid) ->
             false
     end.
 
--spec is_call_alive/1 :: (whapps_call:call() | ne_binary()) -> boolean().
+-spec is_call_alive(whapps_call:call() | ne_binary()) -> boolean().
 is_call_alive(Call) ->
     case whapps_call_command:b_call_status(Call) of
         {ok, _} -> true;
@@ -630,8 +630,8 @@ clear_call_state(#state{acct_id=AcctId
                 ,delivery=undefined
                 }.
 
--spec publish/2 :: (api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.
--spec publish/3 :: (ne_binary(), api_terms(), fun((ne_binary(), api_terms()) -> 'ok')) -> 'ok'.
+-spec publish(api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.
+-spec publish(ne_binary(), api_terms(), fun((ne_binary(), api_terms()) -> 'ok')) -> 'ok'.
 publish(Req, F) ->
     case catch F(Req) of
         'ok' -> 'ok';

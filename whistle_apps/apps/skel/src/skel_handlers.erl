@@ -14,7 +14,7 @@
 
 -include("skel.hrl").
 
--spec handle_route_req/2 :: (wh_json:json_object(), wh_proplist()) -> any().
+-spec handle_route_req(wh_json:json_object(), wh_proplist()) -> any().
 handle_route_req(JObj, Props) ->
     Q = props:get_value(queue, Props),
 
@@ -22,7 +22,7 @@ handle_route_req(JObj, Props) ->
     whapps_call:route_response(JObj, Q, park).
 
 %% receiving the route_win means we are in control of the call
--spec handle_route_win/2 :: (wh_json:json_object(), wh_proplist()) -> any().
+-spec handle_route_win(wh_json:json_object(), wh_proplist()) -> any().
 handle_route_win(JObj, _Props) ->
     %% Create the call data structure
     {ok, Call} = whapps_call:answer(JObj),

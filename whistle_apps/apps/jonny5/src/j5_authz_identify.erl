@@ -13,7 +13,7 @@
 
 -define(IDENT_KEY(Key), {?MODULE, Key}).
 
--spec handle_req/2 :: (wh_json:json_object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:json_object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     true = wapi_authz:identify_req_v(JObj),
     wh_util:put_callid(JObj),
@@ -40,7 +40,7 @@ lookup_account_by_number(Number, JObj) ->
             wh_cache:store_local(?JONNY5_CACHE, ?IDENT_KEY(Number), {AccountId, GlobalResource}, CacheProps)
     end.
 
--spec get_dest_number/1 :: (wh_json:json_object()) -> ne_binary().
+-spec get_dest_number(wh_json:json_object()) -> ne_binary().
 get_dest_number(JObj) ->
     {User, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     case whapps_config:get_is_true(?APP_NAME, <<"assume_inbound_e164">>, false) of
@@ -54,13 +54,13 @@ get_dest_number(JObj) ->
             Number
     end.
 
--spec assume_e164/1 :: (ne_binary()) -> ne_binary().
+-spec assume_e164(ne_binary()) -> ne_binary().
 assume_e164(<<$+, _/binary>> = Number) ->
     Number;
 assume_e164(Number) ->
     <<$+, Number/binary>>.
 
--spec send_resp/3 :: (wh_json:json_object(), 'undefined' | ne_binary(), boolean()) -> 'ok'.
+-spec send_resp(wh_json:json_object(), 'undefined' | ne_binary(), boolean()) -> 'ok'.
 send_resp(JObj, AccountId, GlobalResource) ->
     lager:debug("channel identified as account ~s", [AccountId]),
     Resp = [{<<"Account-ID">>, AccountId}

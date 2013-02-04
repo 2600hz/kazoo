@@ -76,8 +76,8 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     ['GET', 'POST', 'DELETE'].
 allowed_methods(<<"available">>) ->
@@ -93,8 +93,8 @@ allowed_methods(<<"subscription">>) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() ->
     true.
 resource_exists(<<"available">>) ->
@@ -112,8 +112,8 @@ resource_exists(<<"subscription">>) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
@@ -173,16 +173,16 @@ validate(#cb_context{req_verb = <<"delete">>, auth_doc=AuthDoc, account_id=AcctI
             cb_context:add_system_error(faulty_request, Context)
     end.
 
--spec post/1 :: (#cb_context{}) -> #cb_context{}.
+-spec post(#cb_context{}) -> #cb_context{}.
 post(Context) ->
     crossbar_doc:save(Context).
 
--spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec put(#cb_context{}, path_token()) -> #cb_context{}.
 put(Context, _) ->
     crossbar_doc:save(Context).
 
--spec delete/1 :: (#cb_context{}) -> #cb_context{}.
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context) ->
     crossbar_doc:save(Context).
 delete(Context, _) ->

@@ -37,11 +37,11 @@
 %% data.
 %% @end
 %%--------------------------------------------------------------------
--spec response/2 :: (wh_json:json_term(), cb_context:context()) -> cb_context:context().
+-spec response(wh_json:json_term(), cb_context:context()) -> cb_context:context().
 response(JTerm, Context) ->
     create_response(success, undefined, undefined, JTerm, Context).
 
--spec response_202/2 :: (wh_json:json_string(), cb_context:context()) -> cb_context:context().
+-spec response_202(wh_json:json_string(), cb_context:context()) -> cb_context:context().
 response_202(Msg, Context) ->
     create_response(success, Msg, 202, Msg, Context).
 
@@ -52,7 +52,7 @@ response_202(Msg, Context) ->
 %% fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec response/3 :: ('error'|'fatal', wh_json:json_string(), cb_context:context()) -> cb_context:context().
+-spec response('error'|'fatal', wh_json:json_string(), cb_context:context()) -> cb_context:context().
 response(error, Msg, Context) ->
     create_response(error, Msg, 500, wh_json:new(), Context);
 response(fatal, Msg, Context) ->
@@ -65,7 +65,7 @@ response(fatal, Msg, Context) ->
 %% of type fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec response/4 :: ('error'|'fatal', wh_json:json_string(), integer()|'undefined', cb_context:context()) -> cb_context:context().
+-spec response('error'|'fatal', wh_json:json_string(), integer()|'undefined', cb_context:context()) -> cb_context:context().
 response(error, Msg, Code, Context) ->
     create_response(error, Msg, Code, wh_json:new(), Context);
 response(fatal, Msg, Code, Context) ->
@@ -78,7 +78,7 @@ response(fatal, Msg, Code, Context) ->
 %% of type fatal or error with additional data
 %% @end
 %%--------------------------------------------------------------------
--spec response/5 :: ('error'|'fatal', wh_json:json_string(), integer()|'undefined', wh_json:json_term(), cb_context:context()) -> cb_context:context().
+-spec response('error'|'fatal', wh_json:json_string(), integer()|'undefined', wh_json:json_term(), cb_context:context()) -> cb_context:context().
 response(error, Msg, Code, JTerm, Context) ->
     create_response(error, Msg, Code, JTerm, Context);
 response(fatal, Msg, Code, JTerm, Context) ->
@@ -92,7 +92,7 @@ response(fatal, Msg, Code, JTerm, Context) ->
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
--spec create_response/5 :: (crossbar_status(), wh_json:json_string(), integer() | 'undefined'
+-spec create_response(crossbar_status(), wh_json:json_string(), integer() | 'undefined'
                             ,wh_json:json_term(), cb_context:context()
                            ) -> cb_context:context().
 create_response(Status, Msg, Code, JTerm, Context) ->
@@ -111,7 +111,7 @@ create_response(Status, Msg, Code, JTerm, Context) ->
 %% processed, like nonsensical chains)
 %% @end
 %%--------------------------------------------------------------------
--spec response_faulty_request/1 :: (cb_context:context()) -> cb_context:context().
+-spec response_faulty_request(cb_context:context()) -> cb_context:context().
 response_faulty_request(Context) ->
     response(error, <<"faulty request">>, 404, Context).
 
@@ -132,23 +132,23 @@ response_faulty_request(Context) ->
 %% ../module2
 %% @end
 %%--------------------------------------------------------------------
--spec response_deprecated/1 :: (cb_context:context()) -> cb_context:context().
+-spec response_deprecated(cb_context:context()) -> cb_context:context().
 response_deprecated(Context) ->
     create_response(error, <<"deprecated">>, 410, wh_json:new(), Context).
 
--spec response_deprecated_redirect/2 :: (cb_context:context(), wh_json:json_string()) -> cb_context:context().
--spec response_deprecated_redirect/3 :: (cb_context:context(), wh_json:json_string(), wh_json:json_object()) -> cb_context:context().
+-spec response_deprecated_redirect(cb_context:context(), wh_json:json_string()) -> cb_context:context().
+-spec response_deprecated_redirect(cb_context:context(), wh_json:json_string(), wh_json:json_object()) -> cb_context:context().
 response_deprecated_redirect(Context, RedirectUrl) ->
     response_deprecated_redirect(Context, RedirectUrl, wh_json:new()).
 response_deprecated_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj) ->
     create_response(error, <<"deprecated">>, 301, JObj
                     ,Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
 
--spec response_redirect/3 :: (cb_context:context(), wh_json:json_string(), wh_json:json_object()) -> cb_context:context().
+-spec response_redirect(cb_context:context(), wh_json:json_string(), wh_json:json_object()) -> cb_context:context().
 response_redirect(Context, RedirectUrl, JObj) ->
     response_redirect(Context, RedirectUrl, JObj, 301).
 
--spec response_redirect/4 :: (cb_context:context(), wh_json:json_string(), wh_json:json_object(), integer()) -> cb_context:context().
+-spec response_redirect(cb_context:context(), wh_json:json_string(), wh_json:json_object(), integer()) -> cb_context:context().
 response_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj, Redirect) ->
     create_response(error, <<"redirect">>, Redirect, JObj, Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
 %%--------------------------------------------------------------------
@@ -159,7 +159,7 @@ response_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JO
 %% a softer not found now.
 %% @end
 %%--------------------------------------------------------------------
--spec response_bad_identifier/2 :: (ne_binary(), cb_context:context()) -> cb_context:context().
+-spec response_bad_identifier(ne_binary(), cb_context:context()) -> cb_context:context().
 response_bad_identifier(?NE_BINARY = Id, Context) ->
     response(error, <<"bad identifier">>, 404, [Id], Context).
 
@@ -170,7 +170,7 @@ response_bad_identifier(?NE_BINARY = Id, Context) ->
 %% because of a conflict in the DB
 %% @end
 %%--------------------------------------------------------------------
--spec response_conflicting_docs/1 :: (cb_context:context()) -> cb_context:context().
+-spec response_conflicting_docs(cb_context:context()) -> cb_context:context().
 response_conflicting_docs(Context) ->
     response(error, <<"conflicting documents">>, 409, Context).
 
@@ -180,7 +180,7 @@ response_conflicting_docs(Context) ->
 %% Create a standard response if the requested data query was missing
 %% @end
 %%--------------------------------------------------------------------
--spec response_missing_view/1 :: (cb_context:context()) -> cb_context:context().
+-spec response_missing_view(cb_context:context()) -> cb_context:context().
 response_missing_view(Context) ->
     response(fatal, <<"datastore missing view">>, 503, Context).
 
@@ -190,7 +190,7 @@ response_missing_view(Context) ->
 %% Create a standard response if the datastore time'd out
 %% @end
 %%--------------------------------------------------------------------
--spec response_datastore_timeout/1 :: (cb_context:context()) -> cb_context:context().
+-spec response_datastore_timeout(cb_context:context()) -> cb_context:context().
 response_datastore_timeout(Context) ->
     response(error, <<"datastore timeout">>, 503, Context).
 
@@ -200,7 +200,7 @@ response_datastore_timeout(Context) ->
 %% Create a standard response if the datastore time'd out
 %% @end
 %%--------------------------------------------------------------------
--spec response_datastore_conn_refused/1 :: (cb_context:context()) -> cb_context:context().
+-spec response_datastore_conn_refused(cb_context:context()) -> cb_context:context().
 response_datastore_conn_refused(Context) ->
     response(error, <<"datastore connection refused">>, 503, Context).
 
@@ -210,7 +210,7 @@ response_datastore_conn_refused(Context) ->
 %% Create a standard response if the provided data did not validate
 %% @end
 %%--------------------------------------------------------------------
--spec response_invalid_data/2 :: (wh_json:json_term(), cb_context:context()) -> cb_context:context().
+-spec response_invalid_data(wh_json:json_term(), cb_context:context()) -> cb_context:context().
 response_invalid_data(JTerm, Context) ->
     response(error, <<"invalid data">>, 400, JTerm, Context).
 
@@ -221,7 +221,7 @@ response_invalid_data(JTerm, Context) ->
 %% record collection
 %% @end
 %%--------------------------------------------------------------------
--spec response_db_missing/1 :: (cb_context:context()) -> cb_context:context().
+-spec response_db_missing(cb_context:context()) -> cb_context:context().
 response_db_missing(Context) ->
     response(fatal, <<"data collection missing: database not found">>, 503, Context).
 
@@ -232,7 +232,7 @@ response_db_missing(Context) ->
 %% record collection
 %% @end
 %%--------------------------------------------------------------------
--spec response_db_fatal/1 :: (cb_context:context()) -> cb_context:context().
+-spec response_db_fatal(cb_context:context()) -> cb_context:context().
 response_db_fatal(Context) ->
     response(fatal, <<"datastore fatal error">>, 503, Context).
 
@@ -242,8 +242,8 @@ response_db_fatal(Context) ->
 %% Retrieves the account realm
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_realm/1 :: (ne_binary() | cb_context:context()) -> api_binary().
--spec get_account_realm/2 :: (api_binary(), ne_binary()) -> api_binary().
+-spec get_account_realm(ne_binary() | cb_context:context()) -> api_binary().
+-spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
 
 get_account_realm(#cb_context{db_name=Db, account_id=AccountId}) ->
     get_account_realm(Db, AccountId);
@@ -267,7 +267,7 @@ get_account_realm(Db, AccountId) ->
 %% Flag all descendants of the account id as disabled
 %% @end
 %%--------------------------------------------------------------------
--spec disable_account/1 :: (api_binary()) -> 'ok' | {'error', _}.
+-spec disable_account(api_binary()) -> 'ok' | {'error', _}.
 disable_account(undefined) -> ok;
 disable_account(AccountId) ->
     ViewOptions = [{<<"startkey">>, [AccountId]}, {<<"endkey">>, [AccountId, wh_json:new()]}],
@@ -286,7 +286,7 @@ disable_account(AccountId) ->
 %% Flag all descendants of the account id as enabled
 %% @end
 %%--------------------------------------------------------------------
--spec enable_account/1 :: (api_binary()) -> 'ok' | {'error', _}.
+-spec enable_account(api_binary()) -> 'ok' | {'error', _}.
 enable_account(undefined) ->
     ok;
 enable_account(AccountId) ->
@@ -307,7 +307,7 @@ enable_account(AccountId) ->
 %% Helper to set data for all auth type
 %% @end
 %%--------------------------------------------------------------------
--spec response_auth/1 :: (wh_json:object()) -> wh_json:object().
+-spec response_auth(wh_json:object()) -> wh_json:object().
 response_auth(JObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, JObj, <<>>),
     OwnerId = wh_json:get_value(<<"owner_id">>, JObj, <<>>),
@@ -345,7 +345,7 @@ change_pvt_enabled(State, AccountId) ->
             {error, R}
     end.
 
--spec get_path/2 :: (#http_req{}, ne_binary()) -> ne_binary().
+-spec get_path(#http_req{}, ne_binary()) -> ne_binary().
 get_path(Req, Relative) ->
     {RawPath, _} = cowboy_http_req:raw_path(Req),
 

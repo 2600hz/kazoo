@@ -55,7 +55,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/3 :: (pid(), ne_binary(), ne_binary()) -> startlink_ret().
+-spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(FSMPid, AcctId, QueueId) ->
     gen_listener:start_link(?MODULE
                             ,[{bindings, ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
@@ -66,10 +66,10 @@ start_link(FSMPid, AcctId, QueueId) ->
                             ,[FSMPid]
                            ).
 
--spec ack/2 :: (pid(), #'basic.deliver'{}) -> 'ok'.
+-spec ack(pid(), #'basic.deliver'{}) -> 'ok'.
 ack(Srv, Delivery) -> gen_listener:ack(Srv, Delivery).
 
--spec nack/2 :: (pid(), #'basic.deliver'{}) -> 'ok'.
+-spec nack(pid(), #'basic.deliver'{}) -> 'ok'.
 nack(Srv, Delivery) -> gen_listener:nack(Srv, Delivery).
 
 %%%===================================================================

@@ -20,7 +20,7 @@
 
 -include("../callflow.hrl").
 
--spec start_event_listener/2 :: (whapps_call:call(), wh_json:json_object()) -> 'ok'.
+-spec start_event_listener(whapps_call:call(), wh_json:json_object()) -> 'ok'.
 start_event_listener(Call, Data) ->
     put(callid, whapps_call:call_id(Call)),
     TimeLimit = get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
@@ -39,7 +39,7 @@ start_event_listener(Call, Data) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Action = get_action(wh_json:get_value(<<"action">>, Data)),
     handle(Data, Call, Action),
@@ -73,16 +73,16 @@ save_recording(Call, MediaName, Format) ->
 
     store_recording(MediaName, StoreUrl, Call).
 
--spec store_recording/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 store_recording(MediaName, StoreUrl, Call) ->
     ok = whapps_call_command:store(MediaName, StoreUrl, Call).
 
--spec get_action/1 :: (cf_api_binary()) -> ne_binary().
+-spec get_action(cf_api_binary()) -> ne_binary().
 get_action(undefined) -> <<"start">>;
 get_action(<<"stop">>) -> <<"stop">>;
 get_action(_) -> <<"start">>.
 
--spec get_timelimit/1 :: ('undefined' | integer()) -> pos_integer().
+-spec get_timelimit('undefined' | integer()) -> pos_integer().
 get_timelimit(undefined) ->
     whapps_config:get(?CF_CONFIG_CAT, <<"max_recording_time_limit">>, 600);
 get_timelimit(TL) ->
@@ -97,7 +97,7 @@ get_format(<<"mp3">> = MP3) -> MP3;
 get_format(<<"wav">> = WAV) -> WAV;
 get_format(_) -> get_format(undefined).
 
--spec store_recording_meta/3 :: (whapps_call:call(), ne_binary(), cf_api_binary()) ->
+-spec store_recording_meta(whapps_call:call(), ne_binary(), cf_api_binary()) ->
                                         {'ok', wh_json:json_object()} |
                                         {'error', any()}.
 store_recording_meta(Call, MediaName, Ext) ->
@@ -129,11 +129,11 @@ ext_to_mime(_) -> <<"audio/mp3">>.
 
 get_recording_doc_id(CallId) -> <<"call_recording_", CallId/binary>>.
 
--spec get_media_name/2 :: (ne_binary(), cf_api_binary()) -> ne_binary().
+-spec get_media_name(ne_binary(), cf_api_binary()) -> ne_binary().
 get_media_name(CallId, Ext) ->
     <<(get_recording_doc_id(CallId))/binary, ".", Ext/binary>>.
 
--spec store_url/2 :: (whapps_call:call(), wh_json:json_object()) -> ne_binary().
+-spec store_url(whapps_call:call(), wh_json:json_object()) -> ne_binary().
 store_url(Call, JObj) ->
     AccountDb = whapps_call:account_db(Call),
     MediaId = wh_json:get_value(<<"_id">>, JObj),

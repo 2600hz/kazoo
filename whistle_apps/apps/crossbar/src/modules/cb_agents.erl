@@ -71,7 +71,7 @@
 %% Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.agents">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.agents">>, ?MODULE, resource_exists),
@@ -85,8 +85,8 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() -> ['GET'].
 allowed_methods(_) -> ['GET'].
 
@@ -99,8 +99,8 @@ allowed_methods(_) -> ['GET'].
 %%    /agents/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 
@@ -111,8 +111,8 @@ resource_exists(_) -> true.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/1 :: (cb_context:context()) -> cb_context:context().
--spec content_types_provided/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec content_types_provided(cb_context:context()) -> cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
 content_types_provided(#cb_context{}=Context) -> Context.
 content_types_provided(#cb_context{}=Context, ?STATUS_PATH_TOKEN) -> Context;
 content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
@@ -137,8 +137,8 @@ content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (cb_context:context()) -> cb_context:context().
--spec validate/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context).
 
@@ -155,14 +155,14 @@ validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read/2 :: (path_token(), cb_context:context()) -> cb_context:context().
+-spec read(path_token(), cb_context:context()) -> cb_context:context().
 read(Id, Context) -> crossbar_doc:load(Id, Context).
 
 fetch_all_agent_statuses(Context) ->
     AcctId = cb_context:account_id(Context),
     Context.
 
--spec fetch_all_agent_stats/1 :: (cb_context:context()) -> cb_context:context().
+-spec fetch_all_agent_stats(cb_context:context()) -> cb_context:context().
 fetch_all_agent_stats(Context) ->
     AcctId = cb_context:account_id(Context),
 
@@ -235,7 +235,7 @@ compress_stats([], {Compressed, Global, PerAgent}) -> accumulate_stats(Compresse
 compress_stats([Stat|Stats], {_,_,_}=Res) ->
     compress_stats(Stats, add_stat(Stat, Res)).
 
--spec accumulate_stats/3 :: (wh_json:object(), wh_json:object(), wh_json:object()) ->
+-spec accumulate_stats(wh_json:object(), wh_json:object(), wh_json:object()) ->
                                     wh_json:object().
 accumulate_stats(Compressed, Global, PerAgent) ->
     wh_json:from_list([{<<"totals">>, wh_json:foldl(fun fold_queue_totals/3, wh_json:new(), Global)}
@@ -398,7 +398,7 @@ add_stat(_Stat, {_Compressed, _Global, _PerAgent}=Res, _T) ->
     lager:debug("unhandled stat type: ~p: ~p", [_T, _Stat]),
     Res.
 
--spec maybe_add_current_status/5 :: (wh_json:object(), wh_json:object(), ne_binary(), ne_binary(), wh_now()) ->
+-spec maybe_add_current_status(wh_json:object(), wh_json:object(), ne_binary(), ne_binary(), wh_now()) ->
                                             wh_json:object().
 maybe_add_current_status(Compressed, Stat, Status, AID, TStamp) ->
     case wh_json:get_integer_value([AID, <<"current">>, <<"status_timestamp">>], Compressed) of
@@ -412,7 +412,7 @@ maybe_add_current_status(Compressed, Stat, Status, AID, TStamp) ->
         _ -> Compressed
     end.
 
--spec complex_agent_status/3 :: (wh_json:object(), ne_binary(), ne_binary()) -> wh_proplist().
+-spec complex_agent_status(wh_json:object(), ne_binary(), ne_binary()) -> wh_proplist().
 complex_agent_status(Stat, ?AGENT_STATUS_BUSY = Status, AID) ->
     [{[AID, <<"current">>, <<"status_started">>], wh_json:get_integer_value(<<"timestamp">>, Stat)}
      ,{[AID, <<"current">>, <<"status">>], Status}
@@ -452,7 +452,7 @@ complex_agent_status(_Stat, ?QUEUE_STATUS_PROCESSED, _AID) ->
 complex_agent_status(_Stat, Status, AID) ->
     [{[AID, <<"current">>, <<"status">>], Status}].
 
--spec num_agents_tried/2 :: (wh_json:object(), ne_binary()) -> non_neg_integer().    
+-spec num_agents_tried(wh_json:object(), ne_binary()) -> non_neg_integer().    
 num_agents_tried(AgentsTried, AID) ->
     {Vs, _} = wh_json:get_values(AgentsTried),
     lists:foldl(fun(A, Acc) when A =:= AID -> Acc + 1;
@@ -466,7 +466,7 @@ num_agents_tried(AgentsTried, AID) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary/1 :: (cb_context:context()) -> cb_context:context().
+-spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -476,7 +476,7 @@ summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:set_value(<<"id">>
                        ,wh_json:get_value(<<"id">>, JObj)

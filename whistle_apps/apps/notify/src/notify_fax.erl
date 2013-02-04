@@ -20,7 +20,7 @@
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_to_email">>).
 
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     %% ensure the fax template can compile, otherwise crash the processes
     {ok, _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
@@ -28,7 +28,7 @@ init() ->
     {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
--spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     true = wapi_notifications:fax_v(JObj),
     _ = whapps_util:put_callid(JObj),
@@ -90,7 +90,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props/3 :: (wh_json:object(), wh_json:objects(), wh_json:object()) -> wh_proplist().
+-spec create_template_props(wh_json:object(), wh_json:objects(), wh_json:object()) -> wh_proplist().
 create_template_props(Event, Docs, Account) ->
     Now = wh_util:current_tstamp(),
 
@@ -133,7 +133,7 @@ fax_values(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
@@ -173,7 +173,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %% create a friendly file name
 %% @end
 %%--------------------------------------------------------------------
--spec get_file_name/2 :: (proplist(), string()) -> ne_binary().
+-spec get_file_name(proplist(), string()) -> ne_binary().
 get_file_name(Props, Ext) ->
     %% CallerID_Date_Time.mp3
     Fax = props:get_value(<<"fax">>, Props),
@@ -192,7 +192,7 @@ get_file_name(Props, Ext) ->
 %% create a friendly format for DIDs
 %% @end
 %%--------------------------------------------------------------------
--spec pretty_print_did/1 :: (ne_binary()) -> ne_binary().
+-spec pretty_print_did(ne_binary()) -> ne_binary().
 pretty_print_did(<<"+1", Area:3/binary, Locale:3/binary, Rest:4/binary>>) ->
     <<"1.", Area/binary, ".", Locale/binary, ".", Rest/binary>>;
 pretty_print_did(<<"011", Rest/binary>>) ->
@@ -206,7 +206,7 @@ pretty_print_did(Other) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_attachment/1 :: (proplist()) -> {ne_binary(), ne_binary(), ne_binary()} | {'error', _}.
+-spec get_attachment(proplist()) -> {ne_binary(), ne_binary(), ne_binary()} | {'error', _}.
 get_attachment(Props) ->
     {ok, AttachmentBin} = raw_attachment_binary(Props),
     case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>) of
@@ -220,7 +220,7 @@ get_attachment(Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec raw_attachment_binary/1 :: (proplist()) -> {'ok', ne_binary()} | {'error', _}.
+-spec raw_attachment_binary(proplist()) -> {'ok', ne_binary()} | {'error', _}.
 raw_attachment_binary(Props) ->
     DB = props:get_value(<<"account_db">>, Props),
     Fax = props:get_value(<<"fax">>, Props),
@@ -235,7 +235,7 @@ raw_attachment_binary(Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec convert_to_tiff/2 :: (ne_binary(), proplist()) -> {ne_binary(), ne_binary(), ne_binary()}.
+-spec convert_to_tiff(ne_binary(), proplist()) -> {ne_binary(), ne_binary(), ne_binary()}.
 convert_to_tiff(AttachmentBin, Props) ->
     {<<"image/tiff">>, get_file_name(Props, "tiff"), AttachmentBin}.
 
@@ -245,7 +245,7 @@ convert_to_tiff(AttachmentBin, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec convert_to_pdf/2 :: (ne_binary(), proplist()) -> {ne_binary(), ne_binary(), ne_binary()} | {'error', _}.
+-spec convert_to_pdf(ne_binary(), proplist()) -> {ne_binary(), ne_binary(), ne_binary()} | {'error', _}.
 convert_to_pdf(AttachmentBin, Props) ->
     TiffFile = tmp_file_name(<<"tiff">>),
     PDFFile = tmp_file_name(<<"pdf">>),    
@@ -268,6 +268,6 @@ convert_to_pdf(AttachmentBin, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec tmp_file_name/1 :: (ne_binary()) -> string().
+-spec tmp_file_name(ne_binary()) -> string().
 tmp_file_name(Ext) ->
     wh_util:to_list(<<"/tmp/", (wh_util:rand_hex_binary(10))/binary, "_notify_fax.", Ext/binary>>).

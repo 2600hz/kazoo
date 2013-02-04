@@ -52,7 +52,7 @@ init(Parent) ->
 
     cleanup_loop(Expiry).
 
--spec finish_request/1 :: (cb_context:context()) -> any().
+-spec finish_request(cb_context:context()) -> any().
 finish_request(#cb_context{auth_doc=undefined}) -> ok;
 finish_request(#cb_context{auth_doc=AuthDoc}) ->
     lager:debug("updating auth doc: ~s:~s", [wh_json:get_value(<<"_id">>, AuthDoc)
@@ -99,7 +99,7 @@ prepare_token_for_deletion(Token) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate/1 :: (cb_context:context()) -> 'false' | {'true', cb_context:context()}.
+-spec authenticate(cb_context:context()) -> 'false' | {'true', cb_context:context()}.
 authenticate(#cb_context{auth_token = <<>>}) -> false;
 authenticate(#cb_context{auth_token=AuthToken}=Context) ->
     _ = cb_context:put_reqid(Context),

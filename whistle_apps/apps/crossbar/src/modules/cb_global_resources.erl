@@ -47,8 +47,8 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     ['GET', 'PUT'].
 allowed_methods(_) ->
@@ -62,8 +62,8 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 
@@ -76,22 +76,22 @@ resource_exists(_) -> true.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 validate(Context) ->
     validate_req(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}).
 validate(Context, Id) ->
     validate_req(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}, Id).
 
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _) ->
     crossbar_doc:save(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}).
 
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
+-spec put(#cb_context{}) -> #cb_context{}.
 put(Context) ->
     crossbar_doc:save(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}).
 
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _) ->
     crossbar_doc:delete(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}).
 
@@ -108,8 +108,8 @@ delete(Context, _) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate_req/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate_req/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate_req(#cb_context{}) -> #cb_context{}.
+-spec validate_req(#cb_context{}, path_token()) -> #cb_context{}.
 
 validate_req(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
@@ -129,7 +129,7 @@ validate_req(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (#cb_context{}) -> #cb_context{}.
+-spec create(#cb_context{}) -> #cb_context{}.
 create(#cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
     cb_context:validate_request_data(<<"global_resources">>, Context, OnSuccess).
@@ -140,7 +140,7 @@ create(#cb_context{}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read(ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
@@ -151,7 +151,7 @@ read(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
 update(Id, #cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"global_resources">>, Context, OnSuccess).
@@ -163,7 +163,7 @@ update(Id, #cb_context{}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec summary(#cb_context{}) -> #cb_context{}.
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -173,7 +173,7 @@ summary(Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
 on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
     Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj)};
 on_successful_validation(Id, #cb_context{}=Context) ->
@@ -185,6 +185,6 @@ on_successful_validation(Id, #cb_context{}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].

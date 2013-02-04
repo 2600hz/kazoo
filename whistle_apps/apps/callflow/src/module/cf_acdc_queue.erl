@@ -22,7 +22,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     whapps_call_command:answer(Call),
     _ = case cf_acdc_agent:find_agent(Call) of

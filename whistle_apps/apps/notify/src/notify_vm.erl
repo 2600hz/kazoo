@@ -25,7 +25,7 @@
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".voicemail_to_email">>).
 
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
     {ok, _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
@@ -33,7 +33,7 @@ init() ->
     {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
--spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     true = wapi_notifications:voicemail_v(JObj),
     _ = whapps_util:put_callid(JObj),
@@ -88,7 +88,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props/3 :: (wh_json:object(), wh_json:objects(), wh_json:object()) -> wh_proplist().
+-spec create_template_props(wh_json:object(), wh_json:objects(), wh_json:object()) -> wh_proplist().
 create_template_props(Event, Docs, Account) ->
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, Event),
@@ -124,7 +124,7 @@ create_template_props(Event, Docs, Account) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email/6 :: (iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist(), {api_binary(), ne_binary()}) -> 'ok'.
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist(), {api_binary(), ne_binary()}) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Resp) when is_list(To) ->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, Resp) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
@@ -179,7 +179,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
 %% create a friendly file name
 %% @end
 %%--------------------------------------------------------------------
--spec get_file_name/1 :: (proplist()) -> ne_binary().
+-spec get_file_name(proplist()) -> ne_binary().
 get_file_name(Props) ->
     %% CallerID_Date_Time.mp3
     Voicemail = props:get_value(<<"voicemail">>, Props),
@@ -198,7 +198,7 @@ get_file_name(Props) ->
 %% create a friendly format for DIDs
 %% @end
 %%--------------------------------------------------------------------
--spec pretty_print_did/1 :: (ne_binary()) -> ne_binary().
+-spec pretty_print_did(ne_binary()) -> ne_binary().
 pretty_print_did(<<"+1", Area:3/binary, Locale:3/binary, Rest:4/binary>>) ->
     <<"1.", Area/binary, ".", Locale/binary, ".", Rest/binary>>;
 pretty_print_did(<<"011", Rest/binary>>) ->

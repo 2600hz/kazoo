@@ -43,7 +43,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
                                       ,{responders, ?RESPONDERS}
@@ -52,7 +52,7 @@ start_link() ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], []).
 
--spec stop/1 :: (pid() | atom()) -> 'ok'.
+-spec stop(pid() | atom()) -> 'ok'.
 stop(Srv) ->
     gen_listener:stop(Srv).
 

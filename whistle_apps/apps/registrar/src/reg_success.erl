@@ -15,7 +15,7 @@
 init() ->
     ok.
 
--spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_registration:success_v(JObj),
     _ = wh_util:put_callid(JObj),
@@ -28,7 +28,7 @@ handle_req(JObj, _Props) ->
                ],
     lists:foldl(fun(F, J) -> F(J, Username, Realm) end, JObj, Routines).
 
--spec send_new_register/1 :: (wh_json:object()) -> 'ok'.
+-spec send_new_register(wh_json:object()) -> 'ok'.
 send_new_register(JObj) ->
     Updaters = [fun(J) -> wh_json:set_value(<<"Event-Name">>,  <<"register">>, J) end
                 ,fun(J) -> wh_json:set_value(<<"Event-Category">>, <<"notification">>, J) end 

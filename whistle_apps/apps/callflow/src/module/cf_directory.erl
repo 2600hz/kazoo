@@ -117,7 +117,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     {ok, DirJObj} = couch_mgr:open_doc(whapps_call:account_db(Call), wh_json:get_value(<<"id">>, Data)),
     whapps_call_command:answer(Call),
@@ -141,7 +141,7 @@ handle(Data, Call) ->
             cf_exe:continue(Call)
     end.
 
--spec directory_start/3 :: (whapps_call:call(), directory(), directory_users()) -> 'ok'.
+-spec directory_start(whapps_call:call(), directory(), directory_users()) -> 'ok'.
 directory_start(Call, State, CurrUsers) ->
     _ = whapps_call_command:flush_dtmf(Call),
     {ok, DTMF} = play_directory_instructions(Call, sort_by(State)),
@@ -197,7 +197,7 @@ maybe_match(Call, State, CurrUsers) ->
             matches_menu(Call, State, Users)
     end.
 
--spec matches_menu/3 :: (whapps_call:call(), directory(), directory_users()) -> 'ok'.
+-spec matches_menu(whapps_call:call(), directory(), directory_users()) -> 'ok'.
 matches_menu(Call, State, Users) ->
     maybe_match_users(Call, save_current_users(State, Users), Users, 1).
 
@@ -231,7 +231,7 @@ maybe_match_users(Call, State, [U|Us], MatchNum) ->
             maybe_match_users(Call, State, [U|Us], MatchNum)
     end.
 
--spec maybe_match_user/3 :: (whapps_call:call(), directory_user(), pos_integer()) -> 'route' |
+-spec maybe_match_user(whapps_call:call(), directory_user(), pos_integer()) -> 'route' |
                                                                                      'next' |
                                                                                      'start_over' |
                                                                                      'invalid' |
@@ -257,7 +257,7 @@ maybe_match_user(Call, U, MatchNum) ->
             interpret_user_match_dtmf(DTMF)
     end.
 
--spec interpret_user_match_dtmf/1 :: (ne_binary()) -> 'route' |
+-spec interpret_user_match_dtmf(ne_binary()) -> 'route' |
                                                       'next' |
                                                       'start_over' |
                                                       'invalid' |
@@ -268,7 +268,7 @@ interpret_user_match_dtmf(?DTMF_RESULT_START) -> start_over;
 interpret_user_match_dtmf(?DTMF_RESULT_CONTINUE) -> continue;
 interpret_user_match_dtmf(_) -> invalid.
 
--spec maybe_confirm_match/3 :: (whapps_call:call(), directory_user(), boolean()) -> boolean().
+-spec maybe_confirm_match(whapps_call:call(), directory_user(), boolean()) -> boolean().
 maybe_confirm_match(_, _, false) -> true;
 maybe_confirm_match(Call, User, true) ->
     _ = whapps_call_command:flush_dtmf(Call),
@@ -308,7 +308,7 @@ play_confirm_match(Call, User) ->
                             ,{play, ?PROMPT_CONFIRM_MENU, ?ANY_DIGIT}
                            ]).
 
--spec play_min_digits_needed/2 :: (whapps_call:call(), pos_integer()) -> {'ok', binary()}.
+-spec play_min_digits_needed(whapps_call:call(), pos_integer()) -> {'ok', binary()}.
 play_min_digits_needed(Call, MinDTMF) ->
     play_and_collect(Call, [{play, ?PROMPT_SPECIFY_MINIMUM, ?ANY_DIGIT}
                             ,{say, wh_util:to_binary(MinDTMF), <<"number">>}
@@ -325,16 +325,16 @@ play_directory_instructions(Call, NamePrompt) ->
                             ,{play, NamePrompt}
                            ]).
 
--spec play_no_users/1 :: (whapps_call:call()) -> ne_binary(). % noop id
+-spec play_no_users(whapps_call:call()) -> ne_binary(). % noop id
 play_no_users(Call) ->
     whapps_call_command:audio_macro([{play, ?PROMPT_NO_MORE_RESULTS}], Call).
 
--spec play_error/1 :: (whapps_call:call()) -> ne_binary(). % noop id
+-spec play_error(whapps_call:call()) -> ne_binary(). % noop id
 play_error(Call) ->
     whapps_call_command:audio_macro([{play, ?PROMPT_NO_MORE_RESULTS}], Call).
 
--spec play_and_collect/2 :: (whapps_call:call(), [whapps_call_command:audio_macro_prompt(),...]) -> {'ok', binary()}.
--spec play_and_collect/3 :: (whapps_call:call(), [whapps_call_command:audio_macro_prompt(),...], non_neg_integer()) -> {'ok', binary()}.
+-spec play_and_collect(whapps_call:call(), [whapps_call_command:audio_macro_prompt(),...]) -> {'ok', binary()}.
+-spec play_and_collect(whapps_call:call(), [whapps_call_command:audio_macro_prompt(),...], non_neg_integer()) -> {'ok', binary()}.
 play_and_collect(Call, AudioMacro) ->
     play_and_collect(Call, AudioMacro, 1).
 play_and_collect(Call, AudioMacro, NumDigits) ->
@@ -360,11 +360,11 @@ confirm_match(#directory{confirm_match=CM}) ->
 users(#directory{users=Us}) ->
     Us.
 
--spec add_dtmf/2 :: (directory(), binary()) -> directory().
+-spec add_dtmf(directory(), binary()) -> directory().
 add_dtmf(#directory{digits_collected=Collected}=State, NewDTMFs) ->
     State#directory{digits_collected = <<Collected/binary, NewDTMFs/binary>>}.
 
--spec clear_dtmf/1 :: (directory()) -> directory().
+-spec clear_dtmf(directory()) -> directory().
 clear_dtmf(#directory{}=State) ->
     State#directory{digits_collected = <<>>}.
 
@@ -380,7 +380,7 @@ clear_current_users(#directory{}=State) ->
 %%------------------------------------------------------------------------------
 %% Directory User Functions
 %%------------------------------------------------------------------------------
--spec callflow/2 :: (whapps_call:call(), directory_user()) -> wh_json:json_object() | 'fail'.
+-spec callflow(whapps_call:call(), directory_user()) -> wh_json:json_object() | 'fail'.
 callflow(Call, #directory_user{callflow_id=CF}) ->
     case couch_mgr:open_doc(whapps_call:account_db(Call), CF) of
         {ok, JObj} -> JObj;
@@ -404,11 +404,11 @@ media_name(#directory_user{name_audio_id = ID}) ->
 %%------------------------------------------------------------------------------
 %% Utility Functions
 %%------------------------------------------------------------------------------
--spec get_sort_by/1 :: (ne_binary()) -> 'first' | 'last'.
+-spec get_sort_by(ne_binary()) -> 'first' | 'last'.
 get_sort_by(<<"first", _/binary>>) -> first;
 get_sort_by(_) -> last.
 
--spec get_directory_listing/2 :: (ne_binary(), ne_binary()) -> {'ok', directory_users()} |
+-spec get_directory_listing(ne_binary(), ne_binary()) -> {'ok', directory_users()} |
                                                                {'error', term()}.
 get_directory_listing(Db, DirId) ->
     case couch_mgr:get_results(Db, ?DIR_DOCS_VIEW, [{key, DirId}, include_docs]) of
@@ -423,7 +423,7 @@ get_directory_listing(Db, DirId) ->
             E
     end.
 
--spec get_directory_user/2 :: (wh_json:json_object(), ne_binary()) -> directory_user().
+-spec get_directory_user(wh_json:json_object(), ne_binary()) -> directory_user().
 get_directory_user(U, CallflowId) ->
     First = wh_json:get_value(<<"first_name">>, U),
     Last = wh_json:get_value(<<"last_name">>, U),
@@ -448,7 +448,7 @@ filter_users(Users, DTMFs) ->
               maybe_dtmf_matches(DTMFs, Size, last_first_dtmfs(U))
     ].
 
--spec maybe_dtmf_matches/3 :: (ne_binary(), pos_integer(), ne_binary()) -> boolean().
+-spec maybe_dtmf_matches(ne_binary(), pos_integer(), ne_binary()) -> boolean().
 maybe_dtmf_matches(_, 0, _) -> false;
 maybe_dtmf_matches(_, Size, User) when byte_size(User) < Size -> false;
 maybe_dtmf_matches(DTMFs, Size, User) ->

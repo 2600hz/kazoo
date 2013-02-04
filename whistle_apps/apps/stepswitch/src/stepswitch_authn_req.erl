@@ -18,7 +18,7 @@
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req(wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     true = wapi_authn:req_v(JObj),
 

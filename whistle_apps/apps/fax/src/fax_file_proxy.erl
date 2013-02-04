@@ -14,7 +14,7 @@
 
 -include("fax.hrl").
 
--spec init/3 :: ({'tcp' | 'ssl', 'http'}, #http_req{}, proplist()) -> {'ok', #http_req{}, 'undefined'} |
+-spec init({'tcp' | 'ssl', 'http'}, #http_req{}, proplist()) -> {'ok', #http_req{}, 'undefined'} |
                                                                       {'shutdown', #http_req{}, 'undefined'}.
 init({_Any, http}, Req0, _Opts) ->
     put(callid, wh_util:rand_hex_binary(16)),
@@ -23,7 +23,7 @@ init({_Any, _Prot}, Req0, _Opts) ->
     put(callid, wh_util:rand_hex_binary(16)),
     {shutdown, Req0, undefined}.
 
--spec handle/2 :: (#http_req{}, State) -> {'ok', #http_req{}, State}.
+-spec handle(#http_req{}, State) -> {'ok', #http_req{}, State}.
 handle(Req0, State) ->
     case cowboy_http_req:path_info(Req0) of
         {[JobId], Req1} -> 
@@ -46,6 +46,6 @@ handle(Req0, State) ->
             {ok, Req1, State}
     end.
 
--spec terminate/2 :: (#http_req{}, term()) -> 'ok'.
+-spec terminate(#http_req{}, term()) -> 'ok'.
 terminate(_Req, _State) ->
     ok.

@@ -31,7 +31,7 @@
 %% Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.acls">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.acls">>, ?MODULE, resource_exists),
@@ -45,7 +45,7 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods() | [].
+-spec allowed_methods() -> http_methods() | [].
 allowed_methods() -> ['GET'].
 
 %%--------------------------------------------------------------------
@@ -57,7 +57,7 @@ allowed_methods() -> ['GET'].
 %%    /acls/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists() -> 'true'.
 resource_exists() -> true.
 
 %%--------------------------------------------------------------------
@@ -70,7 +70,7 @@ resource_exists() -> true.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context).
 
@@ -81,7 +81,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec summary(#cb_context{}) -> #cb_context{}.
 summary(Context) ->
     Req = [{<<"Category">>, ?ECALLMGR}
            ,{<<"Key">>, ?ECALLMGR_ACLS}

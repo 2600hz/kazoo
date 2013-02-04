@@ -26,7 +26,7 @@
                           ]).
 -define(PIVOT_REQ_TYPES, [{<<"Call">>, fun wh_json:is_json_object/1}]).
 
--spec req/1 :: (api_terms()) -> {'ok', iolist()} |
+-spec req(api_terms()) -> {'ok', iolist()} |
                                 {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
@@ -36,20 +36,20 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
 
--spec req_v/1 :: (api_terms()) -> boolean().
+-spec req_v(api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PIVOT_REQ_HEADERS, ?PIVOT_REQ_VALUES, ?PIVOT_REQ_TYPES);
 req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
 
--spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     Realm = props:get_value(realm, Props, <<"*">>),
 
     amqp_util:callmgr_exchange(),
     amqp_util:bind_q_to_callmgr(Queue, get_pivot_req_routing(Realm)).
 
--spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     Realm = props:get_value(realm, Props, <<"*">>),
     amqp_util:unbind_q_from_callmgr(Queue, get_pivot_req_routing(Realm)).
@@ -59,15 +59,15 @@ get_pivot_req_routing(Realm) when is_binary(Realm) ->
 get_pivot_req_routing(Api) ->
     get_pivot_req_routing(get_from_realm(Api)).
 
--spec publish_req/1 :: (api_terms()) -> 'ok'.
--spec publish_req/2 :: (api_terms(), binary()) -> 'ok'.
+-spec publish_req(api_terms()) -> 'ok'.
+-spec publish_req(api_terms(), binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?PIVOT_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, get_pivot_req_routing(Req)).
 
--spec get_from_realm/1 :: (api_terms()) -> ne_binary().
+-spec get_from_realm(api_terms()) -> ne_binary().
 get_from_realm(Prop) when is_list(Prop) ->
     wh_json:get_value(<<"From-Realm">>, props:get_value(<<"Call">>, Prop));
 get_from_realm(JObj) ->

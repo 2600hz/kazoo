@@ -15,7 +15,7 @@
 %% Application callbacks
 %% ===================================================================
 
--spec(start/2 :: (StartType :: term(), StartArgs :: term()) -> tuple(ok, pid()) | tuple(error, term())).
+-spec(start(StartType :: term(), StartArgs :: term()) -> tuple(ok, pid()) | tuple(error, term())).
 start(_StartType, _StartArgs) ->
     case dth:start_link() of
 	{ok, P} -> {ok, P};

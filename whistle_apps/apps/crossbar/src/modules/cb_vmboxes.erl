@@ -52,11 +52,11 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
--spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
--spec allowed_methods/3 :: (path_token(), path_token(), path_token()) -> http_methods().
--spec allowed_methods/4 :: (path_token(), path_token(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
     ['GET', 'PUT'].
@@ -77,9 +77,9 @@ allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
--spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 resource_exists(_, ?MESSAGES_RESOURCE) -> true.
@@ -93,7 +93,7 @@ resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> true.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/5 :: (#cb_context{}, path_token(), path_token(), path_token(), path_token()) -> #cb_context{}.
+-spec content_types_provided(#cb_context{}, path_token(), path_token(), path_token(), path_token()) -> #cb_context{}.
 content_types_provided(#cb_context{req_verb = <<"get">>}=Context
                        ,_VMBox, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
     CTP = [{to_binary, ?MEDIA_MIME_TYPES}],
@@ -108,11 +108,11 @@ content_types_provided(#cb_context{req_verb = <<"get">>}=Context
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
--spec validate/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
--spec validate/5 :: (#cb_context{}, path_token(), path_token(), path_token(), path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token(), path_token(), path_token(), path_token()) -> #cb_context{}.
 
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_vmbox_summary(Context);
@@ -150,8 +150,8 @@ validate(#cb_context{req_verb = <<"get">>}=Context, DocId, ?MESSAGES_RESOURCE, M
         {_, C} -> C
     end.
 
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec post/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 post(#cb_context{}=Context, _DocId) ->
     C = crossbar_doc:save(Context),
     update_mwi(C).
@@ -159,12 +159,12 @@ post(#cb_context{}=Context, _DocId, ?MESSAGES_RESOURCE, _MediaID) ->
     C = crossbar_doc:save(Context),
     update_mwi(C).
 
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
+-spec put(#cb_context{}) -> #cb_context{}.
 put(#cb_context{}=Context) ->
     crossbar_doc:save(Context).
 
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec delete/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 delete(#cb_context{}=Context, _DocID) ->
     C = crossbar_doc:delete(Context),
     update_mwi(C).
@@ -179,7 +179,7 @@ delete(#cb_context{}=Context, _DocID, ?MESSAGES_RESOURCE, _MediaID) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_vmbox_summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec load_vmbox_summary(#cb_context{}) -> #cb_context{}.
 load_vmbox_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -189,7 +189,7 @@ load_vmbox_summary(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec validate_request('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
 validate_request(VMBoxId, Context) ->
     validate_unique_vmbox(VMBoxId, Context).
 
@@ -222,7 +222,7 @@ on_successful_validation(VMBoxId, #cb_context{}=Context) ->
 %% Load a vmbox document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_vmbox/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_vmbox(ne_binary(), #cb_context{}) -> #cb_context{}.
 load_vmbox(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
@@ -232,7 +232,7 @@ load_vmbox(DocId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -242,7 +242,7 @@ normalize_view_results(JObj, Acc) ->
 %% Get messages summary for a given mailbox
 %% @end
 %%--------------------------------------------------------------------
--spec load_message_summary/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_message_summary(ne_binary(), #cb_context{}) -> #cb_context{}.
 load_message_summary(DocId, Context) ->
     case crossbar_doc:load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc}=C ->
@@ -261,7 +261,7 @@ load_message_summary(DocId, Context) ->
 %% Get message by its media ID and its context
 %% @end
 %%--------------------------------------------------------------------
--spec load_message/4 :: (ne_binary(), ne_binary(), 'undefined' | wh_json:json_object(), #cb_context{}) ->
+-spec load_message(ne_binary(), ne_binary(), 'undefined' | wh_json:json_object(), #cb_context{}) ->
                                 {boolean(), #cb_context{}}.
 load_message(DocId, MediaId, undefined, Context) ->
     load_message(DocId, MediaId, wh_json:new(), Context);
@@ -296,7 +296,7 @@ load_message(DocId, MediaId, UpdateJObj, #cb_context{req_data=ReqData, query_jso
 %% VMId is the id for the voicemail document, containing the binary data
 %% @end
 %%--------------------------------------------------------------------
--spec load_message_binary/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> {boolean(), #cb_context{}}.
+-spec load_message_binary(ne_binary(), ne_binary(), #cb_context{}) -> {boolean(), #cb_context{}}.
 load_message_binary(DocId, MediaId, #cb_context{db_name=Db, resp_headers=RespHeaders}=Context) ->
     case load_message(DocId, MediaId, undefined, Context) of
         {Update, #cb_context{resp_status=success, resp_data=VMMetaJObj, doc=Doc}=C} ->
@@ -339,7 +339,7 @@ load_message_binary(DocId, MediaId, #cb_context{db_name=Db, resp_headers=RespHea
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_message_index/2 :: (ne_binary(), wh_json:json_objects()) -> 'false' | pos_integer().
+-spec get_message_index(ne_binary(), wh_json:json_objects()) -> 'false' | pos_integer().
 get_message_index(MediaId, Messages) ->
     case lists:takewhile(fun(Message) ->
                                  wh_json:get_value(<<"media_id">>, Message) =/= MediaId
@@ -356,7 +356,7 @@ get_message_index(MediaId, Messages) ->
 %% CallerID_YYYY-MM-DD_HH-MM-SS.ext
 %% @end
 %%--------------------------------------------------------------------
--spec generate_media_name/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec generate_media_name(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
     UTCDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(GregorianSeconds)),
 
@@ -378,7 +378,7 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec check_uniqueness/2 :: ('undefined' | ne_binary(), #cb_context{}) -> boolean().
+-spec check_uniqueness('undefined' | ne_binary(), #cb_context{}) -> boolean().
 check_uniqueness(VMBoxId, #cb_context{db_name=AccountDb, req_data=JObj}) ->
     try wh_json:get_integer_value(<<"mailbox">>, JObj) of
         Mailbox ->
@@ -406,7 +406,7 @@ check_uniqueness(VMBoxId, #cb_context{db_name=AccountDb, req_data=JObj}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_mwi/1 :: (#cb_context{}) -> #cb_context{}.
+-spec update_mwi(#cb_context{}) -> #cb_context{}.
 update_mwi(#cb_context{resp_status=success, db_name=AccountDb, doc=JObj}=Context) ->
     OwnerId = wh_json:get_value(<<"owner_id">>, JObj),
     _ = cb_modules_util:update_mwi(OwnerId, AccountDb),

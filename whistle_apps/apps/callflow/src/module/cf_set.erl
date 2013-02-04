@@ -12,7 +12,7 @@
 
 -include("../callflow.hrl").
 
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     {ok, Call1} = cf_exe:get_call(Call),
     Skills = wh_json:merge_recursive(

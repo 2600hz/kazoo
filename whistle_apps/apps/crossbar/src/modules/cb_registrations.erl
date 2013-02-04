@@ -29,11 +29,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.registrations">>, ?MODULE, resource_exists),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.registrations">>, ?MODULE, validate).
 
--spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods() -> http_methods().
 allowed_methods() ->
     ['GET'].
 
--spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists() -> 'true'.
 resource_exists() ->
     true.
 
@@ -46,12 +46,12 @@ resource_exists() ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context()) -> cb_context:context().
 validate(#cb_context{req_verb = <<"get">>, db_name=DbName, account_id=AccountId}=Context) ->
     AccountRealm = wh_util:get_account_realm(DbName, AccountId),
     crossbar_util:response(lookup_regs(AccountRealm), Context).
 
--spec lookup_regs/1 :: (ne_binary()) -> wh_json:json_objects().
+-spec lookup_regs(ne_binary()) -> wh_json:json_objects().
 lookup_regs(AccountRealm) ->
     Q = amqp_util:new_queue(),
     ok = amqp_util:bind_q_to_targeted(Q),
@@ -63,7 +63,7 @@ lookup_regs(AccountRealm) ->
     wapi_registration:publish_query_req(Req),
     [normalize_registration(JObj) || {_, JObj} <- collect_registrar_responses([])].
 
--spec collect_registrar_responses/1 :: (wh_proplist()) -> wh_proplist().
+-spec collect_registrar_responses(wh_proplist()) -> wh_proplist().
 collect_registrar_responses(Registrations) ->
     receive
         {_, #amqp_msg{payload = Payload}} ->
@@ -79,7 +79,7 @@ collect_registrar_responses(Registrations) ->
         500 -> Registrations
     end.
 
--spec accumulate_unique_registrations/2 :: (wh_json:json_objects(), wh_proplist()) -> wh_proplist().
+-spec accumulate_unique_registrations(wh_json:json_objects(), wh_proplist()) -> wh_proplist().
 accumulate_unique_registrations([], Accumulator) ->
     Accumulator;
 accumulate_unique_registrations([Registration|Registrations], Accumulator) ->

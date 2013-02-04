@@ -18,11 +18,11 @@
 %% look up a cached registration by realm and optionally username
 %% @end
 %%-----------------------------------------------------------------------------
--spec local_summary/0 :: () -> 'ok'.
+-spec local_summary() -> 'ok'.
 local_summary() ->
     ok.
 
--spec local_summary/1 :: (ne_binary()) -> 'ok'.
+-spec local_summary(ne_binary()) -> 'ok'.
 local_summary(AcctId) when not is_binary(AcctId) ->
     local_summary(wh_util:to_binary(AcctId));
 local_summary(_AcctId) ->
@@ -34,7 +34,7 @@ local_summary(_AcctId) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec do_summary/2 :: (wh_json:json_objects(), fun()) -> 'ok'.
+-spec do_summary(wh_json:json_objects(), fun()) -> 'ok'.
 do_summary(Accts, PrintFun) ->
     [PrintFun(Acct) || Acct <- Accts].
 
@@ -44,7 +44,7 @@ do_summary(Accts, PrintFun) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_summary/1 :: (wh_json:json_object()) -> 'ok'.
+-spec print_summary(wh_json:json_object()) -> 'ok'.
 print_summary(_Acct) ->
     io:format("No Summary~n", []).
 
@@ -54,6 +54,6 @@ print_summary(_Acct) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_details/1 :: (wh_json:json_object()) -> 'ok'.
+-spec print_details(wh_json:json_object()) -> 'ok'.
 print_details(Acct) ->
     [io:format("~s: ~s~n", [K, wh_util:to_list(V)]) || {K, V} <- wh_json:to_proplist(Acct)].

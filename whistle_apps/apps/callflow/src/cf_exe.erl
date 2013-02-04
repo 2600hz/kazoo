@@ -78,20 +78,20 @@ start_link(Call) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Call]).
 
--spec get_call/1 :: (pid() | whapps_call:call()) -> {'ok', whapps_call:call()}.
+-spec get_call(pid() | whapps_call:call()) -> {'ok', whapps_call:call()}.
 get_call(Srv) when is_pid(Srv) ->
     gen_server:call(Srv, {get_call}, 1000);
 get_call(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     get_call(Srv).
 
--spec set_call/1 :: (whapps_call:call()) -> 'ok'.
+-spec set_call(whapps_call:call()) -> 'ok'.
 set_call(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     gen_server:cast(Srv, {set_call, Call}).
 
--spec continue/1 :: (whapps_call:call() | pid()) -> 'ok'.
--spec continue/2 :: (ne_binary(), whapps_call:call() | pid()) -> 'ok'.
+-spec continue(whapps_call:call() | pid()) -> 'ok'.
+-spec continue(ne_binary(), whapps_call:call() | pid()) -> 'ok'.
 continue(Srv) ->
     continue(<<"_">>, Srv).
 
@@ -101,7 +101,7 @@ continue(Key, Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     continue(Key, Srv).
 
--spec branch/2 :: (wh_json:object(), whapps_call:call() | pid()) -> 'ok'.
+-spec branch(wh_json:object(), whapps_call:call() | pid()) -> 'ok'.
 branch(Flow, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {branch, Flow});
 branch(Flow, Call) ->
@@ -114,28 +114,28 @@ add_event_listener(Srv, {_,_,_}=SpawnInfo) when is_pid(Srv) ->
 add_event_listener(Call, {_,_,_}=SpawnInfo) ->
     add_event_listener(whapps_call:kvs_fetch(cf_exe_pid, Call), SpawnInfo).
 
--spec stop/1 :: (whapps_call:call() | pid()) -> 'ok'.
+-spec stop(whapps_call:call() | pid()) -> 'ok'.
 stop(Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {stop});
 stop(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     stop(Srv).
 
--spec transfer/1 :: (whapps_call:call() | pid()) -> 'ok'.
+-spec transfer(whapps_call:call() | pid()) -> 'ok'.
 transfer(Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {transfer});
 transfer(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     transfer(Srv).
 
--spec control_usurped/1 :: (whapps_call:call() | pid()) -> 'ok'.
+-spec control_usurped(whapps_call:call() | pid()) -> 'ok'.
 control_usurped(Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {control_usurped});
 control_usurped(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     control_usurped(Srv).
 
--spec callid_update/3 :: (ne_binary(), ne_binary(), whapps_call:call() | pid()) -> 'ok'.
+-spec callid_update(ne_binary(), ne_binary(), whapps_call:call() | pid()) -> 'ok'.
 callid_update(CallId, CtrlQ, Srv) when is_pid(Srv) ->
     put(callid, CallId),
     gen_listener:cast(Srv, {callid_update, CallId, CtrlQ});
@@ -143,8 +143,8 @@ callid_update(CallId, CtrlQ, Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     callid_update(CallId, CtrlQ, Srv).
 
--spec callid/1 :: (whapps_call:call() | pid()) -> ne_binary().
--spec callid/2 :: (api_binary(), whapps_call:call()) -> ne_binary().
+-spec callid(whapps_call:call() | pid()) -> ne_binary().
+-spec callid(api_binary(), whapps_call:call()) -> ne_binary().
 
 callid(Srv) when is_pid(Srv) ->
     CallId = gen_server:call(Srv, {callid}, 1000),
@@ -157,15 +157,15 @@ callid(Call) ->
 callid(_, Call) ->
     callid(Call).
 
--spec queue_name/1 :: (whapps_call:call() | pid()) -> ne_binary().
+-spec queue_name(whapps_call:call() | pid()) -> ne_binary().
 queue_name(Srv) when is_pid(Srv) ->
     gen_listener:queue_name(Srv);
 queue_name(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     queue_name(Srv).
 
--spec control_queue/1 :: (whapps_call:call() | pid()) -> ne_binary().
--spec control_queue/2 :: (api_binary(), whapps_call:call() | pid()) -> ne_binary().
+-spec control_queue(whapps_call:call() | pid()) -> ne_binary().
+-spec control_queue(api_binary(), whapps_call:call() | pid()) -> ne_binary().
 
 control_queue(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {control_queue_name});
@@ -176,24 +176,24 @@ control_queue(Call) ->
 control_queue(_, Call) ->
     control_queue(Call).
 
--spec get_branch_keys/1 :: (whapps_call:call() | pid()) -> {branch_keys, wh_json:json_strings()}.
+-spec get_branch_keys(whapps_call:call() | pid()) -> {branch_keys, wh_json:json_strings()}.
 get_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {get_branch_keys});
 get_branch_keys(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     get_branch_keys(Srv).
 
--spec get_all_branch_keys/1 :: (whapps_call:call() | pid()) -> {branch_keys, wh_json:json_strings()}.
+-spec get_all_branch_keys(whapps_call:call() | pid()) -> {branch_keys, wh_json:json_strings()}.
 get_all_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {get_branch_keys, all});
 get_all_branch_keys(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     get_all_branch_keys(Srv).
 
--spec attempt/1 :: (whapps_call:call() | pid()) ->
+-spec attempt(whapps_call:call() | pid()) ->
                            {attempt_resp, ok} |
                            {attempt_resp, {error, term()}}.
--spec attempt/2 :: (ne_binary(), whapps_call:call() | pid()) ->
+-spec attempt(ne_binary(), whapps_call:call() | pid()) ->
                            {attempt_resp, ok} |
                            {attempt_resp, {error, term()}}.
 attempt(Srv) ->
@@ -205,21 +205,21 @@ attempt(Key, Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     attempt(Key, Srv).
 
--spec wildcard_is_empty/1 :: (whapps_call:call() | pid()) -> boolean().
+-spec wildcard_is_empty(whapps_call:call() | pid()) -> boolean().
 wildcard_is_empty(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {wildcard_is_empty});
 wildcard_is_empty(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     wildcard_is_empty(Srv).
 
--spec relay_amqp/2 :: (wh_json:object(), wh_proplist()) -> any().
+-spec relay_amqp(wh_json:object(), wh_proplist()) -> any().
 relay_amqp(JObj, Props) ->
     Pids = [props:get_value(cf_module_pid, Props)
             | props:get_value(cf_event_pids, Props, [])
            ],
     [whapps_call_command:relay_event(Pid, JObj) || Pid <- Pids, is_pid(Pid)].
 
--spec send_amqp/3 :: (pid() | whapps_call:call(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.
+-spec send_amqp(pid() | whapps_call:call(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.
 send_amqp(Srv, API, PubFun) when is_pid(Srv), is_function(PubFun, 1) ->
     gen_listener:cast(Srv, {send_amqp, API, PubFun});
 send_amqp(Call, API, PubFun) when is_function(PubFun, 1) ->
@@ -519,14 +519,14 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec launch_cf_module/1 :: (#state{}) -> #state{}.
+-spec launch_cf_module(#state{}) -> #state{}.
 launch_cf_module(#state{call=Call, flow=Flow}=State) ->
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow, wh_json:new()),
     {Pid, Action} = maybe_start_cf_module(Module, Data, Call),
     State#state{cf_module_pid=Pid, call=whapps_call:kvs_store(cf_last_action, Action, Call)}.
 
--spec maybe_start_cf_module/3 :: (ne_binary(), wh_proplist(), whapps_call:call()) ->
+-spec maybe_start_cf_module(ne_binary(), wh_proplist(), whapps_call:call()) ->
                                          {pid() | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     try wh_util:to_atom(ModuleBin) of
@@ -545,7 +545,7 @@ maybe_start_cf_module(ModuleBin, Data, Call) ->
             end
     end.
 
--spec cf_module_not_found/1 :: (whapps_call:call()) ->
+-spec cf_module_not_found(whapps_call:call()) ->
                                        {'undefined', atom()}.
 cf_module_not_found(Call) ->
     lager:error("unknown callflow action, reverting to last action"),
@@ -559,7 +559,7 @@ cf_module_not_found(Call) ->
 %% point 'handle' having set the callid on the new process first
 %% @end
 %%--------------------------------------------------------------------
--spec spawn_cf_module/3 :: (CFModule, list(), whapps_call:call()) -> {pid(), CFModule}.
+-spec spawn_cf_module(CFModule, list(), whapps_call:call()) -> {pid(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
     {spawn_link(fun() ->
                         put(callid, whapps_call:call_id_direct(Call)),
@@ -583,17 +583,17 @@ spawn_cf_module(CFModule, Data, Call) ->
 %% a hangup command without relying on the (now terminated) cf_exe.
 %% @end
 %%--------------------------------------------------------------------
--spec send_amqp_message/3 :: (whapps_call:call(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.
+-spec send_amqp_message(whapps_call:call(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.
 send_amqp_message(Call, API, PubFun) ->
     PubFun(add_server_id(API, whapps_call:controller_queue(Call))).
 
--spec add_server_id/2 :: (api_terms(), ne_binary()) -> api_terms().
+-spec add_server_id(api_terms(), ne_binary()) -> api_terms().
 add_server_id(API, Q) when is_list(API) ->
     [{<<"Server-ID">>, Q} | props:delete(<<"Server-ID">>, API)];
 add_server_id(API, Q) ->
     wh_json:set_value(<<"Server-ID">>, Q, API).
 
--spec send_command/3 :: (wh_proplist(), cf_api_binary(), cf_api_binary()) -> 'ok'.
+-spec send_command(wh_proplist(), cf_api_binary(), cf_api_binary()) -> 'ok'.
 send_command(_, undefined, _) -> ok;
 send_command(_, _, undefined) -> ok;
 send_command(Command, ControlQ, CallId) ->
@@ -602,7 +602,7 @@ send_command(Command, ControlQ, CallId) ->
                       ],
     wapi_dialplan:publish_command(ControlQ, Prop).
 
--spec log_call_information/1 :: (whapps_call:call()) -> 'ok'.
+-spec log_call_information(whapps_call:call()) -> 'ok'.
 log_call_information(Call) ->
     lager:info("executing callflow ~s", [whapps_call:kvs_fetch(cf_flow_id, Call)]),
     lager:info("account id ~s", [whapps_call:account_id(Call)]),

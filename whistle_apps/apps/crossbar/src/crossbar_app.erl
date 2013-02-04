@@ -21,7 +21,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start/2 :: (StartType, StartArgs) -> tuple(ok, pid()) | tuple(error, startlink_err()) when
+-spec start(StartType, StartArgs) -> tuple(ok, pid()) | tuple(error, startlink_err()) when
       StartType :: term(),
       StartArgs :: term().
 start(_StartType, _StartArgs) ->
@@ -37,7 +37,7 @@ start(_StartType, _StartArgs) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop/1 :: (State) -> ok when
+-spec stop(State) -> ok when
       State :: term().
 stop(_State) ->
     ok.

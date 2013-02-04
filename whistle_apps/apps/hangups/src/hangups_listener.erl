@@ -54,7 +54,7 @@ start_link() ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], []).
 
--spec handle_cdr/2 :: (wh_json:json_object(), proplist()) -> no_return().
+-spec handle_cdr(wh_json:json_object(), proplist()) -> no_return().
 handle_cdr(JObj, _Props) ->
     true = wapi_call:cdr_v(JObj),
     IgnoreCauses = whapps_config:get(<<"hangups">>, <<"ignore_hangup_causes">>, [<<"NO_ANSWER">>
@@ -191,7 +191,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_account_realm/1 :: (ne_binary()) -> api_binary().
+-spec get_account_realm(ne_binary()) -> api_binary().
 get_account_realm(undefined) -> undefined;
 get_account_realm(AccountId) ->
     case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of

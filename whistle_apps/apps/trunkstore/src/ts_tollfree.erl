@@ -14,7 +14,7 @@
 
 -define(REGEX, begin {ok, M} = re:compile("^\\+18(88|77|66|55|00)\\d{7}$"), M end).
 
--spec(process_flags/1 :: (Flags :: tuple()) -> tuple()).
+-spec(process_flags(Flags :: tuple()) -> tuple()).
 process_flags(#route_flags{direction = <<"inbound">>, to_user = From}=Flags) ->
     case re:run(From, ?REGEX) of
 	nomatch -> Flags;

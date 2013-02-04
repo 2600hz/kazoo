@@ -16,16 +16,16 @@
 
 -include("include/crossbar.hrl").
 
--spec init/3 :: ({atom(), 'http'}, #http_req{}, proplist()) -> {'ok', #http_req{}, 'undefined'}.
+-spec init({atom(), 'http'}, #http_req{}, proplist()) -> {'ok', #http_req{}, 'undefined'}.
 init({_Any, http}, Req, []) ->    
     {ok, Req, undefined}.
 
--spec handle/2 :: (#http_req{}, State) -> {'ok', #http_req{}, State}.
+-spec handle(#http_req{}, State) -> {'ok', #http_req{}, State}.
 handle(Req, State) ->
     {ok, Req1} = cowboy_http_req:reply(200, [], <<"Howdy, new world!">>, Req),
     {ok, Req1, State}.
 
--spec terminate/2 :: (#http_req{}, term()) -> 'ok'.
+-spec terminate(#http_req{}, term()) -> 'ok'.
 terminate(_Req, _State) ->
     ok.
 

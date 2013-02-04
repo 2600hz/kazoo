@@ -71,14 +71,14 @@ set_resp_status(#cb_context{}=Context, RespStatus) -> Context#cb_context{resp_st
 
 %% Helpers
 
--spec add_content_types_provided/2 :: (context(), crossbar_content_handler() | crossbar_content_handlers()) ->
+-spec add_content_types_provided(context(), crossbar_content_handler() | crossbar_content_handlers()) ->
                                               context().
 add_content_types_provided(#cb_context{content_types_provided=CTPs}=Context, [_|_]=NewCTPs) ->
     Context#cb_context{content_types_provided = NewCTPs ++ CTPs};
 add_content_types_provided(Context, {_, _}=NewCTP) ->
     add_content_types_provided(Context,[NewCTP]).
 
--spec add_content_types_accepted/2 :: (context(), crossbar_content_handler() | crossbar_content_handlers()) ->
+-spec add_content_types_accepted(context(), crossbar_content_handler() | crossbar_content_handlers()) ->
                                               context().
 add_content_types_accepted(#cb_context{content_types_accepted=CTAs}=Context, [_|_]=NewCTAs) ->
     Context#cb_context{content_types_provided = NewCTAs ++ CTAs};
@@ -92,7 +92,7 @@ add_content_types_accepted(Context, {_, _}=NewCTA) ->
 %% this request.
 %% @end
 %%--------------------------------------------------------------------
--spec store/3 :: (term(), term(), context()) -> context().
+-spec store(term(), term(), context()) -> context().
 store(Key, Data, #cb_context{storage=Storage}=Context) ->
     Context#cb_context{storage=[{Key, Data}|props:delete(Key, Storage)]}.
 
@@ -102,8 +102,8 @@ store(Key, Data, #cb_context{storage=Storage}=Context) ->
 %% Fetches a previously stored value from the current request.
 %% @end
 %%--------------------------------------------------------------------
--spec fetch/2 :: (term(), context()) -> term().
--spec fetch/3 :: (term(), context(), term()) -> term().
+-spec fetch(term(), context()) -> term().
+-spec fetch(term(), context(), term()) -> term().
 
 fetch(Key, #cb_context{}=Context) ->
     fetch(Key, Context, undefined).
@@ -121,7 +121,7 @@ fetch(Key, #cb_context{storage=Storage}, Default) ->
 %% the process dictionary, where the logger expects it.
 %% @end
 %%--------------------------------------------------------------------
--spec put_reqid/1 :: (context()) -> api_binary().
+-spec put_reqid(context()) -> api_binary().
 put_reqid(#cb_context{req_id=ReqId}) ->
     put(callid, ReqId).
 

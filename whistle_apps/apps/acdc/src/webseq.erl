@@ -43,15 +43,15 @@ start_link() ->
 -type who() :: pid() | ne_binary().
 -type what() :: ne_binary() | iolist().
 
--spec title/1 :: (what()) -> 'ok'.
+-spec title(what()) -> 'ok'.
 title(Title) ->
     gen_server:cast(?MODULE, {write, "title ~s~n", [what(Title)]}).
 
--spec evt/3 :: (who(), who(), what()) -> 'ok'.
+-spec evt(who(), who(), what()) -> 'ok'.
 evt(From, To, Desc) ->
     gen_server:cast(?MODULE, {write, "~s->~s: ~s~n", [who(From), who(To), what(Desc)]}).
 
--spec note/3 :: (who(), 'right' | 'left', what()) -> 'ok'.
+-spec note(who(), 'right' | 'left', what()) -> 'ok'.
 note(Who, Dir, Note) ->
     gen_server:cast(?MODULE, {write, "note ~s of ~s: ~s~n", [Dir, who(Who), what(Note)]}).
 
@@ -75,7 +75,7 @@ who(P) ->
         W -> W
     end.
 
--spec what/1 :: (what()) -> ne_binary().
+-spec what(what()) -> ne_binary().
 what(B) when is_binary(B) -> B;
 what(IO) when is_list(IO) -> iolist_to_binary(IO).
 

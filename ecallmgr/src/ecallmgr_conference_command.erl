@@ -27,9 +27,10 @@ exec(Focus, ConferenceId, JObj) ->
             send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj)
     end.
 
--spec get_conf_command(ne_binary(), atom(), ne_binary(), wh_json:object()) -> {ne_binary(), binary()} |
-                                                                                    {'error', ne_binary()} |
-                                                                                    {'noop', wh_json:object()}.
+-spec get_conf_command(ne_binary(), atom(), ne_binary(), wh_json:object()) ->
+                              {ne_binary(), binary()} |
+                              {'error', ne_binary()} |
+                              {'noop', wh_json:object()}.
 get_conf_command(<<"deaf_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:deaf_participant_v(JObj) of
         false ->
@@ -37,6 +38,7 @@ get_conf_command(<<"deaf_participant">>, _Focus, _ConferenceId, JObj) ->
         true ->
             {<<"deaf">>, wh_json:get_binary_value(<<"Participant">>, JObj)}
     end;
+
 get_conf_command(<<"participant_energy">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:participant_energy_v(JObj) of
         false ->
@@ -47,6 +49,7 @@ get_conf_command(<<"participant_energy">>, _Focus, _ConferenceId, JObj) ->
                                   ]),
             {<<"energy">>, Args}
     end;
+
 get_conf_command(<<"kick">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:kick_v(JObj) of
         false ->
@@ -54,8 +57,10 @@ get_conf_command(<<"kick">>, _Focus, _ConferenceId, JObj) ->
         true ->
             {<<"hup">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
     end;
+
 get_conf_command(<<"participants">>, undefined, ConferenceId, _) ->
     {error, <<"Non-Existant ID ", ConferenceId/binary>>};
+
 get_conf_command(<<"participants">>, Focus, ConferenceId, JObj) ->
     case wapi_conference:participants_req_v(JObj) of
         false ->
@@ -63,6 +68,7 @@ get_conf_command(<<"participants">>, Focus, ConferenceId, JObj) ->
         true ->
             {noop, wh_json:get_value(ConferenceId, ecallmgr_conference_listener:conferences_on_node(Focus))}
     end;
+
 get_conf_command(<<"lock">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:lock_v(JObj) of
         false ->
@@ -70,6 +76,7 @@ get_conf_command(<<"lock">>, _Focus, _ConferenceId, JObj) ->
         true ->
             {<<"lock">>, <<>>}
     end;
+
 get_conf_command(<<"mute_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:mute_participant_v(JObj) of
         false ->
@@ -77,6 +84,7 @@ get_conf_command(<<"mute_participant">>, _Focus, _ConferenceId, JObj) ->
         true ->
             {<<"mute">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
     end;
+
 get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
     case wapi_conference:play_v(JObj) of
         false ->
@@ -90,6 +98,7 @@ get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
                    end,
             {<<"play">>, Args}
     end;
+
 get_conf_command(<<"record">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:record_v(JObj) of
         false ->
@@ -98,6 +107,7 @@ get_conf_command(<<"record">>, _Focus, _ConferenceId, JObj) ->
             MediaName = ecallmgr_util:recording_filename(wh_json:get_binary_value(<<"Media-Name">>, JObj)),
             {<<"record">>, MediaName}
     end;
+
 get_conf_command(<<"relate_participants">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:relate_participants_v(JObj) of
         false ->
@@ -109,6 +119,7 @@ get_conf_command(<<"relate_participants">>, _Focus, _ConferenceId, JObj) ->
                                   ]),
             {<<"relate">>, Args}
     end;
+
 get_conf_command(<<"set">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:set_v(JObj) of
         false ->
@@ -119,6 +130,7 @@ get_conf_command(<<"set">>, _Focus, _ConferenceId, JObj) ->
                                   ]),
             {<<"set">>, Args}
     end;
+
 get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:stop_play_v(JObj) of
         false ->
@@ -131,6 +143,7 @@ get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
                    end,
             {<<"stop">>, Args}
     end;
+
 get_conf_command(<<"undeaf_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:undeaf_participant_v(JObj) of
         false ->
@@ -138,6 +151,7 @@ get_conf_command(<<"undeaf_participant">>, _Focus, _ConferenceId, JObj) ->
         true ->
             {<<"undeaf">>, wh_json:get_binary_value(<<"Participant">>, JObj)}
     end;
+
 get_conf_command(<<"unlock">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:unlock_v(JObj) of
         false ->
@@ -145,6 +159,7 @@ get_conf_command(<<"unlock">>, _Focus, _ConferenceId, JObj) ->
         true ->
             {<<"unlock">>, <<>>}
     end;
+
 get_conf_command(<<"unmute_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:unmute_participant_v(JObj) of
         false ->
@@ -152,6 +167,7 @@ get_conf_command(<<"unmute_participant">>, _Focus, _ConferenceId, JObj) ->
         true ->
             {<<"unmute">>, wh_json:get_binary_value(<<"Participant">>, JObj)}
     end;
+
 get_conf_command(<<"participant_volume_in">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:participant_volume_in_v(JObj) of
         false ->
@@ -162,6 +178,7 @@ get_conf_command(<<"participant_volume_in">>, _Focus, _ConferenceId, JObj) ->
                                   ]),
             {<<"volume_in">>, Args}
     end;
+
 get_conf_command(<<"participant_volume_out">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:participant_volume_out_v(JObj) of
         false ->

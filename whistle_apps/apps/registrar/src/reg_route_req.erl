@@ -14,12 +14,12 @@
 
 init() -> whapps_maintenance:refresh(?WH_SIP_DB).
 
--spec handle_route_req/2 :: (wh_json:json_object(), wh_proplist()) -> any().
+-spec handle_route_req(wh_json:json_object(), wh_proplist()) -> any().
 handle_route_req(JObj, _Props) ->
     true = wapi_route:req_v(JObj),
     maybe_replay_route_req(JObj, wh_json:get_value(<<"From-Network-Addr">>, JObj)).
 
--spec maybe_replay_route_req/2 :: (wh_json:json_object(), api_binary()) -> any().
+-spec maybe_replay_route_req(wh_json:json_object(), api_binary()) -> any().
 maybe_replay_route_req(_JObj, undefined) -> ok;
 maybe_replay_route_req(JObj, IP) ->
     lager:debug("trying to see if this route req is an auth-by-ip'd device: ~s", [IP]),

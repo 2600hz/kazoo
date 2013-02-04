@@ -29,7 +29,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> any().
+-spec handle(wh_json:json_object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
     Prop = props:filter_empty(
              [{<<"Call">>, whapps_call:to_json(Call)}

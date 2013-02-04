@@ -13,7 +13,7 @@
 
 -include("jonny5.hrl").
 
--spec is_available/2 :: (#limits{}, wh_json:json_object()) -> boolean().
+-spec is_available(#limits{}, wh_json:json_object()) -> boolean().
 is_available(Limits, JObj) ->
     case try_find_allotment(Limits, JObj) of
         undefined -> false;
@@ -21,7 +21,7 @@ is_available(Limits, JObj) ->
             maybe_consume_allotment(Allotment, Limits, JObj)
     end.
 
--spec reauthorize/2 :: (#limits{}, wh_json:json_object()) -> 'ok'.
+-spec reauthorize(#limits{}, wh_json:json_object()) -> 'ok'.
 reauthorize(Limits, JObj) ->
     Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
     Answered = wh_json:get_integer_value(<<"Answered-Time">>, JObj),
@@ -32,7 +32,7 @@ reauthorize(Limits, JObj) ->
             maybe_transition_to_per_minute(Allotment, Limits, JObj)
     end.
 
--spec reconcile_cdr/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec reconcile_cdr(ne_binary(), wh_json:json_object()) -> 'ok'.
 reconcile_cdr(Account, JObj) ->
     Limits = j5_util:get_limits(Account),
     case wh_json:get_ne_value(<<"Billing-Seconds">>, JObj) =:= undefined
@@ -48,7 +48,7 @@ reconcile_cdr(Account, JObj) ->
     end,
     ok.
 
--spec maybe_transition_to_per_minute/3 :: ('undefined' | wh_json:json_object(), #limits{}, wh_json:json_object()) -> 'ok'.
+-spec maybe_transition_to_per_minute('undefined' | wh_json:json_object(), #limits{}, wh_json:json_object()) -> 'ok'.
 maybe_transition_to_per_minute(undefined, _, _) -> ok;
 maybe_transition_to_per_minute(Allotment, Limits, JObj) ->
     Amount = wh_json:get_integer_value(<<"amount">>, Allotment, 0),
@@ -63,7 +63,7 @@ maybe_transition_to_per_minute(Allotment, Limits, JObj) ->
             j5_reauthz_req:send_allow_resp(JObj)
     end.
 
--spec transition_to_per_minute/1 :: (wh_json:json_object()) -> 'ok'.
+-spec transition_to_per_minute(wh_json:json_object()) -> 'ok'.
 transition_to_per_minute(JObj) ->
     lager:debug("allotment consumed, transitioning to per_minute", []),
     Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
@@ -71,7 +71,7 @@ transition_to_per_minute(JObj) ->
     CCVs = wh_json:from_list([{<<"Billing-Seconds-Offset">>, (Timestamp - Answered) + 62}]),
     j5_reauthz_req:send_allow_resp(wh_json:set_value(<<"Type">>, <<"per_minute">>, JObj), CCVs).
 
--spec try_find_allotment/2 :: (#limits{}, wh_json:json_object()) -> wh_json:json_object() | 'undefined'.
+-spec try_find_allotment(#limits{}, wh_json:json_object()) -> wh_json:json_object() | 'undefined'.
 try_find_allotment(#limits{allotments=Allotments}, JObj) ->
     [Number, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
     case wnm_util:classify_number(Number) of
@@ -80,13 +80,13 @@ try_find_allotment(#limits{allotments=Allotments}, JObj) ->
             ensure_name_present(wh_json:get_value(Classification, Allotments), Classification)
     end.
 
--spec ensure_name_present/2 :: ('undefined' | wh_json:json_object(), ne_binary()) -> 'undefined' | wh_json:json_object().
+-spec ensure_name_present('undefined' | wh_json:json_object(), ne_binary()) -> 'undefined' | wh_json:json_object().
 ensure_name_present(undefined, _) -> undefined;
 ensure_name_present(Allotment, Classification) -> 
     Name = wh_json:get_ne_value(<<"name">>, Allotment, Classification),
     wh_json:set_value(<<"name">>, Name, Allotment).
 
--spec maybe_consume_allotment/3 :: (wh_json:json_object(), #limits{}, wh_json:json_object()) -> boolean().
+-spec maybe_consume_allotment(wh_json:json_object(), #limits{}, wh_json:json_object()) -> boolean().
 maybe_consume_allotment(Allotment, #limits{account_id=AccountId}=Limits, JObj) ->
     Amount = wh_json:get_integer_value(<<"amount">>, Allotment, 0),
     Name = wh_json:get_value(<<"name">>, Allotment),
@@ -101,7 +101,7 @@ maybe_consume_allotment(Allotment, #limits{account_id=AccountId}=Limits, JObj) -
             true
     end.
 
--spec allotment_consumed_sofar/3 :: (ne_binary(), ne_binary(), #limits{}) -> integer().
+-spec allotment_consumed_sofar(ne_binary(), ne_binary(), #limits{}) -> integer().
 allotment_consumed_sofar(Name, Cycle, #limits{account_db=AccountDb}) ->
     ViewOptions = [{startkey, [Name, cycle_start(Cycle)]}
                    ,group
@@ -117,7 +117,7 @@ allotment_consumed_sofar(Name, Cycle, #limits{account_db=AccountDb}) ->
             abs(wh_json:get_integer_value(<<"value">>, JObj, 0))
     end.
 
--spec cycle_start/1 :: (ne_binary()) -> integer().
+-spec cycle_start(ne_binary()) -> integer().
 cycle_start(<<"yearly">>) ->
     {{Year, _, _}, _} = calendar:universal_time(),
     calendar:datetime_to_gregorian_seconds({{Year, 1, 1}, {0, 0, 0}});
@@ -137,7 +137,7 @@ cycle_start(<<"minutely">>) ->
     {{Year, Month, Day}, {Hour, Min, _}} = calendar:universal_time(),
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, Min, 0}}).
 
--spec start_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
+-spec start_allotment_consumption(proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 start_allotment_consumption(Props, Units, Limits, JObj) ->
     CompleteProps = [{<<"reason">>, <<"allotment_channel">>}
                      ,{<<"pvt_type">>, <<"debit_allotment">>}
@@ -145,7 +145,7 @@ start_allotment_consumption(Props, Units, Limits, JObj) ->
                     ],
     j5_util:write_to_ledger(<<"start">>, CompleteProps, Units, Limits, JObj).
 
--spec tick_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
+-spec tick_allotment_consumption(proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 tick_allotment_consumption(Props, Units, Limits, JObj) ->
     Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp()),
     CompleteProps = [{<<"reason">>, <<"allotment_channel">>}
@@ -154,7 +154,7 @@ tick_allotment_consumption(Props, Units, Limits, JObj) ->
                     ], 
     j5_util:write_to_ledger(wh_util:to_binary(Timestamp), CompleteProps, Units, Limits, JObj).
 
--spec return_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
+-spec return_allotment_consumption(proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 return_allotment_consumption(Props, Units, Limits, JObj) ->
     CompleteProps = [{<<"reason">>, <<"allotment_channel">>}
                      ,{<<"pvt_type">>, <<"credit_allotment">>}

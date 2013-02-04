@@ -165,7 +165,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec distribute_jobs/1 :: (wh_json:json_objects()) -> wh_json:json_objects().
+-spec distribute_jobs(wh_json:json_objects()) -> wh_json:json_objects().
 distribute_jobs([]) -> [];
 distribute_jobs([Job|Jobs]) -> 
     case catch poolboy:checkout(fax_worker_pool, false, 1000) of
@@ -175,7 +175,7 @@ distribute_jobs([Job|Jobs]) ->
         _Else -> Jobs
     end.
 
--spec cleanup_jobs/0 :: () -> 'ok'.
+-spec cleanup_jobs() -> 'ok'.
 cleanup_jobs() ->
     ViewOptions = [{<<"key">>, wh_util:to_binary(node())}],
     case couch_mgr:get_results(?WH_FAXES, <<"faxes/processing_by_node">>, ViewOptions) of

@@ -18,7 +18,7 @@
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
--spec start/2 :: (term(), term()) ->
+-spec start(term(), term()) ->
                          {'ok', pid()} |
                          {'error', startlink_err()}.
 start(_StartType, _StartArgs) ->
@@ -34,6 +34,6 @@ start(_StartType, _StartArgs) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop/1 :: (term()) -> 'ok'.
+-spec stop(term()) -> 'ok'.
 stop(_State) ->
     ok.

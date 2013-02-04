@@ -17,7 +17,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:ring(Call),
@@ -33,7 +33,7 @@ handle(Data, Call) ->
             wait_for_queue(Call)
     end.
 
--spec publish_queue_join/3 :: (wh_json:json_object(), whapps_call:call(), non_neg_integer()) -> 'ok'.
+-spec publish_queue_join(wh_json:json_object(), whapps_call:call(), non_neg_integer()) -> 'ok'.
 publish_queue_join(Queue, Call, ConnTimeout) ->
     JObj = wh_json:from_list([{<<"Queue">>, Queue}
                               ,{<<"Queue-ID">>, wh_json:get_value(<<"_id">>, Queue)}
@@ -43,7 +43,7 @@ publish_queue_join(Queue, Call, ConnTimeout) ->
                              ]),
     wapi_queue:publish_new_member(JObj, ConnTimeout).
 
--spec wait_for_queue/1 :: (whapps_call:call()) -> 'ok'.
+-spec wait_for_queue(whapps_call:call()) -> 'ok'.
 wait_for_queue(Call) ->
     receive
         {amqp_msg, JObj} ->

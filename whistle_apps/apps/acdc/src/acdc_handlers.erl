@@ -162,7 +162,7 @@ move_agent_device(Call, AgentId, Device) ->
         end,
     {ok, _} = couch_mgr:save_doc(whapps_call:account_db(Call), wh_json:set_value(<<"owner_id">>, AgentId, Device)).
 
--spec send_new_status/3 :: (ne_binary(), ne_binary(), wh_amqp_worker:publish_fun()) -> 'ok'.
+-spec send_new_status(ne_binary(), ne_binary(), wh_amqp_worker:publish_fun()) -> 'ok'.
 send_new_status(AcctId, AgentId, PubFun) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}

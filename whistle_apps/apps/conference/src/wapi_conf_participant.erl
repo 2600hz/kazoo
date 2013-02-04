@@ -47,8 +47,8 @@ unbind_q(_, _) ->
 %% Publish to the participant
 %% @end
 %%--------------------------------------------------------------------
--spec publish_dialplan_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_dialplan_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_dialplan_req(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_dialplan_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_dialplan_req(Queue, JObj) ->
     publish_dialplan_req(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_dialplan_req(Queue, Req, ContentType) ->

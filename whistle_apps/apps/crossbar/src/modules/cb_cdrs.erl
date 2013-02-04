@@ -49,8 +49,8 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     ['GET'].
 allowed_methods(_) ->
@@ -64,8 +64,8 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 
@@ -76,7 +76,7 @@ resource_exists(_) -> true.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/1 :: (cb_context:context()) -> cb_context:context().
+-spec content_types_provided(cb_context:context()) -> cb_context:context().
 content_types_provided(#cb_context{}=Context) ->
     CTPs = [{to_json, [{<<"application">>, <<"json">>}]}
             ,{to_csv, [{<<"application">>, <<"octet-stream">>}]}
@@ -92,8 +92,8 @@ content_types_provided(#cb_context{}=Context) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (cb_context:context()) -> cb_context:context().
--spec validate/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_cdr_summary(Context).
 validate(#cb_context{req_verb = <<"get">>}=Context, CDRId) ->
@@ -106,7 +106,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context, CDRId) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr_summary/1 :: (cb_context:context()) -> cb_context:context().
+-spec load_cdr_summary(cb_context:context()) -> cb_context:context().
 load_cdr_summary(#cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, [_AID]} | _]}=Context) ->
     lager:debug("loading cdrs for account ~s", [_AID]),
     case create_view_options(undefined, Context) of
@@ -152,7 +152,7 @@ maybe_load_doc(_, _, ViewOptions) ->
 %% Load a CDR document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr/2 :: (ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_cdr(ne_binary(), cb_context:context()) -> cb_context:context().
 load_cdr(CdrId, Context) ->
     crossbar_doc:load(CdrId, Context).
 
@@ -162,7 +162,7 @@ load_cdr(CdrId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/4 :: (wh_json:object(), wh_json:objects(), boolean(), boolean()) -> wh_json:objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects(), boolean(), boolean()) -> wh_json:objects().
 normalize_view_results(JObj, Acc, false, false) ->
     [filter_cdr_fields(wh_json:get_value(<<"value">>, JObj))|Acc];
 normalize_view_results(JObj, Acc, G, L) ->
@@ -216,7 +216,7 @@ filter_cdr_fields(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_view_options/2 :: (api_binary(), cb_context:context()) ->
+-spec create_view_options(api_binary(), cb_context:context()) ->
                                        {'ok', wh_proplist()} |
                                        {'error', cb_context:context()}.
 create_view_options(OwnerId, #cb_context{query_json=JObj}=Context) ->

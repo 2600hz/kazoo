@@ -46,7 +46,7 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods() -> http_methods().
 allowed_methods() ->
     ['PUT'].
 
@@ -58,7 +58,7 @@ allowed_methods() ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists() -> 'true'.
 resource_exists() -> true.
 
 %%--------------------------------------------------------------------
@@ -66,7 +66,7 @@ resource_exists() -> true.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate/1 :: (#cb_context{}) -> 'false' | {'true', #cb_context{}}.
+-spec authenticate(#cb_context{}) -> 'false' | {'true', #cb_context{}}.
 authenticate(#cb_context{req_nouns=[{<<"ip_auth">>, _}]}) ->
     lager:debug("request is for the ip_auth module", []),
     true;
@@ -94,7 +94,7 @@ authenticate(_) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authorize/1 :: (#cb_context{}) -> boolean().
+-spec authorize(#cb_context{}) -> boolean().
 authorize(#cb_context{req_nouns=[{<<"ip_auth">>, []}]}) ->
     true;
 authorize(_) ->
@@ -105,7 +105,7 @@ authorize(_) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
     cb_context:validate_request_data(<<"ip_auth">>, Context, fun on_successful_validation/1).
 
@@ -130,7 +130,7 @@ put(Context) ->
 %% Failure here returns 401
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation/1 :: (#cb_context{}) -> #cb_context{}.
+-spec on_successful_validation(#cb_context{}) -> #cb_context{}.
 on_successful_validation(#cb_context{client_ip=IpKey}=Context) ->
     ViewOptions = [{<<"key">>, IpKey}],
     case wh_json:is_empty(IpKey)
@@ -150,7 +150,7 @@ on_successful_validation(#cb_context{client_ip=IpKey}=Context) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec create_token/1 :: (#cb_context{}) -> #cb_context{}.
+-spec create_token(#cb_context{}) -> #cb_context{}.
 create_token(#cb_context{doc=JObj}=Context) ->
     case wh_json:is_empty(JObj) of
         true ->
@@ -182,7 +182,7 @@ create_token(#cb_context{doc=JObj}=Context) ->
 %% Attempt to create a token
 %% @end
 %%--------------------------------------------------------------------
--spec create_fake_token/1 :: (#cb_context{}) -> #cb_context{}.
+-spec create_fake_token(#cb_context{}) -> #cb_context{}.
 create_fake_token(#cb_context{doc=JObj}=Context) ->
     case wh_json:is_empty(JObj) of
         true ->

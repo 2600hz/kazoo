@@ -178,7 +178,7 @@ start_link(Supervisor, ThiefCall, QueueId) ->
 stop(Srv) ->
     gen_listener:cast(Srv, {stop_agent, self()}).
 
--spec member_connect_resp/2 :: (pid(), wh_json:object()) -> 'ok'.
+-spec member_connect_resp(pid(), wh_json:object()) -> 'ok'.
 member_connect_resp(Srv, ReqJObj) ->
     gen_listener:cast(Srv, {member_connect_resp, ReqJObj}).
 
@@ -194,7 +194,7 @@ bridge_to_member(Srv, Call, WinJObj, EPs) ->
 monitor_call(Srv, Call) ->
     gen_listener:cast(Srv, {monitor_call, Call}).
 
--spec channel_hungup/2 :: (pid(), ne_binary()) -> 'ok'.
+-spec channel_hungup(pid(), ne_binary()) -> 'ok'.
 channel_hungup(Srv, CallId) ->
     gen_listener:cast(Srv, {channel_hungup, CallId}).
 
@@ -218,7 +218,7 @@ send_sync_resp(Srv, Status, ReqJObj) ->
 send_sync_resp(Srv, Status, ReqJObj, Options) ->
     gen_listener:cast(Srv, {send_sync_resp, Status, ReqJObj, Options}).
 
--spec config/1 :: (pid()) -> {ne_binary(), ne_binary()}.
+-spec config(pid()) -> {ne_binary(), ne_binary()}.
 config(Srv) ->
     gen_listener:call(Srv, config).
 
@@ -727,10 +727,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec is_valid_queue/2 :: (ne_binary(), ne_binaries()) -> boolean().
+-spec is_valid_queue(ne_binary(), ne_binaries()) -> boolean().
 is_valid_queue(Q, Qs) -> lists:member(Q, Qs).
 
--spec send_member_connect_resp/5 :: (wh_json:object(), ne_binary()
+-spec send_member_connect_resp(wh_json:object(), ne_binary()
                                      ,ne_binary(), ne_binary(), wh_now() | 'undefined'
                                     ) -> 'ok'.
 send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
@@ -746,8 +746,8 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
     lager:debug("sending connect_resp to ~s for ~s: ~s", [Queue, call_id(JObj), MyId]),
     wapi_acdc_queue:publish_member_connect_resp(Queue, Resp).
 
--spec send_member_connect_retry/2 :: (wh_json:object(), ne_binary()) -> 'ok'.
--spec send_member_connect_retry/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_member_connect_retry(wh_json:object(), ne_binary()) -> 'ok'.
+-spec send_member_connect_retry(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_retry(JObj, MyId) ->
     send_member_connect_retry(wh_json:get_value(<<"Server-ID">>, JObj)
                               ,call_id(JObj)
@@ -763,7 +763,7 @@ send_member_connect_retry(Queue, CallId, MyId) ->
              ]),
     wapi_acdc_queue:publish_member_connect_retry(Queue, Resp).
 
--spec send_member_connect_accepted/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_member_connect_accepted(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_accepted(Queue, CallId, AcctId, AgentId, MyId) ->
     Resp = props:filter_undefined([{<<"Call-ID">>, CallId}
                                    ,{<<"Account-ID">>, AcctId}
@@ -773,7 +773,7 @@ send_member_connect_accepted(Queue, CallId, AcctId, AgentId, MyId) ->
                                   ]),
     wapi_acdc_queue:publish_member_connect_accepted(Queue, Resp).
 
--spec send_originate_execute/2 :: (wh_json:object(), ne_binary()) -> 'ok'.
+-spec send_originate_execute(wh_json:object(), ne_binary()) -> 'ok'.
 send_originate_execute(JObj, Q) ->
     Prop = [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -781,7 +781,7 @@ send_originate_execute(JObj, Q) ->
            ],
     wapi_dialplan:publish_originate_execute(wh_json:get_value(<<"Server-ID">>, JObj), Prop).
 
--spec send_sync_request/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_sync_request(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_sync_request(AcctId, AgentId, MyId, MyQ) ->
     Prop = [{<<"Account-ID">>, AcctId}
             ,{<<"Agent-ID">>, AgentId}
@@ -811,11 +811,11 @@ send_status_update(AcctId, AgentId, resume) ->
     wapi_acdc_agent:publish_resume(Update).
 
 
--spec idle_time/1 :: ('undefined' | wh_now()) -> 'undefined' | integer().
+-spec idle_time('undefined' | wh_now()) -> 'undefined' | integer().
 idle_time('undefined') -> 'undefined';
 idle_time(T) -> wh_util:elapsed_s(T).
 
--spec call_id/1 :: ('undefined' | whapps_call:call() | wh_json:object()) ->
+-spec call_id('undefined' | whapps_call:call() | wh_json:object()) ->
                            api_binary().
 call_id('undefined') -> 'undefined';
 call_id(Call) ->
@@ -831,7 +831,7 @@ call_id(Call) ->
                         end, 'undefined', Keys)
     end.
 
--spec maybe_connect_to_agent/4 :: (ne_binary(), list(), whapps_call:call(), integer() | 'undefined') -> 'ok'.
+-spec maybe_connect_to_agent(ne_binary(), list(), whapps_call:call(), integer() | 'undefined') -> 'ok'.
 maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
     put(callid, whapps_call:call_id(Call)),
 
@@ -875,7 +875,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
 
     wapi_resource:publish_originate_req(Prop).
 
--spec login_to_queue/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec login_to_queue(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 login_to_queue(AcctId, AgentId, QueueId) ->
     gen_listener:add_binding(self(), acdc_queue, [{restrict_to, [member_connect_req]}
                                                   ,{queue_id, QueueId}
@@ -889,7 +889,7 @@ login_to_queue(AcctId, AgentId, QueueId) ->
            ],
     wapi_acdc_queue:publish_agent_change(Prop).
 
--spec logout_from_queue/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec logout_from_queue(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 logout_from_queue(AcctId, AgentId, QueueId) ->
     gen_listener:rm_binding(self(), acdc_queue, [{restrict_to, [member_connect_req]}
                                                  ,{queue_id, QueueId}
@@ -922,7 +922,7 @@ fetch_my_queue(Srv) ->
 my_queue(Srv) ->
     gen_listener:cast(Srv, {queue_name, gen_listener:queue_name(Srv)}).
 
--spec should_record_endpoints/2 :: (wh_json:objects(), boolean()) -> boolean().
+-spec should_record_endpoints(wh_json:objects(), boolean()) -> boolean().
 should_record_endpoints(_EPs, true) -> true;
 should_record_endpoints(EPs, false) ->
     lists:any(fun(EP) ->
@@ -959,11 +959,11 @@ save_recording(Call, MediaName, Format) ->
 
     store_recording(MediaName, StoreUrl, Call).
 
--spec store_recording/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 store_recording(MediaName, StoreUrl, Call) ->
     ok = whapps_call_command:store(MediaName, StoreUrl, Call).
 
--spec store_recording_meta/3 :: (whapps_call:call(), ne_binary(), ne_binary()) ->
+-spec store_recording_meta(whapps_call:call(), ne_binary(), ne_binary()) ->
                                         {'ok', wh_json:object()} |
                                         {'error', any()}.
 store_recording_meta(Call, MediaName, Ext) ->
@@ -995,11 +995,11 @@ ext_to_mime(_) -> <<"audio/mp3">>.
 
 get_recording_doc_id(CallId) -> <<"call_recording_", CallId/binary>>.
 
--spec get_media_name/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+-spec get_media_name(ne_binary(), ne_binary()) -> ne_binary().
 get_media_name(CallId, Ext) ->
     <<(get_recording_doc_id(CallId))/binary, ".", Ext/binary>>.
 
--spec store_url/2 :: (whapps_call:call(), wh_json:object()) -> ne_binary().
+-spec store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
 store_url(Call, JObj) ->
     AccountDb = whapps_call:account_db(Call),
     MediaId = wh_json:get_value(<<"_id">>, JObj),
@@ -1012,35 +1012,35 @@ store_url(Call, JObj) ->
                     ,"?rev=", Rev
                    ]).
 
--spec agent_id/1 :: (agent()) -> api_binary().
+-spec agent_id(agent()) -> api_binary().
 agent_id(Agent) ->
     case wh_json:is_json_object(Agent) of
         true -> wh_json:get_value(<<"_id">>, Agent);
         false -> whapps_call:owner_id(Agent)
     end.
 
--spec account_id/1 :: (agent()) -> api_binary().
+-spec account_id(agent()) -> api_binary().
 account_id(Agent) ->
     case wh_json:is_json_object(Agent) of
         true -> wh_json:get_value(<<"pvt_account_id">>, Agent);
         false -> whapps_call:account_id(Agent)
     end.
 
--spec account_db/1 :: (agent()) -> api_binary().
+-spec account_db(agent()) -> api_binary().
 account_db(Agent) ->
     case wh_json:is_json_object(Agent) of
         true -> wh_json:get_value(<<"pvt_account_db">>, Agent);
         false -> whapps_call:account_db(Agent)
     end.
 
--spec record_calls/1 :: (agent()) -> boolean().
+-spec record_calls(agent()) -> boolean().
 record_calls(Agent) ->
     case wh_json:is_json_object(Agent) of
         true -> wh_json:is_true(<<"record_calls">>, Agent, false);
         false -> false
     end.
 
--spec is_thief/1 :: (agent()) -> boolean().
+-spec is_thief(agent()) -> boolean().
 is_thief(Agent) -> not wh_json:is_json_object(Agent).
 
 handle_fsm_started(_FSMPid) ->

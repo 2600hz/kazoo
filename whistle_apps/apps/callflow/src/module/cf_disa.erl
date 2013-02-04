@@ -17,7 +17,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     lager:info("starting DISA handler"),
     whapps_call_command:answer(Call),
@@ -33,7 +33,7 @@ handle(Data, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec try_collect_pin/3 :: (whapps_call:call(), binary(), non_neg_integer()) -> allow | fail.
+-spec try_collect_pin(whapps_call:call(), binary(), non_neg_integer()) -> allow | fail.
 try_collect_pin(_Call, <<>>, _) ->
     lager:info("no pin set on DISA object, permitting"),
     allow;
@@ -58,7 +58,7 @@ try_collect_pin(Call, Pin, Retries) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec allow_dial/2 :: (whapps_call:call(), non_neg_integer()) -> ok.
+-spec allow_dial(whapps_call:call(), non_neg_integer()) -> ok.
 allow_dial(Call, 0) ->
     lager:info("retries exceeded for finding a callflow"),
     cf_exe:continue(Call);
@@ -93,7 +93,7 @@ allow_dial(Call, Retries) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec play_dialtone/1 :: (whapps_call:call()) -> ok.
+-spec play_dialtone(whapps_call:call()) -> ok.
 play_dialtone(Call) ->
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"350">>, <<"440">>]}
                               ,{<<"Duration-ON">>, <<"10000">>}

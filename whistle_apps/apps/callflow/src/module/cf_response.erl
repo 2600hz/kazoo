@@ -19,7 +19,7 @@
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Code = wh_json:get_value(<<"code">>, Data, <<"486">>),
     Cause = wh_json:get_ne_value(<<"message">>, Data),

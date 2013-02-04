@@ -11,7 +11,7 @@
 
 -export([handle/2]).
 
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data, Call) ->
     {CIDNamePrefix, CIDNumberPrefix} = case wh_json:get_ne_value(<<"action">>, Data) of
 					   <<"reset">> ->
@@ -29,7 +29,7 @@ handle(Data, Call) ->
     cf_exe:set_call(whapps_call:exec(Updates, Call1)),
     cf_exe:continue(Call1).
 
--spec set_cid_name_prefix/2 :: (whapps_call:call(), 'undefined' | ne_binary()) -> whapps_call:call().
+-spec set_cid_name_prefix(whapps_call:call(), 'undefined' | ne_binary()) -> whapps_call:call().
 set_cid_name_prefix(Call, undefined) ->
     whapps_call:kvs_store(prepend_cid_name, undefined, Call);
 set_cid_name_prefix(Call, Prefix) ->
@@ -41,7 +41,7 @@ set_cid_name_prefix(Call, Prefix) ->
 	      end,
     whapps_call:kvs_store(prepend_cid_name, Prefix1, Call).
 
--spec set_cid_number_prefix/2 :: (whapps_call:call(), 'undefined' | ne_binary()) -> whapps_call:call().
+-spec set_cid_number_prefix(whapps_call:call(), 'undefined' | ne_binary()) -> whapps_call:call().
 set_cid_number_prefix(Call, undefined) ->
     whapps_call:kvs_store(prepend_cid_number, undefined, Call);
 set_cid_number_prefix(Call, Prefix) ->

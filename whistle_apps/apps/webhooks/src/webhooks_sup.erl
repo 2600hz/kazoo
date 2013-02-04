@@ -28,7 +28,7 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec cache_proc/0 :: () -> {'ok', pid()}.
+-spec cache_proc() -> {'ok', pid()}.
 cache_proc() ->
     [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
                 Mod =:= webhooks_cache],

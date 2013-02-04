@@ -142,25 +142,25 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec start_cleanup_timer/0 :: () -> reference().
+-spec start_cleanup_timer() -> reference().
 start_cleanup_timer() ->
     Expiry = whapps_config:get_integer(?CONFIG_CAT, <<"cleanup_timer">>, ?SECONDS_IN_DAY),
     lager:debug("starting cleanup timer for ~b s", [Expiry]),
     erlang:send_after(Expiry * 1000, self(), cleanup).
 
--spec find_cleanup_methods/0 :: () -> [atom(),...].
+-spec find_cleanup_methods() -> [atom(),...].
 find_cleanup_methods() ->
     [F || {F, 1} <- ?MODULE:module_info(exports),
           is_cleanup_method(F)
     ].
 
--spec is_cleanup_method/1 :: (atom() | ne_binary()) -> boolean().
+-spec is_cleanup_method(atom() | ne_binary()) -> boolean().
 is_cleanup_method(F) when is_atom(F) ->
     is_cleanup_method(wh_util:to_binary(F));
 is_cleanup_method(<<"cleanup_", _/binary>>) -> true;
 is_cleanup_method(_) -> false.
 
--spec clean_acct/2 :: (ne_binary(), [atom(),...]) -> any().
+-spec clean_acct(ne_binary(), [atom(),...]) -> any().
 clean_acct(AcctDb, Fs) ->
     _ = [begin
              Old = put(callid, F),
@@ -171,7 +171,7 @@ clean_acct(AcctDb, Fs) ->
     lager:debug("done cleaning account ~s, waiting ~b ms", [AcctDb, Wait]),
     timer:sleep(Wait).
 
--spec cleanup_soft_deletes/1 :: (ne_binary()) -> any().
+-spec cleanup_soft_deletes(ne_binary()) -> any().
 cleanup_soft_deletes(AcctDb) ->
     case couch_mgr:get_results(AcctDb, <<"maintenance/soft_deleted">>, [{limit, 1000}]) of
         {ok, []} -> ok;
@@ -233,8 +233,8 @@ delete_media(AcctDb, MediaId) ->
     {ok, JObj} = couch_mgr:open_doc(AcctDb, MediaId),
     couch_mgr:ensure_saved(AcctDb, wh_json:set_value(<<"pvt_deleted">>, true, JObj)).
 
--spec prepare_docs_for_deletion/1 :: (wh_json:json_objects()) -> wh_json:json_objects().
--spec prepare_doc_for_deletion/1 :: (wh_json:json_object()) -> wh_json:json_object().
+-spec prepare_docs_for_deletion(wh_json:json_objects()) -> wh_json:json_objects().
+-spec prepare_doc_for_deletion(wh_json:json_object()) -> wh_json:json_object().
 prepare_docs_for_deletion(L) ->
     [prepare_doc_for_deletion(D) || D <- L].
 prepare_doc_for_deletion(D) ->

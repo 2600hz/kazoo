@@ -12,7 +12,7 @@
 
 -export([handle_req/2]).
 
--spec handle_req/2 :: (wh_json:object(), proplist()) -> any().
+-spec handle_req(wh_json:object(), proplist()) -> any().
 handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
@@ -55,7 +55,7 @@ should_restrict_call(Call) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec bootstrap_callflow_executer/2 :: (wh_json:object(), whapps_call:call()) -> {'ok', pid()}.
+-spec bootstrap_callflow_executer(wh_json:object(), whapps_call:call()) -> {'ok', pid()}.
 bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
                 ,fun update_ccvs/1
@@ -70,7 +70,7 @@ bootstrap_callflow_executer(_JObj, Call) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec store_owner_id/1 :: (whapps_call:call()) -> whapps_call:call().
+-spec store_owner_id(whapps_call:call()) -> whapps_call:call().
 store_owner_id(Call) ->
     OwnerId = cf_attributes:owner_id(Call),
     whapps_call:kvs_store(owner_id, OwnerId, Call).
@@ -81,7 +81,7 @@ store_owner_id(Call) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec update_ccvs/1 :: (whapps_call:call()) -> whapps_call:call().
+-spec update_ccvs(whapps_call:call()) -> whapps_call:call().
 update_ccvs(Call) ->
     {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
     Props = props:filter_undefined([{<<"Hold-Media">>, cf_attributes:moh_attributes(<<"media_id">>, Call)}
@@ -97,7 +97,7 @@ update_ccvs(Call) ->
 %% cf_exe_sup tree.
 %% @end
 %%-----------------------------------------------------------------------------
--spec execute_callflow/1 :: (whapps_call:call()) -> {'ok', pid()}.
+-spec execute_callflow(whapps_call:call()) -> {'ok', pid()}.
 execute_callflow(Call) ->
     lager:info("call has been setup, beginning to process the call"),
     cf_exe_sup:new(Call).

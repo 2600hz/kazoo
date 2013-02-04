@@ -44,7 +44,7 @@
 %%       comeback and make it correctly ;)
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data, Call) ->
     DynamicCID = #dynamic_cid{},
     Prompts = DynamicCID#dynamic_cid.prompts,

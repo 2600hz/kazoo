@@ -23,7 +23,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     {ok, Endpoints} = find_endpoints(Data, Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, <<"60">>),
@@ -42,7 +42,7 @@ handle(Data, Call) ->
 %% advanced, because its cool like that
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_resources/6 :: (endpoints(), api_binary(), api_binary(), api_binary(), wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec bridge_to_resources(endpoints(), api_binary(), api_binary(), api_binary(), wh_json:json_object(), whapps_call:call()) -> 'ok'.
 bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Data, Call) ->
     Endpoint = [create_endpoint(DestNum, Gtw, Call)
                 || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)
@@ -86,7 +86,7 @@ bridge_to_resources([], _, _, _, _, Call) ->
 %% for use with the whistle bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoint/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_json:json_object().
+-spec create_endpoint(ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_json:json_object().
 create_endpoint(DestNum, JObj, Call) ->
     AccountDb = whapps_call:account_db(Call),
     CNum = whapps_call:caller_id_number(Call),
@@ -131,7 +131,7 @@ create_endpoint(DestNum, JObj, Call) ->
 %% number as formated by that rule (ie: capture group or full number).
 %% @end
 %%--------------------------------------------------------------------
--spec find_endpoints/2 :: (wh_json:json_object(), whapps_call:call()) ->
+-spec find_endpoints(wh_json:json_object(), whapps_call:call()) ->
                                   {'ok', endpoints()} |
                                   {'error', atom()}.
 find_endpoints(Data, Call) ->
@@ -197,7 +197,7 @@ is_flag_exported(Flag, [_|Funs]) ->
 %% otherwise
 %% @end
 %%--------------------------------------------------------------------
--spec get_to_did/2 :: (wh_json:json_object(), whapps_call:call()) -> ne_binary().
+-spec get_to_did(wh_json:json_object(), whapps_call:call()) -> ne_binary().
 get_to_did(Data, Call) ->
     case wh_json:is_true(<<"do_not_normalize">>, Data) of
         false -> whapps_call:request_user(Call);
@@ -213,7 +213,7 @@ get_to_did(Data, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_caller_id_type/2 :: (wh_json:json_object(), whapps_call:call()) -> 'raw' | binary().
+-spec get_caller_id_type(wh_json:json_object(), whapps_call:call()) -> 'raw' | binary().
 get_caller_id_type(Resource, Call) ->
     case wh_json:is_true(<<"emergency">>, Resource) of
         true ->
@@ -236,7 +236,7 @@ get_caller_id_type(Resource, Call) ->
 %% full destination number otherwise return an empty list.
 %% @end
 %%--------------------------------------------------------------------
--spec evaluate_rules/2 :: (list(), ne_binary()) -> [] | [ne_binary(),...].
+-spec evaluate_rules(list(), ne_binary()) -> [] | [ne_binary(),...].
 evaluate_rules([_, Regex], DestNum) ->
     case re:run(DestNum, Regex) of
         {match, [_, {Start,End}|_]} ->
@@ -279,7 +279,7 @@ from_uri(_, _) ->
 %% build a json object of those now.
 %% @end
 %%--------------------------------------------------------------------
--spec build_sip_headers/2 :: (wh_json:json_object(), whapps_call:call()) -> 'undefined' | wh_json:json_object().
+-spec build_sip_headers(wh_json:json_object(), whapps_call:call()) -> 'undefined' | wh_json:json_object().
 build_sip_headers(Data, Call) ->
     Builders = [fun(J) ->
                         case wh_json:is_true(<<"emit_account_id">>, Data) of

@@ -13,7 +13,7 @@
 
 -include("ts.hrl").
 
--spec(process_flags/1 :: (Flags :: tuple()) -> tuple()).
+-spec(process_flags(Flags :: tuple()) -> tuple()).
 process_flags(#route_flags{to_user = <<"911">>, caller_id_e911={}}=Flags) ->
     Flags;
 process_flags(#route_flags{to_user = <<"911">>, caller_id_e911={_,_}=E911}=Flags) ->

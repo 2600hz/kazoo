@@ -25,7 +25,7 @@
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec update_presence/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec update_presence(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 update_presence(SlotNumber, PresenceId, AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
     ParkedCalls = get_parked_calls(AccountDb, AccountId),
@@ -47,7 +47,7 @@ update_presence(SlotNumber, PresenceId, AccountDb) ->
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> any().
+-spec handle(wh_json:json_object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
     ParkedCalls = get_parked_calls(Call),
     SlotNumber = get_slot_number(ParkedCalls, whapps_call:kvs_fetch(cf_capture_group, Call)),
@@ -94,7 +94,7 @@ handle(Data, Call) ->
 %% Determine the hostname of the switch
 %% @end
 %%--------------------------------------------------------------------
--spec get_switch_nodename/1 :: ('undefined' | ne_binary() | whapps_call:call()) -> 'undefined' | ne_binary().
+-spec get_switch_nodename('undefined' | ne_binary() | whapps_call:call()) -> 'undefined' | ne_binary().
 get_switch_nodename(CallId) ->
     case whapps_call_command:b_channel_status(CallId) of
         {error, _} -> undefined;
@@ -108,7 +108,7 @@ get_switch_nodename(CallId) ->
 %% Determine the appropriate action to retrieve a parked call
 %% @end
 %%--------------------------------------------------------------------
--spec retrieve/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_object()} | 
+-spec retrieve(ne_binary(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_object()} | 
                                                                                 {'hungup', wh_json:json_object()} |
                                                                                 {'error', term()}.
 retrieve(SlotNumber, ParkedCalls, Call) ->
@@ -166,7 +166,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
 %% Determine the appropriate action to park the current call scenario
 %% @end
 %%--------------------------------------------------------------------
--spec park_call/5 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), 'undefined' | ne_binary(), whapps_call:call()) -> 'ok'.
+-spec park_call(ne_binary(), wh_json:json_object(), wh_json:json_object(), 'undefined' | ne_binary(), whapps_call:call()) -> 'ok'.
 park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
     lager:info("attempting to park call in slot ~s", [SlotNumber]),
     case {ReferredTo, save_slot(SlotNumber, Slot, ParkedCalls, Call)} of
@@ -218,7 +218,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
 %% Builds the json object representing the call in the parking slot
 %% @end
 %%--------------------------------------------------------------------
--spec create_slot/2 :: (undefined | binary(), whapps_call:call()) -> wh_json:json_object().
+-spec create_slot(undefined | binary(), whapps_call:call()) -> wh_json:json_object().
 create_slot(undefined, Call) ->
     CallId = cf_exe:callid(Call),
     AccountDb = whapps_call:account_db(Call),
@@ -258,7 +258,7 @@ create_slot(ParkerCallId, Call) ->
 %% was provided
 %% @end
 %%--------------------------------------------------------------------
--spec get_slot_number/2 :: (wh_json:json_object(), whapps_call:call()) -> ne_binary().
+-spec get_slot_number(wh_json:json_object(), whapps_call:call()) -> ne_binary().
 get_slot_number(_, CaptureGroup) when is_binary(CaptureGroup) andalso size(CaptureGroup) > 0 ->
     CaptureGroup;
 get_slot_number(ParkedCalls, _) ->
@@ -284,9 +284,9 @@ get_slot_number(ParkedCalls, _) ->
 %% and tries again, determining the new slot.
 %% @end
 %%--------------------------------------------------------------------
--spec save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
+-spec save_slot(ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
                                                                                                         {'error', atom()}.
--spec do_save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
+-spec do_save_slot(ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
                                                                                                            {'error', atom()}.
 
 save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
@@ -325,7 +325,7 @@ do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
 %% actuall "A-Leg".  Find the old callid and update it with the new one.
 %% @end
 %%--------------------------------------------------------------------
--spec update_call_id/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> {'ok', ne_binary(), wh_json:json_object()}.
+-spec update_call_id(ne_binary(), wh_json:json_object(), whapps_call:call()) -> {'ok', ne_binary(), wh_json:json_object()}.
 update_call_id(Replaces, ParkedCalls, Call) ->
     update_call_id(Replaces, ParkedCalls, Call, 0).
 
@@ -388,9 +388,9 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
 %% the provided call id.
 %% @end
 %%--------------------------------------------------------------------
--spec find_slot_by_callid/2 :: (wh_json:json_object(), ne_binary()) -> {'ok', ne_binary(), wh_json:json_object()} |
+-spec find_slot_by_callid(wh_json:json_object(), ne_binary()) -> {'ok', ne_binary(), wh_json:json_object()} |
                                                                        {'error', 'not_found'}.
--spec find_slot_by_callid/3 :: ([ne_binary(),...], wh_json:json_object(), ne_binary()) -> {'ok', ne_binary(), wh_json:json_object()} |
+-spec find_slot_by_callid([ne_binary(),...], wh_json:json_object(), ne_binary()) -> {'ok', ne_binary(), wh_json:json_object()} |
                                                                                           {'error', 'not_found'}.
 
 find_slot_by_callid(Slots, CallId) ->
@@ -412,8 +412,8 @@ find_slot_by_callid([SlotNumber|SlotNumbers], Slots, CallId) ->
 %% the list does not exist then it returns an new empty instance
 %% @end
 %%--------------------------------------------------------------------
--spec get_parked_calls/1 :: (whapps_call:call()) -> wh_json:json_object().
--spec get_parked_calls/2 :: (ne_binary(), ne_binary()) -> wh_json:json_object().
+-spec get_parked_calls(whapps_call:call()) -> wh_json:json_object().
+-spec get_parked_calls(ne_binary(), ne_binary()) -> wh_json:json_object().
 
 get_parked_calls(Call) ->
     get_parked_calls(whapps_call:account_db(Call), whapps_call:account_id(Call)).
@@ -444,7 +444,7 @@ get_parked_calls(AccountDb, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_slot/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+-spec cleanup_slot(ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
                                                                    {'error', term()}.
 cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
@@ -479,7 +479,7 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_pickup/3 :: (ne_binary(), 'undefined' | ne_binary(), whapps_call:call()) -> any().
+-spec wait_for_pickup(ne_binary(), 'undefined' | ne_binary(), whapps_call:call()) -> any().
 wait_for_pickup(SlotNumber, undefined, Call) ->
     lager:info("(no ringback) waiting for parked caller to be picked up or hangup"),
     _ = whapps_call_command:b_hold(Call),
@@ -526,7 +526,7 @@ wait_for_pickup(SlotNumber, RingbackId, Call) ->
 %% c) and above, that the port is 5060
 %% @end
 %%--------------------------------------------------------------------
--spec get_node_ip/1 :: (ne_binary()) -> ne_binary().
+-spec get_node_ip(ne_binary()) -> ne_binary().
 get_node_ip(Node) ->
     [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
     {ok, Addresses} = inet:getaddrs(wh_util:to_list(Hostname), inet),
@@ -544,8 +544,8 @@ get_node_ip(Node) ->
 %% timeout.
 %% @end
 %%--------------------------------------------------------------------
--spec publish_usurp_control/1 :: (whapps_call:call()) -> 'ok'.
--spec publish_usurp_control/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+-spec publish_usurp_control(whapps_call:call()) -> 'ok'.
+-spec publish_usurp_control(ne_binary(), whapps_call:call()) -> 'ok'.
 
 publish_usurp_control(Call) ->
     publish_usurp_control(cf_exe:callid(Call), Call).
@@ -566,7 +566,7 @@ publish_usurp_control(CallId, Call) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoint_id/2 :: (ne_binary(), whapps_call:call()) -> 'undefined' | ne_binary().
+-spec get_endpoint_id(ne_binary(), whapps_call:call()) -> 'undefined' | ne_binary().
 get_endpoint_id(undefined, _) ->
     undefined;
 get_endpoint_id(Username, Call) ->
@@ -585,7 +585,7 @@ get_endpoint_id(Username, Call) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
--spec ringback_parker/4 :: ('undefined' | ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'answered' | 'failed'.
+-spec ringback_parker('undefined' | ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'answered' | 'failed'.
 ringback_parker(undefined, _, _, _) ->
     failed;
 ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->

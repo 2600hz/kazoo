@@ -18,7 +18,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data, Call) ->
     CaptureGroup = whapps_call:kvs_fetch(cf_capture_group, Call),
     AccountId = whapps_call:account_id(Call),

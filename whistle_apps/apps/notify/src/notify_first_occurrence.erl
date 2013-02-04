@@ -30,7 +30,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     _ = put(callid, ?LOG_SYSTEM_ID),
 
@@ -57,7 +57,7 @@ init() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_crawler/0 :: () -> {'ok', pid()}.
+-spec start_crawler() -> {'ok', pid()}.
 start_crawler() ->
     {ok, proc_lib:spawn_link(fun crawler_loop/0)}.
 
@@ -67,7 +67,7 @@ start_crawler() ->
 %% Handles AMQP request comming from gen_listener (reg_resp)
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     true = wapi_registration:query_resp_v(JObj),
     AccountId = case wh_json:is_true(<<"Multiple">>, JObj) of
@@ -89,7 +89,7 @@ handle_req(JObj, _Props) ->
 %% another process does it first (ie: generating a 409 conflict).
 %% @end
 %%--------------------------------------------------------------------
--spec notify_initial_registration/2 :: (ne_binary(), wh_json:object()) -> 'ok'.
+-spec notify_initial_registration(ne_binary(), wh_json:object()) -> 'ok'.
 notify_initial_registration(AccountDb, JObj) ->
     Account = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>]
                                 ,true
@@ -109,7 +109,7 @@ notify_initial_registration(AccountDb, JObj) ->
 %% another process does it first (ie: generating a 409 conflict).
 %% @end
 %%--------------------------------------------------------------------
--spec notify_initial_call/2 :: (ne_binary(), wh_json:object()) -> any().
+-spec notify_initial_call(ne_binary(), wh_json:object()) -> any().
 notify_initial_call(AccountDb, JObj) ->
     Account = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]
                                 ,true
@@ -155,7 +155,7 @@ first_occurrence_notice(Account, Occurrence) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props/2 :: (wh_json:object(), ne_binary()) -> proplist().
+-spec create_template_props(wh_json:object(), ne_binary()) -> proplist().
 create_template_props(Account, Occurrence) ->
     Admin = notify_util:find_admin(Account),
     [{<<"event">>, Occurrence}
@@ -170,7 +170,7 @@ create_template_props(Account, Occurrence) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), api_binary() | ne_binaries(), wh_proplist()) -> any().
+-spec build_and_send_email(iolist(), iolist(), iolist(), api_binary() | ne_binaries(), wh_proplist()) -> any().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
@@ -199,7 +199,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %% notifications and test if any should be sent.
 %% @end
 %%--------------------------------------------------------------------
--spec crawler_loop/0 :: () -> no_return().
+-spec crawler_loop() -> no_return().
 crawler_loop() ->
     _ = case couch_mgr:get_all_results(?WH_ACCOUNTS_DB, <<"notify/first_occurance">>) of
             {ok, Results} ->
@@ -226,7 +226,7 @@ crawler_loop() ->
 %% the response comes in a notification will be sent.
 %% @end
 %%--------------------------------------------------------------------
--spec test_for_initial_occurrences/1 :: (wh_json:object()) -> 'ok'.
+-spec test_for_initial_occurrences(wh_json:object()) -> 'ok'.
 test_for_initial_occurrences(Result) ->
     Realm = wh_json:get_value([<<"value">>, <<"realm">>], Result),
     {ok, Srv} = notify_sup:listener_proc(),
@@ -271,7 +271,7 @@ test_for_initial_occurrences(Result) ->
 %% Ensure there are no messages in the process queue
 %% @end
 %%--------------------------------------------------------------------
--spec flush/0 :: () -> 'true'.
+-spec flush() -> 'true'.
 flush() ->
     receive _ -> flush()
     after 0 -> true

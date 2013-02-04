@@ -43,7 +43,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
                                       ,{responders, ?RESPONDERS}
@@ -52,7 +52,7 @@ start_link() ->
                                       ,{consume_options, ?CONSUME_OPTIONS} % optional to include
                                      ], []).
 
--spec new_request/3 :: (wh_json:json_object(), proplist(), _) -> sup_startchild_ret().
+-spec new_request(wh_json:json_object(), proplist(), _) -> sup_startchild_ret().
 new_request(JObj, _Props, _RK) ->
     true = wapi_fax:req_v(JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),

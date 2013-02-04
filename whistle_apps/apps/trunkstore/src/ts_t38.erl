@@ -13,7 +13,7 @@
 
 -include("ts.hrl").
 
--spec(process_flags/1 :: (Flags :: tuple()) -> tuple()).
+-spec(process_flags(Flags :: tuple()) -> tuple()).
 
 process_flags(F) ->
     F.

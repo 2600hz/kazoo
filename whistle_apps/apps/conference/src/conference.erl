@@ -18,7 +18,7 @@
 %% Starts the app for inclusion in a supervisor tree
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     start_deps(),
     conference_sup:start_link().
@@ -29,7 +29,7 @@ start_link() ->
 %% Starts the app
 %% @end
 %%--------------------------------------------------------------------
--spec start/0 :: () -> ok.
+-spec start() -> ok.
 start() ->
     start_deps(),
     application:start(conference).
@@ -40,7 +40,7 @@ start() ->
 %% Stop the app
 %% @end
 %%--------------------------------------------------------------------
--spec stop/0 :: () -> ok.
+-spec stop() -> ok.
 stop() ->
     ok = application:stop(conference).
 
@@ -50,7 +50,7 @@ stop() ->
 %% Ensures that all dependencies for this app are already running
 %% @end
 %%--------------------------------------------------------------------
--spec start_deps/0 :: () -> ok.
+-spec start_deps() -> ok.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     ensure_started(sasl), % logging
@@ -63,7 +63,7 @@ start_deps() ->
 %% Verify that an application is running
 %% @end
 %%--------------------------------------------------------------------
--spec ensure_started/1 :: (App) -> ok when
+-spec ensure_started(App) -> ok when
       App :: atom().
 ensure_started(App) ->
     case application:start(App) of

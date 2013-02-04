@@ -80,7 +80,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> any().
+-spec handle(wh_json:json_object(), whapps_call:call()) -> any().
 handle(Data,Call) ->
     Temporal = get_temporal_route(Data, Call),
     case wh_json:get_value(<<"action">>, Data) of
@@ -121,7 +121,7 @@ handle(Data,Call) ->
 %% returns the first valid callflow, or the default.
 %% @end
 %%--------------------------------------------------------------------
--spec process_rules/3 :: (Temporal, Rules, Call) -> 'default' | binary() when
+-spec process_rules(Temporal, Rules, Call) -> 'default' | binary() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...] | [],
       Call :: whapps_call:call().
@@ -160,7 +160,7 @@ process_rules(_, [], _) ->
 %% the future as well as pertain to this temporal route mapping.
 %% @end
 %%--------------------------------------------------------------------
--spec get_temporal_rules/2 :: (#temporal{}, whapps_call:call()) -> [#rule{},...].
+-spec get_temporal_rules(#temporal{}, whapps_call:call()) -> [#rule{},...].
 get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}, Call) ->
     [#rule{id = ID
            ,enabled =
@@ -195,7 +195,7 @@ get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}, Call) ->
 %% Loads the temporal record with data from the db.
 %% @end
 %%--------------------------------------------------------------------
--spec get_temporal_route/2 :: (wh_json:json_object(), whapps_call:call()) -> #temporal{}.
+-spec get_temporal_route(wh_json:json_object(), whapps_call:call()) -> #temporal{}.
 get_temporal_route(JObj, Call) ->
     lager:info("loading temporal route"),
     {branch_keys, Keys} = cf_exe:get_branch_keys(Call),
@@ -209,7 +209,7 @@ get_temporal_route(JObj, Call) ->
 %% Accepts a term and tries to convert it to a wh_date()
 %% @end
 %%--------------------------------------------------------------------
--spec get_date/1 :: (Seconds) -> wh_date() when
+-spec get_date(Seconds) -> wh_date() when
       Seconds :: non_neg_integer().
 get_date(Seconds) when is_integer(Seconds) ->
     {Date, _} = calendar:gregorian_seconds_to_datetime(Seconds),
@@ -222,7 +222,7 @@ get_date(Seconds) when is_integer(Seconds) ->
 %% the provided temporal rules.
 %% @end
 %%--------------------------------------------------------------------
--spec temporal_route_menu/3 :: (Temporal, Rules, Call) -> cf_api_std_return() when
+-spec temporal_route_menu(Temporal, Rules, Call) -> cf_api_std_return() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...],
       Call :: whapps_call:call().
@@ -249,7 +249,7 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable, disable=Disable, reset=R
 %% operation.
 %% @end
 %%--------------------------------------------------------------------
--spec disable_temporal_rules/3 :: (Temporal, Rules, Call) -> cf_api_std_return() when
+-spec disable_temporal_rules(Temporal, Rules, Call) -> cf_api_std_return() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...] | [],
       Call :: whapps_call:call().
@@ -284,7 +284,7 @@ disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
 %% operation.
 %% @end
 %%--------------------------------------------------------------------
--spec reset_temporal_rules/3 :: (Temporal, Rules, Call) -> cf_api_std_return() when
+-spec reset_temporal_rules(Temporal, Rules, Call) -> cf_api_std_return() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...] | [],
       Call :: whapps_call:call().
@@ -319,7 +319,7 @@ reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
 %% operation.
 %% @end
 %%--------------------------------------------------------------------
--spec enable_temporal_rules/3 :: (Temporal, Rules, Call) -> cf_api_std_return() when
+-spec enable_temporal_rules(Temporal, Rules, Call) -> cf_api_std_return() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...] | [],
       Call :: whapps_call:call().
@@ -353,7 +353,7 @@ enable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
 %% current date/time for this temporal route selection
 %% @end
 %%--------------------------------------------------------------------
--spec load_current_time/1 :: (#temporal{}) -> #temporal{}.
+-spec load_current_time(#temporal{}) -> #temporal{}.
 load_current_time(#temporal{timezone=Timezone}=Temporal)->
     {LocalDate, LocalTime} = localtime:utc_to_local(
                                calendar:universal_time()
@@ -377,7 +377,7 @@ load_current_time(#temporal{timezone=Timezone}=Temporal)->
 %%   - 1,2,3..31
 %% @end
 %%--------------------------------------------------------------------
--spec next_rule_date/2 :: (Rule, Current) -> wh_date() when
+-spec next_rule_date(Rule, Current) -> wh_date() when
       Rule :: #rule{},
       Current :: wh_date().
 next_rule_date(#rule{cycle = <<"date">>, start_date=Date0}, _) ->
@@ -582,7 +582,7 @@ next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, ordinal=Ordinal
 %% I have been refering to this as 'spanning a month/year border'
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_date/1 :: (Date :: improper_date()) -> wh_date().
+-spec normalize_date(Date :: improper_date()) -> wh_date().
 normalize_date({Y, 13, D}) ->
     normalize_date({Y + 1, 1, D});
 normalize_date({Y, 0, D}) ->
@@ -610,7 +610,7 @@ normalize_date({Y, M, D}=Date) ->
 %% the position
 %% @end
 %%--------------------------------------------------------------------
--spec from_ordinal/1 :: (Ordinal :: strict_ordinal()) -> 0..4.
+-spec from_ordinal(Ordinal :: strict_ordinal()) -> 0..4.
 from_ordinal(<<"first">>) -> 0;
 from_ordinal(<<"second">>) -> 1;
 from_ordinal(<<"third">>) -> 2;
@@ -624,7 +624,7 @@ from_ordinal(<<"fifth">>) -> 4.
 %% position, in accordance with ISO 8601
 %% @end
 %%--------------------------------------------------------------------
--spec to_dow/1 :: (wday()) -> wh_daynum().
+-spec to_dow(wday()) -> wh_daynum().
 to_dow(<<"monday">>) -> 1;
 to_dow(<<"tuesday">>) -> 2;
 to_dow(<<"wensday">>) -> 3;
@@ -643,7 +643,7 @@ to_dow(<<"sunday">>) -> 7.
 %% It is possible for this function to cross month/year boundaries.
 %% @end
 %%--------------------------------------------------------------------
--spec find_next_weekday/2 :: (Date, Weekday) -> wh_date() when
+-spec find_next_weekday(Date, Weekday) -> wh_date() when
       Date :: wh_date(),
       Weekday :: wday().
 find_next_weekday({Y, M, D}, Weekday) ->
@@ -672,7 +672,7 @@ find_next_weekday({Y, M, D}, Weekday) ->
 %% It is possible for this function to cross month/year boundaries.
 %% @end
 %%--------------------------------------------------------------------
--spec find_ordinal_weekday/4 :: (Year, Month, Weekday, Ordinal) -> wh_date() when
+-spec find_ordinal_weekday(Year, Month, Weekday, Ordinal) -> wh_date() when
       Year :: wh_year(),
       Month :: improper_month(),
       Weekday :: wday(),
@@ -705,7 +705,7 @@ find_ordinal_weekday(Y1, M1, Weekday, Ordinal) ->
 %% occurance MUST be in the third week.
 %% @end
 %%--------------------------------------------------------------------
--spec find_last_weekday/2 :: (Date, Weekday) -> wh_date() when
+-spec find_last_weekday(Date, Weekday) -> wh_date() when
       Date :: improper_date(),
       Weekday :: wday().
 find_last_weekday({Y, M, D}, Weekday) when M =:= 13 ->
@@ -727,7 +727,7 @@ find_last_weekday({Y, M, _}, Weekday) ->
 %% function will explode on occasion.
 %% @end
 %%--------------------------------------------------------------------
--spec date_of_dow/4 :: (Year, Month, Weekday, Ordinal) -> wh_date() when
+-spec date_of_dow(Year, Month, Weekday, Ordinal) -> wh_date() when
       Year :: wh_year(),
       Month :: improper_month(),
       Weekday :: wday(),
@@ -764,7 +764,7 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
 %% All while remaining ISO 8601 compliant.
 %% @end
 %%--------------------------------------------------------------------
--spec iso_week_difference/2 :: (Week0, Week1) -> non_neg_integer() when
+-spec iso_week_difference(Week0, Week1) -> non_neg_integer() when
       Week0 :: wh_date(),
       Week1 :: wh_date().
 iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
@@ -778,7 +778,7 @@ iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
 %% Caclulates the gregorian date of a given ISO 8601 week
 %% @end
 %%--------------------------------------------------------------------
--spec iso_week_to_gregorian_date/1 :: (wh_iso_week()) -> wh_date().
+-spec iso_week_to_gregorian_date(wh_iso_week()) -> wh_date().
 iso_week_to_gregorian_date({Year, Week}) ->
     Jan1 = date_to_gregorian_days(Year, 1, 1),
     Offset = 4 - day_of_the_week(Year, 1, 4),
@@ -798,21 +798,21 @@ iso_week_to_gregorian_date({Year, Week}) ->
 %% a local copy on older systems
 %% @end
 %%--------------------------------------------------------------------
--spec iso_week_number/1 :: (wh_date()) -> wh_iso_week().
+-spec iso_week_number(wh_date()) -> wh_iso_week().
 iso_week_number(Date) ->
     case erlang:function_exported(calendar, iso_week_number, 1) of
         true -> calendar:iso_week_number(Date);
         false -> our_iso_week_number(Date)
     end.
 
--spec day_of_the_week/1 :: (wh_date()) -> wh_day().
+-spec day_of_the_week(wh_date()) -> wh_day().
 day_of_the_week({Year, Month, Day}=Date) ->
     case erlang:function_exported(calendar, day_of_the_week, 1) of
         true -> calendar:day_of_the_week(Date);
         false -> our_day_of_the_week(Year, Month, Day)
     end.
 
--spec day_of_the_week/3 :: (wh_year(), wh_month(), wh_day()) -> wh_day().
+-spec day_of_the_week(wh_year(), wh_month(), wh_day()) -> wh_day().
 day_of_the_week(Year, Month, Day) ->
     case erlang:function_exported(calendar, day_of_the_week, 3) of
         true -> calendar:day_of_the_week(Year, Month, Day);
@@ -842,7 +842,7 @@ our_iso_week_number({Year,_Month,_Day}=Date) ->
             {Year + 1, 1}
     end.
 
--spec gregorian_days_of_iso_w01_1/1 :: (calendar:year()) -> non_neg_integer().
+-spec gregorian_days_of_iso_w01_1(calendar:year()) -> non_neg_integer().
 gregorian_days_of_iso_w01_1(Year) ->
     D0101 = calendar:date_to_gregorian_days(Year, 1, 1),
     DOW = calendar:day_of_the_week(Year, 1, 1),
@@ -856,7 +856,7 @@ gregorian_days_of_iso_w01_1(Year) ->
 %% day_of_the_week({Year, Month, Day})
 %%
 %% Returns: 1 | .. | 7. Monday = 1, Tuesday = 2, ..., Sunday = 7.
--spec our_day_of_the_week/3 :: (calendar:year(), calendar:month(), calendar:day()) -> calendar:daynum().
+-spec our_day_of_the_week(calendar:year(), calendar:month(), calendar:day()) -> calendar:daynum().
 our_day_of_the_week(Year, Month, Day) ->
     (calendar:date_to_gregorian_days(Year, Month, Day) + 5) rem 7 + 1.
 

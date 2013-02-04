@@ -17,7 +17,7 @@
 init() ->
     ok.
 
--spec handle_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_req(wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
     true = wapi_sysconf:get_req_v(ApiJObj),
 
@@ -38,7 +38,7 @@ handle_req(ApiJObj, _Props) ->
            ],
     wapi_sysconf:publish_get_resp(RespQ, Resp).
 
--spec get_value/4 :: (ne_binary(), ne_binary(), term(), ne_binary()) -> term().
+-spec get_value(ne_binary(), ne_binary(), term(), ne_binary()) -> term().
 get_value(_, <<"acls">>, _, Node) ->
     sysconf_acls:build(Node);
 get_value(_, <<"gateways">>, _, Node) ->

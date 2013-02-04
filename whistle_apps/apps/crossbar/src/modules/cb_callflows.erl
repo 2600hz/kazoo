@@ -48,8 +48,8 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     ['GET', 'PUT'].
 allowed_methods(_MediaID) ->
@@ -63,8 +63,8 @@ allowed_methods(_MediaID) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 
@@ -77,8 +77,8 @@ resource_exists(_) -> true.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_callflow_summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
@@ -91,15 +91,15 @@ validate(#cb_context{req_verb = <<"post">>}=Context, DocId) ->
 validate(#cb_context{req_verb = <<"delete">>}=Context, DocId) ->
     load_callflow(DocId, Context).
 
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _DocId) ->
     maybe_reconcile_numbers(crossbar_doc:save(Context)).
 
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
+-spec put(#cb_context{}) -> #cb_context{}.
 put(Context) ->
     maybe_reconcile_numbers(crossbar_doc:save(Context)).
 
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _DocId) ->
     crossbar_doc:delete(Context).
 
@@ -110,7 +110,7 @@ delete(Context, _DocId) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_callflow_summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec load_callflow_summary(#cb_context{}) -> #cb_context{}.
 load_callflow_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -120,7 +120,7 @@ load_callflow_summary(Context) ->
 %% Load a callflow document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_callflow/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_callflow(ne_binary(), #cb_context{}) -> #cb_context{}.
 load_callflow(DocId, Context) ->
     case crossbar_doc:load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc, resp_data=Data, db_name=Db}=Context1 ->
@@ -190,7 +190,7 @@ on_successful_validation(CallflowId, #cb_context{}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -288,7 +288,7 @@ add_number_conflict(Number, JObj, Context) ->
 %% collect addional informat about the objects referenced in the flow
 %% @end
 %%--------------------------------------------------------------------
--spec get_metadata/3 :: ('undefined' | wh_json:json_object(), ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+-spec get_metadata('undefined' | wh_json:json_object(), ne_binary(), wh_json:json_object()) -> wh_json:json_object().
 get_metadata(undefined, _, JObj) ->
     JObj;
 get_metadata(Flow, Db, JObj) ->
@@ -333,7 +333,7 @@ create_metadata(Db, Id, JObj) ->
             JObj
     end.
 
--spec create_metadata/1 :: (wh_json:json_object()) -> wh_json:json_object().
+-spec create_metadata(wh_json:json_object()) -> wh_json:json_object().
 create_metadata(Doc) ->
     %% simple funciton for setting the same key in one json object
     %% with the value of that key in another, unless it doesnt exist

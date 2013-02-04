@@ -32,7 +32,7 @@ cache_auth_user_key(Realm, Username) -> {?MODULE, auth_user, Realm, Username}.
 %% look up a cached registration by realm and optionally username
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_registrations/1 :: (ne_binary()) -> {'ok', wh_json:objects()} | {'error', 'not_found'}.
+-spec lookup_registrations(ne_binary()) -> {'ok', wh_json:objects()} | {'error', 'not_found'}.
 lookup_registrations(Realm) when not is_binary(Realm) ->
     lookup_registrations(wh_util:to_binary(Realm));
 lookup_registrations(Realm) ->
@@ -45,7 +45,7 @@ lookup_registrations(Realm) ->
         Else -> {'ok', Else}
     end.
 
--spec lookup_registration/2 :: (ne_binary(), api_binary()) -> {'ok', wh_json:object()} | {'ok', wh_json:objects()} | {'error', 'not_found'}.
+-spec lookup_registration(ne_binary(), api_binary()) -> {'ok', wh_json:object()} | {'ok', wh_json:objects()} | {'error', 'not_found'}.
 lookup_registration(Realm, undefined) ->
     lookup_registrations(Realm);
 lookup_registration(Realm, Username) when not is_binary(Realm) ->
@@ -55,7 +55,7 @@ lookup_registration(Realm, Username) when not is_binary(Username) ->
 lookup_registration(Realm, Username) ->
     wh_cache:peek_local(?REGISTRAR_CACHE, cache_user_to_reg_key(Realm, Username)).
 
--spec remove_registration/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+-spec remove_registration(ne_binary(), ne_binary()) -> 'ok'.
 remove_registration(Realm, Username) ->
     wh_cache:erase_local(?REGISTRAR_CACHE, cache_user_to_reg_key(Realm, Username)).
 
@@ -65,7 +65,7 @@ remove_registration(Realm, Username) ->
 %% get a complete list of registrations in the cache
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_all_registrations/0 :: () -> {'ok', wh_json:objects()}.
+-spec fetch_all_registrations() -> {'ok', wh_json:objects()}.
 fetch_all_registrations() ->
     Registrations = wh_cache:filter_local(?REGISTRAR_CACHE
                                           ,fun({?MODULE, registration, _, _}, _) -> true;
@@ -79,7 +79,7 @@ fetch_all_registrations() ->
 %% calculate expiration time
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_expires/1 :: (wh_json:object()) -> integer().
+-spec get_expires(wh_json:object()) -> integer().
 get_expires(JObj) ->
     Multiplier = whapps_config:get_float(?CONFIG_CAT, <<"expires_multiplier">>, 1.25),
     Fudge = whapps_config:get_integer(?CONFIG_CAT, <<"expires_fudge_factor">>, 120),
@@ -92,7 +92,7 @@ get_expires(JObj) ->
 %% hash a registration contact string
 %% @end
 %%-----------------------------------------------------------------------------
--spec hash_contact/1 :: (ne_binary()) -> ne_binary().
+-spec hash_contact(ne_binary()) -> ne_binary().
 hash_contact(Contact) ->
     wh_util:to_hex_binary(erlang:md5(Contact)).
 
@@ -102,7 +102,7 @@ hash_contact(Contact) ->
 %% look up the user and realm in the database and return the result
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', #auth_user{}} | {'error', 'not_found'}.
+-spec lookup_auth_user(ne_binary(), ne_binary()) -> {'ok', #auth_user{}} | {'error', 'not_found'}.
 lookup_auth_user(Username, Realm) ->
     case wh_cache:peek_local(?REGISTRAR_CACHE, cache_auth_user_key(Realm, Username)) of
         {ok, _}=Ok -> Ok; 
@@ -110,7 +110,7 @@ lookup_auth_user(Username, Realm) ->
             maybe_fetch_auth_user(Username, Realm)
     end.
 
--spec maybe_fetch_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', #auth_user{}} | {'error', _}.            
+-spec maybe_fetch_auth_user(ne_binary(), ne_binary()) -> {'ok', #auth_user{}} | {'error', _}.            
 maybe_fetch_auth_user(Username, Realm) ->
     case get_auth_user(Username, Realm) of
         {error, _}=E -> E;
@@ -118,7 +118,7 @@ maybe_fetch_auth_user(Username, Realm) ->
             check_auth_user(JObj, Username, Realm)
     end.
 
--spec check_auth_user/3 :: (wh_json:object(), ne_binary(), ne_binary()) -> {'ok', #auth_user{}} | {'error', _}.
+-spec check_auth_user(wh_json:object(), ne_binary(), ne_binary()) -> {'ok', #auth_user{}} | {'error', _}.
 check_auth_user(JObj, Username, Realm) ->
     case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], JObj)) of
         false -> {error, not_found};
@@ -126,7 +126,7 @@ check_auth_user(JObj, Username, Realm) ->
             prepare_response(JObj, Username, Realm)
     end.
 
--spec prepare_response/3 :: (wh_json:object(), ne_binary(), ne_binary()) -> {'ok', #auth_user{}}.
+-spec prepare_response(wh_json:object(), ne_binary(), ne_binary()) -> {'ok', #auth_user{}}.
 prepare_response(JObj, Username, Realm) ->    
     AuthUser = jobj_to_auth_user(JObj, Username, Realm),
     CacheProps = [{origin, [{db, AuthUser#auth_user.account_db, AuthUser#auth_user.authorizing_id}
@@ -136,7 +136,7 @@ prepare_response(JObj, Username, Realm) ->
     wh_cache:store_local(?REGISTRAR_CACHE, cache_auth_user_key(Realm, Username), AuthUser, CacheProps),
     {ok, AuthUser}.
 
--spec get_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', 'not_found'}.
+-spec get_auth_user(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', 'not_found'}.
 get_auth_user(Username, Realm) ->
     case whapps_util:get_account_by_realm(Realm) of
         {'error', E} ->
@@ -152,7 +152,7 @@ get_auth_user(Username, Realm) ->
             get_auth_user_in_account(Username, Realm, AccountDB)
     end.
 
--spec get_auth_user_in_agg/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', 'not_found'}.
+-spec get_auth_user_in_agg(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', 'not_found'}.
 get_auth_user_in_agg(Username, Realm) ->
     ViewOptions = [{key, [Realm, Username]}
                    ,include_docs
@@ -174,7 +174,7 @@ get_auth_user_in_agg(Username, Realm) ->
             {ok, User}
     end.
 
--spec get_auth_user_in_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', 'not_found'}.
+-spec get_auth_user_in_account(ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', 'not_found'}.
 get_auth_user_in_account(Username, Realm, AccountDB) ->
     ViewOptions = [{key, Username}
                    ,include_docs
@@ -191,7 +191,7 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
             {ok, User}
     end.
 
--spec reg_removed_from_cache/3 :: (term(), term(), 'expire' | 'flush' | 'erase') -> 'ok'.
+-spec reg_removed_from_cache(term(), term(), 'expire' | 'flush' | 'erase') -> 'ok'.
 reg_removed_from_cache({?MODULE, registration, Realm, User}, Reg, expire) ->
     lager:debug("received notice that user ~s@~s registration has expired", [User, Realm]),
     SuppressUnregister = wh_json:is_true(<<"Suppress-Unregister-Notify">>, Reg),
@@ -214,7 +214,7 @@ reg_removed_from_cache({?MODULE, registration, Realm, User}, Reg, expire) ->
     end;
 reg_removed_from_cache(_, _, _) -> ok.
 
--spec search_for_registration/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', 'timeout'}.
+-spec search_for_registration(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', 'timeout'}.
 search_for_registration(User, Realm) ->
     wh_amqp_worker:call(whapps_amqp_pool
                         ,[{<<"Username">>, User}
@@ -226,7 +226,7 @@ search_for_registration(User, Realm) ->
                         ,fun wapi_registration:query_resp_v/1
                        ).
 
--spec jobj_to_auth_user/3 :: (wh_json:object(), ne_binary(), ne_binary()) -> #auth_user{}.
+-spec jobj_to_auth_user(wh_json:object(), ne_binary(), ne_binary()) -> #auth_user{}.
 jobj_to_auth_user(JObj, Username, Realm) ->
     AuthValue = wh_json:get_value(<<"value">>, JObj),
     AuthDoc = wh_json:get_value(<<"doc">>, JObj),

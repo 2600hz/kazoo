@@ -31,7 +31,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_email/3 :: (ne_binary(), 'undefined' | binary(), term()) ->
+-spec send_email(ne_binary(), 'undefined' | binary(), term()) ->
                               'ok' | {'error', _}.
 send_email(_, undefined, _) -> ok;
 send_email(_, <<>>, _) -> ok;
@@ -58,8 +58,8 @@ send_email(From, To, Email) ->
     after 10000 -> {error, timeout}
     end.
 
--spec send_update/3 :: (api_binary(), ne_binary(), ne_binary()) -> 'ok'.
--spec send_update/4 :: (api_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+-spec send_update(api_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_update(api_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 send_update(RespQ, MsgId, Status) ->
     send_update(RespQ, MsgId, Status, undefined).
 send_update(undefined, _, _, _) -> lager:debug("no response queue to send update");
@@ -79,7 +79,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props/1 :: ('undefined' | wh_json:object()) -> 'undefined' | wh_proplist().
+-spec json_to_template_props('undefined' | wh_json:object()) -> 'undefined' | wh_proplist().
 json_to_template_props(undefined) -> undefined;
 json_to_template_props(JObj) ->
     normalize_proplist(wh_json:recursive_to_proplist(JObj)).
@@ -90,7 +90,7 @@ json_to_template_props(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_proplist/1 :: (wh_proplist()) -> wh_proplist().
+-spec normalize_proplist(wh_proplist()) -> wh_proplist().
 normalize_proplist(Props) ->
     [normalize_proplist_element(Elem) || Elem <- Props].
 
@@ -112,10 +112,10 @@ normalize_value(Value) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec compile_default_text_template/2 :: (atom(), ne_binary()) -> {'ok', atom()}.
--spec compile_default_html_template/2 :: (atom(), ne_binary()) -> {'ok', atom()}.
--spec compile_default_subject_template/2 :: (atom(), ne_binary()) -> {'ok', atom()}.
--spec compile_default_template/3 :: (atom(), ne_binary(), atom()) -> {'ok', atom()}.
+-spec compile_default_text_template(atom(), ne_binary()) -> {'ok', atom()}.
+-spec compile_default_html_template(atom(), ne_binary()) -> {'ok', atom()}.
+-spec compile_default_subject_template(atom(), ne_binary()) -> {'ok', atom()}.
+-spec compile_default_template(atom(), ne_binary(), atom()) -> {'ok', atom()}.
 
 compile_default_text_template(TemplateModule, Category) ->
     compile_default_template(TemplateModule, Category, default_text_template).
@@ -135,7 +135,7 @@ compile_default_template(TemplateModule, Category, Key) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec render_template/3 :: (api_binary(), atom(), wh_proplist()) ->
+-spec render_template(api_binary(), atom(), wh_proplist()) ->
                                    {'ok', iolist()} |
                                    {'error', term()}.
 render_template(undefined, DefaultTemplate, Props) ->
@@ -169,8 +169,8 @@ render_template(Template, DefaultTemplate, Props) ->
 %% in the event, parent account notification object, and then default.
 %% @end
 %%--------------------------------------------------------------------
--spec get_service_props/2 :: (wh_json:object(), ne_binary()) -> wh_proplist().
--spec get_service_props/3 :: (wh_json:object(), wh_json:object(), ne_binary()) -> wh_proplist().
+-spec get_service_props(wh_json:object(), ne_binary()) -> wh_proplist().
+-spec get_service_props(wh_json:object(), wh_json:object(), ne_binary()) -> wh_proplist().
 
 get_service_props(Account, ConfigCat) ->
     get_service_props(wh_json:new(), Account, ConfigCat).
@@ -221,7 +221,7 @@ get_service_props(Request, Account, ConfigCat) ->
 %% account object
 %% @end
 %%--------------------------------------------------------------------
--spec get_rep_email/1 :: (wh_json:object()) -> api_binary().
+-spec get_rep_email(wh_json:object()) -> api_binary().
 get_rep_email(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     case wh_json:get_value(<<"pvt_tree">>, JObj, []) of
@@ -259,7 +259,7 @@ get_rep_email([Parent|Parents], AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -type account_ids() :: ne_binaries().
--spec find_admin/1 :: (api_binary() | account_ids() | wh_json:object()) -> wh_json:object().
+-spec find_admin(api_binary() | account_ids() | wh_json:object()) -> wh_json:object().
 find_admin(undefined) -> wh_json:new();
 find_admin([]) -> wh_json:new();
 find_admin(Account) when is_binary(Account) ->
@@ -302,7 +302,7 @@ find_admin(Account) ->
 %% given a notification event try to open the account definition doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_doc/1 :: (wh_json:object()) ->
+-spec get_account_doc(wh_json:object()) ->
                                    {'ok', wh_json:object()} |
                                    {'error', term()} |
                                    'undefined'.

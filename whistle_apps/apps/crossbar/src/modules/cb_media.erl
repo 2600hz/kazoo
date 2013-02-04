@@ -64,9 +64,9 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
--spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     ['GET', 'PUT'].
 allowed_methods(_MediaID) ->
@@ -82,9 +82,9 @@ allowed_methods(_MediaID, ?BIN_DATA) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
--spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 resource_exists(_, ?BIN_DATA) -> true.
@@ -96,7 +96,7 @@ resource_exists(_, ?BIN_DATA) -> true.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec content_types_provided(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 content_types_provided(#cb_context{req_verb = <<"get">>}=Context, MediaId, ?BIN_DATA) ->
     case load_media_meta(MediaId, Context) of
         #cb_context{resp_status=success, doc=JObj} ->
@@ -111,7 +111,7 @@ content_types_provided(#cb_context{req_verb = <<"get">>}=Context, MediaId, ?BIN_
 content_types_provided(Context, _, _) ->
     Context.
 
--spec content_types_accepted/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec content_types_accepted(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _MediaID, ?BIN_DATA) ->
     CTA = [{from_binary, ?MEDIA_MIME_TYPES}],
     Context#cb_context{content_types_accepted=CTA};
@@ -127,9 +127,9 @@ content_types_accepted(Context, _, _) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_media_summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
@@ -166,7 +166,7 @@ validate(#cb_context{req_verb = <<"post">>}=Context, _, ?BIN_DATA) ->
     Message = <<"please provide a single media file">>,
     cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
 
--spec get/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec get(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 get(Context, _MediaID, ?BIN_DATA) ->
     Context#cb_context{resp_headers = [{<<"Content-Type">>
                                             ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
@@ -174,7 +174,7 @@ get(Context, _MediaID, ?BIN_DATA) ->
                                              ,wh_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
                                        | Context#cb_context.resp_headers]}.
 
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
+-spec put(#cb_context{}) -> #cb_context{}.
 put(#cb_context{doc=JObj}=Context) ->
     Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
     PrevText = wh_json:get_value(<<"pvt_previous_tts">>, JObj),
@@ -210,8 +210,8 @@ put(#cb_context{doc=JObj}=Context) ->
                 ],
     lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
 
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 
 post(#cb_context{doc=JObj}=Context, MediaId) ->
     Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
@@ -251,8 +251,8 @@ post(#cb_context{doc=JObj}=Context, MediaId) ->
 post(Context, MediaID, ?BIN_DATA) ->
     update_media_binary(MediaID, Context).
 
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec delete/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 
 delete(Context, _MediaID) ->
     crossbar_doc:delete(Context).
@@ -265,7 +265,7 @@ delete(Context, MediaID, ?BIN_DATA) ->
 %% Attempt to load a summarized list of media
 %% @end
 %%--------------------------------------------------------------------
--spec load_media_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}.
+-spec load_media_summary(Context :: #cb_context{}) -> #cb_context{}.
 load_media_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -275,7 +275,7 @@ load_media_summary(Context) ->
 %% Load a media document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_media_meta/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_media_meta(ne_binary(), #cb_context{}) -> #cb_context{}.
 load_media_meta(MediaId, Context) ->
     crossbar_doc:load(MediaId, Context).
 
@@ -285,7 +285,7 @@ load_media_meta(MediaId, Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec validate_request('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
 validate_request(MediaId, Context) ->
     check_media_schema(MediaId, Context).
 
@@ -307,7 +307,7 @@ on_successful_validation(MediaId, #cb_context{}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: wh_json:json_object(), Acc :: wh_json:json_objects()) -> wh_json:json_objects()).
+-spec(normalize_view_results(Doc :: wh_json:json_object(), Acc :: wh_json:json_objects()) -> wh_json:json_objects()).
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -317,7 +317,7 @@ normalize_view_results(JObj, Acc) ->
 %% Load the binary attachment of a media doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_media_binary/2 :: (path_token(), #cb_context{}) -> #cb_context{}.
+-spec load_media_binary(path_token(), #cb_context{}) -> #cb_context{}.
 load_media_binary(MediaId, #cb_context{resp_headers=RespHeaders}=Context) ->
     case load_media_meta(MediaId, Context) of
         #cb_context{resp_status=success, doc=JObj} ->
@@ -342,7 +342,7 @@ load_media_binary(MediaId, #cb_context{resp_headers=RespHeaders}=Context) ->
 %% Update the binary attachment of a media doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_media_binary/2 :: (path_token(), #cb_context{}) -> #cb_context{}.
+-spec update_media_binary(path_token(), #cb_context{}) -> #cb_context{}.
 update_media_binary(MediaID, #cb_context{doc=JObj, req_files=[{Filename, FileObj}], db_name=Db}=Context) ->
     Contents = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
@@ -362,7 +362,7 @@ update_media_binary(MediaID, #cb_context{doc=JObj, req_files=[{Filename, FileObj
 %% Delete the binary attachment of a media doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete_media_binary/2 :: (path_token(), #cb_context{}) -> #cb_context{}.
+-spec delete_media_binary(path_token(), #cb_context{}) -> #cb_context{}.
 delete_media_binary(MediaID, Context) ->
     case crossbar_doc:load(MediaID, Context) of
         #cb_context{resp_status=success, doc=MediaMeta} ->
@@ -382,7 +382,7 @@ delete_media_binary(MediaID, Context) ->
 %% it has an extension (for the associated content type)
 %% @end
 %%--------------------------------------------------------------------
--spec attachment_name/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+-spec attachment_name(ne_binary(), ne_binary()) -> ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun(A) ->
                           case wh_util:is_empty(A) of
@@ -406,7 +406,7 @@ attachment_name(Filename, CT) ->
 %% Convert known media types to extensions
 %% @end
 %%--------------------------------------------------------------------
--spec content_type_to_extension/1 :: (ne_binary()) -> ne_binary().
+-spec content_type_to_extension(ne_binary()) -> ne_binary().
 content_type_to_extension(<<"audio/wav">>) -> <<"wav">>;
 content_type_to_extension(<<"audio/x-wav">>) -> <<"wav">>;
 content_type_to_extension(<<"audio/mpeg">>) -> <<"mp3">>;

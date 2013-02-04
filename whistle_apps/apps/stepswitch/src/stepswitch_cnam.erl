@@ -179,7 +179,7 @@ code_change(_OldVsn, TemplateName, _Extra) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props/1 :: ('undefined' | wh_json:json_object()) -> 'undefined' | proplist().
+-spec json_to_template_props('undefined' | wh_json:json_object()) -> 'undefined' | proplist().
 json_to_template_props(undefined) ->
     undefined;
 json_to_template_props(JObj) ->
@@ -191,7 +191,7 @@ json_to_template_props(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_proplist/1 :: (proplist()) -> proplist().
+-spec normalize_proplist(proplist()) -> proplist().
 normalize_proplist(Props) ->
     [normalize_proplist_element(Elem) || Elem <- Props].
 
@@ -282,7 +282,7 @@ get_http_method() ->
         _Else -> get
     end.
 
--spec render/2 :: (wh_json:json_object(), ne_binary()) -> {'ok', iolist()} | {'error', 'timeout'}.
+-spec render(wh_json:json_object(), ne_binary()) -> {'ok', iolist()} | {'error', 'timeout'}.
 render(JObj, Template) ->
     case catch poolboy:checkout(?STEPSWITCH_CNAM_POOL, false, 1000) of
         W when is_pid(W) ->

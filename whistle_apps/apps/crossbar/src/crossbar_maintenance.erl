@@ -34,7 +34,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec migrate/0 :: () -> 'no_return'.
+-spec migrate() -> 'no_return'.
 migrate() ->
     io:format("updating default crossbar modules~n", []),
     whapps_config:flush(),
@@ -78,7 +78,7 @@ migrate() ->
 %% Flush the crossbar local cache
 %% @end
 %%--------------------------------------------------------------------
--spec flush/0 :: () -> 'ok'.
+-spec flush() -> 'ok'.
 flush() ->
     wh_cache:flush_local(?CROSSBAR_CACHE).
 
@@ -88,8 +88,8 @@ flush() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec refresh/0 :: () -> 'ok'.
--spec refresh/1 :: (input_term()) -> 'ok'.
+-spec refresh() -> 'ok'.
+-spec refresh(input_term()) -> 'ok'.
 
 refresh() ->
     io:format("please use whapps_maintenance:refresh().", []).
@@ -103,7 +103,7 @@ refresh(Value) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_module/1 :: (text()) -> 'ok' | {'error', _}.
+-spec start_module(text()) -> 'ok' | {'error', _}.
 start_module(Module) ->
     crossbar:start_mod(Module).
 
@@ -113,7 +113,7 @@ start_module(Module) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec stop_module/1 :: (text()) -> 'ok' | {'error', _}.
+-spec stop_module(text()) -> 'ok' | {'error', _}.
 stop_module(Module) ->
     crossbar:stop_mod(Module).
 
@@ -123,7 +123,7 @@ stop_module(Module) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec running_modules/0 :: () -> [atom(),...] | [].
+-spec running_modules() -> [atom(),...] | [].
 running_modules() ->
     crossbar_bindings:modules_loaded().
 
@@ -133,7 +133,7 @@ running_modules() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_by_number/1 :: (input_term()) ->
+-spec find_account_by_number(input_term()) ->
                                           {'ok', ne_binary()} |
                                           {'error', term()}.
 find_account_by_number(Number) when not is_binary(Number) ->
@@ -160,7 +160,7 @@ find_account_by_number(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_by_name/1 :: (input_term()) -> {'ok', ne_binary()} |
+-spec find_account_by_name(input_term()) -> {'ok', ne_binary()} |
                                                   {'multiples', [ne_binary(),...]} |
                                                   {'error', term()}.
 find_account_by_name(Name) when not is_binary(Name) ->
@@ -187,7 +187,7 @@ find_account_by_name(Name) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_by_realm/1 :: (input_term()) -> {'ok', ne_binary()} |
+-spec find_account_by_realm(input_term()) -> {'ok', ne_binary()} |
                                                   {'multiples', [ne_binary(),...]} |
                                                   {'error', term()}.
 find_account_by_realm(Realm) when not is_binary(Realm) ->
@@ -214,7 +214,7 @@ find_account_by_realm(Realm) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec allow_account_number_additions/1 :: (input_term()) -> 'ok' | 'failed'.
+-spec allow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 allow_account_number_additions(AccountId) ->
     case update_account(AccountId, <<"pvt_wnm_allow_additions">>, true) of
         {ok, _} ->
@@ -231,7 +231,7 @@ allow_account_number_additions(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec disallow_account_number_additions/1 :: (input_term()) -> 'ok' | 'failed'.
+-spec disallow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 disallow_account_number_additions(AccountId) ->
     case update_account(AccountId, <<"pvt_wnm_allow_additions">>, false) of
         {ok, _} ->
@@ -248,7 +248,7 @@ disallow_account_number_additions(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec enable_account/1 :: (input_term()) -> 'ok' | 'failed'.
+-spec enable_account(input_term()) -> 'ok' | 'failed'.
 enable_account(AccountId) ->
     case update_account(AccountId, <<"pvt_enabled">>, true) of
         {ok, _} ->
@@ -265,7 +265,7 @@ enable_account(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec disable_account/1 :: (input_term()) -> 'ok' | 'failed'.
+-spec disable_account(input_term()) -> 'ok' | 'failed'.
 disable_account(AccountId) ->
     case update_account(AccountId, <<"pvt_enabled">>, false) of
         {ok, _} ->
@@ -282,7 +282,7 @@ disable_account(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec promote_account/1 :: (input_term()) -> 'ok' | 'failed'.
+-spec promote_account(input_term()) -> 'ok' | 'failed'.
 promote_account(AccountId) ->
     case update_account(AccountId, <<"pvt_superduper_admin">>, true) of
         {ok, _} ->
@@ -299,7 +299,7 @@ promote_account(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec demote_account/1 :: (input_term()) -> 'ok' | 'failed'.
+-spec demote_account(input_term()) -> 'ok' | 'failed'.
 demote_account(AccountId) ->
     case update_account(AccountId, <<"pvt_superduper_admin">>, false) of
         {ok, _} ->
@@ -316,7 +316,7 @@ demote_account(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_account/4 :: (input_term(), input_term(), input_term(), input_term()) -> 'ok' | 'failed'.
+-spec create_account(input_term(), input_term(), input_term(), input_term()) -> 'ok' | 'failed'.
 create_account(AccountName, Realm, Username, Password) when not is_binary(AccountName) ->
     create_account(wh_util:to_binary(AccountName), Realm, Username, Password);
 create_account(AccountName, Realm, Username, Password) when not is_binary(Realm) ->
@@ -364,7 +364,7 @@ create_account(AccountName, Realm, Username, Password) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_account/2 :: (wh_json:json_object(), cb_context:context()) ->
+-spec validate_account(wh_json:json_object(), cb_context:context()) ->
                                     {'ok', cb_context:context()} |
                                     {'error', wh_json:json_object()}.
 validate_account(JObj, Context) ->
@@ -386,7 +386,7 @@ validate_account(JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_user/2 :: (wh_json:json_object(), cb_context:context()) ->
+-spec validate_user(wh_json:json_object(), cb_context:context()) ->
                                  {'ok', cb_context:context()} |
                                  {'error', wh_json:json_object()}.
 validate_user(JObj, Context) ->
@@ -408,7 +408,7 @@ validate_user(JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_account/1 :: (cb_context:context()) ->
+-spec create_account(cb_context:context()) ->
                                   {'ok', cb_context:context()} |
                                   {'error', wh_json:object()}.
 create_account(Context) ->
@@ -429,7 +429,7 @@ create_account(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_user/1 :: (cb_context:context()) ->
+-spec create_user(cb_context:context()) ->
                                {'ok', cb_context:context()} |
                                {'error', wh_json:object()}.
 create_user(Context) ->
@@ -448,7 +448,7 @@ create_user(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_account/3 :: (input_term(), ne_binary(), term()) ->
+-spec update_account(input_term(), ne_binary(), term()) ->
                                   {'ok', wh_json:object()} |
                                   {'error', term()}.
 update_account(AccountId, Key, Value) when not is_binary(AccountId) ->

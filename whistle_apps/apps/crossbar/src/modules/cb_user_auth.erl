@@ -45,8 +45,8 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     ['PUT'].
 allowed_methods(<<"recovery">>) ->
@@ -60,8 +60,8 @@ allowed_methods(<<"recovery">>) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_tokens()) -> boolean().
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_tokens()) -> boolean().
 resource_exists() -> true.
 resource_exists(<<"recovery">>) -> true;
 resource_exists(_) -> false.
@@ -71,7 +71,7 @@ resource_exists(_) -> false.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authorize/1 :: (#cb_context{}) -> boolean().
+-spec authorize(#cb_context{}) -> boolean().
 authorize(#cb_context{req_nouns=[{<<"user_auth">>, _}]}) ->
     true;
 authorize(#cb_context{}) ->
@@ -82,7 +82,7 @@ authorize(#cb_context{}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate/1 :: (#cb_context{}) -> boolean().
+-spec authenticate(#cb_context{}) -> boolean().
 authenticate(#cb_context{req_nouns=[{<<"user_auth">>, _}]}) ->
     true;
 authenticate(#cb_context{req_nouns=[{<<"user_auth">>, [<<"recovery">>]}]}) ->
@@ -99,15 +99,15 @@ authenticate(#cb_context{}) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
     cb_context:validate_request_data(<<"user_auth">>, Context, fun maybe_authenticate_user/1).
 
 validate(#cb_context{req_verb = <<"put">>}=Context, <<"recovery">>) ->
     cb_context:validate_request_data(<<"user_auth_recovery">>, Context, fun maybe_recover_user_password/1).
 
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
--spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec put(#cb_context{}) -> #cb_context{}.
+-spec put(#cb_context{}, path_token()) -> #cb_context{}.
 put(Context) ->
     _ = cb_context:put_reqid(Context),
     create_token(Context).
@@ -128,7 +128,7 @@ put(Context, <<"recovery">>) ->
 %% This can possibly return an empty binary.
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_account_name/1 :: ('undefined' | ne_binary()) -> ne_binary().
+-spec normalize_account_name('undefined' | ne_binary()) -> ne_binary().
 normalize_account_name(undefined) ->
     undefined;
 normalize_account_name(AccountName) ->
@@ -146,8 +146,8 @@ normalize_account_name(AccountName) ->
 %% Failure here returns 401
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_authenticate_user/1 :: (#cb_context{}) -> #cb_context{}.
--spec maybe_authenticate_user/4 :: (#cb_context{}, ne_binary(), ne_binary(), [ne_binary(),...] | [] | ne_binary()) -> #cb_context{}.
+-spec maybe_authenticate_user(#cb_context{}) -> #cb_context{}.
+-spec maybe_authenticate_user(#cb_context{}, ne_binary(), ne_binary(), [ne_binary(),...] | [] | ne_binary()) -> #cb_context{}.
 
 maybe_authenticate_user(#cb_context{doc=JObj}=Context) ->
     Credentials = wh_json:get_value(<<"credentials">>, JObj),
@@ -209,7 +209,7 @@ maybe_authenticate_user(Context, _, _, _) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_recover_user_password/1 :: (#cb_context{}) -> #cb_context{}.
+-spec maybe_recover_user_password(#cb_context{}) -> #cb_context{}.
 maybe_recover_user_password(#cb_context{doc=JObj}=Context) ->
     AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
     PhoneNumber = wh_json:get_ne_value(<<"phone_number">>, JObj),
@@ -227,7 +227,7 @@ maybe_recover_user_password(#cb_context{doc=JObj}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_load_username/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec maybe_load_username(ne_binary(), #cb_context{}) -> #cb_context{}.
 maybe_load_username(Account, #cb_context{doc=JObj}=Context) ->
     AccountDb = wh_util:format_account_id(Account, encoded),
     lager:debug("attempting to load username in db: ~s", [AccountDb]),
@@ -261,7 +261,7 @@ maybe_load_username(Account, #cb_context{doc=JObj}=Context) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec create_token/1 :: (#cb_context{}) -> #cb_context{}.
+-spec create_token(#cb_context{}) -> #cb_context{}.
 create_token(#cb_context{doc=JObj}=Context) ->
     case wh_json:is_empty(JObj) of
         true ->
@@ -293,7 +293,7 @@ create_token(#cb_context{doc=JObj}=Context) ->
 %% Helper function to generate random strings
 %% @end
 %%--------------------------------------------------------------------
--spec reset_users_password/1 :: (#cb_context{}) -> #cb_context{}.
+-spec reset_users_password(#cb_context{}) -> #cb_context{}.
 reset_users_password(#cb_context{doc=JObj, req_data=Data}=Context) ->
     Password = wh_util:rand_hex_binary(16),
     {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
@@ -327,7 +327,7 @@ reset_users_password(#cb_context{doc=JObj, req_data=Data}=Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec find_account/4 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), #cb_context{})
+-spec find_account('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), #cb_context{})
                            -> {'ok', ne_binary() | [ne_binary(),...]} | {'error', #cb_context{}}.
 find_account(undefined, undefined, undefined, Context) ->
     {error, Context};

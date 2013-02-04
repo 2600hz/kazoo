@@ -20,7 +20,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Command = [{<<"Call">>, whapps_call:to_json(Call)}
                ,{<<"Conference-ID">>, wh_json:get_value(<<"id">>, Data)}

@@ -16,7 +16,7 @@
 
 init() -> ok.
 
--spec presence_probe/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec presence_probe(wh_json:object(), wh_proplist()) -> 'ok'.
 presence_probe(ApiJObj, _Props) ->
     process_presence_probe(ApiJObj, wh_json:get_value(<<"Subscription">>, ApiJObj)).
 
@@ -39,7 +39,7 @@ process_presence_probe(ApiJObj, _) ->
             wapi_notifications:publish_presence_update(PresenceUpdate)
     end.
 
--spec req_query_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec req_query_req(wh_json:object(), wh_proplist()) -> 'ok'.
 req_query_req(ApiJObj, _Props) ->
     true = wapi_registration:query_req_v(ApiJObj),
     _ = wh_util:put_callid(ApiJObj),
@@ -77,7 +77,7 @@ req_query_req(ApiJObj, _Props) ->
 %% extract the requested fields from the registration and send a response
 %% @end
 %%-----------------------------------------------------------------------------
--spec filter/2 :: (wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec filter(wh_json:object(), wh_json:object()) -> wh_json:object().
 filter(ApiJObj, RegJObj) ->
     case wh_json:get_value(<<"Fields">>, ApiJObj, []) of
         [] -> wh_json:delete_key(<<"_id">>, wh_json:delete_key(<<"_rev">>, RegJObj));

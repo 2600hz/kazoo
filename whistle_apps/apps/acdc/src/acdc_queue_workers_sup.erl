@@ -36,20 +36,20 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link(?MODULE, []).
 
 new_worker(WorkersSup, AcctId, QueueId) ->
     new_workers(WorkersSup, AcctId, QueueId, 1).
 
--spec new_workers/4 :: (pid(), ne_binary(), ne_binary(), integer()) -> 'ok'.
+-spec new_workers(pid(), ne_binary(), ne_binary(), integer()) -> 'ok'.
 new_workers(_, _,_,N) when N =< 0 -> ok;
 new_workers(WorkersSup, AcctId, QueueId, N) when is_integer(N) ->
     _ = supervisor:start_child(WorkersSup, [self(), AcctId, QueueId]),
     new_workers(WorkersSup, AcctId, QueueId, N-1).
 
--spec workers/1 :: (pid()) -> [pid(),...] | [].
+-spec workers(pid()) -> [pid(),...] | [].
 workers(Super) ->
     [Pid || {_, Pid, supervisor, [_]} <- supervisor:which_children(Super), is_pid(Pid)].
 

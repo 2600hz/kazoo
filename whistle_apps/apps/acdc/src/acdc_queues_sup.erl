@@ -39,7 +39,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
@@ -49,15 +49,15 @@ new(AcctId, QueueId) ->
         undefined -> supervisor:start_child(?MODULE, [AcctId, QueueId])
     end.
 
--spec workers/0 :: () -> [pid(),...] | [].
+-spec workers() -> [pid(),...] | [].
 workers() ->
     [ Pid || {_, Pid, supervisor, [_]} <- supervisor:which_children(?MODULE), is_pid(Pid)].
 
--spec find_acct_supervisors/1 :: (ne_binary()) -> [pid(),...] | [].
+-spec find_acct_supervisors(ne_binary()) -> [pid(),...] | [].
 find_acct_supervisors(AcctId) ->
     [Super || Super <- workers(), is_queue_in_acct(Super, AcctId)].
 
--spec is_queue_in_acct/2 :: (pid(), ne_binary()) -> boolean().
+-spec is_queue_in_acct(pid(), ne_binary()) -> boolean().
 is_queue_in_acct(Super, AcctId) ->
     case catch acdc_queue_manager:config(acdc_queue_sup:manager(Super)) of
         {'EXIT', _} -> false;
@@ -65,8 +65,8 @@ is_queue_in_acct(Super, AcctId) ->
         _ -> false
     end.
 
--spec find_queue_supervisor/2 :: (ne_binary(), ne_binary()) -> pid() | 'undefined'.
--spec find_queue_supervisor/3 :: (ne_binary(), ne_binary(), [pid(),...] | []) -> pid() | 'undefined'.
+-spec find_queue_supervisor(ne_binary(), ne_binary()) -> pid() | 'undefined'.
+-spec find_queue_supervisor(ne_binary(), ne_binary(), [pid(),...] | []) -> pid() | 'undefined'.
 find_queue_supervisor(AcctId, QueueId) ->
     find_queue_supervisor(AcctId, QueueId, workers()).
 

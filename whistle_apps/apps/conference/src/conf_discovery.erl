@@ -33,9 +33,15 @@
          ,code_change/3
         ]).
 
--define(RESPONDERS, [{{?MODULE, handle_discovery_req}, [{<<"conference">>, <<"discovery_req">>}]}
-                     ,{{?MODULE, handle_search_resp}, [{<<"conference">>, <<"search_resp">>}]}
-                     ,{{?MODULE, handle_search_error}, [{<<"conference">>, <<"error">>}]}
+-define(RESPONDERS, [{{?MODULE, handle_discovery_req}
+                      ,[{<<"conference">>, <<"discovery_req">>}]
+                     }
+                     ,{{?MODULE, handle_search_resp}
+                       ,[{<<"conference">>, <<"search_resp">>}]
+                      }
+                     ,{{?MODULE, handle_search_error}
+                       ,[{<<"conference">>, <<"error">>}]
+                      }
                     ]).
 -define(BINDINGS, [{conference, [{restrict_to, [discovery]}]}
                    ,{self, []}
@@ -55,7 +61,7 @@
 %% Starts the server
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?MODULE,
                             [{responders, ?RESPONDERS}
@@ -65,7 +71,7 @@ start_link() ->
                              ,{consume_options, ?CONSUME_OPTIONS}
                             ], []).
 
--spec handle_discovery_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_discovery_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_discovery_req(JObj, Props) ->
     true = wapi_conference:discovery_req_v(JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
@@ -141,7 +147,7 @@ handle_discovery_req(JObj, Props) ->
             whapps_call_command:hangup(Call)
     end.
 
--spec search_for_conference/2 :: (whapps_conference:conference(), pid()) -> any().
+-spec search_for_conference(whapps_conference:conference(), pid()) -> any().
 search_for_conference(Conference, Srv) ->
     conf_participant:set_conference(Conference, Srv),
     SearchId = couch_mgr:get_uuid(),
@@ -154,7 +160,7 @@ search_for_conference(Conference, Srv) ->
     %% TODO: send discovery event on error
     %%    {ok, DiscoveryReq} = conf_participant:discovery_event(Srv),
 
--spec handle_search_error/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_search_error(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_search_error(JObj, _Props) ->
     true = wapi_conference:conference_error_v(JObj),
     <<"search_req">> = wh_json:get_value([<<"Request">>, <<"Event-Name">>], JObj),
@@ -184,7 +190,7 @@ handle_search_error(JObj, _Props) ->
             ok
     end.
 
--spec handle_search_resp/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_search_resp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_search_resp(JObj, _Props) ->
     true = wapi_conference:search_resp_v(JObj),
     SearchId = wh_json:get_value(<<"Msg-ID">>, JObj),
@@ -313,10 +319,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec validate_conference_id/2 :: (api_binary(), whapps_call:call()) ->
+-spec validate_conference_id(api_binary(), whapps_call:call()) ->
                                           {'ok', whapps_conference:conference()} |
                                           {'error', term()}.
--spec validate_conference_id/3 :: (api_binary(), whapps_call:call(), pos_integer()) ->
+-spec validate_conference_id(api_binary(), whapps_call:call(), pos_integer()) ->
                                           {'ok', whapps_conference:conference()} |
                                           {'error', term()}.
 validate_conference_id(ConferenceId, Call) ->
@@ -356,10 +362,10 @@ validate_conference_id(ConferenceId, Call, Loop) ->
             validate_conference_id(undefined, Call, Loop)
     end.
 
--spec validate_conference_pin/2 :: (whapps_conference:conference(), whapps_call:call()) ->
+-spec validate_conference_pin(whapps_conference:conference(), whapps_call:call()) ->
                                            {'ok', whapps_conference:conference()} |
                                            {'error', term()}.
--spec validate_conference_pin/4 :: ('undefined' | boolean(), whapps_conference:conference(), whapps_call:call(), pos_integer()) ->
+-spec validate_conference_pin('undefined' | boolean(), whapps_conference:conference(), whapps_call:call(), pos_integer()) ->
                                            {'ok', whapps_conference:conference()} |
                                            {'error', term()}.
 validate_conference_pin(Conference, Call) ->
@@ -454,7 +460,7 @@ validate_conference_pin(_, Conference, Call, Loop) ->
             end
     end.
 
--spec negotiate_focus/3 :: (ne_binary(), whapps_conference:conference(), whapps_call:call()) ->
+-spec negotiate_focus(ne_binary(), whapps_conference:conference(), whapps_call:call()) ->
                                    {'ok', wh_json:object()} |
                                    {'error', term()}.
 negotiate_focus(SwitchHostname, Conference, Call) ->
@@ -462,7 +468,7 @@ negotiate_focus(SwitchHostname, Conference, Call) ->
     JObj = whapps_conference:conference_doc(Conference),
     couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"focus">>, SwitchHostname, JObj)).
 
--spec create_conference/2 :: (wh_json:object(), binary()) -> whapps_conference:conference().
+-spec create_conference(wh_json:object(), binary()) -> whapps_conference:conference().
 create_conference(JObj, Digits) ->
     Conference = whapps_conference:from_conference_doc(JObj),
     ModeratorNumbers = wh_json:get_value([<<"moderator">>, <<"numbers">>], JObj, []),

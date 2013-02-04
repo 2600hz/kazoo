@@ -57,9 +57,9 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
--spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     ['GET', 'PUT'].
 allowed_methods(_) ->
@@ -77,9 +77,9 @@ allowed_methods(_, ?HISTORY) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
--spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() ->
     true.
 resource_exists(_) ->
@@ -89,12 +89,12 @@ resource_exists(_, ?CONNECT_CALL) ->
 resource_exists(_, ?HISTORY) ->
     true.
 
--spec authenticate/1 :: (#cb_context{}) -> 'true'.
+-spec authenticate(#cb_context{}) -> 'true'.
 authenticate(#cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = <<"post">>}) ->
     lager:debug("authenticating request"),
     true.
 
--spec authorize/1 :: (#cb_context{}) -> 'true'.
+-spec authorize(#cb_context{}) -> 'true'.
 authorize(#cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = <<"post">>}) ->
     lager:debug("authorizing request"),
     true.
@@ -108,9 +108,9 @@ authorize(#cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = <<"post">>}) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_c2c_summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
@@ -128,19 +128,19 @@ validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?HISTORY) ->
 validate(#cb_context{req_verb = <<"post">>}=Context, Id, ?CONNECT_CALL) ->
     establish_c2c(Id, Context).
 
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 post(Context, _) ->
     crossbar_doc:save(Context).
 post(#cb_context{resp_data=HistoryItem}=Context, _, ?CONNECT_CALL) ->
     Context1 = crossbar_doc:save(Context),
     Context1#cb_context{resp_data=HistoryItem}.
 
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
+-spec put(#cb_context{}) -> #cb_context{}.
 put(Context) ->
     crossbar_doc:save(Context).
 
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _) ->
     crossbar_doc:delete(Context).
 
@@ -153,7 +153,7 @@ delete(Context, _) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -197,8 +197,8 @@ clear_history_set_type(#cb_context{doc=JObj}=Context) ->
 %%
 %% @end
 %%-------------------------------------------------------------------
--spec originate_call/1 :: (#cb_context{}) -> #cb_context{}.
--spec originate_call/3 :: (ne_binary(), wh_json:json_object(), ne_binary()) -> {'success', ne_binary()} | {'error', ne_binary()}.
+-spec originate_call(#cb_context{}) -> #cb_context{}.
+-spec originate_call(ne_binary(), wh_json:json_object(), ne_binary()) -> {'success', ne_binary()} | {'error', ne_binary()}.
 
 originate_call(#cb_context{doc=JObj, req_data=Req, account_id=AccountId, db_name=Db}=Context) ->
     case get_c2c_contact(wh_json:get_string_value(<<"contact">>, Req)) of
@@ -269,7 +269,7 @@ originate_call(Contact, JObj, AccountId) ->
     lager:debug("published click to call request ~s", [MsgId]),
     wait_for_originate(MsgId).
 
--spec wait_for_originate/1 :: (ne_binary()) -> {'success' | 'error', ne_binary()}.
+-spec wait_for_originate(ne_binary()) -> {'success' | 'error', ne_binary()}.
 wait_for_originate(MsgId) ->
     receive
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
@@ -306,14 +306,14 @@ wait_for_originate(MsgId) ->
             wait_for_originate(MsgId)
     end.
 
--spec get_c2c_contact/1 :: ('undefined' | nonempty_string()) -> api_binary().
+-spec get_c2c_contact('undefined' | nonempty_string()) -> api_binary().
 get_c2c_contact(undefined) ->
     undefined;
 get_c2c_contact(Contact) ->
     Encoded = mochiweb_util:quote_plus(Contact),
     wnm_util:to_e164(wh_util:to_binary(Encoded)).
 
--spec create_c2c_history_item/2 :: ({'success', ne_binary()} | {'error', ne_binary()}, ne_binary()) -> proplist().
+-spec create_c2c_history_item({'success', ne_binary()} | {'error', ne_binary()}, ne_binary()) -> proplist().
 create_c2c_history_item({success, CallId}, Contact) ->
     [{<<"timestamp">>, wh_util:current_tstamp()}
      ,{<<"contact">>, Contact}
@@ -327,7 +327,7 @@ create_c2c_history_item({error, Error}, Contact) ->
      ,{<<"cause">>, Error}
     ].
 
--spec save_history/3 :: (wh_json:json_object(), wh_json:json_object(), ne_binary()) -> 'ok'.
+-spec save_history(wh_json:json_object(), wh_json:json_object(), ne_binary()) -> 'ok'.
 save_history(HistoryItem, JObj, Db) ->
     History = wh_json:get_value(<<"pvt_history">>, JObj, []),
     case couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_history">>, [HistoryItem | History], JObj)) of

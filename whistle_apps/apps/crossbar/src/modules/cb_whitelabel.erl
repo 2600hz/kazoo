@@ -62,9 +62,9 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
--spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     ['GET', 'PUT', 'POST', 'DELETE'].
 allowed_methods(?LOGO_REQ) ->
@@ -83,9 +83,9 @@ allowed_methods(_, ?LOGO_REQ) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
--spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(?LOGO_REQ) -> true;
 resource_exists(_) -> true.
@@ -96,7 +96,7 @@ resource_exists(_, ?LOGO_REQ) -> true.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authorize/1 :: (#cb_context{}) -> boolean().
+-spec authorize(#cb_context{}) -> boolean().
 authorize(#cb_context{req_nouns=[{<<"whitelabel">>, [_]}], req_verb= <<"get">>}) ->
     true;
 authorize(#cb_context{req_nouns=[{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], req_verb= <<"get">>}) ->
@@ -109,7 +109,7 @@ authorize(_) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate/1 :: (#cb_context{}) -> boolean().
+-spec authenticate(#cb_context{}) -> boolean().
 authenticate(#cb_context{req_nouns=[{<<"whitelabel">>, [_]}], req_verb= <<"get">>}) ->
     true;
 authenticate(#cb_context{req_nouns=[{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], req_verb= <<"get">>}) ->
@@ -124,7 +124,7 @@ authenticate(_) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec content_types_provided(#cb_context{}, path_token()) -> #cb_context{}.
 content_types_provided(#cb_context{req_verb = <<"get">>}=Context, ?LOGO_REQ) ->
     case find_whitelabel(?WHITELABEL_ID, Context, meta) of
         #cb_context{resp_status=success, doc=JObj} ->
@@ -139,7 +139,7 @@ content_types_provided(#cb_context{req_verb = <<"get">>}=Context, ?LOGO_REQ) ->
 content_types_provided(Context, _) ->
     Context.
 
--spec content_types_provided/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec content_types_provided(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 content_types_provided(#cb_context{req_verb = <<"get">>}=Context, Domain, ?LOGO_REQ) ->
     case find_whitelabel(Domain, Context, meta) of
         #cb_context{resp_status=success, doc=JObj} ->
@@ -152,7 +152,7 @@ content_types_provided(#cb_context{req_verb = <<"get">>}=Context, Domain, ?LOGO_
             end
     end.
 
--spec content_types_accepted/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec content_types_accepted(#cb_context{}, path_token()) -> #cb_context{}.
 content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, ?LOGO_REQ) ->
     CTA = [{from_binary, ?WHITELABEL_MIME_TYPES}],
     Context#cb_context{content_types_accepted=CTA};
@@ -168,9 +168,9 @@ content_types_accepted(Context, _) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_whitelabel_meta(?WHITELABEL_ID, Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
@@ -208,7 +208,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=undefined}=Context, Domain
     find_whitelabel(Domain, Context, binary).
 
 
--spec get/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec get(#cb_context{}, path_token()) -> #cb_context{}.
 get(Context, ?LOGO_REQ) ->
     Context#cb_context{resp_headers = [{<<"Content-Type">>
                                             ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
@@ -217,7 +217,7 @@ get(Context, ?LOGO_REQ) ->
                                        | Context#cb_context.resp_headers]}.
 
 
--spec get/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec get(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 get(Context, _, ?LOGO_REQ) ->
     Context#cb_context{resp_headers = [{<<"Content-Type">>
                                             ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
@@ -225,12 +225,12 @@ get(Context, _, ?LOGO_REQ) ->
                                              ,wh_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
                                        | Context#cb_context.resp_headers]}.
 
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
+-spec put(#cb_context{}) -> #cb_context{}.
 put(#cb_context{}=Context) ->
     maybe_update_account_definition(crossbar_doc:save(Context)).
 
--spec post/1 :: (#cb_context{}) -> #cb_context{}.
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(#cb_context{}) -> #cb_context{}.
+-spec post(#cb_context{}, path_token()) -> #cb_context{}.
 
 post(#cb_context{}=Context) ->
     maybe_update_account_definition(crossbar_doc:save(Context)).
@@ -238,7 +238,7 @@ post(#cb_context{}=Context) ->
 post(Context, ?LOGO_REQ) ->
     update_whitelabel_binary(?WHITELABEL_ID, Context).
 
--spec delete/1 :: (#cb_context{}) -> #cb_context{}.
+-spec delete(#cb_context{}) -> #cb_context{}.
 delete(#cb_context{}=Context) ->
     maybe_cleanup_account_definition(crossbar_doc:delete(Context, permanent)).
 
@@ -248,7 +248,7 @@ delete(#cb_context{}=Context) ->
 %% Load the binary attachment of a whitelabel doc (based on a domain)
 %% @end
 %%--------------------------------------------------------------------
--spec find_whitelabel/3 :: (ne_binary(), #cb_context{}, 'meta' | 'binary') -> #cb_context{}.
+-spec find_whitelabel(ne_binary(), #cb_context{}, 'meta' | 'binary') -> #cb_context{}.
 find_whitelabel(Domain, Context, LookingFor) ->
     ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Domain)}],
     case crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions, Context#cb_context{db_name=?WH_ACCOUNTS_DB}) of
@@ -270,7 +270,7 @@ find_whitelabel(Domain, Context, LookingFor) ->
 %% Load a whitelabel document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_whitelabel_meta/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_whitelabel_meta(ne_binary(), #cb_context{}) -> #cb_context{}.
 load_whitelabel_meta(WhitelabelId, Context) ->
     crossbar_doc:load(WhitelabelId, Context).
 
@@ -280,7 +280,7 @@ load_whitelabel_meta(WhitelabelId, Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec validate_request('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
 validate_request(WhitelabelId, Context) ->
     validate_unique_domain(WhitelabelId, Context).
 
@@ -314,7 +314,7 @@ on_successful_validation(WhitelabelId, #cb_context{}=Context) ->
 %% Load the binary attachment of a whitelabel doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_whitelabel_binary/2 :: (path_token(), #cb_context{}) -> #cb_context{}.
+-spec load_whitelabel_binary(path_token(), #cb_context{}) -> #cb_context{}.
 load_whitelabel_binary(WhitelabelId, #cb_context{resp_headers=RespHeaders}=Context) ->
     case load_whitelabel_meta(WhitelabelId, Context) of
         #cb_context{resp_status=success, doc=JObj} ->
@@ -339,7 +339,7 @@ load_whitelabel_binary(WhitelabelId, #cb_context{resp_headers=RespHeaders}=Conte
 %% Update the binary attachment of a whitelabel doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_whitelabel_binary/2 :: (path_token(), #cb_context{}) -> #cb_context{}.
+-spec update_whitelabel_binary(path_token(), #cb_context{}) -> #cb_context{}.
 update_whitelabel_binary(WhitelabelId, #cb_context{doc=JObj, req_files=[{Filename, FileObj}], db_name=Db}=Context) ->
     Contents = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
@@ -359,7 +359,7 @@ update_whitelabel_binary(WhitelabelId, #cb_context{doc=JObj, req_files=[{Filenam
 %% it has an extension (for the associated content type)
 %% @end
 %%--------------------------------------------------------------------
--spec attachment_name/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+-spec attachment_name(ne_binary(), ne_binary()) -> ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun(A) ->
                           case wh_util:is_empty(A) of
@@ -383,7 +383,7 @@ attachment_name(Filename, CT) ->
 %% Convert known whitelabel types to extensions
 %% @end
 %%--------------------------------------------------------------------
--spec content_type_to_extension/1 :: (ne_binary()) -> ne_binary().
+-spec content_type_to_extension(ne_binary()) -> ne_binary().
 content_type_to_extension(<<"image/jpg">>) -> <<"jpg">>;
 content_type_to_extension(<<"image/jpeg">>) -> <<"jpg">>;
 content_type_to_extension(<<"image/png">>) -> <<"png">>;
@@ -395,7 +395,7 @@ content_type_to_extension(<<"image/gif">>) -> <<"gif">>.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_domain_unique/2 :: (ne_binary(), ne_binary()) -> boolean().
+-spec is_domain_unique(ne_binary(), ne_binary()) -> boolean().
 is_domain_unique(AccountId, Domain) ->
     ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Domain)}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions) of
@@ -413,7 +413,7 @@ is_domain_unique(AccountId, Domain) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_account_definition/1 :: (#cb_context{}) -> #cb_context{}.
+-spec maybe_update_account_definition(#cb_context{}) -> #cb_context{}.
 maybe_update_account_definition(#cb_context{resp_status=success, account_id=AccountId, doc=JObj}=Context) ->
     case crossbar_doc:load(AccountId, Context) of
         #cb_context{resp_status=success, doc=AccountDoc}=AccountContext ->
@@ -432,7 +432,7 @@ maybe_update_account_definition(Context) -> Context.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_cleanup_account_definition/1 :: (#cb_context{}) -> #cb_context{}.
+-spec maybe_cleanup_account_definition(#cb_context{}) -> #cb_context{}.
 maybe_cleanup_account_definition(#cb_context{resp_status=success, account_id=AccountId}=Context) ->
     case crossbar_doc:load(AccountId, Context) of
         #cb_context{resp_status=success, doc=AccountDoc}=AccountContext ->

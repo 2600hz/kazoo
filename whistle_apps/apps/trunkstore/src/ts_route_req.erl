@@ -16,7 +16,7 @@
 
 init() -> 'ok'.
 
--spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(ApiJObj, _Options) ->
     true = wapi_route:req_v(ApiJObj),
     CallID = wh_json:get_value(<<"Call-ID">>, ApiJObj),

@@ -85,7 +85,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -type map_results() :: [boolean() | http_methods() | {boolean(), cb_context:context()},...] | [].
--spec map/2 :: (ne_binary(), payload()) -> map_results().
+-spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     map_processor(Routing, Payload, gen_server:call(?MODULE, current_bindings)).
 
@@ -97,7 +97,7 @@ map(Routing, Payload) ->
 %% @end
 %%--------------------------------------------------------------------
 -type fold_results() :: payload().
--spec fold/2 :: (ne_binary(), payload()) -> fold_results().
+-spec fold(ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
     fold_processor(Routing, Payload, gen_server:call(?MODULE, current_bindings)).
 
@@ -106,16 +106,16 @@ fold(Routing, Payload) ->
 %% Helper functions for working on a result set of bindings
 %% @end
 %%-------------------------------------------------------------------
--spec any/1 :: (wh_proplist()) -> boolean().
+-spec any(wh_proplist()) -> boolean().
 any(Res) when is_list(Res) -> lists:any(fun check_bool/1, Res).
 
--spec all/1 :: (wh_proplist()) -> boolean().
+-spec all(wh_proplist()) -> boolean().
 all(Res) when is_list(Res) -> lists:all(fun check_bool/1, Res).
 
--spec failed/1 :: (map_results()) -> map_results().
+-spec failed(map_results()) -> map_results().
 failed(Res) when is_list(Res) -> [R || R <- Res, filter_out_succeeded(R)].
 
--spec succeeded/1 :: (map_results()) -> map_results().
+-spec succeeded(map_results()) -> map_results().
 succeeded(Res) when is_list(Res) -> [R || R <- Res, filter_out_failed(R)].
 
 %%--------------------------------------------------------------------
@@ -131,23 +131,23 @@ start_link() ->
 stop() ->
     gen_server:cast(?SERVER, stop).
 
--spec bind/3 :: (ne_binary(), atom(), atom()) -> 'ok' | {'error', 'exists'}.
+-spec bind(ne_binary(), atom(), atom()) -> 'ok' | {'error', 'exists'}.
 bind(Binding, Module, Fun) ->
     gen_server:call(?MODULE, {bind, Binding, Module, Fun}, infinity).
 
--spec flush/0 :: () -> 'ok'.
+-spec flush() -> 'ok'.
 flush() ->
     gen_server:cast(?MODULE, flush).
 
--spec flush/1 :: (ne_binary()) -> 'ok'.
+-spec flush(ne_binary()) -> 'ok'.
 flush(Binding) ->
     gen_server:cast(?MODULE, {flush, Binding}).
 
--spec flush_mod/1 :: (atom()) -> 'ok'.
+-spec flush_mod(atom()) -> 'ok'.
 flush_mod(CBMod) ->
     gen_server:cast(?MODULE, {flush_mod, CBMod}).
 
--spec modules_loaded/0 :: () -> [atom(),...] | [].
+-spec modules_loaded() -> [atom(),...] | [].
 modules_loaded() ->
     gen_server:call(?MODULE, modules_loaded).
 
@@ -328,7 +328,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% <<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>
 %%
 %%--------------------------------------------------------------------
--spec matches/2 :: ([ne_binary(),...] | [], [ne_binary(),...] | []) -> boolean().
+-spec matches([ne_binary(),...] | [], [ne_binary(),...] | []) -> boolean().
 
 %% if both are empty, we made it!
 matches([], []) -> true;
@@ -383,14 +383,14 @@ matches(_, _) -> false.
 %% previous payload being passed to the next invocation.
 %% @end
 %%--------------------------------------------------------------------
--spec fold_bind_results/3 :: (queue() | [{atom(), atom()},...] | [], term(), ne_binary()) -> term().
+-spec fold_bind_results(queue() | [{atom(), atom()},...] | [], term(), ne_binary()) -> term().
 fold_bind_results(_, {error, _}=E, _) -> [E];
 fold_bind_results(MFs, Payload, Route) when is_list(MFs) ->
     fold_bind_results(MFs, Payload, Route, length(MFs), []);
 fold_bind_results(MFs, Payload, Route) ->
     fold_bind_results(queue:to_list(MFs), Payload, Route, queue:len(MFs), []).
 
--spec fold_bind_results/5 :: ([{atom(), atom()},...] | [], term(), ne_binary(), non_neg_integer(), [{atom(), atom()},...] | []) -> term().
+-spec fold_bind_results([{atom(), atom()},...] | [], term(), ne_binary(), non_neg_integer(), [{atom(), atom()},...] | []) -> term().
 fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
     case catch apply(M, F, Payload) of
         eoq -> lager:debug("putting ~s to eoq", [M]), fold_bind_results(MFs, Payload, Route, MFsLen, [{M,F}|ReRunQ]);
@@ -416,7 +416,7 @@ fold_bind_results([], Payload, Route, MFsLen, ReRunQ) ->
 %% Helpers for the result set helpers
 %% @end
 %%-------------------------------------------------------------------------
--spec check_bool/1 :: ({boolean(), term()} | boolean()) -> boolean().
+-spec check_bool({boolean(), term()} | boolean()) -> boolean().
 check_bool({true, _}) -> true;
 check_bool(true) -> true;
 check_bool(_) -> false.
@@ -426,7 +426,7 @@ check_bool(_) -> false.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_failed/1 :: ({boolean(), _} | boolean() | term()) -> boolean().
+-spec filter_out_failed({boolean(), _} | boolean() | term()) -> boolean().
 filter_out_failed({true, _}) -> true;
 filter_out_failed(true) -> true;
 filter_out_failed({false, _}) -> false;
@@ -439,7 +439,7 @@ filter_out_failed(Term) -> not wh_util:is_empty(Term).
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_succeeded/1 :: ({boolean(), _} | boolean() | term()) -> boolean().
+-spec filter_out_succeeded({boolean(), _} | boolean() | term()) -> boolean().
 filter_out_succeeded({true, _}) -> false;
 filter_out_succeeded(true) -> false;
 filter_out_succeeded({false, _}) -> true;
@@ -447,8 +447,8 @@ filter_out_succeeded(false) -> true;
 filter_out_succeeded({'EXIT', _}) -> true;
 filter_out_succeeded(Term) -> wh_util:is_empty(Term).
 
--spec map_processor/3 :: (ne_binary(), payload(), wh_json:json_strings()) -> any().
--spec map_processor/5 :: (ne_binary(), payload(), ne_binary(), call_from(), wh_json:json_strings()) -> map_results().
+-spec map_processor(ne_binary(), payload(), wh_json:json_strings()) -> any().
+-spec map_processor(ne_binary(), payload(), ne_binary(), call_from(), wh_json:json_strings()) -> map_results().
 map_processor(Routing, Payload, ReqId, From, Bs) ->
     put(callid, ReqId),
     Reply = map_processor(Routing, Payload, Bs),
@@ -473,8 +473,8 @@ map_processor(Routing, Payload, Bs) ->
                         end
                 end, [], Bs).
 
--spec fold_processor/3 :: (ne_binary(), payload(), wh_json:json_strings()) -> fold_results().
--spec fold_processor/5 :: (ne_binary(), payload(), ne_binary(), call_from(), wh_json:json_strings()) -> 'ok'.
+-spec fold_processor(ne_binary(), payload(), wh_json:json_strings()) -> fold_results().
+-spec fold_processor(ne_binary(), payload(), ne_binary(), call_from(), wh_json:json_strings()) -> 'ok'.
 fold_processor(Routing, Payload, ReqId, From, Bs) ->
     put(callid, ReqId),
     Reply = fold_processor(Routing, Payload, Bs),
@@ -498,7 +498,7 @@ fold_processor(Routing, Payload, Bs) ->
 
 %% EUNIT and PropEr TESTING %%
 -ifdef(TEST).
--spec binding_matches/2 :: (ne_binary(), ne_binary()) -> boolean().
+-spec binding_matches(ne_binary(), ne_binary()) -> boolean().
 binding_matches(B, R) when erlang:byte_size(B) > 0 andalso erlang:byte_size(R) > 0 ->
     matches(lists:reverse(binary:split(B, <<".">>, [global]))
             ,lists:reverse(binary:split(R, <<".">>, [global]))).

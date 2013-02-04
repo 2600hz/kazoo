@@ -24,7 +24,7 @@
 %% Flush the stepswitch local cache
 %% @end
 %%--------------------------------------------------------------------
--spec flush/0 :: () -> ok.
+-spec flush() -> ok.
 flush() ->
     wh_cache:flush_local(?STEPSWITCH_CACHE).
 
@@ -34,7 +34,7 @@ flush() ->
 %% Lookup a number in the route db and return the account ID if known
 %% @end
 %%--------------------------------------------------------------------
--spec refresh/0 :: () -> 'ok'.
+-spec refresh() -> 'ok'.
 refresh() ->
     lager:debug("ensuring database ~s exists", [?RESOURCES_DB]),
     couch_mgr:db_create(?RESOURCES_DB),
@@ -64,7 +64,7 @@ refresh() ->
 %% Lookup a number in the route db and return the account ID if known
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_number/1 :: (string()) -> {'ok', binary()} | {'error', atom()}.
+-spec lookup_number(string()) -> {'ok', binary()} | {'error', atom()}.
 lookup_number(Number) ->
     gen_server:call(stepswitch_listener, {lookup_number, Number}).
 
@@ -75,7 +75,7 @@ lookup_number(Number) ->
 %% refresh the cache.
 %% @end
 %%--------------------------------------------------------------------
--spec reload_resources/0 :: () -> 'ok'.
+-spec reload_resources() -> 'ok'.
 reload_resources() ->
     gen_server:call(stepswitch_listener, {reload_resrcs}).
 
@@ -87,8 +87,8 @@ reload_resources() ->
 %% {Resource ID, Delay (in seconds), SIP URI}
 %% @end
 %%--------------------------------------------------------------------
--spec process_number/1 :: (string()) -> list() | {'error', atom()}.
--spec process_number/2 :: (string(), list()) -> list() | {'error', atom()}.
+-spec process_number(string()) -> list() | {'error', atom()}.
+-spec process_number(string(), list()) -> list() | {'error', atom()}.
 
 process_number(Number) ->
     gen_server:call(stepswitch_listener, {process_number, Number}).
@@ -103,9 +103,9 @@ process_number(Number, Flags) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec emergency_cid/1 :: (ne_binary()) -> 'no_return'.
--spec emergency_cid/2 :: (ne_binary(), text()) -> 'no_return'.
--spec emergency_cid/3 :: (ne_binary(), 'undefined' | text(), text()) -> 'no_return'.
+-spec emergency_cid(ne_binary()) -> 'no_return'.
+-spec emergency_cid(ne_binary(), text()) -> 'no_return'.
+-spec emergency_cid(ne_binary(), 'undefined' | text(), text()) -> 'no_return'.
 
 emergency_cid(Account) ->
     emergency_cid(Account, undefined).

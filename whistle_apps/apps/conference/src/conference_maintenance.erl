@@ -19,7 +19,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec blocking_refresh/0 :: () -> 'ok'.
+-spec blocking_refresh() -> 'ok'.
 blocking_refresh() ->
     lists:foreach(fun(AccountDb) ->
                           refresh(AccountDb)
@@ -32,8 +32,8 @@ blocking_refresh() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec refresh/0 :: () -> 'started'.
--spec refresh/1 :: (binary() | string()) -> 'ok'.
+-spec refresh() -> 'started'.
+-spec refresh(binary() | string()) -> 'ok'.
 
 refresh() ->
     spawn(fun() ->

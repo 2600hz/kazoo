@@ -17,7 +17,7 @@
 
 -define(LIMITS_KEY(AccountId), {limits, AccountId}).
 
--spec get_limits/1 :: (ne_binary()) -> #limits{}.
+-spec get_limits(ne_binary()) -> #limits{}.
 get_limits(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
     AccountDb = wh_util:format_account_id(Account, encoded),
@@ -49,7 +49,7 @@ get_limits(Account) ->
             Limits
     end.
 
--spec get_limit/2 :: (ne_binary(), wh_json:json_object()) -> integer().
+-spec get_limit(ne_binary(), wh_json:json_object()) -> integer().
 get_limit(Key, JObj) ->
     DefaultValue = whapps_config:get_integer(<<"jonny5">>, <<"default_", Key/binary>>, -1),
     PublicValue =  wh_json:get_integer_value(Key, JObj, DefaultValue),
@@ -60,7 +60,7 @@ get_limit(Key, JObj) ->
         _Else -> PublicValue
     end.
 
--spec get_limit_jobj/1 :: (ne_binary()) -> wh_json:json_object().
+-spec get_limit_jobj(ne_binary()) -> wh_json:json_object().
 get_limit_jobj(AccountDb) ->
     case couch_mgr:open_doc(AccountDb, <<"limits">>) of
         {ok, J} -> J;
@@ -69,7 +69,7 @@ get_limit_jobj(AccountDb) ->
             create_init_limits(AccountDb)
     end.
 
--spec create_init_limits/1 :: (ne_binary()) -> wh_json:json_object().
+-spec create_init_limits(ne_binary()) -> wh_json:json_object().
 create_init_limits(AccountDb) ->
     TStamp = wh_util:current_tstamp(),
     JObj = wh_json:from_list([{<<"_id">>, <<"limits">>}
@@ -89,7 +89,7 @@ create_init_limits(AccountDb) ->
             wh_json:new()
     end.
 
--spec write_to_ledger/5 :: (ne_binary(), float() | integer(), wh_json:json_object(), ne_binary(), debit | credit) -> wh_jobj_return().
+-spec write_to_ledger(ne_binary(), float() | integer(), wh_json:json_object(), ne_binary(), debit | credit) -> wh_jobj_return().
 -ifdef(TEST).
 write_to_ledger(_Suffix, _Props, _Units, _Limits, _JObj) -> {ok, wh_json:new()}.
 -else.
@@ -146,7 +146,7 @@ get_call_id(JObj) ->
         CallId-> CallId
     end.
 
--spec current_balance/1 :: (ne_binary()) -> integer().
+-spec current_balance(ne_binary()) -> integer().
 -ifdef(TEST).
 current_balance(_Ledger) -> get(j5_test_balance).
 -else.
@@ -167,11 +167,11 @@ current_balance(Ledger) ->
     end.
 -endif.
 
--spec get_session_id/1 :: (wh_json:json_object()) -> ne_binary().
+-spec get_session_id(wh_json:json_object()) -> ne_binary().
 get_session_id(JObj) ->
     wh_util:to_hex_binary(crypto:md5(get_call_id(JObj))).
 
--spec send_system_alert/3 :: (ne_binary(), wh_json:json_object(), #limits{}) -> pid().
+-spec send_system_alert(ne_binary(), wh_json:json_object(), #limits{}) -> pid().
 -ifdef(TEST).
 send_system_alert(_Reason, _JObj, _Limits) -> spawn(fun() -> ok end).
 -else.

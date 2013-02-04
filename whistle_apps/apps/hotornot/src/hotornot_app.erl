@@ -17,7 +17,7 @@
 %% Application callbacks
 %% ===================================================================
 
--spec start/2 :: (StartType :: term(), StartArgs :: term()) -> {ok, pid()} | {error, term()}.
+-spec start(StartType :: term(), StartArgs :: term()) -> {ok, pid()} | {error, term()}.
 start(_StartType, _StartArgs) ->
     case hotornot:start_link() of
 	{ok, P} -> {ok, P};

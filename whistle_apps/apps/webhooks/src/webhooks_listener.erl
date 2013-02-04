@@ -179,7 +179,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec start_known_webhooks/0 :: () -> dict().
+-spec start_known_webhooks() -> dict().
 start_known_webhooks() ->
     lists:foldl(fun(AcctDb, HooksAcc) ->
                         lists:foldl(fun({DocId, Pid}, Hooks1Acc) ->
@@ -189,7 +189,7 @@ start_known_webhooks() ->
                 end, dict:new(), whapps_util:get_all_accounts(encoded)).
 
 %% returns [{DocId, Pid},...]
--spec maybe_start_handler/1 :: (ne_binary()) -> [{ne_binary(), pid()},...] | [].
+-spec maybe_start_handler(ne_binary()) -> [{ne_binary(), pid()},...] | [].
 maybe_start_handler(Db) ->
     case couch_mgr:get_results(Db, <<"webhooks/crossbar_listing">>, [{<<"include_docs">>, true}]) of
         {ok, []} -> lager:debug("No webhooks in ~s", [Db]), [];

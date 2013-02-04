@@ -68,9 +68,9 @@ authenticate(#cb_context{req_nouns=[{<<"servers">>, [_,<<"deployment">>]}
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_token()) -> http_methods().
--spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     ['GET', 'PUT'].
 allowed_methods(_) ->
@@ -88,9 +88,9 @@ allowed_methods(_, <<"log">>) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
--spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() ->
     true.
 resource_exists(_) ->
@@ -107,7 +107,7 @@ resource_exists(_, <<"log">>) ->
 %% plain text
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec content_types_provided(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 content_types_provided(Context, _, <<"log">>) ->
     Context#cb_context{content_types_provided=[{to_binary, [{<<"text">>, <<"plain">>}]}]}.
 
@@ -120,9 +120,9 @@ content_types_provided(Context, _, <<"log">>) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_server_summary(Context);
@@ -168,8 +168,8 @@ validate(#cb_context{req_verb = <<"put">>}=Context, ServerId, <<"deployment">>) 
 validate(#cb_context{req_verb = <<"get">>}=Context, ServerId, <<"log">>) ->
     crossbar_doc:load_attachment(ServerId, <<"deployment.log">>, Context).
 
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 post(Context, _) ->
     _ = cb_context:put_reqid(Context),
     crossbar_doc:save(Context).
@@ -185,8 +185,8 @@ post(Context, _, <<"deployment">>) ->
         Else -> Else
     end.
 
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
--spec put/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec put(#cb_context{}) -> #cb_context{}.
+-spec put(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 put(#cb_context{doc=Doc}=Context) ->
     _ = cb_context:put_reqid(Context),
     Id = wh_util:to_hex_binary(crypto:md5([wh_json:get_value(<<"ip">>, Doc), wh_json:get_value(<<"ssh_port">>, Doc)])),
@@ -195,7 +195,7 @@ put(Context, _, <<"deployment">>) ->
     _ = cb_context:put_reqid(Context),
     execute_deploy_command(Context).
 
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _) ->
     _ = cb_context:put_reqid(Context),
     case crossbar_doc:delete(Context, permanent) of
@@ -214,7 +214,7 @@ delete(Context, _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec init_templates/0 :: () -> 'ok'.
+-spec init_templates() -> 'ok'.
 init_templates() ->
     case get_configs() of
         {ok, Terms} ->
@@ -240,7 +240,7 @@ init_templates() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_configs/0 :: () -> {'ok', proplist()} | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
+-spec get_configs() -> {'ok', proplist()} | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
                                                    | {integer(), module(), term()}}.
 get_configs() ->
     file:consult(lists:flatten(?SERVER_CONF)).
@@ -252,7 +252,7 @@ get_configs() ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_server_summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec load_server_summary(#cb_context{}) -> #cb_context{}.
 load_server_summary(Context) ->
         crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -262,7 +262,7 @@ load_server_summary(Context) ->
 %% Create a new server document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create_server/1 :: (#cb_context{}) -> #cb_context{}.
+-spec create_server(#cb_context{}) -> #cb_context{}.
 create_server(#cb_context{req_data=Data}=Context) ->
     case wh_json_validator:is_valid(Data, <<"servers">>) of
         {fail, Errors} ->
@@ -280,7 +280,7 @@ create_server(#cb_context{req_data=Data}=Context) ->
 %% Load a server document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_server/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_server(ne_binary(), #cb_context{}) -> #cb_context{}.
 load_server(ServerId, Context) ->
     crossbar_doc:load(ServerId, Context).
 
@@ -291,7 +291,7 @@ load_server(ServerId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update_server/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec update_server(ne_binary(), #cb_context{}) -> #cb_context{}.
 update_server(ServerId, #cb_context{req_data=Data}=Context) ->
     case wh_json_validator:is_valid(Data, <<"servers">>) of
         {fail, Errors} ->
@@ -306,7 +306,7 @@ update_server(ServerId, #cb_context{req_data=Data}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -316,7 +316,7 @@ normalize_view_results(JObj, Acc) ->
 %% Optional command template to execute on the deletion of a server
 %% @end
 %%--------------------------------------------------------------------
--spec execute_delete_command/1 :: (#cb_context{}) -> 'ok'.
+-spec execute_delete_command(#cb_context{}) -> 'ok'.
 execute_delete_command(#cb_context{doc=JObj}) ->
     case whapps_config:get_atom(?SERVER_CONFIG_CATEGORY, <<"delete_tmpl">>) of
         undefined ->
@@ -338,7 +338,7 @@ execute_delete_command(#cb_context{doc=JObj}) ->
 %% deployment
 %% @end
 %%--------------------------------------------------------------------
--spec execute_deploy_command/1 :: (#cb_context{}) -> #cb_context{}.
+-spec execute_deploy_command(#cb_context{}) -> #cb_context{}.
 execute_deploy_command(Context) ->
     case whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"dev_deploy_tmpl">>) of
         undefined ->
@@ -394,7 +394,7 @@ get_command_tmpl(#cb_context{doc=JObj}) ->
 %% create a proplist to provide to the templates during render
 %% @end
 %%--------------------------------------------------------------------
--spec template_props/1 :: (#cb_context{}) -> [{ne_binary(), ne_binary() | proplist() | wh_json:json_objects()},...].
+-spec template_props(#cb_context{}) -> [{ne_binary(), ne_binary() | proplist() | wh_json:json_objects()},...].
 template_props(#cb_context{doc=JObj, req_data=Data, db_name=Db}=Context) ->
     Mappings = whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"databag_mapping">>),
     RolePathTmpl = whapps_config:get_atom(?SERVER_CONFIG_CATEGORY, <<"role_path_tmpl">>),
@@ -443,7 +443,7 @@ template_props(#cb_context{doc=JObj, req_data=Data, db_name=Db}=Context) ->
 %% Creates the role document (when it doesnt exist)
 %% @end
 %%--------------------------------------------------------------------
--spec create_role/2 :: (proplist(), #cb_context{}) -> wh_json:json_object().
+-spec create_role(proplist(), #cb_context{}) -> wh_json:json_object().
 create_role(Account, #cb_context{db_name=Db}) ->
     case whapps_config:get_atom(?SERVER_CONFIG_CATEGORY, <<"role_tmpl">>) of
         undefined -> wh_json:new();
@@ -481,7 +481,7 @@ create_role(Account, #cb_context{db_name=Db}) ->
 %% TODO: this cant be a template (the databag contents) yet...
 %% @end
 %%--------------------------------------------------------------------
--spec write_databag/4 :: (proplist(), proplist(), wh_json:json_object(), atom()) -> ne_binary().
+-spec write_databag(proplist(), proplist(), wh_json:json_object(), atom()) -> ne_binary().
 write_databag(_, _, _, undefined) -> <<>>;
 write_databag(Account, Server, JObj, PathTmpl) ->
     JSON = wh_json:encode(wh_json:public_fields(JObj)),
@@ -499,7 +499,7 @@ write_databag(Account, Server, JObj, PathTmpl) ->
 %% Creates a databag for this deployment
 %% @end
 %%--------------------------------------------------------------------
--spec create_databag/3 :: (wh_json:json_objects(), list(), wh_json:json_object()) -> wh_json:json_object().
+-spec create_databag(wh_json:json_objects(), list(), wh_json:json_object()) -> wh_json:json_object().
 create_databag([], _, JObj) -> JObj;
 create_databag([H|T], Mapping, JObj) ->
     Roles = props:get_value(<<"roles">>, H, []),
@@ -521,7 +521,7 @@ create_databag([H|T], Mapping, JObj) ->
 %% role_path_tmpl, then returns the path
 %% @end
 %%--------------------------------------------------------------------
--spec write_role/4 :: (proplist(), proplist(), wh_json:json_object(), atom()) -> binary().
+-spec write_role(proplist(), proplist(), wh_json:json_object(), atom()) -> binary().
 write_role(_, _, _, undefined) -> <<>>;
 write_role(Account, Server, JObj, PathTmpl) ->
     JSON = wh_json:encode(wh_json:public_fields(JObj)),
@@ -540,7 +540,7 @@ write_role(Account, Server, JObj, PathTmpl) ->
 %% conflicts it will require another request
 %% @end
 %%--------------------------------------------------------------------
--spec mark_deploy_running/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec mark_deploy_running(ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 mark_deploy_running(Db, ServerId) ->
     {ok, JObj} = couch_mgr:open_doc(Db, ServerId),
     case wh_json:get_value(<<"pvt_deploy_status">>, JObj) of
@@ -558,7 +558,7 @@ mark_deploy_running(Db, ServerId) ->
 %% Loop the save if it is in conflict until it works
 %% @end
 %%--------------------------------------------------------------------
--spec mark_deploy_complete/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec mark_deploy_complete(ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 mark_deploy_complete(Db, ServerId) ->
     {ok, JObj} = couch_mgr:open_doc(Db, ServerId),
     couch_mgr:ensure_saved(Db, wh_json:set_value(<<"pvt_deploy_status">>, <<"idle">>, JObj)).
@@ -570,7 +570,7 @@ mark_deploy_complete(Db, ServerId) ->
 %% to the priv directory of this module
 %% @end
 %%--------------------------------------------------------------------
--spec compile_template/2 :: (nonempty_string() | ne_binary() | 'undefined', Name) -> Name | 'undefined'.
+-spec compile_template(nonempty_string() | ne_binary() | 'undefined', Name) -> Name | 'undefined'.
 compile_template(undefined, _) -> 'undefined';
 compile_template(Template, Name) when not is_binary(Template) ->
     Path = case string:substr(Template, 1, 1) of
@@ -590,7 +590,7 @@ compile_template(Template, Name) ->
 %% Compiles template string or path, normalizing the return
 %% @end
 %%--------------------------------------------------------------------
--spec do_compile_template/2 :: (ne_binary() | nonempty_string(), Name) -> 'undefined' | Name.
+-spec do_compile_template(ne_binary() | nonempty_string(), Name) -> 'undefined' | Name.
 do_compile_template(Template, Name) ->
     case erlydtl:compile(Template, Name) of
         ok ->

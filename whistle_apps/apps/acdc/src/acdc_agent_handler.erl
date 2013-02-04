@@ -22,7 +22,7 @@
 
 -include("acdc.hrl").
 
--spec handle_status_update/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_status_update(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_status_update(JObj, _Props) ->
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
@@ -106,17 +106,17 @@ maybe_resume_agent(AcctId, AgentId) ->
             acdc_agent_fsm:resume(acdc_agent_sup:fsm(P))
     end.
 
--spec handle_sync_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_sync_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_sync_req(JObj, Props) ->
     true = wapi_acdc_agent:sync_req_v(JObj),
     acdc_agent_fsm:sync_req(props:get_value(fsm_pid, Props), JObj).
 
--spec handle_sync_resp/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_sync_resp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_sync_resp(JObj, Props) ->
     true = wapi_acdc_agent:sync_resp_v(JObj),
     acdc_agent_fsm:sync_resp(props:get_value(fsm_pid, Props), JObj).
 
--spec handle_call_event/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     FSM = props:get_value(fsm_pid, Props),
     case wapi_call:event_v(JObj) of
@@ -146,8 +146,8 @@ handle_originate_resp(JObj, Props) ->
             acdc_agent_fsm:originate_uuid(props:get_value(fsm_pid, Props), JObj)
     end.
 
--spec handle_member_message/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
--spec handle_member_message/3 :: (wh_json:object(), wh_proplist(), ne_binary()) -> 'ok'.
+-spec handle_member_message(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_member_message(wh_json:object(), wh_proplist(), ne_binary()) -> 'ok'.
 handle_member_message(JObj, Props) ->
     handle_member_message(JObj, Props, wh_json:get_value(<<"Event-Name">>, JObj)).
 

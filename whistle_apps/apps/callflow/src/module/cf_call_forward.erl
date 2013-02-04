@@ -36,7 +36,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     case get_call_forward(Call) of
         {error, _} ->
@@ -62,7 +62,7 @@ handle(Data, Call) ->
 %% This function provides a menu with the call forwarding options
 %% @end
 %%--------------------------------------------------------------------
--spec cf_menu/3 :: (#callfwd{}, ne_binary(), whapps_call:call()) -> #callfwd{}.
+-spec cf_menu(#callfwd{}, ne_binary(), whapps_call:call()) -> #callfwd{}.
 cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle, menu_change_number=ChangeNum}}=CF, CaptureGroup, Call) ->
     lager:info("playing call forwarding menu"),
     Prompt = case CF#callfwd.enabled of
@@ -90,7 +90,7 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle, menu_change_number=ChangeNum}
 %% not, and disabling it if it is
 %% @end
 %%--------------------------------------------------------------------
--spec cf_toggle/3 :: (#callfwd{}, undefined | binary(), whapps_call:call()) -> #callfwd{}.
+-spec cf_toggle(#callfwd{}, undefined | binary(), whapps_call:call()) -> #callfwd{}.
 cf_toggle(#callfwd{enabled=false, number=Number}=CF, _, Call) when is_binary(Number), size(Number) > 0 ->
     _ = try
             {ok, _} = whapps_call_command:b_prompt(<<"cf-now_forwarded_to">>, Call),
@@ -111,7 +111,7 @@ cf_toggle(CF, _, Call) ->
 %% document to enable call forwarding
 %% @end
 %%--------------------------------------------------------------------
--spec cf_activate/3 :: (#callfwd{}, undefined | binary(), whapps_call:call()) -> #callfwd{}.
+-spec cf_activate(#callfwd{}, undefined | binary(), whapps_call:call()) -> #callfwd{}.
 cf_activate(CF1, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
     lager:info("activating call forwarding"),
     CF2 = #callfwd{number=Number} = cf_update_number(CF1, CaptureGroup, Call),
@@ -139,7 +139,7 @@ cf_activate(CF, CaptureGroup, Call) ->
 %% document to disable call forwarding
 %% @end
 %%--------------------------------------------------------------------
--spec cf_deactivate/2 :: (#callfwd{}, whapps_call:call()) -> #callfwd{}.
+-spec cf_deactivate(#callfwd{}, whapps_call:call()) -> #callfwd{}.
 cf_deactivate(CF, Call) ->
     lager:info("deactivating call forwarding"),
     catch({ok, _} = whapps_call_command:b_prompt(<<"cf-disabled">>, Call)),
@@ -152,7 +152,7 @@ cf_deactivate(CF, Call) ->
 %% document with a new number
 %% @end
 %%--------------------------------------------------------------------
--spec cf_update_number/3 :: (#callfwd{}, undefined | binary(), whapps_call:call()) -> #callfwd{}.
+-spec cf_update_number(#callfwd{}, undefined | binary(), whapps_call:call()) -> #callfwd{}.
 cf_update_number(CF, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
     EnterNumber = whapps_util:get_prompt(<<"cf-enter_number">>, Call),
     case whapps_call_command:b_play_and_collect_digits(<<"3">>, <<"20">>, EnterNumber, <<"1">>, <<"8000">>, Call) of
@@ -174,7 +174,7 @@ cf_update_number(CF, CaptureGroup, _) ->
 %% rev tag if the document is in conflict
 %% @end
 %%--------------------------------------------------------------------
--spec update_callfwd/2 :: (#callfwd{}, whapps_call:call()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec update_callfwd(#callfwd{}, whapps_call:call()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress=_RK, keep_caller_id=_KCI}=CF, Call) ->
     lager:info("updating call forwarding settings on ~s", [Id]),
     AccountDb = whapps_call:account_db(Call),
@@ -202,7 +202,7 @@ update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress
 %% This function will load the call forwarding record
 %% @end
 %%--------------------------------------------------------------------
--spec get_call_forward/1 :: (whapps_call:call()) -> #callfwd{} |
+-spec get_call_forward(whapps_call:call()) -> #callfwd{} |
                                                     {'error', #callfwd{}}.
 get_call_forward(Call) ->
     AccountDb = whapps_call:account_db(Call),

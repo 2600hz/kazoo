@@ -34,7 +34,7 @@
 %% Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.services">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.services">>, ?MODULE, resource_exists),
@@ -51,8 +51,8 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods() | [].
--spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
+-spec allowed_methods() -> http_methods() | [].
+-spec allowed_methods(path_token()) -> http_methods() | [].
 
 allowed_methods() ->
     ['GET', 'POST'].
@@ -71,8 +71,8 @@ allowed_methods(_) ->
 %%    /services/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> boolean().
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> boolean().
 resource_exists() -> true.
 
 resource_exists(<<"plan">>) -> true;
@@ -88,8 +88,8 @@ resource_exists(_) -> false.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 
 validate(#cb_context{account_id=AccountId, req_verb = <<"get">>}=Context) ->
     crossbar_util:response(wh_services:public_json(AccountId), Context);
@@ -115,8 +115,8 @@ validate(#cb_context{account_id=AccountId}=Context, <<"plan">>) ->
 %% the resource into the resp_data, resp_headers, etc...
 %% @end
 %%--------------------------------------------------------------------
--spec get/1 :: (#cb_context{}) -> #cb_context{}.
--spec get/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec get(#cb_context{}) -> #cb_context{}.
+-spec get(#cb_context{}, path_token()) -> #cb_context{}.
 
 get(#cb_context{}=Context) ->
     Context.
@@ -131,7 +131,7 @@ get(Context, <<"plan">>) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post/1 :: (#cb_context{}) -> #cb_context{}.
+-spec post(#cb_context{}) -> #cb_context{}.
 post(#cb_context{doc=undefined}=Context) ->
     Context;
 post(#cb_context{doc=Services}=Context) ->

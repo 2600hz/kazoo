@@ -41,7 +41,7 @@
 %% Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.faxes">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.faxes">>, ?MODULE, resource_exists),
@@ -59,10 +59,10 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods() | [].
--spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
--spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods() | [].
--spec allowed_methods/3 :: (path_token(), path_token(), path_token()) -> http_methods() | [].
+-spec allowed_methods() -> http_methods() | [].
+-spec allowed_methods(path_token()) -> http_methods() | [].
+-spec allowed_methods(path_token(), path_token()) -> http_methods() | [].
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods() | [].
 
 allowed_methods() ->
     ['PUT'].
@@ -89,10 +89,10 @@ allowed_methods(?INCOMING, _Id, ?ATTACHMENT) ->
 %%    /faxes/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
--spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
--spec resource_exists/3 :: (path_token(), path_token(), path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> true.
 resource_exists(?INCOMING) -> true;
@@ -108,7 +108,7 @@ resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> true.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+-spec content_types_provided(#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 content_types_provided(#cb_context{req_verb = <<"get">>}=Context, ?INCOMING, FaxId, ?ATTACHMENT) ->
     case load_fax_meta(FaxId, Context) of
         #cb_context{resp_status=success, doc=JObj} ->
@@ -133,10 +133,10 @@ content_types_provided(Context, _, _, _) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
--spec validate/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec validate(#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
     create(Context#cb_context{db_name=?WH_FAXES}).
@@ -168,10 +168,10 @@ validate(#cb_context{req_verb = <<"get">>}=Context, ?INCOMING, Id, ?ATTACHMENT) 
 %% the resource into the resp_data, resp_headers, etc...
 %% @end
 %%--------------------------------------------------------------------
--spec get/1 :: (#cb_context{}) -> #cb_context{}.
--spec get/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec get/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
--spec get/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+-spec get(#cb_context{}) -> #cb_context{}.
+-spec get(#cb_context{}, path_token()) -> #cb_context{}.
+-spec get(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec get(#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 
 get(#cb_context{}=Context) ->
     Context.
@@ -188,8 +188,8 @@ get(#cb_context{}=Context, _, _, _) ->
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
--spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec put(#cb_context{}) -> #cb_context{}.
+-spec put(#cb_context{}, path_token()) -> #cb_context{}.
 put(#cb_context{}=Context) ->
     crossbar_doc:save(Context).
 put(#cb_context{}=Context, ?OUTGOING) ->
@@ -202,8 +202,8 @@ put(#cb_context{}=Context, ?OUTGOING) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post/1 :: (#cb_context{}) -> #cb_context{}.
--spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec post(#cb_context{}) -> #cb_context{}.
+-spec post(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 post(#cb_context{}=Context) ->
     crossbar_doc:save(Context).
 post(#cb_context{}=Context, ?OUTGOING, _) ->
@@ -215,7 +215,7 @@ post(#cb_context{}=Context, ?OUTGOING, _) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec delete(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 delete(#cb_context{}=Context, ?OUTGOING, _Id) ->
     crossbar_doc:delete(Context).
 
@@ -225,7 +225,7 @@ delete(#cb_context{}=Context, ?OUTGOING, _Id) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (#cb_context{}) -> #cb_context{}.
+-spec create(#cb_context{}) -> #cb_context{}.
 create(#cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
     cb_context:validate_request_data(<<"faxes">>, Context, OnSuccess).
@@ -236,7 +236,7 @@ create(#cb_context{}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read(ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
@@ -246,7 +246,7 @@ read(Id, Context) ->
 %% Load a fax document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_fax_meta/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_fax_meta(ne_binary(), #cb_context{}) -> #cb_context{}.
 load_fax_meta(FaxId, Context) ->
     crossbar_doc:load(FaxId, Context).
 
@@ -257,7 +257,7 @@ load_fax_meta(FaxId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
 update(Id, #cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"faxes">>, Context, OnSuccess).
@@ -268,7 +268,7 @@ update(Id, #cb_context{}=Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
 on_successful_validation(undefined, #cb_context{doc=JObj, account_id=AccountId}=Context) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     Context#cb_context{doc=wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
@@ -298,7 +298,7 @@ maybe_reset_job(Context) -> Context.
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec incoming_summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec incoming_summary(#cb_context{}) -> #cb_context{}.
 incoming_summary(#cb_context{}=Context) ->
     crossbar_doc:load_view(?CB_LIST
                            ,[{startkey, [?FAX_FILE_TYPE]}
@@ -315,7 +315,7 @@ incoming_summary(#cb_context{}=Context) ->
 %% Load the binary attachment of a fax doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_fax_binary/2 :: (path_token(), #cb_context{}) -> #cb_context{}.
+-spec load_fax_binary(path_token(), #cb_context{}) -> #cb_context{}.
 load_fax_binary(FaxId, #cb_context{resp_headers=RespHeaders}=Context) ->
     case load_fax_meta(FaxId, Context) of
         #cb_context{resp_status=success, doc=JObj} ->
@@ -341,7 +341,7 @@ load_fax_binary(FaxId, #cb_context{resp_headers=RespHeaders}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec outgoing_summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec outgoing_summary(#cb_context{}) -> #cb_context{}.
 outgoing_summary(#cb_context{account_id=AccountId}=Context) ->
     ViewOptions=[{<<"key">>, AccountId}
                  ,include_docs
@@ -352,7 +352,7 @@ outgoing_summary(#cb_context{account_id=AccountId}=Context) ->
                            ,fun normalize_view_results/2
                           ).
 
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -362,6 +362,6 @@ normalize_view_results(JObj, Acc) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_incoming_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_incoming_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_incoming_view_results(JObj, Acc) ->
     [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))|Acc].

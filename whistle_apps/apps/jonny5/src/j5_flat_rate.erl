@@ -26,20 +26,20 @@
 -define(BLACKLIST, fun() ->  whapps_config:get(<<"jonny5">>, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST) end()).
 -endif.
 
--spec is_available/2 :: (j5_limits(), wh_json:object()) -> boolean().
+-spec is_available(j5_limits(), wh_json:object()) -> boolean().
 is_available(Limits, JObj) ->
     case eligible_for_flat_rate(JObj) of
         false -> false;
         true -> maybe_consume_flat_rate(Limits, JObj)
     end.
 
--spec maybe_consume_flat_rate/2 :: (j5_limits(), wh_json:object()) -> boolean().
+-spec maybe_consume_flat_rate(j5_limits(), wh_json:object()) -> boolean().
 maybe_consume_flat_rate(Limits, JObj) ->
     RemainingInbound = consume_inbound_limits(Limits, get_inbound_resources(JObj)),
     UnconsumedResources = consume_twoway_limits(Limits, RemainingInbound + get_outbound_resources(JObj)),
     UnconsumedResources =:= 0.
 
--spec eligible_for_flat_rate/1 :: (wh_json:object()) -> boolean().
+-spec eligible_for_flat_rate(wh_json:object()) -> boolean().
 eligible_for_flat_rate(JObj) ->
     [Num, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
     Number = wnm_util:to_e164(Num), 
@@ -49,7 +49,7 @@ eligible_for_flat_rate(JObj) ->
         andalso 
           (wh_util:is_empty(TrunkBlacklist) orelse re:run(Number, TrunkBlacklist) =:= nomatch).
 
--spec get_inbound_resources/1 :: (wh_json:object()) -> integer().
+-spec get_inbound_resources(wh_json:object()) -> integer().
 get_inbound_resources(JObj) ->
     CurrentUsage = wh_json:get_integer_value([<<"Usage">>, <<"Inbound-Flat-Rate">>], JObj, 0),
     case wh_json:get_value(<<"Call-Direction">>, JObj) of
@@ -57,7 +57,7 @@ get_inbound_resources(JObj) ->
         _Else -> CurrentUsage
     end.
 
--spec get_outbound_resources/1 :: (wh_json:object()) -> integer().
+-spec get_outbound_resources(wh_json:object()) -> integer().
 get_outbound_resources(JObj) ->
     CurrentUsage = wh_json:get_integer_value([<<"Usage">>, <<"Outbound-Flat-Rate">>], JObj, 0),
     case wh_json:get_value(<<"Call-Direction">>, JObj) of
@@ -65,7 +65,7 @@ get_outbound_resources(JObj) ->
         _Else -> CurrentUsage
     end.            
 
--spec consume_inbound_limits/2 :: (j5_limits(), integer()) -> integer().
+-spec consume_inbound_limits(j5_limits(), integer()) -> integer().
 consume_inbound_limits(_, 0) ->
     0;
 consume_inbound_limits(#limits{inbound_trunks=-1}, _) ->
@@ -84,7 +84,7 @@ consume_inbound_limits(#limits{inbound_trunks=Trunks}, Resources) ->
             0
     end.
 
--spec consume_twoway_limits/2 :: (j5_limits(), integer()) -> integer().
+-spec consume_twoway_limits(j5_limits(), integer()) -> integer().
 consume_twoway_limits(_, 0) -> 0;
 consume_twoway_limits(#limits{twoway_trunks=-1}, _) ->
     lager:debug("account has unlimited twoway trunks", []),

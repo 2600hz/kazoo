@@ -22,7 +22,7 @@
 %% Starts the app for inclusion in a supervisor tree
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     put(callid, ?LOG_SYSTEM_ID),
 
@@ -105,7 +105,7 @@ find_file(File, Root) ->
 %% Stop the app
 %% @end
 %%--------------------------------------------------------------------
--spec stop/0 :: () -> 'ok'.
+-spec stop() -> 'ok'.
 stop() ->
     cowboy:stop_listener(v1_resource),
     ok = application:stop(crossbar).
@@ -116,7 +116,7 @@ stop() ->
 %% Load a crossbar module's bindings into the bindings server
 %% @end
 %%--------------------------------------------------------------------
--spec start_mod/1 :: (atom() | string() | binary()) -> any().
+-spec start_mod(atom() | string() | binary()) -> any().
 start_mod(CBMod) when not is_atom(CBMod) ->
     start_mod(wh_util:to_atom(CBMod, true));
 start_mod(CBMod) ->
@@ -128,7 +128,7 @@ start_mod(CBMod) ->
 %% Load a crossbar module's bindings into the bindings server
 %% @end
 %%--------------------------------------------------------------------
--spec stop_mod/1 :: (atom() | string() | binary()) -> any().
+-spec stop_mod(atom() | string() | binary()) -> any().
 
 stop_mod(CBMod) when not is_atom(CBMod) ->
     stop_mod(wh_util:to_atom(CBMod, true));
@@ -145,7 +145,7 @@ stop_mod(CBMod) ->
 %% Ensures that all dependencies for this app are already running
 %% @end
 %%--------------------------------------------------------------------
--spec start_deps/0 :: () -> 'ok'.
+-spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     _ = [ wh_util:ensure_started(App) || App <- [sasl, crypto, inets, cowboy, whistle_amqp]],
@@ -157,7 +157,7 @@ start_deps() ->
 %% Functions for onrequest and onresponse callbacks
 %% @end
 %%--------------------------------------------------------------------
--spec on_request/1 :: (#http_req{}) -> #http_req{}.
+-spec on_request(#http_req{}) -> #http_req{}.
 on_request(Req0) ->
     {Method, Req1} = cowboy_http_req:method(Req0),
     case Method of
@@ -167,7 +167,7 @@ on_request(Req0) ->
             Req1
     end.
 
--spec on_response/3 :: (cowboy_http:status(), cowboy_http:headers(), #http_req{}) -> #http_req{}.
+-spec on_response(cowboy_http:status(), cowboy_http:headers(), #http_req{}) -> #http_req{}.
 on_response(Status, _Headers, Req0) ->
     {Method, Req1} = cowboy_http_req:method(Req0),
     case Method of

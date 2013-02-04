@@ -100,7 +100,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/3 :: (pid(), pid(), wh_json:object()) -> startlink_ret().
+-spec start_link(pid(), pid(), wh_json:object()) -> startlink_ret().
 start_link(MgrPid, ListenerPid, QueueJObj) ->
     gen_fsm:start_link(?MODULE, [MgrPid, ListenerPid, QueueJObj], []).
 
@@ -111,7 +111,7 @@ refresh(FSM, QueueJObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec member_call/3 :: (pid(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
+-spec member_call(pid(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
 member_call(FSM, CallJObj, Delivery) ->
     gen_fsm:send_event(FSM, {member_call, CallJObj, Delivery}).
 
@@ -119,7 +119,7 @@ member_call(FSM, CallJObj, Delivery) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec member_connect_resp/2 :: (pid(), wh_json:object()) -> 'ok'.
+-spec member_connect_resp(pid(), wh_json:object()) -> 'ok'.
 member_connect_resp(FSM, Resp) ->
     gen_fsm:send_event(FSM, {agent_resp, Resp}).
 
@@ -127,7 +127,7 @@ member_connect_resp(FSM, Resp) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec member_accepted/2 :: (pid(), wh_json:object()) -> 'ok'.
+-spec member_accepted(pid(), wh_json:object()) -> 'ok'.
 member_accepted(FSM, AcceptJObj) ->
     gen_fsm:send_event(FSM, {accepted, AcceptJObj}).
 
@@ -135,7 +135,7 @@ member_accepted(FSM, AcceptJObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec member_connect_retry/2 :: (pid(), wh_json:object()) -> 'ok'.
+-spec member_connect_retry(pid(), wh_json:object()) -> 'ok'.
 member_connect_retry(FSM, RetryJObj) ->
     gen_fsm:send_event(FSM, {retry, RetryJObj}).
 
@@ -146,7 +146,7 @@ member_connect_retry(FSM, RetryJObj) ->
 %%   for hangup events).
 %% @end
 %%--------------------------------------------------------------------
--spec call_event/4 :: (pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec call_event(pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, EvtJObj) ->
     gen_fsm:send_event(FSM, {member_hungup, EvtJObj});
 call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
@@ -647,29 +647,29 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 start_collect_timer() ->
     gen_fsm:start_timer(?COLLECT_RESP_TIMEOUT, ?COLLECT_RESP_MESSAGE).
 
--spec connection_timeout/1 :: (integer() | 'undefined') -> pos_integer().
+-spec connection_timeout(integer() | 'undefined') -> pos_integer().
 connection_timeout(N) when is_integer(N), N > 0 -> N * 1000;
 connection_timeout(_) -> ?CONNECTION_TIMEOUT.
 
--spec start_connection_timer/1 :: (pos_integer()) -> reference().
+-spec start_connection_timer(pos_integer()) -> reference().
 start_connection_timer(ConnTimeout) ->
     gen_fsm:start_timer(ConnTimeout, ?CONNECTION_TIMEOUT_MESSAGE).
 
--spec agent_ring_timeout/1 :: (integer() | 'undefined') -> pos_integer().
+-spec agent_ring_timeout(integer() | 'undefined') -> pos_integer().
 agent_ring_timeout(N) when is_integer(N), N > 0 -> N;
 agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 
--spec start_agent_ring_timer/1 :: (pos_integer()) -> reference().
+-spec start_agent_ring_timer(pos_integer()) -> reference().
 start_agent_ring_timer(AgentTimeout) ->
     gen_fsm:start_timer(AgentTimeout * 2600, ?AGENT_RING_TIMEOUT_MESSAGE).
 
--spec maybe_stop_timer/1 :: (reference() | 'undefined') -> 'ok'.
+-spec maybe_stop_timer(reference() | 'undefined') -> 'ok'.
 maybe_stop_timer(undefined) -> ok;
 maybe_stop_timer(ConnRef) ->
     _ = gen_fsm:cancel_timer(ConnRef),
     ok.
 
--spec clear_member_call/1 :: (#state{}) -> #state{}.
+-spec clear_member_call(#state{}) -> #state{}.
 clear_member_call(#state{connection_timer_ref=ConnRef
                          ,agent_ring_timer_ref=AgentRef
                          ,collect_ref=CollectRef

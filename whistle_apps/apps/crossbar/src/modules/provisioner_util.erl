@@ -266,7 +266,7 @@ do_awesome_provision(_MACAddress, Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec get_merged_device/2 :: (ne_binary(), cb_context:context()) -> {ok, cb_context:context()} | {error, binary()}.
+-spec get_merged_device(ne_binary(), cb_context:context()) -> {ok, cb_context:context()} | {error, binary()}.
 get_merged_device(MACAddress, Context) ->
     case merge_device(MACAddress, Context) of
         {error, _}=E -> E;
@@ -274,7 +274,7 @@ get_merged_device(MACAddress, Context) ->
             {ok, Context#cb_context{doc=Data}}
     end.
 
--spec merge_device/2 :: (ne_binary(), cb_context:context()) -> {ok, wh_json:json_object()} | {error, binary()}.
+-spec merge_device(ne_binary(), cb_context:context()) -> {ok, wh_json:json_object()} | {error, binary()}.
 merge_device(MACAddress, #cb_context{doc=JObj, account_id=AccountId}) ->
     Routines = [fun(J) -> wh_json:set_value(<<"mac_address">>, MACAddress, J) end
                 ,fun(J) -> 
@@ -358,7 +358,7 @@ get_template(#cb_context{doc=Device, db_name=Db}) ->
 %% add the account_id to the root of the provisioning json
 %% @end
 %%--------------------------------------------------------------------
--spec set_account_id/1 :: (cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
+-spec set_account_id(cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
 set_account_id(#cb_context{auth_account_id=AccountId}) ->
     [fun(J) -> wh_json:set_value(<<"account_id">>, AccountId, J) end].
 
@@ -369,7 +369,7 @@ set_account_id(#cb_context{auth_account_id=AccountId}) ->
 %% base properties for the line
 %% @end
 %%--------------------------------------------------------------------
--spec set_account_line_defaults/1 :: (cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
+-spec set_account_line_defaults(cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
 set_account_line_defaults(#cb_context{account_id=AccountId}) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     Account = case couch_mgr:open_cache_doc(AccountDb, AccountId) of
@@ -397,7 +397,7 @@ set_account_line_defaults(#cb_context{account_id=AccountId}) ->
 %% base properties for the line
 %% @end
 %%--------------------------------------------------------------------
--spec set_device_line_defaults/1 :: (cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
+-spec set_device_line_defaults(cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
 set_device_line_defaults(#cb_context{doc=Device}) ->
     [fun(J) -> 
              case wh_json:get_ne_value([<<"sip">>, <<"username">>], Device) of
@@ -437,7 +437,7 @@ set_device_line_defaults(#cb_context{doc=Device}) ->
 %% merge in any overrides from the global provisioning db
 %% @end
 %%--------------------------------------------------------------------
--spec set_global_overrides/1 :: (cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
+-spec set_global_overrides(cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
 set_global_overrides(_) ->
     GlobalDefaults = case couch_mgr:open_cache_doc(?WH_PROVISIONER_DB, <<"base_properties">>) of
                          {ok, JObj} -> JObj;
@@ -458,7 +458,7 @@ set_global_overrides(_) ->
 %% merge in any overrides from the account doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_account_overrides/1 :: (cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
+-spec set_account_overrides(cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
 set_account_overrides(#cb_context{account_id=AccountId}) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     Account = case couch_mgr:open_cache_doc(AccountDb, AccountId) of
@@ -480,7 +480,7 @@ set_account_overrides(#cb_context{account_id=AccountId}) ->
 %% merge in any overrides from the user doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_user_overrides/1 :: (cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
+-spec set_user_overrides(cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
 set_user_overrides(#cb_context{doc=Device, account_id=AccountId}) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     OwnerId = wh_json:get_ne_value(<<"owner_id">>, Device),
@@ -503,7 +503,7 @@ set_user_overrides(#cb_context{doc=Device, account_id=AccountId}) ->
 %% merge in any overrides from the device doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_device_overrides/1 :: (cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
+-spec set_device_overrides(cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
 set_device_overrides(#cb_context{doc=Device}) ->
     [fun(J) ->
              case wh_json:get_value([<<"provision">>, <<"overrides">>], Device) of
@@ -520,7 +520,7 @@ set_device_overrides(#cb_context{doc=Device}) ->
 %% Send awesome provisioning request
 %% @end
 %%--------------------------------------------------------------------
--spec send_provisioning_request/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
+-spec send_provisioning_request(wh_json:json_object(), ne_binary()) -> 'ok'.
 send_provisioning_request(Template, MACAddress) ->
     ProvisionRequest = wh_json:encode(Template),
     UrlTmpl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>),
@@ -540,5 +540,3 @@ send_provisioning_request(Template, MACAddress) ->
         {ok, Code, _, Response} ->
             lager:debug("ERROR! OH NO! ~s. ~s", [Code, Response])
     end.
-
-

@@ -26,7 +26,7 @@
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 
--spec find_ip/1 :: (ne_binary() | nonempty_string()) -> nonempty_string().
+-spec find_ip(ne_binary() | nonempty_string()) -> nonempty_string().
 find_ip(Domain) when is_binary(Domain) ->
     find_ip(binary_to_list(Domain));
 find_ip(Domain) when is_list(Domain) ->
@@ -47,7 +47,7 @@ find_ip(Domain) when is_list(Domain) ->
 
 %% FilterOn: CallID | flat_rate | per_min
 %% Remove active call entries based on what Filter criteria is passed in
--spec filter_active_calls/2 :: (ne_binary() | 'flat_rate' | 'per_min', active_calls()) -> active_calls().
+-spec filter_active_calls(ne_binary() | 'flat_rate' | 'per_min', active_calls()) -> active_calls().
 filter_active_calls(flat_rate, ActiveCalls) ->
     lists:filter(fun({_,flat_rate}) -> false; (_) -> true end, ActiveCalls);
 filter_active_calls(per_min, ActiveCalls) ->
@@ -58,21 +58,21 @@ filter_active_calls(CallID, ActiveCalls) ->
                     (_) -> true
                  end, ActiveCalls).
 
--spec get_media_handling/1 :: ([wh_json:object() | api_binary(),...]) -> <<_:48,_:_*8>>.
+-spec get_media_handling([wh_json:object() | api_binary(),...]) -> <<_:48,_:_*8>>.
 get_media_handling(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"process">>;
         _ -> <<"bypass">>
     end.
 
--spec constrain_weight/1 :: (ne_binary() | integer()) -> integer().
+-spec constrain_weight(ne_binary() | integer()) -> integer().
 constrain_weight(W) when not is_integer(W) ->
     constrain_weight(wh_util:to_integer(W));
 constrain_weight(W) when W > 100 -> 100;
 constrain_weight(W) when W < 1 -> 1;
 constrain_weight(W) -> W.
 
--spec lookup_did/2 :: (ne_binary(), ne_binary()) ->
+-spec lookup_did(ne_binary(), ne_binary()) ->
                               {'ok', wh_json:object()} |
                               {'error', 'no_did_found' | atom()}.
 lookup_did(DID, AcctID) ->
@@ -105,7 +105,7 @@ lookup_did(DID, AcctID) ->
             end
     end.
 
--spec lookup_user_flags/3 :: (ne_binary(), ne_binary(), ne_binary()) ->
+-spec lookup_user_flags(ne_binary(), ne_binary(), ne_binary()) ->
                                      {'ok', wh_json:object()} |
                                      {'error', atom()}.
 lookup_user_flags(Name, Realm, AcctID) ->
@@ -127,11 +127,11 @@ lookup_user_flags(Name, Realm, AcctID) ->
             end
     end.
 
--spec get_call_duration/1 :: (wh_json:object()) -> integer().
+-spec get_call_duration(wh_json:object()) -> integer().
 get_call_duration(JObj) ->
     wh_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj)).
 
--spec invite_format/2 :: (ne_binary(), ne_binary()) -> wh_proplist().
+-spec invite_format(ne_binary(), ne_binary()) -> wh_proplist().
 invite_format(<<"e.164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, wnm_util:to_e164(To)}];
 invite_format(<<"e164">>, To) ->
@@ -147,7 +147,7 @@ invite_format(<<"npan">>, To) ->
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>} ].
 
--spec caller_id/1 :: (['undefined' | wh_json:object(),...] | []) -> {api_binary(), api_binary()}.
+-spec caller_id(['undefined' | wh_json:object(),...] | []) -> {api_binary(), api_binary()}.
 caller_id([]) ->
     {undefined, undefined};
 caller_id([undefined|T]) ->
@@ -158,7 +158,7 @@ caller_id([CID|T]) ->
         CallerID -> CallerID
     end.
 
--spec sip_headers/1 :: (['undefined' | wh_json:object(),...] | []) -> 'undefined' | wh_json:object().
+-spec sip_headers(['undefined' | wh_json:object(),...] | []) -> 'undefined' | wh_json:object().
 sip_headers([]) -> undefined;
 sip_headers(L) when is_list(L) ->
     case [ Headers || Headers <- L, wh_json:is_json_object(Headers)] of
@@ -166,7 +166,7 @@ sip_headers(L) when is_list(L) ->
         _ -> undefined
     end.
 
--spec failover/1 :: ([wh_json:object() | api_binary(),...]) -> wh_json:object() | 'undefined'.
+-spec failover([wh_json:object() | api_binary(),...]) -> wh_json:object() | 'undefined'.
 %% cascade from DID to Srv to Acct
 failover(L) ->
     case simple_extract(L) of
@@ -174,31 +174,31 @@ failover(L) ->
         Other -> Other
     end.
 
--spec progress_timeout/1 :: ([wh_json:object() | api_binary(),...]) -> wh_json:object() | api_binary().
+-spec progress_timeout([wh_json:object() | api_binary(),...]) -> wh_json:object() | api_binary().
 progress_timeout(L) -> simple_extract(L).
 
--spec bypass_media/1 :: ([wh_json:object() | api_binary(),...]) -> <<_:32,_:_*8>>.
+-spec bypass_media([wh_json:object() | api_binary(),...]) -> <<_:32,_:_*8>>.
 bypass_media(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"false">>;
         _ -> <<"true">>
     end.
 
--spec delay/1 :: ([wh_json:object() | api_binary(),...]) -> wh_json:object() | api_binary().
+-spec delay([wh_json:object() | api_binary(),...]) -> wh_json:object() | api_binary().
 delay(L) -> simple_extract(L).
 
--spec ignore_early_media/1 :: ([wh_json:object() | api_binary(),...]) -> wh_json:object() | api_binary().
+-spec ignore_early_media([wh_json:object() | api_binary(),...]) -> wh_json:object() | api_binary().
 ignore_early_media(L) -> simple_extract(L).
 
--spec ep_timeout/1 :: ([wh_json:object() | api_binary(),...]) -> wh_json:object() | api_binary().
+-spec ep_timeout([wh_json:object() | api_binary(),...]) -> wh_json:object() | api_binary().
 ep_timeout(L) -> simple_extract(L).
 
--spec offnet_flags/1 :: (list()) -> 'undefined' | list().
+-spec offnet_flags(list()) -> 'undefined' | list().
 offnet_flags([]) -> undefined;
 offnet_flags([H|_]) when is_list(H) -> H;
 offnet_flags([_|T]) -> offnet_flags(T).
 
--spec simple_extract/1 :: ([wh_json:object() | api_binary(),...]) -> wh_json:object() | api_binary().
+-spec simple_extract([wh_json:object() | api_binary(),...]) -> wh_json:object() | api_binary().
 simple_extract([undefined|T]) ->
     simple_extract(T);
 simple_extract([B | T]) when is_binary(B) ->

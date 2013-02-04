@@ -20,7 +20,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     UserId = wh_json:get_ne_value(<<"id">>, Data),
     Endpoints = get_endpoints(UserId, Data, Call),
@@ -51,7 +51,7 @@ handle(Data, Call) ->
 %% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints/3 :: (api_binary(), wh_json:object(), whapps_call:call()) -> wh_json:objects().
+-spec get_endpoints(api_binary(), wh_json:object(), whapps_call:call()) -> wh_json:objects().
 get_endpoints(undefined, _, _) -> [];
 get_endpoints(UserId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),

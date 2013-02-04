@@ -20,7 +20,7 @@
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_number/1 :: (ne_binary()) -> {'ok', ne_binary(), proplist()} | {'error', term()}.
+-spec lookup_number(ne_binary()) -> {'ok', ne_binary(), proplist()} | {'error', term()}.
 lookup_number(Number) ->
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key_number(Num)) of
@@ -28,7 +28,7 @@ lookup_number(Number) ->
         {error, not_found} -> fetch_number(Num)
     end.
 
--spec fetch_number/1 :: (ne_binary()) -> {'ok', ne_binary(), proplist()} | {'error', term()}.
+-spec fetch_number(ne_binary()) -> {'ok', ne_binary(), proplist()} | {'error', term()}.
 fetch_number(Num) ->
     case wh_number_manager:lookup_account_by_number(Num) of
         {ok, AccountId, Props} ->
@@ -42,7 +42,7 @@ fetch_number(Num) ->
             E
     end.
 
--spec maybe_transition_port_in/2 :: (ne_binary(), proplist()) -> false|pid().
+-spec maybe_transition_port_in(ne_binary(), proplist()) -> false|pid().
 maybe_transition_port_in(Num, Props) ->
     case props:get_value(pending_port, Props) of
         false -> false;
@@ -55,7 +55,7 @@ maybe_transition_port_in(Num, Props) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_gateway_by_address/2 :: (ne_binary(), #resrc{}|[#gateway{},...]|[]) -> 'undefined' | #gateway{}.
+-spec maybe_gateway_by_address(ne_binary(), #resrc{}|[#gateway{},...]|[]) -> 'undefined' | #gateway{}.
 maybe_gateway_by_address(_, []) -> undefined;
 maybe_gateway_by_address(Address, [#resrc{gateways=Gateways}|Resources]) ->
     case maybe_gateway_by_address(Address, Gateways) of
@@ -75,7 +75,7 @@ maybe_gateway_by_address(Address, [_G|Gateways]) ->
 %% the weight, the captured component of the number, and the gateways.
 %% @end
 %%--------------------------------------------------------------------
--spec evaluate_number/2 :: (ne_binary(), [#resrc{}]) -> endpoints().
+-spec evaluate_number(ne_binary(), [#resrc{}]) -> endpoints().
 evaluate_number(Number, Resrcs) ->
     sort_endpoints(get_endpoints(Number, Resrcs)).
 
@@ -86,7 +86,7 @@ evaluate_number(Number, Resrcs) ->
 %% flag provided
 %% @end
 %%--------------------------------------------------------------------
--spec evaluate_flags/2 :: (list(), [#resrc{}]) -> [#resrc{}].
+-spec evaluate_flags(list(), [#resrc{}]) -> [#resrc{}].
 evaluate_flags(F1, Resrcs) ->
     [Resrc
      || #resrc{flags=F2}=Resrc <- Resrcs,
@@ -102,7 +102,7 @@ evaluate_flags(F1, Resrcs) ->
 %% Build the sip url of a resource gateway
 %% @end
 %%--------------------------------------------------------------------
--spec get_dialstring/2 :: (#gateway{}, ne_binary()) -> ne_binary().
+-spec get_dialstring(#gateway{}, ne_binary()) -> ne_binary().
 get_dialstring(#gateway{route = undefined, prefix=Prefix, suffix=Suffix, server=Server}, Number) ->
     list_to_binary(["sip:"
                     ,wh_util:to_binary(Prefix)
@@ -121,7 +121,7 @@ get_dialstring(#gateway{route=Route}, _) ->
 %% weight.
 %% @end
 %%--------------------------------------------------------------------
--spec sort_endpoints/1 :: (endpoints()) -> endpoints().
+-spec sort_endpoints(endpoints()) -> endpoints().
 sort_endpoints(Endpoints) ->
     lists:sort(fun({W1, _, _, _, _}, {W2, _, _, _, _}) ->
                        W1 =< W2
@@ -132,7 +132,7 @@ sort_endpoints(Endpoints) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints/2 :: (ne_binary(), [#resrc{}]) -> endpoints().
+-spec get_endpoints(ne_binary(), [#resrc{}]) -> endpoints().
 get_endpoints(Number, Resrcs) ->
     EPs = [get_endpoint(Number, R) || R <- Resrcs],
     [Endpoint || Endpoint <- EPs, Endpoint =/= no_match].
@@ -143,7 +143,7 @@ get_endpoints(Number, Resrcs) ->
 %% Given a gateway JSON object it builds a gateway record
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoint/2 :: (ne_binary(), #resrc{}) -> endpoint() | 'no_match'.
+-spec get_endpoint(ne_binary(), #resrc{}) -> endpoint() | 'no_match'.
 get_endpoint(Number, #resrc{weight_cost=WC, gateways=Gtws, rules=Rules
                             ,grace_period=GP, is_emergency=IsEmergency}) ->
     case evaluate_rules(Rules, Number) of
@@ -162,7 +162,7 @@ get_endpoint(Number, #resrc{weight_cost=WC, gateways=Gtws, rules=Rules
 %% number.  In the event that no rules match then return an error.
 %% @end
 %%--------------------------------------------------------------------
--spec evaluate_rules/2 :: (re:mp(), ne_binary()) -> {'ok', ne_binary()} |
+-spec evaluate_rules(re:mp(), ne_binary()) -> {'ok', ne_binary()} |
                                                     {'error', 'no_match'}.
 evaluate_rules([], _) ->
     {error, no_match};
@@ -185,6 +185,6 @@ evaluate_rules([Regex|T], Number) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec cache_key_number/1 :: (ne_binary()) -> {'stepswitch_number', ne_binary()}.
+-spec cache_key_number(ne_binary()) -> {'stepswitch_number', ne_binary()}.
 cache_key_number(Number) ->
     {stepswitch_number, Number}.
