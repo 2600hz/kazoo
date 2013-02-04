@@ -23,19 +23,17 @@
 -include("reg.hrl").
 
 -define(RESPONDERS, [{reg_authn_req, [{<<"directory">>, <<"authn_req">>}]}
-                     ,{reg_success, [{<<"directory">>, <<"reg_success">>}]}
                      ,{{reg_query, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
                      ,{{reg_route_req, handle_route_req}, [{<<"dialplan">>, <<"route_req">>}]}
                     ]).
 -define(BINDINGS, [{authn, []}
-                   ,{registration, [{retrict_to, [reg_success]}]}
                    ,{notifications, [{restrict_to, [presence_probe]}]}
                    ,{route, []}
                    ,{self, []}
                   ]).
 
 -define(SERVER, ?MODULE).
--define(REG_QUEUE_NAME, <<"registrar_listener">>).
+-define(REG_QUEUE_NAME, <<"registrar_shared_listener">>).
 -define(REG_QUEUE_OPTIONS, [{exclusive, false}]).
 -define(REG_CONSUME_OPTIONS, [{exclusive, false}]).
 
