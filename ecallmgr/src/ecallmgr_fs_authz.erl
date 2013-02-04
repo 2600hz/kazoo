@@ -75,6 +75,7 @@ kill_channel(<<"outbound">>, CallId, Node) ->
 
 -spec handle_channel_create/3 :: (wh_proplist(), ne_binary(), atom()) -> 'ok'.
 handle_channel_create(Props, CallId, Node) ->
+    put(callid, CallId),
     Authorized = maybe_authorize_channel(Props, Node),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized).
 
