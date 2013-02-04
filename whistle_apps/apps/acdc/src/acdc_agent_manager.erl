@@ -30,7 +30,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(BINDINGS, [{conf, [{doc_type, <<"user">>}]}
+-define(BINDINGS, [{conf, [{type, <<"user">>}]}
                    ,{acdc_agent, [{restrict_to, [status, stats_req]}]}
                    ,{notifications, [{restrict_to, [presence_probe]}]}
                   ]).

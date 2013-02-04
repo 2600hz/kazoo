@@ -257,7 +257,7 @@ publish_register_event(Data) ->
 
 -spec maybe_query_registrar/6 :: (ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:object()} | {'error', _}.
 maybe_query_registrar(Realm, Username, Node, Id, Method, Data) ->
-    case wh_cache:peek_local(?ECALLMGR_AUTHN_CACHE, ?CREDS_KEY(Realm, Username)) of
+    case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?CREDS_KEY(Realm, Username)) of
         {ok, _}=Ok -> Ok;
         {error, not_found} ->
             query_registrar(Realm, Username, Node, Id, Method, Data)
@@ -284,6 +284,9 @@ query_registrar(Realm, Username, Node, Id, Method, Data) ->
         {error, _}=E -> E;
         {ok, JObj}=Ok ->
             lager:debug("received authn information"),
-            wh_cache:store_local(?ECALLMGR_AUTHN_CACHE, ?CREDS_KEY(Realm, Username), JObj),
+            AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+            AuthId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj),
+            CacheProps = [{origin, {db, wh_util:format_account_id(AccountId, encoded), AuthId}}],
+            wh_cache:store_local(?ECALLMGR_REG_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
             Ok
     end.

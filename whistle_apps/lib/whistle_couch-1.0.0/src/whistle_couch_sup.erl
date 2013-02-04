@@ -16,7 +16,10 @@
          ,compactor_pid/0
         ]).
 
--define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+-define(ORIGIN_BINDINGS, [[]]).
+-define(CACHE_PROPS, [{origin_bindings, ?ORIGIN_BINDINGS}]).
+-define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N, ?CACHE_PROPS]}
+                                             ,permanent, 5000, worker, [wh_cache]};
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
 -define(CHILDREN, [{?WH_COUCH_CACHE, cache}
                    ,{wh_couch_connection_sup, supervisor}

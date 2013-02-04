@@ -72,13 +72,14 @@ maybe_send_new_notice(JObj, Username, Realm) ->
     end.
     
 store_reg_success(JObj, Username, Realm) ->
-    Expires = reg_util:get_expires(JObj),
+    CacheProps = [{expires, reg_util:get_expires(JObj)}
+                  ,{callback, fun reg_util:reg_removed_from_cache/3}
+                 ],
     wh_cache:store_local(?REGISTRAR_CACHE
                          ,reg_util:cache_user_to_reg_key(Realm, Username)
                          ,JObj
-                         ,Expires
-                         ,fun reg_util:reg_removed_from_cache/3
+                         ,CacheProps
                         ),
     Contact = wh_json:get_value(<<"Contact">>, JObj),
-    lager:info("successful registration ~s@~s (~ps): ~s", [Username, Realm, Expires, Contact]).
+    lager:info("successful registration ~s@~s: ~s", [Username, Realm, Contact]).
     

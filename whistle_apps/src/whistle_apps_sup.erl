@@ -10,6 +10,7 @@
 -behaviour(supervisor).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 -include("whapps_call_command.hrl").
 -include("whistle_apps.hrl").
 
@@ -22,7 +23,12 @@
 -define(POOL_SIZE, 5).
 -define(OVERFLOW_POOL_SIZE, 20).
 
--define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+-define(ORIGIN_BINDINGS, [[{type, <<"account">>}]
+                          ,[{db, ?WH_CONFIG_DB}]
+                         ]).
+-define(CACHE_PROPS, [{origin_bindings, ?ORIGIN_BINDINGS}]).
+-define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N, ?CACHE_PROPS]}
+                                             ,permanent, 5000, worker, [wh_cache]};
                               (N, pool) -> {N, {poolboy, start_link, [[{worker_module, wh_amqp_worker}
                                                                        ,{name, {local, N}}
                                                                        ,{size, ?POOL_SIZE}

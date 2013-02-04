@@ -289,13 +289,14 @@ do_get_design_info(#db{}=Db, Design) ->
                                   {'ok', wh_json:object()} |
                                   couchbeam_error().
 open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
-    case wh_cache:peek({?MODULE, Conn, DbName, DocId}) of
+    case wh_cache:peek_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}) of
         {ok, _}=Ok -> Ok;
         {error, not_found} ->
             case open_doc(Conn, DbName, DocId, Options) of
                 {error, _}=E -> E;
                 {ok, JObj}=Ok ->
-                    wh_cache:store({?MODULE, Conn, DbName, DocId}, JObj, 900),
+                    CacheProps = [{origin, {db, DbName, DocId}}],
+                    wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, JObj, CacheProps),
                     Ok
             end
     end.
@@ -405,7 +406,12 @@ do_fetch_doc(#db{}=Db, DocId, Options) ->
 do_save_doc(#db{}=Db, Docs, Options) when is_list(Docs) ->
     do_save_docs(Db, Docs, Options);
 do_save_doc(#db{}=Db, Doc, Options) ->
-    ?RETRY_504(couchbeam:save_doc(Db, maybe_set_docid(Doc), Options)).
+    case ?RETRY_504(couchbeam:save_doc(Db, maybe_set_docid(Doc), Options)) of
+        {ok, JObj}=Ok ->
+            spawn(fun() -> publish_doc(Db, JObj) end),
+            Ok;
+        Else -> Else
+    end.
 
 -spec do_save_docs/3 :: (db(), wh_json:objects(), wh_proplist()) ->
                                 {'ok', wh_json:objects()} |
@@ -427,7 +433,15 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
     case catch(lists:split(?MAX_BULK_INSERT, Docs)) of
         {'EXIT', _} ->
             case ?RETRY_504(couchbeam:save_docs(Db, [maybe_set_docid(D) || D <- Docs], Options)) of
-                {ok, Res} -> {ok, Res++Acc};
+                {ok, Res} ->
+                    JObjs = Res++Acc,
+                    spawn(fun() ->
+                                  case lists:any(fun(Doc) -> wh_json:is_true(<<"_deleted">>, Doc) end, Docs) of
+                                      true -> publish_doc(<<"deleted">>, Db, JObjs);
+                                      false -> publish_doc(Db, JObjs)
+                                  end
+                          end),
+                    {ok, JObjs};
                 {error, _}=E -> E
             end;
         {Save, Cont} ->
@@ -575,3 +589,43 @@ retry504s(Fun, Cnt) ->
             retry504s(Fun, Cnt+1);
         OK -> OK
     end.
+
+-spec publish_doc/2 :: (#db{} | ne_binary(), wh_json:object()) -> 'ok'.
+publish_doc(Db, Doc) ->
+    Action = case wh_json:is_true(<<"pvt_deleted">>, Doc) of
+                 true -> <<"deleted">>;
+                 false -> 
+                     case wh_json:get_value(<<"_rev">>, Doc) of
+                         <<"1-", _/binary>> -> <<"created">>;
+                         _Else -> <<"edited">>
+                     end
+             end,
+    publish_doc(Action, Db, Doc).
+
+-spec publish_doc/3 :: (ne_binary(), #db{} | ne_binary(), wh_json:object()) -> 'ok'.
+publish_doc(Action, #db{name=DbName}, Doc) ->
+    publish_doc(Action, wh_util:to_binary(DbName), Doc);
+publish_doc(_, _, []) -> ok;
+publish_doc(Action, Db, [Doc|Docs]) ->
+    case wh_json:get_ne_value(<<"_id">>, Doc) of
+        undefined -> ok;
+        <<"_design/", _/binary>> -> ok;
+        Id ->            
+            Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
+            Props =
+                [{<<"ID">>, Id}
+                 ,{<<"Type">>, Type}
+                 ,{<<"Database">>, Db}
+                 ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
+                 ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
+                 ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
+                 ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
+                 | wh_api:default_headers(<<"configuration">>, <<"doc_", Action/binary>>
+                                              ,<<"whistle_couch">>, <<"1.0.0">>)
+                ],
+            wapi_conf:publish_doc_update(Action, Db, Type, Id, Props)
+    end,
+    publish_doc(Action, Db, Docs);
+publish_doc(Action, Db, Doc) ->
+    publish_doc(Action, Db, [Doc]).    
+

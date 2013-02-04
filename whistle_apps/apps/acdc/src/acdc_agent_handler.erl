@@ -162,28 +162,34 @@ handle_member_message(_, _, EvtName) ->
 
 handle_config_change(JObj, _Props) ->
     true = wapi_conf:doc_update_v(JObj),
-    handle_agent_change(wh_json:get_value(<<"Doc">>, JObj)
-                        ,wh_json:get_value(<<"pvt_account_id">>, JObj)
-                        ,wh_json:get_value(<<"_id">>, JObj)
+    handle_agent_change(wh_json:get_value(<<"Database">>, JObj)
+                        ,wh_json:get_value(<<"Account-ID">>, JObj)
+                        ,wh_json:get_value(<<"ID">>, JObj)
                         ,wh_json:get_value(<<"Event-Name">>, JObj)
                        ).
-handle_agent_change(JObj, AcctId, AgentId, <<"doc_created">>) ->
-    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
-        undefined -> acdc_agents_sup:new(JObj);
+
+handle_agent_change(AccountDb, AccountId, AgentId, <<"doc_created">>) ->
+    case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
+        undefined -> 
+            {ok, JObj} = couch_mgr:open_doc(AccountDb, AgentId),
+            acdc_agents_sup:new(JObj);
         P when is_pid(P) -> ok
     end;
-handle_agent_change(JObj, AcctId, AgentId, <<"doc_edited">>) ->
-    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
-        undefined -> acdc_agents_sup:new(JObj);
-        P when is_pid(P) -> acdc_agent_fsm:refresh(acdc_agent_sup:fsm(P), JObj)
+handle_agent_change(AccountDb, AccountId, AgentId, <<"doc_edited">>) ->
+    {ok, JObj} = couch_mgr:open_doc(AccountDb, AgentId),
+    case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
+        undefined -> 
+            acdc_agents_sup:new(JObj);
+        P when is_pid(P) -> 
+            acdc_agent_fsm:refresh(acdc_agent_sup:fsm(P), JObj)
     end;
-handle_agent_change(_JObj, AcctId, AgentId, <<"doc_deleted">>) ->
-    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+handle_agent_change(_, AccountId, AgentId, <<"doc_deleted">>) ->
+    case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
         undefined -> ok;
         P when is_pid(P) ->
-            lager:debug("agent ~s(~s) has been deleted, stopping ~p", [AcctId, AgentId, P]),
+            lager:debug("agent ~s(~s) has been deleted, stopping ~p", [AccountId, AgentId, P]),
             _ = acdc_agent_sup:stop(P),
-            acdc_stats:agent_inactive(AcctId, AgentId)
+            acdc_stats:agent_inactive(AccountId, AgentId)
     end.
 
 handle_presence_probe(JObj, _Props) ->

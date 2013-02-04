@@ -18,17 +18,26 @@ handle_req(JObj, _Props) ->
     true = wapi_authz:identify_req_v(JObj),
     wh_util:put_callid(JObj),
     Number = get_dest_number(JObj),
+    maybe_lookup_account_by_number(Number, JObj).
+
+-spec maybe_lookup_account_by_number/2 :: (ne_binary(), wh_json:object()) -> 'ok'.
+maybe_lookup_account_by_number(Number, JObj) ->
     case wh_cache:peek_local(?JONNY5_CACHE, ?IDENT_KEY(Number)) of
         {ok, {AccountId, GlobalResource}} ->
             send_resp(JObj, AccountId, GlobalResource);
         {error, not_found} ->
-            case wh_number_manager:lookup_account_by_number(Number) of
-                {error, _} -> ok;
-                {ok, AccountId, Props} ->
-                    GlobalResource = (not props:get_value(local, Props)),
-                    wh_cache:store_local(?JONNY5_CACHE, ?IDENT_KEY(Number), {AccountId, GlobalResource}),
-                    send_resp(JObj, AccountId, GlobalResource)
-            end
+            lookup_account_by_number(Number, JObj)
+    end.    
+
+-spec lookup_account_by_number/2 :: (ne_binary(), wh_json:object()) -> 'ok'.
+lookup_account_by_number(Number, JObj) ->
+    case wh_number_manager:lookup_account_by_number(Number) of
+        {error, _} -> ok;
+        {ok, AccountId, Props} ->
+            GlobalResource = (not props:get_value(local, Props)),
+            send_resp(JObj, AccountId, GlobalResource),
+            CacheProps = [{origin, {db, wnm_util:number_to_db_name(Number), Number}}],
+            wh_cache:store_local(?JONNY5_CACHE, ?IDENT_KEY(Number), {AccountId, GlobalResource}, CacheProps)
     end.
 
 -spec get_dest_number/1 :: (wh_json:json_object()) -> ne_binary().

@@ -44,7 +44,8 @@ get_limits(Account) ->
                              ,soft_limit_inbound = wh_json:is_true(<<"pvt_soft_limit_inbound">>, JObj)
                              ,soft_limit_outbound = wh_json:is_true(<<"pvt_soft_limit_outbound">>, JObj)
                             },
-            wh_cache:store_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId), Limits, 900),
+            CacheProps = [{origin, {db, AccountDb, <<"limits">>}}],
+            wh_cache:store_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId), Limits, CacheProps),
             Limits
     end.
 

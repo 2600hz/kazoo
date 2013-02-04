@@ -11,18 +11,30 @@
 -behaviour(supervisor).
 
 -include("ecallmgr.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -export([start_link/0]).
 -export([cache_proc/0]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+-define(CACHE_AUTHN_PROPS, [{origin_bindings, [[{type, <<"account">>}]
+                                               ,[{type, <<"device">>}]
+                                              ]}]).
+-define(CACHE_UTIL_PROPS, [{origin_bindings, [[{db, ?WH_CONFIG_DB}]]}]).
+
+-define(CHILD(Name, Type), fun(?ECALLMGR_REG_CACHE = N, cache) ->
+                                   {N, {wh_cache, start_link, [N, ?CACHE_AUTHN_PROPS]}
+                                    ,permanent, 5000, worker, [wh_cache]};
+                              (?ECALLMGR_UTIL_CACHE = N, cache) ->
+                                   {N, {wh_cache, start_link, [N, ?CACHE_UTIL_PROPS]}
+                                    ,permanent, 5000, worker, [wh_cache]};
+                              (N, cache) -> {N, {wh_cache, start_link, [N]}
+                                             ,permanent, 5000, worker, [wh_cache]};
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]}
                            end(Name, Type)).
 
 -define(CHILDREN, [{?ECALLMGR_UTIL_CACHE, cache}
                    ,{?ECALLMGR_REG_CACHE, cache}
-                   ,{?ECALLMGR_AUTHN_CACHE, cache}
                    ,{?ECALLMGR_CALL_CACHE, cache}
                    ,{ecallmgr_query, worker}
                    ,{ecallmgr_conference_listener, worker}

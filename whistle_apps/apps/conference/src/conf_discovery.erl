@@ -142,7 +142,8 @@ handle_discovery_req(JObj, Props) ->
 search_for_conference(Conference, Srv) ->
     conf_participant:set_conference(Conference, Srv),
     SearchId = couch_mgr:get_uuid(),
-    wh_cache:store_local(?CONFERENCE_CACHE, {?MODULE, discovery, SearchId}, Srv, 300),
+    CacheProps = [{expires, 300}],
+    wh_cache:store_local(?CONFERENCE_CACHE, {?MODULE, discovery, SearchId}, Srv, CacheProps),
     lager:debug("publishing conference search request ~s", [SearchId]),
     _ = whapps_conference_command:search(SearchId, Conference).
 %% whapps_call_command:prompt(<<"conf-joining_conference">>, Call).

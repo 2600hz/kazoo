@@ -21,14 +21,17 @@
 
 -include_lib("wh_api.hrl").
 
-%% Configuration Document Update
--define(CONF_DOC_UPDATE_HEADERS, [<<"ID">>, <<"Rev">>, <<"Doc">>]).
--define(OPTIONAL_CONF_DOC_UPDATE_HEADERS, [<<"Account-DB">>, <<"Account-ID">>
+-define(CONF_DOC_UPDATE_HEADERS, [<<"ID">>, <<"Rev">>, <<"Database">>]).
+-define(OPTIONAL_CONF_DOC_UPDATE_HEADERS, [<<"Account-ID">>, <<"Type">>, <<"Version">>
                                                ,<<"Date-Modified">>, <<"Date-Created">>
-                                               ,<<"Type">>, <<"Version">>
+                                               ,<<"Doc">>
                                           ]).
 -define(CONF_DOC_UPDATE_VALUES, [{<<"Event-Category">>, <<"configuration">>}
-                                 ,{<<"Event-Name">>, [<<"doc_edited">>, <<"doc_created">>, <<"doc_deleted">>]}]).
+                                 ,{<<"Event-Name">>, [<<"doc_edited">>
+                                                          ,<<"doc_created">>
+                                                          ,<<"doc_deleted">>
+                                                     ]}
+                                ]).
 -define(CONF_DOC_UPDATE_TYPES, [{<<"ID">>, fun is_binary/1}
                                 ,{<<"Rev">>, fun is_binary/1}
                                ]).
@@ -103,9 +106,11 @@ unbind_q(Q, Props) ->
 get_routing_key(Props) ->
     Action = props:get_value(action, Props, <<"*">>), % see conf_action() type below
     Db = props:get_value(db, Props, <<"*">>),
-    DocType = props:get_value(doc_type, Props, <<"*">>),
-    DocId = props:get_value(doc_id, Props, <<"*">>),
-    amqp_util:document_routing_key(Action, Db, DocType, DocId).
+    Type = props:get_value(doc_type, Props
+                           ,props:get_value(type, Props, <<"*">>)),
+    Id = props:get_value(doc_id, Props
+                         ,props:get_value(id, Props, <<"*">>)),
+    amqp_util:document_routing_key(Action, Db, Type, Id).
 
 -spec publish_doc_update/5 :: (action(), binary(), binary(), binary(), api_terms()) -> 'ok'.
 -spec publish_doc_update/6 :: (action(), binary(), binary(), binary(), api_terms(), binary()) -> 'ok'.

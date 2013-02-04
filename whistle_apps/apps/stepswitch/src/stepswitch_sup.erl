@@ -15,7 +15,6 @@
 -export([start_link/0]).
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
                               (N, pool) -> {N, {poolboy, start_link, [[{worker_module, stepswitch_cnam}
                                                                        ,{name, {local, N}}

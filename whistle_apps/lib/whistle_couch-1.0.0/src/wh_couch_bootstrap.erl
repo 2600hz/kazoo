@@ -19,6 +19,7 @@
         ]).
 
 -include_lib("whistle_couch/include/wh_couch.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -define(SERVER, ?MODULE).
 -record(state, {}).
@@ -59,7 +60,10 @@ init([]) ->
     wh_couch_connections:add(create_connection(Config)),
     wh_couch_connections:add(create_admin_connection(Config)),
     AutoCmpt = wh_util:is_true(props:get_value(compact_automatically, Config)),
-    wh_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, AutoCmpt, infinity),
+    CacheProps = [{expires, infinity}
+                  ,{origin, {db, ?WH_CONFIG_DB, <<"whistle_couch">>}}
+                 ],
+    wh_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, AutoCmpt, CacheProps),
     wh_couch_connections:set_node_cookie(props:get_value(bigcouch_cookie, Config, change_me)),
     lager:info("waiting for first bigcouch/haproxy connection...", []),
     wh_couch_connections:wait_for_connection(),

@@ -24,11 +24,12 @@
 reg_success(Props, Node) ->
     Username = props:get_value(<<"username">>, Props),
     Realm = props:get_value(<<"realm">>, Props),
+    CacheProps = [{expires, ecallmgr_util:get_expires(Props)}],
+    wh_cache:store_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username), Node, CacheProps),
     [User, AfterAt] = binary:split(props:get_value(<<"contact">>, Props), <<"@">>),
     AfterUnquoted = wh_util:to_binary(mochiweb_util:unquote(AfterAt)),
     Contact = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
-    wh_cache:store_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username), Contact, ecallmgr_util:get_expires(Props)),
-    wh_cache:store_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username), Node, ecallmgr_util:get_expires(Props)).
+    wh_cache:store_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username), Contact, CacheProps).
 
 -spec lookup_contact/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'timeout'}.
 lookup_contact(Realm, Username) ->
@@ -38,14 +39,23 @@ lookup_contact(Realm, Username) ->
             case lookup(Realm, Username, [<<"Contact">>]) of
                 [{<<"Contact">>, Contact}] -> {ok, Contact};
                 {error, _R}=E ->
-                    lager:notice("failed to find registration for ~s@~s: ~p", [Username, Realm, _R]),
+                    lager:notice("failed to find contact for ~s@~s: ~p", [Username, Realm, _R]),
                     E
             end
     end.
 
 -spec endpoint_node/2 :: (ne_binary(), ne_binary()) -> {'ok', atom()} | {'error', 'not_found'}.
 endpoint_node(Realm, Username) ->
-    wh_cache:fetch_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username)).
+    case wh_cache:fetch_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username)) of
+        {ok, Node} -> {ok, Node};
+        {error, not_found} ->
+            case lookup(Realm, Username, [<<"Node">>]) of
+                [{<<"Node">>, Node}] -> {ok, wh_util:to_atom(Node, true)};
+                {error, _R}=E ->
+                    lager:notice("failed to find node name for ~s@~s: ~p", [Username, Realm, _R]),
+                    E
+            end
+    end.
 
 -spec lookup/3 :: (ne_binary(), ne_binary(), [ne_binary(),...]) -> wh_proplist() | {'error', 'timeout'}. 
 lookup(Realm, Username, Fields) ->
@@ -87,7 +97,13 @@ query_registrar(Realm, Username) ->
             {error, timeout};
         {ok, RespJObj} ->
             lager:debug("received registration information"),
-            Props = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RespJObj, wh_json:new())),
-            wh_cache:store_local(?ECALLMGR_REG_CACHE, ?LOOKUP_KEY(Realm, Username), Props),
+            JObj = wh_json:get_value(<<"Fields">>, RespJObj, wh_json:new()),
+            Props = wh_json:to_proplist(JObj),
+            CacheProps = [{expires, ecallmgr_util:get_expires(Props)}],
+            wh_cache:store_local(?ECALLMGR_REG_CACHE, ?LOOKUP_KEY(Realm, Username), Props, CacheProps),
+            Contact = wh_json:get_value(<<"Contact">>, JObj),
+            wh_cache:store_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username), Contact, CacheProps),
+            Node = wh_util:to_atom(wh_json:get_value(<<"Node">>, JObj), true),
+            wh_cache:store_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username), Node, CacheProps),
             {ok, Props}
     end.

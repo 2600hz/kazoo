@@ -55,9 +55,9 @@
           ,enter_when_empty = 'true' :: boolean() % allow caller into queue if no agents are logged in
          }).
 
--define(BINDINGS(A, Q), [{conf, [{doc_type, <<"queue">>}
+-define(BINDINGS(A, Q), [{conf, [{type, <<"queue">>}
                                  ,{db, wh_util:format_account_id(A, encoded)}
-                                 ,{doc_id, Q}
+                                 ,{id, Q}
                                 ]}
                          ,{acdc_queue, [{restrict_to, [stats_req, agent_change]}
                                         ,{account_id, A}

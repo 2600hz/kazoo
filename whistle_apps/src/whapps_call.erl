@@ -713,7 +713,8 @@ cache(#whapps_call{}=Call) ->
     cache(Call, 300).
 
 cache(#whapps_call{call_id=CallId}=Call, Expires) ->
-    wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, call, CallId}, Call, Expires).
+    CacheProps = [{expires, Expires}],
+    wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, call, CallId}, Call, CacheProps).
 
 -spec retrieve/1 :: (ne_binary()) -> {'ok', call()} |
                                      {'error', 'not_found'}.

@@ -157,9 +157,9 @@ maybe_get_account_default_number(Number, Name, Account, Call) ->
 maybe_get_assigned_number(_, Name, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {error, _} ->
+        {error, _R} ->
             Number = default_cid_number(),
-            lager:info("could not open phone_numbers doc, using <~s> ~s", [Name, Number]),
+            lager:warning("could not open phone_numbers doc <~s> ~s: ~p", [Name, Number, _R]),
             {Number, Name};
         {ok, JObj} ->
             PublicJObj = wh_json:public_fields(JObj),
@@ -240,7 +240,7 @@ determine_callee_attribute(Call) ->
 moh_attributes(Attribute, Call) ->
     case cf_endpoint:get(Call) of
         {error, _R} ->
-            lager:info("unable to get endpoint: ~p", [_R]),
+            lager:warning("unable to get endpoint: ~p", [_R]),
             undefined;
         {ok, Endpoint} ->
             Value = wh_json:get_ne_value([<<"music_on_hold">>, Attribute], Endpoint),
@@ -399,10 +399,12 @@ fetch_attributes(Attribute, ?NE_BINARY = AccountDb) ->
                 {ok, JObjs} ->
                     Props = [{wh_json:get_value(<<"key">>, JObj), wh_json:get_value(<<"value">>, JObj)}
                              || JObj <- JObjs],
-                    wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, Attribute}, Props, 900),
+                    %% TODO: figure out a way to include the origin of the attributes...
+                    CacheProps = [{expires, 900}],
+                    wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, Attribute}, Props, CacheProps),
                     Props;
-                {error, R} ->
-                    lager:info("unable to fetch attribute ~s: ~p, may just be missing/unset", [Attribute, R]),
+                {error, _R} ->
+                    lager:warning("unable to fetch attribute ~s: ~p", [Attribute, _R]),
                     []
             end
     end;

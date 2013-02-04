@@ -196,13 +196,22 @@ get_account_by_realm(Realm) ->
             case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_REALM, [{key, Realm}]) of
                 {ok, [JObj]} ->
                     AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
-                    wh_cache:store({?MODULE, account_by_realm, Realm}, {ok, AccountDb}),
+                    AccountId = wh_util:format_account_id(AccountDb, raw),
+                    CacheProps = [{expires, 86400}
+                                  ,{origin, {db, AccountDb, AccountId}}
+                                 ],
+                    wh_cache:store({?MODULE, account_by_realm, Realm}, {ok, AccountDb}, CacheProps),
                     {ok, AccountDb};
                 {ok, []} ->
                     {error, not_found};
                 {ok, [_|_]=JObjs} ->
                     AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
-                    wh_cache:store({?MODULE, account_by_realm, Realm}, {multiples, AccountDbs}),
+                    CacheProps = [{expires, 86400}
+                                  ,{origin, [{db, AccountDb, wh_util:format_account_id(AccountDb, raw)}
+                                             || AccountDb <- AccountDbs
+                                            ]}
+                                 ],
+                    wh_cache:store({?MODULE, account_by_realm, Realm}, {multiples, AccountDbs}, CacheProps),
                     {multiples, AccountDbs};
                 _E ->
                     lager:debug("error while fetching accounts by realm: ~p", [_E]),
@@ -227,13 +236,22 @@ get_accounts_by_name(Name) ->
             case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_NAME, [{key, Name}]) of
                 {ok, [JObj]} ->
                     AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
-                    wh_cache:store({?MODULE, account_by_name, Name}, {ok, AccountDb}),
+                    AccountId = wh_util:format_account_id(AccountDb, raw),
+                    CacheProps = [{expires, 86400}
+                                  ,{origin, {db, AccountDb, AccountId}}
+                                 ],
+                    wh_cache:store({?MODULE, account_by_name, Name}, {ok, AccountDb}, CacheProps),
                     {ok, AccountDb};
                 {ok, []} ->
                     {error, not_found};
                 {ok, [_|_]=JObjs} ->
                     AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
-                    wh_cache:store({?MODULE, account_by_realm, Name}, {multiples, AccountDbs}),
+                    CacheProps = [{expires, 86400}
+                                  ,{origin, [{db, AccountDb, wh_util:format_account_id(AccountDb, raw)}
+                                             || AccountDb <- AccountDbs
+                                            ]}
+                                 ],
+                    wh_cache:store({?MODULE, account_by_realm, Name}, {multiples, AccountDbs}, CacheProps),
                     {multiples, AccountDbs};
                 _E ->
                     lager:debug("error while fetching accounts by name: ~p", [_E]),

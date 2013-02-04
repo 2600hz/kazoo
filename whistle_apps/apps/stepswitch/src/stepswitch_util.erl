@@ -33,7 +33,8 @@ fetch_number(Num) ->
     case wh_number_manager:lookup_account_by_number(Num) of
         {ok, AccountId, Props} ->
             _ = maybe_transition_port_in(Num, Props),
-            wh_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Num), {AccountId, Props}),
+            CacheProps = [{origin, {db, wnm_util:number_to_db_name(Num), Num}}],
+            wh_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Num), {AccountId, Props}, CacheProps),
             lager:debug("~s is associated with account ~s", [Num, AccountId]),
             {ok, AccountId, Props};
         {error, Reason}=E ->

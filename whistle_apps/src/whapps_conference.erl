@@ -427,7 +427,8 @@ cache(#whapps_conference{}=Conference) ->
     cache(Conference, 300000).
     
 cache(#whapps_conference{id=ConferenceId}=Conference, Expires) ->
-    wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, conference, ConferenceId}, Conference, Expires).
+    CacheProps = [{expires, Expires}],
+    wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, conference, ConferenceId}, Conference, CacheProps).
 
 -spec retrieve/1 :: (ne_binary()) -> {'ok', conference()} |
                                      {'error', 'not_found'}.

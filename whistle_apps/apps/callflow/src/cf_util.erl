@@ -87,7 +87,7 @@ manual_presence(<<"message-summary">>, _, _, _) -> ok;
 manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, Event) ->
     case whapps_util:get_account_by_realm(FromRealm) of
         {ok, AccountDb} ->
-            case couch_mgr:open_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
+            case couch_mgr:open_cache_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
                 {error, _} -> ok;
                 {ok, JObj} ->
                     manual_presence_resp(JObj, ToUser, ToRealm, Event)

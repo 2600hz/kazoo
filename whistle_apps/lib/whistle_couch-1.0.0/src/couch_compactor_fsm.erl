@@ -44,6 +44,7 @@
         ]).
 
 -include_lib("whistle_couch/include/wh_couch.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -define(SLEEP_BETWEEN_COMPACTION, 60000).
 -define(SLEEP_BETWEEN_POLL, 1000).
@@ -971,5 +972,8 @@ compact_automatically() ->
 
 compact_automatically(Boolean) ->
     _ = (catch whapps_config:set(?CONFIG_CAT, <<"compact_automatically">>, Boolean)),
-    wh_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, Boolean, infinity).
+    CacheProps = [{expires, infinity}
+                  ,{origin, {db, ?WH_CONFIG_DB, <<"whistle_couch">>}}
+                 ],
+    wh_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, Boolean, CacheProps).
 

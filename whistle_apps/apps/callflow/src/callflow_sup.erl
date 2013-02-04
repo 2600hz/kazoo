@@ -22,8 +22,13 @@
 
 -include("callflow.hrl").
 
-%% Helper macro for declaring children of supervisor
--define(CACHE(), {?CALLFLOW_CACHE, {wh_cache, start_link, [?CALLFLOW_CACHE]}, permanent, 5000, worker, [wh_cache]}).
+-define(ORIGIN_BINDINGS, [[{type, <<"account">>}]
+                          ,[{type, <<"user">>}]
+                          ,[{type, <<"device">>}]
+                         ]).
+-define(CACHE_PROPS, [{origin_bindings, ?ORIGIN_BINDINGS}]).
+-define(CACHE(), {?CALLFLOW_CACHE, {wh_cache, start_link, [?CALLFLOW_CACHE, ?CACHE_PROPS]}
+                  ,permanent, 5000, worker, [wh_cache]}).
 -define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
 -define(CHILDREN, [?CACHE()
                    ,?CHILD(cf_shared_listener, worker)

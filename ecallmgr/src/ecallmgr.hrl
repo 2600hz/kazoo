@@ -11,7 +11,6 @@
 
 -define(ECALLMGR_UTIL_CACHE, ecallmgr_util_cache).
 -define(ECALLMGR_REG_CACHE, ecallmgr_reg_cache).
--define(ECALLMGR_AUTHN_CACHE, ecallmgr_authn_cache).
 -define(ECALLMGR_CALL_CACHE, ecallmgr_call_cache).
 
 -define(ECALLMGR_RECORDED_MEDIA_KEY(M), {recorded_media, M}).

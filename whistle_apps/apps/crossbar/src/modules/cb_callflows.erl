@@ -317,9 +317,11 @@ get_metadata(Flow, Db, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_metadata/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+create_metadata(_, <<"_">>, JObj) -> JObj;
+create_metadata(_, Id, JObj) when byte_size(Id) < 2 -> JObj;
 create_metadata(Db, Id, JObj) ->
     case wh_json:get_value(Id, JObj) =:= undefined
-        andalso couch_mgr:open_doc(Db, Id) of
+        andalso couch_mgr:open_cache_doc(Db, Id) of
         false  ->
             %% the id already exists in the metadata
             JObj;

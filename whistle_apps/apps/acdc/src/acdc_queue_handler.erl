@@ -45,34 +45,35 @@ handle_config_change(JObj, Props) ->
 
     acdc_queue_manager:handle_config_change(props:get_value(server, Props), JObj),
 
-    handle_queue_change(wh_json:get_value(<<"Doc">>, JObj)
+    handle_queue_change(wh_json:get_value(<<"Database">>, JObj)
                         ,wh_json:get_value(<<"Account-ID">>, JObj)
                         ,wh_json:get_value(<<"ID">>, JObj)
                         ,wh_json:get_value(<<"Event-Name">>, JObj)
                        ).
 
-handle_queue_change(_JObj, AcctId, QueueId, <<"doc_created">>) ->
-    lager:debug("maybe starting new queue for ~s: ~s", [AcctId, QueueId]),
-    case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
-        undefined -> acdc_queues_sup:new(AcctId, QueueId);
+handle_queue_change(_, AccountId, QueueId, <<"doc_created">>) ->
+    lager:debug("maybe starting new queue for ~s: ~s", [AccountId, QueueId]),
+    case acdc_queues_sup:find_queue_supervisor(AccountId, QueueId) of
+        undefined -> acdc_queues_sup:new(AccountId, QueueId);
         P when is_pid(P) -> ok
     end;
-handle_queue_change(JObj, AcctId, QueueId, <<"doc_edited">>) ->
-    lager:debug("maybe updating existing queue for ~s: ~s", [AcctId, QueueId]),
-    case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
-        undefined -> acdc_queues_sup:new(AcctId, QueueId);
+handle_queue_change(AccountDb, AccountId, QueueId, <<"doc_edited">>) ->
+    lager:debug("maybe updating existing queue for ~s: ~s", [AccountId, QueueId]),
+    case acdc_queues_sup:find_queue_supervisor(AccountId, QueueId) of
+        undefined -> acdc_queues_sup:new(AccountId, QueueId);
         QueueSup when is_pid(QueueSup) ->
+            {ok, JObj} = couch_mgr:open_doc(AccountDb, QueueId),
             WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
             [acdc_queue_fsm:refresh(acdc_queue_worker_sup:fsm(WorkerSup), JObj)
              || WorkerSup <- acdc_queue_workers_sup:workers(WorkersSup)
             ]
     end;
-handle_queue_change(_JObj, AcctId, QueueId, <<"doc_deleted">>) ->
-    lager:debug("maybe stopping existing queue for ~s: ~s", [AcctId, QueueId]),
-    case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
-        undefined -> lager:debug("no queue(~s) started for account ~s", [QueueId, AcctId]);
+handle_queue_change(_, AccountId, QueueId, <<"doc_deleted">>) ->
+    lager:debug("maybe stopping existing queue for ~s: ~s", [AccountId, QueueId]),
+    case acdc_queues_sup:find_queue_supervisor(AccountId, QueueId) of
+        undefined -> lager:debug("no queue(~s) started for account ~s", [QueueId, AccountId]);
         P when is_pid(P) ->
-            lager:debug("stopping queue(~s) in account ~s (deleted): ~p", [QueueId, AcctId, P]),
+            lager:debug("stopping queue(~s) in account ~s (deleted): ~p", [QueueId, AccountId, P]),
             acdc_queue_sup:stop(P)
     end.
 

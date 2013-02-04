@@ -370,7 +370,10 @@ fetch_db_config(Category, Cache) ->
     lager:debug("fetch db config for ~s", [Category]),
     case couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj}=Ok ->
-            wh_cache:store_local(Cache, category_key(Category), JObj),
+            CacheProps = [{expires, infinity}
+                          ,{origin, {db, ?WH_CONFIG_DB, Category}}
+                         ],
+            wh_cache:store_local(Cache, category_key(Category), JObj, CacheProps),
             Ok;
         {error, not_found}=E ->
             lager:debug("config ~s not in db", [Category]),
@@ -512,7 +515,10 @@ update_category(Category, JObj, Cache, Looped) ->
                               {'ok', wh_json:object()}.
 cache_jobj(Cache, Category, JObj) ->
     lager:debug("stored ~s into ~s", [Category, Cache]),
-    wh_cache:store_local(Cache, category_key(Category), JObj),
+    CacheProps = [{expires, infinity}
+                  ,{origin, {db, ?WH_CONFIG_DB, Category}}
+                 ],
+    wh_cache:store_local(Cache, category_key(Category), JObj, CacheProps),
     {ok, JObj}.
 
 %%-----------------------------------------------------------------------------

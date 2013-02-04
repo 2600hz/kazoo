@@ -36,7 +36,7 @@ get(undefined, _Call) ->
     {error, invalid_endpoint_id};
 get(EndpointId, AccountDb) when is_binary(AccountDb) ->
     case wh_cache:peek_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}) of
-        {ok, Endpoint} -> {ok, fetch_realtime_attributes(Endpoint)};
+        {ok, Endpoint} -> {ok, Endpoint};
         {error, not_found} ->
             maybe_fetch_endpoint(EndpointId, AccountDb)
     end;
@@ -57,120 +57,89 @@ maybe_fetch_endpoint(EndpointId, AccountDb) ->
 maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
     case wh_json:get_value(<<"pvt_type">>, JObj) of
         <<"device">> ->
-            Endpoint = fetch_realtime_attributes(merge_cached_attributes(JObj)),
-            wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, 300),
+            Endpoint = merge_attributes(JObj),
+            CacheProps = [{origin, cache_origin(JObj, EndpointId, AccountDb)}],
+            wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
             {ok, Endpoint};
         _Else ->
             lager:info("endpoint module does not manage document type ~s", [_Else]),
             {error, not_device}
     end.
 
--spec fetch_realtime_attributes/1 :: (wh_json:object()) -> wh_json:object().
-fetch_realtime_attributes(Endpoint) ->
-    OwnerId = wh_json:get_ne_value(<<"owner_id">>, Endpoint),
-    EndpointId = wh_json:get_ne_value(<<"_id">>, Endpoint),
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
-    case maybe_fetch_realtime_attributes(OwnerId, EndpointId, AccountDb) of
-        {error, _} -> Endpoint;
-        {ok, JObj} ->
-            Keys = [<<"do_not_disturb">>
-                        ,<<"call_forward">>
-                   ],
-            merge_realtime_attributes(Keys, JObj, Endpoint)
+-spec cache_origin/3 :: (wh_json:object(), ne_binary(), ne_binary()) ->  list().
+cache_origin(JObj, EndpointId, AccountDb) ->
+    case wh_json:get_value(<<"owner_id">>, JObj) of
+        undefined ->
+            [{db, AccountDb, EndpointId}
+             ,{db, AccountDb, wh_util:format_account_id(AccountDb, raw)}
+            ];
+         OwnerId ->
+            [{db, AccountDb, EndpointId}
+             ,{db, AccountDb, OwnerId}
+             ,{db, AccountDb, wh_util:format_account_id(AccountDb, raw)}
+            ]
     end.
 
--spec maybe_fetch_realtime_attributes/3 :: (api_binary(), api_binary(), api_binary()) -> wh_json:return().
-maybe_fetch_realtime_attributes(_, _, undefined) ->
-    {error, not_found};
-maybe_fetch_realtime_attributes(undefined, undefined, _) ->
-    {error, not_found};
-maybe_fetch_realtime_attributes(undefined, EndpointId, AccountDb) ->
-    case couch_mgr:open_doc(AccountDb, EndpointId) of
-        {error, _} ->
-            maybe_fetch_realtime_attributes(undefined, undefined, AccountDb);
-        {ok, _}=Ok -> Ok
-    end;
-maybe_fetch_realtime_attributes(OwnerId, EndpointId, AccountDb) ->
-    case couch_mgr:open_doc(AccountDb, OwnerId) of
-        {error, _} ->
-            maybe_fetch_realtime_attributes(undefined, EndpointId, AccountDb);
-        {ok, _}=Ok -> Ok
-    end.
-
--spec merge_realtime_attributes/3 :: ([] | [ne_binary(),...], wh_json:object(), wh_json:object()) -> wh_json:object().
-merge_realtime_attributes([], _, Endpoint) ->
-    Endpoint;
-merge_realtime_attributes([<<"call_forward">> = Key|Keys], Owner, Endpoint) ->
-    case wh_json:is_true([Key, <<"enabled">>], Endpoint) of
-        true -> merge_realtime_attributes(Keys, Owner, Endpoint);
-        false ->
-            Attribute = wh_json:get_ne_value(Key, Owner, wh_json:new()),
-            Updated = wh_json:set_value(Key, Attribute, Endpoint),
-            merge_realtime_attributes(Keys, Owner, Updated)
-    end;
-merge_realtime_attributes([Key|Keys], Owner, Endpoint) ->
-    Attribute = wh_json:get_ne_value(Key, Owner, wh_json:new()),
-    Updated = wh_json:set_value(Key, Attribute, Endpoint),
-    merge_realtime_attributes(Keys, Owner, Updated).
-
--spec merge_cached_attributes/1 :: (wh_json:object()) -> wh_json:object().
-merge_cached_attributes(Endpoint) ->
+-spec merge_attributes/1 :: (wh_json:object()) -> wh_json:object().
+merge_attributes(Endpoint) ->
     Keys = [<<"music_on_hold">>
                 ,<<"ringtones">>
                 ,<<"caller_id">>
                 ,<<"caller_id_options">>
                 ,<<"name">>
+                ,<<"do_not_disturb">>
+                ,<<"call_forward">>
            ],
-    merge_cached_attributes(Keys, undefined, Endpoint, undefined).
+    merge_attributes(Keys, undefined, Endpoint, undefined).
 
--spec merge_cached_attributes/4 :: (ne_binaries(), 'undefined' | wh_json:object(), wh_json:object(), 'undefined' | wh_json:object()) ->
+-spec merge_attributes/4 :: (ne_binaries(), 'undefined' | wh_json:object(), wh_json:object(), 'undefined' | wh_json:object()) ->
                                            wh_json:object().
-merge_cached_attributes(Keys, Account, Endpoint, undefined) ->
+merge_attributes(Keys, Account, Endpoint, undefined) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
     OwnerId = wh_json:get_ne_value(<<"owner_id">>, Endpoint),
     case OwnerId =/= undefined
         andalso couch_mgr:open_cache_doc(AccountDb, OwnerId)
     of
         {ok, JObj} ->
-            merge_cached_attributes(Keys, Account, Endpoint, JObj);
+            merge_attributes(Keys, Account, Endpoint, JObj);
         _Else ->
-            merge_cached_attributes(Keys, Account, Endpoint, wh_json:new())
+            merge_attributes(Keys, Account, Endpoint, wh_json:new())
     end;
-merge_cached_attributes(Keys, undefined, Endpoint, Owner) ->
+merge_attributes(Keys, undefined, Endpoint, Owner) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, Endpoint),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {ok, JObj} ->
-            merge_cached_attributes(Keys, JObj, Endpoint, Owner);
+            merge_attributes(Keys, JObj, Endpoint, Owner);
         {error, _} ->
-            merge_cached_attributes(Keys, wh_json:new(), Endpoint, Owner)
+            merge_attributes(Keys, wh_json:new(), Endpoint, Owner)
     end;
-merge_cached_attributes([], _, Endpoint, _) -> Endpoint;
-merge_cached_attributes([<<"name">> = Key|Keys], Account, Endpoint, Owner) ->
+merge_attributes([], _, Endpoint, _) -> Endpoint;
+merge_attributes([<<"name">> = Key|Keys], Account, Endpoint, Owner) ->
     AccountName = wh_json:get_ne_value(Key, Account),
     EndpointName = wh_json:get_ne_value(Key, Endpoint),
     FirstName = wh_json:get_ne_value(<<"first_name">>, Owner),
     LastName = wh_json:get_ne_value(<<"last_name">>, Owner),
     Name = create_endpoint_name(FirstName, LastName, EndpointName, AccountName),
-    merge_cached_attributes(Keys, Account, wh_json:set_value(Key, Name, Endpoint), Owner);
-merge_cached_attributes([<<"call_forward">> = Key|Keys], Account, Endpoint, Owner) ->
+    merge_attributes(Keys, Account, wh_json:set_value(Key, Name, Endpoint), Owner);
+merge_attributes([<<"call_forward">> = Key|Keys], Account, Endpoint, Owner) ->
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
     case wh_json:is_true(<<"enabled">>, EndpointAttr) of
-        true -> merge_cached_attributes(Keys, Account, Endpoint, Owner);
+        true -> merge_attributes(Keys, Account, Endpoint, Owner);
         false ->
             AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
             OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
             Merged1 = wh_json:merge_recursive(AccountAttr, EndpointAttr),
             Merged2 = wh_json:merge_recursive(Merged1, OwnerAttr),
-            merge_cached_attributes(Keys, Account, wh_json:set_value(Key, Merged2, Endpoint), Owner)
+            merge_attributes(Keys, Account, wh_json:set_value(Key, Merged2, Endpoint), Owner)
     end;
-merge_cached_attributes([Key|Keys], Account, Endpoint, Owner) ->
+merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
     OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
     Merged1 = wh_json:merge_recursive(AccountAttr, EndpointAttr),
     Merged2 = wh_json:merge_recursive(Merged1, OwnerAttr),
-    merge_cached_attributes(Keys, Account, wh_json:set_value(Key, Merged2, Endpoint), Owner).
+    merge_attributes(Keys, Account, wh_json:set_value(Key, Merged2, Endpoint), Owner).
 
 -spec create_endpoint_name/4 :: (api_binary(), api_binary(), api_binary(), api_binary()) -> api_binary().
 create_endpoint_name(undefined, undefined, undefined, Account) -> Account;

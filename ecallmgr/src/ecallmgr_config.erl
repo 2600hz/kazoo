@@ -17,6 +17,7 @@
 -compile([{no_auto_import, [get/1]}]).
 
 -include("ecallmgr.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -spec flush/0 :: () -> 'ok'.
 -spec flush/1 :: (wh_json:json_string()) -> 'ok' | {'error', _}.
@@ -65,7 +66,8 @@ get(Key, Default, Node) ->
         {ok, V} -> V;
         {error, E} when E =:= not_found orelse E =:= undefined ->
             Value = fetch(Key, Default, Node),
-            wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node), Value),
+            CacheProps = [{origin, {db, ?WH_CONFIG_DB, <<"ecallmgr">>}}],
+            wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node), Value, CacheProps),
             Value
     end.
 
@@ -116,7 +118,8 @@ set(Key, Value, Node) when not is_binary(Key) ->
 set(Key, Value, Node) when not is_binary(Node) ->
     set(Key, Value, wh_util:to_binary(Node));
 set(Key, Value, Node) ->
-    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node), Value),
+    CacheProps = [{origin, {db, ?WH_CONFIG_DB, <<"ecallmgr">>}}],
+    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node), Value, CacheProps),
     Req = [{<<"Category">>, <<"ecallmgr">>}
            ,{<<"Key">>, Key}
            ,{<<"Value">>, Value}

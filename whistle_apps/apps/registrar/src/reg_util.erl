@@ -129,7 +129,11 @@ check_auth_user(JObj, Username, Realm) ->
 -spec prepare_response/3 :: (wh_json:object(), ne_binary(), ne_binary()) -> {'ok', #auth_user{}}.
 prepare_response(JObj, Username, Realm) ->    
     AuthUser = jobj_to_auth_user(JObj, Username, Realm),
-    wh_cache:store_local(?REGISTRAR_CACHE, cache_auth_user_key(Realm, Username), AuthUser),
+    CacheProps = [{origin, [{db, AuthUser#auth_user.account_db, AuthUser#auth_user.authorizing_id}
+                            ,{db, AuthUser#auth_user.account_db, AuthUser#auth_user.account_id}
+                           ]}
+                 ],
+    wh_cache:store_local(?REGISTRAR_CACHE, cache_auth_user_key(Realm, Username), AuthUser, CacheProps),
     {ok, AuthUser}.
 
 -spec get_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', 'not_found'}.
