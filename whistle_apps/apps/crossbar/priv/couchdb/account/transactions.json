@@ -2,8 +2,11 @@
     "_id": "_design/transactions"
     ,"language": "javascript"
     ,"views": {
+        "last_transactions": {
+            "map": "function(doc) {if(doc.pvt_type != 'credit' && doc.pvt_type != 'debit') return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1); emit(doc._id, {'reason': doc.pvt_reason, 'amount': doc.pvt_amount * modifier}); }"
+        },
         "credit_remaining": {
-            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1); emit(null, doc.amount * modifier); }"
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1); emit(null, doc.pvt_amount * modifier); }"
             ,"reduce": "_sum"
         }
         ,"allotment_consumed": {
@@ -11,7 +14,7 @@
             ,"reduce": "_sum"
         }
         ,"session_cost": {
-            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted || !doc.session_id) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1); emit(doc.session_id, doc.amount * modifier);  }"
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted || !doc.session_id) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1); emit(doc.session_id, doc.pvt_amount * modifier);  }"
             ,"reduce": "_sum"
         }
         ,"session_allotment": {
