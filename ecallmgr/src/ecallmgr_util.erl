@@ -138,27 +138,27 @@ send_cmd(Node, UUID, AppName, Args) ->
 
 -spec maybe_update_channel_cache(string(), ne_binary()) -> 'ok'.
 maybe_update_channel_cache("ecallmgr_Account-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_account_id(UUID, Value);
+    ecallmgr_fs_channel:set_account_id(UUID, Value);
 maybe_update_channel_cache("ecallmgr_Billing-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_billing_id(UUID, Value);
+    ecallmgr_fs_channel:set_billing_id(UUID, Value);
 maybe_update_channel_cache("ecallmgr_Account-Billing=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_account_billing(UUID, Value);
+    ecallmgr_fs_channel:set_account_billing(UUID, Value);
 maybe_update_channel_cache("ecallmgr_Reseller-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_reseller_id(UUID, Value);
+    ecallmgr_fs_channel:set_reseller_id(UUID, Value);
 maybe_update_channel_cache("ecallmgr_Reseller-Billing=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_reseller_billing(UUID, Value);
+    ecallmgr_fs_channel:set_reseller_billing(UUID, Value);
 maybe_update_channel_cache("ecallmgr_Authorizing-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_authorizing_id(UUID, Value);
+    ecallmgr_fs_channel:set_authorizing_id(UUID, Value);
 maybe_update_channel_cache("ecallmgr_Resource-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_resource_id(UUID, Value);
+    ecallmgr_fs_channel:set_resource_id(UUID, Value);
 maybe_update_channel_cache("ecallmgr_Authorizing-Type=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_authorizing_type(UUID, Value);
+    ecallmgr_fs_channel:set_authorizing_type(UUID, Value);
 maybe_update_channel_cache("ecallmgr_Owner-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_owner_id(UUID, Value);
+    ecallmgr_fs_channel:set_owner_id(UUID, Value);
 maybe_update_channel_cache("ecallmgr_Presence-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_presence_id(UUID, Value);
+    ecallmgr_fs_channel:set_presence_id(UUID, Value);
 maybe_update_channel_cache("ecallmgr_Precedence=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_precedence(UUID, Value);
+    ecallmgr_fs_channel:set_precedence(UUID, Value);
 maybe_update_channel_cache(_, _) ->
     ok.
 
@@ -269,7 +269,7 @@ is_node_up(Node) -> ecallmgr_fs_nodes:is_node_up(Node).
 
 -spec is_node_up(atom(), ne_binary()) -> boolean().
 is_node_up(Node, UUID) ->
-    ecallmgr_fs_nodes:is_node_up(Node) andalso ecallmgr_fs_nodes:channel_exists(UUID).
+    ecallmgr_fs_nodes:is_node_up(Node) andalso ecallmgr_fs_channel:exists(UUID).
 
 %%--------------------------------------------------------------------
 %% @public

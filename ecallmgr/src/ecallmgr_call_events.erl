@@ -325,7 +325,7 @@ handle_info(timeout, #state{node=Node
             {stop, normal, State}
     end;
 handle_info({sanity_check}, #state{callid=CallId}=State) ->
-    case ecallmgr_fs_nodes:channel_exists(CallId) of
+    case ecallmgr_fs_channel:exists(CallId) of
         true ->
             lager:debug("listener passed sanity check, call is still up"),
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
@@ -386,7 +386,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec maybe_process_channel_destroy(atom(), ne_binary(), wh_proplist()) -> 'ok'.
 maybe_process_channel_destroy(Node, CallId, Props) ->
-    case ecallmgr_fs_nodes:channel_node(CallId) of
+    case ecallmgr_fs_channel:node(CallId) of
         {ok, Node} -> process_channel_destroy(Node, CallId, Props);
         {error, _} -> process_channel_destroy(Node, CallId, Props);
         {ok, _NewNode} ->

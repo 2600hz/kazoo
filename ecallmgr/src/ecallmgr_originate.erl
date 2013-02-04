@@ -448,7 +448,8 @@ get_originate_action(<<"bridge">>, JObj) ->
 
 get_originate_action(<<"eavesdrop">>, JObj) ->
     lager:debug("got originate with action eavesdrop"),
-    case ecallmgr_fs_nodes:channel_node(wh_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj)) of
+    EavesdropCallId = wh_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj),
+    case ecallmgr_fs_channel:node(EavesdropCallId) of
         {error, _} ->
             lager:debug("failed to find channel ~p in node list", [wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)]),
             <<"error">>;
@@ -474,7 +475,7 @@ maybe_update_node(JObj, Node) ->
     case wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj) of
         undefined -> Node;
         CallId ->
-            case ecallmgr_fs_nodes:channel_node(CallId) of
+            case ecallmgr_fs_channel:node(CallId) of
                 {error, _} -> Node;
                 {ok, N} -> N
             end

@@ -27,8 +27,12 @@
          ,code_change/3
         ]).
 
--define(RESPONDERS, [{{?MODULE, handle_command}, [{<<"conference">>, <<"command">>}]}
-                     ,{{?MODULE, handle_search_req}, [{<<"conference">>, <<"search_req">>}]}
+-define(RESPONDERS, [{{?MODULE, handle_command}
+                      ,[{<<"conference">>, <<"command">>}]
+                     }
+                     ,{{?MODULE, handle_search_req}
+                       ,[{<<"conference">>, <<"search_req">>}]
+                      }
                     ]).
 -define(BINDINGS, [{conference, [{restrict_to, [command, discovery]}]}]).
 -define(QUEUE_NAME, <<"ecallmgr_conference_listener">>).
@@ -196,8 +200,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec search_nodes_for_conference(ne_binary()) -> undefined | wh_json:object().
--spec search_nodes_for_conference([atom(),...], ne_binary()) -> undefined | wh_json:object().
+-spec search_nodes_for_conference(ne_binary()) ->
+                                         'undefined' | wh_json:object().
+-spec search_nodes_for_conference([atom(),...], ne_binary()) ->
+                                         'undefined' | wh_json:object().
 
 search_nodes_for_conference(ConferenceId) ->
     search_nodes_for_conference(ecallmgr_fs_nodes:connected(), ConferenceId).

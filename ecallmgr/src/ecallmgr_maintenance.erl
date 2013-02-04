@@ -41,10 +41,12 @@ list_fs_nodes() ->
 
 -spec show_channels() -> 'no_return'.
 show_channels() ->
-    case ecallmgr_fs_nodes:show_channels() of
+    case ecallmgr_fs_channels:show_all() of
         [] -> io:format("no channels~n", []);
         [Channel|_]=Channels ->
-            Headers = string:join([wh_util:to_list(K) || {K, _} <- wh_json:to_proplist(Channel)], ","),
+            Headers = wh_util:join_binary([K
+                                           || {K, _} <- wh_json:to_proplist(Channel)
+                                          ], <<",">>),
             io:format("~s~n", [Headers]),
             do_show_channels(Channels)
     end,

@@ -435,7 +435,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                      undefined ->
                                          case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
                                              undefined ->
-                                                 case ecallmgr_fs_nodes:channel_import_moh(UUID) of
+                                                 case ecallmgr_fs_channel:import_moh(UUID) of
                                                      true -> 
                                                          [{"application", "export hold_music=${hold_music}"}
                                                           ,{"application", "set import=hold_music"}
@@ -525,7 +525,7 @@ get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
         true ->
             Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
 
-            case ecallmgr_fs_nodes:fetch_channel(Target) of
+            case ecallmgr_fs_channel:fetch(Target) of
                 {ok, Channel} ->
                     OtherNode = wh_json:get_binary_value(<<"node">>, Channel),
                     case OtherNode =:= wh_util:to_binary(Node) of
@@ -534,7 +534,7 @@ get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
                             get_call_pickup_app(Node, UUID, JObj, Target);
                         false ->
                             lager:debug("target ~s is on ~s, not ~s...moving", [Target, OtherNode, Node]),
-                            true = ecallmgr_fs_nodes:channel_move(Target, OtherNode, Node),
+                            true = ecallmgr_fs_channel:move(Target, OtherNode, Node),
                             get_call_pickup_app(Node, UUID, JObj, Target)
                     end;
                 {error, not_found} ->
@@ -669,17 +669,37 @@ get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
           end),
     {<<"fetch">>, noop};
 
-get_fs_app(_Node, _UUID, JObj, <<"conference">>) ->
+get_fs_app(_Node, UUID, JObj, <<"conference">>) ->
     case wapi_dialplan:conference_v(JObj) of
         false -> {'error', <<"conference failed to execute as JObj did not validate">>};
-        true ->
-            ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-            {<<"conference">>, list_to_binary([ConfName, "@default"])}
+        true -> get_conference_app(UUID, JObj)
     end;
 
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     lager:debug("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.
+
+get_conference_app(_UUID, JObj) ->
+    %% case ecallmgr_fs_channel:fetch(UUID) of
+    %%     {ok, Channel} ->
+    %%         ChannelNode = wh_json:get_binary_value(<<"node">>, Channel),
+    %%         case OtherNode =:= wh_util:to_binary(Node) of
+    %%                     true ->
+    %%                         lager:debug("target ~s is on same node(~s) as us", [Target, Node]),
+    %%                         get_call_pickup_app(Node, UUID, JObj, Target);
+    %%                     false ->
+    %%                         lager:debug("target ~s is on ~s, not ~s...moving", [Target, OtherNode, Node]),
+    %%                         true = ecallmgr_fs_channel:move(Target, OtherNode, Node),
+    %%                         get_call_pickup_app(Node, UUID, JObj, Target)
+    %%                 end;
+    %%             {error, not_found} ->
+    %%                 lager:debug("failed to find target callid ~s", [Target]),
+    %%                 {error, <<"failed to find target callid ", Target/binary>>}
+    %%         end
+    %% end.
+    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
+    {<<"conference">>, list_to_binary([ConfName, "@default"])}.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -913,12 +933,13 @@ play(Node, UUID, JObj) ->
     F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE),
 
     %% if Leg is set, use uuid_broadcast; otherwise use playback
-    case ecallmgr_fs_nodes:channel_bridged(UUID) of
+    case ecallmgr_fs_channel:is_bridged(UUID) of
         false -> {<<"playback">>, F};
         true -> play_bridged(UUID, JObj, F)
     end.
 
--spec play_bridged(ne_binary(), wh_json:object(), ne_binary()) -> {ne_binary(), ne_binary()}.
+-spec play_bridged(ne_binary(), wh_json:object(), ne_binary()) ->
+                          {ne_binary(), ne_binary()}.
 play_bridged(UUID, JObj, F) ->
     case wh_json:get_value(<<"Leg">>, JObj) of
         <<"B">> ->    {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" bleg">>])};
@@ -927,7 +948,8 @@ play_bridged(UUID, JObj, F) ->
         undefined ->  {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" both">>])}
     end.
 
--spec tts_flite(atom(), ne_binary(), wh_json:object()) -> {ne_binary(), ne_binary()}.
+-spec tts_flite(atom(), ne_binary(), wh_json:object()) ->
+                       {ne_binary(), ne_binary()}.
 tts_flite(Node, UUID, JObj) ->
     TTSVoice = tts_flite_voice(wh_json:get_value(<<"Voice">>, JObj)),
 

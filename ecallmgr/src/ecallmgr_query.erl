@@ -66,7 +66,7 @@ handle_channel_status(JObj, _Props) ->
     lager:debug("channel status request received"),
 
     AllNodesConnected = ecallmgr_fs_nodes:all_nodes_connected(),
-    case ecallmgr_fs_nodes:fetch_channel(CallID) of
+    case ecallmgr_fs_channel:fetch(CallID) of
         {error, not_found} when AllNodesConnected ->
             lager:debug("no node found with channel ~s", [CallID]),
             Resp = [{<<"Call-ID">>, CallID}
@@ -101,7 +101,7 @@ handle_call_status(JObj, _Props) ->
     lager:debug("call status request received"),
 
     AllNodesConnected = ecallmgr_fs_nodes:all_nodes_connected(),
-    case ecallmgr_fs_nodes:fetch_channel(CallID) of
+    case ecallmgr_fs_channel:fetch(CallID) of
         {error, not_found} when AllNodesConnected ->
             lager:debug("no node found with channel ~s", [CallID]),
             Resp = [{<<"Call-ID">>, CallID}

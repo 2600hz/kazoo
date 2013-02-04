@@ -602,7 +602,7 @@ handle_info(keep_alive_expired, State) ->
 handle_info({sanity_check}, #state{callid=CallId
                                    ,keep_alive_ref=undefined
                                   }=State) ->
-    case ecallmgr_fs_nodes:channel_exists(CallId) of
+    case ecallmgr_fs_channel:exists(CallId) of
         true ->
             lager:debug("listener passed sanity check, call is still up"),
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
