@@ -16,7 +16,7 @@
 -include("wapi_dialplan.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
--export([v/1, application/1]).
+-export([v/1]).
 
 -export([optional_bridge_req_headers/0]).
 -export([optional_bridge_req_endpoint_headers/0]).

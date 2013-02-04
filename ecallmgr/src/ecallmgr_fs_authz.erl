@@ -26,8 +26,8 @@
 
 -include("ecallmgr.hrl").
 
--record(state, {node = 'undefined' :: atom()
-                ,options = [] :: proplist()
+-record(state, {node :: atom()
+                ,options = [] :: wh_proplist()
                }).
 
 -define(RATE_VARS, [<<"Rate">>, <<"Rate-Increment">>
@@ -83,7 +83,7 @@ handle_channel_create(Props, CallId, Node) ->
 handle_session_heartbeat(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put(callid, CallId),
-    lager:debug("received session heartbeat", []),
+    lager:debug("received session heartbeat"),
     AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
     ResellerId = props:get_value(?GET_CCV(<<"Reseller-ID">>), Props),
     _ = case (not wh_util:is_empty(AccountId))
@@ -234,7 +234,7 @@ is_authz_enabled(Props, CallId, Node) ->
         true ->
             is_global_resource(Props, CallId, Node);
         false ->
-            lager:debug("config ecallmgr.authz is disabled", []),
+            lager:debug("config ecallmgr.authz is disabled"),
             allow_call(Props, CallId, Node)
     end.
 
@@ -244,7 +244,7 @@ is_global_resource(Props, CallId, Node) ->
     case wh_util:is_true(GlobalResource) of
         true -> is_consuming_resource(Props, CallId, Node);
         false -> 
-            lager:debug("channel is a local resource", []),
+            lager:debug("channel is a local resource"),
             allow_call(Props, CallId, Node)
     end.
         
@@ -255,14 +255,14 @@ is_consuming_resource(Props, CallId, Node) ->
             case props:get_value(?GET_CCV(<<"Resource-ID">>), Props) =/= undefined of
                 true -> set_heartbeat_on_answer(Props, CallId, Node);
                 false ->
-                    lager:debug("outbound channel is not consuming a resource", []),
+                    lager:debug("outbound channel is not consuming a resource"),
                     allow_call(Props, CallId, Node) 
             end;
         <<"inbound">> ->
             case props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props) =:= undefined of
                 true -> set_heartbeat_on_answer(Props, CallId, Node);
                 false ->
-                    lager:debug("inbound channel is not consuming a resource", []),
+                    lager:debug("inbound channel is not consuming a resource"),
                     allow_call(Props, CallId, Node)
             end
     end.
@@ -328,7 +328,7 @@ authorize_reseller(Props, CallId, Node) ->
     AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
     case AccountId =:= ResellerId orelse authorize(ResellerId, Props) of
         {error, account_limited} -> 
-            lager:debug("reseller has no remaining resources", []),
+            lager:debug("reseller has no remaining resources"),
             maybe_deny_call(Props, CallId, Node);
         {ok, Type} ->
             lager:debug("call authorized by reseller ~s as ~s", [ResellerId, Type]),
@@ -345,7 +345,7 @@ rate_call(Props, CallId, Node) ->
 
 -spec allow_call(wh_proplist(), ne_binary(), atom()) -> 'true'.
 allow_call(_, _, _) ->
-    lager:debug("channel authorization succeeded, allowing call", []),
+    lager:debug("channel authorization succeeded, allowing call"),
     true.
 
 -spec maybe_deny_call(wh_proplist(), api_binary(), atom()) -> boolean().
@@ -431,7 +431,7 @@ identify_account(_, Props) ->
         {ok, RespJObj} ->
             case wh_json:is_false(<<"Global-Resource">>, RespJObj) of
                 true -> 
-                    lager:debug("identified channel as a local resource, allowing", []),
+                    lager:debug("identified channel as a local resource, allowing"),
                     {error, not_required};
                 false ->
                     {ok, [{?GET_CCV(<<"Account-ID">>), wh_json:get_value(<<"Account-ID">>, RespJObj)}
@@ -493,7 +493,7 @@ authz_default() ->
 set_rating_ccvs(JObj, Node) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
-    lager:debug("setting rating information", []),
+    lager:debug("setting rating information"),
     Multiset = lists:foldl(fun(Key, Acc) ->
                                    case wh_json:get_binary_value(Key, JObj) of
                                        undefined -> Acc;
