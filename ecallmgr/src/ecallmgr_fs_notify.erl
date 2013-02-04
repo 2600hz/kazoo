@@ -120,7 +120,7 @@ mwi_update(JObj, Props) ->
                    Realm = wh_json:get_value(<<"Notify-Realm">>, JObj),
                    {ok, N} = ecallmgr_registrar:endpoint_node(Realm, Username),
                    N;
-               N -> wh_util:to_atom(N)
+               N -> wh_util:to_atom(N, true)
            end,
     NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
     MessageAccount = wh_json:get_value(<<"Message-Account">>, JObj),
@@ -497,7 +497,7 @@ relay_presence(EventName, _, Props, Node, Switch) ->
                                           end, Props, ?FS_DEFAULT_HDRS)
                 ]
               ],
-    freeswitch:sendevent(wh_util:to_atom(Switch), EventName, Headers).
+    freeswitch:sendevent(wh_util:to_atom(Switch, true), EventName, Headers).
 
 -spec handle_message_query/2 :: (wh_proplist(), atom()) -> 'ok'.
 handle_message_query(Data, Node) ->
