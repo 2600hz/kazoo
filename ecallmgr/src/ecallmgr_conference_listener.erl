@@ -86,7 +86,7 @@ handle_search_req(JObj, _Props) ->
     ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
     lager:debug("received search request for conference id ~s", [ConferenceId]),
     case search_nodes_for_conference(ConferenceId) of
-        undefined ->
+        'undefined' ->
             lager:debug("sending error search response, conference not found"),
             Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                      ,{<<"Error-Message">>, <<"Conference ", ConferenceId/binary, " not found">>}
@@ -113,9 +113,9 @@ handle_search_req(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put(callid, ?LOG_SYSTEM_ID),
+    put('callid', ?LOG_SYSTEM_ID),
     lager:debug("starting new ecallmgr conference listner process"),
-    {ok, ok}.
+    {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -158,6 +158,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -184,7 +185,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("ecallmgr conference listener ~p termination", [_Reason]).
+    lager:debug("ecallmgr conference listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -201,21 +202,20 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec search_nodes_for_conference(ne_binary()) ->
-                                         'undefined' | wh_json:object().
+                                         api_object().
 -spec search_nodes_for_conference([atom(),...], ne_binary()) ->
-                                         'undefined' | wh_json:object().
-
+                                         api_object().
 search_nodes_for_conference(ConferenceId) ->
     search_nodes_for_conference(ecallmgr_fs_nodes:connected(), ConferenceId).
 
 search_nodes_for_conference([], _) ->
     lager:debug("failed to find conference on any of the freeswitch nodes"),
-    undefined;
+    'undefined';
 search_nodes_for_conference([Node|Nodes], ConferenceId) ->
     try conferences_on_node(Node) of
         JObj ->
             case wh_json:get_value(ConferenceId, JObj) of
-                undefined ->
+                'undefined' ->
                     lager:debug("conference ~s not running on node ~s", [ConferenceId, Node]),
                     search_nodes_for_conference(Nodes, ConferenceId);
                 Conference ->
@@ -232,22 +232,21 @@ search_nodes_for_conference([Node|Nodes], ConferenceId) ->
 -spec get_conference_focus(ne_binary()) -> atom().
 get_conference_focus(ConferenceId) ->
     case search_for_conference_focus(ecallmgr_fs_nodes:connected(), ConferenceId) of
-        undefined ->
+        'undefined' ->
             lager:debug("failed to find conference focus for conference ~s", [ConferenceId]),
-            undefined;
+            'undefined';
         Focus ->
             lager:debug("found conference focus ~s for conference ~s, storing in cache", [Focus, ConferenceId]),
             Focus
     end.
 
 -spec search_for_conference_focus([atom(),...], ne_binary()) -> atom().
-search_for_conference_focus([], _) -> undefined;
+search_for_conference_focus([], _) -> 'undefined';
 search_for_conference_focus([Node|Nodes], ConferenceId) ->
     try conferences_on_node(Node) of
         JObj ->
             case wh_json:get_value(ConferenceId, JObj) of
-                undefined ->
-                    search_for_conference_focus(Nodes, ConferenceId);
+                'undefined' -> search_for_conference_focus(Nodes, ConferenceId);
                 _Else -> Node
             end
     catch
@@ -258,21 +257,33 @@ search_for_conference_focus([Node|Nodes], ConferenceId) ->
 
 -spec conferences_xml_to_json(list(), wh_proplist(), wh_json:object()) -> wh_json:object().
 conferences_xml_to_json([], _, JObj) -> JObj;
-conferences_xml_to_json(#xmlElement{name='conferences', content=Content}, Props, JObj) ->
+conferences_xml_to_json(#xmlElement{name='conferences'
+                                    ,content=Content
+                                   }
+                        ,Props, JObj) ->
     conferences_xml_to_json(Content, Props, JObj);
-conferences_xml_to_json([#xmlElement{name='conferences', content=Content}|_], Props, JObj) ->
+conferences_xml_to_json([#xmlElement{name='conferences'
+                                     ,content=Content
+                                    }|_]
+                        ,Props, JObj) ->
     conferences_xml_to_json(Content, Props, JObj);
-conferences_xml_to_json([#xmlElement{attributes=Attributes, name='conference', content=Content} | ConferencesXml], Props, JObj) ->
-    Conference = wh_json:from_list([{<<"Participants">>, members_xml_to_json(Content, wh_json:new())}
-                                    ,{<<"Switch-Hostname">>, props:get_value(<<"Hostname">>, Props)}
-                                    ,{<<"Switch-URL">>, props:get_value(<<"URL">>, Props)}
-                                    ,{<<"Switch-External-IP">>, props:get_value(<<"Ext-SIP-IP">>, Props)}
-                                    |[{K, wh_util:to_binary(V)}
-                                      || #xmlAttribute{name=Name, value=V} <- Attributes
-                                             ,(K = props:get_value(Name, ?FS_CONFERNCE_ATTRS)) =/= undefined
-                                     ]]),
+conferences_xml_to_json([#xmlElement{attributes=Attributes
+                                     ,name='conference'
+                                     ,content=Content
+                                    } | ConferencesXml
+                        ]
+                        ,Props, JObj) ->
+    Conference = wh_json:from_list(
+                   [{<<"Participants">>, members_xml_to_json(Content, wh_json:new())}
+                    ,{<<"Switch-Hostname">>, props:get_value(<<"Hostname">>, Props)}
+                    ,{<<"Switch-URL">>, props:get_value(<<"URL">>, Props)}
+                    ,{<<"Switch-External-IP">>, props:get_value(<<"Ext-SIP-IP">>, Props)}
+                    |[{K, wh_util:to_binary(V)}
+                      || #xmlAttribute{name=Name, value=V} <- Attributes,
+                         (K = props:get_value(Name, ?FS_CONFERNCE_ATTRS)) =/= 'undefined'
+                     ]]),
     case wh_json:get_value(<<"Conference-ID">>, Conference) of
-        undefined -> conferences_xml_to_json(ConferencesXml, Props, JObj);
+        'undefined' -> conferences_xml_to_json(ConferencesXml, Props, JObj);
         ConferenceId ->
             lager:debug("populating conference ~s in conference props", [ConferenceId]),
             conferences_xml_to_json(ConferencesXml, Props, wh_json:set_value(ConferenceId, Conference, JObj))
@@ -289,7 +300,7 @@ members_xml_to_json([#xmlElement{content=Content, name='members'}|_], JObj) ->
 members_xml_to_json([#xmlElement{content=Content, name='member'}|MembersXml], JObj) ->
     Member = member_xml_to_json(Content, wh_json:new()),
     case wh_json:get_value(<<"Participant-ID">>, Member) of
-        undefined -> members_xml_to_json(MembersXml, JObj);
+        'undefined' -> members_xml_to_json(MembersXml, JObj);
         ParticipantId ->
             lager:debug("populating conference participant ~s in conference props", [ParticipantId]),
             members_xml_to_json(MembersXml, wh_json:set_value(ParticipantId, Member, JObj))
