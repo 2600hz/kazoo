@@ -14,25 +14,22 @@
          ,credit/2
         ]).
 
--export([set_account_id/2
-         ,set_ff_description/2
+-export([set_description/2
          ,set_pvt_account_id/2
         ]).
 
 -export([save/1
-         ,fetch/1
+         ,fetch/2
+         ,get_current_balance/1
         ]).
 
 -export([to_json/1
          ,from_json/1
         ]).
 
--define(WH_TRANSACTION_DB, some_db).
-
 -record(wh_transaction, {
-          % or customer ID and pvt ?
-          account_id :: ne_binary()
-         ,ff_description :: binary()
+          id :: binary()
+         ,description :: binary()
          ,pvt_reason :: ne_binary()
          ,pvt_amount :: integer()
          ,pvt_type :: 'credit' | 'debit'
@@ -50,8 +47,8 @@
 %% @end
 %%--------------------------------------------------------------------
 to_json(#wh_transaction{}=T) ->
-    wh_json:from_list([{<<"account_id">>, T#wh_transaction.account_id}
-                       ,{<<"ff_description">>, T#wh_transaction.ff_description}
+    wh_json:from_list([{<<"_id">>, T#wh_transaction.id}
+                       ,{<<"description">>, T#wh_transaction.description}
                        ,{<<"pvt_reason">>, T#wh_transaction.pvt_reason}
                        ,{<<"pvt_amount">>, T#wh_transaction.pvt_amount}
                        ,{<<"pvt_type">>, T#wh_transaction.pvt_type}
@@ -67,8 +64,8 @@ to_json(#wh_transaction{}=T) ->
 %%--------------------------------------------------------------------
 from_json(JObj) ->
     #wh_transaction{
-      account_id = wh_json:get_ne_value(<<"account_id">>, JObj)
-      ,ff_description = wh_json:get_ne_value(<<"ff_description">>, JObj)
+      id = wh_json:get_ne_value(<<"_id">>, JObj)
+      ,description = wh_json:get_ne_value(<<"description">>, JObj)
       ,pvt_reason = wh_json:get_ne_value(<<"pvt_reason">>, JObj)
       ,pvt_amount = wh_json:get_ne_value(<<"pvt_amount">>, JObj)
       ,pvt_type = wh_json:get_ne_value(<<"pvt_type">>, JObj)
@@ -94,25 +91,14 @@ credit(Amount, Reason) ->
 debit(Amount, Reason) ->
     create(Amount, 'debit', Reason).
 
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set the account ID
-%% @end
-%%--------------------------------------------------------------------
-set_account_id(AccountId, Transaction) ->
-    Transaction#wh_transaction{account_id=AccountId}.
-
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Set free form description
 %% @end
 %%--------------------------------------------------------------------
-set_ff_description(Desc, Transaction) ->
-    Transaction#wh_transaction{ff_description=Desc}.
+set_description(Desc, Transaction) ->
+    Transaction#wh_transaction{description=Desc}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -135,12 +121,18 @@ set_pvt_account_id(AccountId, Transaction) ->
 %% Save transaction to database
 %% @end
 %%--------------------------------------------------------------------
-save(#wh_transaction{}=Transaction) ->
-    Errors = validate_funs(Transaction),
+save(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
+    Transaction1 = set_private_properties(Transaction),
+    Errors = validate_funs(Transaction1),
     case validate(Errors) of
         {true, _} ->
-            Transaction1 = set_private_properties(Transaction),
-            couch_mgr:save_doc(?WH_TRANSACTION_DB, to_json(Transaction1));
+            AccountDB = wh_util:format_account_id(AccountId, encoded),
+            case couch_mgr:save_doc(AccountDB, to_json(Transaction1)) of
+                {ok, T} ->
+                    from_json(T);
+                {error, R} ->
+                    {error, R}
+            end;
         {false, R} ->
             {error, R}
     end.
@@ -151,8 +143,36 @@ save(#wh_transaction{}=Transaction) ->
 %% Fetch a transaction from the database
 %% @end
 %%--------------------------------------------------------------------
-fetch(Id) ->
-    couch_mgr:open_doc(?WH_TRANSACTION_DB, Id).
+fetch(AccountId, Id) ->    
+    AccountDB = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:open_doc(AccountDB, Id) of
+        {ok, T} ->
+            from_json(T);
+        R ->
+            R
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Fetch a transaction from the database
+%% @end
+%%--------------------------------------------------------------------
+get_current_balance(AccountId) ->    
+    AccountDB = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:get_results(AccountDB, <<"transactions/credit_remaining">>, []) of
+        {ok, []} -> 
+            io:format("no current balance for ~s", [AccountId]),
+            0;
+        {ok, [ViewRes|_]} -> 
+            wh_json:get_integer_value(<<"value">>, ViewRes, 0);
+        {error, _R} -> 
+            io:format("unable to get current balance for ~s: ~p", [AccountId, _R]),
+            0
+    end.
+    
+            
 
 %%--------------------------------------------------------------------
 %%
@@ -210,7 +230,7 @@ validate_funs(#wh_transaction{}=Tr) ->
 %% Check the account ID
 %% @end
 %%--------------------------------------------------------------------
-validate_account_id(#wh_transaction{account_id=AccountId}) ->
+validate_account_id(#wh_transaction{pvt_account_id=AccountId}) ->
     case is_binary(AccountId) of
         true -> ok;
         false -> {error, account_id}
