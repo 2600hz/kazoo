@@ -47,12 +47,12 @@
 -type fs_node() :: #node{}.
 -type fs_nodes() :: [fs_node(),...] | [].
 
--record(astats, {billing_ids=sets:new() :: set()
-                 ,outbound_flat_rate=sets:new() :: set()
-                 ,inbound_flat_rate=sets:new() :: set()
-                 ,outbound_per_minute=sets:new() :: set()
-                 ,inbound_per_minute=sets:new() :: set()
-                 ,resource_consumers=sets:new() :: set()
+-record(astats, {billing_ids =          sets:new() :: set()
+                 ,outbound_flat_rate =  sets:new() :: set()
+                 ,inbound_flat_rate =   sets:new() :: set()
+                 ,outbound_per_minute = sets:new() :: set()
+                 ,inbound_per_minute =  sets:new() :: set()
+                 ,resource_consumers =  sets:new() :: set()
                 }).
 -type astats() :: #astats{}.
 
@@ -64,8 +64,7 @@
 %%% API
 %%%===================================================================
 
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link() -> gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% returns ok or {error, some_error_atom_explaining_more}
 -spec add(atom()) -> 'ok' | {'error', 'no_connection'}.
@@ -143,7 +142,7 @@ channels_by_auth_id(AuthorizingId) ->
                   ,[{'=:=', '$1', {const, AuthorizingId}}]
                   ,['$_']}
                 ],
-    case ets:select(ecallmgr_channels, MatchSpec) of
+    case ets:select(?CHANNELS_TBL, MatchSpec) of
         [] -> {error, not_found};
         Channels -> {ok, [ecallmgr_fs_channel:record_to_json(Channel)
                           || Channel <- Channels
@@ -166,9 +165,29 @@ sync_channels(Node) ->
         ],
     ok.
 
+-spec sync_conferences() -> 'ok'.
+-spec sync_conferences(string() | binary() | atom()) -> 'ok'.
+sync_conferences() ->
+    _ = [ecallmgr_fs_node:sync_conferences(Srv)
+         || Srv <- gproc:lookup_pids({p, l, fs_node})
+        ],
+    ok.
+
+sync_conferences(Node) ->
+    N = wh_util:to_atom(Node, true),
+    _ = [ecallmgr_fs_node:sync_conferences(Srv)
+         || Srv <- gproc:lookup_pids({p, l, fs_node})
+                ,ecallmgr_fs_node:fs_node(Srv) =:= N
+        ],
+    ok.
+
 -spec flush_node_channels(string() | binary() | atom()) -> 'ok'.
 flush_node_channels(Node) ->
     gen_server:cast(?MODULE, {flush_node_channels, wh_util:to_atom(Node, true)}).
+
+-spec flush_node_conferences(string() | binary() | atom()) -> 'ok'.
+flush_node_conferences(Node) ->
+    gen_server:cast(?MODULE, {flush_node_conferences, wh_util:to_atom(Node, true)}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -191,7 +210,9 @@ init([]) ->
     lager:debug("starting new fs handler"),
     _ = spawn_link(fun() -> start_preconfigured_servers() end),
     _ = ets:new(sip_subscriptions, [set, public, named_table, {keypos, #sip_subscription.key}]),
-    _ = ets:new(ecallmgr_channels, [set, protected, named_table, {keypos, #channel.uuid}]),
+    _ = ets:new(?CHANNELS_TBL, [set, protected, named_table, {keypos, #channel.uuid}]),
+    _ = ets:new(?CONFERENCES_TBL, [set, protected, named_table, {keypos, #conference.name}]),
+
     _ = erlang:send_after(?EXPIRE_CHECK, self(), expire_sip_subscriptions),
     {ok, #state{}}.
 
@@ -261,11 +282,11 @@ handle_cast({rm_fs_node, NodeName}, State) ->
     spawn(fun() -> maybe_rm_fs_node(NodeName, State) end),
     {noreply, State};
 handle_cast({new_channel, Channel}, State) ->
-    ets:insert(ecallmgr_channels, Channel),
-    {noreply, State};
+    ets:insert(?CHANNELS_TBL, Channel),
+    {noreply, State, hibernate};
 handle_cast({channel_update, UUID, Update}, State) ->
-    ets:update_element(ecallmgr_channels, UUID, Update),
-    {noreply, State};
+    ets:update_element(?CHANNELS_TBL, UUID, Update),
+    {noreply, State, hibernate};
 handle_cast({destroy_channel, UUID, Node}, State) ->
     MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
                   ,[{'andalso', {'=:=', '$2', {const, Node}}
@@ -274,43 +295,105 @@ handle_cast({destroy_channel, UUID, Node}, State) ->
                    ],
                   [true]
                  }],
-    N = ets:select_delete(ecallmgr_channels, MatchSpec),
+    N = ets:select_delete(?CHANNELS_TBL, MatchSpec),
     lager:debug("removed ~p channel(s) with id ~s on ~s", [N, UUID, Node]),
-    {noreply, State};
+    {noreply, State, hibernate};
+
+handle_cast({new_conference, C}, State) ->
+    ets:insert(?CONFERENCES_TBL, C),
+    {noreply, State, hibernate};
+handle_cast({conference_update, UUID, Update}, State) ->
+    ets:update_element(?CONFERENCES_TBL, UUID, Update),
+    {noreply, State, hibernate};
+handle_cast({participant_update, UUID, Update}, State) ->
+    case ets:update_element(?CONFERENCES_TBL, UUID, Update) of
+        true -> {noreply, State, hibernate};
+        false ->
+            lager:debug("failed to update participant, create first"),
+            _Created = ets:insert_new(?CONFERENCES_TBL, #participant{uuid=UUID}),
+            lager:debug("insert new: ~p", [_Created]),
+            _Updated = ets:update_element(?CONFERENCES_TBL, UUID, Update),
+            lager:debug("update x2: ~p", [_Updated]),
+            {noreply, State, hibernate}
+    end;
+handle_cast({destroy_conference, UUID, Node}, State) ->
+    MatchSpec = [{#conference{uuid='$1', node='$2', _ = '_'}
+                  ,[{'andalso', {'=:=', '$2', {const, Node}}
+                     ,{'=:=', '$1', UUID}
+                    }
+                   ],
+                  [true]
+                 }],
+    N = ets:select_delete(?CONFERENCES_TBL, MatchSpec),
+    lager:debug("removed ~p conference(s) with id ~s on ~s", [N, UUID, Node]),
+    {noreply, State, hibernate};
+
 handle_cast({sync_channels, Node, Channels}, State) ->
     lager:debug("ensuring channel cache is in sync with ~s", [Node]),
     MatchSpec = [{#channel{uuid = '$1', node = '$2', _ = '_'}
                   ,[{'=:=', '$2', {const, Node}}]
                   ,['$1']}
                 ],
-    CachedChannels = sets:from_list(ets:select(ecallmgr_channels, MatchSpec)),
+    CachedChannels = sets:from_list(ets:select(?CHANNELS_TBL, MatchSpec)),
     SyncChannels = sets:from_list(Channels),
     Remove = sets:subtract(CachedChannels, SyncChannels),
     Add = sets:subtract(SyncChannels, CachedChannels),
     _ = [begin
              lager:debug("removed channel ~s from cache during sync with ~s", [UUID, Node]),
-             ets:delete(ecallmgr_channels, UUID)
+             ets:delete(?CHANNELS_TBL, UUID)
          end
          || UUID <- sets:to_list(Remove)
         ],
     _ = [begin
              lager:debug("added channel ~s to cache during sync with ~s", [UUID, Node]),
              case build_channel_record(Node, UUID) of
-                 {ok, C} -> ets:insert(ecallmgr_channels, C);
+                 {ok, C} -> ets:insert(?CHANNELS_TBL, C);
                  {error, _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R])
              end
          end
          || UUID <- sets:to_list(Add)
         ],
-    {noreply, State};
+    {noreply, State, hibernate};
+
+handle_cast({sync_conferences, Node, Conferences}, State) ->
+    lager:debug("ensuring conferences cache is in sync with ~s", [Node]),
+    MatchSpec = [{#conference{uuid = '$1', node = '$2', _ = '_'}
+                  ,[{'=:=', '$2', {const, Node}}]
+                  ,['$1']}
+                ],
+
+    CachedConferences = ets:select(?CONFERENCES_TBL, MatchSpec),
+
+    Remove = subtract_from(CachedConferences, Conferences),
+    Add = subtract_from(Conferences, CachedConferences),
+
+    _ = [begin
+             lager:debug("removed conference ~s from cache during sync with ~s", [UUID, Node]),
+             ets:delete(?CONFERENCES_TBL, UUID)
+         end
+         || #conference{name=UUID} <- Remove
+        ],
+    _ = [ets:insert(?CONFERENCES_TBL, C) || C <- Add],
+    {noreply, State, hibernate};
+
 handle_cast({flush_node_channels, Node}, State) ->
     lager:debug("flushing all channels in cache associated to node ~s", [Node]),
     MatchSpec = [{#channel{node = '$1', _ = '_'}
                   ,[{'=:=', '$1', {const, Node}}]
                   ,['true']}
                 ],
-    ets:select_delete(ecallmgr_channels, MatchSpec),
+    ets:select_delete(?CHANNELS_TBL, MatchSpec),
     {noreply, State};
+
+handle_cast({flush_node_conference, Node}, State) ->
+    lager:debug("flushing all conferences in cache associated to node ~s", [Node]),
+    MatchSpec = [{#conference{node = '$1', _ = '_'}
+                  ,[{'=:=', '$1', {const, Node}}]
+                  ,['true']}
+                ],
+    ets:select_delete(?CHANNELS_TBL, MatchSpec),
+    {noreply, State};
+
 handle_cast(_, State) ->
     {noreply, State}.
 
@@ -330,6 +413,7 @@ handle_info({event, [UUID | Props]}, State) ->
         <<"CHANNEL_CREATE">> -> ecallmgr_fs_channel:new(Props, Node);
         <<"CHANNEL_DESTROY">> ->  ecallmgr_fs_channel:destroy(Props, Node);
         <<"channel_move::move_complete">> -> ecallmgr_fs_channel:set_node(Node, UUID);
+        <<"conference::maintenance">> -> ecallmgr_fs_conference:event(Node, UUID, Props);
         <<"CHANNEL_ANSWER">> -> ecallmgr_fs_channel:set_answered(UUID, true);
         <<"CHANNEL_BRIDGE">> ->
             OtherLeg = get_other_leg(UUID, Props),
@@ -379,7 +463,8 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
     ets:delete(sip_subscriptions),
-    ets:delete(ecallmgr_channels),
+    ets:delete(?CHANNELS_TBL),
+    ets:delete(?CONFERENCES_TBL),
     lager:debug("fs nodes termination: ~p", [ _Reason]).
 
 %%--------------------------------------------------------------------
@@ -812,3 +897,11 @@ get_other_leg(_UUID, _Props, OtherLeg) -> OtherLeg.
 
 get_other_leg_1(UUID, UUID, OtherLeg) -> OtherLeg;
 get_other_leg_1(UUID, OtherLeg, UUID) -> OtherLeg.
+
+subtract_from(Set1, []) -> Set1;
+subtract_from(Set1, [#conference{name=N2}|Set2]) ->
+    subtract_from([S || #conference{name=N1}=S <- Set1, N1=/= N2], Set2);
+subtract_from(Set1, [#participant{uuid=Id2}|Set2]) ->
+    subtract_from([S || #participant{uuid=Id1}=S <- Set1, Id1=/= Id2], Set2).
+                        
+    

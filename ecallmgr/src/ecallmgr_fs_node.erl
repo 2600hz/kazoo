@@ -14,7 +14,9 @@
 -export([start_link/1, start_link/2]).
 -export([handle_reload_acls/2]).
 -export([handle_reload_gtws/2]).
--export([sync_channels/1]).
+-export([sync_channels/1
+         ,sync_conferences/1
+        ]).
 -export([show_channels/1]).
 -export([fs_node/1]).
 -export([hostname/1]).
@@ -81,16 +83,20 @@ start_link(Node, Options) ->
 sync_channels(Srv) ->
     gen_server:cast(Srv, {sync_channels}).
 
--spec hostname(pid()) -> 'undefined' | ne_binary().
+-spec sync_conferences(pid()) -> 'ok'.
+sync_conferences(Srv) ->
+    gen_server:cast(Srv, {sync_conferences}).
+
+-spec hostname(pid()) -> api_binary().
 hostname(Srv) ->
     case fs_node(Srv) of
-        undefined -> undefined;
+        'undefined' -> 'undefined';
         Node ->
             [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
             Hostname
     end.
 
--spec handle_reload_acls(wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_reload_acls(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reload_acls(_JObj, Props) ->
     Node = props:get_value(node, Props),
     case freeswitch:bgapi(Node, reloadacl, "") of
@@ -102,7 +108,7 @@ handle_reload_acls(_JObj, Props) ->
             lager:debug("reloadacl failed with error: timeout")
     end.
 
--spec handle_reload_gtws(wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_reload_gtws(wh_json:object(), proplist()) -> 'ok'.
 handle_reload_gtws(_JObj, Props) ->
     Node = props:get_value(node, Props),
     Args = ["profile "
@@ -128,7 +134,7 @@ fs_node(Srv) ->
         Else -> Else
     end.
 
--spec show_channels(pid() | atom()) -> wh_json:json_objects().
+-spec show_channels(pid() | atom()) -> wh_json:objects().
 show_channels(Srv) when is_pid(Srv) ->
     show_channels(fs_node(Srv));
 show_channels(Node) ->
@@ -163,14 +169,15 @@ init([Node, Options]) ->
                                          ,'SESSION_HEARTBEAT', 'CUSTOM'
                                          ,'sofia::register', 'sofia::transfer'
                                          ,'channel_move::move_released', 'channel_move::move_complete'
-                                         ,'whistle::broadcast'
+                                         ,'whistle::broadcast', 'conference::maintenance'
                                          ,'loopback::bowout'
                                         ]),
             lager:debug("bound to switch events on node ~s", [Node]),
             gproc:reg({p, l, fs_node}),
             run_start_cmds(Node),
             sync_channels(self()),
-            {ok, #state{node=Node, options=Options}}
+            sync_conferences(self()),
+            {'ok', #state{node=Node, options=Options}}
     end.
 
 bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
@@ -224,6 +231,13 @@ handle_cast({sync_channels}, #state{node=Node}=State) ->
     Msg = {sync_channels, Node, [Call || Call <- Calls, Call =/= undefined]},
     gen_server:cast(ecallmgr_fs_nodes, Msg),
     {noreply, State};
+
+handle_cast({sync_conferences}, #state{node=Node}=State) ->
+    Conferences = show_conferences(Node),
+    Msg = {sync_conferences, Node, Conferences},
+    gen_server:cast(ecallmgr_fs_nodes, Msg),
+    {noreply, State};
+
 handle_cast(_Req, State) ->
     {noreply, State}.
 
@@ -262,7 +276,7 @@ handle_info(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{node=Node}) ->
-    {reply, [{node, Node}]}.
+    {'reply', [{'node', Node}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -304,14 +318,14 @@ process_event(<<"CHANNEL_CREATE">> = EventName, UUID, Props, Node) ->
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(<<"channel_move::move_released">> = EventName, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
-    gproc:send({p, l, {channel_move, Node, UUID}}
-               ,{channel_move_released, Node, UUID, Props}
+    gproc:send({'p', 'l', {'channel_move', Node, UUID}}
+               ,{'channel_move_released', Node, UUID, Props}
               ),
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(<<"channel_move::move_complete">> = EventName, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
-    gproc:send({p, l, {channel_move, Node, UUID}}
-               ,{channel_move_complete, Node, UUID, Props}
+    gproc:send({'p', 'l', {'channel_move', Node, UUID}}
+               ,{'channel_move_complete', Node, UUID, Props}
               ),
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(EventName, UUID, Props, Node) ->
@@ -320,16 +334,16 @@ process_event(EventName, UUID, Props, Node) ->
 -spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 maybe_send_event(EventName, UUID, Props, Node) ->
     case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
-        true -> ok;
-        false ->
-            gproc:send({p, l, {event, Node, EventName}}, {event, [UUID | Props]}),
+        'true' -> 'ok';
+        'false' ->
+            gproc:send({'p', 'l', {'event', Node, EventName}}, {'event', [UUID | Props]}),
             maybe_send_call_event(UUID, Props, Node)
     end.
 
 -spec maybe_send_call_event(api_binary(), wh_proplist(), atom()) -> any().
-maybe_send_call_event(undefined, _, _) -> ok;
+maybe_send_call_event('undefined', _, _) -> ok;
 maybe_send_call_event(CallId, Props, Node) ->
-    gproc:send({p, l, {call_event, Node, CallId}}, {event, [CallId | Props]}).
+    gproc:send({'p', 'l', {'call_event', Node, CallId}}, {'event', [CallId | Props]}).
 
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
                       {'error', {atom(), nonempty_string()}, ne_binary()} |
@@ -343,12 +357,12 @@ run_start_cmds(Node) ->
                        Cmds = ecallmgr_config:get(<<"fs_cmds">>, [], Node),
                        Res = process_cmds(Node, Cmds),
                        case lists:filter(fun was_not_successful_cmd/1, Res) of
-                           [] -> ok;
+                           [] -> 'ok';
                            Errs -> print_api_responses(Errs)
                        end
                end).
 
--spec process_cmds(atom(), wh_json:json_object() | [] | [ne_binary(),...]) -> cmd_results().
+-spec process_cmds(atom(), wh_json:object() | ne_binaries()) -> cmd_results().
 process_cmds(_, []) ->
     lager:info("no freeswitch commands to run, seems suspect. Is your ecallmgr connected to the same AMQP as the whapps running sysconf?"),
     [];
@@ -356,15 +370,14 @@ process_cmds(Node, Cmds) when is_list(Cmds) ->
     lists:foldl(fun(Cmd, Acc) -> process_cmd(Node, Cmd, Acc) end, [], Cmds);
 process_cmds(Node, Cmds) ->
     case wh_json:is_json_object(Cmds) of
-        true ->
-            process_cmd(Node, Cmds, []);
-        false ->
+        'true' -> process_cmd(Node, Cmds, []);
+        'false' ->
             lager:debug("recv something other than a list for fs_cmds: ~p", [Cmds]),
             timer:sleep(5000),
             run_start_cmds(Node)
     end.
 
--spec process_cmd(atom(), wh_json:json_object(), cmd_results()) -> cmd_results().
+-spec process_cmd(atom(), wh_json:object(), cmd_results()) -> cmd_results().
 -spec process_cmd(atom(), ne_binary(), ne_binary(), cmd_results()) -> cmd_results().
 process_cmd(Node, JObj, Acc0) ->
     lists:foldl(fun({ApiCmd, ApiArg}, Acc) ->
@@ -372,28 +385,28 @@ process_cmd(Node, JObj, Acc0) ->
                 end, Acc0, wh_json:to_proplist(JObj)).
 
 process_cmd(Node, ApiCmd0, ApiArg, Acc) ->
-    process_cmd(Node, ApiCmd0, ApiArg, Acc, binary).
+    process_cmd(Node, ApiCmd0, ApiArg, Acc, 'binary').
 process_cmd(Node, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     ApiCmd = wh_util:to_atom(ApiCmd0, ?FS_CMD_SAFELIST),
     case freeswitch:bgapi(Node, ApiCmd, format_args(ArgFormat, ApiArg)) of
-        {error, badarg} when ArgFormat =:= binary ->
-            process_cmd(Node, ApiCmd0, ApiArg, Acc, list);
-        {ok, BGApiID} ->
+        {'error', 'badarg'} when ArgFormat =:= 'binary' ->
+            process_cmd(Node, ApiCmd0, ApiArg, Acc, 'list');
+        {'ok', BGApiID} ->
             receive
-                {bgok, BGApiID, FSResp} ->
-                    process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, [global]), Acc);
-                {bgerror, BGApiID, _} when ArgFormat =:= binary ->
-                    process_cmd(Node, ApiCmd0, ApiArg, Acc, list);
-                {bgerror, BGApiID, Error} -> [{error, Error} | Acc]
+                {'bgok', BGApiID, FSResp} ->
+                    process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, ['global']), Acc);
+                {'bgerror', BGApiID, _} when ArgFormat =:= 'binary' ->
+                    process_cmd(Node, ApiCmd0, ApiArg, Acc, 'list');
+                {'bgerror', BGApiID, Error} -> [{'error', Error} | Acc]
             after 120000 ->
-                    [{timeout, {ApiCmd, ApiArg}} | Acc]
+                    [{'timeout', {ApiCmd, ApiArg}} | Acc]
             end;
-        {error, _}=Error ->
+        {'error', _}=Error ->
             [Error | Acc]
     end.
 
-format_args(list, Args) -> wh_util:to_list(Args);
-format_args(binary, Args) -> wh_util:to_binary(Args).
+format_args('list', Args) -> wh_util:to_list(Args);
+format_args('binary', Args) -> wh_util:to_binary(Args).
 
 process_resp(ApiCmd, ApiArg, [<<>>|Resps], Acc) ->
     process_resp(ApiCmd, ApiArg, Resps, Acc);
@@ -402,29 +415,22 @@ process_resp(ApiCmd, ApiArg, [<<"+OK Reloading XML">>|Resps], Acc) ->
 process_resp(ApiCmd, ApiArg, [<<"+OK acl reloaded">>|Resps], Acc) ->
     process_resp(ApiCmd, ApiArg, Resps, Acc);
 process_resp(ApiCmd, ApiArg, [<<"+OK ", Resp/binary>>|Resps], Acc) ->
-    process_resp(ApiCmd, ApiArg, Resps, [{ok, {ApiCmd, ApiArg}, Resp} | Acc]);
+    process_resp(ApiCmd, ApiArg, Resps, [{'ok', {ApiCmd, ApiArg}, Resp} | Acc]);
 process_resp(ApiCmd, ApiArg, [<<"+OK">>|Resps], Acc) ->
-    process_resp(ApiCmd, ApiArg, Resps, [{ok, {ApiCmd, ApiArg}, <<"OK">>} | Acc]);
+    process_resp(ApiCmd, ApiArg, Resps, [{'ok', {ApiCmd, ApiArg}, <<"OK">>} | Acc]);
 process_resp(ApiCmd, ApiArg, [<<"-ERR ", Err/binary>>|Resps], Acc) ->
     case was_bad_error(Err, ApiCmd, ApiArg) of
-        true -> process_resp(ApiCmd, ApiArg, Resps, [{error, {ApiCmd, ApiArg}, Err} | Acc]);
-        false -> process_resp(ApiCmd, ApiArg, Resps, Acc)
+        'true' -> process_resp(ApiCmd, ApiArg, Resps, [{'error', {ApiCmd, ApiArg}, Err} | Acc]);
+        'false' -> process_resp(ApiCmd, ApiArg, Resps, Acc)
     end;
-process_resp(_, _, [], Acc) ->
-    Acc.
+process_resp(_, _, [], Acc) -> Acc.
 
-was_bad_error(<<"[Module already loaded]">>, load, _) ->
-    false;
-was_bad_error(_E, _, _) ->
-    lager:debug("bad error: ~s", [_E]),
-    true.
+was_bad_error(<<"[Module already loaded]">>, 'load', _) -> 'false';
+was_bad_error(_E, _, _) -> 'true'.
 
-was_not_successful_cmd({ok, _}) ->
-    false;
-was_not_successful_cmd({ok, _, _}) ->
-    false;
-was_not_successful_cmd(_) ->
-    true.
+was_not_successful_cmd({'ok', _}) -> 'false';
+was_not_successful_cmd({'ok', _, _}) -> 'false';
+was_not_successful_cmd(_) -> 'true'.
 
 -spec print_api_responses(cmd_results()) -> 'ok'.
 print_api_responses(Res) ->
@@ -433,34 +439,49 @@ print_api_responses(Res) ->
     lager:debug("end cmd results").
 
 -spec print_api_response(cmd_result()) -> 'ok'.
-print_api_response({ok, {Cmd, Args}, Res}) ->
-    lager:debug("ok: ~s(~s) => ~s", [Cmd, Args, Res]);
-print_api_response({error, {Cmd, Args}, Res}) ->
-    lager:debug("error: ~s(~s) => ~s", [Cmd, Args, Res]);
-print_api_response({timeout, {Cmd, Arg}}) ->
-    lager:debug("timeout: ~s(~s)", [Cmd, Arg]).
+print_api_response({'ok', {Cmd, Args}, Res}) ->
+    lager:info("ok: ~s(~s) => ~s", [Cmd, Args, Res]);
+print_api_response({'error', {Cmd, Args}, Res}) ->
+    lager:info("error: ~s(~s) => ~s", [Cmd, Args, Res]);
+print_api_response({'timeout', {Cmd, Arg}}) ->
+    lager:info("timeout: ~s(~s)", [Cmd, Arg]).
 
--spec show_channels_as_json(atom()) -> wh_json:json_objects().
+-spec show_channels_as_json(atom()) -> wh_json:objects().
 show_channels_as_json(Node) ->
     case freeswitch:api(Node, show, "channels as delim |||") of
-        {ok, Lines} ->
-            case binary:split(Lines, <<"\n">>, [global]) of
+        {'ok', Lines} ->
+            case binary:split(Lines, <<"\n">>, ['global']) of
                 [<<>>|_] -> [];
                 [Header|Rest] ->
-                    Keys = binary:split(Header, <<"|||">>, [global]),
+                    Keys = binary:split(Header, <<"|||">>, ['global']),
                     [wh_json:from_list(lists:zip(Keys, Values))
                      || Line <- Rest
-                            ,((Values = binary:split(Line, <<"|||">>, [global])) =/= [Line])
+                            ,((Values = binary:split(Line, <<"|||">>, ['global'])) =/= [Line])
                     ]
             end;
-        {error, _} -> [];
-        timeout -> []
+        {'error', _} -> [];
+        'timeout' -> []
+    end.
+
+-spec show_conferences(atom()) -> conferences() | participants().
+show_conferences(Node) ->
+    case freeswitch:api(Node, 'conference', "xml_list") of
+        {'ok', XmlStr} ->
+            {Xml, _} = xmerl_scan:string(wh_util:to_list(XmlStr)),
+            case catch ecallmgr_fs_conference:xml_list_to_records(Xml, Node) of
+                {'EXIT', _R} ->
+                    lager:debug("exited ~p", [_R]),
+                    [];
+                Rs -> lager:debug("recs: ~p", [Rs]), Rs
+            end;
+        {'error', _} -> [];
+        'timeout' -> []
     end.
 
 -spec maybe_start_event_listener(atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
 maybe_start_event_listener(Node, UUID) ->
-    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, start_listener}) of
-        {ok, true} ->
+    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}) of
+        {'ok', 'true'} ->
             ecallmgr_call_sup:start_event_process(Node, UUID);
-        _E -> ok
+        _E -> 'ok'
     end.

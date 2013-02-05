@@ -44,13 +44,12 @@
 -include("ecallmgr.hrl").
 
 -define(NODES_SRV, ecallmgr_fs_nodes).
--define(CHANNEL_TBL, ecallmgr_channels).
 
 -spec show_all() -> wh_json:objects().
 show_all() ->
     ets:foldl(fun(Channel, Acc) ->
                       [record_to_json(Channel) | Acc]
-              end, [], ?CHANNEL_TBL).
+              end, [], ?CHANNELS_TBL).
 
 -spec new(wh_proplist(), atom()) -> 'ok'.
 new(Props, Node) ->
@@ -61,7 +60,7 @@ new(Props, Node) ->
 -spec fetch(ne_binary()) -> {'ok', wh_json:object()} |
                                           {'error', 'not_found'}.
 fetch(UUID) ->
-    case ets:lookup(?CHANNEL_TBL, UUID) of
+    case ets:lookup(?CHANNELS_TBL, UUID) of
         [Channel] -> {ok, record_to_json(Channel)};
         _Else -> {error, not_found}
     end.
@@ -73,7 +72,7 @@ node(UUID) ->
                   ,[{'=:=', '$1', {const, UUID}}]
                   ,['$2']}
                 ],
-    case ets:select(?CHANNEL_TBL, MatchSpec) of
+    case ets:select(?CHANNELS_TBL, MatchSpec) of
         [Node] -> {ok, Node};
         _ -> {error, not_found}
     end.
@@ -84,7 +83,7 @@ is_bridged(UUID) ->
                   ,[{'=:=', '$1', {const, UUID}}]
                   ,['$2']}
                 ],
-    case ets:select(?CHANNEL_TBL, MatchSpec) of
+    case ets:select(?CHANNELS_TBL, MatchSpec) of
         [undefined] -> lager:debug("not bridged: undefined"), false;
         [Bin] when is_binary(Bin) -> lager:debug("bridged: ~s", [Bin]), true;
         _E -> lager:debug("not bridged: ~p", [_E]), false
@@ -97,7 +96,7 @@ former_node(UUID) ->
                   ,[{'=:=', '$1', {const, UUID}}]
                   ,['$2']}
                 ],
-    case ets:select(?CHANNEL_TBL, MatchSpec) of
+    case ets:select(?CHANNELS_TBL, MatchSpec) of
         [undefined] -> {ok, undefined};
         [Node] -> {ok, Node};
         _ -> {error, not_found}
@@ -105,11 +104,11 @@ former_node(UUID) ->
 
 -spec exists(ne_binary()) -> boolean().
 exists(UUID) ->
-    ets:member(?CHANNEL_TBL, UUID).
+    ets:member(?CHANNELS_TBL, UUID).
 
 -spec import_moh(ne_binary()) -> boolean().
 import_moh(UUID) ->
-    try ets:lookup_element(?CHANNEL_TBL, UUID, #channel.import_moh) of
+    try ets:lookup_element(?CHANNELS_TBL, UUID, #channel.import_moh) of
         Import -> Import
     catch
         error:badarg -> false
@@ -124,7 +123,7 @@ account_summary(AccountId) ->
                   ,[{'=:=', '$2', {const, AccountId}}]
                   ,['$_']}
                 ],
-    ets:select(?CHANNEL_TBL, MatchSpec).
+    ets:select(?CHANNELS_TBL, MatchSpec).
 
 -spec match_presence(ne_binary()) -> wh_proplist_kv(ne_binary(), atom()).
 match_presence(PresenceId) ->
@@ -132,7 +131,7 @@ match_presence(PresenceId) ->
                   ,[{'=:=', '$2', {const, PresenceId}}]
                   ,[{{'$1', '$3'}}]}
                 ],
-    ets:select(?CHANNEL_TBL, MatchSpec).
+    ets:select(?CHANNELS_TBL, MatchSpec).
 
 move(UUID, ONode, NNode) ->
     OriginalNode = wh_util:to_atom(ONode),
@@ -326,7 +325,7 @@ get_call_precedence(UUID) ->
                   ,[{'=:=', '$1', {const, UUID}}]
                   ,['$2']}
                 ],
-    case ets:select(?CHANNEL_TBL, MatchSpec) of
+    case ets:select(?CHANNELS_TBL, MatchSpec) of
         [Presedence] -> Presedence;
         _ -> 5
     end.

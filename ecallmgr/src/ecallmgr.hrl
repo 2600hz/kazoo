@@ -13,6 +13,9 @@
 -define(ECALLMGR_REG_CACHE, ecallmgr_reg_cache).
 -define(ECALLMGR_CALL_CACHE, ecallmgr_call_cache).
 
+-define(CHANNELS_TBL, ecallmgr_channels).
+-define(CONFERENCES_TBL, ecallmgr_conferences).
+
 -define(ECALLMGR_RECORDED_MEDIA_KEY(M), {recorded_media, M}).
 
 -define(WHISTLE_CONTEXT, <<"context_2">>).
@@ -79,6 +82,42 @@
 
 -type channel() :: #channel{}.
 -type channels() :: [channel(),...] | [].
+
+-record(conference, {name :: api_binary() | '_'
+                     ,uuid :: api_binary() | '$1' | '_'
+                     ,node :: atom() | '$1' | '$2' | '_'
+                     ,participants = 0 :: non_neg_integer() | '_'
+                     ,profile_name = <<"default">> :: ne_binary() | '_'
+                     ,with_floor :: non_neg_integer() | '_' % which participant has the floor
+                     ,lost_floor :: non_neg_integer() | '_' % which participant has lost the floor
+                     ,running = 'true' :: boolean() | '_'
+                     ,answered = 'true' :: boolean() | '_'
+                     ,enforce_min = 'true' :: boolean() | '_'
+                     ,dynamic = 'true' :: boolean() | '_'
+                     ,exit_sound = 'true' :: boolean() | '_'
+                     ,enter_sound = 'true' :: boolean() | '_'
+                     ,run_time = 0 :: non_neg_integer() | '_'
+                    }).
+-type conference() :: #conference{}.
+-type conferences() :: [conference(),...] | [].
+
+-record(participant, {uuid :: api_binary() | '_'
+                      ,node :: atom() | '_'
+                      ,conference_uuid :: api_binary() | '_'
+                      ,floor = 'false' :: boolean() | '_'
+                      ,hear = 'true' :: boolean() | '_'
+                      ,speak = 'true' :: boolean() | '_'
+                      ,talking = 'false' :: boolean() | '_'
+                      ,mute_detect = 'false' :: boolean() | '_'
+                      ,member_id = 0 :: non_neg_integer() | '_'
+                      ,member_type :: api_binary() | '_'
+                      ,energy_level = 0 :: non_neg_integer() | '_'
+                      ,current_energy = 0 :: non_neg_integer() | '_'
+                      ,video = 'false' :: boolean() | '_'
+                      ,is_moderator = 'false' :: boolean() | '_'
+                     }).
+-type participant() :: #participant{}.
+-type participants() :: [participant(),...] | [].
 
 -define(DEFAULT_DOMAIN, <<"whistle.2600hz.org">>).
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, 10000). % 10 seconds
@@ -211,6 +250,7 @@
                     ,'CHANNEL_HANGUP', 'CHANNEL_HANGUP_COMPLETE', 'CHANNEL_DESTROY'
                     ,'CUSTOM', 'sofia::transfer', 'loopback::bowout', 'whistle::noop'
                     ,'whistle::masquerade', 'channel_move::move_released', 'channel_move::move_complete'
+                    ,'conference::maintenance'
                    ]).
 
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>
