@@ -2,9 +2,6 @@
     "_id": "_design/transactions"
     ,"language": "javascript"
     ,"views": {
-        "last_transactions": {
-            "map": "function(doc) {if(doc.pvt_type != 'credit' && doc.pvt_type != 'debit') return; emit(doc._id, {'pvt_type': doc.pvt_type, 'pvt_reason': doc.pvt_reason, 'pvt_amount': doc.pvt_amount, 'description': doc.description, 'pvt_created': doc.pvt_created, 'pvt_account_id': doc.pvt_account_id}); }"
-        },
         "credit_remaining": {
             "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1); emit(null, doc.pvt_amount * modifier); }"
             ,"reduce": "_sum"
