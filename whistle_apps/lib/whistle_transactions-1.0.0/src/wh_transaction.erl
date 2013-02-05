@@ -29,8 +29,9 @@
          ,from_json/1
         ]).
 
--define(REASONS, [call,
-                  test
+-define(REASONS, [per_minute
+                  ,activation_charges
+                  ,admin
                  ]).
 
 -record(wh_transaction, {
