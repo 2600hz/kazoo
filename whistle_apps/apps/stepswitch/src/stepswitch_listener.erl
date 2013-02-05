@@ -314,6 +314,8 @@ create_gateway(JObj, Id) ->
                  wh_json:get_value(<<"caller_id_type">>, JObj, Default#gateway.caller_id_type)
              ,sip_headers =
                  wh_json:get_value(<<"custom_sip_headers">>, JObj, Default#gateway.sip_headers)
+             ,sip_interface =
+                 wh_json:get_ne_value(<<"custom_sip_interface">>, JObj)
              ,progress_timeout =
                  wh_json:get_integer_value(<<"progress_timeout">>, JObj, Default#gateway.progress_timeout)
              ,invite_format =
