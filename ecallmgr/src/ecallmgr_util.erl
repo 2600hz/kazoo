@@ -51,6 +51,7 @@
                           ,span = <<"1">> :: ne_binary()
                           ,channel_selection = <<"a">> :: ne_binary()
                           ,interface = <<"RR">> :: ne_binary() % for Skype
+                          ,sip_interface
                           ,channel_vars = ["[",[],"]"] :: iolist()
                          }).
 
@@ -370,6 +371,7 @@ endpoint_jobj_to_record(Endpoint) ->
                      ,span = get_endpoint_span(Endpoint)
                      ,channel_selection = get_endpoint_channel_selection(Endpoint)
                      ,interface = get_endpoint_interface(Endpoint)
+                     ,sip_interface = wh_json:get_ne_value(<<"SIP-Interface">>, Endpoint)
                      ,channel_vars = ecallmgr_fs_xml:get_leg_vars(Endpoint)
                     }.
 
@@ -580,8 +582,10 @@ maybe_set_interface(<<"sofia/", _/binary>>=Contact, _) ->
     Contact;
 maybe_set_interface(<<"loopback/", _/binary>>=Contact, _) ->
     Contact;
-maybe_set_interface(Contact, _) ->
-    <<?SIP_INTERFACE, Contact/binary>>.
+maybe_set_interface(Contact, #bridge_endpoint{sip_interface=undefined}) ->
+    <<?SIP_INTERFACE, Contact/binary>>;
+maybe_set_interface(Contact, #bridge_endpoint{sip_interface=SIPInterface}) ->
+    <<SIPInterface/binary, Contact/binary>>.
 
 -spec append_channel_vars/2 :: (ne_binary(), #bridge_endpoint{}) -> ne_binary().
 append_channel_vars(Contact, #bridge_endpoint{channel_vars=["[",[],"]"]}) ->

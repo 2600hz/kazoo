@@ -545,6 +545,7 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
             ,{<<"Auth-User">>, Gateway#gateway.username}
             ,{<<"Auth-Password">>, Gateway#gateway.password}
             ,{<<"SIP-Headers">>, Gateway#gateway.sip_headers}
+            ,{<<"SIP-Interface">>, Gateway#gateway.sip_interface}
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
             ,{<<"Endpoint-Type">>, Gateway#gateway.endpoint_type}
             ,{<<"Endpoint-Options">>, Gateway#gateway.endpoint_options}

@@ -64,6 +64,7 @@
                ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
                ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
                ,<<"Proxy-IP">>, <<"Forward-IP">>, <<"SIP-Transport">>
+               ,<<"SIP-Interface">>
          ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
