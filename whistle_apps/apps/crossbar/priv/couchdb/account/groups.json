@@ -3,7 +3,7 @@
     ,"language": "javascript"
     ,"views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'group' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name}); }"
+            "map": "function(doc) { if (doc.pvt_type != 'group' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'endpoints': Object.keys(doc.endpoints).length});}"
         }
     }
 }
