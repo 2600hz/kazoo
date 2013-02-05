@@ -10,7 +10,8 @@
 
 -export([show_all/0
          ,new/2
-         ,destroy/2
+         ,node/1
+         ,destroy/2, participant_destroy/2
          ,event/3
          ,size/1, set_size/2
          ,xml_list_to_records/2
@@ -32,9 +33,24 @@ show_all() ->
 new(Node, Props) ->
     gen_server:cast(?NODES_SRV, {new_conference, props_to_record(Props, Node)}).
 
+-spec node(ne_binary()) ->
+                  {'ok', atom()} |
+                  {'error', 'not_found'}.
+node(ConfName) ->
+    case ets:lookup(?CONFERENCES_TBL, ConfName) of
+        [#conference{node=Node}] -> {'ok', Node};
+        _ -> {'error', 'not_found'}
+    end.
+
 -spec destroy(atom(), wh_proplist()) -> 'ok'.
 destroy(Node, Props) ->
-    gen_server:cast(?NODES_SRV, {destroy_conference, props_to_record(Props, Node)}).
+    gen_server:cast(?NODES_SRV, {conference_destroy, Node, props:get_value(<<"Conference-Name">>, Props)}).
+
+-spec participant_destroy(atom(), wh_proplist() | ne_binary()) -> 'ok'.
+participant_destroy(Node, Props) when is_list(Props) ->
+    participant_destroy(Node, props:get_value(<<"Channel-ID">>, Props));
+participant_destroy(Node, UUID) ->
+    gen_server:cast(?NODES_SRV, {participant_destroy, Node, UUID}).
 
 size(ConfId) ->
     case ets:lookup(?CONFERENCES_TBL, ConfId) of
@@ -42,7 +58,7 @@ size(ConfId) ->
         [#conference{participants=P}] -> P
     end.
 set_size(ConfId, Size) when is_integer(Size) ->
-    gen_server:cast(?NODES_SRV, {update, ConfId, {#conference.participants, Size}}).
+    gen_server:cast(?NODES_SRV, {conference_update, ConfId, {#conference.participants, Size}}).
 
 props_to_record(Props, Node) ->
     #conference{node=Node
@@ -51,6 +67,23 @@ props_to_record(Props, Node) ->
                 ,participants=props:get_integer_value(<<"Conference-Size">>, Props, 0)
                 ,profile_name=props:get_value(<<"Conference-Profile-Name">>, Props)
                }.
+
+props_to_participant_record(Node, Props) ->
+    #participant{node=Node
+                 ,uuid=props:get_value(<<"Channel-ID">>, Props, props:get_value(<<"Unique-ID">>, Props))
+                 ,conference_name=props:get_value(<<"Conference-Name">>, Props)
+                 ,floor=props:get_is_true(<<"Floor">>, Props, 'false')
+                 ,hear=props:get_is_true(<<"Hear">>, Props, 'true')
+                 ,speak=props:get_is_true(<<"Speak">>, Props, 'true')
+                 ,talking=props:get_is_true(<<"Talking">>, Props, 'false')
+                 ,mute_detect=props:get_is_true(<<"Mute-Detect">>, Props, 'false')
+                 ,member_id=props:get_integer_value(<<"Member-ID">>, Props, 0)
+                 ,member_type=props:get_value(<<"Member-Type">>, Props)
+                 ,energy_level=props:get_integer_value(<<"Energy-Level">>, Props, 0)
+                 ,current_energy=props:get_integer_value(<<"Current-Energy">>, Props, 0)
+                 ,video=props:get_is_true(<<"Video">>, Props, 'false')
+                 ,is_moderator=props:get_is_true(<<"Is-Moderator">>, Props, 'false')
+                }.
 
 -spec xml_list_to_records(xml_els(), atom()) -> conferences() | participants().
 xml_list_to_records(Xml, Node) ->
@@ -102,7 +135,8 @@ record_to_json(#conference{node=Node
          ,{<<"Profile">>, Profile}
         ])).
 
-event(Node, undefined, Props) ->
+event(Node, 'undefined', Props) ->
+    lager:debug("conf event ~s", [props:get_value(<<"Action">>, Props)]),
     case props:get_value(<<"Action">>, Props) of
         <<"conference-create">> -> new(Node, Props);
         <<"play-file">> -> ok;
@@ -112,28 +146,33 @@ event(Node, undefined, Props) ->
         _Action -> lager:debug("unknown action with no uuid: ~s", [_Action])
     end;
 event(Node, UUID, Props) ->
+    lager:debug("conf event ~s", [props:get_value(<<"Action">>, Props)]),
     case props:get_value(<<"Action">>, Props) of
         <<"add-member">> -> update_all(Node, UUID, Props);
         <<"floor-change">> -> update_all(Node, UUID, Props);
         <<"start-talking">> -> update_all(Node, UUID, Props);
-        <<"del-member">> -> update_all(Node, UUID, Props);
+        <<"stop-talking">> -> update_all(Node, UUID, Props);
+        <<"del-member">> -> participant_destroy(Node, UUID);
         _Action -> lager:debug("unhandled conference action ~s", [_Action])
     end.
 
 update_all(Node, UUID, Props) ->
     update_conference(Node, Props),
-    gen_server:cast(?NODES_SRV, {update_participant
+    update_participant(Node, UUID, Props).
+
+update_participant(Node, UUID, Props) ->
+    gen_server:cast(?NODES_SRV, {participant_update
                                  ,UUID
-                                 ,[{Node, #participant.node} | participant_fields(Props)]
+                                 ,[{#participant.node, Node} | participant_fields(Props)]
                                 }).
 
 update_conference(Node, Props) ->
-    gen_server:cast(?NODES_SRV, {update_conference
-                                 ,props:get_value(<<"Conference-Unique-ID">>, Props)
-                                 ,[{Node, #conference.node} | conference_fields(Props)]
+    gen_server:cast(?NODES_SRV, {conference_update
+                                 ,props:get_value(<<"Conference-Name">>, Props)
+                                 ,[{#conference.node, Node} | conference_fields(Props)]
                                 }).
 
--define(CONF_FIELDS, [{<<"Conference-Name">>, #conference.name}
+-define(CONF_FIELDS, [{<<"Conference-Unique-ID">>, #conference.uuid}
                       ,{<<"Conference-Size">>, #conference.participants, fun props:get_integer_value/2}
                       ,{<<"Conference-Profile-Name">>, #conference.profile_name}
                       ,{<<"New-ID">>, #conference.with_floor, fun safe_integer_get/3, 0}
@@ -142,8 +181,8 @@ update_conference(Node, Props) ->
 conference_fields(Props) -> fields(Props, ?CONF_FIELDS).
 
 -define(PARTICIPANT_FIELDS, [{<<"Floor">>, #participant.floor, fun props:get_is_true/2}
-                             ,{<<"Unique-ID">>, #participant.uuid}
-                             ,{<<"Conference-Unique-ID">>, #participant.conference_uuid}
+                             %,{<<"Unique-ID">>, #participant.uuid}
+                             ,{<<"Conference-Name">>, #participant.conference_name}
                              ,{<<"Hear">>, #participant.hear, fun props:get_is_true/2}
                              ,{<<"Speak">>, #participant.speak, fun props:get_is_true/2}
                              ,{<<"Talking">>, #participant.talking, fun props:get_is_true/2}

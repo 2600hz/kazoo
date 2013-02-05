@@ -305,27 +305,52 @@ handle_cast({new_conference, C}, State) ->
 handle_cast({conference_update, UUID, Update}, State) ->
     ets:update_element(?CONFERENCES_TBL, UUID, Update),
     {noreply, State, hibernate};
+
 handle_cast({participant_update, UUID, Update}, State) ->
     case ets:update_element(?CONFERENCES_TBL, UUID, Update) of
-        true -> {noreply, State, hibernate};
-        false ->
+        'true' -> {'noreply', State, 'hibernate'};
+        'false' ->
             lager:debug("failed to update participant, create first"),
-            _Created = ets:insert_new(?CONFERENCES_TBL, #participant{uuid=UUID}),
-            lager:debug("insert new: ~p", [_Created]),
-            _Updated = ets:update_element(?CONFERENCES_TBL, UUID, Update),
-            lager:debug("update x2: ~p", [_Updated]),
-            {noreply, State, hibernate}
+            'true' = ets:insert_new(?CONFERENCES_TBL, #participant{uuid=UUID}),
+            'true' = ets:update_element(?CONFERENCES_TBL, UUID, Update),
+
+            {'noreply', State, 'hibernate'}
     end;
-handle_cast({destroy_conference, UUID, Node}, State) ->
-    MatchSpec = [{#conference{uuid='$1', node='$2', _ = '_'}
-                  ,[{'andalso', {'=:=', '$2', {const, Node}}
+
+handle_cast({conference_destroy, Node, Name}, State) ->
+    MatchSpecC = [{#conference{name='$1', node='$2', _ = '_'}
+                   ,[{'andalso', {'=:=', '$2', {const, Node}}
+                      ,{'=:=', '$1', Name}
+                     }
+                    ],
+                   [true]
+                  }],
+    N = ets:select_delete(?CONFERENCES_TBL, MatchSpecC),
+    lager:debug("removed ~p conference(s) with id ~s on ~s", [N, Name, Node]),
+
+    MatchSpecP = [{#participant{conference_name='$1', node='$2', _ = '_'}
+                   ,[{'andalso', {'=:=', '$2', {const, Node}}
+                      ,{'=:=', '$1', Name}
+                     }
+                    ],
+                   [true]
+                  }],
+    N1 = ets:select_delete(?CONFERENCES_TBL, MatchSpecP),
+    lager:debug("removed ~p participant(s) in conference ~s on ~s", [N1, Name, Node]),
+
+    {noreply, State, hibernate};
+
+handle_cast({participant_destroy, Node, UUID}, State) ->
+    MatchSpec = [{#participant{uuid='$1', node='$2', _ = '_'}
+                  ,[{'andalso'
+                     ,{'=:=', '$2', {const, Node}}
                      ,{'=:=', '$1', UUID}
                     }
                    ],
                   [true]
                  }],
     N = ets:select_delete(?CONFERENCES_TBL, MatchSpec),
-    lager:debug("removed ~p conference(s) with id ~s on ~s", [N, UUID, Node]),
+    lager:debug("removed ~p participants(s) with id ~s on ~s", [N, UUID, Node]),
     {noreply, State, hibernate};
 
 handle_cast({sync_channels, Node, Channels}, State) ->
@@ -357,22 +382,14 @@ handle_cast({sync_channels, Node, Channels}, State) ->
 
 handle_cast({sync_conferences, Node, Conferences}, State) ->
     lager:debug("ensuring conferences cache is in sync with ~s", [Node]),
-    MatchSpec = [{#conference{uuid = '$1', node = '$2', _ = '_'}
-                  ,[{'=:=', '$2', {const, Node}}]
-                  ,['$1']}
-                ],
 
-    CachedConferences = ets:select(?CONFERENCES_TBL, MatchSpec),
+    CachedConferences = ets:match_object(?CONFERENCES_TBL, #conference{node = Node, _ = '_'}) ++
+        ets:match_object(?CONFERENCES_TBL, #participant{node = Node, _ = '_'}),
 
     Remove = subtract_from(CachedConferences, Conferences),
     Add = subtract_from(Conferences, CachedConferences),
 
-    _ = [begin
-             lager:debug("removed conference ~s from cache during sync with ~s", [UUID, Node]),
-             ets:delete(?CONFERENCES_TBL, UUID)
-         end
-         || #conference{name=UUID} <- Remove
-        ],
+    _ = [ets:delete_object(?CONFERENCES_TBL, R) || R <- Remove],
     _ = [ets:insert(?CONFERENCES_TBL, C) || C <- Add],
     {noreply, State, hibernate};
 
@@ -385,17 +402,24 @@ handle_cast({flush_node_channels, Node}, State) ->
     ets:select_delete(?CHANNELS_TBL, MatchSpec),
     {noreply, State};
 
-handle_cast({flush_node_conference, Node}, State) ->
+handle_cast({flush_node_conferences, Node}, State) ->
     lager:debug("flushing all conferences in cache associated to node ~s", [Node]),
-    MatchSpec = [{#conference{node = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {const, Node}}]
-                  ,['true']}
-                ],
-    ets:select_delete(?CHANNELS_TBL, MatchSpec),
+    MatchSpecC = [{#conference{node = '$1', _ = '_'}
+                   ,[{'=:=', '$1', {const, Node}}]
+                   ,['true']}
+                 ],
+    _ = ets:select_delete(?CHANNELS_TBL, MatchSpecC),
+
+    MatchSpecP = [{#participant{node = '$1', _ = '_'}
+                   ,[{'=:=', '$1', {const, Node}}]
+                   ,['true']}
+                 ],
+    _ = ets:select_delete(?CHANNELS_TBL, MatchSpecP),
     {noreply, State};
 
-handle_cast(_, State) ->
-    {noreply, State}.
+handle_cast(_Cast, State) ->
+    lager:debug("unhandled cast: ~p", [_Cast]),
+    {noreply, State, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -411,7 +435,9 @@ handle_info({event, [UUID | Props]}, State) ->
     Node = get_node_from_props(Props),
     case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
         <<"CHANNEL_CREATE">> -> ecallmgr_fs_channel:new(Props, Node);
-        <<"CHANNEL_DESTROY">> ->  ecallmgr_fs_channel:destroy(Props, Node);
+        <<"CHANNEL_DESTROY">> ->
+            ecallmgr_fs_channel:destroy(Props, Node),
+            ecallmgr_fs_conference:participant_destroy(Node, UUID);
         <<"channel_move::move_complete">> -> ecallmgr_fs_channel:set_node(Node, UUID);
         <<"conference::maintenance">> -> ecallmgr_fs_conference:event(Node, UUID, Props);
         <<"CHANNEL_ANSWER">> -> ecallmgr_fs_channel:set_answered(UUID, true);
@@ -421,8 +447,8 @@ handle_info({event, [UUID | Props]}, State) ->
             ecallmgr_fs_channel:set_bridge(OtherLeg, UUID);
         <<"CHANNEL_UNBRIDGE">> ->
             OtherLeg = get_other_leg(UUID, Props),
-            ecallmgr_fs_channel:set_bridge(UUID, undefined),
-            ecallmgr_fs_channel:set_bridge(OtherLeg, undefined);
+            ecallmgr_fs_channel:set_bridge(UUID, 'undefined'),
+            ecallmgr_fs_channel:set_bridge(OtherLeg, 'undefined');
         <<"CHANNEL_EXECUTE_COMPLETE">> ->
             Data = props:get_value(<<"Application-Data">>, Props),
             case props:get_value(<<"Application">>, Props) of
@@ -447,8 +473,8 @@ handle_info({nodedown, NodeName}, State) ->
     spawn(fun() -> maybe_handle_nodedown(NodeName, State) end),
     {noreply, State};
 handle_info(_Info, State) ->
-    io:format("GOT ~p~n", [_Info]),
-    {noreply, State}.        
+    lager:debug("unhandled message: ~p", [_Info]),
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -462,7 +488,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ets:delete(sip_subscriptions),
+    ets:delete('sip_subscriptions'),
     ets:delete(?CHANNELS_TBL),
     ets:delete(?CONFERENCES_TBL),
     lager:debug("fs nodes termination: ~p", [ _Reason]).
@@ -898,10 +924,12 @@ get_other_leg(_UUID, _Props, OtherLeg) -> OtherLeg.
 get_other_leg_1(UUID, UUID, OtherLeg) -> OtherLeg;
 get_other_leg_1(UUID, OtherLeg, UUID) -> OtherLeg.
 
+subtract_from([], _) -> [];
 subtract_from(Set1, []) -> Set1;
-subtract_from(Set1, [#conference{name=N2}|Set2]) ->
-    subtract_from([S || #conference{name=N1}=S <- Set1, N1=/= N2], Set2);
-subtract_from(Set1, [#participant{uuid=Id2}|Set2]) ->
-    subtract_from([S || #participant{uuid=Id1}=S <- Set1, Id1=/= Id2], Set2).
-                        
-    
+subtract_from(Set1, [S2|Set2]) ->
+    subtract_from([S1 || S1 <- Set1, should_remove(S1, S2)], Set2).
+
+should_remove(#participant{uuid=UUID1}, #participant{uuid=UUID2}) -> UUID1 =/= UUID2;
+should_remove(#conference{name=N1}, #conference{name=N2}) -> N1 =/= N2;
+should_remove(_, _) -> 'true'.
+

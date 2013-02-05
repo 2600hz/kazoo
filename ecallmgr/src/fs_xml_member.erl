@@ -46,7 +46,11 @@ update_from_children(P, [#xmlElement{name='uuid'
                                      ,content=UUID
                                     }
                          |Els]) ->
-    update_from_children(P#participant{uuid=xml_text_to_binary(UUID)}, Els);
+    [{CallId, _}] = mochiweb_util:parse_qs(
+                      xml_text_to_binary(UUID)
+                     ),
+    lager:debug("uuid ~s callid ~s", [xml_text_to_binary(UUID), CallId]),
+    update_from_children(P#participant{uuid=wh_util:to_binary(CallId)}, Els);
 update_from_children(P, [#xmlElement{name='energy'
                                     ,content=Energy
                                     }

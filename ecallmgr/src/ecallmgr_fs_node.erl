@@ -455,8 +455,8 @@ show_channels_as_json(Node) ->
                 [Header|Rest] ->
                     Keys = binary:split(Header, <<"|||">>, ['global']),
                     [wh_json:from_list(lists:zip(Keys, Values))
-                     || Line <- Rest
-                            ,((Values = binary:split(Line, <<"|||">>, ['global'])) =/= [Line])
+                     || Line <- Rest,
+                        ((Values = binary:split(Line, <<"|||">>, ['global'])) =/= [Line])
                     ]
             end;
         {'error', _} -> [];
@@ -469,10 +469,8 @@ show_conferences(Node) ->
         {'ok', XmlStr} ->
             {Xml, _} = xmerl_scan:string(wh_util:to_list(XmlStr)),
             case catch ecallmgr_fs_conference:xml_list_to_records(Xml, Node) of
-                {'EXIT', _R} ->
-                    lager:debug("exited ~p", [_R]),
-                    [];
-                Rs -> lager:debug("recs: ~p", [Rs]), Rs
+                {'EXIT', _R} -> [];
+                Rs -> Rs
             end;
         {'error', _} -> [];
         'timeout' -> []
@@ -481,7 +479,6 @@ show_conferences(Node) ->
 -spec maybe_start_event_listener(atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
 maybe_start_event_listener(Node, UUID) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}) of
-        {'ok', 'true'} ->
-            ecallmgr_call_sup:start_event_process(Node, UUID);
+        {'ok', 'true'} -> ecallmgr_call_sup:start_event_process(Node, UUID);
         _E -> 'ok'
     end.

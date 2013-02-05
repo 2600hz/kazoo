@@ -83,7 +83,7 @@
 -type channel() :: #channel{}.
 -type channels() :: [channel(),...] | [].
 
--record(conference, {name :: api_binary() | '_'
+-record(conference, {name :: api_binary() | '$1' | '_'
                      ,uuid :: api_binary() | '$1' | '_'
                      ,node :: atom() | '$1' | '$2' | '_'
                      ,participants = 0 :: non_neg_integer() | '_'
@@ -101,9 +101,9 @@
 -type conference() :: #conference{}.
 -type conferences() :: [conference(),...] | [].
 
--record(participant, {uuid :: api_binary() | '_'
-                      ,node :: atom() | '_'
-                      ,conference_uuid :: api_binary() | '_'
+-record(participant, {uuid :: api_binary() | '$1' | '_'
+                      ,node :: atom() | '$2' | '_'
+                      ,conference_name :: api_binary() | '$1'| '_'
                       ,floor = 'false' :: boolean() | '_'
                       ,hear = 'true' :: boolean() | '_'
                       ,speak = 'true' :: boolean() | '_'

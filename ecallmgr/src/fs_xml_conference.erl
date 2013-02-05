@@ -12,7 +12,7 @@
 
 -include("ecallmgr.hrl").
 
--spec xml_to_conference(xml_els(), atom()) -> conference().
+-spec xml_to_conference(xml_el() | xml_attribs(), atom()) -> conference().
 xml_to_conference(#xmlElement{name='conference'
                               ,attributes=Attrs
                              }, Node) ->

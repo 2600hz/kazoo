@@ -115,12 +115,12 @@ mwi_update(JObj, Props) ->
     lager:debug("processing mwi update for notify server ~p", [props:get_value(server, Props)]),
 
     Node = case wh_json:get_value(<<"Switch-Nodename">>, JObj) of
-               undefined ->
+               'undefined' ->
                    Username = wh_json:get_value(<<"Notify-User">>, JObj),
                    Realm = wh_json:get_value(<<"Notify-Realm">>, JObj),
-                   {ok, N} = ecallmgr_registrar:endpoint_node(Realm, Username),
+                   {'ok', N} = ecallmgr_registrar:endpoint_node(Realm, Username),
                    N;
-               N -> wh_util:to_atom(N, true)
+               N -> wh_util:to_atom(N, 'true')
            end,
     NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
     MessageAccount = wh_json:get_value(<<"Message-Account">>, JObj),

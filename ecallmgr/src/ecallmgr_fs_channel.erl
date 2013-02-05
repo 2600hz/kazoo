@@ -57,16 +57,18 @@ new(Props, Node) ->
     put(callid, CallId),
     gen_server:cast(?NODES_SRV, {new_channel, props_to_record(Props, Node)}).
 
--spec fetch(ne_binary()) -> {'ok', wh_json:object()} |
-                                          {'error', 'not_found'}.
+-spec fetch(ne_binary()) ->
+                   {'ok', wh_json:object()} |
+                   {'error', 'not_found'}.
 fetch(UUID) ->
     case ets:lookup(?CHANNELS_TBL, UUID) of
         [Channel] -> {ok, record_to_json(Channel)};
         _Else -> {error, not_found}
     end.
 
--spec node(ne_binary()) -> {'ok', atom()} |
-                           {'error', 'not_found'}.
+-spec node(ne_binary()) ->
+                  {'ok', atom()} |
+                  {'error', 'not_found'}.
 node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', node = '$2', _ = '_'}
                   ,[{'=:=', '$1', {const, UUID}}]
@@ -89,8 +91,9 @@ is_bridged(UUID) ->
         _E -> lager:debug("not bridged: ~p", [_E]), false
     end.
 
--spec former_node(ne_binary()) -> {'ok', atom()} |
-                                  {'error', _}.
+-spec former_node(ne_binary()) ->
+                         {'ok', atom()} |
+                         {'error', _}.
 former_node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', former_node = '$2', _ = '_'}
                   ,[{'=:=', '$1', {const, UUID}}]
@@ -243,81 +246,81 @@ teardown_sbd(UUID, OriginalNode) ->
 
 -spec set_account_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_account_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.account_id, Value}});
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.account_id, Value}});
 set_account_id(UUID, Value) ->
     set_account_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_billing_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_billing_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.billing_id, Value}});
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.billing_id, Value}});
 set_billing_id(UUID, Value) ->
     set_billing_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_account_billing(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_account_billing(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.account_billing, Value}});
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.account_billing, Value}});
 set_account_billing(UUID, Value) ->
     set_account_billing(UUID, wh_util:to_binary(Value)).
 
 -spec set_reseller_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_reseller_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.reseller_id, Value}});
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.reseller_id, Value}});
 set_reseller_id(UUID, Value) ->
     set_reseller_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_reseller_billing(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_reseller_billing(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.reseller_billing, Value}});
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.reseller_billing, Value}});
 set_reseller_billing(UUID, Value) ->
     set_reseller_billing(UUID, wh_util:to_binary(Value)).
 
 -spec set_resource_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_resource_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.resource_id, Value}});
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.resource_id, Value}});
 set_resource_id(UUID, Value) ->
     set_resource_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_authorizing_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_authorizing_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.authorizing_id, Value}});
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.authorizing_id, Value}});
 set_authorizing_id(UUID, Value) ->
     set_authorizing_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_authorizing_type(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_authorizing_type(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.authorizing_type, Value}});
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.authorizing_type, Value}});
 set_authorizing_type(UUID, Value) ->
     set_authorizing_type(UUID, wh_util:to_binary(Value)).
 
 -spec set_owner_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_owner_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.owner_id, Value}});
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.owner_id, Value}});
 set_owner_id(UUID, Value) ->
     set_owner_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_presence_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_presence_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.presence_id, Value}});
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.presence_id, Value}});
 set_presence_id(UUID, Value) ->
     set_presence_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_precedence(ne_binary(), string() | ne_binary() | integer()) -> 'ok'.
 set_precedence(UUID, Value) when is_integer(Value) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.precedence, Value}});
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.precedence, Value}});
 set_precedence(UUID, Value) ->
     set_precedence(UUID, wh_util:to_integer(Value)).
 
 -spec set_answered(ne_binary(), boolean()) -> 'ok'.
 set_answered(UUID, Answered) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.answered, (not wh_util:is_empty(Answered))}}).
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.answered, (not wh_util:is_empty(Answered))}}).
 
 -spec set_bridge(ne_binary(), api_binary()) -> 'ok'.
 set_bridge(UUID, OtherUUID) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.other_leg, OtherUUID}}).
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.other_leg, OtherUUID}}).
 
 -spec set_import_moh(ne_binary(), boolean()) -> 'ok'.
 set_import_moh(UUID, Import) ->
-    gen_server:cast(?NODES_SRV, {update, UUID, {#channel.import_moh, Import}}).
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.import_moh, Import}}).
 
 -spec get_call_precedence(ne_binary()) -> integer().
 get_call_precedence(UUID) ->
@@ -342,7 +345,7 @@ set_node(Node, UUID) ->
                 ]
         end,
     lager:debug("updaters: ~p", [Updates]),
-    gen_server:cast(?NODES_SRV, {update, UUID, Updates}).
+    gen_server:cast(?NODES_SRV, {channel_update, UUID, Updates}).
 
 -spec destroy(wh_proplist(), atom()) -> 'ok'.
 destroy(Props, Node) ->
