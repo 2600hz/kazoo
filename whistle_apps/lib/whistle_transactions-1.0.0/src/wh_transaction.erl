@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2013, VoIP, INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%% Peter Defebvre
 %%%-------------------------------------------------------------------
 
 -module(wh_transaction).
@@ -47,7 +48,10 @@
          }).
 
 -type wh_transaction() :: #wh_transaction{}.
--export_type([wh_transaction/0]).
+-type wh_transactions() :: [wh_transaction(), ...].
+-export_type([wh_transaction/0
+              ,wh_transactions/0
+             ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -55,6 +59,7 @@
 %% Transform transaction record to Json object
 %% @end
 %%--------------------------------------------------------------------
+-spec to_json/1 :: (wh_transaction()) -> wh_json:object(). 
 to_json(#wh_transaction{}=T) ->
     wh_json:from_list([{<<"_id">>, T#wh_transaction.id}
                        ,{<<"description">>, T#wh_transaction.description}
@@ -75,6 +80,7 @@ to_json(#wh_transaction{}=T) ->
 %% Transform Json Object to transaction record
 %% @end
 %%--------------------------------------------------------------------
+-spec from_json/1 :: (wh_json:object()) -> wh_transaction(). 
 from_json(JObj) ->
     #wh_transaction{
       id = wh_json:get_ne_value(<<"_id">>, JObj)
@@ -96,6 +102,7 @@ from_json(JObj) ->
 %% Create transaction record of type credit (with Amount & Reason)
 %% @end
 %%--------------------------------------------------------------------
+-spec credit/2 :: (integer(), ne_binary()) -> wh_transaction(). 
 credit(Amount, Reason) ->
     create(Amount, 'credit', Reason).
 
@@ -105,6 +112,7 @@ credit(Amount, Reason) ->
 %% Create transaction record of type debit (with Amount & Reason)
 %% @end
 %%--------------------------------------------------------------------
+-spec debit/2 :: (integer(), ne_binary()) -> wh_transaction(). 
 debit(Amount, Reason) ->
     create(Amount, 'debit', Reason).
 
@@ -114,6 +122,7 @@ debit(Amount, Reason) ->
 %% Set free form description
 %% @end
 %%--------------------------------------------------------------------
+-spec set_description/2 :: (ne_binary(), wh_transaction()) -> wh_transaction(). 
 set_description(Desc, Transaction) ->
     Transaction#wh_transaction{description=Desc}.
 
@@ -123,6 +132,7 @@ set_description(Desc, Transaction) ->
 %% Set private account ID
 %% @end
 %%--------------------------------------------------------------------
+-spec set_pvt_account_id/2 :: (ne_binary(), wh_transaction()) -> wh_transaction(). 
 set_pvt_account_id(AccountId, Transaction) ->
     Transaction#wh_transaction{pvt_account_id=AccountId}.
 
@@ -132,6 +142,7 @@ set_pvt_account_id(AccountId, Transaction) ->
 %% Set sub account ID
 %% @end
 %%--------------------------------------------------------------------
+-spec set_sub_account_id/2 :: (ne_binary(), wh_transaction()) -> wh_transaction(). 
 set_sub_account_id(AccountId, Transaction) ->
     Transaction#wh_transaction{sub_account_id=AccountId}.
 
@@ -148,6 +159,7 @@ set_sub_account_id(AccountId, Transaction) ->
 %% Save transaction to database
 %% @end
 %%--------------------------------------------------------------------
+-spec save/1 :: (wh_transaction()) -> wh_transaction(). 
 save(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
     Transaction1 = set_private_properties(Transaction),
     case validate(Transaction1) of
@@ -169,6 +181,7 @@ save(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
 %% Fetch a transaction from the database
 %% @end
 %%--------------------------------------------------------------------
+-spec fetch/2 :: (ne_binary(), ne_binary()) -> wh_transaction(). 
 fetch(AccountId, Id) ->    
     AccountDB = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_doc(AccountDB, Id) of
@@ -185,6 +198,7 @@ fetch(AccountId, Id) ->
 %% Fetch a transaction from the database
 %% @end
 %%--------------------------------------------------------------------
+-spec get_current_balance/1 :: (ne_binary()) -> integer(). 
 get_current_balance(AccountId) ->    
     AccountDB = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:get_results(AccountDB, <<"transactions/credit_remaining">>, []) of
@@ -198,8 +212,6 @@ get_current_balance(AccountId) ->
             0
     end.
     
-            
-
 %%--------------------------------------------------------------------
 %%
 %% PRIVATE FUNCTIONS
@@ -212,6 +224,7 @@ get_current_balance(AccountId) ->
 %% Create transaction record
 %% @end
 %%--------------------------------------------------------------------
+-spec create/3 :: (integer(), atom(), atom()) -> wh_transaction() | {'error', 'unknow_reason'}.
 create(Amount, Op, Reason) when not is_integer(Amount) ->
     create(wh_util:to_integer(Amount), Op, Reason);
 create(Amount, Op, Reason) when Amount < 0 ->
@@ -233,6 +246,7 @@ create(Amount, Op, Reason) ->
 %% Return Errors of record when trying to save
 %% @end
 %%--------------------------------------------------------------------
+-spec validate/1 :: (wh_transaction()) -> {true, wh_transaction(), undefined} | {false, wh_transaction(), list()}. 
 validate(Transaction) ->
     {Tr, Errors} = validate_funs(Transaction),
     case Errors of
@@ -248,6 +262,7 @@ validate(Transaction) ->
 %% Call all the different validate function
 %% @end
 %%--------------------------------------------------------------------
+-spec validate_funs/1 :: (wh_transaction()) -> {wh_transaction(), list()}. 
 validate_funs(#wh_transaction{}=Transaction) ->  
     Funs = [fun validate_reason/1
             ,fun validate_account_id/1
@@ -269,6 +284,7 @@ validate_funs(#wh_transaction{}=Transaction) ->
 %% Check the account ID
 %% @end
 %%--------------------------------------------------------------------
+-spec validate_reason/1 :: (wh_transaction()) -> {ok, wh_transaction()} | {error, wh_transaction(), unknow_reason}. 
 validate_reason(#wh_transaction{pvt_reason=Reason}=Tr) ->
     case lists:member(Reason, ?REASONS) of
         true -> {ok, Tr};
@@ -281,6 +297,7 @@ validate_reason(#wh_transaction{pvt_reason=Reason}=Tr) ->
 %% Check the account ID
 %% @end
 %%--------------------------------------------------------------------
+-spec validate_account_id/1 :: (wh_transaction()) -> {ok, wh_transaction()} | {error, wh_transaction(), account_id}. 
 validate_account_id(#wh_transaction{pvt_account_id=AccountId}=Tr) ->
     case is_binary(AccountId) of
         true -> {ok, Tr};
@@ -293,6 +310,7 @@ validate_account_id(#wh_transaction{pvt_account_id=AccountId}=Tr) ->
 %% Check the account ID
 %% @end
 %%--------------------------------------------------------------------
+-spec validate_sub_account_id/1 :: (wh_transaction()) -> {ok, wh_transaction()} | {error, wh_transaction(), sub_account_id}. 
 validate_sub_account_id(#wh_transaction{sub_account_id=SubAccountId, pvt_account_id=AccountId}=Tr) ->
     case SubAccountId =:= undefined of
         true -> 
@@ -311,6 +329,7 @@ validate_sub_account_id(#wh_transaction{sub_account_id=SubAccountId, pvt_account
 %% Call functions to set private properties 
 %% @end
 %%--------------------------------------------------------------------    
+-spec set_private_properties/1 :: (wh_transaction()) -> wh_transaction(). 
 set_private_properties(Transaction) ->
     PvtFuns = [fun set_pvt_created/1
                ,fun set_pvt_modified/1
@@ -324,6 +343,7 @@ set_private_properties(Transaction) ->
 %% Set creation date
 %% @end
 %%--------------------------------------------------------------------
+-spec set_pvt_created/1 :: (wh_transaction()) -> wh_transaction(). 
 set_pvt_created(Transaction) ->
     Transaction#wh_transaction{pvt_created=wh_util:current_tstamp()}.
 
@@ -333,6 +353,7 @@ set_pvt_created(Transaction) ->
 %% Set modification date
 %% @end
 %%--------------------------------------------------------------------
+-spec set_pvt_modified/1 :: (wh_transaction()) -> wh_transaction(). 
 set_pvt_modified(Transaction) ->
     Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}.
 
@@ -343,6 +364,7 @@ set_pvt_modified(Transaction) ->
 %% Set private account DB
 %% @end
 %%--------------------------------------------------------------------
+-spec set_pvt_account_db/1 :: (wh_transaction()) -> wh_transaction(). 
 set_pvt_account_db(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
     AccountDB = wh_util:format_account_id(AccountId, encoded),
     Transaction#wh_transaction{pvt_account_db=AccountDB}.
