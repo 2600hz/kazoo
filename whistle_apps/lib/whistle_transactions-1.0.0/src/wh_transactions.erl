@@ -17,16 +17,14 @@ save([Transaction | L], Acc) ->
 fetch_last(AccountId, Num) ->
     AccountDB = wh_util:format_account_id(AccountId, encoded),
     ViewOptions = [{limit, Num}
-                   ,include_docs],
+                   ,include_docs
+                  ],
     case couch_mgr:get_results(AccountDB, <<"transactions/by_timestamp">>, ViewOptions) of
         {ok, []} -> 
             lager:debug("no transactions for that account ~p", [AccountId]),
             [];
         {ok, ViewRes} -> 
-            viewres_to_recordlist(ViewRes);
-        {error, _R} -> 
-            lager:debug("unable to get transactions for that account ~p. ~n Reason: ~p", [AccountId, _R]),
-            []
+            viewres_to_recordlist(ViewRes)
     end.
 
 fetch_since(AccountId, Date) ->
@@ -41,10 +39,7 @@ fetch_since(AccountId, Date) ->
             lager:debug("no transactions for that range from ~p to ~p on ~p", [Date, Now, AccountId]),
             [];
         {ok, ViewRes} -> 
-            viewres_to_recordlist(ViewRes);
-        {error, _R} -> 
-            lager:debug("unable to get transactions for that range from ~p to ~p on ~p. ~n Reason: ~p", [Date, Now, AccountId, _R]),
-            []
+            viewres_to_recordlist(ViewRes)
     end.
 
 viewres_to_recordlist(ViewRes) ->

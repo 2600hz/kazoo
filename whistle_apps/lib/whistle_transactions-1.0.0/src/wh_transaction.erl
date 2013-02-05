@@ -16,6 +16,7 @@
 
 -export([set_description/2
          ,set_pvt_account_id/2
+         ,set_sub_account_id/2
         ]).
 
 -export([save/1
@@ -27,14 +28,22 @@
          ,from_json/1
         ]).
 
+-define(REASONS, [call,
+                  test
+                 ]).
+
 -record(wh_transaction, {
           id :: binary()
          ,description :: binary()
+         ,sub_account_id :: ne_binary()
          ,pvt_reason :: ne_binary()
          ,pvt_amount :: integer()
          ,pvt_type :: 'credit' | 'debit'
          ,pvt_created :: wh_now()
+         ,pvt_modified :: wh_now()
          ,pvt_account_id :: ne_binary()
+         ,pvt_account_db :: ne_binary()
+         ,pvt_vsn = 2 :: integer()
          }).
 
 -type wh_transaction() :: #wh_transaction{}.
@@ -49,11 +58,15 @@
 to_json(#wh_transaction{}=T) ->
     wh_json:from_list([{<<"_id">>, T#wh_transaction.id}
                        ,{<<"description">>, T#wh_transaction.description}
+                       ,{<<"sub_account_id">>, T#wh_transaction.sub_account_id}
                        ,{<<"pvt_reason">>, T#wh_transaction.pvt_reason}
                        ,{<<"pvt_amount">>, T#wh_transaction.pvt_amount}
                        ,{<<"pvt_type">>, T#wh_transaction.pvt_type}
                        ,{<<"pvt_created">>, T#wh_transaction.pvt_created}
+                       ,{<<"pvt_modified">>, T#wh_transaction.pvt_modified}
                        ,{<<"pvt_account_id">>, T#wh_transaction.pvt_account_id}
+                       ,{<<"pvt_account_db">>, T#wh_transaction.pvt_account_db}
+                       ,{<<"pvt_vsn">>, T#wh_transaction.pvt_vsn}
                       ]).
     
 %%--------------------------------------------------------------------
@@ -66,11 +79,15 @@ from_json(JObj) ->
     #wh_transaction{
       id = wh_json:get_ne_value(<<"_id">>, JObj)
       ,description = wh_json:get_ne_value(<<"description">>, JObj)
+      ,sub_account_id = wh_json:get_ne_value(<<"sub_account_id">>, JObj)
       ,pvt_reason = wh_json:get_ne_value(<<"pvt_reason">>, JObj)
       ,pvt_amount = wh_json:get_ne_value(<<"pvt_amount">>, JObj)
       ,pvt_type = wh_json:get_ne_value(<<"pvt_type">>, JObj)
       ,pvt_created = wh_json:get_ne_value(<<"pvt_created">>, JObj)
+      ,pvt_modified = wh_json:get_ne_value(<<"pvt_modified">>, JObj)
       ,pvt_account_id = wh_json:get_ne_value(<<"pvt_account_id">>, JObj)
+      ,pvt_account_db = wh_json:get_ne_value(<<"pvt_account_db">>, JObj)
+      ,pvt_vsn = wh_json:get_ne_value(<<"pvt_vsn">>, JObj)
      }.
 
 %%--------------------------------------------------------------------
@@ -110,6 +127,16 @@ set_pvt_account_id(AccountId, Transaction) ->
     Transaction#wh_transaction{pvt_account_id=AccountId}.
 
 %%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Set sub account ID
+%% @end
+%%--------------------------------------------------------------------
+set_sub_account_id(AccountId, Transaction) ->
+    Transaction#wh_transaction{sub_account_id=AccountId}.
+
+
+%%--------------------------------------------------------------------
 %%
 %% DATABASE FUNCTIONS
 %%
@@ -123,18 +150,17 @@ set_pvt_account_id(AccountId, Transaction) ->
 %%--------------------------------------------------------------------
 save(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
     Transaction1 = set_private_properties(Transaction),
-    Errors = validate_funs(Transaction1),
-    case validate(Errors) of
-        {true, _} ->
+    case validate(Transaction1) of
+        {true, Transaction2, _} ->
             AccountDB = wh_util:format_account_id(AccountId, encoded),
-            case couch_mgr:save_doc(AccountDB, to_json(Transaction1)) of
+            case couch_mgr:save_doc(AccountDB, to_json(Transaction2)) of
                 {ok, T} ->
                     from_json(T);
                 {error, R} ->
                     {error, R}
             end;
-        {false, R} ->
-            {error, R}
+        {false, Tr, R} ->
+            {error, R, Tr}
     end.
 
 %%--------------------------------------------------------------------
@@ -163,12 +189,12 @@ get_current_balance(AccountId) ->
     AccountDB = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:get_results(AccountDB, <<"transactions/credit_remaining">>, []) of
         {ok, []} -> 
-            io:format("no current balance for ~s", [AccountId]),
+            lager:debug("no current balance for ~s", [AccountId]),
             0;
         {ok, [ViewRes|_]} -> 
             wh_json:get_integer_value(<<"value">>, ViewRes, 0);
         {error, _R} -> 
-            io:format("unable to get current balance for ~s: ~p", [AccountId, _R]),
+            lager:warning("unable to get current balance for ~s: ~p", [AccountId, _R]),
             0
     end.
     
@@ -191,10 +217,15 @@ create(Amount, Op, Reason) when not is_integer(Amount) ->
 create(Amount, Op, Reason) when Amount < 0 ->
     create(Amount*-1, Op, Reason);
 create(Amount, Op, Reason) ->
-    #wh_transaction{pvt_reason=Reason
-                    ,pvt_type=Op
-                    ,pvt_amount=Amount
-                   }.
+    case lists:member(Reason, ?REASONS) of
+        true ->
+            #wh_transaction{pvt_reason=Reason
+                            ,pvt_type=Op
+                            ,pvt_amount=Amount
+                           };
+        false ->
+            {error, unknow_reason}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -202,16 +233,14 @@ create(Amount, Op, Reason) ->
 %% Return Errors of record when trying to save
 %% @end
 %%--------------------------------------------------------------------
-validate(Errors) ->
-    validate(Errors, true, []).
-
-validate([], Valid, Acc) ->
-    {Valid, Acc};
-validate([ok | Errors], Valid, Acc) ->
-    validate(Errors, Valid, Acc);
-validate([{error, Reason} | Errors], _, Acc) ->
-    validate(Errors, false, [Reason | Acc]).
-
+validate(Transaction) ->
+    {Tr, Errors} = validate_funs(Transaction),
+    case Errors of
+        [] ->
+            {true, Tr, undefined};
+        R ->
+            {false, Tr, R}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -219,10 +248,20 @@ validate([{error, Reason} | Errors], _, Acc) ->
 %% Call all the different validate function
 %% @end
 %%--------------------------------------------------------------------
-validate_funs(#wh_transaction{}=Tr) ->  
-    Funs = [fun validate_account_id/1],
-    lists:foldl(fun(F, Acc) -> [F(Tr) | Acc] end, [], Funs).
-
+validate_funs(#wh_transaction{}=Transaction) ->  
+    Funs = [fun validate_reason/1
+            ,fun validate_account_id/1
+            ,fun validate_sub_account_id/1
+           ],
+    lists:foldl(fun(F, {Tr, Errs}) -> 
+                        case F(Tr) of 
+                            {ok, Tr1} -> 
+                                {Tr1, Errs}; 
+                            {error, Tr1, Err} -> 
+                                {Tr1, [Err | Errs]} 
+                        end 
+                end,
+                {Transaction, []}, Funs).
             
 %%--------------------------------------------------------------------
 %% @private
@@ -230,11 +269,41 @@ validate_funs(#wh_transaction{}=Tr) ->
 %% Check the account ID
 %% @end
 %%--------------------------------------------------------------------
-validate_account_id(#wh_transaction{pvt_account_id=AccountId}) ->
-    case is_binary(AccountId) of
-        true -> ok;
-        false -> {error, account_id}
+validate_reason(#wh_transaction{pvt_reason=Reason}=Tr) ->
+    case lists:member(Reason, ?REASONS) of
+        true -> {ok, Tr};
+        false -> {error, Tr, unknow_reason}
     end.
+         
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Check the account ID
+%% @end
+%%--------------------------------------------------------------------
+validate_account_id(#wh_transaction{pvt_account_id=AccountId}=Tr) ->
+    case is_binary(AccountId) of
+        true -> {ok, Tr};
+        false -> {error, Tr, account_id}
+    end.
+            
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Check the account ID
+%% @end
+%%--------------------------------------------------------------------
+validate_sub_account_id(#wh_transaction{sub_account_id=SubAccountId, pvt_account_id=AccountId}=Tr) ->
+    case SubAccountId =:= undefined of
+        true -> 
+            {ok, Tr#wh_transaction{sub_account_id=AccountId}};
+        false -> 
+            case is_binary(SubAccountId) of
+                true -> {ok, Tr};
+                false -> {error, Tr, sub_account_id}
+            end
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -243,7 +312,10 @@ validate_account_id(#wh_transaction{pvt_account_id=AccountId}) ->
 %% @end
 %%--------------------------------------------------------------------    
 set_private_properties(Transaction) ->
-    PvtFuns = [fun set_pvt_created/1 ],
+    PvtFuns = [fun set_pvt_created/1
+               ,fun set_pvt_modified/1
+               ,fun set_pvt_account_db/1
+              ],
     lists:foldl(fun(F, C) -> F(C) end, Transaction, PvtFuns).
 
 %%--------------------------------------------------------------------
@@ -255,3 +327,22 @@ set_private_properties(Transaction) ->
 set_pvt_created(Transaction) ->
     Transaction#wh_transaction{pvt_created=wh_util:current_tstamp()}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Set modification date
+%% @end
+%%--------------------------------------------------------------------
+set_pvt_modified(Transaction) ->
+    Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Set private account DB
+%% @end
+%%--------------------------------------------------------------------
+set_pvt_account_db(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
+    AccountDB = wh_util:format_account_id(AccountId, encoded),
+    Transaction#wh_transaction{pvt_account_db=AccountDB}.
