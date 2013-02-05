@@ -1,0 +1,12 @@
+{application, whistle_transactions,
+ [
+  {description, "Whistle Transactions provides some stuff"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { whistle_transactions_app, []}},
+  {env, []}
+ ]}.
