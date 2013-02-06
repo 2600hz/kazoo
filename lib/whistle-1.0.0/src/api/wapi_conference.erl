@@ -89,8 +89,7 @@
 
 %% Conference Discovery Request
 -define(DISCOVERY_RESP_HEADERS, [<<"Participant-ID">>]).
--define(OPTIONAL_DISCOVERY_RESP_HEADERS, [<<"Conference-ID">>, <<"Participant-Control-Queue">>
-                                         ]).
+-define(OPTIONAL_DISCOVERY_RESP_HEADERS, [<<"Conference-ID">>]).
 -define(DISCOVERY_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                 ,{<<"Event-Name">>, <<"discovery_resp">>}
                               ]).

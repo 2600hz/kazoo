@@ -176,12 +176,18 @@ relay_amqp(JObj, Props) ->
 handle_participants_resp(JObj, Props) ->
     true = wapi_conference:participants_resp_v(JObj),
     Srv = props:get_value(server, Props),
+
+    lager:debug("participants resp: ~p", [JObj]),
+
     Participants = wh_json:get_value(<<"Participants">>, JObj, wh_json:new()),
     gen_listener:cast(Srv, {sync_participant, Participants}).
 
 -spec handle_conference_error(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_conference_error(JObj, Props) ->
     true = wapi_conference:conference_error_v(JObj),
+
+    lager:debug("conference error: ~p", [JObj]),
+
     case wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj) of
         <<"participants">> ->
             Srv = props:get_value(server, Props),
@@ -301,29 +307,17 @@ handle_cast({set_conference, C}, P) ->
     lager:debug("received conference data for conference ~s", [whapps_conference:id(C)]),
     {noreply, P#participant{conference=C}};
 
-handle_cast({set_discovery_event, DE}=Req
-            ,#participant{call=Call
-                          ,participant_id=MyId
-                          ,conference=Conference
-                         }=Participant) ->
-    case whapps_call:controller_queue(Call) of
-        undefined ->
-            _ = get_my_queue(),
-            gen_listener:cast(self(), Req),
-            {noreply, Participant};
-        MyQ ->
-            notify_requestor(MyQ, MyId, DE, whapps_conference:id(Conference)),
-            {noreply, Participant#participant{discovery_event=DE}}
-    end;
+handle_cast({set_discovery_event, DE}, #participant{}=Participant) ->
+    {noreply, Participant#participant{discovery_event=DE}};
 
 handle_cast(join_local, #participant{call=Call
-                                     ,conference=DC
+                                     ,conference=Conference
                                     }=Participant) ->
     MyQ = whapps_call:controller_queue(Call),
-    Conference = whapps_conference:set_controller_queue(MyQ, DC),
+    Conference1 = whapps_conference:set_controller_queue(MyQ, Conference),
     Self = self(),
-    _ = spawn(?MODULE, join_conference, [Self, Call, Conference]),
-    {noreply, Participant#participant{conference=Conference}};
+    _ = spawn(?MODULE, join_conference, [Self, Call, Conference1]),
+    {noreply, Participant#participant{conference=Conference1}};
 
 handle_cast({sync_participant, Participants}, #participant{bridge='undefined'
                                                            ,call=Call
@@ -496,17 +490,23 @@ find_participant([Participant|Participants], CallId) ->
     case wh_json:get_value(<<"Call-ID">>, Participant) of
         CallId -> {ok, Participant};
         _Else -> find_participant(Participants, CallId)
-    end.
+    end;
+find_participant(_, _CallId) -> {error, not_found}.
 
--spec sync_participant(wh_json:object(), whapps_call:call(), participant()) -> participant().
-sync_participant(Participants, Call, #participant{in_conference=false
+
+-spec sync_participant(wh_json:object(), whapps_call:call(), participant()) ->
+                              participant().
+sync_participant(Participants, Call, #participant{in_conference='false'
                                                   ,conference=Conference
                                                   ,join_attempts=JoinAttempts
+                                                  ,discovery_event=DE
                                                  }=Participant
                 ) ->
     Moderator = whapps_conference:moderator(Conference),
 
-    case find_participant(Participants, whapps_call:call_id(Call)) of
+    lager:debug("participants: ~p", [Participants]),
+
+    case find_participant(wh_json:to_proplist(Participants), whapps_call:call_id(Call)) of
         {ok, JObj} when Moderator ->
             ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
             lager:debug("caller has joined the local conference as moderator ~s", [ParticipantId]),
@@ -515,6 +515,14 @@ sync_participant(Participants, Call, #participant{in_conference=false
             gen_listener:cast(self(), play_moderator_entry),
             whapps_conference:moderator_join_muted(Conference) andalso gen_listener:cast(self(), mute),
             whapps_conference:moderator_join_deaf(Conference) andalso gen_listener:cast(self(), deaf),
+
+
+            notify_requestor(whapps_call:controller_queue(Call)
+                             ,ParticipantId
+                             ,DE
+                             ,whapps_conference:id(Conference)
+                            ),
+
             Participant#participant{in_conference='true'
                                     ,muted=Muted
                                     ,deaf=Deaf
@@ -530,6 +538,12 @@ sync_participant(Participants, Call, #participant{in_conference=false
             gen_listener:cast(self(), play_member_entry),
             whapps_conference:member_join_muted(Conference) andalso gen_listener:cast(self(), mute),
             whapps_conference:member_join_deaf(Conference) andalso gen_listener:cast(self(), deaf),
+
+            notify_requestor(whapps_call:controller_queue(Call)
+                             ,ParticipantId
+                             ,DE
+                             ,whapps_conference:id(Conference)
+                            ),
 
             Participant#participant{in_conference='true'
                                     ,muted=Muted
@@ -547,6 +561,8 @@ sync_participant(Participants, Call, #participant{in_conference=false
             Participant#participant{join_attempts = JoinAttempts + 1}
     end;
 sync_participant(Participants, Call, #participant{in_conference=true}=Participant) ->
+    lager:debug("participants: ~p", [Participants]),
+
     case find_participant(wh_json:to_proplist(Participants), whapps_call:call_id(Call)) of
         {ok, JObj} ->
             ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
@@ -582,20 +598,22 @@ join_conference(Srv, Call, Conference) ->
                  ]
                ),
 
-    _ = whapps_call_command:b_conference(ConferenceId, 'false', 'false', whapps_conference:moderator(Conference), Call),
+    _ = whapps_call_command:b_conference(ConferenceId, 'false', 'false'
+                                         ,whapps_conference:moderator(Conference)
+                                         ,Call
+                                        ),
 
     lager:debug("requesting conference participants"),
     whapps_conference_command:participants(Conference).
 
 notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
     case wh_json:get_value(<<"Server-ID">>, DiscoveryEvent) of
-        undefined -> ok;
+        'undefined' -> ok;
         <<>> -> ok;
         RequestorQ ->
             Resp = [{<<"Conference-ID">>, ConferenceId}
                     ,{<<"Participant-ID">>, MyId}
-                    ,{<<"Participant-Control-Queue">>, MyQ}
+                    | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
                    ],
             wapi_conference:publish_discovery_resp(RequestorQ, Resp)
     end.
-            

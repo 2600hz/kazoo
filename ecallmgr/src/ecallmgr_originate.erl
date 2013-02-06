@@ -569,7 +569,7 @@ create_uuid(Node) ->
 
 create_uuid(JObj, Node) ->
     case wh_json:get_binary_value(<<"Outbound-Call-ID">>, JObj) of
-        undefined -> create_uuid(Node);
+        'undefined' -> create_uuid(Node);
         CallId -> CallId
     end.
 
