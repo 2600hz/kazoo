@@ -85,8 +85,8 @@
 %% Standardized way of logging the stacktrace...
 %% @end
 %%--------------------------------------------------------------------
--spec log_stacktrace/0 :: () -> 'ok'.
--spec log_stacktrace/1 :: (list()) -> 'ok'.
+-spec log_stacktrace() -> 'ok'.
+-spec log_stacktrace(list()) -> 'ok'.
 log_stacktrace() ->
     ST = erlang:get_stacktrace(),
     log_stacktrace(ST).
@@ -113,15 +113,15 @@ log_stacktrace(ST) ->
                      | 'info'
                      | 'debug'.
 
--spec change_console_log_level/1 :: (log_level()) -> 'ok'.
+-spec change_console_log_level(log_level()) -> 'ok'.
 change_console_log_level(L) ->
     lager:set_loglevel(lager_console_backend, L).
 
--spec change_error_log_level/1 :: (log_level()) -> 'ok'.
+-spec change_error_log_level(log_level()) -> 'ok'.
 change_error_log_level(L) ->
     lager:set_loglevel(lager_file_backend, L).
 
--spec change_syslog_log_level/1 :: (log_level()) -> 'ok'.
+-spec change_syslog_log_level(log_level()) -> 'ok'.
 change_syslog_log_level(L) ->
     lager:set_loglevel(lager_syslog_backend, L).
 
@@ -132,47 +132,46 @@ change_syslog_log_level(L) ->
 %% unencoded or raw format.
 %% @end
 %%--------------------------------------------------------------------
--spec format_account_id/1 :: ([binary(),...] | binary() | wh_json:object()) -> binary().
--spec format_account_id/2 :: ([binary(),...] | binary() | wh_json:object(), unencoded | encoded | raw) -> binary().
+-type account_format() :: 'unencoded' | 'encoded' | 'raw'.
+-spec format_account_id(ne_binaries() | ne_binary() | wh_json:object()) -> binary().
+-spec format_account_id(ne_binaries() | ne_binary() | wh_json:object(), account_format()) -> binary().
 
-format_account_id(Doc) -> format_account_id(Doc, unencoded).
+format_account_id(Doc) -> format_account_id(Doc, 'unencoded').
 
-format_account_id(<<"accounts">>, _) ->
-    <<"accounts">>;
+format_account_id(<<"accounts">>, _) -> <<"accounts">>;
 %% unencode the account db name
-format_account_id(<<"account/", _/binary>> = DbName, unencoded) ->
+format_account_id(<<"account/", _/binary>> = DbName, 'unencoded') ->
     DbName;
-format_account_id(<<"account%2F", _/binary>> = DbName, unencoded) ->
-    binary:replace(DbName, <<"%2F">>, <<"/">>, [global]);
+format_account_id(<<"account%2F", _/binary>> = DbName, 'unencoded') ->
+    binary:replace(DbName, <<"%2F">>, <<"/">>, ['global']);
 
 %% encode the account db name
-format_account_id(<<"account%2F", _/binary>>=DbName, encoded) ->
+format_account_id(<<"account%2F", _/binary>>=DbName, 'encoded') ->
     DbName;
-format_account_id(<<"account/", _/binary>>=DbName, encoded) ->
-    binary:replace(DbName, <<"/">>, <<"%2F">>, [global]);
+format_account_id(<<"account/", _/binary>>=DbName, 'encoded') ->
+    binary:replace(DbName, <<"/">>, <<"%2F">>, ['global']);
 
 %% get just the account ID from the account db name
-format_account_id(<<"account%2F", AccountId/binary>>, raw) ->
-    binary:replace(AccountId, <<"%2F">>, <<>>, [global]);
-format_account_id(<<"account/", AccountId/binary>>, raw) ->
-    binary:replace(AccountId, <<"/">>, <<>>, [global]);
+format_account_id(<<"account%2F", AccountId/binary>>, 'raw') ->
+    binary:replace(AccountId, <<"%2F">>, <<>>, ['global']);
+format_account_id(<<"account/", AccountId/binary>>, 'raw') ->
+    binary:replace(AccountId, <<"/">>, <<>>, ['global']);
 
 format_account_id([AccountId], Encoding) when is_binary(AccountId) ->
     format_account_id(AccountId, Encoding);
 format_account_id(Account, Encoding) when not is_binary(Account) ->
     case wh_json:is_json_object(Account) of
-        true -> format_account_id([wh_json:get_value([<<"_id">>], Account)], Encoding);
-        false -> format_account_id(wh_util:to_binary(Account), Encoding)
+        'true' -> format_account_id([wh_json:get_value([<<"_id">>], Account)], Encoding);
+        'false' -> format_account_id(wh_util:to_binary(Account), Encoding)
     end;
 
-format_account_id(AccountId, unencoded) ->
+format_account_id(AccountId, 'unencoded') ->
     [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
     wh_util:to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
-format_account_id(AccountId, encoded) when is_binary(AccountId) ->
+format_account_id(AccountId, 'encoded') when is_binary(AccountId) ->
     [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
     wh_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
-format_account_id(AccountId, raw) ->
-    AccountId.
+format_account_id(AccountId, 'raw') -> AccountId.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -180,20 +179,20 @@ format_account_id(AccountId, raw) ->
 %% get the provided leger (account_id/db) balance
 %% @end
 %%--------------------------------------------------------------------
--spec current_account_balance/1 :: (api_binary()) -> integer().
+-spec current_account_balance(api_binary()) -> integer().
 current_account_balance('undefined') -> 0;
 current_account_balance(Ledger) ->
-    LedgerDb = wh_util:format_account_id(Ledger, encoded),
-    ViewOptions = [{<<"reduce">>, true}],
+    LedgerDb = wh_util:format_account_id(Ledger, 'encoded'),
+    ViewOptions = ['reduce'],
     case couch_mgr:get_results(LedgerDb, <<"transactions/credit_remaining">>, ViewOptions) of
-        {ok, []} ->
+        {'ok', []} ->
             lager:debug("no current balance for ~s", [Ledger]),
             0;
-        {ok, [ViewRes|_]} ->
+        {'ok', [ViewRes|_]} ->
             Credit = wh_json:get_integer_value(<<"value">>, ViewRes, 0),
             lager:debug("current balance for ~s is ~p", [Ledger, Credit]),
             Credit;
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("unable to get current balance for ~s: ~p", [Ledger, _R]),
             0
     end.
@@ -206,35 +205,35 @@ current_account_balance(Ledger) ->
 %% its own hierarchy.
 %% @end
 %%--------------------------------------------------------------------
--spec is_in_account_hierarchy/2 :: (api_binary(), api_binary()) -> boolean().
--spec is_in_account_hierarchy/3 :: (api_binary(), api_binary(), boolean()) -> boolean().
+-spec is_in_account_hierarchy(api_binary(), api_binary()) -> boolean().
+-spec is_in_account_hierarchy(api_binary(), api_binary(), boolean()) -> boolean().
 
 is_in_account_hierarchy(CheckFor, InAccount) ->
-    is_in_account_hierarchy(CheckFor, InAccount, false).
+    is_in_account_hierarchy(CheckFor, InAccount, 'false').
 
-is_in_account_hierarchy('undefined', _, _) -> false;
-is_in_account_hierarchy(_, 'undefined', _) -> false;
+is_in_account_hierarchy('undefined', _, _) -> 'false';
+is_in_account_hierarchy(_, 'undefined', _) -> 'false';
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
     CheckId = wh_util:format_account_id(CheckFor, raw),
     AccountId = wh_util:format_account_id(InAccount, raw),
     AccountDb = wh_util:format_account_id(InAccount, encoded),
     case (IncludeSelf andalso AccountId =:= CheckId) orelse couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        true ->
+        'true' ->
             lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
-            true;
+            'true';
         {ok, JObj} ->
             Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
             case lists:member(CheckId, Tree) of
-                true ->
+                'true' ->
                     lager:debug("account ~s is in the account hierarchy of ~s", [CheckId, AccountId]),
-                    true;
-                false ->
+                    'true';
+                'false' ->
                     lager:debug("account ~s was not found in the account hierarchy of ~s", [CheckId, AccountId]),
-                    false
+                    'false'
             end;
         {error, _R} ->
             lager:debug("failed to get the ancestory of the account ~s: ~p", [AccountId, _R]),
-            false
+            'false'
     end.
 
 %%--------------------------------------------------------------------
@@ -243,8 +242,8 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_system_admin/1 :: (api_binary()) -> boolean().
-is_system_admin('undefined') -> false;
+-spec is_system_admin(api_binary()) -> boolean().
+is_system_admin('undefined') -> 'false';
 is_system_admin(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
     AccountDb = wh_util:format_account_id(Account, encoded),
@@ -252,19 +251,19 @@ is_system_admin(Account) ->
         {ok, JObj} -> wh_json:is_true(<<"pvt_superduper_admin">>, JObj);
         {error, _R} ->
             lager:debug("unable to open account definition for ~s: ~p", [Account, _R]),
-            false
+            'false'
     end.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% checks the pvt_enabled flag and returns false only if the flag is
-%% specificly set to false.  If it is missing or set to anything else
-%% return true.  However, if we cant find the account doc then return
-%% false.
+%% checks the pvt_enabled flag and returns 'false' only if the flag is
+%% specificly set to 'false'.  If it is missing or set to anything else
+%% return 'true'.  However, if we cant find the account doc then return
+%% 'false'.
 %% @end
 %%--------------------------------------------------------------------
--spec is_account_enabled/1 :: (api_binary()) -> 'true'. %boolean().
+-spec is_account_enabled(api_binary()) -> 'true'. %boolean().
 is_account_enabled('undefined') -> 'true';
 is_account_enabled(_AccountId) ->
     %% See WHISTLE-1201
@@ -276,14 +275,14 @@ is_account_enabled(_AccountId) ->
 %%        {error, not_found} ->
 %%            case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
 %%                {ok, JObj} ->
-%%                    PvtEnabled = wh_json:is_false(<<"pvt_enabled">>, JObj) =/= true,
+%%                    PvtEnabled = wh_json:is_false(<<"pvt_enabled">>, JObj) =/= 'true',
 %%                    lager:debug("account ~s enabled flag is ~s", [AccountId, PvtEnabled]),
 %%                    wh_cache:store({?MODULE, is_account_enabled, AccountId}, PvtEnabled, 300),
 %%                    PvtEnabled;
 %%                {error, R} ->
 %%                    lager:debug("unable to find enabled status of account ~s: ~p", [AccountId, R]),
-%%                    wh_cache:store({?MODULE, is_account_enabled, AccountId}, true, 300),
-%%                    true
+%%                    wh_cache:store({?MODULE, is_account_enabled, AccountId}, 'true', 300),
+%%                    'true'
 %%            end
 %%    end.
 
@@ -293,8 +292,8 @@ is_account_enabled(_AccountId) ->
 %% Retrieves the account realm
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_realm/1 :: (api_binary()) -> api_binary().
--spec get_account_realm/2 :: (api_binary(), ne_binary()) -> api_binary().
+-spec get_account_realm(api_binary()) -> api_binary().
+-spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
 get_account_realm(AccountId) ->
     get_account_realm(
       wh_util:format_account_id(AccountId, encoded)
@@ -317,27 +316,26 @@ get_account_realm(Db, AccountId) ->
 %% the vm if possible.
 %% @end
 %%--------------------------------------------------------------------
--spec try_load_module/1 :: (string() | binary()) -> atom() | 'false'.
+-spec try_load_module(string() | binary()) -> atom() | 'false'.
 try_load_module(Name) ->
     try to_atom(Name) of
-        'undefined' -> false;
+        'undefined' -> 'false';
         Module ->
-            {module, Module} = code:ensure_loaded(Module),
+            {'module', Module} = code:ensure_loaded(Module),
             Module
     catch
-        error:badarg ->
+        'error':'badarg' ->
             lager:debug("module ~s not found", [Name]),
             case code:where_is_file(to_list(<<(to_binary(Name))/binary, ".beam">>)) of
-                non_existing ->
+                'non_existing' ->
                     lager:debug("beam file not found for ~s", [Name]),
-                    false;
+                    'false';
                 _Path ->
                     lager:debug("beam file found: ~s", [_Path]),
-                    to_atom(Name, true), %% put atom into atom table
+                    to_atom(Name, 'true'), %% put atom into atom table
                     try_load_module(Name)
             end;
-        _:_ ->
-            false
+        _:_ -> 'false'
     end.
 
 %%--------------------------------------------------------------------
@@ -347,11 +345,10 @@ try_load_module(Name) ->
 %% value.
 %% @end
 %%--------------------------------------------------------------------
--spec pad_binary/3 :: (binary(), non_neg_integer(), binary()) -> binary().
+-spec pad_binary(binary(), non_neg_integer(), binary()) -> binary().
 pad_binary(Bin, Size, Value) when size(Bin) < Size ->
     pad_binary(<<Bin/binary, Value/binary>>, Size, Value);
-pad_binary(Bin, _, _) ->
-    Bin.
+pad_binary(Bin, _, _) -> Bin.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -366,13 +363,11 @@ pad_binary(Bin, _, _) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec join_binary/1 :: ([text() | atom(),...]) -> binary().
--spec join_binary/2 :: ([text() | atom(),...], binary()) -> binary().
+-spec join_binary([text() | atom(),...]) -> binary().
+-spec join_binary([text() | atom(),...], binary()) -> binary().
 
-join_binary(Bins) ->
-    join_binary(Bins, <<", ">>, []).
-join_binary(Bins, Sep) ->
-    join_binary(Bins, Sep, []).
+join_binary(Bins) -> join_binary(Bins, <<", ">>, []).
+join_binary(Bins, Sep) -> join_binary(Bins, Sep, []).
 
 join_binary([], _, Acc) -> iolist_to_binary(lists:reverse(Acc));
 join_binary([Bin], _, Acc) ->
@@ -380,21 +375,20 @@ join_binary([Bin], _, Acc) ->
 join_binary([Bin|Bins], Sep, Acc) ->
     join_binary(Bins, Sep, [Sep, to_binary(Bin) |Acc]).
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec shuffle_list/1 :: (list()) -> list().
+-spec shuffle_list(list()) -> list().
 shuffle_list([]) -> [];
 shuffle_list(List) when is_list(List) ->
     Len = length(List),
     randomize_list(round(math:log(Len) + 0.5), List).
 
--spec randomize_list/1 :: (list()) -> list().
--spec randomize_list/2 :: (pos_integer(), list()) -> list().
+-spec randomize_list(list()) -> list().
+-spec randomize_list(pos_integer(), list()) -> list().
 
 randomize_list(List) ->
     D = lists:keysort(1, [{random:uniform(), A} || A <- List]),
@@ -415,7 +409,7 @@ randomize_list(T, List) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (wh_json:object() | wh_proplist() | ne_binary()) -> api_binary().
+-spec put_callid(wh_json:object() | wh_proplist() | ne_binary()) -> api_binary().
 put_callid(?NE_BINARY = CallId) ->
     erlang:put(callid, CallId);
 put_callid(Prop) when is_list(Prop) ->
@@ -430,7 +424,7 @@ put_callid(JObj) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (wh_json:object()) -> {api_binary(), api_binary()}.
+-spec get_event_type(wh_json:object()) -> {api_binary(), api_binary()}.
 get_event_type(JObj) when not is_list(JObj) -> % guard against json_objects() being passed in
     { wh_json:get_binary_value(<<"Event-Category">>, JObj), wh_json:get_binary_value(<<"Event-Name">>, JObj) }.
 
@@ -440,7 +434,7 @@ get_event_type(JObj) when not is_list(JObj) -> % guard against json_objects() be
 %% Generic helper to get the text value of a XML path
 %% @end
 %%--------------------------------------------------------------------
--spec get_xml_value/2 :: (wh_deeplist(), xml_el()) -> api_binary().
+-spec get_xml_value(wh_deeplist(), xml_el()) -> api_binary().
 get_xml_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of
@@ -464,96 +458,81 @@ get_xml_value(Paths, Xml) ->
     end.
 
 %% must be a term that can be changed to a list
--spec to_hex/1 :: (binary() | string()) -> string().
+-spec to_hex(binary() | string()) -> string().
 to_hex(S) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
 
--spec to_hex_binary/1 :: (binary() | string()) -> binary().
+-spec to_hex_binary(binary() | string()) -> binary().
 to_hex_binary(S) ->
     Bin = to_binary(S),
     << <<(binary_to_hex_char(B div 16)), (binary_to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
 
--spec rand_hex_binary/1 :: (pos_integer()) -> ne_binary().
+-spec rand_hex_binary(pos_integer()) -> ne_binary().
 rand_hex_binary(Size) when is_integer(Size) andalso Size > 0 ->
     to_hex_binary(crypto:rand_bytes(Size)).
 
-binary_to_hex_char(N) when N < 10 ->
-    $0 + N;
-binary_to_hex_char(N) when N < 16 ->
-    $a - 10 + N.
+binary_to_hex_char(N) when N < 10 -> $0 + N;
+binary_to_hex_char(N) when N < 16 -> $a - 10 + N.
 
-
--spec uri_decode/1 :: (text()) -> text().
+-spec uri_decode(text()) -> text().
 uri_decode(Binary) when is_binary(Binary) ->
     to_binary(http_uri:decode(to_list(Binary)));
 uri_decode(String) when is_list(String) ->
     http_uri:decode(String);
 uri_decode(Atom) when is_atom(Atom) ->
-    to_atom(http_uri:decode(to_list(Atom)), true).
+    to_atom(http_uri:decode(to_list(Atom)), 'true').
 
--spec uri_encode/1 :: (text()) -> text().
+-spec uri_encode(text()) -> text().
 uri_encode(Binary) when is_binary(Binary) ->
     to_binary(http_uri:encode(to_list(Binary)));
 uri_encode(String) when is_list(String) ->
     http_uri:encode(String);
 uri_encode(Atom) when is_atom(Atom) ->
-    to_atom(http_uri:encode(to_list(Atom)), true).
+    to_atom(http_uri:encode(to_list(Atom)), 'true').
 
--spec to_integer/1 :: (string() | binary() | integer() | float()) -> integer().
--spec to_integer/2 :: (string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
-to_integer(X) ->
-    to_integer(X, notstrict).
+-spec to_integer(string() | binary() | integer() | float()) -> integer().
+-spec to_integer(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
+to_integer(X) -> to_integer(X, notstrict).
 
-to_integer(X, strict) when is_float(X) ->
-    erlang:error(badarg);
-to_integer(X, notstrict) when is_float(X) ->
-    round(X);
-to_integer(X, S) when is_binary(X) ->
-    to_integer(binary_to_list(X), S);
+to_integer(X, 'strict') when is_float(X) -> erlang:error('badarg');
+to_integer(X, 'notstrict') when is_float(X) -> round(X);
+to_integer(X, S) when is_binary(X) -> to_integer(binary_to_list(X), S);
 to_integer(X, S) when is_list(X) ->
-    try
-        list_to_integer(X)
+    try list_to_integer(X) of
+        I -> I
     catch
-        error:badarg when S =:= notstrict ->
+        'error':'badarg' when S =:= 'notstrict' ->
             round(list_to_float(X))
     end;
 to_integer(X, _) when is_integer(X) ->
     X.
 
--spec to_float/1 :: (string() | binary() | integer() | float()) -> float().
--spec to_float/2 :: (string() | binary() | integer() | float(), 'strict' | 'notstrict') -> float().
-to_float(X) ->
-    to_float(X, notstrict).
+-spec to_float(string() | binary() | integer() | float()) -> float().
+-spec to_float(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> float().
+to_float(X) -> to_float(X, 'notstrict').
 
-to_float(X, S) when is_binary(X) ->
-    to_float(binary_to_list(X), S);
+to_float(X, S) when is_binary(X) -> to_float(binary_to_list(X), S);
 to_float(X, S) when is_list(X) ->
-    try
-        list_to_float(X)
+    try list_to_float(X) of
+        F -> F
     catch
-        error:badarg when S =:= notstrict -> list_to_integer(X)*1.0 %% "500" -> 500.0
+        'error':'badarg' when S =:= 'notstrict' -> list_to_integer(X)*1.0 %% "500" -> 500.0
     end;
-to_float(X, strict) when is_integer(X) ->
-    erlang:error(badarg);
-to_float(X, notstrict) when is_integer(X) ->
-    X * 1.0;
-to_float(X, _) when is_float(X) ->
-    X.
+to_float(X, 'strict') when is_integer(X) -> erlang:error('badarg');
+to_float(X, 'notstrict') when is_integer(X) -> X * 1.0;
+to_float(X, _) when is_float(X) -> X.
 
--spec to_number/1 :: (binary() | string() | number()) -> number().
-to_number(X) when is_number(X) ->
-    X;
-to_number(X) when is_binary(X) ->
-    to_number(to_list(X));
+-spec to_number(binary() | string() | number()) -> number().
+to_number(X) when is_number(X) -> X;
+to_number(X) when is_binary(X) -> to_number(to_list(X));
 to_number(X) when is_list(X) ->
     try list_to_integer(X) of
         Int -> Int
     catch
-        error:badarg ->
-            list_to_float(X)
+        'error':'badarg' -> list_to_float(X)
     end.
 
--spec to_list/1 :: (X) -> list() when
+-spec to_list(X) -> list() when
       X :: atom() | list() | binary() | integer() | float().
 to_list(X) when is_float(X) ->
     mochinum:digits(X);
@@ -568,7 +547,7 @@ to_list(X) when is_list(X) ->
 
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
--spec to_binary/1 :: (atom() | string() | binary() | integer() | float()) -> binary().
+-spec to_binary(atom() | string() | binary() | integer() | float()) -> binary().
 to_binary(X) when is_float(X) ->
     to_binary(mochinum:digits(X));
 to_binary(X) when is_integer(X) ->
@@ -581,7 +560,7 @@ to_binary(X) when is_binary(X) ->
     X.
 
 %% the safer version, won't let you leak atoms
--spec to_atom/1 :: (atom() | list() | binary() | integer() | float()) -> atom().
+-spec to_atom(atom() | list() | binary() | integer() | float()) -> atom().
 to_atom(X) when is_atom(X) -> X;
 to_atom(X) when is_list(X) -> list_to_existing_atom(X);
 to_atom(X) -> to_atom(to_list(X)).
@@ -593,124 +572,123 @@ to_atom(X) -> to_atom(to_list(X)).
 %% if X is a list, the SafeList would be [nonempty_string(),...]
 %% etc. So to_atom will not coerce the type of X to match the types in SafeList
 %% when doing the lists:member/2
--spec to_atom/2 :: (atom() | list() | binary() | integer() | float(), 'true' | list()) -> atom().
+-spec to_atom(atom() | list() | binary() | integer() | float(), 'true' | list()) -> atom().
 to_atom(X, _) when is_atom(X) -> X;
-to_atom(X, true) when is_list(X) -> list_to_atom(X);
-to_atom(X, true) -> to_atom(to_list(X), true);
-to_atom(X, false) -> to_atom(X);
+to_atom(X, 'true') when is_list(X) -> list_to_atom(X);
+to_atom(X, 'true') -> to_atom(to_list(X), 'true');
+to_atom(X, 'false') -> to_atom(X);
 to_atom(X, SafeList) when is_list(SafeList) ->
     to_atom(to_list(X), lists:member(X, SafeList)).
 
--spec to_boolean/1 :: (binary() | string() | atom()) -> boolean().
-to_boolean(<<"true">>) -> true;
-to_boolean("true") -> true;
-to_boolean(true) -> true;
-to_boolean(<<"false">>) -> false;
-to_boolean("false") -> false;
-to_boolean(false) -> false.
+-spec to_boolean(binary() | string() | atom()) -> boolean().
+to_boolean(<<"true">>) -> 'true';
+to_boolean("true") -> 'true';
+to_boolean('true') -> 'true';
+to_boolean(<<"false">>) -> 'false';
+to_boolean("false") -> 'false';
+to_boolean('false') -> 'false'.
 
--spec is_true/1 :: (binary() | string() | atom()) -> boolean().
-is_true(<<"true">>) -> true;
-is_true("true") -> true;
-is_true(true) -> true;
-is_true(_) -> false.
+-spec is_true(binary() | string() | atom()) -> boolean().
+is_true(<<"true">>) -> 'true';
+is_true("true") -> 'true';
+is_true('true') -> 'true';
+is_true(_) -> 'false'.
 
--spec is_false/1 :: (binary() | string() | atom()) -> boolean().
-is_false(<<"false">>) -> true;
-is_false("false") -> true;
-is_false(false) -> true;
-is_false(_) -> false.
+-spec is_false(binary() | string() | atom()) -> boolean().
+is_false(<<"false">>) -> 'true';
+is_false("false") -> 'true';
+is_false('false') -> 'true';
+is_false(_) -> 'false'.
 
--spec is_boolean/1 :: (binary() | string() | atom()) -> boolean().
-is_boolean(<<"true">>) -> true;
-is_boolean("true") -> true;
-is_boolean(true) -> true;
-is_boolean(<<"false">>) -> true;
-is_boolean("false") -> true;
-is_boolean(false) -> true;
-is_boolean(_) -> false.
+-spec is_boolean(binary() | string() | atom()) -> boolean().
+is_boolean(<<"true">>) -> 'true';
+is_boolean("true") -> 'true';
+is_boolean('true') -> 'true';
+is_boolean(<<"false">>) -> 'true';
+is_boolean("false") -> 'true';
+is_boolean('false') -> 'true';
+is_boolean(_) -> 'false'.
 
--spec is_empty/1 :: (term()) -> boolean().
-is_empty(0) -> true;
-is_empty([]) -> true;
-is_empty("0") -> true;
-is_empty("false") -> true;
-is_empty("NULL") -> true;
-is_empty("undefined") -> true;
-is_empty(<<>>) -> true;
-is_empty(<<"0">>) -> true;
-is_empty(<<"false">>) -> true;
-is_empty(<<"NULL">>) -> true;
-is_empty(<<"undefined">>) -> true;
-is_empty(null) -> true;
-is_empty(false) -> true;
-is_empty('undefined') -> true;
-is_empty(Float) when is_float(Float), Float == 0.0 -> true;
+-spec is_empty(term()) -> boolean().
+is_empty(0) -> 'true';
+is_empty([]) -> 'true';
+is_empty("0") -> 'true';
+is_empty("false") -> 'true';
+is_empty("NULL") -> 'true';
+is_empty("undefined") -> 'true';
+is_empty(<<>>) -> 'true';
+is_empty(<<"0">>) -> 'true';
+is_empty(<<"false">>) -> 'true';
+is_empty(<<"NULL">>) -> 'true';
+is_empty(<<"undefined">>) -> 'true';
+is_empty('null') -> 'true';
+is_empty('false') -> 'true';
+is_empty('undefined') -> 'true';
+is_empty(Float) when is_float(Float), Float == 0.0 -> 'true';
 is_empty(MaybeJObj) ->
     case wh_json:is_json_object(MaybeJObj) of
-        false -> false; %% if not a json object, its not empty
-        true -> wh_json:is_empty(MaybeJObj)
+        'false' -> 'false'; %% if not a json object, its not empty
+        'true' -> wh_json:is_empty(MaybeJObj)
     end.
 
--spec is_proplist/1 :: (term()) -> boolean().
+-spec is_proplist(any()) -> boolean().
 is_proplist(Term) when is_list(Term) ->
-    lists:all(fun({_,_}) -> true; (_) -> false end, Term);
-is_proplist(_) ->
-    false.
+    lists:all(fun({_,_}) -> 'true'; (A) -> is_atom(A) end, Term);
+is_proplist(_) -> 'false'.
 
--spec to_lower_binary/1 :: (term()) -> api_binary().
+-spec to_lower_binary(term()) -> api_binary().
 to_lower_binary('undefined') -> 'undefined';
 to_lower_binary(Bin) when is_binary(Bin) ->
     << <<(to_lower_char(B))>> || <<B>> <= Bin>>;
 to_lower_binary(Else) ->
     to_lower_binary(to_binary(Else)).
 
--spec to_lower_string/1 :: (term()) -> 'undefined' | list().
+-spec to_lower_string(term()) -> 'undefined' | list().
 to_lower_string('undefined') -> 'undefined';
 to_lower_string(L) when is_list(L) ->
     [to_lower_char(C) || C <- L];
 to_lower_string(Else) ->
     to_lower_string(to_list(Else)).
 
--spec ucfirst_binary/1 :: (ne_binary()) -> ne_binary().
+-spec ucfirst_binary(ne_binary()) -> ne_binary().
 ucfirst_binary(<<F:8, Bin/binary>>) ->
     <<(to_upper_char(F)):8, Bin/binary>>.
 
--spec lcfirst_binary/1 :: (ne_binary()) -> ne_binary().
+-spec lcfirst_binary(ne_binary()) -> ne_binary().
 lcfirst_binary(<<F:8, Bin/binary>>) ->
     <<(to_lower_char(F)):8, Bin/binary>>.
 
--spec to_lower_char/1 :: (char()) -> char().
+-spec to_lower_char(char()) -> char().
 to_lower_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
 %% Converts latin capital letters to lowercase, skipping 16#D7 (extended ascii 215) "multiplication sign: x"
 to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
 to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 to_lower_char(C) -> C.
 
--spec to_upper_binary/1 :: (term()) -> api_binary().
+-spec to_upper_binary(term()) -> api_binary().
 to_upper_binary('undefined') -> 'undefined';
 to_upper_binary(Bin) when is_binary(Bin) ->
     << <<(to_upper_char(B))>> || <<B>> <= Bin>>;
 to_upper_binary(Else) ->
     to_upper_binary(to_binary(Else)).
 
--spec to_upper_string/1 :: (term()) -> 'undefined' | list().
+-spec to_upper_string(term()) -> 'undefined' | list().
 to_upper_string('undefined') -> 'undefined';
 to_upper_string(L) when is_list(L) ->
     [to_upper_char(C) || C <- L];
 to_upper_string(Else) ->
     to_upper_string(to_list(Else)).
 
--spec to_upper_char/1 :: (char()) -> char().
+-spec to_upper_char(char()) -> char().
 to_upper_char(C) when is_integer(C), $a =< C, C =< $z -> C - 32;
 to_upper_char(C) when is_integer(C), 16#E0 =< C, C =< 16#F6 -> C - 32;
 to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
 to_upper_char(C) -> C.
 
--spec strip_binary/1 :: (binary()) -> binary().
--spec strip_binary/2 :: (binary(), 'both' | 'left' | 'right') -> binary().
--spec strip_left_binary/2 :: (binary(), char()) -> binary().
--spec strip_right_binary/2 :: (binary(), char()) -> binary().
+-spec strip_binary(binary()) -> binary().
+-spec strip_binary(binary(), 'both' | 'left' | 'right') -> binary().
+-spec strip_left_binary(binary(), char()) -> binary().
+-spec strip_right_binary(binary(), char()) -> binary().
 strip_binary(B) ->
     strip_binary(B, both).
 
@@ -734,41 +712,41 @@ strip_right_binary(<<A, B/binary>>, C) ->
     <<A, (strip_right_binary(B, C))/binary>>;
 strip_right_binary(<<>>, _) -> <<>>.
 
--spec binary_md5/1 :: (text()) -> ne_binary().
+-spec binary_md5(text()) -> ne_binary().
 binary_md5(Text) ->
     to_hex_binary(erlang:md5(to_binary(Text))).
 
--spec a1hash/3 :: (ne_binary(), ne_binary(), ne_binary()) -> nonempty_string().
+-spec a1hash(ne_binary(), ne_binary(), ne_binary()) -> nonempty_string().
 a1hash(User, Realm, Password) ->
     to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
 
 %% found via trapexit
--spec floor/1 :: (integer() | float()) -> integer().
+-spec floor(integer() | float()) -> integer().
 floor(X) when X < 0 ->
     T = trunc(X),
     case X - T =:= 0 of
-        true -> T;
-        false -> T - 1
+        'true' -> T;
+        'false' -> T - 1
     end;
 floor(X) -> trunc(X).
 
 %% found via trapexit
--spec ceiling/1 :: (integer() | float()) -> integer().
+-spec ceiling(integer() | float()) -> integer().
 ceiling(X) when X < 0 -> trunc(X);
 ceiling(X) ->
     T = trunc(X),
     case X - T =:= 0 of
-        true -> T;
-        false -> T + 1
+        'true' -> T;
+        'false' -> T + 1
     end.
 
 %% returns current seconds
--spec current_tstamp/0 :: () -> non_neg_integer().
+-spec current_tstamp() -> non_neg_integer().
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
 %% fetch and cache the whistle version from the VERSION file in whistle's root folder
--spec whistle_version/0 :: () -> ne_binary().
+-spec whistle_version() -> ne_binary().
 whistle_version() ->
     case wh_cache:fetch(?WHISTLE_VERSION_CACHE_KEY) of
         {ok, Version} ->  Version;
@@ -777,7 +755,7 @@ whistle_version() ->
             whistle_version(VersionFile)
     end.
 
--spec whistle_version/1 :: (ne_binary() | nonempty_string()) -> ne_binary().
+-spec whistle_version(ne_binary() | nonempty_string()) -> ne_binary().
 whistle_version(FileName) ->
     case file:consult(FileName) of
         {ok, [Version]} ->
@@ -789,11 +767,11 @@ whistle_version(FileName) ->
             Version
     end.
 
--spec write_pid/1 :: (ne_binary() | nonempty_string() | iolist()) -> 'ok' | {'error', atom()}.
+-spec write_pid(ne_binary() | nonempty_string() | iolist()) -> 'ok' | {'error', atom()}.
 write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), [write, binary]).
 
--spec ensure_started/1 :: (atom()) -> 'ok' | {'error', term()}.
+-spec ensure_started(atom()) -> 'ok' | {'error', term()}.
 ensure_started(App) when is_atom(App) ->
     case application:start(App) of
         ok -> ok;
@@ -805,26 +783,26 @@ ensure_started(App) when is_atom(App) ->
 %% there are 62167219200 seconds between Jan 1, 0000 and Jan 1, 1970
 -define(UNIX_EPOCH_AS_GREG_SECONDS, 62167219200).
 
--spec gregorian_seconds_to_unix_seconds/1 :: (integer() | string() | binary()) -> non_neg_integer().
+-spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> non_neg_integer().
 gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
     to_integer(GregorianSeconds) - ?UNIX_EPOCH_AS_GREG_SECONDS.
 
--spec unix_seconds_to_gregorian_seconds/1 :: (integer() | string() | binary()) -> non_neg_integer().
+-spec unix_seconds_to_gregorian_seconds(integer() | string() | binary()) -> non_neg_integer().
 unix_seconds_to_gregorian_seconds(UnixSeconds) ->
     to_integer(UnixSeconds) + ?UNIX_EPOCH_AS_GREG_SECONDS.
 
--spec pretty_print_datetime/1 :: (wh_datetime()) -> ne_binary().
+-spec pretty_print_datetime(wh_datetime()) -> ne_binary().
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
                                    [Y, Mo, D, H, Mi, S])).
 
--spec microseconds_to_seconds/1 :: (float() | integer() | string() | binary()) -> non_neg_integer().
+-spec microseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) ->
     to_integer(Microseconds) div 1000000.
 
--spec elapsed_s/1 :: (wh_now() | pos_integer()) -> pos_integer().
--spec elapsed_ms/1 :: (wh_now() | pos_integer()) -> pos_integer().
--spec elapsed_us/1 :: (wh_now() | pos_integer()) -> pos_integer().
+-spec elapsed_s(wh_now() | pos_integer()) -> pos_integer().
+-spec elapsed_ms(wh_now() | pos_integer()) -> pos_integer().
+-spec elapsed_us(wh_now() | pos_integer()) -> pos_integer().
 elapsed_s({_,_,_}=Start) ->
     timer:now_diff(erlang:now(), Start) div 1000000;
 elapsed_s(Start) when is_integer(Start) ->
@@ -840,9 +818,9 @@ elapsed_us({_,_,_}=Start) ->
 elapsed_us(Start) when is_integer(Start) ->
     current_tstamp() - Start * 1000000.
 
--spec now_s/1 :: (wh_now()) -> integer().
--spec now_ms/1 :: (wh_now()) -> integer().
--spec now_us/1 :: (wh_now()) -> integer().
+-spec now_s(wh_now()) -> integer().
+-spec now_ms(wh_now()) -> integer().
+-spec now_us(wh_now()) -> integer().
 now_us({MegaSecs,Secs,MicroSecs}) ->
     (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
 now_ms({_,_,_}=Now) ->
@@ -979,18 +957,18 @@ strip_binary_test() ->
     ?assertEqual(<<"foo">>, strip_right_binary(<<"foo ">>, $\s)).
 
 to_boolean_test() ->
-    All = [<<"true">>, "true", true, <<"false">>, "false", false],
+    All = [<<"true">>, "true", 'true', <<"false">>, "false", 'false'],
     NotAll = [0, 123, 1.23, "123", "abc", abc, <<"abc">>, <<"123">>, {what, is, this, doing, here}],
-    ?assertEqual(true, lists:all(fun(X) ->
+    ?assertEqual('true', lists:all(fun(X) ->
                                          try to_boolean(X) of
-                                             _ -> true
-                                         catch _:_ -> false
+                                             _ -> 'true'
+                                         catch _:_ -> 'false'
                                          end
                                  end, All)),
-    ?assertEqual(true, lists:all(fun(X) ->
+    ?assertEqual('true', lists:all(fun(X) ->
                                          try to_boolean(X) of
-                                             _ -> false
-                                         catch _:_ -> true
+                                             _ -> 'false'
+                                         catch _:_ -> 'true'
                                          end
                                  end, NotAll)).
 

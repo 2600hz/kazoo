@@ -64,14 +64,17 @@
 
 -type callback_fun() :: fun((_, _, 'flush' | 'erase' | 'expire') -> _).
 -type origin_tuple() :: {'db', ne_binary(), ne_binary()}.
--record(cache_obj, {key :: term()
-                    ,value :: term()
-                    ,expires :: pos_integer() | 'infinity'
-                    ,timestamp = wh_util:current_tstamp() :: pos_integer()
-                    ,callback :: callback_fun()
-                    ,origin :: origin_tuple() | [origin_tuple(),...]
-                    ,type = normal :: 'normal' | 'monitor' | 'pointer'           
+-type origin_tuples() :: [origin_tuple(),...] | [].
+-record(cache_obj, {key :: term() | '_' | '$1'
+                    ,value :: term() | '_' | '$1' | '$2'
+                    ,expires :: pos_integer() | 'infinity' | '_' | '$3'
+                    ,timestamp = wh_util:current_tstamp() :: pos_integer() | '_' | '$4'
+                    ,callback :: callback_fun() | '_' | '$2' | '$5'
+                    ,origin :: origin_tuple() | origin_tuples() | '$1' | '_'
+                    ,type = 'normal' :: 'normal' | 'monitor' | 'pointer' | '_'
                    }).
+-type cache_obj() :: #cache_obj{}.
+-type cache_objs() :: [cache_obj(),...] | [].
 
 %%%===================================================================
 %%% API
@@ -84,11 +87,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    start_link(?SERVER).
-
-start_link(Name) ->
-    start_link(Name, ?EXPIRE_PERIOD).
+start_link() -> start_link(?SERVER).
+start_link(Name) -> start_link(Name, ?EXPIRE_PERIOD).
 
 start_link(Name, Props) when is_list(Props) ->
     start_link(Name, ?EXPIRE_PERIOD, Props);
@@ -96,115 +96,114 @@ start_link(Name, ExpirePeriod) ->
     start_link(Name, ExpirePeriod, []).
 
 start_link(Name, ExpirePeriod, Props) ->
-    case props:get_value(origin_bindings, Props) of
-        undefined ->
+    case props:get_value('origin_bindings', Props) of
+        'undefined' ->
             lager:debug("started new cache process (gen_server): ~s", [Name]),
             gen_server:start_link({local, Name}, ?MODULE, [Name, ExpirePeriod], []);
         BindingProps ->
             lager:debug("started new cache process (gen_listener): ~s", [Name]),
-            Bindings = [{conf, P} || P <- BindingProps],
-            gen_listener:start_link({local, Name}, ?MODULE, [{bindings, Bindings}
-                                                             ,{responders, ?RESPONDERS}
-                                                             ,{queue_name, ?QUEUE_NAME}
-                                                             ,{queue_options, ?QUEUE_OPTIONS}
-                                                             ,{consume_options, ?CONSUME_OPTIONS}
-                                                            ], [Name, ExpirePeriod])
+            Bindings = [{'conf', P} || P <- BindingProps],
+            gen_listener:start_link({'local', Name}, ?MODULE
+                                    ,[{'bindings', Bindings}
+                                      ,{'responders', ?RESPONDERS}
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
+                                     ]
+                                    ,[Name, ExpirePeriod]
+                                   )
     end.
 
--spec store/2 :: (term(), term()) -> 'ok'.
--spec store/3 :: (term(), term(), proplist()) -> 'ok'.
+-spec store(term(), term()) -> 'ok'.
+-spec store(term(), term(), wh_proplist()) -> 'ok'.
 
-store(K, V) ->
-    store(K, V, []).
+store(K, V) -> store(K, V, []).
 
-store(K, V, Props) ->
-    store_local(?SERVER, K, V, Props).
+store(K, V, Props) -> store_local(?SERVER, K, V, Props).
 
--spec peek/1 :: (term()) -> {'ok', term()} | {'error', 'not_found'}.
-peek(K) ->
-    peek_local(?SERVER, K).
+-spec peek(term()) ->
+                        {'ok', term()} |
+                        {'error', 'not_found'}.
+peek(K) -> peek_local(?SERVER, K).
 
--spec fetch/1 :: (term()) -> {'ok', term()} | {'error', 'not_found'}.
-fetch(K) ->
-    fetch_local(?SERVER, K).
+-spec fetch(term()) ->
+                         {'ok', term()} |
+                         {'error', 'not_found'}.
+fetch(K) -> fetch_local(?SERVER, K).
 
--spec erase/1 :: (term()) -> 'ok'.
-erase(K) ->
-    erase_local(?SERVER, K).
+-spec erase(term()) -> 'ok'.
+erase(K) -> erase_local(?SERVER, K).
 
--spec flush/0 :: () -> 'ok'.
-flush() ->
-    flush_local(?SERVER).
+-spec flush() -> 'ok'.
+flush() -> flush_local(?SERVER).
 
--spec fetch_keys/0 :: () -> [term(),...] | [].
-fetch_keys() ->
-    fetch_keys_local(?SERVER).
+-spec fetch_keys() -> [term(),...] | [].
+fetch_keys() -> fetch_keys_local(?SERVER).
 
--spec filter/1 :: (fun((term(), term()) -> boolean())) -> proplist().
-filter(Pred) when is_function(Pred, 2) ->
-    filter_local(?SERVER, Pred).
+-spec filter(fun((term(), term()) -> boolean())) -> wh_proplist().
+filter(Pred) when is_function(Pred, 2) -> filter_local(?SERVER, Pred).
 
--spec dump/0 :: () -> 'ok'.
-dump() ->
-    dump(false).
+-spec dump() -> 'ok'.
+dump() -> dump('false').
 
--spec dump/1 :: (text()) -> 'ok'.
-dump(ShowValue) ->
-    dump_local(?SERVER, ShowValue).
+-spec dump(text()) -> 'ok'.
+dump(ShowValue) -> dump_local(?SERVER, ShowValue).
 
--spec wait_for_key/1 :: (term()) -> {'ok', term()} | {'error', 'timeout'}.
--spec wait_for_key/2 :: (term(), 'infinity' | non_neg_integer()) -> {'ok', term()} | {'error', 'timeout'}.
+-spec wait_for_key(term()) ->
+                          {'ok', term()} |
+                          {'error', 'timeout'}.
+-spec wait_for_key(term(), wh_timeout()) ->
+                          {'ok', term()} |
+                          {'error', 'timeout'}.
 
-wait_for_key(Key) ->
-    wait_for_key(Key, ?DEFAULT_WAIT_TIMEOUT).
+wait_for_key(Key) -> wait_for_key(Key, ?DEFAULT_WAIT_TIMEOUT).
 
-wait_for_key(Key, Timeout) ->
-    wait_for_key_local(?SERVER, Key, Timeout).
+wait_for_key(Key, Timeout) -> wait_for_key_local(?SERVER, Key, Timeout).
 
 %% Local cache API
--spec store_local/3 :: (atom(), term(), term()) -> 'ok'.
--spec store_local/4 :: (atom(), term(), term(), proplist()) -> 'ok'.
+-spec store_local(atom(), term(), term()) -> 'ok'.
+-spec store_local(atom(), term(), term(), wh_proplist()) -> 'ok'.
 
-store_local(Srv, K, V) ->
-    store_local(Srv, K, V, []).
+store_local(Srv, K, V) -> store_local(Srv, K, V, []).
 
 store_local(Srv, K, V, Props) ->
-    gen_server:cast(Srv, {store, #cache_obj{key=K
-                                            ,value=V
-                                            ,expires=get_props_expires(Props)
-                                            ,callback=get_props_callback(Props)
-                                            ,origin=get_props_origin(Props)
-                                           }}).
+    gen_server:cast(Srv, {'store', #cache_obj{key=K
+                                              ,value=V
+                                              ,expires=get_props_expires(Props)
+                                              ,callback=get_props_callback(Props)
+                                              ,origin=get_props_origin(Props)
+                                             }}).
 
--spec peek_local/2 :: (atom(), term()) -> {'ok', term()} | {'error', 'not_found'}.
+-spec peek_local(atom(), term()) ->
+                        {'ok', term()} |
+                        {'error', 'not_found'}.
 peek_local(Srv, K) ->
     try ets:lookup_element(Srv, K, #cache_obj.value) of
         Value -> {ok, Value}
     catch
-        error:badarg ->
-            {error, not_found}
+        'error':'badarg' ->
+            {'error', 'not_found'}
     end.
 
--spec fetch_local/2 :: (atom(), term()) -> {'ok', term()} | {'error', 'not_found'}.
+-spec fetch_local(atom(), term()) ->
+                         {'ok', term()} |
+                         {'error', 'not_found'}.
 fetch_local(Srv, K) ->
     try ets:lookup_element(Srv, K, #cache_obj.value) of
         Value ->
-            gen_server:cast(Srv, {update_timestamp, K, wh_util:current_tstamp()}),
-            {ok, Value}
+            gen_server:cast(Srv, {'update_timestamp', K, wh_util:current_tstamp()}),
+            {'ok', Value}
     catch
-        error:badarg ->
-            {error, not_found}
+        'error':'badarg' -> {'error', 'not_found'}
     end.
 
--spec erase_local/2 :: (atom(), term()) -> 'ok'.
-erase_local(Srv, K) ->
-    gen_server:cast(Srv, {erase, K}).
+-spec erase_local(atom(), term()) -> 'ok'.
+erase_local(Srv, K) -> gen_server:cast(Srv, {'erase', K}).
 
--spec flush_local/1 :: (atom()) -> 'ok'.
-flush_local(Srv) ->
-    gen_server:cast(Srv, {flush}).
+-spec flush_local(atom()) -> 'ok'.
+flush_local(Srv) -> gen_server:cast(Srv, {'flush'}).
 
--spec fetch_keys_local/1 :: (atom()) -> list().
+-spec fetch_keys_local(atom()) -> list().
 fetch_keys_local(Srv) ->
     MatchSpec = [{#cache_obj{key = '$1', type = normal, _ = '_'}
                   ,[]
@@ -212,28 +211,27 @@ fetch_keys_local(Srv) ->
                  }],
     ets:select(Srv, MatchSpec).
 
--spec filter_local/2 :: (atom(), fun((term(), term()) -> boolean())) -> wh_proplist().
+-spec filter_local(atom(), fun((term(), term()) -> boolean())) -> wh_proplist().
 filter_local(Srv, Pred)  when is_function(Pred, 2) ->
     ets:foldl(fun(#cache_obj{key=K, value=V, type = normal}, Acc) ->
                       case Pred(K, V) of
-                          true -> [{K, V}|Acc];
-                          false -> Acc
+                          'true' -> [{K, V}|Acc];
+                          'false' -> Acc
                       end;
                  (_, Acc) -> Acc
               end, [], Srv).
 
--spec dump_local/1 :: (text()) -> 'ok'.
-dump_local(Srv) ->
-    dump_local(Srv, false).
+-spec dump_local(text()) -> 'ok'.
+dump_local(Srv) -> dump_local(Srv, 'false').
 
--spec dump_local/2 :: (text(), text()) -> 'ok'.
+-spec dump_local(text(), text()) -> 'ok'.
 dump_local(Srv, ShowValue) when not is_atom(Srv) ->
     dump_local(wh_util:to_atom(Srv), ShowValue);
 dump_local(Srv, ShowValue) when not is_atom(ShowValue) ->
     dump_local(Srv, wh_util:to_atom(ShowValue));
 dump_local(Srv, ShowValue) ->
     Now = wh_util:current_tstamp(),
-    _ = [begin             
+    _ = [begin
              io:format("Key: ~300p~n", [Obj#cache_obj.key]),
              case Obj#cache_obj.type =/= normal of
                  true -> io:format("Value: ~300p~n", [Obj#cache_obj.value]);
@@ -243,7 +241,7 @@ dump_local(Srv, ShowValue) ->
              io:format("Expires: ~30p~n", [Obj#cache_obj.expires]),
              case is_number(Obj#cache_obj.expires) of
                  true ->
-                     io:format("Remaining: ~30p~n", [(Obj#cache_obj.timestamp 
+                     io:format("Remaining: ~30p~n", [(Obj#cache_obj.timestamp
                                                       + Obj#cache_obj.expires)
                                                      - Now
                                                     ]);
@@ -261,28 +259,31 @@ dump_local(Srv, ShowValue) ->
         ],
     ok.
 
--spec wait_for_key_local/2 :: (atom(), term()) -> {'ok', term()} | {'error', 'timeout'}.
--spec wait_for_key_local/3 :: (atom(), term(), 'infinity' | non_neg_integer()) -> {'ok', term()} | {'error', 'timeout'}.
-
+-spec wait_for_key_local(atom(), term()) ->
+                                {'ok', term()} |
+                                {'error', 'timeout'}.
+-spec wait_for_key_local(atom(), term(), wh_timeout()) ->
+                                {'ok', term()} |
+                                {'error', 'timeout'}.
 wait_for_key_local(Srv, Key) ->
     wait_for_key_local(Srv, Key, ?DEFAULT_WAIT_TIMEOUT).
 
 wait_for_key_local(Srv, Key, Timeout) ->
-    {ok, Ref} = gen_server:call(Srv, {wait_for_key, Key, Timeout}),
+    {'ok', Ref} = gen_server:call(Srv, {'wait_for_key', Key, Timeout}),
     lager:debug("waiting for message with ref ~p", [Ref]),
     receive
-        {exists, Ref, Value} -> {ok, Value};
-        {store, Ref, Value} -> {ok, Value};
-        {_, Ref, _} -> {error, timeout}
+        {'exists', Ref, Value} -> {'ok', Value};
+        {'store', Ref, Value} -> {'ok', Value};
+        {_, Ref, _} -> {'error', 'timeout'}
     end.
 
--spec handle_document_change/2 :: (wh_json:object(), proplist()) -> 'ok'.
+-spec handle_document_change(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_document_change(JObj, Props) ->
-    true = wapi_conf:doc_update_v(JObj),
-    Srv = props:get_value(server, Props),
+    'true' = wapi_conf:doc_update_v(JObj),
+    Srv = props:get_value('server', Props),
     Id = wh_json:get_value(<<"ID">>, JObj),
     Db = wh_json:get_value(<<"Database">>, JObj),
-    gen_listener:cast(Srv, {change, {db, Db, Id}}).
+    gen_listener:cast(Srv, {'change', {'db', Db, Id}}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -301,8 +302,8 @@ handle_document_change(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([Name, ExpirePeriod]) ->
     put(callid, Name),
-    _ = erlang:send_after(ExpirePeriod, self(), {expire, ExpirePeriod}),
-    {ok, ets:new(Name, [set, protected, named_table, {keypos, #cache_obj.key}])}.
+    _ = erlang:send_after(ExpirePeriod, self(), {'expire', ExpirePeriod}),
+    {'ok', ets:new(Name, ['set', 'protected', 'named_table', {'keypos', #cache_obj.key}])}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -347,20 +348,28 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({store, #cache_obj{key=Key, value=Value, origin=[Origin|Origins]}=CacheObj}, Cache) ->
+handle_cast({store, #cache_obj{key=Key
+                               ,value=Value
+                               ,origin=[Origin|Origins]
+                              }=CacheObj}, Cache) ->
     ets:insert(Cache, CacheObj#cache_obj{origin=Origin}),
     _ = [begin
              Ref = make_ref(),
-             ets:insert(Cache, CacheObj#cache_obj{key=Ref, value=Key                                                  
-                                                  ,origin=O, type=pointer
-                                                  ,callback=undefined
-                                                  ,expires=infinity})
+             ets:insert(Cache, CacheObj#cache_obj{key=Ref
+                                                  ,value=Key
+                                                  ,origin=O
+                                                  ,type='pointer'
+                                                  ,callback='undefined'
+                                                  ,expires='infinity'
+                                                 })
          end
          || O <- Origins
         ],
     _ = maybe_exec_store_callbacks(Key, Value, Cache),
     {noreply, Cache, hibernate};
-handle_cast({store, #cache_obj{key=Key, value=Value}=CacheObj}, Cache) ->
+handle_cast({store, #cache_obj{key=Key
+                               ,value=Value
+                              }=CacheObj}, Cache) ->
     ets:insert(Cache, CacheObj),
     _ = maybe_exec_store_callbacks(Key, Value, Cache),
     {noreply, Cache, hibernate};
@@ -437,28 +446,27 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_props_expires/1 :: (proplist()) -> 'undefined' | 'infinity' | integer().
+-spec get_props_expires(wh_proplist()) -> wh_timeout().
 get_props_expires(Props) ->
-    case props:get_value(expires, Props) of
-        undefined -> ?EXPIRES;
-        infinity -> infinity;
-        Expires when is_integer(Expires) 
+    case props:get_value('expires', Props) of
+        'undefined' -> ?EXPIRES;
+        'infinity' -> 'infinity';
+        Expires when is_integer(Expires)
                      andalso Expires > 0 ->
             Expires
     end.
 
--spec get_props_callback/1 :: (proplist()) -> 'undefined' | callback_fun().
+-spec get_props_callback(wh_proplist()) -> 'undefined' | callback_fun().
 get_props_callback(Props) ->
     case props:get_value(callback, Props) of
-        undefined -> undefined;
+        'undefined' -> 'undefined';
         Fun when is_function(Fun, 3) -> Fun
     end.
-             
--spec get_props_origin/1 :: (proplist()) -> 'undefined' | term().
-get_props_origin(Props) ->
-    props:get_value(origin, Props).
 
--spec maybe_erase_changed/2 :: (origin_tuple(), atom()) -> 'ok'.
+-spec get_props_origin(wh_proplist()) -> 'undefined' | term().
+get_props_origin(Props) -> props:get_value(origin, Props).
+
+-spec maybe_erase_changed(origin_tuple(), atom()) -> 'ok'.
 maybe_erase_changed(Change, Cache) ->
     MatchSpec = [{#cache_obj{origin = '$1', _ = '_'}
                  ,[{'=:=', {const, Change}, '$1'}]
@@ -468,7 +476,7 @@ maybe_erase_changed(Change, Cache) ->
     _ = erase_changed(Objects, [], Cache),
     ok.
 
--spec erase_changed/3 :: ([] | [#cache_obj{},...], list(), atom()) -> 'ok'.
+-spec erase_changed(cache_objs(), list(), atom()) -> 'ok'.
 erase_changed([], _, _) -> ok;
 erase_changed([#cache_obj{type=pointer, value=Key}|Objects], Removed, Cache) ->
     _ = case lists:member(Key, Removed) of
@@ -486,10 +494,10 @@ erase_changed([#cache_obj{type=normal, key=Key}|Objects], Removed, Cache) ->
                 lager:debug("removing updated cache object ~-300p", [Key]),
                 _ = maybe_exec_erase_callbacks(Key, Cache),
                 maybe_remove_object(Key, Cache)
-        end,    
+        end,
     erase_changed(Objects, [Key|Removed], Cache).
 
--spec expire_objects/1 :: (atom()) -> 'ok'.
+-spec expire_objects(atom()) -> 'ok'.
 expire_objects(Cache) ->
     Now = wh_util:current_tstamp(),
     FindSpec = [{#cache_obj{key = '$1', value = '$2', expires = '$3'
@@ -503,39 +511,39 @@ expire_objects(Cache) ->
     _ = maybe_exec_expired_callbacks(Objects, Cache),
     maybe_remove_objects([K || {_, K, _} <- Objects], Cache).
 
--spec maybe_exec_expired_callbacks/2 :: (list(), atom()) -> 'ok'.
-maybe_exec_expired_callbacks([], _) -> ok; 
+-spec maybe_exec_expired_callbacks(list(), atom()) -> 'ok'.
+maybe_exec_expired_callbacks([], _) -> ok;
 maybe_exec_expired_callbacks([{Fun, K, V}|Objects], Cache) when is_function(Fun, 3) ->
     _ = spawn(fun() -> Fun(K, V, expire) end),
     maybe_exec_expired_callbacks(Objects, Cache);
 maybe_exec_expired_callbacks([_|Objects], Cache) ->
     maybe_exec_expired_callbacks(Objects, Cache).
 
--spec maybe_remove_objects/2 :: (list(), atom()) -> 'ok'.
+-spec maybe_remove_objects(list(), atom()) -> 'ok'.
 maybe_remove_objects([], _) -> ok;
-maybe_remove_objects([Object|Objects], Cache) -> 
+maybe_remove_objects([Object|Objects], Cache) ->
     _ = maybe_remove_object(Object, Cache),
     maybe_remove_objects(Objects, Cache).
 
--spec maybe_remove_object/2 :: (term(), atom()) -> 'ok'.
+-spec maybe_remove_object(term(), atom()) -> non_neg_integer().
 maybe_remove_object(#cache_obj{key = Key}, Cache) ->
     maybe_remove_object(Key, Cache);
-maybe_remove_object(Key, Cache) -> 
+maybe_remove_object(Key, Cache) ->
     DeleteSpec = [{#cache_obj{value = '$1'
-                              ,type = pointer
+                              ,type = 'pointer'
                               ,_ = '_'}
                    ,[{'=:=', {const, Key}, '$1'}]
-                   ,[true]
+                   ,['true']
                   }
                   ,{#cache_obj{key = '$1'
-                               ,type = normal
+                               ,type = 'normal'
                                ,_ = '_'}
                     ,[{'=:=', {const, Key}, '$1'}]
-                    ,[true]
+                    ,['true']
                    }],
     ets:select_delete(Cache, DeleteSpec).
 
--spec maybe_exec_erase_callbacks/2 :: (term(), atom()) -> 'ok'.
+-spec maybe_exec_erase_callbacks(term(), atom()) -> 'ok'.
 maybe_exec_erase_callbacks(Key, Cache) ->
     case ets:lookup(Cache, Key) of
         [#cache_obj{callback=Fun
@@ -545,25 +553,27 @@ maybe_exec_erase_callbacks(Key, Cache) ->
         _Else -> ok
     end.
 
--spec maybe_exec_flush_callbacks/1 :: (atom()) -> 'ok'.
+-spec maybe_exec_flush_callbacks(atom()) -> 'ok'.
 maybe_exec_flush_callbacks(Cache) ->
     MatchSpec = [{#cache_obj{key = '$1'
                              ,value = '$2'
                              ,callback = '$3'
-                             , _ = '_'}
-                  ,[{'=/=', '$3', undefined}]
+                             , _ = '_'
+                            }
+                  ,[{'=/=', '$3', 'undefined'}]
                   ,[{{'$3', '$1', '$2'}}]
                  }],
-    _ = [spawn(fun() -> Callback(K, V, flush) end)
-         || {Callback, K, V} <- ets:select(Cache, MatchSpec)
+    _ = [spawn(fun() -> Callback(K, V, 'flush') end)
+         || {Callback, K, V} <- ets:select(Cache, MatchSpec),
+            is_function(Callback, 3)
         ],
     ok.
 
--spec maybe_exec_store_callbacks/3 :: (term(), term(), atom()) -> 'ok'.
+-spec maybe_exec_store_callbacks(term(), term(), atom()) -> 'ok'.
 maybe_exec_store_callbacks(Key, Value, Cache) ->
     MatchSpec = [{#cache_obj{value = '$1'
                              ,callback = '$2'
-                             ,type = monitor
+                             ,type = 'monitor'
                              ,_ = '_'
                             }
                   ,[{'=:=', '$1', {const, Key}}]
@@ -576,14 +586,14 @@ maybe_exec_store_callbacks(Key, Value, Cache) ->
     _ = delete_monitor_callbacks(Key, Cache),
     ok.
 
--spec delete_monitor_callbacks/2 :: (term(), atom()) -> 'ok'.
+-spec delete_monitor_callbacks(term(), atom()) -> non_neg_integer().
 delete_monitor_callbacks(Key, Cache) ->
     DeleteSpec = [{#cache_obj{value = '$1'
-                              ,type = monitor
+                              ,type = 'monitor'
                               ,_ = '_'
                              }
                    ,[{'=:=', '$1', {const, Key}}]
-                   ,[true]
+                   ,['true']
                   }
                  ],
     ets:select_delete(Cache, DeleteSpec).
