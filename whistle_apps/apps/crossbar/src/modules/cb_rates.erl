@@ -44,9 +44,7 @@ init() ->
 
 init_db() ->
     _ = couch_mgr:db_create(?WH_RATES_DB),
-    _ = couch_mgr:revise_doc_from_file(?WH_RATES_DB, crossbar, "views/rates.json"),
-    couch_mgr:load_doc_from_file(?WH_RATES_DB, crossbar, "fixtures/us-1.json").
-
+    couch_mgr:revise_doc_from_file(?WH_RATES_DB, crossbar, "views/rates.json").
 
 %%--------------------------------------------------------------------
 %% @private
