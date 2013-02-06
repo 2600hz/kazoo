@@ -104,7 +104,6 @@
                                   ,{<<"Application-Name">>, <<"deaf_participant">>}
                                  ]).
 -define(DEAF_PARTICIPANT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                 ,{<<"Participant">>, fun is_binary/1}
                                 ]).
 
 %% Conference Energy
@@ -117,7 +116,6 @@
                                     ,{<<"Application-Name">>, <<"participant_energy">>}
                                    ]).
 -define(PARTICIPANT_ENERGY_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                   ,{<<"Participant">>, fun is_binary/1}
                                   ]).
 
 %% Conference Kick
@@ -128,7 +126,6 @@
                       ,{<<"Application-Name">>, <<"kick">>}
                      ]).
 -define(KICK_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                     ,{<<"Participant">>, fun is_binary/1}
                     ]).
 
 %% Conference Participants Req
@@ -156,7 +153,6 @@
                       ,{<<"Application-Name">>, <<"lock">>}
                      ]).
 -define(LOCK_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                     ,{<<"Participant">>, fun is_binary/1}
                     ]).
 
 %% Conference Mute
@@ -167,7 +163,6 @@
                                   ,{<<"Application-Name">>, <<"mute_participant">>}
                                  ]).
 -define(MUTE_PARTICIPANT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                 ,{<<"Participant">>, fun is_binary/1}
                                 ]).
 
 %% Conference Play
@@ -179,7 +174,6 @@
                      ]).
 -define(PLAY_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                      ,{<<"Media-Name">>, fun is_binary/1}
-                     ,{<<"Participant-ID">>, fun is_binary/1}
                     ]).
 
 %% Conference Record
@@ -200,8 +194,6 @@
                                      ,{<<"Relationship">>, [<<"deaf">>, <<"mute">>, <<"clear">>]}
                                     ]).
 -define(RELATE_PARTICIPANTS_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                    ,{<<"Participant">>, fun is_binary/1}
-                                    ,{<<"Other-Participant">>, fun is_binary/1}
                                    ]).
 
 %% Conference Set
@@ -213,7 +205,6 @@
                      ,{<<"Parameter">>, [<<"Max-Members">>, <<"Caller-ID-Name">>, <<"Caller-ID-Number">>]}
                     ]).
 -define(SET_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                    ,{<<"Participant">>, fun is_binary/1}
                     ,{<<"Value">>, fun is_binary/1}
                    ]).
 
@@ -226,7 +217,6 @@
                            ,{<<"Affects">>, [<<"current">>, <<"all">>]}
                           ]).
 -define(STOP_PLAY_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                          ,{<<"Participant">>, fun is_binary/1}
                          ]).
 %% Conference Undeaf
 -define(UNDEAF_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant">>]).
@@ -236,7 +226,6 @@
                                     ,{<<"Application-Name">>, <<"undeaf_participant">>}
                                    ]).
 -define(UNDEAF_PARTICIPANT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                   ,{<<"Participant">>, fun is_binary/1}
                                   ]).
 
 %% Conference Unlock
@@ -247,7 +236,6 @@
                         ,{<<"Application-Name">>, <<"unlock">>}
                        ]).
 -define(UNLOCK_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                       ,{<<"Participant">>, fun is_binary/1}
                       ]).
 
 %% Conference Unmute
@@ -258,7 +246,6 @@
                                     ,{<<"Application-Name">>, <<"unmute_participant">>}
                                    ]).
 -define(UNMUTE_PARTICIPANT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                   ,{<<"Participant">>, fun is_binary/1}
                                   ]).
 
 %% Conference Set Volume In
@@ -271,7 +258,6 @@
                                        ,{<<"Application-Name">>, <<"participant_volume_in">>}
                                       ]).
 -define(PARTICIPANT_VOLUME_IN_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                      ,{<<"Participant">>, fun is_binary/1}
                                      ]).
 
 %% Conference Set Volume Out
@@ -284,7 +270,6 @@
                                         ,{<<"Application-Name">>, <<"participant_volume_out">>}
                                        ]).
 -define(PARTICIPANT_VOLUME_OUT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                       ,{<<"Participant">>, fun is_binary/1}
                                       ]).
 
 %% Conference Error

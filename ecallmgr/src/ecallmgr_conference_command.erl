@@ -22,7 +22,7 @@ exec(Focus, ConferenceId, JObj) ->
             send_response(App, {noop, Conference}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
             Command = wh_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
-            Focus =/= undefined andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
+            Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
             Result = freeswitch:api(Focus, 'conference', Command),
             send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj)
     end.
@@ -90,8 +90,8 @@ get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
         true ->
             UUID = wh_json:get_ne_value(<<"Call-ID">>, JObj, ConferenceId),
             Media = list_to_binary(["'", ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID, JObj), "'"]),
-            Args = case wh_json:get_value(<<"Participant">>, JObj) of
-                       undefined -> Media;
+            Args = case wh_json:get_binary_value(<<"Participant">>, JObj) of
+                       'undefined' -> Media;
                        Participant -> list_to_binary([Media, " ", Participant])
                    end,
             {<<"play">>, Args}

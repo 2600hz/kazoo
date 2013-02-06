@@ -670,30 +670,53 @@ get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
           end),
     {<<"fetch">>, noop};
 
-get_fs_app(_Node, UUID, JObj, <<"conference">>) ->
+get_fs_app(Node, UUID, JObj, <<"conference">>) ->
     case wapi_dialplan:conference_v(JObj) of
         false -> {'error', <<"conference failed to execute as JObj did not validate">>};
-        true -> get_conference_app(UUID, JObj)
+        true -> get_conference_app(Node, UUID, JObj)
     end;
 
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     lager:debug("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.
 
-get_conference_app(UUID, JObj) ->
+get_conference_app(Node, UUID, JObj) ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
     {ok, ChanNode} = ecallmgr_fs_channel:node(UUID),
 
+    Cmd = list_to_binary([ConfName, "@default"]),
+
     case ecallmgr_fs_conference:node(ConfName) of
-        {'error', 'not_found'} -> lager:debug("conference ~s hasn't been started yet", [ConfName]);
-        {ok, ChanNode} -> lager:debug("channel is on same node as conference");
+        {'error', 'not_found'} ->
+            lager:debug("conference ~s hasn't been started yet", [ConfName]),
+            {ok, _} = ecallmgr_util:send_cmd(Node, UUID, "conference", Cmd),
+
+            case wait_for_conference(ConfName) of
+                {ok, Node} -> lager:debug("conference has started on ~s", [Node]);
+                {ok, OtherNode} -> lager:debug("conference has started on other node ~s", [OtherNode]);
+                {error, _E} -> lager:debug("error waiting for conference: ~p", [_E])
+            end,
+            {<<"conference">>, noop};
+        {ok, ChanNode} ->
+            lager:debug("channel is on same node as conference"),
+            {<<"conference">>, Cmd};
         {ok, ConfNode} ->
             lager:debug("channel is on node ~s, conference is on ~s, moving channel"),
             true = ecallmgr_fs_channel:move(UUID, ChanNode, ConfNode),
-            lager:debug("channel has moved to ~s", [ConfNode])
-    end,
+            lager:debug("channel has moved to ~s", [ConfNode]),
+            {<<"conference">>, Cmd}
+    end.
 
-    {<<"conference">>, list_to_binary([ConfName, "@default"])}.
+wait_for_conference(ConfName) ->
+    case ecallmgr_fs_conference:node(ConfName) of
+        {ok, _N}=OK -> OK;
+        {error, not_found} ->
+            timer:sleep(100),
+            wait_for_conference(ConfName);
+        {error, multiple_conferences, Ns} ->
+            lager:debug("conference on multiple nodes: ~p", [Ns]),
+            {error, multiple_conferences}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

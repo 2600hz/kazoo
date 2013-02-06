@@ -177,9 +177,7 @@ handle_participants_resp(JObj, Props) ->
     true = wapi_conference:participants_resp_v(JObj),
     Srv = props:get_value(server, Props),
 
-    lager:debug("participants resp: ~p", [JObj]),
-
-    Participants = wh_json:get_value(<<"Participants">>, JObj, wh_json:new()),
+    Participants = wh_json:get_value(<<"Participants">>, JObj, []),
     gen_listener:cast(Srv, {sync_participant, Participants}).
 
 -spec handle_conference_error(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -191,7 +189,7 @@ handle_conference_error(JObj, Props) ->
     case wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj) of
         <<"participants">> ->
             Srv = props:get_value(server, Props),
-            gen_listener:cast(Srv, {sync_participant, wh_json:new()});
+            gen_listener:cast(Srv, {sync_participant, []});
         _Else ->
             ok
     end.
@@ -350,7 +348,7 @@ handle_cast({dtmf, Digit}, Participant) ->
 handle_cast(mute, #participant{participant_id=ParticipantId
                                ,conference=Conference
                               }=Participant) ->
-    lager:debug("received in-conference command, muting participant ~s", [ParticipantId]),
+    lager:debug("received in-conference command, muting participant ~p", [ParticipantId]),
     whapps_conference_command:mute_participant(ParticipantId, Conference),
     whapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference),
     {noreply, Participant#participant{muted='true'}};
@@ -358,7 +356,7 @@ handle_cast(mute, #participant{participant_id=ParticipantId
 handle_cast(unmute, #participant{participant_id=ParticipantId
                                  ,conference=Conference
                                 }=Participant) ->
-    lager:debug("received in-conference command, unmuting participant ~s", [ParticipantId]),
+    lager:debug("received in-conference command, unmuting participant ~p", [ParticipantId]),
     whapps_conference_command:unmute_participant(ParticipantId, Conference),
     whapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference),
     {noreply, Participant#participant{muted='false'}};
@@ -372,14 +370,14 @@ handle_cast(toggle_mute, #participant{muted='false'}=Participant) ->
 handle_cast(deaf, #participant{participant_id=ParticipantId
                                ,conference=Conference
                               }=Participant) ->
-    lager:debug("received in-conference command, making participant ~s deaf", [ParticipantId]),
+    lager:debug("received in-conference command, making participant ~p deaf", [ParticipantId]),
     whapps_conference_command:deaf_participant(ParticipantId, Conference),
     whapps_conference_command:prompt(<<"conf-deaf">>, ParticipantId, Conference),
     {noreply, Participant#participant{deaf='true'}};
 handle_cast(undeaf, #participant{participant_id=ParticipantId
                                  ,conference=Conference
                                 }=Participant) ->
-    lager:debug("received in-conference command, making participant ~s undeaf", [ParticipantId]),
+    lager:debug("received in-conference command, making participant ~p undeaf", [ParticipantId]),
     whapps_conference_command:undeaf_participant(ParticipantId, Conference),
     whapps_conference_command:prompt(<<"conf-undeaf">>, ParticipantId, Conference),
     {noreply, Participant#participant{deaf='false'}};
@@ -485,16 +483,14 @@ code_change(_OldVsn, Participant, _Extra) ->
 -spec find_participant(wh_proplist(), ne_binary()) ->
                                     {'ok', wh_json:object()} |
                                     {'error', 'not_found'}.
-find_participant([], _) -> {error, not_found};
+find_participant([], _) -> {'error', 'not_found'};
 find_participant([Participant|Participants], CallId) ->
     case wh_json:get_value(<<"Call-ID">>, Participant) of
         CallId -> {ok, Participant};
         _Else -> find_participant(Participants, CallId)
-    end;
-find_participant(_, _CallId) -> {error, not_found}.
+    end.
 
-
--spec sync_participant(wh_json:object(), whapps_call:call(), participant()) ->
+-spec sync_participant(wh_json:objects(), whapps_call:call(), participant()) ->
                               participant().
 sync_participant(Participants, Call, #participant{in_conference='false'
                                                   ,conference=Conference
@@ -504,9 +500,7 @@ sync_participant(Participants, Call, #participant{in_conference='false'
                 ) ->
     Moderator = whapps_conference:moderator(Conference),
 
-    lager:debug("participants: ~p", [Participants]),
-
-    case find_participant(wh_json:to_proplist(Participants), whapps_call:call_id(Call)) of
+    case find_participant(Participants, whapps_call:call_id(Call)) of
         {ok, JObj} when Moderator ->
             ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
             lager:debug("caller has joined the local conference as moderator ~s", [ParticipantId]),
@@ -563,10 +557,10 @@ sync_participant(Participants, Call, #participant{in_conference='false'
 sync_participant(Participants, Call, #participant{in_conference=true}=Participant) ->
     lager:debug("participants: ~p", [Participants]),
 
-    case find_participant(wh_json:to_proplist(Participants), whapps_call:call_id(Call)) of
+    case find_participant(Participants, whapps_call:call_id(Call)) of
         {ok, JObj} ->
             ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
-            lager:debug("caller has is still in the conference as participant ~s", [ParticipantId]),
+            lager:debug("caller has is still in the conference as participant ~p", [ParticipantId]),
             Deaf = not wh_json:is_true(<<"Hear">>, JObj),
             Muted = not wh_json:is_true(<<"Speak">>, JObj),
             Participant#participant{in_conference='true'

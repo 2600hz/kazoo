@@ -153,6 +153,9 @@ call_event(FSM, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, JObj) ->
 call_event(FSM, <<"call_event">>, <<"call_status_resp">>, JObj) ->
     gen_fsm:send_event(FSM, {call_status, JObj});
 
+call_event(FSM, <<"call_event">>, <<"channel_status_resp">>, JObj) ->
+    gen_fsm:send_event(FSM, {call_status, JObj});
+
 call_event(FSM, <<"error">>, <<"dialplan">>, JObj) ->
     _ = wh_util:put_callid(JObj),
     lager:debug("error event: ~s", [wh_json:get_value(<<"Error-Message">>, JObj)]),

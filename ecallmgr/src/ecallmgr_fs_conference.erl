@@ -44,10 +44,12 @@ new(Node, Props) ->
 
 -spec node(ne_binary()) ->
                   {'ok', atom()} |
-                  {'error', 'not_found'}.
+                  {'error', 'not_found'} |
+                  {'error', 'multiple_conferences', [atom(),...]}.
 node(ConfName) ->
     case ets:lookup(?CONFERENCES_TBL, ConfName) of
         [#conference{node=Node}] -> {'ok', Node};
+        [#conference{} | _]=Cs -> {'error', 'multiple_conferences', [N || #conference{node=N} <- Cs]};
         _ -> {'error', 'not_found'}
     end.
 
