@@ -54,7 +54,7 @@
                 ,responses :: wh_json:json_objects()
                 ,neg_resp :: wh_json:json_object()
                 ,neg_resp_count = 0 :: non_neg_integer()
-                ,neg_resp_threshold = 2 :: pos_integer()
+                ,neg_resp_threshold = 1 :: pos_integer()
                 ,req_timeout_ref :: reference()
                 ,req_start_time :: wh_now()
                 ,callid :: ne_binary()
@@ -207,7 +207,7 @@ send_request(CallID, Self, PublishFun, ReqProp) when is_function(PublishFun, 1) 
 init([Args]) ->
     put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting amqp worker"),
-    NegThreshold = props:get_value(neg_resp_threshold, Args, 2),
+    NegThreshold = props:get_value(neg_resp_threshold, Args, 1),
     Pool = props:get_value(name, Args, undefined),
     PoolName = pool_name_from_server_ref(Pool),
     wh_counter:inc(<<"amqp.pools.", PoolName/binary, ".available">>),
