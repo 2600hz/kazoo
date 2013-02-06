@@ -81,11 +81,18 @@ what(IO) when is_list(IO) -> iolist_to_binary(IO).
 
 init(_) ->
     _ = file:rename(?WEBSEQNAME, iolist_to_binary([?WEBSEQNAME, ".", wh_util:to_binary(wh_util:current_tstamp())])),
-    {ok, IO} = file:open(?WEBSEQNAME, [append, raw, delayed_write]),
-    {ok, #state{io_device=IO
-                ,who_registry=dict:new()
-               }}.
-
+    case file:open(?WEBSEQNAME, ['append', 'raw', 'delayed_write']) of
+        {'ok', IO} ->
+            {'ok', #state{io_device=IO
+                        ,who_registry=dict:new()
+                       }};
+        {'error', 'eaccess'} ->
+            lager:info("failed to open ~s, eaccess error - check permissions", [?WEBSEQNAME]),
+            'ignore';
+        {'error', _E} ->
+            lager:info("failed to open ~s, error: ~s", [?WEBSEQNAME, _E]),
+            'ignore'
+    end.
 
 handle_call({who, P}, _, #state{who_registry=Who}=State) when is_pid(P) ->
     PBin = wh_util:to_binary(pid_to_list(P)),
