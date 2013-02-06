@@ -64,6 +64,9 @@
                               ,admin = false
                               ,server = #server{}
                              }).
+-type couch_connection() :: #wh_couch_connection{}.
+
+-type couchbeam_db() :: #db{}.
 
 -define(WH_COUCH_HRL, true).
 -endif.

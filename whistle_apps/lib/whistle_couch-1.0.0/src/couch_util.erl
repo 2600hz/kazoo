@@ -239,7 +239,7 @@ get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 
 %% Design Doc/View internal functions
 
--spec do_fetch_results/3 :: (db(), ne_binary() | 'all_docs' | 'design_docs', wh_proplist()) ->
+-spec do_fetch_results/3 :: (couchbeam_db(), ne_binary() | 'all_docs' | 'design_docs', wh_proplist()) ->
                                     {'ok', wh_json:objects() | ne_binaries()} |
                                     couchbeam_error().
 do_fetch_results(Db, DesignDoc, Options) ->
@@ -257,7 +257,7 @@ format_error(E) ->
     lager:debug("unformatted error: ~p", [E]),
     E.
 
--spec do_fetch_results_count/3 :: (db(), ne_binary() | 'all_docs' | 'design_docs', wh_proplist()) ->
+-spec do_fetch_results_count/3 :: (couchbeam_db(), ne_binary() | 'all_docs' | 'design_docs', wh_proplist()) ->
                                           {'ok', integer() | 'undefined'} |
                                           couchbeam_error().
 do_fetch_results_count(Db, DesignDoc, Options) ->
@@ -278,7 +278,7 @@ do_fetch_results_count(Db, DesignDoc, Options) ->
        end
       ).
 
--spec do_get_design_info/2 :: (db(), ne_binary()) ->
+-spec do_get_design_info/2 :: (couchbeam_db(), ne_binary()) ->
                                       {'ok', wh_json:object()} |
                                       couchbeam_error().
 do_get_design_info(#db{}=Db, Design) ->
@@ -363,17 +363,17 @@ del_docs(#server{}=Conn, DbName, Doc) ->
     do_delete_docs(Db, Doc).
 
 %% Internal Doc functions
--spec do_delete_doc/2 :: (db(), wh_json:object()) ->
+-spec do_delete_doc/2 :: (couchbeam_db(), wh_json:object()) ->
                                  {'ok', wh_json:objects()}.
 do_delete_doc(#db{}=Db, Doc) ->
     do_delete_docs(Db, [Doc]).
 
--spec do_delete_docs/2 :: (db(), wh_json:objects()) ->
+-spec do_delete_docs/2 :: (couchbeam_db(), wh_json:objects()) ->
                                   {'ok', wh_json:objects()}.
 do_delete_docs(#db{}=Db, Docs) ->
     do_save_docs(Db, [wh_json:set_value(<<"_deleted">>, true, Doc) || Doc <- Docs], []).
 
--spec do_ensure_saved/3 :: (db(), wh_json:object(), wh_proplist()) ->
+-spec do_ensure_saved/3 :: (couchbeam_db(), wh_json:object(), wh_proplist()) ->
                                    {'ok', wh_json:object()} |
                                    couchbeam_error().
 do_ensure_saved(#db{}=Db, Doc, Opts) ->
@@ -389,19 +389,19 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
         {'error', _}=E -> E
     end.
 
--spec do_fetch_rev/2 :: (db(), ne_binary()) ->
+-spec do_fetch_rev/2 :: (couchbeam_db(), ne_binary()) ->
                                 ne_binary() |
                                 couchbeam_error().
 do_fetch_rev(#db{}=Db, DocId) ->
     ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId)).
 
--spec do_fetch_doc/3 :: (db(), ne_binary(), wh_proplist()) ->
+-spec do_fetch_doc/3 :: (couchbeam_db(), ne_binary(), wh_proplist()) ->
                                 {'ok', wh_json:object()} |
                                 couchbeam_error().
 do_fetch_doc(#db{}=Db, DocId, Options) ->
     ?RETRY_504(couchbeam:open_doc(Db, DocId, Options)).
 
--spec do_save_doc/3 :: (db(), wh_json:object() | wh_json:objects(), wh_proplist()) ->
+-spec do_save_doc/3 :: (couchbeam_db(), wh_json:object() | wh_json:objects(), wh_proplist()) ->
                                {'ok', wh_json:object()} |
                                couchbeam_error().
 do_save_doc(#db{}=Db, Docs, Options) when is_list(Docs) ->
@@ -414,7 +414,7 @@ do_save_doc(#db{}=Db, Doc, Options) ->
         Else -> Else
     end.
 
--spec do_save_docs/3 :: (db(), wh_json:objects(), wh_proplist()) ->
+-spec do_save_docs/3 :: (couchbeam_db(), wh_json:objects(), wh_proplist()) ->
                                 {'ok', wh_json:objects()} |
                                 couchbeam_error().
 do_save_docs(#db{}=Db, Docs, Options) ->
@@ -427,7 +427,7 @@ maybe_set_docid(Doc) ->
         _ -> Doc
     end.
 
--spec do_save_docs/4 :: (db(), wh_json:objects(), wh_proplist(), wh_json:objects()) ->
+-spec do_save_docs/4 :: (couchbeam_db(), wh_json:objects(), wh_proplist(), wh_json:objects()) ->
                                 {'ok', wh_json:objects()} |
                                 couchbeam_error().
 do_save_docs(#db{}=Db, Docs, Options, Acc) ->
@@ -436,12 +436,7 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
             case ?RETRY_504(couchbeam:save_docs(Db, [maybe_set_docid(D) || D <- Docs], Options)) of
                 {ok, Res} ->
                     JObjs = Res++Acc,
-                    spawn(fun() ->
-                                  case lists:any(fun(Doc) -> wh_json:is_true(<<"_deleted">>, Doc) end, Docs) of
-                                      true -> publish_doc(<<"deleted">>, Db, JObjs);
-                                      false -> publish_doc(Db, JObjs)
-                                  end
-                          end),
+                    publish_doc_change(Db, Docs, JObjs),
                     {ok, JObjs};
                 {error, _}=E -> E
             end;
@@ -451,6 +446,14 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
                 {error, _}=E -> E
             end
     end.
+
+publish_doc_change(Db, Docs, JObjs) ->
+    spawn(fun() ->
+                  case lists:any(fun(Doc) -> wh_json:is_true(<<"_deleted">>, Doc) end, Docs) of
+                      true -> publish_doc('deleted', Db, JObjs);
+                      false -> [publish_doc(Db, JObj) || JObj <- JObjs]
+                  end
+          end).
 
 %% Attachment-related functions ------------------------------------------------
 -spec fetch_attachment/4 :: (server(), ne_binary(), ne_binary(), ne_binary()) ->
@@ -493,25 +496,25 @@ delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
     do_del_attachment(Db, DocId, AName,  maybe_add_rev(Db, DocId, Options)).
 
 %% Internal Attachment-related functions ---------------------------------------
--spec do_fetch_attachment/3 :: (db(), ne_binary(), ne_binary()) ->
+-spec do_fetch_attachment/3 :: (couchbeam_db(), ne_binary(), ne_binary()) ->
                                        {'ok', binary()} |
                                        couchbeam_error().
 do_fetch_attachment(#db{}=Db, DocId, AName) ->
     ?RETRY_504(couchbeam:fetch_attachment(Db, DocId, AName)).
 
--spec do_stream_attachment/4 :: (db(), ne_binary(), ne_binary(), pid()) ->
+-spec do_stream_attachment/4 :: (couchbeam_db(), ne_binary(), ne_binary(), pid()) ->
                                         {'ok', reference()} |
                                         couchbeam_error().
 do_stream_attachment(#db{}=Db, DocId, AName, Caller) ->
     couchbeam:stream_fetch_attachment(Db, DocId, AName, Caller).
 
--spec do_put_attachment/5 :: (db(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
+-spec do_put_attachment/5 :: (couchbeam_db(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                                      {'ok', wh_json:object()} |
                                      couchbeam_error().
 do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
     ?RETRY_504(couchbeam:put_attachment(Db, DocId, AName, Contents, Options)).
 
--spec do_del_attachment/4 :: (db(), ne_binary(), ne_binary(), wh_proplist()) ->
+-spec do_del_attachment/4 :: (couchbeam_db(), ne_binary(), ne_binary(), wh_proplist()) ->
                                      {'ok', wh_json:object()} |
                                      couchbeam_error().
 do_del_attachment(#db{}=Db, DocId, AName, Options) ->
@@ -537,7 +540,7 @@ get_db(#server{}=Conn, DbName) ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_add_rev/3 :: (db(), ne_binary(), proplist()) -> proplist().
+-spec maybe_add_rev/3 :: (couchbeam_db(), ne_binary(), proplist()) -> proplist().
 maybe_add_rev(Db, DocId, Options) ->
     case props:get_value(rev, Options) =:= undefined
         andalso do_fetch_rev(Db, DocId)
@@ -545,7 +548,7 @@ maybe_add_rev(Db, DocId, Options) ->
         ?NE_BINARY = Rev ->
             [{rev, Rev} | Options];
         _Else -> Options
-    end.    
+    end.
 
 %%------------------------------------------------------------------------------
 %% @private
@@ -591,19 +594,19 @@ retry504s(Fun, Cnt) ->
         OK -> OK
     end.
 
--spec publish_doc/2 :: (#db{} | ne_binary(), wh_json:object()) -> 'ok'.
+-spec publish_doc/2 :: (couchbeam_db(), wh_json:object()) -> 'ok'.
 publish_doc(Db, Doc) ->
     Action = case wh_json:is_true(<<"pvt_deleted">>, Doc) of
-                 true -> <<"deleted">>;
-                 false -> 
+                 true -> 'deleted';
+                 false ->
                      case wh_json:get_value(<<"_rev">>, Doc) of
-                         <<"1-", _/binary>> -> <<"created">>;
-                         _Else -> <<"edited">>
+                         <<"1-", _/binary>> -> 'created';
+                         _Else -> 'edited'
                      end
              end,
     publish_doc(Action, Db, Doc).
 
--spec publish_doc/3 :: (ne_binary(), #db{} | ne_binary(), wh_json:object()) -> 'ok'.
+-spec publish_doc/3 :: (wapi_conf:action(), #db{} | ne_binary(), wh_json:object() | wh_json:objects()) -> 'ok'.
 publish_doc(Action, #db{name=DbName}, Doc) ->
     publish_doc(Action, wh_util:to_binary(DbName), Doc);
 publish_doc(_, _, []) -> ok;
@@ -611,7 +614,7 @@ publish_doc(Action, Db, [Doc|Docs]) ->
     case wh_json:get_ne_value(<<"_id">>, Doc) of
         undefined -> ok;
         <<"_design/", _/binary>> -> ok;
-        Id ->            
+        Id ->
             Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
             Props =
                 [{<<"ID">>, Id}
@@ -621,12 +624,11 @@ publish_doc(Action, Db, [Doc|Docs]) ->
                  ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
                  ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
                  ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
-                 | wh_api:default_headers(<<"configuration">>, <<"doc_", Action/binary>>
+                 | wh_api:default_headers(<<"configuration">>, <<"doc_", (wh_util:to_binary(Action))/binary>>
                                               ,<<"whistle_couch">>, <<"1.0.0">>)
                 ],
             wapi_conf:publish_doc_update(Action, Db, Type, Id, Props)
     end,
     publish_doc(Action, Db, Docs);
 publish_doc(Action, Db, Doc) ->
-    publish_doc(Action, Db, [Doc]).    
-
+    publish_doc(Action, Db, [Doc]).

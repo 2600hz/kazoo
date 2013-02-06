@@ -121,14 +121,12 @@ store(K, V) -> store(K, V, []).
 
 store(K, V, Props) -> store_local(?SERVER, K, V, Props).
 
--spec peek(term()) ->
-                        {'ok', term()} |
-                        {'error', 'not_found'}.
+-spec peek(term()) -> {'ok', term()} |
+                      {'error', 'not_found'}.
 peek(K) -> peek_local(?SERVER, K).
 
--spec fetch(term()) ->
-                         {'ok', term()} |
-                         {'error', 'not_found'}.
+-spec fetch(term()) -> {'ok', term()} |
+                       {'error', 'not_found'}.
 fetch(K) -> fetch_local(?SERVER, K).
 
 -spec erase(term()) -> 'ok'.

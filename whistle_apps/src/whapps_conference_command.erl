@@ -28,8 +28,10 @@
 -export([participant_volume_in/3]).
 -export([participant_volume_out/3]).
 
--spec search/1 :: (whapps_conference:conference()) -> ne_binary().
--spec search/2 :: (SearchId, whapps_conference:conference()) -> SearchId.
+-export([send_command/2]).
+
+-spec search(whapps_conference:conference()) -> ne_binary().
+-spec search(SearchId, whapps_conference:conference()) -> SearchId.
 
 search(Conference) ->
     search('undefined', Conference).
@@ -49,14 +51,14 @@ search(SearchId, Conference) ->
     wapi_conference:publish_search_req(Search),
     SearchId.
 
--spec deaf_participant/2 :: (non_neg_integer(), whapps_conference:conference()) -> 'ok'.
+-spec deaf_participant(non_neg_integer(), whapps_conference:conference()) -> 'ok'.
 deaf_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"deaf_participant">>}
                ,{<<"Participant">>, ParticipantId}
               ],
     send_command(Command, Conference).
 
--spec participant_energy/3 :: (non_neg_integer(),  ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec participant_energy(non_neg_integer(),  ne_binary(), whapps_conference:conference()) -> 'ok'.
 participant_energy(ParticipantId, EnergyLevel, Conference) ->
     Command = [{<<"Application-Name">>, <<"participant_energy">>}
                ,{<<"Participant">>, ParticipantId}
@@ -64,8 +66,8 @@ participant_energy(ParticipantId, EnergyLevel, Conference) ->
               ],
     send_command(Command, Conference).
 
--spec kick/1 :: (whapps_conference:conference()) -> 'ok'.
--spec kick/2 :: (non_neg_integer() | 'undefined', whapps_conference:conference()) -> 'ok'.
+-spec kick(whapps_conference:conference()) -> 'ok'.
+-spec kick(non_neg_integer() | 'undefined', whapps_conference:conference()) -> 'ok'.
 
 kick(Conference) ->
     kick('undefined', Conference).
@@ -75,33 +77,33 @@ kick(ParticipantId, Conference) ->
               ],
     send_command(Command, Conference).
 
--spec participants/1 :: (whapps_conference:conference()) -> 'ok'.
+-spec participants(whapps_conference:conference()) -> 'ok'.
 participants(Conference) ->
     Command = [{<<"Application-Name">>, <<"participants">>}],
     send_command(Command, Conference).
 
--spec lock/1 :: (whapps_conference:conference()) -> 'ok'.
+-spec lock(whapps_conference:conference()) -> 'ok'.
 lock(Conference) ->
     Command = [{<<"Application-Name">>, <<"lock">>}],
     send_command(Command, Conference).
 
--spec mute_participant/2 :: (non_neg_integer(), whapps_conference:conference()) -> 'ok'.
+-spec mute_participant(non_neg_integer(), whapps_conference:conference()) -> 'ok'.
 mute_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"mute_participant">>}
                ,{<<"Participant">>, ParticipantId}
               ],
     send_command(Command, Conference).
 
--spec prompt/2 :: (ne_binary(), whapps_conference:conference()) -> 'ok'.
--spec prompt/3 :: (ne_binary(), non_neg_integer() | 'undefined', whapps_conference:conference()) -> 'ok'.
+-spec prompt(ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec prompt(ne_binary(), non_neg_integer() | 'undefined', whapps_conference:conference()) -> 'ok'.
 
 prompt(Media, Conference) ->
     prompt(Media, 'undefined', Conference).
 prompt(Media, ParticipantId, Conference) ->
     play(whapps_util:get_prompt(Media, 'undefined'), ParticipantId, Conference).
 
--spec play/2 :: (ne_binary(), whapps_conference:conference()) -> 'ok'.
--spec play/3 :: (ne_binary(), non_neg_integer() | 'undefined', whapps_conference:conference()) -> 'ok'.
+-spec play(ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec play(ne_binary(), non_neg_integer() | 'undefined', whapps_conference:conference()) -> 'ok'.
 
 play(Media, Conference) ->
     play(Media, 'undefined', Conference).
@@ -112,13 +114,13 @@ play(Media, ParticipantId, Conference) ->
               ],
     send_command(Command, Conference).
 
--spec record/1 :: (whapps_conference:conference()) -> 'ok'.
+-spec record(whapps_conference:conference()) -> 'ok'.
 record(Conference) ->
     Command = [{<<"Application-Name">>, <<"record">>}],
     send_command(Command, Conference).
 
--spec relate_participants/3 :: (non_neg_integer(), non_neg_integer(), whapps_conference:conference()) -> 'ok'.
--spec relate_participants/4 :: (non_neg_integer(), non_neg_integer(), api_binary(), whapps_conference:conference()) -> 'ok'.
+-spec relate_participants(non_neg_integer(), non_neg_integer(), whapps_conference:conference()) -> 'ok'.
+-spec relate_participants(non_neg_integer(), non_neg_integer(), api_binary(), whapps_conference:conference()) -> 'ok'.
 
 relate_participants(ParticipantId, OtherParticipantId, Conference) ->
     relate_participants(ParticipantId, OtherParticipantId, 'undefined', Conference).
@@ -131,9 +133,9 @@ relate_participants(ParticipantId, OtherParticipantId, Relationship, Conference)
               ],
     send_command(Command, Conference).
 
--spec stop_play/1 :: (whapps_conference:conference()) -> 'ok'.
--spec stop_play/2 :: (non_neg_integer() | 'undefined', whapps_conference:conference()) -> 'ok'.
--spec stop_play/3 :: (non_neg_integer() | 'undefined', api_binary(), whapps_conference:conference()) -> 'ok'.
+-spec stop_play(whapps_conference:conference()) -> 'ok'.
+-spec stop_play(non_neg_integer() | 'undefined', whapps_conference:conference()) -> 'ok'.
+-spec stop_play(non_neg_integer() | 'undefined', api_binary(), whapps_conference:conference()) -> 'ok'.
 
 stop_play(Conference) ->
     stop_play('undefined', Conference).
@@ -148,26 +150,26 @@ stop_play(ParticipantId, Affects, Conference) ->
               ],
     send_command(Command, Conference).
 
--spec undeaf_participant/2 :: (non_neg_integer(), whapps_conference:conference()) -> 'ok'.
+-spec undeaf_participant(non_neg_integer(), whapps_conference:conference()) -> 'ok'.
 undeaf_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"undeaf_participant">>}
                ,{<<"Participant">>, ParticipantId}
               ],
     send_command(Command, Conference).
 
--spec unlock/1 :: (whapps_conference:conference()) -> 'ok'.
+-spec unlock(whapps_conference:conference()) -> 'ok'.
 unlock(Conference) ->
     Command = [{<<"Application-Name">>, <<"unlock">>}],
     send_command(Command, Conference).
 
--spec unmute_participant/2 :: (non_neg_integer(), whapps_conference:conference()) -> 'ok'.
+-spec unmute_participant(non_neg_integer(), whapps_conference:conference()) -> 'ok'.
 unmute_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"unmute_participant">>}
                ,{<<"Participant">>, ParticipantId}
               ],
     send_command(Command, Conference).
 
--spec participant_volume_in/3 :: (non_neg_integer(),  ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec participant_volume_in(non_neg_integer(),  ne_binary(), whapps_conference:conference()) -> 'ok'.
 participant_volume_in(ParticipantId, VolumeIn, Conference) ->
     Command = [{<<"Application-Name">>, <<"participant_energy">>}
                ,{<<"Participant">>, ParticipantId}
@@ -175,7 +177,7 @@ participant_volume_in(ParticipantId, VolumeIn, Conference) ->
               ],
     send_command(Command, Conference).
 
--spec participant_volume_out/3 :: (non_neg_integer(),  ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec participant_volume_out(non_neg_integer(),  ne_binary(), whapps_conference:conference()) -> 'ok'.
 participant_volume_out(ParticipantId, VolumeOut,Conference) ->
     Command = [{<<"Application-Name">>, <<"participant_energy">>}
                ,{<<"Participant">>, ParticipantId}
@@ -183,7 +185,7 @@ participant_volume_out(ParticipantId, VolumeOut,Conference) ->
               ],
     send_command(Command, Conference).
 
--spec send_command/2 :: (wh_proplist(), whapps_conference:conference()) -> 'ok'.
+-spec send_command(wh_proplist(), whapps_conference:conference()) -> 'ok'.
 send_command(Command, Conference) ->
     Q = whapps_conference:controller_queue(Conference),
     ConferenceId = whapps_conference:id(Conference),
