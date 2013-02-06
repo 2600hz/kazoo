@@ -102,8 +102,9 @@ create_port_in(#number{auth_by=undefined}=N) ->
 create_port_in(#number{number=Number, assign_to=AssignTo
                        ,auth_by=AuthBy, number_doc=Doc}=N) ->
     Num = wnm_util:normalize_number(Number),
+    ModuleName = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"porting_module_name">>, <<"wnm_local">>),
     Updates = [{<<"_id">>, Num}
-               ,{<<"pvt_module_name">>, <<"wnm_local">>}
+               ,{<<"pvt_module_name">>, ModuleName}
                ,{<<"pvt_module_data">>, wh_json:new()}
                ,{<<"pvt_number_state">>, <<"port_in">>}
                ,{<<"pvt_ported_in">>, true}
