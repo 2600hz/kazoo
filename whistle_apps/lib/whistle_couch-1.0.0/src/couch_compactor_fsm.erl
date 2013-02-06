@@ -43,8 +43,7 @@
          ,wait/2, wait/3                       % FSM is waiting to compact the next thing
         ]).
 
--include_lib("whistle_couch/include/wh_couch.hrl").
--include_lib("whistle/include/wh_databases.hrl").
+-include("wh_couch.hrl").
 
 -define(SLEEP_BETWEEN_COMPACTION, 60000).
 -define(SLEEP_BETWEEN_POLL, 1000).

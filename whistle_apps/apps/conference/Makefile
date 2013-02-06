@@ -29,7 +29,7 @@ compile: ebin/$(PROJECT).app
 
 ebin/$(PROJECT).app: src/*.erl
 	@mkdir -p ebin/
-	erlc -v $(ERLC_OPTS) -o ebin/ $?
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ src/wh_gen_changes.erl $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
@@ -39,7 +39,7 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
+	erlc -v $(ERLC_OPTS)  -o test/ -pa test/ src/wh_gen_changes.erl $?
 
 clean:
 	rm -f ebin/*

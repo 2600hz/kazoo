@@ -18,8 +18,7 @@
          ,code_change/3
         ]).
 
--include_lib("whistle_couch/include/wh_couch.hrl").
--include_lib("whistle/include/wh_databases.hrl").
+-include("wh_couch.hrl").
 
 -define(SERVER, ?MODULE).
 -record(state, {}).
