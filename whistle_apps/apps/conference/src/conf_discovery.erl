@@ -125,7 +125,7 @@ handle_discovery_req(JObj, Props) ->
                ],
 
     Conf0 = case wh_json:get_value(<<"Conference-Doc">>, JObj) of
-                undefined -> whapps_conference:new();
+                'undefined' -> whapps_conference:new();
                 Doc -> whapps_conference:from_conference_doc(Doc)
             end,
 
@@ -150,8 +150,8 @@ handle_discovery_req(JObj, Props) ->
 search_for_conference(Conference, Srv) ->
     conf_participant:set_conference(Conference, Srv),
     SearchId = couch_mgr:get_uuid(),
-    CacheProps = [{expires, 300}],
-    wh_cache:store_local(?CONFERENCE_CACHE, {?MODULE, discovery, SearchId}, Srv, CacheProps),
+    CacheProps = [{'expires', 300}],
+    wh_cache:store_local(?CONFERENCE_CACHE, {?MODULE, 'discovery', SearchId}, Srv, CacheProps),
     lager:debug("publishing conference search request ~s", [SearchId]),
     _ = whapps_conference_command:search(SearchId, Conference).
 %% whapps_call_command:prompt(<<"conf-joining_conference">>, Call).
@@ -176,17 +176,17 @@ handle_search_error(JObj, _Props) ->
     lager:debug("participant switch nodename '~p'", [whapps_call:switch_nodename(Call)]),
     [_, SwitchHostname] = binary:split(whapps_call:switch_nodename(Call), <<"@">>),
     case negotiate_focus(SwitchHostname, Conference, Call) of
-        {ok, _} ->
+        {'ok', _} ->
             lager:debug("conference is not currently running but our update was accepted, starting on ~s", [SwitchHostname]),
             conf_participant:join_local(Srv);
-        {error, conflict} ->
+        {'error', 'conflict'} ->
             lager:debug("conference is not currently running but our update was in conflict, searching again"),
             whapps_conference_command:search(SearchId, Conference);
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("conference is not currently running but our update failed: ~p", [_R]),
             %% TODO: send discovery error
             %%    {ok, DiscoveryReq} = conf_participant:discovery_event(Srv),
-            ok
+            'ok'
     end.
 
 -spec handle_search_resp(wh_json:object(), wh_proplist()) -> 'ok'.
