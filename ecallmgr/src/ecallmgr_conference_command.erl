@@ -58,15 +58,13 @@ get_conf_command(<<"kick">>, _Focus, _ConferenceId, JObj) ->
             {<<"hup">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
     end;
 
-get_conf_command(<<"participants">>, undefined, ConferenceId, _) ->
+get_conf_command(<<"participants">>, 'undefined', ConferenceId, _) ->
     {error, <<"Non-Existant ID ", ConferenceId/binary>>};
 
-get_conf_command(<<"participants">>, Focus, ConferenceId, JObj) ->
+get_conf_command(<<"participants">>, _Focus, ConferenceId, JObj) ->
     case wapi_conference:participants_req_v(JObj) of
-        false ->
-            {'error', <<"conference participants failed to execute as JObj did not validate.">>};
-        true ->
-            {noop, wh_json:get_value(ConferenceId, ecallmgr_conference_listener:conferences_on_node(Focus))}
+        false -> {'error', <<"conference participants failed to execute as JObj did not validate.">>};
+        true -> {'noop', ecallmgr_fs_conference:participants_list(ConferenceId)}
     end;
 
 get_conf_command(<<"lock">>, _Focus, _ConferenceId, JObj) ->

@@ -68,9 +68,8 @@
 -define(SEARCH_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 %% Conference Search Response
--define(SEARCH_RESP_HEADERS, [<<"Conference-ID">>, <<"Participant-Count">>, <<"Switch-Hostname">>]).
--define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"Switch-URL">>, <<"Switch-External-IP">>, <<"Rate">>
-                                           ,<<"UUID">>, <<"Running">>, <<"Answered">>, <<"Dynamic">>
+-define(SEARCH_RESP_HEADERS, [<<"Conference-ID">>, <<"Participant-Count">>]).
+-define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"UUID">>, <<"Running">>, <<"Answered">>, <<"Dynamic">>
                                            ,<<"Run-Time">>, <<"Participants">>, <<"Locked">>
                                       ]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}

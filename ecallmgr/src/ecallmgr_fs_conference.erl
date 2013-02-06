@@ -11,10 +11,17 @@
 -export([show_all/0
          ,new/2
          ,node/1
-         ,destroy/2, participant_destroy/2
+         ,destroy/2
+         ,all/0, all/1, all/2
          ,event/3
          ,size/1, set_size/2
          ,xml_list_to_records/2
+         ,fetch/1, fetch_full/1
+
+         %% Participant-specific
+         ,participant_destroy/2
+         ,participants_list/1
+         ,participant_record_to_json/1
         ]).
 
 -compile([{no_auto_import, [node/1]}]).
@@ -25,8 +32,10 @@
 
 -spec show_all() -> wh_json:objects().
 show_all() ->
-    ets:foldl(fun(Channel, Acc) ->
-                      [record_to_json(Channel) | Acc]
+    ets:foldl(fun(#conference{}=Conf, Acc) ->
+                      [record_to_json(Conf) | Acc];
+                 (#participant{}=P, Acc) ->
+                      [participant_record_to_json(P) | Acc]
               end, [], ?CONFERENCES_TBL).
 
 -spec new(atom(), wh_proplist()) -> 'ok'.
@@ -41,6 +50,19 @@ node(ConfName) ->
         [#conference{node=Node}] -> {'ok', Node};
         _ -> {'error', 'not_found'}
     end.
+
+-type format() :: 'json' | 'record'.
+
+-spec all() -> conferences().
+-spec all(atom()) -> conferences().
+-spec all(atom(), format()) -> conferences().
+all() -> all('all', 'record').
+all(Node) -> all(Node, 'record').
+
+all('all', 'record') -> ets:match_object(?CONFERENCES_TBL, #conference{_='_'});
+all(Node, 'record') -> ets:match_object(?CONFERENCES_TBL, #conference{node=Node, _='_'});
+all('all', 'json') -> [record_to_json(C) || C <- all('all', 'record')];
+all(Node, 'json') -> [record_to_json(C) || C <- all(Node, 'record')].
 
 -spec destroy(atom(), wh_proplist()) -> 'ok'.
 destroy(Node, Props) ->
@@ -60,6 +82,34 @@ size(ConfId) ->
 set_size(ConfId, Size) when is_integer(Size) ->
     gen_server:cast(?NODES_SRV, {conference_update, ConfId, {#conference.participants, Size}}).
 
+-spec fetch(ne_binary()) ->
+                   {'ok', wh_json:object()} |
+                   {'error', 'not_found'}.
+fetch(ConfId) ->
+    case ets:lookup(?CONFERENCES_TBL, ConfId) of
+        [Conf] -> {'ok', record_to_json(Conf)};
+        _Else -> {'error', 'not_found'}
+    end.
+
+-spec fetch_full(ne_binary()) ->
+                        {'ok', wh_json:object()} |
+                        {'error', 'not_found'}.
+fetch_full(ConfId) ->
+    case ets:lookup(?CONFERENCES_TBL, ConfId) of
+        [Conf] -> add_participants_to_conference_json(ConfId, record_to_json(Conf));
+        _Else -> {'error', 'not_found'}
+   end.
+
+add_participants_to_conference_json(ConfId, ConfJObj) ->
+    {'ok', wh_json:set_value(<<"Participants">>, participants_list(ConfId), ConfJObj)}.
+
+-spec participants_list/1 :: (ne_binary()) -> wh_json:objects().
+participants_list(ConfId) ->
+    case ets:match_object(?CONFERENCES_TBL, #participant{conference_name=ConfId, _='_'}) of
+        [] -> [];
+        Ps -> [participant_record_to_json(P) || P <- Ps]
+    end.
+
 props_to_record(Props, Node) ->
     #conference{node=Node
                 ,uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
@@ -77,8 +127,8 @@ props_to_participant_record(Node, Props) ->
                  ,speak=props:get_is_true(<<"Speak">>, Props, 'true')
                  ,talking=props:get_is_true(<<"Talking">>, Props, 'false')
                  ,mute_detect=props:get_is_true(<<"Mute-Detect">>, Props, 'false')
-                 ,member_id=props:get_integer_value(<<"Member-ID">>, Props, 0)
-                 ,member_type=props:get_value(<<"Member-Type">>, Props)
+                 ,member_id=props:get_integer_value(<<"Participant-ID">>, Props, 0)
+                 ,member_type=props:get_value(<<"Participant-Type">>, Props)
                  ,energy_level=props:get_integer_value(<<"Energy-Level">>, Props, 0)
                  ,current_energy=props:get_integer_value(<<"Current-Energy">>, Props, 0)
                  ,video=props:get_is_true(<<"Video">>, Props, 'false')
@@ -120,19 +170,60 @@ xml_members_to_records([#xmlElement{name='members'
 xml_members_to_records([_El|Els], Node) ->
     xml_members_to_records(Els, Node).
 
-record_to_json(#conference{node=Node
-                           ,uuid=UUID
+record_to_json(#conference{uuid=UUID
                            ,name=Name
                            ,participants=Participants
                            ,profile_name=Profile
+                           ,with_floor=WithFloor
+                           ,lost_floor=LostFloor
+                           ,running=Running
+                           ,answered=Answered
+                           ,dynamic=Dynamic
+                           ,run_time=RunTime
                           }) ->
     wh_json:from_list(
       props:filter_undefined(
-        [{<<"Node">>, Node}
-         ,{<<"UUID">>, UUID}
-         ,{<<"Name">>, Name}
-         ,{<<"Participants">>, Participants}
+        [{<<"UUID">>, UUID}
+         ,{<<"Conference-ID">>, Name}
+         ,{<<"Participant-Count">>, Participants}
          ,{<<"Profile">>, Profile}
+         ,{<<"Participant-With-Floor">>, WithFloor}
+         ,{<<"Particiapnt-Lost-Floor">>, LostFloor}
+         ,{<<"Running">>, Running}
+         ,{<<"Answered">>, Answered}
+         ,{<<"Dynamic">>, Dynamic}
+         ,{<<"Run-Time">>, RunTime}
+        ])).
+
+participant_record_to_json(#participant{uuid=UUID
+                                        ,conference_name=ConfName
+                                        ,floor=Floor
+                                        ,hear=Hear
+                                        ,speak=Speak
+                                        ,talking=Talking
+                                        ,mute_detect=MuteDetect
+                                        ,member_id=MemberId
+                                        ,member_type=MemberType
+                                        ,energy_level=EnergyLevel
+                                        ,current_energy=CurrentEnergy
+                                        ,video=Video
+                                        ,is_moderator=IsMod
+                                       }) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Channel-ID">>, UUID}
+         ,{<<"Conference-Name">>, ConfName}
+         ,{<<"Floor">>, Floor}
+         ,{<<"Hear">>, Hear}
+         ,{<<"Speak">>, Speak}
+         ,{<<"Talking">>, Talking}
+         ,{<<"Mute-Detect">>, MuteDetect}
+         ,{<<"Member-ID">>, MemberId}
+         ,{<<"Member-Type">>, MemberType}
+         ,{<<"Energy-Level">>, EnergyLevel}
+         ,{<<"Current-Energy">>, CurrentEnergy}
+         ,{<<"Video">>, Video}
+         ,{<<"Is-Moderator">>, IsMod}
         ])).
 
 event(Node, 'undefined', Props) ->
@@ -172,15 +263,15 @@ update_conference(Node, Props) ->
                                  ,[{#conference.node, Node} | conference_fields(Props)]
                                 }).
 
--define(CONF_FIELDS, [{<<"Conference-Unique-ID">>, #conference.uuid}
+-define(FS_CONF_FIELDS, [{<<"Conference-Unique-ID">>, #conference.uuid}
                       ,{<<"Conference-Size">>, #conference.participants, fun props:get_integer_value/2}
                       ,{<<"Conference-Profile-Name">>, #conference.profile_name}
                       ,{<<"New-ID">>, #conference.with_floor, fun safe_integer_get/3, 0}
                       ,{<<"Old-ID">>, #conference.lost_floor, fun safe_integer_get/3, 0}
                      ]).
-conference_fields(Props) -> fields(Props, ?CONF_FIELDS).
+conference_fields(Props) -> fields(Props, ?FS_CONF_FIELDS).
 
--define(PARTICIPANT_FIELDS, [{<<"Floor">>, #participant.floor, fun props:get_is_true/2}
+-define(FS_PARTICIPANT_FIELDS, [{<<"Floor">>, #participant.floor, fun props:get_is_true/2}
                              %,{<<"Unique-ID">>, #participant.uuid}
                              ,{<<"Conference-Name">>, #participant.conference_name}
                              ,{<<"Hear">>, #participant.hear, fun props:get_is_true/2}
@@ -189,11 +280,13 @@ conference_fields(Props) -> fields(Props, ?CONF_FIELDS).
                              ,{<<"Mute-Detect">>,#participant.mute_detect, fun props:get_is_true/2}
                              ,{<<"Member-ID">>, #participant.member_id, fun props:get_integer_value/2}
                              ,{<<"Member-Type">>, #participant.member_type}
+                             ,{<<"Participant-ID">>, #participant.member_id, fun props:get_integer_value/2}
+                             ,{<<"Participant-Type">>, #participant.member_type}
                              ,{<<"Energy-Level">>, #participant.energy_level, fun props:get_integer_value/2}
                              ,{<<"Current-Energy">>, #participant.current_energy, fun props:get_integer_value/2}
                              ,{<<"Video">>, #participant.video, fun props:get_is_true/2}
                             ]).
-participant_fields(Props) -> fields(Props, ?PARTICIPANT_FIELDS).
+participant_fields(Props) -> fields(Props, ?FS_PARTICIPANT_FIELDS).
 
 fields(Props, Fields) ->
     lists:foldl(fun(K, Acc) -> maybe_include_key(K, Acc, Props) end, [], Fields).
