@@ -17,7 +17,7 @@
 
 {application, edown,
  [
-  {vsn, git},
+  {vsn, "0.0.1"},
   {description, "Markdown extension for EDoc"},
   {applications, [kernel, stdlib, edoc]},
   {env, []}
