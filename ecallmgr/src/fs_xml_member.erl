@@ -81,6 +81,19 @@ update_from_flags(P, [#xmlElement{name='is_moderator'
                                  }
                      |Els]) ->
     update_from_flags(P#participant{is_moderator=wh_util:is_true(xml_text_to_binary(IsMod))}, Els);
+
+update_from_flags(P, [#xmlElement{name='can_hear'
+                                 ,content=Hear
+                                 }
+                     |Els]) ->
+    update_from_flags(P#participant{hear=wh_util:is_true(xml_text_to_binary(Hear))}, Els);
+
+update_from_flags(P, [#xmlElement{name='can_speak'
+                                 ,content=Speak
+                                 }
+                     |Els]) ->
+    update_from_flags(P#participant{speak=wh_util:is_true(xml_text_to_binary(Speak))}, Els);
+
 update_from_flags(P, [_|Els]) ->
     update_from_flags(P, Els).
 

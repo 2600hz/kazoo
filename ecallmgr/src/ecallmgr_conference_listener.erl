@@ -70,7 +70,7 @@ handle_command(JObj, _Props) ->
 handle_search_req(JObj, _Props) ->
     ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
     lager:debug("received search request for conference id ~s", [ConferenceId]),
-    case ecallmgr_fs_conference:fetch(ConferenceId) of
+    case ecallmgr_fs_conference:fetch_full(ConferenceId) of
         {'error', 'not_found'} ->
             lager:debug("sending error search response, conference not found"),
             Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}

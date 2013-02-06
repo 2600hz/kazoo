@@ -70,7 +70,7 @@ destroy(Node, Props) ->
 
 -spec participant_destroy(atom(), wh_proplist() | ne_binary()) -> 'ok'.
 participant_destroy(Node, Props) when is_list(Props) ->
-    participant_destroy(Node, props:get_value(<<"Channel-ID">>, Props));
+    participant_destroy(Node, props:get_value(<<"Call-ID">>, Props));
 participant_destroy(Node, UUID) ->
     gen_server:cast(?NODES_SRV, {participant_destroy, Node, UUID}).
 
@@ -120,7 +120,7 @@ props_to_record(Props, Node) ->
 
 props_to_participant_record(Node, Props) ->
     #participant{node=Node
-                 ,uuid=props:get_value(<<"Channel-ID">>, Props, props:get_value(<<"Unique-ID">>, Props))
+                 ,uuid=props:get_value(<<"Call-ID">>, Props, props:get_value(<<"Unique-ID">>, Props))
                  ,conference_name=props:get_value(<<"Conference-Name">>, Props)
                  ,floor=props:get_is_true(<<"Floor">>, Props, 'false')
                  ,hear=props:get_is_true(<<"Hear">>, Props, 'true')
@@ -211,15 +211,15 @@ participant_record_to_json(#participant{uuid=UUID
                                        }) ->
     wh_json:from_list(
       props:filter_undefined(
-        [{<<"Channel-ID">>, UUID}
+        [{<<"Call-ID">>, UUID}
          ,{<<"Conference-Name">>, ConfName}
          ,{<<"Floor">>, Floor}
          ,{<<"Hear">>, Hear}
          ,{<<"Speak">>, Speak}
          ,{<<"Talking">>, Talking}
          ,{<<"Mute-Detect">>, MuteDetect}
-         ,{<<"Member-ID">>, MemberId}
-         ,{<<"Member-Type">>, MemberType}
+         ,{<<"Participant-ID">>, MemberId}
+         ,{<<"Participant-Type">>, MemberType}
          ,{<<"Energy-Level">>, EnergyLevel}
          ,{<<"Current-Energy">>, CurrentEnergy}
          ,{<<"Video">>, Video}

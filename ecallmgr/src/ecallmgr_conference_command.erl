@@ -64,7 +64,7 @@ get_conf_command(<<"participants">>, 'undefined', ConferenceId, _) ->
 get_conf_command(<<"participants">>, _Focus, ConferenceId, JObj) ->
     case wapi_conference:participants_req_v(JObj) of
         false -> {'error', <<"conference participants failed to execute as JObj did not validate.">>};
-        true -> {'noop', ecallmgr_fs_conference:participants_list(ConferenceId)}
+        true -> {'noop', wh_json:from_list([{<<"Participants">>, ecallmgr_fs_conference:participants_list(ConferenceId)}])}
     end;
 
 get_conf_command(<<"lock">>, _Focus, _ConferenceId, JObj) ->

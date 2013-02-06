@@ -76,7 +76,6 @@ handle_discovery_req(JObj, Props) ->
     true = wapi_conference:discovery_req_v(JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     put(callid, whapps_call:call_id(Call)),
-    lager:debug("received conference discovery request: ~p", [wh_json:delete_key(<<"Call">>, JObj)]),
 
     {ok, Srv} = conf_participant_sup:start_participant(Call),
     conf_participant:set_discovery_event(JObj, Srv),
@@ -203,16 +202,7 @@ handle_search_resp(JObj, _Props) ->
     put(callid, whapps_call:call_id(Call)),
 
     lager:debug("participant switch nodename ~p", [whapps_call:switch_nodename(Call)]),
-    [_, SwitchHostname] = binary:split(whapps_call:switch_nodename(Call), <<"@">>),
-    case wh_json:get_value(<<"Switch-Hostname">>, JObj) of
-        SwitchHostname ->
-            lager:debug("running conference is on the same switch, joining on ~s", [SwitchHostname]),
-            conf_participant:join_local(Srv);
-        _Else ->
-            lager:debug("running conference is on a different switch, bridging to ~s", [_Else]),
-            conf_participant:join_remote(Srv, JObj)
-    end,
-    ok.
+    conf_participant:join_local(Srv).
 
 %%%===================================================================
 %%% gen_server callbacks
