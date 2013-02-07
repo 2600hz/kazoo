@@ -309,6 +309,7 @@ handle_cast({member_connect_re_req}, #state{my_q=MyQ
                                             ,acct_id=AcctId
                                             ,queue_id=QueueId
                                             ,call=Call
+                                            ,fsm_pid=FSM
                                            }=State) ->
     case is_call_alive(Call) of
         true ->
@@ -316,7 +317,8 @@ handle_cast({member_connect_re_req}, #state{my_q=MyQ
             send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId);
         false ->
             lager:debug("call appears down, don't re req connect"),
-            acdc_queue_listener:finish_member_call(self())
+            acdc_queue_listener:finish_member_call(self()),
+            acdc_queue_fsm:finish_member_call(FSM)
     end,
     {noreply, State};
 
