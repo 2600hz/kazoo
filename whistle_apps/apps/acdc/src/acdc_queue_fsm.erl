@@ -22,6 +22,7 @@
          ,refresh/2
          ,current_call/1
          ,status/1
+         ,finish_member_call/1
         ]).
 
 %% State handlers
@@ -154,6 +155,9 @@ call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
 call_event(_, _E, _N, _J) ->
     lager:debug("unhandled event: ~s: ~s (~s)", [_E, _N, wh_json:get_value(<<"Application-Name">>, _J)]).
 
+finish_member_call(FSM) ->
+    gen_fsm:send_event(FSM, {member_finished}).
+
 current_call(FSM) ->
     gen_fsm:sync_send_event(FSM, current_call).
 
@@ -262,6 +266,9 @@ ready({retry, _RetryJObj}, State) ->
     {next_state, ready, State};
 ready({member_hungup, _CallEvt}, State) ->
     lager:debug("member hungup from previous call, failed to unbind"),
+    {next_state, ready, State};
+ready({member_finished}, State) ->
+    lager:debug("member finished while in ready, ignore"),
     {next_state, ready, State};
 ready({dtmf_pressed, _DTMF}, State) ->
     lager:debug("DTMF(~s) for old call", [_DTMF]),
@@ -380,6 +387,16 @@ connect_req({member_hungup, JObj}, #state{queue_proc=Srv
                                                                             ]),
             {next_state, connect_req, State}
     end;
+
+connect_req({member_finished}, #state{member_call=Call}=State) ->
+    case catch whapps_call:call_id(Call) of
+        CallId when is_binary(CallId) ->
+            lager:debug("member finished while in connect_req: ~s", [CallId]),
+            webseq:evt(self(), CallId, <<"member call finished - forced">>);
+        _E->
+            lager:debug("member finished, but callid became ~p", [_E])
+    end,
+    {next_state, ready, clear_member_call(State), hibernate};
 
 connect_req({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                          ,queue_proc=Srv
@@ -512,6 +529,17 @@ connecting({member_hungup, CallEvt}, #state{queue_proc=Srv
     webseq:evt(self(), whapps_call:call_id(Call), <<"member call - hungup">>),
 
     {next_state, ready, clear_member_call(State), hibernate};
+
+connecting({member_finished}, #state{member_call=Call}=State) ->
+    case catch whapps_call:call_id(Call) of
+        CallId when is_binary(CallId) ->
+            lager:debug("member finished while in connecting: ~s", [CallId]),
+            webseq:evt(self(), CallId, <<"member call finished - forced">>);
+        _E->
+            lager:debug("member finished, but callid became ~p", [_E])
+    end,
+    {next_state, ready, clear_member_call(State), hibernate};
+
 
 connecting({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                         ,queue_proc=Srv
