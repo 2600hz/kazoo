@@ -93,15 +93,28 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, DocId) ->
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _DocId) ->
-    maybe_reconcile_numbers(crossbar_doc:save(Context)).
+    Routines = [fun(C) -> crossbar_doc:save(C) end
+                ,fun(C) -> maybe_reconcile_numbers(C) end
+                ,fun(C) -> 
+                         provisioner_util:maybe_send_contact_list(C)
+                 end
+               ],
+    lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(Context) ->
-    maybe_reconcile_numbers(crossbar_doc:save(Context)).
+    Routines = [fun(C) -> crossbar_doc:save(C) end
+                ,fun(C) -> maybe_reconcile_numbers(C) end
+                ,fun(C) -> 
+                         provisioner_contact_list:maybe_send_contact_list(C)
+                 end
+               ],
+    lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _DocId) ->
-    crossbar_doc:delete(Context).
+    Context1 = crossbar_doc:delete(Context),
+    provisioner_contact_list:maybe_send_contact_list(Context1).
 
 %%--------------------------------------------------------------------
 %% @private

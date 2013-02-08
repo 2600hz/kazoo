@@ -37,8 +37,6 @@
 
 -define(CB_LIST, <<"devices/crossbar_listing">>).
 
--define(MOD_FULL_PROVISIONER, <<"crossbar.devices">>).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -177,14 +175,14 @@ validate(#cb_context{req_verb = <<"get">>}=Context, DeviceId, <<"quickcall">>, _
 post(#cb_context{}=Context, _DeviceId) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_device(Context1),
-    _ = maybe_provision(Context1),
+    _ = provisioner_util:maybe_provision(Context1),
     Context1.
 
 -spec put/1 :: (cb_context:context()) -> cb_context:context().
 put(#cb_context{}=Context) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_device(Context1),
-    _ = maybe_provision(Context1),
+    _ = provisioner_util:maybe_provision(Context1),
     Context1.
 
 -spec delete/2 :: (cb_context:context(), path_token()) -> cb_context:context().
@@ -436,85 +434,9 @@ is_ip_sip_auth_unique(IP, DeviceId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% post data to a provisiong server
-%% @end
-%%--------------------------------------------------------------------
--spec do_simple_provision/1 :: (cb_context:context()) -> 'ok'.
-do_simple_provision(#cb_context{doc=JObj}=Context) ->
-    case whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
-        undefined -> ok;
-        Url ->
-            AccountRealm = crossbar_util:get_account_realm(Context),
-            Headers = [{K, V}
-                       || {K, V} <- [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
-                                     ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
-                                     ,{"User-Agent", wh_util:to_list(erlang:node())}
-                                     ,{"Content-Type", "application/x-www-form-urlencoded"}]
-                              ,V =/= undefined],
-            HTTPOptions = [],
-            Body = [{"device[mac]", re:replace(wh_json:get_string_value(<<"mac_address">>, JObj, ""), "[^0-9a-fA-F]", "", [{return, list}, global])}
-                    ,{"device[label]", wh_json:get_string_value(<<"name">>, JObj)}
-                    ,{"sip[realm]", wh_json:get_string_value([<<"sip">>, <<"realm">>], JObj, AccountRealm)}
-                    ,{"sip[username]", wh_json:get_string_value([<<"sip">>, <<"username">>], JObj)}
-                    ,{"sip[password]", wh_json:get_string_value([<<"sip">>, <<"password">>], JObj)}
-                    ,{"submit", "true"}],
-            Encoded = mochiweb_util:urlencode(Body),
-            lager:debug("posting to ~s with ~s", [Url, Encoded]),
-            ibrowse:send_req(Url, Headers, post, Encoded, HTTPOptions)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% post data to a provisiong server
-%% @end
-%%--------------------------------------------------------------------
--spec do_full_provision/1 :: (#cb_context{}) -> boolean().
-do_full_provision(#cb_context{doc=JObj}) ->
-    case whapps_config:get_binary(?MOD_FULL_PROVISIONER, <<"provisioning_url">>) of
-        undefined -> false;
-        Url ->
-            Headers = [{"Content-Type", "application/json"}],
-            Body = wh_util:to_lower_string(wh_json:encode(JObj)),
-            AccountId = wh_util:to_binary(wh_json:get_value(<<"account_id">>, JObj)),
-            Mac = binary:replace(wh_util:to_binary(wh_json:get_value(<<"mac_address">>, JObj)), <<":">>, <<"">>, [global]),
-            FullUrl = wh_util:to_lower_string(<<Url/binary, <<"/">>/binary, AccountId/binary, <<"/">>/binary, Mac/binary>>),
-            lager:debug("Posting to: ~p  Data: ~p", [FullUrl, Body]),
-            Res = ibrowse:send_req(FullUrl, Headers, put, Body, [{inactivity_timeout, 10000}]),
-            lager:debug("Response from server: ~p", [Res]),
-            true 
-    end.
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %%
 %% @end
-%%--------------------------------------------------------------------
--spec maybe_provision/1 :: (cb_context:context()) -> boolean().
-maybe_provision(#cb_context{resp_status=success, doc=JObj}=Context) ->
-    case whapps_config:get_binary(?MOD_FULL_PROVISIONER, <<"provisioning_type">>) of
-        <<"full_provisioner">> ->
-            spawn(fun() ->
-                          case wh_json:get_value(<<"mac_address">>, JObj) of
-                              undefined -> 
-                                  false;
-                              _ ->
-                                  case provisioner_util:get_merged_device(Context) of
-                                      {error, _R} ->
-                                          false;
-                                      {ok, Context1} ->
-                                          do_full_provision(Context1)
-                                  end
-                          end
-                  end);
-        _  ->
-            spawn(fun() -> do_simple_provision(Context) end)
-    end,
-    true;
-maybe_provision(_) -> false.
- 
+%%-------------------------------------------------------------------- 
 -spec maybe_aggregate_device/1 :: (cb_context:context()) -> boolean().
 maybe_aggregate_device(#cb_context{resp_status=success, doc=JObj}=Context) ->
     case wh_util:is_true(cb_context:fetch(aggregate_device, Context)) of
@@ -529,6 +451,12 @@ maybe_aggregate_device(#cb_context{resp_status=success, doc=JObj}=Context) ->
     end;
 maybe_aggregate_device(_) -> false.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_remove_aggreate/2 :: (ne_binary(), cb_context:context()) -> boolean().
 maybe_remove_aggreate(DeviceId, #cb_context{resp_status=success, doc=JObj}) ->
     case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of

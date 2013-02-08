@@ -1,0 +1,15 @@
+{
+   "_id": "_design/contact_list",
+   "language": "javascript",
+   "views": {
+       "extensions": {
+           "map": "function (doc) {\n    if (doc.pvt_type != 'callflow' || doc.pvt_deleted || (doc.contact_list || {}).exclude) return;\n    if (\"numbers\" in doc) {\n        var requireid = ['menu', 'conference', 'directory', 'receive_fax', 'voicemail'];\n\tvar featurecodes = ['call_forward', 'do_not_disturb', 'intercom', 'privacy', 'record_call', 'disa', 'dynamic_cid', 'hotdesk', 'manual_presence', 'park', , 'voicemail'];\n        var first_module = (doc.flow || {}).module;\n        var second_module = (((doc.flow || {}).children || {})._ || {}).module;\n\tvar name = doc.name || ((doc.flow || {}).data || {}).name;\n        var id = ((doc.flow || {}).data || {}).id || ((doc.flow || {}).data || {}).owner_id;\n        if ((first_module == 'user' || first_module == 'device') && (second_module == 'voicemail' || !second_module) && id) {\n            emit(null, {\n                'id': id,\n                'numbers': doc.numbers\n            });\n        } else if (name) {\n            emit(null, {\n\t        'name': name,\n\t        'first_module': first_module.replace('_', ' '),\n                'numbers': doc.numbers\n            });\n        } else if (requireid.indexOf(first_module) >= 0 && id) {\n            emit(null, {\n                'id': id,\n                'name': name,\n\t        'first_module': first_module,\n                'numbers': doc.numbers\n            });\n        } else if (featurecodes.indexOf(first_module) >= 0) {\n            var action = ((doc.flow || {}).data || {}).action;\n            if (!action) return;\n\t    if (action == first_module) action = ''; else action = ' (' + action + ')';\n            emit(null, {\n\t\t'name': name || first_module.replace(/_/g, ' ') + action.replace(/_/g, ' '),\n                'numbers': doc.numbers\n            });\n        }\n    }\n}"
+       },
+       "excluded": {
+           "map": "function (doc) {\n  if (!doc.pvt_deleted && (doc.contact_list || {}).exclude) emit(doc._id, null);\n}"
+       },
+       "names": {
+           "map": "function (doc) {\n  if (doc.pvt_deleted || (doc.contact_list || {}).exclude) return;\n  var named = ['menu', 'conference', 'directory', 'device', 'vmbox'];  \n  if (doc.pvt_type == 'user') {\n    emit(null, {'id':doc._id, 'name': doc.first_name + ' ' + doc.last_name});\n  } else if (named.indexOf(doc.pvt_type) >= 0) {\n    emit(null, {'id':doc._id, 'name': doc.name});\n  }\n}"
+       }
+   }
+}
