@@ -187,9 +187,7 @@ fetch(AccountId, Id) ->
     AccountDB = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_doc(AccountDB, Id) of
         {ok, T} ->
-            from_json(T);
-        R ->
-            R
+            from_json(T)
     end.
 
 
