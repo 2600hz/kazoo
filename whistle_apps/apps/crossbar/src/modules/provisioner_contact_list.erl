@@ -14,8 +14,6 @@
 
 -include("include/crossbar.hrl").
 
--define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
-
 -record(contact, {id
                   ,callflow
                   ,name

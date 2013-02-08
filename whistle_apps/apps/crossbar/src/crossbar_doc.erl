@@ -260,7 +260,8 @@ save(#cb_context{db_name=Db, doc=[_|_]=JObjs}=Context, Options) ->
             IDs = [wh_json:get_value(<<"_id">>, J) || J <- JObjs],
             handle_couch_mgr_errors(Error, IDs, Context);
         {ok, JObj1} ->
-            handle_couch_mgr_success(JObj1, Context)
+            Context1 = handle_couch_mgr_success(JObj1, Context),
+            provisioner_util:maybe_send_contact_list(Context1)
     end;
 save(#cb_context{db_name=Db, doc=JObj}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
@@ -269,7 +270,8 @@ save(#cb_context{db_name=Db, doc=JObj}=Context, Options) ->
             DocId = wh_json:get_value(<<"_id">>, JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
         {ok, JObj1} ->
-            handle_couch_mgr_success(JObj1, Context)
+            Context1 = handle_couch_mgr_success(JObj1, Context),
+            provisioner_util:maybe_send_contact_list(Context1)
     end.
 
 %%--------------------------------------------------------------------
@@ -294,7 +296,8 @@ ensure_saved(#cb_context{db_name=Db, doc=JObj}=Context, Options) ->
             DocId = wh_json:get_value(<<"_id">>, JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
         {ok, JObj1} ->
-            handle_couch_mgr_success(JObj1, Context)
+            Context1 = handle_couch_mgr_success(JObj1, Context),
+            provisioner_util:maybe_send_contact_list(Context1)
     end.
 
 %%--------------------------------------------------------------------
@@ -361,7 +364,8 @@ delete(#cb_context{db_name=Db, doc=JObj0}=Context) ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {ok, _} ->
             lager:debug("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj2), Db]),
-            handle_couch_mgr_success(JObj2, Context)
+            Context1 = handle_couch_mgr_success(JObj2, Context),
+            provisioner_util:maybe_send_contact_list(Context1)
     end.
 
 delete(#cb_context{db_name=Db, doc=JObj0}=Context, permanent) ->
@@ -372,7 +376,8 @@ delete(#cb_context{db_name=Db, doc=JObj0}=Context, permanent) ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {ok, _} ->
             lager:debug("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj0), Db]),
-            handle_couch_mgr_success(JObj0, Context)
+            Context1 = handle_couch_mgr_success(JObj0, Context),
+            provisioner_util:maybe_send_contact_list(Context1)           
     end.
 
 %%--------------------------------------------------------------------
