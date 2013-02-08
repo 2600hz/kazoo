@@ -338,23 +338,56 @@ export(Node, UUID, Arg) ->
 %% endpoints with the invite format of "route" (about 100ms per endpoint)
 %% @end
 %%--------------------------------------------------------------------
+-type bridge_channel() :: ne_binary().
+-type bridge_channels() :: [] | [bridge_channel(),...].
+-type build_return() :: bridge_channel() | {'worker', pid()}.
+-type bridge_endpoints() :: [#bridge_endpoint{},...] | [].
+
 -spec build_bridge_string/1 :: (wh_json:json_objects()) -> ne_binary().
 -spec build_bridge_string/2 :: (wh_json:json_objects(), ne_binary()) -> ne_binary().
 build_bridge_string(Endpoints) ->
     build_bridge_string(Endpoints, <<"|">>).
 
 build_bridge_string(Endpoints, Seperator) ->
-    KeyedEPs = [endpoint_jobj_to_record(Endpoint)
-                || Endpoint <- Endpoints
-                       ,wapi_dialplan:bridge_endpoint_v(Endpoint)
-               ],
+    EPs = endpoint_jobjs_to_records(Endpoints),
     %% De-dup the bridge strings by matching those with the same
     %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route
-    BridgeStrings = build_bridge_channels(KeyedEPs, []),
+    BridgeStrings = build_bridge_channels(EPs, []),
     %% NOTE: dont use binary_join here as it will crash on an empty list...
     wh_util:join_binary(lists:reverse(BridgeStrings), Seperator).
 
--spec endpoint_jobj_to_record/1 :: (wh_json:json_object()) -> #bridge_endpoint{}.
+-spec endpoint_jobjs_to_records/1 :: (wh_json:objects()) -> [] | [#bridge_endpoint{},...]. 
+
+endpoint_jobjs_to_records(Endpoints) ->
+    [BridgeEndpoints
+     || {_, BridgeEndpoints} <- 
+            endpoint_jobjs_to_records(Endpoints, [])
+    ].
+
+endpoint_jobjs_to_records([], BridgeEndpoints) -> lists:reverse(BridgeEndpoints);
+endpoint_jobjs_to_records([Endpoint|Endpoints], BridgeEndpoints) ->
+    Key = endpoint_key(Endpoint),
+    case wapi_dialplan:bridge_endpoint_v(Endpoint) 
+        andalso (not lists:keymember(Key, 1, BridgeEndpoints)) of
+        false -> 
+            lager:debug("skipping invalid or duplicate endpoint: ~p~n", [Key]),
+            endpoint_jobjs_to_records(Endpoints, BridgeEndpoints);
+        true ->
+            BridgeEndpoint = endpoint_jobj_to_record(Endpoint),
+            endpoint_jobjs_to_records(Endpoints
+                                      ,[{Key, BridgeEndpoint}|BridgeEndpoints])
+    end.
+
+endpoint_key(Endpoint) ->
+    [wh_json:get_value(<<"Invite-Format">>, Endpoint)
+     ,wh_json:get_value(<<"To-User">>, Endpoint)
+     ,wh_json:get_value(<<"To-Realm">>, Endpoint)
+     ,wh_json:get_value(<<"To-DID">>, Endpoint)
+     ,wh_json:get_value(<<"Route">>, Endpoint)
+    ].
+    
+-spec endpoint_jobj_to_record/1 :: (wh_json:json_object()) -> #bridge_endpoint{}. 
+
 endpoint_jobj_to_record(Endpoint) ->
     ToUser = wh_json:get_ne_value(<<"To-User">>, Endpoint),
     #bridge_endpoint{invite_format = wh_json:get_ne_value(<<"Invite-Format">>, Endpoint, <<"username">>)
@@ -393,10 +426,16 @@ get_endpoint_interface(Endpoint) ->
         true -> <<"RR">>
     end.
 
--type bridge_channel() :: ne_binary().
--type bridge_channels() :: [] | [bridge_channel(),...].
--type build_return() :: bridge_channel() | {'worker', pid()}.
--type bridge_endpoints() :: [#bridge_endpoint{},...] | [].
+-spec build_simple_channels/1 :: (bridge_endpoints()) -> bridge_channels().
+build_simple_channels(Endpoints) ->
+    EPs = endpoint_jobjs_to_records(Endpoints),
+    build_bridge_channels(EPs, []).
+
+-spec build_bridge_channels/1 :: (bridge_endpoints()) -> bridge_channels().
+build_bridge_channels(Endpoints) ->
+    EPs = endpoint_jobjs_to_records(Endpoints),
+    build_bridge_channels(EPs, []).
+
 -spec build_bridge_channels/2 :: (bridge_endpoints(), [build_return(),...] | []) -> bridge_channels().
 
 %% If the Invite-Format is "route" then we have been handed a sip route, do that now
