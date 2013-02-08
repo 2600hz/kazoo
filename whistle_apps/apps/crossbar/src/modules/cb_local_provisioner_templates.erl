@@ -25,7 +25,6 @@
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate/1, validate/2, validate/3
-         ,device_updated/1
          ,put/1
          ,post/2
          ,delete/2
@@ -58,8 +57,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.local_provisioner_templates">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.local_provisioner_templates">>, ?MODULE, post),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.local_provisioner_templates">>, ?MODULE, delete),
-    _ = crossbar_bindings:bind(<<"v1_resource.finish_request.put.devices">>, ?MODULE, device_updated),
-    crossbar_bindings:bind(<<"v1_resource.finish_request.post.devices">>, ?MODULE, device_updated).
+    crossbar_bindings:bind(<<"v1_resource.finish_request.put.devices">>, ?MODULE, device_updated).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -133,24 +131,6 @@ resource_exists(_) ->
     true.
 resource_exists(_, ?IMAGE_REQ) ->
     true.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% When a device is successfully updated (put or post) then attempt
-%% to provision it
-%% @end
-%%--------------------------------------------------------------------
--spec device_updated/1 :: (#cb_context{}) -> ok.
-device_updated(#cb_context{resp_status=success}=Context) ->
-    case get_template(Context) of
-        {error, _} -> ok;
-        {ok, JObj} ->
-            provisioner_util:send_provisioning_template(JObj, Context)
-    end,
-    ok;
-device_updated(_) ->
-    ok.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -347,25 +327,3 @@ on_successful_validation(DocId, #cb_context{}=Context) ->
 -spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% If the device specifies a local template id then return that 
-%% template
-%% @end
-%%--------------------------------------------------------------------
--spec get_template/1 :: (#cb_context{}) -> {ok, wh_json:json_object()} |
-                                           {error, term()}.
-get_template(#cb_context{doc=Device, db_name=Db}) ->
-    DocId = wh_json:get_value([<<"provision">>, <<"id">>], Device),
-    case is_binary(DocId) andalso couch_mgr:fetch_attachment(Db, DocId, ?TEMPLATE_ATTCH) of 
-        false ->
-            lager:debug("unknown template id ~s", [DocId]),
-            {error, not_found};
-        {error, _R}=E ->
-            lager:debug("could not fetch template doc ~s: ~p", [DocId, _R]),
-            E;
-        {ok, Attachment} ->
-            {ok, wh_json:decode(Attachment)}
-    end.

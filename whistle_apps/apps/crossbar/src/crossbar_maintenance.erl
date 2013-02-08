@@ -44,12 +44,12 @@ migrate() ->
                    ,fun(L) -> sets:del_element(<<"cb_resources">>, L) end
                    ,fun(L) -> sets:del_element(<<"cb_provisioner_templates">>, L) end
                    ,fun(L) -> sets:del_element(<<"cb_ts_accounts">>, L) end
+                   ,fun(L) -> sets:del_element(<<"cb_local_provisioner_templates">>, L) end
+                   ,fun(L) -> sets:del_element(<<"cb_global_provisioner_templates">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_phone_numbers">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_templates">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_onboard">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_connectivity">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_local_provisioner_templates">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_global_provisioner_templates">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_schemas">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_configs">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_whitelabel">>, L) end
