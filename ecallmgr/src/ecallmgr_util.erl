@@ -740,6 +740,8 @@ recording_extension(MediaName) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_fs_playback/1 :: (ne_binary()) -> ne_binary().
+get_fs_playback(<<?LOCAL_MEDIA_PATH, _/binary>> = URI) ->
+    URI;
 get_fs_playback(URI) ->
     maybe_playback_via_vlc(URI).
 

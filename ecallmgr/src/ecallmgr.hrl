@@ -21,6 +21,8 @@
 -define(DEFAULT_FS_PROFILE, "sipinterface_1").
 -define(DEFAULT_FS_DIALPLAN, "XML").
 
+-define(LOCAL_MEDIA_PATH, "/tmp/").
+
 -type fs_api_ret()       :: {'ok', binary()} |
                             {'error', 'badarg'} |
                             'timeout'.
