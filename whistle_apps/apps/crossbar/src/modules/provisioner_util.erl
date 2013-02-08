@@ -90,8 +90,17 @@ do_full_provision_contact_list(AccountId, AccountDb) ->
 
 should_build_contact_list(#cb_context{doc=JObj}=Context) ->
     OriginalJObj = cb_context:fetch(db_doc, Context), 
-    wh_json:get_value(<<"pvt_type">>, JObj) =:= <<"callflow">>
-        orelse wh_json:get_value(<<"name">>, JObj) =/=  wh_json:get_value(<<"name">>, OriginalJObj).
+    case wh_json:is_json_object(OriginalJObj) of
+        false ->
+            wh_json:get_value(<<"pvt_type">>, JObj) =:= <<"callflow">>;
+        true ->
+            wh_json:get_value(<<"pvt_type">>, JObj) =:= <<"callflow">>
+                orelse wh_json:get_value(<<"name">>, JObj) =/=  wh_json:get_value(<<"name">>, OriginalJObj)
+                orelse wh_json:get_value(<<"first_name">>, JObj) =/=  wh_json:get_value(<<"first_name">>, OriginalJObj)
+                orelse wh_json:get_value(<<"last_name">>, JObj) =/=  wh_json:get_value(<<"last_name">>, OriginalJObj)
+                orelse wh_json:get_value([<<"contact_list">>, <<"exclude">>], JObj) 
+                =/=  wh_json:get_value([<<"contact_list">>, <<"exclude">>], OriginalJObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
