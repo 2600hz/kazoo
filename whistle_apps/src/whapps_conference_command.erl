@@ -194,4 +194,5 @@ send_command(Command, Conference) ->
     Prop = Command ++ [{<<"Conference-ID">>, ConferenceId}
                        | wh_api:default_headers(Q, <<"conference">>, <<"command">>, AppName, AppVersion)
                       ],
+    lager:debug("sending command for ~s: ~p", [ConferenceId, Prop]),
     wapi_conference:publish_command(ConferenceId, Prop).
