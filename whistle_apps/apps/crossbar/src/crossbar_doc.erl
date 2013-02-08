@@ -253,30 +253,22 @@ save(#cb_context{}=Context) ->
 save(#cb_context{doc=[]}=Context, _Options) ->
     lager:debug("no docs to save"),
     Context#cb_context{resp_status=success};
-save(#cb_context{db_name=Db, doc=[_|_]=JObjs, req_verb=Verb}=Context, Options) ->
+save(#cb_context{db_name=Db, doc=[_|_]=JObjs}=Context, Options) ->
     JObjs0 = update_pvt_parameters(JObjs, Context),
     case couch_mgr:save_docs(Db, JObjs0, Options) of
         {error, Error} -> 
             IDs = [wh_json:get_value(<<"_id">>, J) || J <- JObjs],
             handle_couch_mgr_errors(Error, IDs, Context);
         {ok, JObj1} ->
-            _ = case Verb =:= <<"put">> of
-                    true -> send_document_change(created, Db, JObj1, Options);
-                    false -> send_document_change(edited, Db, JObj1, Options)
-                end,
             handle_couch_mgr_success(JObj1, Context)
     end;
-save(#cb_context{db_name=Db, doc=JObj, req_verb=Verb}=Context, Options) ->
+save(#cb_context{db_name=Db, doc=JObj}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:save_doc(Db, JObj0, Options) of
         {error, Error} -> 
             DocId = wh_json:get_value(<<"_id">>, JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
         {ok, JObj1} ->
-            _ = case Verb =:= <<"put">> of
-                    true -> send_document_change(created, Db, JObj1, Options);
-                    false -> send_document_change(edited, Db, JObj1, Options)
-                end,
             handle_couch_mgr_success(JObj1, Context)
     end.
 
@@ -295,17 +287,13 @@ save(#cb_context{db_name=Db, doc=JObj, req_verb=Verb}=Context, Options) ->
 ensure_saved(#cb_context{}=Context) ->
     ensure_saved(Context, []).
 
-ensure_saved(#cb_context{db_name=Db, doc=JObj, req_verb=Verb}=Context, Options) ->
+ensure_saved(#cb_context{db_name=Db, doc=JObj}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:ensure_saved(Db, JObj0, Options) of
         {error, Error} -> 
             DocId = wh_json:get_value(<<"_id">>, JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
         {ok, JObj1} ->
-            _ = case Verb =:= <<"put">> of
-                    true -> send_document_change(created, Db, JObj1, Options);
-                    false -> send_document_change(edited, Db, JObj1, Options)
-                end,
             handle_couch_mgr_success(JObj1, Context)
     end.
 
@@ -373,7 +361,6 @@ delete(#cb_context{db_name=Db, doc=JObj0}=Context) ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {ok, _} ->
             lager:debug("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj2), Db]),
-            _ = send_document_change(deleted, Db, JObj2),
             handle_couch_mgr_success(JObj2, Context)
     end.
 
@@ -385,7 +372,6 @@ delete(#cb_context{db_name=Db, doc=JObj0}=Context, permanent) ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {ok, _} ->
             lager:debug("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj0), Db]),
-            _ = send_document_change(deleted, Db, wh_json:set_value(<<"pvt_deleted">>, true, JObj0)),
             handle_couch_mgr_success(JObj0, Context)
     end.
 
@@ -645,61 +631,5 @@ filter_prop(Doc, <<"modified_to">>, Val) ->
     wh_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) =< wh_util:to_integer(Val);
 filter_prop(_, _, _) ->
     true.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec send_document_change/3 :: (wapi_conf:action(), ne_binary(), wh_json:object() | wh_json:objects()) ->
-                                        'ok' | pid().
--spec send_document_change/4 :: (wapi_conf:action(), ne_binary(), wh_json:object() | wh_json:objects(), wh_proplist()) ->
-                                        'ok' | pid().
--spec send_document_change/5 :: (wapi_conf:action(), ne_binary(), wh_json:object() | wh_json:objects(), wh_proplist(), boolean()) ->
-                                        'ok' | pid().
-
-send_document_change(Action, Db, Docs) ->
-    send_document_change(Action, Db, Docs, []).
-
-send_document_change(Action, Db, Docs, Options) when is_list(Docs) ->
-    [send_document_change(Action, Db, Doc, Options) || Doc <- Docs];
-send_document_change(Action, Db, Doc, Options) ->
-    send_document_change(Action, Db, Doc, Options, props:get_value(publish_doc, Options, true)).
-
-send_document_change(_,_,_,_,false) -> ok;
-send_document_change(Action, Db, Doc, _Options, true) ->
-    CallID = get(callid),
-    spawn(fun() ->
-                  put(callid, CallID),
-                  case wh_json:get_value(<<"_id">>, Doc) of
-                      undefined ->
-                          Id = wh_json:get_value(<<"id">>, Doc),
-                          case wh_json:get_value(<<"error">>, Doc) of
-                              undefined ->
-                                  {ok, Doc1} = couch_mgr:open_doc(Db, Id),
-                                  publish_doc(Action, Db, Doc1, Id);
-                              _E -> ok
-                          end;
-                      Id -> publish_doc(Action, Db, Doc, Id)
-                  end
-          end).
-
-publish_doc(Action, Db, Doc, Id) ->
-    ActionBin = wh_util:to_binary(Action),
-    Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
-    Change =
-        [{<<"ID">>, Id}
-         ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
-         ,{<<"Doc">>, Doc}
-         ,{<<"Type">>, Type}
-         ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
-         ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
-         ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
-         ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
-         ,{<<"Version">>, wh_json:get_binary_value(<<"pvt_vsn">>, Doc)}
-         | wh_api:default_headers(<<"configuration">>, <<"doc_", ActionBin/binary>>, ?APP_NAME, ?APP_VERSION)
-        ],
-    wapi_conf:publish_doc_update(Action, Db, Type, Id, Change).
 
 %% ADD Unit Tests for private/public field filtering and merging
