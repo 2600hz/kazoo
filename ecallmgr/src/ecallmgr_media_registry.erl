@@ -30,7 +30,6 @@
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
--define(LOCAL_MEDIA_PATH, "/tmp/").
 -define(TIMEOUT_MEDIA_TRANSFER, 240000). %% if we can't transfer in four minutes, something's wrong
 
 %%%===================================================================
