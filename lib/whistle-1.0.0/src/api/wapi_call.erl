@@ -72,8 +72,8 @@
 -define(CHANNEL_STATUS_REQ_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_CHANNEL_STATUS_REQ_HEADERS, []).
 -define(CHANNEL_STATUS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                             ,{<<"Event-Name">>, <<"channel_status_req">>}
-                            ]).
+                                    ,{<<"Event-Name">>, <<"channel_status_req">>}
+                                   ]).
 -define(CHANNEL_STATUS_REQ_TYPES, []).
 
 %% Channel Status Response
@@ -82,9 +82,9 @@
                                                    ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
                                               ]).
 -define(CHANNEL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                                  ,{<<"Event-Name">>, <<"channel_status_resp">>}
-                                  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
-                                 ]).
+                                     ,{<<"Event-Name">>, <<"channel_status_resp">>}
+                                     ,{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
+                                    ]).
 -define(CHANNEL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %% Call Status Request
