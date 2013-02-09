@@ -12,7 +12,7 @@
 -include("./whapps_call_command.hrl").
 
 -export([presence/2, presence/3]).
--export([call_status/1, channel_status/1]).
+-export([call_status/1, channel_status/1, channel_status/2]).
 -export([b_call_status/1, b_channel_status/1]).
 -export([response/2, response/3, response/4]).
 
@@ -187,28 +187,32 @@ b_call_status(Call) ->
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
--spec channel_status/1 :: (api_binary() | whapps_call:call()) ->
-                                  'ok' |
-                                  {'error', 'no_channel_id'}.
-channel_status('undefined') -> {error, no_channel_id};
-channel_status(CallId) when is_binary(CallId) ->
+-spec channel_status(whapps_call:call()) ->
+                                  'ok' | {'error', 'no_channel_id'}.
+-spec channel_status(api_binary(), api_binary()) ->
+                                  'ok' | {'error', 'no_channel_id'}.
+channel_status('undefined', _) -> {'error', 'no_channel_id'};
+channel_status(CallId, SrvQueue) when is_binary(CallId), is_binary(SrvQueue) ->
     Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(SrvQueue, ?APP_NAME, ?APP_VERSION)
               ],
-    wapi_call:publish_channel_status_req(CallId, Command);
+    wapi_call:publish_channel_status_req(CallId, Command).
+
 channel_status(Call) ->
-    channel_status(whapps_call:call_id(Call)).
+    true = whapps_call:is_call(Call),
+    channel_status(whapps_call:call_id(Call), whapps_call:controller_queue(Call)).
 
 -spec b_channel_status/1 :: (api_binary() | whapps_call:call()) -> whapps_api_std_return().
-b_channel_status('undefined') -> {error, no_channel_id};
+b_channel_status('undefined') -> {'error', 'no_channel_id'};
 b_channel_status(ChannelId) when is_binary(ChannelId) ->
     Command = [{<<"Call-ID">>, ChannelId}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    Resp = wh_amqp_worker:call(whapps_amqp_pool
+    Resp = wh_amqp_worker:call('whapps_amqp_pool'
                                ,Command
                                ,fun(C) -> wapi_call:publish_channel_status_req(ChannelId, C) end
-                               ,fun wapi_call:channel_status_resp_v/1),
+                               ,fun wapi_call:channel_status_resp_v/1
+                              ),
     case Resp of
         {error, _}=E -> E;
         {ok, JObj}=Ok ->
