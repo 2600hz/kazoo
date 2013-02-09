@@ -235,18 +235,20 @@
                                ,{<<"conference">>, <<"page">>}
                               ]).
 
--define(CALL_EVENTS, [<<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
-                          ,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
-                          ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>, <<"CHANNEL_CREATE">>
+-define(CALL_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_EXECUTE_ERROR">>
+                          ,<<"CHANNEL_HANGUP">>, <<"CHANNEL_HANGUP_COMPLETE">>
+                          ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
+                          ,<<"CHANNEL_CREATE">>, <<"CHANNEL_DESTROY">>
                           ,<<"RECORD_START">>, <<"RECORD_STOP">>
-                          ,<<"CHANNEL_DESTROY">>, <<"CHANNEL_EXECUTE_ERROR">>, <<"CHANNEL_PROGRESS_MEDIA">>
+                          ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>
+                          ,<<"CHANNEL_PROGRESS_MEDIA">>
                           ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PARK">>
                      ]).
 
 -define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_ANSWER'
                     ,'CHANNEL_PARK', 'CHANNEL_ANSWER', 'CALL_UPDATE', 'DETECTED_TONE'
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
-                    ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE_COMPLETE'%%, 'CHANNEL_EXECUTE_ERROR'
+                    ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE' %%, 'CHANNEL_EXECUTE_ERROR'
                     ,'CHANNEL_HANGUP', 'CHANNEL_HANGUP_COMPLETE', 'CHANNEL_DESTROY'
                     ,'CUSTOM', 'sofia::transfer', 'loopback::bowout', 'whistle::noop'
                     ,'whistle::masquerade', 'channel_move::move_released', 'channel_move::move_complete'
