@@ -19,6 +19,7 @@
          ,workers/0
          ,find_acct_supervisors/1
          ,find_agent_supervisor/2
+         ,status/0
         ]).
 
 %% Supervisor callbacks
@@ -42,6 +43,11 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+status() ->
+    lager:info("ACDc Agent Status"),
+    [acdc_agent_sup:status(Sup) || Sup <- workers()],
+    ok.
 
 -spec new(wh_json:object()) -> sup_startchild_ret().
 -spec new(ne_binary(), ne_binary()) -> sup_startchild_ret().
