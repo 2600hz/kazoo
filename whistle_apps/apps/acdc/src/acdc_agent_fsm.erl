@@ -82,6 +82,7 @@
          ,agent_id :: ne_binary()
          ,agent_proc :: pid()
          ,agent_proc_id :: ne_binary()
+         ,agent_name :: api_binary()
          ,wrapup_timeout = 0 :: integer() % optionally set on win
          ,wrapup_ref :: reference()
          ,sync_ref :: reference()
@@ -787,7 +788,7 @@ answered({channel_hungup, CallId}, #state{member_call_id=CallId}=State) ->
     webseq:evt(CallId, self(), <<"member hangup">>),
 
     webseq:note(self(), right, <<"wrapup">>),
-    {next_state, wrapup, State#state{wrapup_timeout=0, wrapup_ref=hangup_call(State)}};
+    {next_state, wrapup, State#state{wrapup_ref=hangup_call(State)}};
 
 answered({channel_hungup, CallId}, #state{agent_call_id=CallId}=State) ->
     lager:debug("agent's channel has hung up"),
@@ -795,7 +796,7 @@ answered({channel_hungup, CallId}, #state{agent_call_id=CallId}=State) ->
     webseq:evt(CallId, self(), <<"agent hangup">>),
 
     webseq:note(self(), right, <<"wrapup">>),
-    {next_state, wrapup, State#state{wrapup_timeout=0, wrapup_ref=hangup_call(State)}};
+    {next_state, wrapup, State#state{wrapup_ref=hangup_call(State)}};
 
 answered({channel_hungup, CallId}, #state{agent_proc=Srv}=State) ->
     lager:debug("someone(~s) hungup, ignoring", [CallId]),
@@ -812,24 +813,18 @@ answered({sync_req, JObj}, #state{agent_proc=Srv
 answered({channel_unbridged, CallId}, #state{member_call_id=CallId}=State) ->
     lager:debug("caller channel unbridged"),
     webseq:note(self(), right, <<"wrapup">>),
-    {next_state, wrapup, State#state{wrapup_timeout=0
-                                     ,wrapup_ref=hangup_call(State)
-                                    }};
+    {next_state, wrapup, State#state{wrapup_ref=hangup_call(State)}};
 answered({channel_unbridged, CallId}, #state{agent_call_id=CallId}=State) ->
     lager:debug("agent channel unbridged"),
     webseq:note(self(), right, <<"wrapup">>),
-    {next_state, wrapup, State#state{wrapup_timeout=0
-                                     ,wrapup_ref=hangup_call(State)
-                                    }};
+    {next_state, wrapup, State#state{wrapup_ref=hangup_call(State)}};
 
 answered({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                        ,call_status_failures=Failures
                                                       }=State) when Failures > 3 ->
     lager:debug("call status failed ~b times, call is probably down", [Failures]),
     webseq:note(self(), right, <<"wrapup">>),
-    {next_state, wrapup, State#state{wrapup_timeout=0
-                                     ,wrapup_ref=hangup_call(State)
-                                    }};
+    {next_state, wrapup, State#state{wrapup_ref=hangup_call(State)}};
 
 answered({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                        ,call_status_failures=Failures
