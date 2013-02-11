@@ -3,7 +3,7 @@
     ,"language": "javascript"
     ,"views": {
         "credit_remaining": {
-            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1); emit(null, doc.pvt_amount * modifier); }"
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1), amount = doc.pvt_amount || doc.amount; emit(null, amount * modifier); }"
             ,"reduce": "_sum"
         }
         ,"allotment_consumed": {
@@ -11,7 +11,7 @@
             ,"reduce": "_sum"
         }
         ,"session_cost": {
-            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted || !doc.session_id) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1); emit(doc.session_id, doc.pvt_amount * modifier);  }"
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted || !doc.session_id) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1), amount = doc.pvt_amount || doc.amount; emit(null, amount * modifier);  }"
             ,"reduce": "_sum"
         }
         ,"session_allotment": {

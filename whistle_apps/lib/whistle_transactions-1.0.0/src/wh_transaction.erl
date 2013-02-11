@@ -18,6 +18,7 @@
 -export([set_description/2
          ,set_pvt_account_id/2
          ,set_sub_account_id/2
+         ,set_call_id/2
         ]).
 
 -export([save/1
@@ -29,7 +30,8 @@
          ,from_json/1
         ]).
 
--define(REASONS, [per_minute
+-define(REASONS, [per_minute_account
+                  ,per_minute_sub_account
                   ,activation_charges
                   ,admin
                  ]).
@@ -46,6 +48,7 @@
          ,pvt_account_id :: ne_binary()
          ,pvt_account_db :: ne_binary()
          ,pvt_vsn = 2 :: integer()
+         ,call_id :: binary()
          }).
 
 -type wh_transaction() :: #wh_transaction{}.
@@ -73,6 +76,7 @@ to_json(#wh_transaction{}=T) ->
                        ,{<<"pvt_account_id">>, T#wh_transaction.pvt_account_id}
                        ,{<<"pvt_account_db">>, T#wh_transaction.pvt_account_db}
                        ,{<<"pvt_vsn">>, T#wh_transaction.pvt_vsn}
+                       ,{<<"call_id">>, T#wh_transaction.call_id}
                       ]).
     
 %%--------------------------------------------------------------------
@@ -83,7 +87,7 @@ to_json(#wh_transaction{}=T) ->
 %%--------------------------------------------------------------------
 -spec from_json/1 :: (wh_json:object()) -> wh_transaction(). 
 from_json(JObj) ->
-    #wh_transaction{
+    Tr = #wh_transaction{
       id = wh_json:get_ne_value(<<"_id">>, JObj)
       ,description = wh_json:get_ne_value(<<"description">>, JObj)
       ,sub_account_id = wh_json:get_ne_value(<<"sub_account_id">>, JObj)
@@ -95,7 +99,44 @@ from_json(JObj) ->
       ,pvt_account_id = wh_json:get_ne_value(<<"pvt_account_id">>, JObj)
       ,pvt_account_db = wh_json:get_ne_value(<<"pvt_account_db">>, JObj)
       ,pvt_vsn = wh_json:get_ne_value(<<"pvt_vsn">>, JObj)
-     }.
+      ,call_id = wh_json:get_ne_value(<<"call_id">>, JObj)
+     },
+    compatibility(Tr, JObj).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Run compatibility routine
+%% @end
+%%--------------------------------------------------------------------
+-spec compatibility/2 :: (wh_transaction(), wh_json:object()) -> wh_transaction(). 
+compatibility(Transaction, JObj) ->
+    Funs = [fun compatibility_amount/1
+            ,fun compatibility_reason/1
+            ,fun compatibility_account_id/1
+           ],
+    {Tr, _} = lists:foldl(fun(F, C) -> F(C) end, {Transaction, JObj}, Funs),
+    Tr.
+
+-spec compatibility_amount/1 :: ({wh_transaction(), wh_json:object()}) -> {wh_transaction(), wh_json:object()}. 
+compatibility_amount({#wh_transaction{pvt_amount=undefined}=Tr, JObj}) ->
+    Amount = wh_json:get_ne_value(<<"amount">>, JObj),
+    {Tr#wh_transaction{pvt_amount=Amount}, JObj};
+compatibility_amount({Tr, JObj}) ->
+    {Tr, JObj}.
+
+-spec compatibility_reason/1 :: ({wh_transaction(), wh_json:object()}) -> {wh_transaction(), wh_json:object()}. 
+compatibility_reason({#wh_transaction{pvt_reason=undefined}=Tr, JObj}) ->
+    Reason = wh_json:get_ne_value(<<"reason">>, JObj),
+    {Tr#wh_transaction{pvt_reason=Reason}, JObj};
+compatibility_reason({Tr, JObj}) ->
+    {Tr, JObj}.
+
+-spec compatibility_account_id/1 :: ({wh_transaction(), wh_json:object()}) -> {wh_transaction(), wh_json:object()}. 
+compatibility_account_id({#wh_transaction{sub_account_id=undefined}=Tr, JObj}) ->
+    AccountId = wh_json:get_ne_value(<<"account_id">>, JObj),
+    {Tr#wh_transaction{sub_account_id=AccountId}, JObj};
+compatibility_account_id({Tr, JObj}) ->
+    {Tr, JObj}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -147,6 +188,20 @@ set_pvt_account_id(AccountId, Transaction) ->
 set_sub_account_id(AccountId, Transaction) ->
     Transaction#wh_transaction{sub_account_id=AccountId}.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Set Call-Id
+%% @end
+%%--------------------------------------------------------------------
+-spec set_call_id/2 :: (ne_binary(), wh_transaction()) -> wh_transaction(). 
+set_call_id(CallId, #wh_transaction{pvt_reason=Reason}=Transaction) ->
+    case Reason of
+        Reason when Reason =:= per_minute_sub_account orelse Reason =:= per_minute_account  ->
+            Transaction#wh_transaction{call_id=CallId};
+        _ ->
+            Transaction
+    end.
 
 %%--------------------------------------------------------------------
 %%
@@ -266,6 +321,7 @@ validate_funs(#wh_transaction{}=Transaction) ->
     Funs = [fun validate_reason/1
             ,fun validate_account_id/1
             ,fun validate_sub_account_id/1
+            ,fun validate_call_id/1
            ],
     lists:foldl(fun(F, {Tr, Errs}) -> 
                         case F(Tr) of 
@@ -310,7 +366,7 @@ validate_account_id(#wh_transaction{pvt_account_id=AccountId}=Tr) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_sub_account_id/1 :: (wh_transaction()) -> {ok, wh_transaction()} | {error, wh_transaction(), sub_account_id}. 
-validate_sub_account_id(#wh_transaction{sub_account_id=SubAccountId, pvt_account_id=AccountId}=Tr) ->
+validate_sub_account_id(#wh_transaction{sub_account_id=SubAccountId, pvt_account_id=AccountId}=Tr) -> 
     case SubAccountId =:= undefined of
         true -> 
             {ok, Tr#wh_transaction{sub_account_id=AccountId}};
@@ -318,6 +374,28 @@ validate_sub_account_id(#wh_transaction{sub_account_id=SubAccountId, pvt_account
             case is_binary(SubAccountId) of
                 true -> {ok, Tr};
                 false -> {error, Tr, sub_account_id}
+            end
+    end.
+
+         
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Check call ID
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_call_id/1 :: (wh_transaction()) -> {ok, wh_transaction()} | {error, wh_transaction(), atom()}. 
+validate_call_id(#wh_transaction{call_id=CallId, pvt_reason=Reason}=Tr) ->
+    case Reason of
+        Reason when Reason =:= per_minute_sub_account orelse Reason =:= per_minute_account  ->
+            case is_binary(CallId) of
+                true -> {ok, Tr};
+                false -> {error, Tr, missing_call_id}
+            end;
+        _ ->
+            case is_binary(CallId) of
+                true -> {error, Tr, call_id_bad_reason};
+                false -> {ok, Tr}
             end
     end.
 
