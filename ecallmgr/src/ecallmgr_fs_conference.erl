@@ -21,7 +21,9 @@
          %% Participant-specific
          ,participant_destroy/2
          ,participants_list/1
+         ,participants_uuids/1
          ,participant_record_to_json/1
+         ,props_to_participant_record/2
         ]).
 
 -compile([{no_auto_import, [node/1]}]).
@@ -111,6 +113,10 @@ participants_list(ConfId) ->
         [] -> [];
         Ps -> [participant_record_to_json(P) || P <- Ps]
     end.
+
+-spec participants_uuids/1 :: (ne_binary()) -> wh_json:objects().
+participants_uuids(ConfId) ->
+    ets:match(?CONFERENCES_TBL, #participant{conference_name=ConfId, uuid='$1', _='_'}).
 
 props_to_record(Props, Node) ->
     #conference{node=Node
@@ -232,10 +238,12 @@ event(Node, 'undefined', Props) ->
     lager:debug("conf event ~s", [props:get_value(<<"Action">>, Props)]),
     case props:get_value(<<"Action">>, Props) of
         <<"conference-create">> -> new(Node, Props);
-        <<"play-file">> = Action -> play_file_event(Node, Props, Action);
-        <<"play-file-done">> = Action -> play_file_event(Node, Props, Action);
+        <<"play-file">> -> relay_event(Props);
+        <<"play-file-done">> -> relay_event(Props);
         <<"floor-change">> -> update_conference(Node, Props);
         <<"conference-destroy">> -> destroy(Node, Props);
+        <<"start-recording">> -> relay_event(Props);
+        <<"stop-recording">> -> relay_event(Props);
         _Action -> lager:debug("unknown action with no uuid: ~s", [_Action])
     end;
 event(Node, UUID, Props) ->
@@ -267,11 +275,10 @@ update_conference(Node, Props) ->
                                  ,[{#conference.node, Node} | conference_fields(Props)]
                                 }).
 
-play_file_event(_Node, _Props, _Action) ->
-    %% lager:debug("play file event on ~s: ~s", [Node, Action]),
-    %% [lager:debug("pfe: ~p", [P]) || P <- Props],
-    %% simulate play channel_execute/complete events
-    ok.
+relay_event(Props) ->
+    [ecallmgr_fs_nodes ! {event, [UUID | Props]} ||
+        UUID <- participants_uuids(props:get_value(<<"Conference-Name">>, Props))
+    ].
 
 -define(FS_CONF_FIELDS, [{<<"Conference-Unique-ID">>, #conference.uuid}
                       ,{<<"Conference-Size">>, #conference.participants, fun props:get_integer_value/2}
