@@ -25,14 +25,22 @@ exec(Focus, ConferenceId, JObj) ->
         {noop, Conference} ->
             send_response(App, {noop, Conference}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {<<"play">>, AppData} ->
-            Command = wh_util:to_list(list_to_binary(["uuid:", wh_json:get_value(<<"Call-ID">>, JObj)
-                                                      ," conference ", ConferenceId
-                                                      ," play ", AppData])),
-            Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
-
-            lager:debug("api to ~s: expand ~s", [Focus, Command]),
-
-            Result = freeswitch:api(Focus, 'expand', Command),
+            Result =
+                case wh_json:get_value(<<"Call-ID">>, JObj) of
+                    'undefined' ->
+                        Command = list_to_binary([ConferenceId, " play ", AppData]),
+                        Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
+                        lager:debug("api to ~s: conference ~s", [Focus, Command]),
+                        freeswitch:api(Focus, 'conference', Command);
+                    CallId ->
+                        Command = wh_util:to_list(list_to_binary(["uuid:", CallId
+                                                                  ," conference ", ConferenceId
+                                                                  ," play ", AppData
+                                                                 ])),
+                        Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
+                        lager:debug("api to ~s: expand ~s", [Focus, Command]),
+                        freeswitch:api(Focus, 'expand', Command)
+                end,
             send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
             Command = wh_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
@@ -69,14 +77,14 @@ get_conf_command(<<"participant_energy">>, _Focus, _ConferenceId, JObj) ->
 
 get_conf_command(<<"kick">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:kick_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference kick failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             {<<"hup">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
     end;
 
 get_conf_command(<<"participants">>, 'undefined', ConferenceId, _) ->
-    {error, <<"Non-Existant ID ", ConferenceId/binary>>};
+    {'error', <<"Non-Existant ID ", ConferenceId/binary>>};
 
 get_conf_command(<<"participants">>, _Focus, ConferenceId, JObj) ->
     case wapi_conference:participants_req_v(JObj) of
@@ -218,7 +226,47 @@ get_conf_command(<<"participant_volume_out">>, _Focus, _ConferenceId, JObj) ->
                                    ," ", wh_json:get_binary_value(<<"Volume-Out-Level">>, JObj, <<"0">>)
                                   ]),
             {<<"volume_out">>, Args}
-    end.
+    end;
+
+get_conf_command(<<"tones">>, _Focus, _ConferenceId, JObj) ->
+    case wapi_conference:tones_v(JObj) of
+        'false' -> {'error', <<"conference tones failed to validate">>};
+        'true' ->
+            Tones = wh_json:get_value(<<"Tones">>, JObj, []),
+            FSTones = [begin
+                           Vol = case wh_json:get_value(<<"Volume">>, Tone) of
+                                     'undefined' -> [];
+                                     %% need to map V (0-100) to FS values
+                                     V -> list_to_binary(["v=", wh_util:to_list(V), ";"])
+                                 end,
+                           Repeat = case wh_json:get_value(<<"Repeat">>, Tone) of
+                                        'undefined' -> [];
+                                        R -> list_to_binary(["l=", wh_util:to_list(R), ";"])
+                                    end,
+                           Freqs = string:join([ wh_util:to_list(V) || V <- wh_json:get_value(<<"Frequencies">>, Tone) ], ","),
+                           On = wh_util:to_list(wh_json:get_value(<<"Duration-ON">>, Tone)),
+                           Off = wh_util:to_list(wh_json:get_value(<<"Duration-OFF">>, Tone)),
+                           wh_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
+                       end || Tone <- Tones],
+            Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
+            {<<"play">>, Arg}
+    end;
+
+get_conf_command(Say, _Focus, _ConferenceId, JObj) when Say =:= <<"say">> orelse Say =:= <<"tts">> ->
+    case wapi_conference:say_v(JObj) of
+        'false' -> {'error', <<"conference say failed to validate">>};
+        'true'->
+            SayMe = wh_json:get_value(<<"Text">>, JObj),
+
+            case wh_json:get_binary_value(<<"Participant">>, JObj) of
+                'undefined' -> {<<"say">>, ["'", SayMe, "'"]};
+                Id -> {<<"saymember">>, [Id, " '", SayMe, "'"]}
+            end
+    end;
+
+get_conf_command(Cmd, _Focus, _ConferenceId, _JObj) ->
+    lager:debug("unknown conference command ~s", [Cmd]),
+    {error, list_to_binary([<<"unknown conference command: ">>, Cmd])}.
 
 -spec send_response(ne_binary(), tuple(), api_binary(), wh_json:object()) -> ok.
 send_response(_, _, 'undefined', _) -> lager:debug("no server-id to respond");
