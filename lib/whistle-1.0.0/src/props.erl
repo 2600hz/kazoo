@@ -11,7 +11,8 @@
 -module(props).
 
 -export([get_value/2, get_value/3
-         ,delete/2, is_defined/2
+         ,delete/2, delete_keys/2
+         ,is_defined/2
          ,get_integer_value/2, get_integer_value/3
          ,get_is_true/2, get_is_true/3
          ,get_is_false/2, get_is_false/3
@@ -97,8 +98,9 @@ get_keys(Prop) ->
     [ K || {K,_} <- Prop].
 
 -spec delete/2 :: (ne_binary() | atom(), wh_proplist()) -> wh_proplist().
-delete(K, Prop) ->
-    lists:keydelete(K, 1, Prop).
+delete(K, Prop) -> lists:keydelete(K, 1, Prop).
+
+delete_keys([_|_]=Ks, Prop) -> lists:foldl(fun ?MODULE:delete/2, Prop, Ks).
 
 -spec is_defined/2 :: (wh_proplist_key(), wh_proplist()) -> boolean().
 is_defined(Key, Prop) ->
