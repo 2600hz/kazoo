@@ -157,7 +157,9 @@
 
 %% Tones Request
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
--define(OPTIONAL_TONES_REQ_HEADERS, [<<"Insert-At">>, <<"Terminators">>]).
+-define(OPTIONAL_TONES_REQ_HEADERS, [<<"Insert-At">>, <<"Terminators">>
+                                         ,<<"Conference-ID">>, <<"Group-ID">>
+                                    ]).
 -define(TONES_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
                            ,{<<"Application-Name">>, <<"tones">>}
@@ -428,6 +430,7 @@
 -define(OPTIONAL_TTS_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>
                                    ,<<"Voice">>, <<"Language">>, <<"Engine">>
                                    ,<<"Group-ID">> % group media together (one DTMF cancels all in group)
+                                   ,<<"Conference-ID">>
                                   ]).
 -define(TTS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                          ,{<<"Event-Name">>, <<"command">>}
