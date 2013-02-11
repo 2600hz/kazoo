@@ -162,7 +162,6 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
 
             case wh_json:get_value(<<"Record-Action">>, JObj) of
                 <<"start">> ->
-
                     Vars = case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, false)) of
                                false -> [{<<"RECORD_APPEND">>, <<"true">>}
                                          ,{<<"enable_file_write_buffering">>, <<"false">>}

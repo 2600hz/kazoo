@@ -59,12 +59,11 @@ start_link() ->
                              ,{consume_options, ?CONSUME_OPTIONS}
                             ], []).
 
--spec handle_command(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_command(wh_json:object(), wh_proplist()) -> any().
 handle_command(JObj, _Props) ->
     ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
     Focus = get_conference_focus(ConferenceId),
-    ecallmgr_conference_command:exec(Focus, ConferenceId, JObj),
-    ok.
+    ecallmgr_conference_command:exec(Focus, ConferenceId, JObj).
 
 -spec handle_search_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_search_req(JObj, _Props) ->

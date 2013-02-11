@@ -15,14 +15,31 @@
 -spec exec(atom(), ne_binary(), wh_json:object()) -> 'ok'.
 exec(Focus, ConferenceId, JObj) ->
     App = wh_json:get_value(<<"Application-Name">>, JObj),
+
+    lager:debug("asked to exec ~s for ~s", [App, ConferenceId]),
+
     case get_conf_command(App, Focus, ConferenceId, JObj) of
         {'error', _Msg}=E ->
+            lager:debug("command ~s failed: ~s", [App, _Msg]),
             send_response(App, E, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {noop, Conference} ->
             send_response(App, {noop, Conference}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
+        {<<"play">>, AppData} ->
+            Command = wh_util:to_list(list_to_binary(["uuid:", wh_json:get_value(<<"Call-ID">>, JObj)
+                                                      ," conference ", ConferenceId
+                                                      ," play ", AppData])),
+            Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
+
+            lager:debug("api to ~s: expand ~s", [Focus, Command]),
+
+            Result = freeswitch:api(Focus, 'expand', Command),
+            send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
             Command = wh_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
             Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
+
+            lager:debug("api to ~s: conference ~s", [Focus, Command]),
+
             Result = freeswitch:api(Focus, 'conference', Command),
             send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj)
     end.
@@ -63,8 +80,14 @@ get_conf_command(<<"participants">>, 'undefined', ConferenceId, _) ->
 
 get_conf_command(<<"participants">>, _Focus, ConferenceId, JObj) ->
     case wapi_conference:participants_req_v(JObj) of
-        false -> {'error', <<"conference participants failed to execute as JObj did not validate.">>};
-        true -> {'noop', wh_json:from_list([{<<"Participants">>, ecallmgr_fs_conference:participants_list(ConferenceId)}])}
+        'false' -> {'error', <<"conference participants failed to execute as JObj did not validate.">>};
+        'true' ->
+            case ecallmgr_fs_conference:participants_list(ConferenceId) of
+                [] ->
+                    {'error', <<"conference participants are not ready to be listed, or are none">>};
+                Ps ->
+                    {'noop', wh_json:from_list([{<<"Participants">>, Ps}])}
+            end
     end;
 
 get_conf_command(<<"lock">>, _Focus, _ConferenceId, JObj) ->
@@ -103,7 +126,16 @@ get_conf_command(<<"record">>, _Focus, _ConferenceId, JObj) ->
             {'error', <<"conference record failed to execute as JObj did not validate.">>};
         true ->
             MediaName = ecallmgr_util:recording_filename(wh_json:get_binary_value(<<"Media-Name">>, JObj)),
-            {<<"record">>, MediaName}
+            _ = wh_cache:store_local(?ECALLMGR_CALL_CACHE, ?ECALLMGR_RECORDED_MEDIA_KEY(MediaName), MediaName),
+            {<<"recording">>, [<<"start ">>, MediaName]}
+    end;
+
+get_conf_command(<<"recordstop">>, _Focus, _ConferenceId, JObj) ->
+    case wapi_conference:recordstop_v(JObj) of
+        'false' -> {'error', <<"conference recordstop failed validation">>};
+        'true' ->
+            MediaName = ecallmgr_util:recording_filename(wh_json:get_binary_value(<<"Media-Name">>, JObj)),
+            {<<"recording">>, [<<"stop ">>, MediaName]}
     end;
 
 get_conf_command(<<"relate_participants">>, _Focus, _ConferenceId, JObj) ->
@@ -189,23 +221,24 @@ get_conf_command(<<"participant_volume_out">>, _Focus, _ConferenceId, JObj) ->
     end.
 
 -spec send_response(ne_binary(), tuple(), api_binary(), wh_json:object()) -> ok.
-send_response(_, _, undefined, _) -> ok;
-send_response(_, {ok, <<"Non-Existant ID", _/binary>> = Msg}, RespQ, Command) ->
+send_response(_, _, 'undefined', _) -> lager:debug("no server-id to respond");
+send_response(_, {'ok', <<"Non-Existant ID", _/binary>> = Msg}, RespQ, Command) ->
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
              ,{<<"Error-Message">>, binary:replace(Msg, <<"\n">>, <<>>)}
              ,{<<"Request">>, Command}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
+    lager:debug("error in conference command: ~s", [Msg]),
     wapi_conference:publish_error(RespQ, Error);
-send_response(<<"participants">>, {noop, Conference}, RespQ, Command) ->
+send_response(<<"participants">>, {'noop', Conference}, RespQ, Command) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
             ,{<<"Participants">>, wh_json:get_value(<<"Participants">>, Conference, wh_json:new())}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     wapi_conference:publish_participants_resp(RespQ, Resp);
-send_response(_, {ok, Response}, RespQ, Command) ->
+send_response(_, {'ok', Response}, RespQ, Command) ->
     case binary:match(Response, <<"not found">>) of
-        nomatch -> ok;
+        'nomatch' -> 'ok';
         _Else ->
             Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
                      ,{<<"Error-Message">>, binary:replace(Response, <<"\n">>, <<>>)}
@@ -214,14 +247,14 @@ send_response(_, {ok, Response}, RespQ, Command) ->
                     ],
             wapi_conference:publish_error(RespQ, Error)
     end;
-send_response(_, {error, Msg}, RespQ, Command) ->
+send_response(_, {'error', Msg}, RespQ, Command) ->
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
              ,{<<"Error-Message">>, binary:replace(wh_util:to_binary(Msg), <<"\n">>, <<>>)}
              ,{<<"Request">>, Command}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     wapi_conference:publish_error(RespQ, Error);
-send_response(_, timeout, RespQ, Command) ->
+send_response(_, 'timeout', RespQ, Command) ->
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
              ,{<<"Error-Message">>, <<"Node Timeout">>}
              ,{<<"Request">>, Command}
