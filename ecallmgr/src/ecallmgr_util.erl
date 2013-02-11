@@ -694,7 +694,7 @@ media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _, _) ->
 media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _, _) ->
     Media;
 media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _, _) ->
-    FSPath;
+    recording_filename(FSPath);
 media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _, _) ->
     get_fs_playback(URI);
 media_path(MediaName, Type, UUID, JObj, Cache) ->
@@ -721,6 +721,8 @@ recording_filename(MediaName) ->
     Ext = recording_extension(MediaName),
     RootName = filename:basename(MediaName, Ext),
     Directory = recording_directory(MediaName),
+
+    lager:debug("conference m: ~s root: ~s ext: ~s", [MediaName, RootName, Ext]),
 
     filename:join([Directory
                    ,<<(amqp_util:encode(RootName))/binary, Ext/binary>>
