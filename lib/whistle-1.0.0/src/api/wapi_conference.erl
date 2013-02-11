@@ -21,6 +21,7 @@
 -export([mute_participant/1, mute_participant_v/1]).
 -export([play/1, play_v/1]).
 -export([record/1, record_v/1]).
+-export([recordstop/1, recordstop_v/1]).
 -export([relate_participants/1, relate_participants_v/1]).
 -export([set/1, set_v/1]).
 -export([stop_play/1, stop_play_v/1]).
@@ -46,6 +47,7 @@
 -export([publish_mute_participant/2, publish_mute_participant/3]).
 -export([publish_play/2, publish_play/3]).
 -export([publish_record/2, publish_record/3]).
+-export([publish_recordstop/2, publish_recordstop/3]).
 -export([publish_relate_participants/2, publish_relate_participants/3]).
 -export([publish_set/2, publish_set/3]).
 -export([publish_stop_play/2, publish_stop_play/3]).
@@ -185,6 +187,16 @@
                        ]).
 -define(RECORD_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
+%% Conference RecordStop
+-define(RECORDSTOP_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Name">>]).
+-define(OPTIONAL_RECORDSTOP_HEADERS, [<<"Call-ID">>]).
+-define(RECORDSTOP_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                        ,{<<"Event-Name">>, <<"command">>}
+                        ,{<<"Application-Name">>, <<"recordstop">>}
+                       ]).
+-define(RECORDSTOP_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
+
+
 %% Conference Relate Participants
 -define(RELATE_PARTICIPANTS_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant">>, <<"Other-Participant">>]).
 -define(OPTIONAL_RELATE_PARTICIPANTS_HEADERS, [<<"Relationship">>]).
@@ -276,8 +288,8 @@
 -define(CONFERENCE_ERROR_HEADERS, [<<"Error-Message">>, <<"Request">>]).
 -define(OPTIONAL_CONFERENCE_ERROR_HEADERS, []).
 -define(CONFERENCE_ERROR_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                    ,{<<"Event-Name">>, <<"error">>}
-                                   ]).
+                                  ,{<<"Event-Name">>, <<"error">>}
+                                 ]).
 -define(CONFERENCE_ERROR_TYPES, []).
 
 -define(APPLICTION_MAP, [{<<"deaf_participant">>, ?DEAF_PARTICIPANT_VALUES, fun ?MODULE:deaf_participant/1}
@@ -288,6 +300,7 @@
                          ,{<<"mute_participant">>, ?MUTE_PARTICIPANT_VALUES, fun ?MODULE:mute_participant/1}
                          ,{<<"play">>, ?PLAY_VALUES, fun ?MODULE:play/1}
                          ,{<<"record">>, ?RECORD_VALUES, fun ?MODULE:record/1}
+                         ,{<<"recordstop">>, ?RECORDSTOP_VALUES, fun ?MODULE:recordstop/1}
                          ,{<<"relate_participants">>, ?RELATE_PARTICIPANTS_VALUES, fun ?MODULE:relate_participants/1}
                          ,{<<"stop_play">>, ?STOP_PLAY_VALUES, fun ?MODULE:stop_play/1}
                          ,{<<"undeaf_participant">>, ?UNDEAF_PARTICIPANT_VALUES, fun ?MODULE:undeaf_participant/1}
@@ -556,6 +569,26 @@ record_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?RECORD_HEADERS, ?RECORD_VALUES, ?RECORD_TYPES);
 record_v(JObj) ->
     record_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec recordstop/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+recordstop(Prop) when is_list(Prop) ->
+    case recordstop_v(Prop) of
+        true -> wh_api:build_message(Prop, ?RECORDSTOP_HEADERS, ?OPTIONAL_RECORDSTOP_HEADERS);
+        false -> {error, "Proplist failed validation for recordstop"}
+    end;
+recordstop(JObj) ->
+    recordstop(wh_json:to_proplist(JObj)).
+
+-spec recordstop_v/1 :: (api_terms()) -> boolean().
+recordstop_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?RECORDSTOP_HEADERS, ?RECORDSTOP_VALUES, ?RECORDSTOP_TYPES);
+recordstop_v(JObj) ->
+    recordstop_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -962,6 +995,19 @@ publish_record(ConferenceId, JObj) ->
     publish_record(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_record(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?RECORD_VALUES, fun ?MODULE:record/1),
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_recordstop/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_recordstop/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_recordstop(ConferenceId, JObj) ->
+    publish_recordstop(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_recordstop(ConferenceId, Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?RECORDSTOP_VALUES, fun ?MODULE:recordstop/1),
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
