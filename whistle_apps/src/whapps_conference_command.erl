@@ -19,7 +19,7 @@
 -export([mute_participant/2]).
 -export([prompt/2, prompt/3]).
 -export([play/2, play/3]).
--export([record/1]).
+-export([record/1, recordstop/1]).
 -export([relate_participants/3, relate_participants/4]).
 -export([stop_play/1, stop_play/2, stop_play/3]).
 -export([undeaf_participant/2]).
@@ -119,6 +119,11 @@ record(Conference) ->
     Command = [{<<"Application-Name">>, <<"record">>}],
     send_command(Command, Conference).
 
+-spec recordstop(whapps_conference:conference()) -> 'ok'.
+recordstop(Conference) ->
+    Command = [{<<"Application-Name">>, <<"recordstop">>}],
+    send_command(Command, Conference).
+
 -spec relate_participants(non_neg_integer(), non_neg_integer(), whapps_conference:conference()) -> 'ok'.
 -spec relate_participants(non_neg_integer(), non_neg_integer(), api_binary(), whapps_conference:conference()) -> 'ok'.
 
@@ -185,8 +190,8 @@ participant_volume_out(ParticipantId, VolumeOut,Conference) ->
               ],
     send_command(Command, Conference).
 
--spec send_command(wh_proplist(), whapps_conference:conference()) -> 'ok'.
-send_command(Command, Conference) ->
+-spec send_command(api_terms(), whapps_conference:conference()) -> 'ok'.
+send_command([_|_]=Command, Conference) ->
     Q = whapps_conference:controller_queue(Conference),
     ConferenceId = whapps_conference:id(Conference),
     AppName = whapps_conference:application_name(Conference),
@@ -194,5 +199,7 @@ send_command(Command, Conference) ->
     Prop = Command ++ [{<<"Conference-ID">>, ConferenceId}
                        | wh_api:default_headers(Q, <<"conference">>, <<"command">>, AppName, AppVersion)
                       ],
-    lager:debug("sending command for ~s: ~p", [ConferenceId, Prop]),
-    wapi_conference:publish_command(ConferenceId, Prop).
+    %lager:debug("sending command for ~s: ~p", [ConferenceId, Prop]),
+    wapi_conference:publish_command(ConferenceId, Prop);
+send_command(JObj, Conference) -> send_command(wh_json:to_proplist(JObj), Conference).
+
