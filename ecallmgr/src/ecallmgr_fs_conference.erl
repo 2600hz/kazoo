@@ -232,14 +232,16 @@ event(Node, 'undefined', Props) ->
     lager:debug("conf event ~s", [props:get_value(<<"Action">>, Props)]),
     case props:get_value(<<"Action">>, Props) of
         <<"conference-create">> -> new(Node, Props);
-        <<"play-file">> -> ok;
-        <<"play-file-done">> -> ok;
+        <<"play-file">> = Action -> play_file_event(Node, Props, Action);
+        <<"play-file-done">> = Action -> play_file_event(Node, Props, Action);
         <<"floor-change">> -> update_conference(Node, Props);
         <<"conference-destroy">> -> destroy(Node, Props);
         _Action -> lager:debug("unknown action with no uuid: ~s", [_Action])
     end;
 event(Node, UUID, Props) ->
-    lager:debug("conf event ~s", [props:get_value(<<"Action">>, Props)]),
+    lager:debug("conf ~s: event ~s", [props:get_value(<<"Conference-Name">>, Props)
+                                      ,props:get_value(<<"Action">>, Props)
+                                     ]),
     case props:get_value(<<"Action">>, Props) of
         <<"add-member">> -> update_all(Node, UUID, Props);
         <<"floor-change">> -> update_all(Node, UUID, Props);
@@ -264,6 +266,12 @@ update_conference(Node, Props) ->
                                  ,props:get_value(<<"Conference-Name">>, Props)
                                  ,[{#conference.node, Node} | conference_fields(Props)]
                                 }).
+
+play_file_event(_Node, _Props, _Action) ->
+    %% lager:debug("play file event on ~s: ~s", [Node, Action]),
+    %% [lager:debug("pfe: ~p", [P]) || P <- Props],
+    %% simulate play channel_execute/complete events
+    ok.
 
 -define(FS_CONF_FIELDS, [{<<"Conference-Unique-ID">>, #conference.uuid}
                       ,{<<"Conference-Size">>, #conference.participants, fun props:get_integer_value/2}
