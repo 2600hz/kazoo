@@ -19,7 +19,10 @@
 -export([participants_resp/1, participants_resp_v/1]).
 -export([lock/1, lock_v/1]).
 -export([mute_participant/1, mute_participant_v/1]).
--export([play/1, play_v/1]).
+-export([play/1, play_v/1
+         ,tones/1, tones_v/1
+         ,say/1, say_v/1, tts/1, tts_v/1
+        ]).
 -export([record/1, record_v/1]).
 -export([recordstop/1, recordstop_v/1]).
 -export([relate_participants/1, relate_participants_v/1]).
@@ -60,6 +63,7 @@
 -export([publish_command/2, publish_command/3]).
 
 -include_lib("whistle/include/wh_api.hrl").
+-include("wapi_dialplan.hrl").
 
 %% Conference Search Request
 -define(SEARCH_REQ_HEADERS, [<<"Conference-ID">>]).
@@ -284,6 +288,8 @@
 -define(PARTICIPANT_VOLUME_OUT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                                       ]).
 
+
+
 %% Conference Error
 -define(CONFERENCE_ERROR_HEADERS, [<<"Error-Message">>, <<"Request">>]).
 -define(OPTIONAL_CONFERENCE_ERROR_HEADERS, []).
@@ -308,7 +314,72 @@
                          ,{<<"unmute_participant">>, ?UNMUTE_PARTICIPANT_VALUES, fun ?MODULE:unmute_participant/1}
                          ,{<<"participant_volume_in">>, ?PARTICIPANT_VOLUME_IN_VALUES, fun ?MODULE:participant_volume_in/1}
                          ,{<<"participant_volume_out">>, ?PARTICIPANT_VOLUME_OUT_VALUES, fun ?MODULE:participant_volume_out/1}
+                         ,{<<"tones">>, ?CONF_TONES_REQ_VALUES, fun ?MODULE:tones/1}
+                         ,{<<"say">>, ?CONF_SAY_REQ_VALUES, fun ?MODULE:say/1}
+                         ,{<<"tts">>, ?CONF_SAY_REQ_VALUES, fun ?MODULE:tts/1}
                         ]).
+
+%%--------------------------------------------------------------------
+%% @doc Create a tone on the channel - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-define(CONF_SAY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                              ,{<<"Application-Name">>, [<<"say">>, <<"tts">>]}
+                              | props:delete_keys([<<"Event-Category">>
+                                                       ,<<"Application-Name">>
+                                                  ], ?TONES_REQ_VALUES)
+                             ]).
+-spec say/1 :: (api_terms()) -> api_formatter_return() .
+say(Prop) when is_list(Prop) ->
+    case say_v(Prop) of
+        true -> wh_api:build_message(Prop, ?TTS_REQ_HEADERS, ?OPTIONAL_TTS_REQ_HEADERS);
+        false -> {error, "Prop failed validation for say_req"}
+    end;
+say(JObj) ->
+    say(wh_json:to_proplist(JObj)).
+
+tts(API) -> say(API).
+
+-spec say_v/1 :: (api_terms()) -> boolean().
+say_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?TTS_REQ_HEADERS, ?CONF_SAY_REQ_VALUES, ?TTS_REQ_TYPES);
+say_v(JObj) ->
+    say_v(wh_json:to_proplist(JObj)).
+
+tts_v(API) -> say_v(API).
+
+%%--------------------------------------------------------------------
+%% @doc Create a tone on the channel - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+
+-define(CONF_TONES_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                                | props:delete(<<"Event-Category">>, ?TONES_REQ_VALUES)
+                               ]).
+-spec tones/1 :: (api_terms()) -> api_formatter_return() .
+tones(Prop) when is_list(Prop) ->
+    Tones = [begin
+                 {ok, TonesProp} = wapi_dialplan:tones_req_tone_headers(Tone),
+                 wh_json:from_list(TonesProp)
+             end
+             || Tone <- props:get_value(<<"Tones">>, Prop, []),
+                wapi_dialplan:tones_req_tone_v(Tone)
+            ],
+    Prop1 = [ {<<"Tones">>, Tones} | props:delete(<<"Tones">>, Prop)],
+    case tones_v(Prop1) of
+        true -> wh_api:build_message(Prop1, ?TONES_REQ_HEADERS, ?OPTIONAL_TONES_REQ_HEADERS);
+        false -> {error, "Prop failed validation for tones_req"}
+    end;
+tones(JObj) ->
+    tones(wh_json:to_proplist(JObj)).
+
+-spec tones_v/1 :: (api_terms()) -> boolean().
+tones_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?TONES_REQ_HEADERS, ?CONF_TONES_REQ_VALUES, ?TONES_REQ_TYPES);
+tones_v(JObj) ->
+    tones_v(wh_json:to_proplist(JObj)).    
 
 %%--------------------------------------------------------------------
 %% @doc
