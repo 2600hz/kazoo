@@ -59,7 +59,7 @@ start_link() ->
 handle_cdr(JObj, _Props) ->
     true = wapi_call:cdr_v(JObj),
     wh_util:put_callid(JObj),
-    CallId = wh_json:get_value(<<"call_id">>, JObj, couch_mgr:get_uuid()),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj, couch_mgr:get_uuid()),
     AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj),
     maybe_save_in_account(AccountId, wh_json:set_value(<<"_id">>, CallId, wh_json:normalize_jobj(JObj))).
 
