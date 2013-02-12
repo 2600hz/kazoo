@@ -106,15 +106,14 @@ former_node(UUID) ->
     end.
 
 -spec exists(ne_binary()) -> boolean().
-exists(UUID) ->
-    ets:member(?CHANNELS_TBL, UUID).
+exists(UUID) -> ets:member(?CHANNELS_TBL, UUID).
 
 -spec import_moh(ne_binary()) -> boolean().
 import_moh(UUID) ->
     try ets:lookup_element(?CHANNELS_TBL, UUID, #channel.import_moh) of
         Import -> Import
     catch
-        error:badarg -> false
+        'error':'badarg' -> 'false'
     end.
 
 -spec account_summary(ne_binary()) -> channels().
@@ -160,7 +159,7 @@ move(UUID, ONode, NNode) ->
 -spec resume(ne_binary(), atom(), wh_proplist()) -> boolean().
 resume(UUID, NewNode) ->
     catch gproc:reg({p, l, {move, NewNode, UUID}}),
-    lager:debug("waiting for message with metadata for channel ~s from ~s", [UUID, NewNode]),
+    lager:debug("waiting for message with metadata for channel ~s so we can move it to ~s", [UUID, NewNode]),
     receive
         {move_released, _Node, UUID, Evt} ->
             lager:debug("channel has been released from former node: ~s", [_Node]),
@@ -176,20 +175,20 @@ resume(UUID, NewNode) ->
 resume(UUID, NewNode, Evt) ->
     Meta = fix_metadata(props:get_value(<<"metadata">>, Evt)),
 
-    case freeswitch:sendevent_custom(NewNode, 'move::move_request'
+    case freeswitch:sendevent_custom(NewNode, 'channel_move::move_request'
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
-                                       ,{"id", wh_util:to_list(UUID)}
+                                       ,{"channel_id", wh_util:to_list(UUID)}
                                        ,{"metadata", wh_util:to_list(Meta)}
                                        ,{"technology", wh_util:to_list(props:get_value(<<"technology">>, Evt, <<"sofia">>))}
                                       ]) of
         ok ->
-            lager:debug("sent move::move_request with metadata to ~s for ~s", [NewNode, UUID]),
+            lager:debug("sent channel_move::move_request with metadata to ~s for ~s", [NewNode, UUID]),
             true;
         {error, _E} ->
-            lager:debug("failed to send custom event move::move_request: ~p", [_E]),
+            lager:debug("failed to send custom event channel_move::move_request: ~p", [_E]),
             false;
         timeout ->
-            lager:debug("timed out sending custom event move::move_request"),
+            lager:debug("timed out sending custom event channel_move::move_request"),
             false
     end.
 
@@ -227,20 +226,20 @@ wait_for_completion(UUID, NewNode) ->
 teardown_sbd(UUID, OriginalNode) ->
     catch gproc:reg({p, l, {move, OriginalNode, UUID}}),
 
-    case freeswitch:sendevent_custom(OriginalNode, 'move::move_request'
+    case freeswitch:sendevent_custom(OriginalNode, 'channel_move::move_request'
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
-                                       ,{"id", wh_util:to_list(UUID)}
+                                       ,{"channel_id", wh_util:to_list(UUID)}
                                        ,{"technology", ?DEFAULT_FS_TECHNOLOGY}
                                       ])
     of
         ok ->
-            lager:debug("sent move::move_request to ~s for ~s", [OriginalNode, UUID]),
+            lager:debug("sent channel_move::move_request to ~s for ~s", [OriginalNode, UUID]),
             true;
         {error, _E} ->
-            lager:debug("failed to send custom event move::move_request: ~p", [_E]),
+            lager:debug("failed to send custom event channel_move::move_request: ~p", [_E]),
             false;
         timeout ->
-            lager:debug("timed out sending custom event move::move_request"),
+            lager:debug("timed out sending custom event channel_move::move_request"),
             false
     end.
 

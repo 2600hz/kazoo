@@ -438,7 +438,13 @@ handle_info({event, [UUID | Props]}, State) ->
         <<"CHANNEL_DESTROY">> ->
             ecallmgr_fs_channel:destroy(Props, Node),
             ecallmgr_fs_conference:participant_destroy(Node, UUID);
-        <<"channel_move::move_complete">> -> ecallmgr_fs_channel:set_node(Node, UUID);
+        <<"channel_move::move_complete">> ->
+            MoveUUID = props:get_value(<<"old_node_channel_uuid">>, Props),
+            ecallmgr_fs_channel:set_node(Node, MoveUUID),
+            gproc:send({p, l, {move, Node, MoveUUID}}, {move_complete, Node, MoveUUID, Props});
+        <<"channel_move::move_released">> ->
+            MoveUUID = props:get_value(<<"old_node_channel_uuid">>, Props),
+            gproc:send({p, l, {move, Node, UUID}}, {move_released, Node, MoveUUID, Props});
         <<"conference::maintenance">> -> ecallmgr_fs_conference:event(Node, UUID, Props);
         <<"CHANNEL_ANSWER">> -> ecallmgr_fs_channel:set_answered(UUID, true);
         <<"CHANNEL_BRIDGE">> ->
