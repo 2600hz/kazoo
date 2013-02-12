@@ -32,6 +32,7 @@
 -define(PORT, <<"port">>).
 -define(ACTIVATE, <<"activate">>).
 -define(RESERVE, <<"reserve">>).
+-define(CLASSIFIERS, <<"classifiers">>).
 
 -define(FIND_NUMBER_SCHEMA, "{\"$schema\": \"http://json-schema.org/draft-03/schema#\", \"id\": \"http://json-schema.org/draft-03/schema#\", \"properties\": {\"prefix\": {\"required\": \"true\", \"type\": \"string\", \"minLength\": 3, \"maxLength\": 8}, \"quantity\": {\"default\": 1, \"type\": \"integer\", \"minimum\": 1}}}").
 
@@ -96,6 +97,8 @@ populate_phone_numbers(#cb_context{db_name=AccountDb, account_id=AccountId}) ->
 allowed_methods() ->
     ['GET'].
 
+allowed_methods(?CLASSIFIERS) ->
+    ['GET'];
 allowed_methods(_) ->
     ['GET', 'PUT', 'POST', 'DELETE'].
 
@@ -187,6 +190,9 @@ validate(#cb_context{req_verb = <<"get">>, account_id=undefined}=Context) ->
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context).
 
+validate(#cb_context{req_verb = <<"get">>}=Context, ?CLASSIFIERS) ->
+    Context#cb_context{resp_status=success
+                       ,resp_data=wnm_util:available_classifiers()};
 validate(#cb_context{req_verb = <<"get">>}=Context, Number) ->
     read(Number, Context);
 validate(#cb_context{req_verb = <<"put">>}=Context, _Number) ->
