@@ -120,7 +120,6 @@ merge_attributes([?CF_ATTR_LOWER_KEY|Keys], Account, Endpoint, Owner) ->
     FullKey = [?CF_ATTR_LOWER_KEY, ?CF_ATTR_UPPER_KEY],
     OwnerAttr = wh_json:get_integer_value(FullKey, Owner, 5),
     EndpointAttr = wh_json:get_integer_value(FullKey, Endpoint, 5),
-    io:format("~p ~p ~p~n", [EndpointAttr, OwnerAttr, EndpointAttr < OwnerAttr]),
     case EndpointAttr < OwnerAttr of
         true ->
             merge_attributes(Keys, Account, Endpoint, Owner);
