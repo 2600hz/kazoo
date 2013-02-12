@@ -82,7 +82,8 @@
           ,raw_qs = <<>> :: binary()
           ,method = 'GET' :: http_method()
           ,validation_errors = wh_json:new() :: wh_json:object()
-          ,client_ip = <<"127.0.0.1">> :: ne_binary()                                               
+          ,client_ip = <<"127.0.0.1">> :: ne_binary()
+          ,load_merge_bypass :: 'undefined' | wh_json:object()
          }).
 
 -define(CROSSBAR_HRL, true).
