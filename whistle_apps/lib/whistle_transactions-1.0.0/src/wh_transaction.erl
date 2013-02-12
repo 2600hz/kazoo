@@ -215,7 +215,7 @@ set_call_id(CallId, #wh_transaction{pvt_reason=Reason}=Transaction) ->
 %% Save transaction to database
 %% @end
 %%--------------------------------------------------------------------
--spec save/1 :: (wh_transaction()) -> wh_transaction(). 
+-spec save/1 :: (wh_transaction()) -> {ok, wh_json:object(), wh_transaction()} | {error, list(), wh_transaction()}. 
 save(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
     Transaction1 = set_private_properties(Transaction),
     case validate(Transaction1) of
@@ -223,9 +223,9 @@ save(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
             AccountDB = wh_util:format_account_id(AccountId, encoded),
             case couch_mgr:save_doc(AccountDB, to_json(Transaction2)) of
                 {ok, T} ->
-                    from_json(T);
+                    {ok, T, from_json(T)};
                 {error, R} ->
-                    {error, R}
+                    {error, R, Transaction2}
             end;
         {false, Tr, R} ->
             {error, R, Tr}
