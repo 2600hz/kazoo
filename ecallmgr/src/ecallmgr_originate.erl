@@ -208,7 +208,7 @@ handle_cast({create_uuid}, #state{node=Node
     put(callid, UUID),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {UUID, start_listener}, true),
 
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    ServerId = wh_json:get_ne_value(<<"Server-ID">>, JObj),
     {ok, Pid} = ecallmgr_call_sup:start_control_process(Node, UUID, ServerId),
     lager:debug("started control proc: ~p with srv ~s and uuid ~s", [Pid, ServerId, UUID]),
     ControlQueue = ecallmgr_call_control:queue_name(Pid),
