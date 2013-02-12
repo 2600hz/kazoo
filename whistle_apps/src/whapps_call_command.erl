@@ -25,6 +25,7 @@
 -export([redirect/3]).
 -export([answer/1
          ,hangup/1, hangup/2
+         ,queued_hangup/1
          ,set/3, set_terminators/2
          ,fetch/1, fetch/2
         ]).
@@ -495,6 +496,7 @@ b_answer(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec hangup/1 :: (whapps_call:call()) -> 'ok'.
+-spec queued_hangup/1 :: (whapps_call:call()) -> 'ok'.
 -spec hangup/2 :: (boolean(), whapps_call:call()) -> 'ok'.
 
 -spec b_hangup/1 :: (whapps_call:call()) -> {'ok', 'channel_hungup'}.
@@ -506,12 +508,18 @@ hangup(Call) ->
               ],
     send_command(Command, Call).
 
+queued_hangup(Call) ->
+    Command = [{<<"Application-Name">>, <<"hangup">>}],
+    send_command(Command, Call).
+
 hangup(OtherLegOnly, Call) when is_boolean(OtherLegOnly) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
                ,{<<"Other-Leg-Only">>, OtherLegOnly}
                ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
+
+
 
 b_hangup(Call) ->
     hangup(Call),
