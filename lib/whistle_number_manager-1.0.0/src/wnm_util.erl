@@ -25,8 +25,27 @@
 -include("wnm.hrl").
 
 -define(SERVER, ?MODULE).
--define(DEFAULT_CLASSIFIERS, [{<<"tollfree_us">>, <<"^\\+1(800|888|877|866|855)\\d{7}$">>}
-                              ,{<<"did_us">>, <<"^\\+1\\d{10}$">>}
+-define(DEFAULT_CLASSIFIERS, [{<<"tollfree_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+1(800|888|877|866|855)\\d{7}$">>}
+                                                                     ,{<<"friendly_name">>, <<"US TollFree">>}
+                                                                    ])}
+                              ,{<<"toll_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+1900\\d{7}$">>}
+                                                                  ,{<<"friendly_name">>, <<"US Toll">>}
+                                                                 ])}
+                              ,{<<"emergency">>, wh_json:from_list([{<<"regex">>, <<"^911$">>}
+                                                                    ,{<<"friendly_name">>, <<"Emergency Dispatcher">>}
+                                                                   ])}
+                              ,{<<"caribbean">>, wh_json:from_list([{<<"regex">>, <<"^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7}$">>}
+                                                                    ,{<<"friendly_name">>, <<"Caribbean">>}
+                                                                   ])}
+                              ,{<<"did_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>}
+                                                                 ,{<<"friendly_name">>, <<"US DID">>}
+                                                                ])}
+                              ,{<<"international">>, wh_json:from_list([{<<"regex">>, <<"^011\\d*$|^00\\d*$">>}
+                                                                        ,{<<"friendly_name">>, <<"International">>}
+                                                                       ])}
+                              ,{<<"unknown">>, wh_json:from_list([{<<"regex">>, <<"^.*$">>}
+                                                                  ,{<<"friendly_name">>, <<"Unknown">>}
+                                                                 ])}
                              ]).
 -define(DEFAULT_E164_CONVERTERS, [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>
                                      ,wh_json:from_list([{<<"prefix">>, <<"+1">>}])
@@ -46,8 +65,30 @@
 -spec available_classifiers/0 :: () -> [] | [ne_binary(),...].
 available_classifiers() ->
     Default = wh_json:from_list(?DEFAULT_CLASSIFIERS),
-    wh_json:get_keys(whapps_config:get(?WNM_CONFIG_CAT, <<"classifiers">>, Default)).
-   
+    Classifiers = whapps_config:get(?WNM_CONFIG_CAT, <<"classifiers">>, Default),
+    correct_depreciated_classifiers(wh_json:to_proplist(Classifiers)).
+
+-spec correct_depreciated_classifiers/1 :: (proplist()) -> wh_json:object().
+correct_depreciated_classifiers(Classifiers) ->
+    correct_depreciated_classifiers(Classifiers, wh_json:new()).
+
+-spec correct_depreciated_classifiers/2 :: (proplist(), wh_json:object()) -> wh_json:object().
+correct_depreciated_classifiers([], JObj) ->
+    JObj;
+correct_depreciated_classifiers([{Classifier, Regex}|Classifiers], JObj) when is_binary(Regex) ->
+    J = wh_json:from_list([{<<"regex">>, Regex}
+                           ,{<<"friendly_name">>, Classifier}
+                          ]),
+    correct_depreciated_classifiers(Classifiers, wh_json:set_value(Classifier, J, JObj));
+correct_depreciated_classifiers([{Classifier, J}|Classifiers], JObj) ->
+    case wh_json:get_value(<<"friendly_name">>, J) of
+        undefined ->
+            Updated = wh_json:set_value(<<"friendly_name">>, Classifier, JObj),
+            correct_depreciated_classifiers(Classifiers, wh_json:set_value(Classifier, Updated, JObj));
+        _Else ->
+            correct_depreciated_classifiers(Classifiers, wh_json:set_value(Classifier, J, JObj))
+    end.            
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -67,12 +108,18 @@ classify_number(Num, []) ->
     lager:debug("unable to classify number ~s", [Num]),
     undefined;
 classify_number(Num, [{Classification, Classifier}|Classifiers]) ->
-    case re:run(Num, Classifier) of
+    case re:run(Num, get_classifier_regex(Classifier)) of
         nomatch -> classify_number(Num, Classifiers);
         _ ->
             lager:debug("number '~s' is classified as ~s", [Num, Classification]),
             wh_util:to_binary(Classification)
     end.
+
+-spec get_classifier_regex/1 :: (ne_binary() | wh_json:object()) -> ne_binary().
+get_classifier_regex(Classifier) when is_binary(Classifier) ->
+    Classifier;
+get_classifier_regex(JObj) ->
+    wh_json:get_value(<<"regex">>, JObj, <<"^$">>).
 
 %%--------------------------------------------------------------------
 %% @public
