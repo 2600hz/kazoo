@@ -32,6 +32,8 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                     ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
                 {AppName, AppData} ->
                     ecallmgr_util:send_cmd(Node, UUID, AppName, AppData);
+                {AppName, AppData, NewNode} ->
+                    ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
                 Apps when is_list(Apps) ->
                     [ecallmgr_util:send_cmd(Node, UUID, AppName, AppData) || {AppName, AppData} <- Apps]
             end;
@@ -47,12 +49,14 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 %% the FS ESL via mod_erlang_event
 %% @end
 %%--------------------------------------------------------------------
--type fs_app() :: {ne_binary(), ne_binary() | 'noop'}.
+-type fs_app() :: {ne_binary(), ne_binary() | 'noop'} |
+                  {ne_binary(), ne_binary(), atom()}.
 -spec get_fs_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
-                              fs_app() |
-                              {'return', 'error'} |
-                              {'error', ne_binary()} |
-                              [fs_app(),...].
+                        fs_app() |
+                        
+                        {'return', 'error'} |
+                        {'error', ne_binary()} |
+                        [fs_app(),...].
 get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
     case wapi_dialplan:noop_v(JObj) of
         false ->
@@ -700,10 +704,10 @@ get_conference_app(Node, UUID, JObj) ->
             lager:debug("channel is on same node as conference"),
             {<<"conference">>, Cmd};
         {ok, ConfNode} ->
-            lager:debug("channel is on node ~s, conference is on ~s, moving channel"),
+            lager:debug("channel is on node ~s, conference is on ~s, moving channel", [Node, ConfNode]),
             true = ecallmgr_fs_channel:move(UUID, ChanNode, ConfNode),
             lager:debug("channel has moved to ~s", [ConfNode]),
-            {<<"conference">>, Cmd}
+            {<<"conference">>, Cmd, ConfNode}
     end.
 
 wait_for_conference(ConfName) ->
