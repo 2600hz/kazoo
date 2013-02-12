@@ -89,6 +89,7 @@ merge_attributes(Endpoint) ->
                 ,<<"name">>
                 ,<<"do_not_disturb">>
                 ,<<"call_forward">>
+                ,?CF_ATTR_LOWER_KEY
            ],
     merge_attributes(Keys, undefined, Endpoint, undefined).
 
@@ -115,6 +116,18 @@ merge_attributes(Keys, undefined, Endpoint, Owner) ->
             merge_attributes(Keys, wh_json:new(), Endpoint, Owner)
     end;
 merge_attributes([], _, Endpoint, _) -> Endpoint;
+merge_attributes([?CF_ATTR_LOWER_KEY|Keys], Account, Endpoint, Owner) ->
+    FullKey = [?CF_ATTR_LOWER_KEY, ?CF_ATTR_UPPER_KEY],
+    OwnerAttr = wh_json:get_integer_value(FullKey, Owner, 5),
+    EndpointAttr = wh_json:get_integer_value(FullKey, Endpoint, 5),
+    io:format("~p ~p ~p~n", [EndpointAttr, OwnerAttr, EndpointAttr < OwnerAttr]),
+    case EndpointAttr < OwnerAttr of
+        true ->
+            merge_attributes(Keys, Account, Endpoint, Owner);
+        false ->
+            Update = wh_json:set_value(FullKey, OwnerAttr, Endpoint), 
+            merge_attributes(Keys, Account, Update, Owner)
+    end;
 merge_attributes([<<"name">> = Key|Keys], Account, Endpoint, Owner) ->
     AccountName = wh_json:get_ne_value(Key, Account),
     EndpointName = wh_json:get_ne_value(Key, Endpoint),
