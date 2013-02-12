@@ -77,7 +77,7 @@ maybe_send_contact_list(Context) ->
     Context.
 
 -spec do_full_provisioner_provider/2 :: (ne_binary(), #cb_context{}) -> boolean().
-do_full_provisioner_provider(_, #cb_context{db_name=AccountDb, account_id=AccountId}=Context) ->
+do_full_provisioner_provider(_, #cb_context{db_name=AccountDb, account_id=AccountId}) ->
     do_full_provision_contact_list(AccountId, AccountDb).
 
 -spec do_full_provision_contact_list/1 :: (#cb_context{}) -> boolean().
@@ -105,7 +105,6 @@ do_full_provision_contact_list(AccountId, AccountDb) ->
                          end
                        ],
             Provider = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
-            io:format("~p~n", [Provider]),
             PartialURL = <<AccountId/binary, "/">>,
             send_to_full_provisioner(Provider, PartialURL);
         {error, _R} ->
@@ -211,7 +210,7 @@ do_simple_provision(MACAddress, #cb_context{doc=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec do_full_provision/2 :: (string(), #cb_context{}) -> boolean().
 do_full_provision(MACAddress, #cb_context{}=Context) ->
-    case get_merged_device(Context) of
+    case get_merged_device(MACAddress, Context) of
         {error, _} -> false;
         {ok, #cb_context{doc=JObj}} ->
             do_full_provision(MACAddress, JObj)
@@ -256,30 +255,27 @@ do_awesome_provision(_MACAddress, Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec get_merged_device/1 :: (cb_context:context()) -> {ok, cb_context:context()} | {error, binary()}.
-get_merged_device(Context) ->
-    case merge_device(Context) of
+-spec get_merged_device/2 :: (ne_binary(), cb_context:context()) -> {ok, cb_context:context()} | {error, binary()}.
+get_merged_device(MACAddress, Context) ->
+    case merge_device(MACAddress, Context) of
         {error, _}=E -> E;
         {ok, Data} ->
             {ok, Context#cb_context{doc=Data}}
     end.
 
--spec merge_device/1 :: (cb_context:context()) -> {ok, wh_json:json_object()} | {error, binary()}.
-merge_device(#cb_context{doc=JObj, account_id=AccountId}) ->
-    case get_account(AccountId) of
-        {error, _}=E -> E;
-        {ok, Account} ->
-            Routines = [fun(J) -> wh_json:merge_recursive(Account, J) end
-                        ,fun(J) -> 
-                                 OwnerId = wh_json:get_ne_value(<<"owner_id">>, JObj),
-                                 Owner = get_owner(OwnerId, AccountId),
-                                 wh_json:merge_recursive(J, Owner) 
-                         end
-                        ,fun(J) -> wh_json:set_value(<<"account_id">>, AccountId, J) end
-                       ],
-            MergedDevice = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
-            {ok, wh_json:public_fields(MergedDevice)}
-    end.
+-spec merge_device/2 :: (ne_binary(), cb_context:context()) -> {ok, wh_json:json_object()} | {error, binary()}.
+merge_device(MACAddress, #cb_context{doc=JObj, account_id=AccountId}) ->
+    Routines = [fun(J) -> wh_json:set_value(<<"mac_address">>, MACAddress, J) end
+                ,fun(J) -> 
+                        OwnerId = wh_json:get_ne_value(<<"owner_id">>, JObj),
+                        Owner = get_owner(OwnerId, AccountId),
+                        wh_json:merge_recursive(J, Owner) 
+                 end
+                ,fun(J) -> wh_json:delete_key(<<"apps">>, J) end
+                ,fun(J) -> wh_json:set_value(<<"account_id">>, AccountId, J) end
+               ],
+    MergedDevice = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
+    {ok, wh_json:public_fields(MergedDevice)}.
 
 -spec get_owner/2 :: (api_binary(), ne_binary()) -> wh_json:json_object().
 get_owner(undefined, _) ->
@@ -292,17 +288,6 @@ get_owner(OwnerId, AccountId) ->
         {error, _R} ->
             lager:debug("unable to open user definition ~s/~s: ~p", [AccountDb, OwnerId, _R]),
             wh_json:new()
-    end.
-
--spec get_account/1 :: (ne_binary()) -> wh_json:json_object().
-get_account(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {ok, Account} ->
-            {ok, Account};
-        {error, _R}=E ->
-            lager:debug("unable to open account definition ~s/~s: ~p", [AccountDb, AccountId, _R]),
-            E
     end.
 
 %%--------------------------------------------------------------------
