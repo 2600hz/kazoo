@@ -474,7 +474,7 @@ erase_changed([#cache_obj{type=pointer, value=Key}|Objects], Removed, Cache) ->
     _ = case lists:member(Key, Removed) of
             true -> ok;
             false ->
-                lager:info("removing updated cache object ~-300p", [Key]),
+                lager:debug("removing updated cache object ~-300p", [Key]),
                 _ = maybe_exec_erase_callbacks(Key, Cache),
                 maybe_remove_object(Key, Cache)
         end,
@@ -483,7 +483,7 @@ erase_changed([#cache_obj{type=normal, key=Key}|Objects], Removed, Cache) ->
     _ = case lists:member(Key, Removed) of
             true -> ok;
             false ->
-                lager:info("removing updated cache object ~-300p", [Key]),
+                lager:debug("removing updated cache object ~-300p", [Key]),
                 _ = maybe_exec_erase_callbacks(Key, Cache),
                 maybe_remove_object(Key, Cache)
         end,    
