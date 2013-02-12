@@ -31,7 +31,7 @@ get_mac_address(#cb_context{doc=JObj}) ->
     case wh_json:get_ne_value(<<"mac_address">>, JObj) of
         undefined -> undefined;
         MACAddress ->
-            re:replace(wh_util:to_string(MACAddress)
+            re:replace(wh_util:to_list(MACAddress)
                        ,"[^0-9a-fA-F]"
                        ,""
                        ,[{return, list}, global])
