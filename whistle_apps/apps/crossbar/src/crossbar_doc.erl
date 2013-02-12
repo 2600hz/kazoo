@@ -72,6 +72,8 @@ load(?NE_BINARY = DocId, #cb_context{db_name=Db}=Context, Opts) ->
                 false -> cb_context:store(db_doc, JObj, handle_couch_mgr_success(JObj, Context))
             end
     end;
+load([], Context, _) ->
+    cb_context:add_system_error(bad_identifier,  Context);
 load([_|_]=IDs, #cb_context{db_name=Db}=Context, Opts) ->
     Opts1 = [{keys, IDs}, include_docs | Opts],
     case couch_mgr:all_docs(Db, Opts1) of
@@ -109,13 +111,16 @@ load_from_file(Db, File) ->
 load_merge(DocId, #cb_context{doc=DataJObj}=Context) ->
     load_merge(DocId, DataJObj, Context).
 
-load_merge(DocId, DataJObj, #cb_context{db_name=DbName}=Context) ->
+
+load_merge(DocId, DataJObj, #cb_context{db_name=DbName, load_merge_bypass=undefined}=Context) ->
     case load(DocId, Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
             lager:debug("loaded doc ~s from ~s, merging", [DocId, DbName]),
             merge(DataJObj, JObj, Context1);
         Else -> Else
-    end.
+    end;
+load_merge(_, _, #cb_context{load_merge_bypass=JObj}=Context) ->
+    handle_couch_mgr_success(JObj, Context).
 
 -spec merge/3 :: (wh_json:object(), wh_json:object(), cb_context:context()) -> cb_context:context().
 merge(DataJObj, JObj, Context) ->

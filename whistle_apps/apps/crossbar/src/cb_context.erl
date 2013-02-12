@@ -252,6 +252,10 @@ add_system_error(not_found, Context) ->
 add_system_error(bad_identifier, Props, Context) ->
     Identifier = props:get_value(details, Props),
     crossbar_util:response_bad_identifier(Identifier, Context);
+add_system_error(invalid_bulk_type, Props, Context) ->
+    Type = props:get_value(type, Props),
+    Reason = <<"bulk operations do not support documents of type ", (wh_util:to_binary(Type))/binary>>,
+    crossbar_util:response(error, <<"invalid bulk type">>, 400, Reason, Context);
 add_system_error(forbidden, Props, Context) ->
     Reason = props:get_value(details, Props),
     crossbar_util:response(error, <<"forbidden">>, 403, Reason, Context);
