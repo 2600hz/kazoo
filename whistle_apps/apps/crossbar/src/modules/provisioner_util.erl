@@ -50,7 +50,10 @@ maybe_provision(#cb_context{resp_status=success}=Context) ->
         andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>) 
     of
         <<"full_provisioner">> ->
-            spawn(fun() -> do_full_provision(MACAddress, Context) end),
+            spawn(fun() ->
+                          do_full_provision(MACAddress, Context),
+                          do_full_provisioner_provider(MACAddress, Context)
+                  end),
             true;
         <<"simple_provisioner">>  ->
             spawn(fun() -> do_simple_provision(MACAddress, Context) end),
@@ -73,6 +76,10 @@ maybe_send_contact_list(#cb_context{resp_status=success}=Context) ->
 maybe_send_contact_list(Context) ->
     Context.
 
+-spec do_full_provisioner_provider/2 :: (ne_binary(), #cb_context{}) -> boolean().
+do_full_provisioner_provider(_, #cb_context{db_name=AccountDb, account_id=AccountId}=Context) ->
+    do_full_provision_contact_list(AccountId, AccountDb).
+
 -spec do_full_provision_contact_list/1 :: (#cb_context{}) -> boolean().
 -spec do_full_provision_contact_list/2 :: (ne_binary(), ne_binary()) -> boolean().
 
@@ -84,9 +91,27 @@ do_full_provision_contact_list(#cb_context{db_name=AccountDb, account_id=Account
     end.
 
 do_full_provision_contact_list(AccountId, AccountDb) ->
-    JObj = provisioner_contact_list:build(AccountDb),
-    PartialURL = <<AccountId/binary, "/">>,
-    send_to_full_provisioner(wh_json:from_list([{<<"directory">>, JObj}]), PartialURL).
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {ok, JObj} ->
+            Routines = [fun(J) -> wh_json:public_fields(J) end 
+                        ,fun(J) -> 
+                                 ResellerId = wh_services:find_reseller_id(AccountId),
+                                 wh_json:set_value(<<"provider_id">>, ResellerId, J)
+                         end
+                        ,fun(J) -> wh_json:delete_key(<<"available_apps">>, J) end
+                        ,fun(J) ->
+                                 ContactList = provisioner_contact_list:build(AccountDb),
+                                 wh_json:set_value(<<"directory">>, ContactList, J)
+                         end
+                       ],
+            Provider = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
+            io:format("~p~n", [Provider]),
+            PartialURL = <<AccountId/binary, "/">>,
+            send_to_full_provisioner(Provider, PartialURL);
+        {error, _R} ->
+            lager:warning("failed to get account definition for ~s: ~p", [AccountId, _R]),
+            false
+    end.
 
 should_build_contact_list(#cb_context{doc=JObj}=Context) ->
     OriginalJObj = cb_context:fetch(db_doc, Context), 
