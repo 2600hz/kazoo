@@ -16,14 +16,37 @@
 handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
-
     lager:info("callflow has received a route win, taking control of the call"),
     case whapps_call:retrieve(CallId) of
         {ok, Call} ->
-            lager:info("setting initial information about the call"),
-            bootstrap_callflow_executer(JObj, Call);
+            maybe_restrict_call(JObj, whapps_call:from_route_win(JObj, Call));
         {error, R} ->
             lager:info("unable to find callflow during second lookup (HUH?) ~p", [R])
+    end.
+
+-spec maybe_restrict_call/2 :: (wh_json:object(), whapps_call:call()) -> 'ok' | {'ok', pid()}.
+maybe_restrict_call(JObj, Call) ->
+    case should_restrict_call(Call) of
+        true ->
+            lager:debug("endpoint is restricted from making this call, terminate", []),
+            _ = whapps_call_command:answer(Call),
+            _ = whapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
+            _ = whapps_call_command:queued_hangup(Call),
+            ok;
+        false ->
+            lager:info("setting initial information about the call"),
+            bootstrap_callflow_executer(JObj, Call)
+    end.
+
+-spec should_restrict_call/1 :: (whapps_call:call()) -> boolean().
+should_restrict_call(Call) ->
+    case cf_endpoint:get(Call) of
+        {error, _} -> false;
+        {ok, JObj} ->
+            Number = whapps_call:request_user(Call),
+            Classification = wnm_util:classify_number(Number),
+            lager:debug("classified number as ~s, testing for call restrictions", [Classification]),
+            wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
     end.
 
 %%-----------------------------------------------------------------------------
@@ -33,14 +56,13 @@ handle_req(JObj, _Options) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec bootstrap_callflow_executer/2 :: (wh_json:object(), whapps_call:call()) -> {'ok', pid()}.
-bootstrap_callflow_executer(JObj, Call) ->
-    lists:foldl(fun(F, C) -> F(C) end
-                ,whapps_call:from_route_win(JObj, Call)
-                ,[fun store_owner_id/1
-                  ,fun update_ccvs/1
-                  %% all funs above here return whapps_call:call()
-                  ,fun execute_callflow/1
-                 ]).
+bootstrap_callflow_executer(_JObj, Call) ->
+    Routines = [fun store_owner_id/1
+                ,fun update_ccvs/1
+                %% all funs above here return whapps_call:call()
+                ,fun execute_callflow/1
+               ],
+    lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
 
 %%-----------------------------------------------------------------------------
 %% @private
