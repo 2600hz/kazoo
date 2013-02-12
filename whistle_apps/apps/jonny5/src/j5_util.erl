@@ -13,7 +13,7 @@
 -export([get_session_id/1]).
 -export([send_system_alert/3]).
 
--include_lib("jonny5/src/jonny5.hrl").
+-include_lib("jonny5.hrl").
 
 -define(LIMITS_KEY(AccountId), {limits, AccountId}).
 
@@ -111,20 +111,40 @@ write_to_ledger(Suffix, Props, Units, #limits{account_id=LedgerId, account_db=Le
             lager:debug("debit allotment ~s ~wsec for session ~s: ~s"
                         ,[LedgerId, Units, SessionId, props:get_value(<<"reason">>, Props, <<"no_reason">>)])
     end,
-    Entry = wh_json:from_list([{<<"_id">>, Id}
-                               ,{<<"session_id">>, SessionId}
-                               ,{<<"account_id">>, get_account_id(JObj)}
-                               ,{<<"call_id">>, get_call_id(JObj)}
-                               ,{<<"amount">>, abs(Units)}
-                               ,{<<"pvt_account_id">>, LedgerId}
-                               ,{<<"pvt_account_db">>, LedgerDb}
-                               ,{<<"pvt_created">>, Timestamp}
-                               ,{<<"pvt_modified">>, Timestamp}
-                               ,{<<"pvt_vsn">>, 1}
-                               ,{<<"pvt_whapp">>, ?APP_NAME}
-                               | Props
-                              ]),
-    couch_mgr:save_doc(LedgerDb, Entry).
+    case props:get_value(<<"pvt_type">>, Props) of
+        <<"credit">> ->
+            Tr = wh_transaction:credit(abs(Units), per_minute_sub_account),
+            Tr1 = wh_transaction:set_call_id(get_call_id(JObj), Tr),
+            Tr2 = wh_transaction:set_pvt_account_id(LedgerId, Tr1),
+            Tr3 = wh_transaction:set_sub_account_id(get_account_id(JObj), Tr2),
+            Tr4 = wh_transaction:set_description(Suffix, Tr3),
+            {OkError, Result, _} = wh_transaction:save(Tr4),
+            {OkError, Result};
+        <<"debit">> ->
+            Tr = wh_transaction:debit(abs(Units), per_minute_sub_account),
+            Tr1 = wh_transaction:set_call_id(get_call_id(JObj), Tr),
+            Tr2 = wh_transaction:set_pvt_account_id(LedgerId, Tr1),
+            Tr3 = wh_transaction:set_sub_account_id(get_account_id(JObj), Tr2),
+            Tr4 = wh_transaction:set_description(Suffix, Tr3),
+            {OkError, Result, _} = wh_transaction:save(Tr4),
+            {OkError, Result};
+        _ ->
+            Entry = wh_json:from_list([{<<"_id">>, Id}
+                                       ,{<<"session_id">>, SessionId}
+                                       ,{<<"account_id">>, get_account_id(JObj)}
+                                       ,{<<"call_id">>, get_call_id(JObj)}
+                                       ,{<<"amount">>, abs(Units)}
+                                       ,{<<"pvt_account_id">>, LedgerId}
+                                       ,{<<"pvt_account_db">>, LedgerDb}
+                                       ,{<<"pvt_created">>, Timestamp}
+                                       ,{<<"pvt_modified">>, Timestamp}
+                                       ,{<<"pvt_vsn">>, 1}
+                                       ,{<<"pvt_whapp">>, ?APP_NAME}
+                                       | Props
+                                      ]),
+            couch_mgr:save_doc(LedgerDb, Entry)
+    end. 
+
 
 get_timestamp(JObj) ->
     case wh_json:get_integer_value(<<"Timestamp">>, JObj) of
@@ -151,20 +171,7 @@ get_call_id(JObj) ->
 current_balance(_Ledger) -> get(j5_test_balance).
 -else.
 current_balance(Ledger) ->
-    LedgerDb = wh_util:format_account_id(Ledger, encoded),    
-    ViewOptions = [{<<"reduce">>, true}],
-    case couch_mgr:get_results(LedgerDb, <<"transactions/credit_remaining">>, ViewOptions) of
-        {ok, []} -> 
-            lager:debug("no current balance for ~s", [Ledger]),
-            0;
-        {ok, [ViewRes|_]} -> 
-            Credit = wh_json:get_integer_value(<<"value">>, ViewRes, 0),
-            lager:debug("current balance for ~s is $~w", [Ledger, wapi_money:units_to_dollars(Credit)]),
-            Credit;
-        {error, _R} -> 
-            lager:debug("unable to get current balance for ~s: ~p", [Ledger, _R]),
-            0
-    end.
+    wh_transaction:get_current_balance(Ledger).
 -endif.
 
 -spec get_session_id(wh_json:json_object()) -> ne_binary().

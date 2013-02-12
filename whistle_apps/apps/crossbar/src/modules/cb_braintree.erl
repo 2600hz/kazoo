@@ -390,13 +390,7 @@ create_braintree_customer(#cb_context{account_id=AccountId}=Context) ->
 
 -spec current_account_dollars(ne_binary()) -> float().
 current_account_dollars(Account) ->
-    AccountDb = wh_util:format_account_id(Account, encoded),
-    ViewOptions = [{<<"reduce">>, true}],
-    Units = case couch_mgr:get_results(AccountDb, <<"transactions/credit_remaining">>, ViewOptions) of
-                {ok, []} -> lager:debug("No results"), 0;
-                {ok, [ViewRes|_]} -> lager:debug("Found obj ~p", [ViewRes]), wh_json:get_integer_value(<<"value">>, ViewRes, 0);
-                {error, _E} -> lager:debug("Error loading view: ~p", [_E]), 0
-            end,    
+    Units = wh_transaction:get_current_balance(Account),
     wapi_money:units_to_dollars(Units).
 
 -spec maybe_charge_billing_id(float(), cb_context:context()) -> cb_context:context().
