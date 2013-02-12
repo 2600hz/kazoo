@@ -9,6 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(wnm_util).
 
+-export([available_classifiers/0]).
 -export([classify_number/1]).
 -export([is_reconcilable/1]).
 -export([list_carrier_modules/0]).
@@ -36,6 +37,17 @@
                                  ]).
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$">>).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec available_classifiers/0 :: () -> [] | [ne_binary(),...].
+available_classifiers() ->
+    Default = wh_json:from_list(?DEFAULT_CLASSIFIERS),
+    wh_json:get_keys(whapps_config:get(?WNM_CONFIG_CAT, <<"classifiers">>, Default)).
+   
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
