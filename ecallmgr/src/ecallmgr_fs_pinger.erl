@@ -29,7 +29,7 @@
 
 -record(state, {node = 'undefined' :: atom()
                 ,options = [] :: proplist()
-                ,timeout = 1000
+                ,timeout = 2000
                }).
 
 %%%===================================================================
@@ -55,17 +55,8 @@ start_link(Node, Options) ->
 %%--------------------------------------------------------------------
 init([Node, Props]) ->
     put(callid, Node),
-    lager:warning("connection to fs node '~s' failed, starting pinger", [Node]),
-    wh_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
-    _ = case props:get_value(cookie, Props) of
-            undefined -> ok;
-            Cookie when is_atom(Cookie) ->
-                lager:debug("setting cookie to ~s for ~s", [Cookie, Node]),
-                erlang:set_cookie(Node, Cookie)
-        end,
-    GracePeriod = wh_util:to_integer(ecallmgr_config:get(<<"node_down_grace_period">>, 10000)),
-    erlang:send_after(GracePeriod, self(), {flush_channels, Node}),
-    self() ! check_node_status,
+    self() ! initialize_pinger,
+    lager:info("node ~s not responding, periodically retrying connection", [Node]),
     {ok, #state{node=Node, options=Props}}.
 
 %%--------------------------------------------------------------------
@@ -109,25 +100,34 @@ handle_cast(_Msg, #state{timeout=Timeout}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(initialize_pinger, #state{node=Node, options=Props}=State) ->
+    wh_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
+    _ = case props:get_value(cookie, Props) of
+            undefined -> ok;
+            Cookie when is_atom(Cookie) ->
+                lager:debug("setting cookie to ~s for ~s", [Cookie, Node]),
+                erlang:set_cookie(Node, Cookie)
+        end,
+    GracePeriod = wh_util:to_integer(ecallmgr_config:get(<<"node_down_grace_period">>, 10000)),
+    erlang:send_after(GracePeriod, self(), {flush_channels, Node}),
+    self() ! check_node_status,
+    {noreply, State};
 handle_info({flush_channels, Node}, State) ->
     lager:info("node ~s has been down past the grace period, flushing channels", [Node]),
     ecallmgr_fs_nodes:flush_node_channels(Node),
     {noreply, State};
 handle_info(check_node_status, #state{node=Node, timeout=Timeout}=State) ->
-    T = Timeout * 2,
-    case is_node_up(Node) of
+    case net_kernel:connect_node(Node) of
         true -> 
-            wh_notify:system_alert("node ~s connected to ~s", [Node, node()]),            
+            %% give the node a moment to init
+            timer:sleep(1000),
+            wh_notify:system_alert("node ~s connected to ~s", [Node, node()]),
             ok = ecallmgr_fs_nodes:nodeup(Node),
             {stop, normal, State};
-        false when T =< ?MAX_TIMEOUT_FOR_NODE_RESTART ->
-            lager:info("waiting ~b seconds to ping again", [T div 1000]),
-            erlang:send_after(T, self(), check_node_status),
-            {noreply, State#state{timeout=T}};
-        false ->
-            lager:info("waiting ~b seconds to ping again", [?MAX_TIMEOUT_FOR_NODE_RESTART div 1000]),
-            erlang:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), check_node_status),
-            {noreply, State#state{timeout=?MAX_TIMEOUT_FOR_NODE_RESTART}}
+        _Else ->
+            lager:debug("node ~s not responding, waiting ~b seconds to ping again", [Node, Timeout div 1000]),
+            erlang:send_after(Timeout, self(), check_node_status),
+            {noreply, State}
     end;
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -160,13 +160,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec is_node_up/1 :: (atom()) -> boolean().
-is_node_up(Node) ->
-    case net_adm:ping(Node) of
-        pong ->
-            lager:debug("node ~s has risen", [Node]),
-             true;
-        pang ->
-            lager:debug("node ~s still not reachable", [Node]),
-            false
-    end.
