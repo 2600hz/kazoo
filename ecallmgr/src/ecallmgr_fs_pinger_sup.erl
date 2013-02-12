@@ -16,6 +16,7 @@
 
 -export([start_link/0]).
 -export([add_node/2]).
+-export([find_pinger/1]).
 -export([remove_node/1]).
 -export([init/1]).
 
@@ -44,6 +45,15 @@ start_link() ->
                                             {'ok','undefined' | pid(), term()}.
 add_node(Node, Options) ->
     supervisor:start_child(?SERVER, ?PINGER(Node, Options)).
+
+find_pinger(Node) ->
+    Workers = supervisor:which_children(ecallmgr_fs_pinger_sup),
+    find_pinger(Workers, Node).
+
+find_pinger([], _) -> undefined;
+find_pinger([{Node, Pid, worker, _}|_], Node) -> Pid;
+find_pinger([_|Workers], Node) ->
+    find_pinger(Workers, Node).
 
 -spec remove_node/1 :: (atom()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 remove_node(Node) ->

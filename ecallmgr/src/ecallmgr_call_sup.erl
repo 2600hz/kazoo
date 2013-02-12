@@ -20,9 +20,10 @@
         ]).
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{ecallmgr_call_event_sup, supervisor}, {ecallmgr_call_control_sup, supervisor}]).
+-define(CHILDREN, [{ecallmgr_call_event_sup, supervisor}
+                   ,{ecallmgr_call_control_sup, supervisor}
+                  ]).
 
 %% ===================================================================
 %% API functions
