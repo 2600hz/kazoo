@@ -29,7 +29,7 @@
 
 -record(state, {node = 'undefined' :: atom()
                 ,options = [] :: proplist()
-                ,timeout = 1000
+                ,timeout = 2000
                }).
 
 %%%===================================================================
@@ -53,13 +53,11 @@ start_link(Node, Options) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Node, Options]) ->
+init([Node, Props]) ->
     put(callid, Node),
-    lager:debug("starting new fs pinger for ~s", [Node]),
-    wh_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
-    GracePeriod = wh_util:to_integer(ecallmgr_config:get(<<"node_down_grace_period">>, 10000)),
-    erlang:send_after(GracePeriod, self(), {flush_channels, Node}),
-    {ok, #state{node=Node, options=Options}, 1000}.
+    self() ! initialize_pinger,
+    lager:info("node ~s not responding, periodically retrying connection", [Node]),
+    {ok, #state{node=Node, options=Props}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,23 +100,37 @@ handle_cast(_Msg, #state{timeout=Timeout}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({flush_channels, Node}, #state{timeout=Timeout}=State) ->
+handle_info(initialize_pinger, #state{node=Node, options=Props}=State) ->
+    wh_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
+    _ = case props:get_value(cookie, Props) of
+            undefined -> ok;
+            Cookie when is_atom(Cookie) ->
+                lager:debug("setting cookie to ~s for ~s", [Cookie, Node]),
+                erlang:set_cookie(Node, Cookie)
+        end,
+    GracePeriod = wh_util:to_integer(ecallmgr_config:get(<<"node_down_grace_period">>, 10000)),
+    erlang:send_after(GracePeriod, self(), {flush_channels, Node}),
+    self() ! check_node_status,
+    {noreply, State};
+handle_info({flush_channels, Node}, State) ->
     lager:info("node ~s has been down past the grace period, flushing channels", [Node]),
     ecallmgr_fs_nodes:flush_node_channels(Node),
-    {noreply, State, Timeout};
-handle_info(timeout, #state{node=Node, options=Options, timeout=Timeout}=State) ->
-    T = Timeout * 2,
-    case is_node_up(Node, Options) of
-        true -> {stop, normal, State};
-        false when T =< ?MAX_TIMEOUT_FOR_NODE_RESTART ->
-            lager:debug("waiting ~b seconds to ping again", [T div 1000]),
-            {noreply, State#state{timeout=T}, T};
-        false ->
-            lager:debug("waiting ~b seconds to ping again", [?MAX_TIMEOUT_FOR_NODE_RESTART div 1000]),
-            {noreply, State#state{timeout=?MAX_TIMEOUT_FOR_NODE_RESTART}, T}
+    {noreply, State};
+handle_info(check_node_status, #state{node=Node, timeout=Timeout}=State) ->
+    case net_kernel:connect_node(Node) of
+        true -> 
+            %% give the node a moment to init
+            timer:sleep(1000),
+            wh_notify:system_alert("node ~s connected to ~s", [Node, node()]),
+            ok = ecallmgr_fs_nodes:nodeup(Node),
+            {stop, normal, State};
+        _Else ->
+            lager:debug("node ~s not responding, waiting ~b seconds to ping again", [Node, Timeout div 1000]),
+            erlang:send_after(Timeout, self(), check_node_status),
+            {noreply, State}
     end;
-handle_info(_Info, #state{timeout=Timeout}=State) ->
-    {noreply, State, Timeout}.
+handle_info(_Info, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -148,21 +160,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec is_node_up/2 :: (atom(), wh_proplist()) -> boolean().
-is_node_up(Node, Opts) ->
-    case props:get_value(cookie, Opts) of
-        undefined -> ok;
-        Cookie when is_atom(Cookie) ->
-            lager:debug("setting cookie to ~s for ~s", [Cookie, Node]),
-            erlang:set_cookie(Node, Cookie)
-    end,
-
-    case net_adm:ping(Node) of
-        pong ->
-            lager:info("node ~s has risen", [Node]),
-            wh_notify:system_alert("node ~s connected to ~s", [Node, node()]),
-            ok =:= ecallmgr_fs_nodes:add(Node, Opts);
-        pang ->
-            lager:debug("node ~s still not reachable", [Node]),
-            false
-    end.

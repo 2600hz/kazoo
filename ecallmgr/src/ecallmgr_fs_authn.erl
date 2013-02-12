@@ -73,7 +73,6 @@ handle_sucessful_registration(Props, Node) ->
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
     put(callid, Node),
-    process_flag(trap_exit, true),
     lager:info("starting new fs authn listener for ~s", [Node]),
     case bind_to_events(props:get_value(client_version, Options), Node) of
         ok -> {ok, #state{node=Node, options=Options}};

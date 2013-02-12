@@ -16,6 +16,7 @@
 -export([start_link/0]).
 -export([add_node/2]).
 -export([remove_node/1]).
+-export([find_node/1]).
 -export([init/1]).
 
 -define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
@@ -43,6 +44,16 @@ start_link() ->
                                                {'ok','undefined' | pid(), term()}.
 add_node(Node, Options) ->
     supervisor:start_child(?SERVER, ?NODE(Node, [Node, Options])).
+
+find_node(Node) ->
+    Workers = supervisor:which_children(ecallmgr_fs_sup),
+    find_node(Workers, Node).
+
+find_node([], _) -> undefined;
+find_node([{Node, Pid, supervisor, _}|_], Node) -> Pid;
+find_node([_|Workers], Node) ->
+    find_node(Workers, Node).
+
 
 -spec remove_node/1 :: (atom()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 remove_node(Node) ->

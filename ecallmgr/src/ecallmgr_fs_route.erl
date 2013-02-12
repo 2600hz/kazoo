@@ -62,7 +62,6 @@ start_link(Node, Options) ->
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
     put(callid, Node),
-    process_flag(trap_exit, true),
     lager:info("starting new fs route listener for ~s", [Node]),
     case freeswitch:bind(Node, dialplan) of
         ok -> {ok, #state{node=Node, options=Options}};

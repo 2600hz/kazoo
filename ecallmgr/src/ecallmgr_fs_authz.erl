@@ -120,7 +120,6 @@ handle_session_heartbeat(Props, Node) ->
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
     put(callid, Node),
-    process_flag(trap_exit, true),
     lager:info("starting new fs authz listener for ~s", [Node]),
     case bind_to_events(props:get_value(client_version, Options), Node) of
         ok -> {ok, #state{node=Node, options=Options}};
