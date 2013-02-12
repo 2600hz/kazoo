@@ -85,6 +85,7 @@
                 }).
 
 -record(state, {nodes = dict:new()
+                ,self = self()
                 ,preconfigured_lookup :: pid()
                }).
 
@@ -618,6 +619,8 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({fs_nodeup, NodeName}, State) ->
     {noreply, maybe_handle_nodeup(NodeName, State)};
+handle_cast({update_node, #node{node=NodeName}=Node}, #state{nodes=Nodes}=State) ->
+    {noreply, State#state{nodes=dict:store(NodeName, Node, Nodes)}};
 handle_cast({rm_fs_node, NodeName}, State) ->
     {noreply, maybe_rm_fs_node(NodeName, State)};
 handle_cast({new_channel, Channel}, State) ->
@@ -746,40 +749,36 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_handle_nodeup/2 :: (#node{}, #state{}) -> #state{}.
+-spec maybe_handle_nodeup/2 :: (#node{}, #state{}) -> 'ok'.
 maybe_handle_nodeup(NodeName, #state{nodes=Nodes}=State) ->
     case dict:find(NodeName, Nodes) of
-        error -> 
-            State;
-        {ok, #node{connected=true}} ->
-            State;
         {ok, #node{connected=false}=Node} ->
-            handle_nodeup(Node, State)
+            handle_nodeup(Node, State);
+        _Else -> ok
     end.
 
--spec maybe_handle_nodedown/2 :: (#node{}, #state{}) -> #state{}.
+-spec maybe_handle_nodedown/2 :: (#node{}, #state{}) -> 'ok'.
 maybe_handle_nodedown(NodeName, #state{nodes=Nodes}=State) ->
     case dict:find(NodeName, Nodes) of
-        error -> 
-            State;
-        {ok, #node{connected=false}} ->
-            State;
         {ok, #node{connected=true}=Node} ->
-            handle_nodedown(Node, State)
+            handle_nodedown(Node, State);
+        _Else -> ok
     end.
 
--spec maybe_add_node/4 :: (text(), text(), proplist(), #state{}) -> {'ok' | {'error', _}, #state{}}.
-maybe_add_node(NodeName, Cookie, Options, #state{nodes=Nodes}=State) ->
+-spec maybe_add_node/4 :: (text(), text(), proplist(), #state{}) -> 'ok' | {'error', _}.
+maybe_add_node(NodeName, Cookie, Options, #state{self=Srv}) ->
     case dict:find(NodeName, Nodes) of
-        {ok, #node{}} -> 
-            {{error, node_exists}, State};
+        {ok, #node{}} -> {error, node_exists};
         error ->
             Node = create_node(NodeName, Cookie, Options),
             case maybe_connect_to_node(Node) of
                 {error, _}=E -> 
-                    {E, State#state{nodes=dict:store(NodeName, Node#node{connected=false}, Nodes)}};
+                    erlang:send_after(1000, Srv, {nodedown, NodeName}),
+                    gen_listener:cast(Srv, {update_node, Node#node{connected=false}}),
+                    E;
                 ok ->                    
-                    {ok, State#state{nodes=dict:store(NodeName, Node#node{connected=true}, Nodes)}}
+                    gen_listener:cast(Srv, {update_node, Node#node{connected=true}}),
+                    ok
             end            
     end.
 
@@ -796,26 +795,27 @@ rm_fs_node(#node{node=NodeName}=Node, #state{nodes=Nodes}=State) ->
     _ = maybe_disconnect_from_node(Node),    
     State#state{nodes=dict:erase(NodeName, Nodes)}.
 
--spec handle_nodeup/2 :: (#node{}, #state{}) -> #state{}.
-handle_nodeup(#node{node=NodeName}=Node, #state{nodes=Nodes}=State) ->
+-spec handle_nodeup/2 :: (#node{}, #state{}) -> 'ok'.
+handle_nodeup(#node{node=NodeName}=Node, #state{self=Srv}) ->
     NewNode = get_fs_client_version(Node),
     case maybe_connect_to_node(NewNode) of
         {error, _} -> 
-            erlang:send_after(1000, self(), {nodedown, NodeName}),
-            State#state{nodes=dict:store(NodeName, NewNode#node{connected=false}, Nodes)};
+            erlang:send_after(1000, Srv, {nodedown, NodeName}),
+            gen_listener:cast(Srv, {update_node, NewNode#node{connected=false}});
         ok ->
-            State#state{nodes=dict:store(NodeName, NewNode#node{connected=true}, Nodes)}
+            gen_listener:cast(Srv, {update_node, NewNode#node{connected=true}})
     end.
     
--spec handle_nodedown/2 :: (#node{}, #state{}) -> #state{}.
-handle_nodedown(#node{node=NodeName}=Node, #state{nodes=Nodes}=State) ->
+-spec handle_nodedown/2 :: (#node{}, #state{}) -> 'ok'.
+handle_nodedown(#node{node=NodeName}=Node, #state{self=Srv}) ->
     lager:critical("recieved node down notice for ~s", [NodeName]),
     _ = maybe_disconnect_from_node(Node),
     case maybe_connect_to_node(Node) of
-        ok -> State#state{nodes=dict:store(NodeName, Node#node{connected=true}, Nodes)};
+        ok -> 
+            gen_listener:cast(Srv, {update_node, Node#node{connected=true}});
         {error, _} ->
             _ = maybe_start_node_pinger(Node),
-            State#state{nodes=dict:store(NodeName, Node#node{connected=false}, Nodes)}
+            gen_listener:cast(Srv, {update_node, Node#node{connected=false}})
     end.
 
 -spec maybe_connect_to_node/1 :: (#node{}) -> 'ok' | {'error', _}.
