@@ -169,8 +169,21 @@ handle_config_req(Node, ID, <<"acl.conf">>) ->
             {ok, Resp} = ecallmgr_fs_xml:empty_response(),
             freeswitch:fetch_reply(Node, ID, Resp)
     end;
-handle_config_req(Node, ID, <<"sofia.conf">>) ->
-    put(callid, ID),
+handle_config_req(Node, Id, <<"sofia.conf">>) ->
+    put(callid, Id),
+    case wh_util:is_true(ecallmgr_config:get(<<"sofia_conf">>)) of
+        true -> 
+            do_sofia_conf(Node, Id);
+        false ->
+            lager:info("sofia conf disabled"),
+            {ok, Resp} = ecallmgr_fs_xml:empty_response(),
+            freeswitch:fetch_reply(Node, Id, Resp)
+    end;
+handle_config_req(Node, ID, _) ->
+    {ok, Resp} = ecallmgr_fs_xml:empty_response(),
+    freeswitch:fetch_reply(Node, ID, Resp).
+
+do_sofia_conf(Node, Id) ->
     Gateways = case wh_util:is_true(ecallmgr_config:get(<<"process_gateways">>, false)) of
                    false -> wh_json:new();
                    true ->
@@ -184,17 +197,14 @@ handle_config_req(Node, ID, <<"sofia.conf">>) ->
     try ecallmgr_fs_xml:sip_profiles_xml(DefaultProfiles) of 
         {ok, ConfigXml} ->        
             lager:debug("sending XML to ~s: ~s", [Node, ConfigXml]),
-            freeswitch:fetch_reply(Node, ID, erlang:iolist_to_binary(ConfigXml))
+            freeswitch:fetch_reply(Node, Id, erlang:iolist_to_binary(ConfigXml))
     catch
         _E:_R ->
-            lager:info("acl resp failed to convert to XML (~s): ~p", [_E, _R]),
+            lager:info("sofia resp failed to convert to XML (~s): ~p", [_E, _R]),
             {ok, Resp} = ecallmgr_fs_xml:empty_response(),
-            freeswitch:fetch_reply(Node, ID, Resp)
-    end;
-handle_config_req(Node, ID, _) ->
-    {ok, Resp} = ecallmgr_fs_xml:empty_response(),
-    freeswitch:fetch_reply(Node, ID, Resp).
-
+            freeswitch:fetch_reply(Node, Id, Resp)
+    end.
+ 
 generate_acl_xml(SysconfResp) ->
     false = wh_json:is_empty(SysconfResp),
     {ok, ConfigXml} = ecallmgr_fs_xml:acl_xml(SysconfResp),
