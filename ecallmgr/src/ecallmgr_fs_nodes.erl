@@ -299,8 +299,14 @@ handle_cast({destroy_channel, UUID, Node}, State) ->
     lager:debug("removed ~p channel(s) with id ~s on ~s", [N, UUID, Node]),
     {noreply, State, hibernate};
 
-handle_cast({new_conference, C}, State) ->
-    ets:insert(?CONFERENCES_TBL, C),
+handle_cast({new_conference, #conference{node=Node, name=Name}=C}, State) ->
+    case ets:lookup(?CONFERENCES_TBL, Name) of
+        [] ->
+            lager:debug("creating new conference ~s on node ~s", [Name, Node]),
+            ets:insert(?CONFERENCES_TBL, C);
+        [#conference{node=Node}] -> lager:debug("conference ~s already on node ~s", [Name, Node]);
+        [#conference{node=_Other}] -> lager:debug("conference ~s already on ~s, not ~s", [Name, _Other, Node])
+    end,
     {noreply, State, hibernate};
 handle_cast({conference_update, UUID, Update}, State) ->
     ets:update_element(?CONFERENCES_TBL, UUID, Update),

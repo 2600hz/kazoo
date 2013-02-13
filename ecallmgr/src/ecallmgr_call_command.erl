@@ -695,11 +695,16 @@ get_conference_app(Node, UUID, JObj) ->
             {ok, _} = ecallmgr_util:send_cmd(Node, UUID, "conference", Cmd),
 
             case wait_for_conference(ConfName) of
-                {ok, Node} -> lager:debug("conference has started on ~s", [Node]);
-                {ok, OtherNode} -> lager:debug("conference has started on other node ~s", [OtherNode]);
-                {error, _E} -> lager:debug("error waiting for conference: ~p", [_E])
-            end,
-            {<<"conference">>, noop};
+                {ok, Node} ->
+                    lager:debug("conference has started on ~s", [Node]),
+                    {<<"conference">>, noop};
+                {ok, OtherNode} ->
+                    lager:debug("conference has started on other node ~s, lets move", [OtherNode]),
+                    get_conference_app(Node, UUID, JObj);
+                {error, _E} ->
+                    lager:debug("error waiting for conference: ~p", [_E]),
+                    {<<"conference">>, noop}
+            end;
         {ok, ChanNode} ->
             lager:debug("channel is on same node as conference"),
             {<<"conference">>, Cmd};
