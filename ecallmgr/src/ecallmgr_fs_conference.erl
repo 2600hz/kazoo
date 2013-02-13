@@ -70,7 +70,7 @@ all(Node, 'json') -> [record_to_json(C) || C <- all(Node, 'record')].
 
 -spec destroy(atom(), wh_proplist()) -> 'ok'.
 destroy(Node, Props) ->
-    gen_server:cast(?NODES_SRV, {conference_destroy, Node, props:get_value(<<"Conference-Name">>, Props)}).
+    gen_server:cast(?NODES_SRV, {'conference_destroy', Node, props:get_value(<<"Conference-Name">>, Props)}).
 
 -spec participant_destroy(atom(), wh_proplist() | ne_binary()) -> 'ok'.
 participant_destroy(Node, Props) when is_list(Props) ->
