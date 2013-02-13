@@ -58,6 +58,7 @@
 
 -record(state, {nodes = [] :: fs_nodes()
                 ,preconfigured_lookup :: pid()
+                ,self = self() :: pid()
                }).
 
 %%%===================================================================
