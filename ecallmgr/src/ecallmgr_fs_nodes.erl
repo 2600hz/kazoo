@@ -624,6 +624,10 @@ handle_cast({fs_nodeup, NodeName}, State) ->
     spawn(fun() -> maybe_handle_nodeup(NodeName, State) end),
     {noreply, State};
 handle_cast({update_node, #node{node=NodeName, connected=Connected}=Node}, #state{nodes=Nodes}=State) ->
+    _ = case Connected of
+            true -> bind_to_fs_events(Node);
+            false -> ok
+        end,
     erlang:monitor_node(NodeName, Connected),
     {noreply, State#state{nodes=dict:store(NodeName, Node, Nodes)}};
 handle_cast({remove_node, #node{node=NodeName}}, #state{nodes=Nodes}=State) ->
@@ -883,7 +887,6 @@ maybe_start_node_handlers(#node{node=NodeName, client_version=Version
 -spec initialize_node_connection/1 :: (#node{}) -> 'ok'.
 initialize_node_connection(#node{}=Node) ->
     start_node_stats(Node),
-    bind_to_fs_events(Node),
     ok.
 
 maybe_disconnect_from_node(#node{node=NodeName, connected=true}=Node) ->
