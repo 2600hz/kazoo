@@ -49,17 +49,17 @@ maybe_provision(#cb_context{resp_status=success}=Context) ->
     case MACAddress =/= undefined
         andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>) 
     of
-        <<"full_provisioner">> ->
+        <<"super_awesome_provisioner">> ->
             spawn(fun() ->
                           do_full_provisioner_provider(MACAddress, Context),
                           do_full_provision(MACAddress, Context)
                   end),
             true;
-        <<"simple_provisioner">>  ->
-            spawn(fun() -> do_simple_provision(MACAddress, Context) end),
-            true;
         <<"awesome_provisioner">> ->
             spawn(fun() -> do_awesome_provision(MACAddress, Context) end),
+            true;
+        <<"simple_provisioner">>  ->
+            spawn(fun() -> do_simple_provision(MACAddress, Context) end),
             true;
         _ -> false
     end;
@@ -68,7 +68,7 @@ maybe_provision(_) -> false.
 -spec maybe_send_contact_list/1 :: (cb_context:context()) -> cb_context:context().
 maybe_send_contact_list(#cb_context{resp_status=success}=Context) ->
     _ = case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>) of
-            <<"full_provisioner">> ->
+            <<"super_awesome_provisioner">> ->
                 spawn(fun() -> do_full_provision_contact_list(Context) end);
             _ -> ok
         end,
@@ -96,7 +96,7 @@ do_full_provision_contact_list(AccountId, AccountDb) ->
             Routines = [fun(J) -> wh_json:public_fields(J) end 
                         ,fun(J) -> 
                                  ResellerId = wh_services:find_reseller_id(AccountId),
-                                 wh_json:set_value(<<"reseller_id">>, ResellerId, J)
+                                 wh_json:set_value(<<"provider_id">>, ResellerId, J)
                          end
                         ,fun(J) -> wh_json:delete_key(<<"available_apps">>, J) end
                         ,fun(J) ->
@@ -226,13 +226,19 @@ send_to_full_provisioner(JObj, PartialURL) ->
         undefined -> false;
         Url ->
             Headers = [{"Content-Type", "application/json"}],
-            Body = wh_util:to_list(wh_json:encode(JObj)),
             FullUrl = wh_util:to_lower_string(<<Url/binary, "/", PartialURL/binary>>),
             {ok, _, _, RawJObj} = ibrowse:send_req(FullUrl, Headers, get, "", [{inactivity_timeout, 10000}]),
-            Verb = case wh_json:get_integer_value([<<"error">>, <<"code">>], wh_json:decode(RawJObj)) of
-                       undefined -> post;
-                       404 -> put
-                   end,
+            {Verb, Body} = case wh_json:get_integer_value([<<"error">>, <<"code">>], wh_json:decode(RawJObj)) of
+                               undefined -> 
+                                   Props = [{<<"provider_id">>, wh_json:get_value(<<"provider_id">>, JObj)}
+                                            ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
+                                            ,{<<"settings">>, JObj}
+                                           ],
+                                   J =  wh_json:from_list(props:filter_undefined(Props)),
+                                   {post,  wh_util:to_list(wh_json:encode(J))};
+                               404 -> 
+                                   {put, wh_util:to_list(wh_json:encode(JObj))} 
+                           end,
             lager:debug("making ~s request to ~s with: ~-300p", [Verb, FullUrl, Body]),  
             Res = ibrowse:send_req(FullUrl, Headers, Verb, Body, [{inactivity_timeout, 10000}]),
             lager:debug("response from server: ~p", [Res]),
