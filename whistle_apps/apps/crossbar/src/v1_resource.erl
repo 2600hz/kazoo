@@ -578,8 +578,19 @@ csv_ize([F|Rest]) ->
 
 -spec json_to_csv/1 :: (wh_json:json_object()) -> iolist().
 json_to_csv(JObj) ->
-    {Vs, _} = wh_json:get_values(JObj),
+    {Vs, _} = wh_json:get_values(correct_jobj(JObj)),
     csv_ize(Vs).
+
+-spec correct_jobj/1 :: (wh_json:object()) -> wh_json:object().
+correct_jobj(JObj) ->
+    Prop = wh_json:to_proplist(JObj),
+    L = lists:map(fun(X) -> correct_proplist(X) end, Prop),
+    wh_json:from_list(L).
+
+correct_proplist({K}) ->
+    {K, <<"">>};
+correct_proplist(T) ->
+    T.
 
 -spec multiple_choices/2 :: (#http_req{}, cb_context:context()) ->
                                     {'false', #http_req{}, cb_context:context()}.
