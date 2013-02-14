@@ -10,10 +10,30 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
--export([save/1
+-export([filter_by_reason/2
+         ,save/1
          ,fetch_since/2
          ,fetch_last/2
         ]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Filter list of transactions by reason
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_by_reason/2 :: (ne_binary(), wh_transaction:wh_transactions()) -> wh_transaction:wh_transactions().
+filter_by_reason(Reason, Transactions) ->
+    lists:foldr(
+      fun(Tr, Acc) -> 
+              case wh_transaction:is_reason(Reason, Tr) of
+                  {true, _} ->
+                      [Tr | Acc];
+                  {false, _} ->
+                      Acc
+              end
+      end, [], Transactions).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -78,6 +98,7 @@ fetch_since(AccountId, Date) ->
         {ok, ViewRes} -> 
             viewres_to_recordlist(ViewRes)
     end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

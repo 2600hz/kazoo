@@ -73,19 +73,14 @@ resource_exists(_) -> true.
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>,  query_json=Query}=Context) ->
-    From = wh_json:get_value(<<"created_from">>, Query, 0),
-    case validate_date(From) of
-        {true, Date} ->
-            fetch_since(Date, Context);
-        {false, 0} ->
-            Month = (wh_util:current_tstamp() - 60*60*24*30),
-            fetch_since(Month, Context);
-        {false, R} ->
-            cb_context:add_validation_error(<<"created_from">>
-                                                ,<<"date_range">>
-                                                ,R
-                                                ,Context
-                                           )
+    From = wh_json:get_value(<<"created_from">>, Query, undefined),
+    Reason = wh_json:get_value(<<"reason">>, Query, undefined),
+    case Reason =:= <<"no_call">> of
+        false -> 
+            fetch_by_date(From, Context);
+        true -> 
+            Reasons = wh_transaction:get_reasons(false),
+            fetch_by_date_and_reason(From, Reasons, Context)
     end.
 
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"current_balance">>) ->
@@ -108,9 +103,103 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, Transa
 %% 
 %% @end
 %%--------------------------------------------------------------------
+-spec fetch_by_date/2 :: (integer(), #cb_context{}) -> #cb_context{}.
+fetch_by_date(From, Context) ->
+    case validate_date(From) of
+        {true, Date} ->
+            Resp = fetch_since(Date, Context),
+            send_resp(Resp, Context);
+        {false, undefined} ->
+            Month = (wh_util:current_tstamp() - 60*60*24*30),
+            Resp = fetch_since(Month, Context),
+            send_resp(Resp, Context);
+        {false, R} ->
+            cb_context:add_validation_error(<<"created_from">>
+                                                ,<<"date_range">>
+                                                ,R
+                                            ,Context
+                                           )
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_by_date_and_reason/3 :: (integer(), ne_binary(), #cb_context{}) -> #cb_context{}.
+fetch_by_date_and_reason(From, Reason, Context) ->
+    case validate_date(From) of
+        {true, Date} ->
+            filter_by_date_reason(Date, Reason, Context);
+        {false, undefined} ->
+            Month = (wh_util:current_tstamp() - 60*60*24*30),
+            filter_by_date_reason(Month, Reason, Context);
+        {false, R} ->
+            cb_context:add_validation_error(<<"created_from">>
+                                                ,<<"date_range">>
+                                                ,R
+                                            ,Context
+                                           )
+    end.
+        
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_since/2 :: (integer(), cb_context:context()) -> cb_context:context().
+fetch_since(Date, #cb_context{account_id=AccountId}=Context) ->
+    try wh_transactions:fetch_since(AccountId, Date) of
+        Transactions ->
+            {ok, Transactions}
+    catch
+        _:_ ->
+            {error, Context}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_by_date_reason/3 :: (integer(), ne_binary(), #cb_context{}) -> #cb_context{}.
+filter_by_date_reason(Date, Reason, Context) ->
+    case fetch_since(Date, Context) of
+        {ok, Transactions}  ->
+            Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
+            send_resp({ok, Filtered}, Context);
+        Error ->
+            send_resp(Error, Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+send_resp(Resp, Context) ->
+    case Resp of 
+        {ok, Transactions} ->
+            JObj = transactions_to_jobj(Transactions),
+            Context#cb_context{resp_status=success, resp_data=JObj};
+        {error, C} ->
+            cb_context:add_system_error(bad_identifier, [{details,<<"Unknow transaction ID">>}], C)
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
 -spec validate_date/1 :: (any()) -> {true, integer()} | {false, 0} | {false, ne_binary()}.
-validate_date(0) ->
-    {false, 0};
+validate_date(undefined) ->
+    {false, undefined};
 validate_date(Date) when is_integer(Date) ->
     Now = wh_util:current_tstamp(),
     Max = 60*60*24*30*12,
@@ -130,23 +219,6 @@ validate_date(Date) ->
     catch
         _:_ ->            
             {false, <<"created_from filter is not a timestamp">>}
-    end.
-    
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_since/2 :: (integer(), cb_context:context()) -> cb_context:context().
-fetch_since(Date, #cb_context{account_id=AccountId}=Context) ->
-    try wh_transactions:fetch_since(AccountId, Date) of
-        Transactions ->
-            JObj = transactions_to_jobj(Transactions),
-            Context#cb_context{resp_status=success, resp_data=JObj}
-    catch
-        _:_ ->
-            cb_context:add_system_error(bad_identifier, [{details,<<"Unknow transaction ID">>}],  Context)
     end.
 
 %%--------------------------------------------------------------------

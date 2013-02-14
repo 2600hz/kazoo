@@ -26,14 +26,16 @@
          ,get_current_balance/1
         ]).
 
--export([to_json/1
+-export([get_reasons/1
+         ,is_reason/2
+         ,to_json/1
          ,from_json/1
         ]).
 
--define(REASONS, [per_minute_account
-                  ,per_minute_sub_account
-                  ,activation_charges
-                  ,admin
+-define(REASONS, [{<<"per_minute_account">>, call}
+                  ,{<<"per_minute_sub_account">>, call}
+                  ,{<<"activation_charges">>, one_time}
+                  ,{<<"admin">>, one_time}
                  ]).
 
 -record(wh_transaction, {
@@ -56,6 +58,46 @@
 -export_type([wh_transaction/0
               ,wh_transactions/0
              ]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec get_reasons/1 :: (boolean()) -> list(). 
+get_reasons(All) when All =:= true ->
+    lists:foldr(
+      fun({R, _}, Acc) -> 
+              [R | Acc]
+      end, [], ?REASONS);
+get_reasons(_) ->
+    lists:foldr(
+      fun({R, T}, Acc) -> 
+              case T =:= call of
+                  true ->
+                      Acc;
+                  false ->
+                      [R | Acc]
+              end
+      end, [], ?REASONS).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+is_reason(Reason, #wh_transaction{pvt_reason=Reason}=Tr) ->
+    {true, Tr};
+is_reason([Reason | _], #wh_transaction{pvt_reason=Reason}=Tr) ->
+    {true, Tr};
+is_reason([_ | T], #wh_transaction{}=Tr) ->
+    is_reason(T, Tr);
+is_reason([], #wh_transaction{}=Tr) ->
+    {false, Tr};
+is_reason(_, Tr) ->
+    {false, Tr}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -102,41 +144,7 @@ from_json(JObj) ->
       ,call_id = wh_json:get_ne_value(<<"call_id">>, JObj)
      },
     compatibility(Tr, JObj).
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Run compatibility routine
-%% @end
-%%--------------------------------------------------------------------
--spec compatibility/2 :: (wh_transaction(), wh_json:object()) -> wh_transaction(). 
-compatibility(Transaction, JObj) ->
-    Funs = [fun compatibility_amount/1
-            ,fun compatibility_reason/1
-            ,fun compatibility_account_id/1
-           ],
-    {Tr, _} = lists:foldl(fun(F, C) -> F(C) end, {Transaction, JObj}, Funs),
-    Tr.
 
--spec compatibility_amount/1 :: ({wh_transaction(), wh_json:object()}) -> {wh_transaction(), wh_json:object()}. 
-compatibility_amount({#wh_transaction{pvt_amount=undefined}=Tr, JObj}) ->
-    Amount = wh_json:get_ne_value(<<"amount">>, JObj),
-    {Tr#wh_transaction{pvt_amount=Amount}, JObj};
-compatibility_amount({Tr, JObj}) ->
-    {Tr, JObj}.
-
--spec compatibility_reason/1 :: ({wh_transaction(), wh_json:object()}) -> {wh_transaction(), wh_json:object()}. 
-compatibility_reason({#wh_transaction{pvt_reason=undefined}=Tr, JObj}) ->
-    Reason = wh_json:get_ne_value(<<"reason">>, JObj),
-    {Tr#wh_transaction{pvt_reason=Reason}, JObj};
-compatibility_reason({Tr, JObj}) ->
-    {Tr, JObj}.
-
--spec compatibility_account_id/1 :: ({wh_transaction(), wh_json:object()}) -> {wh_transaction(), wh_json:object()}. 
-compatibility_account_id({#wh_transaction{sub_account_id=undefined}=Tr, JObj}) ->
-    AccountId = wh_json:get_ne_value(<<"account_id">>, JObj),
-    {Tr#wh_transaction{sub_account_id=AccountId}, JObj};
-compatibility_account_id({Tr, JObj}) ->
-    {Tr, JObj}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -275,6 +283,43 @@ get_current_balance(AccountId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Run compatibility routine
+%% @end
+%%--------------------------------------------------------------------
+-spec compatibility/2 :: (wh_transaction(), wh_json:object()) -> wh_transaction(). 
+compatibility(Transaction, JObj) ->
+    Funs = [fun compatibility_amount/1
+            ,fun compatibility_reason/1
+            ,fun compatibility_account_id/1
+           ],
+    {Tr, _} = lists:foldl(fun(F, C) -> F(C) end, {Transaction, JObj}, Funs),
+    Tr.
+
+-spec compatibility_amount/1 :: ({wh_transaction(), wh_json:object()}) -> {wh_transaction(), wh_json:object()}. 
+compatibility_amount({#wh_transaction{pvt_amount=undefined}=Tr, JObj}) ->
+    Amount = wh_json:get_ne_value(<<"amount">>, JObj),
+    {Tr#wh_transaction{pvt_amount=Amount}, JObj};
+compatibility_amount({Tr, JObj}) ->
+    {Tr, JObj}.
+
+-spec compatibility_reason/1 :: ({wh_transaction(), wh_json:object()}) -> {wh_transaction(), wh_json:object()}. 
+compatibility_reason({#wh_transaction{pvt_reason=undefined}=Tr, JObj}) ->
+    Reason = wh_json:get_ne_value(<<"reason">>, JObj),
+    {Tr#wh_transaction{pvt_reason=Reason}, JObj};
+compatibility_reason({Tr, JObj}) ->
+    {Tr, JObj}.
+
+-spec compatibility_account_id/1 :: ({wh_transaction(), wh_json:object()}) -> {wh_transaction(), wh_json:object()}. 
+compatibility_account_id({#wh_transaction{sub_account_id=undefined}=Tr, JObj}) ->
+    AccountId = wh_json:get_ne_value(<<"account_id">>, JObj),
+    {Tr#wh_transaction{sub_account_id=AccountId}, JObj};
+compatibility_account_id({Tr, JObj}) ->
+    {Tr, JObj}.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Create transaction record
 %% @end
 %%--------------------------------------------------------------------
@@ -283,8 +328,10 @@ create(Amount, Op, Reason) when not is_integer(Amount) ->
     create(wh_util:to_integer(Amount), Op, Reason);
 create(Amount, Op, Reason) when Amount < 0 ->
     create(Amount*-1, Op, Reason);
+create(Amount, Op, Reason) when not is_binary(Reason) ->
+    create(Amount, Op, wh_util:to_binary(Reason));
 create(Amount, Op, Reason) ->
-    case lists:member(Reason, ?REASONS) of
+    case lists:member(Reason, get_reasons(true)) of
         true ->
             #wh_transaction{pvt_reason=Reason
                             ,pvt_type=Op
@@ -341,7 +388,7 @@ validate_funs(#wh_transaction{}=Transaction) ->
 %%--------------------------------------------------------------------
 -spec validate_reason/1 :: (wh_transaction()) -> {ok, wh_transaction()} | {error, wh_transaction(), unknow_reason}. 
 validate_reason(#wh_transaction{pvt_reason=Reason}=Tr) ->
-    case lists:member(Reason, ?REASONS) of
+    case lists:member(Reason, get_reasons(true)) of
         true -> {ok, Tr};
         false -> {error, Tr, unknow_reason}
     end.
