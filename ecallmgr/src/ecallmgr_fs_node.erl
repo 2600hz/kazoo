@@ -168,7 +168,7 @@ init([Node, Options]) ->
             ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
                                          ,'SESSION_HEARTBEAT', 'CUSTOM'
                                          ,'sofia::register', 'sofia::transfer'
-                                         ,'channel_move::move_released', 'channel_move::move_complete'
+                                         ,?CHANNEL_MOVE_RELEASED_EVENT, ?CHANNEL_MOVE_COMPLETE_EVENT
                                          ,'whistle::broadcast', 'conference::maintenance'
                                          ,'loopback::bowout'
                                         ]),
@@ -316,16 +316,16 @@ process_event(UUID, Props, Node) ->
 process_event(<<"CHANNEL_CREATE">> = EventName, UUID, Props, Node) ->
     _ = maybe_start_event_listener(Node, UUID),
     maybe_send_event(EventName, UUID, Props, Node);
-process_event(<<"channel_move::move_released">> = EventName, _, Props, Node) ->
+process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN = EventName, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
-    gproc:send({'p', 'l', {'channel_move', Node, UUID}}
-               ,{'channel_move_released', Node, UUID, Props}
+    gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
+               ,?CHANNEL_MOVE_RELEASED_MSG(Node, UUID, Props)
               ),
     maybe_send_event(EventName, UUID, Props, Node);
-process_event(<<"channel_move::move_complete">> = EventName, _, Props, Node) ->
+process_event(?CHANNEL_MOVE_COMPLETE_EVENT_BIN = EventName, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
-    gproc:send({'p', 'l', {'channel_move', Node, UUID}}
-               ,{'channel_move_complete', Node, UUID, Props}
+    gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
+               ,?CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Props)
               ),
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(EventName, UUID, Props, Node) ->

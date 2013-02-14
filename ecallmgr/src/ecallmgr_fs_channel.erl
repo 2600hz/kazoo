@@ -158,38 +158,38 @@ move(UUID, ONode, NNode) ->
 -spec resume(ne_binary(), atom()) -> boolean().
 -spec resume(ne_binary(), atom(), wh_proplist()) -> boolean().
 resume(UUID, NewNode) ->
-    catch gproc:reg({p, l, {channel_move, NewNode, UUID}}),
+    catch gproc:reg({p, l, ?CHANNEL_MOVE_REG(NewNode, UUID)}),
     lager:debug("waiting for message with metadata for channel ~s so we can move it to ~s", [UUID, NewNode]),
     receive
-        {'move_released', _Node, UUID, Evt} ->
+        ?CHANNEL_MOVE_RELEASED_MSG(_Node, UUID, Evt) ->
             lager:debug("channel has been released from former node: ~s", [_Node]),
             case resume(UUID, NewNode, Evt) of
-                true -> wait_for_completion(UUID, NewNode);
-                false -> false
+                'true' -> wait_for_completion(UUID, NewNode);
+                'false' -> 'false'
             end
     after 5000 ->
             lager:debug("timed out waiting for channel to be released"),
-            false
+            'false'
     end.
 
 resume(UUID, NewNode, Evt) ->
     Meta = fix_metadata(props:get_value(<<"metadata">>, Evt)),
 
-    case freeswitch:sendevent_custom(NewNode, 'channel_move::move_request'
+    case freeswitch:sendevent_custom(NewNode, ?CHANNEL_MOVE_REQUEST_EVENT
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
                                        ,{"channel_id", wh_util:to_list(UUID)}
                                        ,{"metadata", wh_util:to_list(Meta)}
                                        ,{"technology", wh_util:to_list(props:get_value(<<"technology">>, Evt, <<"sofia">>))}
                                       ]) of
-        ok ->
+        'ok' ->
             lager:debug("sent channel_move::move_request with metadata to ~s for ~s", [NewNode, UUID]),
-            true;
-        {error, _E} ->
+            'true';
+        {'error', _E} ->
             lager:debug("failed to send custom event channel_move::move_request: ~p", [_E]),
-            false;
-        timeout ->
+            'false';
+        'timeout' ->
             lager:debug("timed out sending custom event channel_move::move_request"),
-            false
+            'false'
     end.
 
 %% We receive un-escaped < and > in the SIP URIs in this data
@@ -214,7 +214,7 @@ fix_metadata(Meta) ->
 wait_for_completion(UUID, NewNode) ->
     lager:debug("waiting for confirmation from ~s of move", [NewNode]),
     receive
-        {'channel_move_complete', _Node, UUID, _Evt} ->
+        ?CHANNEL_MOVE_COMPLETE_MSG(_Node, UUID, _Evt) ->
             lager:debug("confirmation of move received for ~s, success!", [_Node]),
             _ = ecallmgr_call_sup:start_event_process(NewNode, UUID),
             'true'
@@ -224,102 +224,102 @@ wait_for_completion(UUID, NewNode) ->
     end.
 
 teardown_sbd(UUID, OriginalNode) ->
-    catch gproc:reg({p, l, {channel_move, OriginalNode, UUID}}),
+    catch gproc:reg({p, l, ?CHANNEL_MOVE_REG(OriginalNode, UUID)}),
 
-    case freeswitch:sendevent_custom(OriginalNode, 'channel_move::move_request'
+    case freeswitch:sendevent_custom(OriginalNode, ?CHANNEL_MOVE_REQUEST_EVENT
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
                                        ,{"channel_id", wh_util:to_list(UUID)}
                                        ,{"technology", ?DEFAULT_FS_TECHNOLOGY}
                                       ])
     of
-        ok ->
+        'ok' ->
             lager:debug("sent channel_move::move_request to ~s for ~s", [OriginalNode, UUID]),
-            true;
-        {error, _E} ->
+            'true';
+        {'error', _E} ->
             lager:debug("failed to send custom event channel_move::move_request: ~p", [_E]),
-            false;
-        timeout ->
+            'false';
+        'timeout' ->
             lager:debug("timed out sending custom event channel_move::move_request"),
-            false
+            'false'
     end.
 
 -spec set_account_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_account_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.account_id, Value}});
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.account_id, Value}});
 set_account_id(UUID, Value) ->
     set_account_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_billing_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_billing_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.billing_id, Value}});
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.billing_id, Value}});
 set_billing_id(UUID, Value) ->
     set_billing_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_account_billing(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_account_billing(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.account_billing, Value}});
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.account_billing, Value}});
 set_account_billing(UUID, Value) ->
     set_account_billing(UUID, wh_util:to_binary(Value)).
 
 -spec set_reseller_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_reseller_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.reseller_id, Value}});
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.reseller_id, Value}});
 set_reseller_id(UUID, Value) ->
     set_reseller_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_reseller_billing(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_reseller_billing(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.reseller_billing, Value}});
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.reseller_billing, Value}});
 set_reseller_billing(UUID, Value) ->
     set_reseller_billing(UUID, wh_util:to_binary(Value)).
 
 -spec set_resource_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_resource_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.resource_id, Value}});
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.resource_id, Value}});
 set_resource_id(UUID, Value) ->
     set_resource_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_authorizing_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_authorizing_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.authorizing_id, Value}});
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.authorizing_id, Value}});
 set_authorizing_id(UUID, Value) ->
     set_authorizing_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_authorizing_type(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_authorizing_type(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.authorizing_type, Value}});
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.authorizing_type, Value}});
 set_authorizing_type(UUID, Value) ->
     set_authorizing_type(UUID, wh_util:to_binary(Value)).
 
 -spec set_owner_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_owner_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.owner_id, Value}});
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.owner_id, Value}});
 set_owner_id(UUID, Value) ->
     set_owner_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_presence_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_presence_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.presence_id, Value}});
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.presence_id, Value}});
 set_presence_id(UUID, Value) ->
     set_presence_id(UUID, wh_util:to_binary(Value)).
 
 -spec set_precedence(ne_binary(), string() | ne_binary() | integer()) -> 'ok'.
 set_precedence(UUID, Value) when is_integer(Value) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.precedence, Value}});
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.precedence, Value}});
 set_precedence(UUID, Value) ->
     set_precedence(UUID, wh_util:to_integer(Value)).
 
 -spec set_answered(ne_binary(), boolean()) -> 'ok'.
 set_answered(UUID, Answered) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.answered, (not wh_util:is_empty(Answered))}}).
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.answered, (not wh_util:is_empty(Answered))}}).
 
 -spec set_bridge(ne_binary(), api_binary()) -> 'ok'.
 set_bridge(UUID, OtherUUID) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.other_leg, OtherUUID}}).
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.other_leg, OtherUUID}}).
 
 -spec set_import_moh(ne_binary(), boolean()) -> 'ok'.
 set_import_moh(UUID, Import) ->
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, {#channel.import_moh, Import}}).
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.import_moh, Import}}).
 
 -spec get_call_precedence(ne_binary()) -> integer().
 get_call_precedence(UUID) ->
@@ -336,20 +336,20 @@ get_call_precedence(UUID) ->
 set_node(Node, UUID) ->
     Updates =
         case node(UUID) of
-            {error, not_found} -> [{#channel.node, Node}];
-            {ok, Node} -> [];
-            {ok, OldNode} ->
+            {'error', 'not_found'} -> [{#channel.node, Node}];
+            {'ok', Node} -> [];
+            {'ok', OldNode} ->
                 [{#channel.node, Node}
                  ,{#channel.former_node, OldNode}
                 ]
         end,
     lager:debug("updaters: ~p", [Updates]),
-    gen_server:cast(?NODES_SRV, {channel_update, UUID, Updates}).
+    gen_server:cast(?NODES_SRV, {'channel_update', UUID, Updates}).
 
 -spec destroy(wh_proplist(), atom()) -> 'ok'.
 destroy(Props, Node) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
-    gen_server:cast(?NODES_SRV, {destroy_channel, UUID, Node}).
+    gen_server:cast(?NODES_SRV, {'destroy_channel', UUID, Node}).
 
 -spec props_to_record(wh_proplist(), atom()) -> channel().
 props_to_record(Props, Node) ->
