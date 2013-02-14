@@ -329,20 +329,29 @@ handle_cast({new_conference, #conference{node=Node, name=Name}=C}, State) ->
         [#conference{node=_Other}] -> lager:debug("conference ~s already on ~s, not ~s", [Name, _Other, Node])
     end,
     {noreply, State, hibernate};
-handle_cast({conference_update, UUID, Update}, State) ->
-    ets:update_element(?CONFERENCES_TBL, UUID, Update),
+handle_cast({conference_update, Node, Name, Update}, State) ->
+    case ets:lookup(?CONFERENCES_TBL, Name) of
+        [#conference{node=Node}] ->
+            ets:update_element(?CONFERENCES_TBL, Name, Update),
+            lager:debug("conference ~s already on node ~s", [Name, Node]);
+        [#conference{node=_Other}] -> lager:debug("conference ~s already on ~s, not ~s, ignoring update", [Name, _Other, Node]);
+        [] -> lager:debug("no conference ~s on ~s, ignoring update", [Name, Node])
+    end,
     {noreply, State, hibernate};
 
-handle_cast({participant_update, UUID, Update}, State) ->
-    case ets:update_element(?CONFERENCES_TBL, UUID, Update) of
-        'true' -> {'noreply', State, 'hibernate'};
-        'false' ->
-            lager:debug("failed to update participant, create first"),
+handle_cast({participant_update, Node, UUID, Update}, State) ->
+    case ets:lookup(?CONFERENCES_TBL, UUID) of
+        [] ->
+            lager:debug("no participant ~s, creating", [Node]),
             'true' = ets:insert_new(?CONFERENCES_TBL, #participant{uuid=UUID}),
-            'true' = ets:update_element(?CONFERENCES_TBL, UUID, Update),
-
-            {'noreply', State, 'hibernate'}
-    end;
+            'true' = ets:update_element(?CONFERENCES_TBL, UUID, Update);
+        [#participant{node=Node}] ->
+            lager:debug("participant ~s on ~s, applying update", [UUID, Node]),
+            ets:update_element(?CONFERENCES_TBL, UUID, Update);
+        [#participant{node=_OtherNode}] ->
+            lager:debug("participant ~s is on ~s, not ~s, ignoring update", [UUID, _OtherNode, Node])
+    end,
+    {'noreply', State, 'hibernate'};
 
 handle_cast({conference_destroy, Node, Name}, State) ->
     MatchSpecC = [{#conference{name='$1', node='$2', _ = '_'}
@@ -709,7 +718,7 @@ get_fs_cookie(Cookie, _) when is_atom(Cookie) ->
 bind_to_fs_events(#node{node=NodeName, client_version = <<"mod_kazoo", _/binary>>}) ->
     freeswitch:event(NodeName, ['CHANNEL_CREATE', 'CHANNEL_DESTROY'
                                 ,'CHANNEL_EXECUTE_COMPLETE', 'CHANNEL_ANSWER'
-                                ,'CUSTOM', 'sofia::move_complete'
+                                ,'CUSTOM', 'channel_move::move_complete'
                                ]);
 bind_to_fs_events(#node{node=NodeName}) ->
     %% gproc throws a badarg if the binding already exists, and since
@@ -720,7 +729,8 @@ bind_to_fs_events(#node{node=NodeName}) ->
     catch gproc:reg({p, l, {event, NodeName, <<"CHANNEL_CREATE">>}}),
     catch gproc:reg({p, l, {event, NodeName, <<"CHANNEL_DESTROY">>}}),
     catch gproc:reg({p, l, {event, NodeName, <<"CHANNEL_ANSWER">>}}),
-    catch gproc:reg({p, l, {event, NodeName, <<"sofia::move_complete">>}}),
+    catch gproc:reg({p, l, {event, NodeName, <<"channel_move::move_complete">>}}),
+    catch gproc:reg({p, l, {event, NodeName, <<"conference::maintenance">>}}),
     catch gproc:reg({p, l, {event, NodeName, <<"CHANNEL_EXECUTE_COMPLETE">>}}),
     'ok'.
 

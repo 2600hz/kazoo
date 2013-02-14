@@ -107,14 +107,14 @@ fetch_full(ConfId) ->
 add_participants_to_conference_json(ConfId, ConfJObj) ->
     {'ok', wh_json:set_value(<<"Participants">>, participants_list(ConfId), ConfJObj)}.
 
--spec participants_list/1 :: (ne_binary()) -> wh_json:objects().
+-spec participants_list(ne_binary()) -> wh_json:objects().
 participants_list(ConfId) ->
     case ets:match_object(?CONFERENCES_TBL, #participant{conference_name=ConfId, _='_'}) of
         [] -> [];
         Ps -> [participant_record_to_json(P) || P <- Ps]
     end.
 
--spec participants_uuids/1 :: (ne_binary()) -> wh_json:objects().
+-spec participants_uuids(ne_binary()) -> wh_json:objects().
 participants_uuids(ConfId) ->
     ets:match(?CONFERENCES_TBL, #participant{conference_name=ConfId, uuid='$1', _='_'}).
 
@@ -265,12 +265,14 @@ update_all(Node, UUID, Props) ->
 
 update_participant(Node, UUID, Props) ->
     gen_server:cast(?NODES_SRV, {participant_update
+                                 ,Node
                                  ,UUID
                                  ,[{#participant.node, Node} | participant_fields(Props)]
                                 }).
 
 update_conference(Node, Props) ->
     gen_server:cast(?NODES_SRV, {conference_update
+                                 ,Node
                                  ,props:get_value(<<"Conference-Name">>, Props)
                                  ,[{#conference.node, Node} | conference_fields(Props)]
                                 }).
@@ -281,28 +283,28 @@ relay_event(Props) ->
     ].
 
 -define(FS_CONF_FIELDS, [{<<"Conference-Unique-ID">>, #conference.uuid}
-                      ,{<<"Conference-Size">>, #conference.participants, fun props:get_integer_value/2}
-                      ,{<<"Conference-Profile-Name">>, #conference.profile_name}
-                      ,{<<"New-ID">>, #conference.with_floor, fun safe_integer_get/3, 0}
-                      ,{<<"Old-ID">>, #conference.lost_floor, fun safe_integer_get/3, 0}
-                     ]).
+                         ,{<<"Conference-Size">>, #conference.participants, fun props:get_integer_value/2}
+                         ,{<<"Conference-Profile-Name">>, #conference.profile_name}
+                         ,{<<"New-ID">>, #conference.with_floor, fun safe_integer_get/3, 0}
+                         ,{<<"Old-ID">>, #conference.lost_floor, fun safe_integer_get/3, 0}
+                        ]).
 conference_fields(Props) -> fields(Props, ?FS_CONF_FIELDS).
 
 -define(FS_PARTICIPANT_FIELDS, [{<<"Floor">>, #participant.floor, fun props:get_is_true/2}
-                             %,{<<"Unique-ID">>, #participant.uuid}
-                             ,{<<"Conference-Name">>, #participant.conference_name}
-                             ,{<<"Hear">>, #participant.hear, fun props:get_is_true/2}
-                             ,{<<"Speak">>, #participant.speak, fun props:get_is_true/2}
-                             ,{<<"Talking">>, #participant.talking, fun props:get_is_true/2}
-                             ,{<<"Mute-Detect">>,#participant.mute_detect, fun props:get_is_true/2}
-                             ,{<<"Member-ID">>, #participant.member_id, fun props:get_integer_value/2}
-                             ,{<<"Member-Type">>, #participant.member_type}
-                             ,{<<"Participant-ID">>, #participant.member_id, fun props:get_integer_value/2}
-                             ,{<<"Participant-Type">>, #participant.member_type}
-                             ,{<<"Energy-Level">>, #participant.energy_level, fun props:get_integer_value/2}
-                             ,{<<"Current-Energy">>, #participant.current_energy, fun props:get_integer_value/2}
-                             ,{<<"Video">>, #participant.video, fun props:get_is_true/2}
-                            ]).
+                                %%,{<<"Unique-ID">>, #participant.uuid}
+                                ,{<<"Conference-Name">>, #participant.conference_name}
+                                ,{<<"Hear">>, #participant.hear, fun props:get_is_true/2}
+                                ,{<<"Speak">>, #participant.speak, fun props:get_is_true/2}
+                                ,{<<"Talking">>, #participant.talking, fun props:get_is_true/2}
+                                ,{<<"Mute-Detect">>,#participant.mute_detect, fun props:get_is_true/2}
+                                ,{<<"Member-ID">>, #participant.member_id, fun props:get_integer_value/2}
+                                ,{<<"Member-Type">>, #participant.member_type}
+                                ,{<<"Participant-ID">>, #participant.member_id, fun props:get_integer_value/2}
+                                ,{<<"Participant-Type">>, #participant.member_type}
+                                ,{<<"Energy-Level">>, #participant.energy_level, fun props:get_integer_value/2}
+                                ,{<<"Current-Energy">>, #participant.current_energy, fun props:get_integer_value/2}
+                                ,{<<"Video">>, #participant.video, fun props:get_is_true/2}
+                               ]).
 participant_fields(Props) -> fields(Props, ?FS_PARTICIPANT_FIELDS).
 
 fields(Props, Fields) ->

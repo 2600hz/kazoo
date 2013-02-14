@@ -683,16 +683,15 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
     lager:debug("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.
 
-get_conference_app(Node, UUID, JObj) ->
+get_conference_app(ChanNode, UUID, JObj) ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-    {ok, ChanNode} = ecallmgr_fs_channel:node(UUID),
-
-    Cmd = list_to_binary([ConfName, "@default"]),
+    ConferenceConfig = wh_json:get_value(<<"Conference-Config">>, JObj, <<"default">>),
+    Cmd = list_to_binary([ConfName, "@", ConferenceConfig]),
 
     case ecallmgr_fs_conference:node(ConfName) of
         {'error', 'not_found'} ->
             lager:debug("conference ~s hasn't been started yet", [ConfName]),
-            {ok, _} = ecallmgr_util:send_cmd(Node, UUID, "conference", Cmd),
+            {ok, _} = ecallmgr_util:send_cmd(ChanNode, UUID, "conference", Cmd),
 
             case wait_for_conference(ConfName) of
                 {ok, Node} ->
@@ -700,7 +699,7 @@ get_conference_app(Node, UUID, JObj) ->
                     {<<"conference">>, noop};
                 {ok, OtherNode} ->
                     lager:debug("conference has started on other node ~s, lets move", [OtherNode]),
-                    get_conference_app(Node, UUID, JObj);
+                    get_conference_app(ChanNode, UUID, JObj);
                 {error, _E} ->
                     lager:debug("error waiting for conference: ~p", [_E]),
                     {<<"conference">>, noop}
@@ -709,7 +708,7 @@ get_conference_app(Node, UUID, JObj) ->
             lager:debug("channel is on same node as conference"),
             {<<"conference">>, Cmd};
         {ok, ConfNode} ->
-            lager:debug("channel is on node ~s, conference is on ~s, moving channel", [Node, ConfNode]),
+            lager:debug("channel is on node ~s, conference is on ~s, moving channel", [ChanNode, ConfNode]),
             true = ecallmgr_fs_channel:move(UUID, ChanNode, ConfNode),
             lager:debug("channel has moved to ~s", [ConfNode]),
             {<<"conference">>, Cmd, ConfNode}

@@ -158,10 +158,10 @@ move(UUID, ONode, NNode) ->
 -spec resume(ne_binary(), atom()) -> boolean().
 -spec resume(ne_binary(), atom(), wh_proplist()) -> boolean().
 resume(UUID, NewNode) ->
-    catch gproc:reg({p, l, {move, NewNode, UUID}}),
+    catch gproc:reg({p, l, {channel_move, NewNode, UUID}}),
     lager:debug("waiting for message with metadata for channel ~s so we can move it to ~s", [UUID, NewNode]),
     receive
-        {move_released, _Node, UUID, Evt} ->
+        {'move_released', _Node, UUID, Evt} ->
             lager:debug("channel has been released from former node: ~s", [_Node]),
             case resume(UUID, NewNode, Evt) of
                 true -> wait_for_completion(UUID, NewNode);
@@ -214,17 +214,17 @@ fix_metadata(Meta) ->
 wait_for_completion(UUID, NewNode) ->
     lager:debug("waiting for confirmation from ~s of move", [NewNode]),
     receive
-        {move_complete, _Node, UUID, _Evt} ->
+        {'channel_move_complete', _Node, UUID, _Evt} ->
             lager:debug("confirmation of move received for ~s, success!", [_Node]),
             _ = ecallmgr_call_sup:start_event_process(NewNode, UUID),
-            true
+            'true'
     after 5000 ->
             lager:debug("timed out waiting for move to complete"),
-            false
+            'false'
     end.
 
 teardown_sbd(UUID, OriginalNode) ->
-    catch gproc:reg({p, l, {move, OriginalNode, UUID}}),
+    catch gproc:reg({p, l, {channel_move, OriginalNode, UUID}}),
 
     case freeswitch:sendevent_custom(OriginalNode, 'channel_move::move_request'
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
