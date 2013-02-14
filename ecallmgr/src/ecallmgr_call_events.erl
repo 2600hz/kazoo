@@ -52,14 +52,14 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {
-          node = 'undefined' :: atom()
+          node :: atom()
           ,callid = <<>> :: binary()
           ,is_node_up = 'true' :: boolean()
           ,failed_node_checks = 0 :: non_neg_integer()
-          ,node_down_tref = 'undefined' :: 'undefined' | reference()
-          ,sanity_check_tref = 'undefined' :: 'undefined' | reference()
+          ,node_down_tref :: reference()
+          ,sanity_check_tref :: reference()
           ,ref = wh_util:rand_hex_binary(12)
-          ,passive = false
+          ,passive = 'false'
          }).
 
 %%%===================================================================
@@ -411,8 +411,8 @@ process_channel_event(Props) ->
     ApplicationName = get_event_application(Props, Masqueraded),
 
     case should_publish(EventName, ApplicationName, Masqueraded) of
-        false -> ok;
-        true ->
+        'false' -> 'ok';
+        'true' ->
             %% TODO: the adding of the node to the props is for event_specific conference
             %% clause until we can break the conference stuff into its own module
             publish_event(create_event(EventName, ApplicationName, Props))
@@ -471,7 +471,7 @@ create_event_props(EventName, ApplicationName, Props) ->
        | event_specific(EventName, ApplicationName, Props)
       ]).
 
--spec is_channel_moving(proplist()) -> boolean().
+-spec is_channel_moving(wh_proplist()) -> boolean().
 is_channel_moving(Props) ->
     wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)).
 
@@ -533,6 +533,14 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"playback">> = Application, Pro
      ,{<<"Group-ID">>, props:get_value(<<"variable_media_group_id">>, Prop)}
     ];
 
+event_specific(<<"CHANNEL_EXECUTE">>, <<"conference">>, Prop) ->
+    conference_specific(Prop);
+event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"conference">>, Prop) ->
+    case props:get_value(<<"variable_current_application_data">>, Prop) of
+        <<"page_", _/binary>> -> page_specific(Prop);
+        _Else -> conference_specific(Prop)
+    end;
+
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Prop) ->
     [{<<"Application-Name">>, <<"noop">>}
      ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop)}
@@ -541,17 +549,7 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
     ];
-event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"conference">>, Prop) ->
-    case props:get_value(<<"variable_current_application_data">>, Prop) of
-        <<"page_", _/binary>> ->
-            [{<<"Application-Name">>, <<"page">>}
-             ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
-            ];
-        _Else ->
-            [{<<"Application-Name">>, <<"conference">>}
-             ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
-            ]
-    end;            
+
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"record">>, Prop) ->
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
@@ -584,6 +582,27 @@ event_specific(_Evt, Application, Prop) ->
     [{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
      ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
     ].
+
+page_specific(Prop) ->
+    [{<<"Application-Name">>, <<"page">>}
+     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
+    ].
+conference_specific(Prop) ->
+    Default = [{<<"Application-Name">>, <<"conference">>}
+               ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
+              ],
+    case props:get_value(<<"Application-Data">>, Prop) of
+        'undefined' -> Default;
+        ConfData ->
+            case binary:split(ConfData, <<"@">>) of
+                [ConfName, ConfConfig] ->
+                    [{<<"Conference-Name">>, ConfName}
+                     ,{<<"Conference-Config">>, ConfConfig}
+                     | Default
+                    ];
+                _ -> Default
+            end
+    end.
 
 -spec silence_terminated('undefined' | integer()) -> 'undefined' | boolean().
 silence_terminated(undefined) -> undefined;

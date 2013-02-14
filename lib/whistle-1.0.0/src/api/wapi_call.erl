@@ -64,6 +64,7 @@
                                           ,<<"Fax-Bad-Rows">>, <<"Fax-Transfer-Rate">>
                                           ,<<"Switch-Hostname">>, <<"Group-ID">>
                                           ,<<"Control-Queue">>, <<"Channel-Moving">>
+                                          ,<<"Conference-Name">>, <<"Conference-Config">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
@@ -167,7 +168,7 @@
                                  ]).
 -define(CONTROLLER_QUEUE_TYPES, []).
 
--spec optional_call_event_headers/0 :: () -> [ne_binary(),...].
+-spec optional_call_event_headers() -> ne_binaries().
 optional_call_event_headers() ->
     ?OPTIONAL_CALL_EVENT_HEADERS.
 
@@ -176,7 +177,7 @@ optional_call_event_headers() ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec event/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec event(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 event(Prop) when is_list(Prop) ->
     case event_v(Prop) of
         true -> wh_api:build_message(Prop, ?CALL_EVENT_HEADERS, ?OPTIONAL_CALL_EVENT_HEADERS);
@@ -185,7 +186,7 @@ event(Prop) when is_list(Prop) ->
 event(JObj) ->
     event(wh_json:to_proplist(JObj)).
 
--spec event_v/1 :: (api_terms()) -> boolean().
+-spec event_v(api_terms()) -> boolean().
 event_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_EVENT_HEADERS, ?CALL_EVENT_VALUES, ?CALL_EVENT_TYPES);
 event_v(JObj) ->
@@ -196,7 +197,7 @@ event_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec channel_status_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec channel_status_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 channel_status_req(Prop) when is_list(Prop) ->
     case channel_status_req_v(Prop) of
         true -> wh_api:build_message(Prop, ?CHANNEL_STATUS_REQ_HEADERS, ?OPTIONAL_CHANNEL_STATUS_REQ_HEADERS);
@@ -205,7 +206,7 @@ channel_status_req(Prop) when is_list(Prop) ->
 channel_status_req(JObj) ->
     channel_status_req(wh_json:to_proplist(JObj)).
 
--spec channel_status_req_v/1 :: (api_terms()) -> boolean().
+-spec channel_status_req_v(api_terms()) -> boolean().
 channel_status_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CHANNEL_STATUS_REQ_HEADERS, ?CHANNEL_STATUS_REQ_VALUES, ?CHANNEL_STATUS_REQ_TYPES);
 channel_status_req_v(JObj) ->
@@ -216,7 +217,7 @@ channel_status_req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec channel_status_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec channel_status_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 channel_status_resp(Prop) when is_list(Prop) ->
     case channel_status_resp_v(Prop) of
         true -> wh_api:build_message(Prop, ?CHANNEL_STATUS_RESP_HEADERS, ?OPTIONAL_CHANNEL_STATUS_RESP_HEADERS);
@@ -225,7 +226,7 @@ channel_status_resp(Prop) when is_list(Prop) ->
 channel_status_resp(JObj) ->
     channel_status_resp(wh_json:to_proplist(JObj)).
 
--spec channel_status_resp_v/1 :: (api_terms()) -> boolean().
+-spec channel_status_resp_v(api_terms()) -> boolean().
 channel_status_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CHANNEL_STATUS_RESP_HEADERS, ?CHANNEL_STATUS_RESP_VALUES, ?CHANNEL_STATUS_RESP_TYPES);
 channel_status_resp_v(JObj) ->
@@ -236,7 +237,7 @@ channel_status_resp_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec call_status_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec call_status_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 call_status_req(Prop) when is_list(Prop) ->
     case call_status_req_v(Prop) of
         true -> wh_api:build_message(Prop, ?CALL_STATUS_REQ_HEADERS, ?OPTIONAL_CALL_STATUS_REQ_HEADERS);
@@ -245,7 +246,7 @@ call_status_req(Prop) when is_list(Prop) ->
 call_status_req(JObj) ->
     call_status_req(wh_json:to_proplist(JObj)).
 
--spec call_status_req_v/1 :: (api_terms()) -> boolean().
+-spec call_status_req_v(api_terms()) -> boolean().
 call_status_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_STATUS_REQ_HEADERS, ?CALL_STATUS_REQ_VALUES, ?CALL_STATUS_REQ_TYPES);
 call_status_req_v(JObj) ->
@@ -256,7 +257,7 @@ call_status_req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec call_status_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec call_status_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 call_status_resp(Prop) when is_list(Prop) ->
     case call_status_resp_v(Prop) of
         true -> wh_api:build_message(Prop, ?CALL_STATUS_RESP_HEADERS, ?OPTIONAL_CALL_STATUS_RESP_HEADERS);
@@ -265,7 +266,7 @@ call_status_resp(Prop) when is_list(Prop) ->
 call_status_resp(JObj) ->
     call_status_resp(wh_json:to_proplist(JObj)).
 
--spec call_status_resp_v/1 :: (api_terms()) -> boolean().
+-spec call_status_resp_v(api_terms()) -> boolean().
 call_status_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_STATUS_RESP_HEADERS, ?CALL_STATUS_RESP_VALUES, ?CALL_STATUS_RESP_TYPES);
 call_status_resp_v(JObj) ->
@@ -276,7 +277,7 @@ call_status_resp_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec cdr/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec cdr(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 cdr(Prop) when is_list(Prop) ->
     case cdr_v(Prop) of
         true -> wh_api:build_message(Prop, ?CALL_CDR_HEADERS, ?OPTIONAL_CALL_CDR_HEADERS);
@@ -285,7 +286,7 @@ cdr(Prop) when is_list(Prop) ->
 cdr(JObj) ->
     cdr(wh_json:to_proplist(JObj)).
 
--spec cdr_v/1 :: (api_terms()) -> boolean().
+-spec cdr_v(api_terms()) -> boolean().
 cdr_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_CDR_HEADERS, ?CALL_CDR_VALUES, ?CALL_CDR_TYPES);
 cdr_v(JObj) ->
@@ -296,7 +297,7 @@ cdr_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec callid_update/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec callid_update(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 callid_update(Prop) when is_list(Prop) ->
     case callid_update_v(Prop) of
         true -> wh_api:build_message(Prop, ?CALL_ID_UPDATE_HEADERS, ?OPTIONAL_CALL_ID_UPDATE_HEADERS);
@@ -305,7 +306,7 @@ callid_update(Prop) when is_list(Prop) ->
 callid_update(JObj) ->
     callid_update(wh_json:to_proplist(JObj)).
 
--spec callid_update_v/1 :: (api_terms()) -> boolean().
+-spec callid_update_v(api_terms()) -> boolean().
 callid_update_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_ID_UPDATE_HEADERS, ?CALL_ID_UPDATE_VALUES, ?CALL_ID_UPDATE_TYPES);
 callid_update_v(JObj) ->
@@ -316,7 +317,7 @@ callid_update_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec control_transfer/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec control_transfer(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 control_transfer(Prop) when is_list(Prop) ->
     case control_transfer_v(Prop) of
         true -> wh_api:build_message(Prop, ?CALL_CONTROL_TRANSFER_HEADERS, ?OPTIONAL_CALL_CONTROL_TRANSFER_HEADERS);
@@ -325,7 +326,7 @@ control_transfer(Prop) when is_list(Prop) ->
 control_transfer(JObj) ->
     control_transfer(wh_json:to_proplist(JObj)).
 
--spec control_transfer_v/1 :: (api_terms()) -> boolean().
+-spec control_transfer_v(api_terms()) -> boolean().
 control_transfer_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_CONTROL_TRANSFER_HEADERS, ?CALL_CONTROL_TRANSFER_VALUES, ?CALL_CONTROL_TRANSFER_TYPES);
 control_transfer_v(JObj) ->
@@ -336,7 +337,7 @@ control_transfer_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec usurp_control/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec usurp_control(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 usurp_control(Prop) when is_list(Prop) ->
     case usurp_control_v(Prop) of
         true -> wh_api:build_message(Prop, ?CALL_USURP_CONTROL_HEADERS, ?OPTIONAL_CALL_USURP_CONTROL_HEADERS);
@@ -345,7 +346,7 @@ usurp_control(Prop) when is_list(Prop) ->
 usurp_control(JObj) ->
     usurp_control(wh_json:to_proplist(JObj)).
 
--spec usurp_control_v/1 :: (api_terms()) -> boolean().
+-spec usurp_control_v(api_terms()) -> boolean().
 usurp_control_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_USURP_CONTROL_HEADERS, ?CALL_USURP_CONTROL_VALUES, ?CALL_USURP_CONTROL_TYPES);
 usurp_control_v(JObj) ->
@@ -357,7 +358,7 @@ usurp_control_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec usurp_publisher/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec usurp_publisher(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 usurp_publisher(Prop) when is_list(Prop) ->
     case usurp_publisher_v(Prop) of
         true -> wh_api:build_message(Prop, ?PUBLISHER_USURP_CONTROL_HEADERS, ?OPTIONAL_PUBLISHER_USURP_CONTROL_HEADERS);
@@ -366,7 +367,7 @@ usurp_publisher(Prop) when is_list(Prop) ->
 usurp_publisher(JObj) ->
     usurp_publisher(wh_json:to_proplist(JObj)).
 
--spec usurp_publisher_v/1 :: (api_terms()) -> boolean().
+-spec usurp_publisher_v(api_terms()) -> boolean().
 usurp_publisher_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PUBLISHER_USURP_CONTROL_HEADERS, ?PUBLISHER_USURP_CONTROL_VALUES, ?PUBLISHER_USURP_CONTROL_TYPES);
 usurp_publisher_v(JObj) ->
@@ -378,7 +379,7 @@ usurp_publisher_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec controller_queue/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec controller_queue(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 controller_queue(Prop) when is_list(Prop) ->
     case controller_queue_v(Prop) of
         true -> wh_api:build_message(Prop, ?CONTROLLER_QUEUE_HEADERS, ?OPTIONAL_CONTROLLER_QUEUE_HEADERS);
@@ -387,13 +388,13 @@ controller_queue(Prop) when is_list(Prop) ->
 controller_queue(JObj) ->
     controller_queue(wh_json:to_proplist(JObj)).
 
--spec controller_queue_v/1 :: (api_terms()) -> boolean().
+-spec controller_queue_v(api_terms()) -> boolean().
 controller_queue_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CONTROLLER_QUEUE_HEADERS, ?CONTROLLER_QUEUE_VALUES, ?CONTROLLER_QUEUE_TYPES);
 controller_queue_v(JObj) ->
     controller_queue_v(wh_json:to_proplist(JObj)).
 
--spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
+-spec bind_q(binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     CallID = props:get_value(callid, Props, <<"*">>),
     amqp_util:callevt_exchange(),
@@ -422,7 +423,7 @@ bind_q(Q, [_|T], CallID) ->
 bind_q(_Q, [], _CallID) ->
     ok.
 
--spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     CallID = props:get_value(callid, Props, <<"*">>),
     unbind_q(Queue, props:get_value(restrict_to, Props), CallID).
@@ -449,17 +450,17 @@ unbind_q(Q, [_|T], CallID) ->
 unbind_q(_Q, [], _CallID) ->
     ok.
 
--spec publish_event/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_event/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_event(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_event(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_event(CallID, JObj) ->
     publish_event(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_event(CallID, Event, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Event, ?CALL_EVENT_VALUES, fun ?MODULE:event/1),
     amqp_util:callevt_publish(CallID, Payload, event, ContentType).
 
--spec publish_channel_status_req/1 :: (api_terms()) -> 'ok'.
--spec publish_channel_status_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_channel_status_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_channel_status_req(api_terms()) -> 'ok'.
+-spec publish_channel_status_req(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_channel_status_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_channel_status_req(API) ->
     case is_list(API) of
         true -> publish_channel_status_req(props:get_value(<<"Call-ID">>, API), API);
@@ -471,17 +472,17 @@ publish_channel_status_req(CallID, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?CHANNEL_STATUS_REQ_VALUES, fun ?MODULE:channel_status_req/1),
     amqp_util:callevt_publish(CallID, Payload, status_req, ContentType).
 
--spec publish_channel_status_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_channel_status_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_channel_status_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_channel_status_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_channel_status_resp(RespQ, JObj) ->
     publish_channel_status_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_channel_status_resp(RespQ, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?CHANNEL_STATUS_RESP_VALUES, fun ?MODULE:channel_status_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec publish_call_status_req/1 :: (api_terms()) -> 'ok'.
--spec publish_call_status_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_call_status_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_call_status_req(api_terms()) -> 'ok'.
+-spec publish_call_status_req(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_call_status_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_call_status_req(API) ->
     case is_list(API) of
         true -> publish_call_status_req(props:get_value(<<"Call-ID">>, API), API);
@@ -493,63 +494,63 @@ publish_call_status_req(CallID, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?CALL_STATUS_REQ_VALUES, fun ?MODULE:call_status_req/1),
     amqp_util:callevt_publish(CallID, Payload, status_req, ContentType).
 
--spec publish_call_status_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_call_status_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_call_status_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_call_status_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_call_status_resp(RespQ, JObj) ->
     publish_call_status_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_status_resp(RespQ, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?CALL_STATUS_RESP_VALUES, fun ?MODULE:call_status_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec publish_cdr/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_cdr/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_cdr(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_cdr(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_cdr(CallID, JObj) ->
     publish_cdr(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_cdr(CallID, CDR, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(CDR, ?CALL_CDR_VALUES, fun ?MODULE:cdr/1),
     amqp_util:callevt_publish(CallID, Payload, cdr, ContentType).
 
--spec publish_callid_update/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_callid_update/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_callid_update(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_callid_update(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_callid_update(CallID, JObj) ->
     publish_callid_update(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_callid_update(CallID, JObj, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CALL_ID_UPDATE_VALUES, fun ?MODULE:callid_update/1),
     amqp_util:callevt_publish(CallID, Payload, event, ContentType).
 
--spec publish_control_transfer/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_control_transfer/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_control_transfer(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_control_transfer(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_control_transfer(TargetQ, JObj) ->
     publish_control_transfer(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_control_transfer(TargetQ, JObj, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CALL_CONTROL_TRANSFER_VALUES, fun ?MODULE:control_transfer/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
--spec publish_controller_queue/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_controller_queue/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_controller_queue(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_controller_queue(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_controller_queue(TargetQ, JObj) ->
     publish_controller_queue(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_controller_queue(TargetQ, JObj, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CONTROLLER_QUEUE_VALUES, fun ?MODULE:controller_queue/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
--spec publish_usurp_control/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_usurp_control/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_usurp_control(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_usurp_control(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_usurp_control(CallID, JObj) ->
     publish_usurp_control(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_usurp_control(CallID, JObj, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CALL_USURP_CONTROL_VALUES, fun ?MODULE:usurp_control/1),
     amqp_util:callevt_publish(CallID, Payload, event, ContentType).
 
--spec publish_usurp_publisher/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_usurp_publisher/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_usurp_publisher(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_usurp_publisher(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_usurp_publisher(CallID, JObj) ->
     publish_usurp_publisher(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_usurp_publisher(CallID, JObj, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(JObj, ?PUBLISHER_USURP_CONTROL_VALUES, fun ?MODULE:usurp_publisher/1),
     amqp_util:callevt_publish(CallID, Payload, publisher_usurp, ContentType).
 
--spec get_status/1 :: (api_terms()) -> ne_binary().
+-spec get_status(api_terms()) -> ne_binary().
 get_status(API) when is_list(API) ->
     props:get_value(<<"Status">>, API);
 get_status(API) ->
