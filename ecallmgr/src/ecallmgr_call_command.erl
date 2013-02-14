@@ -694,8 +694,8 @@ get_conference_app(ChanNode, UUID, JObj) ->
             {ok, _} = ecallmgr_util:send_cmd(ChanNode, UUID, "conference", Cmd),
 
             case wait_for_conference(ConfName) of
-                {ok, Node} ->
-                    lager:debug("conference has started on ~s", [Node]),
+                {ok, ChanNode} ->
+                    lager:debug("conference has started on ~s", [ChanNode]),
                     {<<"conference">>, noop};
                 {ok, OtherNode} ->
                     lager:debug("conference has started on other node ~s, lets move", [OtherNode]),
