@@ -55,7 +55,7 @@
          ,acct_db :: ne_binary()
          ,acct_id :: ne_binary()
          ,fsm_pid :: pid()
-         ,agent_queues :: ne_binaries()
+         ,agent_queues = [] :: ne_binaries()
          ,last_connect :: wh_now() % last connection
          ,last_attempt :: wh_now() % last attempt to connect
          ,my_id :: ne_binary()
@@ -264,42 +264,17 @@ init([Supervisor, Agent, Queues]) ->
     put(callid, AgentId),
     lager:debug("starting acdc agent listener"),
 
-    Self = self(),
-    AcctId = account_id(Agent),
+    _ = fetch_my_queue(self()),
 
-    _P = spawn(
-           fun() ->
-                   put(amqp_publish_as, Self),
-                   put(callid, AgentId),
-
-                   _ = my_queue(Self),
-
-                   lager:debug("telling ~p about our queue", [Self]),
-
-                   Prop = [{<<"Account-ID">>, AcctId}
-                           ,{<<"Agent-ID">>, AgentId}
-                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                          ],
-                   _ = [wapi_acdc_queue:publish_agent_change(
-                          [{<<"Queue-ID">>, QueueId}
-                           ,{<<"Change">>, <<"available">>}
-                           | Prop
-                          ])
-                        || QueueId <- Queues
-                       ],
-                       lager:debug("send agent_change update")
-           end),
-
-    lager:debug("started acdc agent listener, doing work in ~p", [_P]),
     {ok, #state{agent_id=AgentId
-                ,acct_id=AcctId
+                ,acct_id=account_id(Agent)
                 ,acct_db=account_db(Agent)
-                ,agent_queues=Queues
                 ,my_id=acdc_util:proc_id()
                 ,supervisor=Supervisor
                 ,record_calls=record_calls(Agent)
                 ,is_thief=is_thief(Agent)
                 ,agent=Agent
+                ,agent_queues=Queues
                }}.
 
 %%--------------------------------------------------------------------
@@ -359,7 +334,7 @@ handle_cast({queue_name, Q}, State) ->
 handle_cast({queue_login, Q}, #state{agent_queues=Qs
                                      ,acct_id=AcctId
                                      ,agent_id=AgentId
-                                    }=State) ->
+                                    }=State) when is_binary(Q) ->
     case lists:member(Q, Qs) of
         true ->
             lager:debug("already logged into queue ~s", [Q]),
@@ -369,6 +344,9 @@ handle_cast({queue_login, Q}, #state{agent_queues=Qs
             login_to_queue(AcctId, AgentId, Q),
             {noreply, State#state{agent_queues=[Q|Qs]}}
     end;
+handle_cast({queue_login, QJObj}, State) ->
+    lager:debug("queue jobj: ~p", [QJObj]),
+    handle_cast({queue_login, wh_json:get_value(<<"_id">>, QJObj)}, State);
 
 handle_cast({queue_logout, Q}, #state{agent_queues=Qs
                                       ,acct_id=AcctId
@@ -711,18 +689,7 @@ terminate(Reason, #state{agent_queues=Queues
                           ,agent_id=AgentId
                          }
          ) when Reason == normal; Reason == shutdown ->
-    Prop = [{<<"Account-ID">>, AcctId}
-            ,{<<"Agent-ID">>, AgentId}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
-
-    _ = [wapi_acdc_queue:publish_agent_change(
-           [{<<"Queue-ID">>, QueueId}
-            ,{<<"Change">>, <<"unavailable">>}
-            | Prop
-           ])
-         || QueueId <- Queues
-        ],
+    _ = [logout_from_queue(AcctId, AgentId, QueueId) || QueueId <- Queues],
     lager:debug("agent process going down: ~p", [Reason]);
 terminate(_Reason, _State) ->
     lager:debug("agent process going down: ~p", [_Reason]).
