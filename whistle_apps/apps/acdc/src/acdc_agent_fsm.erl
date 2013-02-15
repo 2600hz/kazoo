@@ -485,29 +485,41 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
     CallerExitKey = wh_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
+    AgentCallId = acdc_agent:outbound_call_id(CallId),
+
     case wh_json:get_value(<<"Agent-Process-ID">>, JObj) of
         MyId ->
-            lager:debug("trying to ring agent ~s to connect to caller", [AgentId]),
+            lager:debug("trying to ring agent ~s on ~s to connect to caller", [AgentId, AgentCallId]),
 
             acdc_agent:bridge_to_member(Srv, Call, JObj, EPs),
 
-            webseq:evt(self(), CallId, <<"bridge">>);
+            webseq:evt(self(), CallId, <<"bridge">>),
+            webseq:note(self(), right, <<"ringing">>),
+            {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
+                                              ,member_call=Call
+                                              ,member_call_id=CallId
+                                              ,member_call_start=erlang:now()
+                                              ,member_call_queue_id=QueueId
+                                              ,caller_exit_key=CallerExitKey
+                                              ,agent_call_id=AgentCallId
+                                             }};
         _OtherId ->
-            lager:debug("monitoring agent ~s connecting to caller: ~s(~s)", [AgentId, _OtherId, MyId]),
+            lager:debug("monitoring agent ~s(~s) connecting to caller: ~s(~s)", [AgentId, AgentCallId, _OtherId, MyId]),
 
             acdc_agent:monitor_call(Srv, Call),
 
-            webseq:evt(self(), CallId, <<"monitor">>)
-    end,
+            webseq:evt(self(), CallId, <<"monitor">>),
+            webseq:note(self(), right, <<"ringing">>),
 
-    webseq:note(self(), right, <<"ringing">>),
-    {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
-                                      ,member_call=Call
-                                      ,member_call_id=CallId
-                                      ,member_call_start=erlang:now()
-                                      ,member_call_queue_id=QueueId
-                                      ,caller_exit_key=CallerExitKey
-                                     }};
+            {next_state, ringing, State#state{
+                                    wrapup_timeout=WrapupTimer
+                                    ,member_call_id=CallId
+                                    ,member_call_start=erlang:now()
+                                    ,member_call_queue_id=QueueId
+                                    ,caller_exit_key=CallerExitKey
+                                    ,agent_call_id=AgentCallId
+                                   }}
+    end;
 
 ready({member_connect_req, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:member_connect_resp(Srv, JObj),

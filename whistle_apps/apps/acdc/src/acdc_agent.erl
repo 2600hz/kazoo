@@ -32,7 +32,7 @@
          ,stop/1
          ,fsm_started/2
          ,add_endpoint_bindings/3
-         ,agent_call_id/3
+         ,agent_call_id/3, outbound_call_id/1
         ]).
 
 %% gen_server callbacks
@@ -553,12 +553,19 @@ handle_cast({monitor_call, Call}, #state{agent_queues=Qs
                                          ,agent_id=AgentId
                                         }=State) ->
     _ = whapps_call:put_callid(Call),
-    lager:debug("monitoring call ~s", [whapps_call:call_id(Call)]),
+
+    AgentCallId = outbound_call_id(Call),
+
+    acdc_util:bind_to_call_events(Call),
+    acdc_util:bind_to_call_events(AgentCallId),
+
+    lager:debug("monitoring member call ~s, agent call on ~s", [whapps_call:call_id(Call), AgentCallId]),
 
     acdc_util:bind_to_call_events(Call),
 
-    update_my_queues_of_change(AcctId, AgentId, Qs),
-    {noreply, State#state{call=Call}, hibernate};
+    {noreply, State#state{call=Call
+                          ,agent_call_id=AgentCallId
+                         }, hibernate};
 
 handle_cast({originate_execute, JObj}, #state{my_q=Q}=State) ->
     ACallId = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -867,6 +874,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
               ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
               ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
               ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+              ,{<<"Outbound-Call-ID">>, outbound_call_id(Call)}
               ,{<<"Existing-Call-ID">>, whapps_call:call_id(Call)}
               | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
@@ -874,6 +882,11 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
     lager:debug("sending originate request"),
 
     wapi_resource:publish_originate_req(Prop).
+
+outbound_call_id(CallId) when is_binary(CallId) ->
+    wh_util:to_hex_binary(erlang:md5(CallId));
+outbound_call_id(Call) ->
+    outbound_call_id(whapps_call:call_id(Call)).
 
 -spec login_to_queue(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 login_to_queue(AcctId, AgentId, QueueId) ->
