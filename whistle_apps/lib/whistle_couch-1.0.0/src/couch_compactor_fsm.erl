@@ -38,19 +38,32 @@
          ,code_change/4
 
          %% state functions
-         ,ready/2, 'ready'/3                     % FSM is 'ready' to compact something
+         ,ready/2, ready/3                     % FSM is 'ready' to compact something
          ,compact/2, compact/3         % FSM is compacting all nodes
          ,wait/2, wait/3                       % FSM is waiting to compact the next thing
         ]).
 
 -include("wh_couch.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
--define(SLEEP_BETWEEN_COMPACTION, 60000).
--define(SLEEP_BETWEEN_POLL, 1000).
--define(MAX_COMPACTING_SHARDS, 10).
--define(MAX_COMPACTING_VIEWS, 5).
--define(SLEEP_BETWEEN_VIEWS, 2000).
--define(MAX_WAIT_FOR_COMPACTION_PID, 360000). % five minutes
+-define(SLEEP_BETWEEN_COMPACTION
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_compaction">>, 60000)
+       ).
+-define(SLEEP_BETWEEN_POLL
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_poll">>, 1000)
+       ).
+-define(MAX_COMPACTING_SHARDS
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_shards">>, 10)
+       ).
+-define(MAX_COMPACTING_VIEWS
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 5)
+       ).
+-define(SLEEP_BETWEEN_VIEWS
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 2000)
+       ).
+-define(MAX_WAIT_FOR_COMPACTION_PID
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 360000)
+       ). % five minutes
 
 -define(SERVER, ?MODULE).
 
