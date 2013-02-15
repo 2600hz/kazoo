@@ -108,7 +108,7 @@ handle_originate_execute(JObj, Props) ->
     UUID = props:get_value(uuid, Props),
     lager:debug("recv originate_execute for ~s", [UUID]),
     _ = case wh_json:get_ne_value(<<"Server-ID">>, JObj) of
-            undefined -> ok;
+            'undefined' -> ok;
             ServerId ->
                 gen_listener:cast(Srv, {update_server_id, ServerId})
         end,
@@ -137,7 +137,7 @@ init([Node, JObj]) ->
     case wapi_resource:originate_req_v(JObj) of
         false ->
             Error = <<"originate failed to execute as JObj did not validate">>,
-            publish_error(Error, undefined, JObj, ServerId),
+            publish_error(Error, 'undefined', JObj, ServerId),
             {stop, normal};
         true ->
             _ = get_queue_name(),
@@ -184,7 +184,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({queue_name, undefined}, State) ->
+handle_cast({queue_name, 'undefined'}, State) ->
     _ = get_queue_name(),
     {noreply, State};
 handle_cast({queue_name, Q}, State) ->
@@ -434,7 +434,7 @@ get_originate_action(<<"fax">>, JObj) ->
 get_originate_action(<<"transfer">>, JObj) ->
     lager:debug("got originate with action transfer"),
     case wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj) of
-        undefined -> <<"error">>;
+        'undefined' -> <<"error">>;
         Route ->
             list_to_binary(["'m:^:", get_unset_vars(JObj), "transfer:", wnm_util:to_e164(Route), " XML context_2' inline"])
     end;
@@ -442,7 +442,7 @@ get_originate_action(<<"bridge">>, JObj) ->
     lager:debug("got originate with action bridge"),
 
     case wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj) of
-        undefined -> get_bridge_action(JObj);
+        'undefined' -> get_bridge_action(JObj);
         ExistingCallId -> <<" 'set:intercept_unbridged_only=true,intercept:", ExistingCallId/binary, "' inline ">>
     end;
 
@@ -453,8 +453,8 @@ get_originate_action(<<"eavesdrop">>, JObj) ->
         {error, _} ->
             lager:debug("failed to find channel ~p in node list", [wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)]),
             <<"error">>;
-        {ok, N} ->
-            gen_listener:cast(self(), {maybe_update_node, N}),
+        {'ok', N} ->
+            gen_listener:cast(self(), {'maybe_update_node', N}),
             get_eavesdrop_action(JObj)
     end;
 get_originate_action(_, _) ->
@@ -473,7 +473,7 @@ get_bridge_action(JObj) ->
 -spec maybe_update_node(wh_json:object(), atom()) -> atom().
 maybe_update_node(JObj, Node) ->
     case wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj) of
-        undefined -> Node;
+        'undefined' -> Node;
         CallId ->
             case ecallmgr_fs_channel:node(CallId) of
                 {error, _} -> Node;
@@ -483,14 +483,14 @@ maybe_update_node(JObj, Node) ->
 
 get_eavesdrop_action(JObj) ->
     {CallId, Group} = case wh_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
-                          undefined -> {wh_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj), <<>>};
+                          'undefined' -> {wh_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj), <<>>};
                           ID -> {<<"all">>, <<"eavesdrop_require_group=", ID/binary, ",">>}
                       end,
     case wh_json:get_value(<<"Eavesdrop-Mode">>, JObj) of
         <<"whisper">> -> <<Group/binary, "queue_dtmf:w2@500,eavesdrop:", CallId/binary, " inline">>;
         <<"full">> -> <<Group/binary, "queue_dtmf:w3@500,eavesdrop:", CallId/binary, " inline">>;
         <<"listen">> -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>;
-        undefined -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>
+        'undefined' -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>
     end.
 
 -spec build_originate_args(ne_binary(), wh_json:objects(), wh_json:object()) -> ne_binary().
@@ -581,7 +581,7 @@ get_unset_vars(JObj) ->
                                      ,[]
                                      ,[{<<"Custom-Channel-Vars">>, wh_json:from_list(ExportProps)}]
                                     ),
-                   ([K, _] = string:tokens(binary_to_list(KV), "=")) =/= undefined
+                   ([K, _] = string:tokens(binary_to_list(KV), "=")) =/= 'undefined'
              ],
     case [[$u,$n,$s,$e,$t,$: | K] || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], wh_json:to_proplist(JObj))
                                          ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)] of
@@ -589,8 +589,8 @@ get_unset_vars(JObj) ->
         Unset -> [string:join(Unset, "^"), "^"]
     end.
 
--spec publish_error(ne_binary(), 'undefined' | ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
-publish_error(_, _, _, undefined) -> ok;
+-spec publish_error(ne_binary(), api_binary(), wh_json:object(), api_binary()) -> 'ok'.
+publish_error(_, _, _, 'undefined') -> ok;
 publish_error(Error, UUID, Request, ServerId) ->
     lager:debug("originate error: ~s", [Error]),
     E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request)}
@@ -602,7 +602,7 @@ publish_error(Error, UUID, Request, ServerId) ->
     wh_api:publish_error(ServerId, props:filter_undefined(E)).
 
 -spec publish_originate_ready(ne_binary(), ne_binary(), wh_json:object(), ne_binary(), api_binary()) -> 'ok'.
-publish_originate_ready(_, _, _, _, undefined) -> ok;
+publish_originate_ready(_, _, _, _, 'undefined') -> 'ok';
 publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
     lager:debug("originate command is ready, waiting for originate_execute"),
     Props = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, UUID)}
@@ -613,7 +613,7 @@ publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
     wapi_dialplan:publish_originate_ready(ServerId, Props).
 
 -spec publish_originate_resp(api_binary(), wh_json:object()) -> 'ok'.
-publish_originate_resp(undefined, _) -> ok;
+publish_originate_resp('undefined', _) -> ok;
 publish_originate_resp(ServerId, JObj) ->
     Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"originate_resp">>}
@@ -621,7 +621,7 @@ publish_originate_resp(ServerId, JObj) ->
     wapi_resource:publish_originate_resp(ServerId, Resp).
 
 -spec publish_originate_started(api_binary(), ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
-publish_originate_started(undefined, _, _, _) -> ok;
+publish_originate_started('undefined', _, _, _) -> ok;
 publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
     Resp = wh_json:from_list(
              props:filter_undefined(
@@ -633,7 +633,7 @@ publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
     wapi_resource:publish_originate_started(ServerId, Resp).
 
 -spec publish_originate_uuid(api_binary(), ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
-publish_originate_uuid(undefined, _, _, _) -> ok;
+publish_originate_uuid('undefined', _, _, _) -> ok;
 publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
     Resp = props:filter_undefined(
              [{<<"Outgoing-Call-ID">>, UUID}
