@@ -400,7 +400,9 @@ control_queue_helper(_, #whapps_call{}=Call) ->
 
 -spec set_controller_queue/2 :: (ne_binary(), call()) -> call().
 set_controller_queue(ControllerQ, #whapps_call{call_id=CallId, control_q=CtrlQ}=Call) when is_binary(ControllerQ) ->
+    AMQPConsumer = wh_amqp_channel:consumer_pid(),
     spawn(fun() when is_binary(CtrlQ) ->
+                  _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
                   Props = [{<<"Call-ID">>, CallId}
                            ,{<<"Controller-Queue">>, ControllerQ}
                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)

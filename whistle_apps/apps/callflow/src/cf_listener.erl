@@ -11,9 +11,6 @@
 -behaviour(gen_listener).
 
 -export([start_link/0]).
--export([stop/0]).
--export([pause/0]).
--export([resume/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -55,21 +52,6 @@ start_link() ->
                                       ,{queue_options, ?QUEUE_OPTIONS}
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], []).
-
--spec pause/0 :: () -> 'ok'.
-pause() ->
-    {ok, Srv} = callflow_sup:listener_proc(),
-    gen_listener:rm_responder(Srv, cf_route_req).
-
--spec resume/0 :: () -> 'ok'.
-resume() ->
-    {ok, Srv} = callflow_sup:listener_proc(),
-    gen_listener:add_responder(Srv, cf_route_req, [{<<"dialplan">>, <<"route_req">>}]).
-
--spec stop/0 :: () -> 'ok'.
-stop() ->
-    {ok, Srv} = callflow_sup:listener_proc(),
-    gen_listener:stop(Srv).
 
 %%%===================================================================
 %%% gen_listener callbacks

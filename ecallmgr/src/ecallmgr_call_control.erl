@@ -138,7 +138,7 @@ start_link(Node, CallId, WhAppQ) ->
 
 -spec stop/1 :: (pid()) -> 'ok'.
 stop(Srv) ->
-    gen_listener:stop(Srv).
+    gen_listener:cast(Srv, stop).
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
@@ -271,6 +271,8 @@ handle_cast(init, #state{node=Node, callid=CallId}=State) ->
     bind_to_events(Node, CallId),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
     {noreply, State#state{sanity_check_tref=TRef}};
+handle_cast(state, State) ->
+    {stop, normal, State};
 handle_cast({controller_queue, ControllerQ}, State) ->
     lager:debug("updating controller queue to ~s", [ControllerQ]),
     {noreply, State#state{controller_q=ControllerQ}};

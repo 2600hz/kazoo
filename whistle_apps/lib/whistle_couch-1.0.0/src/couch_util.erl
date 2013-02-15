@@ -610,7 +610,7 @@ publish_doc(Action, Db, [Doc|Docs]) ->
     case wh_json:get_ne_value(<<"_id">>, Doc) of
         undefined -> ok;
         <<"_design/", _/binary>> -> ok;
-        Id ->            
+        Id ->
             Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
             Props =
                 [{<<"ID">>, Id}
@@ -623,9 +623,10 @@ publish_doc(Action, Db, [Doc|Docs]) ->
                  | wh_api:default_headers(<<"configuration">>, <<"doc_", Action/binary>>
                                               ,<<"whistle_couch">>, <<"1.0.0">>)
                 ],
-            wapi_conf:publish_doc_update(Action, Db, Type, Id, Props)
+            Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
+            whapps_util:amqp_pool_send(Props, Fun)
     end,
     publish_doc(Action, Db, Docs);
 publish_doc(Action, Db, Doc) ->
-    publish_doc(Action, Db, [Doc]).    
+    publish_doc(Action, Db, [Doc]).
 

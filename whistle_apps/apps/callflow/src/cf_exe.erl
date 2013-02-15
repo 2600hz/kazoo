@@ -561,7 +561,9 @@ cf_module_not_found(Call) ->
 %%--------------------------------------------------------------------
 -spec spawn_cf_module/3 :: (CFModule, list(), whapps_call:call()) -> {pid(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
+    AMQPConsumer = wh_amqp_channel:consumer_pid(),
     {spawn_link(fun() ->
+                        _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
                         put(callid, whapps_call:call_id_direct(Call)),
                         try
                             CFModule:handle(Data, Call)
@@ -597,10 +599,10 @@ add_server_id(API, Q) ->
 send_command(_, undefined, _) -> ok;
 send_command(_, _, undefined) -> ok;
 send_command(Command, ControlQ, CallId) ->
-    Prop = Command ++ [{<<"Call-ID">>, CallId}
-                       | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+    Props = Command ++ [{<<"Call-ID">>, CallId}
+                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ],
-    wapi_dialplan:publish_command(ControlQ, Prop).
+    whapps_util:amqp_pool_send(Props, fun(P) -> wapi_dialplan:publish_command(ControlQ, P) end).
 
 -spec log_call_information/1 :: (whapps_call:call()) -> 'ok'.
 log_call_information(Call) ->

@@ -62,16 +62,15 @@ start_link() ->
 init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
     Init = get_config(),
-    UseFederation = props:get_value(use_federation, Init, false),
     URIs = case props:get_value(amqp_uri, Init, ?DEFAULT_AMQP_URI) of
                URI = "amqp://"++_ -> [URI];
                URI = "amqps://"++_ -> [URI];
                URI when is_list(URI) -> URI
            end,
-    _ = [gen_server:cast(wh_amqp_mgr, {add_broker, Uri, UseFederation}) || Uri <- URIs],
+    _ = [wh_amqp_connections:add(Uri) || Uri <- URIs],
     lager:info("waiting for first amqp connection...", []),
-    wh_amqp_mgr:wait_for_available_host(),
-    lager:debug("connected to: ~p", [wh_amqp_mgr:get_connection()]),
+    wh_amqp_connections:wait_for_available(),
+    lager:debug("connected to: ~p", [wh_amqp_connections:current()]),
     {ok, #state{}, 100}.
 
 %%--------------------------------------------------------------------

@@ -90,10 +90,30 @@
 -define(EXCHANGE_SYSCONF, <<"sysconf">>).
 -define(TYPE_SYSCONF, <<"topic">>).
 
-%% NOTE: the use of atom() in the specs are for ets match specs and not otherwise valid types
--record(wh_amqp_channel, {consumer = 'undefined' :: 'undefined' | 'publish' | 'misc' | pid() | atom()
-                          ,channel = 'undefined' :: 'undefined' | pid() | atom()
-                          ,tag = <<>> :: binary() | atom()
-                          ,channel_ref = 'undefined' :: 'undefined' | reference() | atom()
-                          ,consumer_ref = 'undefined' :: 'undefined' | reference() | atom()
+
+-type consume_records() :: #'queue.declare'{} | #'queue.bind'{} | #'queue.unbind'{}
+                         | #'queue.delete'{} | #'basic.consume'{} | #'basic.cancel'{}
+                         | #'basic.ack'{} | #'basic.nack'{} | #'basic.qos'{}.
+-type consume_ret() :: 'ok' |
+                       {'ok', ne_binary() | #'queue.declare_ok'{}} |
+                       {'error', _}.
+-type misc_records() :: #'exchange.declare'{}.
+
+-record(wh_amqp_channel, {id = wh_util:rand_hex_binary(12)
+                          ,consumer :: pid()
+                          ,channel :: 'undefined' | pid()
+                          ,queue :: api_binary()
+                          ,consumer_tag :: api_binary()
+                          ,channel_ref :: 'undefined' | reference()
+                          ,consumer_ref :: 'undefined' | reference()
+                          ,started = now()
+                          ,last_message
                          }).
+
+-record(wh_amqp_connection, {connection :: 'undefined' | pid()
+                             ,connection_ref :: 'undefined' | reference()
+                             ,available = false :: boolean()
+                             ,name
+                             ,broker
+                             ,manager = self()
+                            }).

@@ -264,7 +264,7 @@ originate_call(Contact, JObj, AccountId) ->
                ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
                | wh_api:default_headers(Amqp, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
               ],
-    wh_amqp_mgr:register_return_handler(),
+    wh_amqp_connections:register_return_handler(),
     wapi_resource:publish_originate_req(props:filter_undefined(Request)),
     lager:debug("published click to call request ~s", [MsgId]),
     wait_for_originate(MsgId).

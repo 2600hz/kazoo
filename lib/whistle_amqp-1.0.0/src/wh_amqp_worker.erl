@@ -302,16 +302,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({publish, ReqProp, PublishFun}, #state{client_from=From
-                                                  }=State) ->
-    case catch PublishFun(ReqProp) of
-        {'EXIT', _E} ->
-            lager:debug("publisher crashed: ~p", [_E]),
-            gen_server:reply(From, {error, publisher_crashed}),
-            {noreply, reset(State), hibernate};
-        _ ->
-            {noreply, State}
-    end;
+handle_cast({publish, ReqProp, PublishFun}, State) ->
+    catch PublishFun(ReqProp),
+    {noreply, reset(State)};
 handle_cast({set_negative_threshold, NegThreshold}, State) ->
     lager:debug("set negative threshold to ~p", [NegThreshold]),
     {noreply, State#state{neg_resp_threshold = NegThreshold}, hibernate};

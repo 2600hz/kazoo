@@ -12,7 +12,9 @@
 -export([start_link/1
          ,start_link/2
         ]).
--export([publish/2]).
+-export([publish/2
+         ,publish/3
+        ]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -148,7 +150,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({event, [UUID | Props]}, State) ->
-    spawn(?MODULE, publish, [UUID, Props]),
+    AMQPConsumer = wh_amqp_channel:consumer_pid(),
+    spawn(?MODULE, publish, [UUID, Props, AMQPConsumer]),
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -181,9 +184,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec publish/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
+-spec publish/3 :: (ne_binary(), wh_proplist(), pid()) -> 'ok'.
 publish(UUID, Props) ->
+    publish(UUID, Props, self()).
+
+publish(UUID, Props, AMQPConsumer) ->
     put(callid, UUID),
+    _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
     CDR = create_cdr(Props),
     lager:debug("publising cdr: ~p", [CDR]),
     wapi_call:publish_cdr(UUID, CDR).
