@@ -17,6 +17,7 @@
          ,agent/1
          ,fsm/1, start_fsm/3, start_fsm/4
          ,stop/1
+         ,status/1
         ]).
 
 %% Supervisor callbacks
@@ -48,6 +49,29 @@ start_link(ThiefCall, QueueId) ->
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Supervisor) ->
     supervisor:terminate_child(acdc_agents_sup, Supervisor).
+
+-spec status(pid()) -> 'ok'.
+status(Supervisor) ->
+    LPid = agent(Supervisor),
+    FSM = fsm(Supervisor),
+
+    {AcctId, AgentId} = acdc_agent:config(LPid),
+    Status = acdc_agent_fsm:status(FSM),
+
+    lager:info("Agent ~s (Account ~s)", [AgentId, AcctId]),
+    lager:info("  Supervisor: ~p", [Supervisor]),
+    lager:info("  Listener: ~p", [LPid]),
+    lager:info("  FSM: ~p", [FSM]),
+    print_status(Status).
+
+print_status([]) -> 'ok';
+print_status([{_, undefined}|T]) -> print_status(T);
+print_status([{K, V}|T]) when is_binary(V) ->
+    lager:info("  ~s: ~s", [K, V]),
+    print_status(T);
+print_status([{K, V}|T]) ->
+    lager:info("  ~s: ~p", [K, V]),
+    print_status(T).
 
 -spec agent(pid()) -> pid() | 'undefined'.
 agent(Super) ->

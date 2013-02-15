@@ -44,10 +44,11 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
+-spec status() -> 'ok'.
 status() ->
-    lager:info("ACDc Agent Status"),
-    [acdc_agent_sup:status(Sup) || Sup <- workers()],
-    ok.
+    lager:info("ACDc Agents Status"),
+    _ = spawn(fun() -> [acdc_agent_sup:status(Sup) || Sup <- workers()] end),
+    'ok'.
 
 -spec new(wh_json:object()) -> sup_startchild_ret().
 -spec new(ne_binary(), ne_binary()) -> sup_startchild_ret().
@@ -56,12 +57,12 @@ new(JObj) ->
                                ,wh_json:get_value(<<"_id">>, JObj)
                               )
     of
-        undefined -> supervisor:start_child(?MODULE, [JObj]);
+        'undefined' -> supervisor:start_child(?MODULE, [JObj]);
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
 new(AcctId, AgentId) ->
     case find_agent_supervisor(AcctId, AgentId) of
-        undefined ->
+        'undefined' ->
             {ok, Agent} = couch_mgr:open_doc(wh_util:format_account_id(AcctId, encoded), AgentId),
             supervisor:start_child(?MODULE, [Agent]);
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
@@ -92,10 +93,10 @@ is_agent_in_acct(Super, AcctId) ->
 find_agent_supervisor(AcctId, AgentId) ->
     find_agent_supervisor(AcctId, AgentId, workers()).
 
-find_agent_supervisor(_AcctId, _AgentId, []) -> undefined;
-find_agent_supervisor(AcctId, AgentId, _) when AcctId =:= undefined orelse
-                                               AgentId =:= undefined ->
-    undefined;
+find_agent_supervisor(_AcctId, _AgentId, []) -> 'undefined';
+find_agent_supervisor(AcctId, AgentId, _) when AcctId =:= 'undefined' orelse
+                                               AgentId =:= 'undefined' ->
+    'undefined';
 find_agent_supervisor(AcctId, AgentId, [Super|Rest]) ->
     case catch acdc_agent:config(acdc_agent_sup:agent(Super)) of
         {'EXIT', _} -> find_agent_supervisor(AcctId, AgentId, Rest);

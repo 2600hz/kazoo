@@ -219,8 +219,7 @@ send_sync_resp(Srv, Status, ReqJObj, Options) ->
     gen_listener:cast(Srv, {send_sync_resp, Status, ReqJObj, Options}).
 
 -spec config(pid()) -> {ne_binary(), ne_binary()}.
-config(Srv) ->
-    gen_listener:call(Srv, config).
+config(Srv) -> gen_listener:call(Srv, 'config').
 
 send_status_resume(Srv) ->
     gen_listener:cast(Srv, {send_status_update, resume}).
@@ -317,9 +316,9 @@ init([Supervisor, Agent, Queues]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(config, _From, #state{acct_id=AcctId
-                                  ,agent_id=AgentId
-                                  }=State) ->
+handle_call('config', _From, #state{acct_id=AcctId
+                                    ,agent_id=AgentId
+                                   }=State) ->
     {reply, {AcctId, AgentId}, State};
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call from ~p: ~p", [_From, _Request]),

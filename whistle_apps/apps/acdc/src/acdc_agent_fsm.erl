@@ -240,12 +240,11 @@ resume(FSM) ->
 refresh(FSM, AgentJObj) ->
     gen_fsm:send_all_state_event(FSM, {refresh, AgentJObj}).
 
--spec current_call(pid()) -> 'undefined' | wh_json:object().
-current_call(FSM) ->
-    gen_fsm:sync_send_event(FSM, current_call).
+-spec current_call(pid()) -> api_object().
+current_call(FSM) -> gen_fsm:sync_send_event(FSM, current_call).
 
-status(FSM) ->
-    gen_fsm:sync_send_event(FSM, status).
+-spec status(pid()) -> wh_proplist().
+status(FSM) -> gen_fsm:sync_send_event(FSM, status).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -359,7 +358,7 @@ wait(_Msg, State) ->
     {next_state, wait, State}.
 
 wait(status, _, State) ->
-    {reply, undefined, wait, State};
+    {reply, [{state, wait}], wait, State};
 wait(current_call, _, State) ->
     {reply, undefined, wait, State}.
 
@@ -445,7 +444,7 @@ sync(_Evt, State) ->
     {next_state, sync, State}.
 
 sync(status, _, State) ->
-    {reply, undefined, sync, State};
+    {reply, [{state, sync}], sync, State};
 sync(current_call, _, State) ->
     {reply, undefined, sync, State}.
 
@@ -556,7 +555,7 @@ ready(_Evt, State) ->
     {next_state, ready, State}.
 
 ready(status, _, State) ->
-    {reply, <<"ready">>, ready, State};
+    {reply, [{state, <<"ready">>}], ready, State};
 ready(current_call, _, State) ->
     {reply, undefined, ready, State}.
 
@@ -737,8 +736,14 @@ ringing(_Evt, State) ->
     lager:debug("unhandled event while ringing: ~p", [_Evt]),
     {next_state, ringing, State}.
 
-ringing(status, _, State) ->
-    {reply, <<"ringing">>, ringing, State};
+ringing(status, _, #state{member_call_id=MCallId
+                          ,agent_call_id=ACallId
+                         }=State) ->
+    {reply, [{state, <<"ringing">>}
+             ,{member_call_id, MCallId}
+             ,{agent_call_id, ACallId}
+            ]
+     ,ringing, State};
 ringing(current_call, _, #state{member_call=Call
                                 ,member_call_queue_id=QueueId
                                }=State) ->
@@ -863,8 +868,14 @@ answered(_Evt, State) ->
     lager:debug("unhandled event while answered: ~p", [_Evt]),
     {next_state, answered, State}.
 
-answered(status, _, State) ->
-    {reply, <<"answered">>, answered, State};
+answered(status, _, #state{member_call_id=MCallId
+                           ,agent_call_id=ACallId
+                          }=State) ->
+    {reply, [{state, <<"answered">>}
+             ,{member_call_id, MCallId}
+             ,{agent_call_id, ACallId}
+            ]
+     ,answered, State};
 answered(current_call, _, #state{member_call=Call
                                  ,member_call_start=Start
                                  ,member_call_queue_id=QueueId
@@ -887,9 +898,9 @@ wrapup({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     {next_state, wrapup, State#state{wrapup_timeout=0}};
 
 wrapup({timeout, Ref, ?WRAPUP_FINISHED}, #state{wrapup_ref=Ref
-                                              ,acct_id=AcctId
-                                              ,agent_id=AgentId
-                                             }=State) ->
+                                                ,acct_id=AcctId
+                                                ,agent_id=AgentId
+                                               }=State) ->
     lager:debug("wrapup timer expired, ready for action!"),
     acdc_stats:agent_ready(AcctId, AgentId),
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
@@ -922,8 +933,11 @@ wrapup(_Evt, State) ->
     lager:debug("unhandled event while in wrapup: ~p", [_Evt]),
     {next_state, wrapup, State#state{wrapup_timeout=0}}.
 
-wrapup(status, _, State) ->
-    {reply, <<"wrapup">>, wrapup, State};
+wrapup(status, _, #state{wrapup_ref=Ref}=State) ->
+    {reply, [{state, <<"wrapup">>}
+             ,{wrapup_left, time_left(Ref)}
+            ]
+     ,wrapup, State};
 wrapup(current_call, _, #state{member_call=Call
                                ,member_call_start=Start
                                ,member_call_queue_id=QueueId
@@ -998,8 +1012,11 @@ paused(_Evt, State) ->
     lager:debug("unhandled event while paused: ~p", [_Evt]),
     {next_state, paused, State}.
 
-paused(status, _, State) ->
-    {reply, <<"paused">>, paused, State};
+paused(status, _, #state{wrapup_ref=Ref}=State) ->
+    {reply, [{state, <<"paused">>}
+             ,{wrapup_left, time_left(Ref)}
+            ]
+     ,paused, State};
 paused(current_call, _, State) ->
     {reply, undefined, paused, State}.
 
@@ -1109,8 +1126,14 @@ outbound(_Msg, State) ->
     lager:debug("ignoring msg in outbound: ~p", [_Msg]),
     {next_state, outbound, State}.
 
-outbound(status, _, State) ->
-    {reply, <<"outbound">>, outbound, State};
+outbound(status, _, #state{wrapup_ref=Ref
+                           ,outbound_call_id=OutboundCallId
+                          }=State) ->
+    {reply, [{state, <<"outbound">>}
+             ,{wrapup_left, time_left(Ref)}
+             ,{outbound_call_id, OutboundCallId}
+            ]
+     ,outbound, State};
 outbound(current_call, _, State) ->
     {reply, undefined, outbound, State}.
 
@@ -1289,7 +1312,7 @@ update_agent_status_to_resume(AcctId, AgentId) ->
 %% returns time left in seconds
 time_left(Ref) when is_reference(Ref) ->
     time_left(erlang:read_timer(Ref));
-time_left(false) -> undefined;
+time_left('false') -> 'undefined';
 time_left(Ms) when is_integer(Ms) -> Ms div 1000.
 
 -spec clear_call(fsm_state(), atom()) -> fsm_state().
