@@ -8,15 +8,29 @@
 %%%-------------------------------------------------------------------
 -module(ts_callflow).
 
--export([init/1, start_amqp/1, send_park/1, wait_for_win/1
-         ,wait_for_bridge/1, wait_for_cdr/1, send_hangup/1
+-export([init/1
+         ,start_amqp/1
+         ,send_park/1
+         ,wait_for_win/1
+         ,wait_for_bridge/1
+         ,wait_for_cdr/1
+         ,send_hangup/1, send_hangup/2
          ,finish_leg/2
         ]).
 
 %% data access functions
--export([get_request_data/1, get_my_queue/1, get_control_queue/1, set_endpoint_data/2
-         ,set_account_id/2, get_aleg_id/1, get_bleg_id/1, get_call_cost/1
-         ,set_failover/2, get_failover/1, get_endpoint_data/1, get_account_id/1
+-export([get_request_data/1
+         ,get_my_queue/1
+         ,get_control_queue/1
+         ,set_endpoint_data/2
+         ,set_account_id/2
+         ,get_aleg_id/1
+         ,get_bleg_id/1
+         ,get_call_cost/1
+         ,set_failover/2
+         ,get_failover/1
+         ,get_endpoint_data/1
+         ,get_account_id/1
         ]).
 
 -include("ts.hrl").
@@ -302,6 +316,7 @@ finish_leg(#ts_callflow_state{}=State, _Leg) ->
 
 -spec send_hangup(ts_state()) -> 'ok'.
 send_hangup(#ts_callflow_state{callctl_q = <<>>}) -> ok;
+send_hangup(#ts_callflow_state{callctl_q = 'undefined'}) -> ok;
 send_hangup(#ts_callflow_state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
     Command = [
                {<<"Application-Name">>, <<"hangup">>}
@@ -311,6 +326,12 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
               ],
     lager:info("Sending hangup to ~s: ~p", [CtlQ, Command]),
     wapi_dialplan:publish_command(CtlQ, Command).
+
+send_hangup(#ts_callflow_state{callctl_q = <<>>}, _) -> ok;
+send_hangup(#ts_callflow_state{callctl_q = 'undefined'}, _) -> ok;
+send_hangup(#ts_callflow_state{callctl_q=CtlQ, aleg_callid=CallId}, Code) ->
+    lager:debug("responding to aleg with ~p", [Code]),
+    wh_call_response:send(CallId, CtlQ, Code).
 
 %%%-----------------------------------------------------------------------------
 %%% Data access functions
