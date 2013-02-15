@@ -521,14 +521,18 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{record_calls=RecordCa
 
     ShouldRecord = should_record_endpoints(EPs, RecordCall),
 
+    AgentCallId = outbound_call_id(Call),
     acdc_util:bind_to_call_events(Call),
+    acdc_util:bind_to_call_events(AgentCallId),
+
     maybe_connect_to_agent(MyQ, EPs, Call, RingTimeout),
 
     lager:debug("originate sent, waiting on successful bridge now"),
     update_my_queues_of_change(AcctId, AgentId, Qs),
     {noreply, State#state{call=Call
                           ,record_calls=ShouldRecord
-                          ,msg_queue_id = wh_json:get_value(<<"Server-ID">>, WinJObj)
+                          ,msg_queue_id=wh_json:get_value(<<"Server-ID">>, WinJObj)
+                          ,agent_call_id=AgentCallId
                          }
     ,hibernate
     };
@@ -540,10 +544,14 @@ handle_cast({bridge_to_member, Call, WinJObj, _}, #state{is_thief=true
     lager:debug("connecting to thief at ~s", [whapps_call:call_id(Agent)]),
     acdc_util:bind_to_call_events(Call),
 
+    AgentCallId = outbound_call_id(Call),
+    acdc_util:bind_to_call_events(AgentCallId),
+
     whapps_call_command:pickup(whapps_call:call_id(Agent), <<"now">>, Call),
 
     {noreply, State#state{call=Call
-                          ,msg_queue_id = wh_json:get_value(<<"Server-ID">>, WinJObj)
+                          ,msg_queue_id=wh_json:get_value(<<"Server-ID">>, WinJObj)
+                          ,agent_call_id=AgentCallId
                          }
      ,hibernate
     };
