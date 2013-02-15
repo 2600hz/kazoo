@@ -302,6 +302,7 @@ finish_leg(#ts_callflow_state{}=State, _Leg) ->
 
 -spec send_hangup/1 :: (ts_state()) -> 'ok'.
 send_hangup(#ts_callflow_state{callctl_q = <<>>}) -> ok;
+send_hangup(#ts_callflow_state{callctl_q = 'undefined'}) -> ok;
 send_hangup(#ts_callflow_state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
     Command = [
                {<<"Application-Name">>, <<"hangup">>}
@@ -311,6 +312,12 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
               ],
     lager:info("Sending hangup to ~s: ~p", [CtlQ, Command]),
     wapi_dialplan:publish_command(CtlQ, Command).
+
+send_hangup(#ts_callflow_state{callctl_q = <<>>}, _) -> ok;
+send_hangup(#ts_callflow_state{callctl_q = 'undefined'}, _) -> ok;
+send_hangup(#ts_callflow_state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallId}, Code) ->
+    lager:debug("responding to aleg with ~p", [Code]),
+    wh_call_response:send(CallId, CtlQ, Code).
 
 %%%-----------------------------------------------------------------------------
 %%% Data access functions
