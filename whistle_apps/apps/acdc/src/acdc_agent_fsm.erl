@@ -135,19 +135,19 @@ member_connect_win(FSM, JObj) ->
 %%--------------------------------------------------------------------
 -spec call_event(pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, JObj) ->
-    gen_fsm:send_event(FSM, {channel_bridged, callid(JObj)});
+    gen_fsm:send_event(FSM, {'channel_bridged', callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, JObj) ->
-    gen_fsm:send_event(FSM, {channel_unbridged, callid(JObj)});
+    gen_fsm:send_event(FSM, {'channel_unbridged', callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj) ->
-    gen_fsm:send_event(FSM, {channel_hungup, callid(JObj)});
+    gen_fsm:send_event(FSM, {'channel_hungup', callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"LEG_CREATED">>, JObj) ->
-    gen_fsm:send_event(FSM, {leg_created, callid(JObj)});
+    gen_fsm:send_event(FSM, {'leg_created', callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"LEG_DESTROYED">>, JObj) ->
-    gen_fsm:send_event(FSM, {leg_destroyed, callid(JObj)});
+    gen_fsm:send_event(FSM, {'leg_destroyed', callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_ANSWER">>, JObj) ->
-    gen_fsm:send_event(FSM, {channel_answered, callid(JObj)});
+    gen_fsm:send_event(FSM, {'channel_answered', callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
-    gen_fsm:send_event(FSM, {dtmf_pressed, wh_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
+    gen_fsm:send_event(FSM, {'dtmf_pressed', wh_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, JObj) ->
     maybe_send_execute_complete(FSM, wh_json:get_value(<<"Application-Name">>, JObj), JObj);
 
@@ -839,6 +839,13 @@ answered({call_status, JObj}, #state{call_status_failures=Failures}=State) ->
         <<"active">> -> {next_state, answered, State#state{call_status_failures=0}};
         _S -> {next_state, answered, State#state{call_status_failures=Failures+1}}
     end;
+
+answered({channel_answered, MCallId}, #state{member_call_id=MCallId}=State) ->
+    lager:debug("member's channel has answered"),
+    {next_state, answered, State};
+answered({channel_answered, ACallId}, #state{agent_call_id=ACallId}=State) ->
+    lager:debug("agent's channel ~s has answered", [ACallId]),
+    {next_state, answered, State};
 
 answered(_Evt, State) ->
     lager:debug("unhandled event while answered: ~p", [_Evt]),
