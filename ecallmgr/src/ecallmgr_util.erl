@@ -370,7 +370,7 @@ endpoint_jobjs_to_records(Endpoints, IncludeVars) ->
             endpoint_jobjs_to_records(Endpoints, IncludeVars, [])
     ].
 
-endpoint_jobjs_to_records([], _, BridgeEndpoints) -> lists:reverse(BridgeEndpoints);
+endpoint_jobjs_to_records([], _, BridgeEndpoints) -> BridgeEndpoints;
 endpoint_jobjs_to_records([Endpoint|Endpoints], IncludeVars, BridgeEndpoints) ->
     Key = endpoint_key(Endpoint),
     case wapi_dialplan:bridge_endpoint_v(Endpoint) 
