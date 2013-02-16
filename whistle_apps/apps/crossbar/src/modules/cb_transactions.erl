@@ -75,12 +75,12 @@ resource_exists(_) -> true.
 validate(#cb_context{req_verb = <<"get">>,  query_json=Query}=Context) ->
     From = wh_json:get_value(<<"created_from">>, Query, undefined),
     Reason = wh_json:get_value(<<"reason">>, Query, undefined),
-    case Reason =:= <<"no_call">> of
-        false -> 
-            fetch_by_date(From, Context);
-        true -> 
+    case Reason of
+        <<"no_call">> ->
             Reasons = wh_transaction:get_reasons(false),
-            fetch_by_date_and_reason(From, Reasons, Context)
+            fetch_by_date_and_reason(From, Reasons, Context);
+        _ ->
+            fetch_by_date(From, Context)    
     end.
 
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"current_balance">>) ->
