@@ -108,7 +108,7 @@ manual_presence_resp(JObj, ToUser, ToRealm, Event) ->
                               ,{<<"Subscription-Call-ID">>, wh_json:get_ne_value(<<"Subscription-Call-ID">>, Event)}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ],
-            wapi_notifications:publish_presence_update(PresenceUpdate)
+            whapps_util:amqp_pool_send(PresenceUpdate, fun wapi_notifications:publish_presence_update/1)
     end.
 
 %%--------------------------------------------------------------------
@@ -167,7 +167,7 @@ presence_mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ],
             lager:info("updating MWI for owner ~s: (~b/~b)", [OwnerId, New, Saved]),
-            wapi_notifications:publish_mwi_update(Command);
+            whapps_util:amqp_pool_send(Command, fun wapi_notifications:publish_mwi_update/1);
         {error, _R} ->
             lager:warning("unable to lookup vm counts by owner: ~p", [_R]),
             ok
@@ -213,26 +213,34 @@ update_mwi(New, Saved, OwnerId, AccountDb) ->
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
         {ok, Devices} ->
             lager:info("updating MWI for owner ~s: (~b/~b) on ~b devices", [OwnerId, New, Saved, length(Devices)]),
-            CommonHeaders = [{<<"Messages-New">>, New}
-                             ,{<<"Messages-Saved">>, Saved}
-                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                            ],
             lists:foreach(fun(Result) ->
                                   Device = wh_json:get_value(<<"doc">>, Result, wh_json:new()),
                                   User = wh_json:get_value([<<"sip">>, <<"username">>], Device),
                                   Realm = cf_util:get_sip_realm(Device, AccountId),
-                                  Command = wh_json:from_list([{<<"Notify-User">>, User}
-                                                               ,{<<"Notify-Realm">>, Realm}
-                                                               ,{<<"Message-Account">>, <<"sip:", User/binary, "@", Realm/binary>>}
-                                                               | CommonHeaders
-                                                              ]),
-                                  catch (wapi_notifications:publish_mwi_update(Command))
+                                  maybe_publish_mwi(User, Realm, New, Saved)
                           end, Devices),
             ok;
         {error, _R} ->
             lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
             ok
     end.
+
+-spec maybe_publish_mwi/4 :: (api_binary(), api_binary(), integer(), integer()) -> 'ok'.
+maybe_publish_mwi(undefined, _, _, _) -> ok;
+maybe_publish_mwi(_, undefined, _, _) -> ok;
+maybe_publish_mwi(User, Realm, New, Saved) when not is_binary(User) ->
+    maybe_publish_mwi(wh_util:to_binary(User), Realm, New, Saved);
+maybe_publish_mwi(User, Realm, New, Saved) when not is_binary(Realm) ->
+    maybe_publish_mwi(User, wh_util:to_binary(Realm), New, Saved);
+maybe_publish_mwi(User, Realm, New, Saved) ->
+    Props = [{<<"Notify-User">>, User}
+             ,{<<"Notify-Realm">>, Realm}
+             ,{<<"Message-Account">>, <<"sip:", User/binary, "@", Realm/binary>>}
+             ,{<<"Messages-New">>, New}
+             ,{<<"Messages-Saved">>, Saved}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    whapps_util:amqp_pool_send(Props, fun wapi_notifications:publish_mwi_update/1). 
 
 %%--------------------------------------------------------------------
 %% @public
