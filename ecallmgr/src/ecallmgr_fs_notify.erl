@@ -463,7 +463,10 @@ publish_presence_event(EventName, Props, Node) ->
            ,{<<"Dialog-State">>, props:get_value(<<"dialog_state">>, Props)}
            | wh_api:default_headers(<<>>, <<"notification">>, wh_util:to_lower_binary(EventName), ?APP_NAME, ?APP_VERSION)
           ],
-    wapi_notifications:publish_presence_probe(Req).
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                        ,Req
+                        ,fun wapi_notifications:publish_presence_probe/1
+                       ).
 
 -spec relay_presence/5 :: (atom(), ne_binary(), wh_proplist(), atom(), api_binary()) -> [fs_sendevent_ret(),...].
 relay_presence(EventName, PresenceId, Props, Node, undefined) ->
@@ -512,7 +515,10 @@ handle_message_query(Data, Node) ->
                      ,{<<"Message-Account">>, props:get_value(<<"Message-Account">>, Data)}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
-            wapi_notifications:publish_mwi_query(Query),
+            _ = wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                                    ,Query
+                                    ,fun wapi_notifications:publish_mwi_query/1
+                                   ),
             ok;
         _Else ->
             lager:debug("unknown message query format: ~p", [MessageAccount]),

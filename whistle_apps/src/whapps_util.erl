@@ -27,6 +27,7 @@
 -export([rm_aggregate_device/2]).
 -export([get_destination/3]).
 -export([get_prompt/2, get_prompt/3]).
+-export([amqp_pool_send/2]).
 -export([amqp_pool_request/3, amqp_pool_request/4
          ,amqp_pool_collect/2, amqp_pool_collect/3
         ]).
@@ -432,6 +433,10 @@ rm_aggregate_device(Db, Device) ->
             _ = couch_mgr:del_doc(?WH_SIP_DB, JObj),
             ok
     end.
+
+-spec amqp_pool_send/2 :: (api_terms(), wh_amqp_worker:publish_fun()) -> 'ok' | {'error', any()}.
+amqp_pool_send(Api, PubFun) when is_function(PubFun, 1) ->
+    wh_amqp_worker:cast(?WHAPPS_AMQP_POOL, Api, PubFun).
 
 -spec amqp_pool_request/3 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) ->
                                      {'ok', wh_json:object()} |
