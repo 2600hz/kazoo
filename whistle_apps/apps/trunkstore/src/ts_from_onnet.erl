@@ -155,7 +155,7 @@ wait_for_bridge(State) ->
             lager:info("call was successfully bridged"),
             wait_for_cdr(State1);
         {error, State2} ->
-            ts_callflow:send_hangup(State2, 503),
+            ts_callflow:send_hangup(State2, 686),
             wait_for_cdr(State2);
         {hangup, State3} ->
             lager:info("call was hungup"),
