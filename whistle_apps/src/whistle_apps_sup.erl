@@ -20,8 +20,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(POOL_SIZE, 5).
--define(OVERFLOW_POOL_SIZE, 20).
+-define(POOL_SIZE, 50).
+-define(OVERFLOW_POOL_SIZE, 100).
 
 -define(ORIGIN_BINDINGS, [[{type, <<"account">>}]
                           ,[{db, ?WH_CONFIG_DB}]

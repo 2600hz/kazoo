@@ -731,8 +731,7 @@ handle_info({nodedown, NodeName}, State) ->
     spawn(fun() -> maybe_handle_nodedown(NodeName, State) end),
     {noreply, State};
 handle_info(_Info, State) ->
-    io:format("GOT ~p~n", [_Info]),
-    {noreply, State}.        
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private

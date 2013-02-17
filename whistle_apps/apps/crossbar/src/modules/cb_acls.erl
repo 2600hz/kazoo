@@ -97,7 +97,7 @@ summary(Context) ->
                                             ,2000
                                            ),
     case ReqResp of
-        {error, _R} -> 
+        {error, _R} ->
             lager:debug("unable to get acls from sysconf: ~p", [_R]),
             cb_context:add_system_error(datastore_fault, Context);
         {ok, JObj} ->

@@ -116,10 +116,10 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
             wh_counter:inc(<<"amqp.pools.", PoolName/binary, ".available">>),
             Reply;
         full ->
-            lager:debug("failed to checkout worker: full"),
+            lager:critical("failed to checkout worker: full"),
             {error, pool_full};
         _Else ->
-            lager:debug("poolboy error: ~p", [_Else]),
+            lager:warning("poolboy error: ~p", [_Else]),
             {error, poolboy_fault}
     end.
 

@@ -13,7 +13,7 @@
 -define(ECALLMGR_REG_CACHE, ecallmgr_reg_cache).
 -define(ECALLMGR_CALL_CACHE, ecallmgr_call_cache).
 
--define(ECALLMGR_RECORDED_MEDIA_KEY(M), {recorded_media, M}).
+-define(ECALLMGR_PLAYBACK_MEDIA_KEY(M), {playback_media, M}).
 
 -define(WHISTLE_CONTEXT, <<"context_2">>).
 

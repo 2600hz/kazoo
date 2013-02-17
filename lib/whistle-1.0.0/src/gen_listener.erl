@@ -415,6 +415,7 @@ handle_info({'$initialize_gen_listener', Timeout}
             ,#state{bindings=Bindings, params=Params}=State) ->
     case start_amqp(Params) of
         {error, _E} ->
+            io:format("retry: ~p~n", [?INITIALIZE_MSG(Timeout)]),
             _ = erlang:send_after(Timeout, self(), ?INITIALIZE_MSG(Timeout)),
             {noreply, State};
         {ok, Q} ->
@@ -474,9 +475,10 @@ terminate(Reason, #state{module=Module
                          ,bindings=Bs
                         }) ->
     _ = (catch Module:terminate(Reason, ModState)),
-    lists:foreach(fun({B, P}) ->
-                          (catch remove_binding(B, P, Q))
-                  end, Bs),
+%%    lists:foreach(fun({B, P}) ->
+%%                          (catch remove_binding(B, P, Q))
+%%                  end, Bs),
+    wh_amqp_channel:remove(),
     lager:debug("~s terminated cleanly, going down", [Module]).
 
 -spec handle_event/4 :: (ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) ->  'ok'.
@@ -548,6 +550,7 @@ start_amqp(Props) ->
     case amqp_util:new_queue(QueueName, QueueProps) of
         {error, _}=E -> E;
         Q ->
+            io:format("CREATED Q: ~p~n", [Q]),
             set_qos(props:get_value(basic_qos, Props)),
             ok = start_consumer(Q, props:get_value(consume_options, Props)),
             lager:debug("queue started: ~s", [Q]),

@@ -18,7 +18,7 @@
 -export([current/0]).
 -export([available/0]).
 -export([wait_for_available/0]).
-
+-export([does_key_exist/1]).
 -export([register_return_handler/0]).
 
 -export([find_reference/1]).
@@ -30,6 +30,7 @@
 -export([update_connection/1
          ,update_connection/2
         ]).
+-export([update_exchange/1]).
 
 -export([init/1
          ,handle_call/3
@@ -104,6 +105,9 @@ wait_for_available() ->
             wait_for_available()
     end.
 
+does_key_exist(Key) ->
+    ets:member(?MODULE, Key).
+
 -spec register_return_handler/0 :: () -> 'ok'.
 register_return_handler() ->
     io:format("~p: register return handler~n", [self()]),
@@ -137,7 +141,8 @@ find_channel(Pid) ->
     end.
 
 update_connection(#wh_amqp_connection{}=Connection) ->
-    ets:insert(?MODULE, Connection).
+    ets:insert(?MODULE, Connection),
+    Connection.
 
 update_connection(#wh_amqp_connection{connection=undefined}, _) ->
     false;
@@ -145,15 +150,21 @@ update_connection(#wh_amqp_connection{connection=Key}, Updates) ->
     ets:update_element(?MODULE, Key, Updates).
 
 update_channel(#wh_amqp_channel{}=Channel) ->
-    ets:insert(?MODULE, Channel).
+    ets:insert(?MODULE, Channel),
+    Channel.
 
 update_channel(#wh_amqp_channel{id=undefined}, _) ->
+    io:format("update channel had no key~n", []),
     false;
 update_channel(#wh_amqp_channel{id=Key}, Updates) ->
     ets:update_element(?MODULE, Key, Updates).
 
-remove_channel(#wh_amqp_channel{id=Id}) ->
-    ets:delete(?MODULE, Id).
+remove_channel(#wh_amqp_channel{id=Id}=Channel) ->
+    ets:delete(?MODULE, Id),
+    Channel.
+
+update_exchange(#wh_amqp_exchange{}=Exchange) ->
+    ets:insert(?MODULE, Exchange).
 
 %%%===================================================================
 %%% gen_server callbacks

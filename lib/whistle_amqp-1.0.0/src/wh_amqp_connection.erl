@@ -15,8 +15,18 @@
 -export([open_channel/0
          ,open_channel/1
         ]).
--export([monitor_channel/2]).
+-export([close_channel/1]).
+-export([remove_channel/1]).
+-export([does_exchange_exist/2]).
+-export([exchange_exist/2]).
+
+-export([monitor_channel/1]).
+-export([monitor_consumer/1]).
+-export([demonitor_channel/1]).
+-export([demonitor_consumer/1]).
+
 -export([teardown_channels/1]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -61,8 +71,37 @@ open_channel(Channel) ->
             open_channel(Channel, Connection)
     end.
 
-monitor_channel(Srv, Channel) ->
-    gen_server:cast(Srv, {monitor_channel, Channel}).
+monitor_channel(#wh_amqp_channel{channel=Pid, connection=Srv}=Channel)
+  when is_pid(Pid), is_pid(Srv)->
+    gen_server:call(Srv, {monitor_channel, Channel});
+monitor_channel(Channel) -> Channel.
+
+monitor_consumer(#wh_amqp_channel{consumer=Pid, connection=Srv}=Channel)
+  when is_pid(Pid), is_pid(Srv) ->
+    gen_server:call(Srv, {monitor_consumer, Channel});
+monitor_consumer(Channel) -> Channel.
+
+demonitor_channel(#wh_amqp_channel{channel_ref=Ref, connection=Srv}=Channel)
+  when is_reference(Ref), is_pid(Srv) ->
+    gen_server:call(Srv, {demonitor_channel, Channel});
+demonitor_channel(Channel) -> Channel.
+
+demonitor_consumer(#wh_amqp_channel{consumer_ref=Ref, connection=Srv}=Channel)
+  when is_reference(Ref), is_pid(Srv) ->
+    gen_server:call(Srv, {demonitor_consumer, Channel});
+demonitor_consumer(Channel) -> Channel.
+
+does_exchange_exist(#wh_amqp_channel{connection=Srv}
+                    ,#'exchange.declare'{exchange=ExchangeName}) ->
+    wh_amqp_connections:does_key_exist({Srv, ExchangeName}).
+
+exchange_exist(#wh_amqp_channel{connection=Srv}
+               ,#'exchange.declare'{exchange=ExchangeName}=Command) ->
+    Exchange = #wh_amqp_exchange{id={Srv, ExchangeName}
+                                 ,connection=Srv
+                                 ,exchange=Command
+                                },
+    wh_amqp_connections:update_exchange(Exchange).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -105,9 +144,24 @@ handle_call(teardown_channels, _, State) ->
     io:format("~p: teardown channels~n", [self()]),
     %% TODO find and teardown channels using this connection...
     {reply, ok, State};
+handle_call({monitor_channel, #wh_amqp_channel{channel=Pid}=C}, _, State) ->
+%%    io:format("~p: monitor channel ~p~n", [self(), Pid]),
+    {reply, C#wh_amqp_channel{channel_ref=erlang:monitor(process, Pid)}, State};
+handle_call({monitor_consumer, #wh_amqp_channel{consumer=Pid}=C}, _, State) ->
+%%    io:format("~p: monitor consumer ~p~n", [self(), Pid]),
+    {reply, C#wh_amqp_channel{consumer_ref=erlang:monitor(process, Pid)}, State};
+handle_call({demonitor_channel, #wh_amqp_channel{channel_ref=Ref}=C}, _, State) ->
+%%    io:format("~p: demonitor channel ~p~n", [self(), Ref]),
+    erlang:demonitor(Ref, [flush]),
+    {reply, C#wh_amqp_channel{channel_ref=undefined}, State};
+handle_call({demonitor_consumer, #wh_amqp_channel{consumer_ref=Ref}=C}, _, State) ->
+%%    io:format("~p: demonitor consumer ~p~n", [self(), Ref]),
+    erlang:demonitor(Ref, [flush]),
+    {reply, C#wh_amqp_channel{consumer_ref=undefined}, State};
 handle_call(stop, _, State) ->
     {stop, normal, ok, State};
 handle_call(_Msg, _From, State) ->
+    io:format("NOT IMPLEMENTED(call): ~p~n", [_Msg]),
     {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
@@ -120,20 +174,9 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({monitor_channel, #wh_amqp_channel{channel=Channel, consumer=Consumer}=C}, State) ->
-    wh_amqp_connections:update_channel(C, monitor_updates(Channel, Consumer)),
-    {noreply, State};
 handle_cast(_Msg, State) ->
+    io:format("NOT IMPLEMENTED(cast): ~p~n", [_Msg]),
     {noreply, State}.
-
-monitor_updates(Channel, Consumer) when not is_pid(Consumer) ->
-    {#wh_amqp_channel.channel_ref, erlang:monitor(process, Channel)};
-monitor_updates(Channel, Consumer) when not is_pid(Channel) ->
-    {#wh_amqp_channel.consumer_ref, erlang:monitor(process, Consumer)};
-monitor_updates(Channel, Consumer) ->
-    [{#wh_amqp_channel.channel_ref, erlang:monitor(process, Channel)}
-     ,{#wh_amqp_channel.consumer_ref, erlang:monitor(process, Consumer)}
-    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -148,10 +191,10 @@ monitor_updates(Channel, Consumer) ->
 handle_info({'DOWN', Ref, process, _Pid, Reason}, State) ->
     io:format("~p: down msg ~p ~p ~p~n", [self(), Ref, _Pid, Reason]),
     erlang:demonitor(Ref, [flush]),
-%%    _ = spawn(fun() ->
+    _ = spawn(fun() ->
                       Matches = wh_amqp_connections:find_reference(Ref),
-                      handle_down_msg(Matches, Reason, State),
-%%              end),
+                      handle_down_msg(Matches, Reason, State)
+              end),
     {noreply, State, hibernate};
 %%handle_info({#'basic.return'{}, #amqp_msg{}}=ReturnMsg, State) ->
 %%    wh_amqp_mgr:notify_return_handlers(ReturnMsg),
@@ -214,14 +257,13 @@ handle_down_msg([Match|Matches], Reason, State) ->
     handle_down_msg(Matches, Reason, State);
 handle_down_msg({channel, #wh_amqp_channel{started=Started}=Channel}, _
                 ,#wh_amqp_connection{available=true}) ->
-%%    io:format("~p: down message for a channel while connected~n", [self()]),
+    io:format("~p: down message for a channel while connected~n", [self()]),
     Duration = wh_util:elapsed_s(Started),
     _ = case Duration < 5 of
             false -> ok;
             true ->
                 lager:warning("short lived channel (~ps): ~p", [Duration, Channel])
         end,
-    close_channel(Channel),
     open_channel(close_channel(Channel));
 handle_down_msg({channel, #wh_amqp_channel{}=Channel}, _
                 ,#wh_amqp_connection{available=false}) ->
@@ -240,27 +282,34 @@ handle_down_msg({connection, #wh_amqp_connection{}}, _
                 ,#wh_amqp_connection{manager=Srv}) ->
     io:format("~p: down message for the connection", [self()]),
     lager:info("connection to the AMQP broker died", []),
-    %%    gen_server:cast(wh_amqp_mgr, {broker_unavailable, Name}),
     %%    notify_consumers({amqp_channel_event, Reason}, Name),
     Srv ! {connect, ?START_TIMEOUT}.
 
-close_channel(#wh_amqp_channel{channel_ref=Ref}=Channel) when is_reference(Ref)->
-    io:format("~p: flush channel ref~n", [self()]),
-    erlang:demonitor(Ref, [flush]),
-    Update = [{#wh_amqp_channel.channel_ref, undefined}],
-    wh_amqp_connections:update_channel(Channel, Update),
-    close_channel(Channel#wh_amqp_channel{channel_ref=undefined});
-close_channel(#wh_amqp_channel{channel=Pid}=Channel) when is_pid(Pid) ->
-    io:format("~p: close channel ~p~n", [self(), Pid]),
-    catch amqp_channel:close(Pid),
-    Update = [{#wh_amqp_channel.channel, undefined}],
-    wh_amqp_connections:update_channel(Channel, Update),
-    close_channel(Channel#wh_amqp_channel{channel=undefined});
-close_channel(Channel) ->
-    Channel.
+close_channel(#wh_amqp_channel{}=Channel) ->
+    io:format("close channel ~p for ~p~n", [Channel#wh_amqp_channel.channel, Channel#wh_amqp_channel.consumer]),
+    Routines = [fun(C) -> wh_amqp_connection:demonitor_channel(C) end
+                ,fun(#wh_amqp_channel{consumer_tag=CTag}=C) when is_binary(CTag) -> 
+%%                         io:format("~p: cancel consumer ~p~n", [self(), CTag]),
+                         catch amqp_util:basic_cancel(),
+                         C#wh_amqp_channel{consumer_tag=undefined};
+                    (C) -> C
+                 end
+                ,fun(#wh_amqp_channel{channel=Pid}=C) when is_pid(Pid) ->
+%%                         io:format("~p: close channel ~p~n", [self(), Pid]),
+                         catch amqp_channel:close(Pid),
+                         C#wh_amqp_channel{channel=undefined};
+                    (C) -> C
+                 end
+                ,fun(C) -> wh_amqp_connections:update_channel(C) end
+               ],
+    lists:foldl(fun(F, C) -> F(C) end, Channel, Routines).
 
-remove_channel(Channel) ->
-    wh_amqp_connections:remove_channel(close_channel(Channel)).
+remove_channel(#wh_amqp_channel{}=Channel) ->
+    Routines = [fun(C) -> close_channel(C) end
+                ,fun(C) -> wh_amqp_connection:demonitor_consumer(C) end
+                ,fun(C) -> wh_amqp_connections:remove_channel(C) end
+               ],
+    lists:foldl(fun(F, C) -> F(C) end, Channel, Routines).
 
 connected(Pid, State) when is_pid(Pid) ->
     Ref = erlang:monitor(process, Pid),
@@ -288,11 +337,15 @@ open_channel(Channel, #wh_amqp_connection{connection=Connection
     try amqp_connection:open_channel(Connection) of
         {ok, Pid} ->
             %%            amqp_selective_consumer:register_default_consumer(Channel, Srv),
-            %% TODO: dont start the monitor here...
-            ConnectedChannel = Channel#wh_amqp_channel{channel=Pid},
-            wh_amqp_connections:update_channel(ConnectedChannel),
-            wh_amqp_connection:monitor_channel(Srv, ConnectedChannel),
-            ConnectedChannel;
+            Routines = [fun(C) -> C#wh_amqp_channel{channel=Pid
+                                                    ,connection=Srv}
+                        end
+                        ,fun(C) -> wh_amqp_connection:monitor_channel(C) end
+                        ,fun(C) -> wh_amqp_connection:monitor_consumer(C) end
+                        ,fun(C) -> wh_amqp_connections:update_channel(C) end
+                       ],
+            io:format("create channel ~p for ~p~n", [Pid, Channel#wh_amqp_channel.consumer]),
+            lists:foldl(fun(F, C) -> F(C) end, Channel, Routines);
         closing ->
             io:format("unable to open channel, connection is closing~n", []),
             close_channel(Channel);
@@ -317,19 +370,6 @@ next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
     ?START_TIMEOUT;
 next_timeout(Timeout) ->
     Timeout * 2.
-
-clear_channels(Name) ->
-    _ = [clear_channel(C) || #wh_amqp_channel{}=C <- ets:tab2list(Name)],
-    ok.
-clear_channel(#wh_amqp_channel{channel=ChPid
-                               ,channel_ref=ChRef
-                               ,consumer_ref=ConRef
-                               ,consumer=Consumer
-                              }) ->
-    is_reference(ChRef) andalso erlang:demonitor(ChRef, [flush]),
-    is_reference(ConRef) andalso erlang:demonitor(ConRef, [flush]),
-    erlang:is_process_alive(ChPid) andalso amqp_channel:close(ChPid),
-    is_pid(Consumer) andalso (Consumer ! {amqp_channel_event, closing}).
 
 %%-spec notify_consumers/2 :: ({'amqp_channel_event', atom()}, atom()) -> 'ok'.
 %%notify_consumers(Msg, Name) ->

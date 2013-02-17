@@ -332,7 +332,11 @@ basic_publish(Exchange, ?NE_BINARY = RoutingKey, ?NE_BINARY = Payload, ContentTy
       ,priority = props:get_value(priority, Props) % message priority, 0-9
       ,correlation_id = props:get_value(correlation_id, Props) % correlation identifier
       ,reply_to = props:get_value(reply_to, Props) % address to reply to
-      ,expiration = wh_util:to_binary(props:get_value(expiration, Props)) % expires time
+
+                  %% TODO:: new rabbit wants an integer...
+      ,expiration = props:get_value(expiration, Props) % expires time
+
+
       ,message_id = props:get_value(message_id, Props) % app message id
       ,timestamp = props:get_value(timestamp, Props) % message timestamp
       ,type = props:get_value(type, Props) % message type
@@ -517,6 +521,9 @@ new_queue(Queue) ->
 
 new_queue(<<"amq.", _/binary>>, Options) ->
     new_queue(<<>>, Options);
+new_queue(<<>>, Options) ->
+    Name = list_to_binary(io_lib:format("~s-~p-~s", [node(), self(), wh_util:rand_hex_binary(4)])),
+    new_queue(Name, Options);
 new_queue(Queue, Options) when is_binary(Queue) ->
     QD = #'queue.declare'{
       queue = Queue
@@ -531,7 +538,7 @@ new_queue(Queue, Options) when is_binary(Queue) ->
     %% can be queue | message_count | consumer_count | all
     Return = props:get_value(return_field, Options, queue),
 
-    case wh_amqp_channel:consume(QD) of
+    case catch wh_amqp_channel:consume(QD) of
         {ok, #'queue.declare_ok'{queue=Q}} when Return =:= queue -> Q;
         {ok, #'queue.declare_ok'{message_count=Cnt}} when Return =:= message_count -> Cnt;
         {ok, #'queue.declare_ok'{consumer_count=Cnt}} when Return =:= consumer_count -> Cnt;
@@ -539,7 +546,11 @@ new_queue(Queue, Options) when is_binary(Queue) ->
                                  ,message_count=MCnt
                                  ,consumer_count=CCnt
                                 }} when Return =:= all -> {Q, MCnt, CCnt};
-        {error, _}=E -> E
+        {error, _}=E -> E;
+        {'EXIT', {{shutdown, Reason}, _}} ->
+            {error, Reason};
+        {'EXIT',{noproc, _}} ->
+            {error, no_channel}
     end.
 
 %%------------------------------------------------------------------------------

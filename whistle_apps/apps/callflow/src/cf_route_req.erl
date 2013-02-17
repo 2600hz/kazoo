@@ -75,8 +75,10 @@ send_route_response(JObj, Q, Defer, Call) ->
             ,{<<"Pre-Park">>, pre_park_action(Call)}
             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
-    wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp),
-    lager:info("callflows knows how to route the call! responding with a park response").
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    Publisher = fun(P) -> wapi_route:publish_resp(ServerId, P) end,
+    whapps_util:amqp_pool_send(Resp, Publisher),
+    lager:info("callflows knows how to route the call! sent park response").
 
 %%-----------------------------------------------------------------------------
 %% @private

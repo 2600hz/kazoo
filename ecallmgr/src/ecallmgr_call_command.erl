@@ -117,8 +117,8 @@ get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
             Max = wh_json:get_value(<<"Maximum-Digits">>, JObj),
             Timeout = wh_json:get_value(<<"Timeout">>, JObj),
             Terminators = wh_json:get_value(<<"Terminators">>, JObj),
-            Media = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE))/binary, $'>>,
-            InvalidMedia = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Failed-Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE))/binary, $'>>,
+            Media = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), new, UUID, JObj))/binary, $'>>,
+            InvalidMedia = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Failed-Media-Name">>, JObj), new, UUID, JObj))/binary, $'>>,
             Tries = wh_json:get_value(<<"Media-Tries">>, JObj),
             Regex = wh_json:get_value(<<"Digits-Regex">>, JObj),
             Storage = <<"collected_digits">>,
@@ -133,24 +133,30 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
         true ->
             %% some carriers kill the channel during long recordings since there is no
             %% reverse RTP stream
-            Vars = case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, false)) of
-                       false -> [get_terminators(wh_json:get_value(<<"Terminators">>, JObj))];
-                       true ->
-                           [{<<"record_waste_resources">>, <<"true">>}
-                            ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
-                           ]
-                end,
+            Routines = [fun(V) ->
+                                case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, false)) of
+                                    false -> V;
+                                    true -> [{<<"record_waste_resources">>, <<"true">>}|V]
+                                end
+                        end
+                        ,fun(V) ->
+                                 case get_terminators(JObj) of
+                                     undefined -> V;
+                                     Terminators ->
+                                         [Terminators|V]
+                                 end
+                         end
+                       ],
+            Vars = lists:foldl(fun(F, V) -> F(V) end, [], Routines),
             _ = ecallmgr_util:set(Node, UUID, Vars),
 
-            MediaName = ecallmgr_util:recording_filename(wh_json:get_value(<<"Media-Name">>, JObj)),
-
-            RecArg = list_to_binary([MediaName, " "
+            MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+            RecordingName = ecallmgr_util:recording_filename(MediaName),
+            RecArg = list_to_binary([RecordingName, " "
                                      ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "20"), " "
                                      ,wh_json:get_string_value(<<"Silence-Threshold">>, JObj, "500"), " "
                                      ,wh_json:get_string_value(<<"Silence-Hits">>, JObj, "5")
                                     ]),
-            _ = wh_cache:store_local(?ECALLMGR_CALL_CACHE, ?ECALLMGR_RECORDED_MEDIA_KEY(MediaName), MediaName),
-
             {<<"record">>, RecArg}
     end;
 
@@ -158,36 +164,41 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
     case wapi_dialplan:record_call_v(JObj) of
         false -> {'error', <<"record_call failed to execute as JObj did not validate">>};
         true ->
-            MediaName = ecallmgr_util:recording_filename(wh_json:get_value(<<"Media-Name">>, JObj)),
+            Routines = [fun(V) ->
+                                case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, false)) of
+                                    false -> V;
+                                    true -> [{<<"record_waste_resources">>, <<"true">>}|V]
+                                end
+                        end
+                        ,fun(V) ->
+                                 case get_terminators(JObj) of
+                                     undefined -> V;
+                                     Terminators ->
+                                         [Terminators|V]
+                                 end
+                         end
+                        ,fun(V) -> [{<<"RECORD_APPEND">>, <<"true">>}
+                                    ,{<<"enable_file_write_buffering">>, <<"false">>}
+                                    |V
+                                   ]
+                         end
+                       ],
+            Vars = lists:foldl(fun(F, V) -> F(V) end, [], Routines),
+            _ = ecallmgr_util:set(Node, UUID, Vars),
 
+            MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+            RecordingName = ecallmgr_util:recording_filename(MediaName),
             case wh_json:get_value(<<"Record-Action">>, JObj) of
                 <<"start">> ->
-
-                    Vars = case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, false)) of
-                               false -> [{<<"RECORD_APPEND">>, <<"true">>}
-                                         ,{<<"enable_file_write_buffering">>, <<"false">>}
-                                         ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
-                                        ];
-                               true ->
-                                   [{<<"record_waste_resources">>, <<"true">>}
-                                    ,{<<"RECORD_APPEND">>, <<"true">>}
-                                    ,{<<"enable_file_write_buffering">>, <<"false">>}
-                                    ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
-                                   ]
-                           end,
-                    _ = ecallmgr_util:set(Node, UUID, Vars),
-
                     %% UUID start path/to/media limit
-                    RecArg = binary_to_list(list_to_binary([
-                                                            UUID, <<" start ">>
-                                                           ,MediaName, <<" ">>
-                                                           ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
+                    RecArg = binary_to_list(list_to_binary([UUID, <<" start ">>
+                                                            ,RecordingName, <<" ">>
+                                                            ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
                                                            ])),
-                    _ = wh_cache:store_local(?ECALLMGR_CALL_CACHE, ?ECALLMGR_RECORDED_MEDIA_KEY(MediaName), MediaName),
                     {<<"record_call">>, RecArg};
                 <<"stop">> ->
                     %% UUID stop path/to/media
-                    RecArg = binary_to_list(list_to_binary([UUID, <<" stop ">>, MediaName])),
+                    RecArg = binary_to_list(list_to_binary([UUID, <<" stop ">>, RecordingName])),
                     {<<"record_call">>, RecArg}
             end
     end;
@@ -196,18 +207,19 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
     case wapi_dialplan:store_v(JObj) of
         false -> {'error', <<"store failed to execute as JObj did not validate">>};
         true ->
-            MediaName = ecallmgr_util:recording_filename(wh_json:get_value(<<"Media-Name">>, JObj)),
-            lager:debug("streaming media ~s", [MediaName]),
+            MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+            RecordingName = ecallmgr_util:recording_filename(MediaName),
+            lager:debug("streaming media ~s", [RecordingName]),
             case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
                 <<"put">> ->
                     %% stream file over HTTP PUT
-                    lager:debug("stream ~s via HTTP PUT", [MediaName]),
-                    stream_over_http(Node, UUID, MediaName, put, store, JObj),
+                    lager:debug("stream ~s via HTTP PUT", [RecordingName]),
+                    stream_over_http(Node, UUID, RecordingName, put, store, JObj),
                     {<<"store">>, noop};
                 <<"post">> ->
                     %% stream file over HTTP POST
-                    lager:debug("stream ~s via HTTP POST", [MediaName]),
-                    stream_over_http(Node, UUID, MediaName, post, store, JObj),
+                    lager:debug("stream ~s via HTTP POST", [RecordingName]),
+                    stream_over_http(Node, UUID, RecordingName, post, store, JObj),
                     {<<"store">>, noop};
                 _Method ->
                     %% unhandled method
@@ -753,7 +765,7 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
         store -> send_store_call_event(Node, UUID, Result);
         fax -> send_store_fax_call_event(UUID, Result)
     end.
-            
+
 -spec send_fs_store/3 :: (atom(), ne_binary(), 'put' | 'post') -> fs_api_ret().
 send_fs_store(Node, Args, put) ->
     freeswitch:api(Node, http_put, wh_util:to_list(Args));
@@ -765,12 +777,22 @@ send_fs_store(Node, Args, post) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_terminators/1 :: ('undefined' | binary() | list()) -> {ne_binary(), ne_binary()}.
-get_terminators(Ts) -> 
-    case wh_util:is_empty(Ts) of
-        true -> {<<"playback_terminators">>, <<"none">>};
-        false -> {<<"playback_terminators">>, wh_util:to_binary(Ts)}
-    end.
+-spec get_terminators/1 :: ('undefined' | binary() | list() | wh_json:object()) -> {ne_binary(), ne_binary()} | 'undefined'.
+get_terminators(undefined) -> undefined;
+get_terminators(Ts) when is_binary(Ts) ->
+    get_terminators([Ts]);
+get_terminators([_|_]=Ts) ->
+    case Ts =:= get('$prior_terminators') of
+        true -> undefined;
+        false ->
+            put('$prior_terminators', Ts),
+            case wh_util:is_empty(Ts) of
+                true -> {<<"playback_terminators">>, <<"none">>};
+                false -> {<<"playback_terminators">>, wh_util:to_binary(Ts)}
+            end
+    end;
+get_terminators(JObj) ->
+    get_terminators(wh_json:get_value(<<"Terminators">>, JObj)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -778,9 +800,12 @@ get_terminators(Ts) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set_terminators/3 :: (atom(), ne_binary(), 'undefined' | binary() | list()) -> ecallmgr_util:send_cmd_ret().
-set_terminators(Node, UUID, Ts) -> 
-    {K, V} = get_terminators(Ts),
-    ecallmgr_util:set(Node, UUID, <<K/binary, "=", V/binary>>).
+set_terminators(Node, UUID, Ts) ->
+    case get_terminators(Ts) of
+        undefined -> ok;
+        {K, V} ->
+            ecallmgr_util:set(Node, UUID, <<K/binary, "=", V/binary>>)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -900,17 +925,25 @@ create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
 
 -spec play/3 :: (atom(), ne_binary(), wh_json:json_object()) -> {ne_binary(), ne_binary()}.
 play(Node, UUID, JObj) ->
-    Vars = case wh_json:get_value(<<"Group-ID">>, JObj) of
-               undefined -> 
-                   [get_terminators(wh_json:get_value(<<"Terminators">>, JObj))];
-               GID ->
-                   [{<<"media_group_id">>, GID}
-                    ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
-                   ]
-           end,
+    Routines = [fun(V) ->
+                        case wh_json:get_value(<<"Group-ID">>, JObj) of
+                            undefined -> V;
+                            GID -> [{<<"media_group_id">>, GID}|V]
+                        end
+                end
+                ,fun(V) ->
+                         case get_terminators(JObj) of
+                             undefined -> V;
+                             Terminators ->
+                                 [Terminators|V]
+                         end
+                 end
+               ],
+    Vars = lists:foldl(fun(F, V) -> F(V) end, [], Routines),
     _ = ecallmgr_util:set(Node, UUID, Vars),
 
-    F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE),
+    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+    F = ecallmgr_util:media_path(MediaName, new, UUID, JObj),
 
     %% if Leg is set, use uuid_broadcast; otherwise use playback
     case wh_json:get_value(<<"Leg">>, JObj) of

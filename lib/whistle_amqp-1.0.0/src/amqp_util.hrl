@@ -102,13 +102,20 @@
 -record(wh_amqp_channel, {id = wh_util:rand_hex_binary(12)
                           ,consumer :: pid()
                           ,channel :: 'undefined' | pid()
+                          ,connection :: 'undefined' | pid()
                           ,queue :: api_binary()
                           ,consumer_tag :: api_binary()
                           ,channel_ref :: 'undefined' | reference()
                           ,consumer_ref :: 'undefined' | reference()
                           ,started = now()
                           ,last_message
+                          ,commands = []
                          }).
+
+-record(wh_amqp_exchange, {id
+                           ,connection
+                           ,exchange
+                          }).
 
 -record(wh_amqp_connection, {connection :: 'undefined' | pid()
                              ,connection_ref :: 'undefined' | reference()
