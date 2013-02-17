@@ -18,20 +18,10 @@
 -export([current/0]).
 -export([available/0]).
 -export([wait_for_available/0]).
--export([does_key_exist/1]).
 -export([register_return_handler/0]).
-
--export([find_reference/1]).
--export([find_channel/1]).
--export([update_channel/1
-         ,update_channel/2
-        ]).
--export([remove_channel/1]).
 -export([update_connection/1
          ,update_connection/2
         ]).
--export([update_exchange/1]).
-
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -80,7 +70,7 @@ remove(URI) ->
     wh_amqp_connection_sup:remove(URI).
 
 current() ->
-    case ets:match_object(?MODULE, #wh_amqp_connection{connection = '$1'
+    case ets:match_object(?WH_AMQP_ETS, #wh_amqp_connection{connection = '$1'
                                                        ,available = true
                                                        ,_ = '_'})
     of
@@ -105,66 +95,20 @@ wait_for_available() ->
             wait_for_available()
     end.
 
-does_key_exist(Key) ->
-    ets:member(?MODULE, Key).
-
 -spec register_return_handler/0 :: () -> 'ok'.
 register_return_handler() ->
     io:format("~p: register return handler~n", [self()]),
     ok.
 %%    gen_server:cast(?SERVER, {register_return_handler, self()}).
 
-find_reference(Ref) ->
-    MatchSpec = [{#wh_amqp_channel{channel_ref = '$1', _ = '_'},
-                  [{'=:=', '$1', {const, Ref}}],
-                  [{{channel, '$_'}}]},
-                 {#wh_amqp_channel{consumer_ref = '$1', _ = '_'},
-                  [{'=:=', '$1', {const, Ref}}],
-                  [{{consumer, '$_'}}]},
-                 {#wh_amqp_connection{connection_ref = '$1', _ = '_'},
-                  [{'=:=', '$1', {const, Ref}}],
-                  [{{connection, '$_'}}]}
-                ],
-    ets:select(?MODULE, MatchSpec).
-
-find_channel(Pid) ->
-    MatchSpec = [{#wh_amqp_channel{channel = '$1'
-                                   ,consumer = '$2'
-                                   ,_ = '_'},
-                  [{'=:=', '$2', {const, Pid}}],
-                  ['$_']}
-                ],
-    case ets:select(?MODULE, MatchSpec) of
-        [#wh_amqp_channel{}=Channel|_] ->
-            Channel;
-         _Else -> {error, not_found}
-    end.
-
 update_connection(#wh_amqp_connection{}=Connection) ->
-    ets:insert(?MODULE, Connection),
+    ets:insert(?WH_AMQP_ETS, Connection),
     Connection.
 
 update_connection(#wh_amqp_connection{connection=undefined}, _) ->
     false;
 update_connection(#wh_amqp_connection{connection=Key}, Updates) ->
-    ets:update_element(?MODULE, Key, Updates).
-
-update_channel(#wh_amqp_channel{}=Channel) ->
-    ets:insert(?MODULE, Channel),
-    Channel.
-
-update_channel(#wh_amqp_channel{id=undefined}, _) ->
-    io:format("update channel had no key~n", []),
-    false;
-update_channel(#wh_amqp_channel{id=Key}, Updates) ->
-    ets:update_element(?MODULE, Key, Updates).
-
-remove_channel(#wh_amqp_channel{id=Id}=Channel) ->
-    ets:delete(?MODULE, Id),
-    Channel.
-
-update_exchange(#wh_amqp_exchange{}=Exchange) ->
-    ets:insert(?MODULE, Exchange).
+    ets:update_element(?WH_AMQP_ETS, Key, Updates).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -182,7 +126,7 @@ update_exchange(#wh_amqp_exchange{}=Exchange) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    R = ets:new(?MODULE, [named_table, {keypos, 2}, public]),
+    R = ets:new(?WH_AMQP_ETS, [named_table, {keypos, 2}, public]),
     io:format("created ets table: ~p~n", [R]),
     {ok, #state{}}.
 

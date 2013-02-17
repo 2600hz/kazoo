@@ -550,7 +550,6 @@ start_amqp(Props) ->
     case amqp_util:new_queue(QueueName, QueueProps) of
         {error, _}=E -> E;
         Q ->
-            io:format("CREATED Q: ~p~n", [Q]),
             set_qos(props:get_value(basic_qos, Props)),
             ok = start_consumer(Q, props:get_value(consume_options, Props)),
             lager:debug("queue started: ~s", [Q]),

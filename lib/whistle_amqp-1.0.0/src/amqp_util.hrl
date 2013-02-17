@@ -99,8 +99,9 @@
                        {'error', _}.
 -type misc_records() :: #'exchange.declare'{}.
 
--record(wh_amqp_channel, {id = wh_util:rand_hex_binary(12)
-                          ,consumer :: pid()
+-define(WH_AMQP_ETS, wh_amqp_ets).
+
+-record(wh_amqp_channel, {consumer :: pid()
                           ,channel :: 'undefined' | pid()
                           ,connection :: 'undefined' | pid()
                           ,queue :: api_binary()
@@ -109,12 +110,15 @@
                           ,consumer_ref :: 'undefined' | reference()
                           ,started = now()
                           ,last_message
-                          ,commands = []
                          }).
 
--record(wh_amqp_exchange, {id
-                           ,connection
-                           ,exchange
+-record(wh_amqp_command, {consumer :: pid()
+                          ,command
+                         }).
+
+-record(wh_amqp_exchange, {id :: {pid(), ne_binary()}
+                           ,connection :: pid()
+                           ,exchange :: #'exchange.declare'{}
                           }).
 
 -record(wh_amqp_connection, {connection :: 'undefined' | pid()

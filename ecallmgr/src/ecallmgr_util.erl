@@ -687,6 +687,8 @@ media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _) ->
     Media;
 media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _) ->
     FSPath;
+media_path(<<?LOCAL_MEDIA_PATH, _/binary>> = FSPath, _Type, _UUID, _) ->
+    FSPath;
 media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) ->
     get_fs_playback(URI);
 media_path(MediaName, Type, UUID, JObj) ->
@@ -716,7 +718,7 @@ recording_filename(MediaName) ->
                                    ,<<(amqp_util:encode(RootName))/binary
                                       ,Ext/binary>>
                                   ]),
-    _ = wh_cache:store_local(?ECALLMGR_CALL_CACHE
+    _ = wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
                              ,RecordingName),
     RecordingName.
@@ -788,8 +790,8 @@ convert_whistle_app_name(App) ->
                                 {'ok', binary()} |
                                 {'error', any()}.
 lookup_media(MediaName, CallId, JObj, Type) ->
-    case wh_cache:peek_local(?ECALLMGR_UTIL_CACHE
-                             ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName))
+    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE
+                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName))
     of
         {ok, _Path}=Ok ->
             lager:debug("media ~s exists in playback cache as ~s", [MediaName, _Path]),
