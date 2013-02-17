@@ -82,6 +82,8 @@
          ,nack/2
         ]).
 
+-export([handle_event/4]).
+
 -export_type([handle_event_return/0]).
 
 behaviour_info(callbacks) ->
@@ -124,6 +126,7 @@ behaviour_info(_) ->
          ,module_timeout_ref :: reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
          ,other_queues = [] :: [{ne_binary(), {wh_proplist(), wh_proplist()}},...] | [] %% {QueueName, {proplist(), wh_proplist()}}
          ,self = self()
+         ,consumer_key = wh_amqp_channel:consumer_pid()
          }).
 -type state() :: #state{}.
 
@@ -403,11 +406,7 @@ handle_cast(Message, #state{module=Module
 -spec handle_info/2 :: (term(), state()) -> handle_info_ret().
 handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}
                                               ,payload=Payload}}, State) ->
-    AMQPConsumer = wh_amqp_channel:consumer_pid(),
-    spawn(fun() ->
-                  _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
-                  handle_event(Payload, CT, BD, State)
-          end),
+    spawn(?MODULE, handle_event, [Payload, CT, BD, State]),
     {noreply, State, hibernate};
 handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State#state{is_consuming=true}};
@@ -423,6 +422,7 @@ handle_info({'$initialize_gen_listener', Timeout}
             _ = [create_binding(Type, BindProps, Q)
                  || {Type, BindProps} <- Bindings
                 ],
+            gen_server:cast(self(), {created_queue, Q}),
             {noreply, State#state{queue=Q}}
     end;
 handle_info('$is_gen_listener_consuming', #state{is_consuming=false}=State) ->
@@ -500,18 +500,19 @@ process_req(JObj, BasicDeliver, State) ->
     end.
 
 -spec process_req/4 :: (wh_proplist(), wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
-process_req(Props, JObj, BasicDeliver, #state{responders=Responders}) ->
+process_req(Props, JObj, BasicDeliver, #state{responders=Responders, consumer_key=ConsumerKey}) ->
     Key = wh_util:get_event_type(JObj),
-    AMQPConsumer = wh_amqp_channel:consumer_pid(),
     _ = [spawn(fun() ->
                        _ = wh_util:put_callid(JObj),
-                       _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
-                       case erlang:function_exported(Responder, Fun, 3) of
-                           true -> Responder:Fun(JObj, Props, BasicDeliver);
-                           false -> Responder:Fun(JObj, Props)
+                       _ = wh_amqp_channel:consumer_pid(ConsumerKey),
+                       case erlang:function_exported(Module, Fun, 3) of
+                           true ->
+                               Module:Fun(JObj, Props, BasicDeliver);
+                           false ->
+                               Module:Fun(JObj, Props)
                        end
                end)
-         || {Evt, {Responder, Fun}} <- Responders,
+         || {Evt, {Module, Fun}} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ].
 

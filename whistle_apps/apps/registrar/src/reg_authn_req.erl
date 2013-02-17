@@ -29,9 +29,9 @@ handle_req(JObj, _Props) ->
     case reg_util:lookup_auth_user(Username, Realm) of
         {ok, #auth_user{}=AuthUser} ->
             send_auth_resp(AuthUser, JObj);
-        {error, not_found} ->            
+        {error, not_found} ->
             IPAddress = wh_json:get_value(<<"Orig-IP">>, JObj),
-            lager:info("auth failure for ~s@~s from ip ~s", [Username, Realm, IPAddress]),
+            lager:notice("auth failure for ~s@~s from ip ~s", [Username, Realm, IPAddress]),
             send_auth_error(JObj)
     end.
 
@@ -51,7 +51,6 @@ send_auth_resp(#auth_user{password=Password, method=Method}=AuthUser, JObj) ->
             ,{<<"Custom-Channel-Vars">>, create_ccvs(AuthUser)}
             | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
            ],
-    
     lager:debug("sending SIP authentication reply, with credentials"),
     wapi_authn:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
@@ -71,7 +70,7 @@ send_auth_error(JObj) ->
     wapi_authn:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec create_ccvs/1 :: (#auth_user{}) -> wh_json:object().
-create_ccvs(#auth_user{}=AuthUser) ->    
+create_ccvs(#auth_user{}=AuthUser) ->
     Props = [{<<"Username">>, AuthUser#auth_user.username}
              ,{<<"Realm">>, AuthUser#auth_user.realm}
              ,{<<"Account-ID">>, AuthUser#auth_user.account_id}

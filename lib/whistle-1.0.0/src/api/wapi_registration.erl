@@ -26,11 +26,21 @@
 -include_lib("wh_api.hrl").
 
 %% Registration Success
--define(REG_SUCCESS_HEADERS, [<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>, <<"Username">>, <<"Realm">>]).
--define(OPTIONAL_REG_SUCCESS_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
-                                           ,<<"From-User">>, <<"From-Host">>, <<"FreeSWITCH-Hostname">>, <<"RPid">>
-                                           ,<<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
-                                           ,<<"Account-ID">>, <<"Account-DB">>, <<"Authorizing-ID">>, <<"Suppress-Unregister-Notify">>
+-define(REG_SUCCESS_HEADERS, [<<"Event-Timestamp">>, <<"Contact">>
+                                  ,<<"Expires">>, <<"Username">>
+                                  ,<<"Realm">>
+                             ]).
+-define(OPTIONAL_REG_SUCCESS_HEADERS, [<<"Status">>, <<"User-Agent">>
+                                           ,<<"Call-ID">>, <<"Profile-Name">>
+                                           ,<<"Presence-Hosts">>
+                                           ,<<"Account-ID">>, <<"Account-DB">>
+                                           ,<<"From-User">>, <<"From-Host">>
+                                           ,<<"To-User">>, <<"To-Host">>
+                                           ,<<"RPid">>, <<"Authorizing-ID">>
+                                           ,<<"FreeSWITCH-Hostname">>
+                                           ,<<"FreeSWITCH-Nodename">>
+                                           ,<<"Network-IP">>, <<"Network-Port">>
+                                           ,<<"Suppress-Unregister-Notify">>
                                       ]).
 -define(REG_SUCCESS_VALUES, [{<<"Event-Category">>, <<"directory">>}
                             ,{<<"Event-Name">>, <<"reg_success">>}
@@ -294,5 +304,3 @@ get_query_binding(Props) ->
             end,
 
     iolist_to_binary([?KEY_REG_QUERY, Realm, User]).
-    
-

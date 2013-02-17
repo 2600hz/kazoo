@@ -53,7 +53,7 @@ start_link(Node, Options) ->
 handle_sucessful_registration(Props, Node) ->
     lager:debug("received registration event"),
     ecallmgr_registrar:reg_success(Props, Node),
-    publish_register_event(Props),
+    publish_register_event(Props, Node),
     ok.
 
 %%%===================================================================
@@ -97,13 +97,13 @@ bind_to_events(_, Node) ->
             end;
         Else -> Else
     end.
-                
+
 bind_to_directory(Node) ->
     case freeswitch:bind(Node, directory) of
         timeout -> {error, timeout};
         Else -> Else
     end.
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -215,7 +215,7 @@ lookup_user(Node, Id, Method,  Data) ->
     ReqResp = maybe_query_registrar(Realm, Username, Node, Id, Method, Data),
     {ok, Xml} = handle_lookup_resp(Method, Realm, Username, ReqResp),
     lager:debug("sending XML to ~w: ~s", [Node, Xml]),
-    freeswitch:fetch_reply(Node, Id, iolist_to_binary(Xml)).    
+    freeswitch:fetch_reply(Node, Id, iolist_to_binary(Xml)).
 
 -spec handle_lookup_resp/4 :: (ne_binary(), ne_binary(), ne_binary(), {'ok', wh_json:object()} | {'error', _}) -> {'ok', _}.
 handle_lookup_resp(<<"reverse-lookup">>, Realm, Username, {ok, JObj}) ->
@@ -231,9 +231,9 @@ handle_lookup_resp(_, Realm, Username, {ok, JObj}) ->
 handle_lookup_resp(_, _, _, {error, _R}) ->
     lager:debug("authn request lookup failed: ~p", [_R]),
     ecallmgr_fs_xml:route_not_found().
-    
--spec publish_register_event/1 :: (wh_proplist()) -> 'ok'.
-publish_register_event(Data) ->
+
+-spec publish_register_event/2 :: (wh_proplist(), atom()) -> 'ok'.
+publish_register_event(Data, Node) ->
     ApiProp = lists:foldl(fun(K, Api) ->
                                   case props:get_value(wh_util:to_lower_binary(K), Data) of
                                       undefined ->
@@ -246,6 +246,7 @@ publish_register_event(Data) ->
                           end
                           ,[{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
                             ,{<<"Call-ID">>, get(callid)}
+                            ,{<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
                           ,wapi_registration:success_keys()),
     lager:debug("sending successful registration"),

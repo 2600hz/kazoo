@@ -122,12 +122,13 @@ send_cmd(Node, UUID, "set", "ecallmgr_Precedence=" ++ _ = Args) ->
     _ = maybe_update_channel_cache(Args, UUID),
     send_cmd(Node, UUID, "export", Args);
 send_cmd(Node, UUID, AppName, Args) ->
-    lager:debug("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
     _ = maybe_update_channel_cache(Args, UUID),
-    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-                                    ,{"execute-app-name", AppName}
-                                    ,{"execute-app-arg", wh_util:to_list(Args)}
-                                   ]).
+    Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+                                             ,{"execute-app-name", AppName}
+                                             ,{"execute-app-arg", wh_util:to_list(Args)}
+                                            ]),
+    lager:debug("execute on node ~s ~s(~s): ~p", [Node, AppName, Args, Result]),
+    Result.
 
 -spec maybe_update_channel_cache/2 :: (string(), ne_binary()) -> 'ok'.
 maybe_update_channel_cache("ecallmgr_Account-ID=" ++ Value, UUID) ->
@@ -393,8 +394,8 @@ endpoint_key(Endpoint) ->
      ,wh_json:get_value(<<"Route">>, Endpoint)
     ].
 
--spec endpoint_jobj_to_record/1 :: (wh_json:json_object()) -> #bridge_endpoint{}. 
--spec endpoint_jobj_to_record/2 :: (wh_json:json_object(), boolean()) -> #bridge_endpoint{}. 
+-spec endpoint_jobj_to_record/1 :: (wh_json:object()) -> #bridge_endpoint{}.
+-spec endpoint_jobj_to_record/2 :: (wh_json:object(), boolean()) -> #bridge_endpoint{}. 
 
 endpoint_jobj_to_record(Endpoint) ->
     endpoint_jobj_to_record(Endpoint, true).
@@ -420,18 +421,18 @@ endpoint_jobj_to_record(Endpoint, IncludeVars) ->
                      ,include_channel_vars = IncludeVars
                     }.
 
--spec get_endpoint_span/1 :: (wh_json:json_object()) -> ne_binary().
+-spec get_endpoint_span/1 :: (wh_json:object()) -> ne_binary().
 get_endpoint_span(Endpoint) ->
     wh_json:get_binary_value([<<"Endpoint-Options">>, <<"Span">>], Endpoint, <<"1">>).
 
--spec get_endpoint_channel_selection/1 :: (wh_json:json_object()) -> ne_binary().
+-spec get_endpoint_channel_selection/1 :: (wh_json:object()) -> ne_binary().
 get_endpoint_channel_selection(Endpoint) ->
     case wh_json:get_binary_value([<<"Endpoint-Options">>, <<"Span">>], Endpoint) of
         <<"descending">> -> <<"A">>;
         _Else -> <<"a">>
     end.
 
--spec get_endpoint_interface/1 :: (wh_json:json_object()) -> ne_binary().
+-spec get_endpoint_interface/1 :: (wh_json:object()) -> ne_binary().
 get_endpoint_interface(Endpoint) ->
     case wh_json:is_true([<<"Endpoint-Options">>, <<"Skype-RR">>], Endpoint, false) of
         false -> wh_json:get_value([<<"Endpoint-Options">>, <<"Skype-Interface">>], Endpoint);
@@ -671,8 +672,8 @@ create_masquerade_event(Application, EventName, Boolean) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec media_path/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> ne_binary().
--spec media_path/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> ne_binary().
+-spec media_path/3 :: (ne_binary(), ne_binary(), wh_json:object()) -> ne_binary().
+-spec media_path/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:object()) -> ne_binary().
 
 media_path(MediaName, UUID, JObj) ->
     media_path(MediaName, new, UUID, JObj).
@@ -786,9 +787,8 @@ convert_fs_evt_name(EvtName) ->
 convert_whistle_app_name(App) ->
     [EvtName || {EvtName, AppName} <- ?FS_APPLICATION_NAMES, App =:= AppName].
 
--spec lookup_media/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), 'new' | 'extant') ->
-                                {'ok', binary()} |
-                                {'error', any()}.
+-type media_types() :: 'new' | 'extant'.
+-spec lookup_media(ne_binary(), ne_binary(), wh_json:object(), media_types()) -> {'ok', ne_binary()} | {'error', _}.
 lookup_media(MediaName, CallId, JObj, Type) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE
                               ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName))
@@ -800,6 +800,7 @@ lookup_media(MediaName, CallId, JObj, Type) ->
             request_media_url(MediaName, CallId, JObj, Type)
     end.
 
+-spec request_media_url(ne_binary(), ne_binary(), wh_json:object(), media_types()) -> {'ok', ne_binary()} | {'error', _}.
 request_media_url(MediaName, CallId, JObj, Type) ->
     Request = wh_json:set_values(
                 props:filter_undefined(
@@ -823,6 +824,7 @@ request_media_url(MediaName, CallId, JObj, Type) ->
             {ok, URL}
     end.
 
+-spec maybe_cache_media_url(ne_binary(), ne_binary()) -> 'ok'.
 maybe_cache_media_url(URL, MediaName) ->
     %% Only single media_mgr proxies can not be cached as they
     %% are processes started for each request

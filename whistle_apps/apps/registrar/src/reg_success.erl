@@ -33,7 +33,7 @@ send_new_register(JObj) ->
     Updaters = [fun(J) -> wh_json:set_value(<<"Event-Name">>,  <<"register">>, J) end
                 ,fun(J) -> wh_json:set_value(<<"Event-Category">>, <<"notification">>, J) end 
                 ,fun(J) -> wh_json:delete_key(<<"App-Version">>, J) end
-                ,fun(J) -> wh_json:delete_key(<<"App-name">>, J) end 
+                ,fun(J) -> wh_json:delete_key(<<"App-name">>, J) end
                 ,fun(J) -> wh_json:delete_key(<<"Server-ID">>, J) end
                ],
     lager:debug("sending new registration event for ~s@~s", [wh_json:get_value(<<"Username">>, JObj), wh_json:get_value(<<"Realm">>, JObj)]),
@@ -46,7 +46,7 @@ fix_contact(JObj, _, _) ->
     AfterUnquoted = wh_util:to_binary(mochiweb_util:unquote(AfterAt)),
     Contact = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
     lager:debug("new registration contact: ~s", [Contact]),
-    wh_json:set_value(<<"Contact">>, Contact, JObj).    
+    wh_json:set_value(<<"Contact">>, Contact, JObj).
 
 maybe_update_jobj(JObj, Username, Realm) ->
     case reg_util:lookup_auth_user(Username, Realm) of
@@ -70,7 +70,7 @@ maybe_send_new_notice(JObj, Username, Realm) ->
         {error, not_found} ->
             catch send_new_register(JObj)
     end.
-    
+
 store_reg_success(JObj, Username, Realm) ->
     CacheProps = [{expires, reg_util:get_expires(JObj)}
                   ,{callback, fun reg_util:reg_removed_from_cache/3}
@@ -82,4 +82,3 @@ store_reg_success(JObj, Username, Realm) ->
                         ),
     Contact = wh_json:get_value(<<"Contact">>, JObj),
     lager:info("successful registration ~s@~s: ~s", [Username, Realm, Contact]).
-    

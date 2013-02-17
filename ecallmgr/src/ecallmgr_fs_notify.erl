@@ -107,21 +107,27 @@ do_presence_update(State, JObj) ->
     relay_presence('PRESENCE_IN', PresenceId, Event, node(), Switch).
 
 -spec mwi_update/2 :: (wh_json:json_object(), wh_proplist()) -> no_return().
-mwi_update(JObj, Props) ->
+mwi_update(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
-
     true = wapi_notifications:mwi_update_v(JObj),
+    maybe_send_mwi_update(JObj).
 
-    lager:debug("processing mwi update for notify server ~p", [props:get_value(server, Props)]),
+maybe_send_mwi_update(JObj) ->
+    case wh_json:get_value(<<"Switch-Nodename">>, JObj) of
+        undefined ->
+            Username = wh_json:get_value(<<"Notify-User">>, JObj),
+            Realm = wh_json:get_value(<<"Notify-Realm">>, JObj),
+            case ecallmgr_registrar:endpoint_node(Realm, Username) of
+                {ok, Node} ->
+                    send_mwi_update(wh_util:to_atom(Node, true), JObj);
+                {error, _R} ->
+                    lager:info("unable to find ~s@~s node for MWI update: ~p", [Username, Realm, _R])
+            end;
+        Node ->
+            send_mwi_update(wh_util:to_atom(Node, true), JObj)
+    end.
 
-    Node = case wh_json:get_value(<<"Switch-Nodename">>, JObj) of
-               undefined ->
-                   Username = wh_json:get_value(<<"Notify-User">>, JObj),
-                   Realm = wh_json:get_value(<<"Notify-Realm">>, JObj),
-                   {ok, N} = ecallmgr_registrar:endpoint_node(Realm, Username),
-                   N;
-               N -> wh_util:to_atom(N, true)
-           end,
+send_mwi_update(Node, JObj) ->
     NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
     MessageAccount = wh_json:get_value(<<"Message-Account">>, JObj),
     Body = io_lib:format(?MWI_BODY, [NewMessages

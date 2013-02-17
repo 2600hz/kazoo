@@ -367,10 +367,13 @@ handle_info(timeout, #state{neg_resp=ErrorJObj
                             ,responses=undefined
                             ,defer_response=ReservedJObj
                            }=State) ->
-    lager:debug("negative response threshold reached, returning last negative message"),
     case wh_util:is_empty(ReservedJObj) of
-        true -> gen_server:reply(From, {error, ErrorJObj});
-        false -> gen_server:reply(From, {ok, ReservedJObj})
+        true ->
+            lager:debug("negative response threshold reached, returning last negative message"),
+            gen_server:reply(From, {error, ErrorJObj});
+        false ->
+            lager:debug("negative response threshold reached, returning defered response"),
+            gen_server:reply(From, {ok, ReservedJObj})
     end,
     {noreply, reset(State), hibernate};
 
@@ -401,11 +404,11 @@ handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id= _MsgID
                                                   }=State) ->
     put(callid, CallID),
     case wh_util:is_empty(ReservedJObj) of
-        true -> 
+        true ->
             lager:debug("request timeout exceeded for msg id: ~s", [_MsgID]),
             gen_server:reply(From, {error, timeout});
-        false -> 
-            lager:debug("only received reserved response for msg id: ~s", [_MsgID]),
+        false ->
+            lager:debug("only received defered response for msg id: ~s", [_MsgID]),
             gen_server:reply(From, {ok, ReservedJObj})
     end,
     {noreply, reset(State), hibernate};

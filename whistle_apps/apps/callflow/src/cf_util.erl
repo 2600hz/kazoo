@@ -96,7 +96,7 @@ manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, Event) ->
     end.
 
 -spec manual_presence_resp/4 :: (wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-manual_presence_resp(JObj, ToUser, ToRealm, Event) ->    
+manual_presence_resp(JObj, ToUser, ToRealm, Event) ->
     PresenceId = <<ToUser/binary, "@", ToRealm/binary>>,
     case wh_json:get_value(PresenceId, JObj) of
         undefined -> ok;
@@ -166,7 +166,7 @@ presence_mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
                        ,{<<"Message-Account">>, wh_json:get_value(<<"Message-Account">>, JObj, DefaultAccount)}
                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ],
-            lager:info("updating MWI for owner ~s: (~b/~b)", [OwnerId, New, Saved]),
+            lager:debug("updating MWI for owner ~s: (~b/~b)", [OwnerId, New, Saved]),
             whapps_util:amqp_pool_send(Command, fun wapi_notifications:publish_mwi_update/1);
         {error, _R} ->
             lager:warning("unable to lookup vm counts by owner: ~p", [_R]),
@@ -212,7 +212,7 @@ update_mwi(New, Saved, OwnerId, AccountDb) ->
                   ],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
         {ok, Devices} ->
-            lager:info("updating MWI for owner ~s: (~b/~b) on ~b devices", [OwnerId, New, Saved, length(Devices)]),
+            lager:debug("updating MWI for owner ~s: (~b/~b) on ~b devices", [OwnerId, New, Saved, length(Devices)]),
             lists:foreach(fun(Result) ->
                                   Device = wh_json:get_value(<<"doc">>, Result, wh_json:new()),
                                   User = wh_json:get_value([<<"sip">>, <<"username">>], Device),
@@ -373,7 +373,7 @@ do_lookup_callflow(Number, Db) ->
             wh_cache:store_local(?CALLFLOW_CACHE, {cf_flow, Number, Db}, Flow),
             {ok, Flow, Number =:= ?NO_MATCH_CF};
         {ok, [JObj | _Rest]} ->
-            lager:info("lookup resulted in more than one result, using the first"),
+            lager:notice("lookup resulted in more than one result, using the first"),
             Flow = wh_json:get_value(<<"doc">>, JObj),
             wh_cache:store_local(?CALLFLOW_CACHE, {cf_flow, Number, Db}, Flow),
             {ok, Flow, Number =:= ?NO_MATCH_CF};

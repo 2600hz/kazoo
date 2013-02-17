@@ -110,10 +110,8 @@
                           ,consumer_ref :: 'undefined' | reference()
                           ,started = now()
                           ,last_message
-                         }).
-
--record(wh_amqp_command, {consumer :: pid()
-                          ,command
+                          ,commands = []
+                          ,reconnecting = false
                          }).
 
 -record(wh_amqp_exchange, {id :: {pid(), ne_binary()}
@@ -127,4 +125,5 @@
                              ,name
                              ,broker
                              ,manager = self()
+                             ,prechannels = []
                             }).
