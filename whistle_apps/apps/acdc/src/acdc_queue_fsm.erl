@@ -264,8 +264,10 @@ ready(_Event, State) ->
     lager:debug("unhandled event in ready: ~p", [_Event]),
     {next_state, ready, State}.
 
-ready(status, _, State) ->
-    {reply, [{state, <<"ready">>}], ready, State};
+ready(status, _, #state{cdr_url=Url}=State) ->
+    {reply, [{state, <<"ready">>}
+             ,{<<"cdr_url">>, Url}
+            ], ready, State};
 ready(current_call, _, State) ->
     {reply, undefined, ready, State}.
 
@@ -418,6 +420,7 @@ connect_req(_Event, State) ->
 connect_req(status, _, #state{member_call=Call
                               ,member_call_start=Start
                               ,connection_timer_ref=ConnRef
+                              ,cdr_url=Url
                              }=State) ->
     {reply, [{<<"state">>, <<"connect_req">>}
              ,{<<"call_id">>, whapps_call:call_id(Call)}
@@ -427,6 +430,7 @@ connect_req(status, _, #state{member_call=Call
              ,{<<"from">>, whapps_call:from_user(Call)}
              ,{<<"wait_left">>, elapsed(ConnRef)}
              ,{<<"wait_time">>, elapsed(Start)}
+             ,{<<"cdr_url">>, Url}
             ], connect_req, State};
 connect_req(current_call, _, #state{member_call=Call
                                     ,member_call_start=Start
@@ -568,6 +572,7 @@ connecting(status, _, #state{member_call=Call
                              ,member_call_start=Start
                              ,connection_timer_ref=ConnRef
                              ,agent_ring_timer_ref=AgentRef
+                             ,cdr_url=Url
                             }=State) ->
     {reply, [{<<"state">>, <<"connecting">>}
              ,{<<"call_id">>, whapps_call:call_id(Call)}
@@ -578,6 +583,7 @@ connecting(status, _, #state{member_call=Call
              ,{<<"wait_left">>, elapsed(ConnRef)}
              ,{<<"wait_time">>, elapsed(Start)}
              ,{<<"agent_wait_left">>, elapsed(AgentRef)}
+             ,{<<"cdr_url">>, Url}
             ], connecting, State};
 connecting(current_call, _, #state{member_call=Call
                                    ,member_call_start=Start
