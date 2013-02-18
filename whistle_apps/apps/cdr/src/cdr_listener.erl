@@ -32,7 +32,7 @@
 
 -define(RESPONDERS, [{{?MODULE, handle_cdr}, [{<<"call_detail">>, <<"cdr">>}]}]).
 -define(BINDINGS, [{call, [{restrict_to, [cdr]}, {callid, <<"*">>}]}]).
--define(QUEUE_NAME, <<"">>).
+-define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
@@ -55,10 +55,10 @@ start_link() ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], []).
 
--spec handle_cdr(wh_json:object(), proplist()) -> no_return().
+-spec handle_cdr(wh_json:object(), wh_proplist()) -> any().
 handle_cdr(JObj, _Props) ->
-    true = wapi_call:cdr_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = wapi_call:cdr_v(JObj),
+    _ = wh_util:put_callid(JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj, couch_mgr:get_uuid()),
     AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj),
     maybe_save_in_account(AccountId, wh_json:set_value(<<"_id">>, CallId, wh_json:normalize_jobj(JObj))).
@@ -124,10 +124,11 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    {noreply, State}.
+    lager:debug("unhandled message: ~p", [_Info]),
+    {'noreply', State}.
 
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -141,7 +142,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("listener terminating: ~p", [_Reason]).
+    lager:debug("cdr listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,64 +153,65 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_save_in_account/2 :: (api_binary(), wh_json:object()) -> 'ok'.
-maybe_save_in_account(undefined, JObj) ->
+-spec maybe_save_in_account(api_binary(), wh_json:object()) -> 'ok'.
+maybe_save_in_account('undefined', JObj) ->
     save_in_anonymous_cdrs(JObj);
 maybe_save_in_account(AccountId, JObj) ->
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
-    Props = [{type, cdr}
-             ,{crossbar_doc_vsn, 1}
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    Props = [{'type', 'cdr'}
+             ,{'crossbar_doc_vsn', 1}
             ],
     J = wh_doc:update_pvt_parameters(JObj, AccountDb, Props),
     case couch_mgr:save_doc(AccountDb, J) of
-        {error, not_found} -> save_in_anonymous_cdrs(JObj);
-        {error, conflict} -> ok;
-        {ok, _} -> ok
+        {'error', 'not_found'} -> save_in_anonymous_cdrs(JObj);
+        {'error', _} -> 'ok';
+        {'ok', _} -> 'ok'
     end.
-    
--spec save_in_anonymous_cdrs/1 :: (wh_json:object()) -> 'ok'.
+
+-spec save_in_anonymous_cdrs(wh_json:object()) -> 'ok'.
 save_in_anonymous_cdrs(JObj) ->
-    Props = [{type, cdr}
-             ,{crossbar_doc_vsn, 1}
+    Props = [{'type', 'cdr'}
+             ,{'crossbar_doc_vsn', 1}
             ],
     J = wh_doc:update_pvt_parameters(JObj, ?WH_ANONYMOUS_CDR_DB, Props),
     case couch_mgr:save_doc(?WH_ANONYMOUS_CDR_DB, J) of
-        {error, not_found} ->
-            undefined = get(attempted_db_create),
-            create_anonymous_cdr_db(),
-            put(attempted_db_create, true),
+        {'error', 'not_found'} ->
+            'undefined' = get('attempted_db_create'),
+            _ = create_anonymous_cdr_db(),
+            put('attempted_db_create', 'true'),
             save_in_anonymous_cdrs(JObj);
-        {error, conflict} -> ok;
-        {ok, _} -> ok
+        {'error', 'conflict'} -> 'ok';
+        {'ok', _} -> 'ok'
     end.
 
--spec create_anonymous_cdr_db/0 :: () -> {'ok', wh_json:json_object()} | {'error', term()}.
+-spec create_anonymous_cdr_db() -> {'ok', wh_json:object()} |
+                                   {'error', term()}.
 create_anonymous_cdr_db() ->
     couch_mgr:db_create(?WH_ANONYMOUS_CDR_DB),
-    couch_mgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, cdr, <<"cdr.json">>).
+    couch_mgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>).
 
--spec determine_account_cdr_db/1 :: (ne_binary()) -> ne_binary().
+-spec determine_account_cdr_db(ne_binary()) -> ne_binary().
 determine_account_cdr_db(Account) ->
-    AccountId = wh_util:format_account_id(Account, raw),
-    AccountDb = wh_util:format_account_id(Account, encoded),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case should_store_in_seperate_db(AccountDb, AccountId) of
-        false -> AccountDb;            
-        true -> seperate_cdr_db(AccountId)
+        'false' -> AccountDb;
+        'true' -> seperate_cdr_db(AccountId)
     end.
 
--spec should_store_in_seperate_db/2 :: (ne_binary(), ne_binary()) -> boolean().
+-spec should_store_in_seperate_db(ne_binary(), ne_binary()) -> boolean().
 should_store_in_seperate_db(AccountDb, AccountId) ->
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {error, _} -> false;
-        {ok, JObj} ->
+        {'error', _} -> 'false';
+        {'ok', JObj} ->
             wh_json:is_true(<<"pvt_seperate_cdr">>, JObj)
     end.
 
--spec seperate_cdr_db/1 :: (ne_binary()) -> ne_binary().
+-spec seperate_cdr_db(ne_binary()) -> ne_binary().
 seperate_cdr_db(AccountId) ->
     <<"cdrs%2F", AccountId/binary>>.
