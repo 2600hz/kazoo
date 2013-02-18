@@ -10,9 +10,9 @@
 
 -export([handle/2]).
 
--include_lib("callflow/src/callflow.hrl").
+-include("./src/callflow.hrl").
 
--spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     CaptureGroup = whapps_call:kvs_fetch(cf_capture_group, Call),
     PresenceId = case binary:match((P = wh_json:get_binary_value(<<"presence_id">>, Data, CaptureGroup)), <<"@">>) of

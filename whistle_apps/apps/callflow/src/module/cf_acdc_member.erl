@@ -124,7 +124,7 @@ process_message(#member_call{call=Call
             stop_hold_music(Call),
             cf_exe:continue(Call);
         'false' ->
-            lager:debug("failure json was for a different queue, ignoring"),
+            lager:info("failure json was for a different queue, ignoring"),
             wait_for_bridge(MC, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start)
     end;
 process_message(#member_call{call=Call}=MC, Timeout, Start, Wait, JObj, {<<"call_event">>, <<"DTMF">>}) ->

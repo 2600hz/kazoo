@@ -17,7 +17,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     lager:info("starting DISA handler"),
     whapps_call_command:answer(Call),
