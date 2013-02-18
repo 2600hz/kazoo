@@ -9,8 +9,8 @@
 -module(acdc_util).
 
 -export([get_endpoints/2
-         ,bind_to_call_events/1
-         ,unbind_from_call_events/1
+         ,bind_to_call_events/1, bind_to_call_events/2
+         ,unbind_from_call_events/1, unbind_from_call_events/2
          ,agents_in_queue/2
          ,agent_status/2, agent_status/3
          ,update_agent_status/3, update_agent_status/4
@@ -97,22 +97,40 @@ get_endpoint(Call, ?NE_BINARY = EndpointId) ->
     end.
 
 %% Handles subscribing/unsubscribing from call events
--spec bind_to_call_events(ne_binary() | whapps_call:call()) -> 'ok'.
--spec unbind_from_call_events(api_binary() | whapps_call:call()) -> 'ok'.
-bind_to_call_events(?NE_BINARY = CallId) ->
-    gen_listener:add_binding(self(), call, [{callid, CallId}
-                                            ,{restrict_to, [events, error]}
-                                           ]);
-bind_to_call_events(Call) ->
-    bind_to_call_events(whapps_call:call_id(Call)).
+-spec bind_to_call_events(api_binary() | whapps_call:call()) -> 'ok'.
+-spec bind_to_call_events(api_binary() | whapps_call:call(), api_binary()) -> 'ok'.
 
-unbind_from_call_events(undefined) -> ok;
-unbind_from_call_events(?NE_BINARY = CallId) ->
-    gen_listener:rm_binding(self(), call, [{callid, CallId}
-                                           ,{restrict_to, [events, error]}
-                                          ]);
+-spec unbind_from_call_events(api_binary() | whapps_call:call()) -> 'ok'.
+-spec unbind_from_call_events(api_binary() | whapps_call:call(), api_binary()) -> 'ok'.
+
+bind_to_call_events('undefined') -> 'ok';
+bind_to_call_events(?NE_BINARY = CallId) -> bind(CallId, [events, error]);
+bind_to_call_events(Call) -> bind_to_call_events(whapps_call:call_id(Call)).
+
+bind_to_call_events('undefined', _) -> 'ok';
+bind_to_call_events(Call, 'undefined') -> bind_to_call_events(Call);
+bind_to_call_events(?NE_BINARY = CallId, _Url) -> bind(CallId, [events, error, cdr]);
+bind_to_call_events(Call, Url) -> bind_to_call_events(whapps_call:call_id(Call), Url).
+
+bind(CallId, Restrict) ->
+    gen_listener:add_binding(self(), call, [{callid, CallId}
+                                            ,{restrict_to, Restrict}
+                                           ]).
+
+unbind_from_call_events('undefined') -> 'ok';
+unbind_from_call_events(?NE_BINARY = CallId) -> unbind(CallId, [events, error]);
 unbind_from_call_events(Call) ->
     unbind_from_call_events(whapps_call:call_id(Call)).
+
+unbind_from_call_events('undefined', _) -> 'ok';
+unbind_from_call_events(Call, 'undefined') -> unbind_from_call_events(Call);
+unbind_from_call_events(?NE_BINARY = CallId, _Url) -> unbind(CallId, [events, error, cdr]);
+unbind_from_call_events(Call, Url) -> unbind_from_call_events(whapps_call:call_id(Call), Url).
+
+unbind(CallId, Restrict) ->
+    gen_listener:rm_binding(self(), call, [{callid, CallId}
+                                           ,{restrict_to, Restrict}
+                                          ]).
 
 -spec agent_status(ne_binary(), ne_binary()) -> ne_binary().
 -spec agent_status(ne_binary(), ne_binary(), boolean()) -> ne_binary() | wh_json:object().

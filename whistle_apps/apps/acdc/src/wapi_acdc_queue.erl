@@ -257,7 +257,8 @@ member_connect_resp_v(JObj) ->
 %% Member Connect Win
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_WIN_HEADERS, [<<"Queue-ID">>, <<"Call">>]).
--define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>, <<"Caller-Exit-Key">>, <<"Wrapup-Timeout">>
+-define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>, <<"Caller-Exit-Key">>
+                                                  ,<<"Wrapup-Timeout">>, <<"CDR-Url">>
                                                   ,<<"Process-ID">>, <<"Agent-Process-ID">>
                                              ]).
 -define(MEMBER_CONNECT_WIN_VALUES, [{<<"Event-Category">>, <<"member">>}
