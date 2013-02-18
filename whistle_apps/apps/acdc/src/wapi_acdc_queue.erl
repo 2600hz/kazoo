@@ -73,7 +73,7 @@
 member_call(Props) when is_list(Props) ->
     case member_call_v(Props) of
         true -> wh_api:build_message(Props, ?MEMBER_CALL_HEADERS, ?OPTIONAL_MEMBER_CALL_HEADERS);
-        false -> {error, "Proplist failed validation for member_call"}
+        false -> {'error', "Proplist failed validation for member_call"}
     end;
 member_call(JObj) ->
     member_call(wh_json:to_proplist(JObj)).
