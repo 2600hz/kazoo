@@ -30,6 +30,7 @@
 %% Doc related
 -export([open_cache_doc/4
          ,flush_cache_doc/4
+         ,flush_cache_docs/0, flush_cache_docs/1
          ,open_doc/4
          ,lookup_doc_rev/3
          ,save_doc/4
@@ -305,7 +306,16 @@ open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
 
 -spec flush_cache_doc(server(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 flush_cache_doc(#server{}=Conn, DbName, DocId, _Options) ->
-    wh_cache:erase({?MODULE, Conn, DbName, DocId}).
+    wh_cache:erase_local(?WH_COUCH_CACHE, {?MODULE, Conn, DbName, DocId}).
+
+flush_cache_docs() -> wh_cache:flush_local(?WH_COUCH_CACHE).
+flush_cache_docs(DbName) ->
+    Filter = fun({?MODULE, _, DbName1, _}=K, _) when DbName1 =:= DbName ->
+                     wh_cache:erase_local(?WH_COUCH_CACHE, K),
+                     true;
+                (_, _) -> false
+             end,
+    wh_cache:filter_local(?WH_COUCH_CACHE, Filter).
 
 -spec open_doc(server(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |

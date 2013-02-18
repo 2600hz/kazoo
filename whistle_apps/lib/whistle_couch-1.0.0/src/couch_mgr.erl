@@ -32,6 +32,7 @@
          ,save_docs/2, save_docs/3
          ,open_cache_doc/2, open_cache_doc/3
          ,flush_cache_doc/2, flush_cache_doc/3
+         ,flush_cache_docs/0, flush_cache_docs/1
          ,open_doc/2, admin_open_doc/2
          ,open_doc/3, admin_open_doc/3
          ,del_doc/2, del_docs/2
@@ -87,9 +88,9 @@
 %% Load a file into couch as a document (not an attachement)
 %% @end
 %%--------------------------------------------------------------------
--spec load_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) ->
-                                      {'ok', wh_json:object()} |
-                                      couchbeam_error().
+-spec load_doc_from_file(ne_binary(), atom(), nonempty_string() | ne_binary()) ->
+                                {'ok', wh_json:object()} |
+                                couchbeam_error().
 load_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", wh_util:to_list(File)]),
     lager:debug("read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
@@ -112,9 +113,9 @@ load_doc_from_file(DbName, App, File) ->
 %% a file
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) ->
-                                        {'ok', wh_json:object()} |
-                                        couchbeam_error().
+-spec update_doc_from_file(ne_binary(), atom(), nonempty_string() | ne_binary()) ->
+                                  {'ok', wh_json:object()} |
+                                  couchbeam_error().
 update_doc_from_file(DbName, App, File) when ?VALID_DBNAME ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
     lager:debug("update db ~s from CouchDB file: ~s", [DbName, Path]),
@@ -144,9 +145,9 @@ update_doc_from_file(DbName, App, File) ->
 %% contents of a file
 %% @end
 %%--------------------------------------------------------------------
--spec revise_doc_from_file/3 :: (ne_binary(), atom(), ne_binary() | nonempty_string()) ->
-                                        {'ok', wh_json:object()} |
-                                        couchbeam_error().
+-spec revise_doc_from_file(ne_binary(), atom(), ne_binary() | nonempty_string()) ->
+                                  {'ok', wh_json:object()} |
+                                  couchbeam_error().
 revise_doc_from_file(DbName, App, File) ->
     case ?MODULE:update_doc_from_file(DbName, App, File) of
         {error, _E} ->
@@ -164,7 +165,7 @@ revise_doc_from_file(DbName, App, File) ->
 %% into a given database
 %% @end
 %%--------------------------------------------------------------------
--spec revise_views_from_folder/2 :: (ne_binary(), atom()) -> 'ok'.
+-spec revise_views_from_folder(ne_binary(), atom()) -> 'ok'.
 revise_views_from_folder(DbName, App) ->
     revise_docs_from_folder(DbName, App, "views").
 
@@ -175,8 +176,8 @@ revise_views_from_folder(DbName, App) ->
 %% priv/couchdb/ into a given database
 %% @end
 %%--------------------------------------------------------------------
--spec revise_docs_from_folder/3 :: (ne_binary(), atom(), ne_binary() | nonempty_string()) -> 'ok'.
--spec revise_docs_from_folder/4 :: (ne_binary(), atom(), ne_binary() | nonempty_string(), boolean()) -> 'ok'.
+-spec revise_docs_from_folder(ne_binary(), atom(), ne_binary() | nonempty_string()) -> 'ok'.
+-spec revise_docs_from_folder(ne_binary(), atom(), ne_binary() | nonempty_string(), boolean()) -> 'ok'.
 
 revise_docs_from_folder(DbName, App, Folder) ->
     revise_docs_from_folder(DbName, App, Folder, true).
@@ -185,7 +186,7 @@ revise_docs_from_folder(DbName, App, Folder, Sleep) ->
     Files = filelib:wildcard([code:priv_dir(App), "/couchdb/", wh_util:to_list(Folder), "/*.json"]),
     do_revise_docs_from_folder(DbName, Sleep, Files).
 
--spec do_revise_docs_from_folder/3 :: (ne_binary(), boolean(), [ne_binary() | nonempty_string(),...]) -> 'ok'.
+-spec do_revise_docs_from_folder(ne_binary(), boolean(), [ne_binary() | nonempty_string(),...]) -> 'ok'.
 do_revise_docs_from_folder(_, _, []) -> ok;
 do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
     try
@@ -215,12 +216,12 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
 %% isn't already existant
 %% @end
 %%--------------------------------------------------------------------
--spec load_fixtures_from_folder/2 :: (ne_binary(), atom()) -> 'ok'.
+-spec load_fixtures_from_folder(ne_binary(), atom()) -> 'ok'.
 load_fixtures_from_folder(DbName, App) ->
     Files = filelib:wildcard([code:priv_dir(App), "/couchdb/", ?FIXTURES_FOLDER, "/*.json"]),
     do_load_fixtures_from_folder(DbName, Files).
 
--spec do_load_fixtures_from_folder/2 :: (ne_binary(), [ne_binary(),...] | []) -> 'ok'.
+-spec do_load_fixtures_from_folder(ne_binary(), [ne_binary(),...] | []) -> 'ok'.
 do_load_fixtures_from_folder(_, []) -> ok;
 do_load_fixtures_from_folder(DbName, [F|Fs]) ->
     try
@@ -248,7 +249,7 @@ do_load_fixtures_from_folder(DbName, [F|Fs]) ->
 %% Detemine if a database exists
 %% @end
 %%--------------------------------------------------------------------
--spec db_exists/1 :: (text()) -> boolean().
+-spec db_exists(text()) -> boolean().
 db_exists(DbName) when ?VALID_DBNAME ->
     couch_util:db_exists(wh_couch_connections:get_server(), DbName);
 db_exists(DbName) ->
@@ -263,10 +264,10 @@ db_exists(DbName) ->
 %% Retrieve information regarding all databases
 %% @end
 %%--------------------------------------------------------------------
--spec db_info/0 :: () -> {'ok', [ne_binary(),...] | []} |
+-spec db_info() -> {'ok', [ne_binary(),...] | []} |
+                   couchbeam_error().
+-spec admin_db_info() -> {'ok', [ne_binary(),...] | []} |
                          couchbeam_error().
--spec admin_db_info/0 :: () -> {'ok', [ne_binary(),...] | []} |
-                               couchbeam_error().
 
 db_info() ->
     couch_util:db_info(wh_couch_connections:get_server()).
@@ -280,10 +281,10 @@ admin_db_info() ->
 %% Retrieve information regarding a database
 %% @end
 %%--------------------------------------------------------------------
--spec db_info/1 :: (text()) -> {'ok', wh_json:object()} |
+-spec db_info(text()) -> {'ok', wh_json:object()} |
+                         couchbeam_error().
+-spec admin_db_info(text()) -> {'ok', wh_json:object()} |
                                couchbeam_error().
--spec admin_db_info/1 :: (text()) -> {'ok', wh_json:object()} |
-                                     couchbeam_error().
 
 db_info(DbName) when ?VALID_DBNAME ->
     couch_util:db_info(wh_couch_connections:get_server(), DbName);
@@ -307,12 +308,12 @@ admin_db_info(DbName) ->
 %% Retrieve information regarding a database design doc
 %% @end
 %%--------------------------------------------------------------------
--spec design_info/2 :: (text(), ne_binary()) ->
+-spec design_info(text(), ne_binary()) ->
+                         {'ok', wh_json:object()} |
+                         couchbeam_error().
+-spec admin_design_info(text(), ne_binary()) ->
                                {'ok', wh_json:object()} |
                                couchbeam_error().
--spec admin_design_info/2 :: (text(), ne_binary()) ->
-                                     {'ok', wh_json:object()} |
-                                     couchbeam_error().
 
 design_info(DbName, DesignName) when ?VALID_DBNAME ->
     couch_util:design_info(wh_couch_connections:get_server(), DbName, DesignName);
@@ -330,8 +331,8 @@ admin_design_info(DbName, DesignName) ->
         {error, _}=E -> E
     end.
 
--spec design_compact/2 :: (ne_binary(), ne_binary()) -> boolean().
--spec admin_design_compact/2 :: (ne_binary(), ne_binary()) -> boolean().
+-spec design_compact(ne_binary(), ne_binary()) -> boolean().
+-spec admin_design_compact(ne_binary(), ne_binary()) -> boolean().
 
 design_compact(DbName, DesignName) when ?VALID_DBNAME->
     couch_util:design_compact(wh_couch_connections:get_server(), DbName, DesignName);
@@ -349,8 +350,8 @@ admin_design_compact(DbName, DesignName) ->
         {error, _}=E -> E
     end.
 
--spec db_view_cleanup/1 :: (ne_binary()) -> boolean().
--spec admin_db_view_cleanup/1 :: (ne_binary()) -> boolean().
+-spec db_view_cleanup(ne_binary()) -> boolean().
+-spec admin_db_view_cleanup(ne_binary()) -> boolean().
 
 db_view_cleanup(DbName) when ?VALID_DBNAME ->
     couch_util:db_view_cleanup(wh_couch_connections:get_server(), DbName);
@@ -401,9 +402,9 @@ admin_db_view_cleanup(DbName) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec db_replicate/1 :: (proplist() | wh_json:object()) ->
-                                {'ok', wh_json:object()} |
-                                couchbeam_error().
+-spec db_replicate(wh_proplist() | wh_json:object()) ->
+                          {'ok', wh_json:object()} |
+                          couchbeam_error().
 db_replicate(Prop) when is_list(Prop) ->
     db_replicate(wh_json:from_list(Prop));
 db_replicate(JObj) ->
@@ -415,8 +416,8 @@ db_replicate(JObj) ->
 %% Detemine if a database exists
 %% @end
 %%--------------------------------------------------------------------
--spec db_create/1 :: (text()) -> boolean().
--spec db_create/2 :: (text(), couch_util:db_create_options()) -> boolean().
+-spec db_create(text()) -> boolean().
+-spec db_create(text(), couch_util:db_create_options()) -> boolean().
 
 db_create(DbName) ->
     db_create(DbName, []).
@@ -435,8 +436,8 @@ db_create(DbName, Options) ->
 %% Compact a database
 %% @end
 %%--------------------------------------------------------------------
--spec db_compact/1 :: (text()) -> boolean().
--spec admin_db_compact/1 :: (text()) -> boolean().
+-spec db_compact(text()) -> boolean().
+-spec admin_db_compact(text()) -> boolean().
 
 db_compact(DbName) when ?VALID_DBNAME ->
     couch_util:db_compact(wh_couch_connections:get_server(), DbName);
@@ -460,7 +461,7 @@ admin_db_compact(DbName) ->
 %% Delete a database
 %% @end
 %%--------------------------------------------------------------------
--spec db_delete/1 :: (text()) -> boolean().
+-spec db_delete(text()) -> boolean().
 db_delete(DbName) when ?VALID_DBNAME ->
     couch_util:db_delete(wh_couch_connections:get_server(), DbName);
 db_delete(DbName) ->
@@ -479,14 +480,14 @@ db_delete(DbName) ->
 %% fetch a cached doc or open it if not available.
 %% @end
 %%--------------------------------------------------------------------
--spec open_cache_doc/2 :: (text(), ne_binary()) ->
-                                  {'ok', wh_json:object()} |
-                                  couchbeam_error() |
-                                  {'error', 'not_found'}.
--spec open_cache_doc/3 :: (text(), ne_binary(), proplist()) ->
-                                  {'ok', wh_json:object()} |
-                                  couchbeam_error() |
-                                  {'error', 'not_found'}.
+-spec open_cache_doc(text(), ne_binary()) ->
+                            {'ok', wh_json:object()} |
+                            couchbeam_error() |
+                            {'error', 'not_found'}.
+-spec open_cache_doc(text(), ne_binary(), wh_proplist()) ->
+                            {'ok', wh_json:object()} |
+                            couchbeam_error() |
+                            {'error', 'not_found'}.
 
 open_cache_doc(DbName, DocId) ->
     open_cache_doc(DbName, DocId, []).
@@ -499,8 +500,8 @@ open_cache_doc(DbName, DocId, Options) ->
         {error, _}=E -> E
     end.
 
--spec flush_cache_doc/2 :: (ne_binary(), ne_binary()) -> 'ok'.
--spec flush_cache_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok'.
+-spec flush_cache_doc(ne_binary(), ne_binary()) -> 'ok'.
+-spec flush_cache_doc(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 flush_cache_doc(DbName, DocId) ->
     flush_cache_doc(DbName, DocId, []).
 flush_cache_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
@@ -511,20 +512,27 @@ flush_cache_doc(DbName, DocId, Options) ->
         {error, _}=E -> E
     end.
 
+flush_cache_docs() -> couch_util:flush_cache_docs().
+flush_cache_docs(DbName) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> couch_util:flush_cache_docs(Db);
+        {'error', _}=E -> E
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% open a document given a doc id returns an error tuple or the json
 %% @end
 %%--------------------------------------------------------------------
--spec open_doc/2 :: (text(), ne_binary()) ->
-                            {'ok', wh_json:object()} |
-                            couchbeam_error() |
-                            {'error', 'not_found'}.
--spec open_doc/3 :: (text(), ne_binary(), wh_proplist()) ->
-                            {'ok', wh_json:object()} |
-                            couchbeam_error() |
-                            {'error', 'not_found'}.
+-spec open_doc(text(), ne_binary()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error() |
+                      {'error', 'not_found'}.
+-spec open_doc(text(), ne_binary(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error() |
+                      {'error', 'not_found'}.
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
@@ -537,14 +545,14 @@ open_doc(DbName, DocId, Options) ->
     end.
 
 
--spec admin_open_doc/2 :: (text(), ne_binary()) ->
-                                  {'ok', wh_json:object()} |
-                                  couchbeam_error() |
-                                  {'error', 'not_found'}.
--spec admin_open_doc/3 :: (text(), ne_binary(), wh_proplist()) ->
-                                  {'ok', wh_json:object()} |
-                                  couchbeam_error() |
-                                  {'error', 'not_found'}.
+-spec admin_open_doc(text(), ne_binary()) ->
+                            {'ok', wh_json:object()} |
+                            couchbeam_error() |
+                            {'error', 'not_found'}.
+-spec admin_open_doc(text(), ne_binary(), wh_proplist()) ->
+                            {'ok', wh_json:object()} |
+                            couchbeam_error() |
+                            {'error', 'not_found'}.
 admin_open_doc(DbName, DocId) ->
     admin_open_doc(DbName, DocId, []).
 
@@ -556,10 +564,10 @@ admin_open_doc(DbName, DocId, Options) ->
         {error, _}=E -> E
     end.
 
--spec all_docs/1 :: (text()) -> {'ok', wh_json:objects()} |
-                                couchbeam_error().
--spec all_docs/2 :: (text(), proplist()) -> {'ok', wh_json:objects()} |
-                                            couchbeam_error().
+-spec all_docs(text()) -> {'ok', wh_json:objects()} |
+                          couchbeam_error().
+-spec all_docs(text(), wh_proplist()) -> {'ok', wh_json:objects()} |
+                                         couchbeam_error().
 
 all_docs(DbName) ->
     all_docs(DbName, []).
@@ -572,11 +580,11 @@ all_docs(DbName, Options) ->
         {error, _}=E -> E
     end.
 
--spec admin_all_docs/1 :: (text()) -> {'ok', wh_json:objects()} |
-                                      couchbeam_error().
+-spec admin_all_docs(text()) -> {'ok', wh_json:objects()} |
+                                couchbeam_error().
 
--spec admin_all_docs/2 :: (text(), proplist()) -> {'ok', wh_json:objects()} |
-                                                  couchbeam_error().
+-spec admin_all_docs(text(), wh_proplist()) -> {'ok', wh_json:objects()} |
+                                               couchbeam_error().
 
 admin_all_docs(DbName) ->
     admin_all_docs(DbName, []).
@@ -589,10 +597,10 @@ admin_all_docs(DbName, Options) ->
         {error, _}=E -> E
     end.
 
--spec all_design_docs/1 :: (text()) -> {'ok', wh_json:objects()} |
-                                       couchbeam_error().
--spec all_design_docs/2 :: (text(), proplist()) -> {'ok', wh_json:objects()} |
-                                                   couchbeam_error().
+-spec all_design_docs(text()) -> {'ok', wh_json:objects()} |
+                                 couchbeam_error().
+-spec all_design_docs(text(), wh_proplist()) -> {'ok', wh_json:objects()} |
+                                                couchbeam_error().
 
 all_design_docs(DbName) ->
     all_design_docs(DbName, []).
@@ -611,9 +619,9 @@ all_design_docs(DbName, Options) ->
 %% get the revision of a document (much faster than requesting the whole document)
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_doc_rev/2 :: (text(), api_binary()) ->
-                                  {'ok', ne_binary()} |
-                                  couchbeam_error().
+-spec lookup_doc_rev(text(), api_binary()) ->
+                            {'ok', ne_binary()} |
+                            couchbeam_error().
 lookup_doc_rev(_DbName, undefined) -> {error, not_found};
 lookup_doc_rev(DbName, DocId) when ?VALID_DBNAME ->
     couch_util:lookup_doc_rev(wh_couch_connections:get_server(), DbName, DocId);
@@ -629,9 +637,9 @@ lookup_doc_rev(DbName, DocId) ->
 %% save document to the db
 %% @end
 %%--------------------------------------------------------------------
--spec save_doc/2 :: (text(), wh_json:object() | wh_json:objects()) ->
-                            {'ok', wh_json:object() | wh_json:objects()} |
-                            couchbeam_error().
+-spec save_doc(text(), wh_json:object() | wh_json:objects()) ->
+                      {'ok', wh_json:object() | wh_json:objects()} |
+                      couchbeam_error().
 save_doc(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []);
 save_doc(DbName, Doc) ->
@@ -639,12 +647,12 @@ save_doc(DbName, Doc) ->
 
 %% save a document; if it fails to save because of conflict, pull the latest revision and try saving again.
 %% any other error is returned
--spec ensure_saved/2 :: (text(), wh_json:object()) ->
-                                {'ok', wh_json:object()} |
-                                couchbeam_error().
--spec ensure_saved/3 :: (text(), wh_json:object(), proplist()) ->
-                                {'ok', wh_json:object()} |
-                                couchbeam_error().
+-spec ensure_saved(text(), wh_json:object()) ->
+                          {'ok', wh_json:object()} |
+                          couchbeam_error().
+-spec ensure_saved(text(), wh_json:object(), wh_proplist()) ->
+                          {'ok', wh_json:object()} |
+                          couchbeam_error().
 
 ensure_saved(DbName, Doc) ->
     ensure_saved(DbName, Doc, []).
@@ -657,9 +665,9 @@ ensure_saved(DbName, Doc, Options) ->
         {error, _}=E -> E
     end.
 
--spec save_doc/3 :: (text(), wh_json:object(), proplist()) ->
-                            {'ok', wh_json:object()} |
-                            couchbeam_error().
+-spec save_doc(text(), wh_json:object(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
 save_doc(DbName, Doc, Options) when ?VALID_DBNAME ->
     couch_util:save_doc(wh_couch_connections:get_server(), DbName, Doc, Options);
 save_doc(DbName, Doc, Options) ->
@@ -668,12 +676,12 @@ save_doc(DbName, Doc, Options) ->
         {error, _}=E -> E
     end.
 
--spec save_docs/2 :: (text(), wh_json:objects()) ->
-                             {'ok', wh_json:objects()} |
-                             couchbeam_error().
--spec save_docs/3 :: (text(), wh_json:objects(), proplist()) ->
-                             {'ok', wh_json:objects()} |
-                             couchbeam_error().
+-spec save_docs(text(), wh_json:objects()) ->
+                       {'ok', wh_json:objects()} |
+                       couchbeam_error().
+-spec save_docs(text(), wh_json:objects(), wh_proplist()) ->
+                       {'ok', wh_json:objects()} |
+                       couchbeam_error().
 
 save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
@@ -692,12 +700,12 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
 %% fetch, update and save a doc (creating if not present)
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc/3 :: (ne_binary(), ne_binary(), proplist()) ->
-                              {'ok', wh_json:object()} |
-                              couchbeam_error().
--spec update_doc/4 :: (ne_binary(), ne_binary(), proplist(), proplist()) ->
-                              {'ok', wh_json:object()} |
-                              couchbeam_error().
+-spec update_doc(ne_binary(), ne_binary(), wh_proplist()) ->
+                        {'ok', wh_json:object()} |
+                        couchbeam_error().
+-spec update_doc(ne_binary(), ne_binary(), wh_proplist(), wh_proplist()) ->
+                        {'ok', wh_json:object()} |
+                        couchbeam_error().
 
 update_doc(DbName, Id, UpdateProps) ->
     update_doc(DbName, Id, UpdateProps, []).
@@ -722,9 +730,9 @@ update_doc(DbName, Id, UpdateProps, CreateProps) ->
 %% remove document from the db
 %% @end
 %%--------------------------------------------------------------------
--spec del_doc/2 :: (text(), wh_json:object() | wh_json:objects() | ne_binary()) ->
-                           {'ok', wh_json:objects()} |
-                           couchbeam_error().
+-spec del_doc(text(), wh_json:object() | wh_json:objects() | ne_binary()) ->
+                     {'ok', wh_json:objects()} |
+                     couchbeam_error().
 del_doc(DbName, Doc) when is_list(Doc) ->
     del_docs(DbName, Doc);
 del_doc(DbName, Doc) when ?VALID_DBNAME ->
@@ -741,8 +749,8 @@ del_doc(DbName, Doc) ->
 %% remove documents from the db
 %% @end
 %%--------------------------------------------------------------------
--spec del_docs/2 :: (text(), wh_json:objects()) ->
-                            {'ok', wh_json:objects()}.
+-spec del_docs(text(), wh_json:objects()) ->
+                      {'ok', wh_json:objects()}.
 del_docs(DbName, Docs) when is_list(Docs) andalso ?VALID_DBNAME ->
     couch_util:del_docs(wh_couch_connections:get_server(), DbName, Docs);
 del_docs(DbName, Docs) when is_list(Docs) ->
@@ -754,9 +762,9 @@ del_docs(DbName, Docs) when is_list(Docs) ->
 %%%===================================================================
 %%% Attachment Functions
 %%%===================================================================
--spec fetch_attachment/3 :: (text(), ne_binary(), ne_binary()) ->
-                                    {'ok', ne_binary()} |
-                                    couchbeam_error().
+-spec fetch_attachment(text(), ne_binary(), ne_binary()) ->
+                              {'ok', ne_binary()} |
+                              couchbeam_error().
 fetch_attachment(DbName, DocId, AName) when ?VALID_DBNAME ->
     couch_util:fetch_attachment(wh_couch_connections:get_server(), DbName, DocId, AName);
 fetch_attachment(DbName, DocId, AName) ->
@@ -765,9 +773,9 @@ fetch_attachment(DbName, DocId, AName) ->
         {error, _}=E -> E
     end.
 
--spec stream_attachment/3 :: (text(), ne_binary(), ne_binary()) ->
-                                     {'ok', reference()} |
-                                     {'error', term()}.
+-spec stream_attachment(text(), ne_binary(), ne_binary()) ->
+                               {'ok', reference()} |
+                               {'error', term()}.
 stream_attachment(DbName, DocId, AName) when ?VALID_DBNAME ->
     couch_util:stream_attachment(wh_couch_connections:get_server(), DbName, DocId, AName, self());
 stream_attachment(DbName, DocId, AName) ->
@@ -776,13 +784,13 @@ stream_attachment(DbName, DocId, AName) ->
         {error, _}=E -> E
     end.
 
--spec put_attachment/4 :: (text(), ne_binary(), ne_binary(), ne_binary()) ->
-                                  {'ok', wh_json:object()} |
-                                  couchbeam_error().
+-spec put_attachment(text(), ne_binary(), ne_binary(), ne_binary()) ->
+                            {'ok', wh_json:object()} |
+                            couchbeam_error().
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
--spec put_attachment/5 :: (text(), ne_binary(), ne_binary(), ne_binary(), proplist()) ->
-                                  {'ok', wh_json:object()} |
-                                  couchbeam_error().
+-spec put_attachment(text(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
+                            {'ok', wh_json:object()} |
+                            couchbeam_error().
 put_attachment(DbName, DocId, AName, Contents) ->
     put_attachment(DbName, DocId, AName, Contents, []).
 
@@ -794,12 +802,12 @@ put_attachment(DbName, DocId, AName, Contents, Options) ->
         {error, _}=E -> E
     end.
 
--spec delete_attachment/3 :: (text(), ne_binary(), ne_binary()) ->
-                                     {'ok', wh_json:object()} |
-                                     couchbeam_error().
--spec delete_attachment/4 :: (text(), ne_binary(), ne_binary(), proplist()) ->
-                                     {'ok', wh_json:object()} |
-                                     couchbeam_error().
+-spec delete_attachment(text(), ne_binary(), ne_binary()) ->
+                               {'ok', wh_json:object()} |
+                               couchbeam_error().
+-spec delete_attachment(text(), ne_binary(), ne_binary(), wh_proplist()) ->
+                               {'ok', wh_json:object()} |
+                               couchbeam_error().
 delete_attachment(DbName, DocId, AName) ->
     delete_attachment(DbName, DocId, AName, []).
 
@@ -823,12 +831,11 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %%--------------------------------------------------------------------
 -type get_results_return() :: {'ok', wh_json:objects() | wh_json:json_strings()} |
                               couchbeam_error().
--spec get_all_results/2 :: (text(), ne_binary()) -> get_results_return().
--spec get_results/3 :: (text(), ne_binary(), wh_proplist()) -> get_results_return().
--spec get_results_count/3 :: (text(), ne_binary(), wh_proplist()) ->
-                                     {'ok', integer()} |
-                                     couchbeam_error().
-
+-spec get_all_results(text(), ne_binary()) -> get_results_return().
+-spec get_results(text(), ne_binary(), wh_proplist()) -> get_results_return().
+-spec get_results_count(text(), ne_binary(), wh_proplist()) ->
+                               {'ok', integer()} |
+                               couchbeam_error().
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
@@ -843,21 +850,20 @@ get_results(DbName, DesignDoc, Options) ->
 get_results_count(DbName, DesignDoc, Options) ->
     couch_util:get_results_count(wh_couch_connections:get_server(), DbName, DesignDoc, Options).
 
--spec get_result_keys/1 :: (wh_json:objects()) -> [wh_json:json_string(),...] | [].
+-spec get_result_keys(wh_json:objects()) -> [wh_json:json_string(),...] | [].
 get_result_keys(JObjs) ->
     lists:map(fun get_keys/1, JObjs).
 
--spec get_keys/1 :: (wh_json:object()) -> wh_json:json_string().
-get_keys(JObj) ->
-    wh_json:get_value(<<"key">>, JObj).
+-spec get_keys(wh_json:object()) -> wh_json:json_string().
+get_keys(JObj) -> wh_json:get_value(<<"key">>, JObj).
 
--spec get_uuid/0 :: () -> ne_binary().
--spec get_uuid/1 :: (pos_integer()) -> ne_binary().
+-spec get_uuid() -> ne_binary().
+-spec get_uuid(pos_integer()) -> ne_binary().
 get_uuid() -> get_uuid(?UUID_SIZE).
 get_uuid(N) -> wh_util:rand_hex_binary(N).
 
--spec get_uuids/1 :: (pos_integer()) -> ne_binaries().
--spec get_uuids/2 :: (pos_integer(), pos_integer()) -> ne_binaries().
+-spec get_uuids(pos_integer()) -> ne_binaries().
+-spec get_uuids(pos_integer(), pos_integer()) -> ne_binaries().
 get_uuids(Count) -> get_uuids(Count, ?UUID_SIZE).
 get_uuids(Count, Size) -> [get_uuid(Size) || _ <- lists:seq(1, Count)].
 
@@ -873,11 +879,11 @@ get_uuids(Count, Size) -> [get_uuid(Size) || _ <- lists:seq(1, Count)].
 %%  handle a crash appropriately/gracefully this is a quick solution....
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_convert_dbname/1 :: (text()) ->
-                                        {'ok', ne_binary()} |
-                                        {'error', 'invalid_db_name'}.
+-spec maybe_convert_dbname(text()) ->
+                                  {'ok', ne_binary()} |
+                                  {'error', 'invalid_db_name'}.
 maybe_convert_dbname(DbName) ->
     case wh_util:is_empty(DbName) of
-        true -> {error, invalid_db_name};
-        false -> {ok, wh_util:to_binary(DbName)}
+        'true' -> {'error', 'invalid_db_name'};
+        'false' -> {'ok', wh_util:to_binary(DbName)}
     end.
