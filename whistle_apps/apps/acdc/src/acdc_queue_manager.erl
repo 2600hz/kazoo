@@ -349,7 +349,9 @@ handle_cast({start_workers}, #state{acct_id=AcctId
                               )
     of
         {ok, Agents} ->
-            _ = [start_agent_and_worker(WorkersSup, AcctId, QueueId, wh_json:get_value(<<"doc">>, A))
+            _ = [start_agent_and_worker(WorkersSup, AcctId, QueueId
+                                        ,wh_json:get_value(<<"doc">>, A)
+                                       )
                  || A <- Agents
                 ], ok;
         {error, _E} ->
@@ -358,6 +360,16 @@ handle_cast({start_workers}, #state{acct_id=AcctId
             acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, QWC)
     end,
     {'noreply', State};
+
+handle_cast({start_worker}, State) ->
+    handle_cast({start_worker, 1}, State);
+handle_cast({start_worker, N}, #state{acct_id=AcctId
+                                      ,queue_id=QueueId
+                                      ,supervisor=QueueSup
+                                     }=State) ->
+    WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
+    acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, N),
+    {noreply, State};
 
 handle_cast({agent_available, AgentId}, #state{strategy=Strategy
                                                ,strategy_state=StrategyState
@@ -385,13 +397,17 @@ handle_cast({agent_ringing, JObj}, State) ->
 handle_cast({agent_unavailable, AgentId}, #state{strategy=Strategy
                                                  ,strategy_state=StrategyState
                                                  ,known_agents=As
+                                                 ,supervisor=QueueSup
                                                 }=State) when is_binary(AgentId) ->
     lager:info("agent ~s unavailable, maybe updating strategy ~s", [AgentId, Strategy]),
 
     {StrategyState1, As1} = update_strategy_with_agent(Strategy, StrategyState, As, AgentId, remove),
+
+    maybe_start_queue_workers(QueueSup, dict:size(As1)),
+
     {'noreply', State#state{strategy_state=StrategyState1
-                          ,known_agents=As1
-                         }
+                            ,known_agents=As1
+                           }
      ,hibernate};
 handle_cast({agent_unavailable, JObj}, State) ->
     handle_cast({agent_unavailable, wh_json:get_value(<<"Agent-ID">>, JObj)}, State);
@@ -644,3 +660,12 @@ update_strategy_state(Srv, 'mi', StrategyState) ->
     update_strategy_state(Srv, StrategyState).
 update_strategy_state(Srv, L) ->
     [gen_listener:cast(Srv, {'sync_with_agent', A}) || A <- L].
+
+maybe_start_queue_workers(QueueSup, AgentCount) ->
+    WSup = acdc_queue_sup:workers_sup(QueueSup),
+    case acdc_queue_workers_sup:worker_count(WSup) of
+        N when N >= AgentCount -> 'ok';
+        N when N < AgentCount -> gen_listener:cast(self(), {start_worker, AgentCount-N})
+    end.
+            
+    
