@@ -87,11 +87,12 @@
                       }
                     ]).
 
--define(SECONDARY_BINDINGS(AcctId, QueueId), [{acdc_queue, [{restrict_to, [member_call]}
-                                                            ,{account_id, AcctId}
-                                                            ,{queue_id, QueueId}
-                                                           ]}
-                                             ]).
+-define(SECONDARY_BINDINGS(AcctId, QueueId)
+        ,[{acdc_queue, [{restrict_to, ['member_call']}
+                        ,{account_id, AcctId}
+                        ,{queue_id, QueueId}
+                       ]}
+         ]).
 -define(SECONDARY_QUEUE_NAME(QueueId), <<"acdc.queue.manager.", QueueId/binary>>).
 -define(SECONDARY_QUEUE_OPTIONS, [{exclusive, false}]).
 -define(SECONDARY_CONSUME_OPTIONS, [{exclusive, false}]).
@@ -117,31 +118,32 @@ start_link(Super, AcctId, QueueId) ->
                            ).
 
 handle_member_call(JObj, Props) ->
-    true = wapi_acdc_queue:member_call_v(JObj),
+    'true' = wapi_acdc_queue:member_call_v(JObj),
     _ = wh_util:put_callid(JObj),
+
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
 
     case are_agents_available(props:get_value(server, Props)
                               ,props:get_value(enter_when_empty, Props)
                              )
     of
-        false ->
+        'false' ->
             lager:info("no agents are available to take the call, cancel queueing"),
-            Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
-            gen_listener:cast(props:get_value(server, Props), {reject_member_call, Call, JObj});
-        true ->
-            start_queue_call(JObj, Props)
+            gen_listener:cast(props:get_value(server, Props)
+                              ,{reject_member_call, Call, JObj}
+                             );
+        'true' ->
+            start_queue_call(JObj, Props, Call)
     end.
 
 are_agents_available(Srv, EnterWhenEmpty) ->
     agents_available(Srv) > 0 orelse EnterWhenEmpty.
 
-start_queue_call(JObj, Props) ->
-    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
-
-    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+start_queue_call(JObj, Props, Call) ->
+    AcctId = whapps_call:account_id(Call),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
-    lager:debug("member call for ~s: ~s", [QueueId, whapps_call:call_id(Call)]),
+    lager:debug("member call for queue ~s recv", [QueueId]),
 
     acdc_stats:call_waiting(AcctId, QueueId
                             ,whapps_call:call_id(Call)
@@ -153,33 +155,36 @@ start_queue_call(JObj, Props) ->
     whapps_call_command:hold(Call),
 
     wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj),
+    lager:debug("put call into shared messaging queue"),
 
-    _ = whapps_call_command:set(undefined
-                                ,wh_json:from_list([{<<"Eavesdrop-Group-ID">>, QueueId}])
+    _ = whapps_call_command:set('undefined'
+                                ,wh_json:from_list([{<<"Eavesdrop-Group-ID">>, QueueId}
+                                                    ,{<<"Queue-ID">>, QueueId}
+                                                   ])
                                 ,Call
                                ),
 
-    gen_listener:cast(props:get_value(server, Props), {monitor_call, Call}),
+    gen_listener:cast(props:get_value('server', Props), {'monitor_call', Call}),
 
     acdc_util:presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH).
 
 handle_member_call_cancel(JObj, Props) ->
-    true = wapi_acdc_queue:member_call_cancel_v(JObj),
+    'true' = wapi_acdc_queue:member_call_cancel_v(JObj),
     K = make_ignore_key(wh_json:get_value(<<"Account-ID">>, JObj)
                         ,wh_json:get_value(<<"Queue-ID">>, JObj)
                         ,wh_json:get_value(<<"Call-ID">>, JObj)
                        ),
-    gen_listener:cast(props:get_value(server, Props), {member_call_cancel, K}).
+    gen_listener:cast(props:get_value('server', Props), {'member_call_cancel', K}).
 
 handle_agent_change(JObj, Prop) ->
-    true = wapi_acdc_queue:agent_change_v(JObj),
+    'true' = wapi_acdc_queue:agent_change_v(JObj),
     case wh_json:get_value(<<"Change">>, JObj) of
         <<"available">> ->
-            gen_listener:cast(props:get_value(server, Prop), {'agent_available', JObj});
+            gen_listener:cast(props:get_value('server', Prop), {'agent_available', JObj});
         <<"ringing">> ->
-            gen_listener:cast(props:get_value(server, Prop), {'agent_ringing', JObj});
+            gen_listener:cast(props:get_value('server', Prop), {'agent_ringing', JObj});
         <<"unavailable">> ->
-            gen_listener:cast(props:get_value(server, Prop), {'agent_unavailable', JObj})
+            gen_listener:cast(props:get_value('server', Prop), {'agent_unavailable', JObj})
     end.
 
 handle_config_change(Srv, JObj) ->
@@ -217,7 +222,7 @@ pick_winner(Srv, Resps) -> pick_winner(Srv, Resps, strategy(Srv), next_winner(Sr
 %% @end
 %%--------------------------------------------------------------------
 init([Super, AcctId, QueueId]) ->
-    put(callid, <<"mgr_", QueueId/binary>>),
+    put('callid', <<"mgr_", QueueId/binary>>),
     process_flag('trap_exit', 'false'),
 
     _ = start_secondary_queue(AcctId, QueueId),
@@ -231,8 +236,8 @@ init([Super, AcctId, QueueId]) ->
 
     _ = update_strategy_state(self(), Strategy, StrategyState),
 
-    lager:debug("queue mgr started"),
-    {ok, #state{
+    lager:debug("queue mgr started for ~s", [QueueId]),
+    {'ok', #state{
        acct_id=AcctId
        ,queue_id=QueueId
        ,supervisor = Super
@@ -247,10 +252,10 @@ init([Super, AcctId, QueueId]) ->
 %% Handling call messages
 %%
 %% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
+%%                                   {'reply', Reply, State} |
+%%                                   {'reply', Reply, State, Timeout} |
+%%                                   {'noreply', State} |
+%%                                   {'noreply', State, Timeout} |
 %%                                   {stop, Reason, Reply, State} |
 %%                                   {stop, Reason, State}
 %% @end
@@ -264,72 +269,72 @@ handle_call({should_ignore_member_call, K}, _, #state{ignored_member_calls=Dict}
 handle_call(config, _, #state{acct_id=AcctId
                               ,queue_id=QueueId
                              }=State) ->
-    {reply, {AcctId, QueueId}, State};
+    {'reply', {AcctId, QueueId}, State};
 
 handle_call(strategy, _, #state{strategy=Strategy}=State) ->
-    {reply, Strategy, State, hibernate};
+    {'reply', Strategy, State, hibernate};
 
-handle_call(agents_available, _, #state{strategy_state=undefined}=State) ->
-    {reply, 0, State};
+handle_call(agents_available, _, #state{strategy_state='undefined'}=State) ->
+    {'reply', 0, State};
 handle_call(agents_available, _, #state{strategy_state=[]}=State) ->
-    {reply, 0, State};
+    {'reply', 0, State};
 handle_call(agents_available, _, #state{strategy_state=[_|_]}=State) ->
-    {reply, 1, State};
+    {'reply', 1, State};
 handle_call(agents_available, _, #state{strategy_state=SS}=State) ->
-    {reply, queue:len(SS), State};
+    {'reply', queue:len(SS), State};
 
 handle_call(next_winner, _, #state{strategy='mi'}=State) ->
-    {reply, undefined, State};
+    {'reply', 'undefined', State};
 handle_call(next_winner, _, #state{strategy='rr'
                                    ,strategy_state=SS
                                   }=State) ->
     case queue:out(SS) of
         {{value, Winner}, SS1} ->
-            {reply, Winner, State#state{strategy_state=queue:in(Winner, SS1)}, hibernate};
+            {'reply', Winner, State#state{strategy_state=queue:in(Winner, SS1)}, hibernate};
         {empty, _} ->
-            {reply, undefined, State}
+            {'reply', 'undefined', State}
     end;
 
 handle_call(current_agents, _, #state{strategy='rr'
                                       ,strategy_state=Q
                                       }=State) ->
-    {reply, queue:to_list(Q), State};
+    {'reply', queue:to_list(Q), State};
 handle_call(current_agents, _, #state{strategy='mi'
                                       ,strategy_state=L
                                       }=State) ->
-    {reply, L, State};
+    {'reply', L, State};
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
-    {reply, Reply, State}.
+    {'reply', Reply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Handling cast messages
 %%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
+%% @spec handle_cast(Msg, State) -> {'noreply', State} |
+%%                                  {'noreply', State, Timeout} |
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({update_strategy, StrategyState}, State) ->
-    {noreply, State#state{strategy_state=StrategyState}, hibernate};
+    {'noreply', State#state{strategy_state=StrategyState}, hibernate};
 
 handle_cast({update_queue_config, JObj}, #state{enter_when_empty=_EnterWhenEmpty}=State) ->
     EWE = wh_json:is_true([<<"Doc">>, <<"enter_when_empty">>], JObj, true),
     lager:debug("maybe changing ewe from ~s to ~s", [_EnterWhenEmpty, EWE]),
-    {noreply, State#state{enter_when_empty=EWE}, hibernate};
+    {'noreply', State#state{enter_when_empty=EWE}, hibernate};
 
 handle_cast({member_call_cancel, K}, #state{ignored_member_calls=Dict}=State) ->
-    {noreply, State#state{
+    {'noreply', State#state{
                 ignored_member_calls=dict:store(K, true, Dict)
                }};
 handle_cast({monitor_call, Call}, State) ->
     gen_listener:add_binding(self(), call, [{callid, whapps_call:call_id(Call)}
                                             ,{restrict_to, [events]}
                                            ]),
-    {noreply, State};
+    {'noreply', State};
 handle_cast({start_workers}, #state{acct_id=AcctId
                                     ,queue_id=QueueId
                                     ,supervisor=QueueSup
@@ -352,7 +357,7 @@ handle_cast({start_workers}, #state{acct_id=AcctId
             QWC = whapps_config:get_integer(<<"acdc">>, <<"queue_worker_count">>, 5),
             acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, QWC)
     end,
-    {noreply, State};
+    {'noreply', State};
 
 handle_cast({agent_available, AgentId}, #state{strategy=Strategy
                                                ,strategy_state=StrategyState
@@ -360,7 +365,7 @@ handle_cast({agent_available, AgentId}, #state{strategy=Strategy
                                               }=State) when is_binary(AgentId) ->
     lager:info("adding agent ~s to strategy ~s", [AgentId, Strategy]),
     {StrategyState1, As1} = update_strategy_with_agent(Strategy, StrategyState, As, AgentId, add),
-    {noreply, State#state{strategy_state=StrategyState1
+    {'noreply', State#state{strategy_state=StrategyState1
                           ,known_agents=As1
                          }
      ,hibernate};
@@ -373,7 +378,7 @@ handle_cast({agent_ringing, AgentId}, #state{strategy=Strategy
     lager:info("agent ~s ringing, maybe updating strategy ~s", [AgentId, Strategy]),
 
     StrategyState1 = maybe_update_strategy(Strategy, StrategyState, AgentId),
-    {noreply, State#state{strategy_state=StrategyState1}, hibernate};
+    {'noreply', State#state{strategy_state=StrategyState1}, hibernate};
 handle_cast({agent_ringing, JObj}, State) ->
     handle_cast({agent_ringing, wh_json:get_value(<<"Agent-ID">>, JObj)}, State);
 
@@ -384,7 +389,7 @@ handle_cast({agent_unavailable, AgentId}, #state{strategy=Strategy
     lager:info("agent ~s unavailable, maybe updating strategy ~s", [AgentId, Strategy]),
 
     {StrategyState1, As1} = update_strategy_with_agent(Strategy, StrategyState, As, AgentId, remove),
-    {noreply, State#state{strategy_state=StrategyState1
+    {'noreply', State#state{strategy_state=StrategyState1
                           ,known_agents=As1
                          }
      ,hibernate};
@@ -402,35 +407,35 @@ handle_cast({reject_member_call, Call, JObj}, #state{acct_id=AcctId
            ],
     Q = wh_json:get_value(<<"Server-ID">>, JObj),
     catch wapi_acdc_queue:publish_member_call_failure(Q, Prop),
-    {noreply, State};
+    {'noreply', State};
 
 handle_cast({sync_with_agent, A}, #state{acct_id=AcctId}=State) ->
     case acdc_util:agent_status(AcctId, A) of
         <<"logout">> -> gen_listener:cast(self(), {agent_unavailable, A});
         _ -> gen_listener:cast(self(), {agent_available, A})
     end,
-    {noreply, State};
+    {'noreply', State};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Handling all non call/cast messages
 %%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
+%% @spec handle_info(Info, State) -> {'noreply', State} |
+%%                                   {'noreply', State, Timeout} |
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 handle_event(_JObj, #state{enter_when_empty=EnterWhenEmpty}) ->
-    {reply, [{enter_when_empty, EnterWhenEmpty}]}.
+    {'reply', [{'enter_when_empty', EnterWhenEmpty}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -466,7 +471,6 @@ start_secondary_queue(AcctId, QueueId) ->
                                           ,?SECONDARY_QUEUE_NAME(QueueId)
                                           ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS}
                                             ,{'consume_options', ?SECONDARY_CONSUME_OPTIONS}
-                                            ,{'basic_qos', 1}
                                            ]
                                           ,?SECONDARY_BINDINGS(AcctId, QueueId)
                                          )
@@ -487,7 +491,7 @@ start_agent_and_worker(WorkersSup, AcctId, QueueId, AgentJObj) ->
             lager:debug("maybe starting agent ~s(~s) for queue ~s", [AgentId, _Status, QueueId]),
 
             case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
-                undefined -> acdc_agents_sup:new(AgentJObj);
+                'undefined' -> acdc_agents_sup:new(AgentJObj);
                 P when is_pid(P) -> ok
             end
     end.
@@ -598,25 +602,26 @@ get_strategy(<<"round_robin">>) -> 'rr';
 get_strategy(<<"most_idle">>) -> 'mi';
 get_strategy(_) -> 'rr'.
 
--spec create_strategy_state(queue_strategy(), queue_strategy_state() | 'undefined', ne_binary(), ne_binary()) ->
-                                         queue_strategy_state().
+-spec create_strategy_state(queue_strategy()
+                            ,queue_strategy_state() | 'undefined'
+                            ,ne_binary(), ne_binary()
+                           ) -> queue_strategy_state().
 create_strategy_state(Strategy, AcctDb, QueueId) ->
-    create_strategy_state(Strategy, undefined, AcctDb, QueueId).
+    create_strategy_state(Strategy, 'undefined', AcctDb, QueueId).
 
-create_strategy_state('rr', undefined, AcctDb, QueueId) ->
+create_strategy_state('rr', 'undefined', AcctDb, QueueId) ->
     create_strategy_state('rr', queue:new(), AcctDb, QueueId);
 create_strategy_state('rr', AgentQ, AcctDb, QueueId) ->
     case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
         {ok, []} -> lager:debug("no agents around"), AgentQ;
         {ok, JObjs} ->
-            Q = queue:from_list([Id
-                                 || JObj <- JObjs,
-                                    not queue:member((Id = wh_json:get_value(<<"id">>, JObj)), AgentQ)
+            Q = queue:from_list([Id || JObj <- JObjs,
+                                       not queue:member((Id = wh_json:get_value(<<"id">>, JObj)), AgentQ)
                                 ]),
             queue:join(AgentQ, Q);
         {error, _E} -> lager:debug("error creating strategy rr: ~p", [_E]), AgentQ
     end;
-create_strategy_state('mi', undefined, AcctDb, QueueId) ->
+create_strategy_state('mi', 'undefined', AcctDb, QueueId) ->
     create_strategy_state('mi', [], AcctDb, QueueId);
 create_strategy_state('mi', AgentL, AcctDb, QueueId) ->
     case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
@@ -638,4 +643,4 @@ update_strategy_state(Srv, 'rr', StrategyState) ->
 update_strategy_state(Srv, 'mi', StrategyState) ->
     update_strategy_state(Srv, StrategyState).
 update_strategy_state(Srv, L) ->
-    [gen_listener:cast(Srv, {sync_with_agent, A}) || A <- L].
+    [gen_listener:cast(Srv, {'sync_with_agent', A}) || A <- L].
