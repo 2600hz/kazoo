@@ -44,7 +44,7 @@ test/$(PROJECT).app: src/*.erl
 	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
 
 clean:
-	rm -r ebin/*
+	rm -f ebin/*
 	rm -f test/*.beam
 	rm -f erl_crash.dump
 
