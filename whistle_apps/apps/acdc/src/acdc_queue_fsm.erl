@@ -83,8 +83,8 @@
          ,announce :: ne_binary() % media to play to customer when about to be connected to agent
 
          ,caller_exit_key :: ne_binary() % DTMF a caller can press to leave the queue
-         ,record_caller = false :: boolean() % record the caller
-         ,cdr_url :: ne_binary() % optional URL to request for extra CDR data
+         ,record_caller = 'false' :: boolean() % record the caller
+         ,cdr_url :: api_binary() % optional URL to request for extra CDR data
          }).
 
 %%%===================================================================
@@ -105,7 +105,7 @@ start_link(MgrPid, ListenerPid, QueueJObj) ->
     gen_fsm:start_link(?MODULE, [MgrPid, ListenerPid, QueueJObj], []).
 
 refresh(FSM, QueueJObj) ->
-    gen_fsm:send_all_state_event(FSM, {refresh, QueueJObj}).
+    gen_fsm:send_all_state_event(FSM, {'refresh', QueueJObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -154,14 +154,11 @@ call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
 call_event(_, _E, _N, _J) ->
     lager:debug("unhandled event: ~s: ~s (~s)", [_E, _N, wh_json:get_value(<<"Application-Name">>, _J)]).
 
-finish_member_call(FSM) ->
-    gen_fsm:send_event(FSM, {member_finished}).
+finish_member_call(FSM) -> gen_fsm:send_event(FSM, {member_finished}).
 
-current_call(FSM) ->
-    gen_fsm:sync_send_event(FSM, current_call).
+current_call(FSM) -> gen_fsm:sync_send_event(FSM, current_call).
 
-status(FSM) ->
-    gen_fsm:sync_send_event(FSM, status).
+status(FSM) -> gen_fsm:sync_send_event(FSM, status).
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -207,7 +204,7 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
                        ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
                        ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, false)
                        ,cdr_url = wh_json:get_value(<<"cdr_url">>, QueueJObj)
-                       ,member_call = undefined
+                       ,member_call = 'undefined'
                       }}.
 
 %%--------------------------------------------------------------------
@@ -268,7 +265,7 @@ ready(_Event, State) ->
     {next_state, ready, State}.
 
 ready(status, _, State) ->
-    {reply, <<"ready">>, ready, State};
+    {reply, [{state, <<"ready">>}], ready, State};
 ready(current_call, _, State) ->
     {reply, undefined, ready, State}.
 
@@ -303,10 +300,11 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,connect_resps=CRs
                                                           ,queue_proc=Srv
                                                           ,manager_proc=Mgr
-                                                          ,agent_ring_timeout=AgentTimeout
+                                                          ,agent_ring_timeout=RingTimeout
                                                           ,agent_wrapup_time=AgentWrapup
                                                           ,caller_exit_key=CallerExitKey
                                                           ,member_call=Call
+                                                          ,cdr_url=CDRUrl
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
 
@@ -314,7 +312,13 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
         {[Winner|_]=Agents, Rest} ->
             _ = [begin
                      webseq:evt(self(), webseq:process_pid(Agent), [<<"member call ">>, win_or_monitor(Agent, Winner)]),
-                     acdc_queue_listener:member_connect_win(Srv, update_agent(Agent, Winner), AgentTimeout, AgentWrapup, CallerExitKey)
+
+                     QueueOpts = [{<<"Ring-Timeout">>, RingTimeout}
+                                  ,{<<"Wrapup-Timeout">>, AgentWrapup}
+                                  ,{<<"Caller-Exit-Key">>, CallerExitKey}
+                                  ,{<<"CDR-Url">>, CDRUrl}
+                                 ],
+                     acdc_queue_listener:member_connect_win(Srv, update_agent(Agent, Winner), QueueOpts)
                  end
                  || Agent <- Agents
                 ],
@@ -324,9 +328,9 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                  ]),
             {next_state, connecting, State#state{connect_resps=Rest
                                                  ,collect_ref=undefined
-                                                 ,agent_ring_timer_ref=start_agent_ring_timer(AgentTimeout)
+                                                 ,agent_ring_timer_ref=start_agent_ring_timer(RingTimeout)
                                                 }};
-        undefined ->
+        'undefined' ->
             lager:debug("no more responses to choose from"),
 
             webseq:evt(self(), whapps_call:call_id(Call), <<"member call canceling">>),
@@ -411,8 +415,19 @@ connect_req(_Event, State) ->
     lager:debug("unhandled event in connect_req: ~p", [_Event]),
     {next_state, connect_req, State}.
 
-connect_req(status, _, State) ->
-    {reply, <<"connect_req">>, connect_req, State};
+connect_req(status, _, #state{member_call=Call
+                              ,member_call_start=Start
+                              ,connection_timer_ref=ConnRef
+                             }=State) ->
+    {reply, [{<<"state">>, <<"connect_req">>}
+             ,{<<"call_id">>, whapps_call:call_id(Call)}
+             ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
+             ,{<<"caller_id_number">>, whapps_call:caller_id_name(Call)}
+             ,{<<"to">>, whapps_call:to_user(Call)}
+             ,{<<"from">>, whapps_call:from_user(Call)}
+             ,{<<"wait_left">>, elapsed(ConnRef)}
+             ,{<<"wait_time">>, elapsed(Start)}
+            ], connect_req, State};
 connect_req(current_call, _, #state{member_call=Call
                                     ,member_call_start=Start
                                     ,connection_timer_ref=ConnRef
@@ -549,8 +564,21 @@ connecting(_Event, State) ->
     lager:debug("unhandled event in connecting: ~p", [_Event]),
     {next_state, connecting, State}.
 
-connecting(status, _, State) ->
-    {reply, <<"connecting">>, connecting, State};
+connecting(status, _, #state{member_call=Call
+                             ,member_call_start=Start
+                             ,connection_timer_ref=ConnRef
+                             ,agent_ring_timer_ref=AgentRef
+                            }=State) ->
+    {reply, [{<<"state">>, <<"connecting">>}
+             ,{<<"call_id">>, whapps_call:call_id(Call)}
+             ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
+             ,{<<"caller_id_number">>, whapps_call:caller_id_name(Call)}
+             ,{<<"to">>, whapps_call:to_user(Call)}
+             ,{<<"from">>, whapps_call:from_user(Call)}
+             ,{<<"wait_left">>, elapsed(ConnRef)}
+             ,{<<"wait_time">>, elapsed(Start)}
+             ,{<<"agent_wait_left">>, elapsed(AgentRef)}
+            ], connecting, State};
 connecting(current_call, _, #state{member_call=Call
                                    ,member_call_start=Start
                                    ,connection_timer_ref=ConnRef
@@ -706,7 +734,7 @@ update_properties(QueueJObj, State) ->
       %%,strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj))
      }.
 
-current_call(undefined, _, _) -> undefined;
+current_call('undefined', _, _) -> 'undefined';
 current_call(Call, QueueTimeLeft, Start) ->
     wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
                        ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
@@ -716,7 +744,7 @@ current_call(Call, QueueTimeLeft, Start) ->
                        ,{<<"wait_left">>, elapsed(QueueTimeLeft)}
                        ,{<<"wait_time">>, elapsed(Start)}
                       ]).
-elapsed(undefined) -> undefined;
+elapsed('undefined') -> 'undefined';
 elapsed(Ref) when is_reference(Ref) ->
     case erlang:read_timer(Ref) of
         false -> undefined;
@@ -733,6 +761,6 @@ update_agent(Agent, Winner) ->
 
 win_or_monitor(A, W) ->
     case wh_json:get_value(<<"Process-ID">>, A) =:= wh_json:get_value(<<"Process-ID">>, W) of
-        true -> <<"win">>;
-        false -> <<"monitor">>
+        'true' -> <<"win">>;
+        'false' -> <<"monitor">>
     end.

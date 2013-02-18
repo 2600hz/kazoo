@@ -15,9 +15,10 @@
 %% API
 -export([start_link/3
          ,stop/1
-         ,queue/1
+         ,listener/1
          ,shared_queue/1, start_shared_queue/4
          ,fsm/1, start_fsm/3
+         ,status/1
         ]).
 
 %% Supervisor callbacks
@@ -46,10 +47,10 @@ start_link(MgrPid, AcctId, QueueId) ->
 stop(WorkerSup) ->
     supervisor:terminate_child(acdc_queues_sup, WorkerSup).
 
--spec queue(pid()) -> pid() | 'undefined'.
-queue(WorkerSup) ->
-    case child_of_type(WorkerSup, acdc_queue) of
-        [] -> undefined;
+-spec listener(pid()) -> pid() | 'undefined'.
+listener(WorkerSup) ->
+    case child_of_type(WorkerSup, acdc_queue_listener) of
+        [] -> 'undefined';
         [P] -> P
     end.
 
@@ -79,6 +80,29 @@ start_fsm(WorkerSup, MgrPid, QueueJObj) ->
 -spec child_of_type(pid(), atom()) -> list(pid()).
 child_of_type(WorkerSup, T) ->
     [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(WorkerSup), T =:= Type].
+
+status(Supervisor) ->
+    lager:info("    Worker Supervisor: ~p", [Supervisor]),
+    FSM = fsm(Supervisor),
+    LPid = listener(Supervisor),
+    Shared = shared_queue(Supervisor),
+
+    Status = acdc_queue_fsm:status(FSM),
+
+    lager:info("      Listener: ~p", [LPid]),
+    lager:info("      Shared: ~p", [Shared]),
+    lager:info("      FSM: ~p", [FSM]),
+
+    print_status(Status).
+
+print_status([]) -> 'ok';
+print_status([{_, 'undefined'}|T]) -> print_status(T);
+print_status([{K, V}|T]) when is_binary(V) ->
+    lager:info("        ~s: ~s", [K, V]),
+    print_status(T);
+print_status([{K, V}|T]) ->
+    lager:info("        ~s: ~p", [K, V]),
+    print_status(T).
 
 %%%===================================================================
 %%% Supervisor callbacks

@@ -19,6 +19,7 @@
          ,find_acct_supervisors/1
          ,find_queue_supervisor/2
          ,queues_running/0
+         ,status/0
         ]).
 
 %% Supervisor callbacks
@@ -77,6 +78,12 @@ find_queue_supervisor(AcctId, QueueId, [Super|Rest]) ->
         {AcctId, QueueId} -> Super;
         _ -> find_queue_supervisor(AcctId, QueueId, Rest)
     end.
+
+-spec status() -> 'ok'.
+status() ->
+    lager:info("ACDc Queues Status"),
+    _ = spawn(fun() -> [acdc_queue_sup:status(Sup) || Sup <- workers()] end),
+    'ok'.
 
 queues_running() ->
     [{W, catch acdc_queue_manager:config(acdc_queue_sup:manager(W))} || W <- workers()].

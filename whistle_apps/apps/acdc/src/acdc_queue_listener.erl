@@ -23,7 +23,7 @@
          ,accept_member_calls/1
          ,member_connect_req/3
          ,member_connect_re_req/1
-         ,member_connect_win/4, member_connect_win/5
+         ,member_connect_win/3
          ,timeout_member_call/1
          ,exit_member_call/1
          ,finish_member_call/1, finish_member_call/2
@@ -125,10 +125,8 @@ member_connect_req(Srv, MemberCallJObj, Delivery) ->
 member_connect_re_req(Srv) ->
     gen_listener:cast(Srv, {member_connect_re_req}).
 
-member_connect_win(Srv, RespJObj, RingTimeout, AgentWrapup) ->
-    member_connect_win(Srv, RespJObj, RingTimeout, AgentWrapup, <<"#">>).
-member_connect_win(Srv, RespJObj, RingTimeout, AgentWrapup, CallerExitKey) ->
-    gen_listener:cast(Srv, {member_connect_win, RespJObj, RingTimeout, AgentWrapup, CallerExitKey}).
+member_connect_win(Srv, RespJObj, QueueOpts) ->
+    gen_listener:cast(Srv, {member_connect_win, RespJObj, QueueOpts}).
 
 timeout_member_call(Srv) ->
     gen_listener:cast(Srv, {timeout_member_call}).
@@ -322,14 +320,14 @@ handle_cast({member_connect_re_req}, #state{my_q=MyQ
     end,
     {noreply, State};
 
-handle_cast({member_connect_win, RespJObj, RingTimeout, AgentWrapup, CallerExitKey}, #state{my_q=MyQ
-                                                                                            ,my_id=MyId
-                                                                                            ,call=Call
-                                                                                            ,queue_id=QueueId
-                                                                                           }=State) ->
+handle_cast({member_connect_win, RespJObj, QueueOpts}, #state{my_q=MyQ
+                                                              ,my_id=MyId
+                                                              ,call=Call
+                                                              ,queue_id=QueueId
+                                                             }=State) ->
     lager:debug("agent process won the call, sending the win"),
 
-    send_member_connect_win(RespJObj, RingTimeout, AgentWrapup, Call, QueueId, MyQ, MyId, CallerExitKey),
+    send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts),
     {noreply, State#state{agent_id=wh_json:get_value(<<"Agent-ID">>, RespJObj)}, hibernate};
 
 handle_cast({timeout_member_call}, #state{delivery=Delivery
@@ -532,8 +530,8 @@ send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
             ]),
     publish(Req, fun wapi_acdc_queue:publish_member_connect_req/1).
 
--spec send_member_connect_win(wh_json:object(), pos_integer(), pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-send_member_connect_win(RespJObj, RingTimeout, AgentWrapup, Call, QueueId, MyQ, MyId, CallerExitKey) ->
+-spec send_member_connect_win(wh_json:object(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts) ->
     CallJSON = whapps_call:to_json(Call),
     Q = wh_json:get_value(<<"Server-ID">>, RespJObj),
     Win = props:filter_undefined(
@@ -541,10 +539,7 @@ send_member_connect_win(RespJObj, RingTimeout, AgentWrapup, Call, QueueId, MyQ, 
              ,{<<"Process-ID">>, MyId}
              ,{<<"Agent-Process-ID">>, wh_json:get_value(<<"Agent-Process-ID">>, RespJObj)}
              ,{<<"Queue-ID">>, QueueId}
-             ,{<<"Ring-Timeout">>, RingTimeout}
-             ,{<<"Wrapup-Timeout">>, AgentWrapup}
-             ,{<<"Caller-Exit-Key">>, CallerExitKey}
-             | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+             | QueueOpts ++ wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
             ]),
     publish(Q, Win, fun wapi_acdc_queue:publish_member_connect_win/2).
 

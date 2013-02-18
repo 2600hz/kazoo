@@ -17,6 +17,7 @@
          ,stop/1
          ,manager/1
          ,workers_sup/1
+         ,status/1
         ]).
 
 %% Supervisor callbacks
@@ -52,6 +53,18 @@ manager(Super) ->
 -spec workers_sup(pid()) -> pid() | 'undefined'.
 workers_sup(Super) ->
     hd([P || {_, P, supervisor, _} <- supervisor:which_children(Super)]).
+
+-spec status(pid()) -> 'ok'.
+status(Supervisor) ->
+    Manager = manager(Supervisor),
+    WorkersSup = workers_sup(Supervisor),
+
+    {AcctId, QueueId} = acdc_queue_manager:config(Manager),
+
+    lager:info("Queue ~s (Account ~s)", [QueueId, AcctId]),
+    lager:info("  Supervisor: ~p", [Supervisor]),
+    lager:info("  Manager: ~p", [Manager]),
+    acdc_queue_workers_sup:status(WorkersSup).
 
 %%%===================================================================
 %%% Supervisor callbacks

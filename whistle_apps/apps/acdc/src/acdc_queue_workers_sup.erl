@@ -16,6 +16,7 @@
 -export([start_link/0
          ,new_worker/3, new_workers/4
          ,workers/1
+         ,status/1
         ]).
 
 %% Supervisor callbacks
@@ -52,6 +53,10 @@ new_workers(WorkersSup, AcctId, QueueId, N) when is_integer(N) ->
 -spec workers(pid()) -> [pid(),...] | [].
 workers(Super) ->
     [Pid || {_, Pid, supervisor, [_]} <- supervisor:which_children(Super), is_pid(Pid)].
+
+status(Super) ->
+    lager:info("  Workers Supervisor: ~p", [Super]),
+    [acdc_queue_worker_sup:status(WorkerSup) || WorkerSup <- workers(Super)].
 
 %%%===================================================================
 %%% Supervisor callbacks
