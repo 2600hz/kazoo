@@ -128,23 +128,22 @@
                        ,{<<"Authorizing-Type">>, #whapps_call.authorizing_type}
                       ]).
 
--spec default_helper_function/2 :: (whapps_api_binary(), call()) -> whapps_api_binary().
-default_helper_function(Field, #whapps_call{}) ->
-    Field.
+-spec default_helper_function(whapps_api_binary(), call()) -> whapps_api_binary().
+default_helper_function(Field, #whapps_call{}) -> Field.
 
--spec new/0 :: () -> call().
+-spec new() -> call().
 new() -> #whapps_call{}.
 
--spec put_callid/1 :: (call()) -> api_binary().
-put_callid(#whapps_call{call_id=undefined}) -> undefined;
+-spec put_callid(call()) -> api_binary().
+put_callid(#whapps_call{call_id='undefined'}) -> 'undefined';
 put_callid(#whapps_call{call_id=CallId}) ->
     put(callid, CallId).
 
--spec from_route_req/1 :: (wh_json:object()) -> call().
+-spec from_route_req(wh_json:object()) -> call().
 from_route_req(RouteReq) ->
     from_route_req(RouteReq, #whapps_call{}).
 
--spec from_route_req/2 :: (wh_json:object(), call()) -> call().
+-spec from_route_req(wh_json:object(), call()) -> call().
 from_route_req(RouteReq, #whapps_call{}=Call) ->
     CallId = wh_json:get_value(<<"Call-ID">>, RouteReq, Call#whapps_call.call_id),
     put(callid, CallId),
@@ -190,11 +189,11 @@ from_route_req(RouteReq, #whapps_call{}=Call) ->
                      ,ccvs = CCVs
                     }.
 
--spec from_route_win/1 :: (wh_json:object()) -> call().
+-spec from_route_win(wh_json:object()) -> call().
 from_route_win(RouteWin) ->
     from_route_win(RouteWin, #whapps_call{}).
 
--spec from_route_win/2 :: (wh_json:object(), call()) -> call().
+-spec from_route_win(wh_json:object(), call()) -> call().
 from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                                       ,ccvs=OldCCVs
                                       ,inception=OldInception
@@ -231,7 +230,7 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                      ,ccvs = CCVs
                     }.
 
--spec from_json/1 :: (wh_json:object()) -> call().
+-spec from_json(wh_json:object()) -> call().
 from_json(JObj) ->
     from_json(JObj, #whapps_call{}).
 
@@ -243,7 +242,7 @@ from_json(JObj) ->
 %% converting to/from json
 %% @end
 %%--------------------------------------------------------------------
--spec from_json/2 :: (wh_json:object(), call()) -> call().
+-spec from_json(wh_json:object(), call()) -> call().
 from_json(JObj, #whapps_call{ccvs=OldCCVs}=Call) ->
     CCVs = wh_json:merge_recursive(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
     KVS = orddict:from_list(wh_json:to_proplist(wh_json:get_value(<<"Key-Value-Store">>, JObj, wh_json:new()))),
@@ -286,23 +285,23 @@ from_json(JObj, #whapps_call{ccvs=OldCCVs}=Call) ->
 %% converting to/from json
 %% @end
 %%--------------------------------------------------------------------
--spec to_json/1 :: (call()) -> wh_json:object().
+-spec to_json(call()) -> wh_json:object().
 to_json(#whapps_call{}=Call) ->
     Props = to_proplist(Call),
     KVS = [KV
            || {_, V}=KV <- props:get_value(<<"Key-Value-Store">>, Props, [])
-                  ,V =/= undefined
+                  ,V =/= 'undefined'
                   ,wh_json:is_json_term(V)
           ],
     wh_json:from_list([KV
                        || {_, V}=KV <- [{<<"Key-Value-Store">>, wh_json:from_list(KVS)} |
                                         proplists:delete(<<"Key-Value-Store">>, Props)
                                        ]
-                              ,V =/= undefined
+                              ,V =/= 'undefined'
                               ,wh_json:is_json_term(V)
                       ]).
 
--spec to_proplist/1 :: (call()) -> wh_proplist().
+-spec to_proplist(call()) -> wh_proplist().
 to_proplist(#whapps_call{}=Call) ->
     [{<<"Call-ID">>, call_id_direct(Call)}
      ,{<<"Control-Queue">>, control_queue_direct(Call)}
@@ -332,36 +331,36 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
     ].
 
--spec is_call/1 :: (term()) -> boolean().
+-spec is_call(term()) -> boolean().
 is_call(#whapps_call{}) -> true;
 is_call(_) -> false.
 
--spec exec/2 :: ([fun((call()) -> call()),...], call()) -> call().
+-spec exec([fun((call()) -> call()),...], call()) -> call().
 exec(Funs, #whapps_call{}=Call) ->
     lists:foldr(fun(F, C) -> F(C) end, Call, Funs).
 
--spec set_application_name/2 :: (ne_binary(), call()) -> call().
+-spec set_application_name(ne_binary(), call()) -> call().
 set_application_name(AppName, #whapps_call{}=Call) when is_binary(AppName) ->
     Call#whapps_call{app_name=AppName}.
 
--spec application_name/1 :: (call()) -> ne_binary().
+-spec application_name(call()) -> ne_binary().
 application_name(#whapps_call{app_name=AppName}) ->
     AppName.
 
--spec set_application_version/2 :: (ne_binary(), call()) -> call().
+-spec set_application_version(ne_binary(), call()) -> call().
 set_application_version(AppVersion, #whapps_call{}=Call) when is_binary(AppVersion) ->
     Call#whapps_call{app_version=AppVersion}.
 
--spec application_version/1 :: (call()) -> ne_binary().
+-spec application_version(call()) -> ne_binary().
 application_version(#whapps_call{app_version=AppVersion}) ->
     AppVersion.
 
--spec set_call_id/2 :: (ne_binary(), call()) -> call().
+-spec set_call_id(ne_binary(), call()) -> call().
 set_call_id(?NE_BINARY = CallId, #whapps_call{}=Call) ->
     Call#whapps_call{call_id=CallId}.
 
--spec call_id/1 :: (call()) -> whapps_api_binary().
--spec call_id_direct/1 :: (call()) -> whapps_api_binary().
+-spec call_id(call()) -> whapps_api_binary().
+-spec call_id_direct(call()) -> whapps_api_binary().
 
 call_id(#whapps_call{call_id=CallId, call_id_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(CallId, Call);
@@ -371,18 +370,18 @@ call_id(#whapps_call{call_id=CallId}=Call) ->
 call_id_direct(#whapps_call{call_id=CallId}) ->
     CallId.
 
--spec call_id_helper/2 :: (whapps_helper_function(), call()) -> call().
+-spec call_id_helper(whapps_helper_function(), call()) -> call().
 call_id_helper(Fun, #whapps_call{}=Call) when is_function(Fun, 2) ->
     Call#whapps_call{call_id_helper=Fun};
 call_id_helper(_, #whapps_call{}=Call) ->
     Call#whapps_call{call_id_helper=fun ?MODULE:default_helper_function/2}.
 
--spec set_control_queue/2 :: (ne_binary(), call()) -> call().
+-spec set_control_queue(ne_binary(), call()) -> call().
 set_control_queue(ControlQ, #whapps_call{}=Call) when is_binary(ControlQ) ->
     Call#whapps_call{control_q=ControlQ}.
 
--spec control_queue/1 :: (call()) -> whapps_api_binary().
--spec control_queue_direct/1 :: (call()) -> whapps_api_binary().
+-spec control_queue(call()) -> whapps_api_binary().
+-spec control_queue_direct(call()) -> whapps_api_binary().
 
 control_queue(#whapps_call{control_q=ControlQ, control_q_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(ControlQ, Call);
@@ -392,13 +391,13 @@ control_queue(#whapps_call{control_q=ControlQ}=Call) ->
 control_queue_direct(#whapps_call{control_q=ControlQ}) ->
     ControlQ.
 
--spec control_queue_helper/2 :: (whapps_helper_function(), call()) -> call().
+-spec control_queue_helper(whapps_helper_function(), call()) -> call().
 control_queue_helper(Fun, #whapps_call{}=Call) when is_function(Fun, 2) ->
     Call#whapps_call{control_q_helper=Fun};
 control_queue_helper(_, #whapps_call{}=Call) ->
     Call#whapps_call{control_q_helper=fun ?MODULE:default_helper_function/2}.
 
--spec set_controller_queue/2 :: (ne_binary(), call()) -> call().
+-spec set_controller_queue(ne_binary(), call()) -> call().
 set_controller_queue(ControllerQ, #whapps_call{call_id=CallId, control_q=CtrlQ}=Call) when is_binary(ControllerQ) ->
     spawn(fun() when is_binary(CtrlQ) ->
                   Props = [{<<"Call-ID">>, CallId}
@@ -412,303 +411,298 @@ set_controller_queue(ControllerQ, #whapps_call{call_id=CallId, control_q=CtrlQ}=
           end),
     Call#whapps_call{controller_q=ControllerQ}.
 
--spec controller_queue/1 :: (call()) -> whapps_api_binary().
+-spec controller_queue(call()) -> binary().
 controller_queue(#whapps_call{controller_q=ControllerQ}) ->
     ControllerQ.
 
--spec set_caller_id_name/2 :: (ne_binary(), call()) -> call().
+-spec set_caller_id_name(ne_binary(), call()) -> call().
 set_caller_id_name(CIDName, #whapps_call{}=Call) when is_binary(CIDName) ->
-    whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Name">>, CIDName}]), undefined, Call),
+    whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Name">>, CIDName}]), 'undefined', Call),
     Call#whapps_call{caller_id_name=CIDName}.
 
--spec caller_id_name/1 :: (call()) -> binary().
+-spec caller_id_name(call()) -> binary().
 caller_id_name(#whapps_call{caller_id_name=CIDName}) ->
     CIDName.
 
--spec set_caller_id_number/2 :: (ne_binary(), call()) -> call().
+-spec set_caller_id_number(ne_binary(), call()) -> call().
 set_caller_id_number(CIDNumber, #whapps_call{}=Call) when is_binary(CIDNumber) ->
-    whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}]), undefined, Call),
+    whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}]), 'undefined', Call),
     Call#whapps_call{caller_id_number=CIDNumber}.
 
--spec caller_id_number/1 :: (call()) -> binary().
+-spec caller_id_number(call()) -> binary().
 caller_id_number(#whapps_call{caller_id_number=CIDNumber}) ->
     CIDNumber.
 
--spec set_callee_id_name/2 :: (ne_binary(), call()) -> call().
+-spec set_callee_id_name(ne_binary(), call()) -> call().
 set_callee_id_name(CIDName, #whapps_call{}=Call) when is_binary(CIDName) ->
-    whapps_call_command:set(wh_json:from_list([{<<"Callee-ID-Number">>, CIDName}]), undefined, Call),
+    whapps_call_command:set(wh_json:from_list([{<<"Callee-ID-Number">>, CIDName}]), 'undefined', Call),
     Call#whapps_call{callee_id_name=CIDName}.
 
--spec callee_id_name/1 :: (call()) -> binary().
+-spec callee_id_name(call()) -> binary().
 callee_id_name(#whapps_call{callee_id_name=CIDName}) ->
     CIDName.
 
--spec set_callee_id_number/2 :: (ne_binary(), call()) -> call().
+-spec set_callee_id_number(ne_binary(), call()) -> call().
 set_callee_id_number(CIDNumber, #whapps_call{}=Call) when is_binary(CIDNumber) ->
-    whapps_call_command:set(wh_json:from_list([{<<"Callee-ID-Number">>, CIDNumber}]), undefined, Call),
+    whapps_call_command:set(wh_json:from_list([{<<"Callee-ID-Number">>, CIDNumber}]), 'undefined', Call),
     Call#whapps_call{callee_id_number=CIDNumber}.
 
--spec callee_id_number/1 :: (call()) -> binary().
+-spec callee_id_number(call()) -> binary().
 callee_id_number(#whapps_call{callee_id_number=CIDNumber}) ->
     CIDNumber.
 
--spec set_request/2 :: (ne_binary(), call()) -> call().
+-spec set_request(ne_binary(), call()) -> call().
 set_request(Request, #whapps_call{}=Call) when is_binary(Request) ->
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
     Call#whapps_call{request=Request, request_user=wnm_util:to_e164(RequestUser)
                      ,request_realm=RequestRealm}.
 
--spec request/1 :: (call()) -> ne_binary().
+-spec request(call()) -> ne_binary().
 request(#whapps_call{request=Request}) ->
     Request.
 
--spec request_user/1 :: (call()) -> ne_binary().
+-spec request_user(call()) -> ne_binary().
 request_user(#whapps_call{request_user=RequestUser}) ->
     RequestUser.
 
--spec request_realm/1 :: (call()) -> ne_binary().
+-spec request_realm(call()) -> ne_binary().
 request_realm(#whapps_call{request_realm=RequestRealm}) ->
     RequestRealm.
 
--spec set_from/2 :: (ne_binary(), call()) -> call().
+-spec set_from(ne_binary(), call()) -> call().
 set_from(From, #whapps_call{}=Call) when is_binary(From) ->
     [FromUser, FromRealm] = binary:split(From, <<"@">>),
     Call#whapps_call{from=From, from_user=FromUser, from_realm=FromRealm}.
 
--spec from/1 :: (call()) -> ne_binary().
+-spec from(call()) -> ne_binary().
 from(#whapps_call{from=From}) ->
     From.
 
--spec from_user/1 :: (call()) -> ne_binary().
+-spec from_user(call()) -> ne_binary().
 from_user(#whapps_call{from_user=FromUser}) ->
     FromUser.
 
--spec from_realm/1 :: (call()) -> ne_binary().
+-spec from_realm(call()) -> ne_binary().
 from_realm(#whapps_call{from_realm=FromRealm}) ->
     FromRealm.
 
--spec set_to/2 :: (ne_binary(), call()) -> call().
+-spec set_to(ne_binary(), call()) -> call().
 set_to(To, #whapps_call{}=Call) when is_binary(To) ->
     [ToUser, ToRealm] = binary:split(To, <<"@">>),
     Call#whapps_call{to=To, to_user=ToUser, to_realm=ToRealm}.
 
--spec to/1 :: (call()) -> ne_binary().
+-spec to(call()) -> ne_binary().
 to(#whapps_call{to=To}) ->
     To.
 
--spec to_user/1 :: (call()) -> ne_binary().
+-spec to_user(call()) -> ne_binary().
 to_user(#whapps_call{to_user=ToUser}) ->
     ToUser.
 
--spec to_realm/1 :: (call()) -> ne_binary().
+-spec to_realm(call()) -> ne_binary().
 to_realm(#whapps_call{to_realm=ToRealm}) ->
     ToRealm.
 
--spec set_switch_hostname/2 :: (ne_binary(), call()) -> call().
+-spec set_switch_hostname(ne_binary(), call()) -> call().
 set_switch_hostname(Srv, #whapps_call{}=Call) ->
     Call#whapps_call{switch_hostname=Srv}.
 
--spec switch_hostname/1 :: (call()) -> ne_binary().
+-spec switch_hostname(call()) -> ne_binary().
 switch_hostname(#whapps_call{switch_hostname=Srv}) ->
     Srv.
 
--spec set_switch_nodename/2 :: (ne_binary(), call()) -> call().
+-spec set_switch_nodename(ne_binary(), call()) -> call().
 set_switch_nodename(Srv, #whapps_call{}=Call) ->
     Call#whapps_call{switch_nodename=Srv}.
 
--spec switch_nodename/1 :: (call()) -> ne_binary().
+-spec switch_nodename(call()) -> ne_binary().
 switch_nodename(#whapps_call{switch_nodename=Srv}) ->
     Srv.
 
--spec set_inception/2 :: (ne_binary(), call()) -> call().
+-spec set_inception(ne_binary(), call()) -> call().
 set_inception(<<"on-net">>, #whapps_call{}=Call) ->
     set_custom_channel_var(<<"Inception">>, <<"on-net">>, Call#whapps_call{inception = <<"on-net">>});
 set_inception(<<"off-net">>, #whapps_call{}=Call) ->
     set_custom_channel_var(<<"Inception">>, <<"off-net">>, Call#whapps_call{inception = <<"off-net">>}).
 
--spec inception/1 :: (call()) -> whapps_api_binary().
+-spec inception(call()) -> whapps_api_binary().
 inception(#whapps_call{inception=Inception}) ->
     Inception.
 
--spec set_account_db/2 :: (ne_binary(), call()) -> call().
+-spec set_account_db(ne_binary(), call()) -> call().
 set_account_db(AccountDb, #whapps_call{}=Call) when is_binary(AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#whapps_call{account_db=AccountDb, account_id=AccountId}).
 
--spec account_db/1 :: (call()) -> whapps_api_binary().
+-spec account_db(call()) -> whapps_api_binary().
 account_db(#whapps_call{account_db=AccountDb}) ->
     AccountDb.
 
--spec set_account_id/2 :: (ne_binary(), call()) -> call().
+-spec set_account_id(ne_binary(), call()) -> call().
 set_account_id(AccountId, #whapps_call{}=Call) when is_binary(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#whapps_call{account_db=AccountDb, account_id=AccountId}).
 
--spec account_id/1 :: (call()) -> whapps_api_binary().
+-spec account_id(call()) -> whapps_api_binary().
 account_id(#whapps_call{account_id=AccountId}) ->
     AccountId.
 
--spec set_authorizing_id/2 :: (ne_binary(), call()) -> call().
+-spec set_authorizing_id(ne_binary(), call()) -> call().
 set_authorizing_id(AuthorizingId, #whapps_call{}=Call) when is_binary(AuthorizingId) ->
     set_custom_channel_var(<<"Authorizing-ID">>, AuthorizingId, Call#whapps_call{authorizing_id=AuthorizingId}).
 
--spec authorizing_id/1 :: (call()) -> whapps_api_binary().
+-spec authorizing_id(call()) -> whapps_api_binary().
 authorizing_id(#whapps_call{authorizing_id=AuthorizingId}) ->
     AuthorizingId.
 
--spec set_authorizing_type/2 :: (ne_binary(), call()) -> call().
+-spec set_authorizing_type(ne_binary(), call()) -> call().
 set_authorizing_type(AuthorizingType, #whapps_call{}=Call) when is_binary(AuthorizingType) ->
     set_custom_channel_var(<<"Authorizing-Type">>, AuthorizingType, Call#whapps_call{authorizing_type=AuthorizingType}).
 
--spec authorizing_type/1 :: (call()) -> whapps_api_binary().
+-spec authorizing_type(call()) -> whapps_api_binary().
 authorizing_type(#whapps_call{authorizing_type=AuthorizingType}) ->
     AuthorizingType.
 
--spec set_owner_id/2 :: (ne_binary(), call()) -> call().
+-spec set_owner_id(ne_binary(), call()) -> call().
 set_owner_id(OwnerId, #whapps_call{}=Call) when is_binary(OwnerId) ->
     set_custom_channel_var(<<"Owner-Id">>, OwnerId, Call#whapps_call{owner_id=OwnerId}).
 
--spec owner_id/1 :: (call()) -> whapps_api_binary().
+-spec owner_id(call()) -> whapps_api_binary().
 owner_id(#whapps_call{owner_id=OwnerId}) ->
     OwnerId.
 
--spec set_custom_channel_var/3 :: (term(), term(), call()) -> call().
+-spec set_custom_channel_var(term(), term(), call()) -> call().
 set_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
-    whapps_call_command:set(wh_json:set_value(Key, Value, wh_json:new()), undefined, Call),
+    whapps_call_command:set(wh_json:set_value(Key, Value, wh_json:new()), 'undefined', Call),
     handle_ccvs_update(wh_json:set_value(Key, Value, CCVs), Call).
 
--spec set_custom_channel_vars/2 :: (wh_proplist(), call()) -> call().
+-spec set_custom_channel_vars(wh_proplist(), call()) -> call().
 set_custom_channel_vars(Props, #whapps_call{ccvs=CCVs}=Call) ->
     NewCCVs = wh_json:set_values(Props, CCVs),
-    whapps_call_command:set(NewCCVs, undefined, Call),
+    whapps_call_command:set(NewCCVs, 'undefined', Call),
     handle_ccvs_update(NewCCVs, Call).
 
--spec update_custom_channel_vars/2 :: ([fun((wh_json:object()) -> wh_json:object()),...], call()) -> call().
+-spec update_custom_channel_vars([fun((wh_json:object()) -> wh_json:object()),...], call()) -> call().
 update_custom_channel_vars(Updaters, #whapps_call{ccvs=CCVs}=Call) ->
     NewCCVs = lists:foldr(fun(F, J) -> F(J) end, CCVs, Updaters),
-    whapps_call_command:set(NewCCVs, undefined, Call),
+    whapps_call_command:set(NewCCVs, 'undefined', Call),
     handle_ccvs_update(NewCCVs, Call).
 
--spec custom_channel_var/3 :: (term(), Default, call()) -> Default | term().
+-spec custom_channel_var(term(), Default, call()) -> Default | term().
 custom_channel_var(Key, Default, #whapps_call{ccvs=CCVs}) ->
     wh_json:get_value(Key, CCVs, Default).
 
--spec custom_channel_var/2 :: (term(), call()) -> term().
+-spec custom_channel_var(term(), call()) -> term().
 custom_channel_var(Key, #whapps_call{ccvs=CCVs}) ->
     wh_json:get_value(Key, CCVs).
 
--spec custom_channel_vars/1 :: (call()) -> wh_json:object().
+-spec custom_channel_vars(call()) -> wh_json:object().
 custom_channel_vars(#whapps_call{ccvs=CCVs}) ->
     CCVs.
 
--spec handle_ccvs_update/2 :: (wh_json:object(), call()) -> call().
+-spec handle_ccvs_update(wh_json:object(), call()) -> call().
 handle_ccvs_update(CCVs, #whapps_call{}=Call) ->
     lists:foldl(fun({Var, Index}, C) ->
                         case wh_json:get_ne_value(Var, CCVs) of
-                            undefined -> C;
+                            'undefined' -> C;
                             Value -> 
                                 setelement(Index, C, Value)
                         end
                 end, Call#whapps_call{ccvs=CCVs}, ?SPECIAL_VARS).
 
--spec set_custom_publish_function/2 :: (whapps_custom_publish(), call()) -> call().
+-spec set_custom_publish_function(whapps_custom_publish(), call()) -> call().
 set_custom_publish_function(Fun, #whapps_call{}=Call) when is_function(Fun, 2) ->
     Call#whapps_call{custom_publish_fun=Fun}.
 
--spec clear_custom_publish_function/1 :: (call()) -> call().
+-spec clear_custom_publish_function(call()) -> call().
 clear_custom_publish_function(#whapps_call{}=Call) ->
-    Call#whapps_call{custom_publish_fun=undefined}.
+    Call#whapps_call{custom_publish_fun='undefined'}.
 
--spec custom_publish_function/1 :: (call()) -> 'undefined' | whapps_custom_publish().
-custom_publish_function(#whapps_call{custom_publish_fun=Fun}) ->
-    Fun.
+-spec custom_publish_function(call()) -> 'undefined' | whapps_custom_publish().
+custom_publish_function(#whapps_call{custom_publish_fun=Fun}) -> Fun.
 
--spec kvs_append/3 :: (term(), term(), call()) -> call().
+-spec kvs_append(term(), term(), call()) -> call().
 kvs_append(Key, Value, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:append(wh_util:to_binary(Key), Value, Dict)}.
 
--spec kvs_append_list/3 :: (term(), [term(),...], call()) -> call().
+-spec kvs_append_list(term(), [term(),...], call()) -> call().
 kvs_append_list(Key, ValList, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:append_list(wh_util:to_binary(Key), ValList, Dict)}.
 
--spec kvs_erase/2 :: (term(), call()) -> call().
+-spec kvs_erase(term(), call()) -> call().
 kvs_erase(Key, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:erase(wh_util:to_binary(Key), Dict)}.
 
--spec kvs_fetch/2 :: (wh_json:json_string(), call()) -> term().
--spec kvs_fetch/3 :: (wh_json:json_string(), Default, call()) -> term() | Default.
-kvs_fetch(Key, Call) ->
-    kvs_fetch(Key, undefined, Call).
+-spec kvs_fetch(wh_json:json_string(), call()) -> term().
+-spec kvs_fetch(wh_json:json_string(), Default, call()) -> term() | Default.
+kvs_fetch(Key, Call) -> kvs_fetch(Key, 'undefined', Call).
 kvs_fetch(Key, Default, #whapps_call{kvs=Dict}) ->
     try orddict:fetch(wh_util:to_binary(Key), Dict) of
         Ok -> Ok
     catch
-        error:function_clause -> Default
+        'error':'function_clause' -> Default
     end.
 
--spec kvs_fetch_keys/1 :: (call()) -> [term(),...].
-kvs_fetch_keys( #whapps_call{kvs=Dict}) ->
-    orddict:fetch_keys(Dict).
+-spec kvs_fetch_keys(call()) -> [term(),...].
+kvs_fetch_keys(#whapps_call{kvs=Dict}) -> orddict:fetch_keys(Dict).
 
--spec kvs_filter/2 :: (fun((term(), term()) -> boolean()), call()) ->
+-spec kvs_filter(fun((term(), term()) -> boolean()), call()) ->
                               call().
 kvs_filter(Pred, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:filter(Pred, Dict)}.
 
--spec kvs_find/2 :: (term(), call()) -> {'ok', term()} | 'error'.
+-spec kvs_find(term(), call()) -> {'ok', term()} | 'error'.
 kvs_find(Key, #whapps_call{kvs=Dict}) ->
     orddict:find(wh_util:to_binary(Key), Dict).
 
--spec kvs_fold/3 :: (fun((term(), term(), term()) -> term()), term(), call()) ->
-                            call().
-kvs_fold(Fun, Acc0, #whapps_call{kvs=Dict}) ->
-    orddict:fold(Fun, Acc0, Dict).
+-spec kvs_fold(fun((term(), term(), term()) -> term()), term(), call()) -> call().
+kvs_fold(Fun, Acc0, #whapps_call{kvs=Dict}) -> orddict:fold(Fun, Acc0, Dict).
 
--spec kvs_from_proplist/2 :: (wh_proplist(), call()) -> call().
+-spec kvs_from_proplist(wh_proplist(), call()) -> call().
 kvs_from_proplist(List, #whapps_call{kvs=Dict}=Call) ->
     L = orddict:from_list([{wh_util:to_binary(K), V} || {K, V} <- List]),
     Call#whapps_call{kvs=orddict:merge(fun(_, V1, _) -> V1 end, L, Dict)}.
 
--spec kvs_is_key/2 :: (term(), call()) -> boolean().
+-spec kvs_is_key(term(), call()) -> boolean().
 kvs_is_key(Key, #whapps_call{kvs=Dict}) ->
     orddict:is_key(wh_util:to_binary(Key), Dict).
 
--spec kvs_map/2 :: (fun((term(), term()) -> term()), call()) -> call().
+-spec kvs_map(fun((term(), term()) -> term()), call()) -> call().
 kvs_map(Pred, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:map(Pred, Dict)}.
 
--spec kvs_store/3 :: (term(), term(), call()) -> call().
+-spec kvs_store(term(), term(), call()) -> call().
 kvs_store(Key, Value, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:store(wh_util:to_binary(Key), Value, Dict)}.
 
--spec kvs_store_proplist/2 :: (wh_proplist(), call()) -> call().
+-spec kvs_store_proplist(wh_proplist(), call()) -> call().
 kvs_store_proplist(List, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=lists:foldr(fun({K, V}, D) ->
                                              orddict:store(wh_util:to_binary(K), V, D)
                                      end, Dict, List)}.
 
--spec kvs_to_proplist/1 :: (call()) -> wh_proplist().
+-spec kvs_to_proplist(call()) -> wh_proplist().
 kvs_to_proplist(#whapps_call{kvs=Dict}) ->
     orddict:to_list(Dict).
 
--spec kvs_update/3 :: (term(), fun((term()) -> term()), call()) -> call().
+-spec kvs_update(term(), fun((term()) -> term()), call()) -> call().
 kvs_update(Key, Fun, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:update(wh_util:to_binary(Key), Fun, Dict)}.
 
--spec kvs_update/4 :: (term(), fun((term()) -> term()), term(), call()) -> call().
+-spec kvs_update(term(), fun((term()) -> term()), term(), call()) -> call().
 kvs_update(Key, Fun, Initial, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:update(wh_util:to_binary(Key), Fun, Initial, Dict)}.
 
--spec kvs_update_counter/3 :: (term(), number(), call()) -> call().
+-spec kvs_update_counter(term(), number(), call()) -> call().
 kvs_update_counter(Key, Number, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:update_counter(wh_util:to_binary(Key), Number, Dict)}.
 
--spec flush/0 :: () -> 'ok'.
+-spec flush() -> 'ok'.
 flush() ->
     wh_cache:flush_local(?WHAPPS_CALL_CACHE).
 
--spec cache/1 :: (call()) -> 'ok'.
--spec cache/2 :: (call(), pos_integer()) -> 'ok'.
+-spec cache(call()) -> 'ok'.
+-spec cache(call(), pos_integer()) -> 'ok'.
 
 cache(#whapps_call{}=Call) ->
     cache(Call, 300).
@@ -717,8 +711,9 @@ cache(#whapps_call{call_id=CallId}=Call, Expires) ->
     CacheProps = [{expires, Expires}],
     wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, call, CallId}, Call, CacheProps).
 
--spec retrieve/1 :: (ne_binary()) -> {'ok', call()} |
-                                     {'error', 'not_found'}.
+-spec retrieve(ne_binary()) ->
+                      {'ok', call()} |
+                      {'error', 'not_found'}.
 retrieve(CallId) ->
     wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, call, CallId}).
 
