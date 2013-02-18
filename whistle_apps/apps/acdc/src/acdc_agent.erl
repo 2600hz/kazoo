@@ -14,8 +14,8 @@
 -export([start_link/2, start_link/3
          ,member_connect_resp/2
          ,member_connect_retry/2
-         ,bridge_to_member/4
-         ,monitor_call/2
+         ,bridge_to_member/5
+         ,monitor_call/3
          ,member_connect_accepted/1
          ,channel_hungup/2
          ,originate_execute/2
@@ -68,6 +68,7 @@
          ,agent :: agent()
          ,agent_call_id :: api_binary()
          ,agent_call_queue :: api_binary()
+         ,cdr_url :: api_binary()
          }).
 
 -type agent() :: whapps_call:call() | wh_json:object().
@@ -112,6 +113,9 @@
                       }
                      ,{{acdc_agent_handler, handle_call_event}
                        ,[{<<"call_event">>, <<"*">>}]
+                      }
+                     ,{{acdc_agent_handler, handle_cdr}
+                       ,[{<<"call_detail">>, <<"cdr">>}]
                       }
                      ,{{acdc_agent_handler, handle_originate_resp}
                        ,[{<<"resource">>, <<"*">>}]
@@ -188,11 +192,11 @@ member_connect_retry(Srv, WinJObj) ->
 member_connect_accepted(Srv) ->
     gen_listener:cast(Srv, member_connect_accepted).
 
-bridge_to_member(Srv, Call, WinJObj, EPs) ->
-    gen_listener:cast(Srv, {bridge_to_member, Call, WinJObj, EPs}).
+bridge_to_member(Srv, Call, WinJObj, EPs, CDRUrl) ->
+    gen_listener:cast(Srv, {bridge_to_member, Call, WinJObj, EPs, CDRUrl}).
 
-monitor_call(Srv, Call) ->
-    gen_listener:cast(Srv, {monitor_call, Call}).
+monitor_call(Srv, Call, CDRUrl) ->
+    gen_listener:cast(Srv, {monitor_call, Call, CDRUrl}).
 
 -spec channel_hungup(pid(), ne_binary()) -> 'ok'.
 channel_hungup(Srv, CallId) ->
@@ -396,6 +400,7 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
                                           ,acdc_queue_id='undefined'
                                           ,agent_call_id='undefined'
                                           ,agent_call_queue='undefined'
+                                          ,cdr_url='undefined'
                                          }
                      ,hibernate};
                 true ->
@@ -407,7 +412,9 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
             lager:debug("agent channel ~s hungup/needs hanging up", [ACallId]),
             acdc_util:unbind_from_call_events(ACallId),
             stop_agent_leg(MyQ, ACallId, ACtrlQ),
-            {noreply, State#state{agent_call_id='undefined'}, hibernate};
+            {noreply, State#state{agent_call_id='undefined'
+                                  ,cdr_url='undefined'
+                                 }, hibernate};
         _CallId ->
             lager:debug("unknown call id ~s for channel_hungup, ignoring", [_CallId]),
             lager:debug("listening for agent(~s) and caller(~s)", [ACallId, CCallId]),
@@ -428,7 +435,7 @@ handle_cast({member_connect_retry, CallId}, #state{my_id=MyId
             acdc_util:unbind_from_call_events(ACallId),
             acdc_util:unbind_from_call_events(CallId),
 
-            put(callid, AgentId),
+            put('callid', AgentId),
 
             {noreply, State#state{msg_queue_id='undefined'
                                   ,acdc_queue_id='undefined'
@@ -483,13 +490,13 @@ handle_cast({member_connect_resp, ReqJObj}, #state{agent_id=AgentId
             }
     end;
 
-handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{record_calls=RecordCall
-                                                           ,is_thief=false
-                                                           ,agent_queues=Qs
-                                                           ,acct_id=AcctId
-                                                           ,agent_id=AgentId
-                                                           ,my_q=MyQ
-                                                          }=State) ->
+handle_cast({bridge_to_member, Call, WinJObj, EPs, CDRUrl}, #state{record_calls=RecordCall
+                                                                   ,is_thief=false
+                                                                   ,agent_queues=Qs
+                                                                   ,acct_id=AcctId
+                                                                   ,agent_id=AgentId
+                                                                   ,my_q=MyQ
+                                                                  }=State) ->
     _ = whapps_call:put_callid(Call),
     lager:debug("bridging to agent endpoints"),
 
@@ -499,8 +506,8 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{record_calls=RecordCa
     ShouldRecord = should_record_endpoints(EPs, RecordCall),
 
     AgentCallId = outbound_call_id(Call),
-    acdc_util:bind_to_call_events(Call),
-    acdc_util:bind_to_call_events(AgentCallId),
+    acdc_util:bind_to_call_events(Call, CDRUrl),
+    acdc_util:bind_to_call_events(AgentCallId, CDRUrl),
 
     maybe_connect_to_agent(MyQ, EPs, Call, RingTimeout),
 
@@ -510,39 +517,41 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{record_calls=RecordCa
                           ,record_calls=ShouldRecord
                           ,msg_queue_id=wh_json:get_value(<<"Server-ID">>, WinJObj)
                           ,agent_call_id=AgentCallId
+                          ,cdr_url=CDRUrl
                          }
     ,hibernate
     };
 
-handle_cast({bridge_to_member, Call, WinJObj, _}, #state{is_thief=true
+handle_cast({bridge_to_member, Call, WinJObj, _, CDRUrl}, #state{is_thief=true
                                                           ,agent=Agent
                                                          }=State) ->
     _ = whapps_call:put_callid(Call),
     lager:debug("connecting to thief at ~s", [whapps_call:call_id(Agent)]),
-    acdc_util:bind_to_call_events(Call),
+    acdc_util:bind_to_call_events(Call, CDRUrl),
 
     AgentCallId = outbound_call_id(Call),
-    acdc_util:bind_to_call_events(AgentCallId),
+    acdc_util:bind_to_call_events(AgentCallId, CDRUrl),
 
     whapps_call_command:pickup(whapps_call:call_id(Agent), <<"now">>, Call),
 
     {noreply, State#state{call=Call
                           ,msg_queue_id=wh_json:get_value(<<"Server-ID">>, WinJObj)
                           ,agent_call_id=AgentCallId
+                          ,cdr_url=CDRUrl
                          }
      ,hibernate
     };
 
-handle_cast({monitor_call, Call}, #state{agent_queues=Qs
-                                         ,acct_id=AcctId
-                                         ,agent_id=AgentId
-                                        }=State) ->
+handle_cast({monitor_call, Call, CDRUrl}, #state{agent_queues=Qs
+                                                 ,acct_id=AcctId
+                                                 ,agent_id=AgentId
+                                                }=State) ->
     _ = whapps_call:put_callid(Call),
 
     AgentCallId = outbound_call_id(Call),
 
-    acdc_util:bind_to_call_events(Call),
-    acdc_util:bind_to_call_events(AgentCallId),
+    acdc_util:bind_to_call_events(Call, CDRUrl),
+    acdc_util:bind_to_call_events(AgentCallId, CDRUrl),
 
     lager:debug("monitoring member call ~s, agent call on ~s", [whapps_call:call_id(Call), AgentCallId]),
 
@@ -550,6 +559,7 @@ handle_cast({monitor_call, Call}, #state{agent_queues=Qs
 
     {noreply, State#state{call=Call
                           ,agent_call_id=AgentCallId
+                          ,cdr_url=CDRUrl
                          }, hibernate};
 
 handle_cast({originate_execute, JObj}, #state{my_q=Q}=State) ->
@@ -668,9 +678,11 @@ handle_info(_Info, State) ->
 handle_event(_JObj, #state{fsm_pid='undefined'}) -> 'ignore';
 handle_event(_JObj, #state{fsm_pid=FSM
                            ,agent_id=AgentId
+                           ,cdr_url=CDRUrl
                           }) ->
     {reply, [{fsm_pid, FSM}
              ,{agent_id, AgentId}
+             ,{cdr_url, CDRUrl}
             ]}.
 
 %%--------------------------------------------------------------------

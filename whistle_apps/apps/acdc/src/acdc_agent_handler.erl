@@ -13,6 +13,7 @@
          ,handle_sync_req/2
          ,handle_sync_resp/2
          ,handle_call_event/2
+         ,handle_cdr/2
          ,handle_originate_resp/2
          ,handle_member_message/2
          ,handle_config_change/2
@@ -131,6 +132,20 @@ handle_call_event(JObj, Props) ->
                     acdc_agent_fsm:originate_failed(FSM, JObj);
                 _ -> ok
             end
+    end.
+
+handle_cdr(JObj, Props) ->
+    true = wapi_call:cdr_v(JObj),
+    case props:get_value(cdr_url, Props) of
+        'undefined' -> lager:debug("no cdr url defined: ~p", [JObj]);
+        Url ->
+            lager:debug("sending CDR to ~s", [Url]),
+            Body = wh_json:encode(JObj),
+            _Resp = ibrowse:send_req(wh_util:to_list(Url)
+                                     ,[{<<"Content-Type">>, <<"application/json">>}]
+                                     ,'post', Body
+                                    ),
+            lager:debug("resp: ~p", [_Resp])
     end.
 
 handle_originate_resp(JObj, Props) ->

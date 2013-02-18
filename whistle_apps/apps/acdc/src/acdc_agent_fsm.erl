@@ -98,6 +98,7 @@
          ,fsm_call_id :: api_binary() % used when no call-ids are available
          ,endpoints = [] :: wh_json:objects()
          ,outbound_call_id :: api_binary()
+         ,cdr_url :: api_binary() % where to send the CDR (if anywhere)
          }).
 -type fsm_state() :: #state{}.
 
@@ -486,11 +487,13 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
 
     AgentCallId = acdc_agent:outbound_call_id(CallId),
 
+    CDRUrl = wh_json:get_value(<<"CDR-Url">>, JObj),
+
     case wh_json:get_value(<<"Agent-Process-ID">>, JObj) of
         MyId ->
             lager:debug("trying to ring agent ~s on ~s to connect to caller", [AgentId, AgentCallId]),
 
-            acdc_agent:bridge_to_member(Srv, Call, JObj, EPs),
+            acdc_agent:bridge_to_member(Srv, Call, JObj, EPs, CDRUrl),
 
             webseq:evt(self(), CallId, <<"bridge">>),
             webseq:note(self(), right, <<"ringing">>),
@@ -501,11 +504,12 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
                                               ,member_call_queue_id=QueueId
                                               ,caller_exit_key=CallerExitKey
                                               ,agent_call_id=AgentCallId
+                                              ,cdr_url=CDRUrl
                                              }};
         _OtherId ->
             lager:debug("monitoring agent ~s(~s) connecting to caller: ~s(~s)", [AgentId, AgentCallId, _OtherId, MyId]),
 
-            acdc_agent:monitor_call(Srv, Call),
+            acdc_agent:monitor_call(Srv, Call, CDRUrl),
 
             webseq:evt(self(), CallId, <<"monitor">>),
             webseq:note(self(), right, <<"ringing">>),
@@ -517,6 +521,7 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
                                     ,member_call_queue_id=QueueId
                                     ,caller_exit_key=CallerExitKey
                                     ,agent_call_id=AgentCallId
+                                    ,cdr_url=CDRUrl
                                    }}
     end;
 
