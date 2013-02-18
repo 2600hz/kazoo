@@ -64,7 +64,8 @@ status(Supervisor) ->
     lager:info("Queue ~s (Account ~s)", [QueueId, AcctId]),
     lager:info("  Supervisor: ~p", [Supervisor]),
     lager:info("  Manager: ~p", [Manager]),
-    acdc_queue_workers_sup:status(WorkersSup).
+    acdc_queue_workers_sup:status(WorkersSup),
+    'ok'.
 
 %%%===================================================================
 %%% Supervisor callbacks
