@@ -561,9 +561,7 @@ cf_module_not_found(Call) ->
 %%--------------------------------------------------------------------
 -spec spawn_cf_module/3 :: (CFModule, list(), whapps_call:call()) -> {pid(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
-    AMQPConsumer = wh_amqp_channel:consumer_pid(),
     {spawn_link(fun() ->
-                        _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
                         put(callid, whapps_call:call_id_direct(Call)),
                         try
                             CFModule:handle(Data, Call)
