@@ -75,7 +75,7 @@ maybe_enter_queue(#member_call{call=Call
     lager:info("asking for an agent, waiting up to ~p ms", [MaxWait]),
 
     cf_exe:send_amqp(Call, MemberCall, fun wapi_acdc_queue:publish_member_call/1),
-    whapps_call_command:flush_dtmf(Call),
+    _ = whapps_call_command:flush_dtmf(Call),
     wait_for_bridge(MC#member_call{call=whapps_call:kvs_store(queue_id, QueueId, Call)}
                     ,MaxWait
                    ).
@@ -133,7 +133,7 @@ process_message(#member_call{call=Call}=MC, Timeout, Start, Wait, JObj, {<<"call
         'true' ->
             lager:info("caller pressed the exit key(~s), moving to next callflow action", [DigitPressed]),
             cancel_member_call(Call, <<"dtmf_exit">>),
-            whapps_call_command:flush_dtmf(Call),
+            _ = whapps_call_command:flush_dtmf(Call),
             timer:sleep(1000),
             cf_exe:continue(Call);
         'false' ->
@@ -152,7 +152,7 @@ reduce_timeout(T, R) -> T-R.
 
 %% convert from seconds to milliseconds, or infinity
 -spec max_wait(integer()) -> max_wait().
-max_wait(N) when N < 1 -> infinity;
+max_wait(N) when N < 1 -> 'infinity';
 max_wait(N) -> N * 1000.
 
 max_queue_size(N) when is_integer(N), N > 0 -> N;

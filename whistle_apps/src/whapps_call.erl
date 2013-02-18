@@ -82,9 +82,9 @@
 
 -export([default_helper_function/2]).
 
--record(whapps_call, {call_id :: whapps_api_binary()                       %% The UUID of the call
+-record(whapps_call, {call_id :: api_binary()                       %% The UUID of the call
                        ,call_id_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
-                       ,control_q :: whapps_api_binary()                   %% The control queue provided on route win
+                       ,control_q :: api_binary()                   %% The control queue provided on route win
                        ,control_q_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
                        ,controller_q = <<>> :: binary()                    %%
                        ,caller_id_name = <<"Unknown">> :: ne_binary()      %% The caller name
@@ -102,12 +102,12 @@
                        ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
                        ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
                        ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
-                       ,inception :: whapps_api_binary()                   %% Origin of the call <<"on-net">> | <<"off-net">>
-                       ,account_db :: whapps_api_binary()                  %% The database name of the account that authorized this call
-                       ,account_id :: whapps_api_binary()                  %% The account id that authorized this call
-                       ,authorizing_id :: whapps_api_binary()              %% The ID of the record that authorized this call
-                       ,authorizing_type :: whapps_api_binary()            %% The pvt_type of the record that authorized this call
-                       ,owner_id :: whapps_api_binary()                    %% The ID of the owner of this calling device, if any
+                       ,inception :: api_binary()                   %% Origin of the call <<"on-net">> | <<"off-net">>
+                       ,account_db :: api_binary()                  %% The database name of the account that authorized this call
+                       ,account_id :: api_binary()                  %% The account id that authorized this call
+                       ,authorizing_id :: api_binary()              %% The ID of the record that authorized this call
+                       ,authorizing_type :: api_binary()            %% The pvt_type of the record that authorized this call
+                       ,owner_id :: api_binary()                    %% The ID of the owner of this calling device, if any
                        ,app_name = <<"whapps_call">> :: ne_binary()        %% The application name used during whapps_call_command
                        ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_call_command
                        ,custom_publish_fun :: whapps_custom_publish()      %% A custom command used to publish whapps_call_command
@@ -115,7 +115,7 @@
                        ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
                       }).
 
--type whapps_helper_function() :: fun((whapps_api_binary(), call()) -> whapps_api_binary()).
+-type whapps_helper_function() :: fun((api_binary(), call()) -> api_binary()).
 
 -type call() :: #whapps_call{}.
 -export_type([call/0]).
@@ -128,7 +128,7 @@
                        ,{<<"Authorizing-Type">>, #whapps_call.authorizing_type}
                       ]).
 
--spec default_helper_function(whapps_api_binary(), call()) -> whapps_api_binary().
+-spec default_helper_function(api_binary(), call()) -> api_binary().
 default_helper_function(Field, #whapps_call{}) -> Field.
 
 -spec new() -> call().
@@ -359,8 +359,8 @@ application_version(#whapps_call{app_version=AppVersion}) ->
 set_call_id(?NE_BINARY = CallId, #whapps_call{}=Call) ->
     Call#whapps_call{call_id=CallId}.
 
--spec call_id(call()) -> whapps_api_binary().
--spec call_id_direct(call()) -> whapps_api_binary().
+-spec call_id(call()) -> api_binary().
+-spec call_id_direct(call()) -> api_binary().
 
 call_id(#whapps_call{call_id=CallId, call_id_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(CallId, Call);
@@ -380,8 +380,8 @@ call_id_helper(_, #whapps_call{}=Call) ->
 set_control_queue(ControlQ, #whapps_call{}=Call) when is_binary(ControlQ) ->
     Call#whapps_call{control_q=ControlQ}.
 
--spec control_queue(call()) -> whapps_api_binary().
--spec control_queue_direct(call()) -> whapps_api_binary().
+-spec control_queue(call()) -> api_binary().
+-spec control_queue_direct(call()) -> api_binary().
 
 control_queue(#whapps_call{control_q=ControlQ, control_q_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(ControlQ, Call);
@@ -525,7 +525,7 @@ set_inception(<<"on-net">>, #whapps_call{}=Call) ->
 set_inception(<<"off-net">>, #whapps_call{}=Call) ->
     set_custom_channel_var(<<"Inception">>, <<"off-net">>, Call#whapps_call{inception = <<"off-net">>}).
 
--spec inception(call()) -> whapps_api_binary().
+-spec inception(call()) -> api_binary().
 inception(#whapps_call{inception=Inception}) ->
     Inception.
 
@@ -534,7 +534,7 @@ set_account_db(AccountDb, #whapps_call{}=Call) when is_binary(AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#whapps_call{account_db=AccountDb, account_id=AccountId}).
 
--spec account_db(call()) -> whapps_api_binary().
+-spec account_db(call()) -> api_binary().
 account_db(#whapps_call{account_db=AccountDb}) ->
     AccountDb.
 
@@ -543,7 +543,7 @@ set_account_id(AccountId, #whapps_call{}=Call) when is_binary(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#whapps_call{account_db=AccountDb, account_id=AccountId}).
 
--spec account_id(call()) -> whapps_api_binary().
+-spec account_id(call()) -> api_binary().
 account_id(#whapps_call{account_id=AccountId}) ->
     AccountId.
 
@@ -551,7 +551,7 @@ account_id(#whapps_call{account_id=AccountId}) ->
 set_authorizing_id(AuthorizingId, #whapps_call{}=Call) when is_binary(AuthorizingId) ->
     set_custom_channel_var(<<"Authorizing-ID">>, AuthorizingId, Call#whapps_call{authorizing_id=AuthorizingId}).
 
--spec authorizing_id(call()) -> whapps_api_binary().
+-spec authorizing_id(call()) -> api_binary().
 authorizing_id(#whapps_call{authorizing_id=AuthorizingId}) ->
     AuthorizingId.
 
@@ -559,7 +559,7 @@ authorizing_id(#whapps_call{authorizing_id=AuthorizingId}) ->
 set_authorizing_type(AuthorizingType, #whapps_call{}=Call) when is_binary(AuthorizingType) ->
     set_custom_channel_var(<<"Authorizing-Type">>, AuthorizingType, Call#whapps_call{authorizing_type=AuthorizingType}).
 
--spec authorizing_type(call()) -> whapps_api_binary().
+-spec authorizing_type(call()) -> api_binary().
 authorizing_type(#whapps_call{authorizing_type=AuthorizingType}) ->
     AuthorizingType.
 
@@ -567,9 +567,8 @@ authorizing_type(#whapps_call{authorizing_type=AuthorizingType}) ->
 set_owner_id(OwnerId, #whapps_call{}=Call) when is_binary(OwnerId) ->
     set_custom_channel_var(<<"Owner-Id">>, OwnerId, Call#whapps_call{owner_id=OwnerId}).
 
--spec owner_id(call()) -> whapps_api_binary().
-owner_id(#whapps_call{owner_id=OwnerId}) ->
-    OwnerId.
+-spec owner_id(call()) -> api_binary().
+owner_id(#whapps_call{owner_id=OwnerId}) -> OwnerId.
 
 -spec set_custom_channel_var(term(), term(), call()) -> call().
 set_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->

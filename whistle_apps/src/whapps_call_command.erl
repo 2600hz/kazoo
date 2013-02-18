@@ -550,11 +550,11 @@ b_hangup(true, Call) ->
 -spec page(wh_json:objects(), api_binary(), api_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 -spec page(wh_json:objects(), api_binary(), api_binary(), api_binary(), api_object(), whapps_call:call()) -> 'ok'.
 
--spec b_page(wh_json:objects(), whapps_call:call()) -> whapps_api_std_return().
--spec b_page(wh_json:objects(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_page(wh_json:objects(), api_binary(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_page(wh_json:objects(), api_binary(), api_binary(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_page(wh_json:objects(), api_binary(), api_binary(), api_binary(), api_object(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_page(wh_json:objects(), whapps_call:call()) -> wait_for_application_return().
+-spec b_page(wh_json:objects(), api_binary(), whapps_call:call()) -> wait_for_application_return().
+-spec b_page(wh_json:objects(), api_binary(), api_binary(), whapps_call:call()) -> wait_for_application_return().
+-spec b_page(wh_json:objects(), api_binary(), api_binary(), api_binary(), whapps_call:call()) -> wait_for_application_return().
+-spec b_page(wh_json:objects(), api_binary(), api_binary(), api_binary(), api_object(), whapps_call:call()) -> wait_for_application_return().
 
 page(Endpoints, Call) ->
     page(Endpoints, ?DEFAULT_TIMEOUT, Call).
@@ -1420,21 +1420,15 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                                     {ok, D}
                             end
                     end;
-                _ when After =:= infinity ->
-                    collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After);
                 _ ->
-                    collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After - wh_util:elapsed_ms(Start))
+                    collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, decr_timeout(After, Start))
             end;
-        _ when After =:= infinity ->
-            collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After);
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After - wh_util:elapsed_ms(Start))
+            collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, decr_timeout(After, Start))
     after
-        After ->
-            lager:debug("collect digits timeout"),
-            {ok, Digits}
+        After -> {'ok', Digits}
     end.
 
 %%--------------------------------------------------------------------
@@ -1473,18 +1467,13 @@ wait_for_message(Application, Event, Type, Timeout) ->
                     {error, JObj};
                 { Type, Event, Application } ->
                     {ok, JObj};
-                _ when Timeout =:= infinity ->
-                    wait_for_message(Application, Event, Type, Timeout);
                 _ ->
-                    wait_for_message(Application, Event, Type, Timeout - wh_util:elapsed_ms(Start))
+                    wait_for_message(Application, Event, Type, decr_timeout(Timeout, Start))
             end;
-        _ when Timeout =:= infinity ->
-            wait_for_message(Application, Event, Type, Timeout);
         _ ->
-            wait_for_message(Application, Event, Type, Timeout - wh_util:elapsed_ms(Start))
+            wait_for_message(Application, Event, Type, decr_timeout(Timeout, Start))
     after
-        Timeout ->
-            {error, timeout}
+        Timeout -> {'error', 'timeout'}
     end.
 
 %%--------------------------------------------------------------------
@@ -1494,7 +1483,8 @@ wait_for_message(Application, Event, Type, Timeout) ->
 %% is only interested in events for the application.
 %% @end
 %%--------------------------------------------------------------------
--type wait_for_application_return() :: {'error', 'timeout' | wh_json:object()} | {'ok', wh_json:object()}.
+-type wait_for_application_return() :: {'error', 'timeout' | wh_json:object()} |
+                                       {'ok', wh_json:object()}.
 -spec wait_for_application(ne_binary()) -> wait_for_application_return().
 -spec wait_for_application(ne_binary(), ne_binary()) -> wait_for_application_return().
 -spec wait_for_application(ne_binary(), ne_binary(), ne_binary()) -> wait_for_application_return().
@@ -1510,29 +1500,29 @@ wait_for_application(Application, Event, Type) ->
 wait_for_application(Application, Event, Type, Timeout) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, JObj} ->
+        {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
                 { <<"error">>, _, Application } ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
-                    {error, JObj};
+                    {'error', JObj};
                 { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
                     lager:debug("channel was hungup while waiting for ~s", [Application]),
-                    {error, channel_hungup};
+                    {'error', 'channel_hungup'};
                 { Type, Event, Application } ->
-                    {ok, JObj};
-                _ when Timeout =:= infinity ->
-                    wait_for_application(Application, Event, Type, Timeout);
+                    {'ok', JObj};
                 _ ->
-                    wait_for_application(Application, Event, Type, Timeout - wh_util:elapsed_ms(Start))
+                    wait_for_application(Application, Event, Type, decr_timeout(Timeout, Start))
             end;
-        _ when Timeout =:= infinity ->
-            wait_for_application(Application, Event, Type, Timeout);
         _ ->
-            wait_for_application(Application, Event, Type, Timeout - wh_util:elapsed_ms(Start))
+            wait_for_application(Application, Event, Type, decr_timeout(Timeout, Start))
     after
-        Timeout ->
-            {error, timeout}
+        Timeout -> {'error', 'timeout'}
     end.
+
+-spec decr_timeout(wh_timeout(), non_neg_integer() | wh_now()) -> wh_timeout().
+decr_timeout('infinity', _) -> 'infinity';
+decr_timeout(Timeout, Elapsed) when is_integer(Elapsed) -> Timeout - Elapsed;
+decr_timeout(Timeout, Start) -> decr_timeout(Timeout, wh_util:elapsed_ms(Start)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1575,20 +1565,14 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
                     wait_for_headless_application(Application, Event, Type, 5000);
                 { Type, Event, Application } ->
                     {ok, JObj};
-                _T when Timeout =:= infinity ->
-                    lager:debug("ignore ~p", [_T]),
-                    wait_for_headless_application(Application, Event, Type, Timeout);
                 _T ->
                     lager:debug("ignore ~p", [_T]),
-                    wait_for_headless_application(Application, Event, Type, Timeout - wh_util:elapsed_ms(Start))
+                    wait_for_headless_application(Application, Event, Type, decr_timeout(Timeout, Start))
             end;
-        _ when Timeout =:= infinity ->
-            wait_for_headless_application(Application, Event, Type, Timeout);
         _ ->
-            wait_for_headless_application(Application, Event, Type, Timeout - wh_util:elapsed_ms(Start))
+            wait_for_headless_application(Application, Event, Type, decr_timeout(Timeout, Start))
     after
-        Timeout ->
-            {error, timeout}
+        Timeout -> {'error', 'timeout'}
     end.
 
 %%--------------------------------------------------------------------
@@ -1597,11 +1581,13 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
 %% Wait for a DTMF event and extract the digits when it comes
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_dtmf(wh_timeout()) -> {'error', 'channel_hungup' | wh_json:object()} | {'ok', binary()}.
+-spec wait_for_dtmf(wh_timeout()) ->
+                           {'error', 'channel_hungup' | wh_json:object()} |
+                           {'ok', binary()}.
 wait_for_dtmf(Timeout) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, JObj} ->
+        {'amqp_msg', JObj} ->
             case whapps_util:get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
                     lager:debug("channel was destroyed while waiting for DTMF"),
@@ -1614,22 +1600,16 @@ wait_for_dtmf(Timeout) ->
                     {error, JObj};
                 { <<"call_event">>, <<"DTMF">> } ->
                     {ok, wh_json:get_value(<<"DTMF-Digit">>, JObj)};
-                _ when Timeout =:= infinity ->
-                    wait_for_dtmf(Timeout);
                 _ ->
-                    wait_for_dtmf(Timeout - wh_util:elapsed_ms(Start))
+                    wait_for_dtmf(decr_timeout(Timeout, Start))
             end;
-        _E when Timeout =:= infinity ->
-            lager:debug("unexpected ~p", [_E]),
-            wait_for_dtmf(Timeout);
         _E ->
             lager:debug("unexpected ~p", [_E]),
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            wait_for_dtmf(Timeout - wh_util:elapsed_ms(Start))
+            wait_for_dtmf(decr_timeout(Timeout, Start))
     after
-        Timeout ->
-            {ok, <<>>}
+        Timeout -> {'ok', <<>>}
     end.
 
 %%--------------------------------------------------------------------
@@ -1673,19 +1653,14 @@ wait_for_bridge(Timeout, Fun, Call) ->
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
                     lager:debug("bridge completed with result ~s catagorized as ~s", [AppResponse, Result]),
                     {Result, JObj};
-                _ when Timeout =:= infinity ->
-                    wait_for_bridge(Timeout, Fun, Call);
                 _ ->
-                    wait_for_bridge(Timeout - wh_util:elapsed_ms(Start), Fun, Call)
+                    wait_for_bridge(decr_timeout(Timeout, Start), Fun, Call)
             end;
-        _ when Timeout =:= infinity ->
-            wait_for_bridge(Timeout, Fun, Call);
-        _ ->
-            %% dont let the mailbox grow unbounded if
-            %%   this process hangs around...
-            wait_for_bridge(Timeout - wh_util:elapsed_ms(Start), Fun, Call)
+        %% dont let the mailbox grow unbounded if
+        %%   this process hangs around...
+        _ -> wait_for_bridge(decr_timeout(Timeout, Start), Fun, Call)
     after
-        Timeout -> {error, timeout}
+        Timeout -> {'error', 'timeout'}
     end.
 
 %%--------------------------------------------------------------------
@@ -1825,28 +1800,22 @@ wait_for_application_or_dtmf(Application, Timeout) ->
                     {ok, JObj};
                 { <<"call_event">>, <<"DTMF">>, _ } ->
                     {dtmf, wh_json:get_value(<<"DTMF-Digit">>, JObj)};
-                _ when Timeout =:= infinity ->
-                    wait_for_application_or_dtmf(Application, Timeout);
                 _ ->
-                    wait_for_application_or_dtmf(Application, Timeout - wh_util:elapsed_ms(Start))
+                    wait_for_application_or_dtmf(Application, decr_timeout(Timeout, Start))
             end;
-        _ when Timeout =:= infinity ->
-            wait_for_application_or_dtmf(Application, Timeout);
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            wait_for_application_or_dtmf(Application, Timeout - wh_util:elapsed_ms(Start))
+            wait_for_application_or_dtmf(Application, decr_timeout(Timeout, Start))
     after
-        Timeout ->
-            {error, timeout}
+        Timeout -> {'error', 'timeout'}
     end.
 
 -type wait_for_fax_ret() :: {'ok', wh_json:object()} |
                             {'error', 'channel_destroy' | 'channel_hungup' | wh_json:object()}.
 -spec wait_for_fax() -> wait_for_fax_ret().
 -spec wait_for_fax(wh_timeout()) -> wait_for_fax_ret().
-wait_for_fax() ->
-    wait_for_fax(3600000).
+wait_for_fax() -> wait_for_fax(3600000).
 wait_for_fax(Timeout) ->
     Start = erlang:now(),
     receive
@@ -1859,18 +1828,13 @@ wait_for_fax(Timeout) ->
                     wait_for_fax(infinity);
                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"receive_fax">> } ->
                     {ok, wh_json:set_value(<<"Fax-Success">>, true, JObj)};
-                _ when Timeout =:= infinity ->
-                    wait_for_fax(Timeout);
                 _ ->
-                    wait_for_fax(Timeout - wh_util:elapsed_ms(Start))
+                    wait_for_fax(decr_timeout(Timeout, Start))
             end;
-        _ when Timeout =:= infinity ->
-            wait_for_fax(Timeout);
         _ ->
-            wait_for_fax(Timeout - wh_util:elapsed_ms(Start))
+            wait_for_fax(decr_timeout(Timeout, Start))
     after
-        Timeout ->
-            {error, timeout}
+        Timeout -> {'error', 'timeout'}
     end.
 
 %%--------------------------------------------------------------------

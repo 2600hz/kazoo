@@ -226,12 +226,8 @@ update_mwi(New, Saved, OwnerId, AccountDb) ->
     end.
 
 -spec maybe_publish_mwi/4 :: (api_binary(), api_binary(), integer(), integer()) -> 'ok'.
-maybe_publish_mwi(undefined, _, _, _) -> ok;
-maybe_publish_mwi(_, undefined, _, _) -> ok;
-maybe_publish_mwi(User, Realm, New, Saved) when not is_binary(User) ->
-    maybe_publish_mwi(wh_util:to_binary(User), Realm, New, Saved);
-maybe_publish_mwi(User, Realm, New, Saved) when not is_binary(Realm) ->
-    maybe_publish_mwi(User, wh_util:to_binary(Realm), New, Saved);
+maybe_publish_mwi('undefined', _, _, _) -> 'ok';
+maybe_publish_mwi(_, 'undefined', _, _) -> 'ok';
 maybe_publish_mwi(User, Realm, New, Saved) ->
     Props = [{<<"Notify-User">>, User}
              ,{<<"Notify-Realm">>, Realm}

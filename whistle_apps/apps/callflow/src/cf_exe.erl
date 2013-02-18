@@ -546,20 +546,21 @@ cf_module_not_found(Call) ->
 %%--------------------------------------------------------------------
 -spec spawn_cf_module(CFModule, list(), whapps_call:call()) -> {pid(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
-    AMQPConsumer = wh_amqp_channel:consumer_pid(),
-    {spawn_link(fun() ->
-                        _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
-                        put(callid, whapps_call:call_id_direct(Call)),
-                        try
-                            CFModule:handle(Data, Call)
-                        catch
-                            _E:_R ->
-                                ST = erlang:get_stacktrace(),
-                                lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, _R]),
-                                _ = [lager:info("stacktrace: ~p", [S]) || S <- ST],
-                                throw(_R)
-                        end
-                end), CFModule}.
+    %%AMQPConsumer = wh_amqp_channel:consumer_pid(),
+    {spawn_link(
+       fun() ->
+               %%_ = wh_amqp_channel:consumer_pid(AMQPConsumer),
+               put(callid, whapps_call:call_id_direct(Call)),
+               try
+                   CFModule:handle(Data, Call)
+               catch
+                   _E:R ->
+                       ST = erlang:get_stacktrace(),
+                       lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
+                       wh_util:log_stacktrace(ST),
+                       throw(R)
+               end
+       end), CFModule}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -580,9 +581,9 @@ add_server_id(API, Q) when is_list(API) ->
 add_server_id(API, Q) ->
     wh_json:set_value(<<"Server-ID">>, Q, API).
 
--spec send_command(wh_proplist(), cf_api_binary(), cf_api_binary()) -> 'ok'.
-send_command(_, undefined, _) -> ok;
-send_command(_, _, undefined) -> ok;
+-spec send_command(wh_proplist(), api_binary(), api_binary()) -> 'ok'.
+send_command(_, 'undefined', _) -> 'ok';
+send_command(_, _, 'undefined') -> 'ok';
 send_command(Command, ControlQ, CallId) ->
     Props = Command ++ [{<<"Call-ID">>, CallId}
                         | wh_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
