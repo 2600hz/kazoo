@@ -13,7 +13,6 @@
 
 %% API
 -export([start_link/0]).
--export([stop/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -35,7 +34,6 @@
                      ,{notify_cnam_request, [{<<"notification">>, <<"cnam_request">>}]}
                      ,{notify_port_request, [{<<"notification">>, <<"port_request">>}]}
                      ,{notify_ported, [{<<"notification">>, <<"ported">>}]}
-                     ,{notify_first_occurrence, [{<<"directory">>, <<"reg_query_resp">>}]}
                      ,{notify_low_balance, [{<<"notification">>, <<"low_balance">>}]}
                      ,{notify_transaction, [{<<"notification">>, <<"transaction">>}]}
                      ,{notify_system_alert, [{<<"notification">>, <<"system_alert">>}]}
@@ -61,6 +59,7 @@
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 -record(state, {}).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -79,9 +78,6 @@ start_link() ->
                                       ,{queue_options, ?QUEUE_OPTIONS}
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], []).
-
-stop(Srv) ->
-    gen_listener:stop(Srv).
 
 %%%===================================================================
 %%% gen_server callbacks

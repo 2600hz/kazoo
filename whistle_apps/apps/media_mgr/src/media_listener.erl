@@ -49,16 +49,14 @@ start_link() ->
 handle_media_req(JObj, _Props) ->
     true = wapi_media:req_v(JObj),
     _ = wh_util:put_callid(JObj),
-
     lager:debug("recv media req for msg id: ~s", [wh_json:get_value(<<"Msg-ID">>, JObj)]),
-
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
     case wh_media_url:playback(MediaName, JObj) of
-        {error, ErrorMessage} -> 
-            send_error_resp(JObj, ErrorMessage);            
-        {ok, StreamURL} ->            
+        {error, ErrorMessage} ->
+            send_error_resp(JObj, ErrorMessage);
+        {ok, StreamURL} ->
             send_media_resp(JObj, StreamURL)
-    end.           
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -163,7 +161,9 @@ send_error_resp(JObj, ErrMsg) ->
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     lager:debug("sending error reply ~s for ~s", [ErrMsg, MediaName]),
-    wapi_media:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Error).
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    Publisher = fun(P) -> wapi_media:publish_error(ServerId, P) end,
+    whapps_util:amqp_pool_send(Error, Publisher).
 
 send_media_resp(JObj, StreamURL) ->
     lager:debug("media stream URL: ~s", [StreamURL]),
@@ -172,4 +172,6 @@ send_media_resp(JObj, StreamURL) ->
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    wapi_media:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    Publisher = fun(P) -> wapi_media:publish_resp(ServerId, P) end,
+    whapps_util:amqp_pool_send(Resp, Publisher).

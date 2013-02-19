@@ -16,7 +16,7 @@
 -define(CHANNELS_TBL, ecallmgr_channels).
 -define(CONFERENCES_TBL, ecallmgr_conferences).
 
--define(ECALLMGR_RECORDED_MEDIA_KEY(M), {recorded_media, M}).
+-define(ECALLMGR_PLAYBACK_MEDIA_KEY(M), {playback_media, M}).
 
 -define(WHISTLE_CONTEXT, <<"context_2">>).
 

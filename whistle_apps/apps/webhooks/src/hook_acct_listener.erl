@@ -46,7 +46,7 @@ start_link(AcctDB, Webhook) ->
                                      ], [AcctDB, Webhook]).
 
 stop(Srv) ->
-    gen_listener:stop(Srv).
+    gen_listener:cast(Srv, stop).
 
 update_config(Pid, JObj) ->
     gen_listener:cast(Pid, {config_change, JObj}).
@@ -144,7 +144,9 @@ handle_cast({config_change, ConfJObj}, #state{webhook=Hook, realm=Realm, acct_id
 
             setup_binding(New, NewBindOptions, Realm, AcctID),
             {noreply, State#state{webhook=JObj}}
-    end.
+    end;
+handle_cast(stop, State) ->
+    {stop, normal, State}.
 
 %%--------------------------------------------------------------------
 %% @private

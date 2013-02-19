@@ -54,7 +54,7 @@ req_query_req(ApiJObj, _Props) ->
             lager:debug("found multiple contacts for ~s@~s in cache", [Username, Realm]),
             Resp = [{<<"Multiple">>, <<"true">>}
                     ,{<<"Msg-ID">>, MsgID}
-                    ,{<<"Fields">>, [filter(ApiJObj, RegJObj) 
+                    ,{<<"Fields">>, [filter(ApiJObj, RegJObj)
                                      || RegJObj <- RegJObjs
                                     ]}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -68,6 +68,10 @@ req_query_req(ApiJObj, _Props) ->
                    ],
             wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp);
         {error, not_found} ->
+            Resp = [{<<"Msg-ID">>, MsgID}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp),
             lager:debug("no registration for ~s@~s", [Username, Realm])
     end.
 

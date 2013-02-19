@@ -553,11 +553,11 @@ handle_cast({monitor_call, Call}, #state{agent_queues=Qs
                                          ,agent_id=AgentId
                                         }=State) ->
     _ = whapps_call:put_callid(Call),
-    acdc_util:bind_to_call_events(Call),
     lager:debug("monitoring call ~s", [whapps_call:call_id(Call)]),
 
-    update_my_queues_of_change(AcctId, AgentId, Qs),
+    acdc_util:bind_to_call_events(Call),
 
+    update_my_queues_of_change(AcctId, AgentId, Qs),
     {noreply, State#state{call=Call}, hibernate};
 
 handle_cast({originate_execute, JObj}, #state{my_q=Q}=State) ->

@@ -17,7 +17,11 @@
 
 -define(SERVER, ?MODULE).
 -define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{wh_amqp_connection_sup, supervisor}, {wh_amqp_mgr, worker}, {wh_amqp_bootstrap, worker}]).
+-define(CHILDREN, [{wh_amqp_connection_sup, supervisor}
+                   ,{wh_amqp_channels, worker}
+                   ,{wh_amqp_connections, worker}
+                   ,{wh_amqp_bootstrap, worker}
+                  ]).
 
 %% ===================================================================
 %% API functions

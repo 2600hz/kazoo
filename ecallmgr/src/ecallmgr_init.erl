@@ -20,7 +20,7 @@ start_link() ->
 
 init() ->
     put(callid, ?MODULE),
-    [set_loglevel(K, F, D) || {K, F, D} <- [{<<"console_log_level">>, fun wh_util:change_console_log_level/1, info}
+    [set_loglevel(K, F, D) || {K, F, D} <- [{<<"console_log_level">>, fun wh_util:change_console_log_level/1, notice}
                                             ,{<<"error_log_level">>, fun wh_util:change_error_log_level/1, error}
                                             ,{<<"syslog_log_level">>, fun wh_util:change_syslog_log_level/1, info}
                                            ]].

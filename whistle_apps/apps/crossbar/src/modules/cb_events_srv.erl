@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2, subscribe/3, unsubscribe/2, fetch/1, stop/1]).
+-export([start_link/2, subscribe/3, unsubscribe/2, fetch/1]).
 -export([subscriptions/1, set_maxevents/2, get_maxevents/1]).
 
 %% gen_listener callbacks
@@ -87,11 +87,6 @@ get_maxevents(Srv) ->
       Max :: pos_integer().
 set_maxevents(Srv, Max) when Max > 0 ->
     gen_listener:call(Srv, {set_maxevents, Max}).
-
--spec stop(Srv) -> 'ok' when
-      Srv :: pid().
-stop(Srv) ->
-    gen_listener:stop(Srv).
 
 -spec handle_req(JObj, Props) -> 'ok' when
       JObj :: wh_json:json_object(),

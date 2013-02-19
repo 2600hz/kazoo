@@ -15,7 +15,7 @@
 -export([init/1]).
 
 -define(CHILD(Name, Mod, Args), fun(N, cache, _) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
-                                    (N, M, A) -> {N, {M, start_link, A}, permanent, 5000, worker, [N]} end(Name, Mod, Args)).
+                                   (N, M, A) -> {N, {M, start_link, A}, permanent, 6000, worker, [N]} end(Name, Mod, Args)).
 -define(CHILDREN, [<<"_node">>, <<"_authn">>, <<"_route">>, <<"_config">>, <<"_resource">>, <<"_notify">>, <<"_authz">>, <<"_cdr">>]).
 
 %% ===================================================================
@@ -49,7 +49,7 @@ start_link(Node, Options) ->
 init([Node, Options]) ->
     RestartStrategy = one_for_one,
     MaxRestarts = 5,
-    MaxSecondsBetweenRestarts = 10,
+    MaxSecondsBetweenRestarts = 6,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 

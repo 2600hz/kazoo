@@ -212,9 +212,9 @@ reg_removed_from_cache({?MODULE, 'registration', Realm, User}, Reg, 'expire') ->
     case search_for_registration(User, Realm) of
         {ok, _} ->
             lager:debug("registration still exists in another segment, defering to their expiration");
-        {error, timeout} when SuppressUnregister ->
+        {error, _} when SuppressUnregister ->
             lager:info("registration for ~s@~s has expired in this segment, but notifications are suppressed", [Realm, User]);
-        {error, timeout} ->
+        {error, _} ->
             lager:info("registration for ~s@~s has expired in this segment, sending notification", [Realm, User]),
             Updaters = [fun(J) -> wh_json:set_value(<<"Event-Name">>,  <<"deregister">>, J) end
                         ,fun(J) -> wh_json:set_value(<<"Event-Category">>, <<"notification">>, J) end

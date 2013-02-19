@@ -9,7 +9,7 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("amqp_util.hrl").
 
 -export([start_link/0]).
 -export([add/1]).
@@ -34,14 +34,15 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec add/1 :: (wh_amqp_broker:broker()) -> {'error', _} | {'ok','undefined' | pid()} | {'ok','undefined' | pid(), _}.
-add(Broker) ->
-    Name = wh_amqp_broker:name(Broker),
-    supervisor:start_child(?SERVER, ?CHILD(Name, worker, Broker)).
+-spec add/1 :: (#wh_amqp_connection{}) -> {'error', _} | {'ok','undefined' | pid()} | {'ok','undefined' | pid(), _}.
+add(#wh_amqp_connection{manager=Name}=Connection) ->
+    supervisor:start_child(?SERVER, ?CHILD(Name, worker, Connection)).
 
--spec remove/1 :: (wh_amqp_broker:broker()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
-remove(Broker) ->
-    Name = wh_amqp_broker:name(Broker),
+-spec remove/1 :: (#wh_amqp_connection{} | text()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
+remove(#wh_amqp_connection{manager=Name}) ->
+    remove(Name);
+remove(URI) ->
+    Name = wh_util:to_atom(URI, true),
     _ = supervisor:terminate_child(?SERVER, Name),
     supervisor:delete_child(?SERVER, Name).
 

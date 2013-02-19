@@ -627,7 +627,8 @@ publish_doc(Action, Db, [Doc|Docs]) ->
                  | wh_api:default_headers(<<"configuration">>, <<"doc_", (wh_util:to_binary(Action))/binary>>
                                               ,<<"whistle_couch">>, <<"1.0.0">>)
                 ],
-            wapi_conf:publish_doc_update(Action, Db, Type, Id, Props)
+            Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
+            whapps_util:amqp_pool_send(Props, Fun)
     end,
     publish_doc(Action, Db, Docs);
 publish_doc(Action, Db, Doc) ->

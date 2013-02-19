@@ -10,7 +10,7 @@
 
 -behaviour(gen_listener).
 
--export([start_link/0, stop/1]).
+-export([start_link/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -52,9 +52,6 @@ start_link() ->
                                                         ,{queue_options, ?REG_QUEUE_OPTIONS}
                                                         ,{consume_options, ?REG_CONSUME_OPTIONS}
                                                        ], []).
-
--spec stop(pid()) -> 'ok'.
-stop(Srv) -> gen_listener:stop(Srv).
 
 %%%===================================================================
 %%% gen_listener callbacks

@@ -12,7 +12,6 @@
 
 %% API
 -export([start_link/0]).
--export([stop/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -51,10 +50,6 @@ start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
                                       ,{bindings, ?BINDINGS}
                                      ], []).
-
--spec stop(atom() | pid()) -> 'ok'.
-stop(Srv) ->
-    gen_listener:stop(Srv).
 
 %%%===================================================================
 %%% gen_listener callbacks

@@ -184,7 +184,7 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
                           undefined ->
                               condition_el([LogEl, RingbackEl, ParkEl]);
                           PreParkEl ->
-                              condition_el([LogEl, RingbackEl, PreParkEl, ParkEl])
+                              condition_el([LogEl, RingbackEl, PreParkEl,  ParkEl])
                       end,
 
     ParkExtEl = extension_el(<<"park">>, undefined, [ParkConditionEl]),

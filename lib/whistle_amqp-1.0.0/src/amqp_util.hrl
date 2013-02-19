@@ -90,10 +90,34 @@
 -define(EXCHANGE_SYSCONF, <<"sysconf">>).
 -define(TYPE_SYSCONF, <<"topic">>).
 
-%% NOTE: the use of atom() in the specs are for ets match specs and not otherwise valid types
--record(wh_amqp_channel, {consumer = 'undefined' :: 'undefined' | 'publish' | 'misc' | pid() | atom()
-                          ,channel = 'undefined' :: 'undefined' | pid() | atom()
-                          ,tag = <<>> :: binary() | atom()
-                          ,channel_ref = 'undefined' :: 'undefined' | reference() | atom()
-                          ,consumer_ref = 'undefined' :: 'undefined' | reference() | atom()
+
+-type amqp_command() :: #'queue.declare'{} | #'queue.bind'{} | #'queue.unbind'{}
+                      | #'queue.delete'{} | #'basic.consume'{} | #'basic.cancel'{}
+                      | #'basic.ack'{} | #'basic.nack'{} | #'basic.qos'{}
+                      | #'exchange.declare'{}.
+-type command_ret() :: 'ok' |
+                       {'ok', ne_binary() | #'queue.declare_ok'{}} |
+                       {'error', _}.
+
+-define(WH_AMQP_ETS, wh_amqp_ets).
+
+-record(wh_amqp_channel, {consumer = wh_amqp_channel:consumer_pid() :: pid()
+                          ,consumer_ref :: 'undefined' | reference()
+                          ,channel :: 'undefined' | pid()
+                          ,channel_ref :: 'undefined' | reference()
+                          ,uri :: api_binary()
+                          ,started = now()
+                          ,commands = [] :: [amqp_command(),...]
+                          ,reconnecting = false :: boolean()
                          }).
+
+-record(wh_amqp_connection, {uri :: string()
+                             ,params :: #'amqp_params_direct'{} | #'amqp_params_network'{}
+                             ,manager :: atom()
+                             ,connection :: 'undefined' | pid()
+                             ,connection_ref :: 'undefined' | reference()
+                             ,available = false :: boolean()
+                             ,prechannels = [] :: [{reference(), pid()},...]
+                             ,exchanges = [] :: [#'exchange.declare'{},...]
+                             ,weight
+                            }).

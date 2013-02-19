@@ -159,7 +159,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
 read(Id, Context) -> crossbar_doc:load(Id, Context).
 
 fetch_all_agent_statuses(Context) ->
-    AcctId = cb_context:account_id(Context),
+%%    AcctId = cb_context:account_id(Context),
     Context.
 
 -spec fetch_all_agent_stats(cb_context:context()) -> cb_context:context().

@@ -405,7 +405,8 @@ set_controller_queue(ControllerQ, #whapps_call{call_id=CallId, control_q=CtrlQ}=
                            ,{<<"Controller-Queue">>, ControllerQ}
                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                           ],
-                  wapi_call:publish_controller_queue(CtrlQ, Props);
+                  Publisher = fun(P) -> wapi_call:publish_controller_queue(CtrlQ, P) end,
+                  whapps_util:amqp_pool_send(Props, Publisher);
              () ->
                   ok
           end),

@@ -133,9 +133,9 @@ get_conf_command(<<"record">>, _Focus, _ConferenceId, JObj) ->
         false ->
             {'error', <<"conference record failed to execute as JObj did not validate.">>};
         true ->
-            MediaName = ecallmgr_util:recording_filename(wh_json:get_binary_value(<<"Media-Name">>, JObj)),
-            _ = wh_cache:store_local(?ECALLMGR_CALL_CACHE, ?ECALLMGR_RECORDED_MEDIA_KEY(MediaName), MediaName),
-            {<<"recording">>, [<<"start ">>, MediaName]}
+            MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+            RecordingName = ecallmgr_util:recording_filename(MediaName),
+            {<<"recording">>, [<<"start ">>, RecordingName]}
     end;
 
 get_conf_command(<<"recordstop">>, _Focus, _ConferenceId, JObj) ->

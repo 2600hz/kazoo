@@ -1896,7 +1896,6 @@ send_command(Command, Call) when is_list(Command) ->
     'true' = whapps_call:is_call(Call),
     CustomPublisher = whapps_call:custom_publish_function(Call),
     CtrlQ = whapps_call:control_queue(Call),
-
     case is_function(CustomPublisher, 2) of
         'true' -> CustomPublisher(Command, Call);
         'false' when is_binary(CtrlQ) ->

@@ -11,9 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0
-         ,stop/1
-        ]).
+-export([start_link/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -54,8 +52,6 @@ start_link() ->
                                       ,{queue_options, ?SYSCONF_QUEUE_OPTIONS}
                                       ,{consume_options, ?SYSCONF_CONSUME_OPTIONS}
                                      ], []).
-
-stop(Srv) -> gen_listener:stop(Srv).
 
 %%%===================================================================
 %%% gen_listener callbacks

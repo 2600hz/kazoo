@@ -53,6 +53,7 @@
                 ,flow = wh_json:new() :: wh_json:object()
                 ,cf_module_pid :: pid()
                 ,status = <<"sane">> :: ne_binary()
+                ,queue
                }).
 
 %%%===================================================================
@@ -244,26 +245,8 @@ init([Call]) ->
     process_flag(trap_exit, true),
     CallId = whapps_call:call_id(Call),
     put(callid, CallId),
-
-    log_call_information(Call),
-
-    Flow = whapps_call:kvs_fetch(cf_flow, Call),
-    Self = self(),
-    my_queue(Self),
-    Updaters = [fun(C) -> whapps_call:kvs_store(cf_exe_pid, Self, C) end
-                ,fun(C) -> whapps_call:call_id_helper(fun cf_exe:callid/2, C) end
-                ,fun(C) -> whapps_call:control_queue_helper(fun cf_exe:control_queue/2, C) end
-               ],
-    {ok, #state{call=lists:foldr(fun(F, C) -> F(C) end, Call, Updaters)
-                ,flow=Flow
-               }}.
-
-my_queue() ->
-    my_queue(self()).
-my_queue(Srv) ->
-    spawn(fun() ->
-                  gen_listener:cast(Srv, {controller_queue, queue_name(Srv)})
-          end).
+    self() ! initialize,
+    {ok, #state{call=Call}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -386,11 +369,9 @@ handle_cast({add_event_listener, {M, F, A}}, #state{call=Call}=State) ->
             {noreply, State}
     end;
 
-handle_cast({controller_queue, undefined}, State) ->
-    my_queue(),
-    {noreply, State};
-handle_cast({controller_queue, ControllerQ}, #state{call=Call}=State) ->
-    {noreply, launch_cf_module(State#state{call=whapps_call:set_controller_queue(ControllerQ, Call)})};
+handle_cast({created_queue, ControllerQ}, #state{call=Call}=State) ->
+    {noreply, launch_cf_module(State#state{call=whapps_call:set_controller_queue(ControllerQ, Call)
+                                           ,queue=ControllerQ})};
 
 handle_cast({send_amqp, API, PubFun}, #state{call=Call}=State) ->
     send_amqp_message(Call, API, PubFun),
@@ -409,6 +390,16 @@ handle_cast(_, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(initialize, #state{call=Call}) ->
+    log_call_information(Call),
+    Flow = whapps_call:kvs_fetch(cf_flow, Call),
+    Updaters = [fun(C) -> whapps_call:kvs_store(cf_exe_pid, self(), C) end
+                ,fun(C) -> whapps_call:call_id_helper(fun cf_exe:callid/2, C) end
+                ,fun(C) -> whapps_call:control_queue_helper(fun cf_exe:control_queue/2, C) end
+               ],
+    {noreply, #state{call=lists:foldr(fun(F, C) -> F(C) end, Call, Updaters)
+                     ,flow=Flow
+                    }};
 handle_info({'EXIT', _, normal}, State) ->
     %% handle normal exits so we dont need a guard on the next clause, cleaner looking...
     {noreply, State};
@@ -425,7 +416,7 @@ handle_info(_, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
+handle_event(JObj, #state{cf_module_pid=Pid, call=Call, queue=ControllerQ}) ->
     CallId = whapps_call:call_id_direct(Call),
     Others = whapps_call:kvs_fetch(cf_event_pids, [], Call),
 
@@ -439,15 +430,10 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
             transfer(self()),
             ignore;
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
-            Srv = self(),
-            spawn(fun() ->
-                          put(callid, CallId),
-                          Q = queue_name(Srv),
-                          case wh_json:get_value(<<"Controller-Queue">>, JObj) of
-                              Q -> ok;
-                              _Else -> control_usurped(Srv)
-                          end
-                  end),
+            _ = case wh_json:get_value(<<"Controller-Queue">>, JObj) of
+                    ControllerQ -> ok;
+                    _Else -> control_usurped(self())
+                end,
             ignore;
         {{<<"error">>, _}, _} ->
             case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
@@ -510,7 +496,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
 %%--------------------------------------------------------------------
 %% @private
 %% this function determines if the callflow module specified at the
@@ -600,8 +585,8 @@ send_command(_, undefined, _) -> ok;
 send_command(_, _, undefined) -> ok;
 send_command(Command, ControlQ, CallId) ->
     Props = Command ++ [{<<"Call-ID">>, CallId}
-                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                      ],
+                        | wh_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                       ],
     whapps_util:amqp_pool_send(Props, fun(P) -> wapi_dialplan:publish_command(ControlQ, P) end).
 
 -spec log_call_information(whapps_call:call()) -> 'ok'.

@@ -53,9 +53,6 @@
                ,client_version :: api_binary()
                ,options = [] :: wh_proplist()
               }).
--type fs_node() :: #node{}.
--type fs_nodes() :: [fs_node(),...] | [].
-
 -record(astats, {billing_ids =          sets:new() :: set()
                  ,outbound_flat_rate =  sets:new() :: set()
                  ,inbound_flat_rate =   sets:new() :: set()
@@ -254,18 +251,19 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({'is_node_up', Node}, _From, #state{nodes=Nodes}=State) ->
     Resp = case dict:find(Node, Nodes) of
-               'error' -> 'false';
-               {'ok', #node{connected=Connected}} -> 
+               error -> false;
+               {ok, #node{connected=Connected}} ->
                    Connected
            end,
     {reply, Resp, State};
-handle_call('connected_nodes', _From, #state{nodes=Nodes}=State) -> 
+handle_call(connected_nodes, _From, #state{nodes=Nodes}=State) ->
     Resp = [Node
              || {_, #node{node=Node, connected=Connected}} <- dict:to_list(Nodes)
                 ,Connected
            ],
     {reply, Resp, State};
 handle_call({add_fs_node, NodeName, Cookie, Options}, From, State) ->
+    lager:notice("attempting to connect to freeswitch node ~s", [NodeName]),
     spawn(fun() ->
                   Reply = maybe_add_node(NodeName, Cookie, Options, State),
                   gen_server:reply(From, Reply)
@@ -588,7 +586,7 @@ maybe_rm_fs_node(NodeName, #state{nodes=Nodes}=State) ->
         'error' -> 'ok';
         {'ok', #node{}=Node} ->
             rm_fs_node(Node, State)
-    end.    
+    end.
 
 -spec rm_fs_node(#node{}, state()) -> 'ok'.
 rm_fs_node(#node{}=Node, #state{self=Srv}) ->
@@ -633,8 +631,8 @@ maybe_connect_to_node(#node{node=NodeName}=Node) ->
 -spec maybe_ping_node(#node{}) -> 'ok' | {'error', _}.
 maybe_ping_node(#node{node=NodeName, cookie=Cookie}=Node) ->
     erlang:set_cookie(NodeName, Cookie),
-    case net_kernel:connect_node(NodeName) of
-        'true' ->
+    case net_adm:ping(NodeName) of
+        pong ->
             _ = ecallmgr_fs_pinger_sup:remove_node(NodeName),
             maybe_start_node_handlers(Node);
         _Else ->
@@ -650,11 +648,14 @@ maybe_start_node_handlers(#node{node=NodeName, client_version=Version
                                             | props:delete(cookie, Props)
                                            ])
     of
-        {'ok', _} -> initialize_node_connection(Node);
-        {'error', {already_started, _}} -> 'ok';
-        {'error', _R}=E -> 
+        {ok, _} -> initialize_node_connection(Node);
+        {error, {already_started, _}} -> ok;
+        {error, _R}=E ->
             lager:warning("unable to start node ~s handlers: ~-255p", [NodeName, _R]),
             E;
+        timeout ->
+            lager:warning("connection timeout while starting node ~s handlers", [NodeName]),
+            {error, timeout};
         _Else ->
             lager:warning("unexpected result trying to start ~s node handlers: ~-255p", [NodeName, _Else]),
             {'error', failed_starting_handlers}
@@ -694,7 +695,7 @@ maybe_start_node_pinger(#node{node=NodeName, options=Props}=Node) ->
 -spec close_node(#node{}) -> 'ok' | {'error','not_found' | 'running' | 'simple_one_for_one'}.
 close_node(#node{node=NodeName}) ->
     _ = ecallmgr_fs_sup:remove_node(NodeName),
-    ecallmgr_fs_pinger_sup:remove_node(NodeName).    
+    ecallmgr_fs_pinger_sup:remove_node(NodeName).
 
 -spec create_node(text(), text(), wh_proplist()) -> #node{}.
 create_node(NodeName, Cookie, Options) when not is_atom(NodeName) ->
