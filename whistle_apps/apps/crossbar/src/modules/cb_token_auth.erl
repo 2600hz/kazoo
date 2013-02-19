@@ -17,6 +17,7 @@
          ,stop/0
          ,authenticate/1
          ,finish_request/1
+         ,clean_expired/1
         ]).
 
 %% cleanup proc
