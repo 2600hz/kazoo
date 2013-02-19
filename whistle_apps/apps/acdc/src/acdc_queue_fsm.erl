@@ -23,6 +23,9 @@
          ,current_call/1
          ,status/1
          ,finish_member_call/1
+
+         %% Accessors
+         ,cdr_url/1
         ]).
 
 %% State handlers
@@ -160,6 +163,8 @@ current_call(FSM) -> gen_fsm:sync_send_event(FSM, current_call).
 
 status(FSM) -> gen_fsm:sync_send_event(FSM, status).
 
+cdr_url(FSM) -> gen_fsm:sync_send_all_state_event(FSM, cdr_url).
+
 %%%===================================================================
 %%% gen_fsm callbacks
 %%%===================================================================
@@ -216,6 +221,7 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=QueueSrv
                                                 ,manager_proc=MgrSrv
                                                 ,connection_timeout=ConnTimeout
                                                 ,connection_timer_ref=ConnRef
+                                                ,cdr_url=Url
                                                }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, CallJObj)),
     put(callid, whapps_call:call_id(Call)),
@@ -227,7 +233,7 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=QueueSrv
             webseq:note(self(), right, [whapps_call:call_id(Call), <<": member call">>]),
             webseq:evt(whapps_call:call_id(Call), self(), <<"member call received">>),
 
-            acdc_queue_listener:member_connect_req(QueueSrv, CallJObj, Delivery),
+            acdc_queue_listener:member_connect_req(QueueSrv, CallJObj, Delivery, Url),
 
             maybe_stop_timer(ConnRef), % stop the old one, maybe
 
@@ -627,6 +633,8 @@ handle_event(_Event, StateName, State) ->
 %%                   {stop, Reason, Reply, NewState}
 %% @end
 %%--------------------------------------------------------------------
+handle_sync_event(cdr_url, _, StateName, #state{cdr_url=Url}=State) ->
+    {reply, Url, StateName, State};
 handle_sync_event(_Event, _From, StateName, State) ->
     Reply = ok,
     lager:debug("unhandled sync event in ~s: ~p", [StateName, _Event]),

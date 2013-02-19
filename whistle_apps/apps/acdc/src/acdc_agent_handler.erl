@@ -135,17 +135,14 @@ handle_call_event(JObj, Props) ->
     end.
 
 handle_cdr(JObj, Props) ->
-    true = wapi_call:cdr_v(JObj),
+    'true' = wapi_call:cdr_v(JObj),
     case props:get_value(cdr_url, Props) of
         'undefined' -> lager:debug("no cdr url defined: ~p", [JObj]);
         Url ->
-            lager:debug("sending CDR to ~s", [Url]),
-            Body = wh_json:encode(JObj),
-            _Resp = ibrowse:send_req(wh_util:to_list(Url)
-                                     ,[{<<"Content-Type">>, <<"application/json">>}]
-                                     ,'post', Body
-                                    ),
-            lager:debug("resp: ~p", [_Resp])
+            acdc_util:send_cdr(Url, JObj),
+            acdc_agent:unbind_from_cdr(props:get_value(server, Props)
+                                       ,wh_json:get_value(<<"Call-ID">>, JObj)
+                                      )
     end.
 
 handle_originate_resp(JObj, Props) ->

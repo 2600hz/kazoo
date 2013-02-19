@@ -21,7 +21,7 @@
 %% API
 -export([start_link/4
          ,accept_member_calls/1
-         ,member_connect_req/3
+         ,member_connect_req/4
          ,member_connect_re_req/1
          ,member_connect_win/3
          ,timeout_member_call/1
@@ -32,6 +32,7 @@
          ,send_sync_req/2
          ,config/1
          ,send_sync_resp/4
+         ,unbind_from_cdr/2
         ]).
 
 %% Call Manipulation
@@ -51,30 +52,33 @@
 
 -record(state, {
           queue_id :: ne_binary()
-         ,acct_id :: ne_binary()
-         ,moh :: ne_binary()
+          ,acct_id :: ne_binary()
+          ,moh :: ne_binary()
 
-          %% PIDs of the gang
-         ,worker_sup :: pid()
-         ,mgr_pid :: pid()
-         ,fsm_pid :: pid()
-         ,shared_pid :: pid()
+           %% PIDs of the gang
+          ,worker_sup :: pid()
+          ,mgr_pid :: pid()
+          ,fsm_pid :: pid()
+          ,shared_pid :: pid()
 
-          %% AMQP-related
-         ,my_id :: ne_binary()
-         ,my_q :: ne_binary()
-         ,member_call_queue :: ne_binary()
+           %% AMQP-related
+          ,my_id :: ne_binary()
+          ,my_q :: ne_binary()
+          ,member_call_queue :: ne_binary()
 
-          %% While processing a call
-         ,call :: whapps_call:call()
-         ,agent_id :: ne_binary()
-         ,delivery :: #'basic.deliver'{}
+           %% While processing a call
+          ,call :: whapps_call:call()
+          ,agent_id :: ne_binary()
+          ,delivery :: #'basic.deliver'{}
          }).
 
 -define(BINDINGS, [{self, []}]).
 -define(RESPONDERS, [{{acdc_queue_handler, handle_call_event}
                       ,[{<<"call_event">>, <<"*">>}]
                      }
+                     ,{{acdc_queue_handler, handle_cdr}
+                       ,[{<<"call_detail">>, <<"cdr">>}]
+                      }
                      ,{{acdc_queue_handler, handle_call_event}
                        ,[{<<"error">>, <<"*">>}]
                       }
@@ -120,8 +124,8 @@ start_link(WorkerSup, MgrPid, AcctId, QueueId) ->
 accept_member_calls(Srv) ->
     gen_listener:cast(Srv, {accept_member_calls}).
 
-member_connect_req(Srv, MemberCallJObj, Delivery) ->
-    gen_listener:cast(Srv, {member_connect_req, MemberCallJObj, Delivery}).
+member_connect_req(Srv, MemberCallJObj, Delivery, Url) ->
+    gen_listener:cast(Srv, {member_connect_req, MemberCallJObj, Delivery, Url}).
 member_connect_re_req(Srv) ->
     gen_listener:cast(Srv, {member_connect_re_req}).
 
@@ -162,6 +166,9 @@ put_member_on_hold(Srv, Call, MOH) ->
 
 send_sync_resp(Srv, Strategy, StrategyState, ReqJObj) ->
     gen_listener:cast(Srv, {send_sync_resp, Strategy, StrategyState, ReqJObj}).
+
+unbind_from_cdr(Srv, CallId) ->
+    gen_listener:cast(Srv, {unbind_from_cdr, CallId}).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -283,17 +290,17 @@ handle_cast({queue_name, Q}, #state{my_q=undefined}=State) ->
     lager:debug("my queue: ~s", [Q]),
     {noreply, State#state{my_q=Q}, hibernate};
 
-handle_cast({member_connect_req, MemberCallJObj, Delivery}, #state{my_q=MyQ
-                                                                   ,my_id=MyId
-                                                                   ,acct_id=AcctId
-                                                                   ,queue_id=QueueId
-                                                                  }=State
+handle_cast({member_connect_req, MemberCallJObj, Delivery, Url}, #state{my_q=MyQ
+                                                                        ,my_id=MyId
+                                                                        ,acct_id=AcctId
+                                                                        ,queue_id=QueueId
+                                                                       }=State
            ) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, MemberCallJObj)),
 
     put(callid, whapps_call:call_id(Call)),
 
-    acdc_util:bind_to_call_events(Call),
+    acdc_util:bind_to_call_events(Call, Url),
     send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId),
 
     {noreply, State#state{call=Call
@@ -448,6 +455,10 @@ handle_cast({send_sync_req, Type}, #state{my_q=MyQ
     send_sync_req(MyQ, MyId, AcctId, QueueId, Type),
     {noreply, State};
 
+handle_cast({unbind_from_cdr, CallId}, State) ->
+    acdc_util:unbind_from_cdr(CallId),
+    {noreply, State};
+
 handle_cast({put_member_on_hold, Call}, #state{moh=MOH}=State) ->
     handle_cast({put_member_on_hold, Call, MOH}, State);
 handle_cast({put_member_on_hold, Call, MOH}, State) ->
@@ -594,16 +605,16 @@ publish_sync_resp(Strategy, StrategyState, ReqJObj, Id) ->
 -spec maybe_nack(whapps_call:call(), #'basic.deliver'{}, pid()) -> boolean().
 maybe_nack(Call, Delivery, SharedPid) ->
     case is_call_alive(Call) of
-        true ->
+        'true' ->
             lager:debug("call is still active, nack and replay"),
             acdc_util:unbind_from_call_events(Call),
             acdc_queue_shared:nack(SharedPid, Delivery),
-            true;
-        false ->
+            'true';
+        'false' ->
             lager:debug("call is probably not active, ack it (so its gone)"),
             acdc_util:unbind_from_call_events(Call),
             acdc_queue_shared:ack(SharedPid, Delivery),
-            false
+            'false'
     end.
 
 -spec is_call_alive(whapps_call:call() | ne_binary()) -> boolean().

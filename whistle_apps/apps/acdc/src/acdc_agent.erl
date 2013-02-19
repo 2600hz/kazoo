@@ -33,6 +33,7 @@
          ,fsm_started/2
          ,add_endpoint_bindings/3
          ,agent_call_id/3, outbound_call_id/1
+         ,unbind_from_cdr/2
         ]).
 
 %% gen_server callbacks
@@ -247,6 +248,8 @@ add_endpoint_bindings(Srv, Realm, User) ->
     gen_listener:add_binding(Srv, route, [{realm, Realm}
                                           ,{user, User}
                                           ]).
+
+unbind_from_cdr(Srv, CallId) -> gen_listener:cast(Srv, {unbind_from_cdr, CallId}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -647,6 +650,10 @@ handle_cast({call_status_req, CallId}, #state{my_q=Q}=State) when is_binary(Call
     {noreply, State};
 handle_cast({call_status_req, Call}, State) ->
     handle_cast({call_status_req, whapps_call:call_id(Call)}, State);
+
+handle_cast({unbind_from_cdr, CallId}, State) ->
+    acdc_util:unbind_from_cdr(CallId),
+    {noreply, State};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),

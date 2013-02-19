@@ -11,6 +11,7 @@
 -export([get_endpoints/2
          ,bind_to_call_events/1, bind_to_call_events/2
          ,unbind_from_call_events/1, unbind_from_call_events/2
+         ,unbind_from_cdr/1
          ,agents_in_queue/2
          ,agent_status/2, agent_status/3
          ,update_agent_status/3, update_agent_status/4
@@ -19,6 +20,7 @@
          ,queue_presence_update/2
          ,agent_presence_update/2
          ,presence_update/3
+         ,send_cdr/2
         ]).
 
 -include("acdc.hrl").
@@ -43,6 +45,18 @@ presence_update(AcctId, QueueId, State) ->
 
     lager:debug("sending presence update '~s' to '~s'", [State, To]),
     whapps_call_command:presence(State, To).
+
+-spec send_cdr(ne_binary(), wh_json:object()) -> 'ok'.
+send_cdr(Url, JObj) ->
+    Body = wh_json:encode(JObj),
+    
+    lager:debug("sending CDR to ~s", [Url]),
+    Body = wh_json:encode(JObj),
+    _Resp = ibrowse:send_req(wh_util:to_list(Url)
+                             ,[{"Content-Type", "application/json"}]
+                             ,'post', Body
+                            ),
+    lager:debug("resp: ~p", [_Resp]).
 
 %% Returns the list of agents configured for the queue
 -spec agents_in_queue(ne_binary(), ne_binary()) -> wh_json:json_strings().
@@ -102,6 +116,7 @@ get_endpoint(Call, ?NE_BINARY = EndpointId) ->
 
 -spec unbind_from_call_events(api_binary() | whapps_call:call()) -> 'ok'.
 -spec unbind_from_call_events(api_binary() | whapps_call:call(), api_binary()) -> 'ok'.
+-spec unbind_from_cdr(api_binary()) -> 'ok'.
 
 bind_to_call_events('undefined') -> 'ok';
 bind_to_call_events(?NE_BINARY = CallId) -> bind(CallId, [events, error]);
@@ -126,6 +141,9 @@ unbind_from_call_events('undefined', _) -> 'ok';
 unbind_from_call_events(Call, 'undefined') -> unbind_from_call_events(Call);
 unbind_from_call_events(?NE_BINARY = CallId, _Url) -> unbind(CallId, [events, error, cdr]);
 unbind_from_call_events(Call, Url) -> unbind_from_call_events(whapps_call:call_id(Call), Url).
+
+unbind_from_cdr('undefined') -> 'ok';
+unbind_from_cdr(CallId) -> unbind(CallId, [cdr]).
 
 unbind(CallId, Restrict) ->
     gen_listener:rm_binding(self(), call, [{callid, CallId}
