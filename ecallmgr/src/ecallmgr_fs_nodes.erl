@@ -262,9 +262,7 @@ handle_call(connected_nodes, _From, #state{nodes=Nodes}=State) ->
                 ,Connected
            ],
     {reply, Resp, State};
-handle_call({add_fs_node, NodeName, Cookie, Options}, From, State) ->
-    lager:notice("attempting to connect to freeswitch node ~s", [NodeName]),
-    spawn(fun() ->
+handle_call({add_fs_node, NodeName, Cookie, Options}, From, State) ->    spawn(fun() ->
                   Reply = maybe_add_node(NodeName, Cookie, Options, State),
                   gen_server:reply(From, Reply)
           end),
@@ -624,7 +622,7 @@ maybe_connect_to_node(#node{node=NodeName}=Node) ->
     case maybe_ping_node(Node) of
         {'error', _R}=E -> E;
         'ok' ->
-            lager:info("succesfully established connection to freeswitch node ~s", [NodeName]),
+            lager:notice("succesfully connected to freeswitch node ~s", [NodeName]),
             'ok'
     end.
 

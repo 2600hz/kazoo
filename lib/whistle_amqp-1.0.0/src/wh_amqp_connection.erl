@@ -195,7 +195,7 @@ handle_info({connect, Timeout}, #wh_amqp_connection{uri=URI, params=Params}=Stat
             _Ref = erlang:send_after(Timeout, self(), {connect, next_timeout(Timeout)}),
             {noreply, disconnected(State), hibernate};
         {ok, Pid} ->
-            lager:info("connected successfully to '~s'", [URI]),
+            lager:notice("connected successfully to '~s'", [URI]),
             Ref = erlang:monitor(process, Pid),
             S = State#wh_amqp_connection{connection=Pid
                                          ,connection_ref=Ref},
@@ -312,7 +312,7 @@ open_channel(#wh_amqp_connection{connection=Pid, manager=Srv}) ->
             %% This is not strickly necessary, but since we
             %% loose the entire CONNECTION if a single message
             %% cant be delivered, better safe then sorry...
-%%            amqp_selective_consumer:register_default_consumer(Channel, whereis(Srv)),
+            amqp_selective_consumer:register_default_consumer(Channel, whereis(Srv)),
             Ok;
         closing ->
             lager:debug("unable to open channel, connection is closing", []),

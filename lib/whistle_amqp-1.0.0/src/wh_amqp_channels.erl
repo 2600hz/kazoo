@@ -304,7 +304,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec reconnect({[#wh_amqp_channel{}], _} | '$end_of_table', #wh_amqp_connection{}) -> 'ok'.
-reconnect('$end_of_table', _) -> ok;
+reconnect('$end_of_table', #wh_amqp_connection{uri=URI}) ->
+    lager:notice("reconnected all disconnected channels to '~s'", [URI]),
+    ok;
 reconnect({[Channel], Continuation}, Connection) ->
     catch wh_amqp_channel:open(Channel, Connection),
     reconnect(ets:match(Continuation), Connection).
