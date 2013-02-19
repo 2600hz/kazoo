@@ -16,12 +16,12 @@
 -export([add/1]).
 -export([remove/1]).
 -export([current/0]).
+-export([find/1]).
 -export([available/0]).
 -export([wait_for_available/0]).
--export([register_return_handler/0]).
--export([update_connection/1
-         ,update_connection/2
-        ]).
+-export([update_exchanges/2]).
+-export([connected/1]).
+-export([disconnected/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -31,6 +31,8 @@
         ]).
 
 -record(state, {}).
+
+-define(TAB, ?MODULE).
 
 %%%===================================================================
 %%% API
@@ -46,40 +48,74 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
--spec add/1 :: (text()) -> 'ok' | {'error', _}.
+-spec add(text()) -> #wh_amqp_connection{} | {'error', _}.
+add(URI) when not is_binary(URI) ->
+    add(wh_util:to_binary(URI));
 add(URI) ->
-    case catch wh_amqp_broker:set_uri(URI, wh_amqp_broker:new()) of
-        {'EXIT', _} ->
-            lager:error("failed to parse amqp URI '~p', dropping", [URI]),
+    case catch amqp_uri:parse(wh_util:to_list(URI)) of
+        {'EXIT', _R} ->
+            lager:error("failed to parse amqp URI '~s': ~p", [URI, _R]),
             {error, invalid_uri};
-        Broker ->
-            case wh_amqp_connection_sup:add(Broker) of
-                {ok, _} -> ok;
-                {error, {already_started, _}} -> ok;
+        {error, {Info, _}} ->
+            lager:error("failed to parse amqp URI '~s': ~p", [URI, Info]),
+            {error, invalid_uri};
+        {ok, Params} ->
+            new(#wh_amqp_connection{uri=URI
+                                    ,manager=wh_util:to_atom(URI, true)
+                                    ,params=Params})
+    end.
+
+-spec new(#wh_amqp_connection{}) -> #wh_amqp_connection{} | {'error', _}.
+new(#wh_amqp_connection{uri=URI}=Connection) ->
+    case ets:member(?TAB, URI) of
+        true ->
+            lager:error("connection to '~s' already exists", [URI]);
+        false ->
+            case wh_amqp_connection_sup:add(Connection) of
+                {ok, _} ->
+                    gen_server:call(?MODULE, {new, Connection});
+                {error, {already_started, _}} ->
+                    gen_server:call(?MODULE, {new, Connection});
                 {error, already_present} ->
-                    _ = wh_amqp_connection_sup:remove(Broker),
-                    add(URI);
+                    _ = wh_amqp_connection_sup:remove(Connection),
+                    new(Connection);
                 {error, Reason} ->
-                    Name = wh_amqp_broker:name(Broker),
-                    lager:warning("unable to start amqp connection to '~s': ~p", [Name, Reason]),
+                    lager:warning("unable to start amqp connection to '~s': ~p", [URI, Reason]),
                     {error, Reason}
             end
     end.
 
+-spec remove(text()) -> 'ok'.
+remove(URI) when not is_binary(URI) ->
+    remove(wh_util:to_binary(URI));
 remove(URI) ->
-    wh_amqp_connection_sup:remove(URI).
+    case ets:lookup(?TAB, URI) of
+        [] -> ok;
+        [#wh_amqp_connection{}=Connection] ->
+            _ = wh_amqp_channels:lost_connection(Connection),
+            _ = wh_amqp_connection_sup:remove(Connection),
+            ok
+    end.
 
+-spec current() -> {'ok', #wh_amqp_connection{}} | {'error', 'no_available_connection'}.
 current() ->
-    case ets:match_object(?WH_AMQP_ETS, #wh_amqp_connection{connection = '$1'
-                                                       ,available = true
-                                                       ,_ = '_'})
-    of
+    Match = #wh_amqp_connection{available=true, _='_'},
+    case ets:match_object(?TAB, Match) of
         [Connection|_] -> {ok, Connection};
         _Else ->
-            lager:critical("no AMQP connection available", []),
             {error, no_available_connection}
     end.
 
+-spec find(ne_binary()) -> #wh_amqp_connection{} | {'error', 'not_found'}.
+find(URI) ->
+    case ets:lookup(?TAB, URI) of
+        [#wh_amqp_connection{}=Connection|_] ->
+            Connection;
+        _Else ->
+            {error, not_found}
+    end.
+
+-spec available() -> boolean().
 available() ->
     case current() of
         {ok, _} -> true;
@@ -95,20 +131,20 @@ wait_for_available() ->
             wait_for_available()
     end.
 
--spec register_return_handler/0 :: () -> 'ok'.
-register_return_handler() ->
-    io:format("~p: register return handler~n", [self()]),
-    ok.
-%%    gen_server:cast(?SERVER, {register_return_handler, self()}).
+-spec update_exchanges(ne_binary(), [] | [#'exchange.declare'{},...]) -> 'ok'.
+update_exchanges(URI, Exchanges) ->
+    gen_server:cast(?MODULE, {update_exchanges, URI, Exchanges}).
 
-update_connection(#wh_amqp_connection{}=Connection) ->
-    ets:insert(?WH_AMQP_ETS, Connection),
-    Connection.
+-spec connected(#wh_amqp_connection{}) -> #wh_amqp_connection{}.
+connected(#wh_amqp_connection{connection=Pid}=Connection) when is_pid(Pid) ->
+    C = gen_server:call(?MODULE, {connected, Connection}),
+    _ = wh_amqp_channels:reconnect(C),
+    C.
 
-update_connection(#wh_amqp_connection{connection=undefined}, _) ->
-    false;
-update_connection(#wh_amqp_connection{connection=Key}, Updates) ->
-    ets:update_element(?WH_AMQP_ETS, Key, Updates).
+-spec disconnected(#wh_amqp_connection{}) -> #wh_amqp_connection{}.
+disconnected(#wh_amqp_connection{}=Connection) ->
+    _ = wh_amqp_channels:lost_connection(Connection),
+    gen_server:call(?MODULE, {disconnected, Connection}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -126,8 +162,8 @@ update_connection(#wh_amqp_connection{connection=Key}, Updates) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    R = ets:new(?WH_AMQP_ETS, [named_table, {keypos, 2}, public]),
-    io:format("created ets table: ~p~n", [R]),
+    put(callid, ?LOG_SYSTEM_ID),
+    _ = ets:new(?TAB, [named_table, {keypos, #wh_amqp_connection.uri}]),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -144,6 +180,26 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({new, #wh_amqp_connection{uri=URI}=Connection}, _, State) ->
+    case ets:insert_new(?TAB, Connection) of
+        true -> {reply, Connection, State};
+        false -> {reply, find(URI), State}
+    end;
+handle_call({connected, #wh_amqp_connection{uri=URI, connection=Pid
+                                            ,connection_ref=Ref}=C}, _, State) ->
+    Updates = [{#wh_amqp_connection.connection, Pid}
+               ,{#wh_amqp_connection.connection_ref, Ref}
+               ,{#wh_amqp_connection.available, true}
+              ],
+    ets:update_element(?TAB, URI, Updates),
+    {reply, C#wh_amqp_connection{available=true}, State};
+handle_call({disconnected, #wh_amqp_connection{uri=URI}=C}, _, State) ->
+    Updates = [{#wh_amqp_connection.connection, undefined}
+               ,{#wh_amqp_connection.connection_ref, undefined}
+               ,{#wh_amqp_connection.available, false}
+              ],
+    ets:update_element(?TAB, URI, Updates),
+    {reply, C#wh_amqp_connection{available=false}, State};
 handle_call(_Request, _From, State) ->
     {reply, {error, not_implemented}, State}.
 
@@ -157,6 +213,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({update_exchanges, URI, Exchanges}, State) ->
+    ets:update_element(?TAB, URI, {#wh_amqp_connection.exchanges, Exchanges}),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 

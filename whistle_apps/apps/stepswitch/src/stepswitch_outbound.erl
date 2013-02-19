@@ -255,7 +255,6 @@ originate_to_endpoints(Endpoints, JObj) ->
                  ,{<<"Outbound-Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, JObj)}
                  | wh_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
                 ]),
-    wh_amqp_connections:register_return_handler(),
     wapi_resource:publish_originate_req(Request),
     wait_for_originate(MsgId).
 

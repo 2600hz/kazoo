@@ -97,7 +97,7 @@
 
 -export([access_request/0, access_request/1, basic_ack/1, basic_nack/1, basic_qos/1]).
 
--export([is_json/1, is_host_available/0, register_return_handler/0]).
+-export([is_json/1, is_host_available/0]).
 -export([encode/1]).
 
 -define(KEY_SAFE(C), ((C >= $a andalso C =< $z) orelse
@@ -334,8 +334,8 @@ basic_publish(Exchange, ?NE_BINARY = RoutingKey, ?NE_BINARY = Payload, ContentTy
       ,reply_to = props:get_value(reply_to, Props) % address to reply to
 
                   %% TODO:: new rabbit wants an integer...
+%%      ,expiration = <<>>
       ,expiration = props:get_value(expiration, Props) % expires time
-
 
       ,message_id = props:get_value(message_id, Props) % app message id
       ,timestamp = props:get_value(timestamp, Props) % message timestamp
@@ -418,7 +418,7 @@ new_exchange(Exchange, Type, Options) ->
       ,nowait = props:get_value(nowait, Options, false)
       ,arguments = props:get_value(arguments, Options, [])
      },
-    wh_amqp_channel:consume(ED).
+    wh_amqp_channel:command(ED).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -538,7 +538,7 @@ new_queue(Queue, Options) when is_binary(Queue) ->
     %% can be queue | message_count | consumer_count | all
     Return = props:get_value(return_field, Options, queue),
 
-    case catch wh_amqp_channel:consume(QD) of
+    case catch wh_amqp_channel:command(QD) of
         {ok, #'queue.declare_ok'{queue=Q}} when Return =:= queue -> Q;
         {ok, #'queue.declare_ok'{message_count=Cnt}} when Return =:= message_count -> Cnt;
         {ok, #'queue.declare_ok'{consumer_count=Cnt}} when Return =:= consumer_count -> Cnt;
@@ -608,7 +608,7 @@ queue_delete(Queue, Prop) ->
       ,if_empty = props:get_value(if_empty, Prop, false)
       ,nowait = props:get_value(nowait, Prop, true)
      },
-    wh_amqp_channel:consume(QD).
+    wh_amqp_channel:command(QD).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -720,7 +720,7 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
       ,nowait = props:get_value(nowait, Options, false)
       ,arguments = []
      },
-    wh_amqp_channel:consume(QB).
+    wh_amqp_channel:command(QB).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -797,7 +797,7 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
       ,routing_key = Routing
       ,arguments = []
      },
-    wh_amqp_channel:consume(QU).
+    wh_amqp_channel:command(QU).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -820,7 +820,7 @@ basic_consume(Queue, Options) ->
       ,exclusive = props:get_value(exclusive, Options, true)
       ,nowait = props:get_value(nowait, Options, false)
      },
-    wh_amqp_channel:consume(BC).
+    wh_amqp_channel:command(BC).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -831,7 +831,7 @@ basic_consume(Queue, Options) ->
 %%------------------------------------------------------------------------------
 -spec basic_cancel/0 :: () -> 'ok'.
 basic_cancel() ->
-    wh_amqp_channel:consume(#'basic.cancel'{}).
+    wh_amqp_channel:command(#'basic.cancel'{}).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -874,7 +874,7 @@ is_json(#'P_basic'{content_type=CT}) ->
 basic_ack(#'basic.deliver'{delivery_tag=DTag}) ->
     basic_ack(DTag);
 basic_ack(DTag) ->
-    wh_amqp_channel:consume(#'basic.ack'{delivery_tag=DTag}).
+    wh_amqp_channel:command(#'basic.ack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -887,7 +887,7 @@ basic_ack(DTag) ->
 basic_nack(#'basic.deliver'{delivery_tag=DTag}) ->
     basic_nack(DTag);
 basic_nack(DTag) ->
-    wh_amqp_channel:consume(#'basic.nack'{delivery_tag=DTag}).
+    wh_amqp_channel:command(#'basic.nack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -907,18 +907,7 @@ is_host_available() ->
 %%------------------------------------------------------------------------------
 -spec basic_qos/1 :: (non_neg_integer()) -> 'ok'.
 basic_qos(PreFetch) when is_integer(PreFetch) ->
-    wh_amqp_channel:consume(#'basic.qos'{prefetch_count = PreFetch}).
-
-%%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% Register to recieve notifications if ANY messages published with either with
-%% the immediate or mandatory flags is returned
-%% @end
-%%------------------------------------------------------------------------------
--spec register_return_handler/0 :: () -> 'ok'.
-register_return_handler() ->
-    wh_amqp_connections:register_return_handler().
+    wh_amqp_channel:command(#'basic.qos'{prefetch_count = PreFetch}).
 
 %%------------------------------------------------------------------------------
 %% @public

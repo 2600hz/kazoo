@@ -13,15 +13,18 @@
 -include("amqp_util.hrl").
 
 -export([start_link/0]).
--export([add/1]).
+-export([new/0]).
 -export([remove/1]).
 -export([command/2]).
+-export([is_exchange_declared/2]).
 -export([find/0
          ,find/1
         ]).
 -export([get_channel/0]).
 -export([lost_connection/1]).
--export([reconnected/1]).
+-export([reconnect/0
+         ,reconnect/1
+        ]).
 -export([monitor_channel/1]).
 -export([monitor_consumer/1]).
 -export([demonitor_channel/1]).
@@ -35,7 +38,6 @@
         ]).
 
 -define(TAB, ?MODULE).
-
 
 -record(state, {}).
 
@@ -53,22 +55,32 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-add(Pid) ->
-    gen_server:call(?MODULE, {add, #wh_amqp_channel{consumer=Pid}}).
+-spec new() -> #wh_amqp_channel{}.
+new() ->
+    gen_server:call(?MODULE, {new, #wh_amqp_channel{}}).
 
-remove(#wh_amqp_channel{consumer=Pid}=Channel) ->
-    gen_server:cast(?MODULE, {remove, Pid}),
-    Channel.
+-spec remove(#wh_amqp_channel{}) -> 'ok'.
+remove(#wh_amqp_channel{consumer=Pid}) ->
+    gen_server:cast(?MODULE, {remove, Pid}).
 
+-spec command(#wh_amqp_channel{}, amqp_command()) -> #wh_amqp_channel{}.
 command(#wh_amqp_channel{reconnecting=true}, _) -> ok;
+command(#wh_amqp_channel{uri=URI}, #'exchange.declare'{}=Command) ->
+    wh_amqp_connection:exchange_declared(URI, Command);
 command(#wh_amqp_channel{consumer=Pid}=Channel, Command) ->
     gen_server:cast(?MODULE, {command, Pid, Command}),
     Channel.
 
+-spec is_exchange_declared(#wh_amqp_channel{}, #'exchange.declare'{}) -> boolean().
+is_exchange_declared(#wh_amqp_channel{uri=URI}, #'exchange.declare'{}=Command) ->
+    wh_amqp_connection:is_exchange_declared(URI, Command).
+
+-spec find() -> #wh_amqp_channel{} | {'error', 'no_channel'}.
 find() ->
     Pid = wh_amqp_channel:consumer_pid(),
     find(Pid).
 
+-spec find(pid()) -> #wh_amqp_channel{} | {'error', 'no_channel'}.
 find(Pid) ->
     case ets:lookup(?TAB, Pid) of
         [] -> {error, no_channel};
@@ -76,6 +88,7 @@ find(Pid) ->
             Channel
     end.
 
+-spec get_channel() -> #wh_amqp_channel{}.
 get_channel() ->
     case find() of
         #wh_amqp_channel{channel=undefined}=Channel ->
@@ -86,40 +99,46 @@ get_channel() ->
             wh_amqp_channel:new()
     end.
 
-find_reference(Ref) ->
-    MatchSpec = [{#wh_amqp_channel{channel_ref = '$1', _ = '_'},
-                  [{'=:=', '$1', {const, Ref}}],
-                  [{{channel, '$_'}}]},
-                 {#wh_amqp_channel{consumer_ref = '$1', _ = '_'},
-                  [{'=:=', '$1', {const, Ref}}],
-                  [{{consumer, '$_'}}]}
-                ],
-    ets:select(?TAB, MatchSpec).
+-spec lost_connection(#wh_amqp_connection{}) -> 'ok'.
+lost_connection(#wh_amqp_connection{uri=URI}) ->
+    gen_server:cast(?MODULE, {lost_connection, URI});
+lost_connection(URI) when not is_binary(URI) ->
+    lost_connection(wh_util:to_binary(URI));
+lost_connection(URI) ->
+    gen_server:cast(?MODULE, {lost_connection, URI}).
 
-lost_connection(#wh_amqp_connection{connection=Pid}) when is_pid(Pid) ->
-    gen_server:cast(?MODULE, {lost_connection, Pid});
-lost_connection(_) -> ok.
+-spec reconnect() -> pid() | {'error', _}.
+reconnect() ->
+    case wh_amqp_connections:current() of
+        {error, _}=E -> E;
+        {ok, Connection} ->
+            reconnect(Connection)
+    end.
 
-reconnected(#wh_amqp_connection{}=Connection) ->
-    spawn(fun() -> reconnected(ets:match_object(?TAB, #wh_amqp_channel{channel=undefined, _='_'}, 1), Connection) end).
+-spec reconnect(#wh_amqp_connection{}) -> pid().
+reconnect(#wh_amqp_connection{}=Connection) ->
+    spawn(fun() ->
+                  Disconnected = #wh_amqp_channel{channel=undefined, _='_'},
+                  Matches = ets:match_object(?TAB, Disconnected, 1),
+                  reconnect(Matches, Connection)
+          end).
 
-reconnected('$end_of_table', _) -> ok;
-reconnected({[Channel], Continuation}, Connection) ->
-    catch wh_amqp_channel:open(Channel, Connection),
-    reconnected(ets:match(Continuation), Connection).
-
+-spec monitor_channel(#wh_amqp_channel{}) -> #wh_amqp_channel{}.
 monitor_channel(#wh_amqp_channel{channel=Pid}=Channel) when is_pid(Pid) ->
     gen_server:call(?MODULE, {monitor_channel, Channel});
 monitor_channel(Channel) -> Channel.
 
+-spec monitor_consumer(#wh_amqp_channel{}) -> #wh_amqp_channel{}.
 monitor_consumer(#wh_amqp_channel{consumer=Pid}=Channel) when is_pid(Pid) ->
     gen_server:call(?MODULE, {monitor_consumer, Channel});
 monitor_consumer(Channel) -> Channel.
 
+-spec demonitor_channel(#wh_amqp_channel{}) -> #wh_amqp_channel{}.
 demonitor_channel(#wh_amqp_channel{channel_ref=Ref}=Channel) when is_reference(Ref) ->
     gen_server:call(?MODULE, {demonitor_channel, Channel});
 demonitor_channel(Channel) -> Channel.
 
+-spec demonitor_consumer(#wh_amqp_channel{}) -> #wh_amqp_channel{}.
 demonitor_consumer(#wh_amqp_channel{consumer_ref=Ref}=Channel) when is_reference(Ref) ->
     gen_server:call(?MODULE, {demonitor_consumer, Channel});
 demonitor_consumer(Channel) -> Channel.
@@ -140,6 +159,7 @@ demonitor_consumer(Channel) -> Channel.
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    put(callid, ?LOG_SYSTEM_ID),
     _ = ets:new(?TAB, [named_table, {keypos, #wh_amqp_channel.consumer}]),
     {ok, #state{}}.
 
@@ -157,12 +177,10 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({add, #wh_amqp_channel{consumer=Pid}=Channel}, _, State) ->
+handle_call({new, #wh_amqp_channel{consumer=Pid}=Channel}, _, State) ->
     case ets:insert_new(?TAB, Channel) of
         true -> {reply, Channel, State};
-        false ->
-            io:format("~p already has a channel, use that one...~n", [Pid]),
-            {reply, find(Pid), State}
+        false -> {reply, find(Pid), State}
     end;
 handle_call({monitor_channel, Channel}, _, State) ->
     {reply, maybe_monitor_channel(Channel), State};
@@ -175,7 +193,6 @@ handle_call({demonitor_consumer, Channel}, _, State) ->
 handle_call(stop, _, State) ->
     {stop, normal, ok, State};
 handle_call(_Msg, _From, State) ->
-    io:format("NOT IMPLEMENTED(call): ~p~n", [_Msg]),
     {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
@@ -188,32 +205,8 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({lost_connection, Pid}, State) ->
-    _ = demonitor_all_connection_channels(Pid),
-    {noreply, State};
-handle_cast({command, Pid, #'queue.delete'{queue=Queue}}, State) ->
-    _ = case ets:match(?TAB, #wh_amqp_channel{consumer=Pid, commands='$1', _='_'}) of
-            [] -> ok;
-            [[Commands]] ->
-                C = lists:filter(fun(#'queue.declare'{queue=Q}) when Q =:= Queue -> 
-                                         false;
-                                    (_) -> true
-                                 end, Commands),
-                ets:update_element(?TAB, Pid, {#wh_amqp_channel.commands, C})
-        end,
-    {noreply, State};
-handle_cast({command, Pid, #'queue.unbind'{queue=Queue, exchange=Exchange
-                                          ,routing_key=RoutingKey}}, State) ->
-    _ = case ets:match(?TAB, #wh_amqp_channel{consumer=Pid, commands='$1', _='_'}) of
-            [] -> ok;
-            [[Commands]] ->
-                C = lists:filter(fun(#'queue.bind'{queue=Q, exchange=E, routing_key=R})
-                                       when Q =:= Queue, E =:= Exchange, R =:= RoutingKey -> 
-                                         false;
-                                    (_) -> true
-                                 end, Commands),
-                ets:update_element(?TAB, Pid, {#wh_amqp_channel.commands, C})
-        end,
+handle_cast({lost_connection, URI}, State) ->
+    _ = demonitor_all_connection_channels(URI),
     {noreply, State};
 handle_cast({command, Pid, #'basic.qos'{}=Command}, State) ->
     _ = case ets:match(?TAB, #wh_amqp_channel{consumer=Pid, commands='$1', _='_'}) of
@@ -228,29 +221,36 @@ handle_cast({command, Pid, #'basic.qos'{}=Command}, State) ->
                 ets:update_element(?TAB, Pid, {#wh_amqp_channel.commands, C})
         end,
     {noreply, State};
+handle_cast({command, Pid, #'queue.delete'{queue=Queue}}, State) ->
+    Filter = fun(#'queue.declare'{queue=Q}) when Q =:= Queue ->
+                     false;
+                (_) -> true
+             end,
+    _ = filter_commands(Pid, Filter),
+    {noreply, State};
+handle_cast({command, Pid, #'queue.unbind'{queue=Queue, exchange=Exchange
+                                          ,routing_key=RoutingKey}}, State) ->
+    Filter = fun(#'queue.bind'{queue=Q, exchange=E, routing_key=R})
+                   when Q =:= Queue, E =:= Exchange, R =:= RoutingKey ->
+                     false;
+                (_) -> true
+             end,
+    _ = filter_commands(Pid, Filter),
+    {noreply, State};
 handle_cast({command, Pid, #'basic.cancel'{consumer_tag=CTag}}, State) ->
-    _ = case ets:match(?TAB, #wh_amqp_channel{consumer=Pid, commands='$1', _='_'}) of
-            [] -> ok;
-            [[Commands]] ->
-                C = lists:filter(fun(#'basic.consume'{consumer_tag=T}) when T =:= CTag -> 
-                                         false;
-                                    (_) -> true
-                                 end, Commands),
-                ets:update_element(?TAB, Pid, {#wh_amqp_channel.commands, C})
-        end,
+    Filter = fun(#'basic.consume'{consumer_tag=T}) when T =:= CTag ->
+                     false;
+                (_) -> true
+             end,
+    _ = filter_commands(Pid, Filter),
     {noreply, State};
 handle_cast({command, Pid, Command}, State) ->
     _ = case ets:match(?TAB, #wh_amqp_channel{consumer=Pid, commands='$1', _='_'}) of
             [] -> ok;
             [[Commands]] ->
-                ets:update_element(?TAB, Pid, {#wh_amqp_channel.commands, [Command|Commands]})
+                Update = {#wh_amqp_channel.commands, [Command|Commands]},
+                ets:update_element(?TAB, Pid, Update)
         end,
-    {noreply, State};
-handle_cast({update, Channel}, State) ->
-    ets:insert(?TAB, Channel),
-    {noreply, State};
-handle_cast({update, Pid, Updates}, State) ->
-    ets:update_element(?TAB, Pid, Updates),
     {noreply, State};
 handle_cast({remove, Pid}, State) ->
     ets:delete(?TAB, Pid),
@@ -269,7 +269,6 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', Ref, process, _Pid, Reason}, State) ->
-    io:format("~p: down msg ~p ~p ~p~n", [self(), Ref, _Pid, Reason]),
     erlang:demonitor(Ref, [flush]),
     handle_down_msg(find_reference(Ref), Reason),
     {noreply, State, hibernate};
@@ -304,72 +303,107 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec reconnect({[#wh_amqp_channel{}], _} | '$end_of_table', #wh_amqp_connection{}) -> 'ok'.
+reconnect('$end_of_table', _) -> ok;
+reconnect({[Channel], Continuation}, Connection) ->
+    catch wh_amqp_channel:open(Channel, Connection),
+    reconnect(ets:match(Continuation), Connection).
+
+-spec filter_commands(pid(), function()) -> 'ok'.
+filter_commands(Pid, Filter) ->
+    case ets:match(?TAB, #wh_amqp_channel{consumer=Pid, commands='$1', _='_'}) of
+        [] -> ok;
+        [[Commands]] ->
+            Update = {#wh_amqp_channel.commands, lists:filter(Filter, Commands)},
+            ets:update_element(?TAB, Pid, Update)
+    end.
+
+-spec handle_down_msg([] | [#wh_amqp_channel{}] | #wh_amqp_channel{}, _) -> 'ok'.
 handle_down_msg([], _) -> ok;
 handle_down_msg([Match|Matches], Reason) ->
     _ = handle_down_msg(Match, Reason),
     handle_down_msg(Matches, Reason);
-handle_down_msg({channel, #wh_amqp_channel{connection=Pid}=Channel}, _) when is_pid(Pid) ->
-    case is_process_alive(Pid) of
-        false -> demonitor_all_connection_channels(Pid);
-        true ->
-            spawn(fun() -> channel_connection_down(Channel) end)
-    end;
-handle_down_msg({channel, #wh_amqp_channel{}=Channel}, _) ->
-    spawn(fun() -> channel_connection_down(Channel) end);
-handle_down_msg({consumer, #wh_amqp_channel{started=Started}=Channel}, _) ->
-    io:format("~p: down message for a consumer~n", [self()]),
-    Duration = wh_util:elapsed_s(Started),
-    _ = case Duration < 5 of
-            false -> ok;
-            true ->
-                lager:warning("short lived channel (~ps): ~p", [Duration, Channel])
-        end,
+handle_down_msg({channel, #wh_amqp_channel{uri=URI}}
+                ,{shutdown,{connection_closing, Reason}}) ->
+    lager:critical("channel died when connection to '~s' was lost: ~p", [URI, Reason]),
+    demonitor_all_connection_channels(URI);
+handle_down_msg({channel, #wh_amqp_channel{uri=URI}=Channel}, Reason) ->
+    lager:notice("channel went down while still connected to '~s': ~p", [URI, Reason]),
+    spawn(fun() -> attempt_rebuild_channel(Channel) end);
+handle_down_msg({consumer, Channel}, Reason) ->
+    _ = log_short_lived(Channel),
+    lager:notice("consumer went down without closing channel: ~p", [Reason]),
     spawn(fun() -> wh_amqp_channel:remove(Channel) end).
 
-demonitor_all_connection_channels(Pid) ->
-    Channels = ets:match_object(?TAB, #wh_amqp_channel{connection=Pid, _='_'}),
-    io:format("lost connection to ~p, demonitoring ~p channels~n", [Pid, length(Channels)]),
-    _ = maybe_demonitor_channels(Channels),
-    io:format("DEMONITORED ALL THE THINGS~n", []).
-
-channel_connection_down(#wh_amqp_channel{started=Started}=Channel) ->
-    io:format("~p: down message for a channel while connected, restarting~n", [self()]),
+-spec log_short_lived(#wh_amqp_channel{}) -> 'ok'.
+log_short_lived(#wh_amqp_channel{started=Started}=Channel) ->
     Duration = wh_util:elapsed_s(Started),
-    _ = case Duration < 5 of
-            false -> ok;
-            true ->
-                lager:warning("short lived channel (~ps): ~p", [Duration, Channel])
-        end,
-    wh_amqp_channel:new(wh_amqp_channel:close(Channel)).
+    case Duration < 5 of
+        false -> ok;
+        true ->
+            lager:info("short lived channel (~ps): ~p", [Duration, Channel])
+    end.
 
+-spec find_reference(reference()) -> [] | [#wh_amqp_channel{},...].
+find_reference(Ref) ->
+    MatchSpec = [{#wh_amqp_channel{channel_ref = '$1', _ = '_'},
+                  [{'=:=', '$1', {const, Ref}}],
+                  [{{channel, '$_'}}]},
+                 {#wh_amqp_channel{consumer_ref = '$1', _ = '_'},
+                  [{'=:=', '$1', {const, Ref}}],
+                  [{{consumer, '$_'}}]}
+                ],
+    ets:select(?TAB, MatchSpec).
+
+-spec demonitor_all_connection_channels(ne_binary() | [] | [#wh_amqp_channel{},...]) -> 'ok'.
+demonitor_all_connection_channels(URI) when is_binary(URI) ->
+    MatchSpec = [{#wh_amqp_channel{channel = '$1', uri = '$2', _ = '_'},
+                  [{is_pid,'$1'}
+                   ,{'=:=', '$2', {const, URI}}
+                  ],
+                  ['$_']}
+                ],
+    %% this case clause is here for cleaner logging...
+    case ets:select(?TAB, MatchSpec) of
+        [] -> ok;
+        Channels ->
+            lager:notice("removing ~p channels belonging to lost connection '~s'", [length(Channels), URI]),
+            demonitor_all_connection_channels(Channels)
+    end;
+demonitor_all_connection_channels([]) -> ok;
+demonitor_all_connection_channels([Channel|Channels]) ->
+    _ = maybe_demonitor_channel(Channel),
+    demonitor_all_connection_channels(Channels).
+
+-spec attempt_rebuild_channel(#wh_amqp_channel{}) -> #wh_amqp_channel{}.
+attempt_rebuild_channel(Channel) ->
+    _ = log_short_lived(Channel),
+    C1 = wh_amqp_channel:close(Channel#wh_amqp_channel{reconnecting=true}),
+    C2 = wh_amqp_channel:new(C1),
+    C2#wh_amqp_channel{reconnecting=false}.
+
+-spec maybe_monitor_consumer(#wh_amqp_channel{}) -> #wh_amqp_channel{}.
 maybe_monitor_consumer(#wh_amqp_channel{consumer=Consumer}=Channel) when is_pid(Consumer) ->
-%%    io:format("~p: monitor consumer ~p~n", [self(), Consumer]),
     Ref = erlang:monitor(process, Consumer),
     ets:update_element(?TAB, Consumer, [{#wh_amqp_channel.consumer_ref, Ref}]),
     Channel#wh_amqp_channel{consumer_ref=Ref};
 maybe_monitor_consumer(Channel) ->
     Channel.
 
+-spec maybe_monitor_channel(#wh_amqp_channel{}) -> #wh_amqp_channel{}.
 maybe_monitor_channel(#wh_amqp_channel{consumer=Consumer, channel=Pid
-                                       ,connection=Connection}=Channel) when is_pid(Pid) ->
-%%    io:format("~p: monitor channel ~p~n", [self(), Pid]),
+                                       ,uri=URI}=Channel) when is_pid(Pid) ->
     Ref = erlang:monitor(process, Pid),
     ets:update_element(?TAB, Consumer, [{#wh_amqp_channel.channel_ref, Ref}
                                         ,{#wh_amqp_channel.channel, Pid}
-                                        ,{#wh_amqp_channel.connection, Connection}
+                                        ,{#wh_amqp_channel.uri, URI}
                                        ]),
     Channel#wh_amqp_channel{channel_ref=Ref};
 maybe_monitor_channel(Channel) ->
     Channel.
 
-maybe_demonitor_channels([]) ->
-    ok;
-maybe_demonitor_channels([Channel|Channels]) ->
-    _ = maybe_demonitor_channel(Channel),
-    maybe_demonitor_channels(Channels).
-
+-spec maybe_demonitor_channel(#wh_amqp_channel{}) -> #wh_amqp_channel{}.
 maybe_demonitor_channel(#wh_amqp_channel{consumer=Consumer, channel_ref=Ref}=Channel) when is_reference(Ref) ->
-%%    io:format("~p: demonitor channel ~p~n", [self(), Ref]),
     erlang:demonitor(Ref, [flush]),
     ets:update_element(?TAB, Consumer, [{#wh_amqp_channel.channel_ref, undefined}
                                         ,{#wh_amqp_channel.channel, undefined}
@@ -378,8 +412,8 @@ maybe_demonitor_channel(#wh_amqp_channel{consumer=Consumer, channel_ref=Ref}=Cha
 maybe_demonitor_channel(#wh_amqp_channel{}=Channel) ->
     Channel.
 
+-spec maybe_demonitor_consumer(#wh_amqp_channel{}) -> #wh_amqp_channel{}.
 maybe_demonitor_consumer(#wh_amqp_channel{consumer=Consumer, consumer_ref=Ref}=Channel) when is_reference(Ref) ->
-%%    io:format("~p: demonitor consumer ~p~n", [self(), Consumer]),
     erlang:demonitor(Ref, [flush]),
     ets:update_element(?TAB, Consumer, [{#wh_amqp_channel.consumer_ref, undefined}]),
     Channel#wh_amqp_channel{consumer_ref=undefined};

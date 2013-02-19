@@ -91,39 +91,33 @@
 -define(TYPE_SYSCONF, <<"topic">>).
 
 
--type consume_records() :: #'queue.declare'{} | #'queue.bind'{} | #'queue.unbind'{}
-                         | #'queue.delete'{} | #'basic.consume'{} | #'basic.cancel'{}
-                         | #'basic.ack'{} | #'basic.nack'{} | #'basic.qos'{}.
--type consume_ret() :: 'ok' |
+-type amqp_command() :: #'queue.declare'{} | #'queue.bind'{} | #'queue.unbind'{}
+                      | #'queue.delete'{} | #'basic.consume'{} | #'basic.cancel'{}
+                      | #'basic.ack'{} | #'basic.nack'{} | #'basic.qos'{}
+                      | #'exchange.declare'{}.
+-type command_ret() :: 'ok' |
                        {'ok', ne_binary() | #'queue.declare_ok'{}} |
                        {'error', _}.
--type misc_records() :: #'exchange.declare'{}.
 
 -define(WH_AMQP_ETS, wh_amqp_ets).
 
--record(wh_amqp_channel, {consumer :: pid()
-                          ,channel :: 'undefined' | pid()
-                          ,connection :: 'undefined' | pid()
-                          ,queue :: api_binary()
-                          ,consumer_tag :: api_binary()
-                          ,channel_ref :: 'undefined' | reference()
+-record(wh_amqp_channel, {consumer = wh_amqp_channel:consumer_pid() :: pid()
                           ,consumer_ref :: 'undefined' | reference()
+                          ,channel :: 'undefined' | pid()
+                          ,channel_ref :: 'undefined' | reference()
+                          ,uri :: api_binary()
                           ,started = now()
-                          ,last_message
-                          ,commands = []
-                          ,reconnecting = false
+                          ,commands = [] :: [amqp_command(),...]
+                          ,reconnecting = false :: boolean()
                          }).
 
--record(wh_amqp_exchange, {id :: {pid(), ne_binary()}
-                           ,connection :: pid()
-                           ,exchange :: #'exchange.declare'{}
-                          }).
-
--record(wh_amqp_connection, {connection :: 'undefined' | pid()
+-record(wh_amqp_connection, {uri :: string()
+                             ,params :: #'amqp_params_direct'{} | #'amqp_params_network'{}
+                             ,manager :: atom()
+                             ,connection :: 'undefined' | pid()
                              ,connection_ref :: 'undefined' | reference()
                              ,available = false :: boolean()
-                             ,name
-                             ,broker
-                             ,manager = self()
-                             ,prechannels = []
+                             ,prechannels = [] :: [{reference(), pid()},...]
+                             ,exchanges = [] :: [#'exchange.declare'{},...]
+                             ,weight
                             }).
