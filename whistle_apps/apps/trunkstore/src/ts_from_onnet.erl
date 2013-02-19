@@ -141,21 +141,23 @@ wait_for_win(State, Command) ->
             send_offnet(State1, Command);
         {lost, State2} ->
             lager:info("did not win route, passive listening"),
-            wait_for_bridge(State2)
+            wait_for_bridge(undefined, State2)
     end.
 
 send_offnet(State, Command) ->
     CtlQ = ts_callflow:get_control_queue(State),
     wapi_offnet_resource:publish_req([{<<"Control-Queue">>, CtlQ} | Command]),
-    wait_for_bridge(State).
+    wait_for_bridge(CtlQ, State).
 
-wait_for_bridge(State) ->
+wait_for_bridge(CtlQ, State) ->
     case ts_callflow:wait_for_bridge(State) of
         {bridged, State1} ->
             lager:info("call was successfully bridged"),
             wait_for_cdr(State1);
-        {error, State2} ->
-            ts_callflow:send_hangup(State2, 686),
+        {error, #ts_callflow_state{aleg_callid=CallId}=State2} ->
+            lager:info("responding to aleg with 686 ~p ~p", [CallId, CtlQ]),
+            wh_call_response:send(CallId, CtlQ, <<"686">>),
+            ts_callflow:send_hangup(State2, <<"686">>),
             wait_for_cdr(State2);
         {hangup, State3} ->
             lager:info("call was hungup"),
