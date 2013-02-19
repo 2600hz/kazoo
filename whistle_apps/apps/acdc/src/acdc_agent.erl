@@ -271,8 +271,6 @@ init([Supervisor, Agent, Queues]) ->
     put(callid, AgentId),
     lager:debug("starting acdc agent listener"),
 
-    _ = fetch_my_queue(self()),
-
     {ok, #state{agent_id=AgentId
                 ,acct_id=account_id(Agent)
                 ,acct_db=account_db(Agent)
@@ -328,15 +326,8 @@ handle_cast({fsm_started, FSMPid}, State) ->
                           ,my_id=acdc_util:proc_id(FSMPid)
                          }};
 
-handle_cast({queue_name, Q}, State) ->
-    case wh_util:is_empty(Q) of
-        true ->
-            _ = fetch_my_queue(),
-            {noreply, State};
-        false ->
-            lager:debug("my queue: ~s", [Q]),
-            {noreply, State#state{my_q=Q}, hibernate}
-    end;
+handle_cast({created_queue, Q}, State) ->
+    {noreply, State#state{my_q=Q}, hibernate};
 
 handle_cast({queue_login, Q}, #state{agent_queues=Qs
                                      ,acct_id=AcctId
@@ -466,11 +457,6 @@ handle_cast(member_connect_accepted, #state{msg_queue_id=AmqpQueue
     send_member_connect_accepted(AmqpQueue, call_id(Call), AcctId, AgentId, MyId),
     {noreply, State};
 
-handle_cast({member_connect_resp, _}=Msg, #state{my_q='undefined'}=State) ->
-    _ = fetch_my_queue(),
-    lager:debug("replaying ~p, hopefully we have our queue by then", [Msg]),
-    gen_listener:cast(self(), Msg),
-    {noreply, State};
 handle_cast({member_connect_resp, ReqJObj}, #state{agent_id=AgentId
                                                    ,last_connect=LastConn
                                                    ,agent_queues=Qs
@@ -545,10 +531,7 @@ handle_cast({bridge_to_member, Call, WinJObj, _, CDRUrl}, #state{is_thief=true
      ,hibernate
     };
 
-handle_cast({monitor_call, Call, CDRUrl}, #state{agent_queues=Qs
-                                                 ,acct_id=AcctId
-                                                 ,agent_id=AgentId
-                                                }=State) ->
+handle_cast({monitor_call, Call, CDRUrl}, State) ->
     _ = whapps_call:put_callid(Call),
 
     AgentCallId = outbound_call_id(Call),
@@ -557,8 +540,6 @@ handle_cast({monitor_call, Call, CDRUrl}, #state{agent_queues=Qs
     acdc_util:bind_to_call_events(AgentCallId, CDRUrl),
 
     lager:debug("monitoring member call ~s, agent call on ~s", [whapps_call:call_id(Call), AgentCallId]),
-
-    acdc_util:bind_to_call_events(Call),
 
     {noreply, State#state{call=Call
                           ,agent_call_id=AgentCallId
@@ -603,11 +584,6 @@ handle_cast({join_agent, ACallId}, #state{call=Call
 
     {noreply, State};
 
-handle_cast({send_sync_req}=Msg, #state{my_q='undefined'}=State) ->
-    fetch_my_queue(),
-    lager:debug("replaying ~p, hopefully we have our queue by then", [Msg]),
-    gen_listener:cast(self(), Msg),
-    {noreply, State};
 handle_cast({send_sync_req}, #state{my_id=MyId
                                     ,my_q=MyQ
                                     ,acct_id=AcctId
@@ -919,14 +895,6 @@ update_my_queues_of_change(AcctId, AgentId, Qs) ->
          || QueueId <- Qs
         ],
     ok.
-
-fetch_my_queue() ->
-    fetch_my_queue(self()).
-fetch_my_queue(Srv) ->
-    spawn(fun() -> my_queue(Srv) end).
-
-my_queue(Srv) ->
-    gen_listener:cast(Srv, {queue_name, gen_listener:queue_name(Srv)}).
 
 -spec should_record_endpoints(wh_json:objects(), boolean()) -> boolean().
 should_record_endpoints(_EPs, true) -> true;

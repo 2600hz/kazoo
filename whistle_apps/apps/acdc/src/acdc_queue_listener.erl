@@ -194,8 +194,6 @@ init([WorkerSup, MgrPid, AcctId, QueueId]) ->
                                                ,QueueId
                                               ),
 
-    fetch_my_queue(),
-
     gen_listener:cast(self(), {start_friends, QueueJObj}),
 
     {ok, #state{
@@ -283,19 +281,14 @@ handle_cast({start_friends, QueueJObj}, #state{worker_sup=WorkerSup
                     {stop, failed_fsm, State}
             end
     end;
-handle_cast({queue_name, undefined}, State) ->
-    fetch_my_queue(),
-    {noreply, State};
-handle_cast({queue_name, Q}, #state{my_q=undefined}=State) ->
-    lager:debug("my queue: ~s", [Q]),
+handle_cast({created_queue, Q}, #state{my_q=undefined}=State) ->
     {noreply, State#state{my_q=Q}, hibernate};
 
 handle_cast({member_connect_req, MemberCallJObj, Delivery, Url}, #state{my_q=MyQ
                                                                         ,my_id=MyId
                                                                         ,acct_id=AcctId
                                                                         ,queue_id=QueueId
-                                                                       }=State
-           ) ->
+                                                                       }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, MemberCallJObj)),
 
     put(callid, whapps_call:call_id(Call)),
@@ -439,12 +432,6 @@ handle_cast({cancel_member_call, _RejectJObj}, #state{delivery = #'basic.deliver
 handle_cast({cancel_member_call, _MemberCallJObj, Delivery}, #state{shared_pid=Pid}=State) ->
     lager:debug("can't handle the member_call, sending it back up"),
     acdc_queue_shared:nack(Pid, Delivery),
-    {noreply, State};
-
-handle_cast({send_sync_req, _Type}=Msg, #state{my_q=MyQ}=State) when MyQ =:= 'undefined' orelse MyQ =:= <<>> ->
-    fetch_my_queue(),
-    lager:debug("replaying ~p, hopefully we have our queue by then", [Msg]),
-    gen_listener:cast(self(), Msg),
     {noreply, State};
 
 handle_cast({send_sync_req, Type}, #state{my_q=MyQ
@@ -656,8 +643,3 @@ publish(Q, Req, F) ->
             _ = [lager:debug("st: ~p", [S]) || S <- ST],
             ok
     end.
-
-fetch_my_queue() ->
-    Self = self(),
-    _ = spawn(fun() -> gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)}) end),
-    ok.
