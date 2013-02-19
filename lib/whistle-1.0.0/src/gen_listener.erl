@@ -471,13 +471,8 @@ format_status(_Opt, [_PDict, #state{module=Module
 
 terminate(Reason, #state{module=Module
                          ,module_state=ModState
-                         ,queue=Q
-                         ,bindings=Bs
                         }) ->
     _ = (catch Module:terminate(Reason, ModState)),
-%%    lists:foreach(fun({B, P}) ->
-%%                          (catch remove_binding(B, P, Q))
-%%                  end, Bs),
     wh_amqp_channel:remove(),
     lager:debug("~s terminated cleanly, going down", [Module]).
 
