@@ -31,10 +31,10 @@ credit(AccountId, Amount) ->
     Tr = wh_transaction:credit(wapi_money:dollars_to_units(Amount), admin),
     Tr1 = wh_transaction:set_description(<<"System administrator discretionary credit addition">>, Tr),
     Tr2 = wh_transaction:set_pvt_account_id(AccountId, Tr1),
-    case wh_:save(Tr2) of
+    case wh_transaction:save(Tr2) of
         {ok, _} -> 
             io:format("credited account ~s $~w~n", [AccountId, Amount]);
-        {error, _R, _Tr} -> 
+        {error, _Tr, _R} -> 
             io:format("failed to credit account: ~s~n ~p ~p~n", [AccountId, _R, _Tr])
     end,
     no_return.
@@ -54,7 +54,7 @@ debit(AccountId, Amount) ->
     case wh_transaction:save(Tr2) of
         {ok, _} -> 
             io:format("debited account ~s $~w~n", [AccountId, Amount]);
-        {error, _R, _Tr} -> 
+        {error, _Tr, _R} -> 
             io:format("failed to debit account: ~s~n ~p ~p~n", [AccountId, _R, _Tr])
     end,
     no_return.
