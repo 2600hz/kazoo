@@ -93,7 +93,7 @@ log_stacktrace() ->
 log_stacktrace(ST) ->
     lager:debug("stacktrace:"),
     _ = [lager:debug("st: ~p", [Line]) || Line <- ST],
-    ok.
+    'ok'.
 
 -define(LOG_LEVELS, ['emergency'
                      ,'alert'

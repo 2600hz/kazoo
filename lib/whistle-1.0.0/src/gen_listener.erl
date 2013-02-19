@@ -428,8 +428,9 @@ handle_cast(Message, #state{module=Module
             };
         {stop, Reason, ModState1} ->
             {stop, Reason, State#state{module_state=ModState1}};
-        {'EXIT', {Reason, ST}} ->
-            lager:debug("exception: ~p", [Reason]),
+        {'EXIT', {Reason, _ST}} ->
+            lager:debug("exception: ~p: ~p", [Reason, _ST]),
+            ST = erlang:get_stacktrace(),
             wh_util:log_stacktrace(ST),
             {stop, Reason, State}
     end.

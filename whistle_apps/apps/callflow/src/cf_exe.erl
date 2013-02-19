@@ -315,11 +315,13 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'set_call', Call}, State) ->
     {'noreply', State#state{call=Call}};
-handle_cast({'continue', Key}, #state{flow=Flow}=State) ->
+handle_cast({'continue', Key}, #state{flow=Flow
+                                      ,call=Call
+                                     }=State) ->
     lager:info("continuing to child ~s", [Key]),
     case wh_json:get_value([<<"children">>, Key], Flow) of
         'undefined' when Key =:= <<"_">> ->
-            lager:info("wildcard child does not exist, we are lost..."),
+            lager:info("wildcard child does not exist, we are lost...hanging up"),
             {'stop', 'normal', State};
         'undefined' ->
             lager:info("requested child does not exist, trying wild card", [Key]),
@@ -469,16 +471,11 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call, queue=ControllerQ}) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate({shutdown, transfer}, _) ->
-    lager:info("callflow execution has been transfered"),
-    ok;
+    lager:info("callflow execution has been transfered");
 terminate({shutdown, control_usurped}, _) ->
-    lager:info("the call has been usurped by an external process"),
-    ok;
+    lager:info("the call has been usurped by an external process");
 terminate(_Reason, #state{call=Call}) ->
-    Command = [{<<"Application-Name">>, <<"hangup">>}
-               ,{<<"Insert-At">>, <<"now">>}
-              ],
-    whapps_call_command:hangup(Call),
+    _ = spawn(whapps_call_command, hangup, [Call]),
     lager:info("callflow execution has been stopped: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
