@@ -118,16 +118,24 @@ write_to_ledger(Suffix, Props, Units, #limits{account_id=LedgerId, account_db=Le
             Tr2 = wh_transaction:set_pvt_account_id(LedgerId, Tr1),
             Tr3 = wh_transaction:set_sub_account_id(get_account_id(JObj), Tr2),
             Tr4 = wh_transaction:set_description(Suffix, Tr3),
-            {OkError, Result, _} = wh_transaction:save(Tr4),
-            {OkError, Result};
+            case  wh_transaction:save(Tr4) of
+                {ok, Res} ->
+                    {ok, wh_transaction:to_json(Res)};
+                {error, Res, _E} ->
+                    {error, wh_transaction:to_json(Res)}
+            end;
         <<"debit">> ->
             Tr = wh_transaction:debit(abs(Units), per_minute_sub_account),
             Tr1 = wh_transaction:set_call_id(get_call_id(JObj), Tr),
             Tr2 = wh_transaction:set_pvt_account_id(LedgerId, Tr1),
             Tr3 = wh_transaction:set_sub_account_id(get_account_id(JObj), Tr2),
             Tr4 = wh_transaction:set_description(Suffix, Tr3),
-            {OkError, Result, _} = wh_transaction:save(Tr4),
-            {OkError, Result};
+            case  wh_transaction:save(Tr4) of
+                {ok, Res} ->
+                    {ok, wh_transaction:to_json(Res)};
+                {error, Res, _E} ->
+                    {error, wh_transaction:to_json(Res)}
+            end;
         _ ->
             Entry = wh_json:from_list([{<<"_id">>, Id}
                                        ,{<<"session_id">>, SessionId}
