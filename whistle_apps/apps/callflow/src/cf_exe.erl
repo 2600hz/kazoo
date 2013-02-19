@@ -313,24 +313,24 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({set_call, Call}, State) ->
-    {noreply, State#state{call=Call}};
-handle_cast({continue, Key}, #state{flow=Flow}=State) ->
+handle_cast({'set_call', Call}, State) ->
+    {'noreply', State#state{call=Call}};
+handle_cast({'continue', Key}, #state{flow=Flow}=State) ->
     lager:info("continuing to child ~s", [Key]),
     case wh_json:get_value([<<"children">>, Key], Flow) of
-        undefined when Key =:= <<"_">> ->
+        'undefined' when Key =:= <<"_">> ->
             lager:info("wildcard child does not exist, we are lost..."),
-            {stop, normal, State};
-        undefined ->
+            {'stop', 'normal', State};
+        'undefined' ->
             lager:info("requested child does not exist, trying wild card", [Key]),
             ?MODULE:continue(self()),
-            {noreply, State};
+            {'noreply', State};
         NewFlow ->
             case wh_json:is_empty(NewFlow) of
-                true ->
-                    {stop, normal, State};
-                false ->
-                    {noreply, launch_cf_module(State#state{flow=NewFlow})}
+                'true' ->
+                    {'stop', 'normal', State};
+                'false' ->
+                    {'noreply', launch_cf_module(State#state{flow=NewFlow})}
             end
     end;
 handle_cast({stop}, State) ->
@@ -478,9 +478,8 @@ terminate(_Reason, #state{call=Call}) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
                ,{<<"Insert-At">>, <<"now">>}
               ],
-    send_command(Command, whapps_call:control_queue_direct(Call), whapps_call:call_id_direct(Call)),
-    lager:info("callflow execution has been stopped: ~p", [_Reason]),
-    ok.
+    whapps_call_command:hangup(Call),
+    lager:info("callflow execution has been stopped: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -580,15 +579,6 @@ add_server_id(API, Q) when is_list(API) ->
     [{<<"Server-ID">>, Q} | props:delete(<<"Server-ID">>, API)];
 add_server_id(API, Q) ->
     wh_json:set_value(<<"Server-ID">>, Q, API).
-
--spec send_command(wh_proplist(), api_binary(), api_binary()) -> 'ok'.
-send_command(_, 'undefined', _) -> 'ok';
-send_command(_, _, 'undefined') -> 'ok';
-send_command(Command, ControlQ, CallId) ->
-    Props = Command ++ [{<<"Call-ID">>, CallId}
-                        | wh_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-                       ],
-    whapps_util:amqp_pool_send(Props, fun(P) -> wapi_dialplan:publish_command(ControlQ, P) end).
 
 -spec log_call_information(whapps_call:call()) -> 'ok'.
 log_call_information(Call) ->
