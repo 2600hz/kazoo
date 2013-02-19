@@ -361,7 +361,9 @@ del_doc(#server{}=Conn, DbName, DocId) when is_binary(DocId) ->
     case lookup_doc_rev(Conn, DbName, DocId) of
         {'error', _}=Err -> Err;
         {'ok', Rev} ->
-            del_doc(Conn, DbName, wh_json:from_list([{<<"_id">>, DocId}, {<<"_rev">>, Rev}]))
+            del_doc(Conn, DbName, wh_json:from_list([{<<"_id">>, DocId}
+                                                     ,{<<"_rev">>, Rev}
+                                                    ]))
     end;
 del_doc(#server{}=Conn, DbName, Doc) ->
     Db = get_db(Conn, DbName),
@@ -382,7 +384,18 @@ do_delete_doc(#db{}=Db, Doc) ->
 -spec do_delete_docs(couchbeam_db(), wh_json:objects()) ->
                             {'ok', wh_json:objects()}.
 do_delete_docs(#db{}=Db, Docs) ->
-    do_save_docs(Db, [wh_json:set_value(<<"_deleted">>, 'true', Doc) || Doc <- Docs], []).
+    do_save_docs(Db, [prepare_doc_for_del(Doc) || Doc <- Docs], []).
+
+%% Save only the minimal amount of document needed, since couch can't fully
+%% delete the doc off the node's disk
+%% See https://wiki.apache.org/couchdb/FUQ, point 4 for Documents
+%% and http://grokbase.com/t/couchdb/user/11cpvasem0/database-size-seems-off-even-after-compaction-runs
+-spec prepare_doc_for_del(wh_json:object()) -> wh_json:object().
+prepare_doc_for_del(Doc) ->
+    wh_json:from_list([{<<"_id">>, wh_json:get_value(<<"_id">>, Doc)}
+                       ,{<<"_rev">>, wh_json:get_value(<<"_rev">>, Doc)}
+                       ,{<<"_deleted">>, true}
+                      ]).
 
 -spec do_ensure_saved(couchbeam_db(), wh_json:object(), wh_proplist()) ->
                              {'ok', wh_json:object()} |
