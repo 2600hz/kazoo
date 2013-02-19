@@ -75,7 +75,7 @@ clean_expired(Expiry) ->
 
     case couch_mgr:get_results(?TOKEN_DB, <<"token_auth/listing_by_mtime">>, [{startkey, 0}
                                                                               ,{endkey, CreatedBefore}
-                                                                              ,{limit, 1000}
+                                                                              ,{limit, 5000}
                                                                              ])
     of
         {ok, []} -> lager:debug("no expired tokens found"), ok;
