@@ -1318,6 +1318,7 @@ update_agent_status_to_resume(AcctId, AgentId) ->
 time_left(Ref) when is_reference(Ref) ->
     time_left(erlang:read_timer(Ref));
 time_left('false') -> 'undefined';
+time_left('undefined') -> 'undefined';
 time_left(Ms) when is_integer(Ms) -> Ms div 1000.
 
 -spec clear_call(fsm_state(), atom()) -> fsm_state().
