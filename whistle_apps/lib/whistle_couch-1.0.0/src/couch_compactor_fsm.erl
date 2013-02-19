@@ -265,9 +265,9 @@ ready('next_job', #state{queued_jobs=Jobs}=State) ->
             gen_fsm:send_event(self(), Job),
             lager:debug("starting job for ~p:~p", [P, Ref]),
             {'next_state', 'ready', State#state{queued_jobs=Jobs1
-                                            ,current_job_pid=P
-                                            ,current_job_ref=Ref
-                                           }}
+                                                ,current_job_pid=P
+                                                ,current_job_ref=Ref
+                                               }}
     end;
 ready(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),
@@ -281,7 +281,11 @@ ready(cancel_current_job, _, State) ->
 
 ready(cancel_all_jobs, _, #state{queued_jobs=Jobs}=State) ->
     _ = [ maybe_send_update(P, Ref, job_cancelled) || {_, P, Ref} <- queue:to_list(Jobs)],
-    {'reply', {'ok', jobs_cancelled}, 'ready', State#state{queued_jobs=queue:new()}};
+    {'reply', {'ok', jobs_cancelled}, 'ready', State#state{queued_jobs=queue:new()
+                                                           ,next_compaction_msg='undefined'
+                                                           ,shards_pid_ref='undefined'
+                                                           ,wait_ref='undefined'
+                                                          }};
 
 ready(Msg, {NewP, _}, #state{queued_jobs=Jobs}=State) ->
     case queue:out(Jobs) of
@@ -613,9 +617,9 @@ compact(status, _, #state{current_node=N
                           ,queued_jobs=Jobs
                          }= State) ->
     {'reply', {'ok', [{node, N}
-                  ,{db, D}
-                  ,{queued_jobs, queued_jobs_status(Jobs)}
-                 ]}, compact, State};
+                      ,{db, D}
+                      ,{queued_jobs, queued_jobs_status(Jobs)}
+                     ]}, compact, State};
 
 compact(cancel_current_job, _, #state{current_job_pid=P
                                       ,current_job_ref=Ref
@@ -623,16 +627,17 @@ compact(cancel_current_job, _, #state{current_job_pid=P
     lager:debug("cancelling job"),
     maybe_send_update(P, Ref, job_cancelled),
     gen_fsm:send_event(self(), next_job),
-    {'reply', {'ok', job_cancelled}, 'ready', State#state{conn='undefined'
-                                                    ,admin_conn='undefined'
-                                                    ,current_node='undefined'
-                                                    ,current_db='undefined'
-                                                    ,nodes=[]
-                                                    ,dbs=[]
-                                                    ,wait_ref='undefined'
-                                                    ,current_job_pid='undefined'
-                                                    ,current_job_ref='undefined'
-                                                   }};
+    {'reply', {'ok', job_cancelled}, 'ready'
+     ,State#state{conn='undefined'
+                  ,admin_conn='undefined'
+                  ,current_node='undefined'
+                  ,current_db='undefined'
+                  ,nodes=[]
+                  ,dbs=[]
+                  ,wait_ref='undefined'
+                  ,current_job_pid='undefined'
+                  ,current_job_ref='undefined'
+                 }};
 compact(cancel_all_jobs, _, #state{queued_jobs=Jobs
                                    ,current_job_pid=CP
                                    ,current_job_ref=CRef
@@ -642,17 +647,18 @@ compact(cancel_all_jobs, _, #state{queued_jobs=Jobs
     maybe_send_update(CP, CRef, job_cancelled),
 
     _ = [ maybe_send_update(P, Ref, job_cancelled) || {_, P, Ref} <- queue:to_list(Jobs)],
-    {'reply', {'ok', jobs_cancelled}, 'ready', State#state{conn='undefined'
-                                                     ,admin_conn='undefined'
-                                                     ,current_node='undefined'
-                                                     ,current_db='undefined'
-                                                     ,nodes=[]
-                                                     ,dbs=[]
-                                                     ,wait_ref='undefined'
-                                                     ,current_job_pid='undefined'
-                                                     ,current_job_ref='undefined'
-                                                     ,queued_jobs=queue:new()
-                                                    }};
+    {'reply', {'ok', jobs_cancelled}, 'ready'
+     ,State#state{conn='undefined'
+                  ,admin_conn='undefined'
+                  ,current_node='undefined'
+                  ,current_db='undefined'
+                  ,nodes=[]
+                  ,dbs=[]
+                  ,wait_ref='undefined'
+                  ,current_job_pid='undefined'
+                  ,current_job_ref='undefined'
+                  ,queued_jobs=queue:new()
+                 }};
 compact(Msg, {NewP, _}, #state{queued_jobs=Jobs}=State) ->
     lager:debug("recv msg, assuming new job: ~p", [Msg]),
     {Ref, Jobs1} = queue_job(Msg, NewP, Jobs),
@@ -663,7 +669,7 @@ wait({timeout, Ref, Msg}, #state{wait_ref=Ref}=State) ->
     gen_fsm:send_event(self(), Msg),
     {'next_state', compact, State};
 wait(_Msg, State) ->
-    lager:debug("unhandled msg: ~p", [_Msg]),
+    lager:debug("unhandled wait/2 msg: ~p", [_Msg]),
     {'next_state', wait, State}.
 
 wait(status, _, #state{current_node=N
@@ -672,10 +678,10 @@ wait(status, _, #state{current_node=N
                        ,queued_jobs=Jobs
                       }= State) ->
     {'reply', {'ok', [{node, N}
-                  ,{db, D}
-                  ,{wait_left, erlang:read_timer(Ref)}
-                  ,{queued_jobs, queued_jobs_status(Jobs)}
-                 ]}
+                      ,{db, D}
+                      ,{wait_left, erlang:read_timer(Ref)}
+                      ,{queued_jobs, queued_jobs_status(Jobs)}
+                     ]}
      ,wait, State};
 
 wait(cancel_current_job, _, #state{current_job_pid=P
@@ -777,13 +783,11 @@ handle_sync_event(_Event, _From, StateName, State) ->
 handle_info('$maybe_start_auto_compaction_job', CurrentState, State) ->
     maybe_start_auto_compaction_job(),
     {'next_state', CurrentState, State};
-handle_info({'DOWN', _, P, Ref, _Reason}, compact, #state{shards_pid_ref={P, Ref}
-                                                          ,next_compaction_msg=Msg
-                                                         }=State) ->
-    lager:debug("~p(~p) is done: ~p", [P, Ref, _Reason]),
-    Ref = gen_fsm:start_timer(?SLEEP_BETWEEN_COMPACTION, Msg),
-    lager:debug("starting timer for msg ~p", [Msg]),
-    {next_state, wait, State#state{wait_ref=Ref
+handle_info({'DOWN', Ref, 'process', P, _Reason}, compact, #state{shards_pid_ref={P, Ref}
+                                                                  ,next_compaction_msg=Msg
+                                                                 }=State) ->
+    WaitRef = gen_fsm:start_timer(?SLEEP_BETWEEN_COMPACTION, Msg),
+    {next_state, wait, State#state{wait_ref=WaitRef
                                    ,next_compaction_msg='undefined'
                                    ,shards_pid_ref='undefined'
                                   }};
@@ -865,11 +869,13 @@ db_design_docs(Conn, D) ->
 
 -spec compact_shards(server(), list(), list()) -> {pid(), reference()}.
 compact_shards(AdminConn, Ss, DDs) ->
-    spawn_monitor(fun() ->
-                          Ps = [spawn_monitor(?MODULE, 'compact_shard', [AdminConn, Shard, DDs]) || Shard <- Ss],
-                          MaxWait = max_wait_for_compaction(),
-                          wait_for_pids(MaxWait, Ps)
-                  end).
+    PR = spawn_monitor(fun() ->
+                               Ps = [spawn_monitor(?MODULE, 'compact_shard', [AdminConn, Shard, DDs]) || Shard <- Ss],
+                               MaxWait = max_wait_for_compaction(),
+                               wait_for_pids(MaxWait, Ps)
+                       end),
+    lager:debug("compacting shards in ~p", [PR]),
+    PR.
 
 wait_for_pids(_, []) -> 'ok';
 wait_for_pids(MaxWait, [{P,Ref}|Ps]) ->
