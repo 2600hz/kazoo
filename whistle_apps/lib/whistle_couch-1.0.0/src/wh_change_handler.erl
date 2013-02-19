@@ -54,21 +54,21 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (db(), wh_proplist()) -> startlink_ret().
+-spec start_link(db(), wh_proplist()) -> startlink_ret().
 start_link(#db{name=DbName}=Db, Options) ->
     wh_gen_changes:start_link(?MODULE, Db, ['longpoll' % we want the continuous feed
                                             ,{'heartbeat', 500} % keep the connection alive
                                             | Options
                                            ], [DbName]).
 
--spec stop/1 :: (atom() | pid()) -> 'ok'.
+-spec stop(atom() | pid()) -> 'ok'.
 stop(Srv) -> wh_gen_changes:stop(Srv).
 
--spec add_listener/3 :: (atom() | pid(), pid(), binary()) -> 'added' | 'exists'.
+-spec add_listener(atom() | pid(), pid(), binary()) -> 'added' | 'exists'.
 add_listener(Srv, Pid, Doc) ->
     wh_gen_changes:call(Srv, {'add_listener', Pid, Doc}).
 
--spec rm_listener/3 :: (atom() | pid(), pid(), binary()) -> 'ok'.
+-spec rm_listener(atom() | pid(), pid(), binary()) -> 'ok'.
 rm_listener(Srv, Pid, Doc) ->
     wh_gen_changes:cast(Srv, {'rm_listener', Pid, Doc}).
 
@@ -238,13 +238,14 @@ alert_listeners(JObj, Ls) ->
                                                || C <- wh_json:get_value(<<"changes">>, JObj, [])
                                               ]};
               'true' ->
-                  {'document_deleted', DocID}
+                  Rev = wh_json:get_value([<<"changes">>, 0, <<"rev">>], JObj),
+                  {'document_deleted', DocID, Rev}
           end,
 
     _ = [ Pid ! Msg || #listener{pid=Pid, doc=D} <- Ls, is_listener_interested(D, DocID)],
     'ok'.
 
--spec is_listener_interested/2 :: (binary(), binary()) -> boolean().
+-spec is_listener_interested(binary(), binary()) -> boolean().
 is_listener_interested(<<>>, _) -> 'true';
 is_listener_interested(DocID, DocID) -> 'true';
 is_listener_interested(_, _) -> 'false'.
