@@ -117,8 +117,8 @@ handle_info({flush_channels, Node}, State) ->
     ecallmgr_fs_nodes:flush_node_channels(Node),
     {noreply, State};
 handle_info(check_node_status, #state{node=Node, timeout=Timeout}=State) ->
-    case net_kernel:connect_node(Node) of
-        true -> 
+    case net_adm:ping(Node) of
+        pong ->
             %% give the node a moment to init
             timer:sleep(1000),
             wh_notify:system_alert("node ~s connected to ~s", [Node, node()]),
