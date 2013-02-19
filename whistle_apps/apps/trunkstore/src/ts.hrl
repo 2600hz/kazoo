@@ -38,6 +38,19 @@
 %%-type proplist() :: list(tuple(binary(), binary())) | [].
 -type active_calls() :: list(tuple(binary(), flat_rate | per_min)) | [].
 
+-record(ts_callflow_state, {
+          aleg_callid = <<>> :: binary()
+          ,bleg_callid = <<>> :: binary()
+          ,acctid = <<>> :: binary()
+          ,acctdb = <<>> :: binary()
+          ,route_req_jobj = wh_json:new() :: wh_json:object()
+          ,ep_data = wh_json:new() :: wh_json:object() %% data for the endpoint, either an actual endpoint or an offnet request
+          ,my_q = <<>> :: binary()
+          ,callctl_q = <<>> :: binary()
+          ,call_cost = 0.0 :: float()
+          ,failover :: wh_json:object()
+         }).
+
 -record(route_flags, {
           callid = <<>> :: binary()                      % unique call ID
           ,to_user = <<>> :: binary()                    % usually a DID

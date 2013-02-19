@@ -40,18 +40,6 @@
 -define(WAIT_FOR_HANGUP_TIMEOUT, 1000 * 60 * 60 * 1). %% 1 hour
 -define(WAIT_FOR_CDR_TIMEOUT, 5000).
 
--record(ts_callflow_state, {
-          aleg_callid = <<>> :: binary()
-          ,bleg_callid = <<>> :: binary()
-          ,acctid = <<>> :: binary()
-          ,acctdb = <<>> :: binary()
-          ,route_req_jobj = wh_json:new() :: wh_json:object()
-          ,ep_data = wh_json:new() :: wh_json:object() %% data for the endpoint, either an actual endpoint or an offnet request
-          ,my_q = <<>> :: binary()
-          ,callctl_q = <<>> :: binary()
-          ,call_cost = 0.0 :: float()
-          ,failover :: wh_json:object()
-         }).
 -type ts_state() :: #ts_callflow_state{}.
 
 -spec init(wh_json:object()) -> ts_state() |
@@ -258,7 +246,7 @@ process_event_for_cdr(#ts_callflow_state{aleg_callid=ALeg}=State, JObj) ->
                 <<"SUCCESS">> ->
                     lager:info("bridge was successful, still waiting on the CDR"),
                     ignore;
-                <<"ERROR">> ->
+                _Else ->
                     Failure = wh_json:get_value(<<"Error-Message">>, JObj, wh_json:get_value(<<"Response-Code">>, JObj)),
                     lager:info("offnet failed: ~s but waiting for the CDR still", [Failure]),
                     ignore
