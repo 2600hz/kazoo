@@ -263,7 +263,7 @@ ready('next_job', #state{queued_jobs=Jobs}=State) ->
         {{value, {Job, P, Ref}}, Jobs1} ->
             maybe_send_update(P, Ref, job_starting),
             gen_fsm:send_event(self(), Job),
-            lager:debug("starting job for ~p:~p", [P, Ref]),
+            lager:debug("starting queued job for ~p:~p: ~p", [P, Ref, Job]),
             {'next_state', 'ready', State#state{queued_jobs=Jobs1
                                                 ,current_job_pid=P
                                                 ,current_job_ref=Ref
@@ -297,14 +297,14 @@ ready(Msg, {NewP, _}, #state{queued_jobs=Jobs}=State) ->
         {{value, {Job, P, Ref}}, Jobs1} ->
             maybe_send_update(P, Ref, job_starting),
             gen_fsm:send_event(self(), Job),
-            lager:debug("starting job for ~p:~p", [P, Ref]),
+            lager:debug("starting queued job for ~p:~p: ~p", [P, Ref, Job]),
 
-            {Ref, Jobs2} = queue_job(Msg, NewP, Jobs1),
+            {Ref2, Jobs2} = queue_job(Msg, NewP, Jobs1),
 
-            {'reply', {queued, Ref}, 'ready', State#state{queued_jobs=Jobs2
-                                                      ,current_job_pid=P
-                                                      ,current_job_ref=Ref
-                                                     }}
+            {'reply', {queued, Ref2}, 'ready', State#state{queued_jobs=Jobs2
+                                                           ,current_job_pid=P
+                                                           ,current_job_ref=Ref
+                                                          }}
     end.
 
 -spec queue_job(req_job(), pid(), queue()) -> {reference(), queue()}.
