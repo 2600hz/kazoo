@@ -53,9 +53,9 @@ send_cdr(Url, JObj) ->
                           ,'post', wh_json:encode(JObj)
                          ) of
         {'ok', _StatusCode, _RespHeaders, _RespBody} ->
-            lager:debug("cdr server at ~s responded with a ~s: ~s", [_StatusCode, _RespBody]);
+            lager:debug("cdr server at ~s responded with a ~s: ~s", [Url, _StatusCode, _RespBody]);
         _Else ->
-            lager:debug("sending cdr to server at ~s caused error: ~p", [_Else])
+            lager:debug("sending cdr to server at ~s caused error: ~p", [Url, _Else])
     end.
 
 %% Returns the list of agents configured for the queue
