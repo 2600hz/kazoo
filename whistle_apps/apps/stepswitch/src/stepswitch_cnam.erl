@@ -45,9 +45,12 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(_) ->
+    _ = ssl:start(),
     gen_server:start_link(?MODULE, [], []).
 
-
+lookup(Number) when is_binary(Number) ->
+    Num = wnm_util:normalize_number(Number),
+    lookup(wh_json:set_value(<<"phone_number">>, wh_util:uri_encode(Num), wh_json:new()));
 lookup(JObj) ->
     CNAM = case get_cnam(JObj) of
                <<>> -> wh_json:get_value(<<"Caller-ID-Name">>, JObj, <<"UNKNOWN">>);
@@ -57,7 +60,6 @@ lookup(JObj) ->
              ,{[<<"Custom-Channel-Vars">>, <<"Caller-ID-Name">>], CNAM}
             ],
     wh_json:set_values(Props, JObj).
-    
 
 get_cnam(JObj) ->
     Number = wh_json:get_value(<<"Caller-ID-Number">>, JObj, <<"0000000000">>),
@@ -67,7 +69,7 @@ get_cnam(JObj) ->
         {error, not_found} ->
             fetch_cnam(Num, wh_json:set_value(<<"phone_number">>, wh_util:uri_encode(Num), JObj))
     end.
-    
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -233,17 +235,23 @@ make_request(Number, JObj) ->
             lager:debug("cnam lookup for ~p failed: ~p", [Number, _R]),
             <<>>
     end.
-                                                            
+
 get_http_url(JObj) ->
     Template = whapps_config:get_binary(?CONFIG_CAT, <<"http_url">>, ?DEFAULT_URL),
-    {ok, Url} = render(JObj, Template),
-    lists:flatten(Url).
+    case binary:match(Template, <<"opencnam">>) of
+        nomatch ->
+            {ok, Url} = render(JObj, Template),
+            lists:flatten(Url);
+        _Else ->
+            {ok, Url} = render(JObj, Template),
+            lists:flatten([Url, "?ref=2600hz"])
+    end.
 
 get_http_body(JObj) ->
     Template = whapps_config:get_binary(?CONFIG_CAT, <<"http_body">>, ?DEFAULT_CONTENT),
     case wh_util:is_empty(Template) of
         true -> [];
-        false -> 
+        false ->
             {ok, Body} = render(Template, JObj),
             lists:flatten(Body)
     end.
@@ -258,7 +266,7 @@ get_http_options(Url) ->
     Defaults = [{response_format, binary}
                 ,{connect_timeout, 500}
                ],
-    Routines = [fun maybe_enable_ssl/2 
+    Routines = [fun maybe_enable_ssl/2
                 ,fun maybe_enable_auth/2
                ],
     lists:foldl(fun(F, P) -> F(Url, P) end, Defaults, Routines).
