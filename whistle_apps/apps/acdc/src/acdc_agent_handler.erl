@@ -136,8 +136,10 @@ handle_call_event(JObj, Props) ->
 
 handle_cdr(JObj, Props) ->
     'true' = wapi_call:cdr_v(JObj),
-    case props:get_value(cdr_url, Props) of
-        'undefined' -> lager:debug("no cdr url defined: ~p", [JObj]);
+    Urls = props:get_value(cdr_urls, Props),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    case catch dict:fetch(CallId, Urls) of
+        {'EXIT', _} -> lager:debug("no url for call ~s", [CallId]);
         Url ->
             acdc_util:send_cdr(Url, JObj),
             acdc_agent:unbind_from_cdr(props:get_value(server, Props)
