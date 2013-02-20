@@ -415,6 +415,7 @@ publish_sync_req(API, ContentType) ->
 -spec publish_sync_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_sync_resp(Q, JObj) ->
     publish_sync_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_sync_resp('undefined', _, _) -> {error, no_destination};
 publish_sync_resp(Q, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?SYNC_RESP_VALUES, fun sync_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).

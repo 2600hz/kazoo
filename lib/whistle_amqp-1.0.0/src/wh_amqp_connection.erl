@@ -59,7 +59,7 @@ exchange_declared(URI, #'exchange.declare'{}=Command) ->
         {error, not_found} -> ok
     end.
 
--spec get_channel(#wh_amqp_connection{}) -> {'ok', pid()} | {'error', _}.
+-spec get_channel(wh_amqp_connection()) -> {'ok', pid()} | {'error', _}.
 get_channel(#wh_amqp_connection{manager=Srv}=Connection) ->
     case gen_server:call(Srv, get_channel) of
         {ok, _}=Ok -> Ok;
@@ -91,7 +91,7 @@ init([#wh_amqp_connection{uri=URI}=Connection]) ->
     %% in case we crashed and our sup has restarted us....
     case wh_amqp_connections:find(URI) of
         {error, not_found} -> {ok, Connection};
-        {ok, C} -> {ok, C}
+        Conn -> Conn
     end.
 
 %%--------------------------------------------------------------------
@@ -216,7 +216,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (term(), #wh_amqp_connection{}) -> 'ok'.
+-spec terminate(term(), wh_amqp_connection()) -> any().
 terminate(_Reason, #wh_amqp_connection{uri=Name}=State) ->
     lager:debug("connection to amqp broker '~s' terminated: ~p", [Name, _Reason]),
     disconnected(State).
@@ -235,7 +235,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec prepare_connection(#wh_amqp_connection{}) -> #wh_amqp_connection{}.
+-spec prepare_connection(wh_amqp_connection()) -> wh_amqp_connection().
 prepare_connection(State) ->
     case open_channel(State) of
         {error, _R} ->
@@ -245,11 +245,11 @@ prepare_connection(State) ->
             rebuild_exchanges(Pid, State)
     end.
 
--spec rebuild_exchanges(pid(), #wh_amqp_connection{}) -> #wh_amqp_connection{}.
+-spec rebuild_exchanges(pid(), wh_amqp_connection()) -> wh_amqp_connection().
 rebuild_exchanges(Pid, #wh_amqp_connection{exchanges=Exchanges}=State) ->
     rebuild_exchanges(Exchanges, Pid, State).
 
--spec rebuild_exchanges([] | [#'exchange.declare'{},...], pid(), #wh_amqp_connection{}) -> #wh_amqp_connection{}.
+-spec rebuild_exchanges(wh_exchanges(), pid(), wh_amqp_connection()) -> wh_amqp_connection().
 rebuild_exchanges([], _, State) ->
     start_prechannels(State);
 rebuild_exchanges([#'exchange.declare'{exchange=_Ex, type=_Ty}=Command
@@ -259,24 +259,24 @@ rebuild_exchanges([#'exchange.declare'{exchange=_Ex, type=_Ty}=Command
     amqp_channel:call(Pid, Command),
     rebuild_exchanges(Exchanges, Pid, State).
 
--spec start_prechannels(#wh_amqp_connection{}) -> #wh_amqp_connection{}.
+-spec start_prechannels(wh_amqp_connection()) -> wh_amqp_connection().
 start_prechannels(State) ->
     _ = [start_prechannel(State)
          || _ <- lists:seq(1,10)
         ],
     connected(State).
 
--spec connected(#wh_amqp_connection{}) -> #wh_amqp_connection{}.
+-spec connected(wh_amqp_connection()) -> wh_amqp_connection().
 connected(State) ->
     wh_amqp_connections:connected(State).
 
--spec disconnected(#wh_amqp_connection{}) -> #wh_amqp_connection{}.
+-spec disconnected(wh_amqp_connection()) -> wh_amqp_connection().
 disconnected(State) ->
     wh_amqp_channels:lost_connection(State),
     S = wh_amqp_connections:disconnected(State),
     close_connection(S).
 
--spec close_connection(#wh_amqp_connection{}) -> #wh_amqp_connection{}.
+-spec close_connection(wh_amqp_connection()) -> wh_amqp_connection().
 close_connection(#wh_amqp_connection{connection_ref=Ref}=State) when is_reference(Ref) ->
     erlang:demonitor(Ref, [flush]),
     close_connection(State#wh_amqp_connection{connection_ref=undefined});
@@ -286,7 +286,7 @@ close_connection(#wh_amqp_connection{prechannels=[{Ref, _}|Channels]}=State) ->
 close_connection(State) ->
     State.
 
--spec next_timeout/1 :: (pos_integer()) -> ?START_TIMEOUT..?MAX_TIMEOUT.
+-spec next_timeout(pos_integer()) -> ?START_TIMEOUT..?MAX_TIMEOUT.
 next_timeout(?MAX_TIMEOUT=Timeout) ->
     Timeout;
 next_timeout(Timeout) when Timeout*2 > ?MAX_TIMEOUT ->
@@ -296,7 +296,7 @@ next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
 next_timeout(Timeout) ->
     Timeout * 2.
 
--spec start_prechannel(#wh_amqp_connection{}) -> 'ok'.
+-spec start_prechannel(wh_amqp_connection()) -> 'ok'.
 start_prechannel(#wh_amqp_connection{manager=Srv}=Connection) ->
     case open_channel(Connection) of
         {ok, Pid} ->
@@ -305,7 +305,7 @@ start_prechannel(#wh_amqp_connection{manager=Srv}=Connection) ->
             ok
     end.
 
--spec open_channel(#wh_amqp_connection{}) -> {'ok', pid()} | {'error', _}.
+-spec open_channel(wh_amqp_connection()) -> {'ok', pid()} | {'error', _}.
 open_channel(#wh_amqp_connection{connection=Pid, manager=Srv}) ->
     try amqp_connection:open_channel(Pid) of
         {ok, Channel}=Ok ->
