@@ -53,7 +53,7 @@ start_link(Node, Options) ->
 handle_sucessful_registration(Props, Node) ->
     lager:debug("received registration event"),
     ecallmgr_registrar:reg_success(Props, Node),
-    publish_register_event(Props),
+    publish_register_event(Props, Node),
     ok.
 
 %%%===================================================================
@@ -232,8 +232,8 @@ handle_lookup_resp(_, _, _, {error, _R}) ->
     lager:debug("authn request lookup failed: ~p", [_R]),
     ecallmgr_fs_xml:route_not_found().
     
--spec publish_register_event/1 :: (wh_proplist()) -> 'ok'.
-publish_register_event(Data) ->
+-spec publish_register_event/2 :: (wh_proplist(), atom()) -> 'ok'.
+publish_register_event(Data, Node) ->
     ApiProp = lists:foldl(fun(K, Api) ->
                                   case props:get_value(wh_util:to_lower_binary(K), Data) of
                                       undefined ->
@@ -245,6 +245,7 @@ publish_register_event(Data) ->
                                   end
                           end
                           ,[{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
+                            ,{<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
                             ,{<<"Call-ID">>, get(callid)}
                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
                           ,wapi_registration:success_keys()),
