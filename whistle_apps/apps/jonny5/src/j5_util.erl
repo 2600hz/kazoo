@@ -120,8 +120,10 @@ write_to_ledger(Suffix, Props, Units, #limits{account_id=LedgerId, account_db=Le
             Tr4 = wh_transaction:set_description(Suffix, Tr3),
             case  wh_transaction:save(Tr4) of
                 {ok, Res} ->
+                    lager:info("credit account: ~p of ~p~n", [get_account_id(JObj), Units]),
                     {ok, wh_transaction:to_json(Res)};
                 {error, Res, _E} ->
+                    lager:error("failed to write to ledger: ~p~n", [_E]),
                     {error, wh_transaction:to_json(Res)}
             end;
         <<"debit">> ->
@@ -132,8 +134,10 @@ write_to_ledger(Suffix, Props, Units, #limits{account_id=LedgerId, account_db=Le
             Tr4 = wh_transaction:set_description(Suffix, Tr3),
             case  wh_transaction:save(Tr4) of
                 {ok, Res} ->
+                    lager:info("debit account: ~p of ~p~n", [get_account_id(JObj), Units]),                    
                     {ok, wh_transaction:to_json(Res)};
                 {error, Res, _E} ->
+                    lager:error("failed to write to ledger: ~p~n", [_E]),
                     {error, wh_transaction:to_json(Res)}
             end;
         _ ->

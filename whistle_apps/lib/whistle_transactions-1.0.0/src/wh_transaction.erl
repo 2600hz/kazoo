@@ -203,13 +203,12 @@ set_sub_account_id(AccountId, Transaction) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set_call_id/2 :: (ne_binary(), wh_transaction()) -> wh_transaction(). 
-set_call_id(CallId, #wh_transaction{pvt_reason=Reason}=Transaction) ->
-    case Reason of
-        Reason when Reason =:= per_minute_sub_account orelse Reason =:= per_minute_account  ->
-            Transaction#wh_transaction{call_id=CallId};
-        _ ->
-            Transaction
-    end.
+set_call_id(CallId, #wh_transaction{pvt_reason= <<"per_minute_sub_account">>}=Tr) ->
+    Tr#wh_transaction{call_id=CallId};
+set_call_id(CallId, #wh_transaction{pvt_reason= <<"per_minute_account">>}=Tr) ->
+    Tr#wh_transaction{call_id=CallId};
+set_call_id(_, Tr) ->
+    Tr.
 
 %%--------------------------------------------------------------------
 %%
@@ -231,7 +230,7 @@ save(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
             AccountDB = wh_util:format_account_id(AccountId, encoded),
             case couch_mgr:save_doc(AccountDB, to_json(Transaction2)) of
                 {ok, T} ->
-                    {ok, T};
+                    {ok, from_json(T)};
                 {error, R} ->
                     {error, Transaction2, R}
             end;
@@ -432,19 +431,18 @@ validate_sub_account_id(#wh_transaction{sub_account_id=SubAccountId, pvt_account
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_call_id/1 :: (wh_transaction()) -> {ok, wh_transaction()} | {error, wh_transaction(), atom()}. 
-validate_call_id(#wh_transaction{call_id=CallId, pvt_reason=Reason}=Tr) ->
-    case Reason of
-        Reason when Reason =:= per_minute_sub_account orelse Reason =:= per_minute_account  ->
-            case is_binary(CallId) of
-                true -> {ok, Tr};
-                false -> {error, Tr, missing_call_id}
-            end;
-        _ ->
-            case is_binary(CallId) of
-                true -> {error, Tr, call_id_bad_reason};
-                false -> {ok, Tr}
-            end
-    end.
+validate_call_id(#wh_transaction{call_id=CallId, pvt_reason= <<"per_minute_sub_account">>}=Tr) ->
+    case is_binary(CallId) of
+        true -> {ok, Tr};
+        false -> {error, Tr, 'missing_call_id'}
+    end;
+validate_call_id(#wh_transaction{call_id=CallId, pvt_reason= <<"per_minute_account">>}=Tr) ->
+    case is_binary(CallId) of
+        true -> {ok, Tr};
+        false -> {error, Tr, 'missing_call_id'}
+    end;
+validate_call_id(Tr) ->
+    {ok, Tr}.
 
 
 %%--------------------------------------------------------------------
