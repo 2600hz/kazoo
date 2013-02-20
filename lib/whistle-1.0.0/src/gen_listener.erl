@@ -141,40 +141,51 @@ behaviour_info(_) ->
 -define(INITIALIZE_MSG, {'$initialize_gen_listener', ?START_TIMEOUT}).
 -define(INITIALIZE_MSG(T), {'$initialize_gen_listener', next_timeout(T)}).
 
-%% API functions for requesting data from the gen_listener
--spec queue_name/1 :: (pid() | atom()) -> ne_binary().
+%%%===================================================================
+%%% API
+%%%===================================================================
+-spec start_link(atom(), start_params(), list()) -> startlink_ret().
+start_link(Module, Params, InitArgs) ->
+    gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
+
+-spec start_link({'local', atom()} | {'global', term()}, atom(), start_params(), list()) -> startlink_ret().
+start_link(Name, Module, Params, InitArgs) ->
+    gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], []).
+
+-spec queue_name(server_ref()) -> ne_binary().
 queue_name(Srv) ->
     gen_server:call(Srv, queue_name).
 
+-spec is_consuming(server_ref()) -> boolean().
 is_consuming(Srv) ->
     gen_server:call(Srv, is_consuming).
 
--spec responders/1 :: (pid() | atom()) -> listener_utils:responders().
+-spec responders(server_ref()) -> listener_utils:responders().
 responders(Srv) ->
     gen_server:call(Srv, responders).
 
--spec ack/2 :: (pid() | atom(), #'basic.deliver'{}) -> 'ok'.
+-spec ack(server_ref(), #'basic.deliver'{}) -> 'ok'.
 ack(Srv, Delivery) ->
     gen_server:cast(Srv, {ack, Delivery}).
 
--spec nack/2 :: (pid() | atom(), #'basic.deliver'{}) -> 'ok'.
+-spec nack(server_ref(), #'basic.deliver'{}) -> 'ok'.
 nack(Srv, Delivery) ->
     gen_server:cast(Srv, {nack, Delivery}).
 
 %% API functions that mirror gen_server:call,cast,reply
--spec call/2 :: (pid() | atom(), term()) -> term().
+-spec call(server_ref(), term()) -> term().
 call(Name, Request) ->
     gen_server:call(Name, Request).
 
--spec call/3 :: (pid() | atom(), term(), 'infinity' | non_neg_integer()) -> term().
+-spec call(server_ref(), term(), 'infinity' | non_neg_integer()) -> term().
 call(Name, Request, Timeout) ->
     gen_server:call(Name, Request, Timeout).
 
--spec cast/2 :: (pid() | atom(), term()) -> 'ok'.
+-spec cast(server_ref(), term()) -> 'ok'.
 cast(Name, Request) ->
     gen_server:cast(Name, Request).
 
--spec delayed_cast/3 :: (pid() | atom(), term(), pos_integer()) -> 'ok'.
+-spec delayed_cast(server_ref(), term(), pos_integer()) -> 'ok'.
 delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
     spawn(fun() ->
                   timer:sleep(Wait),
@@ -182,45 +193,39 @@ delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
           end),
     ok.
 
--spec reply/2 :: ({pid(), reference()}, term()) -> no_return().
+-spec reply({pid(), reference()}, term()) -> no_return().
 reply(From, Msg) ->
     gen_server:reply(From, Msg).
 
-%% Starting the gen_server
--spec start_link/3 :: (atom(), start_params(), list()) -> startlink_ret().
--spec start_link/4 :: ({'local', atom()} | {'global', term()}, atom(), start_params(), list()) -> startlink_ret().
-start_link(Module, Params, InitArgs) ->
-    gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
-start_link(Name, Module, Params, InitArgs) ->
-    gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], []).
-
--spec add_responder/3 :: (pid() | atom(), responder_callback_mod(), responder_callback_mapping() | responder_callback_mappings()) -> 'ok'.
+-spec add_responder(server_ref(), responder_callback_mod(), responder_callback_mapping() | responder_callback_mappings()) -> 'ok'.
 add_responder(Srv, Responder, Key) when not is_list(Key) ->
     add_responder(Srv, Responder, [Key]);
 add_responder(Srv, Responder, [{_,_}|_] = Keys) ->
     gen_server:cast(Srv, {add_responder, Responder, Keys}).
 
--spec rm_responder/2 :: (pid() | atom(), responder_callback_mod()) -> 'ok'.
--spec rm_responder/3 :: (pid() | atom(), responder_callback_mod(), responder_callback_mappings()) -> 'ok'.
+-spec rm_responder(server_ref(), responder_callback_mod()) -> 'ok'.
+%% empty list removes all
 rm_responder(Srv, Responder) ->
-    rm_responder(Srv, Responder, []).  %% empty list removes all
+    rm_responder(Srv, Responder, []).
+
+-spec rm_responder(server_ref(), responder_callback_mod(), responder_callback_mappings()) -> 'ok'.
 rm_responder(Srv, Responder, {_,_}=Key) ->
     rm_responder(Srv, Responder, [Key]);
 rm_responder(Srv, Responder, Keys) ->
     gen_server:cast(Srv, {rm_responder, Responder, Keys}).
 
--spec add_binding/2 :: (pid() | atom(), binding() | ne_binary() | atom()) -> 'ok'.
--spec add_binding/3 :: (pid() | atom(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
+-spec add_binding(server_ref(), binding() | ne_binary() | atom()) -> 'ok'.
 add_binding(Srv, {Binding, Props}) ->
     gen_server:cast(Srv, {add_binding, Binding, Props});
 add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:cast(Srv, {add_binding, wh_util:to_binary(Binding), []}).
 
+-spec add_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:cast(Srv, {add_binding, wh_util:to_binary(Binding), Props}).
 
 %% It is expected that responders have been set up already, prior to binding the new queue
--spec add_queue/4 :: (pid() | atom(), binary(), wh_proplist(), binding() | bindings()) ->
+-spec add_queue(server_ref(), binary(), wh_proplist(), binding() | bindings()) ->
                              {'ok', ne_binary()} |
                              {'error', term()}.
 add_queue(Srv, QueueName, QueueProps, {_Type, _Props}=Binding) ->
@@ -228,25 +233,38 @@ add_queue(Srv, QueueName, QueueProps, {_Type, _Props}=Binding) ->
 add_queue(Srv, QueueName, QueueProps, [{_,_}|_]=Bindings) ->
     gen_server:call(Srv, {add_queue, QueueName, QueueProps, Bindings}).
 
--spec rm_queue/2 :: (pid() | atom(), ne_binary()) -> 'ok'.
+-spec rm_queue(server_ref(), ne_binary()) -> 'ok'.
 rm_queue(Srv, ?NE_BINARY = QueueName) ->
     gen_server:cast(Srv, {rm_queue, QueueName}).
 
--spec other_queues/1 :: (pid() | atom()) -> [ne_binary(),...] | [].
+-spec other_queues(server_ref()) -> [ne_binary(),...] | [].
 other_queues(Srv) ->
     gen_server:call(Srv, other_queues).
 
--spec rm_binding/2 :: (pid() | atom(), binding()) -> 'ok'.
--spec rm_binding/3 :: (pid() | atom(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
+-spec rm_binding(server_ref(), binding()) -> 'ok'.
 rm_binding(Srv, {Binding, Props}) ->
     rm_binding(Srv, Binding, Props).
+
+-spec rm_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 rm_binding(Srv, Binding, Props) ->
     gen_server:cast(Srv, {rm_binding, wh_util:to_binary(Binding), Props}).
 
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
--spec init/1 :: ([atom() | wh_proplist(),...]) -> {'ok', state()}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Initializes the server
+%%
+%% @spec init(Args) -> {ok, State} |
+%%                     {ok, State, Timeout} |
+%%                     ignore |
+%%                     {stop, Reason}
+%% @end
+%%--------------------------------------------------------------------
+-spec init([atom() | wh_proplist(),...]) -> {'ok', state()}.
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
     put(callid, Module),
@@ -272,11 +290,25 @@ init([Module, Params, InitArgs]) ->
                 ,bindings=props:get_value(bindings, Params, [])
                }}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling call messages
+%%
+%% @spec handle_call(Request, From, State) ->
+%%                                   {reply, Reply, State} |
+%%                                   {reply, Reply, State, Timeout} |
+%%                                   {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, Reply, State} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
 -type gen_l_handle_call_ret() :: {'reply', term(), state(), gen_server_timeout()} |
                                  {'noreply', state(), gen_server_timeout()} |
                                  {'stop', term(), state()} | {'stop', term(), term(), state()}.
 
--spec handle_call/3 :: (term(), {pid(), reference()}, state()) -> gen_l_handle_call_ret().
+-spec handle_call(term(), {pid(), reference()}, state()) -> gen_l_handle_call_ret().
 handle_call({add_queue, QueueName, QueueProps, Bindings}, _From, State) ->
     {Q, S} = add_other_queue(QueueName, QueueProps, Bindings, State),
     {reply, {ok, Q}, S};
@@ -320,7 +352,17 @@ handle_call(Request, From, #state{module=Module
             {stop, Why, State}
     end.
 
--spec handle_cast/2 :: (term(), state()) -> handle_cast_ret().
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling cast messages
+%%
+%% @spec handle_cast(Msg, State) -> {noreply, State} |
+%%                                  {noreply, State, Timeout} |
+%%                                  {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_cast(term(), state()) -> handle_cast_ret().
 handle_cast({ack, Delivery}, State) ->
     amqp_util:basic_ack(Delivery),
     {noreply, State};
@@ -340,24 +382,14 @@ handle_cast({add_responder, Responder, Keys}, #state{responders=Responders}=Stat
      ,State#state{responders=listener_utils:add_responder(Responders, Responder, Keys)}
      ,hibernate
     };
-
 handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State) ->
     {noreply
      ,State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}
      ,hibernate
     };
-
-handle_cast({add_binding, _, _}=AddBinding, #state{is_consuming=false
-                                                   ,queue = undefined
-                                                  }=State) ->
-    lager:debug("no queue name and we're not consuming...ignoring the add_binding: ~p", [AddBinding]),
-    {noreply, State};
-handle_cast({add_binding, _, _}=AddBinding, #state{is_consuming=false, params=Params}=State) ->
+handle_cast({add_binding, _, _}=AddBinding, #state{is_consuming=false}=State) ->
     Time = ?BIND_WAIT + (crypto:rand_uniform(100, 500)), % wait 100 + [100,500) ms before replaying the binding request
     lager:debug("not consuming yet, put binding to end of message queue after ~b ms", [Time]),
-    Responders = props:get_value(responders, Params, []),
-    Bindings = props:get_value(bindings, Params, []),
-    gen_server:cast(self(), {init_amqp, Params, Responders, Bindings}),
     ?MODULE:delayed_cast(self(), AddBinding, Time),
     {noreply, State};
 handle_cast({add_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
@@ -370,7 +402,6 @@ handle_cast({add_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) -
             create_binding(Binding, Props, Q),
             {noreply, State#state{bindings=[{Binding, Props}|Bs]}, hibernate}
     end;
-
 handle_cast({rm_binding, Binding, Props}, #state{queue=Q
                                                  ,bindings=Bs
                                                 }=State) ->
@@ -403,31 +434,44 @@ handle_cast(Message, #state{module=Module
             {stop, Reason, State}
     end.
 
--spec handle_info/2 :: (term(), state()) -> handle_info_ret().
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling all non call/cast messages
+%%
+%% @spec handle_info(Info, State) -> {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_info(term(), state()) -> handle_info_ret().
 handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}
                                               ,payload=Payload}}, State) ->
     spawn(?MODULE, handle_event, [Payload, CT, BD, State]),
     {noreply, State, hibernate};
+handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue=undefined}=State) ->
+    lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
+    {noreply, State};
 handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State#state{is_consuming=true}};
 handle_info({'$initialize_gen_listener', Timeout}
             ,#state{bindings=Bindings, params=Params}=State) ->
     case start_amqp(Params) of
         {error, _E} ->
-            io:format("retry: ~p~n", [?INITIALIZE_MSG(Timeout)]),
             _ = erlang:send_after(Timeout, self(), ?INITIALIZE_MSG(Timeout)),
-            {noreply, State};
+            {noreply, State#state{queue=undefined, is_consuming=false}};
         {ok, Q} ->
-            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
             _ = [create_binding(Type, BindProps, Q)
                  || {Type, BindProps} <- Bindings
                 ],
+            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
             gen_server:cast(self(), {created_queue, Q}),
-            {noreply, State#state{queue=Q}}
+            {noreply, State#state{queue=Q, is_consuming=false}}
     end;
 handle_info('$is_gen_listener_consuming', #state{is_consuming=false}=State) ->
-    self() ! {'$initialize', ?START_TIMEOUT},
-    {noreply, State};
+    catch wh_amqp_channel:remove(),
+    self() ! ?INITIALIZE_MSG,
+    {noreply, State#state{queue=undefined}};
 handle_info('$is_gen_listener_consuming', State) ->
     {noreply, State};
 handle_info(?CALLBACK_TIMEOUT_MSG, State) ->
@@ -435,6 +479,54 @@ handle_info(?CALLBACK_TIMEOUT_MSG, State) ->
 handle_info(Message, State) ->
     handle_callback_info(Message, State).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handles the AMQP messages prior to the spawning a handler.
+%% Allows listeners to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options} | ignore
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_event(ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) ->  'ok'.
+handle_event(Payload, <<"application/json">>, BasicDeliver, State) ->
+    JObj = wh_json:decode(Payload),
+    _ = wh_util:put_callid(JObj),
+    process_req(JObj, BasicDeliver, State);
+handle_event(Payload, <<"application/erlang">>, BasicDeliver, State) ->
+    JObj = binary_to_term(Payload),
+    _ = wh_util:put_callid(JObj),
+    process_req(JObj, BasicDeliver, State).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
+%%--------------------------------------------------------------------
+terminate(Reason, #state{module=Module
+                         ,module_state=ModState
+                        }) ->
+    _ = (catch Module:terminate(Reason, ModState)),
+    wh_amqp_channel:remove(),
+    lager:debug("~s terminated cleanly, going down", [Module]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
+%%--------------------------------------------------------------------
+code_change(_OldVersion, State, _Extra) ->
+    {ok, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
 handle_callback_info(Message, #state{module=Module
                                      ,module_state=ModState
                                      ,module_timeout_ref=OldRef
@@ -457,9 +549,6 @@ handle_callback_info(Message, #state{module=Module
             {stop, Why, State}
     end.
 
-code_change(_OldVersion, State, _Extra) ->
-    {ok, State}.
-
 format_status(_Opt, [_PDict, #state{module=Module
                                     ,module_state=ModState
                                    }=State]) ->
@@ -469,24 +558,7 @@ format_status(_Opt, [_PDict, #state{module=Module
      ,{data, [{"Listener State", State}]}
     ].
 
-terminate(Reason, #state{module=Module
-                         ,module_state=ModState
-                        }) ->
-    _ = (catch Module:terminate(Reason, ModState)),
-    wh_amqp_channel:remove(),
-    lager:debug("~s terminated cleanly, going down", [Module]).
-
--spec handle_event/4 :: (ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) ->  'ok'.
-handle_event(Payload, <<"application/json">>, BasicDeliver, State) ->
-    JObj = wh_json:decode(Payload),
-    _ = wh_util:put_callid(JObj),
-    process_req(JObj, BasicDeliver, State);
-handle_event(Payload, <<"application/erlang">>, BasicDeliver, State) ->
-    JObj = binary_to_term(Payload),
-    _ = wh_util:put_callid(JObj),
-    process_req(JObj, BasicDeliver, State).
-
--spec process_req/3 :: (wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
+-spec process_req(wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
 process_req(JObj, BasicDeliver, State) ->
     case handle_callback_event(State, JObj) of
         ignore -> ok;
@@ -494,7 +566,7 @@ process_req(JObj, BasicDeliver, State) ->
             process_req(Props, JObj, BasicDeliver, State)
     end.
 
--spec process_req/4 :: (wh_proplist(), wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
+-spec process_req(wh_proplist(), wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
 process_req(Props, JObj, BasicDeliver, #state{responders=Responders, consumer_key=ConsumerKey}) ->
     Key = wh_util:get_event_type(JObj),
     _ = [spawn(fun() ->
@@ -511,7 +583,7 @@ process_req(Props, JObj, BasicDeliver, #state{responders=Responders, consumer_ke
             maybe_event_matches_key(Key, Evt)
         ].
 
--spec handle_callback_event/2 :: (state(), wh_json:object()) -> 'ignore' | wh_proplist().
+-spec handle_callback_event(state(), wh_json:object()) -> 'ignore' | wh_proplist().
 handle_callback_event(#state{module=Module, module_state=ModState, queue=Queue
                              ,other_queues=OtherQueues, self=Self}, JObj) ->
     OtherQueueNames = props:get_keys(OtherQueues),
@@ -532,14 +604,14 @@ handle_callback_event(#state{module=Module, module_state=ModState, queue=Queue
     end.
 
 %% allow wildcard (<<"*">>) in the Key to match either (or both) Category and Name
--spec maybe_event_matches_key/2 :: (responder_callback_mapping(), responder_callback_mapping()) -> boolean().
+-spec maybe_event_matches_key(responder_callback_mapping(), responder_callback_mapping()) -> boolean().
 maybe_event_matches_key(Evt, Evt) -> true;
 maybe_event_matches_key({_,_}, {<<"*">>, <<"*">>}) -> true;
 maybe_event_matches_key({_, Name}, {<<"*">>, Name}) -> true;
 maybe_event_matches_key({Cat, _}, {Cat, <<"*">>}) -> true;
 maybe_event_matches_key(_A, _B) -> false.
 
--spec start_amqp/1 :: (wh_proplist()) -> {'ok', binary()} | {'error', _}.
+-spec start_amqp(wh_proplist()) -> {'ok', binary()} | {'error', _}.
 start_amqp(Props) ->
     QueueProps = props:get_value(queue_options, Props, []),
     QueueName = props:get_value(queue_name, Props, <<>>),
@@ -552,17 +624,17 @@ start_amqp(Props) ->
             {ok, Q}
     end.
 
--spec set_qos/1 :: ('undefined' | non_neg_integer()) -> 'ok'.
+-spec set_qos('undefined' | non_neg_integer()) -> 'ok'.
 set_qos(undefined) -> ok;
 set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).
 
--spec start_consumer/2 :: (ne_binary(), proplist()) -> 'ok'.
+-spec start_consumer(ne_binary(), proplist()) -> 'ok'.
 start_consumer(Q, undefined) ->
     amqp_util:basic_consume(Q, []);
 start_consumer(Q, ConsumeProps) ->
     amqp_util:basic_consume(Q, ConsumeProps).
 
--spec remove_binding/3 :: (ne_binary(), wh_proplist(), ne_binary()) -> any().
+-spec remove_binding(ne_binary(), wh_proplist(), ne_binary()) -> any().
 remove_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
     try
@@ -581,7 +653,7 @@ remove_binding(Binding, Props, Q) ->
             erlang:error({api_call_undefined, Wapi})
     end.
 
--spec create_binding/3 :: (ne_binary(), wh_proplist(), ne_binary()) -> any().
+-spec create_binding(ne_binary(), wh_proplist(), ne_binary()) -> any().
 create_binding(Binding, Props, Q) when not is_binary(Binding) ->
     create_binding(wh_util:to_binary(Binding), Props, Q);
 create_binding(Binding, Props, Q) ->
@@ -602,7 +674,7 @@ create_binding(Binding, Props, Q) ->
             erlang:error({api_call_undefined, Wapi})
     end.
 
--spec next_timeout/1 :: (pos_integer()) -> ?START_TIMEOUT..?MAX_TIMEOUT.
+-spec next_timeout(pos_integer()) -> ?START_TIMEOUT..?MAX_TIMEOUT.
 next_timeout(?MAX_TIMEOUT=Timeout) ->
     Timeout + random:uniform(100);
 next_timeout(Timeout) when Timeout*2 > ?MAX_TIMEOUT ->
@@ -612,22 +684,13 @@ next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
 next_timeout(Timeout) ->
     (Timeout * 2) + random:uniform(100).
 
-
-
-
-
-
-
-
-
-
--spec stop_timer/1 :: ('undefined' | reference()) -> non_neg_integer() | 'false'.
+-spec stop_timer('undefined' | reference()) -> non_neg_integer() | 'false'.
 stop_timer(undefined) ->
     false;
 stop_timer(Ref) when is_reference(Ref) ->
     erlang:cancel_timer(Ref).
 
--spec start_timer/1 :: (term()) -> reference() | 'undefined'.
+-spec start_timer(term()) -> reference() | 'undefined'.
 start_timer(0) ->
     self() ! ?CALLBACK_TIMEOUT_MSG,
     undefined;
@@ -635,7 +698,7 @@ start_timer(Timeout) when is_integer(Timeout) andalso Timeout >= 0 ->
     erlang:send_after(Timeout, self(), ?CALLBACK_TIMEOUT_MSG);
 start_timer(_) -> 'undefined'.
 
--spec add_other_queue/4 :: (binary(), wh_proplist(), wh_proplist(), state()) -> {ne_binary(), state()}.
+-spec add_other_queue(binary(), wh_proplist(), wh_proplist(), state()) -> {ne_binary(), state()}.
 add_other_queue(<<>>, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
     {ok, Q} = start_amqp(QueueProps),
     _ = [create_binding(Type, BindProps, Q) || {Type, BindProps} <- Bindings],
