@@ -34,13 +34,13 @@ queue_presence_update(AcctId, QueueId) ->
 
 agent_presence_update(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
-        undefined -> presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID);
+        'undefined' -> presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID);
         P when is_pid(P) -> presence_update(AcctId, AgentId, ?PRESENCE_GREEN)
     end.
 
 presence_update(AcctId, QueueId, State) ->
-    AcctDb = wh_util:format_account_id(AcctId, encoded),
-    {ok, AcctDoc} = couch_mgr:open_cache_doc(AcctDb, AcctId),
+    AcctDb = wh_util:format_account_id(AcctId, 'encoded'),
+    {'ok', AcctDoc} = couch_mgr:open_cache_doc(AcctDb, AcctId),
     To = <<QueueId/binary, "@", (wh_json:get_value(<<"realm">>, AcctDoc))/binary>>,
 
     lager:debug("sending presence update '~s' to '~s'", [State, To]),
@@ -48,33 +48,33 @@ presence_update(AcctId, QueueId, State) ->
 
 -spec send_cdr(ne_binary(), wh_json:object()) -> 'ok'.
 send_cdr(Url, JObj) ->
-    Body = wh_json:encode(JObj),
-    
-    lager:debug("sending CDR to ~s", [Url]),
-    Body = wh_json:encode(JObj),
-    _Resp = ibrowse:send_req(wh_util:to_list(Url)
-                             ,[{"Content-Type", "application/json"}]
-                             ,'post', Body
-                            ),
-    lager:debug("resp: ~p", [_Resp]).
+    case ibrowse:send_req(wh_util:to_list(Url)
+                          ,[{"Content-Type", "application/json"}]
+                          ,'post', wh_json:encode(JObj)
+                         ) of
+        {'ok', _StatusCode, _RespHeaders, _RespBody} ->
+            lager:debug("cdr server at ~s responded with a ~s: ~s", [_StatusCode, _RespBody]);
+        _Else ->
+            lager:debug("sending cdr to server at ~s caused error: ~p", [_Else])
+    end.
 
 %% Returns the list of agents configured for the queue
 -spec agents_in_queue(ne_binary(), ne_binary()) -> wh_json:json_strings().
 agents_in_queue(AcctDb, QueueId) ->
-    case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
-        {ok, []} -> [];
-        {error, _E} -> lager:debug("failed to lookup agents for ~s: ~p", [QueueId, _E]), [];
-        {ok, As} -> [wh_json:get_value(<<"value">>, A) || A <- As]
+    case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
+        {'ok', []} -> [];
+        {'error', _E} -> lager:debug("failed to lookup agents for ~s: ~p", [QueueId, _E]), [];
+        {'ok', As} -> [wh_json:get_value(<<"value">>, A) || A <- As]
     end.
 
 -spec agent_devices(ne_binary(), ne_binary()) -> wh_json:objects().
 agent_devices(AcctDb, AgentId) ->
-    case couch_mgr:get_results(AcctDb, <<"cf_attributes/owned">>, [{key, [AgentId, <<"device">>]}
-                                                                   ,include_docs
+    case couch_mgr:get_results(AcctDb, <<"cf_attributes/owned">>, [{'key', [AgentId, <<"device">>]}
+                                                                   ,'include_docs'
                                                                   ])
     of
-        {ok, Devices} -> [wh_json:get_value(<<"doc">>, Dev) || Dev <- Devices];
-        {error, _} -> []
+        {'ok', Devices} -> [wh_json:get_value(<<"doc">>, Dev) || Dev <- Devices];
+        {'error', _} -> []
     end.
 
 -spec get_endpoints(whapps_call:call(), ne_binary() | couch_mgr:get_results_return()) ->
@@ -84,30 +84,30 @@ get_endpoints(Call, ?NE_BINARY = AgentId) ->
     get_endpoints(Call
                   ,couch_mgr:get_results(AcctDb
                                          ,<<"cf_attributes/owned">>
-                                         ,[{key, [AgentId, <<"device">>]}]
+                                         ,[{'key', [AgentId, <<"device">>]}]
                                         )
                  );
-get_endpoints(_Call, {ok, []}) -> [];
-get_endpoints(_Call, {error, _E}) -> [];
-get_endpoints(Call, {ok, Devices}) ->
+get_endpoints(_Call, {'ok', []}) -> [];
+get_endpoints(_Call, {'error', _E}) -> [];
+get_endpoints(Call, {'ok', Devices}) ->
     EPDocs = [EPDoc
               || Device <- Devices,
-                 (EPDoc = get_endpoint(Call, wh_json:get_value(<<"id">>, Device))) =/= undefined,
-                 wh_json:is_true(<<"enabled">>, EPDoc, false)
+                 (EPDoc = get_endpoint(Call, wh_json:get_value(<<"id">>, Device))) =/= 'undefined',
+                 wh_json:is_true(<<"enabled">>, EPDoc, 'false')
              ],
 
     lists:foldl(fun(EPDoc, Acc) ->
                         case cf_endpoint:build(EPDoc, Call) of
-                            {ok, EP} -> EP ++ Acc;
-                            {error, _} -> Acc
+                            {'ok', EP} -> EP ++ Acc;
+                            {'error', _} -> Acc
                         end
                 end, [], EPDocs).
 
--spec get_endpoint(whapps_call:call(), ne_binary()) -> wh_json:object() | 'undefined'.
+-spec get_endpoint(whapps_call:call(), ne_binary()) -> api_object().
 get_endpoint(Call, ?NE_BINARY = EndpointId) ->
     case couch_mgr:open_doc(whapps_call:account_db(Call), EndpointId) of
-        {ok, JObj} -> JObj;
-        {error, _R} -> undefined
+        {'ok', JObj} -> JObj;
+        {'error', _R} -> 'undefined'
     end.
 
 %% Handles subscribing/unsubscribing from call events
@@ -119,56 +119,55 @@ get_endpoint(Call, ?NE_BINARY = EndpointId) ->
 -spec unbind_from_cdr(api_binary()) -> 'ok'.
 
 bind_to_call_events('undefined') -> 'ok';
-bind_to_call_events(?NE_BINARY = CallId) -> bind(CallId, [events, error]);
+bind_to_call_events(?NE_BINARY = CallId) -> bind(CallId, ['events', 'error']);
 bind_to_call_events(Call) -> bind_to_call_events(whapps_call:call_id(Call)).
 
 bind_to_call_events('undefined', _) -> 'ok';
 bind_to_call_events(Call, 'undefined') -> bind_to_call_events(Call);
-bind_to_call_events(?NE_BINARY = CallId, _Url) -> bind(CallId, [events, error, cdr]);
+bind_to_call_events(?NE_BINARY = CallId, _Url) -> bind(CallId, ['events', 'error', 'cdr']);
 bind_to_call_events(Call, Url) -> bind_to_call_events(whapps_call:call_id(Call), Url).
 
 bind(CallId, Restrict) ->
-    gen_listener:add_binding(self(), call, [{callid, CallId}
-                                            ,{restrict_to, Restrict}
-                                           ]).
+    gen_listener:add_binding(self(), 'call', [{'callid', CallId}
+                                              ,{'restrict_to', Restrict}
+                                             ]).
 
 unbind_from_call_events('undefined') -> 'ok';
-unbind_from_call_events(?NE_BINARY = CallId) -> unbind(CallId, [events, error]);
-unbind_from_call_events(Call) ->
-    unbind_from_call_events(whapps_call:call_id(Call)).
+unbind_from_call_events(?NE_BINARY = CallId) -> unbind(CallId, ['events', 'error']);
+unbind_from_call_events(Call) -> unbind_from_call_events(whapps_call:call_id(Call)).
 
 unbind_from_call_events('undefined', _) -> 'ok';
 unbind_from_call_events(Call, 'undefined') -> unbind_from_call_events(Call);
-unbind_from_call_events(?NE_BINARY = CallId, _Url) -> unbind(CallId, [events, error, cdr]);
+unbind_from_call_events(?NE_BINARY = CallId, _Url) -> unbind(CallId, ['events', 'error', 'cdr']);
 unbind_from_call_events(Call, Url) -> unbind_from_call_events(whapps_call:call_id(Call), Url).
 
 unbind_from_cdr('undefined') -> 'ok';
-unbind_from_cdr(CallId) -> unbind(CallId, [cdr]).
+unbind_from_cdr(CallId) -> unbind(CallId, ['cdr']).
 
 unbind(CallId, Restrict) ->
-    gen_listener:rm_binding(self(), call, [{callid, CallId}
-                                           ,{restrict_to, Restrict}
-                                          ]).
+    gen_listener:rm_binding(self(), 'call', [{'callid', CallId}
+                                             ,{'restrict_to', Restrict}
+                                            ]).
 
 -spec agent_status(ne_binary(), ne_binary()) -> ne_binary().
 -spec agent_status(ne_binary(), ne_binary(), boolean()) -> ne_binary() | wh_json:object().
 agent_status(?NE_BINARY = AcctId, AgentId) ->
-    agent_status(AcctId, AgentId, false).
+    agent_status(AcctId, AgentId, 'false').
 agent_status(?NE_BINARY = AcctId, AgentId, ReturnDoc) ->
-    Opts = [{endkey, [AgentId, 0]}
-            ,{startkey, [AgentId, wh_json:new()]}
-            ,{limit, 1}
-            ,{r, 2}
-            ,descending
-            | case ReturnDoc of true -> [include_docs]; false -> [] end
+    Opts = [{'endkey', [AgentId, 0]}
+            ,{'startkey', [AgentId, wh_json:new()]}
+            ,{'limit', 1}
+            ,{'r', 2}
+            ,'descending'
+            | case ReturnDoc of 'true' -> ['include_docs']; 'false' -> [] end
            ],
 
-    Key = case ReturnDoc of true -> <<"doc">>; false -> <<"value">> end,
+    Key = case ReturnDoc of 'true' -> <<"doc">>; 'false' -> <<"value">> end,
 
     case couch_mgr:get_results(acdc_stats:db_name(AcctId), <<"agent_stats/status_log">>, Opts) of
-        {ok, []} -> <<"logout">>;
-        {error, _E} -> <<"logout">>;
-        {ok, [StatusJObj|_]} -> wh_json:get_value(Key, StatusJObj)
+        {'ok', []} -> <<"logout">>;
+        {'error', _E} -> <<"logout">>;
+        {'ok', [StatusJObj|_]} -> wh_json:get_value(Key, StatusJObj)
     end.
 
 update_agent_status(AcctId, AgentId, Status) ->
