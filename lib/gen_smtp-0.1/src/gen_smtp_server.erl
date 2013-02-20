@@ -137,7 +137,7 @@ init([Module, Configurations]) ->
 					Protocol = proplists:get_value(protocol, NewConfig),
 					SessionOptions = proplists:get_value(sessionoptions, NewConfig, []),
 					error_logger:info_msg("~p starting at ~p~n", [?MODULE, node()]),
-					error_logger:info_msg("listening on ~p:~p via ~p~n", [IP, Port, Protocol]),
+					error_logger:info_msg("~p listening on ~p:~p via ~p~n", [?MODULE, IP, Port, Protocol]),
 					process_flag(trap_exit, true),
 					ListenOptions = [binary, {ip, IP}, Family],
 					case socket:listen(Protocol, Port, ListenOptions) of

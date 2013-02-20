@@ -7,7 +7,7 @@
 
 -export([init/4, handle_HELO/2, handle_EHLO/3, handle_MAIL/2, handle_MAIL_extension/2,
 	handle_RCPT/2, handle_RCPT_extension/2, handle_DATA/4, handle_RSET/1, handle_VRFY/2,
-	handle_other/3, handle_AUTH/4, code_change/3, terminate/2]).
+	handle_other/3, handle_AUTH/4, handle_STARTTLS/1, code_change/3, terminate/2]).
 
 -define(RELAY, true).
 
@@ -194,6 +194,13 @@ handle_AUTH('cram-md5', <<"username">>, {Digest, Seed}, State) ->
 	end;
 handle_AUTH(_Type, _Username, _Password, _State) ->
 	error.
+
+%% this callback is OPTIONAL
+%% it only gets called if you add STARTTLS to your ESMTP extensions
+-spec handle_STARTTLS(#state{}) -> #state{}.
+handle_STARTTLS(State) ->
+    io:format("TLS Started~n"),
+    State.
 
 -spec code_change(OldVsn :: any(), State :: #state{}, Extra :: any()) -> {ok, #state{}}.
 code_change(_OldVsn, State, _Extra) ->
