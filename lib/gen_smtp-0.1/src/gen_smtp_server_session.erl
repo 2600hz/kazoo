@@ -567,7 +567,7 @@ handle_request({<<"VRFY">>, Address}, #state{module= Module, socket = Socket, ca
 			socket:send(Socket, "501 Syntax: VRFY username/address\r\n"),
 			{ok, State}
 	end;
-handle_request({<<"STARTTLS">>, <<>>}, #state{socket = Socket, tls=false, extensions = Extensions, options = Options} = State) ->
+handle_request({<<"STARTTLS">>, <<>>}, #state{socket = Socket, module = Module, tls=false, extensions = Extensions, callbackstate = OldCallbackState, options = Options} = State) ->
 	case has_extension(Extensions, "STARTTLS") of
 		{true, _} ->
 			socket:send(Socket, "220 OK\r\n"),
@@ -592,7 +592,7 @@ handle_request({<<"STARTTLS">>, <<>>}, #state{socket = Socket, tls=false, extens
 					%io:format("SSL negotiation sucessful~n"),
 					{ok, State#state{socket = NewSocket, envelope=undefined,
 							authdata=undefined, waitingauth=false, readmessage=false,
-							tls=true}};
+							tls=true, callbackstate = Module:handle_STARTTLS(OldCallbackState)}};
 				{error, Reason} ->
 					io:format("SSL handshake failed : ~p~n", [Reason]),
 					socket:send(Socket, "454 TLS negotiation failed\r\n"),
@@ -635,7 +635,7 @@ parse_encoded_address(<<>>, Acc, {_Quotes, false}) ->
 	{list_to_binary(lists:reverse(Acc)), <<>>};
 parse_encoded_address(<<>>, _Acc, {_Quotes, true}) ->
 	error; % began with angle brackets but didn't end with them
-parse_encoded_address(_, Acc, _) when length(Acc) > 129 ->
+parse_encoded_address(_, Acc, _) when length(Acc) > 320 ->
 	error; % too long
 parse_encoded_address(<<"\\", Tail/binary>>, Acc, Flags) ->
 	<<H, NewTail/binary>> = Tail,
@@ -660,6 +660,11 @@ parse_encoded_address(<<H, Tail/binary>>, Acc, {false, AB}) when H >= $a, H =< $
 	parse_encoded_address(Tail, [H | Acc], {false, AB}); % lowercase letters
 parse_encoded_address(<<H, Tail/binary>>, Acc, {false, AB}) when H =:= $-; H =:= $.; H =:= $_ ->
 	parse_encoded_address(Tail, [H | Acc], {false, AB}); % dash, dot, underscore
+% Allowed characters in the local name: ! # $ % & ' * + - / = ?  ^ _ ` . { | } ~
+parse_encoded_address(<<H, Tail/binary>>, Acc, {false, AB}) when H =:= $+;
+ 	H =:= $!; H =:= $#; H =:= $$; H =:= $%; H =:= $&; H =:= $'; H =:= $*; H =:= $=;
+	H =:= $/; H =:= $?; H =:= $^; H =:= $`; H =:= ${; H =:= $|; H =:= $}; H =:= $~ ->
+	parse_encoded_address(Tail, [H | Acc], {false, AB}); % other characters
 parse_encoded_address(_, _Acc, {false, _AB}) ->
 	error;
 parse_encoded_address(<<H, Tail/binary>>, Acc, Quotes) ->
@@ -845,7 +850,9 @@ parse_encoded_address_test_() ->
 					?assertEqual({<<"God@heaven.af.mil">>, <<>>}, parse_encoded_address(<<"<\\God@heaven.af.mil>">>)),
 					?assertEqual({<<"God@heaven.af.mil">>, <<>>}, parse_encoded_address(<<"<\"God\"@heaven.af.mil>">>)),
 					?assertEqual({<<"God@heaven.af.mil">>, <<>>}, parse_encoded_address(<<"<@gateway.af.mil,@uucp.local:\"\\G\\o\\d\"@heaven.af.mil>">>)),
-					?assertEqual({<<"God2@heaven.af.mil">>, <<>>}, parse_encoded_address(<<"<God2@heaven.af.mil>">>))
+					?assertEqual({<<"God2@heaven.af.mil">>, <<>>}, parse_encoded_address(<<"<God2@heaven.af.mil>">>)),
+					?assertEqual({<<"God+extension@heaven.af.mil">>, <<>>}, parse_encoded_address(<<"<God+extension@heaven.af.mil>">>)),
+					?assertEqual({<<"God~*$@heaven.af.mil">>, <<>>}, parse_encoded_address(<<"<God~*$@heaven.af.mil>">>))
 			end
 		},
 		{"Addresses that are sorta valid should parse",

@@ -637,13 +637,30 @@ guess_best_encoding(Body) ->
 encode_parameters([[]]) ->
 	[];
 encode_parameters(Parameters) ->
-	[case X =:= <<"boundary">>
-       orelse binstr:strchr(Y, $\s) =/= 0 of
-       false -> [X, "=", Y];
-       true -> [X, "=\"", Y, "\""]
-   end
-   || {X, Y} <- Parameters
-  ].
+	[encode_parameter(Parameter) || Parameter <- Parameters].
+
+encode_parameter({X, Y}) ->
+	case escape_tspecial(Y, false, <<>>) of
+		{true, Special} -> [X, $=, $", Special, $"];
+		false -> [X, $=, Y]
+	end.
+
+% See also: http://www.ietf.org/rfc/rfc2045.txt section 5.1
+escape_tspecial(<<>>, false, _Acc) ->
+	false;
+escape_tspecial(<<>>, IsSpecial, Acc) ->
+	{IsSpecial, Acc};
+escape_tspecial(<<C, Rest/binary>>, _IsSpecial, Acc) when C =:= $" ->
+	escape_tspecial(Rest, true, <<Acc/binary, $\\, $">>);
+escape_tspecial(<<C, Rest/binary>>, _IsSpecial, Acc) when C =:= $\\ ->
+	escape_tspecial(Rest, true, <<Acc/binary, $\\, $\\>>);
+escape_tspecial(<<C, Rest/binary>>, _IsSpecial, Acc)
+	when C =:= $(; C =:= $); C =:= $<; C =:= $>; C =:= $@;
+		C =:= $,; C =:= $;; C =:= $:; C =:= $/; C =:= $[;
+		C =:= $]; C =:= $?; C =:= $=; C =:= $\s ->
+	escape_tspecial(Rest, true, <<Acc/binary, C>>);
+escape_tspecial(<<C, Rest/binary>>, IsSpecial, Acc) ->
+	escape_tspecial(Rest, IsSpecial, <<Acc/binary, C>>).
 
 encode_headers(Headers) ->
 	encode_headers(Headers, []).
@@ -1382,6 +1399,27 @@ encode_quoted_printable_test_() ->
 			fun() ->
 					?assertEqual(<<"foo ba=\r\nr\r\nThe quick brown fox jumped over the lazy dog.      =20\r\n">>,
 						encode_quoted_printable(<<"The quick brown fox jumped over the lazy dog.       \r\n">>, "\n\rrab oof", 78))
+			end
+		}
+	].
+
+encode_parameter_test_() ->
+	[
+		{"Token",
+			fun() ->
+				?assertEqual([[<<"a">>, $=, <<"abcdefghijklmnopqrstuvwxyz$%&*#!">>]],
+				    encode_parameters([{<<"a">>, <<"abcdefghijklmnopqrstuvwxyz$%&*#!">>}]))
+			end
+		},
+		{"TSpecial",
+			fun() ->
+				Special = " ()<>@,;:/[]?=",
+				[
+    				?assertEqual([[<<"a">>, $=, $", <<C>>, $"]], encode_parameters([{<<"a">>, <<C>>}]))
+					|| C <- Special
+				],
+				?assertEqual([[<<"a">>, $=, $", <<$\\,$">>, $"]], encode_parameters([{<<"a">>, <<$">>}])),
+				?assertEqual([[<<"a">>, $=, $", <<$\\,$\\>>, $"]], encode_parameters([{<<"a">>, <<$\\>>}]))
 			end
 		}
 	].
