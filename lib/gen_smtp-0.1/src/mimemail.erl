@@ -637,7 +637,13 @@ guess_best_encoding(Body) ->
 encode_parameters([[]]) ->
 	[];
 encode_parameters(Parameters) ->
-	[case binstr:strchr(Y, $\s) of 0 -> [X, "=", Y]; _ -> [X, "=\"", Y, "\""] end || {X, Y} <- Parameters].
+	[case X =:= <<"boundary">>
+       orelse binstr:strchr(Y, $\s) =/= 0 of
+       false -> [X, "=", Y];
+       true -> [X, "=\"", Y, "\""]
+   end
+   || {X, Y} <- Parameters
+  ].
 
 encode_headers(Headers) ->
 	encode_headers(Headers, []).
