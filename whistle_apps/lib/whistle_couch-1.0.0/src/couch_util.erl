@@ -629,11 +629,19 @@ publish_doc(Db, Doc) ->
              end,
     publish_doc(Action, Db, Doc).
 
--spec publish_doc(wapi_conf:action(), db() | ne_binary(), wh_json:object() | wh_json:objects()) -> 'ok'.
-publish_doc(Action, #db{name=DbName}, Doc) ->
-    publish_doc(Action, wh_util:to_binary(DbName), Doc);
-publish_doc(_, _, []) -> ok;
-publish_doc(Action, Db, [Doc|Docs]) ->
+-spec publish_doc(wapi_conf:action(), couchbeam_db(), wh_json:object() | wh_json:objects()) -> 'ok'.
+publish_doc(Action, #db{name=DbName}, Doc) -> publish_docs(Action, wh_util:to_binary(DbName), Doc).
+
+publish_docs(Action, Db, Doc) when not is_list(Doc) ->
+    publish_docs(Action, Db, [Doc]);
+publish_docs(Action, Db, Docs) ->
+    _ = [publish(Action, Db, Doc) || Doc <- Docs],
+    'ok'.
+
+-spec publish(wapi_conf:action(), ne_binary(), wh_json:object()) ->
+                     'ok' |
+                     {'error', 'pool_full' | 'poolboy_fault'}.
+publish(Action, Db, Doc) ->
     case wh_json:get_ne_value(<<"_id">>, Doc) of
         'undefined' -> 'ok';
         <<"_design/", _/binary>> -> 'ok';
@@ -652,7 +660,4 @@ publish_doc(Action, Db, [Doc|Docs]) ->
                 ],
             Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
             whapps_util:amqp_pool_send(Props, Fun)
-    end,
-    publish_doc(Action, Db, Docs);
-publish_doc(Action, Db, Doc) ->
-    publish_doc(Action, Db, [Doc]).
+    end.
