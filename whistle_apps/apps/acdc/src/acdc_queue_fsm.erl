@@ -154,6 +154,8 @@ call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, EvtJObj) ->
     gen_fsm:send_event(FSM, {member_hungup, EvtJObj});
 call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
     gen_fsm:send_event(FSM, {dtmf_pressed, wh_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
+call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, EvtJObj) ->
+    gen_fsm:send_event(FSM, {channel_bridged, EvtJObj});
 call_event(_, _E, _N, _J) ->
     lager:debug("unhandled event: ~s: ~s (~s)", [_E, _N, wh_json:get_value(<<"Application-Name">>, _J)]).
 
