@@ -30,11 +30,11 @@
 
 -define(SERVER, ?MODULE).
 
--define(BINDINGS, [{conf, [{type, <<"user">>}]}
-                   ,{acdc_agent, [{restrict_to, [status, stats_req]}]}
-                   ,{notifications, [{restrict_to, [presence_probe]}]}
+-define(BINDINGS, [{'conf', [{'type', <<"user">>}]}
+                   ,{'acdc_agent', [{'restrict_to', ['status', 'stats_req']}]}
+                   ,{'notifications', [{'restrict_to', ['presence_probe']}]}
                   ]).
--define(RESPONDERS, [{{acdc_agent_handler, handle_status_update} 
+-define(RESPONDERS, [{{'acdc_agent_handler', 'handle_status_update'} 
                       ,[{<<"agent">>, <<"login">>}
                         ,{<<"agent">>, <<"logout">>}
                         ,{<<"agent">>, <<"pause">>}
@@ -43,13 +43,13 @@
                         ,{<<"agent">>, <<"logout_queue">>}
                        ]
                      }
-                     ,{{acdc_agent_handler, handle_stats_req}
+                     ,{{'acdc_agent_handler', 'handle_stats_req'}
                        ,[{<<"agent">>, <<"stats_req">>}]
                       }
-                     ,{{acdc_agent_handler, handle_config_change}
+                     ,{{'acdc_agent_handler', 'handle_config_change'}
                        ,[{<<"configuration">>, <<"*">>}]
                        }
-                     ,{{acdc_agent_handler, handle_presence_probe}
+                     ,{{'acdc_agent_handler', 'handle_presence_probe'}
                        ,[{<<"notification">>, <<"presence_probe">>}]
                       }
                     ]).
@@ -66,9 +66,9 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link({local, ?SERVER}, ?MODULE
-                            ,[{bindings, ?BINDINGS}
-                              ,{responders, ?RESPONDERS}
+    gen_listener:start_link({'local', ?SERVER}, ?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
                              ]
                             ,[]
                            ).
@@ -88,8 +88,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {ok, ok}.
+init([]) -> {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -106,8 +105,8 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    Reply = 'ok',
+    {'reply', Reply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -120,7 +119,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -134,10 +133,10 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -162,7 +161,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
