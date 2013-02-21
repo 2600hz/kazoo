@@ -484,11 +484,10 @@ b_receive_fax(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec answer(whapps_call:call()) -> 'ok'.
--spec b_answer(whapps_call:call()) -> whapps_api_error() | {'ok', wh_json:object()}.
-
-answer(Call) ->
-    Command = [{<<"Application-Name">>, <<"answer">>}],
-    send_command(Command, Call).
+-spec b_answer(whapps_call:call()) ->
+                      whapps_api_error() |
+                      {'ok', wh_json:object()}.
+answer(Call) -> send_command([{<<"Application-Name">>, <<"answer">>}], Call).
 
 b_answer(Call) ->
     answer(Call),
@@ -505,8 +504,10 @@ b_answer(Call) ->
 -spec hangup(whapps_call:call()) -> 'ok'.
 -spec hangup(boolean(), whapps_call:call()) -> 'ok'.
 
--spec b_hangup(whapps_call:call()) -> {'ok', 'channel_hungup'}.
--spec b_hangup(boolean(), whapps_call:call()) -> {'ok', 'channel_hungup' | 'leg_hangup'}.
+-spec b_hangup(whapps_call:call()) ->
+                      {'ok', 'channel_hungup'}.
+-spec b_hangup(boolean(), whapps_call:call()) ->
+                      {'ok', 'channel_hungup' | 'leg_hangup'}.
 
 hangup(Call) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
