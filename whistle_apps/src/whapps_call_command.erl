@@ -23,7 +23,7 @@
          ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5, b_pickup/6
         ]).
 -export([redirect/3]).
--export([answer/1
+-export([answer/1, answer_now/1
          ,hangup/1, hangup/2
          ,queued_hangup/1
          ,set/3, set_terminators/2
@@ -373,8 +373,7 @@ redirect(Contact, Server, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec flush_dtmf(whapps_call:call()) -> ne_binary().
-flush_dtmf(Call) ->
-    play(<<"silence_stream://50">>, Call).
+flush_dtmf(Call) -> play(<<"silence_stream://50">>, Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -484,10 +483,14 @@ b_receive_fax(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec answer(whapps_call:call()) -> 'ok'.
+-spec answer_now(whapps_call:call()) -> 'ok'.
 -spec b_answer(whapps_call:call()) ->
                       whapps_api_error() |
                       {'ok', wh_json:object()}.
 answer(Call) -> send_command([{<<"Application-Name">>, <<"answer">>}], Call).
+answer_now(Call) -> send_command([{<<"Application-Name">>, <<"answer">>}
+                                  ,{<<"Insert-At">>, <<"now">>}
+                                 ], Call).
 
 b_answer(Call) ->
     answer(Call),
@@ -1873,7 +1876,7 @@ send_command(Command, Call) when is_list(Command) ->
             AppName = whapps_call:application_name(Call),
             AppVersion = whapps_call:application_version(Call),
             case whapps_call:kvs_fetch('cf_exe_pid', Call) of
-                Pid when is_pid(Pid) -> wh_amqp_channel:consumer_pid(Pid), 'ok';
+                Pid when is_pid(Pid) -> _ = wh_amqp_channel:consumer_pid(Pid), 'ok';
                 _Else -> 'ok'
             end,
             Prop = Command ++ [{<<"Call-ID">>, CallId}
