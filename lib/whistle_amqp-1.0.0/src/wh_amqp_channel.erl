@@ -26,13 +26,15 @@
 
 -include("amqp_util.hrl").
 
+-spec consumer_pid() -> pid().
+-spec consumer_pid(pid()) -> 'undefined' | pid().
 consumer_pid() ->
     case get('$wh_amqp_consumer') of
         Pid when is_pid(Pid) -> Pid;
         _Else -> self()
     end.
 
-consumer_pid(Pid) -> put('$wh_amqp_consumer', Pid).
+consumer_pid(Pid) when is_pid(Pid) -> put('$wh_amqp_consumer', Pid).
 
 -spec new() -> wh_amqp_channel() | {'error', _}.
 new() -> new(wh_amqp_channels:new()).
@@ -52,8 +54,10 @@ close() ->
     end.
 
 -spec close(wh_amqp_channel()) -> wh_amqp_channel().
-close(#wh_amqp_channel{channel=Pid, commands=[#'basic.consume'{consumer_tag=CTag}
-                                              |Commands]}=Channel) when is_pid(Pid) ->
+close(#wh_amqp_channel{channel=Pid
+                       ,commands=[#'basic.consume'{consumer_tag=CTag}
+                                  |Commands]
+                      }=Channel) when is_pid(Pid) ->
     lager:debug("canceled consumer ~s via channel ~p", [CTag, Pid]),
     catch amqp_channel:call(Pid, #'basic.cancel'{consumer_tag=CTag}),
     close(Channel#wh_amqp_channel{commands=Commands});
@@ -70,7 +74,7 @@ close(Channel) ->
 -spec remove() -> 'ok'.
 remove() ->
     case wh_amqp_channels:find() of
-        {error, _} -> ok;
+        {'error', _} -> 'ok';
         #wh_amqp_channel{}=Channel ->
             remove(Channel)
     end.
