@@ -433,6 +433,9 @@ handle_cast({sync_with_agent, A}, #state{acct_id=AcctId}=State) ->
     end,
     {'noreply', State};
 
+handle_cast({'created_queue', _}, State) ->
+    {'noreply', State};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
