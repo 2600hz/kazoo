@@ -34,6 +34,7 @@
          ,add_endpoint_bindings/3
          ,agent_call_id/3, outbound_call_id/1
          ,unbind_from_cdr/2
+         ,logout_agent/1
         ]).
 
 %% gen_server callbacks
@@ -249,7 +250,9 @@ add_endpoint_bindings(Srv, Realm, User) ->
                                           ,{user, User}
                                           ]).
 
-unbind_from_cdr(Srv, CallId) -> gen_listener:cast(Srv, {unbind_from_cdr, CallId}).
+unbind_from_cdr(Srv, CallId) -> gen_listener:cast(Srv, {'unbind_from_cdr', CallId}).
+
+logout_agent(Srv) -> gen_listener:cast(Srv, 'logout_agent').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -635,6 +638,19 @@ handle_cast({'call_status_req', Call}, State) ->
 handle_cast({'unbind_from_cdr', CallId}, #state{cdr_urls=Urls}=State) ->
     acdc_util:unbind_from_cdr(CallId),
     {'noreply', State#state{cdr_urls=dict:erase(CallId, Urls)}, 'hibernate'};
+
+handle_cast('logout_agent', #state{acct_id=AcctId
+                                   ,agent_id=AgentId
+                                  }=State) ->
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+
+    wapi_acdc_agent:publish_logout(Update),
+    lager:debug("published agent logout message"),
+    {'noreply', State};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
