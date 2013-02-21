@@ -153,7 +153,7 @@ start_queue_call(JObj, Props, Call) ->
                            ),
 
     lager:debug("answering call"),
-    whapps_call_command:b_answer(Call),
+    whapps_call_command:answer(Call),
 
     wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj),
     lager:debug("put call into shared messaging queue"),
