@@ -20,7 +20,6 @@
          ,channel_hungup/2
          ,originate_execute/2
          ,outbound_call/2
-         ,join_agent/2
          ,send_sync_req/1
          ,send_sync_resp/3, send_sync_resp/4
          ,config/1
@@ -65,8 +64,8 @@
          ,timer_ref :: reference()
          ,sync_resp :: wh_json:object() % furthest along resp
          ,supervisor :: pid()
-         ,record_calls = false :: boolean()
-         ,is_thief = false :: boolean()
+         ,record_calls = 'false' :: boolean()
+         ,is_thief = 'false' :: boolean()
          ,agent :: agent()
          ,agent_call_id :: api_binary()
          ,agent_call_queue :: api_binary()
@@ -81,54 +80,54 @@
 
 %% On init, an aget process sends a sync_req and waits SYNC_TIMER_TIMEOUT ms
 %% The agent process checks its list of received
--define(SYNC_TIMER_MESSAGE, sync_timeout).
+-define(SYNC_TIMER_MESSAGE, 'sync_timeout').
 -define(SYNC_TIMER_TIMEOUT, 5000).
 
 %% After receiving sync_resp, if the resp status requires waiting, SYNC_WAIT_TIMER_TIMEOUT
 %% pauses the agent process, then restarts the sync process (send sync_req, start
 %% SYNC_TIMER_TIMEOUT, collect sync_resp(s), etc
--define(SYNC_WAIT_TIMER_MESSAGE, sync_wait_timeout).
+-define(SYNC_WAIT_TIMER_MESSAGE, 'sync_wait_timeout').
 -define(SYNC_WAIT_TIMER_TIMEOUT, 5000).
 
 %% When in the wrapup status, how long does an agent wait before going back to ready
--define(WRAPUP_TIMER_MESSAGE, wrapup_timeout).
+-define(WRAPUP_TIMER_MESSAGE, 'wrapup_timeout').
 -define(WRAPUP_TIMER_TIMEOUT, 60000).
 
 %% When an agent is paused (on break, logged out, etc)
--define(PAUSED_TIMER_MESSAGE, paused_timeout).
+-define(PAUSED_TIMER_MESSAGE, 'paused_timeout').
 
--define(BINDINGS(AcctId, AgentId), [{self, []}
-                                    ,{acdc_agent, [{account_id, AcctId}
-                                                   ,{agent_id, AgentId}
-                                                   ,{restrict_to, [sync, stats_req]}
-                                                  ]}
+-define(BINDINGS(AcctId, AgentId), [{'self', []}
+                                    ,{'acdc_agent', [{'account_id', AcctId}
+                                                     ,{'agent_id', AgentId}
+                                                     ,{'restrict_to', ['sync', 'stats_req']}
+                                                    ]}
                                    ]).
 
--define(RESPONDERS, [{{acdc_agent_handler, handle_sync_req}
+-define(RESPONDERS, [{{'acdc_agent_handler', 'handle_sync_req'}
                       ,[{<<"agent">>, <<"sync_req">>}]
-                      }
-                     ,{{acdc_agent_handler, handle_sync_resp}
+                     }
+                     ,{{'acdc_agent_handler', 'handle_sync_resp'}
                        ,[{<<"agent">>, <<"sync_resp">>}]
                       }
-                     ,{{acdc_agent_handler, handle_stats_req}
+                     ,{{'acdc_agent_handler', 'handle_stats_req'}
                        ,[{<<"agent">>, <<"stats_req">>}]
                       }
-                     ,{{acdc_agent_handler, handle_call_event}
+                     ,{{'acdc_agent_handler', 'handle_call_event'}
                        ,[{<<"call_event">>, <<"*">>}]
                       }
-                     ,{{acdc_agent_handler, handle_cdr}
+                     ,{{'acdc_agent_handler', 'handle_cdr'}
                        ,[{<<"call_detail">>, <<"cdr">>}]
                       }
-                     ,{{acdc_agent_handler, handle_originate_resp}
+                     ,{{'acdc_agent_handler', 'handle_originate_resp'}
                        ,[{<<"resource">>, <<"*">>}]
                       }
-                     ,{{acdc_agent_handler, handle_call_event}
+                     ,{{'acdc_agent_handler', 'handle_call_event'}
                        ,[{<<"error">>, <<"*">>}]
                       }
-                     ,{{acdc_agent_handler, handle_member_message}
+                     ,{{'acdc_agent_handler', 'handle_member_message'}
                        ,[{<<"member">>, <<"*">>}]
                       }
-                     ,{{acdc_agent_handler, handle_route_req}
+                     ,{{'acdc_agent_handler', 'handle_route_req'}
                        ,[{<<"dialplan">>, <<"route_req">>}]
                       }
                     ]).
@@ -151,18 +150,18 @@ start_link(Supervisor, AgentJObj) ->
     case wh_json:get_value(<<"queues">>, AgentJObj) of
         'undefined' ->
             lager:debug("agent ~s has no queues, ignoring", [AgentId]),
-            {error, no_queues};
+            {'error', 'no_queues'};
         [] ->
             lager:debug("agent ~s in ~s has no queues, ignoring", [AgentId, AcctId]),
-            {error, no_queues};
+            {'error', 'no_queues'};
         Queues ->
             case acdc_util:agent_status(AcctId, AgentId) of
-                <<"logout">> -> {error, logged_out};
+                <<"logout">> -> {'error', 'logged_out'};
                 _S ->
                     lager:debug("start bindings for ~s(~s) in ~s", [AcctId, AgentId, _S]),
                     gen_listener:start_link(?MODULE
-                                            ,[{bindings, ?BINDINGS(AcctId, AgentId)}
-                                              ,{responders, ?RESPONDERS}
+                                            ,[{'bindings', ?BINDINGS(AcctId, AgentId)}
+                                              ,{'responders', ?RESPONDERS}
                                              ]
                                             ,[Supervisor, AgentJObj, Queues]
                                            )
@@ -175,80 +174,74 @@ start_link(Supervisor, ThiefCall, QueueId) ->
 
     lager:debug("starting thief agent ~s(~s)", [AgentId, AcctId]),
     gen_listener:start_link(?MODULE
-                            ,[{bindings, ?BINDINGS(AcctId, AgentId)}
-                              ,{responders, ?RESPONDERS}
+                            ,[{'bindings', ?BINDINGS(AcctId, AgentId)}
+                              ,{'responders', ?RESPONDERS}
                              ]
                             ,[Supervisor, ThiefCall, [QueueId]]
                            ).
 
-stop(Srv) ->
-    gen_listener:cast(Srv, {stop_agent, self()}).
+stop(Srv) -> gen_listener:cast(Srv, {'stop_agent', self()}).
 
 -spec member_connect_resp(pid(), wh_json:object()) -> 'ok'.
 member_connect_resp(Srv, ReqJObj) ->
-    gen_listener:cast(Srv, {member_connect_resp, ReqJObj}).
+    gen_listener:cast(Srv, {'member_connect_resp', ReqJObj}).
 
 member_connect_retry(Srv, WinJObj) ->
-    gen_listener:cast(Srv, {member_connect_retry, WinJObj}).
+    gen_listener:cast(Srv, {'member_connect_retry', WinJObj}).
 
 member_connect_accepted(Srv) ->
-    gen_listener:cast(Srv, member_connect_accepted).
+    gen_listener:cast(Srv, 'member_connect_accepted').
 
 bridge_to_member(Srv, Call, WinJObj, EPs, CDRUrl) ->
-    gen_listener:cast(Srv, {bridge_to_member, Call, WinJObj, EPs, CDRUrl}).
+    gen_listener:cast(Srv, {'bridge_to_member', Call, WinJObj, EPs, CDRUrl}).
 
 monitor_call(Srv, Call, CDRUrl) ->
-    gen_listener:cast(Srv, {monitor_call, Call, CDRUrl}).
+    gen_listener:cast(Srv, {'monitor_call', Call, CDRUrl}).
 
 -spec channel_hungup(pid(), ne_binary()) -> 'ok'.
 channel_hungup(Srv, CallId) ->
-    gen_listener:cast(Srv, {channel_hungup, CallId}).
+    gen_listener:cast(Srv, {'channel_hungup', CallId}).
 
 agent_call_id(Srv, ACallId, ACtrlQ) ->
-    gen_listener:cast(Srv, {agent_call_id, ACallId, ACtrlQ}).
+    gen_listener:cast(Srv, {'agent_call_id', ACallId, ACtrlQ}).
 
 originate_execute(Srv, JObj) ->
-    gen_listener:cast(Srv, {originate_execute, JObj}).
+    gen_listener:cast(Srv, {'originate_execute', JObj}).
 
 outbound_call(Srv, Call) ->
-    gen_listener:cast(Srv, {outbound_call, Call}).
+    gen_listener:cast(Srv, {'outbound_call', Call}).
 
-join_agent(Srv, ACallId) ->
-    gen_listener:cast(Srv, {'join_agent', ACallId}).
+send_sync_req(Srv) -> gen_listener:cast(Srv, {'send_sync_req'}).
 
-send_sync_req(Srv) ->
-    gen_listener:cast(Srv, {send_sync_req}).
-
-send_sync_resp(Srv, Status, ReqJObj) ->
-    send_sync_resp(Srv, Status, ReqJObj, []).
+send_sync_resp(Srv, Status, ReqJObj) -> send_sync_resp(Srv, Status, ReqJObj, []).
 send_sync_resp(Srv, Status, ReqJObj, Options) ->
     gen_listener:cast(Srv, {'send_sync_resp', Status, ReqJObj, Options}).
 
--spec config(pid()) -> {ne_binary(), ne_binary()}.
+-spec config(pid()) -> {ne_binary(), ne_binary(), ne_binary()}.
 config(Srv) -> gen_listener:call(Srv, 'config').
 
 send_status_resume(Srv) ->
-    gen_listener:cast(Srv, {'send_status_update', resume}).
+    gen_listener:cast(Srv, {'send_status_update', 'resume'}).
 
 add_acdc_queue(Srv, Q) ->
-    gen_listener:cast(Srv, {queue_login, Q}).
+    gen_listener:cast(Srv, {'queue_login', Q}).
 
 rm_acdc_queue(Srv, Q) ->
-    gen_listener:cast(Srv, {queue_logout, Q}).
+    gen_listener:cast(Srv, {'queue_logout', Q}).
 
 call_status_req(Srv) ->
-    gen_listener:cast(Srv, call_status_req).
+    gen_listener:cast(Srv, 'call_status_req').
 call_status_req(Srv, CallId) ->
     gen_listener:cast(Srv, {'call_status_req', CallId}).
 
 fsm_started(Srv, FSM) ->
-    gen_listener:cast(Srv, {fsm_started, FSM}).
+    gen_listener:cast(Srv, {'fsm_started', FSM}).
 
 add_endpoint_bindings(Srv, Realm, User) ->
     lager:debug("adding route bindings to ~p for endpoint ~s@~s", [Srv, User, Realm]),
-    gen_listener:add_binding(Srv, route, [{realm, Realm}
-                                          ,{user, User}
-                                          ]).
+    gen_listener:add_binding(Srv, 'route', [{'realm', Realm}
+                                            ,{'user', User}
+                                           ]).
 
 unbind_from_cdr(Srv, CallId) -> gen_listener:cast(Srv, {'unbind_from_cdr', CallId}).
 
@@ -271,19 +264,19 @@ logout_agent(Srv) -> gen_listener:cast(Srv, 'logout_agent').
 %%--------------------------------------------------------------------
 init([Supervisor, Agent, Queues]) ->
     AgentId = agent_id(Agent),
-    put(callid, AgentId),
+    put('callid', AgentId),
     lager:debug("starting acdc agent listener"),
 
-    {ok, #state{agent_id=AgentId
-                ,acct_id=account_id(Agent)
-                ,acct_db=account_db(Agent)
-                ,my_id=acdc_util:proc_id()
-                ,supervisor=Supervisor
-                ,record_calls=record_calls(Agent)
-                ,is_thief=is_thief(Agent)
-                ,agent=Agent
-                ,agent_queues=Queues
-               }}.
+    {'ok', #state{agent_id=AgentId
+                  ,acct_id=account_id(Agent)
+                  ,acct_db=account_db(Agent)
+                  ,my_id=acdc_util:proc_id()
+                  ,supervisor=Supervisor
+                  ,record_calls=record_calls(Agent)
+                  ,is_thief=is_thief(Agent)
+                  ,agent=Agent
+                  ,agent_queues=Queues
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -301,11 +294,12 @@ init([Supervisor, Agent, Queues]) ->
 %%--------------------------------------------------------------------
 handle_call('config', _From, #state{acct_id=AcctId
                                     ,agent_id=AgentId
+                                    ,my_q=Q
                                    }=State) ->
-    {'reply', {AcctId, AgentId}, State};
+    {'reply', {AcctId, AgentId, Q}, State};
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call from ~p: ~p", [_From, _Request]),
-    {'reply', {error, unhandled_call}, State}.
+    {'reply', {'error', 'unhandled_call'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -317,68 +311,68 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({stop_agent, Req}, #state{supervisor=Supervisor}=State) ->
+handle_cast({'stop_agent', Req}, #state{supervisor=Supervisor}=State) ->
     lager:debug("stop agent requested by ~p", [Req]),
-    _ = spawn(acdc_agent_sup, stop, [Supervisor]),
+    _ = spawn('acdc_agent_sup', 'stop', [Supervisor]),
     {'noreply', State};
 
-handle_cast({fsm_started, FSMPid}, State) ->
+handle_cast({'fsm_started', FSMPid}, State) ->
     lager:debug("fsm started: ~p", [FSMPid]),
     handle_fsm_started(FSMPid),
     {'noreply', State#state{fsm_pid=FSMPid
-                          ,my_id=acdc_util:proc_id(FSMPid)
-                         }};
+                            ,my_id=acdc_util:proc_id(FSMPid)
+                           }};
 
-handle_cast({created_queue, Q}, State) ->
+handle_cast({'created_queue', Q}, State) ->
     {'noreply', State#state{my_q=Q}, 'hibernate'};
 
-handle_cast({queue_login, Q}, #state{agent_queues=Qs
-                                     ,acct_id=AcctId
-                                     ,agent_id=AgentId
-                                    }=State) when is_binary(Q) ->
+handle_cast({'queue_login', Q}, #state{agent_queues=Qs
+                                       ,acct_id=AcctId
+                                       ,agent_id=AgentId
+                                      }=State) when is_binary(Q) ->
     case lists:member(Q, Qs) of
-        true ->
+        'true' ->
             lager:debug("already logged into queue ~s", [Q]),
             {'noreply', State};
-        false ->
+        'false' ->
             lager:debug("adding binding (logging in) to queue ~s", [Q]),
             login_to_queue(AcctId, AgentId, Q),
             {'noreply', State#state{agent_queues=[Q|Qs]}}
     end;
-handle_cast({queue_login, QJObj}, State) ->
+handle_cast({'queue_login', QJObj}, State) ->
     lager:debug("queue jobj: ~p", [QJObj]),
-    handle_cast({queue_login, wh_json:get_value(<<"_id">>, QJObj)}, State);
+    handle_cast({'queue_login', wh_json:get_value(<<"_id">>, QJObj)}, State);
 
-handle_cast({queue_logout, Q}, #state{agent_queues=Qs
-                                      ,acct_id=AcctId
-                                      ,agent_id=AgentId
-                                     }=State) ->
+handle_cast({'queue_logout', Q}, #state{agent_queues=Qs
+                                        ,acct_id=AcctId
+                                        ,agent_id=AgentId
+                                       }=State) ->
     case lists:member(Q, Qs) of
-        true ->
+        'true' ->
             lager:debug("removing binding (logging out) from queue ~s", [Q]),
             logout_from_queue(AcctId, AgentId, Q),
             {'noreply', State#state{agent_queues=lists:delete(Q, Qs)}, 'hibernate'};
-        false ->
+        'false' ->
             lager:debug("not logged into queue ~s", [Q]),
             {'noreply', State}
     end;
 
-handle_cast(bind_to_member_reqs, #state{agent_queues=Qs
-                                        ,acct_id=AcctId
-                                        ,agent_id=AgentId
-                                       }=State) ->
+handle_cast('bind_to_member_reqs', #state{agent_queues=Qs
+                                          ,acct_id=AcctId
+                                          ,agent_id=AgentId
+                                         }=State) ->
     lager:debug("binding to queues: ~p", [Qs]),
     _ = [login_to_queue(AcctId, AgentId, Q) || Q <- Qs],
     {'noreply', State};
 
-handle_cast({channel_hungup, CallId}, #state{call=Call
-                                             ,record_calls=ShouldRecord
-                                             ,is_thief=IsThief
-                                             ,agent_call_id=ACallId
-                                             ,agent_call_queue=ACtrlQ
-                                             ,agent_id=AgentId
-                                             ,my_q=MyQ
-                                            }=State) ->
+handle_cast({'channel_hungup', CallId}, #state{call=Call
+                                               ,record_calls=ShouldRecord
+                                               ,is_thief=IsThief
+                                               ,agent_call_id=ACallId
+                                               ,agent_call_queue=ACtrlQ
+                                               ,agent_id=AgentId
+                                               ,my_q=MyQ
+                                              }=State) ->
     CCallId = call_id(Call),
     case CallId of
         CCallId ->
@@ -389,17 +383,17 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
             maybe_stop_recording(Call, ShouldRecord),
             stop_agent_leg(MyQ, ACallId, ACtrlQ),
 
-            put(callid, AgentId),
+            put('callid', AgentId),
             case IsThief of
-                false ->
+                'false' ->
                     {'noreply', State#state{call='undefined'
-                                          ,msg_queue_id='undefined'
-                                          ,acdc_queue_id='undefined'
-                                          ,agent_call_id='undefined'
-                                          ,agent_call_queue='undefined'
-                                         }
-                     ,hibernate};
-                true ->
+                                            ,msg_queue_id='undefined'
+                                            ,acdc_queue_id='undefined'
+                                            ,agent_call_id='undefined'
+                                            ,agent_call_queue='undefined'
+                                           }
+                     ,'hibernate'};
+                'true' ->
                     lager:debug("thief is done, going down"),
                     acdc_agent:stop(self()),
                     {'noreply', State}
@@ -415,12 +409,12 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
             {'noreply', State}
     end;
 
-handle_cast({member_connect_retry, CallId}, #state{my_id=MyId
-                                                   ,msg_queue_id=Server
-                                                   ,agent_call_id=ACallId
-                                                   ,call=Call
-                                                   ,agent_id=AgentId
-                                                  }=State) when is_binary(CallId) ->
+handle_cast({'member_connect_retry', CallId}, #state{my_id=MyId
+                                                     ,msg_queue_id=Server
+                                                     ,agent_call_id=ACallId
+                                                     ,call=Call
+                                                     ,agent_id=AgentId
+                                                    }=State) when is_binary(CallId) ->
     case catch whapps_call:call_id(Call) of
         CallId ->
             lager:debug("need to retry member connect, agent isn't able to take it"),
@@ -432,61 +426,60 @@ handle_cast({member_connect_retry, CallId}, #state{my_id=MyId
             put('callid', AgentId),
 
             {'noreply', State#state{msg_queue_id='undefined'
-                                  ,acdc_queue_id='undefined'
-                                  ,agent_call_id='undefined'
-                                  ,call='undefined'
-                                 }
-             ,hibernate
+                                    ,acdc_queue_id='undefined'
+                                    ,agent_call_id='undefined'
+                                    ,call='undefined'
+                                   }
+             ,'hibernate'
             };
         _MCallId ->
             lager:debug("retry call id(~s) is not our member call id ~p, ignoring", [CallId, _MCallId]),
             {'noreply', State}
     end;
-handle_cast({member_connect_retry, WinJObj}, #state{my_id=MyId}=State) ->
+handle_cast({'member_connect_retry', WinJObj}, #state{my_id=MyId}=State) ->
     lager:debug("cannot process this win, sending a retry: ~s", [call_id(WinJObj)]),
     send_member_connect_retry(WinJObj, MyId),
     {'noreply', State};
 
-handle_cast(member_connect_accepted, #state{msg_queue_id=AmqpQueue
-                                            ,call=Call
-                                            ,acct_id=AcctId
-                                            ,agent_id=AgentId
-                                            ,my_id=MyId
-                                   }=State) ->
+handle_cast('member_connect_accepted', #state{msg_queue_id=AmqpQueue
+                                              ,call=Call
+                                              ,acct_id=AcctId
+                                              ,agent_id=AgentId
+                                              ,my_id=MyId
+                                             }=State) ->
     lager:debug("member bridged to agent!"),
     send_member_connect_accepted(AmqpQueue, call_id(Call), AcctId, AgentId, MyId),
     {'noreply', State};
 
-handle_cast({member_connect_resp, ReqJObj}, #state{agent_id=AgentId
-                                                   ,last_connect=LastConn
-                                                   ,agent_queues=Qs
-                                                   ,my_id=MyId
-                                                   ,my_q=MyQ
-                                                  }=State) ->
+handle_cast({'member_connect_resp', ReqJObj}, #state{agent_id=AgentId
+                                                     ,last_connect=LastConn
+                                                     ,agent_queues=Qs
+                                                     ,my_id=MyId
+                                                     ,my_q=MyQ
+                                                    }=State) ->
     ACDcQueue = wh_json:get_value(<<"Queue-ID">>, ReqJObj),
     case is_valid_queue(ACDcQueue, Qs) of
-        false ->
+        'false' ->
             lager:debug("Queue ~s isn't one of ours", [ACDcQueue]),
             {'noreply', State};
-        true ->
+        'true' ->
             lager:debug("responding to member_connect_req"),
 
             send_member_connect_resp(ReqJObj, MyQ, AgentId, MyId, LastConn),
             {'noreply', State#state{acdc_queue_id = ACDcQueue
-                                  ,msg_queue_id = wh_json:get_value(<<"Server-ID">>, ReqJObj)
-                                 }
-             ,hibernate
-            }
+                                    ,msg_queue_id = wh_json:get_value(<<"Server-ID">>, ReqJObj)
+                                   }
+             ,'hibernate'}
     end;
 
-handle_cast({bridge_to_member, Call, WinJObj, EPs, CDRUrl}, #state{record_calls=RecordCall
-                                                                   ,is_thief=false
-                                                                   ,agent_queues=Qs
-                                                                   ,acct_id=AcctId
-                                                                   ,agent_id=AgentId
-                                                                   ,my_q=MyQ
-                                                                   ,cdr_urls=Urls
-                                                                  }=State) ->
+handle_cast({'bridge_to_member', Call, WinJObj, EPs, CDRUrl}, #state{record_calls=RecordCall
+                                                                     ,is_thief='false'
+                                                                     ,agent_queues=Qs
+                                                                     ,acct_id=AcctId
+                                                                     ,agent_id=AgentId
+                                                                     ,my_q=MyQ
+                                                                     ,cdr_urls=Urls
+                                                                    }=State) ->
     _ = whapps_call:put_callid(Call),
     lager:debug("bridging to agent endpoints"),
 
@@ -504,20 +497,19 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs, CDRUrl}, #state{record_calls=
     lager:debug("originate sent, waiting on successful bridge now"),
     update_my_queues_of_change(AcctId, AgentId, Qs),
     {'noreply', State#state{call=Call
-                          ,record_calls=ShouldRecord
-                          ,msg_queue_id=wh_json:get_value(<<"Server-ID">>, WinJObj)
-                          ,agent_call_id=AgentCallId
-                          ,cdr_urls=dict:store(whapps_call:call_id(Call), CDRUrl,
-                                               dict:store(AgentCallId, CDRUrl, Urls)
-                                              )
-                         }
-    ,hibernate
-    };
+                            ,record_calls=ShouldRecord
+                            ,msg_queue_id=wh_json:get_value(<<"Server-ID">>, WinJObj)
+                            ,agent_call_id=AgentCallId
+                            ,cdr_urls=dict:store(whapps_call:call_id(Call), CDRUrl,
+                                                 dict:store(AgentCallId, CDRUrl, Urls)
+                                                )
+                           }
+     ,'hibernate'};
 
-handle_cast({bridge_to_member, Call, WinJObj, _, CDRUrl}, #state{is_thief='true'
-                                                                 ,agent=Agent
-                                                                 ,cdr_urls=Urls
-                                                                }=State) ->
+handle_cast({'bridge_to_member', Call, WinJObj, _, CDRUrl}, #state{is_thief='true'
+                                                                   ,agent=Agent
+                                                                   ,cdr_urls=Urls
+                                                                  }=State) ->
     _ = whapps_call:put_callid(Call),
     lager:debug("connecting to thief at ~s", [whapps_call:call_id(Agent)]),
     acdc_util:bind_to_call_events(Call, CDRUrl),
@@ -528,16 +520,15 @@ handle_cast({bridge_to_member, Call, WinJObj, _, CDRUrl}, #state{is_thief='true'
     whapps_call_command:pickup(whapps_call:call_id(Agent), <<"now">>, Call),
 
     {'noreply', State#state{call=Call
-                          ,msg_queue_id=wh_json:get_value(<<"Server-ID">>, WinJObj)
-                          ,agent_call_id=AgentCallId
-                          ,cdr_urls=dict:store(whapps_call:call_id(Call), CDRUrl,
-                                               dict:store(AgentCallId, CDRUrl, Urls)
+                            ,msg_queue_id=wh_json:get_value(<<"Server-ID">>, WinJObj)
+                            ,agent_call_id=AgentCallId
+                            ,cdr_urls=dict:store(whapps_call:call_id(Call), CDRUrl,
+                                                 dict:store(AgentCallId, CDRUrl, Urls)
                                               )
-                         }
-     ,hibernate
-    };
+                           }
+     ,'hibernate'};
 
-handle_cast({monitor_call, Call, CDRUrl}, #state{cdr_urls=Urls}=State) ->
+handle_cast({'monitor_call', Call, CDRUrl}, #state{cdr_urls=Urls}=State) ->
     _ = whapps_call:put_callid(Call),
 
     AgentCallId = outbound_call_id(Call),
@@ -548,13 +539,13 @@ handle_cast({monitor_call, Call, CDRUrl}, #state{cdr_urls=Urls}=State) ->
     lager:debug("monitoring member call ~s, agent call on ~s", [whapps_call:call_id(Call), AgentCallId]),
 
     {'noreply', State#state{call=Call
-                          ,agent_call_id=AgentCallId
-                          ,cdr_urls=dict:store(whapps_call:call_id(Call), CDRUrl,
-                                               dict:store(AgentCallId, CDRUrl, Urls)
-                                              )
-                         }, 'hibernate'};
+                            ,agent_call_id=AgentCallId
+                            ,cdr_urls=dict:store(whapps_call:call_id(Call), CDRUrl,
+                                                 dict:store(AgentCallId, CDRUrl, Urls)
+                                                )
+                           }, 'hibernate'};
 
-handle_cast({originate_execute, JObj}, #state{my_q=Q}=State) ->
+handle_cast({'originate_execute', JObj}, #state{my_q=Q}=State) ->
     ACallId = wh_json:get_value(<<"Call-ID">>, JObj),
     acdc_util:bind_to_call_events(ACallId),
 
@@ -563,7 +554,7 @@ handle_cast({originate_execute, JObj}, #state{my_q=Q}=State) ->
     send_originate_execute(JObj, Q),
     {'noreply', State#state{agent_call_id=ACallId}, 'hibernate'};
 
-handle_cast({outbound_call, Call}, State) ->
+handle_cast({'outbound_call', Call}, State) ->
     _ = whapps_call:put_callid(Call),
     acdc_util:bind_to_call_events(Call),
 
@@ -581,16 +572,6 @@ handle_cast({'agent_call_id', ACallId, ACtrlQ}, #state{call=Call
     {'noreply', State#state{agent_call_id=ACallId
                             ,agent_call_queue=ACtrlQ
                            }, 'hibernate'};
-
-handle_cast({'join_agent', ACallId}, #state{call=Call
-                                            ,record_calls=ShouldRecord
-                                           }=State) ->
-    lager:debug("sending call pickup"),
-    whapps_call_command:pickup(ACallId, <<"now">>, Call),
-
-    maybe_start_recording(Call, ShouldRecord),
-
-    {'noreply', State};
 
 handle_cast({'send_sync_req'}, #state{my_id=MyId
                                       ,my_q=MyQ
@@ -701,10 +682,10 @@ handle_event(_JObj, #state{fsm_pid=FSM
 %% @end
 %%--------------------------------------------------------------------
 terminate(Reason, #state{agent_queues=Queues
-                          ,acct_id=AcctId
-                          ,agent_id=AgentId
-                         }
-         ) when Reason == normal; Reason == shutdown ->
+                         ,acct_id=AcctId
+                         ,agent_id=AgentId
+                        }
+         ) when Reason == 'normal'; Reason == 'shutdown' ->
     _ = [logout_from_queue(AcctId, AgentId, QueueId) || QueueId <- Queues],
     lager:debug("agent process going down: ~p", [Reason]);
 terminate(_Reason, _State) ->
@@ -719,7 +700,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -799,7 +780,7 @@ send_sync_response(ReqJObj, AcctId, AgentId, MyId, Status, Options) ->
     lager:debug("sending sync resp to ~s", [Q]),
     wapi_acdc_agent:publish_sync_resp(Q, Prop).
 
-send_status_update(AcctId, AgentId, resume) ->
+send_status_update(AcctId, AgentId, 'resume') ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                 ,{<<"Agent-ID">>, AgentId}
@@ -812,13 +793,13 @@ send_status_update(AcctId, AgentId, resume) ->
 idle_time('undefined') -> 'undefined';
 idle_time(T) -> wh_util:elapsed_s(T).
 
--spec call_id('undefined' | whapps_call:call() | wh_json:object()) ->
-                           api_binary().
+-spec call_id(whapps_call:call() | api_object()) ->
+                     api_binary().
 call_id('undefined') -> 'undefined';
 call_id(Call) ->
     case whapps_call:is_call(Call) of
-        true -> whapps_call:call_id(Call);
-        false ->
+        'true' -> whapps_call:call_id(Call);
+        'false' ->
             Keys = [[<<"Call">>, <<"Call-ID">>]
                     ,[<<"Call">>, <<"call_id">>]
                     ,<<"Call-ID">>
@@ -830,7 +811,7 @@ call_id(Call) ->
 
 -spec maybe_connect_to_agent(ne_binary(), list(), whapps_call:call(), integer() | 'undefined') -> 'ok'.
 maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
-    put(callid, whapps_call:call_id(Call)),
+    put('callid', whapps_call:call_id(Call)),
 
     ReqId = wh_util:rand_hex_binary(6),
     AcctId = whapps_call:account_id(Call),
@@ -841,17 +822,18 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
                                    ,{<<"Retain-CID">>, <<"true">>}
                                   ]),
 
+    Endpoints = [wh_json:set_values([{<<"Endpoint-Timeout">>, Timeout}
+                                     ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+                                     ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+                                    ], EP)
+                 || EP <- EPs
+                ],
+
     Prop = props:filter_undefined(
              [{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
               ,{<<"Timeout">>, Timeout}
-              ,{<<"Endpoints">>, [wh_json:set_values([{<<"Endpoint-Timeout">>, Timeout}
-                                                      ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
-                                                      ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
-                                                     ], EP)
-                                  || EP <- EPs
-                                 ]
-               }
+              ,{<<"Endpoints">>, Endpoints}
               ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>
                                                    ,<<"Retain-CID">>
                                                    ,<<"Authorizing-ID">>
@@ -873,17 +855,15 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
 
     wapi_resource:publish_originate_req(Prop).
 
-outbound_call_id(CallId) when is_binary(CallId) ->
-    wh_util:to_hex_binary(erlang:md5(CallId));
-outbound_call_id(Call) ->
-    outbound_call_id(whapps_call:call_id(Call)).
+outbound_call_id(CallId) when is_binary(CallId) -> wh_util:to_hex_binary(erlang:md5(CallId));
+outbound_call_id(Call) -> outbound_call_id(whapps_call:call_id(Call)).
 
 -spec login_to_queue(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 login_to_queue(AcctId, AgentId, QueueId) ->
-    gen_listener:add_binding(self(), acdc_queue, [{restrict_to, [member_connect_req]}
-                                                  ,{queue_id, QueueId}
-                                                  ,{account_id, AcctId}
-                                                 ]),
+    gen_listener:add_binding(self(), 'acdc_queue', [{'restrict_to', ['member_connect_req']}
+                                                    ,{'queue_id', QueueId}
+                                                    ,{'account_id', AcctId}
+                                                   ]),
     Prop = [{<<"Account-ID">>, AcctId}
             ,{<<"Agent-ID">>, AgentId}
             ,{<<"Queue-ID">>, QueueId}
@@ -894,9 +874,9 @@ login_to_queue(AcctId, AgentId, QueueId) ->
 
 -spec logout_from_queue(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 logout_from_queue(AcctId, AgentId, QueueId) ->
-    gen_listener:rm_binding(self(), acdc_queue, [{restrict_to, [member_connect_req]}
-                                                 ,{queue_id, QueueId}
-                                                 ,{account_id, AcctId}
+    gen_listener:rm_binding(self(), 'acdc_queue', [{'restrict_to', ['member_connect_req']}
+                                                   ,{'queue_id', QueueId}
+                                                   ,{'account_id', AcctId}
                                                 ]),
     Prop = [{<<"Account-ID">>, AcctId}
             ,{<<"Agent-ID">>, AgentId}
@@ -915,17 +895,17 @@ update_my_queues_of_change(AcctId, AgentId, Qs) ->
     _ = [wapi_acdc_queue:publish_agent_change([{<<"Queue-ID">>, QueueId} | Props])
          || QueueId <- Qs
         ],
-    ok.
+    'ok'.
 
 -spec should_record_endpoints(wh_json:objects(), boolean()) -> boolean().
-should_record_endpoints(_EPs, true) -> true;
-should_record_endpoints(EPs, false) ->
+should_record_endpoints(_EPs, 'true') -> 'true';
+should_record_endpoints(EPs, 'false') ->
     lists:any(fun(EP) ->
-                      wh_json:is_true(<<"record_calls">>, EP, false)
+                      wh_json:is_true(<<"record_calls">>, EP, 'false')
               end, EPs).
 
-maybe_stop_recording(_Call, false) -> ok;
-maybe_stop_recording(Call, true) ->
+maybe_stop_recording(_Call, 'false') -> 'ok';
+maybe_stop_recording(Call, 'true') ->
     Format = recording_format(),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
 
@@ -934,8 +914,8 @@ maybe_stop_recording(Call, true) ->
 
     save_recording(Call, MediaName, Format).
 
-maybe_start_recording(_Call, false) -> ok;
-maybe_start_recording(Call, true) ->
+maybe_start_recording(_Call, 'false') -> 'ok';
+maybe_start_recording(Call, 'true') ->
     Format = recording_format(),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
     lager:debug("recording of ~s started", [MediaName]),
@@ -946,7 +926,7 @@ recording_format() ->
     whapps_config:get(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>).
 
 save_recording(Call, MediaName, Format) ->
-    {ok, MediaJObj} = store_recording_meta(Call, MediaName, Format),
+    {'ok', MediaJObj} = store_recording_meta(Call, MediaName, Format),
     lager:debug("stored meta: ~p", [MediaJObj]),
 
     StoreUrl = store_url(Call, MediaJObj),
@@ -956,11 +936,11 @@ save_recording(Call, MediaName, Format) ->
 
 -spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 store_recording(MediaName, StoreUrl, Call) ->
-    ok = whapps_call_command:store(MediaName, StoreUrl, Call).
+    'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).
 
 -spec store_recording_meta(whapps_call:call(), ne_binary(), ne_binary()) ->
-                                        {'ok', wh_json:object()} |
-                                        {'error', any()}.
+                                  {'ok', wh_json:object()} |
+                                  {'error', any()}.
 store_recording_meta(Call, MediaName, Ext) ->
     AcctDb = whapps_call:account_db(Call),
     CallId = whapps_call:call_id(Call),
@@ -1010,40 +990,39 @@ store_url(Call, JObj) ->
 -spec agent_id(agent()) -> api_binary().
 agent_id(Agent) ->
     case wh_json:is_json_object(Agent) of
-        true -> wh_json:get_value(<<"_id">>, Agent);
-        false -> whapps_call:owner_id(Agent)
+        'true' -> wh_json:get_value(<<"_id">>, Agent);
+        'false' -> whapps_call:owner_id(Agent)
     end.
 
 -spec account_id(agent()) -> api_binary().
 account_id(Agent) ->
     case wh_json:is_json_object(Agent) of
-        true -> wh_json:get_value(<<"pvt_account_id">>, Agent);
-        false -> whapps_call:account_id(Agent)
+        'true' -> wh_json:get_value(<<"pvt_account_id">>, Agent);
+        'false' -> whapps_call:account_id(Agent)
     end.
 
 -spec account_db(agent()) -> api_binary().
 account_db(Agent) ->
     case wh_json:is_json_object(Agent) of
-        true -> wh_json:get_value(<<"pvt_account_db">>, Agent);
-        false -> whapps_call:account_db(Agent)
+        'true' -> wh_json:get_value(<<"pvt_account_db">>, Agent);
+        'false' -> whapps_call:account_db(Agent)
     end.
 
 -spec record_calls(agent()) -> boolean().
 record_calls(Agent) ->
     case wh_json:is_json_object(Agent) of
-        true -> wh_json:is_true(<<"record_calls">>, Agent, false);
-        false -> false
+        'true' -> wh_json:is_true(<<"record_calls">>, Agent, 'false');
+        'false' -> 'false'
     end.
 
 -spec is_thief(agent()) -> boolean().
 is_thief(Agent) -> not wh_json:is_json_object(Agent).
 
-handle_fsm_started(_FSMPid) ->
-    gen_listener:cast(self(), bind_to_member_reqs).
+handle_fsm_started(_FSMPid) -> gen_listener:cast(self(), 'bind_to_member_reqs').
 
-stop_agent_leg(undefined, _, _) -> ok;
-stop_agent_leg(_, undefined, _) -> ok;
-stop_agent_leg(_, _, undefined) -> ok;
+stop_agent_leg('undefined', _, _) -> 'ok';
+stop_agent_leg(_, 'undefined', _) -> 'ok';
+stop_agent_leg(_, _, 'undefined') -> 'ok';
 stop_agent_leg(MyQ, ACallId, ACtrlQ) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
                ,{<<"Insert-At">>, <<"now">>}
@@ -1051,4 +1030,3 @@ stop_agent_leg(MyQ, ACallId, ACtrlQ) ->
                | wh_api:default_headers(MyQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     wapi_dialplan:publish_command(ACtrlQ, Command).
-    
