@@ -27,11 +27,14 @@
 
 -spec handle_status_update(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_status_update(JObj, _Props) ->
+    _ = wh_util:put_callid(JObj),
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
     Timeout = wh_json:get_integer_value(<<"Time-Limit">>, JObj
                                         ,whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
                                        ),
+
+    lager:debug("status update recv for ~s (~s)", [AgentId, AcctId]),
 
     case wh_json:get_value(<<"Event-Name">>, JObj) of
         <<"login">> ->
@@ -85,7 +88,7 @@ maybe_start_agent(AcctId, AgentId) ->
     end.
 
 maybe_stop_agent(LPid, AcctId, AgentId) ->
-    wh_amqp_channel:consumer_pid(LPid),
+    _ = wh_amqp_channel:consumer_pid(LPid),
     maybe_stop_agent(AcctId, AgentId).
 maybe_stop_agent(AcctId, AgentId) ->
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID),
