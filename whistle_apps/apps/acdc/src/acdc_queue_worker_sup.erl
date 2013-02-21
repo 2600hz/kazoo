@@ -40,46 +40,44 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
-start_link(MgrPid, AcctId, QueueId) ->
-    supervisor:start_link(?MODULE, [MgrPid, AcctId, QueueId]).
+start_link(MgrPid, AcctId, QueueId) -> supervisor:start_link(?MODULE, [MgrPid, AcctId, QueueId]).
 
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
-stop(WorkerSup) ->
-    supervisor:terminate_child(acdc_queues_sup, WorkerSup).
+stop(WorkerSup) -> supervisor:terminate_child('acdc_queues_sup', WorkerSup).
 
 -spec listener(pid()) -> pid() | 'undefined'.
 listener(WorkerSup) ->
-    case child_of_type(WorkerSup, acdc_queue_listener) of
+    case child_of_type(WorkerSup, 'acdc_queue_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
 
 -spec shared_queue(pid()) -> pid() | 'undefined'.
 shared_queue(WorkerSup) ->
-    case child_of_type(WorkerSup, acdc_queue_shared) of
+    case child_of_type(WorkerSup, 'acdc_queue_shared') of
         [] -> undefined;
         [P] -> P
     end.
 
 -spec start_shared_queue(pid(), pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
 start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId) ->
-    supervisor:start_child(WorkerSup, ?CHILD(acdc_queue_shared, [FSMPid, AcctId, QueueId])).
+    supervisor:start_child(WorkerSup, ?CHILD('acdc_queue_shared', [FSMPid, AcctId, QueueId])).
 
 -spec fsm(pid()) -> pid() | 'undefined'.
 fsm(WorkerSup) ->
-    case child_of_type(WorkerSup, acdc_queue_fsm) of
-        [] -> undefined;
+    case child_of_type(WorkerSup, 'acdc_queue_fsm') of
+        [] -> 'undefined';
         [P] -> P
     end.
 
 -spec start_fsm(pid(), pid(), wh_json:object()) -> sup_startchild_ret().
 start_fsm(WorkerSup, MgrPid, QueueJObj) ->
     ListenerPid = self(),
-    supervisor:start_child(WorkerSup, ?CHILD(acdc_queue_fsm, [MgrPid, ListenerPid, QueueJObj])).
+    supervisor:start_child(WorkerSup, ?CHILD('acdc_queue_fsm', [MgrPid, ListenerPid, QueueJObj])).
 
 -spec child_of_type(pid(), atom()) -> list(pid()).
-child_of_type(WorkerSup, T) ->
-    [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(WorkerSup), T =:= Type].
+child_of_type(WSup, T) ->
+    [P || {Type, P,'worker', [_]} <- supervisor:which_children(WSup), T =:= Type].
 
 status(Supervisor) ->
     lager:info("    Worker Supervisor: ~p", [Supervisor]),
@@ -123,13 +121,13 @@ print_status([{K, V}|T]) ->
 %%--------------------------------------------------------------------
 -spec init(list()) -> sup_init_ret().
 init(Args) ->
-    RestartStrategy = one_for_all,
+    RestartStrategy = 'one_for_all',
     MaxRestarts = 2,
     MaxSecondsBetweenRestarts = 2,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_queue_listener, [self() | Args])]}}.
+    {'ok', {SupFlags, [?CHILD('acdc_queue_listener', [self() | Args])]}}.
 
 %%%===================================================================
 %%% Internal functions

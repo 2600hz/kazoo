@@ -87,6 +87,7 @@
 
          ,caller_exit_key :: ne_binary() % DTMF a caller can press to leave the queue
          ,record_caller = 'false' :: boolean() % record the caller
+         ,recording_url :: api_binary() %% URL of where to POST recordings
          ,cdr_url :: api_binary() % optional URL to request for extra CDR data
          }).
 -type queue_fsm_state() :: #state{}.
@@ -206,6 +207,7 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
                            ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
                            ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
                            ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, 'false')
+                           ,recording_url = wh_json:get_ne_value(<<"recording_url">>, QueueJObj)
                            ,cdr_url = wh_json:get_ne_value(<<"cdr_url">>, QueueJObj)
                            ,member_call = 'undefined'
                           }}.
@@ -219,9 +221,8 @@ ready({'member_call', CallJObj, Delivery}, #state{queue_proc=QueueSrv
                                                   ,manager_proc=MgrSrv
                                                   ,connection_timeout=ConnTimeout
                                                   ,connection_timer_ref=ConnRef
-                                                  ,cdr_url=Url
                                                   ,moh=MOH
-                                                  ,record_caller=ShouldRecord
+                                                  ,cdr_url=Url
                                                  }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, CallJObj)),
     put('callid', whapps_call:call_id(Call)),
@@ -236,7 +237,7 @@ ready({'member_call', CallJObj, Delivery}, #state{queue_proc=QueueSrv
             webseq:note(self(), 'right', [whapps_call:call_id(Call), <<": member call">>]),
             webseq:evt(whapps_call:call_id(Call), self(), <<"member call received">>),
 
-            acdc_queue_listener:member_connect_req(QueueSrv, CallJObj, Delivery, Url, ShouldRecord),
+            acdc_queue_listener:member_connect_req(QueueSrv, CallJObj, Delivery, Url),
 
             maybe_stop_timer(ConnRef), % stop the old one, maybe
 
@@ -273,9 +274,12 @@ ready(_Event, State) ->
     lager:debug("unhandled event in ready: ~p", [_Event]),
     {'next_state', 'ready', State}.
 
-ready('status', _, #state{cdr_url=Url}=State) ->
+ready('status', _, #state{cdr_url=Url
+                          ,recording_url=RecordingUrl
+                         }=State) ->
     {'reply', [{'state', <<"ready">>}
                ,{<<"cdr_url">>, Url}
+               ,{<<"recording_url">>, RecordingUrl}
               ], 'ready', State};
 ready('current_call', _, State) ->
     {'reply', 'undefined', 'ready', State}.
@@ -299,13 +303,11 @@ connect_req({'agent_resp', Resp}, #state{connect_resps=CRs}=State) ->
 connect_req({'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                             ,connect_resps=[]
                                                             ,queue_proc=Srv
-                                                            ,cdr_url=Url
-                                                            ,record_caller=ShouldRecord
                                                            }=State) ->
     lager:debug("done waiting, no agents responded, let's ask again"),
     webseq:note(self(), 'right', <<"no agents responded, trying again">>),
 
-    acdc_queue_listener:member_connect_re_req(Srv, Url, ShouldRecord),
+    acdc_queue_listener:member_connect_re_req(Srv),
 
     {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()}};
 
@@ -318,6 +320,8 @@ connect_req({'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                             ,caller_exit_key=CallerExitKey
                                                             ,member_call=Call
                                                             ,cdr_url=CDRUrl
+                                                            ,record_caller=ShouldRecord
+                                                            ,recording_url=RecordUrl
                                                            }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
 
@@ -330,6 +334,8 @@ connect_req({'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                   ,{<<"Wrapup-Timeout">>, AgentWrapup}
                                   ,{<<"Caller-Exit-Key">>, CallerExitKey}
                                   ,{<<"CDR-Url">>, CDRUrl}
+                                  ,{<<"Record-Caller">>, ShouldRecord}
+                                  ,{<<"Recording-URL">>, RecordUrl}
                                  ],
                      acdc_queue_listener:member_connect_win(Srv, update_agent(Agent, Winner), QueueOpts)
                  end
@@ -432,6 +438,7 @@ connect_req('status', _, #state{member_call=Call
                                 ,member_call_start=Start
                                 ,connection_timer_ref=ConnRef
                                 ,cdr_url=Url
+                                ,recording_url=RecordingUrl
                                }=State) ->
     {'reply', [{<<"state">>, <<"connect_req">>}
                ,{<<"call_id">>, whapps_call:call_id(Call)}
@@ -442,6 +449,7 @@ connect_req('status', _, #state{member_call=Call
                ,{<<"wait_left">>, elapsed(ConnRef)}
                ,{<<"wait_time">>, elapsed(Start)}
                ,{<<"cdr_url">>, Url}
+               ,{<<"recording_url">>, RecordingUrl}
               ], 'connect_req', State};
 connect_req('current_call', _, #state{member_call=Call
                                       ,member_call_start=Start
@@ -488,14 +496,12 @@ connecting({'retry', RetryJObj}, #state{queue_proc=Srv
                                         ,connect_resps=[]
                                         ,collect_ref=CollectRef
                                         ,agent_ring_timer_ref=AgentRef
-                                        ,cdr_url=Url
-                                        ,record_caller=ShouldRecord
                                        }=State) ->
     lager:debug("recv retry from agent"),
 
     webseq:evt(webseq:process_pid(RetryJObj), self(), <<"member call - retry">>),
 
-    acdc_queue_listener:member_connect_re_req(Srv, Url, ShouldRecord),
+    acdc_queue_listener:member_connect_re_req(Srv),
     maybe_stop_timer(CollectRef),
     maybe_stop_timer(AgentRef),
 
@@ -586,6 +592,7 @@ connecting('status', _, #state{member_call=Call
                                ,connection_timer_ref=ConnRef
                                ,agent_ring_timer_ref=AgentRef
                                ,cdr_url=Url
+                               ,recording_url=RecordingUrl
                               }=State) ->
     {'reply', [{<<"state">>, <<"connecting">>}
                ,{<<"call_id">>, whapps_call:call_id(Call)}
@@ -597,6 +604,7 @@ connecting('status', _, #state{member_call=Call
                ,{<<"wait_time">>, elapsed(Start)}
                ,{<<"agent_wait_left">>, elapsed(AgentRef)}
                ,{<<"cdr_url">>, Url}
+               ,{<<"recording_url">>, RecordingUrl}
               ], 'connecting', State};
 connecting('current_call', _, #state{member_call=Call
                                      ,member_call_start=Start
@@ -749,6 +757,7 @@ update_properties(QueueJObj, State) ->
       ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
       ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
       ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, 'false')
+      ,recording_url = wh_json:get_ne_value(<<"recording_url">>, QueueJObj)
       ,cdr_url = wh_json:get_ne_value(<<"cdr_url">>, QueueJObj)
 
       %% Changing queue strategy currently isn't feasible; definitely a TODO

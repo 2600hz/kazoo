@@ -187,11 +187,11 @@ member_call_cancel_v(JObj) ->
 %% Member Connect Request
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_REQ_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call-ID">>]).
--define(OPTIONAL_MEMBER_CONNECT_REQ_HEADERS, [<<"Process-ID">>, <<"Record-Caller">>]).
+-define(OPTIONAL_MEMBER_CONNECT_REQ_HEADERS, [<<"Process-ID">>]).
 -define(MEMBER_CONNECT_REQ_VALUES, [{<<"Event-Category">>, <<"member">>}
                                     ,{<<"Event-Name">>, <<"connect_req">>}
                                    ]).
--define(MEMBER_CONNECT_REQ_TYPES, [{<<"Record-Caller">>, fun wh_util:is_boolean/1}]).
+-define(MEMBER_CONNECT_REQ_TYPES, []).
 
 -spec member_connect_req(api_terms()) ->
                                       {'ok', iolist()} |
@@ -258,11 +258,12 @@ member_connect_resp_v(JObj) ->
 -define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>, <<"Caller-Exit-Key">>
                                                   ,<<"Wrapup-Timeout">>, <<"CDR-Url">>
                                                   ,<<"Process-ID">>, <<"Agent-Process-ID">>
+                                                  ,<<"Record-Caller">>, <<"Recording-URL">>
                                              ]).
 -define(MEMBER_CONNECT_WIN_VALUES, [{<<"Event-Category">>, <<"member">>}
                                      ,{<<"Event-Name">>, <<"connect_win">>}
                                     ]).
--define(MEMBER_CONNECT_WIN_TYPES, []).
+-define(MEMBER_CONNECT_WIN_TYPES, [{<<"Record-Caller">>, fun wh_util:is_boolean/1}]).
 
 -spec member_connect_win(api_terms()) ->
                                       {'ok', iolist()} |

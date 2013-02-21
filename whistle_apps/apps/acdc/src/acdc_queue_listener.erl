@@ -21,8 +21,8 @@
 %% API
 -export([start_link/4
          ,accept_member_calls/1
-         ,member_connect_req/5
-         ,member_connect_re_req/3
+         ,member_connect_req/4
+         ,member_connect_re_req/1
          ,member_connect_win/3
          ,timeout_member_call/1
          ,exit_member_call/1
@@ -120,13 +120,13 @@ start_link(WorkerSup, MgrPid, AcctId, QueueId) ->
 
 accept_member_calls(Srv) -> gen_listener:cast(Srv, {'accept_member_calls'}).
 
--spec member_connect_req(pid(), wh_json:object(), _, api_binary(), boolean()) -> 'ok'.
-member_connect_req(Srv, MemberCallJObj, Delivery, Url, ShouldRecord) ->
-    gen_listener:cast(Srv, {'member_connect_req', MemberCallJObj, Delivery, Url, ShouldRecord}).
+-spec member_connect_req(pid(), wh_json:object(), _, api_binary()) -> 'ok'.
+member_connect_req(Srv, MemberCallJObj, Delivery, Url) ->
+    gen_listener:cast(Srv, {'member_connect_req', MemberCallJObj, Delivery, Url}).
 
--spec member_connect_re_req(pid(), api_binary(), boolean()) -> 'ok'.
-member_connect_re_req(Srv, Url, ShouldRecord) ->
-    gen_listener:cast(Srv, {'member_connect_re_req', Url, ShouldRecord}).
+-spec member_connect_re_req(pid()) -> 'ok'.
+member_connect_re_req(Srv) ->
+    gen_listener:cast(Srv, {'member_connect_re_req'}).
 
 member_connect_win(Srv, RespJObj, QueueOpts) ->
     gen_listener:cast(Srv, {'member_connect_win', RespJObj, QueueOpts}).
@@ -271,7 +271,7 @@ handle_cast({'start_friends', QueueJObj}, #state{worker_sup=WorkerSup
 handle_cast({'created_queue', Q}, #state{my_q='undefined'}=State) ->
     {'noreply', State#state{my_q=Q}, 'hibernate'};
 
-handle_cast({'member_connect_req', MemberCallJObj, Delivery, Url, ShouldRecord}
+handle_cast({'member_connect_req', MemberCallJObj, Delivery, Url}
             ,#state{my_q=MyQ
                     ,my_id=MyId
                     ,acct_id=AcctId
@@ -282,7 +282,7 @@ handle_cast({'member_connect_req', MemberCallJObj, Delivery, Url, ShouldRecord}
     put('callid', whapps_call:call_id(Call)),
 
     acdc_util:bind_to_call_events(Call, Url),
-    send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId, ShouldRecord),
+    send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId),
 
     {'noreply', State#state{call=Call
                             ,delivery=Delivery
@@ -290,7 +290,7 @@ handle_cast({'member_connect_req', MemberCallJObj, Delivery, Url, ShouldRecord}
                            }
      ,'hibernate'};
 
-handle_cast({'member_connect_re_req', Url, ShouldRecord}, #state{my_q=MyQ
+handle_cast({'member_connect_re_req'}, #state{my_q=MyQ
                                                                  ,my_id=MyId
                                                                  ,acct_id=AcctId
                                                                  ,queue_id=QueueId
@@ -300,8 +300,7 @@ handle_cast({'member_connect_re_req', Url, ShouldRecord}, #state{my_q=MyQ
     case is_call_alive(Call) of
         'true' ->
             lager:debug("call is still alive, re req connect"),
-            acdc_util:bind_to_call_events(Call, Url),
-            send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId, ShouldRecord);
+            send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId);
         'false' ->
             lager:debug("call appears down, don't re req connect"),
             acdc_queue_listener:finish_member_call(self()),
@@ -497,8 +496,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec send_member_connect_req(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), boolean()) -> 'ok'.
-send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId, ShouldRecord) ->
+-spec send_member_connect_req(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
     lager:debug("sending req via ~s", [MyQ]),
     Req = props:filter_undefined(
             [{<<"Account-ID">>, AcctId}
@@ -506,7 +505,6 @@ send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId, ShouldRecord) ->
              ,{<<"Process-ID">>, MyId}
              ,{<<"Server-ID">>, MyQ}
              ,{<<"Call-ID">>, CallId}
-             ,{<<"Record-Caller">>, ShouldRecord}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     publish(Req, fun wapi_acdc_queue:publish_member_connect_req/1).
