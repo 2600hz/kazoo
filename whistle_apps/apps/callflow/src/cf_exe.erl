@@ -369,7 +369,8 @@ handle_cast({send_amqp, API, PubFun}, #state{call=Call}=State) ->
     send_amqp_message(Call, API, PubFun),
     {'noreply', State};
 
-handle_cast(_, State) ->
+handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -390,8 +391,8 @@ handle_info(initialize, #state{call=Call}) ->
                 ,fun(C) -> whapps_call:control_queue_helper(fun cf_exe:control_queue/2, C) end
                ],
     {'noreply', #state{call=lists:foldr(fun(F, C) -> F(C) end, Call, Updaters)
-                     ,flow=Flow
-                    }};
+                       ,flow=Flow
+                      }};
 handle_info({'EXIT', _, normal}, State) ->
     %% handle normal exits so we dont need a guard on the next clause, cleaner looking...
     {'noreply', State};
@@ -400,7 +401,8 @@ handle_info({'EXIT', Pid, Reason}, #state{cf_module_pid=Pid, call=Call}=State) -
     lager:error("action ~s died unexpectedly: ~p", [LastAction, Reason]),
     ?MODULE:continue(self()),
     {'noreply', State};
-handle_info(_, State) ->
+handle_info(_Msg, State) ->
+    lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
