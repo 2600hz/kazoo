@@ -47,7 +47,8 @@ start_link() ->
 -spec status() -> 'ok'.
 status() ->
     lager:info("ACDc Agents Status"),
-    _ = spawn(fun() -> [acdc_agent_sup:status(Sup) || Sup <- workers()] end),
+    Ws = workers(),
+    _ = spawn(fun() -> [acdc_agent_sup:status(Sup) || Sup <- Ws] end),
     'ok'.
 
 -spec new(wh_json:object()) -> sup_startchild_ret().

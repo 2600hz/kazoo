@@ -25,7 +25,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Args),
-        {Name, {Name, start_link, Args}, permanent, 5000, worker, [Name]}).
+        {Name, {Name, start_link, Args}, transient, 5000, worker, [Name]}).
 
 %%%===================================================================
 %%% API functions
@@ -52,17 +52,20 @@ stop(Supervisor) ->
 
 -spec status(pid()) -> 'ok'.
 status(Supervisor) ->
-    LPid = agent(Supervisor),
-    FSM = fsm(Supervisor),
+    case {agent(Supervisor), fsm(Supervisor)} of
+        {LPid, FSM} when is_pid(LPid), is_pid(FSM) ->
+            {AcctId, AgentId} = acdc_agent:config(LPid),
+            Status = acdc_agent_fsm:status(FSM),
 
-    {AcctId, AgentId} = acdc_agent:config(LPid),
-    Status = acdc_agent_fsm:status(FSM),
-
-    lager:info("Agent ~s (Account ~s)", [AgentId, AcctId]),
-    lager:info("  Supervisor: ~p", [Supervisor]),
-    lager:info("  Listener: ~p", [LPid]),
-    lager:info("  FSM: ~p", [FSM]),
-    print_status(Status).
+            lager:info("Agent ~s (Account ~s)", [AgentId, AcctId]),
+            lager:info("  Supervisor: ~p", [Supervisor]),
+            lager:info("  Listener: ~p", [LPid]),
+            lager:info("  FSM: ~p", [FSM]),
+            print_status(Status);
+        _ ->
+            lager:info("Agent Supervisor ~p is dead, stopping", [Supervisor]),
+            ?MODULE:stop(Supervisor)
+    end.
 
 print_status([]) -> 'ok';
 print_status([{_, undefined}|T]) -> print_status(T);
