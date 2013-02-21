@@ -481,7 +481,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
 
     AgentCallId = acdc_agent:outbound_call_id(CallId),
 
-    CDRUrl = wh_json:get_value(<<"CDR-Url">>, JObj),
+    CDRUrl = wh_json:get_ne_value(<<"CDR-Url">>, JObj),
 
     case wh_json:get_value(<<"Agent-Process-ID">>, JObj) of
         MyId ->

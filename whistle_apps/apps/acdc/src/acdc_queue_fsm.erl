@@ -208,7 +208,7 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
                        ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
                        ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
                        ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, false)
-                       ,cdr_url = wh_json:get_value(<<"cdr_url">>, QueueJObj)
+                       ,cdr_url = wh_json:get_ne_value(<<"cdr_url">>, QueueJObj)
                        ,member_call = 'undefined'
                       }}.
 
@@ -746,7 +746,7 @@ update_properties(QueueJObj, State) ->
       ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
       ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
       ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, false)
-      ,cdr_url = wh_json:get_value(<<"cdr_url">>, QueueJObj)
+      ,cdr_url = wh_json:get_ne_value(<<"cdr_url">>, QueueJObj)
 
       %% Changing queue strategy currently isn't feasible; definitely a TODO
       %%,strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj))
