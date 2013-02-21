@@ -302,11 +302,11 @@ init([AcctId, AgentId, Supervisor, Props, IsThief]) ->
     lager:debug("waiting for listener in ~p", [_P]),
 
     {'ok', 'wait', #state{acct_id=AcctId
-                        ,acct_db=wh_util:format_account_id(AcctId, 'encoded')
-                        ,agent_id=AgentId
-                        ,fsm_call_id=FSMCallId
-                        ,max_connect_failures=whapps_config:get_integer_value(?CONFIG_CAT, <<"max_connect_failures">>, 3)
-                       }}.
+                          ,acct_db=wh_util:format_account_id(AcctId, 'encoded')
+                          ,agent_id=AgentId
+                          ,fsm_call_id=FSMCallId
+                          ,max_connect_failures=whapps_config:get_integer(?CONFIG_CAT, <<"max_connect_failures">>, 3)
+                         }}.
 
 wait_for_listener(Supervisor, FSM, Props, IsThief) ->
     case acdc_agent_sup:agent(Supervisor) of
@@ -517,6 +517,16 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                                        }}
     end;
 
+ready({'member_connect_req', _}, #state{max_connect_failures=Max
+                                        ,connect_failures=Fails
+                                        ,acct_id=AcctId
+                                        ,agent_id=AgentId
+                                        ,agent_proc=Srv
+                                       }=State) when Fails >= Max ->
+    lager:debug("agent has failed to connect ~b times, logging out", [Fails]),
+    spawn('acdc_agent_handler', 'maybe_stop_agent', [Srv, AcctId, AgentId]),
+    {'next_state', 'ready', State};
+
 ready({'member_connect_req', JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:member_connect_resp(Srv, JObj),
     webseq:evt(self(), webseq:process_pid(JObj), <<"member connect resp">>),
@@ -597,6 +607,7 @@ ringing({'originate_started', ACallId}, #state{agent_proc=Srv
     {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
                                            ,call_status_failures=0
                                            ,agent_call_id=ACallId
+                                           ,connect_failures=0
                                           }};
 
 ringing({'originate_failed', E}, #state{agent_proc=Srv
@@ -617,7 +628,7 @@ ringing({'originate_failed', E}, #state{agent_proc=Srv
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     webseq:note(self(), 'right', <<"ready">>),
-    {'next_state', 'ready', clear_call(State, 'ready')};
+    {'next_state', 'ready', clear_call(State, 'failed')};
 
 ringing({'channel_bridged', CallId}, #state{member_call_id=CallId
                                             ,agent_proc=Srv
@@ -634,6 +645,7 @@ ringing({'channel_bridged', CallId}, #state{member_call_id=CallId
 
     {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
                                            ,call_status_failures=0
+                                           ,connect_failures=0
                                           }};
 
 ringing({'channel_hungup', CallId}, #state{agent_proc=Srv
@@ -716,7 +728,8 @@ ringing({'channel_answered', ACallId}, #state{agent_call_id=ACallId
 
     {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
                                            ,call_status_failures=0
-                                      }};
+                                           ,connect_failures=0
+                                          }};
 
 ringing({'channel_answered', MCallId}, #state{member_call_id=MCallId}=State) ->
     lager:debug("caller's channel answered"),
@@ -1303,6 +1316,18 @@ time_left('undefined') -> 'undefined';
 time_left(Ms) when is_integer(Ms) -> Ms div 1000.
 
 -spec clear_call(fsm_state(), atom()) -> fsm_state().
+clear_call(#state{connect_failures=Fails
+                  ,max_connect_failures=Max
+                  ,acct_id=AcctId
+                  ,agent_id=AgentId
+                  ,agent_proc=Srv
+                 }=State, 'failed') when (Max - Fails) =< 1 ->
+    lager:debug("agent has failed to connect ~b times, logging out", [Fails+1]),
+    spawn('acdc_agent_handler', 'maybe_stop_agent', [Srv, AcctId, AgentId]),
+    clear_call(State#state{connect_failures=Fails+1}, 'ready');
+clear_call(#state{connect_failures=Fails
+                 }=State, 'failed') ->
+    clear_call(State#state{connect_failures=Fails+1}, 'ready');
 clear_call(#state{fsm_call_id=FSMCallId
                   ,call_status_ref=CSRef
                   ,wrapup_ref=WRef

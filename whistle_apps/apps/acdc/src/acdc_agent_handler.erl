@@ -19,6 +19,8 @@
          ,handle_config_change/2
          ,handle_presence_probe/2
          ,handle_route_req/2
+
+         ,maybe_stop_agent/3
         ]).
 
 -include("acdc.hrl").
@@ -82,6 +84,9 @@ maybe_start_agent(AcctId, AgentId) ->
             lager:debug("agent ~s (~s) already running: supervisor ~p", [AgentId, AcctId, P])
     end.
 
+maybe_stop_agent(LPid, AcctId, AgentId) ->
+    wh_amqp_channel:consumer_pid(LPid),
+    maybe_stop_agent(AcctId, AgentId).
 maybe_stop_agent(AcctId, AgentId) ->
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID),
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
@@ -89,6 +94,12 @@ maybe_stop_agent(AcctId, AgentId) ->
             lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
         P when is_pid(P) ->
             lager:debug("agent ~s(~s) is logging out, stopping ~p", [AcctId, AgentId, P]),
+
+            case catch acdc_agent_sup:agent(P) of
+                APid when is_pid(APid) -> acdc_agent:logout_agent(APid);
+                _ -> 'ok'
+            end,
+
             _ = acdc_agent_sup:stop(P),
             acdc_stats:agent_inactive(AcctId, AgentId)
     end.
