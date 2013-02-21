@@ -187,19 +187,19 @@ member_call_cancel_v(JObj) ->
 %% Member Connect Request
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_REQ_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call-ID">>]).
--define(OPTIONAL_MEMBER_CONNECT_REQ_HEADERS, [<<"Process-ID">>]).
+-define(OPTIONAL_MEMBER_CONNECT_REQ_HEADERS, [<<"Process-ID">>, <<"Record-Caller">>]).
 -define(MEMBER_CONNECT_REQ_VALUES, [{<<"Event-Category">>, <<"member">>}
                                     ,{<<"Event-Name">>, <<"connect_req">>}
                                    ]).
--define(MEMBER_CONNECT_REQ_TYPES, []).
+-define(MEMBER_CONNECT_REQ_TYPES, [{<<"Record-Caller">>, fun wh_util:is_boolean/1}]).
 
 -spec member_connect_req(api_terms()) ->
                                       {'ok', iolist()} |
                                       {'error', string()}.
 member_connect_req(Props) when is_list(Props) ->
     case member_connect_req_v(Props) of
-        true -> wh_api:build_message(Props, ?MEMBER_CONNECT_REQ_HEADERS, ?OPTIONAL_MEMBER_CONNECT_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for member_connect_req"}
+        'true' -> wh_api:build_message(Props, ?MEMBER_CONNECT_REQ_HEADERS, ?OPTIONAL_MEMBER_CONNECT_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for member_connect_req"}
     end;
 member_connect_req(JObj) ->
     member_connect_req(wh_json:to_proplist(JObj)).
@@ -210,9 +210,7 @@ member_connect_req_v(Prop) when is_list(Prop) ->
 member_connect_req_v(JObj) ->
     member_connect_req_v(wh_json:to_proplist(JObj)).
 
--spec member_connect_req_routing_key(wh_json:object() |
-                                           wh_proplist()
-                                          ) -> ne_binary().
+-spec member_connect_req_routing_key(api_terms()) -> ne_binary().
 -spec member_connect_req_routing_key(ne_binary(), ne_binary()) -> ne_binary().
 member_connect_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
