@@ -281,7 +281,7 @@ handle_cast({start_friends, QueueJObj}, #state{worker_sup=WorkerSup
                     {stop, failed_fsm, State}
             end
     end;
-handle_cast({created_queue, Q}, #state{my_q=undefined}=State) ->
+handle_cast({created_queue, Q}, #state{my_q='undefined'}=State) ->
     {noreply, State#state{my_q=Q}, hibernate};
 
 handle_cast({member_connect_req, MemberCallJObj, Delivery, Url}, #state{my_q=MyQ
@@ -370,7 +370,7 @@ handle_cast({exit_member_call}, #state{delivery=Delivery
 
     {noreply, clear_call_state(State), hibernate};
 
-handle_cast({finish_member_call}, #state{call=undefined}=State) ->
+handle_cast({finish_member_call}, #state{call='undefined'}=State) ->
     {noreply, State};
 handle_cast({finish_member_call}, #state{delivery=Delivery
                                          ,call=Call
@@ -405,7 +405,7 @@ handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery
 
     {noreply, clear_call_state(State), hibernate};
 
-handle_cast({cancel_member_call}, #state{delivery=undefined}=State) ->
+handle_cast({cancel_member_call}, #state{delivery='undefined'}=State) ->
     lager:debug("empty cancel member, no delivery info"),
     {noreply, State};
 handle_cast({cancel_member_call}, #state{delivery=Delivery
@@ -417,7 +417,7 @@ handle_cast({cancel_member_call}, #state{delivery=Delivery
     _ = maybe_nack(Call, Delivery, Pid),
     {noreply, clear_call_state(State), hibernate};
 
-handle_cast({cancel_member_call, _RejectJObj}, #state{delivery=undefined}=State) ->
+handle_cast({cancel_member_call, _RejectJObj}, #state{delivery='undefined'}=State) ->
     lager:debug("cancel a member_call that I don't have delivery info for"),
     {noreply, State};
 handle_cast({cancel_member_call, _RejectJObj}, #state{delivery = #'basic.deliver'{}=Delivery
@@ -606,7 +606,7 @@ maybe_nack(Call, Delivery, SharedPid) ->
 
 -spec is_call_alive(whapps_call:call() | ne_binary()) -> boolean().
 is_call_alive(Call) ->
-    case whapps_call_command:b_call_status(Call) of
+    case whapps_call_command:b_channel_status(Call) of
         {ok, _} -> true;
         {error, _} -> false
     end.
@@ -617,10 +617,10 @@ clear_call_state(#state{acct_id=AcctId
     _ = acdc_util:queue_presence_update(AcctId, QueueId),
 
     put(callid, QueueId),
-    State#state{call=undefined
-                ,member_call_queue=undefined
-                ,agent_id=undefined
-                ,delivery=undefined
+    State#state{call='undefined'
+                ,member_call_queue='undefined'
+                ,agent_id='undefined'
+                ,delivery='undefined'
                 }.
 
 -spec publish(api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.

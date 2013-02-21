@@ -204,7 +204,7 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
                        ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
                        ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, true)
                        ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj)
-                       ,moh = wh_json:get_value(<<"moh">>, QueueJObj)
+                       ,moh = wh_json:get_ne_value(<<"moh">>, QueueJObj)
                        ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
                        ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
                        ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, false)
@@ -222,6 +222,7 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=QueueSrv
                                                 ,connection_timeout=ConnTimeout
                                                 ,connection_timer_ref=ConnRef
                                                 ,cdr_url=Url
+                                                ,moh=MOH
                                                }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, CallJObj)),
     put(callid, whapps_call:call_id(Call)),
@@ -229,6 +230,9 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=QueueSrv
     case acdc_queue_manager:should_ignore_member_call(MgrSrv, Call, CallJObj) of
         false ->
             lager:debug("member call received: ~s", [whapps_call:call_id(Call)]),
+
+            lager:debug("putting call on hold with moh ~s", [MOH]),
+            whapps_call_command:hold(MOH, Call),
 
             webseq:note(self(), right, [whapps_call:call_id(Call), <<": member call">>]),
             webseq:evt(whapps_call:call_id(Call), self(), <<"member call received">>),
@@ -738,7 +742,7 @@ update_properties(QueueJObj, State) ->
       ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
       ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, true)
       ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj)
-      ,moh = wh_json:get_value(<<"moh">>, QueueJObj)
+      ,moh = wh_json:get_ne_value(<<"moh">>, QueueJObj)
       ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
       ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
       ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, false)

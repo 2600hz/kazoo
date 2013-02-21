@@ -140,10 +140,11 @@ are_agents_available(Srv, EnterWhenEmpty) ->
     agents_available(Srv) > 0 orelse EnterWhenEmpty.
 
 start_queue_call(JObj, Props, Call) ->
+    _ = whapps_call:put_callid(Call),
     AcctId = whapps_call:account_id(Call),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
-    lager:debug("member call for queue ~s recv", [QueueId]),
+    lager:info("member call for queue ~s recv", [QueueId]),
 
     acdc_stats:call_waiting(AcctId, QueueId
                             ,whapps_call:call_id(Call)
@@ -151,8 +152,8 @@ start_queue_call(JObj, Props, Call) ->
                             ,whapps_call:caller_id_number(Call)
                            ),
 
-    whapps_call_command:answer(Call),
-    whapps_call_command:hold(Call),
+    lager:debug("answering call"),
+    whapps_call_command:b_answer(Call),
 
     wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj),
     lager:debug("put call into shared messaging queue"),
