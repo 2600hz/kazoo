@@ -9,4 +9,4 @@ for path in $PWD/lib/*; do folder=$(basename $path); if [ "$folder" != "Makefile
 
 echo $ERL_LIBS
 
-exec erl -args_file $PWD/conf/vm.args -pa apps/*/ebin -pa ebin -s reloader -s whistle_apps
+exec erl -args_file $PWD/conf/vm.args -pa $PWD/ebin $PWD/apps/*/ebin $PWD/apps/*/lib/*/ebin -s reloader -s whistle_apps
