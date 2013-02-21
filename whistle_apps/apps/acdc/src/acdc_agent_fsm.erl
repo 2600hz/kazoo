@@ -482,12 +482,13 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
     AgentCallId = acdc_agent:outbound_call_id(CallId),
 
     CDRUrl = wh_json:get_ne_value(<<"CDR-Url">>, JObj),
+    RecordingUrl = wh_json:get_ne_value(<<"Recording-URL">>, JObj),
 
     case wh_json:get_value(<<"Agent-Process-ID">>, JObj) of
         MyId ->
-            lager:debug("trying to ring agent ~s on ~s to connect to caller", [AgentId, AgentCallId]),
+            lager:debug("trying to ring agent ~s on ~s to connect to caller in queue ~s", [AgentId, AgentCallId, QueueId]),
 
-            acdc_agent:bridge_to_member(Srv, Call, JObj, EPs, CDRUrl),
+            acdc_agent:bridge_to_member(Srv, Call, JObj, EPs, CDRUrl, RecordingUrl),
 
             webseq:evt(self(), CallId, <<"bridge">>),
             webseq:note(self(), 'right', <<"ringing">>),
@@ -500,9 +501,9 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                                                   ,agent_call_id=AgentCallId
                                                  }};
         _OtherId ->
-            lager:debug("monitoring agent ~s(~s) connecting to caller: ~s(~s)", [AgentId, AgentCallId, _OtherId, MyId]),
+            lager:debug("monitoring agent ~s on ~s to connect to caller in queue ~s", [AgentId, AgentCallId, QueueId]),
 
-            acdc_agent:monitor_call(Srv, Call, CDRUrl),
+            acdc_agent:monitor_call(Srv, Call, CDRUrl, RecordingUrl),
 
             webseq:evt(self(), CallId, <<"monitor">>),
             webseq:note(self(), 'right', <<"ringing">>),
