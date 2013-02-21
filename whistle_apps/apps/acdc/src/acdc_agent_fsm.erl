@@ -712,17 +712,11 @@ ringing({'dtmf_pressed', DTMF}, #state{caller_exit_key=_ExitKey}=State) ->
     {'next_state', 'ringing', State};
 
 ringing({'channel_answered', ACallId}, #state{agent_call_id=ACallId
-                                              ,agent_proc=Srv
                                               ,member_call_id=MCallId
                                               ,acct_id=AcctId
                                               ,agent_id=AgentId
                                              }=State) ->
-    lager:debug("agent answered phone on ~s, connecting to caller", [ACallId]),
-    acdc_agent:join_agent(Srv, ACallId),
-
-    webseq:evt(self(), MCallId, <<"agent answered line, bridging to member">>),
-
-    webseq:note(self(), 'right', <<"answered">>),
+    lager:debug("agent answered phone on ~s", [ACallId]),
 
     acdc_stats:agent_handling(AcctId, AgentId, MCallId),
 
