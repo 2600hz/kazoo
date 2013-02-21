@@ -97,7 +97,7 @@ find_agent_supervisor(AcctId, AgentId, _) when AcctId =:= 'undefined' orelse
 find_agent_supervisor(AcctId, AgentId, [Super|Rest]) ->
     case catch acdc_agent:config(acdc_agent_sup:agent(Super)) of
         {'EXIT', _} -> find_agent_supervisor(AcctId, AgentId, Rest);
-        {AcctId, AgentId} -> Super;
+        {AcctId, AgentId, _} -> Super;
         _ -> find_agent_supervisor(AcctId, AgentId, Rest)
     end.
 
