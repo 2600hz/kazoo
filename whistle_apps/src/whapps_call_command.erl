@@ -735,10 +735,8 @@ play(Media, Terminators, Call) ->
     send_command(Command, Call),
     NoopId.
 
-b_play(Media, Call) ->
-    b_play(Media, ?ANY_DIGIT, Call).
-b_play(Media, Terminators, Call) ->
-    wait_for_noop(play(Media, Terminators, Call)).
+b_play(Media, Call) -> b_play(Media, ?ANY_DIGIT, Call).
+b_play(Media, Terminators, Call) -> wait_for_noop(play(Media, Terminators, Call)).
 
 -spec play_command(ne_binary(), ne_binaries(), whapps_call:call()) -> wh_json:object().
 play_command(Media, Terminators, Call) ->
@@ -1863,8 +1861,10 @@ get_event_type(JObj) ->
 -spec send_command(api_terms(), whapps_call:call()) -> 'ok'.
 send_command(Command, Call) when is_list(Command) ->
     'true' = whapps_call:is_call(Call),
+
     CustomPublisher = whapps_call:custom_publish_function(Call),
     CtrlQ = whapps_call:control_queue(Call),
+
     case is_function(CustomPublisher, 2) of
         'true' -> CustomPublisher(Command, Call);
         'false' when is_binary(CtrlQ) ->
@@ -1873,7 +1873,7 @@ send_command(Command, Call) when is_list(Command) ->
             AppName = whapps_call:application_name(Call),
             AppVersion = whapps_call:application_version(Call),
             case whapps_call:kvs_fetch('cf_exe_pid', Call) of
-                Pid when is_pid(Pid) -> put('amqp_publish_as', Pid), 'ok';
+                Pid when is_pid(Pid) -> wh_amqp_channel:consumer_pid(Pid), 'ok';
                 _Else -> 'ok'
             end,
             Prop = Command ++ [{<<"Call-ID">>, CallId}
