@@ -14,7 +14,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(POOL_SIZE, 50).
+-define(POOL_SIZE, 100).
 -define(OVERFLOW_POOL_SIZE, 100).
 
 -define(CHILD(Name, Type), fun(N, pool) -> {N, {poolboy, start_link, [[{worker_module, wh_amqp_worker}
