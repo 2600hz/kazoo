@@ -14,8 +14,8 @@
 -export([start_link/2, start_link/3
          ,member_connect_resp/2
          ,member_connect_retry/2
-         ,bridge_to_member/5
-         ,monitor_call/3
+         ,bridge_to_member/6
+         ,monitor_call/4
          ,member_connect_accepted/1
          ,channel_hungup/2
          ,originate_execute/2
@@ -65,6 +65,7 @@
          ,sync_resp :: wh_json:object() % furthest along resp
          ,supervisor :: pid()
          ,record_calls = 'false' :: boolean()
+         ,recording_url :: api_binary() %% where to send recordings after the call
          ,is_thief = 'false' :: boolean()
          ,agent :: agent()
          ,agent_call_id :: api_binary()
@@ -192,11 +193,11 @@ member_connect_retry(Srv, WinJObj) ->
 member_connect_accepted(Srv) ->
     gen_listener:cast(Srv, 'member_connect_accepted').
 
-bridge_to_member(Srv, Call, WinJObj, EPs, CDRUrl) ->
-    gen_listener:cast(Srv, {'bridge_to_member', Call, WinJObj, EPs, CDRUrl}).
+bridge_to_member(Srv, Call, WinJObj, EPs, CDRUrl, RecordingUrl) ->
+    gen_listener:cast(Srv, {'bridge_to_member', Call, WinJObj, EPs, CDRUrl, RecordingUrl}).
 
-monitor_call(Srv, Call, CDRUrl) ->
-    gen_listener:cast(Srv, {'monitor_call', Call, CDRUrl}).
+monitor_call(Srv, Call, CDRUrl, RecordingUrl) ->
+    gen_listener:cast(Srv, {'monitor_call', Call, CDRUrl, RecordingUrl}).
 
 -spec channel_hungup(pid(), ne_binary()) -> 'ok'.
 channel_hungup(Srv, CallId) ->
@@ -367,6 +368,7 @@ handle_cast('bind_to_member_reqs', #state{agent_queues=Qs
 
 handle_cast({'channel_hungup', CallId}, #state{call=Call
                                                ,record_calls=ShouldRecord
+                                               ,recording_url=RecordingUrl
                                                ,is_thief=IsThief
                                                ,agent_call_id=ACallId
                                                ,agent_call_queue=ACtrlQ
@@ -380,7 +382,7 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
             acdc_util:unbind_from_call_events(Call),
             acdc_util:unbind_from_call_events(ACallId),
 
-            maybe_stop_recording(Call, ShouldRecord),
+            maybe_stop_recording(Call, ShouldRecord, RecordingUrl),
             stop_agent_leg(MyQ, ACallId, ACtrlQ),
 
             put('callid', AgentId),
@@ -391,6 +393,7 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
                                             ,acdc_queue_id='undefined'
                                             ,agent_call_id='undefined'
                                             ,agent_call_queue='undefined'
+                                            ,recording_url='undefined'
                                            }
                      ,'hibernate'};
                 'true' ->
@@ -472,21 +475,23 @@ handle_cast({'member_connect_resp', ReqJObj}, #state{agent_id=AgentId
              ,'hibernate'}
     end;
 
-handle_cast({'bridge_to_member', Call, WinJObj, EPs, CDRUrl}, #state{record_calls=RecordCall
-                                                                     ,is_thief='false'
-                                                                     ,agent_queues=Qs
-                                                                     ,acct_id=AcctId
-                                                                     ,agent_id=AgentId
-                                                                     ,my_q=MyQ
-                                                                     ,cdr_urls=Urls
-                                                                    }=State) ->
+handle_cast({'bridge_to_member', Call, WinJObj, EPs, CDRUrl, RecordingUrl}, #state{is_thief='false'
+                                                                                   ,agent_queues=Qs
+                                                                                   ,acct_id=AcctId
+                                                                                   ,agent_id=AgentId
+                                                                                   ,my_q=MyQ
+                                                                                   ,cdr_urls=Urls
+                                                                                   ,agent=Agent
+                                                                                  }=State) ->
     _ = whapps_call:put_callid(Call),
     lager:debug("bridging to agent endpoints"),
 
     RingTimeout = wh_json:get_value(<<"Ring-Timeout">>, WinJObj),
     lager:debug("ring agent for ~ps", [RingTimeout]),
 
-    ShouldRecord = should_record_endpoints(EPs, RecordCall),
+    ShouldRecord = should_record_endpoints(EPs, record_calls(Agent)
+                                           ,wh_json:is_true(<<"Record-Caller">>, WinJObj, 'false')
+                                          ),
 
     AgentCallId = outbound_call_id(Call),
     acdc_util:bind_to_call_events(Call, CDRUrl),
@@ -503,19 +508,22 @@ handle_cast({'bridge_to_member', Call, WinJObj, EPs, CDRUrl}, #state{record_call
                             ,cdr_urls=dict:store(whapps_call:call_id(Call), CDRUrl,
                                                  dict:store(AgentCallId, CDRUrl, Urls)
                                                 )
+                            ,recording_url=RecordingUrl
                            }
      ,'hibernate'};
 
-handle_cast({'bridge_to_member', Call, WinJObj, _, CDRUrl}, #state{is_thief='true'
-                                                                   ,agent=Agent
-                                                                   ,cdr_urls=Urls
-                                                                  }=State) ->
+handle_cast({'bridge_to_member', Call, WinJObj, _, CDRUrl, RecordingUrl}, #state{is_thief='true'
+                                                                                 ,agent=Agent
+                                                                                 ,cdr_urls=Urls
+                                                                                }=State) ->
     _ = whapps_call:put_callid(Call),
     lager:debug("connecting to thief at ~s", [whapps_call:call_id(Agent)]),
     acdc_util:bind_to_call_events(Call, CDRUrl),
 
     AgentCallId = outbound_call_id(Call),
     acdc_util:bind_to_call_events(AgentCallId, CDRUrl),
+
+    ShouldRecord = record_calls(Agent) orelse wh_json:is_true(<<"Record-Caller">>, WinJObj, 'false'),
 
     whapps_call_command:pickup(whapps_call:call_id(Agent), <<"now">>, Call),
 
@@ -524,11 +532,13 @@ handle_cast({'bridge_to_member', Call, WinJObj, _, CDRUrl}, #state{is_thief='tru
                             ,agent_call_id=AgentCallId
                             ,cdr_urls=dict:store(whapps_call:call_id(Call), CDRUrl,
                                                  dict:store(AgentCallId, CDRUrl, Urls)
-                                              )
+                                                )
+                            ,record_calls=ShouldRecord
+                            ,recording_url=RecordingUrl
                            }
      ,'hibernate'};
 
-handle_cast({'monitor_call', Call, CDRUrl}, #state{cdr_urls=Urls}=State) ->
+handle_cast({'monitor_call', Call, CDRUrl, RecordingUrl}, #state{cdr_urls=Urls}=State) ->
     _ = whapps_call:put_callid(Call),
 
     AgentCallId = outbound_call_id(Call),
@@ -543,6 +553,7 @@ handle_cast({'monitor_call', Call, CDRUrl}, #state{cdr_urls=Urls}=State) ->
                             ,cdr_urls=dict:store(whapps_call:call_id(Call), CDRUrl,
                                                  dict:store(AgentCallId, CDRUrl, Urls)
                                                 )
+                            ,recording_url=RecordingUrl
                            }, 'hibernate'};
 
 handle_cast({'originate_execute', JObj}, #state{my_q=Q}=State) ->
@@ -897,24 +908,25 @@ update_my_queues_of_change(AcctId, AgentId, Qs) ->
         ],
     'ok'.
 
--spec should_record_endpoints(wh_json:objects(), boolean()) -> boolean().
-should_record_endpoints(_EPs, 'true') -> 'true';
-should_record_endpoints(EPs, 'false') ->
+-spec should_record_endpoints(wh_json:objects(), boolean(), boolean() | 'undefined') -> boolean().
+should_record_endpoints(_EPs, 'true', _) -> 'true';
+should_record_endpoints(_EPs, 'false', 'true') -> 'true';
+should_record_endpoints(EPs, _, _) ->
     lists:any(fun(EP) ->
                       wh_json:is_true(<<"record_calls">>, EP, 'false')
               end, EPs).
 
-maybe_stop_recording(_Call, 'false') -> 'ok';
-maybe_stop_recording(Call, 'true') ->
+maybe_stop_recording(_Call, 'false', _) -> 'ok';
+maybe_stop_recording(Call, 'true', Url) ->
     Format = recording_format(),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
 
     _ = whapps_call_command:record_call(MediaName, <<"stop">>, Call),
     lager:debug("recording of ~s stopped", [MediaName]),
 
-    save_recording(Call, MediaName, Format).
+    save_recording(Call, MediaName, Format, Url).
 
-maybe_start_recording(_Call, 'false') -> 'ok';
+maybe_start_recording(_Call, 'false') -> lager:debug("not recording this call");
 maybe_start_recording(Call, 'true') ->
     Format = recording_format(),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
@@ -925,16 +937,26 @@ maybe_start_recording(Call, 'true') ->
 recording_format() ->
     whapps_config:get(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>).
 
-save_recording(Call, MediaName, Format) ->
-    {'ok', MediaJObj} = store_recording_meta(Call, MediaName, Format),
-    lager:debug("stored meta: ~p", [MediaJObj]),
+save_recording(Call, MediaName, Format, Url) ->
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
+        'true' ->
+            {'ok', MediaJObj} = store_recording_meta(Call, MediaName, Format),
+            lager:debug("stored meta: ~p", [MediaJObj]),
 
-    StoreUrl = store_url(Call, MediaJObj),
-    lager:debug("store url: ~s", [StoreUrl]),
+            StoreUrl = store_url(Call, MediaJObj),
+            lager:debug("store url: ~s", [StoreUrl]),
 
-    store_recording(MediaName, StoreUrl, Call).
+            store_recording(MediaName, StoreUrl, Call);
+        'false' when is_binary(Url) ->
+            StoreUrl = iolist_to_binary([wh_util:strip_right_binary(Url, <<"/">>), "/", MediaName]),
+            lager:debug("using ~s to maybe store recording", [StoreUrl]),
+            store_recording(MediaName, StoreUrl, Call);
+        'false' ->
+            lager:debug("no external url to use, not saving recording")
+    end.
 
--spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec store_recording(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
+store_recording(_, 'undefined', _) -> lager:debug("no url to store");
 store_recording(MediaName, StoreUrl, Call) ->
     'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).
 
