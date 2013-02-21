@@ -96,17 +96,23 @@ terminate(Req, Context) ->
     _ = v1_util:request_terminated(Req, Context),
     lager:debug("session finished").
 
-rest_terminate(Req, #cb_context{start=T1, method='OPTIONS'}=Context) ->
+rest_terminate(Req, #cb_context{start=T1
+                                ,method='OPTIONS'
+                               }=Context) ->
     _ = v1_util:finish_request(Req, Context),
-    lager:debug("fulfilled in ~p ms", [timer:now_diff(now(), T1) div 1000]);
-rest_terminate(Req, #cb_context{start=T1, resp_status=Status, auth_account_id=AcctId}=Context) ->
+    lager:debug("fulfilled in ~p ms", [wh_util:elapsed_ms(T1)]);
+rest_terminate(Req, #cb_context{start=T1
+                                ,resp_status=Status
+                                ,auth_account_id=AcctId
+                               }=Context) ->
     case Status of
-        success -> wh_counter:inc(<<"crossbar.requests.successes">>);
+        'success' -> wh_counter:inc(<<"crossbar.requests.successes">>);
         _ -> wh_counter:inc(<<"crossbar.requests.failures">>)
     end,
+
     wh_counter:inc(<<"crossbar.requests.accounts.", (wh_util:to_binary(AcctId))/binary>>),
     _ = v1_util:finish_request(Req, Context),
-    lager:debug("fulfilled in ~p ms", [timer:now_diff(now(), T1) div 1000]).
+    lager:debug("fulfilled in ~p ms", [wh_util:elapsed_ms(T1)]).
 
 %%%===================================================================
 %%% CowboyHTTPRest API Callbacks
