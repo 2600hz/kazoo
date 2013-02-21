@@ -3,7 +3,7 @@
     ,"language": "javascript"
     ,"views": {
         "credit_remaining": {
-            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1), amount = doc.pvt_amount || doc.amount; emit(null, amount * modifier); }"
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1), amount = doc.pvt_amount || doc.amount || 0; emit(null, amount * modifier); }"
             ,"reduce": "_sum"
         }
         ,"allotment_consumed": {
@@ -22,7 +22,7 @@
             "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; emit(doc.pvt_created, doc._id); }"
         },
        "reconcile_by_callid": {
-           "map": "function(doc){if(doc.pvt_created<63528468722){return;}if(doc.pvt_type=='cdr'&&doc.custom_channel_vars&&doc.custom_channel_vars.account_billing=='per_minute'){var Secs=(parseInt(doc.billing_seconds)||0)-(parseInt(doc.custom_channel_vars.billing_seconds_offset)||0);var Cost=0;if(Secs>=1){var R=parseFloat(doc.custom_channel_vars.rate)||0;var RInc=parseInt(doc.custom_channel_vars.increment)||60;var RMin=parseInt(doc.custom_channel_vars.rate_minimum)||0;var Sur=parseFloat(doc.custom_channel_vars.surcharge)||0;R=Math.round(R*10000);Sur=Math.round(Sur*10000);if(RInc<1){RInc=60;}if(Secs<=RMin){Cost=Sur+((RMin/60)*R);}else{Cost=Sur+((RMin/60)*R)+(Math.ceil((Secs-RMin)/RInc)*((RInc/60)*R));}}if(Cost){var Discount=(parseInt(doc.custom_channel_vars.discount_percentage)||0)*0.01*Cost;emit(doc._id,Cost-Discount);}else{return;}}else{if((doc.pvt_type=='credit'||doc.pvt_type=='debit')&&doc.call_id&&doc.account_id==doc.pvt_account_id){var modifier=(doc.pvt_type=='credit'?1:-1);amount = doc.pvt_amount || doc.amount;emit(doc.call_id,amount*modifier);}else{return;}}}",
+           "map": "function(doc){if(doc.pvt_created<63528468722){return;}if(doc.pvt_type=='cdr'&&doc.custom_channel_vars&&doc.custom_channel_vars.account_billing=='per_minute'){var Secs=(parseInt(doc.billing_seconds)||0)-(parseInt(doc.custom_channel_vars.billing_seconds_offset)||0);var Cost=0;if(Secs>=1){var R=parseFloat(doc.custom_channel_vars.rate)||0;var RInc=parseInt(doc.custom_channel_vars.increment)||60;var RMin=parseInt(doc.custom_channel_vars.rate_minimum)||0;var Sur=parseFloat(doc.custom_channel_vars.surcharge)||0;R=Math.round(R*10000);Sur=Math.round(Sur*10000);if(RInc<1){RInc=60;}if(Secs<=RMin){Cost=Sur+((RMin/60)*R);}else{Cost=Sur+((RMin/60)*R)+(Math.ceil((Secs-RMin)/RInc)*((RInc/60)*R));}}if(Cost){var Discount=(parseInt(doc.custom_channel_vars.discount_percentage)||0)*0.01*Cost;emit(doc._id,Cost-Discount);}else{return;}}else{if((doc.pvt_type=='credit'||doc.pvt_type=='debit')&&doc.call_id&&doc.account_id==doc.pvt_account_id){var modifier=(doc.pvt_type=='credit'?1:-1);amount = doc.pvt_amount || doc.amount || 0;emit(doc.call_id,amount*modifier);}else{return;}}}",
            "reduce": "_sum"
        }
     }
