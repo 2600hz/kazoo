@@ -96,6 +96,7 @@ write_to_ledger(_Suffix, _Props, _Units, _Limits, _JObj) -> {ok, wh_json:new()}.
 write_to_ledger(Suffix, Props, Units, #limits{account_id=LedgerId, account_db=LedgerDb}, JObj) ->
     Timestamp = get_timestamp(JObj),
     SessionId = get_session_id(JObj),
+    CallId = get_call_id(JObj),
     Id = <<SessionId/binary, "-", (wh_util:to_binary(Suffix))/binary>>,
     case props:get_value(<<"pvt_type">>, Props) of
         <<"credit">> ->
@@ -114,11 +115,12 @@ write_to_ledger(Suffix, Props, Units, #limits{account_id=LedgerId, account_db=Le
     case props:get_value(<<"pvt_type">>, Props) of
         <<"credit">> ->
             Tr = wh_transaction:credit(abs(Units), per_minute_sub_account),
-            Tr1 = wh_transaction:set_call_id(get_call_id(JObj), Tr),
+            Tr1 = wh_transaction:set_call_id(CallId, Tr),
             Tr2 = wh_transaction:set_pvt_account_id(LedgerId, Tr1),
             Tr3 = wh_transaction:set_sub_account_id(get_account_id(JObj), Tr2),
             Tr4 = wh_transaction:set_description(Suffix, Tr3),
-            case  wh_transaction:save(Tr4) of
+            Tr5 = wh_transaction:set_id(<<CallId/binary, "-", Suffix/binary>>, Tr4),
+            case  wh_transaction:save(Tr5) of
                 {ok, Res} ->
                     lager:info("credit account: ~p of ~p~n", [get_account_id(JObj), Units]),
                     {ok, wh_transaction:to_json(Res)};
@@ -128,12 +130,14 @@ write_to_ledger(Suffix, Props, Units, #limits{account_id=LedgerId, account_db=Le
             end;
         <<"debit">> ->
             Tr = wh_transaction:debit(abs(Units), per_minute_sub_account),
-            Tr1 = wh_transaction:set_call_id(get_call_id(JObj), Tr),
+            Tr1 = wh_transaction:set_call_id(CallId, Tr),
             Tr2 = wh_transaction:set_pvt_account_id(LedgerId, Tr1),
             Tr3 = wh_transaction:set_sub_account_id(get_account_id(JObj), Tr2),
             Tr4 = wh_transaction:set_description(Suffix, Tr3),
-            case  wh_transaction:save(Tr4) of
+            Tr5 = wh_transaction:set_id(<<CallId/binary, "-", Suffix/binary>>, Tr4),
+            case  wh_transaction:save(Tr5) of
                 {ok, Res} ->
+                    io:format("MACPIE: ~p~n", [Res]),
                     lager:info("debit account: ~p of ~p~n", [get_account_id(JObj), Units]),                    
                     {ok, wh_transaction:to_json(Res)};
                 {error, Res, _E} ->

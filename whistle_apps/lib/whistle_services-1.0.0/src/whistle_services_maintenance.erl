@@ -33,9 +33,9 @@ credit(AccountId, Amount) ->
     Tr2 = wh_transaction:set_pvt_account_id(AccountId, Tr1),
     case wh_transaction:save(Tr2) of
         {ok, _} -> 
-            io:format("credited account ~s $~w~n", [AccountId, Amount]);
+            lager:info("credited account ~s $~w~n", [AccountId, Amount]);
         {error, _Tr, _R} -> 
-            io:format("failed to credit account: ~s~n ~p ~p~n", [AccountId, _R, _Tr])
+            lager:info("failed to credit account: ~s~n ~p ~p~n", [AccountId, _R, _Tr])
     end,
     no_return.
     
@@ -53,9 +53,9 @@ debit(AccountId, Amount) ->
     Tr2 = wh_transaction:set_pvt_account_id(AccountId, Tr1),
     case wh_transaction:save(Tr2) of
         {ok, _} -> 
-            io:format("debited account ~s $~w~n", [AccountId, Amount]);
+            lager:info("debited account ~s $~w~n", [AccountId, Amount]);
         {error, _Tr, _R} -> 
-            io:format("failed to debit account: ~s~n ~p ~p~n", [AccountId, _R, _Tr])
+            lager:info("failed to debit account: ~s~n ~p ~p~n", [AccountId, _R, _Tr])
     end,
     no_return.
 
