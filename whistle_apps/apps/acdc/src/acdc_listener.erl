@@ -24,30 +24,26 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{route, []}
-                   ,{self, []}
-                   ,{conf, [{doc_type, <<"queue">>}
-                            ,{action, <<"created">>}
-                           ]}
+-define(BINDINGS, [{'route', []}
+                   ,{'self', []}
+                   ,{'conf', [{'doc_type', <<"queue">>}
+                              ,{'action', <<"created">>}
+                             ]}
                   ]).
 -define(RESPONDERS, [
                      %% Received because of our route binding
-                     {{acdc_handlers, handle_route_req}
+                     {{'acdc_handlers', 'handle_route_req'}
                       ,[{<<"dialplan">>, <<"route_req">>}]
                      }
                      %% Received because of our self binding (route_wins are sent to the route_resp's Server-ID
                      %% which is usually populated with the listener's queue name
-                     ,{{acdc_handlers, handle_route_win}
+                     ,{{'acdc_handlers', 'handle_route_win'}
                        ,[{<<"dialplan">>, <<"route_win">>}]
                       }
-
-                     ,{{acdc_queue_handler, handle_config_change}
+                     ,{{'acdc_queue_handler', 'handle_config_change'}
                        ,[{<<"configuration">>, <<"*">>}]
                       }
                     ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -61,14 +57,10 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [
-                                      {bindings, ?BINDINGS}
-                                      ,{responders, ?RESPONDERS}
-                                      ,{queue_name, ?QUEUE_NAME}       % optional to include
-                                      ,{queue_options, ?QUEUE_OPTIONS} % optional to include
-                                      ,{consume_options, ?CONSUME_OPTIONS} % optional to include
-                                      %%,{basic_qos, 1}                % only needed if prefetch controls
-                                     ], []).
+    gen_listener:start_link(?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                             ], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -85,8 +77,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {ok, #state{}}.
+init([]) -> {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -103,7 +94,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -116,7 +107,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -129,7 +120,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    {noreply, State}.
+    lager:debug("unhandled message: ~p", [_Info]),
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -140,7 +132,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -154,7 +146,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("listener terminating: ~p", [_Reason]).
+    lager:debug("acdc listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -165,7 +157,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
