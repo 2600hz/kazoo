@@ -38,12 +38,17 @@ send_email(_, <<>>, _) -> ok;
 send_email(From, To, Email) ->
     Encoded = mimemail:encode(Email),
     Relay = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
+Username = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"username">>, <<"">>)),
+Password = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"password">>, <<"">>)),
+Auth = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>)),
+Port = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"port">>, <<"25">>)),
+
     lager:debug("sending email to ~s from ~s via ~s", [To, From, Relay]),
     ReqId = get(callid),
 
     Self = self(),
 
-    gen_smtp_client:send({From, [To], Encoded}, [{relay, Relay}]
+    gen_smtp_client:send({From, [To], Encoded}, [{relay, Relay},{username, Username}, {password, Password}, {port, Port}, {auth, Auth}]
                          ,fun(X) ->
                                   put(callid, ReqId),
                                   lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
