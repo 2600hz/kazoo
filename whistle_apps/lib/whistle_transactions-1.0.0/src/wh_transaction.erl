@@ -15,7 +15,8 @@
          ,credit/2
         ]).
 
--export([set_description/2
+-export([set_id/2
+         ,set_description/2
          ,set_pvt_account_id/2
          ,set_sub_account_id/2
          ,set_call_id/2
@@ -106,6 +107,19 @@ is_reason(_, Tr) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec to_json/1 :: (wh_transaction()) -> wh_json:object(). 
+to_json(#wh_transaction{call_id=undefined}=T) ->
+    wh_json:from_list([{<<"_id">>, T#wh_transaction.id}
+                       ,{<<"description">>, T#wh_transaction.description}
+                       ,{<<"sub_account_id">>, T#wh_transaction.sub_account_id}
+                       ,{<<"pvt_reason">>, T#wh_transaction.pvt_reason}
+                       ,{<<"pvt_amount">>, T#wh_transaction.pvt_amount}
+                       ,{<<"pvt_type">>, T#wh_transaction.pvt_type}
+                       ,{<<"pvt_created">>, T#wh_transaction.pvt_created}
+                       ,{<<"pvt_modified">>, T#wh_transaction.pvt_modified}
+                       ,{<<"pvt_account_id">>, T#wh_transaction.pvt_account_id}
+                       ,{<<"pvt_account_db">>, T#wh_transaction.pvt_account_db}
+                       ,{<<"pvt_vsn">>, T#wh_transaction.pvt_vsn}
+                      ]);
 to_json(#wh_transaction{}=T) ->
     wh_json:from_list([{<<"_id">>, T#wh_transaction.id}
                        ,{<<"description">>, T#wh_transaction.description}
@@ -165,6 +179,16 @@ credit(Amount, Reason) ->
 -spec debit/2 :: (integer(), ne_binary()) -> wh_transaction(). 
 debit(Amount, Reason) ->
     create(Amount, 'debit', Reason).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Set free form description
+%% @end
+%%--------------------------------------------------------------------
+-spec set_id/2 :: (ne_binary(), wh_transaction()) -> wh_transaction(). 
+set_id(Id, Transaction) ->
+    Transaction#wh_transaction{id=Id}.
 
 %%--------------------------------------------------------------------
 %% @public
