@@ -36,7 +36,7 @@
                         ,<<"Discount-Percentage">>
                    ]).
 
--define(HEARTBEAT_ON_ANSWER(CallId), <<"api_on_answer=uuid_session_heartbeat ", CallId/binary, " 60">>).
+-define(HEARTBEAT_ON_ANSWER(CallId), <<"api_on_answer=uuid_session_heartbeat ", CallId/binary, " 10">>).
 
 %%%===================================================================
 %%% API
@@ -494,12 +494,18 @@ set_rating_ccvs(JObj, Node) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
     lager:debug("setting rating information"),
-    Multiset = lists:foldl(fun(Key, Acc) ->
+    Multiset = lists:foldl(fun(<<"Rate">>, Acc) ->
+                                   Rate = wh_json:get_binary_value(<<"Rate">>, JObj, <<"0.00">>),
+                                   <<"|ignore_display_updates=false"
+                                     ,"|effective_callee_id_name=$", Rate/binary, " per min ${effective_callee_id_name}"
+                                     ,"|", (?SET_CCV(<<"Rate">>, Rate))/binary
+                                     ,Acc/binary>>;
+                              (Key, Acc) ->
                                    case wh_json:get_binary_value(Key, JObj) of
                                        undefined -> Acc;
                                        Value ->
                                            <<"|", (?SET_CCV(Key, Value))/binary, Acc/binary>>
-                                   end
+                                   end 
                            end, <<>>, ?RATE_VARS),
     'ok' = ecallmgr_util:send_cmd(Node, CallId, "multiset", <<"^^", Multiset/binary>>).
 
