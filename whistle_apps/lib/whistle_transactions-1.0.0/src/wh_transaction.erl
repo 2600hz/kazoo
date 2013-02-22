@@ -60,6 +60,36 @@
               ,wh_transactions/0
              ]).
 
+
+reconcile_attempted(AccountId, CallId) ->
+    AccountDB = wh_util:format_account_id(AccountId, encoded),
+    DiscrepancyId = <<CallId/binary, "-discrepancy">>,
+    case couch_mgr:open_doc(AccountDB, DiscrepancyId) of
+        {error, not_found} -> true;
+        {ok, JObj} -> reconcile_maybe_remove(JObj, DiscrepancyId, AccountDB);
+        _Else -> false
+    end.
+
+reconcile_maybe_remove(JObj, DiscrepancyId, AccountDB) ->
+    Current = wh_util:current_tstamp(),
+    Modified = wh_json:get_integer_value(<<"pvt_modified">>, JObj, Current), 
+    case Current - Modified > 300 of
+        false -> 
+            %% If the correction was recently written, wait till the next cycle to make sure
+            %% another j5_reconciler has not just placed this here
+            false;
+        true ->
+            %% If the correction was made some time ago then remove it as it has not
+            %% corrected the discrepancy, then wait for the next cycle to make sure
+            %% it wasn't the sole cause of the issue.... (due to previous bug this could happen)
+            lager:debug("removing erronous correction from previous reconciler version", []),
+            _ = couch_mgr:del_doc(AccountDB, DiscrepancyId),
+            false
+    end.
+
+
+
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
