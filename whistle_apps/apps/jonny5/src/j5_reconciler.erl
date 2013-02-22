@@ -19,7 +19,7 @@
          ,code_change/3
         ]).
 
--include_lib("jonny5/src/jonny5.hrl").
+-include_lib("jonny5.hrl").
 
 %%%===================================================================
 %%% API
@@ -273,12 +273,8 @@ reconcile_grace_period_exceeded(JObj) ->
 
 -spec not_already_attempted/2 :: (ne_binary(), ne_binary()) -> boolean().
 not_already_attempted(LedgerDb, CallId) ->
-    DiscrepancyId = discrepancy_doc_id(CallId),
-    case couch_mgr:open_doc(LedgerDb, DiscrepancyId) of
-        {error, not_found} -> true;
-        {ok, JObj} -> maybe_remove_correction(JObj, DiscrepancyId, LedgerDb);
-        _Else -> false
-    end.
+    wh_transaction:reconcile_attempted(LedgerDb, CallId).
+
 
 -spec maybe_remove_correction/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> boolean().
 maybe_remove_correction(JObj, DiscrepancyId, LedgerDb) ->
