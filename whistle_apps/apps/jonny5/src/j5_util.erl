@@ -137,7 +137,6 @@ write_to_ledger(Suffix, Props, Units, #limits{account_id=LedgerId, account_db=Le
             Tr5 = wh_transaction:set_id(<<CallId/binary, "-", Suffix/binary>>, Tr4),
             case  wh_transaction:save(Tr5) of
                 {ok, Res} ->
-                    io:format("MACPIE: ~p~n", [Res]),
                     lager:info("debit account: ~p of ~p~n", [get_account_id(JObj), Units]),                    
                     {ok, wh_transaction:to_json(Res)};
                 {error, Res, _E} ->
