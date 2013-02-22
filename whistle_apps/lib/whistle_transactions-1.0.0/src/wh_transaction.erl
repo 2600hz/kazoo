@@ -33,6 +33,8 @@
          ,from_json/1
         ]).
 
+-export([reconcile_attempted/2]).
+
 -define(REASONS, [{<<"per_minute_account">>, call}
                   ,{<<"per_minute_sub_account">>, call}
                   ,{<<"activation_charges">>, one_time}
