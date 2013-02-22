@@ -91,33 +91,45 @@
 -define(TYPE_SYSCONF, <<"topic">>).
 
 
--type amqp_command() :: #'queue.declare'{} | #'queue.bind'{} | #'queue.unbind'{}
-                      | #'queue.delete'{} | #'basic.consume'{} | #'basic.cancel'{}
-                      | #'basic.ack'{} | #'basic.nack'{} | #'basic.qos'{}
-                      | #'exchange.declare'{}.
+-type wh_amqp_command() :: #'queue.declare'{} | #'queue.bind'{} | #'queue.unbind'{} |
+                           #'queue.delete'{} | #'basic.consume'{} | #'basic.cancel'{} |
+                           #'basic.ack'{} | #'basic.nack'{} | #'basic.qos'{} |
+                           #'exchange.declare'{}.
+-type wh_amqp_commands() :: [wh_amqp_command(),...] | [].
+
+-type wh_command_ret_ok() :: #'basic.qos_ok'{} | #'queue.declare_ok'{} |
+                             #'exchange.declare_ok'{} | #'queue.delete_ok'{} |
+                             #'queue.declare_ok'{} | #'queue.unbind_ok'{} |
+                             #'queue.bind_ok'{} | #'basic.consume_ok'{} |
+                             #'basic.cancel_ok'{}.
 -type command_ret() :: 'ok' |
-                       {'ok', ne_binary() | #'queue.declare_ok'{}} |
+                       {'ok', ne_binary() | wh_command_ret_ok()} |
                        {'error', _}.
 
 -define(WH_AMQP_ETS, wh_amqp_ets).
 
--record(wh_amqp_channel, {consumer = wh_amqp_channel:consumer_pid() :: pid()
-                          ,consumer_ref :: 'undefined' | reference()
-                          ,channel :: 'undefined' | pid()
-                          ,channel_ref :: 'undefined' | reference()
-                          ,uri :: api_binary()
-                          ,started = now()
-                          ,commands = [] :: [amqp_command(),...]
-                          ,reconnecting = false :: boolean()
+-record(wh_amqp_channel, {consumer = wh_amqp_channel:consumer_pid() :: pid() | '_'
+                          ,consumer_ref :: reference() | '$1' | '_'
+                          ,channel :: pid() | '$1' | '_'
+                          ,channel_ref :: reference() | '$1' | '_'
+                          ,uri :: api_binary() | '$2' | '_'
+                          ,started = now() :: wh_now() | '_'
+                          ,commands = [] :: wh_amqp_commands() | '$1' | '_'
+                          ,reconnecting = 'false' :: boolean() | '_'
                          }).
+-type wh_amqp_channel() :: #wh_amqp_channel{}.
+-type wh_amqp_channels() :: [wh_amqp_channel(),...] | [].
 
--record(wh_amqp_connection, {uri :: string()
-                             ,params :: #'amqp_params_direct'{} | #'amqp_params_network'{}
-                             ,manager :: atom()
-                             ,connection :: 'undefined' | pid()
-                             ,connection_ref :: 'undefined' | reference()
+-type wh_exchanges() :: [#'exchange.declare'{},...] | [].
+
+-record(wh_amqp_connection, {uri :: string() | api_binary() | '_'
+                             ,params :: #'amqp_params_direct'{} | #'amqp_params_network'{} | '_'
+                             ,manager :: atom() | '_'
+                             ,connection :: pid() | '_'
+                             ,connection_ref :: reference() | '_'
                              ,available = false :: boolean()
-                             ,prechannels = [] :: [{reference(), pid()},...]
-                             ,exchanges = [] :: [#'exchange.declare'{},...]
+                             ,prechannels = [] :: [{reference(), pid()},...] | [] | '_'
+                             ,exchanges = [] :: wh_exchanges() | '_'
                              ,weight
                             }).
+-type wh_amqp_connection() :: #wh_amqp_connection{}.

@@ -687,7 +687,7 @@ request_terminated(_Req, #cb_context{req_nouns=[{Mod, _}|_], req_verb=Verb}=Cont
 finish_request(_Req, #cb_context{req_nouns=[{Mod, _}|_], req_verb=Verb}=Context) ->
     Event = <<"v1_resource.finish_request.", Verb/binary, ".", Mod/binary>>,
     _ = crossbar_bindings:map(Event, Context),
-    ok.
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -143,33 +143,33 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_config/0 :: () -> wh_proplist().
+-spec get_config() -> {'ok', wh_proplist()}.
 get_config() ->
     case file:consult(?CONFIG_FILE_PATH) of
         {ok, _}=Ok ->
             lager:info("successfully loaded couch config ~s", [?CONFIG_FILE_PATH]),
             Ok;
-        {error, enoent} ->
+        {'error', 'enoent'} ->
             lager:error("couch config ~s is missing", [?CONFIG_FILE_PATH]),
             get_config();
-        {error, _E} ->
+        {'error', _E} ->
             lager:error("failed to load couch config ~s: ~p", [?CONFIG_FILE_PATH, _E]),
             get_config()
     end.
 
--spec create_connection/1 :: (proplist()) -> #wh_couch_connection{}.
+-spec create_connection(wh_proplist()) -> couch_connection().
 create_connection(Props) ->
     Routines = [fun(C) ->
                         import_config(props:get_value(default_couch_host, Props), C)
                 end
-                ,fun(C) -> 
+                ,fun(C) ->
                          import_config(props:get_value(couch_host, Props), C)
                  end
                 ,fun(C) -> wh_couch_connection:set_admin(false, C) end
                ],
     lists:foldl(fun(F, C) -> F(C) end, #wh_couch_connection{id = 1}, Routines).
 
--spec create_admin_connection/1 :: (proplist()) -> #wh_couch_connection{}.
+-spec create_admin_connection(wh_proplist()) -> couch_connection().
 create_admin_connection(Props) ->
     Routines = [fun(C) ->
                         case props:get_value(default_couch_host, Props) of
@@ -181,7 +181,7 @@ create_admin_connection(Props) ->
                                 import_config(Else, C)
                         end
                 end
-                ,fun(C) -> 
+                ,fun(C) ->
                          case props:get_value(couch_host, Props) of
                              {Host, _, User, Pass, AdminPort} ->
                                  import_config({Host, AdminPort, User, Pass}, C);
@@ -195,7 +195,7 @@ create_admin_connection(Props) ->
                ],
     lists:foldl(fun(F, C) -> F(C) end, #wh_couch_connection{id = 2}, Routines).
 
--spec import_config/2 :: ('undefined' | tuple(), #wh_couch_connection{}) -> #wh_couch_connection{}.
+-spec import_config('undefined' | tuple(), couch_connection()) -> couch_connection().
 import_config({Host}, Connection) ->
     wh_couch_connection:config(Host, Connection);
 import_config({Host, Port}, Connection) ->
@@ -206,4 +206,4 @@ import_config({Host, Port, User, Pass}, Connection) ->
     wh_couch_connection:config(Host, Port, User, Pass, Connection);
 import_config({Host, Port, User, Pass, _}, Connection) ->
     wh_couch_connection:config(Host, Port, User, Pass, Connection);
-import_config(undefined, Connection) -> Connection.
+import_config('undefined', Connection) -> Connection.

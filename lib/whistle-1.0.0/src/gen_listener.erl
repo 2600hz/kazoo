@@ -392,7 +392,9 @@ handle_cast({add_binding, _, _}=AddBinding, #state{is_consuming=false}=State) ->
     lager:debug("not consuming yet, put binding to end of message queue after ~b ms", [Time]),
     ?MODULE:delayed_cast(self(), AddBinding, Time),
     {noreply, State};
-handle_cast({add_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
+handle_cast({add_binding, Binding, Props}, #state{queue=Q
+                                                  ,bindings=Bs
+                                                 }=State) ->
     case lists:keyfind(Binding, 1, Bs) of
         false ->
             create_binding(Binding, Props, Q),
@@ -428,8 +430,9 @@ handle_cast(Message, #state{module=Module
             };
         {stop, Reason, ModState1} ->
             {stop, Reason, State#state{module_state=ModState1}};
-        {'EXIT', {Reason, ST}} ->
-            lager:debug("exception: ~p", [Reason]),
+        {'EXIT', {Reason, _ST}} ->
+            lager:debug("exception: ~p: ~p", [Reason, _ST]),
+            ST = erlang:get_stacktrace(),
             wh_util:log_stacktrace(ST),
             {stop, Reason, State}
     end.
@@ -454,8 +457,9 @@ handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue=undefined}=Stat
     {noreply, State};
 handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State#state{is_consuming=true}};
-handle_info({'$initialize_gen_listener', Timeout}
-            ,#state{bindings=Bindings, params=Params}=State) ->
+handle_info({'$initialize_gen_listener', Timeout}, #state{bindings=Bindings
+                                                          ,params=Params
+                                                         }=State) ->
     case start_amqp(Params) of
         {error, _E} ->
             _ = erlang:send_after(Timeout, self(), ?INITIALIZE_MSG(Timeout)),
@@ -581,13 +585,15 @@ process_req(Props, JObj, BasicDeliver, #state{responders=Responders, consumer_ke
                end)
          || {Evt, {Module, Fun}} <- Responders,
             maybe_event_matches_key(Key, Evt)
-        ].
+        ],
+    ok.
 
 -spec handle_callback_event(state(), wh_json:object()) -> 'ignore' | wh_proplist().
 handle_callback_event(#state{module=Module, module_state=ModState, queue=Queue
                              ,other_queues=OtherQueues, self=Self}, JObj) ->
     OtherQueueNames = props:get_keys(OtherQueues),
     case catch Module:handle_event(JObj, ModState) of
+        ignore -> ignore;
         {reply, Props} when is_list(Props) ->
             [{server, Self}
              ,{queue, Queue}
@@ -598,9 +604,7 @@ handle_callback_event(#state{module=Module, module_state=ModState, queue=Queue
             [{server, Self}
              ,{queue, Queue}
              ,{other_queues, OtherQueueNames}
-            ];
-        ignore ->
-            ignore
+            ]
     end.
 
 %% allow wildcard (<<"*">>) in the Key to match either (or both) Category and Name

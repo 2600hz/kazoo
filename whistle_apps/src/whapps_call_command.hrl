@@ -8,9 +8,9 @@
 
 -define(MOD_CONFIG_CAT, <<"speech">>).
 
--define(WHAPPS_CALL_CACHE, whapps_call_cache).
+-define(WHAPPS_CALL_CACHE, 'whapps_call_cache').
 
--type whapps_custom_publish() :: fun((proplist(), whapps_call:call()) -> 'ok').
+-type whapps_custom_publish() :: fun((wh_proplist(), whapps_call:call()) -> 'ok').
 -type whapps_api_error() :: {'error', 'channel_hungup' |
                              'channel_unbridge' |
                              'channel_destroy' |
@@ -26,4 +26,3 @@
                                     } |
                                     {'fail', wh_json:object()} |
                                     {'ok', wh_json:object()}.
--type whapps_api_binary() :: 'undefined' | binary().

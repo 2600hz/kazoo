@@ -20,7 +20,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> ok.
+-spec handle(wh_json:object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
     case get_endpoints(wh_json:get_value(<<"endpoints">>, Data, []), Call) of
         [] ->
@@ -30,7 +30,7 @@ handle(Data, Call) ->
             attempt_page(Endpoints, Data, Call)
     end.
 
--spec attempt_page/3 :: (wh_json:objects(), wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec attempt_page(wh_json:objects(), wh_json:object(), whapps_call:call()) -> 'ok'.
 attempt_page(Endpoints, Data, Call) ->
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, 5),
     lager:info("attempting page group of ~b members", [length(Endpoints)]),
@@ -45,7 +45,7 @@ attempt_page(Endpoints, Data, Call) ->
             cf_exe:continue(Call)
     end.
 
--spec get_endpoints/2 :: (wh_json:objects(), whapps_call:call()) -> wh_json:objects().
+-spec get_endpoints(wh_json:objects(), whapps_call:call()) -> wh_json:objects().
 get_endpoints(Members, Call) ->
     S = self(),
     Builders = [spawn(fun() ->
@@ -64,7 +64,7 @@ get_endpoints(Members, Call) ->
                         end
                 end, [], Builders).
 
--spec resolve_endpoint_ids/2 :: (wh_json:objects(), whapps_call:call()) -> [] | [{ne_binary(), wh_json:object()},...].
+-spec resolve_endpoint_ids(wh_json:objects(), whapps_call:call()) -> [] | [{ne_binary(), wh_json:object()},...].
 resolve_endpoint_ids(Members, Call) ->
     [{Id, wh_json:set_value(<<"source">>, ?MODULE, Member)}
      || {Type, Id, Member} <- resolve_endpoint_ids(Members, [], Call)
@@ -72,10 +72,10 @@ resolve_endpoint_ids(Members, Call) ->
             ,Id =/= whapps_call:authorizing_id(Call)
     ].
 
--type endpoint_intermediate() :: {ne_binary(), ne_binary(), 'undefined' | wh_json:object()}.
+-type endpoint_intermediate() :: {ne_binary(), ne_binary(), api_object()}.
 -type endpoint_intermediates() :: [] | [endpoint_intermediate(),...].
--spec resolve_endpoint_ids/3 :: (wh_json:objects(), endpoint_intermediates(), whapps_call:call()) -> endpoint_intermediates().
-resolve_endpoint_ids([], EndpointIds, _) ->
+-spec resolve_endpoint_ids(wh_json:objects(), endpoint_intermediates(), whapps_call:call()) -> endpoint_intermediates().
+resolve_endpoint_ids([], EndpointIds, _) -> 
     EndpointIds;
 resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
     Id = wh_json:get_value(<<"id">>, Member),
@@ -107,7 +107,7 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
             resolve_endpoint_ids(Members, [{Type, Id, Member}|EndpointIds], Call)
     end.
 
--spec get_group_members/3 :: (wh_json:object(), ne_binary(), whapps_call:call()) -> wh_json:object().    
+-spec get_group_members(wh_json:object(), ne_binary(), whapps_call:call()) -> wh_json:objects().
 get_group_members(Member, Id, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, Id) of

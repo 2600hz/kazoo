@@ -73,7 +73,7 @@
 member_call(Props) when is_list(Props) ->
     case member_call_v(Props) of
         true -> wh_api:build_message(Props, ?MEMBER_CALL_HEADERS, ?OPTIONAL_MEMBER_CALL_HEADERS);
-        false -> {error, "Proplist failed validation for member_call"}
+        false -> {'error', "Proplist failed validation for member_call"}
     end;
 member_call(JObj) ->
     member_call(wh_json:to_proplist(JObj)).
@@ -198,8 +198,8 @@ member_call_cancel_v(JObj) ->
                                       {'error', string()}.
 member_connect_req(Props) when is_list(Props) ->
     case member_connect_req_v(Props) of
-        true -> wh_api:build_message(Props, ?MEMBER_CONNECT_REQ_HEADERS, ?OPTIONAL_MEMBER_CONNECT_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for member_connect_req"}
+        'true' -> wh_api:build_message(Props, ?MEMBER_CONNECT_REQ_HEADERS, ?OPTIONAL_MEMBER_CONNECT_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for member_connect_req"}
     end;
 member_connect_req(JObj) ->
     member_connect_req(wh_json:to_proplist(JObj)).
@@ -210,9 +210,7 @@ member_connect_req_v(Prop) when is_list(Prop) ->
 member_connect_req_v(JObj) ->
     member_connect_req_v(wh_json:to_proplist(JObj)).
 
--spec member_connect_req_routing_key(wh_json:object() |
-                                           wh_proplist()
-                                          ) -> ne_binary().
+-spec member_connect_req_routing_key(api_terms()) -> ne_binary().
 -spec member_connect_req_routing_key(ne_binary(), ne_binary()) -> ne_binary().
 member_connect_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
@@ -257,13 +255,15 @@ member_connect_resp_v(JObj) ->
 %% Member Connect Win
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_WIN_HEADERS, [<<"Queue-ID">>, <<"Call">>]).
--define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>, <<"Caller-Exit-Key">>, <<"Wrapup-Timeout">>
+-define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>, <<"Caller-Exit-Key">>
+                                                  ,<<"Wrapup-Timeout">>, <<"CDR-Url">>
                                                   ,<<"Process-ID">>, <<"Agent-Process-ID">>
+                                                  ,<<"Record-Caller">>, <<"Recording-URL">>
                                              ]).
 -define(MEMBER_CONNECT_WIN_VALUES, [{<<"Event-Category">>, <<"member">>}
                                      ,{<<"Event-Name">>, <<"connect_win">>}
                                     ]).
--define(MEMBER_CONNECT_WIN_TYPES, []).
+-define(MEMBER_CONNECT_WIN_TYPES, [{<<"Record-Caller">>, fun wh_util:is_boolean/1}]).
 
 -spec member_connect_win(api_terms()) ->
                                       {'ok', iolist()} |

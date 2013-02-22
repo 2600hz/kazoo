@@ -17,6 +17,7 @@
          ,agent/1
          ,fsm/1, start_fsm/3, start_fsm/4
          ,stop/1
+         ,status/1
         ]).
 
 %% Supervisor callbacks
@@ -24,7 +25,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Args),
-        {Name, {Name, start_link, Args}, permanent, 5000, worker, [Name]}).
+        {Name, {Name, 'start_link', Args}, 'transient', 5000, 'worker', [Name]}).
 
 %%%===================================================================
 %%% API functions
@@ -39,45 +40,66 @@
 %%--------------------------------------------------------------------
 -spec start_link(wh_json:object()) -> startlink_ret().
 -spec start_link(whapps_call:call(), ne_binary()) -> startlink_ret().
-start_link(AgentJObj) ->
-    supervisor:start_link(?MODULE, [AgentJObj]).
+start_link(AgentJObj) -> supervisor:start_link(?MODULE, [AgentJObj]).
 
-start_link(ThiefCall, QueueId) ->
-    supervisor:start_link(?MODULE, [ThiefCall, QueueId]).
+start_link(ThiefCall, QueueId) -> supervisor:start_link(?MODULE, [ThiefCall, QueueId]).
 
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
-stop(Supervisor) ->
-    supervisor:terminate_child(acdc_agents_sup, Supervisor).
+stop(Supervisor) -> supervisor:terminate_child('acdc_agents_sup', Supervisor).
+
+-spec status(pid()) -> 'ok'.
+status(Supervisor) ->
+    case {agent(Supervisor), fsm(Supervisor)} of
+        {LPid, FSM} when is_pid(LPid), is_pid(FSM) ->
+            {AcctId, AgentId, Q} = acdc_agent:config(LPid),
+            Status = acdc_agent_fsm:status(FSM),
+
+            lager:info("Agent ~s (Account ~s)", [AgentId, AcctId]),
+            lager:info("  Supervisor: ~p", [Supervisor]),
+            lager:info("  Listener: ~p (~s)", [LPid, Q]),
+            lager:info("  FSM: ~p", [FSM]),
+            print_status(Status);
+        _ ->
+            lager:info("Agent Supervisor ~p is dead, stopping", [Supervisor]),
+            ?MODULE:stop(Supervisor)
+    end.
+
+print_status([]) -> 'ok';
+print_status([{_, 'undefined'}|T]) -> print_status(T);
+print_status([{K, V}|T]) when is_binary(V) ->
+    lager:info("  ~s: ~s", [K, V]),
+    print_status(T);
+print_status([{K, V}|T]) ->
+    lager:info("  ~s: ~p", [K, V]),
+    print_status(T).
 
 -spec agent(pid()) -> pid() | 'undefined'.
 agent(Super) ->
-    case child_of_type(Super, acdc_agent) of
-        [] -> undefined;
+    case child_of_type(Super, 'acdc_agent') of
+        [] -> 'undefined';
         [P] -> P
     end.
 
 -spec fsm(pid()) -> pid() | 'undefined'.
 fsm(Super) ->
-    case child_of_type(Super, acdc_agent_fsm) of
-        [] -> undefined;
+    case child_of_type(Super, 'acdc_agent_fsm') of
+        [] -> 'undefined';
         [P] -> P
     end.
 
 -spec start_fsm(pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
 -spec start_fsm(pid(), ne_binary(), ne_binary(), wh_proplist()) -> sup_startchild_ret().
-start_fsm(Super, AcctId, AgentId) ->
-    start_fsm(Super, AcctId, AgentId, []).
+start_fsm(Super, AcctId, AgentId) -> start_fsm(Super, AcctId, AgentId, []).
 start_fsm(Super, AcctId, AgentId, Props) ->
     case fsm(Super) of
-        undefined ->
+        'undefined' ->
             Parent = self(),
-            supervisor:start_child(Super, ?CHILD(acdc_agent_fsm, [AcctId, AgentId, Parent, Props]));
-        P when is_pid(P) -> {ok, P}
+            supervisor:start_child(Super, ?CHILD('acdc_agent_fsm', [AcctId, AgentId, Parent, Props]));
+        P when is_pid(P) -> {'ok', P}
     end.
 
 -spec child_of_type(pid(), atom()) -> list(pid()).
-child_of_type(Super, T) ->
-    [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(Super), T =:= Type].
+child_of_type(S, T) -> [P || {Ty, P, 'worker', _} <- supervisor:which_children(S), T =:= Ty].
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -98,15 +120,15 @@ child_of_type(Super, T) ->
 %%--------------------------------------------------------------------
 -spec init(list()) -> sup_init_ret().
 init(Args) ->
-    RestartStrategy = one_for_all,
+    RestartStrategy = 'one_for_all',
     MaxRestarts = 2,
     MaxSecondsBetweenRestarts = 2,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_agent, [self() | Args])
-                     ,?CHILD(acdc_agent_fsm, [self() | Args])
-                    ]}}.
+    {'ok', {SupFlags, [?CHILD('acdc_agent', [self() | Args])
+                       ,?CHILD('acdc_agent_fsm', [self() | Args])
+                      ]}}.
 
 %%%===================================================================
 %%% Internal functions

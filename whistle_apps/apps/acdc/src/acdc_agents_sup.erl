@@ -19,6 +19,7 @@
          ,workers/0
          ,find_acct_supervisors/1
          ,find_agent_supervisor/2
+         ,status/0
         ]).
 
 %% Supervisor callbacks
@@ -40,8 +41,14 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+
+-spec status() -> 'ok'.
+status() ->
+    lager:info("ACDc Agents Status"),
+    Ws = workers(),
+    _ = spawn(fun() -> [acdc_agent_sup:status(Sup) || Sup <- Ws] end),
+    'ok'.
 
 -spec new(wh_json:object()) -> sup_startchild_ret().
 -spec new(ne_binary(), ne_binary()) -> sup_startchild_ret().
@@ -50,50 +57,47 @@ new(JObj) ->
                                ,wh_json:get_value(<<"_id">>, JObj)
                               )
     of
-        undefined -> supervisor:start_child(?MODULE, [JObj]);
+        'undefined' -> supervisor:start_child(?MODULE, [JObj]);
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
+
 new(AcctId, AgentId) ->
     case find_agent_supervisor(AcctId, AgentId) of
-        undefined ->
-            {ok, Agent} = couch_mgr:open_doc(wh_util:format_account_id(AcctId, encoded), AgentId),
+        'undefined' ->
+            {'ok', Agent} = couch_mgr:open_doc(wh_util:format_account_id(AcctId, 'encoded'), AgentId),
             supervisor:start_child(?MODULE, [Agent]);
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
 
 -spec new_thief(whapps_call:call(), ne_binary()) -> sup_startchild_ret().
-new_thief(Call, QueueId) ->
-    supervisor:start_child(?MODULE, [Call, QueueId]).
+new_thief(Call, QueueId) -> supervisor:start_child(?MODULE, [Call, QueueId]).
 
 -spec workers() -> [pid(),...] | [].
-workers() ->
-    [ Pid || {_, Pid, supervisor, [_]} <- supervisor:which_children(?MODULE)].
+workers() -> [Pid || {_, Pid, 'supervisor', [_]} <- supervisor:which_children(?MODULE)].
 
 -spec find_acct_supervisors(ne_binary()) -> [pid(),...] | [].
-find_acct_supervisors(AcctId) ->
-    [Super || Super <- workers(), is_agent_in_acct(Super, AcctId)].
+find_acct_supervisors(AcctId) -> [S || S <- workers(), is_agent_in_acct(S, AcctId)].
 
 -spec is_agent_in_acct(pid(), ne_binary()) -> boolean().
 is_agent_in_acct(Super, AcctId) ->
     case catch acdc_agent:config(acdc_agent_sup:agent(Super)) of
-        {'EXIT', _} -> false;
-        {AcctId, _} -> true;
-        _ -> false
+        {'EXIT', _} -> 'false';
+        {AcctId, _, _} -> 'true';
+        _ -> 'false'
     end.
 
 -spec find_agent_supervisor(api_binary(), api_binary()) -> pid() | 'undefined'.
 -spec find_agent_supervisor(api_binary(), api_binary(), [pid(),...] | []) -> pid() | 'undefined'.
-find_agent_supervisor(AcctId, AgentId) ->
-    find_agent_supervisor(AcctId, AgentId, workers()).
+find_agent_supervisor(AcctId, AgentId) -> find_agent_supervisor(AcctId, AgentId, workers()).
 
-find_agent_supervisor(_AcctId, _AgentId, []) -> undefined;
-find_agent_supervisor(AcctId, AgentId, _) when AcctId =:= undefined orelse
-                                               AgentId =:= undefined ->
-    undefined;
+find_agent_supervisor(_AcctId, _AgentId, []) -> 'undefined';
+find_agent_supervisor(AcctId, AgentId, _) when AcctId =:= 'undefined' orelse
+                                               AgentId =:= 'undefined' ->
+    'undefined';
 find_agent_supervisor(AcctId, AgentId, [Super|Rest]) ->
     case catch acdc_agent:config(acdc_agent_sup:agent(Super)) of
         {'EXIT', _} -> find_agent_supervisor(AcctId, AgentId, Rest);
-        {AcctId, AgentId} -> Super;
+        {AcctId, AgentId, _} -> Super;
         _ -> find_agent_supervisor(AcctId, AgentId, Rest)
     end.
 
@@ -116,13 +120,13 @@ find_agent_supervisor(AcctId, AgentId, [Super|Rest]) ->
 %%--------------------------------------------------------------------
 -spec init(list()) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = simple_one_for_one,
+    RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 1,
     MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_agent_sup, transient, infinity, supervisor)]}}.
+    {'ok', {SupFlags, [?CHILD('acdc_agent_sup', 'transient', 'infinity', 'supervisor')]}}.
 
 %%%===================================================================
 %%% Internal functions

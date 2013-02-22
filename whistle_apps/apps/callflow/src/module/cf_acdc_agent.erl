@@ -30,10 +30,10 @@
 handle(Data, Call) ->
     whapps_call_command:answer(Call),
     _ = case find_agent(Call) of
-            {ok, undefined} ->
+            {'ok', 'undefined'} ->
                 lager:info("no owner on this device == no agent"),
                 play_not_an_agent(Call);
-            {ok, AgentId} ->
+            {'ok', AgentId} ->
                 Status = find_agent_status(Call, AgentId),
                 NewStatus = fix_data_status(wh_json:get_value(<<"action">>, Data)),
                 lager:info("agent ~s maybe changing status from ~s to ~s", [AgentId, Status, NewStatus]),
@@ -44,10 +44,8 @@ handle(Data, Call) ->
     cf_exe:continue(Call).
 
 -spec find_agent_status(whapps_call:call() | ne_binary(), ne_binary()) -> ne_binary().
-find_agent_status(?NE_BINARY = AcctId, AgentId) ->
-    fix_agent_status(acdc_util:agent_status(AcctId, AgentId));
-find_agent_status(Call, AgentId) ->
-    find_agent_status(whapps_call:account_id(Call), AgentId).
+find_agent_status(?NE_BINARY = AcctId, AgentId) -> fix_agent_status(acdc_util:agent_status(AcctId, AgentId));
+find_agent_status(Call, AgentId) -> find_agent_status(whapps_call:account_id(Call), AgentId).
 
 fix_agent_status(<<"resume">>) -> <<"login">>;
 fix_agent_status(<<"ready">>) -> <<"login">>;
@@ -73,7 +71,7 @@ maybe_update_status(Call, AgentId, <<"logout">>, <<"login">>, _Data) ->
 maybe_update_status(Call, AgentId, <<"login">>, <<"login">>, _Data) ->
     lager:info("agent ~s is already logged in", [AgentId]),
     _ = play_agent_logged_in_already(Call),
-    send_new_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1, undefined);
+    send_new_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1, 'undefined');
 
 maybe_update_status(Call, AgentId, FromStatus, <<"paused">>, Data) ->
     maybe_pause_agent(Call, AgentId, FromStatus, Data);
@@ -117,7 +115,7 @@ resume_agent(Call, AgentId) ->
     update_agent_status(Call, AgentId, <<"resume">>, fun wapi_acdc_agent:publish_resume/1).
 
 update_agent_status(Call, AgentId, Status, PubFun) ->
-    update_agent_status(Call, AgentId, Status, PubFun, undefined).
+    update_agent_status(Call, AgentId, Status, PubFun, 'undefined').
 update_agent_status(Call, AgentId, Status, PubFun, Timeout) ->
     AcctId = whapps_call:account_id(Call),
 
@@ -126,7 +124,7 @@ update_agent_status(Call, AgentId, Status, PubFun, Timeout) ->
              ,{<<"wait_time">>, Timeout}
             ],
 
-    {ok, _D} = acdc_util:update_agent_status(AcctId, AgentId, Status, Extra),
+    {'ok', _D} = acdc_util:update_agent_status(AcctId, AgentId, Status, Extra),
 
     NewStatus = acdc_util:agent_status(AcctId, AgentId),
 
@@ -145,28 +143,21 @@ send_new_status(Call, AgentId, PubFun, Timeout) ->
 
 find_agent(Call) ->
     case whapps_call:owner_id(Call) of
-        undefined -> find_agent_by_authorization(Call
-                                                 ,whapps_call:authorizing_id(Call)
-                                                 ,whapps_call:authorizing_type(Call)
-                                                );
-        OwnerId -> {ok, OwnerId}
+        'undefined' -> find_agent_by_authorization(Call
+                                                   ,whapps_call:authorizing_id(Call)
+                                                   ,whapps_call:authorizing_type(Call)
+                                                  );
+        OwnerId -> {'ok', OwnerId}
     end.
 
 find_agent_by_authorization(Call, DeviceId, <<"device">>) ->
-    {ok, Device} = couch_mgr:open_doc(whapps_call:account_db(Call), DeviceId),
-    {ok, wh_json:get_value(<<"owner_id">>, Device)}.
+    {'ok', Device} = couch_mgr:open_doc(whapps_call:account_db(Call), DeviceId),
+    {'ok', wh_json:get_value(<<"owner_id">>, Device)}.
 
-play_not_an_agent(Call) ->
-    whapps_call_command:b_prompt(<<"agent-not_call_center_agent">>, Call).
-play_agent_logged_in_already(Call) ->
-    whapps_call_command:b_prompt(<<"agent-already_logged_in">>, Call).
-play_agent_logged_in(Call) ->
-    whapps_call_command:b_prompt(<<"agent-logged_in">>, Call).
-play_agent_logged_out(Call) ->
-    whapps_call_command:b_prompt(<<"agent-logged_out">>, Call).
-play_agent_resume(Call) ->
-    whapps_call_command:b_prompt(<<"agent-resume">>, Call).
-play_agent_pause(Call) ->
-    whapps_call_command:b_prompt(<<"agent-pause">>, Call).
-play_agent_invalid(Call) ->
-    whapps_call_command:b_prompt(<<"agent-invalid_choice">>, Call).
+play_not_an_agent(Call) -> whapps_call_command:b_prompt(<<"agent-not_call_center_agent">>, Call).
+play_agent_logged_in_already(Call) -> whapps_call_command:b_prompt(<<"agent-already_logged_in">>, Call).
+play_agent_logged_in(Call) -> whapps_call_command:b_prompt(<<"agent-logged_in">>, Call).
+play_agent_logged_out(Call) -> whapps_call_command:b_prompt(<<"agent-logged_out">>, Call).
+play_agent_resume(Call) -> whapps_call_command:b_prompt(<<"agent-resume">>, Call).
+play_agent_pause(Call) -> whapps_call_command:b_prompt(<<"agent-pause">>, Call).
+play_agent_invalid(Call) -> whapps_call_command:b_prompt(<<"agent-invalid_choice">>, Call).

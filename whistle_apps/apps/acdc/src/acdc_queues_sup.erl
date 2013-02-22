@@ -19,6 +19,7 @@
          ,find_acct_supervisors/1
          ,find_queue_supervisor/2
          ,queues_running/0
+         ,status/0
         ]).
 
 %% Supervisor callbacks
@@ -45,13 +46,13 @@ start_link() ->
 
 new(AcctId, QueueId) ->
     case find_queue_supervisor(AcctId, QueueId) of
-        P when is_pid(P) -> {ok, P};
-        undefined -> supervisor:start_child(?MODULE, [AcctId, QueueId])
+        P when is_pid(P) -> {'ok', P};
+        'undefined' -> supervisor:start_child(?MODULE, [AcctId, QueueId])
     end.
 
 -spec workers() -> [pid(),...] | [].
 workers() ->
-    [ Pid || {_, Pid, supervisor, [_]} <- supervisor:which_children(?MODULE), is_pid(Pid)].
+    [Pid || {_, Pid, 'supervisor', _} <- supervisor:which_children(?MODULE), is_pid(Pid)].
 
 -spec find_acct_supervisors(ne_binary()) -> [pid(),...] | [].
 find_acct_supervisors(AcctId) ->
@@ -60,9 +61,9 @@ find_acct_supervisors(AcctId) ->
 -spec is_queue_in_acct(pid(), ne_binary()) -> boolean().
 is_queue_in_acct(Super, AcctId) ->
     case catch acdc_queue_manager:config(acdc_queue_sup:manager(Super)) of
-        {'EXIT', _} -> false;
-        {AcctId, _} -> true;
-        _ -> false
+        {'EXIT', _} -> 'false';
+        {AcctId, _} -> 'true';
+        _ -> 'false'
     end.
 
 -spec find_queue_supervisor(ne_binary(), ne_binary()) -> pid() | 'undefined'.
@@ -70,13 +71,19 @@ is_queue_in_acct(Super, AcctId) ->
 find_queue_supervisor(AcctId, QueueId) ->
     find_queue_supervisor(AcctId, QueueId, workers()).
 
-find_queue_supervisor(_AcctId, _QueueId, []) -> undefined;
+find_queue_supervisor(_AcctId, _QueueId, []) -> 'undefined';
 find_queue_supervisor(AcctId, QueueId, [Super|Rest]) ->
     case catch acdc_queue_manager:config(acdc_queue_sup:manager(Super)) of
         {'EXIT', _} -> find_queue_supervisor(AcctId, QueueId, Rest);
         {AcctId, QueueId} -> Super;
         _ -> find_queue_supervisor(AcctId, QueueId, Rest)
     end.
+
+-spec status() -> 'ok'.
+status() ->
+    lager:info("ACDc Queues Status"),
+    _ = spawn(fun() -> [acdc_queue_sup:status(Sup) || Sup <- workers()] end),
+    'ok'.
 
 queues_running() ->
     [{W, catch acdc_queue_manager:config(acdc_queue_sup:manager(W))} || W <- workers()].

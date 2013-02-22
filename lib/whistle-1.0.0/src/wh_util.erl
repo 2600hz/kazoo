@@ -93,7 +93,7 @@ log_stacktrace() ->
 log_stacktrace(ST) ->
     lager:debug("stacktrace:"),
     _ = [lager:debug("st: ~p", [Line]) || Line <- ST],
-    ok.
+    'ok'.
 
 -define(LOG_LEVELS, ['emergency'
                      ,'alert'
@@ -690,6 +690,7 @@ strip_left_binary(<<C, B/binary>>, C) ->
     strip_left_binary(B, C);
 strip_left_binary(B, _) -> B.
 
+strip_right_binary(C, C) -> <<>>;
 strip_right_binary(<<C, B/binary>>, C) ->
     case strip_right_binary(B, C) of
         <<>> -> <<>>;

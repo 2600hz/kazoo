@@ -11,7 +11,8 @@
 
 -include("callflow.hrl").
 
--define(OWNER_KEY(Db, User), {?MODULE, owner_id, Db, User}).
+-define(OWNER_KEY(Db, User), {?MODULE, 'owner_id', Db, User}).
+-define(CF_FLOW_CACHE_KEY(Number, Db), {'cf_flow', Number, Db}).
 
 -export([presence_probe/2]).
 -export([presence_mwi_query/2]).
@@ -47,39 +48,38 @@ presence_probe(JObj, _Props) ->
 -spec presence_mwi_update(ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) -> 'ok'.
 presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, JObj) ->
     case whapps_util:get_account_by_realm(FromRealm) of
-        {ok, AccountDb} ->
+        {'ok', AccountDb} ->
             case maybe_get_owner_id(AccountDb, FromUser) of
-                {ok, OwnerId} ->
+                {'ok', OwnerId} ->
                     lager:debug("replying to mwi presence probe"),
                     presence_mwi_resp(FromUser, FromRealm, OwnerId, AccountDb, JObj);
-                _Else -> ok
+                _Else -> 'ok'
             end;
         _E ->
             lager:info("failed to find the account for realm ~s: ~p", [FromRealm, _E]),
-            ok
+            'ok'
     end;
-presence_mwi_update(_, _, _, _) ->
-    ok.
+presence_mwi_update(_, _, _, _) -> 'ok'.
 
 -spec presence_parking_slot(ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) -> 'ok'.
-presence_parking_slot(<<"message-summary">>, _, _, _) -> ok;
+presence_parking_slot(<<"message-summary">>, _, _, _) -> 'ok';
 presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
     case whapps_util:get_account_by_realm(FromRealm) of
-        {ok, AccountDb} ->
-            AccountId = wh_util:format_account_id(AccountDb, raw),
+        {'ok', AccountDb} ->
+            AccountId = wh_util:format_account_id(AccountDb, 'raw'),
             _ = lookup_callflow(ToUser, AccountId),
-            case wh_cache:fetch_local(?CALLFLOW_CACHE, {cf_flow, ToUser, AccountDb}) of
-                {error, not_found} -> ok;
-                {ok, Flow} ->
+            case wh_cache:fetch_local(?CALLFLOW_CACHE, ?CF_FLOW_CACHE_KEY(ToUser, AccountDb)) of
+                {'error', 'not_found'} -> 'ok';
+                {'ok', Flow} ->
                     case wh_json:get_value([<<"flow">>, <<"module">>], Flow) of
                         <<"park">> ->
                             lager:info("replying to presence query for a parking slot"),
                             SlotNumber = wh_json:get_ne_value(<<"capture_group">>, Flow, ToUser),
                             cf_park:update_presence(SlotNumber, <<ToUser/binary, "@", ToRealm/binary>>, AccountDb);
-                        _Else -> ok
+                        _Else -> 'ok'
                     end
             end;
-        _E -> ok
+        _E -> 'ok'
     end.
 
 -spec manual_presence(ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) -> 'ok'.
@@ -140,7 +140,7 @@ presence_mwi_query(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec presence_mwi_resp(ne_binary(), ne_binary(), api_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-presence_mwi_resp(_, _, undefined, _, _) -> ok;
+presence_mwi_resp(_, _, 'undefined', _, _) -> 'ok';
 presence_mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
     ViewOptions = [{reduce, true}
                    ,{group, true}
@@ -226,12 +226,8 @@ update_mwi(New, Saved, OwnerId, AccountDb) ->
     end.
 
 -spec maybe_publish_mwi/4 :: (api_binary(), api_binary(), integer(), integer()) -> 'ok'.
-maybe_publish_mwi(undefined, _, _, _) -> ok;
-maybe_publish_mwi(_, undefined, _, _) -> ok;
-maybe_publish_mwi(User, Realm, New, Saved) when not is_binary(User) ->
-    maybe_publish_mwi(wh_util:to_binary(User), Realm, New, Saved);
-maybe_publish_mwi(User, Realm, New, Saved) when not is_binary(Realm) ->
-    maybe_publish_mwi(User, wh_util:to_binary(Realm), New, Saved);
+maybe_publish_mwi('undefined', _, _, _) -> 'ok';
+maybe_publish_mwi(_, 'undefined', _, _) -> 'ok';
 maybe_publish_mwi(User, Realm, New, Saved) ->
     Props = [{<<"Notify-User">>, User}
              ,{<<"Notify-Realm">>, Realm}
@@ -363,21 +359,20 @@ do_lookup_callflow(Number, Db) ->
                     maybe_use_nomatch(Number, Db);
                 {ok, {Flow, Capture}} ->
                     F = wh_json:set_value(<<"capture_group">>, Capture, Flow),
-                    wh_cache:store_local(?CALLFLOW_CACHE, {cf_flow, Number, Db}, F),
-                    {ok, F, false}
+                    wh_cache:store_local(?CALLFLOW_CACHE, ?CF_FLOW_CACHE_KEY(Number, Db), F),
+                    {'ok', F, 'false'}
             end;
-        {ok, []} ->
-            {error, not_found};
-        {ok, [JObj]} ->
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', [JObj]} ->
             Flow = wh_json:get_value(<<"doc">>, JObj),
-            wh_cache:store_local(?CALLFLOW_CACHE, {cf_flow, Number, Db}, Flow),
-            {ok, Flow, Number =:= ?NO_MATCH_CF};
-        {ok, [JObj | _Rest]} ->
-            lager:notice("lookup resulted in more than one result, using the first"),
+            wh_cache:store_local(?CALLFLOW_CACHE, ?CF_FLOW_CACHE_KEY(Number, Db), Flow),
+            {'ok', Flow, Number =:= ?NO_MATCH_CF};
+        {'ok', [JObj | _Rest]} ->
+            lager:info("lookup resulted in more than one result, using the first"),
             Flow = wh_json:get_value(<<"doc">>, JObj),
-            wh_cache:store_local(?CALLFLOW_CACHE, {cf_flow, Number, Db}, Flow),
-            {ok, Flow, Number =:= ?NO_MATCH_CF};
-        {error, _}=E ->
+            wh_cache:store_local(?CALLFLOW_CACHE, ?CF_FLOW_CACHE_KEY(Number, Db), Flow),
+            {'ok', Flow, Number =:= ?NO_MATCH_CF};
+        {'error', _}=E ->
             E
     end.
 
@@ -386,16 +381,18 @@ maybe_use_nomatch(<<"+", Number/binary>>, Db) ->
     maybe_use_nomatch(Number, Db);
 maybe_use_nomatch(Number, Db) ->
     case lists:all(fun is_digit/1, wh_util:to_list(Number)) of
-        true -> do_lookup_callflow(?NO_MATCH_CF, Db);
-        false ->
+        'true' -> do_lookup_callflow(?NO_MATCH_CF, Db);
+        'false' ->
             lager:info("can't use no_match: number not all digits: ~s", [Number]),
-            {error, not_found}
+            {'error', 'not_found'}
     end.
 
-is_digit(X) when X >= $0, X =< $9 -> true;
-is_digit(_) -> false.
+is_digit(X) when X >= $0, X =< $9 -> 'true';
+is_digit(_) -> 'false'.
 
--spec maybe_get_owner_id(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
+-spec maybe_get_owner_id(ne_binary(), ne_binary()) ->
+                                {'ok', api_binary()} |
+                                {'error', _}.
 maybe_get_owner_id(AccountDb, SIPUser) ->
     case wh_cache:peek_local(?CALLFLOW_CACHE, ?OWNER_KEY(AccountDb, SIPUser)) of
         {ok, _}=Ok -> Ok;
@@ -571,9 +568,9 @@ handle_doc_change(JObj, _Prop) ->
 
     maybe_clear_flows(wh_json:get_value(<<"numbers">>, JObj, []), Db).
 
-maybe_clear_flows([], _) -> ok;
+maybe_clear_flows([], _) -> 'ok';
 maybe_clear_flows(Ns, Db) ->
-    [wh_cache:erase_local(?CALLFLOW_CACHE, {cf_flow, N, Db}) || N <- Ns].
+    [wh_cache:erase_local(?CALLFLOW_CACHE, ?CF_FLOW_CACHE_KEY(N, Db)) || N <- Ns].
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

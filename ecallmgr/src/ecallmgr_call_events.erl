@@ -53,7 +53,7 @@
 
 -record(state, {
           node :: atom()
-          ,callid = <<>> :: binary()
+          ,callid :: api_binary()
           ,is_node_up = 'true' :: boolean()
           ,failed_node_checks = 0 :: non_neg_integer()
           ,node_down_tref :: reference()
@@ -99,23 +99,18 @@ shutdown(Node, UUID) ->
     ok.
 
 -spec callid(pid()) -> ne_binary().
-callid(Srv) ->
-    gen_listener:call(Srv, {callid}, 1000).
+callid(Srv) -> gen_listener:call(Srv, {callid}, 1000).
 
 -spec node(pid()) -> ne_binary().
-node(Srv) ->
-    gen_listener:call(Srv, {node}, 1000).
+node(Srv) -> gen_listener:call(Srv, {node}, 1000).
 
-update_node(Srv, Node) ->
-    gen_listener:cast(Srv, {update_node, Node}).
+update_node(Srv, Node) -> gen_listener:cast(Srv, {update_node, Node}).
 
 -spec transfer(pid(), atom(), wh_proplist()) -> 'ok'.
-transfer(Srv, TransferType, Props) ->
-    gen_listener:cast(Srv, {TransferType, Props}).
+transfer(Srv, TransferType, Props) -> gen_listener:cast(Srv, {TransferType, Props}).
 
 -spec queue_name(pid()) -> ne_binary().
-queue_name(Srv) ->
-    gen_listener:queue_name(Srv).
+queue_name(Srv) -> gen_listener:queue_name(Srv).
 
 -spec to_json(proplist()) -> wh_json:object().
 to_json(Props) ->
@@ -124,7 +119,7 @@ to_json(Props) ->
     ApplicationName = get_event_application(Props, Masqueraded),
     wh_json:from_list(create_event(EventName, ApplicationName, Props)).
 
--spec handle_publisher_usurp(wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_publisher_usurp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_publisher_usurp(JObj, Props) ->
     CallId = props:get_value(call_id, Props),
     Ref = props:get_value(reference, Props),
@@ -632,7 +627,7 @@ should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
 should_publish(EventName, _, _) ->
     lists:member(EventName, ?CALL_EVENTS).
 
--spec get_transfer_history(wh_proplist()) -> wh_json:json_object().
+-spec get_transfer_history(wh_proplist()) -> wh_json:object().
 get_transfer_history(Props) ->
     SerializedHistory = props:get_value(<<"variable_transfer_history">>, Props),
     Hist = [HistJObj
@@ -640,7 +635,7 @@ get_transfer_history(Props) ->
                (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, [global]))) =/= undefined],
     wh_json:from_list(Hist).
 
--spec create_trnsf_history_object(list()) -> {ne_binary(), wh_json:json_object()} | 'undefined'.
+-spec create_trnsf_history_object(list()) -> {ne_binary(), wh_json:object()} | 'undefined'.
 create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
     [Transferee, Transferer] = binary:split(Props, <<"/">>),
     Trans = [{<<"Call-ID">>, CallId}
@@ -692,29 +687,26 @@ get_hangup_code(Props) ->
                           ,<<"variable_last_bridge_proto_specific_hangup_cause">>
                      ], Props).
 
--spec find_event_value([ne_binary(),...], wh_proplist()) -> api_binary().
+-spec find_event_value(ne_binaries(), wh_proplist()) -> api_binary().
 find_event_value(Keys, Props) ->
     find_event_value(Keys, Props, undefined).
 
--spec find_event_value([ne_binary(),...], wh_proplist(), term()) -> term().
+-spec find_event_value(ne_binaries(), wh_proplist(), term()) -> term().
 find_event_value([], _, Default) -> Default;
 find_event_value([H|T], Props, Default) ->
     Value = props:get_value(H, Props),
     case wh_util:is_empty(Value) of
-        true -> find_event_value(T, Props, Default);
-        false -> Value
+        'true' -> find_event_value(T, Props, Default);
+        'false' -> Value
     end.
 
--spec swap_call_legs(wh_proplist() | wh_json:json_object()) -> wh_proplist().
+-spec swap_call_legs(wh_proplist() | wh_json:object()) -> wh_proplist().
 -spec swap_call_legs(wh_proplist(), wh_proplist()) -> wh_proplist().
 
-swap_call_legs(Props) when is_list(Props) ->
-    swap_call_legs(Props, []);
-swap_call_legs(JObj) ->
-    swap_call_legs(wh_json:to_proplist(JObj)).
+swap_call_legs(Props) when is_list(Props) -> swap_call_legs(Props, []);
+swap_call_legs(JObj) -> swap_call_legs(wh_json:to_proplist(JObj)).
 
-swap_call_legs([], Swap) ->
-    Swap;
+swap_call_legs([], Swap) -> Swap;
 swap_call_legs([{<<"Caller-", Key/binary>>, Value}|T], Swap) ->
     swap_call_legs(T, [{<<"Other-Leg-", Key/binary>>, Value}|Swap]);
 swap_call_legs([{<<"Other-Leg-", Key/binary>>, Value}|T], Swap) ->

@@ -34,7 +34,9 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
--spec start_handler/2 :: (db(), proplist()) -> sup_startchild_ret().
+-spec start_handler(db() | ne_binary(), wh_proplist()) -> sup_startchild_ret().
+start_handler(DbName, Options) when is_binary(DbName) ->
+    start_handler(couch_util:get_db(wh_couch_connections:get_server(), DbName), Options);
 start_handler(Db, Options) ->
     supervisor:start_child(?SERVER, [Db, Options]).
 

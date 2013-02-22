@@ -514,16 +514,13 @@ new_conference_queue(Queue) ->
 -spec new_queue/0 :: () -> new_queue_ret().
 -spec new_queue/1 :: (binary()) -> new_queue_ret().
 -spec new_queue/2 :: (binary(), wh_proplist()) -> new_queue_ret().
-new_queue() ->
-    new_queue(<<>>). % lets the client lib create a random queue name
-new_queue(Queue) ->
-    new_queue(Queue, []).
+new_queue() -> new_queue(new_queue_name()). % lets the client lib create a random queue name
+new_queue(Queue) -> new_queue(Queue, []).
 
 new_queue(<<"amq.", _/binary>>, Options) ->
-    new_queue(<<>>, Options);
+    new_queue(new_queue_name(), Options);
 new_queue(<<>>, Options) ->
-    Name = list_to_binary(io_lib:format("~s-~p-~s", [node(), self(), wh_util:rand_hex_binary(4)])),
-    new_queue(Name, Options);
+    new_queue(new_queue_name(), Options);
 new_queue(Queue, Options) when is_binary(Queue) ->
     QD = #'queue.declare'{
       queue = Queue
@@ -552,6 +549,9 @@ new_queue(Queue, Options) when is_binary(Queue) ->
         {'EXIT',{noproc, _}} ->
             {error, no_channel}
     end.
+
+new_queue_name() ->
+    list_to_binary(io_lib:format("~s-~p-~s", [node(), self(), wh_util:rand_hex_binary(4)])).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -896,8 +896,7 @@ basic_nack(DTag) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_host_available/0 :: () -> boolean().
-is_host_available() ->
-    wh_amqp_connections:available().
+is_host_available() -> wh_amqp_connections:available().
 
 %%------------------------------------------------------------------------------
 %% @public

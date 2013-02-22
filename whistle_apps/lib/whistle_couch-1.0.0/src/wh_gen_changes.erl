@@ -38,7 +38,7 @@ behaviour_info(callbacks) ->
      {terminate, 2}];
 behaviour_info(_) ->
     undefined.
- 
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -49,41 +49,37 @@ behaviour_info(_) ->
 %% The function should be called, directly or indirectly, by the supervisor.
 %% @end
 %%--------------------------------------------------------------------
--type changeoption() :: {include_docs, string()}
-                      | {filter, string()}
-                      | {since, integer()|string()}
-                      | {heartbeat, string()|boolean()}.
+-type changeoption() :: {'include_docs', string()}
+                      | {'filter', string()}
+                      | {'since', integer()|string()}
+                      | {'heartbeat', string()|boolean()|pos_integer()}
+                      | 'longpoll'.
 -type changesoptions() :: [changeoption()].
--spec start_link(atom(), db(), changesoptions(), list()) -> term().
+-spec start_link(atom(), couchbeam_db(), changesoptions(), list()) -> term().
 start_link(Module, Db, Options, InitArgs) ->
-    gen_server:start_link({local, server_name(Db)}, ?MODULE
-                          ,[Module, Db, Options, InitArgs], []).
+    gen_server:start_link({'local', server_name(Db)}, ?MODULE
+                          ,[Module, Db, Options, InitArgs], []
+                         ).
 
--spec server_name/1 :: (text() | #db{}) -> atom().
-server_name(#db{name=DbName}) ->
-    server_name(DbName);
+-spec server_name(text() | couchbeam_db()) -> atom().
+server_name(#db{name=DbName}) -> server_name(DbName);
 server_name(DbName) ->
-    wh_util:to_atom(<<"wh_gen_changes_", (wh_util:to_binary(DbName))/binary>>, true).
+    wh_util:to_atom(<<"wh_gen_changes_", (wh_util:to_binary(DbName))/binary>>, 'true').
 
--spec stop/1 :: (pid()) -> 'ok'.
-stop(Pid) when is_pid(Pid) ->
-    gen_server:cast(Pid, stop).
+-spec stop(pid()) -> 'ok'.
+stop(Pid) when is_pid(Pid) -> gen_server:cast(Pid, 'stop').
 
--spec get_seq/1 :: (pid()) -> list().
-get_seq(Pid) when is_pid(Pid) ->
-    gen_server:call(Pid, '$get_seq').
+-spec get_seq(pid()) -> list().
+get_seq(Pid) when is_pid(Pid) -> gen_server:call(Pid, '$get_seq').
 
--spec call/2 :: (pid() | atom(), _) -> _.
-call(Name, Request) ->
-    gen_server:call(Name, Request).
+-spec call(pid() | atom(), _) -> _.
+call(Name, Request) -> gen_server:call(Name, Request).
 
--spec call/3 :: (pid() | atom(), _, 'infinity' | integer()) -> _.
-call(Name, Request, Timeout) ->
-    gen_server:call(Name, Request, Timeout).
+-spec call(pid() | atom(), _, wh_timeout()) -> _.
+call(Name, Request, Timeout) -> gen_server:call(Name, Request, Timeout).
 
--spec cast/2 :: (pid() | atom(), _) -> 'ok'.
-cast(Dest, Request) ->
-    gen_server:cast(Dest, Request).
+-spec cast(pid() | atom(), _) -> 'ok'.
+cast(Dest, Request) -> gen_server:cast(Dest, Request).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -201,7 +197,7 @@ handle_cast(Msg, State=#gen_changes_state{mod=Module, modstate=ModState}) ->
 handle_info('$try_change_feed', State) ->
     gen_server:cast(self(), '$start_change_feed'),
     {noreply, State};
-handle_info('$poll_for_changes', State=#gen_changes_state{last_seq=undefined, db=Db}) ->
+handle_info('$poll_for_changes', State=#gen_changes_state{last_seq='undefined', db=Db}) ->
     io:format("started polling ~s for changes~n", [Db#db.name]),
     try get_update_seq(Db) of
         UpdateSeq ->
@@ -280,7 +276,7 @@ handle_info(Info, State=#gen_changes_state{mod=Module, modstate=ModState}) ->
 maybe_update_seq([_, _]=Seq, State) ->
     State#gen_changes_state{last_seq=Seq};
 maybe_update_seq(_, State) -> State.
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -313,22 +309,18 @@ code_change(_OldVersion, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_update_seq/1 :: (#db{}) -> list().
+-spec get_update_seq(couchbeam_db()) -> list() | 'undefined'.
+get_update_seq(#db{server='undefined'}) -> 'undefined';
 get_update_seq(#db{server=Server, name=DbName}) ->
-    {ok, JObj} = couch_util:db_info(Server, DbName),
+    {'ok', JObj} = couch_util:db_info(Server, DbName),
     couchbeam_doc:get_value(<<"update_seq">>, JObj).
 
--spec update_since/2 :: (proplist(), #gen_changes_state{}) -> proplist().
+-spec update_since(wh_proplist(), #gen_changes_state{}) -> wh_proplist().
 update_since(Options, #gen_changes_state{last_seq=[SeqNumber, SeqHash]}) ->
     Seq = <<"[", (wh_util:to_binary(SeqNumber))/binary, ",\"", SeqHash/binary, "\"]">>,
     [{since, wh_util:to_list(Seq)} | Options];
 update_since(Options, #gen_changes_state{last_seq=Seq}) ->
-    [{since, Seq} | Options]. 
+    [{since, Seq} | Options].
 
--spec random_wait/0 :: () -> 10000..120000.
-random_wait() ->
-    crypto:rand_uniform(10000, 120000).
-    
-    
-
-
+-spec random_wait() -> 10000..120000.
+random_wait() -> crypto:rand_uniform(10000, 120000).

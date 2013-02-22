@@ -59,19 +59,19 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
--spec update/1 :: (#wh_couch_connection{}) -> 'ok'.
+-spec update(couch_connection()) -> 'ok'.
 update(#wh_couch_connection{}=Connection) ->
     gen_server:cast(?MODULE, {update_connection, Connection}).
 
--spec add/1 :: (#wh_couch_connection{}) -> 'ok'.
+-spec add(couch_connection()) -> 'ok'.
 add(#wh_couch_connection{}=Connection) ->
     gen_server:cast(?MODULE, {add_connection, Connection}).
 
--spec wait_for_connection/0 :: () -> 'ok'.
+-spec wait_for_connection() -> 'ok'.
 wait_for_connection() ->    
     try test_conn() of
         _ -> ok
@@ -81,7 +81,7 @@ wait_for_connection() ->
             wait_for_connection()
     end.    
 
--spec get_host/0 :: () -> string().
+-spec get_host() -> string().
 get_host() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
                                        ,host = '$3', _ = '_'}
@@ -91,7 +91,7 @@ get_host() ->
     {[Host], _} = ets:select(?MODULE, MatchSpec, 1),
     Host.
 
--spec get_port/0 :: () -> integer().
+-spec get_port() -> integer().
 get_port() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
                                        ,port = '$3', _ = '_'}
@@ -101,7 +101,7 @@ get_port() ->
     {[Port], _} = ets:select(?MODULE, MatchSpec, 1),
     Port.
 
--spec get_admin_port/0 :: () -> integer().
+-spec get_admin_port() -> integer().
 get_admin_port() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
                                        ,port = '$3', _ = '_'}
@@ -111,7 +111,7 @@ get_admin_port() ->
     {[AdminPort], _} = ets:select(?MODULE, MatchSpec, 1),
     AdminPort.
 
--spec get_creds/0 :: () -> {string(), string()}.
+-spec get_creds() -> {string(), string()}.
 get_creds() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
                                        ,username = '$3', password = '$4'
@@ -122,7 +122,7 @@ get_creds() ->
     {[Creds], _} = ets:select(?MODULE, MatchSpec, 1),
     Creds.
 
--spec get_server/0 :: () -> #server{}.
+-spec get_server() -> #server{}.
 get_server() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
                                        ,server = '$3', _ = '_'}
@@ -132,7 +132,7 @@ get_server() ->
     {[Server], _} = ets:select(?MODULE, MatchSpec, 1),
     Server.
 
--spec get_admin_server/0 :: () -> #server{}.
+-spec get_admin_server() -> #server{}.
 get_admin_server() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
                                        ,server = '$3', _ = '_'}
@@ -142,7 +142,7 @@ get_admin_server() ->
     {[AdminServer], _} = ets:select(?MODULE, MatchSpec, 1),
     AdminServer.
 
--spec get_url/0 :: () -> ne_binary() | 'undefined'.
+-spec get_url() -> api_binary().
 get_url() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
                                        ,host = '$3', port = '$4'
@@ -154,7 +154,7 @@ get_url() ->
     {[{Host, Port, Username, Password}], _} = ets:select(?MODULE, MatchSpec, 1),
     get_url(Host, Port, Username, Password).
 
--spec get_admin_url/0 :: () -> ne_binary() | 'undefined'.
+-spec get_admin_url() -> api_binary().
 get_admin_url() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
                                        ,host = '$3', port = '$4'
@@ -166,23 +166,20 @@ get_admin_url() ->
     {[{Host, Port, Username, Password}], _} = ets:select(?MODULE, MatchSpec, 1),
     get_url(Host, Port, Username, Password).
 
-test_conn() ->
-    couch_util:server_info(get_server()).
+test_conn() -> couch_util:server_info(get_server()).
 
-test_admin_conn() ->
-    couch_util:server_info(get_admin_server()).
+test_admin_conn() -> couch_util:server_info(get_admin_server()).
 
--spec add_change_handler/1 :: (ne_binary()) -> 'ok'.
-add_change_handler(DbName) ->
-    add_change_handler(DbName, self()).
+-spec add_change_handler(ne_binary()) -> 'ok'.
+add_change_handler(DbName) -> add_change_handler(DbName, self()).
 
--spec add_change_handler/2 :: (ne_binary(), pid() | binary()) -> 'ok'.
+-spec add_change_handler(ne_binary(), pid() | binary()) -> 'ok'.
 add_change_handler(DbName, Pid) when is_pid(Pid) ->
     add_change_handler(DbName, Pid, <<>>);
 add_change_handler(DbName, DocId) ->
     add_change_handler(DbName, self(), DocId).
 
--spec add_change_handler/3 :: (ne_binary(), pid(), binary()) -> 'ok'.
+-spec add_change_handler(ne_binary(), pid(), binary()) -> 'ok'.
 add_change_handler(DbName, Pid, DocId) ->
     lager:debug("add change listener ~p for ~s/~s", [Pid, DbName, DocId]),
     ServerName = wh_gen_changes:server_name(DbName),
@@ -195,23 +192,22 @@ add_change_handler(DbName, Pid, DocId) ->
         exists -> ok
     end.
 
--spec rm_change_handler/1 :: (ne_binary()) -> 'ok'.
-rm_change_handler(DbName) ->
-    rm_change_handler(DbName, self()).
+-spec rm_change_handler(ne_binary()) -> 'ok'.
+rm_change_handler(DbName) -> rm_change_handler(DbName, self()).
 
--spec rm_change_handler/2 :: (ne_binary(), pid() | binary()) -> 'ok'.
+-spec rm_change_handler(ne_binary(), pid() | binary()) -> 'ok'.
 rm_change_handler(DbName, Pid) when is_pid(Pid) ->
     rm_change_handler(DbName, Pid, <<>>);
 rm_change_handler(DbName, DocId) ->
     rm_change_handler(DbName, self(), DocId).
 
--spec rm_change_handler/3 :: (ne_binary(), pid(), binary()) -> 'ok'.
+-spec rm_change_handler(ne_binary(), pid(), binary()) -> 'ok'.
 rm_change_handler(DbName, Pid, DocId) ->
     lager:debug("remove change listener ~p for ~s/~s", [Pid, DbName, DocId]),
     ServerName = wh_gen_changes:server_name(DbName),
     wh_change_handler:rm_listener(ServerName, Pid, DocId).
 
--spec get_node_cookie/0 :: () -> atom().
+-spec get_node_cookie() -> atom().
 get_node_cookie() ->
     Default = gen_server:call(?MODULE, node_cookie),
     try whapps_config:get(?CONFIG_CAT, <<"bigcouch_cookie">>, Default) of
@@ -220,7 +216,7 @@ get_node_cookie() ->
         _:_ -> wh_util:to_atom(Default, true)
     end.
 
--spec set_node_cookie/1 :: (atom()) -> 'ok'.
+-spec set_node_cookie(atom()) -> 'ok'.
 set_node_cookie(Cookie) when is_atom(Cookie) ->
     _ = (catch whapps_config:set(?CONFIG_CAT, <<"bigcouch_cookie">>, wh_util:to_binary(Cookie))),
     gen_server:cast(?MODULE, {node_cookie, Cookie}).
@@ -331,12 +327,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_start_new_connection/1 :: (#wh_couch_connection{}) -> 'ok'.
+-spec maybe_start_new_connection(couch_connection()) -> any().
 maybe_start_new_connection(Connection) ->
     _ = wh_couch_connection_sup:add(Connection),
     _ = ets:insert(?MODULE, Connection).
 
--spec get_url/4 :: (binary(), pos_integer(), string(), string()) -> api_binary().
+-spec get_url(binary(), pos_integer(), string(), string()) -> api_binary().
 get_url(<<>>, _, _, _) -> 'undefined';
 get_url(H, P, [], []) ->
     list_to_binary(["http://", H, ":", wh_util:to_binary(P), "/"]);

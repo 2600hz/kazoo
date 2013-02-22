@@ -69,7 +69,7 @@
                     ,value :: term() | '_' | '$1' | '$2'
                     ,expires :: pos_integer() | 'infinity' | '_' | '$3'
                     ,timestamp = wh_util:current_tstamp() :: pos_integer() | '_' | '$4'
-                    ,callback :: callback_fun() | '_' | '$2' | '$5'
+                    ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5'
                     ,origin :: origin_tuple() | origin_tuples() | '$1' | '_'
                     ,type = 'normal' :: 'normal' | 'monitor' | 'pointer' | '_'
                    }).
@@ -527,25 +527,27 @@ maybe_remove_objects([Object|Objects], Cache) ->
 maybe_remove_object(#cache_obj{key = Key}, Cache) ->
     maybe_remove_object(Key, Cache);
 maybe_remove_object(Key, Cache) ->
-    DeleteSpec = [{#cache_obj{value = '$1'
-                              ,type = 'pointer'
-                              ,_ = '_'}
-                   ,[{'=:=', {const, Key}, '$1'}]
-                   ,['true']
-                  }
-                  ,{#cache_obj{key = '$1'
-                               ,type = 'normal'
-                               ,_ = '_'}
-                    ,[{'=:=', {const, Key}, '$1'}]
-                    ,['true']
-                   }],
+    DeleteSpec =
+        [{#cache_obj{value = '$1'
+                     ,type = 'pointer'
+                     ,_ = '_'}
+          ,[{'=:=', {const, Key}, '$1'}]
+          ,['true']
+         }
+         ,{#cache_obj{key = '$1'
+                      ,type = 'normal'
+                      ,_ = '_'}
+           ,[{'=:=', {const, Key}, '$1'}]
+           ,['true']
+          }],
     ets:select_delete(Cache, DeleteSpec).
 
 -spec maybe_exec_erase_callbacks(term(), atom()) -> 'ok'.
 maybe_exec_erase_callbacks(Key, Cache) ->
     case ets:lookup(Cache, Key) of
         [#cache_obj{callback=Fun
-                    ,value=Value}] when is_function(Fun, 3) ->
+                    ,value=Value}
+        ] when is_function(Fun, 3) ->
             _ = spawn(fun() -> Fun(Key, Value, erase) end),
             ok;
         _Else -> ok
@@ -553,19 +555,20 @@ maybe_exec_erase_callbacks(Key, Cache) ->
 
 -spec maybe_exec_flush_callbacks(atom()) -> 'ok'.
 maybe_exec_flush_callbacks(Cache) ->
-    MatchSpec = [{#cache_obj{key = '$1'
-                             ,value = '$2'
-                             ,callback = '$3'
-                             , _ = '_'
-                            }
-                  ,[{'=/=', '$3', 'undefined'}]
-                  ,[{{'$3', '$1', '$2'}}]
-                 }],
+    MatchSpec =
+        [{#cache_obj{key = '$1'
+                     ,value = '$2'
+                     ,callback = '$3'
+                     , _ = '_'
+                    }
+          ,[{'=/=', '$3', 'undefined'}]
+          ,[{{'$3', '$1', '$2'}}]
+         }],
     _ = [spawn(fun() -> Callback(K, V, 'flush') end)
          || {Callback, K, V} <- ets:select(Cache, MatchSpec),
             is_function(Callback, 3)
         ],
-    ok.
+    'ok'.
 
 -spec maybe_exec_store_callbacks(term(), term(), atom()) -> 'ok'.
 maybe_exec_store_callbacks(Key, Value, Cache) ->

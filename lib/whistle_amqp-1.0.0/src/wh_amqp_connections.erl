@@ -48,7 +48,7 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
--spec add(text()) -> #wh_amqp_connection{} | {'error', _}.
+-spec add(text()) -> wh_amqp_connection() | {'error', _}.
 add(URI) when not is_binary(URI) ->
     add(wh_util:to_binary(URI));
 add(URI) ->
@@ -65,7 +65,7 @@ add(URI) ->
                                     ,params=Params})
     end.
 
--spec new(#wh_amqp_connection{}) -> #wh_amqp_connection{} | {'error', _}.
+-spec new(wh_amqp_connection()) -> wh_amqp_connection() | {'error', _}.
 new(#wh_amqp_connection{uri=URI}=Connection) ->
     case ets:member(?TAB, URI) of
         true ->
@@ -97,7 +97,8 @@ remove(URI) ->
             ok
     end.
 
--spec current() -> {'ok', #wh_amqp_connection{}} | {'error', 'no_available_connection'}.
+-spec current() -> {'ok', wh_amqp_connection()} |
+                   {'error', 'no_available_connection'}.
 current() ->
     Match = #wh_amqp_connection{available=true, _='_'},
     case ets:match_object(?TAB, Match) of
@@ -106,9 +107,10 @@ current() ->
             {error, no_available_connection}
     end.
 
--spec find(ne_binary()) -> #wh_amqp_connection{} | {'error', 'not_found'}.
+-spec find(ne_binary() | string()) -> wh_amqp_connection() |
+                                      {'error', 'not_found'}.
 find(URI) ->
-    case ets:lookup(?TAB, URI) of
+    case ets:lookup(?TAB, wh_util:to_binary(URI)) of
         [#wh_amqp_connection{}=Connection|_] ->
             Connection;
         _Else ->
@@ -131,17 +133,17 @@ wait_for_available() ->
             wait_for_available()
     end.
 
--spec update_exchanges(ne_binary(), [] | [#'exchange.declare'{},...]) -> 'ok'.
+-spec update_exchanges(string() | ne_binary(), wh_exchanges()) -> 'ok'.
 update_exchanges(URI, Exchanges) ->
-    gen_server:cast(?MODULE, {update_exchanges, URI, Exchanges}).
+    gen_server:cast(?MODULE, {update_exchanges, wh_util:to_binary(URI), Exchanges}).
 
--spec connected(#wh_amqp_connection{}) -> #wh_amqp_connection{}.
+-spec connected(wh_amqp_connection()) -> wh_amqp_connection().
 connected(#wh_amqp_connection{connection=Pid}=Connection) when is_pid(Pid) ->
     C = gen_server:call(?MODULE, {connected, Connection}),
     _ = wh_amqp_channels:reconnect(C),
     C.
 
--spec disconnected(#wh_amqp_connection{}) -> #wh_amqp_connection{}.
+-spec disconnected(wh_amqp_connection()) -> wh_amqp_connection().
 disconnected(#wh_amqp_connection{}=Connection) ->
     _ = wh_amqp_channels:lost_connection(Connection),
     gen_server:call(?MODULE, {disconnected, Connection}).
