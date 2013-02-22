@@ -716,7 +716,6 @@ ringing({'channel_answered', ACallId}, #state{agent_call_id=ACallId
                                               ,member_call_id=MCallId
                                               ,acct_id=AcctId
                                               ,agent_id=AgentId
-                                              ,agent_proc=Srv
                                              }=State) ->
     lager:debug("agent answered phone on ~s", [ACallId]),
 

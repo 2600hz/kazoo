@@ -449,7 +449,7 @@ handle_cast('member_connect_accepted', #state{msg_queue_id=AmqpQueue
                                               ,acct_id=AcctId
                                               ,agent_id=AgentId
                                               ,my_id=MyId
-                                              ,record_caller=ShouldRecord
+                                              ,record_calls=ShouldRecord
                                              }=State) ->
     lager:debug("member bridged to agent!"),
     maybe_start_recording(Call, ShouldRecord),
@@ -574,9 +574,7 @@ handle_cast({'outbound_call', Call}, State) ->
     lager:debug("bound to agent's outbound call"),
     {'noreply', State#state{call=Call}, 'hibernate'};
 
-handle_cast({'agent_call_id', ACallId, ACtrlQ}, #state{call=Call
-                                                       ,record_calls=ShouldRecord
-                                                      }=State) ->
+handle_cast({'agent_call_id', ACallId, ACtrlQ}, State) ->
     lager:debug("agent call id set: ~s using ctrl ~s", [ACallId, ACtrlQ]),
 
     acdc_util:bind_to_call_events(ACallId),
@@ -949,7 +947,7 @@ save_recording(Call, MediaName, Format, Url) ->
 
             store_recording(MediaName, StoreUrl, Call);
         'false' when is_binary(Url) ->
-            StoreUrl = iolist_to_binary([wh_util:strip_right_binary(Url, <<"/">>), "/", MediaName]),
+            StoreUrl = iolist_to_binary([wh_util:strip_right_binary(Url, $/), "/", MediaName]),
             lager:debug("using ~s to maybe store recording", [StoreUrl]),
 
             store_recording(MediaName, StoreUrl, Call);
@@ -957,8 +955,7 @@ save_recording(Call, MediaName, Format, Url) ->
             lager:debug("no external url to use, not saving recording")
     end.
 
--spec store_recording(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
-store_recording(_, 'undefined', _) -> lager:debug("no url to store");
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 store_recording(MediaName, StoreUrl, Call) ->
     'ok' = whapps_call_command:store(MediaName, StoreUrl, Call),
     whapps_call_command:set('undefined', wh_json:from_list([{<<"Recording-URL">>, StoreUrl}]), Call).
