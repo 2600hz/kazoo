@@ -21,13 +21,13 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type, Timeout), {I, {I, start_link, []}, permanent, Timeout, Type, [I]}).
 
--define(CHILDREN, [{acdc_agents_sup, supervisor, infinity}
+-define(CHILDREN, [{webseq, worker, 5000}
+                   ,{acdc_agents_sup, supervisor, infinity}
                    ,{acdc_queues_sup, supervisor, infinity}
                    ,{acdc_stats, worker, 5000}
                    ,{acdc_agent_manager, worker, 5000}
                    ,{acdc_init, worker, 5000}
                    ,{acdc_listener, worker, 5000}
-                   ,{webseq, worker, 5000}
                   ]).
 
 %% ===================================================================
