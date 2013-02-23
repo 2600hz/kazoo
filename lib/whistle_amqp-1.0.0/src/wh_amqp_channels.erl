@@ -311,6 +311,7 @@ filter_commands(Pid, Filter) ->
 -type down_matches() :: [down_match(),...] | [].
 
 -spec handle_down_msg(down_matches(), _) -> 'ok'.
+handle_down_msg([], _) -> 'ok';
 handle_down_msg([_|_]=Matches, Reason) ->
     _ = [handle_down_match(Match, Reason) || Match <- Matches],
     ok.
