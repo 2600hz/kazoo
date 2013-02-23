@@ -601,6 +601,7 @@ has_filter(QS) ->
 -spec is_filter_key({binary(), term()}) -> boolean().
 is_filter_key({<<"filter_", _/binary>>, _}) -> true;
 is_filter_key({<<"has_key", _/binary>>, _}) -> true;
+is_filter_key({<<"key_missing", _/binary>>, _}) -> true;
 is_filter_key({<<"has_value", _/binary>>, _}) -> true;
 is_filter_key({<<"created_from">>, _}) -> true;
 is_filter_key({<<"created_to">>, _}) -> true;
@@ -631,6 +632,8 @@ filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
     wh_json:get_binary_value(binary:split(Key, <<".">>), Doc, <<>>) =:= wh_util:to_binary(Val);
 filter_prop(Doc, <<"has_key">>, Key) ->
     wh_json:get_value(binary:split(Key, <<".">>), Doc) =/= undefined;
+filter_prop(Doc, <<"key_missing">>, Key) ->
+    wh_json:get_value(binary:split(Key, <<".">>), Doc) =:= undefined;
 filter_prop(Doc, <<"has_value">>, Key) ->
     wh_json:get_ne_value(binary:split(Key, <<".">>), Doc) =/= undefined;
 filter_prop(Doc, <<"created_from">>, Val) ->
