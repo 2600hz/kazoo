@@ -467,7 +467,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
     SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
 
     ForceFax = case wh_json:is_true(<<"fax_option">>, MediaJObj) of
-                   false -> undefined;
+                   false -> 'undefined';
                    true -> <<"self">>
                end,
 
@@ -625,10 +625,10 @@ generate_sip_headers(Endpoint, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec generate_ccvs(wh_json:object(), whapps_call:call()) -> wh_json:object().
--spec generate_ccvs(wh_json:object(), whapps_call:call(), 'undefined' | wh_json:object()) -> wh_json:object().
+-spec generate_ccvs(wh_json:object(), whapps_call:call(), api_object()) -> wh_json:object().
 
 generate_ccvs(Endpoint, Call) ->
-    generate_ccvs(Endpoint, Call, undefined).
+    generate_ccvs(Endpoint, Call, 'undefined').
 
 generate_ccvs(Endpoint, Call, CallFwd) ->
     CCVFuns = [fun(J) ->
@@ -641,7 +641,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                end
                ,fun(J) ->
                         case wh_json:get_value(<<"_id">>, Endpoint) of
-                            undefined -> J;
+                            'undefined' -> J;
                             EndpointId ->
                                 wh_json:set_value(<<"Authorizing-ID">>, EndpointId, J)
                         end

@@ -48,7 +48,7 @@
 %% @spec update_all_accounts() -> ok | error
 %% @end
 %%--------------------------------------------------------------------
--spec update_all_accounts/1 :: (ne_binary()) -> 'ok'.
+-spec update_all_accounts(ne_binary()) -> 'ok'.
 update_all_accounts(File) ->
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2000),
@@ -62,7 +62,7 @@ update_all_accounts(File) ->
 %% application priv/couchdb/views/ folder into every account
 %% @end
 %%--------------------------------------------------------------------
--spec revise_whapp_views_in_accounts/1 :: (atom()) -> 'ok'.
+-spec revise_whapp_views_in_accounts(atom()) -> 'ok'.
 revise_whapp_views_in_accounts(App) ->
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2000),
@@ -76,7 +76,7 @@ revise_whapp_views_in_accounts(App) ->
 %% account db into the target database
 %% @end
 %%--------------------------------------------------------------------
--spec replicate_from_accounts/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+-spec replicate_from_accounts(ne_binary(), ne_binary()) -> 'ok'.
 replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2000),
@@ -90,7 +90,7 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
 %% source database into the target database
 %% @end
 %%--------------------------------------------------------------------
--spec replicate_from_account/3 :: (ne_binary(), ne_binary(), ne_binary()) ->
+-spec replicate_from_account(ne_binary(), ne_binary(), ne_binary()) ->
                                           'ok' | {'error', 'matching_dbs'}.
 replicate_from_account(AccountDb, AccountDb, _) ->
     lager:debug("requested to replicate from db ~s to self, skipping", [AccountDb]),
@@ -118,7 +118,7 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
 %% set it to the oldest acccount and return that.
 %% @end
 %%--------------------------------------------------------------------
--spec get_master_account_id/0 :: () -> {'ok', ne_binary()} |
+-spec get_master_account_id() -> {'ok', ne_binary()} |
                                        {'error', atom()}.
 get_master_account_id() ->
     case whapps_config:get(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>) of
@@ -142,7 +142,7 @@ get_master_account_id({ok, Accounts}) ->
 %% Given a list of accounts this returns the id of the oldest
 %% @end
 %%--------------------------------------------------------------------
--spec find_oldest_doc/1 :: (wh_json:objects()) ->
+-spec find_oldest_doc(wh_json:objects()) ->
                                    {'ok', ne_binary()} |
                                    {'error', 'no_docs'}.
 find_oldest_doc([]) -> {error, no_docs};
@@ -168,8 +168,8 @@ find_oldest_doc([First|Docs]) ->
 %% in the requested encoding
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_accounts/0 :: () -> ne_binaries().
--spec get_all_accounts/1 :: ('unencoded' | 'encoded' | 'raw') -> ne_binaries().
+-spec get_all_accounts() -> ne_binaries().
+-spec get_all_accounts('unencoded' | 'encoded' | 'raw') -> ne_binaries().
 get_all_accounts() -> get_all_accounts(?REPLICATE_ENCODING).
 
 get_all_accounts(Encoding) ->
@@ -186,10 +186,10 @@ is_account_db(_) -> false.
 %% @doc Realms are one->one with accounts.
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_by_realm/1 :: (ne_binary()) ->
-                                        {'ok', wh_json:json_string()} |
-                                        {'multiples', wh_json:json_strings()} |
-                                        {'error', 'not_found'}.
+-spec get_account_by_realm(ne_binary()) ->
+                                  {'ok', wh_json:json_string()} |
+                                  {'multiples', wh_json:json_strings()} |
+                                  {'error', 'not_found'}.
 get_account_by_realm(Realm) ->
     case wh_cache:peek({?MODULE, account_by_realm, Realm}) of
         {ok, Ok} -> Ok;
@@ -226,10 +226,10 @@ get_account_by_realm(Realm) ->
 %% unique.
 %% @end
 %%--------------------------------------------------------------------
--spec get_accounts_by_name/1 :: (ne_binary()) ->
-                                        {'ok', wh_json:json_string()} |
-                                        {'multiples', wh_json:json_strings()} |
-                                        {'error', 'not_found'}.
+-spec get_accounts_by_name(ne_binary()) ->
+                                  {'ok', wh_json:json_string()} |
+                                  {'multiples', wh_json:json_strings()} |
+                                  {'error', 'not_found'}.
 get_accounts_by_name(Name) ->
     case wh_cache:peek({?MODULE, account_by_name, Name}) of
         {ok, Ok} -> Ok;
