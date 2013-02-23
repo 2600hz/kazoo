@@ -179,7 +179,7 @@ find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loo
     ok;
 find_mailbox(Box, Call, Loop) ->
     lager:info("requesting mailbox number to check"),
-    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_id">>, <<"1">>, Call) of
+    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"15">>, <<"vm-enter_id">>, <<"1">>, Call) of
         {ok, <<>>} ->
             find_mailbox(Box, Call, Loop + 1);
         {ok, Mailbox} ->
