@@ -600,6 +600,8 @@ has_filter(QS) ->
 %%--------------------------------------------------------------------
 -spec is_filter_key({binary(), term()}) -> boolean().
 is_filter_key({<<"filter_", _/binary>>, _}) -> true;
+is_filter_key({<<"has_key", _/binary>>, _}) -> true;
+is_filter_key({<<"has_value", _/binary>>, _}) -> true;
 is_filter_key({<<"created_from">>, _}) -> true;
 is_filter_key({<<"created_to">>, _}) -> true;
 is_filter_key({<<"modified_from">>, _}) -> true;
