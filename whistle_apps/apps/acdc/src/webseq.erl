@@ -69,7 +69,9 @@ process_pid(P) ->
 reg_who(P, W) -> gen_server:cast(?MODULE, {reg_who, P, W}).
 
 who(P) ->
-    case gen_server:call(?MODULE, {who, P}) of
+    case catch gen_server:call(?MODULE, {who, P}) of
+        {'EXIT', _} when is_pid(P) -> pid_to_list(P);
+        {'EXIT', _} -> P;
         undefined when is_pid(P) -> pid_to_list(P);
         undefined -> P;
         W -> W
