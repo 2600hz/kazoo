@@ -490,7 +490,7 @@ compact({compact_db, N, D}, #state{conn=Conn
                                    ,current_job_pid=P
                                    ,current_job_ref=Ref
                                   }=State) ->
-    case couch_util:db_exists(Conn, D) of
+    case couch_util:db_exists(Conn, encode_db(D)) of
         'false' ->
             lager:debug("db ~s not found on ~s", [D, N]),
             maybe_send_update(P, Ref, job_finished),
@@ -515,7 +515,7 @@ compact({compact_db, N, D}, #state{conn=Conn
                                    ,admin_conn=AdminConn
                                    ,nodes=[Node|Ns]
                                   }=State) ->
-    case couch_util:db_exists(Conn, D) of
+    case couch_util:db_exists(Conn, encode_db(D)) of
         'false' ->
             lager:debug("db ~s not found on ~s", [D, N]),
             gen_fsm:send_event(self(), {compact_db, Node, D}),
