@@ -832,11 +832,14 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
                                    ,{<<"Retain-CID">>, <<"true">>}
                                   ]),
 
-    Endpoints = [wh_json:set_values([{<<"Endpoint-Timeout">>, Timeout}
-                                     ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
-                                     ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
-                                    ], EP)
-                 || EP <- EPs
+    Built = lists:foldl(fun(EP, Acc) ->
+                                case cf_endpoint:build(EP, Call) of
+                                    {'ok', EP1} -> EP1 ++ Acc;
+                                    {'error', _} -> Acc
+                                end
+                        end, [], EPs),
+    Endpoints = [wh_json:set_value(<<"Endpoint-Timeout">>, Timeout, EP)
+                 || EP <- Built
                 ],
 
     Prop = props:filter_undefined(
@@ -865,15 +868,18 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
 
     wapi_resource:publish_originate_req(Prop).
 
-outbound_call_id(CallId) when is_binary(CallId) -> wh_util:to_hex_binary(erlang:md5(CallId));
+outbound_call_id(CallId) when is_binary(CallId) ->
+    wh_util:to_hex_binary(erlang:md5(CallId));
 outbound_call_id(Call) -> outbound_call_id(whapps_call:call_id(Call)).
 
 -spec login_to_queue(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 login_to_queue(AcctId, AgentId, QueueId) ->
-    gen_listener:add_binding(self(), 'acdc_queue', [{'restrict_to', ['member_connect_req']}
-                                                    ,{'queue_id', QueueId}
-                                                    ,{'account_id', AcctId}
-                                                   ]),
+    gen_listener:add_binding(self()
+                             ,'acdc_queue'
+                             ,[{'restrict_to', ['member_connect_req']}
+                               ,{'queue_id', QueueId}
+                               ,{'account_id', AcctId}
+                              ]),
     Prop = [{<<"Account-ID">>, AcctId}
             ,{<<"Agent-ID">>, AgentId}
             ,{<<"Queue-ID">>, QueueId}
@@ -884,10 +890,12 @@ login_to_queue(AcctId, AgentId, QueueId) ->
 
 -spec logout_from_queue(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 logout_from_queue(AcctId, AgentId, QueueId) ->
-    gen_listener:rm_binding(self(), 'acdc_queue', [{'restrict_to', ['member_connect_req']}
-                                                   ,{'queue_id', QueueId}
-                                                   ,{'account_id', AcctId}
-                                                ]),
+    gen_listener:rm_binding(self()
+                            ,'acdc_queue'
+                            ,[{'restrict_to', ['member_connect_req']}
+                              ,{'queue_id', QueueId}
+                              ,{'account_id', AcctId}
+                             ]),
     Prop = [{<<"Account-ID">>, AcctId}
             ,{<<"Agent-ID">>, AgentId}
             ,{<<"Queue-ID">>, QueueId}

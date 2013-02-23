@@ -90,18 +90,18 @@ get_endpoints(Call, ?NE_BINARY = AgentId) ->
 get_endpoints(_Call, {'ok', []}) -> [];
 get_endpoints(_Call, {'error', _E}) -> [];
 get_endpoints(Call, {'ok', Devices}) ->
-    EPDocs = [EPDoc
-              || Device <- Devices,
-                 (EPDoc = get_endpoint(Call, wh_json:get_value(<<"id">>, Device))) =/= 'undefined',
-                 wh_json:is_true(<<"enabled">>, EPDoc, 'false')
-             ],
+    [EPDoc
+     || Device <- Devices,
+        (EPDoc = get_endpoint(Call, wh_json:get_value(<<"id">>, Device))) =/= 'undefined',
+        wh_json:is_true(<<"enabled">>, EPDoc, 'false')
+    ].
 
-    lists:foldl(fun(EPDoc, Acc) ->
-                        case cf_endpoint:build(EPDoc, Call) of
-                            {'ok', EP} -> EP ++ Acc;
-                            {'error', _} -> Acc
-                        end
-                end, [], EPDocs).
+    %% lists:foldl(fun(EPDoc, Acc) ->
+    %%                     case cf_endpoint:build(EPDoc, Call) of
+    %%                         {'ok', EP} -> EP ++ Acc;
+    %%                         {'error', _} -> Acc
+    %%                     end
+    %%             end, [], EPDocs).
 
 -spec get_endpoint(whapps_call:call(), ne_binary()) -> api_object().
 get_endpoint(Call, ?NE_BINARY = EndpointId) ->

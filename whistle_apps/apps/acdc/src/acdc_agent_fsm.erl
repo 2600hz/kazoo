@@ -1171,11 +1171,11 @@ handle_event('load_endpoints', StateName, #state{acct_db=AcctDb
             acdc_agent:stop(Srv),
             {'stop', 'normal', State};
         [_|_]=EPs ->
-            lager:debug("endpoints loaded and registered"),
+            lager:debug("endpoints loaded and registered: ~p", [EPs]),
 
             _ = [acdc_agent:add_endpoint_bindings(Srv
-                                                  ,wh_json:get_value(<<"To-Realm">>, EP)
-                                                  ,wh_json:get_value(<<"To-Username">>, EP)
+                                                  ,cf_util:get_sip_realm(EP, AcctId)
+                                                  ,wh_json:get_value([<<"sip">>, <<"username">>], EP)
                                                  )
                  || EP <- EPs
                 ],
