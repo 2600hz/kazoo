@@ -29,51 +29,50 @@
          ,terminate/2
         ]).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("acdc.hrl").
 
 -define(WEBSEQNAME, "/tmp/webseq.txt").
 
 -record(state, {io_device :: file:io_device()
-               ,who_registry :: dict()
+                ,who_registry :: dict()
                }).
 
-start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 -type who() :: pid() | ne_binary().
 -type what() :: ne_binary() | iolist().
 
 -spec title(what()) -> 'ok'.
 title(Title) ->
-    gen_server:cast(?MODULE, {write, "title ~s~n", [what(Title)]}).
+    gen_server:cast(?MODULE, {'write', "title ~s~n", [what(Title)]}).
 
 -spec evt(who(), who(), what()) -> 'ok'.
 evt(From, To, Desc) ->
-    gen_server:cast(?MODULE, {write, "~s->~s: ~s~n", [who(From), who(To), what(Desc)]}).
+    gen_server:cast(?MODULE, {'write', "~s->~s: ~s~n", [who(From), who(To), what(Desc)]}).
 
 -spec note(who(), 'right' | 'left', what()) -> 'ok'.
 note(Who, Dir, Note) ->
-    gen_server:cast(?MODULE, {write, "note ~s of ~s: ~s~n", [Dir, who(Who), what(Note)]}).
+    gen_server:cast(?MODULE, {'write', "note ~s of ~s: ~s~n", [Dir, who(Who), what(Note)]}).
 
-trunc() -> gen_server:cast(?MODULE, trunc).
-rotate() -> gen_server:cast(?MODULE, rotate).
+trunc() -> gen_server:cast(?MODULE, 'trunc').
+rotate() -> gen_server:cast(?MODULE, 'rotate').
 
 process_pid(P) ->
     ProcId = wh_json:get_value(<<"Process-ID">>, P),
-    case re:run(ProcId, <<".*(\<.*\>)">>, [{capture, [1], binary}]) of
-        {match, [M]} -> M;
-        {match, M} -> iolist_to_binary(M);
+    case re:run(ProcId, <<".*(\<.*\>)">>, [{'capture', [1], 'binary'}]) of
+        {'match', [M]} -> M;
+        {'match', M} -> iolist_to_binary(M);
         _ -> ProcId
     end.
 
-reg_who(P, W) -> gen_server:cast(?MODULE, {reg_who, P, W}).
+reg_who(P, W) -> gen_server:cast(?MODULE, {'reg_who', P, W}).
 
 who(P) ->
-    case catch gen_server:call(?MODULE, {who, P}) of
+    case catch gen_server:call(?MODULE, {'who', P}) of
         {'EXIT', _} when is_pid(P) -> pid_to_list(P);
         {'EXIT', _} -> P;
-        undefined when is_pid(P) -> pid_to_list(P);
-        undefined -> P;
+        'undefined' when is_pid(P) -> pid_to_list(P);
+        'undefined' -> P;
         W -> W
     end.
 
@@ -86,55 +85,60 @@ init(_) ->
     case file:open(?WEBSEQNAME, ['append', 'raw', 'delayed_write']) of
         {'ok', IO} ->
             {'ok', #state{io_device=IO
-                        ,who_registry=dict:new()
-                       }};
+                          ,who_registry=dict:new()
+                         }};
         {'error', 'eaccess'} ->
             lager:info("failed to open ~s, eaccess error - check permissions", [?WEBSEQNAME]),
-            'ignore';
+            {'ok', #state{}};
         {'error', _E} ->
             lager:info("failed to open ~s, error: ~s", [?WEBSEQNAME, _E]),
-            'ignore'
+            {'ok', #state{}}
     end.
 
-handle_call({who, P}, _, #state{who_registry=Who}=State) when is_pid(P) ->
+handle_call(_Req, _, #state{io_device='undefined'}=State) ->
+    {'reply', 'webseq_not_available', State};
+handle_call({'who', P}, _, #state{who_registry=Who}=State) when is_pid(P) ->
     PBin = wh_util:to_binary(pid_to_list(P)),
     case dict:find(PBin, Who) of
-        {ok, V} -> {reply, V, State};
-        error -> {reply, P, State}
+        {'ok', V} -> {'reply', V, State};
+        'error' -> {'reply', P, State}
     end;
-handle_call({who, P}, _, #state{who_registry=Who}=State) ->
+handle_call({'who', P}, _, #state{who_registry=Who}=State) ->
     case dict:find(P, Who) of
-        {ok, V} -> {reply, V, State};
-        error -> {reply, P, State}
+        {'ok', V} -> {'reply', V, State};
+        'error' -> {'reply', P, State}
     end;
 handle_call(_,_,S) ->
-    {reply, ok, S}.
+    {'reply', 'ok', S}.
 
-handle_cast({write, Str, Args}, #state{io_device=IO}=State) ->
+handle_cast(_Req, #state{io_device='undefined'}=State) ->
+    {'noreply', State};
+handle_cast({'write', Str, Args}, #state{io_device=IO}=State) ->
     catch file:write(IO, io_lib:format(Str, Args)),
-    {noreply, State};
-handle_cast(trunc, #state{io_device=IO}=State) ->
+    {'noreply', State};
+handle_cast('trunc', #state{io_device=IO}=State) ->
     catch file:truncate(IO),
-    {noreply, State};
-handle_cast(rotate, #state{io_device=OldIO}=State) ->
+    {'noreply', State};
+handle_cast('rotate', #state{io_device=OldIO}=State) ->
     _ = file:close(OldIO),
     _ = file:rename(?WEBSEQNAME, iolist_to_binary([?WEBSEQNAME, ".", wh_util:to_binary(wh_util:current_tstamp())])),
-    {ok, IO} = file:open(?WEBSEQNAME, [append, raw, delayed_write]),
-    {noreply, State#state{io_device=IO}};
-handle_cast({reg_who, P, W}, #state{who_registry=Who}=State) when is_pid(P) ->
+    {'ok', IO} = file:open(?WEBSEQNAME, [append, raw, delayed_write]),
+    {'noreply', State#state{io_device=IO}};
+handle_cast({'reg_who', P, W}, #state{who_registry=Who}=State) when is_pid(P) ->
     PBin = wh_util:to_binary(pid_to_list(P)),
-    {noreply, State#state{who_registry=dict:store(PBin, W, Who)}};
+    {'noreply', State#state{who_registry=dict:store(PBin, W, Who)}};
     
 handle_cast(_,S) ->
-    {noreply, S}.
+    {'noreply', S}.
 
 handle_info(_Info, S) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, S}.
+    {'noreply', S}.
 
 code_change(_, S, _) ->
-    {ok, S}.
+    {'ok', S}.
 
+terminate(_Reason, #state{io_device='undefined'}) -> 'ok';
 terminate(_Reason, #state{io_device=IO}) ->
     _ = file:close(IO),
     lager:debug("webseq terminating: ~p", [_Reason]).
