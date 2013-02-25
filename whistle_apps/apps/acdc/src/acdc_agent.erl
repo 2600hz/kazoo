@@ -953,7 +953,7 @@ save_recording(Call, MediaName, Format, Url) ->
         'true' ->
             {'ok', MediaJObj} = store_recording_meta(Call, MediaName, Format),
             lager:debug("stored meta: ~p", [MediaJObj]),
-            
+
             StoreUrl = store_url(Call, MediaJObj),
             lager:debug("store url: ~s", [StoreUrl]),
 

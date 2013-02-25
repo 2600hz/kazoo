@@ -33,16 +33,16 @@ reg_success(Props, Node) ->
 
 -spec lookup_contact(ne_binary(), ne_binary()) ->
                             {'ok', ne_binary()} |
-                            {'error', 'timeout'}.
+                            {'error', 'not_found'}.
 lookup_contact(Realm, Username) ->
     case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username)) of
         {'ok', _}=OK -> OK;
-        {error, not_found} ->
+        {'error', 'not_found'} ->
             case lookup(Realm, Username, [<<"Contact">>]) of
-                [{<<"Contact">>, Contact}] -> {ok, Contact};
-                {error, _R}=E ->
+                [{<<"Contact">>, Contact}] -> {'ok', Contact};
+                {'error', _R} ->
                     lager:notice("failed to find contact for ~s@~s: ~p", [Username, Realm, _R]),
-                    E
+                    {'error', 'not_found'}
             end
     end.
 
@@ -51,22 +51,22 @@ lookup_contact(Realm, Username) ->
                            {'error', 'not_found'}.
 endpoint_node(Realm, Username) ->
     case wh_cache:fetch_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username)) of
-        {ok, Node} -> {ok, Node};
-        {error, not_found} ->
+        {'ok', Node} -> {'ok', Node};
+        {'error', 'not_found'} ->
             case lookup(Realm, Username, [<<"FreeSWITCH-Nodename">>]) of
-                [{<<"FreeSWITCH-Nodename">>, Node}] -> {ok, wh_util:to_atom(Node, true)};
-                {error, _R}=E ->
+                [{<<"FreeSWITCH-Nodename">>, Node}] -> {'ok', wh_util:to_atom(Node, 'true')};
+                {'error', _R} ->
                     lager:notice("failed to find node name for ~s@~s: ~p", [Username, Realm, _R]),
-                    E
+                    {'error', 'not_found'}
             end
     end.
 
 -spec lookup(ne_binary(), ne_binary(), ne_binaries()) ->
                     wh_proplist() |
-                    {'error', 'timeout'}.
+                    {'error', 'not_found'}.
 lookup(Realm, Username, Fields) ->
     case maybe_query_registrar(Realm, Username) of
-        {'error', _R} -> {'error', 'timeout'};
+        {'error', _R} -> {'error', 'not_found'};
         {'ok', Props} when Fields =:= [] -> Props;
         {'ok', Props} ->
             FilterFun = fun({K, _}=V, Acc) ->
@@ -80,7 +80,7 @@ lookup(Realm, Username, Fields) ->
 
 -spec maybe_query_registrar(ne_binary(), ne_binary()) ->
                                    {'ok', wh_proplist()} |
-                                   {'error', 'timeout'}.
+                                   {'error', 'not_found'}.
 maybe_query_registrar(Realm, Username) ->
     case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?LOOKUP_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
@@ -89,7 +89,7 @@ maybe_query_registrar(Realm, Username) ->
 
 -spec query_registrar(ne_binary(), ne_binary()) ->
                              {'ok', wh_proplist()} |
-                             {'error', 'timeout'}.
+                             {'error', 'not_found'}.
 query_registrar(Realm, Username) ->
     lager:debug("looking up registration information for ~s@~s", [Username, Realm]),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
@@ -99,20 +99,21 @@ query_registrar(Realm, Username) ->
                                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                    ]
                                   ,fun wapi_registration:publish_query_req/1
-                                  ,fun wapi_registration:query_resp_v/1),
+                                  ,fun wapi_registration:query_resp_v/1
+                                 ),
     case ReqResp of
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("did not receive registrar response: ~p", [_R]),
-            {'error', 'timeout'};
-        {ok, RespJObj} ->
+            {'error', 'not_found'};
+        {'ok', RespJObj} ->
             lager:debug("received registration information"),
             JObj = wh_json:get_value(<<"Fields">>, RespJObj, wh_json:new()),
             Props = wh_json:to_proplist(JObj),
-            CacheProps = [{expires, ecallmgr_util:get_expires(Props)}],
+            CacheProps = [{'expires', ecallmgr_util:get_expires(Props)}],
             wh_cache:store_local(?ECALLMGR_REG_CACHE, ?LOOKUP_KEY(Realm, Username), Props, CacheProps),
             Contact = wh_json:get_value(<<"Contact">>, JObj),
             wh_cache:store_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username), Contact, CacheProps),
-            Node = wh_util:to_atom(wh_json:get_value(<<"FreeSWITCH-Nodename">>, JObj), true),
+            Node = wh_util:to_atom(wh_json:get_value(<<"FreeSWITCH-Nodename">>, JObj), 'true'),
             wh_cache:store_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username), Node, CacheProps),
-            {ok, Props}
+            {'ok', Props}
     end.

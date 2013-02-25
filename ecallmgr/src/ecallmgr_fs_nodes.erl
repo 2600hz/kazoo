@@ -53,6 +53,8 @@
                ,client_version :: api_binary()
                ,options = [] :: wh_proplist()
               }).
+-type fs_node() :: #node{}.
+
 -record(astats, {billing_ids =          sets:new() :: set()
                  ,outbound_flat_rate =  sets:new() :: set()
                  ,inbound_flat_rate =   sets:new() :: set()
@@ -545,7 +547,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_handle_nodeup(#node{}, state()) -> 'ok'.
+-spec maybe_handle_nodeup(fs_node(), state()) -> 'ok'.
 maybe_handle_nodeup(NodeName, #state{nodes=Nodes}=State) ->
     case dict:find(NodeName, Nodes) of
         {'ok', #node{connected='false'}=Node} ->
@@ -553,7 +555,7 @@ maybe_handle_nodeup(NodeName, #state{nodes=Nodes}=State) ->
         _Else -> 'ok'
     end.
 
--spec maybe_handle_nodedown(#node{}, state()) -> 'ok'.
+-spec maybe_handle_nodedown(fs_node(), state()) -> 'ok'.
 maybe_handle_nodedown(NodeName, #state{nodes=Nodes}=State) ->
     case dict:find(NodeName, Nodes) of
         {'ok', #node{connected='true'}=Node} ->
@@ -586,12 +588,12 @@ maybe_rm_fs_node(NodeName, #state{nodes=Nodes}=State) ->
             rm_fs_node(Node, State)
     end.
 
--spec rm_fs_node(#node{}, state()) -> 'ok'.
+-spec rm_fs_node(fs_node(), state()) -> 'ok'.
 rm_fs_node(#node{}=Node, #state{self=Srv}) ->
     _ = maybe_disconnect_from_node(Node),    
     gen_listener:cast(Srv, {'remove_node', Node}).
 
--spec handle_nodeup(#node{}, state()) -> 'ok'.
+-spec handle_nodeup(fs_node(), state()) -> 'ok'.
 handle_nodeup(#node{}=Node, #state{self=Srv}) ->
     NewNode = get_fs_client_version(Node),
     case maybe_connect_to_node(NewNode) of
@@ -603,7 +605,7 @@ handle_nodeup(#node{}=Node, #state{self=Srv}) ->
             gen_listener:cast(Srv, {'update_node', NewNode#node{connected='true'}})
     end.
     
--spec handle_nodedown(#node{}, state()) -> 'ok'.
+-spec handle_nodedown(fs_node(), state()) -> 'ok'.
 handle_nodedown(#node{node=NodeName}=Node, #state{self=Srv}) ->
     lager:critical("recieved node down notice for ~s", [NodeName]),
     _ = maybe_disconnect_from_node(Node),
@@ -616,7 +618,7 @@ handle_nodedown(#node{node=NodeName}=Node, #state{self=Srv}) ->
             gen_listener:cast(Srv, {'update_node', Node#node{connected='true'}})
     end.
 
--spec maybe_connect_to_node(#node{}) -> 'ok' | {'error', _}.
+-spec maybe_connect_to_node(fs_node()) -> 'ok' | {'error', _}.
 maybe_connect_to_node(#node{node=NodeName}=Node) ->
     lager:debug("attempting to connect to freeswitch node ~s", [NodeName]),
     case maybe_ping_node(Node) of
@@ -626,49 +628,48 @@ maybe_connect_to_node(#node{node=NodeName}=Node) ->
             'ok'
     end.
 
--spec maybe_ping_node(#node{}) -> 'ok' | {'error', _}.
+-spec maybe_ping_node(fs_node()) -> 'ok' | {'error', _}.
 maybe_ping_node(#node{node=NodeName, cookie=Cookie}=Node) ->
     erlang:set_cookie(NodeName, Cookie),
     case net_adm:ping(NodeName) of
-        pong ->
+        'pong' ->
             _ = ecallmgr_fs_pinger_sup:remove_node(NodeName),
             maybe_start_node_handlers(Node);
         _Else ->
             lager:warning("unable to connect to node '~s'; ensure it is reachable from this server and using cookie '~s'", [NodeName, Cookie]),
-            {'error', no_connection}
+            {'error', 'no_connection'}
     end.
 
--spec maybe_start_node_handlers(#node{}) -> 'ok' | {'error', _}.
-maybe_start_node_handlers(#node{node=NodeName, client_version=Version
-                                ,cookie=Cookie, options=Props}=Node) ->
-    try ecallmgr_fs_sup:add_node(NodeName, [{cookie, Cookie}
-                                            ,{client_version, Version}
-                                            | props:delete(cookie, Props)
+-spec maybe_start_node_handlers(fs_node()) -> 'ok' | {'error', _}.
+maybe_start_node_handlers(#node{node=NodeName
+                                ,client_version=Version
+                                ,cookie=Cookie
+                                ,options=Props
+                               }=Node) ->
+    try ecallmgr_fs_sup:add_node(NodeName, [{'cookie', Cookie}
+                                            ,{'client_version', Version}
+                                            | props:delete('cookie', Props)
                                            ])
     of
-        {ok, _} -> initialize_node_connection(Node);
-        {error, {already_started, _}} -> ok;
-        {error, _R}=E ->
+        {'ok', _} -> initialize_node_connection(Node);
+        {'error', {'already_started', _}} -> 'ok';
+        {'error', _R}=E ->
             lager:warning("unable to start node ~s handlers: ~-255p", [NodeName, _R]),
             E;
-        timeout ->
-            lager:warning("connection timeout while starting node ~s handlers", [NodeName]),
-            {error, timeout};
         _Else ->
             lager:warning("unexpected result trying to start ~s node handlers: ~-255p", [NodeName, _Else]),
-            {'error', failed_starting_handlers}
+            {'error', 'failed_starting_handlers'}
     catch
         _:Reason ->
             ST = erlang:get_stacktrace(),
             lager:warning("exception starting node ~s handlers: ~p", [NodeName, Reason]),
-            _ = [lager:debug("st: ~p", [S]) || S <- ST],
+            wh_util:log_stacktrace(ST),
             {'error', Reason}
     end.
 
--spec initialize_node_connection(#node{}) -> 'ok'.
+-spec initialize_node_connection(fs_node()) -> 'ok'.
 initialize_node_connection(#node{}=Node) ->
-    start_node_stats(Node),
-    ok.
+    start_node_stats(Node).
 
 maybe_disconnect_from_node(#node{node=NodeName, connected='true'}=Node) ->
     lager:warning("disconnected from node ~s", [NodeName]),
@@ -678,7 +679,7 @@ maybe_disconnect_from_node(#node{node=NodeName, connected='true'}=Node) ->
 maybe_disconnect_from_node(#node{connected='false'}) ->
     'ok'.
 
--spec maybe_start_node_pinger(#node{}) -> 'ok'. 
+-spec maybe_start_node_pinger(fs_node()) -> 'ok'. 
 maybe_start_node_pinger(#node{node=NodeName, options=Props}=Node) ->
     case ecallmgr_fs_pinger_sup:add_node(NodeName, Props) of
         {'ok', _} -> 'ok';
@@ -690,12 +691,12 @@ maybe_start_node_pinger(#node{node=NodeName, options=Props}=Node) ->
             lager:critical("failed to start fs pinger for node '~s': ~p", [NodeName, _Else])
     end.
 
--spec close_node(#node{}) -> 'ok' | {'error','not_found' | 'running' | 'simple_one_for_one'}.
+-spec close_node(fs_node()) -> 'ok' | {'error','not_found' | 'running' | 'simple_one_for_one'}.
 close_node(#node{node=NodeName}) ->
     _ = ecallmgr_fs_sup:remove_node(NodeName),
     ecallmgr_fs_pinger_sup:remove_node(NodeName).
 
--spec create_node(text(), text(), wh_proplist()) -> #node{}.
+-spec create_node(text(), text(), wh_proplist()) -> fs_node().
 create_node(NodeName, Cookie, Options) when not is_atom(NodeName) ->
     create_node(wh_util:to_atom(NodeName, 'true'), Cookie, Options);
 create_node(NodeName, Cookie, Options) when not is_atom(Cookie) ->
@@ -713,7 +714,7 @@ get_fs_cookie('undefined', Props) ->
 get_fs_cookie(Cookie, _) when is_atom(Cookie) ->
     Cookie.
 
--spec bind_to_fs_events(#node{}) -> 'ok'.
+-spec bind_to_fs_events(fs_node()) -> 'ok'.
 bind_to_fs_events(#node{node=NodeName, client_version = <<"mod_kazoo", _/binary>>}) ->
     freeswitch:event(NodeName, ['CHANNEL_CREATE', 'CHANNEL_DESTROY'
                                 ,'CHANNEL_EXECUTE_COMPLETE', 'CHANNEL_ANSWER'
@@ -725,20 +726,20 @@ bind_to_fs_events(#node{node=NodeName}) ->
     %% freeswitch server connection flaps and we re-connect before
     %% unbinding.  Therefore, we no longer unbind and we catch the
     %% exception generated by re-reg'n existing bindings. -Karl
-    catch gproc:reg({p, l, {event, NodeName, <<"CHANNEL_CREATE">>}}),
-    catch gproc:reg({p, l, {event, NodeName, <<"CHANNEL_DESTROY">>}}),
-    catch gproc:reg({p, l, {event, NodeName, <<"CHANNEL_ANSWER">>}}),
-    catch gproc:reg({p, l, {event, NodeName, <<"channel_move::move_complete">>}}),
-    catch gproc:reg({p, l, {event, NodeName, <<"conference::maintenance">>}}),
-    catch gproc:reg({p, l, {event, NodeName, <<"CHANNEL_EXECUTE_COMPLETE">>}}),
+    catch gproc:reg({p, l, ?FS_EVENT_REG_MSG(NodeName, <<"CHANNEL_CREATE">>)}),
+    catch gproc:reg({p, l, ?FS_EVENT_REG_MSG(NodeName, <<"CHANNEL_DESTROY">>)}),
+    catch gproc:reg({p, l, ?FS_EVENT_REG_MSG(NodeName, <<"CHANNEL_ANSWER">>)}),
+    catch gproc:reg({p, l, ?FS_EVENT_REG_MSG(NodeName, <<"channel_move::move_complete">>)}),
+    catch gproc:reg({p, l, ?FS_EVENT_REG_MSG(NodeName, <<"conference::maintenance">>)}),
+    catch gproc:reg({p, l, ?FS_EVENT_REG_MSG(NodeName, <<"CHANNEL_EXECUTE_COMPLETE">>)}),
     'ok'.
 
--spec unbind_from_fs_events(#node{}) -> 'ok'.
+-spec unbind_from_fs_events(fs_node()) -> 'ok'.
 unbind_from_fs_events(#node{}) ->
     'ok'.
 
--spec get_fs_client_version(#node{}) -> #node{};
-                              (atom()) -> 'undefined' | ne_binary().
+-spec get_fs_client_version(fs_node()) -> fs_node();
+                           (atom()) -> api_binary().
 get_fs_client_version(#node{node=NodeName}=Node) ->
     Node#node{client_version=get_fs_client_version(NodeName)};
 get_fs_client_version(NodeName) ->
@@ -751,14 +752,14 @@ get_fs_client_version(NodeName) ->
             'undefined'
     end.
 
--spec reset_node_stats(#node{}) -> 'ok'.
+-spec reset_node_stats(fs_node()) -> 'ok'.
 reset_node_stats(#node{node=NodeName}) ->
     NodeBin = amqp_util:encode(wh_util:to_binary(NodeName)),
     wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 0),
     wh_timer:delete(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
     'ok'.
 
--spec start_node_stats(#node{}) -> 'ok'.
+-spec start_node_stats(fs_node()) -> 'ok'.
 start_node_stats(#node{node=NodeName}) ->
     NodeBin = amqp_util:encode(wh_util:to_binary(NodeName)),
     wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 1),

@@ -54,8 +54,9 @@
                           ,interface = <<"RR">> :: ne_binary() % for Skype
                           ,sip_interface
                           ,channel_vars = ["[",[],"]"] :: iolist()
-                          ,include_channel_vars = true
+                          ,include_channel_vars = 'true' :: boolean()
                          }).
+-type bridge_endpoint() :: #bridge_endpoint{}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -351,7 +352,7 @@ export(Node, UUID, Arg) ->
 -type bridge_channel() :: ne_binary().
 -type bridge_channels() :: [] | [bridge_channel(),...].
 -type build_return() :: bridge_channel() | {'worker', pid()}.
--type bridge_endpoints() :: [#bridge_endpoint{},...] | [].
+-type bridge_endpoints() :: [bridge_endpoint(),...] | [].
 
 -spec build_bridge_string(wh_json:objects()) -> ne_binary().
 -spec build_bridge_string(wh_json:objects(), ne_binary()) -> ne_binary().
@@ -377,7 +378,7 @@ endpoint_jobjs_to_records(Endpoints, IncludeVars) ->
             endpoint_jobjs_to_records(Endpoints, IncludeVars, [])
     ].
 
-endpoint_jobjs_to_records([], _, BridgeEndpoints) -> 
+endpoint_jobjs_to_records([], _, BridgeEndpoints) ->
     lists:reverse(BridgeEndpoints);
 endpoint_jobjs_to_records([Endpoint|Endpoints], IncludeVars, BridgeEndpoints) ->
     Key = endpoint_key(Endpoint),
@@ -400,12 +401,12 @@ endpoint_key(Endpoint) ->
      ,wh_json:get_value(<<"To-DID">>, Endpoint)
      ,wh_json:get_value(<<"Route">>, Endpoint)
     ].
-    
--spec endpoint_jobj_to_record(wh_json:object()) -> #bridge_endpoint{}. 
+
+-spec endpoint_jobj_to_record(wh_json:object()) -> bridge_endpoint().
 endpoint_jobj_to_record(Endpoint) ->
     endpoint_jobj_to_record(Endpoint, true).
 
--spec endpoint_jobj_to_record(wh_json:object(), boolean()) -> #bridge_endpoint{}. 
+-spec endpoint_jobj_to_record(wh_json:object(), boolean()) -> bridge_endpoint().
 endpoint_jobj_to_record(Endpoint, IncludeVars) ->
     ToUser = wh_json:get_ne_value(<<"To-User">>, Endpoint),
     #bridge_endpoint{invite_format = wh_json:get_ne_value(<<"Invite-Format">>, Endpoint, <<"username">>)
@@ -501,7 +502,7 @@ build_channel(#bridge_endpoint{endpoint_type = <<"sip">>}=Endpoint) ->
 build_channel(EndpointJObj) ->
     build_channel(endpoint_jobj_to_record(EndpointJObj)).
 
--spec build_freetdm_channel(#bridge_endpoint{}) ->
+-spec build_freetdm_channel(bridge_endpoint()) ->
                                          {'ok', bridge_channel()} |
                                          {'error', 'number_not_provided'}.
 build_freetdm_channel(#bridge_endpoint{number=undefined}) ->
@@ -518,17 +519,17 @@ build_freetdm_channel(#bridge_endpoint{invite_format = <<"1npan">>, number=Numbe
 build_freetdm_channel(#bridge_endpoint{number=Number, span=Span, channel_selection=ChannelSelection}) ->
     {ok, <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", Number/binary>>}.
 
--spec build_skype_channel(#bridge_endpoint{}) ->
+-spec build_skype_channel(bridge_endpoint()) ->
                                        {'ok', bridge_channel()} |
                                        {'error', 'number_not_provided'}.
-build_skype_channel(#bridge_endpoint{user=undefined}) ->
-    {error, number_not_provided};
+build_skype_channel(#bridge_endpoint{user='undefined'}) ->
+    {'error', 'number_not_provided'};
 build_skype_channel(#bridge_endpoint{user=User, interface=IFace}) ->
     {ok, <<"skypopen/", IFace/binary, "/", User/binary>>}.
 
--spec build_sip_channel(#bridge_endpoint{}) ->
+-spec build_sip_channel(bridge_endpoint()) ->
                                      {'ok', bridge_channel()} |
-                                     {'error', _}.
+                               {'error', _}.
 build_sip_channel(Endpoint) ->
     Routines = [fun(C) -> maybe_clean_contact(C, Endpoint) end
                 ,fun(C) -> ensure_username_present(C, Endpoint) end
@@ -539,20 +540,20 @@ build_sip_channel(Endpoint) ->
                 ,fun(C) -> append_channel_vars(C, Endpoint) end
                ],
     try lists:foldl(fun(F, C) -> F(C) end, get_sip_contact(Endpoint), Routines) of
-        Channel -> {ok, Channel}
+        Channel -> {'ok', Channel}
     catch
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:warning("Failed to build sip channel (~s): ~p", [_E, _R]),
-            lager:warning("stacktrace:"),
-            _ = [lager:warning("~p", [Line]) || Line <- ST],
-            {error, invalid}
+            lager:warning("st:"),
+            wh_util:log_stacktrace(ST),
+            {'error', 'invalid'}
     end.
 
--spec get_sip_contact(#bridge_endpoint{}) -> ne_binary().
+-spec get_sip_contact(bridge_endpoint()) -> ne_binary().
 get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) ->
     Route;
-get_sip_contact(#bridge_endpoint{ip_address=undefined
+get_sip_contact(#bridge_endpoint{ip_address='undefined'
                                  ,realm=Realm
                                  ,username=Username
                                 }) ->
@@ -561,15 +562,15 @@ get_sip_contact(#bridge_endpoint{ip_address=undefined
 get_sip_contact(#bridge_endpoint{ip_address=IPAddress}) ->
     IPAddress.
 
--spec maybe_clean_contact(ne_binary(), #bridge_endpoint{}) -> ne_binary().
+-spec maybe_clean_contact(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_clean_contact(<<"sip:", Contact/binary>>, Endpoint) ->
     maybe_clean_contact(Contact, Endpoint);
 maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
     Contact;
 maybe_clean_contact(Contact, _) ->
-    re:replace(Contact, <<"^.*?[^=]sip:">>, <<>>, [{return, binary}]).
+    re:replace(Contact, <<"^.*?[^=]sip:">>, <<>>, [{'return', 'binary'}]).
 
--spec ensure_username_present(ne_binary(), #bridge_endpoint{}) -> ne_binary().
+-spec ensure_username_present(ne_binary(), bridge_endpoint()) -> ne_binary().
 ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
     Contact;
 ensure_username_present(Contact, Endpoint) ->
@@ -579,19 +580,14 @@ ensure_username_present(Contact, Endpoint) ->
             <<(guess_username(Endpoint))/binary, "@", Contact/binary>>
     end.
 
--spec guess_username(#bridge_endpoint{}) -> ne_binary().
-guess_username(#bridge_endpoint{number=Number}) when is_binary(Number) ->
-    Number;
-guess_username(#bridge_endpoint{username=Username}) when is_binary(Username) ->
-    Username;
-guess_username(#bridge_endpoint{user=User}) when is_binary(User) ->
-    User;
-guess_username(_) ->
-    <<"kazoo">>.
+-spec guess_username(bridge_endpoint()) -> ne_binary().
+guess_username(#bridge_endpoint{number=Number}) when is_binary(Number) -> Number;
+guess_username(#bridge_endpoint{username=Username}) when is_binary(Username) -> Username;
+guess_username(#bridge_endpoint{user=User}) when is_binary(User) -> User;
+guess_username(_) -> <<"kazoo">>.
 
--spec maybe_replace_fs_path(ne_binary(), #bridge_endpoint{}) -> ne_binary().
-maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address=undefined}) ->
-    Contact;
+-spec maybe_replace_fs_path(ne_binary(), bridge_endpoint()) -> ne_binary().
+maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address='undefined'}) -> Contact;
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address = <<"sip:", _/binary>> = Proxy}) ->
     case re:replace(Contact, <<";fs_path=[^;?]*">>, <<";fs_path=", Proxy/binary>>, [{return, binary}]) of
         Contact ->
@@ -602,39 +598,38 @@ maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address = <<"sip:", _/bina
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address=Proxy}=Endpoint) ->
     maybe_replace_fs_path(Contact, Endpoint#bridge_endpoint{proxy_address = <<"sip:", Proxy/binary>>}).
 
--spec maybe_replace_transport(ne_binary(), #bridge_endpoint{}) -> ne_binary().
-maybe_replace_transport(Contact, #bridge_endpoint{transport=undefined}) ->
-    Contact;
+-spec maybe_replace_transport(ne_binary(), bridge_endpoint()) -> ne_binary().
+maybe_replace_transport(Contact, #bridge_endpoint{transport='undefined'}) -> Contact;
 maybe_replace_transport(Contact, #bridge_endpoint{transport=Transport}) ->
-    case re:replace(Contact, <<";transport=[^;?]*">>, <<";transport=", Transport/binary>>, [{return, binary}]) of
+    case re:replace(Contact, <<";transport=[^;?]*">>, <<";transport=", Transport/binary>>, [{'return', 'binary'}]) of
         Contact ->
             %% NOTE: this will be invalid if the channel has headers, see rfc3261 19.1.1
             <<Contact/binary, ";transport=", Transport/binary>>;
         Updated -> Updated
     end.
 
--spec maybe_format_user(ne_binary(), #bridge_endpoint{}) -> ne_binary().
+-spec maybe_format_user(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"username">>
                                             ,user=User
                                            }) when User =/= 'undefined' ->
-    re:replace(Contact, "^[^\@]+", User, [{return, binary}]);
+    re:replace(Contact, "^[^\@]+", User, [{'return', 'binary'}]);
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"username">>
                                             ,username=Username
                                            }) when Username =/= 'undefined' ->
-    re:replace(Contact, "^[^\@]+", Username, [{return, binary}]);
+    re:replace(Contact, "^[^\@]+", Username, [{'return', 'binary'}]);
 
-maybe_format_user(Contact, #bridge_endpoint{number=undefined}) ->
+maybe_format_user(Contact, #bridge_endpoint{number='undefined'}) ->
     Contact;
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"e164">>, number=Number}) ->
-    re:replace(Contact, "^[^\@]+", wnm_util:to_e164(Number), [{return, binary}]);
+    re:replace(Contact, "^[^\@]+", wnm_util:to_e164(Number), [{'return', 'binary'}]);
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"npan">>, number=Number}) ->
-    re:replace(Contact, "^[^\@]+", wnm_util:to_npan(Number), [{return, binary}]);
+    re:replace(Contact, "^[^\@]+", wnm_util:to_npan(Number), [{'return', 'binary'}]);
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"1npan">>, number=Number}) ->
-    re:replace(Contact, "^[^\@]+", wnm_util:to_1npan(Number), [{return, binary}]);
+    re:replace(Contact, "^[^\@]+", wnm_util:to_1npan(Number), [{'return', 'binary'}]);
 maybe_format_user(Contact, _) ->
     Contact.
 
--spec maybe_set_interface(ne_binary(), #bridge_endpoint{}) -> ne_binary().
+-spec maybe_set_interface(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_set_interface(<<"sofia/", _/binary>>=Contact, _) ->
     Contact;
 maybe_set_interface(<<"loopback/", _/binary>>=Contact, _) ->
@@ -644,7 +639,7 @@ maybe_set_interface(Contact, #bridge_endpoint{sip_interface=undefined}) ->
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface=SIPInterface}) ->
     <<SIPInterface/binary, Contact/binary>>.
 
--spec append_channel_vars(ne_binary(), #bridge_endpoint{}) -> ne_binary().
+-spec append_channel_vars(ne_binary(), bridge_endpoint()) -> ne_binary().
 append_channel_vars(Contact, #bridge_endpoint{include_channel_vars=false}) ->
     false = wh_util:is_empty(Contact),
     Contact;
@@ -833,8 +828,8 @@ request_media_url(MediaName, CallId, JObj, Type) ->
 maybe_cache_media_url(URL, MediaName) ->
     %% Only single media_mgr proxies can not be cached as they
     %% are processes started for each request
-    case binary:split(URL, <<"/">>, [global]) of
-        [_HTTP,'_//',_Host,<<"single">>|_] -> ok;
+    case binary:split(URL, <<"/">>, ['global']) of
+        [_HTTP,'_//',_Host,<<"single">>|_] -> 'ok';
         _Else ->
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
