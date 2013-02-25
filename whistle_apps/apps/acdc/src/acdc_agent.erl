@@ -450,9 +450,10 @@ handle_cast('member_connect_accepted', #state{msg_queue_id=AmqpQueue
                                               ,agent_id=AgentId
                                               ,my_id=MyId
                                               ,record_calls=ShouldRecord
+                                              ,recording_url=RecordingUrl
                                              }=State) ->
     lager:debug("member bridged to agent!"),
-    maybe_start_recording(Call, ShouldRecord),
+    maybe_start_recording(Call, ShouldRecord, RecordingUrl),
     send_member_connect_accepted(AmqpQueue, call_id(Call), AcctId, AgentId, MyId),
     {'noreply', State};
 
@@ -933,11 +934,14 @@ maybe_stop_recording(Call, 'true', Url) ->
 
     save_recording(Call, MediaName, Format, Url).
 
-maybe_start_recording(_Call, 'false') -> lager:debug("not recording this call");
-maybe_start_recording(Call, 'true') ->
+maybe_start_recording(_Call, 'false', _) -> lager:debug("not recording this call");
+maybe_start_recording(Call, 'true', Url) ->
     Format = recording_format(),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
     lager:debug("recording of ~s started", [MediaName]),
+
+    StoreUrl = offsite_store_url(Url, MediaName),
+    whapps_call_command:set('undefined', wh_json:from_list([{<<"Recording-URL">>, StoreUrl}]), Call),
 
     whapps_call_command:record_call(MediaName, <<"start">>, Call).
 
@@ -949,13 +953,13 @@ save_recording(Call, MediaName, Format, Url) ->
         'true' ->
             {'ok', MediaJObj} = store_recording_meta(Call, MediaName, Format),
             lager:debug("stored meta: ~p", [MediaJObj]),
-
+            
             StoreUrl = store_url(Call, MediaJObj),
             lager:debug("store url: ~s", [StoreUrl]),
 
             store_recording(MediaName, StoreUrl, Call);
         'false' when is_binary(Url) ->
-            StoreUrl = iolist_to_binary([wh_util:strip_right_binary(Url, $/), "/", MediaName]),
+            StoreUrl = offsite_store_url(Url, MediaName),
             lager:debug("using ~s to maybe store recording", [StoreUrl]),
 
             store_recording(MediaName, StoreUrl, Call);
@@ -963,10 +967,12 @@ save_recording(Call, MediaName, Format, Url) ->
             lager:debug("no external url to use, not saving recording")
     end.
 
+offsite_store_url(Url, MediaName) ->
+    iolist_to_binary([wh_util:strip_right_binary(Url, $/), "/", MediaName]).
+
 -spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 store_recording(MediaName, StoreUrl, Call) ->
-    'ok' = whapps_call_command:store(MediaName, StoreUrl, Call),
-    whapps_call_command:set('undefined', wh_json:from_list([{<<"Recording-URL">>, StoreUrl}]), Call).
+    'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).
 
 -spec store_recording_meta(whapps_call:call(), ne_binary(), ne_binary()) ->
                                   {'ok', wh_json:object()} |
