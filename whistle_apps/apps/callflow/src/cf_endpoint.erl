@@ -98,15 +98,14 @@ merge_attributes(Endpoint) ->
                                            wh_json:object().
 merge_attributes(Keys, Account, Endpoint, undefined) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
+    EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
     OwnerId = wh_json:get_ne_value(<<"owner_id">>, Endpoint),
-    case OwnerId =/= undefined
-        andalso couch_mgr:open_cache_doc(AccountDb, OwnerId)
-    of
-        {ok, JObj} ->
-            merge_attributes(Keys, Account, Endpoint, JObj);
-        _Else ->
-            merge_attributes(Keys, Account, Endpoint, wh_json:new())
-    end;
+    JObj = get_user(OwnerId, EndpointId, AccountDb),
+    Id = wh_json:get_value(<<"_id">>, JObj),
+    merge_attributes(Keys
+                     ,Account
+                     ,wh_json:set_value(<<"owner_id">>, Id, Endpoint)
+                     ,JObj);
 merge_attributes(Keys, undefined, Endpoint, Owner) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, Endpoint),
@@ -171,6 +170,26 @@ merge_call_restrictions([Key|Keys], Account, Endpoint, Owner) ->
             merge_call_restrictions(Keys, Account, Endpoint, Owner)
     end.
 
+-spec get_user(api_binary(), ne_binary(), ne_binary()) -> wh_json:object().
+get_user('undefined', EndpointId, AccountDb) ->
+    ViewOptions = [{'key', EndpointId}
+                   ,include_docs
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owner">>, ViewOptions) of
+        {'ok', [JObj]} ->
+            lager:debug("merging endpoint ~s with user ~s", [EndpointId, wh_json:get_value(<<"id">>, JObj)]),
+            wh_json:get_value(<<"doc">>, JObj);
+        _Else ->
+            wh_json:new()
+    end;
+get_user(OwnerId, EndpointId, AccountDb) ->
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+        {ok, JObj} ->
+            lager:debug("merging endpoint ~s with owner ~s", [EndpointId, OwnerId]),
+            JObj;
+        _Else -> wh_json:new()
+    end.
+
 -spec create_endpoint_name(api_binary(), api_binary(), api_binary(), api_binary()) -> api_binary().
 create_endpoint_name(undefined, undefined, undefined, Account) -> Account;
 create_endpoint_name(undefined, undefined, Endpoint, _) -> Endpoint;
@@ -185,7 +204,19 @@ create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 %% @end
 %%--------------------------------------------------------------------
 -spec flush(ne_binary(), ne_binary()) -> any().
-flush(Db, Id) -> wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}).
+flush(Db, Id) ->
+    {ok, Rev} = couch_mgr:lookup_doc_rev(Db, Id),
+    Props =
+        [{<<"ID">>, Id}
+         ,{<<"Database">>, Db}
+         ,{<<"Rev">>, Rev}
+         ,{<<"Type">>, <<"device">>}
+         | wh_api:default_headers(<<"configuration">>, <<"doc_edited">>
+                                      ,?APP_NAME, ?APP_VERSION)
+        ],
+    Fun = fun(P) -> wapi_conf:publish_doc_update(<<"edited">>, Db, <<"device">>, Id, P) end,
+    whapps_util:amqp_pool_send(Props, Fun),
+    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -164,6 +164,8 @@ login_authorizing_id(AuthorizingId, #hotdesk{endpoint_ids=EndpointIds, owner_id=
         end,
     spawn(fun() ->
                   AccountDb = whapps_call:account_db(Call),
+                  cf_endpoint:flush(AccountDb, AuthorizingId),
+                  cf_util:reset_mwi(AuthorizingId, AccountDb),
                   cf_util:update_mwi(OwnerId, AccountDb)
           end),
     logged_in(H, Call).
@@ -213,6 +215,9 @@ logout_user(#hotdesk{owner_id=OwnerId}=Hotdesk, Call) ->
     H = update_hotdesk_profile(Hotdesk, Call),
     spawn(fun() ->
                   AccountDb = whapps_call:account_db(Call),
+                  AuthorizingId = whapps_call:authorizing_id(Call),
+                  cf_endpoint:flush(AccountDb, AuthorizingId),
+                  cf_util:reset_mwi(AuthorizingId, AccountDb),
                   cf_util:update_mwi(OwnerId, AccountDb)
           end),
     logged_out(H, Call).

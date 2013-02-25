@@ -18,6 +18,7 @@
 -export([presence_probe/2]).
 -export([presence_mwi_query/2]).
 -export([update_mwi/1, update_mwi/2, update_mwi/4]).
+-export([reset_mwi/2]).
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
 -export([correct_media_path/2]).
 -export([lookup_callflow/1, lookup_callflow/2]).
@@ -208,19 +209,14 @@ update_mwi(OwnerId, AccountDb) ->
     end.
 
 update_mwi(New, Saved, OwnerId, AccountDb) ->
-    AccountId = wh_util:format_account_id(AccountDb, raw),
-    ViewOptions = [{key, [OwnerId, <<"device">>]}
-                   ,include_docs
-                  ],
+    ViewOptions = [{key, [OwnerId, <<"device">>]}],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
-        {ok, Devices} ->
-            lager:debug("updating MWI for owner ~s: (~b/~b) on ~b devices", [OwnerId, New, Saved, length(Devices)]),
-            lists:foreach(fun(Result) ->
-                                  Device = wh_json:get_value(<<"doc">>, Result, wh_json:new()),
-                                  User = wh_json:get_value([<<"sip">>, <<"username">>], Device),
-                                  Realm = cf_util:get_sip_realm(Device, AccountId),
-                                  maybe_publish_mwi(User, Realm, New, Saved)
-                          end, Devices),
+        {ok, JObjs} ->
+            lager:debug("updating MWI for owner ~s: (~b/~b) on ~b devices", [OwnerId, New, Saved, length(JObjs)]),
+            lists:foreach(fun(JObj) ->
+                                  EndpointId = wh_json:get_value(<<"value">>, JObj),
+                                  maybe_publish_mwi(AccountDb, EndpointId, New, Saved)
+                          end, JObjs),
             ok;
         {error, _R} ->
             lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
@@ -230,7 +226,26 @@ update_mwi(New, Saved, OwnerId, AccountDb) ->
 -spec maybe_publish_mwi/4 :: (api_binary(), api_binary(), integer(), integer()) -> 'ok'.
 maybe_publish_mwi('undefined', _, _, _) -> 'ok';
 maybe_publish_mwi(_, 'undefined', _, _) -> 'ok';
-maybe_publish_mwi(User, Realm, New, Saved) ->
+maybe_publish_mwi(AccountDb, EndpointId, New, Saved) ->
+    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    case couch_mgr:open_doc(AccountDb, EndpointId) of
+        {'ok', JObj} ->
+            User = wh_json:get_value([<<"sip">>, <<"username">>], JObj),
+            Realm = cf_util:get_sip_realm(JObj, AccountId),
+            case wh_util:is_empty(User) orelse wh_util:is_empty(Realm) of
+                'true' -> 'ok';
+                'false' ->
+                    publish_mwi(User, Realm, New, Saved)
+            end;
+        {'error', _R} ->
+            lager:warning("unabled to open endpoint ~s for mwi update: ~p", [EndpointId, _R]),
+            'ok'
+    end.
+
+-spec publish_mwi/4 :: (api_binary(), api_binary(), integer(), integer()) -> 'ok'.
+publish_mwi('undefined', _, _, _) -> 'ok';
+publish_mwi(_, 'undefined', _, _) -> 'ok';
+publish_mwi(User, Realm, New, Saved) ->
     Props = [{<<"Notify-User">>, User}
              ,{<<"Notify-Realm">>, Realm}
              ,{<<"Message-Account">>, <<"sip:", User/binary, "@", Realm/binary>>}
@@ -239,6 +254,10 @@ maybe_publish_mwi(User, Realm, New, Saved) ->
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     whapps_util:amqp_pool_send(Props, fun wapi_notifications:publish_mwi_update/1). 
+
+-spec reset_mwi(api_binary(), ne_binary()) -> 'ok'.
+reset_mwi(EndpointId, AccountDb) ->
+    maybe_publish_mwi(AccountDb, EndpointId, 0, 0).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -434,10 +453,10 @@ get_endpoint_id_from_username(AccountDb, SIPUsername) ->
             wh_cache:store_local(?CALLFLOW_CACHE, ?SIP_ENDPOINT_KEY(AccountDb, SIPUsername), EndpointId, CacheProps),
             {'ok', EndpointId};
         {'ok', []} ->
-            lager:debug("sip credentials not in account db ~s", [AccountDb]),
+            lager:debug("sip credentials ~s not in account db ~s", [SIPUsername, AccountDb]),
             {'error', 'not_found'};
         {'error', _R}=E ->
-            lager:warning("unable to lookup sip credentials for owner id: ~p", [_R]),
+            lager:warning("unable to lookup sip credentials ~s for owner id: ~p", [SIPUsername, _R]),
             E
     end.
 

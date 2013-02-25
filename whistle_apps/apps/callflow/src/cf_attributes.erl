@@ -275,29 +275,30 @@ maybe_normalize_moh_attribute(Value, Attribute, _) ->
 
 owner_id(Call) ->
     case cf_endpoint:get(Call) of
-        {error, _} -> undefined;
-        {ok, Endpoint} ->
+        {'error', _} -> 'undefined';
+        {'ok', Endpoint} ->
             case wh_json:get_ne_value(<<"owner_id">>, Endpoint) of
-                undefined -> undefined;
+                'undefined' -> 'undefined';
                 OwnerId ->
                     lager:info("initiating endpoint is owned by ~s", [OwnerId]),
                     OwnerId
             end
     end.
 
-owner_id(undefined, _Call) -> undefined;
+owner_id('undefined', _Call) -> 'undefined';
 owner_id(ObjectId, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    %% TODO: this cache need to be flushed if the ownership changes...
-    case couch_mgr:open_cache_doc(AccountDb, ObjectId) of
-        {error, _} -> undefined;
-        {ok, JObj} ->
-            case wh_json:get_ne_value(<<"owner_id">>, JObj) of
-                undefined -> undefined;
-                OwnerId ->
-                    lager:info("object ~s is owned by ~s", [ObjectId, OwnerId]),
-                    OwnerId
-            end
+    ViewOptions = [{'key', ObjectId}],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owner">>, ViewOptions) of
+        {'ok', [JObj]} -> wh_json:get_value(<<"value">>, JObj);
+        {'ok', []} -> 'undefined';
+        {'ok', [_|_]=JObjs} ->
+            Owners = [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
+            lager:debug("object ~s has multiple owners: ~-500p", [ObjectId, Owners]),
+            'undefined';
+        {'error', _R} ->
+            lager:warning("unable to find owner for ~s: ~p", [ObjectId, _R]),
+            'undefined'
     end.
 
 %%--------------------------------------------------------------------
