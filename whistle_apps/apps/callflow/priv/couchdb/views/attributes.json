@@ -2,35 +2,17 @@
    "_id": "_design/cf_attributes",
    "language": "javascript",
    "views": {
-       "caller_id": {
-           "map": "function(doc) { if (!doc.caller_id || doc.pvt_deleted) return; emit(doc._id, doc.caller_id); }"
-       },
-       "caller_id_options": {
-           "map": "function(doc) { if (!doc.caller_id_options || doc.pvt_deleted) return; emit(doc._id, doc.caller_id_options); }"
-       },
-       "media_options": {
-           "map": "function(doc) { if (!doc.media || doc.pvt_deleted) return; emit(doc._id, doc.media); }"
-       },
-       "moh_options": {
-           "map": "function(doc) { if (!doc.music_on_hold || doc.pvt_deleted) return; emit(doc._id, doc.music_on_hold); }"
-       },
-       "call_forward": {
-           "map": "function(doc) { if (!doc.call_forward || !doc.call_forward.enabled || doc.pvt_deleted) return; emit(doc._id, doc.call_forward); }"
-       },
-       "owner": {
-           "map": "function(doc) { if (!doc.owner_id || doc.pvt_deleted) return; emit(doc._id, doc.owner_id); }"
-       },
-       "owned": {
-           "map": "function(doc) { if (!doc.owner_id || doc.pvt_deleted) return; emit([doc.owner_id, doc.pvt_type], doc._id); }"
-       },
-       "friendly_name": {
-           "map": "function(doc) { if ((doc.pvt_type != 'user' && doc.pvt_type != 'device') || doc.pvt_deleted) return; if (doc.pvt_type == 'user') emit(doc._id, {'friendly_name': doc.first_name + ' ' + doc.last_name}); else emit(doc._id, {'friendly_name': doc.name}); }"
-       },
-       "hotdesk_id": {
-           "map": "function(doc) { if (!doc.hotdesk  || doc.pvt_deleted) return; emit(doc.hotdesk.id, {'owner_id':doc._id, 'hotdesk':doc.hotdesk}); }"
-       },
        "temporal_rules": {
            "map": "function(doc) { if (doc.pvt_type != 'temporal_rule' || doc.pvt_deleted) return; emit(doc._id, null); }"
+       },
+       "owned": {
+           "map": "function(doc) {if (doc.pvt_deleted) return; if (doc.pvt_type == 'user' && doc.hotdesk && doc.hotdesk.enabled && doc.hotdesk.endpoint_ids) {doc.hotdesk.endpoint_ids.forEach(function (endpoint_id) {emit([doc._id, 'device'], endpoint_id)});} else if (doc.owner_id) {emit([doc.owner_id, doc.pvt_type], doc._id);}}"
+       },
+       "owner": {
+           "map": "function(doc) {if (doc.pvt_deleted) return;if (doc.pvt_type == 'user' && doc.hotdesk && doc.hotdesk.enabled && doc.hotdesk.endpoint_ids) {doc.hotdesk.endpoint_ids.forEach(function (endpoint_id) {emit(endpoint_id, doc._id)});} else if (doc.owner_id) {emit(doc._id, doc.owner_id);}}"
+       },
+       "hotdesk_id": {
+           "map": "function(doc) { if (!doc.hotdesk  || doc.pvt_deleted) return; emit(doc.hotdesk.id, null); }"
        },
        "mailbox_number": {
            "map": "function(doc) { if (doc.pvt_type != 'vmbox' || doc.pvt_deleted) return; emit(doc.mailbox, null); }"
@@ -42,8 +24,8 @@
            "map": "function(doc) { if (doc.pvt_type != 'vmbox' || !doc.owner_id || doc.pvt_deleted) return; doc.messages.forEach(function (message) { if (message.folder != 'deleted') emit([doc.owner_id, message.folder], 1); }); }",
            "reduce": "function (key, values, rereduce) { return sum(values) }"
        },
-       "sip_credentials": {
-           "map": "function(doc) { if (typeof doc.sip !== 'undefined' && ! doc.pvt_deleted) { var sip = JSON.parse(JSON.stringify(doc.sip)); sip.authorizing_id = doc._id; sip.authorizing_type = doc.pvt_type; emit(sip.username, sip); } else if (doc.pvt_type === 'sys_info' && ! doc.pvt_deleted) { for (i in doc.servers) {var auth = doc.servers[i].auth; var sip = {'password': auth.auth_password, 'username': auth.auth_user, 'method': auth.auth_method || 'password', 'invite_format': doc.servers[i].options.inbound_format || 'e164'}; sip.authorizing_id = doc._id; sip.authorizing_type = doc.pvt_type; emit(sip.username, sip);}}}"
+       "sip_username": {
+           "map": "function(doc) {if (doc.sip && doc.sip.username && doc.sip.method == 'password' && !doc.pvt_deleted) {emit(doc.sip.username, null);} else if (doc.pvt_type === 'sys_info' && !doc.pvt_deleted) {for (i in doc.servers) {var auth = doc.servers[i].auth; if (auth.auth_user && auth.auth_method == 'password') {emit(auth.auth_user, null);}}}}"
        }
    }
 }

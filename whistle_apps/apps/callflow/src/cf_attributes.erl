@@ -16,11 +16,7 @@
 -export([moh_attributes/2, moh_attributes/3]).
 -export([owner_id/1, owner_id/2]).
 -export([presence_id/1, presence_id/2]).
-
--export([owned_by/2, owned_by/3, fetch_owned_by/2, fetch_owned_by/3]).
-
-
--export([flush_attributes/1]).
+-export([owned_by/2, owned_by/3]).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -330,36 +326,32 @@ presence_id(Endpoint, Call) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec owned_by(api_binary(), whapps_call:call()) -> list().
--spec owned_by(api_binary(), atom() | string() | ne_binary(), whapps_call:call()) -> list().
+-spec owned_by(api_binary(), whapps_call:call()) -> api_binaries().
+-spec owned_by(api_binary(), ne_binary(), whapps_call:call()) -> api_binaries().
 
--spec fetch_owned_by(api_binary(), whapps_call:call()) ->
-                                  list().
--spec fetch_owned_by(api_binary(), atom() | string() | ne_binary(), whapps_call:call()) ->
-                                  list().
-
-owned_by(undefined, _) -> [];
+owned_by('undefined', _) -> [];
 owned_by(OwnerId, Call) ->
-    Attributes = fetch_attributes(owned, Call),
-    [V || {[I, _], V} <- Attributes, I =:= OwnerId].
+    AccountDb = whapps_call:account_db(Call),
+    ViewOptions = [{'startkey', [OwnerId]}
+                   ,{'endkey', [OwnerId, wh_json:new()]}
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+        {'ok', JObjs} -> [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
+        {'error', _R} ->
+            lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
+            []
+    end.
 
-owned_by(undefined, _, _) -> [];
-owned_by(OwnerId, false, Call) ->
-    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, whapps_call:account_db(Call), owned}),
-    owned_by(OwnerId, Call);
-owned_by(OwnerId, Attribute, Call) when not is_binary(Attribute) ->
-    owned_by(OwnerId, wh_util:to_binary(Attribute), Call);
-owned_by(OwnerId, Attribute, Call) ->
-    Attributes = fetch_attributes(owned, Call),
-    [V || {[I, T], V} <- Attributes, I =:= OwnerId, T =:= Attribute].
-
-fetch_owned_by(OwnerId, Call) ->
-    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, whapps_call:account_db(Call), owned}),
-    owned_by(OwnerId, Call).
-
-fetch_owned_by(OwnerId, Attribute, Call) ->
-    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, whapps_call:account_db(Call), owned}),
-    owned_by(OwnerId, Attribute, Call).
+owned_by('undefined', _, _) -> [];
+owned_by(OwnerId, Type, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    ViewOptions = [{'key', [OwnerId, Type]}],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+        {'ok', JObjs} -> [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
+        {'error', _R} ->
+            lager:warning("unable to find ~s documents owned by ~s: ~p", [Type, OwnerId, _R]),
+            []
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -383,39 +375,3 @@ get_cid_or_default(Attribute, Property, Endpoint) ->
         undefined -> wh_json:get_ne_value([<<"default">>, Property], Endpoint);
         Value -> Value
     end.
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%-----------------------------------------------------------------------------
--spec fetch_attributes(atom(), whapps_call:call() | api_binary()) -> wh_proplist().
-fetch_attributes(_Attribute, undefined) -> [];
-fetch_attributes(Attribute, ?NE_BINARY = AccountDb) ->
-    case wh_cache:peek_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, Attribute}) of
-        {ok, Attributes} -> Attributes;
-        {error, not_found} ->
-            case couch_mgr:get_all_results(AccountDb, <<"cf_attributes/", (wh_util:to_binary(Attribute))/binary>>) of
-                {ok, JObjs} ->
-                    Props = [{wh_json:get_value(<<"key">>, JObj), wh_json:get_value(<<"value">>, JObj)}
-                             || JObj <- JObjs],
-                    %% TODO: figure out a way to include the origin of the attributes...
-                    CacheProps = [{expires, 900}],
-                    wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, Attribute}, Props, CacheProps),
-                    Props;
-                {error, _R} ->
-                    lager:warning("unable to fetch attribute ~s: ~p", [Attribute, _R]),
-                    []
-            end
-    end;
-fetch_attributes(Attribute, Call) ->
-    fetch_attributes(Attribute, whapps_call:account_db(Call)).
-
--spec flush_attributes(ne_binary()) -> any().
-flush_attributes(AccountDb) ->
-    Keys = wh_cache:filter_local(?CALLFLOW_CACHE
-                                 ,fun({?MODULE, AcctDb, _}, _) when AcctDb =:= AccountDb -> true;
-                                     (_,_) -> false
-                                  end
-                                ),
-    [wh_cache:erase_local(?CALLFLOW_CACHE, Key) || Key <- Keys].

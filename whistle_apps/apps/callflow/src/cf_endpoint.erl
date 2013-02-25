@@ -129,7 +129,7 @@ merge_attributes([?CF_ATTR_LOWER_KEY|Keys], Account, Endpoint, Owner) ->
         true ->
             merge_attributes(Keys, Account, Endpoint, Owner);
         false ->
-            Update = wh_json:set_value(FullKey, OwnerAttr, Endpoint), 
+            Update = wh_json:set_value(FullKey, OwnerAttr, Endpoint),
             merge_attributes(Keys, Account, Update, Owner)
     end;
 merge_attributes([<<"name">> = Key|Keys], Account, Endpoint, Owner) ->
@@ -164,7 +164,7 @@ merge_call_restrictions([Key|Keys], Account, Endpoint, Owner) ->
     case wh_json:get_value([<<"call_restriction">>, Key, <<"action">>], Account) =:= <<"deny">>
         orelse wh_json:get_value([<<"call_restriction">>, Key, <<"action">>], Owner) =:= <<"deny">>
     of
-        true -> 
+        true ->
             Update = wh_json:set_value([<<"call_restriction">>, Key, <<"action">>], <<"deny">>, Endpoint),
             merge_call_restrictions(Keys, Account, Update, Owner);
         false ->
