@@ -186,10 +186,14 @@ validate_request_data(Schema, #cb_context{req_data=Data}=Context) ->
                                 add_validation_error(Property, Code, Message, C)
                         end, Context#cb_context{resp_status=error}, Errors);
         {pass, JObj} ->
+            Status = case Context#cb_context.resp_status =:= error of
+                         true -> error;
+                         false -> success
+                     end,
             %% Allow onboarding to set the document ID
             case wh_json:get_ne_value(<<"_id">>, Data) of
-                undefined -> Context#cb_context{resp_status=success, doc=JObj};
-                Id -> Context#cb_context{resp_status=success
+                undefined -> Context#cb_context{resp_status=Status, doc=JObj};
+                Id -> Context#cb_context{resp_status=Status
                                          ,doc=wh_json:set_value(<<"_id">>, Id, JObj)}
             end
     end.
@@ -221,7 +225,7 @@ add_system_error(account_has_descendants, Context) ->
 add_system_error(faulty_request, Context) ->
     crossbar_util:response_faulty_request(Context);
 
-add_system_error(bad_identifier, Context) ->    
+add_system_error(bad_identifier, Context) ->
     crossbar_util:response_bad_identifier(<<"unknown">>, Context);
 
 add_system_error(forbidden, Context) ->

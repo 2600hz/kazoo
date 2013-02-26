@@ -600,7 +600,9 @@ validate(#cb_context{req_nouns=Nouns}=Context0) ->
                                    lager:debug("validating against params ~p", [Params]),
                                    Payload = [ContextAcc#cb_context{resp_status=fatal} | Params],
                                    crossbar_bindings:fold(Event, Payload)
-                           end, Context0#cb_context{resp_status=fatal}, Nouns),
+                           end
+                           ,Context0#cb_context{resp_status=fatal}
+                           ,Nouns),
     case succeeded((C = cb_context:import_errors(Context1))) of
         true -> process_billing(C);
         false -> C
