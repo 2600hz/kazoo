@@ -19,8 +19,7 @@ handle_req(JObj, Options) ->
         true ->
             lager:info("received a request asking if callflows can route this call"),
             ControllerQ = props:get_value(queue, Options),
-            AllowNoMatch = whapps_call:authorizing_type(Call) =/= undefined
-                orelse whapps_call:custom_channel_var(<<"Referred-By">>, Call) =/= undefined,
+            AllowNoMatch = allow_no_match(Call),
             case cf_util:lookup_callflow(Call) of
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
                 %% to use it for this call
@@ -29,17 +28,29 @@ handle_req(JObj, Options) ->
                                                                         ,whapps_call:account_id(Call)
                                                                        ]),
                     cache_call(Flow, NoMatch, ControllerQ, Call),
-                    send_route_response(JObj, ControllerQ, <<"false">>, Call);
+                    send_route_response(JObj, ControllerQ, Call);
                 {ok, _, true} ->
-                    lager:info("only available callflow is a nomatch for a unauthorized call", []),
-                    maybe_send_defered_route_response(JObj, ControllerQ, Call);
+                    lager:info("only available callflow is a nomatch for a unauthorized call", []);
                 {error, R} ->
-                    lager:info("unable to find callflow ~p", [R]),
-                    maybe_send_defered_route_response(JObj, ControllerQ, Call)
+                    lager:info("unable to find callflow ~p", [R])
             end;
         false ->
             ok
     end.
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% Should this call be able to use outbound resources, the exact opposite
+%% exists in the handoff module.  When updating this one make sure to sync
+%% the change with that module
+%% @end
+%%-----------------------------------------------------------------------------
+-spec allow_no_match(whapps_call:call()) -> boolean().
+allow_no_match(Call) ->
+    whapps_call:custom_channel_var(<<"Referred-By">>, Call) =/= undefined
+        orelse (whapps_call:authorizing_type(Call) =/= undefined
+                andalso whapps_call:authorizing_type(Call) =/= <<"resource">>).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -66,12 +77,11 @@ callflow_should_respond(Call) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_route_response(wh_json:object(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
-send_route_response(JObj, Q, Defer, Call) ->
+-spec send_route_response(wh_json:object(), ne_binary(), whapps_call:call()) -> 'ok'.
+send_route_response(JObj, Q, Call) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
-            ,{<<"Defer-Response">>, Defer}
             ,{<<"Pre-Park">>, pre_park_action(Call)}
             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
@@ -94,27 +104,6 @@ pre_park_action(Call) ->
     of
         false -> <<"none">>;
         true -> <<"ring_ready">>
-    end.
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% process
-%% @end
-%%-----------------------------------------------------------------------------
--spec maybe_send_defered_route_response(wh_json:object(), ne_binary(), whapps_call:call()) -> 'ok'.
-maybe_send_defered_route_response(JObj, ControllerQ, Call) ->
-    AccountId = whapps_call:account_id(Call),
-    case cf_util:lookup_callflow(<<"0">>, AccountId) of
-        {ok, Flow, false} ->
-            lager:info("default callflow ~s in ~s could satisfy request", [wh_json:get_value(<<"_id">>, Flow)
-                                                                            ,whapps_call:account_id(Call)
-                                                                           ]),
-            cache_call(Flow, false, ControllerQ, Call),
-            send_route_response(JObj, ControllerQ, <<"true">>, Call);
-        _Else ->
-            ok
     end.
 
 %%-----------------------------------------------------------------------------

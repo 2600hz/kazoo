@@ -1,0 +1,12 @@
+{application, handoff,
+ [
+  {description, "Skel - A handoffeton application useful for quickly creating services"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { handoff_app, []}},
+  {env, []}
+ ]}.

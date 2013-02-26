@@ -73,6 +73,7 @@ migrate() ->
     io:format("updating default kazoo modules~n", []),
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
                     ,fun(L) -> [<<"acdc">> | lists:delete(<<"acdc">>, L)] end
+                    ,fun(L) -> [<<"handoff">> | lists:delete(<<"handoff">>, L)] end
                     ],
     StartWhapps = whapps_config:get(<<"whapps_controller">>, <<"whapps">>, []),
     _ = whapps_config:set_default(<<"whapps_controller">>

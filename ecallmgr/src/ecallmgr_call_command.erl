@@ -53,7 +53,6 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                   {ne_binary(), ne_binary(), atom()}.
 -spec get_fs_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
                         fs_app() |
-                        
                         {'return', 'error'} |
                         {'error', ne_binary()} |
                         [fs_app(),...].

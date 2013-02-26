@@ -189,6 +189,8 @@ is_actionable_resp(Prop) when is_list(Prop) ->
     case props:get_value(<<"Method">>, Prop) of
         <<"bridge">> -> true;
         <<"park">> -> true;
+        <<"error">> ->
+            wh_util:is_true(props:get_value(<<"Defer-Response">>, Prop));
         _ -> false
     end;
 is_actionable_resp(JObj) ->
