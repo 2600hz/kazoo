@@ -28,7 +28,7 @@ handle(Data, Call) ->
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
     lager:info("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
-    case length(Endpoints) > 0 
+    case length(Endpoints) > 0
         andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) 
     of
         false ->
@@ -60,4 +60,4 @@ get_endpoints(UserId, Data, Call) ->
                             {ok, Endpoint} -> Endpoint ++ Acc;
                             {error, _E} -> Acc
                         end
-                end, [], cf_attributes:fetch_owned_by(UserId, device, Call)).
+                end, [], cf_attributes:owned_by(UserId, <<"device">>, Call)).

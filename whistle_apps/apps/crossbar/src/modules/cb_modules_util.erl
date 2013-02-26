@@ -28,7 +28,7 @@ pass_hashes(Username, Password) ->
 update_mwi(OwnerId, AccountDb) ->
     spawn(fun() ->
                   timer:sleep(1000),
-                  cf_util:update_mwi(OwnerId, AccountDb) 
+                  cf_util:update_mwi(OwnerId, AccountDb)
           end).
 
 -spec get_devices_owned_by(ne_binary(), ne_binary()) -> wh_json:objects().
@@ -53,7 +53,7 @@ get_devices_owned_by(OwnerID, DB) ->
 maybe_originate_quickcall(#cb_context{}=Context) ->
     Call = create_call_from_context(Context),
     case get_endpoints(Call, Context) of
-        [] -> 
+        [] ->
             cb_context:add_system_error(unspecified_fault, Context);
         Endpoints ->
             originate_quickcall(Endpoints, Call, default_bleg_cid(Call, Context))
@@ -63,10 +63,10 @@ create_call_from_context(#cb_context{account_id=AccountId, db_name=AccountDb, do
     Routines = [fun(C) -> whapps_call:set_account_db(AccountDb, C) end
                 ,fun(C) -> whapps_call:set_account_id(AccountId, C) end
                 ,fun(C) -> whapps_call:set_inception(<<"on-net">>, C) end
-                ,fun(C) -> 
+                ,fun(C) ->
                          case wh_json:get_ne_value(<<"owner_id">>, JObj) of
                              undefined -> C;
-                             OwnerId -> whapps_call:set_owner_id(OwnerId, C) 
+                             OwnerId -> whapps_call:set_owner_id(OwnerId, C)
                          end
                  end
                 | request_specific_extraction_funs(Context)
@@ -106,8 +106,8 @@ get_endpoints(Call, #cb_context{req_nouns=?USERS_QCALL_NOUNS}) ->
                             {ok, Endpoint} -> Endpoint ++ Acc;
                             {error, _E} -> Acc
                         end
-                end, [], cf_attributes:fetch_owned_by(_UserId, device, Call));
-get_endpoints(_, _) -> 
+                end, [], cf_attributes:owned_by(_UserId, <<"device">>, Call));
+get_endpoints(_, _) ->
     [].
 
 aleg_cid(Number, Call) ->
@@ -137,7 +137,7 @@ originate_quickcall(Endpoints, Call, #cb_context{account_id=AccountId, req_id=Re
                 true -> wh_util:rand_hex_binary(16);
                 false -> wh_util:to_binary(RequestId)
             end,
-    Request = [{<<"Application-Name">>, <<"transfer">>}    
+    Request = [{<<"Application-Name">>, <<"transfer">>}
                ,{<<"Application-Data">>, get_application_data(Context)}
                ,{<<"Msg-ID">>, MsgId}
                ,{<<"Endpoints">>, Endpoints}
