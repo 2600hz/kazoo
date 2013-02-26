@@ -191,7 +191,7 @@ logout(Hotdesk, Call) ->
     maybe_keep_logged_in_elsewhere(Hotdesk, Call).
 
 -spec maybe_keep_logged_in_elsewhere(hotdesk(), whapps_call:call()) -> 'ok'.
-maybe_keep_logged_in_elsewhere(#hotdesk{keep_logged_in_elsewhere=true}=Hotdesk
+maybe_keep_logged_in_elsewhere(#hotdesk{keep_logged_in_elsewhere='true'}=Hotdesk
                                ,Call) ->
     keep_logged_in_elsewhere(whapps_call:authorizing_id(Call), Hotdesk, Call);
 maybe_keep_logged_in_elsewhere(Hotdesk, Call) ->
@@ -202,7 +202,8 @@ maybe_keep_logged_in_elsewhere(Hotdesk, Call) ->
 keep_logged_in_elsewhere('undefined', Hotdesk, Call) ->
     logged_out(Hotdesk, Call);
 keep_logged_in_elsewhere(AuthorizingId, #hotdesk{endpoint_ids=EndpointIds
-                                                 ,owner_id=OwnerId}=Hotdesk, Call) ->
+                                                 ,owner_id=OwnerId
+                                                }=Hotdesk, Call) ->
     AccountDb = whapps_call:account_db(Call),
     Fun = fun(JObj) ->
                   wh_json:delete_key([<<"hotdesk">>, <<"users">>, OwnerId], JObj)
@@ -265,8 +266,8 @@ find_hotdesk_profile(Call, Loop) ->
 -spec lookup_hotdesk_id(ne_binary(), whapps_call:call()) ->  hotdesk() | {'error', _}.
 lookup_hotdesk_id(HotdeskId, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    ViewOptions = [{<<"key">>, HotdeskId}
-                   ,include_docs
+    ViewOptions = [{'key', HotdeskId}
+                   ,'include_docs'
                   ],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/hotdesk_id">>, ViewOptions) of
         {'ok', [JObj]} ->
@@ -293,10 +294,10 @@ from_json(JObj, Call) ->
             }.
 
 -spec remove_from_endpoints(hotdesk(), whapps_call:call()) -> hotdesk().
-remove_from_endpoints(#hotdesk{endpoint_ids=[]}=Hotdesk, _) ->
-    Hotdesk;
+remove_from_endpoints(#hotdesk{endpoint_ids=[]}=Hotdesk, _) -> Hotdesk;
 remove_from_endpoints(#hotdesk{endpoint_ids=[EndpointId|Endpoints]
-                               ,owner_id=OwnerId}=Hotdesk, Call) ->
+                               ,owner_id=OwnerId
+                              }=Hotdesk, Call) ->
     AccountDb = whapps_call:account_db(Call),
     Fun = fun(JObj) ->
                   wh_json:delete_key([<<"hotdesk">>, <<"users">>, OwnerId], JObj)
@@ -305,12 +306,10 @@ remove_from_endpoints(#hotdesk{endpoint_ids=[EndpointId|Endpoints]
     remove_from_endpoints(Hotdesk#hotdesk{endpoint_ids=Endpoints}, Call).
 
 -spec update_hotdesk_endpoint(ne_binary(), api_binary(), function()) -> wh_jobj_return().
-update_hotdesk_endpoint(_, 'undefined', _) ->
-    {'error', 'not_found'};
+update_hotdesk_endpoint(_, 'undefined', _) -> {'error', 'not_found'};
 update_hotdesk_endpoint(AccountDb, EndpointId, Fun) when is_binary(EndpointId) ->
     case couch_mgr:open_doc(AccountDb, EndpointId) of
-        {'ok', JObj} ->
-            update_hotdesk_endpoint(AccountDb, JObj, Fun);
+        {'ok', JObj} -> update_hotdesk_endpoint(AccountDb, JObj, Fun);
         {'error', _R}=E ->
             lager:warning("unable to fetch hotdesk endpoint ~s: ~p", [EndpointId, _R]),
             E
