@@ -98,9 +98,7 @@ merge_attributes(Endpoint) ->
                                            wh_json:object().
 merge_attributes(Keys, Account, Endpoint, undefined) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
-    EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
-    OwnerId = wh_json:get_ne_value(<<"owner_id">>, Endpoint),
-    JObj = get_user(OwnerId, EndpointId, AccountDb),
+    JObj = get_user(AccountDb, Endpoint),
     Id = wh_json:get_value(<<"_id">>, JObj),
     merge_attributes(Keys
                      ,Account
@@ -170,24 +168,23 @@ merge_call_restrictions([Key|Keys], Account, Endpoint, Owner) ->
             merge_call_restrictions(Keys, Account, Endpoint, Owner)
     end.
 
--spec get_user(api_binary(), ne_binary(), ne_binary()) -> wh_json:object().
-get_user('undefined', EndpointId, AccountDb) ->
-    ViewOptions = [{'key', EndpointId}
-                   ,include_docs
-                  ],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owner">>, ViewOptions) of
-        {'ok', [JObj]} ->
-            lager:debug("merging endpoint ~s with user ~s", [EndpointId, wh_json:get_value(<<"id">>, JObj)]),
-            wh_json:get_value(<<"doc">>, JObj);
-        _Else ->
+-spec get_user(ne_binary(), api_binary() | wh_json:object()) -> wh_json:object().
+get_user(_, 'undefined') -> wh_json:new();
+get_user(AccountDb, OwnerId) when is_binary(OwnerId) ->
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+        {'ok', JObj} -> JObj;
+        {'error', _R} ->
+            lager:warning("failed to load endpoint owner ~s: ~p", [OwnerId, _R]),
             wh_json:new()
     end;
-get_user(OwnerId, EndpointId, AccountDb) ->
-    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
-        {ok, JObj} ->
-            lager:debug("merging endpoint ~s with owner ~s", [EndpointId, OwnerId]),
-            JObj;
-        _Else -> wh_json:new()
+get_user(AccountDb, Endpoint) ->
+    case wh_json:get_keys([<<"hotdesk">>, <<"users">>], Endpoint) of
+        [] ->
+            get_user(AccountDb, wh_json:get_value(<<"owner_id">>, Endpoint));
+        [OwnerId] ->
+            get_user(AccountDb, OwnerId);
+        [_|_]->
+            wh_json:new()
     end.
 
 -spec create_endpoint_name(api_binary(), api_binary(), api_binary(), api_binary()) -> api_binary().

@@ -28,7 +28,7 @@ pass_hashes(Username, Password) ->
 update_mwi(OwnerId, AccountDb) ->
     spawn(fun() ->
                   timer:sleep(1000),
-                  cf_util:update_mwi(OwnerId, AccountDb)
+                  cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId)
           end).
 
 -spec get_devices_owned_by(ne_binary(), ne_binary()) -> wh_json:objects().

@@ -111,10 +111,11 @@ handle(Data, Call) ->
 -spec check_mailbox(mailbox(), whapps_call:call(), non_neg_integer()) -> 'ok'.
 -spec check_mailbox(mailbox(), boolean(), whapps_call:call(), non_neg_integer()) -> 'ok'.
 
-check_mailbox(Box, Call) ->
+check_mailbox(#mailbox{owner_id=OwnerId}=Box, Call) ->
     %% Wrapper to initalize the attempt counter
     check_mailbox(Box, Call, 1),
-    cf_util:update_mwi(Call).
+    AccountDb = whapps_call:account_db(Call),
+    cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId).
 
 check_mailbox(#mailbox{owner_id=OwnerId}=Box, Call, Loop) ->
     IsOwner = case whapps_call:kvs_fetch(owner_id, Call) of
@@ -410,11 +411,11 @@ main_menu(#mailbox{owner_id=OwnerId
     case whapps_call_command:collect_digits(1, 5000, 2000, NoopId, Call) of
         {error, _} ->
             lager:info("error during mailbox main menu"),
-            cf_util:update_mwi(OwnerId, AccountDb),
+            cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
             ok;
         {ok, Exit} ->
             lager:info("user choose to exit voicemail menu"),
-            cf_util:update_mwi(OwnerId, AccountDb),
+            cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
             ok;
         {ok, HearNew} ->
             lager:info("playing all messages in folder: ~s", [?FOLDER_NEW]),
@@ -790,7 +791,7 @@ update_mailbox(#mailbox{mailbox_id=Id
                 lager:debug("notification error: ~p", [_E]),
                 save_meta(Length, Box, Call, MediaId)
         end,
-    cf_util:update_mwi(OwnerId, whapps_call:account_db(Call)).
+    cf_util:unsolicited_owner_mwi_update(whapps_call:account_db(Call), OwnerId).
 
 maybe_save_meta(Length, #mailbox{delete_after_notify=false}=Box, Call, MediaId, _UpdateJObj) ->
     save_meta(Length, Box, Call, MediaId);
