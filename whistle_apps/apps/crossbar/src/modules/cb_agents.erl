@@ -21,10 +21,10 @@
 -module(cb_agents).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,content_types_provided/1, content_types_provided/2
-         ,validate/1, validate/2
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,content_types_provided/1, content_types_provided/2, content_types_provided/3
+         ,validate/1, validate/2, validate/3
         ]).
 
 -include("src/crossbar.hrl").
@@ -87,8 +87,11 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() -> ['GET'].
 allowed_methods(_) -> ['GET'].
+allowed_methods(?STATUS_PATH_TOKEN, _) -> ['GET'];
+allowed_methods(_, ?STATUS_PATH_TOKEN) -> ['GET'].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -101,8 +104,11 @@ allowed_methods(_) -> ['GET'].
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
+resource_exists(_, ?STATUS_PATH_TOKEN) -> 'true';
+resource_exists(?STATUS_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -113,6 +119,7 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 content_types_provided(#cb_context{}=Context) -> Context.
 content_types_provided(#cb_context{}=Context, ?STATUS_PATH_TOKEN) -> Context;
 content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
@@ -126,6 +133,8 @@ content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
             CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}],
             cb_context:add_content_types_provided(Context, CTPs)
     end.
+content_types_provided(#cb_context{}=Context, ?STATUS_PATH_TOKEN, _) -> Context;
+content_types_provided(#cb_context{}=Context, _, ?STATUS_PATH_TOKEN) -> Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -139,6 +148,7 @@ content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context).
 
@@ -148,6 +158,11 @@ validate(#cb_context{req_verb = <<"get">>}=Context, ?STATS_PATH_TOKEN) ->
     fetch_all_agent_stats(Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
     read(Id, Context).
+
+validate(#cb_context{req_verb = <<"get">>}=Context, AgentId, ?STATUS_PATH_TOKEN) ->
+    fetch_agent_status(AgentId, Context);
+validate(#cb_context{req_verb = <<"get">>}=Context, ?STATUS_PATH_TOKEN, AgentId) ->
+    fetch_agent_status(AgentId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -165,6 +180,13 @@ fetch_all_agent_statuses(Context) ->
             crossbar_util:response(get_statuses(Context1, As), Context1);
         Context1 -> Context1
     end.
+
+fetch_agent_status(AgentId, Context) ->
+    crossbar_util:response(
+      format_status(
+        acdc_util:agent_status(cb_context:account_id(Context), AgentId, 'true')
+       )
+     ,Context).
 
 get_statuses(Context, As) ->
     AcctId = cb_context:account_id(Context),
