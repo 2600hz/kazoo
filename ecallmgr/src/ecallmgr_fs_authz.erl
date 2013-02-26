@@ -36,7 +36,7 @@
                         ,<<"Discount-Percentage">>
                    ]).
 
--define(HEARTBEAT_ON_ANSWER(CallId), <<"api_on_answer=uuid_session_heartbeat ", CallId/binary, " 10">>).
+-define(HEARTBEAT_ON_ANSWER(CallId), <<"api_on_answer=uuid_session_heartbeat ", CallId/binary, " 60">>).
 
 %%%===================================================================
 %%% API
