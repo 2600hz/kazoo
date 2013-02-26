@@ -555,8 +555,8 @@ compact({'compact', N, D, Ss, DDs}, #state{admin_conn=AdminConn
                                            ,dbs=[]
                                           }=State) ->
     try lists:split(?MAX_COMPACTING_SHARDS, Ss) of
-        {'compact', Shards} ->
-            ShardsPidRef = compact_shards(AdminConn, 'compact', DDs),
+        {Compact, Shards} ->
+            ShardsPidRef = compact_shards(AdminConn, Compact, DDs),
             {'next_state', 'compact', State#state{shards_pid_ref=ShardsPidRef
                                                   ,next_compaction_msg={'compact', N, D, Shards, DDs}
                                                  }}
@@ -571,8 +571,8 @@ compact({'compact', N, D, Ss, DDs}, #state{admin_conn=AdminConn
                                            ,dbs=[Db|Dbs]
                                           }=State) ->
     try lists:split(?MAX_COMPACTING_SHARDS, Ss) of
-        {'compact', Shards} ->
-            ShardsPidRef = compact_shards(AdminConn, 'compact', DDs),
+        {Compact, Shards} ->
+            ShardsPidRef = compact_shards(AdminConn, Compact, DDs),
             {'next_state', 'compact', State#state{shards_pid_ref=ShardsPidRef
                                                   ,next_compaction_msg={'compact', N, D, Shards, DDs}
                                                  }}
@@ -605,8 +605,8 @@ compact({'compact_db', N, D, [], _}, #state{nodes=[Node|Ns]}=State) ->
     {'next_state', 'compact', State#state{nodes=Ns}};
 compact({'compact_db', N, D, Ss, DDs}, #state{admin_conn=AdminConn}=State) ->
     try lists:split(?MAX_COMPACTING_SHARDS, Ss) of
-        {'compact', Shards} ->
-            ShardsPidRef = compact_shards(AdminConn, 'compact', DDs),
+        {Compact, Shards} ->
+            ShardsPidRef = compact_shards(AdminConn, Compact, DDs),
             {'next_state', 'compact', State#state{shards_pid_ref=ShardsPidRef
                                                   ,next_compaction_msg={'compact_db', N, D, Shards, DDs}
                                                  }}

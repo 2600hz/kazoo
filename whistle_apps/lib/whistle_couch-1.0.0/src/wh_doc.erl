@@ -62,7 +62,7 @@ add_pvt_account_db(JObj, DBName, Opts) ->
 add_pvt_account_id(JObj, DBName, Opts) ->
     case props:get_value('account_id', Opts) of
         'undefined' -> wh_json:set_value(<<"pvt_account_id">>, wh_util:format_account_id(DBName, 'raw'), JObj);
-        Id -> wh_json:set_value(<<"pvt_account_id">>, Id)
+        Id -> wh_json:set_value(<<"pvt_account_id">>, Id, JObj)
     end.
 
 add_pvt_type(JObj, _, Options) ->
