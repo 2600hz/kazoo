@@ -58,11 +58,19 @@ status(Supervisor) ->
             lager:info("  Supervisor: ~p", [Supervisor]),
             lager:info("  Listener: ~p (~s)", [LPid, Q]),
             lager:info("  FSM: ~p", [FSM]),
-            print_status(Status);
+            print_status(augment_status(Status, LPid));
         _ ->
             lager:info("Agent Supervisor ~p is dead, stopping", [Supervisor]),
             ?MODULE:stop(Supervisor)
     end.
+
+-define(AGENT_INFO_FIELDS, whapps_config:get(?CONFIG_CAT, <<"agent_info_fields">>
+                                                 ,[<<"first_name">>, <<"last_name">>, <<"username">>, <<"email">>]
+                                            )).
+
+augment_status(Status, LPid) ->
+    Fs = ?AGENT_INFO_FIELDS,
+    [{F, acdc_agent:agent_info(LPid, F)} || F <- Fs] ++ Status.
 
 print_status([]) -> 'ok';
 print_status([{_, 'undefined'}|T]) -> print_status(T);

@@ -34,6 +34,7 @@
          ,agent_call_id/3, outbound_call_id/1
          ,unbind_from_cdr/2
          ,logout_agent/1
+         ,agent_info/2
         ]).
 
 %% gen_server callbacks
@@ -221,6 +222,9 @@ send_sync_resp(Srv, Status, ReqJObj, Options) ->
 -spec config(pid()) -> {ne_binary(), ne_binary(), ne_binary()}.
 config(Srv) -> gen_listener:call(Srv, 'config').
 
+-spec agent_info(pid(), wh_json:key()) -> wh_json:json_term() | 'undefined'.
+agent_info(Srv, Field) -> gen_listener:call(Srv, {'agent_info', Field}).
+
 send_status_resume(Srv) ->
     gen_listener:cast(Srv, {'send_status_update', 'resume'}).
 
@@ -293,6 +297,8 @@ init([Supervisor, Agent, Queues]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({'agent_info', Field}, _, #state{agent=Agent}=State) ->
+    {'reply', wh_json:get_value(Field, Agent), State};
 handle_call('config', _From, #state{acct_id=AcctId
                                     ,agent_id=AgentId
                                     ,my_q=Q
