@@ -217,7 +217,7 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg, my_q=Q, callctl_q=
                                 {'cdr', 'aleg' | 'bleg', wh_json:object(), ts_state()}.
 wait_for_cdr(State) ->
     wait_for_cdr(State, 10000).
-wait_for_cdr(#ts_callflow_state{aleg_callid=ALeg}=State, Timeout) ->
+wait_for_cdr(State, Timeout) ->
     receive
         #'basic.consume_ok'{} -> wait_for_cdr(State, Timeout);
         {_, #amqp_msg{payload=Payload}} ->
@@ -228,11 +228,6 @@ wait_for_cdr(#ts_callflow_state{aleg_callid=ALeg}=State, Timeout) ->
                     send_hangup(State1),
                     wait_for_cdr(State1, ?WAIT_FOR_CDR_TIMEOUT);
                 ignore -> wait_for_cdr(State, Timeout)
-            end
-    after Timeout ->
-            case whapps_call_command:b_channel_status(ALeg) of
-                {error, _} -> {timeout, State};
-                _ -> wait_for_cdr(State, Timeout)
             end
     end.
 
