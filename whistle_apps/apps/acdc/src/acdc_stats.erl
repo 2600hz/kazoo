@@ -80,197 +80,191 @@
 -type stat() :: call_stat() | agent_stat().
 
 %% An agent connected with a caller
--spec call_processed(ne_binary(), ne_binary()
-                           ,ne_binary(), ne_binary()
-                           ,integer()
-                           ) -> 'ok'.
+-spec call_processed(ne_binary(), ne_binary(), ne_binary(), ne_binary(), integer()) -> 'ok'.
 call_processed(AcctId, QueueId, AgentId, CallId, Elapsed) ->
-    gen_listener:cast(?MODULE, {store, #call_stat{acct_id=AcctId
-                                                  ,queue_id=QueueId
-                                                  ,agent_id=AgentId
-                                                  ,call_id=CallId
-                                                  ,status='processed'
-                                                  ,talk_time=Elapsed
-                                                 }
+    gen_listener:cast(?MODULE, {'store', #call_stat{acct_id=AcctId
+                                                    ,queue_id=QueueId
+                                                    ,agent_id=AgentId
+                                                    ,call_id=CallId
+                                                    ,status='processed'
+                                                    ,talk_time=Elapsed
+                                                   }
                                }).
 
 %% Caller left the queue
--spec call_abandoned(ne_binary(), ne_binary()
-                           ,ne_binary(), abandon_reason()
-                          ) -> 'ok'.
+-spec call_abandoned(ne_binary(), ne_binary(), ne_binary(), abandon_reason()) -> 'ok'.
 call_abandoned(AcctId, QueueId, CallId, Reason) ->
-    gen_listener:cast(?MODULE, {store, #call_stat{acct_id=AcctId
-                                                  ,queue_id=QueueId
-                                                  ,call_id=CallId
-                                                  ,abandon_reason=Reason
-                                                  ,status='abandoned'
-                                                 }
+    gen_listener:cast(?MODULE, {'store', #call_stat{acct_id=AcctId
+                                                    ,queue_id=QueueId
+                                                    ,call_id=CallId
+                                                    ,abandon_reason=Reason
+                                                    ,status='abandoned'
+                                                   }
                                }).
 
 %% Agent was rung for a call, and failed to pickup in time
 -spec call_missed(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 call_missed(AcctId, QueueId, AgentId, CallId) ->
-    call_missed(AcctId, QueueId, AgentId, CallId, undefined).
+    call_missed(AcctId, QueueId, AgentId, CallId, 'undefined').
 -spec call_missed(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 call_missed(AcctId, QueueId, AgentId, CallId, MissReason) ->
-    gen_listener:cast(?MODULE, {store, #call_stat{acct_id=AcctId
-                                                  ,queue_id=QueueId
-                                                  ,call_id=CallId
-                                                  ,agent_id=AgentId
-                                                  ,status='missed'
-                                                  ,miss_reason=MissReason
-                                                 }
+    gen_listener:cast(?MODULE, {'store', #call_stat{acct_id=AcctId
+                                                    ,queue_id=QueueId
+                                                    ,call_id=CallId
+                                                    ,agent_id=AgentId
+                                                    ,status='missed'
+                                                    ,miss_reason=MissReason
+                                                   }
                                }).
 
 %% Call was picked up by an agent, track how long caller was in queue
 -spec call_handled(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 call_handled(AcctId, QueueId, CallId, AgentId) ->
-    gen_listener:cast(?MODULE, {store, #call_stat{acct_id=AcctId
-                                                  ,queue_id=QueueId
-                                                  ,agent_id=AgentId
-                                                  ,call_id=CallId
-                                                  ,status='handling'
-                                                 }
+    gen_listener:cast(?MODULE, {'store', #call_stat{acct_id=AcctId
+                                                    ,queue_id=QueueId
+                                                    ,agent_id=AgentId
+                                                    ,call_id=CallId
+                                                    ,status='handling'
+                                                   }
                                }).
 
 %% Call was placed in the AMQP Queue
 -spec call_waiting(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 -spec call_waiting(ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary()) -> 'ok'.
 call_waiting(AcctId, QueueId, CallId) ->
-    call_waiting(AcctId, QueueId, CallId, undefined, undefined).
+    call_waiting(AcctId, QueueId, CallId, 'undefined', 'undefined').
 call_waiting(AcctId, QueueId, CallId, CName, CNum) ->
-    gen_listener:cast(?MODULE, {store, #call_stat{
-                                  acct_id=AcctId
-                                  ,queue_id=QueueId
-                                  ,call_id=CallId
-                                  ,status='waiting'
-                                  ,caller_id_name=CName
-                                  ,caller_id_number=CNum
-                                 }
+    gen_listener:cast(?MODULE, {'store', #call_stat{acct_id=AcctId
+                                                    ,queue_id=QueueId
+                                                    ,call_id=CallId
+                                                    ,status='waiting'
+                                                    ,caller_id_name=CName
+                                                    ,caller_id_number=CNum
+                                                   }
                                }).
 
 %% marks an agent as active for an account
 -spec agent_active(ne_binary(), ne_binary()) -> 'ok'.
 agent_active(AcctId, AgentId) ->
-    gen_listener:cast(?MODULE, {store, #agent_stat{acct_id=AcctId
-                                                   ,agent_id=AgentId
-                                                   ,status='ready'
-                                                  }
+    gen_listener:cast(?MODULE, {'store', #agent_stat{acct_id=AcctId
+                                                     ,agent_id=AgentId
+                                                     ,status='ready'
+                                                    }
                                }).
 
 %% marks an agent as inactive for an account
 -spec agent_inactive(ne_binary(), ne_binary()) -> 'ok'.
 agent_inactive(AcctId, AgentId) ->
-    gen_listener:cast(?MODULE, {store, #agent_stat{acct_id=AcctId
-                                                   ,agent_id=AgentId
-                                                   ,status='logout'
-                                                  }
+    gen_listener:cast(?MODULE, {'store', #agent_stat{acct_id=AcctId
+                                                     ,agent_id=AgentId
+                                                     ,status='logout'
+                                                    }
                                }).
 
 %% marks an agent as back from break, effectively removing the waiting stat
 -spec agent_resume(ne_binary(), ne_binary()) -> 'ok'.
 agent_resume(AcctId, AgentId) ->
-    gen_listener:cast(?MODULE, {store, #agent_stat{acct_id=AcctId
-                                                   ,agent_id=AgentId
-                                                   ,status='ready'
-                                                  }
+    gen_listener:cast(?MODULE, {'store', #agent_stat{acct_id=AcctId
+                                                     ,agent_id=AgentId
+                                                     ,status='ready'
+                                                    }
                                }).
 
 %% marks an agent as paused for an account
 -spec agent_paused(ne_binary(), ne_binary(), integer()) -> 'ok'.
 agent_paused(AcctId, AgentId, Timeout) ->
-    gen_listener:cast(?MODULE, {store, #agent_stat{acct_id=AcctId
-                                                   ,agent_id=AgentId
-                                                   ,status='paused'
-                                                   ,wait_time=Timeout
-                                                  }
+    gen_listener:cast(?MODULE, {'store', #agent_stat{acct_id=AcctId
+                                                     ,agent_id=AgentId
+                                                     ,status='paused'
+                                                     ,wait_time=Timeout
+                                                    }
                                }).
 
 %% marks the agent as handling a member call
 -spec agent_handling(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 agent_handling(AcctId, AgentId, CallId) ->
-    gen_listener:cast(?MODULE, {store, #agent_stat{agent_id=AgentId
-                                                   ,acct_id=AcctId
-                                                   ,status='handling'
-                                                   ,call_id=CallId
-                                                  }
+    gen_listener:cast(?MODULE, {'store', #agent_stat{agent_id=AgentId
+                                                     ,acct_id=AcctId
+                                                     ,status='handling'
+                                                     ,call_id=CallId
+                                                    }
                                }).
 
 -spec agent_wrapup(ne_binary(), ne_binary(), integer()) -> 'ok'.
 agent_wrapup(AcctId, AgentId, Timeout) ->
-    gen_listener:cast(?MODULE, {store, #agent_stat{acct_id=AcctId
-                                                   ,agent_id=AgentId
-                                                   ,status='wrapup'
-                                                   ,wait_time=Timeout
-                                                  }
+    gen_listener:cast(?MODULE, {'store', #agent_stat{acct_id=AcctId
+                                                     ,agent_id=AgentId
+                                                     ,status='wrapup'
+                                                     ,wait_time=Timeout
+                                                    }
                                }).
 
 -spec agent_oncall(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 agent_oncall(AcctId, AgentId, CallId) ->
-    gen_listener:cast(?MODULE, {store, #agent_stat{acct_id=AcctId
-                                                   ,agent_id=AgentId
-                                                   ,status='busy'
-                                                   ,call_id=CallId
-                                                  }
+    gen_listener:cast(?MODULE, {'store', #agent_stat{acct_id=AcctId
+                                                     ,agent_id=AgentId
+                                                     ,status='busy'
+                                                     ,call_id=CallId
+                                                    }
                                }).
 
 -spec agent_ready(ne_binary(), ne_binary()) -> 'ok'.
 agent_ready(AcctId, AgentId) ->
-    gen_listener:cast(?MODULE, {store, #agent_stat{acct_id=AcctId
-                                                   ,agent_id=AgentId
-                                                   ,status='ready'
-                                                  }
+    gen_listener:cast(?MODULE, {'store', #agent_stat{acct_id=AcctId
+                                                     ,agent_id=AgentId
+                                                     ,status='ready'
+                                                    }
                                }).
 
--define(BINDINGS, [{self, []}]).
+-define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, []).
 start_link() ->
-    gen_listener:start_link({local, ?MODULE}
+    gen_listener:start_link({'local', ?MODULE}
                             ,?MODULE
-                            ,[{bindings, ?BINDINGS}
-                              ,{responders, ?RESPONDERS}
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
                              ],
                             []).
 
 init([]) ->
-    put(callid, <<"acdc.stats">>),
+    put('callid', <<"acdc.stats">>),
     Prefix = wh_util:rand_hex_binary(5),
     lager:debug("started new acdc stats collector, prefix: ~s", [Prefix]),
-    {ok, Prefix}.
+    {'ok', Prefix}.
 
 handle_call(_Req, _From, State) ->
-    {reply, ok, State}.
+    {'reply', 'ok', State}.
 
-handle_cast({store, Stat}, State) ->
+handle_cast({'store', Stat}, State) ->
     store_stat(Stat, State),
-    {noreply, State};
+    {'noreply', State};
 handle_cast(_Req, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 handle_info(_Msg, State) ->
     lager:debug("unhandling message: ~p", [_Msg]),
-    {noreply, State}.
+    {'noreply', State}.
 
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 terminate(_Reason, _) ->
     lager:debug("acdc stats terminating: ~p", [_Reason]).
 
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 store_stat(#call_stat{acct_id=AcctId}=Stat, Prefix) ->
     JObj = stat_to_jobj(Stat, Prefix),
     store_stat(AcctId, JObj);
 store_stat(#agent_stat{acct_id=AcctId}=Stat, Prefix) ->
-    JObj = stat_to_jobj(Stat, Prefix),
+    JObj = wh_doc:update_pvt_parameters(stat_to_jobj(Stat, Prefix), AcctId),
     store_stat(AcctId, JObj);
 store_stat(?NE_BINARY = AcctId, JObj) ->
     case couch_mgr:save_doc(db_name(AcctId), JObj) of
-        {ok, _} -> ok;
-        {error, conflict} -> ok;
-        {error, _E} ->
+        {'ok', _} -> 'ok';
+        {'error', 'conflict'} -> 'ok';
+        {'error', _E} ->
             lager:debug("error saving: ~p", [_E]),
             timer:sleep(250 + random:uniform(100)),
             store_stat(AcctId, JObj)
@@ -358,5 +352,5 @@ init_db(AcctId) ->
     lager:debug("revised docs in ~s: ~p", [AcctId, couch_mgr:revise_views_from_folder(DbName, acdc)]).
 
 db_name(Acct) ->
-    <<A:2/binary, B:2/binary, Rest/binary>> = wh_util:format_account_id(Acct, raw),
+    <<A:2/binary, B:2/binary, Rest/binary>> = wh_util:format_account_id(Acct, 'raw'),
     <<"acdc%2F",A/binary,"%2F",B/binary,"%2F", Rest/binary>>.
