@@ -12,28 +12,15 @@
 
 -export([handle/2]).
 
--record(prompts, {
-          enter_hotdesk = <<"/system_media/hotdesk-enter_id">>
-          ,enter_password = <<"/system_media/hotdesk-enter_pin">>
-          ,invalid_login = <<"/system_media/vm-fail_auth">>
-          ,abort_login = <<"/system_media/vm-abort">>
-          ,hotdesk_login = <<"/system_media/hotdesk-logged_in">>
-          ,hotdesk_logout = <<"/system_media/hotdesk-logged_out">>
-          ,goodbye = <<"/system_media/vm-goodbye">>
-         }).
--type prompts() :: #prompts{}.
-
 -define(MAX_LOGIN_ATTEMPTS, 3).
--define(CF_HOTDESK_VIEW, <<"cf_attributes/hotdesk_id">>).
-
 -record(hotdesk, {enabled = 'false' :: boolean()
                   ,hotdesk_id :: api_binary()
                   ,pin :: api_binary()
-                  ,login_attempts = 1 :: non_neg_integer()
                   ,require_pin = 'false' :: boolean()
                   ,keep_logged_in_elsewhere = 'false' :: boolean()
                   ,owner_id :: api_binary()
-                  ,prompts = #prompts{} :: prompts()
+                  ,endpoint_ids :: set()
+                  ,jobj = wh_json:new() :: wh_json:object()
                  }).
 -type hotdesk() :: #hotdesk{}.
 
@@ -45,39 +32,39 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
-    {'ok', H} = get_hotdesk_profile(wh_json:get_value(<<"id">>, Data), Call),
-    Devices = cf_attributes:fetch_owned_by(H#hotdesk.owner_id, 'device', Call),
-    case wh_json:get_value(<<"action">>, Data) of
-        <<"bridge">> when H#hotdesk.enabled ->
-            %% bridge only if hotdesk is enabled
-            case bridge_to_endpoints(Devices, Data, Call) of
-                {'ok', _} ->
-                    lager:info("completed successful bridge to the hotdesk"),
-                    cf_exe:continue(Call);
-                {'fail', _}=Failure ->
-                    cf_util:handle_bridge_failure(Failure, Call);
-                {'error', _R} ->
-                    lager:info("error bridging to hotdesk: ~p", [_R]),
-                    cf_exe:continue(Call)
-            end;
-        <<"bridge">> ->
-            cf_exe:continue(Call);
-        <<"login">> ->
-            whapps_call_command:answer(Call),
-            login(Devices, H, Call),
-            cf_exe:continue(Call);
-        <<"logout">> ->
-            whapps_call_command:answer(Call),
-            logout(Devices, H, Call),
-            cf_exe:continue(Call);
-        <<"toggle">> ->
-            case Devices of
-                [] ->
-                    login(Devices, H, Call);
-                _  ->
-                    logout(Devices, H, Call)
-            end,
+    case get_hotdesk_profile(wh_json:get_value(<<"id">>, Data), Call) of
+        #hotdesk{}=Hotdesk ->
+            Action = wh_json:get_value(<<"action">>, Data),
+            handle_action(Action, Hotdesk, Call);
+        {'error', _} ->
             cf_exe:continue(Call)
+    end.
+
+-spec handle_action(ne_binary(), hotdesk(), whapps_call:call()) -> 'ok'.
+handle_action(<<"bridge">>, #hotdesk{enabled=false}, Call) ->
+    cf_exe:continue(Call);
+handle_action(<<"bridge">>, Hotdesk, Call) ->
+    case bridge_to_endpoints(Hotdesk, Call) of
+        {'ok', _} ->
+            lager:info("completed successful bridge to the hotdesk"),
+            cf_exe:continue(Call);
+        {'fail', _}=Failure ->
+            cf_util:handle_bridge_failure(Failure, Call);
+        {'error', _R} ->
+            lager:info("error bridging to hotdesk: ~p", [_R]),
+            cf_exe:continue(Call)
+    end;
+handle_action(<<"login">>, Hotdesk, Call) ->
+    login(Hotdesk, Call),
+    cf_exe:continue(Call);
+handle_action(<<"logout">>, Hotdesk, Call) ->
+    whapps_call_command:answer(Call),
+    logout(Hotdesk, Call),
+    cf_exe:continue(Call);
+handle_action(<<"toggle">>, #hotdesk{endpoint_ids=EndpointIds}=Hotdesk, Call) ->
+    case sets:size(EndpointIds) =/= 0 of
+        true -> handle_action(<<"logout">>, Hotdesk, Call);
+        false -> handle_action(<<"login">>, Hotdesk, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -86,19 +73,28 @@ handle(Data, Call) ->
 %% Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints(ne_binaries(), wh_json:object(), whapps_call:call()) ->
-                                 {'ok', wh_json:object()} |
-                                 {'fail', wh_json:object()} |
-                                 {'error', term()}.
-bridge_to_endpoints(Devices, Data, Call) ->
-    Endpoints = [Endpoint || Device <- Devices,
-                             (case (Endpoint = cf_endpoint:build(Device, Data, Call)) of
-                                  {'error', _} -> 'false';
-                                  {'ok', _} -> 'true'
-                              end)],
-    Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
+-spec bridge_to_endpoints(hotdesk(), whapps_call:call()) -> {'ok', wh_json:object()} |
+                                                            {'fail', wh_json:object()} |
+                                                            {'error', _}.
+
+bridge_to_endpoints(#hotdesk{endpoint_ids=EndpointIds}, Call) ->
+    Endpoints = build_endpoints(sets:to_list(EndpointIds), Call),
+%%    Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
-    whapps_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call).
+    whapps_call_command:b_bridge(Endpoints, ?DEFAULT_TIMEOUT, <<"simultaneous">>, IgnoreEarlyMedia, Call).
+
+build_endpoints(EndpointIds, Call) ->
+    build_endpoints(EndpointIds, [], Call).
+
+build_endpoints([], Endpoints, _) ->
+    Endpoints;
+build_endpoints([EndpointId|EndpointIds], Endpoints, Call) ->
+    case cf_endpoint:build(EndpointId, Call) of
+        {'ok', Endpoint} ->
+            build_endpoints(EndpointIds, [Endpoint|Endpoints], Call);
+        {'error', _} ->
+            build_endpoints(EndpointIds, Endpoints, Call)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -111,66 +107,73 @@ bridge_to_endpoints(Devices, Data, Call) ->
 %% 3y) Is the pin valid?
 %% 3n) Login
 %%--------------------------------------------------------------------
--spec login(ne_binaries(), hotdesk(), whapps_call:call()) -> ok.
--spec login(ne_binaries(), hotdesk(), undefined | ne_binary(), whapps_call:call(), non_neg_integer()) -> ok.
+-spec login(hotdesk(), whapps_call:call()) -> 'ok'.
+%% TODO: a UI bug keeps the hotdesk enabled from ever being true
+%%login(#hotdesk{enabled=false}, Call) ->
+%%    whapps_call_command:b_prompt(<<"hotdesk-disabled">>, Call);
+login(Hotdesk, Call) ->
+    maybe_require_login_pin(Hotdesk, Call).
 
-login(Devices, H, Call) ->
-    login(Devices, H, whapps_call:authorizing_id(Call), Call, 1).
+-spec maybe_require_login_pin(hotdesk(), whapps_call:call()) -> 'ok'.
+maybe_require_login_pin(#hotdesk{require_pin=false}=Hotdesk, Call) ->
+    maybe_logout_elsewhere(Hotdesk, Call);
+maybe_require_login_pin(Hotdesk, Call) ->
+    require_login_pin(Hotdesk, Call).
 
-login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, undefined, Call, _) ->
-    %% sanitize authorizing_id
-    _ = whapps_call_command:b_play(AbortLogin, Call),
-    ok;
-login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, _, Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS->
-    %% if we have exceeded the maximum loop attempts then terminate this call
-    lager:info("maximum number of invalid attempts to check mailbox"),
-    _ = whapps_call_command:b_play(AbortLogin, Call),
-    ok;
-login(Devices, #hotdesk{prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}
-                        ,require_pin=true, pin=Pin}=H, AuthorizingId, Call, Loop) ->
-    case whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call) of
-        {ok, Pin} ->
-            do_login(Devices, H, Call);
-        {ok, _} ->
-            case whapps_call_command:b_play(InvalidLogin, Call) of
-                {ok, _} ->
-                    login(Devices, H, AuthorizingId, Call, Loop + 1);
-                {error, _} ->
-                    lager:info("caller hungup during login")
-            end;
-        {error, _} ->
+-spec require_login_pin(hotdesk(), whapps_call:call()) -> 'ok'.
+require_login_pin(Hotdesk, Call) ->
+    require_login_pin(Hotdesk, Call, 1).
+
+-spec require_login_pin(hotdesk(), whapps_call:call(), 1..?MAX_LOGIN_ATTEMPTS) -> 'ok'.
+require_login_pin(_, Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
+    lager:info("maximum number of invalid hotdesk pin attempts"),
+    whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
+    whapps_call_command:b_prompt(<<"vm-goodbye">>, Call);
+require_login_pin(#hotdesk{require_pin=true, pin=Pin}=Hotdesk, Call, Loop) ->
+    _ = whapps_call_command:answer(Call),
+    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"hotdesk-enter_pin">>, <<"1">>, Call) of
+        {'ok', Pin} ->
+            maybe_logout_elsewhere(Hotdesk, Call);
+        {'ok', _} ->
+            _ = whapps_call_command:play(<<"hotdesk-invalid_entry">>, Call),
+            require_login_pin(Hotdesk, Call, Loop + 1);
+        {'error', _} ->
             lager:info("caller hungup during login")
-    end,
-    ok;
-login(Devices, #hotdesk{require_pin=false}=H, _, Call, _) ->
-    do_login(Devices, H, Call),
-    ok.
+    end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Do Login process
-%% 1) Should the user remain logged in elsewhere?
-%% 2y) Change the owner_id of the authorizing object
-%% 2n) Remove this owner_id from any devices, then set the auth'n object
-%% 3) Infrom the user
-%% @end
-%%--------------------------------------------------------------------
--spec do_login(ne_binaries(), hotdesk(), whapps_call:call()) -> ok.
-do_login(_, #hotdesk{keep_logged_in_elsewhere=true, owner_id=OwnerId, prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, Call) ->
-    %% keep logged in elsewhere, so we update only the device used to call
-    ok = set_device_owner(OwnerId, whapps_call:authorizing_id(Call), Call),
-    _ = whapps_call_command:b_play(HotdeskLogin, Call),
-    _ = whapps_call_command:b_play(Bye, Call),
-    ok;
-do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId
-                           ,prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, Call) ->
-    %% log out from owned devices , since we don't want to keep logged in elsewhere, then log unto the device currently used
-    _ = logout_from_elsewhere(Devices, Call),
-    ok = set_device_owner(OwnerId, whapps_call:authorizing_id(Call), Call),
-    _ = whapps_call_command:b_play(HotdeskLogin, Call),
-    _ = whapps_call_command:b_play(Bye, Call),
-    ok.
+-spec maybe_logout_elsewhere(hotdesk(), whapps_call:call()) -> 'ok'.
+maybe_logout_elsewhere(#hotdesk{keep_logged_in_elsewhere=false}=Hotdesk, Call) ->
+    get_authorizing_id(Hotdesk#hotdesk{endpoint_ids=sets:new()}, Call);
+maybe_logout_elsewhere(Hotdesk, Call) ->
+    get_authorizing_id(Hotdesk, Call).
+
+-spec get_authorizing_id(hotdesk(), whapps_call:call()) -> 'ok'.
+get_authorizing_id(Hotdesk, Call) ->
+    login_authorizing_id(whapps_call:authorizing_id(Call), Hotdesk, Call).
+
+-spec login_authorizing_id(api_binary(), hotdesk(), whapps_call:call()) -> 'ok'.
+login_authorizing_id('undefined', _, Call) ->
+    whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
+    whapps_call_command:b_prompt(<<"vm-goodbye">>, Call);
+login_authorizing_id(AuthorizingId, #hotdesk{endpoint_ids=EndpointIds, owner_id=OwnerId}=Hotdesk, Call) ->
+    H = case sets:is_element(AuthorizingId, EndpointIds) of
+            'true' -> Hotdesk;
+            'false' ->
+                Update = sets:add_element(AuthorizingId, EndpointIds),
+                update_hotdesk_profile(Hotdesk#hotdesk{endpoint_ids=Update}, Call)
+        end,
+    spawn(fun() ->
+                  AccountDb = whapps_call:account_db(Call),
+                  cf_endpoint:flush(AccountDb, AuthorizingId),
+                  cf_util:reset_mwi(AuthorizingId, AccountDb),
+                  cf_util:update_mwi(OwnerId, AccountDb)
+          end),
+    logged_in(H, Call).
+
+-spec logged_in(hotdesk(), whapps_call:call()) -> 'ok'.
+logged_in(_, Call) ->
+    whapps_call_command:b_prompt(<<"hotdesk-logged_in">>, Call),
+    whapps_call_command:b_prompt(<<"vm-goodbye">>, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -185,18 +188,44 @@ do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId
 %% 3) Infrom the user
 %% @end
 %%--------------------------------------------------------------------
--spec logout([ne_binary(),...], hotdesk(), whapps_call:call()) -> 'ok'.
-logout(_, #hotdesk{keep_logged_in_elsewhere=true, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, Call) ->
-    ok = set_device_owner(undefined, whapps_call:authorizing_id(Call), Call),
-    _ = whapps_call_command:b_play(HotdeskLogout, Call),
-    _ = whapps_call_command:b_play(Bye, Call),
-    ok;
-logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, Call) ->
-    _ = logout_from_elsewhere(Devices, Call),
-    ok = set_device_owner(undefined, whapps_call:authorizing_id(Call), Call),
-    _ = whapps_call_command:b_play(HotdeskLogout, Call),
-    _ = whapps_call_command:b_play(Bye, Call),
-    ok.
+-spec logout(hotdesk(), whapps_call:call()) -> 'ok'.
+logout(Hotdesk, Call) ->
+    maybe_keep_logged_in_elsewhere(Hotdesk, Call).
+
+-spec maybe_keep_logged_in_elsewhere(hotdesk(), whapps_call:call()) -> 'ok'.
+maybe_keep_logged_in_elsewhere(#hotdesk{keep_logged_in_elsewhere=true}=Hotdesk
+                               ,Call) ->
+    keep_logged_in_elsewhere(whapps_call:authorizing_id(Call), Hotdesk, Call);
+maybe_keep_logged_in_elsewhere(Hotdesk, Call) ->
+    logout_user(Hotdesk#hotdesk{endpoint_ids=sets:new()}, Call).
+
+-spec keep_logged_in_elsewhere(api_binary(), hotdesk(), whapps_call:call()) -> 'ok'.
+keep_logged_in_elsewhere('undefined', Hotdesk, Call) ->
+    logged_out(Hotdesk, Call);
+keep_logged_in_elsewhere(AuthorizingId, #hotdesk{endpoint_ids=EndpointIds}=Hotdesk, Call) ->
+     case sets:is_element(AuthorizingId, EndpointIds) of
+         'false' -> logged_out(Hotdesk, Call);
+         'true' ->
+             Update = sets:del_element(AuthorizingId, EndpointIds),
+             logout_user(Hotdesk#hotdesk{endpoint_ids=Update}, Call)
+     end.
+
+-spec logout_user(hotdesk(), whapps_call:call()) -> 'ok'.
+logout_user(#hotdesk{owner_id=OwnerId}=Hotdesk, Call) ->
+    H = update_hotdesk_profile(Hotdesk, Call),
+    spawn(fun() ->
+                  AccountDb = whapps_call:account_db(Call),
+                  AuthorizingId = whapps_call:authorizing_id(Call),
+                  cf_endpoint:flush(AccountDb, AuthorizingId),
+                  cf_util:reset_mwi(AuthorizingId, AccountDb),
+                  cf_util:update_mwi(OwnerId, AccountDb)
+          end),
+    logged_out(H, Call).
+
+-spec logged_out(hotdesk(), whapps_call:call()) -> 'ok'.
+logged_out(_, Call) ->
+    whapps_call_command:b_prompt(<<"hotdesk-logged_out">>, Call),
+    whapps_call_command:b_prompt(<<"vm-goodbye">>, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -205,95 +234,96 @@ logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{hotdes
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
--spec get_hotdesk_profile(api_binary(), whapps_call:call()) ->
-                                 {'ok', hotdesk()} |
-                                 {'error', term()}.
--spec get_hotdesk_profile(api_binary(), whapps_call:call(), non_neg_integer()) ->
-                                 {'ok', hotdesk()} |
-                                 {'error', term()}.
-
+-spec get_hotdesk_profile(api_binary(), whapps_call:call()) -> hotdesk() | {'error', _}.
+get_hotdesk_profile('undefined', Call) ->
+    find_hotdesk_profile(Call, 1);
 get_hotdesk_profile(OwnerId, Call) ->
-    get_hotdesk_profile(OwnerId, Call, 1).
-
-get_hotdesk_profile(_, _, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
-    lager:info("too many failed attempts to get the hotdesk id"),
-    {'error', 'too_many_attempts'};
-get_hotdesk_profile(undefined, Call, Loop) ->
-    P = #prompts{},
-    whapps_call_command:answer(Call),
-    case whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"10">>, P#prompts.enter_hotdesk, <<"1">>, Call) of
-        {'ok', <<>>} ->
-            get_hotdesk_profile('undefined', Call, Loop + 1);
-        {'ok', HId} ->
-            %% get user id from hotdesk id
-            AccountDb = whapps_call:account_db(Call),
-            case couch_mgr:get_results(AccountDb, <<"cf_attributes/hotdesk_id">>, [{<<"key">>, HId}]) of
-                {'ok', [JObj]} ->
-                    lager:info("found hotdesk id ~s", [HId]),
-                    get_hotdesk_profile(wh_json:get_ne_value([<<"value">>, <<"owner_id">>], JObj), Call, Loop);
-                _ ->
-                    lager:info("failed to load hotdesk id ~s", [HId]),
-                    %% set incorrect credentials so that the user dont know this hotdesk_id doesnt exist, avoid brute force
-                    {'ok', #hotdesk{hotdesk_id=wh_util:rand_hex_binary(5)
-                                    ,pin=wh_util:rand_hex_binary(5)
-                                    ,require_pin='true'
-                                   }}
-            end;
-        {'error', R}=E ->
-            lager:info("failed to get owner id from caller: ~p", [R]),
-            E
-    end;
-get_hotdesk_profile(OwnerId, Call, _) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, OwnerId) of
-        {'ok', JObj} ->
-            lager:info("using hotdesk owner id ~s", [OwnerId]),
-            {'ok', #hotdesk{hotdesk_id = wh_json:get_value([<<"hotdesk">>, <<"id">>], JObj)
-                            ,enabled = wh_json:is_true([<<"hotdesk">>, <<"enabled">>], JObj)
-                            ,pin = wh_json:get_binary_value([<<"hotdesk">>, <<"pin">>], JObj)
-                            ,require_pin = wh_json:is_true([<<"hotdesk">>, <<"require_pin">>], JObj)
-                            ,owner_id = OwnerId
-                            ,keep_logged_in_elsewhere = wh_json:is_true([<<"hotdesk">>, <<"keep_logged_in_elsewhere">>], JObj)
-                           }};
+        {'ok', JObj} -> from_json(JObj);
         {'error', R}=E ->
             lager:info("failed to load hotdesking profile for user ~s: ~p", [OwnerId, R]),
+            whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
             E
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Reset owner_id for all specified devices
-%% @end
-%%--------------------------------------------------------------------
--spec logout_from_elsewhere(ne_binaries(), whapps_call:call()) -> any().
-logout_from_elsewhere(Devices, Call) ->
-    [set_device_owner('undefined', Device, Call) || Device <- Devices].
+-spec find_hotdesk_profile(whapps_call:call(), 1..?MAX_LOGIN_ATTEMPTS) -> hotdesk() | {'error', _}.
+find_hotdesk_profile(Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
+    lager:info("too many failed attempts to get the hotdesk id"),
+    whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
+    {'error', 'too_many_attempts'};
+find_hotdesk_profile(Call, Loop) ->
+    whapps_call_command:answer(Call),
+    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"10">>, <<"hotdesk-enter_id">>, <<"1">>, Call) of
+        {'ok', <<>>} ->
+            find_hotdesk_profile(Call, Loop + 1);
+        {'ok', HotdeskId} ->
+            case lookup_hotdesk_id(HotdeskId, Call) of
+                #hotdesk{}=Hotdesk -> Hotdesk;
+                {'error', _} -> find_hotdesk_profile(Call, Loop + 1)
+            end;
+        {'error', R}=E ->
+            lager:info("failed to get owner id from caller: ~p", [R]),
+            whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
+            E
+    end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Set owner id for a specified device
-%% @end
-%%--------------------------------------------------------------------
--spec set_device_owner(api_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
-set_device_owner('undefined', Device, Call) ->
+-spec lookup_hotdesk_id(ne_binary(), whapps_call:call()) ->  hotdesk() | {'error', _}.
+lookup_hotdesk_id(HotdeskId, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    _ = case couch_mgr:open_doc(AccountDb, Device) of
-            {'ok', JObj} ->
-                lager:info("removing owner id from device ~s in ~s", [Device, AccountDb]),
-                couch_mgr:save_doc(AccountDb, wh_json:delete_key(<<"owner_id">>, JObj));
-            {'error', R} ->
-                lager:info("failed to load device ~s in ~s: ~p", [Device, AccountDb, R])
-        end,
-    'ok';
-set_device_owner(OwnerId, Device, Call) ->
+    ViewOptions = [{<<"key">>, HotdeskId}
+                   ,include_docs
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/hotdesk_id">>, ViewOptions) of
+        {'ok', [JObj]} ->
+            lager:info("found hotdesk id ~s", [HotdeskId]),
+            from_json(wh_json:get_value(<<"doc">>, JObj));
+        _Else ->
+            lager:info("failed to load hotdesk id ~s", [HotdeskId]),
+            _ = whapps_call_command:play(<<"hotdesk-invalid_entry">>, Call),
+            {'error', 'not_found'}
+    end.
+
+-spec from_json(wh_json:object()) -> hotdesk().
+from_json(JObj) ->
+    OwnerId = wh_json:get_value(<<"_id">>, JObj),
+    Hotdesk =  wh_json:get_value(<<"hotdesk">>, JObj),
+    lager:info("creating hotdesk profile from ~s", [OwnerId]),
+    #hotdesk{hotdesk_id = wh_json:get_value(<<"id">>, Hotdesk)
+             ,enabled = wh_json:is_true(<<"enabled">>, Hotdesk)
+             ,pin = wh_json:get_binary_value(<<"pin">>, Hotdesk)
+             ,require_pin = wh_json:is_true(<<"require_pin">>, Hotdesk)
+             ,keep_logged_in_elsewhere = wh_json:is_true(<<"keep_logged_in_elsewhere">>, Hotdesk)
+             ,endpoint_ids = sets:from_list(wh_json:get_value(<<"endpoint_ids">>, Hotdesk, []))
+             ,owner_id = OwnerId
+             ,jobj = JObj
+            }.
+
+-spec to_json(hotdesk()) -> wh_json:object().
+to_json(#hotdesk{endpoint_ids=EndpointIds, jobj=JObj}) ->
+    Props = [{[<<"hotdesk">>, <<"endpoint_ids">>], sets:to_list(EndpointIds)}],
+    wh_json:set_values(Props, JObj).
+
+-spec update_hotdesk_profile(hotdesk(), whapps_call:call()) -> hotdesk().
+update_hotdesk_profile(Hotdesk, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    _ = case couch_mgr:open_doc(AccountDb, Device) of
-            {'ok', JObj} ->
-                lager:info("setting owner id to ~s on device ~s in ~s", [OwnerId, Device, AccountDb]),
-                couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"owner_id">>, OwnerId, JObj));
-            {'error', R} ->
-                lager:info("failed load device ~s in ~s: ~p", [Device, AccountDb, R])
-        end,
-    'ok'.
+    case couch_mgr:save_doc(AccountDb, to_json(Hotdesk)) of
+        {'ok', JObj} ->
+            from_json(JObj);
+        {'error', 'conflict'} ->
+            maybe_resolve_conflict(Hotdesk, Call);
+        {'error', _R} ->
+            lager:info("unable to update hotdesk: ~p", [_R]),
+            Hotdesk
+    end.
+
+-spec maybe_resolve_conflict(hotdesk(), whapps_call:call()) -> hotdesk().
+maybe_resolve_conflict(#hotdesk{owner_id=OwnerId}=Hotdesk, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:open_doc(AccountDb, OwnerId) of
+        {'ok', JObj} ->
+            update_hotdesk_profile(Hotdesk#hotdesk{jobj=JObj}, Call);
+        {'error', _R} ->
+            lager:info("unable to resolve hotdesk update conflict: ~p", [_R]),
+            Hotdesk
+    end.

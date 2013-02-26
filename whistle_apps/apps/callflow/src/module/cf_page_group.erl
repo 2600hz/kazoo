@@ -101,7 +101,7 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
                                       end
                               end
                               ,[{Type, Id, undefined}|EndpointIds]
-                              ,cf_attributes:fetch_owned_by(Id, device, Call)),
+                              ,cf_attributes:owned_by(Id, <<"device">>, Call)),
             resolve_endpoint_ids(Members, Ids, Call);
         <<"device">> ->
             resolve_endpoint_ids(Members, [{Type, Id, Member}|EndpointIds], Call)

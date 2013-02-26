@@ -12,19 +12,22 @@
 -include("callflow.hrl").
 
 -define(OWNER_KEY(Db, User), {?MODULE, 'owner_id', Db, User}).
+-define(SIP_ENDPOINT_KEY(Db, User), {?MODULE, 'sip_endpoint_id', Db, User}).
 -define(CF_FLOW_CACHE_KEY(Number, Db), {'cf_flow', Number, Db}).
 
 -export([presence_probe/2]).
 -export([presence_mwi_query/2]).
 -export([update_mwi/1, update_mwi/2, update_mwi/4]).
+-export([reset_mwi/2]).
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
 -export([correct_media_path/2]).
 -export([lookup_callflow/1, lookup_callflow/2]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
 -export([send_default_response/2]).
 -export([get_sip_realm/2, get_sip_realm/3]).
--export([handle_doc_change/2]).
 -export([get_operator_callflow/1]).
+-export([endpoint_id_from_username/2]).
+-export([owner_id_from_username/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -49,7 +52,7 @@ presence_probe(JObj, _Props) ->
 presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, JObj) ->
     case whapps_util:get_account_by_realm(FromRealm) of
         {'ok', AccountDb} ->
-            case maybe_get_owner_id(AccountDb, FromUser) of
+            case owner_id_from_username(AccountDb, FromUser) of
                 {'ok', OwnerId} ->
                     lager:debug("replying to mwi presence probe"),
                     presence_mwi_resp(FromUser, FromRealm, OwnerId, AccountDb, JObj);
@@ -96,7 +99,7 @@ manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, Event) ->
     end.
 
 -spec manual_presence_resp(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-manual_presence_resp(JObj, ToUser, ToRealm, Event) ->    
+manual_presence_resp(JObj, ToUser, ToRealm, Event) ->
     PresenceId = <<ToUser/binary, "@", ToRealm/binary>>,
     case wh_json:get_value(PresenceId, JObj) of
         undefined -> ok;
@@ -124,7 +127,7 @@ presence_mwi_query(JObj, _Props) ->
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     case whapps_util:get_account_by_realm(Realm) of
         {ok, AccountDb} ->
-            case maybe_get_owner_id(AccountDb, Username) of
+            case owner_id_from_username(AccountDb, Username) of
                 {ok, OwnerId} ->
                     lager:debug("replying to mwi query"),
                     presence_mwi_resp(Username, Realm, OwnerId, AccountDb, JObj);
@@ -206,19 +209,14 @@ update_mwi(OwnerId, AccountDb) ->
     end.
 
 update_mwi(New, Saved, OwnerId, AccountDb) ->
-    AccountId = wh_util:format_account_id(AccountDb, raw),
-    ViewOptions = [{key, [OwnerId, <<"device">>]}
-                   ,include_docs
-                  ],
+    ViewOptions = [{key, [OwnerId, <<"device">>]}],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
-        {ok, Devices} ->
-            lager:debug("updating MWI for owner ~s: (~b/~b) on ~b devices", [OwnerId, New, Saved, length(Devices)]),
-            lists:foreach(fun(Result) ->
-                                  Device = wh_json:get_value(<<"doc">>, Result, wh_json:new()),
-                                  User = wh_json:get_value([<<"sip">>, <<"username">>], Device),
-                                  Realm = cf_util:get_sip_realm(Device, AccountId),
-                                  maybe_publish_mwi(User, Realm, New, Saved)
-                          end, Devices),
+        {ok, JObjs} ->
+            lager:debug("updating MWI for owner ~s: (~b/~b) on ~b devices", [OwnerId, New, Saved, length(JObjs)]),
+            lists:foreach(fun(JObj) ->
+                                  EndpointId = wh_json:get_value(<<"value">>, JObj),
+                                  maybe_publish_mwi(AccountDb, EndpointId, New, Saved)
+                          end, JObjs),
             ok;
         {error, _R} ->
             lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
@@ -228,7 +226,26 @@ update_mwi(New, Saved, OwnerId, AccountDb) ->
 -spec maybe_publish_mwi/4 :: (api_binary(), api_binary(), integer(), integer()) -> 'ok'.
 maybe_publish_mwi('undefined', _, _, _) -> 'ok';
 maybe_publish_mwi(_, 'undefined', _, _) -> 'ok';
-maybe_publish_mwi(User, Realm, New, Saved) ->
+maybe_publish_mwi(AccountDb, EndpointId, New, Saved) ->
+    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    case couch_mgr:open_doc(AccountDb, EndpointId) of
+        {'ok', JObj} ->
+            User = wh_json:get_value([<<"sip">>, <<"username">>], JObj),
+            Realm = cf_util:get_sip_realm(JObj, AccountId),
+            case wh_util:is_empty(User) orelse wh_util:is_empty(Realm) of
+                'true' -> 'ok';
+                'false' ->
+                    publish_mwi(User, Realm, New, Saved)
+            end;
+        {'error', _R} ->
+            lager:warning("unabled to open endpoint ~s for mwi update: ~p", [EndpointId, _R]),
+            'ok'
+    end.
+
+-spec publish_mwi/4 :: (api_binary(), api_binary(), integer(), integer()) -> 'ok'.
+publish_mwi('undefined', _, _, _) -> 'ok';
+publish_mwi(_, 'undefined', _, _) -> 'ok';
+publish_mwi(User, Realm, New, Saved) ->
     Props = [{<<"Notify-User">>, User}
              ,{<<"Notify-Realm">>, Realm}
              ,{<<"Message-Account">>, <<"sip:", User/binary, "@", Realm/binary>>}
@@ -237,6 +254,10 @@ maybe_publish_mwi(User, Realm, New, Saved) ->
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     whapps_util:amqp_pool_send(Props, fun wapi_notifications:publish_mwi_update/1). 
+
+-spec reset_mwi(api_binary(), ne_binary()) -> 'ok'.
+reset_mwi(EndpointId, AccountDb) ->
+    maybe_publish_mwi(AccountDb, EndpointId, 0, 0).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -390,32 +411,53 @@ maybe_use_nomatch(Number, Db) ->
 is_digit(X) when X >= $0, X =< $9 -> 'true';
 is_digit(_) -> 'false'.
 
--spec maybe_get_owner_id(ne_binary(), ne_binary()) ->
-                                {'ok', api_binary()} |
-                                {'error', _}.
-maybe_get_owner_id(AccountDb, SIPUser) ->
-    case wh_cache:peek_local(?CALLFLOW_CACHE, ?OWNER_KEY(AccountDb, SIPUser)) of
-        {ok, _}=Ok -> Ok;
-        {error, not_found} -> 
-            get_owner_id(AccountDb, SIPUser)
-    end.        
+-spec owner_id_from_username(ne_binary(), ne_binary()) -> {'ok', api_binary()} | {'error', _}.
+owner_id_from_username(AccountDb, SIPUsername) ->
+    case get_endpoint_id_from_username(AccountDb, SIPUsername) of
+        {'error', _}=E -> E;
+        {'ok', EndpointId} ->
+            get_owner_id(AccountDb, EndpointId)
+    end.
 
 -spec get_owner_id(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
-get_owner_id(AccountDb, SIPUser) ->
-    ViewOptions = [include_docs
-                   ,{key, SIPUser}
+get_owner_id(AccountDb, EndpointId) ->
+    ViewOptions = [{'key', EndpointId}],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owner">>, ViewOptions) of
+        {'ok', [JObj]} ->
+            {'ok', wh_json:get_value(<<"value">>, JObj)};
+        {'ok', _} ->
+            lager:debug("endpoint id ~s owner not in account db ~s or multiples", [EndpointId, AccountDb]),
+            {'error', 'not_found'};
+        {'error', _R} ->
+            lager:warning("unable to lookup endpoint id ~s owner: ~p", [EndpointId, _R]),
+            'ok'
+    end.
+
+-spec endpoint_id_from_username(ne_binary(), ne_binary()) -> {'ok', api_binary()} | {'error', _}.
+endpoint_id_from_username(AccountDb, SIPUsername) ->
+    case wh_cache:peek_local(?CALLFLOW_CACHE, ?SIP_ENDPOINT_KEY(AccountDb, SIPUsername)) of
+        {'ok', _}=Ok -> Ok;
+        {'error', 'not_found'} ->
+            get_endpoint_id_from_username(AccountDb, SIPUsername)
+    end.
+
+-spec get_endpoint_id_from_username(ne_binary(), ne_binary()) -> {'ok', api_binary()} | {'error', _}.
+get_endpoint_id_from_username(AccountDb, SIPUsername) ->
+    ViewOptions = [{'key', SIPUsername}
+                   ,{<<"limit">>, 1}
                   ],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
-        {ok, [JObj]} ->
-            OwnerId = wh_json:get_value([<<"doc">>, <<"owner_id">>], JObj),
-            wh_cache:store_local(?CALLFLOW_CACHE, ?OWNER_KEY(AccountDb, SIPUser), OwnerId),
-            {ok, OwnerId};
-        {ok, []} ->
-            lager:debug("sip credentials not in account db ~s", [AccountDb]),
-            {error, not_found};
-        {error, _R} ->
-            lager:warning("unable to lookup sip credentials for owner id: ~p", [_R]),
-            ok
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_username">>, ViewOptions) of
+        {'ok', [JObj]} ->
+            EndpointId = wh_json:get_value(<<"id">>, JObj),
+            CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
+            wh_cache:store_local(?CALLFLOW_CACHE, ?SIP_ENDPOINT_KEY(AccountDb, SIPUsername), EndpointId, CacheProps),
+            {'ok', EndpointId};
+        {'ok', []} ->
+            lager:debug("sip credentials ~s not in account db ~s", [SIPUsername, AccountDb]),
+            {'error', 'not_found'};
+        {'error', _R}=E ->
+            lager:warning("unable to lookup sip credentials ~s for owner id: ~p", [SIPUsername, _R]),
+            E
     end.
 
 %%-----------------------------------------------------------------------------
@@ -430,14 +472,14 @@ get_owner_id(AccountDb, SIPUser) ->
                                             {'error', term()}.
 lookup_callflow_patterns(Number, Db) ->
     lager:info("lookup callflow patterns for ~s in ~s", [Number, Db]),
-    case couch_mgr:get_results(Db, ?LIST_BY_PATTERN, [include_docs]) of
-        {ok, Patterns} ->
-            case test_callflow_patterns(Patterns, Number, {undefined, <<>>}) of
-                {undefined, <<>>} -> {error, not_found};
-                {Flow, <<>>} -> {ok, {Flow, undefined}};
-                Match -> {ok, Match}
+    case couch_mgr:get_results(Db, ?LIST_BY_PATTERN, ['include_docs']) of
+        {'ok', Patterns} ->
+            case test_callflow_patterns(Patterns, Number, {'undefined', <<>>}) of
+                {'undefined', <<>>} -> {'error', 'not_found'};
+                {Flow, <<>>} -> {'ok', {Flow, 'undefined'}};
+                Match -> {'ok', Match}
             end;
-        {error, _}=E ->
+        {'error', _}=E ->
             E
     end.
 
@@ -454,7 +496,7 @@ test_callflow_patterns([], _, Result) ->
 test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
     Regex = wh_json:get_value(<<"key">>, Pattern),
     case re:run(Number, Regex) of
-        {match, [{Start,End}]} ->
+        {'match', [{Start,End}]} ->
             Match = binary:part(Number, Start, End),
             Flow = wh_json:get_value(<<"doc">>, Pattern),
             case binary:part(Number, Start, End) of
@@ -465,7 +507,7 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
                 _ ->
                     test_callflow_patterns(T, Number, Result)
             end;
-        {match, CaptureGroups} ->
+        {'match', CaptureGroups} ->
             %% find the largest matching group if present by sorting the position of the
             %% matching groups by list, reverse so head is largest, then take the head of the list
             {Start, End} = hd(lists:reverse(lists:keysort(2, tl(CaptureGroups)))),
@@ -492,28 +534,28 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
 -spec handle_bridge_failure({'fail', wh_json:object()} | ne_binary() | 'undefined', whapps_call:call()) -> 'ok' | 'not_found'.
 -spec handle_bridge_failure(ne_binary() | 'undefined', ne_binary() | 'undefined', whapps_call:call()) -> 'ok' | 'not_found'.
 
-handle_bridge_failure({fail, Reason}, Call) ->
+handle_bridge_failure({'fail', Reason}, Call) ->
     {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
     handle_bridge_failure(Cause, Code, Call);
-handle_bridge_failure(undefined, _) ->
-    not_found;
+handle_bridge_failure('undefined', _) ->
+    'not_found';
 handle_bridge_failure(Failure, Call) ->
     case cf_exe:attempt(Failure, Call) of
-        {attempt_resp, ok} ->
+        {'attempt_resp', 'ok'} ->
             lager:info("found child branch to handle failure: ~s", [Failure]),
-            ok;
-        {attempt_resp, _} ->
-            not_found
+            'ok';
+        {'attempt_resp', _} ->
+            'not_found'
     end.
 
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("attempting to find failure branch for ~s:~s", [Code, Cause]),
-    case (handle_bridge_failure(Cause, Call) =:= ok)
-        orelse (handle_bridge_failure(Code, Call) =:= ok) of
-        true -> ok;
-        false ->
+    case (handle_bridge_failure(Cause, Call) =:= 'ok')
+        orelse (handle_bridge_failure(Code, Call) =:= 'ok') of
+        'true' -> 'ok';
+        'false' ->
             cf_exe:continue(Call),
-            not_found
+            'not_found'
     end.
 
 %%--------------------------------------------------------------------
@@ -525,13 +567,15 @@ handle_bridge_failure(Cause, Code, Call) ->
 -spec send_default_response(ne_binary(), whapps_call:call()) -> 'ok'.
 send_default_response(Cause, Call) ->
     case cf_exe:wildcard_is_empty(Call) of
-        false -> ok;
-        true ->
+        'false' -> 'ok';
+        'true' ->
             CallId = cf_exe:callid(Call),
             CtrlQ = cf_exe:control_queue(Call),
             case wh_call_response:send_default(CallId, CtrlQ, Cause) of
-                {error, no_response} -> ok;
-                {ok, NoopId} -> _ = whapps_call_command:wait_for_noop(NoopId), ok
+                {'error', 'no_response'} -> 'ok';
+                {'ok', NoopId} ->
+                    _ = whapps_call_command:wait_for_noop(NoopId),
+                    'ok'
             end
     end.
 
@@ -545,32 +589,17 @@ send_default_response(Cause, Call) ->
 -spec get_sip_realm(wh_json:object(), ne_binary(), Default) -> Default | ne_binary().
 
 get_sip_realm(SIPJObj, AccountId) ->
-    get_sip_realm(SIPJObj, AccountId, undefined).
+    get_sip_realm(SIPJObj, AccountId, 'undefined').
 
 get_sip_realm(SIPJObj, AccountId, Default) ->
     case wh_json:get_ne_value([<<"sip">>, <<"realm">>], SIPJObj) of
-        undefined ->
+        'undefined' ->
             case wh_util:get_account_realm(AccountId) of
-                undefined -> Default;
+                'undefined' -> Default;
                 Else -> Else
             end;
         Realm -> Realm
     end.
-
--spec handle_doc_change(wh_json:object(), wh_proplist()) -> any().
-handle_doc_change(JObj, _Prop) ->
-    Db = wh_json:get_value(<<"Account-DB">>, JObj),
-    Id = wh_json:get_value(<<"ID">>, JObj),
-
-    _ = cf_endpoint:flush(Db, Id),
-
-    _ = cf_attributes:flush_attributes(Db),
-
-    maybe_clear_flows(wh_json:get_value(<<"numbers">>, JObj, []), Db).
-
-maybe_clear_flows([], _) -> 'ok';
-maybe_clear_flows(Ns, Db) ->
-    [wh_cache:erase_local(?CALLFLOW_CACHE, ?CF_FLOW_CACHE_KEY(N, Db)) || N <- Ns].
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

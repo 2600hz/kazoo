@@ -566,17 +566,14 @@ publish_usurp_control(CallId, Call) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoint_id(ne_binary(), whapps_call:call()) -> 'undefined' | ne_binary().
-get_endpoint_id(undefined, _) ->
-    undefined;
+-spec get_endpoint_id(api_binary(), whapps_call:call()) -> api_binary().
+get_endpoint_id('undefined', _) ->
+    'undefined';
 get_endpoint_id(Username, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    ViewOptions = [{<<"key">>, Username}
-                   ,{<<"limit">>, 1}
-                  ],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
-        {ok, [Device]} -> wh_json:get_value(<<"id">>, Device);
-        _ -> undefined
+    case cf_util:endpoint_id_from_username(AccountDb, Username) of
+        {'ok', EndpointId} -> EndpointId;
+        {'error', _} -> 'undefined'
     end.
 
 %%--------------------------------------------------------------------
