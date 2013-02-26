@@ -62,6 +62,8 @@ current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 load(DocId, #cb_context{}=Context) ->
     load(DocId, Context, []).
 
+load(_, #cb_context{resp_status=error}=Context, _) ->
+    Context;
 load(?NE_BINARY = DocId, #cb_context{db_name=Db}=Context, Opts) ->
     case couch_mgr:open_doc(Db, DocId, Opts) of
         {error, Error} -> handle_couch_mgr_errors(Error, DocId, Context);
@@ -110,7 +112,6 @@ load_from_file(Db, File) ->
 
 load_merge(DocId, #cb_context{doc=DataJObj}=Context) ->
     load_merge(DocId, DataJObj, Context).
-
 
 load_merge(DocId, DataJObj, #cb_context{db_name=DbName, load_merge_bypass=undefined}=Context) ->
     case load(DocId, Context) of
