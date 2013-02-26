@@ -25,7 +25,7 @@
          ,code_change/3
         ]).
 
--include("include/crossbar.hrl").
+-include("crossbar.hrl").
 
 %%%===================================================================
 %%% API

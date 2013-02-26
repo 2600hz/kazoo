@@ -28,7 +28,7 @@
 -export([disable_account/1, enable_account/1, change_pvt_enabled/2]).
 -export([get_path/2]).
 
--include("include/crossbar.hrl").
+-include("crossbar.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -318,7 +318,7 @@ response_auth(JObj) ->
                        ,{<<"is_reseller">>, IsReseller}
                        ,{<<"reseller_id">>, ResellerId}
                       ]).
-    
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -329,7 +329,7 @@ change_pvt_enabled(_, undefined) ->
     ok;
 change_pvt_enabled(State, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
-    try 
+    try
       {ok, JObj1} = couch_mgr:open_doc(AccountDb, AccountId),
       lager:debug("set pvt_enabled to ~s on account ~s", [State, AccountId]),
       {ok, JObj2} = couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_enabled">>, State, JObj1)),

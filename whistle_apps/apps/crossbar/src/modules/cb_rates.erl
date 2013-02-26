@@ -18,7 +18,7 @@
          ,delete/2
         ]).
 
--include("include/crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(PVT_TYPE, <<"rate">>).

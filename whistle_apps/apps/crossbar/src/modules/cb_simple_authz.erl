@@ -18,7 +18,7 @@
          ,authorize/1
         ]).
 
--include("../../include/crossbar.hrl").
+-include("../../src/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).

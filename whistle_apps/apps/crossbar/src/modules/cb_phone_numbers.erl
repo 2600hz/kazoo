@@ -24,7 +24,7 @@
          ,populate_phone_numbers/1
         ]).
 
--include("include/crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 

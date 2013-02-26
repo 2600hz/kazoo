@@ -23,10 +23,9 @@
 -export([create_account/4]).
 -export([create_account/1]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include_lib("crossbar.hrl").
 
 -type input_term() :: atom() | string() | ne_binary().
-
 
 %%--------------------------------------------------------------------
 %% @public

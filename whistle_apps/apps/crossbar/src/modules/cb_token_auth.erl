@@ -23,7 +23,7 @@
 %% cleanup proc
 -export([start_link/0, init/1]).
 
--include("include/crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -define(CHILDSPEC, {?MODULE, {?MODULE, start_link, []}, permanent, 5000, worker, [?MODULE]}).
 

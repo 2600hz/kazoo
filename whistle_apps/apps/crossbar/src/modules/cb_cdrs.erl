@@ -20,7 +20,7 @@
          ,validate/1, validate/2
         ]).
 
--include("include/crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".cdrs">>).
 

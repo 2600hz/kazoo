@@ -53,7 +53,7 @@
          ,code_change/3
         ]).
 
--include("../include/crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 

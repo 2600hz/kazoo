@@ -20,7 +20,7 @@
          ,delete/2
         ]).
 
--include("include/crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -define(CB_LIST, <<"local_resources/crossbar_listing">>).
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".local_resources">>).

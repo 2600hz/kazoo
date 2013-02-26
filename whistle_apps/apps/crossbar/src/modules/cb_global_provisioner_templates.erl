@@ -33,7 +33,7 @@
          ,delete/3
         ]).
 
--include("include/crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".provisioner_templates">>).
 -define(CB_LIST, <<"provisioner_templates/crossbar_listing">>).

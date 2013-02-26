@@ -27,7 +27,7 @@
          ,validate/1, validate/2
         ]).
 
--include("include/crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".queues">>).
 
@@ -73,10 +73,10 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.agents">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.agents">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.agents">>, ?MODULE, content_types_provided),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.agents">>, ?MODULE, validate).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.agents">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.agents">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.agents">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.agents">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -101,8 +101,8 @@ allowed_methods(_) -> ['GET'].
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -118,12 +118,12 @@ content_types_provided(#cb_context{}=Context, ?STATUS_PATH_TOKEN) -> Context;
 content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
     case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
         ?FORMAT_VERBOSE ->
-            CTPs = [{to_json, [{<<"application">>, <<"json">>}]}
-                    ,{to_csv, [{<<"application">>, <<"octet-stream">>}]}
+            CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}
+                    ,{'to_csv', [{<<"application">>, <<"octet-stream">>}]}
                    ],
             cb_context:add_content_types_provided(Context, CTPs);
         ?FORMAT_COMPRESSED ->
-            CTPs = [{to_json, [{<<"application">>, <<"json">>}]}],
+            CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}],
             cb_context:add_content_types_provided(Context, CTPs)
     end.
 
@@ -158,9 +158,36 @@ validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
 -spec read(path_token(), cb_context:context()) -> cb_context:context().
 read(Id, Context) -> crossbar_doc:load(Id, Context).
 
+-define(CB_AGENTS_LIST, <<"users/crossbar_listing">>).
 fetch_all_agent_statuses(Context) ->
-%%    AcctId = cb_context:account_id(Context),
-    Context.
+    case crossbar_doc:load_view(?CB_AGENTS_LIST, [], Context, fun just_the_id/2) of
+        #cb_context{resp_status='success', doc=As}=Context1 ->
+            crossbar_util:response(get_statuses(Context1, As), Context1);
+        Context1 -> Context1
+    end.
+
+get_statuses(Context, As) ->
+    AcctId = cb_context:account_id(Context),
+    wh_json:from_list([{A, format_status(acdc_util:agent_status(AcctId, A, 'true'))} || A <- As]).
+
+-spec format_status(ne_binary() | wh_json:object()) -> ne_binary() | wh_json:object().
+format_status(Bin) when is_binary(Bin) -> Bin;
+format_status(JObj) ->
+    Created = wh_json:get_value(<<"pvt_created">>, JObj),
+    wh_json:set_values(
+      props:filter_undefined(
+        [{<<"elapsed_s">>, elapsed_s(Created)}
+         ,{<<"created">>, Created}
+        ])
+      ,wh_json:delete_keys(
+         [<<"agent_id">>, <<"id">>, <<"timestamp">>]
+         ,wh_json:public_fields(JObj))
+      ).
+
+elapsed_s('undefined') -> <<"unknown creation time">>;
+elapsed_s(C) -> wh_util:elapsed_s(C).
+
+just_the_id(JObj, Acc) -> [wh_json:get_value(<<"id">>, JObj) | Acc].
 
 -spec fetch_all_agent_stats(cb_context:context()) -> cb_context:context().
 fetch_all_agent_stats(Context) ->
@@ -177,17 +204,17 @@ fetch_all_agent_stats(Context) ->
                F -> F
            end,
 
-    Opts = [{startkey, [To]}
-            ,{endkey, [From]}
-            ,include_docs
-            ,descending
+    Opts = [{'startkey', [To]}
+            ,{'endkey', [From]}
+            ,'include_docs'
+            ,'descending'
            ],
 
     case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
         ?FORMAT_COMPRESSED ->
             Context1 = crossbar_doc:load_view(<<"agent_stats/call_log">>
                                               ,Opts
-                                              ,cb_context:set_account_db(Context, acdc_stats:db_name(AcctId)) 
+                                              ,cb_context:set_account_db(Context, acdc_stats:db_name(AcctId))
                                               ,fun normalize_agent_stats/2
                                              ),
             maybe_compress_stats(Context1, From, To);
@@ -260,7 +287,7 @@ fold_call_totals(_CallId, Stats, Acc) ->
           ],
 
     Set1 = case call_time(Stats) of
-               undefined -> Set;
+               'undefined' -> Set;
                TalkTime -> [{<<"call_time">>, AccTalkTime + TalkTime} | Set]
            end,
     wh_json:set_values(Set1, Acc).
@@ -295,25 +322,29 @@ accumulate_queue_stats(QueueId, Stats) ->
                             ),
     {QueueId, AccStats}.
 
-fold_call_stats(_K, undefined, Acc) -> Acc;
+fold_call_stats(_K, 'undefined', Acc) -> Acc;
 fold_call_stats(K, V, Acc) ->
     case wh_json:is_json_object(V) of
-        false -> wh_json:set_value(K, V, Acc);
-        true ->
+        'false' -> wh_json:set_value(K, V, Acc);
+        'true' ->
             CallIds = wh_json:get_value(<<"call_ids">>, Acc, []),
             wh_json:set_value(<<"call_ids">>, [K | CallIds], Acc)
     end.
 
 call_time(Stats) ->
     case wh_json:get_integer_value(?STAT_TIMESTAMP_HANDLING, Stats) of
-        undefined -> undefined;
+        'undefined' -> 'undefined';
         Conn -> call_time(Stats, Conn)
     end.
 call_time(Stats, Conn) ->
     case wh_json:get_value(?STAT_TIMESTAMP_PROCESSED, Stats) of
-        undefined -> undefined;
+        'undefined' -> 'undefined';
         Finished -> Finished - Conn
     end.
+
+-type stat_collectors() :: {wh_json:object(), wh_json:object(), wh_json:object()}.
+-spec add_stat(wh_json:object(), stat_collectors()) -> stat_collectors().
+-spec add_stat(wh_json:object(), stat_collectors(), api_binary()) -> stat_collectors().
 
 add_stat(Stat, {_Compressed, _Global, _PerAgent}=Res) ->
     add_stat(Stat, Res, wh_json:get_value(<<"status">>, Stat)).
@@ -323,7 +354,7 @@ add_stat(Stat, {Compressed, Global, PerAgent}, ?QUEUE_STATUS_HANDLING = Status) 
     TStamp = wh_json:get_integer_value(<<"timestamp">>, Stat, 0),
 
     case wh_json:get_value(<<"queue_id">>, Stat) of
-        undefined ->
+        'undefined' ->
             {maybe_add_current_status(Compressed, Stat, Status, AID, TStamp)
              ,Global
              ,PerAgent
@@ -402,9 +433,9 @@ add_stat(_Stat, {_Compressed, _Global, _PerAgent}=Res, _T) ->
                                             wh_json:object().
 maybe_add_current_status(Compressed, Stat, Status, AID, TStamp) ->
     case wh_json:get_integer_value([AID, <<"current">>, <<"status_timestamp">>], Compressed) of
-        T when T =:= undefined orelse T < TStamp ->
+        T when T =:= 'undefined' orelse T < TStamp ->
             case complex_agent_status(Stat, Status, AID) of
-                undefined -> Compressed;
+                'undefined' -> Compressed;
                 [_|_]=StatusData -> wh_json:set_values(StatusData
                                                        ,wh_json:delete_key([AID, <<"current">>], Compressed)
                                                       )
@@ -448,11 +479,11 @@ complex_agent_status(Stat, ?STAT_AGENTS_MISSED, AID) ->
 complex_agent_status(Stat, ?QUEUE_STATUS_HANDLING, AID) ->
     complex_agent_status(Stat, ?AGENT_STATUS_HANDLING, AID);
 complex_agent_status(_Stat, ?QUEUE_STATUS_PROCESSED, _AID) ->
-    undefined;
+    'undefined';
 complex_agent_status(_Stat, Status, AID) ->
     [{[AID, <<"current">>, <<"status">>], Status}].
 
--spec num_agents_tried(wh_json:object(), ne_binary()) -> non_neg_integer().    
+-spec num_agents_tried(wh_json:object(), ne_binary()) -> non_neg_integer().
 num_agents_tried(AgentsTried, AID) ->
     {Vs, _} = wh_json:get_values(AgentsTried),
     lists:foldl(fun(A, Acc) when A =:= AID -> Acc + 1;
@@ -467,8 +498,7 @@ num_agents_tried(AgentsTried, AID) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+summary(Context) -> crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private

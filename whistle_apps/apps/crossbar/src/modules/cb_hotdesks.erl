@@ -18,7 +18,7 @@
          ,validate/1
         ]).
 
--include("include/crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -define(VIEW_FILE, <<"views/hotdesks.json">>).
 -define(CB_LIST, <<"hotdesks/crossbar_listing">>).

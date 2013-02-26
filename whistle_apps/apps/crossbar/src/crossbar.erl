@@ -14,7 +14,7 @@
          ,start_mod/1, stop_mod/1
         ]).
 
--include("../include/crossbar.hrl").
+-include("crossbar.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

@@ -24,7 +24,7 @@
          ,delete/2
         ]).
 
--include("include/crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -168,8 +168,7 @@ load_user_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_user(api_binary(), cb_context:context()) -> cb_context:context().
-load_user(UserId, Context) ->
-    crossbar_doc:load(UserId, Context).
+load_user(UserId, Context) -> crossbar_doc:load(UserId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -308,5 +307,4 @@ username_doc_id(Username, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects()).
-normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+normalize_view_results(JObj, Acc) -> [wh_json:get_value(<<"value">>, JObj)|Acc].

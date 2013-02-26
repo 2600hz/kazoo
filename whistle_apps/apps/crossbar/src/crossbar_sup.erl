@@ -17,7 +17,7 @@
 -export([find_proc/1]).
 -export([init/1]).
 
--include("include/crossbar.hrl").
+-include("crossbar.hrl").
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).

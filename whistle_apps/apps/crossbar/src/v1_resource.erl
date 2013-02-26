@@ -44,7 +44,7 @@
          ,expires/2
         ]).
 
--include("include/crossbar.hrl").
+-include("crossbar.hrl").
 
 %%%===================================================================
 %%% Startup and shutdown of request
@@ -346,7 +346,7 @@ content_types_accepted(CT, Req, #cb_context{content_types_accepted=CTAs}=Context
                                       {ne_binaries(), #http_req{}, cb_context:context()}.
 languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     lager:debug("run: languages_provided"),
-    {Req1, #cb_context{languages_provided=LangsProvided}=Context1} = 
+    {Req1, #cb_context{languages_provided=LangsProvided}=Context1} =
         lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
                             Event = <<"v1_resource.languages_provided.", Mod/binary>>,
                             Payload = {ReqAcc, ContextAcc, Params},
@@ -363,7 +363,7 @@ languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
 %% -spec charsets_provided(#http_req{}, cb_context:context()) -> {[ne_binary(),...], #http_req{}, cb_context:context()}.
 %% charsets_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
 %%     lager:debug("run: charsets_provided"),
-%%     {Req1, #cb_context{charsets_provided=CharsetsProvided}=Context1} = 
+%%     {Req1, #cb_context{charsets_provided=CharsetsProvided}=Context1} =
 %%         lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
 %%                             Event = <<"v1_resource.charsets_provided.", Mod/binary>>,
 %%                             Payload = {ReqAcc, ContextAcc, Params},
@@ -378,7 +378,7 @@ charsets_provided(_Req, _Context) ->
                                       {ne_binaries(), #http_req{}, cb_context:context()}.
 encodings_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     lager:debug("run: encodings_provided"),
-    {Req1, #cb_context{encodings_provided=EncodingsProvided}=Context1} = 
+    {Req1, #cb_context{encodings_provided=EncodingsProvided}=Context1} =
         lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
                             Event = <<"v1_resource.encodings_provided.", Mod/binary>>,
                             Payload = {ReqAcc, ContextAcc, Params},
@@ -432,7 +432,7 @@ previously_existed(Req, State) ->
     lager:debug("run: previously_existed"),
     {false, Req, State}.
 
-%% If we're tunneling PUT through POST, 
+%% If we're tunneling PUT through POST,
 %% we need to allow POST to create a non-existent resource
 %% AKA, 201 Created header set
 -spec allow_missing_post(#http_req{}, cb_context:context()) ->

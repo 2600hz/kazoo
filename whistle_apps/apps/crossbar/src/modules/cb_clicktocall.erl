@@ -26,7 +26,7 @@
          ,delete/2
         ]).
 
--include_lib("crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -define(CONNECT_CALL, <<"connect">>).
 -define(HISTORY, <<"history">>).

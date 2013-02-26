@@ -25,7 +25,7 @@
          ,halt/2, content_type_matches/2, ensure_content_type/1
         ]).
 
--include("include/crossbar.hrl").
+-include("crossbar.hrl").
 
 -type cowboy_multipart_response() :: {{'headers', cowboy_http:headers()} |
                                       {'data', binary()} |
@@ -81,13 +81,13 @@ add_cors_headers(Req0, #cb_context{allow_methods=Ms}=Context) ->
     {ReqMethod0, Req1} = cowboy_http_req:header(<<"Access-Control-Request-Method">>, Req0),
 
     ReqMethod = wh_util:to_binary(ReqMethod0),
-    Methods = [wh_util:to_binary(M) 
+    Methods = [wh_util:to_binary(M)
                || M <- [<<"OPTIONS">> | Ms],
                   (not wh_util:is_empty(M))
               ],
 
     Allow = case wh_util:is_empty(ReqMethod)
-                orelse lists:member(ReqMethod, Methods) 
+                orelse lists:member(ReqMethod, Methods)
             of
                 false -> [ReqMethod|Methods];
                 true -> Methods
@@ -761,7 +761,7 @@ create_resp_envelope(Context) ->
 
 do_create_resp_envelope(#cb_context{auth_token=AuthToken, resp_etag=ETag, req_id=RequestId}=Context) ->
     Resp = case cb_context:response(Context) of
-               {ok, RespData} -> 
+               {ok, RespData} ->
                    [{<<"auth_token">>, AuthToken}
                     ,{<<"status">>, <<"success">>}
                     ,{<<"request_id">>, RequestId}

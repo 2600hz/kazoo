@@ -21,7 +21,7 @@
          ,delete/3
         ]).
 
--include("include/crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -define(OUTGOING, <<"outgoing">>).
 -define(INCOMING, <<"incoming">>).

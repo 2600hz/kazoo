@@ -36,7 +36,7 @@
          ,req_value/2, req_value/3
         ]).
 
--include("include/crossbar.hrl").
+-include("crossbar.hrl").
 
 -type context() :: #cb_context{}.
 -export_type([context/0]).
@@ -306,7 +306,7 @@ add_validation_error(Property, <<"divisibleBy">>=C, Message, Context) ->
 %% Not unique within the datastore
 add_validation_error(Property, <<"unique">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
-%% User is not authorized to update the property  
+%% User is not authorized to update the property
 add_validation_error(Property, <<"forbidden">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
 %% Date range is invalid, too small, or too large
@@ -319,10 +319,10 @@ add_validation_error(Property, <<"not_found">> = C, Message, Context) ->
 add_validation_error(Property, Code, Message, Context) ->
     lager:debug("UNKNOWN ERROR CODE: ~p", [Code]),
     _ = file:write_file("/tmp/kazoo_unknown_error_codes.log", io_lib:format("~p~n", [Code]), [append]),
-    add_depreciated_validation_error(Property, Code, Message, Context).    
+    add_depreciated_validation_error(Property, Code, Message, Context).
 
 add_depreciated_validation_error(Property, Code, Message, Context) when is_binary(Property) ->
-    add_depreciated_validation_error([Property], Code, Message, Context);    
+    add_depreciated_validation_error([Property], Code, Message, Context);
 add_depreciated_validation_error(Property, Code, Message, #cb_context{validation_errors=JObj}=Context) ->
     %% Maintain the same error format we are currently using until we are ready to
     %% convert to something that makes sense....

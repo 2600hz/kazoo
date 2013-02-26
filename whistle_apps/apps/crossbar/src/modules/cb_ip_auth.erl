@@ -20,7 +20,7 @@
          ,put/1
         ]).
 
--include("include/crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_IP, <<"accounts/listing_by_ip">>).

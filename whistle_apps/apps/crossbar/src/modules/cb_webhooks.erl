@@ -19,7 +19,7 @@
          ,delete/2
         ]).
 
--include("include/crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -define(CB_LIST, <<"webhooks/crossbar_listing">>).
 -define(CB_USERS_LIST, <<"webhooks/users_listing">>).

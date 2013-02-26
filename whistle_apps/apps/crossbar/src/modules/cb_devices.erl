@@ -27,7 +27,7 @@
          ,get_all_acl_ips/0
         ]).
 
--include_lib("crossbar.hrl").
+-include("src/crossbar.hrl").
 
 -define(QUICKCALL_URL, [{<<"devices">>, [_, <<"quickcall">>, _]}
                         ,{?WH_ACCOUNTS_DB, [_]}
@@ -454,9 +454,9 @@ maybe_aggregate_device(DeviceId, #cb_context{resp_status=success, doc=JObj}=Cont
     case wh_util:is_true(cb_context:fetch(aggregate_device, Context)) of
         false ->
             maybe_remove_aggreate(DeviceId, Context);
-        true ->
-            lager:debug("adding device to the sip auth aggregate"),
-            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
+        true -> 
+            lager:debug("adding device to the sip auth aggregate"),            
+            _ = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
             wapi_switch:publish_reload_acls(),
             true
     end;
@@ -474,7 +474,7 @@ maybe_remove_aggreate('undefined', _) ->
 maybe_remove_aggreate(DeviceId, #cb_context{resp_status=success}) ->
     case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
         {ok, JObj} ->
-            couch_mgr:del_doc(?WH_SIP_DB, JObj),
+            _ = couch_mgr:del_doc(?WH_SIP_DB, JObj),
             wapi_switch:publish_reload_acls(),
             true;
         {error, not_found} -> false
