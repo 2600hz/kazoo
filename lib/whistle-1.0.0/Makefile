@@ -3,9 +3,10 @@ ROOT = ../..
 DIALYZER = dialyzer
 
 LIB_EBINS = $(shell find $(ROOT)/lib -maxdepth 2 -name ebin -print)
+PA = $(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN))
 
-ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/lib \
-	$(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN)) # +bin_opt_info
+ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/lib $(PA)
+	 # +bin_opt_info
 
 DIRS = . \
 	$(ROOT)/lib/whistle_amqp-1.0.0
@@ -46,7 +47,8 @@ clean:
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
+	erl -noshell $(PA) \
+	-pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
 
 build-plt:
 	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
