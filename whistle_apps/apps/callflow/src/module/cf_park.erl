@@ -571,7 +571,7 @@ get_endpoint_id('undefined', _) ->
     'undefined';
 get_endpoint_id(Username, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case cf_util:endpoint_id_from_username(AccountDb, Username) of
+    case cf_util:endpoint_id_by_sip_username(AccountDb, Username) of
         {'ok', EndpointId} -> EndpointId;
         {'error', _} -> 'undefined'
     end.
