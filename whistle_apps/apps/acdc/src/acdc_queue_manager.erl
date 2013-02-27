@@ -54,32 +54,33 @@
           ,strategy_state :: queue_strategy_state() % based on the strategy
           ,known_agents = dict:new() :: dict() % how many agent processes are available {AgentId, Count}
           ,enter_when_empty = 'true' :: boolean() % allow caller into queue if no agents are logged in
+          ,moh :: api_binary()
          }).
 
--define(BINDINGS(A, Q), [{conf, [{type, <<"queue">>}
-                                 ,{db, wh_util:format_account_id(A, encoded)}
-                                 ,{id, Q}
-                                ]}
-                         ,{acdc_queue, [{restrict_to, [stats_req, agent_change]}
-                                        ,{account_id, A}
-                                        ,{queue_id, Q}
+-define(BINDINGS(A, Q), [{'conf', [{'type', <<"queue">>}
+                                   ,{'db', wh_util:format_account_id(A, 'encoded')}
+                                   ,{'id', Q}
+                                  ]}
+                         ,{'acdc_queue', [{'restrict_to', ['stats_req', 'agent_change']}
+                                        ,{'account_id', A}
+                                        ,{'queue_id', Q}
                                        ]}
-                         ,{notifications, [{restrict_to, [presence_probe]}]}
+                         ,{'notifications', [{'restrict_to', ['presence_probe']}]}
                         ]).
 
--define(RESPONDERS, [{{acdc_queue_handler, handle_config_change}
+-define(RESPONDERS, [{{'acdc_queue_handler', 'handle_config_change'}
                       ,[{<<"configuration">>, <<"*">>}]
                      }
-                     ,{{acdc_queue_handler, handle_stats_req}
+                     ,{{'acdc_queue_handler', 'handle_stats_req'}
                        ,[{<<"queue">>, <<"stats_req">>}]
                       }
-                     ,{{acdc_queue_handler, handle_presence_probe}
+                     ,{{'acdc_queue_handler', 'handle_presence_probe'}
                        ,[{<<"notification">>, <<"presence_probe">>}]
                       }
-                     ,{{acdc_queue_manager, handle_member_call}
+                     ,{{'acdc_queue_manager', 'handle_member_call'}
                        ,[{<<"member">>, <<"call">>}]
                       }
-                     ,{{acdc_queue_manager, handle_member_call_cancel}
+                     ,{{'acdc_queue_manager', 'handle_member_call_cancel'}
                        ,[{<<"member">>, <<"call_cancel">>}]
                       }
                      ,{{'acdc_queue_manager', 'handle_agent_change'}
@@ -88,14 +89,14 @@
                     ]).
 
 -define(SECONDARY_BINDINGS(AcctId, QueueId)
-        ,[{acdc_queue, [{restrict_to, ['member_call']}
-                        ,{account_id, AcctId}
-                        ,{queue_id, QueueId}
-                       ]}
+        ,[{'acdc_queue', [{'restrict_to', ['member_call']}
+                          ,{'account_id', AcctId}
+                          ,{'queue_id', QueueId}
+                         ]}
          ]).
 -define(SECONDARY_QUEUE_NAME(QueueId), <<"acdc.queue.manager.", QueueId/binary>>).
--define(SECONDARY_QUEUE_OPTIONS, [{exclusive, false}]).
--define(SECONDARY_CONSUME_OPTIONS, [{exclusive, false}]).
+-define(SECONDARY_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(SECONDARY_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -111,8 +112,8 @@
 -spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(Super, AcctId, QueueId) ->
     gen_listener:start_link(?MODULE
-                            ,[{bindings, ?BINDINGS(AcctId, QueueId)}
-                              ,{responders, ?RESPONDERS}
+                            ,[{'bindings', ?BINDINGS(AcctId, QueueId)}
+                              ,{'responders', ?RESPONDERS}
                              ]
                             ,[Super, AcctId, QueueId]
                            ).
@@ -123,14 +124,14 @@ handle_member_call(JObj, Props) ->
 
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
 
-    case are_agents_available(props:get_value(server, Props)
-                              ,props:get_value(enter_when_empty, Props)
+    case are_agents_available(props:get_value('server', Props)
+                              ,props:get_value('enter_when_empty', Props)
                              )
     of
         'false' ->
             lager:info("no agents are available to take the call, cancel queueing"),
-            gen_listener:cast(props:get_value(server, Props)
-                              ,{reject_member_call, Call, JObj}
+            gen_listener:cast(props:get_value('server', Props)
+                              ,{'reject_member_call', Call, JObj}
                              );
         'true' ->
             start_queue_call(JObj, Props, Call)
@@ -238,14 +239,14 @@ init([Super, AcctId, QueueId]) ->
     _ = update_strategy_state(self(), Strategy, StrategyState),
 
     lager:debug("queue mgr started for ~s", [QueueId]),
-    {'ok', #state{
-       acct_id=AcctId
-       ,queue_id=QueueId
-       ,supervisor = Super
-       ,strategy = Strategy
-       ,strategy_state = StrategyState
-       ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
-      }}.
+    {'ok', #state{acct_id=AcctId
+                  ,queue_id=QueueId
+                  ,supervisor=Super
+                  ,strategy=Strategy
+                  ,strategy_state=StrategyState
+                  ,enter_when_empty=wh_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
+                  ,moh=wh_json:get_value(<<"moh">>, QueueJObj)
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private

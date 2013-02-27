@@ -329,16 +329,16 @@ connect_req({'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
 
     case acdc_queue_manager:pick_winner(Mgr, CRs) of
         {[Winner|_]=Agents, Rest} ->
+            QueueOpts = [{<<"Ring-Timeout">>, RingTimeout}
+                         ,{<<"Wrapup-Timeout">>, AgentWrapup}
+                         ,{<<"Caller-Exit-Key">>, CallerExitKey}
+                         ,{<<"CDR-Url">>, CDRUrl}
+                         ,{<<"Record-Caller">>, ShouldRecord}
+                         ,{<<"Recording-URL">>, RecordUrl}
+                        ],
+
             _ = [begin
                      webseq:evt(self(), webseq:process_pid(Agent), [<<"member call ">>, win_or_monitor(Agent, Winner)]),
-
-                     QueueOpts = [{<<"Ring-Timeout">>, RingTimeout}
-                                  ,{<<"Wrapup-Timeout">>, AgentWrapup}
-                                  ,{<<"Caller-Exit-Key">>, CallerExitKey}
-                                  ,{<<"CDR-Url">>, CDRUrl}
-                                  ,{<<"Record-Caller">>, ShouldRecord}
-                                  ,{<<"Recording-URL">>, RecordUrl}
-                                 ],
                      acdc_queue_listener:member_connect_win(Srv, update_agent(Agent, Winner), QueueOpts)
                  end
                  || Agent <- Agents
@@ -500,7 +500,7 @@ connecting({'retry', RetryJObj}, #state{queue_proc=Srv
                                         ,collect_ref=CollectRef
                                         ,agent_ring_timer_ref=AgentRef
                                        }=State) ->
-    lager:debug("recv retry from agent"),
+    lager:debug("recv retry from agent, but no other resps are available"),
 
     webseq:evt(webseq:process_pid(RetryJObj), self(), <<"member call - retry">>),
 
@@ -513,18 +513,36 @@ connecting({'retry', RetryJObj}, #state{queue_proc=Srv
                                               ,member_call_winner='undefined'
                                              }};
 
-connecting({'retry', RetryJObj}, #state{agent_ring_timer_ref=AgentRef}=State) ->
-    lager:debug("recv retry from agent"),
-    lager:debug("but wait, we have others who wanted to try"),
-    gen_fsm:send_event(self(), {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
-    maybe_stop_timer(AgentRef),
+connecting({'retry', RetryJObj}, #state{agent_ring_timer_ref=AgentRef
+                                        ,collect_ref=CollectRef
+                                        ,member_call_winner=Winner
+                                       }=State) ->
+    RetryProcId = wh_json:get_value(<<"Process-ID">>, RetryJObj),
+    RetryAgentId = wh_json:get_value(<<"Agent-ID">>, RetryJObj),
 
-    webseq:evt(webseq:process_pid(RetryJObj), self(), <<"member call - retry">>),
+    case {wh_json:get_value(<<"Agent-ID">>, Winner), wh_json:get_value(<<"Process-ID">>, Winner)} of
+        {RetryAgentId, RetryProcId} ->
+            lager:debug("recv retry from our winning agent ~s(~s)", [RetryAgentId, RetryProcId]),
 
-    {'next_state', 'connect_req', State#state{agent_ring_timer_ref='undefined'
-                                              ,member_call_winner='undefined'
-                                             }};
+            lager:debug("but wait, we have others who wanted to try"),
+            gen_fsm:send_event(self(), {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
 
+            maybe_stop_timer(CollectRef),
+            maybe_stop_timer(AgentRef),
+
+            webseq:evt(webseq:process_pid(RetryJObj), self(), <<"member call - retry">>),
+
+            {'next_state', 'connect_req', State#state{agent_ring_timer_ref='undefined'
+                                                      ,member_call_winner='undefined'
+                                                      ,collect_ref='undefined'
+                                                     }};
+        {RetryAgentId, _OtherProcId} ->
+            lager:debug("recv retry from monitoring proc ~s(~s)", [RetryAgentId, _OtherProcId]),
+            {'next_state', 'connecting', State};
+        {_OtherAgentId, _OtherProcId} ->
+            lager:debug("recv retry from unknown agent ~s(~s)", [_OtherAgentId, _OtherProcId]),
+            {'next_state', 'connecting', State}
+    end;
 connecting({'timeout', AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring_timer_ref=AgentRef
                                                                       ,member_call_winner=Winner
                                                                       ,queue_proc=Srv

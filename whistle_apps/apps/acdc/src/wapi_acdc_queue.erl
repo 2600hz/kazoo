@@ -343,7 +343,7 @@ member_connect_accepted_v(JObj) ->
 %%   fails to respond. Informs the queue to try a member_connect_req again
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_RETRY_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_MEMBER_CONNECT_RETRY_HEADERS, [<<"Process-ID">>]).
+-define(OPTIONAL_MEMBER_CONNECT_RETRY_HEADERS, [<<"Process-ID">>, <<"Agent-ID">>]).
 -define(MEMBER_CONNECT_RETRY_VALUES, [{<<"Event-Category">>, <<"member">>}
                                       ,{<<"Event-Name">>, <<"connect_retry">>}
                                      ]).
