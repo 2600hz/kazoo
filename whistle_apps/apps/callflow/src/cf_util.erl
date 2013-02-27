@@ -16,6 +16,7 @@
 -define(SIP_USER_OWNERS_KEY(Db, User), {?MODULE, 'sip_user_owners', Db, User}).
 -define(SIP_ENDPOINT_ID_KEY(Db, User), {?MODULE, 'sip_endpoint_id', Db, User}).
 -define(PARKING_PRESENCE_KEY(Db, Request), {?MODULE, 'parking_callflow', Db, Request}).
+-define(MANUAL_PRESENCE_KEY(Db), {?MODULE, 'manual_presence', Db}).
 
 -export([presence_probe/2]).
 -export([presence_mwi_query/2]).
@@ -554,13 +555,31 @@ presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
 manual_presence(<<"message-summary">>, _, _, _) -> ok;
 manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, Event) ->
     case whapps_util:get_account_by_realm(FromRealm) of
-        {ok, AccountDb} ->
-            case couch_mgr:open_cache_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
-                {error, _} -> ok;
-                {ok, JObj} ->
-                    manual_presence_resp(JObj, ToUser, ToRealm, Event)
-            end;
-        _E -> ok
+        {'ok', AccountDb} ->
+            check_manual_presence(AccountDb, ToUser, ToRealm, Event);
+        _E -> 'ok'
+    end.
+
+-spec check_manual_presence(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+check_manual_presence(AccountDb, ToUser, ToRealm, Event) ->
+    case wh_cache:fetch_local(?CALLFLOW_CACHE, ?MANUAL_PRESENCE_KEY(AccountDb)) of
+        {'ok', JObj} ->
+            manual_presence_resp(JObj, ToUser, ToRealm, Event);
+        {'error', 'not_found'} ->
+            fetch_manual_presence_doc(AccountDb, ToUser, ToRealm, Event)
+    end.
+
+-spec fetch_manual_presence_doc(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+fetch_manual_presence_doc(AccountDb, ToUser, ToRealm, Event) ->
+    case couch_mgr:open_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
+        {'ok', JObj} ->
+            CacheProps = [{'origin', {'db', AccountDb, ?MANUAL_PRESENCE_DOC}}],
+            wh_cache:store_local(?CALLFLOW_CACHE, ?MANUAL_PRESENCE_KEY(AccountDb), JObj, CacheProps),
+            manual_presence_resp(JObj, ToUser, ToRealm, Event);
+        {'error', 'not_found'} ->
+            CacheProps = [{'origin', {'db', AccountDb, ?MANUAL_PRESENCE_DOC}}],
+            wh_cache:store_local(?CALLFLOW_CACHE, ?MANUAL_PRESENCE_KEY(AccountDb), wh_json:new(), CacheProps);
+        {'error', _} -> 'ok'
     end.
 
 -spec manual_presence_resp(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
