@@ -23,10 +23,10 @@
 
 -define(CROSSBAR_DEFAULT_CONTENT_TYPE, {<<"application">>, <<"json">>, []}).
 
--define(CONTENT_PROVIDED, [{to_json, [{<<"application">>, <<"json">>},{<<"application">>, <<"x-json">>}]}]).
--define(CONTENT_ACCEPTED, [{from_json, [{<<"application">>, <<"json">>},{<<"application">>, <<"x-json">>}]}
-                           ,{from_form, [{<<"application">>, <<"x-www-form-urlencoded">>}]}
-                           ,{from_binary, [{<<"text">>, <<"csv">>}]}
+-define(CONTENT_PROVIDED, [{'to_json', [{<<"application">>, <<"json">>},{<<"application">>, <<"x-json">>}]}]).
+-define(CONTENT_ACCEPTED, [{'from_json', [{<<"application">>, <<"json">>},{<<"application">>, <<"x-json">>}]}
+                           ,{'from_form', [{<<"application">>, <<"x-www-form-urlencoded">>}]}
+                           ,{'from_binary', [{<<"text">>, <<"csv">>}]}
                           ]).
 -define(ALLOWED_METHODS, ['GET'
                           ,'POST'
@@ -37,7 +37,7 @@
                           ,'PATCH'
                          ]).
 
--define(CROSSBAR_CACHE, crossbar_cache).
+-define(CROSSBAR_CACHE, 'crossbar_cache').
 
 -define(USERS_QCALL_NOUNS, [{<<"users">>, [_UserId, <<"quickcall">>, _Number]}
                             ,{?WH_ACCOUNTS_DB, [_]}
@@ -54,7 +54,7 @@
           ,languages_provided = [<<"en">>, <<"en-us">>, <<"en-gb">>] :: ne_binaries() %% english by default
           ,charsets_provided = [<<"iso-8859-1">>] :: ne_binaries() %% all charsets provided
           ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: ne_binaries() %% gzip and identity
-          ,auth_token = <<>> :: binary()
+          ,auth_token = <<>> :: api_binary()
           ,auth_account_id :: ne_binary()
           ,auth_doc :: wh_json:object()
           ,req_verb = <<"get">> :: ne_binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>, <<"head">>
@@ -86,5 +86,5 @@
           ,load_merge_bypass :: 'undefined' | wh_json:object()
          }).
 
--define(CROSSBAR_HRL, true).
+-define(CROSSBAR_HRL, 'true').
 -endif.

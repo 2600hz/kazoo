@@ -25,36 +25,36 @@
 
 -include("src/crossbar.hrl").
 
--define(CHILDSPEC, {?MODULE, {?MODULE, start_link, []}, permanent, 5000, worker, [?MODULE]}).
+-define(CHILDSPEC, {?MODULE, {?MODULE, 'start_link', []}, 'permanent', 5000, 'worker', [?MODULE]}).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 start_link() ->
-    proc_lib:start_link(?MODULE, init, [self()]).
+    proc_lib:start_link(?MODULE, 'init', [self()]).
 
 init() ->
     couch_mgr:db_create(?TOKEN_DB),
-    _ = couch_mgr:revise_doc_from_file(?TOKEN_DB, crossbar, "views/token_auth.json"),
+    _ = couch_mgr:revise_doc_from_file(?TOKEN_DB, 'crossbar', "views/token_auth.json"),
 
-    _ = supervisor:start_child(crossbar_sup, ?CHILDSPEC),
+    _ = supervisor:start_child('crossbar_sup', ?CHILDSPEC),
 
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
-    crossbar_bindings:bind(<<"v1_resource.finish_request.*.*">>, ?MODULE, finish_request).
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
+    crossbar_bindings:bind(<<"v1_resource.finish_request.*.*">>, ?MODULE, 'finish_request').
 
 stop() ->
-    ok = supervisor:terminate_child(crossbar_sup, ?MODULE),
-    ok = supervisor:delete_child(crossbar_sup, ?MODULE).
+    'ok' = supervisor:terminate_child('crossbar_sup', ?MODULE),
+    'ok' = supervisor:delete_child('crossbar_sup', ?MODULE).
 
 init(Parent) ->
-    proc_lib:init_ack(Parent, {ok, self()}),
+    proc_lib:init_ack(Parent, {'ok', self()}),
     put(callid, ?LOG_SYSTEM_ID),
     Expiry = whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_DAY),
 
     cleanup_loop(Expiry).
 
 -spec finish_request(cb_context:context()) -> any().
-finish_request(#cb_context{auth_doc=undefined}) -> ok;
+finish_request(#cb_context{auth_doc='undefined'}) -> 'ok';
 finish_request(#cb_context{auth_doc=AuthDoc}) ->
     lager:debug("updating auth doc: ~s:~s", [wh_json:get_value(<<"_id">>, AuthDoc)
                                             ,wh_json:get_value(<<"_rev">>, AuthDoc)
@@ -74,17 +74,17 @@ cleanup_loop(Expiry) ->
 clean_expired(Expiry) ->
     CreatedBefore = wh_util:current_tstamp() - Expiry, % gregorian seconds - Expiry time
 
-    case couch_mgr:get_results(?TOKEN_DB, <<"token_auth/listing_by_mtime">>, [{startkey, 0}
-                                                                              ,{endkey, CreatedBefore}
-                                                                              ,{limit, 5000}
+    case couch_mgr:get_results(?TOKEN_DB, <<"token_auth/listing_by_mtime">>, [{'startkey', 0}
+                                                                              ,{'endkey', CreatedBefore}
+                                                                              ,{'limit', 5000}
                                                                              ])
     of
-        {ok, []} -> lager:debug("no expired tokens found"), ok;
-        {ok, L} ->
+        {'ok', []} -> lager:debug("no expired tokens found"), 'ok';
+        {'ok', L} ->
             lager:debug("removing ~b expired tokens", [length(L)]),
             _ = couch_mgr:del_docs(?TOKEN_DB, prepare_tokens_for_deletion(L)),
-            ok;
-        {error, _E} ->
+            'ok';
+        {'error', _E} ->
             lager:debug("failed to lookup expired tokens: ~p", [_E])
     end.
 
@@ -101,18 +101,19 @@ prepare_token_for_deletion(Token) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> 'false' | {'true', cb_context:context()}.
-authenticate(#cb_context{auth_token = <<>>}) -> false;
+authenticate(#cb_context{auth_token = <<>>}) -> 'false';
+authenticate(#cb_context{auth_token='undefined'}) -> 'false';
 authenticate(#cb_context{auth_token=AuthToken}=Context) ->
     _ = cb_context:put_reqid(Context),
 
     lager:debug("checking auth token: ~s", [AuthToken]),
     case couch_mgr:open_cache_doc(?TOKEN_DB, AuthToken) of
-        {ok, JObj} ->
+        {'ok', JObj} ->
             lager:debug("token auth is valid, authenticating"),
-            {true, Context#cb_context{auth_account_id=wh_json:get_ne_value(<<"account_id">>, JObj)
-                                      ,auth_doc=wh_json:set_value(<<"modified">>, wh_util:current_tstamp(), JObj)
-                                     }};
-        {error, R} ->
+            {'true', Context#cb_context{auth_account_id=wh_json:get_ne_value(<<"account_id">>, JObj)
+                                        ,auth_doc=wh_json:set_value(<<"modified">>, wh_util:current_tstamp(), JObj)
+                                       }};
+        {'error', R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),
-            false
+            'false'
     end.
