@@ -537,10 +537,10 @@ connecting({'retry', RetryJObj}, #state{agent_ring_timer_ref=AgentRef
                                                       ,collect_ref='undefined'
                                                      }};
         {RetryAgentId, _OtherProcId} ->
-            lager:debug("recv retry from monitoring proc ~s(~s)", [RetryAgentId, _OtherProcId]),
+            lager:debug("recv retry from monitoring proc ~s(~s)", [RetryAgentId, RetryProcId]),
             {'next_state', 'connecting', State};
         {_OtherAgentId, _OtherProcId} ->
-            lager:debug("recv retry from unknown agent ~s(~s)", [_OtherAgentId, _OtherProcId]),
+            lager:debug("recv retry from unknown agent ~s(~s)", [RetryAgentId, RetryProcId]),
             {'next_state', 'connecting', State}
     end;
 connecting({'timeout', AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring_timer_ref=AgentRef
