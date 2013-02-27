@@ -202,6 +202,7 @@ create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 %%--------------------------------------------------------------------
 -spec flush(ne_binary(), ne_binary()) -> any().
 flush(Db, Id) ->
+    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}),
     {ok, Rev} = couch_mgr:lookup_doc_rev(Db, Id),
     Props =
         [{<<"ID">>, Id}
@@ -212,8 +213,7 @@ flush(Db, Id) ->
                                       ,?APP_NAME, ?APP_VERSION)
         ],
     Fun = fun(P) -> wapi_conf:publish_doc_update(<<"edited">>, Db, <<"device">>, Id, P) end,
-    whapps_util:amqp_pool_send(Props, Fun),
-    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}).
+    whapps_util:amqp_pool_send(Props, Fun).
 
 %%--------------------------------------------------------------------
 %% @public

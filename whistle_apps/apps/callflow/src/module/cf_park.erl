@@ -17,6 +17,7 @@
 
 -define(DB_DOC_NAME, whapps_config:get(?MOD_CONFIG_CAT, <<"db_doc_name">>, <<"parked_calls">>)).
 -define(DEFAULT_RINGBACK_TM, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"default_ringback_time">>, 120000)).
+-define(PARKED_CALLS_KEY(Db), {?MODULE, 'parked_calls', Db}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -28,10 +29,10 @@
 -spec update_presence(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 update_presence(SlotNumber, PresenceId, AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
-    ParkedCalls = get_parked_calls(AccountDb, AccountId),
+    ParkedCalls = get_cached_parked_calls(AccountDb, AccountId),
     State = case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls) of
                 undefined -> <<"terminated">>;
-                ParkedCallId -> 
+                ParkedCallId ->
                     case whapps_call_command:b_channel_status(ParkedCallId) of
                         {ok, _} -> <<"early">>;
                         {error, _} -> <<"terminated">>
@@ -310,11 +311,20 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
 do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:save_doc(AccountDb, wh_json:set_value([<<"slots">>, SlotNumber], Slot, ParkedCalls)) of
-        {ok, _}=Ok ->
+        {ok, JObj}=Ok ->
             lager:info("successfully stored call parking data for slot ~s", [SlotNumber]),
+            CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
+            wh_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj, CacheProps),
             Ok;
         {error, conflict} ->
-            save_slot(SlotNumber, Slot, get_parked_calls(Call), Call)
+            maybe_resolve_conflict(SlotNumber, Slot, Call)
+    end.
+
+maybe_resolve_conflict(SlotNumber, Slot, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
+        {ok, JObj} -> do_save_slot(SlotNumber, Slot, JObj, Call);
+        {error, _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -438,6 +448,13 @@ get_parked_calls(AccountDb, AccountId) ->
             E
     end.
 
+get_cached_parked_calls(AccountDb, AccountId) ->
+    case wh_cache:peek_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb)) of
+        {'ok', _}=Ok -> Ok;
+        {'error', 'not_found'} ->
+            get_parked_calls(AccountDb, AccountId)
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -504,7 +521,7 @@ wait_for_pickup(SlotNumber, RingbackId, Call) ->
                 false -> 
                     lager:info("parked call doesnt exist anymore, hangup"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
-                    cf_exe:stop(Call)                    
+                    cf_exe:stop(Call)
             end;
         {error, _} ->
             lager:info("parked caller has hungup"),
