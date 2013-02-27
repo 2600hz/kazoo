@@ -449,7 +449,7 @@ handle_cast({'member_connect_retry', CallId}, #state{my_id=MyId
     case catch whapps_call:call_id(Call) of
         CallId ->
             lager:debug("need to retry member connect, agent isn't able to take it"),
-            send_member_connect_retry(Server, CallId, MyId),
+            send_member_connect_retry(Server, CallId, MyId, AgentId),
 
             acdc_util:unbind_from_call_events(ACallId),
             acdc_util:unbind_from_call_events(CallId),
@@ -467,9 +467,11 @@ handle_cast({'member_connect_retry', CallId}, #state{my_id=MyId
             lager:debug("retry call id(~s) is not our member call id ~p, ignoring", [CallId, _MCallId]),
             {'noreply', State}
     end;
-handle_cast({'member_connect_retry', WinJObj}, #state{my_id=MyId}=State) ->
+handle_cast({'member_connect_retry', WinJObj}, #state{my_id=MyId
+                                                      ,agent_id=AgentId
+                                                     }=State) ->
     lager:debug("cannot process this win, sending a retry: ~s", [call_id(WinJObj)]),
-    send_member_connect_retry(WinJObj, MyId),
+    send_member_connect_retry(WinJObj, MyId, AgentId),
     {'noreply', State};
 
 handle_cast('member_connect_accepted', #state{msg_queue_id=AmqpQueue
@@ -763,19 +765,22 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
     lager:debug("sending connect_resp to ~s for ~s: ~s", [Queue, call_id(JObj), MyId]),
     wapi_acdc_queue:publish_member_connect_resp(Queue, Resp).
 
--spec send_member_connect_retry(wh_json:object(), ne_binary()) -> 'ok'.
--spec send_member_connect_retry(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-send_member_connect_retry(JObj, MyId) ->
+-spec send_member_connect_retry(wh_json:object(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_member_connect_retry(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_member_connect_retry(JObj, MyId, AgentId) ->
     send_member_connect_retry(wh_json:get_value(<<"Server-ID">>, JObj)
                               ,call_id(JObj)
-                              ,MyId).
+                              ,MyId
+                              ,AgentId
+                             ).
 
-send_member_connect_retry('undefined', _, _) ->
+send_member_connect_retry('undefined', _, _, _) ->
     lager:debug("no queue to send the retry to, seems bad");
-send_member_connect_retry(Queue, CallId, MyId) ->
+send_member_connect_retry(Queue, CallId, MyId, AgentId) ->
     Resp = props:filter_undefined(
              [{<<"Process-ID">>, MyId}
               ,{<<"Call-ID">>, CallId}
+              ,{<<"Agent-ID">>, AgentId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     wapi_acdc_queue:publish_member_connect_retry(Queue, Resp).
