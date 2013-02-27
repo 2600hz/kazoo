@@ -14,6 +14,7 @@
 -export([start_link/2, start_link/3
          ,member_connect_resp/2
          ,member_connect_retry/2
+         ,agent_timeout/1
          ,bridge_to_member/6
          ,monitor_call/4
          ,member_connect_accepted/1
@@ -129,6 +130,9 @@
                      ,{{'acdc_agent_handler', 'handle_member_message'}
                        ,[{<<"member">>, <<"*">>}]
                       }
+                     ,{{'acdc_agent_handler', 'handle_agent_message'}
+                       ,[{<<"agent">>, <<"*">>}]
+                      }
                      ,{{'acdc_agent_handler', 'handle_route_req'}
                        ,[{<<"dialplan">>, <<"route_req">>}]
                       }
@@ -190,6 +194,9 @@ member_connect_resp(Srv, ReqJObj) ->
 
 member_connect_retry(Srv, WinJObj) ->
     gen_listener:cast(Srv, {'member_connect_retry', WinJObj}).
+
+-spec agent_timeout(pid()) -> 'ok'.
+agent_timeout(Srv) -> gen_listener:cast(Srv, 'agent_timeout').
 
 member_connect_accepted(Srv) ->
     gen_listener:cast(Srv, 'member_connect_accepted').
@@ -418,6 +425,21 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
             {'noreply', State}
     end;
 
+handle_cast('agent_timeout', #state{agent_call_id=ACallId
+                                    ,agent_id=AgentId
+                                    ,agent_call_queue=ACtrlQ
+                                    ,my_q=MyQ
+                                   }=State) when is_binary(ACallId) ->
+    lager:debug("agent timeout recv, stopping agent call"),
+    acdc_util:unbind_from_call_events(ACallId),
+    stop_agent_leg(MyQ, ACallId, ACtrlQ),
+    put('callid', AgentId),
+    {'noreply', State#state{msg_queue_id='undefined'
+                            ,acdc_queue_id='undefined'
+                            ,agent_call_id='undefined'
+                            ,call='undefined'
+                           }
+     ,'hibernate'};
 handle_cast({'member_connect_retry', CallId}, #state{my_id=MyId
                                                      ,msg_queue_id=Server
                                                      ,agent_call_id=ACallId

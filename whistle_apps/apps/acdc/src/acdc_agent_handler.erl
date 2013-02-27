@@ -16,6 +16,7 @@
          ,handle_cdr/2
          ,handle_originate_resp/2
          ,handle_member_message/2
+         ,handle_agent_message/2
          ,handle_config_change/2
          ,handle_presence_probe/2
          ,handle_route_req/2
@@ -188,6 +189,17 @@ handle_member_message(JObj, Props, <<"connect_win">>) ->
     acdc_agent_fsm:member_connect_win(props:get_value('fsm_pid', Props), JObj);
 handle_member_message(_, _, EvtName) ->
     lager:debug("not handling member event ~s", [EvtName]).
+
+-spec handle_agent_message(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_agent_message(wh_json:object(), wh_proplist(), ne_binary()) -> 'ok'.
+handle_agent_message(JObj, Props) ->
+    handle_agent_message(JObj, Props, wh_json:get_value(<<"Event-Name">>, JObj)).
+
+handle_agent_message(JObj, Props, <<"connect_timeout">>) ->
+    'true' = wapi_acdc_queue:agent_timeout_v(JObj),
+    acdc_agent_fsm:agent_timeout(props:get_value('fsm_pid', Props), JObj);
+handle_agent_message(_, _, _EvtName) ->
+    lager:debug("not handling agent event ~s", [_EvtName]).
 
 handle_config_change(JObj, _Props) ->
     'true' = wapi_conf:doc_update_v(JObj),

@@ -16,6 +16,7 @@
          ,member_connect_req/1, member_connect_req_v/1
          ,member_connect_resp/1, member_connect_resp_v/1
          ,member_connect_win/1, member_connect_win_v/1
+         ,agent_timeout/1, agent_timeout_v/1
          ,member_connect_retry/1, member_connect_retry_v/1
          ,member_connect_accepted/1, member_connect_accepted_v/1
          ,member_hungup/1, member_hungup_v/1
@@ -43,6 +44,7 @@
          ,publish_member_connect_req/1, publish_member_connect_req/2
          ,publish_member_connect_resp/2, publish_member_connect_resp/3
          ,publish_member_connect_win/2, publish_member_connect_win/3
+         ,publish_agent_timeout/2, publish_agent_timeout/3
          ,publish_member_connect_retry/2, publish_member_connect_retry/3
          ,publish_member_connect_accepted/2, publish_member_connect_accepted/3
          ,publish_member_hungup/2, publish_member_hungup/3
@@ -72,8 +74,8 @@
                                {'error', string()}.
 member_call(Props) when is_list(Props) ->
     case member_call_v(Props) of
-        true -> wh_api:build_message(Props, ?MEMBER_CALL_HEADERS, ?OPTIONAL_MEMBER_CALL_HEADERS);
-        false -> {'error', "Proplist failed validation for member_call"}
+        'true' -> wh_api:build_message(Props, ?MEMBER_CALL_HEADERS, ?OPTIONAL_MEMBER_CALL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for member_call"}
     end;
 member_call(JObj) ->
     member_call(wh_json:to_proplist(JObj)).
@@ -116,8 +118,8 @@ member_call_routing_key(AcctId, QueueId) ->
                                     {'error', string()}.
 member_call_failure(Props) when is_list(Props) ->
     case member_call_failure_v(Props) of
-        true -> wh_api:build_message(Props, ?MEMBER_CALL_FAIL_HEADERS, ?OPTIONAL_MEMBER_CALL_FAIL_HEADERS);
-        false -> {error, "Proplist failed validation for member_call_fail"}
+        'true' -> wh_api:build_message(Props, ?MEMBER_CALL_FAIL_HEADERS, ?OPTIONAL_MEMBER_CALL_FAIL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for member_call_fail"}
     end;
 member_call_failure(JObj) ->
     member_call_failure(wh_json:to_proplist(JObj)).
@@ -143,8 +145,8 @@ member_call_failure_v(JObj) ->
                                        {'error', string()}.
 member_call_success(Props) when is_list(Props) ->
     case member_call_success_v(Props) of
-        true -> wh_api:build_message(Props, ?MEMBER_CALL_SUCCESS_HEADERS, ?OPTIONAL_MEMBER_CALL_SUCCESS_HEADERS);
-        false -> {error, "Proplist failed validation for member_call_success"}
+        'true' -> wh_api:build_message(Props, ?MEMBER_CALL_SUCCESS_HEADERS, ?OPTIONAL_MEMBER_CALL_SUCCESS_HEADERS);
+        'false' -> {'error', "Proplist failed validation for member_call_success"}
     end;
 member_call_success(JObj) ->
     member_call_success(wh_json:to_proplist(JObj)).
@@ -171,8 +173,8 @@ member_call_success_v(JObj) ->
                                       {'error', string()}.
 member_call_cancel(Props) when is_list(Props) ->
     case member_call_cancel_v(Props) of
-        true -> wh_api:build_message(Props, ?MEMBER_CALL_CANCEL_HEADERS, ?OPTIONAL_MEMBER_CALL_CANCEL_HEADERS);
-        false -> {error, "Proplist failed validation for member_call_cancel"}
+        'true' -> wh_api:build_message(Props, ?MEMBER_CALL_CANCEL_HEADERS, ?OPTIONAL_MEMBER_CALL_CANCEL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for member_call_cancel"}
     end;
 member_call_cancel(JObj) ->
     member_call_cancel(wh_json:to_proplist(JObj)).
@@ -239,8 +241,8 @@ member_connect_req_routing_key(AcctId, QID) ->
                                        {'error', string()}.
 member_connect_resp(Props) when is_list(Props) ->
     case member_connect_resp_v(Props) of
-        true -> wh_api:build_message(Props, ?MEMBER_CONNECT_RESP_HEADERS, ?OPTIONAL_MEMBER_CONNECT_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for member_connect_resp"}
+        'true' -> wh_api:build_message(Props, ?MEMBER_CONNECT_RESP_HEADERS, ?OPTIONAL_MEMBER_CONNECT_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for member_connect_resp"}
     end;
 member_connect_resp(JObj) ->
     member_connect_resp(wh_json:to_proplist(JObj)).
@@ -270,8 +272,8 @@ member_connect_resp_v(JObj) ->
                                       {'error', string()}.
 member_connect_win(Props) when is_list(Props) ->
     case member_connect_win_v(Props) of
-        true -> wh_api:build_message(Props, ?MEMBER_CONNECT_WIN_HEADERS, ?OPTIONAL_MEMBER_CONNECT_WIN_HEADERS);
-        false -> {error, "Proplist failed validation for member_connect_win"}
+        'true' -> wh_api:build_message(Props, ?MEMBER_CONNECT_WIN_HEADERS, ?OPTIONAL_MEMBER_CONNECT_WIN_HEADERS);
+        'false' -> {'error', "Proplist failed validation for member_connect_win"}
     end;
 member_connect_win(JObj) ->
     member_connect_win(wh_json:to_proplist(JObj)).
@@ -283,13 +285,39 @@ member_connect_win_v(JObj) ->
     member_connect_win_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
+%% Agent Timeout
+%%------------------------------------------------------------------------------
+-define(AGENT_TIMEOUT_HEADERS, [<<"Queue-ID">>, <<"Call-ID">>]).
+-define(OPTIONAL_AGENT_TIMEOUT_HEADERS, [<<"Agent-Process-ID">>]).
+-define(AGENT_TIMEOUT_VALUES, [{<<"Event-Category">>, <<"agent">>}
+                               ,{<<"Event-Name">>, <<"connect_timeout">>}
+                              ]).
+-define(AGENT_TIMEOUT_TYPES, []).
+
+-spec agent_timeout(api_terms()) ->
+                           {'ok', iolist()} |
+                           {'error', string()}.
+agent_timeout(Props) when is_list(Props) ->
+    case agent_timeout_v(Props) of
+        'true' -> wh_api:build_message(Props, ?AGENT_TIMEOUT_HEADERS, ?OPTIONAL_AGENT_TIMEOUT_HEADERS);
+        'false' -> {'error', "Proplist failed validation for agent_timeout"}
+    end;
+agent_timeout(JObj) -> agent_timeout(wh_json:to_proplist(JObj)).
+
+-spec agent_timeout_v(api_terms()) -> boolean().
+agent_timeout_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?AGENT_TIMEOUT_HEADERS, ?AGENT_TIMEOUT_VALUES, ?AGENT_TIMEOUT_TYPES);
+agent_timeout_v(JObj) ->
+    agent_timeout_v(wh_json:to_proplist(JObj)).
+
+%%------------------------------------------------------------------------------
 %% Member Connect Accepted
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_ACCEPTED_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_MEMBER_CONNECT_ACCEPTED_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Process-ID">>]).
 -define(MEMBER_CONNECT_ACCEPTED_VALUES, [{<<"Event-Category">>, <<"member">>}
-                                       ,{<<"Event-Name">>, <<"connect_accepted">>}
-                                      ]).
+                                         ,{<<"Event-Name">>, <<"connect_accepted">>}
+                                        ]).
 -define(MEMBER_CONNECT_ACCEPTED_TYPES, []).
 
 -spec member_connect_accepted(api_terms()) ->
@@ -297,8 +325,8 @@ member_connect_win_v(JObj) ->
                                          {'error', string()}.
 member_connect_accepted(Props) when is_list(Props) ->
     case member_connect_accepted_v(Props) of
-        true -> wh_api:build_message(Props, ?MEMBER_CONNECT_ACCEPTED_HEADERS, ?OPTIONAL_MEMBER_CONNECT_ACCEPTED_HEADERS);
-        false -> {error, "Proplist failed validation for member_connect_accepted"}
+        'true' -> wh_api:build_message(Props, ?MEMBER_CONNECT_ACCEPTED_HEADERS, ?OPTIONAL_MEMBER_CONNECT_ACCEPTED_HEADERS);
+        'false' -> {'error', "Proplist failed validation for member_connect_accepted"}
     end;
 member_connect_accepted(JObj) ->
     member_connect_accepted(wh_json:to_proplist(JObj)).
@@ -326,8 +354,8 @@ member_connect_accepted_v(JObj) ->
                                         {'error', string()}.
 member_connect_retry(Props) when is_list(Props) ->
     case member_connect_retry_v(Props) of
-        true -> wh_api:build_message(Props, ?MEMBER_CONNECT_RETRY_HEADERS, ?OPTIONAL_MEMBER_CONNECT_RETRY_HEADERS);
-        false -> {error, "Proplist failed validation for member_connect_retry"}
+        'true' -> wh_api:build_message(Props, ?MEMBER_CONNECT_RETRY_HEADERS, ?OPTIONAL_MEMBER_CONNECT_RETRY_HEADERS);
+        'false' -> {'error', "Proplist failed validation for member_connect_retry"}
     end;
 member_connect_retry(JObj) ->
     member_connect_retry(wh_json:to_proplist(JObj)).
@@ -356,8 +384,8 @@ member_connect_retry_v(JObj) ->
                                  {'error', string()}.
 member_hungup(Props) when is_list(Props) ->
     case member_hungup_v(Props) of
-        true -> wh_api:build_message(Props, ?MEMBER_HUNGUP_HEADERS, ?OPTIONAL_MEMBER_HUNGUP_HEADERS);
-        false -> {error, "Proplist failed validation for member_hungup"}
+        'true' -> wh_api:build_message(Props, ?MEMBER_HUNGUP_HEADERS, ?OPTIONAL_MEMBER_HUNGUP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for member_hungup"}
     end;
 member_hungup(JObj) ->
     member_hungup(wh_json:to_proplist(JObj)).
@@ -400,8 +428,8 @@ sync_req_routing_key(AcctId, QID) ->
                             {'error', string()}.
 sync_req(Props) when is_list(Props) ->
     case sync_req_v(Props) of
-        true -> wh_api:build_message(Props, ?SYNC_REQ_HEADERS, ?OPTIONAL_SYNC_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for sync_req"}
+        'true' -> wh_api:build_message(Props, ?SYNC_REQ_HEADERS, ?OPTIONAL_SYNC_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for sync_req"}
     end;
 sync_req(JObj) ->
     sync_req(wh_json:to_proplist(JObj)).
@@ -426,8 +454,8 @@ sync_req_v(JObj) ->
                              {'error', string()}.
 sync_resp(Props) when is_list(Props) ->
     case sync_resp_v(Props) of
-        true -> wh_api:build_message(Props, ?SYNC_RESP_HEADERS, ?OPTIONAL_SYNC_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for sync_resp"}
+        'true' -> wh_api:build_message(Props, ?SYNC_RESP_HEADERS, ?OPTIONAL_SYNC_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for sync_resp"}
     end;
 sync_resp(JObj) ->
     sync_resp(wh_json:to_proplist(JObj)).
@@ -486,8 +514,8 @@ stats_req_publish_key(JObj) ->
                              {'error', string()}.
 stats_req(Props) when is_list(Props) ->
     case stats_req_v(Props) of
-        true -> wh_api:build_message(Props, ?STATS_REQ_HEADERS, ?OPTIONAL_STATS_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for stats_req"}
+        'true' -> wh_api:build_message(Props, ?STATS_REQ_HEADERS, ?OPTIONAL_STATS_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for stats_req"}
     end;
 stats_req(JObj) ->
     stats_req(wh_json:to_proplist(JObj)).
@@ -514,8 +542,8 @@ stats_req_v(JObj) ->
                               {'error', string()}.
 stats_resp(Props) when is_list(Props) ->
     case stats_resp_v(Props) of
-        true -> wh_api:build_message(Props, ?STATS_RESP_HEADERS, ?OPTIONAL_STATS_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for stats_resp"}
+        'true' -> wh_api:build_message(Props, ?STATS_RESP_HEADERS, ?OPTIONAL_STATS_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for stats_resp"}
     end;
 stats_resp(JObj) ->
     stats_resp(wh_json:to_proplist(JObj)).
@@ -564,21 +592,19 @@ agent_change_unavailable() -> ?AGENT_CHANGE_UNAVAILABLE.
 -define(AGENT_CHANGE_TYPES, []).
 
 -spec agent_change(api_terms()) ->
-                                   {'ok', iolist()} |
-                                   {'error', string()}.
+                          {'ok', iolist()} |
+                          {'error', string()}.
 agent_change(Prop) when is_list(Prop) ->
     case agent_change_v(Prop) of
-        true -> wh_api:build_message(Prop, ?AGENT_CHANGE_HEADERS, ?OPTIONAL_AGENT_CHANGE_HEADERS);
-        false -> {error, "proplist failed validation for agent_change"}
+        'true' -> wh_api:build_message(Prop, ?AGENT_CHANGE_HEADERS, ?OPTIONAL_AGENT_CHANGE_HEADERS);
+        'false' -> {'error', "proplist failed validation for agent_change"}
     end;
-agent_change(JObj) ->
-    agent_change(wh_json:to_proplist(JObj)).
+agent_change(JObj) -> agent_change(wh_json:to_proplist(JObj)).
 
 -spec agent_change_v(api_terms()) -> boolean().
 agent_change_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AGENT_CHANGE_HEADERS, ?AGENT_CHANGE_VALUES, ?AGENT_CHANGE_TYPES);
-agent_change_v(JObj) ->
-    agent_change_v(wh_json:to_proplist(JObj)).
+agent_change_v(JObj) -> agent_change_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% Bind/Unbind the queue as appropriate
@@ -590,19 +616,19 @@ shared_queue_name(AcctId, QueueId) ->
 -spec queue_size(ne_binary(), ne_binary()) -> integer() | 'undefined'.
 queue_size(AcctId, QueueId) ->
     Q = shared_queue_name(AcctId, QueueId),
-    amqp_util:new_queue(Q, [{return_field, message_count}]).
+    amqp_util:new_queue(Q, [{'return_field', 'message_count'}]).
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Q, Props) ->
-    QID = props:get_value(queue_id, Props, <<"*">>),
-    AcctId = props:get_value(account_id, Props),
+    QID = props:get_value('queue_id', Props, <<"*">>),
+    AcctId = props:get_value('account_id', Props),
 
     amqp_util:callmgr_exchange(),
     amqp_util:whapps_exchange(),
 
-    bind_q(Q, AcctId, QID, props:get_value(restrict_to, Props)).
+    bind_q(Q, AcctId, QID, props:get_value('restrict_to', Props)).
 
-bind_q(Q, AcctId, QID, undefined) ->
+bind_q(Q, AcctId, QID, 'undefined') ->
     amqp_util:bind_q_to_whapps(Q, sync_req_routing_key(AcctId, QID)),
 
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId)),
@@ -611,28 +637,26 @@ bind_q(Q, AcctId, QID, undefined) ->
 
     amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
     amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
-bind_q(Q, AcctId, QID, [member_call|T]) ->
+bind_q(Q, AcctId, QID, ['member_call'|T]) ->
     amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, T);
-bind_q(Q, AcctId, QID, [member_connect_req|T]) ->
+bind_q(Q, AcctId, QID, ['member_connect_req'|T]) ->
     amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, T);
-bind_q(Q, AcctId, QID, [sync_req|T]) ->
+bind_q(Q, AcctId, QID, ['sync_req'|T]) ->
     amqp_util:bind_q_to_whapps(Q, sync_req_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, T);
-bind_q(Q, AcctId, <<"*">> = QID, [stats_req|T]) ->
+bind_q(Q, AcctId, <<"*">> = QID, ['stats_req'|T]) ->
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId)),
     bind_q(Q, AcctId, QID, T);
-bind_q(Q, AcctId, QID, [stats_req|T]) ->
+bind_q(Q, AcctId, QID, ['stats_req'|T]) ->
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, T);
-bind_q(Q, AcctId, QID, [agent_change|T]) ->
+bind_q(Q, AcctId, QID, ['agent_change'|T]) ->
     amqp_util:bind_q_to_whapps(Q, agent_change_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, T);
-bind_q(Q, AcctId, QID, [_|T]) ->
-    bind_q(Q, AcctId, QID, T);
-bind_q(_, _, _, []) ->
-    ok.
+bind_q(Q, AcctId, QID, [_|T]) -> bind_q(Q, AcctId, QID, T);
+bind_q(_, _, _, []) -> 'ok'.
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
@@ -738,6 +762,14 @@ publish_member_connect_win(Q, JObj) ->
     publish_member_connect_win(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_member_connect_win(Q, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CONNECT_WIN_VALUES, fun member_connect_win/1),
+    amqp_util:targeted_publish(Q, Payload, ContentType).
+
+-spec publish_agent_timeout(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_agent_timeout(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_agent_timeout(Q, JObj) ->
+    publish_agent_timeout(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_agent_timeout(Q, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?AGENT_TIMEOUT_VALUES, fun agent_timeout/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_member_connect_accepted(ne_binary(), api_terms()) -> 'ok'.

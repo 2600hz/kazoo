@@ -25,6 +25,7 @@
          ,member_connect_re_req/1
          ,member_connect_win/3
          ,timeout_member_call/1
+         ,timeout_agent/2
          ,exit_member_call/1
          ,finish_member_call/1, finish_member_call/2
          ,ignore_member_call/3
@@ -130,6 +131,9 @@ member_connect_re_req(Srv) ->
 
 member_connect_win(Srv, RespJObj, QueueOpts) ->
     gen_listener:cast(Srv, {'member_connect_win', RespJObj, QueueOpts}).
+
+timeout_agent(Srv, RespJObj) ->
+    gen_listener:cast(Srv, {'timeout_agent', RespJObj}).
 
 timeout_member_call(Srv) ->
     gen_listener:cast(Srv, {'timeout_member_call'}).
@@ -317,6 +321,13 @@ handle_cast({'member_connect_win', RespJObj, QueueOpts}, #state{my_q=MyQ
 
     send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts),
     {'noreply', State#state{agent_id=wh_json:get_value(<<"Agent-ID">>, RespJObj)}, 'hibernate'};
+
+handle_cast({'timeout_agent', RespJObj}, #state{queue_id=QueueId
+                                                ,call=Call
+                                               }=State) ->
+    lager:debug("timing out winning agent"),
+    send_agent_timeout(RespJObj, Call, QueueId),
+    {'noreply', State#state{agent_id='undefined'}, 'hibernate'};
 
 handle_cast({'timeout_member_call'}, #state{delivery=Delivery
                                             ,call=Call
@@ -521,6 +532,16 @@ send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts) ->
              | QueueOpts ++ wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
             ]),
     publish(Q, Win, fun wapi_acdc_queue:publish_member_connect_win/2).
+
+-spec send_agent_timeout(wh_json:json_object(), whapps_call:call(), ne_binary()) -> 'ok'.
+send_agent_timeout(RespJObj, Call, QueueId) ->
+    Prop = [{<<"Queue-ID">>, QueueId}
+            ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+            ,{<<"Agent-Process-ID">>, wh_json:get_value(<<"Agent-Process-ID">>, RespJObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    publish(wh_json:get_value(<<"Server-ID">>, RespJObj), Prop
+            ,fun wapi_acdc_queue:agent_timeout/2).
 
 send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, CallId) ->
     Resp = props:filter_undefined(

@@ -16,6 +16,7 @@
          ,call_event/4
          ,member_connect_req/2
          ,member_connect_win/2
+         ,agent_timeout/2
          ,originate_ready/2
          ,originate_resp/2, originate_started/2, originate_uuid/2
          ,originate_failed/2
@@ -125,6 +126,9 @@ member_connect_req(FSM, JObj) -> gen_fsm:send_event(FSM, {'member_connect_req', 
 %%--------------------------------------------------------------------
 -spec member_connect_win(pid(), wh_json:object()) -> 'ok'.
 member_connect_win(FSM, JObj) -> gen_fsm:send_event(FSM, {'member_connect_win', JObj}).
+
+-spec agent_timeout(pid(), wh_json:object()) -> 'ok'.
+agent_timeout(FSM, JObj) -> gen_fsm:send_event(FSM, {'agent_timeout', JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -629,6 +633,22 @@ ringing({'originate_failed', E}, #state{agent_proc=Srv
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     webseq:note(self(), 'right', <<"ready">>),
+    {'next_state', 'ready', clear_call(State, 'failed')};
+
+
+ringing({'agent_timeout', JObj}, #state{agent_proc=Srv
+                                        ,acct_id=AcctId
+                                        ,agent_id=AgentId
+                                        ,member_call_queue_id=QueueId
+                                        ,member_call_id=CallId
+                                       }=State) ->
+    acdc_agent:agent_timeout(Srv),
+    lager:debug("recv timeout from queue process"),
+    acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId, <<"timeout">>),
+    webseq:note(self(), 'right', <<"ready">>),
+    acdc_stats:agent_ready(AcctId, AgentId),
+
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {'next_state', 'ready', clear_call(State, 'failed')};
 
 ringing({'channel_bridged', CallId}, #state{member_call_id=CallId

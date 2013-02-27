@@ -72,6 +72,7 @@
 
          ,member_call :: whapps_call:call()
          ,member_call_start :: wh_now()
+         ,member_call_winner :: api_object() %% who won the call
 
          %% Config options
          ,name :: ne_binary()
@@ -190,27 +191,28 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
 
     webseq:reg_who(self(), iolist_to_binary([<<"qFSM">>, pid_to_list(self())])),
 
-    {'ok', 'ready', #state{queue_proc=ListenerPid
-                           ,manager_proc=MgrPid
-                           ,acct_id=AcctId
-                           ,acct_db=AcctDb
-                           ,queue_id=QueueId
+    {'ok', 'ready'
+     ,#state{queue_proc=ListenerPid
+             ,manager_proc=MgrPid
+             ,acct_id=AcctId
+             ,acct_db=AcctDb
+             ,queue_id=QueueId
 
-                           ,name = wh_json:get_value(<<"name">>, QueueJObj)
-                           ,connection_timeout = connection_timeout(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj))
-                           ,agent_ring_timeout = agent_ring_timeout(wh_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj))
-                           ,max_queue_size = wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj)
-                           ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
-                           ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
-                           ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj)
-                           ,moh = wh_json:get_ne_value(<<"moh">>, QueueJObj)
-                           ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
-                           ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
-                           ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, 'false')
-                           ,recording_url = wh_json:get_ne_value(<<"recording_url">>, QueueJObj)
-                           ,cdr_url = wh_json:get_ne_value(<<"cdr_url">>, QueueJObj)
-                           ,member_call = 'undefined'
-                          }}.
+             ,name = wh_json:get_value(<<"name">>, QueueJObj)
+             ,connection_timeout = connection_timeout(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj))
+             ,agent_ring_timeout = agent_ring_timeout(wh_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj))
+             ,max_queue_size = wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj)
+             ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
+             ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
+             ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj)
+             ,moh = wh_json:get_ne_value(<<"moh">>, QueueJObj)
+             ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
+             ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
+             ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, 'false')
+             ,recording_url = wh_json:get_ne_value(<<"recording_url">>, QueueJObj)
+             ,cdr_url = wh_json:get_ne_value(<<"cdr_url">>, QueueJObj)
+             ,member_call = 'undefined'
+            }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -348,6 +350,7 @@ connect_req({'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
             {'next_state', 'connecting', State#state{connect_resps=Rest
                                                      ,collect_ref='undefined'
                                                      ,agent_ring_timer_ref=start_agent_ring_timer(RingTimeout)
+                                                     ,member_call_winner=Winner
                                                     }};
         'undefined' ->
             lager:debug("no more responses to choose from"),
@@ -507,6 +510,7 @@ connecting({'retry', RetryJObj}, #state{queue_proc=Srv
 
     {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()
                                               ,agent_ring_timer_ref='undefined'
+                                              ,member_call_winner='undefined'
                                              }};
 
 connecting({'retry', RetryJObj}, #state{agent_ring_timer_ref=AgentRef}=State) ->
@@ -517,13 +521,23 @@ connecting({'retry', RetryJObj}, #state{agent_ring_timer_ref=AgentRef}=State) ->
 
     webseq:evt(webseq:process_pid(RetryJObj), self(), <<"member call - retry">>),
 
-    {'next_state', 'connect_req', State#state{agent_ring_timer_ref='undefined'}};
+    {'next_state', 'connect_req', State#state{agent_ring_timer_ref='undefined'
+                                              ,member_call_winner='undefined'
+                                             }};
 
-connecting({'timeout', AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring_timer_ref=AgentRef}=State) ->
+connecting({'timeout', AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring_timer_ref=AgentRef
+                                                                      ,member_call_winner=Winner
+                                                                      ,queue_proc=Srv
+                                                                     }=State) ->
     lager:debug("timed out waiting for agent to pick up"),
     lager:debug("let's try another agent"),
     gen_fsm:send_event(self(), {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
-    {'next_state', 'connect_req', State#state{agent_ring_timer_ref='undefined'}};
+
+    acdc_queue_listener:timeout_agent(Srv, Winner),
+
+    {'next_state', 'connect_req', State#state{agent_ring_timer_ref='undefined'
+                                              ,member_call_winner='undefined'
+                                             }};
 connecting({'timeout', _OtherAgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring_timer_ref=_AgentRef}=State) ->
     lager:debug("unknown agent ref: ~p known: ~p", [_OtherAgentRef, _AgentRef]),
     {'next_state', 'connect_req', State};
@@ -718,10 +732,10 @@ agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 
 -spec start_agent_ring_timer(pos_integer()) -> reference().
 start_agent_ring_timer(AgentTimeout) ->
-    gen_fsm:start_timer(AgentTimeout * 2600, ?AGENT_RING_TIMEOUT_MESSAGE).
+    gen_fsm:start_timer(AgentTimeout * 1600, ?AGENT_RING_TIMEOUT_MESSAGE).
 
 -spec maybe_stop_timer(reference() | 'undefined') -> 'ok'.
-maybe_stop_timer('undefined') -> ok;
+maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) ->
     _ = gen_fsm:cancel_timer(ConnRef),
     'ok'.
@@ -742,6 +756,7 @@ clear_member_call(#state{connection_timer_ref=ConnRef
                 ,connection_timer_ref='undefined'
                 ,agent_ring_timer_ref='undefined'
                 ,member_call_start='undefined'
+                ,member_call_winner='undefined'
                }.
 
 update_properties(QueueJObj, State) ->
