@@ -968,13 +968,20 @@ maybe_start_recording(Call, 'true', Url) ->
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
     lager:debug("recording of ~s started", [MediaName]),
 
-    StoreUrl = offsite_store_url(Url, MediaName),
-    whapps_call_command:set('undefined', wh_json:from_list([{<<"Recording-URL">>, StoreUrl}]), Call),
+    case should_save_recording(Url) of
+        'true' ->
+            StoreUrl = offsite_store_url(Url, MediaName),
+            whapps_call_command:set('undefined', wh_json:from_list([{<<"Recording-URL">>, StoreUrl}]), Call);
+        'false' -> 'ok'
+    end,
 
     whapps_call_command:record_call(MediaName, <<"start">>, Call).
 
 recording_format() ->
     whapps_config:get(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>).
+
+should_save_recording(Url) ->
+    whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') orelse is_binary(Url).
 
 save_recording(Call, MediaName, Format, Url) ->
     case whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
@@ -995,6 +1002,7 @@ save_recording(Call, MediaName, Format, Url) ->
             lager:debug("no external url to use, not saving recording")
     end.
 
+offsite_store_url('undefined', _) -> <<"URL not defined">>;
 offsite_store_url(Url, MediaName) ->
     iolist_to_binary([wh_util:strip_right_binary(Url, $/), "/", MediaName]).
 
