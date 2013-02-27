@@ -327,10 +327,11 @@
 -define(CHANNEL_MOVE_COMPLETE_EVENT_BIN, <<"channel_move::move_complete">>).
 
 -define(CHANNEL_MOVE_REG(Node, UUID), {'channel_move', Node, UUID}).
--define(CHANNEL_MOVE_RELEASED_MSG(Node, UUID, Evt), {'move_released', Node, UUID, Evt}).
+-define(CHANNEL_MOVE_RELEASED_MSG(Node, UUID, Evt), {'channel_move_released', Node, UUID, Evt}).
 -define(CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Evt), {'channel_move_complete', Node, UUID, Evt}).
 
 -define(FS_EVENT_REG_MSG(Node, EvtName), {'event', Node, EvtName}).
+-define(FS_CALL_EVENT_REG_MSG(Node, EvtName), {'call_event', Node, EvtName}).
 
--define(ECALLMGR_HRL, true).
+-define(ECALLMGR_HRL, 'true').
 -endif.

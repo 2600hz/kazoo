@@ -35,8 +35,12 @@
                 ,options = [] :: wh_proplist()
                }).
 
--define(RESPONDERS, [{{?MODULE, handle_reload_acls}, [{<<"switch_event">>, <<"reload_acls">>}]}
-                     ,{{?MODULE, handle_reload_gtws}, [{<<"switch_event">>, <<"reload_gateways">>}]}
+-define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
+                      ,[{<<"switch_event">>, <<"reload_acls">>}]
+                     }
+                     ,{{?MODULE, 'handle_reload_gtws'}
+                       ,[{<<"switch_event">>, <<"reload_gateways">>}]
+                      }
                     ]).
 -define(BINDINGS, [{switch, []}]).
 -define(QUEUE_NAME, <<>>).
@@ -68,24 +72,20 @@
 -spec start_link(atom()) -> {'ok', pid()} | {'error', term()}.
 -spec start_link(atom(), proplist()) -> {'ok', pid()} | {'error', term()}.
 
-start_link(Node) ->
-    start_link(Node, []).
-
+start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                      ,{bindings, ?BINDINGS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
+    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+                                      ,{'bindings', ?BINDINGS}
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Node, Options]).
 
 -spec sync_channels(pid()) -> 'ok'.
-sync_channels(Srv) ->
-    gen_server:cast(Srv, {sync_channels}).
+sync_channels(Srv) -> gen_server:cast(Srv, {'sync_channels'}).
 
 -spec sync_conferences(pid()) -> 'ok'.
-sync_conferences(Srv) ->
-    gen_server:cast(Srv, {sync_conferences}).
+sync_conferences(Srv) -> gen_server:cast(Srv, {'sync_conferences'}).
 
 -spec hostname(pid()) -> api_binary().
 hostname(Srv) ->
@@ -98,47 +98,39 @@ hostname(Srv) ->
 
 -spec handle_reload_acls(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reload_acls(_JObj, Props) ->
-    Node = props:get_value(node, Props),
-    case freeswitch:bgapi(Node, reloadacl, "") of
-        {ok, Job} ->
-            lager:debug("reloadacl command sent to ~s: JobID: ~s", [Node, Job]);
-        {error, _E} ->
-            lager:debug("reloadacl failed with error: ~p", [_E]);
-        timeout ->
-            lager:debug("reloadacl failed with error: timeout")
+    Node = props:get_value('node', Props),
+    case freeswitch:bgapi(Node, 'reloadacl', "") of
+        {'ok', Job} -> lager:debug("reloadacl command sent to ~s: JobID: ~s", [Node, Job]);
+        {'error', _E} -> lager:debug("reloadacl failed with error: ~p", [_E]);
+        'timeout' -> lager:debug("reloadacl failed with error: timeout")
     end.
 
--spec handle_reload_gtws(wh_json:object(), proplist()) -> 'ok'.
+-spec handle_reload_gtws(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reload_gtws(_JObj, Props) ->
-    Node = props:get_value(node, Props),
+    Node = props:get_value('node', Props),
     Args = ["profile "
             ,?DEFAULT_FS_PROFILE
             ," rescan"
            ],
-    case wh_util:is_true(ecallmgr_config:get(<<"process_gateways">>, false))
-        andalso freeswitch:bgapi(Node, sofia, lists:flatten(Args))
+    case wh_util:is_true(ecallmgr_config:get(<<"process_gateways">>, 'false'))
+        andalso freeswitch:bgapi(Node, 'sofia', lists:flatten(Args))
     of
-        false -> ok;
-        {ok, Job} ->
-            lager:debug("sofia ~s command sent to ~s: JobID: ~s", [Args, Node, Job]);
-        {error, _E} ->
-            lager:debug("sofia ~s failed with error: ~p", [Args, _E]);
-        timeout ->
-            lager:debug("sofia ~s failed with error: timeout", [Args])
+        'false' -> 'ok';
+        {'ok', Job} -> lager:debug("sofia ~s command sent to ~s: JobID: ~s", [Args, Node, Job]);
+        {'error', _E} -> lager:debug("sofia ~s failed with error: ~p", [Args, _E]);
+        'timeout' -> lager:debug("sofia ~s failed with error: timeout", [Args])
     end.
 
 -spec fs_node(pid()) -> atom().
 fs_node(Srv) ->
-    case catch(gen_server:call(Srv, node, ?FS_TIMEOUT)) of
-        {'EXIT', _} -> undefined;
+    case catch(gen_server:call(Srv, 'node', ?FS_TIMEOUT)) of
+        {'EXIT', _} -> 'undefined';
         Else -> Else
     end.
 
 -spec show_channels(pid() | atom()) -> wh_json:objects().
-show_channels(Srv) when is_pid(Srv) ->
-    show_channels(fs_node(Srv));
-show_channels(Node) ->
-    show_channels_as_json(Node).
+show_channels(Srv) when is_pid(Srv) -> show_channels(fs_node(Srv));
+show_channels(Node) -> show_channels_as_json(Node).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -156,24 +148,24 @@ show_channels(Node) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put(callid, Node),
-    process_flag(priority, high), %% Living dangerously!
+    put('callid', Node),
+    process_flag('priority', 'high'), %% Living dangerously!
     lager:info("starting new fs node listener for ~s", [Node]),
-    case bind_to_events(props:get_value(client_version, Options), Node) of
-        {error, Reason} ->
+    case bind_to_events(props:get_value('client_version', Options), Node) of
+        {'error', Reason} ->
             lager:critical("unable to establish node bindings: ~p", [Reason]),
-            {stop, Reason};
-        ok ->
+            {'stop', Reason};
+        'ok' ->
             lager:debug("event handler registered on node ~s", [Node]),            
-            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
-                                         ,'SESSION_HEARTBEAT', 'CUSTOM'
-                                         ,'sofia::register', 'sofia::transfer'
-                                         ,?CHANNEL_MOVE_RELEASED_EVENT, ?CHANNEL_MOVE_COMPLETE_EVENT
-                                         ,'whistle::broadcast', 'conference::maintenance'
-                                         ,'loopback::bowout'
-                                        ]),
+            'ok' = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
+                                           ,'SESSION_HEARTBEAT', 'CUSTOM'
+                                           ,'sofia::register', 'sofia::transfer'
+                                           ,?CHANNEL_MOVE_RELEASED_EVENT, ?CHANNEL_MOVE_COMPLETE_EVENT
+                                           ,'whistle::broadcast', 'conference::maintenance'
+                                           ,'loopback::bowout'
+                                          ]),
             lager:debug("bound to switch events on node ~s", [Node]),
-            gproc:reg({p, l, fs_node}),
+            gproc:reg({'p', 'l', 'fs_node'}),
             run_start_cmds(Node),
             sync_channels(self()),
             sync_conferences(self()),
@@ -182,18 +174,18 @@ init([Node, Options]) ->
 
 bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
     case freeswitch:event(Node, ?FS_EVENTS) of
-        timeout -> {error, timeout};
+        'timeout' -> {'error', 'timeout'};
         Else -> Else
     end;
 bind_to_events(_, Node) ->
     case freeswitch:register_event_handler(Node) of
-        timeout -> {error, timeout};
-        ok ->
+        'timeout' -> {'error', 'timeout'};
+        'ok' ->
             case freeswitch:event(Node, ?FS_EVENTS) of
-                timeout -> {error, timeout};
+                'timeout' -> {'error', 'timeout'};
                 Else -> Else
             end;
-        {error, _}=E -> E
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -210,8 +202,8 @@ bind_to_events(_, Node) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(node, _From, #state{node=Node}=State) ->
-    {reply, Node, State}.
+handle_call('node', _From, #state{node=Node}=State) ->
+    {'reply', Node, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -224,22 +216,22 @@ handle_call(node, _From, #state{node=Node}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(term(), #state{}) -> {'noreply', #state{}}.
-handle_cast({sync_channels}, #state{node=Node}=State) ->
+handle_cast({'sync_channels'}, #state{node=Node}=State) ->
     Calls = [wh_json:get_value(<<"uuid">>, J)
              || J <- show_channels_as_json(Node)
             ],
-    Msg = {sync_channels, Node, [Call || Call <- Calls, Call =/= undefined]},
-    gen_server:cast(ecallmgr_fs_nodes, Msg),
+    Msg = {'sync_channels', Node, [Call || Call <- Calls, Call =/= 'undefined']},
+    gen_server:cast('ecallmgr_fs_nodes', Msg),
     {noreply, State};
 
-handle_cast({sync_conferences}, #state{node=Node}=State) ->
+handle_cast({'sync_conferences'}, #state{node=Node}=State) ->
     Conferences = show_conferences(Node),
-    Msg = {sync_conferences, Node, Conferences},
-    gen_server:cast(ecallmgr_fs_nodes, Msg),
-    {noreply, State};
+    Msg = {'sync_conferences', Node, Conferences},
+    gen_server:cast('ecallmgr_fs_nodes', Msg),
+    {'noreply', State};
 
 handle_cast(_Req, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -251,21 +243,21 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({event, [UUID | Data]}, #state{node=Node}=State) ->
+handle_info({'event', [UUID | Data]}, #state{node=Node}=State) ->
     _ = process_event(UUID, Data, Node),
-    {noreply, State};
+    {'noreply', State};
 
-handle_info({bgok, _Job, _Result}, State) ->
+handle_info({'bgok', _Job, _Result}, State) ->
     lager:debug("job ~s finished successfully: ~p", [_Job, _Result]),
-    {noreply, State};
+    {'noreply', State};
 
-handle_info({bgerror, _Job, _Result}, State) ->
+handle_info({'bgerror', _Job, _Result}, State) ->
     lager:debug("job ~s finished with an error: ~p", [_Job, _Result]),
-    {noreply, State};
+    {'noreply', State};
 
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -343,7 +335,7 @@ maybe_send_event(EventName, UUID, Props, Node) ->
 -spec maybe_send_call_event(api_binary(), wh_proplist(), atom()) -> any().
 maybe_send_call_event('undefined', _, _) -> ok;
 maybe_send_call_event(CallId, Props, Node) ->
-    gproc:send({'p', 'l', {'call_event', Node, CallId}}, {'event', [CallId | Props]}).
+    gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}, {'event', [CallId | Props]}).
 
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
                       {'error', {atom(), nonempty_string()}, ne_binary()} |

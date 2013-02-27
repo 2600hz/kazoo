@@ -39,11 +39,11 @@
          ,record_to_json/1
         ]).
 
--compile([{no_auto_import, [node/1]}]).
+-compile([{'no_auto_import', [node/1]}]).
 
 -include("ecallmgr.hrl").
 
--define(NODES_SRV, ecallmgr_fs_nodes).
+-define(NODES_SRV, 'ecallmgr_fs_nodes').
 
 -spec show_all() -> wh_json:objects().
 show_all() ->
@@ -55,15 +55,15 @@ show_all() ->
 new(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put(callid, CallId),
-    gen_server:cast(?NODES_SRV, {new_channel, props_to_record(Props, Node)}).
+    gen_server:cast(?NODES_SRV, {'new_channel', props_to_record(Props, Node)}).
 
 -spec fetch(ne_binary()) ->
                    {'ok', wh_json:object()} |
                    {'error', 'not_found'}.
 fetch(UUID) ->
     case ets:lookup(?CHANNELS_TBL, UUID) of
-        [Channel] -> {ok, record_to_json(Channel)};
-        _Else -> {error, not_found}
+        [Channel] -> {'ok', record_to_json(Channel)};
+        _Else -> {'error', 'not_found'}
     end.
 
 -spec node(ne_binary()) ->
@@ -71,24 +71,24 @@ fetch(UUID) ->
                   {'error', 'not_found'}.
 node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', node = '$2', _ = '_'}
-                  ,[{'=:=', '$1', {const, UUID}}]
+                  ,[{'=:=', '$1', {'const', UUID}}]
                   ,['$2']}
                 ],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
-        [Node] -> {ok, Node};
-        _ -> {error, not_found}
+        [Node] -> {'ok', Node};
+        _ -> {'error', 'not_found'}
     end.
 
 -spec is_bridged(ne_binary()) -> boolean().
 is_bridged(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', other_leg = '$2', _ = '_'}
-                  ,[{'=:=', '$1', {const, UUID}}]
+                  ,[{'=:=', '$1', {'const', UUID}}]
                   ,['$2']}
                 ],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
-        [undefined] -> lager:debug("not bridged: undefined"), false;
-        [Bin] when is_binary(Bin) -> lager:debug("bridged: ~s", [Bin]), true;
-        _E -> lager:debug("not bridged: ~p", [_E]), false
+        ['undefined'] -> lager:debug("not bridged: undefined"), 'false';
+        [Bin] when is_binary(Bin) -> lager:debug("bridged: ~s", [Bin]), 'true';
+        _E -> lager:debug("not bridged: ~p", [_E]), 'false'
     end.
 
 -spec former_node(ne_binary()) ->
@@ -96,13 +96,13 @@ is_bridged(UUID) ->
                          {'error', _}.
 former_node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', former_node = '$2', _ = '_'}
-                  ,[{'=:=', '$1', {const, UUID}}]
+                  ,[{'=:=', '$1', {'const', UUID}}]
                   ,['$2']}
                 ],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
-        [undefined] -> {ok, undefined};
-        [Node] -> {ok, Node};
-        _ -> {error, not_found}
+        ['undefined'] -> {'ok', 'undefined'};
+        [Node] -> {'ok', Node};
+        _ -> {'error', 'not_found'}
     end.
 
 -spec exists(ne_binary()) -> boolean().
@@ -122,7 +122,7 @@ account_summary(AccountId) ->
                            ,authorizing_id = '$3', resource_id = '$4', billing_id = '$5'
                            ,bridge_id = '$6',  _ = '_'
                           }
-                  ,[{'=:=', '$2', {const, AccountId}}]
+                  ,[{'=:=', '$2', {'const', AccountId}}]
                   ,['$_']}
                 ],
     ets:select(?CHANNELS_TBL, MatchSpec).
@@ -130,7 +130,7 @@ account_summary(AccountId) ->
 -spec match_presence(ne_binary()) -> wh_proplist_kv(ne_binary(), atom()).
 match_presence(PresenceId) ->
     MatchSpec = [{#channel{uuid = '$1', presence_id = '$2', node = '$3',  _ = '_'}
-                  ,[{'=:=', '$2', {const, PresenceId}}]
+                  ,[{'=:=', '$2', {'const', PresenceId}}]
                   ,[{{'$1', '$3'}}]}
                 ],
     ets:select(?CHANNELS_TBL, MatchSpec).
@@ -146,12 +146,12 @@ move(UUID, ONode, NNode) ->
     lager:debug("updated ~s to point to ~s", [UUID, NewNode]),
 
     case teardown_sbd(UUID, OriginalNode) of
-        true ->
+        'true' ->
             lager:debug("sbd teardown of ~s on ~s", [UUID, OriginalNode]),
             resume(UUID, NewNode);
-        false ->
+        'false' ->
             lager:debug("failed to teardown ~s on ~s", [UUID, OriginalNode]),
-            false
+            'false'
     end.
 
 %% listens for the event from FS with the XML
@@ -208,7 +208,7 @@ fix_metadata(Meta) ->
                     ,{<<"<context>default</context>">>, <<"<context>context_2</context>">>}
                    ],
     lists:foldl(fun({S, R}, MetaAcc) ->
-                        iolist_to_binary(re:replace(MetaAcc, S, R, [global]))
+                        iolist_to_binary(re:replace(MetaAcc, S, R, ['global']))
                 end, Meta, Replacements).
 
 wait_for_completion(UUID, NewNode) ->
@@ -224,7 +224,7 @@ wait_for_completion(UUID, NewNode) ->
     end.
 
 teardown_sbd(UUID, OriginalNode) ->
-    catch gproc:reg({p, l, ?CHANNEL_MOVE_REG(OriginalNode, UUID)}),
+    catch gproc:reg({'p', 'l', ?CHANNEL_MOVE_REG(OriginalNode, UUID)}),
 
     case freeswitch:sendevent_custom(OriginalNode, ?CHANNEL_MOVE_REQUEST_EVENT
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}

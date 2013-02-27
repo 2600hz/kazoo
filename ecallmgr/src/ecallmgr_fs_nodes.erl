@@ -146,7 +146,7 @@ account_summary(AccountId) ->
 -spec get_call_precedence(ne_binary()) -> integer().
 get_call_precedence(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', precedence = '$2', _ = '_'}
-                  ,[{'=:=', '$1', {const, UUID}}]
+                  ,[{'=:=', '$1', {'const', UUID}}]
                   ,['$2']}
                 ],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
@@ -159,7 +159,7 @@ get_call_precedence(UUID) ->
                                  {'error', 'not_found'}.
 channels_by_auth_id(AuthorizingId) ->
     MatchSpec = [{#channel{authorizing_id = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {const, AuthorizingId}}]
+                  ,[{'=:=', '$1', {'const', AuthorizingId}}]
                   ,['$_']}
                 ],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
@@ -173,14 +173,14 @@ channels_by_auth_id(AuthorizingId) ->
 -spec sync_channels(string() | binary() | atom()) -> 'ok'.
 sync_channels() ->
     _ = [ecallmgr_fs_node:sync_channels(Srv)
-         || Srv <- gproc:lookup_pids({p, l, fs_node})
+         || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
         ],
     'ok'.
 
 sync_channels(Node) ->
     N = wh_util:to_atom(Node, 'true'),
     _ = [ecallmgr_fs_node:sync_channels(Srv)
-         || Srv <- gproc:lookup_pids({p, l, fs_node})
+         || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
                 ,ecallmgr_fs_node:fs_node(Srv) =:= N
         ],
     'ok'.
@@ -189,25 +189,25 @@ sync_channels(Node) ->
 -spec sync_conferences(string() | binary() | atom()) -> 'ok'.
 sync_conferences() ->
     _ = [ecallmgr_fs_node:sync_conferences(Srv)
-         || Srv <- gproc:lookup_pids({p, l, fs_node})
+         || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
         ],
     'ok'.
 
 sync_conferences(Node) ->
     N = wh_util:to_atom(Node, 'true'),
     _ = [ecallmgr_fs_node:sync_conferences(Srv)
-         || Srv <- gproc:lookup_pids({p, l, fs_node})
+         || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
                 ,ecallmgr_fs_node:fs_node(Srv) =:= N
         ],
     'ok'.
 
 -spec flush_node_channels(string() | binary() | atom()) -> 'ok'.
 flush_node_channels(Node) ->
-    gen_server:cast(?MODULE, {flush_node_channels, wh_util:to_atom(Node, 'true')}).
+    gen_server:cast(?MODULE, {'flush_node_channels', wh_util:to_atom(Node, 'true')}).
 
 -spec flush_node_conferences(string() | binary() | atom()) -> 'ok'.
 flush_node_conferences(Node) ->
-    gen_server:cast(?MODULE, {flush_node_conferences, wh_util:to_atom(Node, 'true')}).
+    gen_server:cast(?MODULE, {'flush_node_conferences', wh_util:to_atom(Node, 'true')}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -226,14 +226,14 @@ flush_node_conferences(Node) ->
 %%--------------------------------------------------------------------
 init([]) ->
     put('callid', ?LOG_SYSTEM_ID),
-    process_flag(trap_exit, 'true'),
+    process_flag('trap_exit', 'true'),
     lager:debug("starting new fs handler"),
     _ = spawn_link(fun() -> start_preconfigured_servers() end),
-    _ = ets:new(sip_subscriptions, [set, public, named_table, {keypos, #sip_subscription.key}]),
-    _ = ets:new(?CHANNELS_TBL, [set, protected, named_table, {keypos, #channel.uuid}]),
-    _ = ets:new(?CONFERENCES_TBL, [set, protected, named_table, {keypos, #conference.name}]),
+    _ = ets:new('sip_subscriptions', ['set', 'public', 'named_table', {'keypos', #sip_subscription.key}]),
+    _ = ets:new(?CHANNELS_TBL, ['set', 'protected', 'named_table', {'keypos', #channel.uuid}]),
+    _ = ets:new(?CONFERENCES_TBL, ['set', 'protected', 'named_table', {'keypos', #conference.name}]),
 
-    _ = erlang:send_after(?EXPIRE_CHECK, self(), expire_sip_subscriptions),
+    _ = erlang:send_after(?EXPIRE_CHECK, self(), 'expire_sip_subscriptions'),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -253,26 +253,27 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({'is_node_up', Node}, _From, #state{nodes=Nodes}=State) ->
     Resp = case dict:find(Node, Nodes) of
-               error -> false;
-               {ok, #node{connected=Connected}} ->
+               'error' -> 'false';
+               {'ok', #node{connected=Connected}} ->
                    Connected
            end,
-    {reply, Resp, State};
-handle_call(connected_nodes, _From, #state{nodes=Nodes}=State) ->
+    {'reply', Resp, State};
+handle_call('connected_nodes', _From, #state{nodes=Nodes}=State) ->
     Resp = [Node
              || {_, #node{node=Node, connected=Connected}} <- dict:to_list(Nodes)
                 ,Connected
            ],
-    {reply, Resp, State};
-handle_call({add_fs_node, NodeName, Cookie, Options}, From, State) ->    spawn(fun() ->
+    {'reply', Resp, State};
+handle_call({'add_fs_node', NodeName, Cookie, Options}, From, State) ->
+    spawn(fun() ->
                   Reply = maybe_add_node(NodeName, Cookie, Options, State),
                   gen_server:reply(From, Reply)
           end),
-    {noreply, State};
-handle_call(nodes, _From, #state{nodes=Nodes}=State) ->
-    {reply, dict:to_list(Nodes), State};
+    {'noreply', State};
+handle_call('nodes', _From, #state{nodes=Nodes}=State) ->
+    {'reply', dict:to_list(Nodes), State};
 handle_call(_Request, _From, State) ->
-    {reply, {'error', not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -284,41 +285,41 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({fs_nodeup, NodeName}, State) ->
+handle_cast({'fs_nodeup', NodeName}, State) ->
     spawn(fun() -> maybe_handle_nodeup(NodeName, State) end),
-    {noreply, State};
-handle_cast({update_node, #node{node=NodeName, connected=Connected}=Node}, #state{nodes=Nodes}=State) ->
+    {'noreply', State};
+handle_cast({'update_node', #node{node=NodeName, connected=Connected}=Node}, #state{nodes=Nodes}=State) ->
     _ = case Connected of
-            true -> bind_to_fs_events(Node);
-            false -> ok
+            'true' -> bind_to_fs_events(Node);
+            'false' -> 'ok'
         end,
     erlang:monitor_node(NodeName, Connected),
-    {noreply, State#state{nodes=dict:store(NodeName, Node, Nodes)}};
+    {'noreply', State#state{nodes=dict:store(NodeName, Node, Nodes)}};
 handle_cast({'remove_node', #node{node=NodeName}}, #state{nodes=Nodes}=State) ->
     erlang:monitor_node(NodeName, 'false'),
-    {noreply, State#state{nodes=dict:erase(NodeName, Nodes)}};
-handle_cast({rm_fs_node, NodeName}, State) ->
+    {'noreply', State#state{nodes=dict:erase(NodeName, Nodes)}};
+handle_cast({'rm_fs_node', NodeName}, State) ->
     spawn(fun() -> maybe_rm_fs_node(NodeName, State) end),
-    {noreply, State};
-handle_cast({new_channel, Channel}, State) ->
+    {'noreply', State};
+handle_cast({'new_channel', Channel}, State) ->
     ets:insert(?CHANNELS_TBL, Channel),
-    {noreply, State, hibernate};
-handle_cast({channel_update, UUID, Update}, State) ->
+    {'noreply', State, 'hibernate'};
+handle_cast({'channel_update', UUID, Update}, State) ->
     ets:update_element(?CHANNELS_TBL, UUID, Update),
-    {noreply, State, hibernate};
-handle_cast({destroy_channel, UUID, Node}, State) ->
+    {'noreply', State, 'hibernate'};
+handle_cast({'destroy_channel', UUID, Node}, State) ->
     MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
-                  ,[{'andalso', {'=:=', '$2', {const, Node}}
+                  ,[{'andalso', {'=:=', '$2', {'const', Node}}
                      ,{'=:=', '$1', UUID}
                     }
                    ],
-                  [true]
+                  ['true']
                  }],
     N = ets:select_delete(?CHANNELS_TBL, MatchSpec),
     lager:debug("removed ~p channel(s) with id ~s on ~s", [N, UUID, Node]),
-    {noreply, State, hibernate};
+    {'noreply', State, 'hibernate'};
 
-handle_cast({new_conference, #conference{node=Node, name=Name}=C}, State) ->
+handle_cast({'new_conference', #conference{node=Node, name=Name}=C}, State) ->
     case ets:lookup(?CONFERENCES_TBL, Name) of
         [] ->
             lager:debug("creating new conference ~s on node ~s", [Name, Node]),
@@ -326,8 +327,8 @@ handle_cast({new_conference, #conference{node=Node, name=Name}=C}, State) ->
         [#conference{node=Node}] -> lager:debug("conference ~s already on node ~s", [Name, Node]);
         [#conference{node=_Other}] -> lager:debug("conference ~s already on ~s, not ~s", [Name, _Other, Node])
     end,
-    {noreply, State, hibernate};
-handle_cast({conference_update, Node, Name, Update}, State) ->
+    {'noreply', State, 'hibernate'};
+handle_cast({'conference_update', Node, Name, Update}, State) ->
     case ets:lookup(?CONFERENCES_TBL, Name) of
         [#conference{node=Node}] ->
             ets:update_element(?CONFERENCES_TBL, Name, Update),
@@ -335,9 +336,9 @@ handle_cast({conference_update, Node, Name, Update}, State) ->
         [#conference{node=_Other}] -> lager:debug("conference ~s already on ~s, not ~s, ignoring update", [Name, _Other, Node]);
         [] -> lager:debug("no conference ~s on ~s, ignoring update", [Name, Node])
     end,
-    {noreply, State, hibernate};
+    {'noreply', State, 'hibernate'};
 
-handle_cast({participant_update, Node, UUID, Update}, State) ->
+handle_cast({'participant_update', Node, UUID, Update}, State) ->
     case ets:lookup(?CONFERENCES_TBL, UUID) of
         [] ->
             lager:debug("no participant ~s, creating", [Node]),
@@ -351,46 +352,46 @@ handle_cast({participant_update, Node, UUID, Update}, State) ->
     end,
     {'noreply', State, 'hibernate'};
 
-handle_cast({conference_destroy, Node, Name}, State) ->
+handle_cast({'conference_destroy', Node, Name}, State) ->
     MatchSpecC = [{#conference{name='$1', node='$2', _ = '_'}
-                   ,[{'andalso', {'=:=', '$2', {const, Node}}
+                   ,[{'andalso', {'=:=', '$2', {'const', Node}}
                       ,{'=:=', '$1', Name}
                      }
                     ],
-                   [true]
+                   ['true']
                   }],
     N = ets:select_delete(?CONFERENCES_TBL, MatchSpecC),
     lager:debug("removed ~p conference(s) with id ~s on ~s", [N, Name, Node]),
 
     MatchSpecP = [{#participant{conference_name='$1', node='$2', _ = '_'}
-                   ,[{'andalso', {'=:=', '$2', {const, Node}}
+                   ,[{'andalso', {'=:=', '$2', {'const', Node}}
                       ,{'=:=', '$1', Name}
                      }
                     ],
-                   [true]
+                   ['true']
                   }],
     N1 = ets:select_delete(?CONFERENCES_TBL, MatchSpecP),
     lager:debug("removed ~p participant(s) in conference ~s on ~s", [N1, Name, Node]),
 
-    {noreply, State, hibernate};
+    {'noreply', State, 'hibernate'};
 
-handle_cast({participant_destroy, Node, UUID}, State) ->
+handle_cast({'participant_destroy', Node, UUID}, State) ->
     MatchSpec = [{#participant{uuid='$1', node='$2', _ = '_'}
                   ,[{'andalso'
-                     ,{'=:=', '$2', {const, Node}}
+                     ,{'=:=', '$2', {'const', Node}}
                      ,{'=:=', '$1', UUID}
                     }
                    ],
-                  [true]
+                  ['true']
                  }],
     N = ets:select_delete(?CONFERENCES_TBL, MatchSpec),
     lager:debug("removed ~p participants(s) with id ~s on ~s", [N, UUID, Node]),
-    {noreply, State, hibernate};
+    {'noreply', State, 'hibernate'};
 
-handle_cast({sync_channels, Node, Channels}, State) ->
+handle_cast({'sync_channels', Node, Channels}, State) ->
     lager:debug("ensuring channel cache is in sync with ~s", [Node]),
     MatchSpec = [{#channel{uuid = '$1', node = '$2', _ = '_'}
-                  ,[{'=:=', '$2', {const, Node}}]
+                  ,[{'=:=', '$2', {'const', Node}}]
                   ,['$1']}
                 ],
     CachedChannels = sets:from_list(ets:select(?CHANNELS_TBL, MatchSpec)),
@@ -412,9 +413,9 @@ handle_cast({sync_channels, Node, Channels}, State) ->
          end
          || UUID <- sets:to_list(Add)
         ],
-    {noreply, State, hibernate};
+    {'noreply', State, 'hibernate'};
 
-handle_cast({sync_conferences, Node, Conferences}, State) ->
+handle_cast({'sync_conferences', Node, Conferences}, State) ->
     lager:debug("ensuring conferences cache is in sync with ~s", [Node]),
 
     CachedConferences = ets:match_object(?CONFERENCES_TBL, #conference{node = Node, _ = '_'}) ++
@@ -425,35 +426,35 @@ handle_cast({sync_conferences, Node, Conferences}, State) ->
 
     _ = [ets:delete_object(?CONFERENCES_TBL, R) || R <- Remove],
     _ = [ets:insert(?CONFERENCES_TBL, C) || C <- Add],
-    {noreply, State, hibernate};
+    {'noreply', State, 'hibernate'};
 
-handle_cast({flush_node_channels, Node}, State) ->
+handle_cast({'flush_node_channels', Node}, State) ->
     lager:debug("flushing all channels in cache associated to node ~s", [Node]),
     MatchSpec = [{#channel{node = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {const, Node}}]
+                  ,[{'=:=', '$1', {'const', Node}}]
                   ,['true']}
                 ],
     ets:select_delete(?CHANNELS_TBL, MatchSpec),
-    {noreply, State};
+    {'noreply', State};
 
-handle_cast({flush_node_conferences, Node}, State) ->
+handle_cast({'flush_node_conferences', Node}, State) ->
     lager:debug("flushing all conferences in cache associated to node ~s", [Node]),
     MatchSpecC = [{#conference{node = '$1', _ = '_'}
-                   ,[{'=:=', '$1', {const, Node}}]
+                   ,[{'=:=', '$1', {'const', Node}}]
                    ,['true']}
                  ],
     _ = ets:select_delete(?CHANNELS_TBL, MatchSpecC),
 
     MatchSpecP = [{#participant{node = '$1', _ = '_'}
-                   ,[{'=:=', '$1', {const, Node}}]
+                   ,[{'=:=', '$1', {'const', Node}}]
                    ,['true']}
                  ],
     _ = ets:select_delete(?CHANNELS_TBL, MatchSpecP),
-    {noreply, State};
+    {'noreply', State};
 
 handle_cast(_Cast, State) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
-    {noreply, State, hibernate}.
+    {'noreply', State, 'hibernate'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -465,7 +466,7 @@ handle_cast(_Cast, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({event, [UUID | Props]}, State) ->
+handle_info({'event', [UUID | Props]}, State) ->
     Node = get_node_from_props(Props),
     case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
         <<"CHANNEL_CREATE">> -> ecallmgr_fs_channel:new(Props, Node);
@@ -475,10 +476,10 @@ handle_info({event, [UUID | Props]}, State) ->
         <<"channel_move::move_complete">> ->
             MoveUUID = props:get_value(<<"old_node_channel_uuid">>, Props),
             ecallmgr_fs_channel:set_node(Node, MoveUUID),
-            gproc:send({p, l, {move, Node, MoveUUID}}, {move_complete, Node, MoveUUID, Props});
+            gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, MoveUUID)}, ?CHANNEL_MOVE_COMPLETE_MSG(Node, MoveUUID, Props));
         <<"channel_move::move_released">> ->
             MoveUUID = props:get_value(<<"old_node_channel_uuid">>, Props),
-            gproc:send({p, l, {move, Node, UUID}}, {move_released, Node, MoveUUID, Props});
+            gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}, ?CHANNEL_MOVE_RELEASED_MSG(Node, MoveUUID, Props));
         <<"conference::maintenance">> -> ecallmgr_fs_conference:event(Node, UUID, Props);
         <<"CHANNEL_ANSWER">> -> ecallmgr_fs_channel:set_answered(UUID, 'true');
         <<"CHANNEL_BRIDGE">> ->

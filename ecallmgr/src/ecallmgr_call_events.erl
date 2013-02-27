@@ -44,10 +44,12 @@
          ,code_change/3
         ]).
 
--define(RESPONDERS, [{{?MODULE, handle_publisher_usurp}, [{<<"call_event">>, <<"usurp_publisher">>}]}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_publisher_usurp'}
+                      ,[{<<"call_event">>, <<"usurp_publisher">>}]
+                     }]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, [{no_local, true}]).
+-define(CONSUME_OPTIONS, [{'no_local', 'true'}]).
 
 -define(SERVER, ?MODULE).
 
@@ -58,8 +60,8 @@
           ,failed_node_checks = 0 :: non_neg_integer()
           ,node_down_tref :: reference()
           ,sanity_check_tref :: reference()
-          ,ref = wh_util:rand_hex_binary(12)
-          ,passive = 'false'
+          ,ref = wh_util:rand_hex_binary(12) :: ne_binary()
+          ,passive = 'false' :: boolean()
          }).
 
 %%%===================================================================
@@ -75,36 +77,36 @@
 %%--------------------------------------------------------------------
 -spec start_link(atom(), ne_binary()) -> startlink_ret().
 start_link(Node, CallId) ->
-    Bindings = [{call, [{callid, CallId}
-                        ,{restrict_to, [publisher_usurp]}
-                       ]}
+    Bindings = [{'call', [{'callid', CallId}
+                          ,{'restrict_to', ['publisher_usurp']}
+                         ]}
                ],
-    gen_listener:start_link(?MODULE, [{bindings, Bindings}
-                                      ,{responders, ?RESPONDERS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
+    gen_listener:start_link(?MODULE, [{'bindings', Bindings}
+                                      ,{'responders', ?RESPONDERS}
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Node, CallId]).
 
 graceful_shutdown(Node, UUID) ->
-    _ = [gen_listener:cast(Pid, {graceful_shutdown})
-         || Pid <- gproc:lookup_pids({p, l, {call_event, Node, UUID}})
+    _ = [gen_listener:cast(Pid, {'graceful_shutdown'})
+         || Pid <- gproc:lookup_pids({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)})
         ],
-    ok.
+    'ok'.
 
 shutdown(Node, UUID) ->
-    _ = [gen_listener:cast(Pid, {shutdown})
-         || Pid <- gproc:lookup_pids({p, l, {call_event, Node, UUID}})
+    _ = [gen_listener:cast(Pid, {'shutdown'})
+         || Pid <- gproc:lookup_pids({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)})
         ],
-    ok.
+    'ok'.
 
 -spec callid(pid()) -> ne_binary().
-callid(Srv) -> gen_listener:call(Srv, {callid}, 1000).
+callid(Srv) -> gen_listener:call(Srv, {'callid'}, 1000).
 
 -spec node(pid()) -> ne_binary().
-node(Srv) -> gen_listener:call(Srv, {node}, 1000).
+node(Srv) -> gen_listener:call(Srv, {'node'}, 1000).
 
-update_node(Srv, Node) -> gen_listener:cast(Srv, {update_node, Node}).
+update_node(Srv, Node) -> gen_listener:cast(Srv, {'update_node', Node}).
 
 -spec transfer(pid(), atom(), wh_proplist()) -> 'ok'.
 transfer(Srv, TransferType, Props) -> gen_listener:cast(Srv, {TransferType, Props}).
@@ -112,7 +114,7 @@ transfer(Srv, TransferType, Props) -> gen_listener:cast(Srv, {TransferType, Prop
 -spec queue_name(pid()) -> ne_binary().
 queue_name(Srv) -> gen_listener:queue_name(Srv).
 
--spec to_json(proplist()) -> wh_json:object().
+-spec to_json(wh_proplist()) -> wh_json:object().
 to_json(Props) ->
     Masqueraded = is_masquerade(Props),
     EventName = get_event_name(Props, Masqueraded),
@@ -121,9 +123,9 @@ to_json(Props) ->
 
 -spec handle_publisher_usurp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_publisher_usurp(JObj, Props) ->
-    CallId = props:get_value(call_id, Props),
-    Ref = props:get_value(reference, Props),
-    Node = wh_util:to_binary(props:get_value(node, Props)),
+    CallId = props:get_value('call_id', Props),
+    Ref = props:get_value('reference', Props),
+    Node = wh_util:to_binary(props:get_value('node', Props)),
 
     lager:debug("recieved publisher usurp for ~s on ~s (if ~s != ~s)", [wh_json:get_value(<<"Call-ID">>, JObj), wh_json:get_value(<<"Media-Node">>, JObj), Ref, wh_json:get_value(<<"Reference">>, JObj)]),
 
@@ -131,10 +133,10 @@ handle_publisher_usurp(JObj, Props) ->
         andalso Node =:= wh_json:get_value(<<"Media-Node">>, JObj)
         andalso Ref =/= wh_json:get_value(<<"Reference">>, JObj)
     of
-        false -> ok;
-        true ->
-            put(callid, CallId),
-            gen_listener:cast(props:get_value(server, Props), {passive})
+        'false' -> 'ok';
+        'true' ->
+            put('callid', CallId),
+            gen_listener:cast(props:get_value('server', Props), {'passive'})
     end.
 
 %%%===================================================================
@@ -149,16 +151,16 @@ handle_publisher_usurp(JObj, Props) ->
 %% @spec init(Args) -> {'ok', State} |
 %%                     {'ok', State, Timeout} |
 %%                     ignore |
-%%                     {stop, Reason}
+%%                     {'stop', Reason}
 %% @end
 %%--------------------------------------------------------------------
 -spec init([atom() | ne_binary(),...]) -> {'ok', #state{}}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
-    put(callid, CallId),
+    put('callid', CallId),
 
-    gen_listener:cast(self(), init),
+    gen_listener:cast(self(), 'init'),
 
-    {ok, #state{node=Node, callid=CallId}}.
+    {'ok', #state{node=Node, callid=CallId}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -166,39 +168,41 @@ init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
 %% Handling call messages
 %%
 %% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%                                   {'reply', Reply, State} |
+%%                                   {'reply', Reply, State, Timeout} |
+%%                                   {'noreply', State} |
+%%                                   {'noreply', State, Timeout} |
+%%                                   {'stop', Reason, Reply, State} |
+%%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({node}, _From, #state{node=Node}=State) ->
-    {reply, Node, State};
-handle_call({callid}, _From, #state{callid=CallId}=State) ->
-    {reply, CallId, State};
+handle_call({'node'}, _From, #state{node=Node}=State) ->
+    {'reply', Node, State};
+handle_call({'callid'}, _From, #state{callid=CallId}=State) ->
+    {'reply', CallId, State};
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Handling cast messages
 %%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%% @spec handle_cast(Msg, State) -> {'noreply', State} |
+%%                                  {'noreply', State, Timeout} |
+%%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(init, #state{node=Node, callid=CallId}=State) ->
-    erlang:monitor_node(Node, true),
-    TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
-    true = gproc:reg({p, l, call_events_processes}),
-    true = gproc:reg({p, l, {call_events_process, Node, CallId}}),
-    true = gproc:reg({p, l, {call_event, Node, CallId}}),
-    true = gproc:reg({p, l, {events, Node, <<"channel_move::move_released">>}}),
-    true = gproc:reg({p, l, {events, Node, <<"channel_move::move_complete">>}}),
+handle_cast('init', #state{node=Node
+                           ,callid=CallId
+                          }=State) ->
+    erlang:monitor_node(Node, 'true'),
+    TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {'sanity_check'}),
+    'true' = gproc:reg({'p', 'l', 'call_events_processes'}),
+    'true' = gproc:reg({'p', 'l', {'call_events_process', Node, CallId}}),
+    'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
+    'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"channel_move::move_released">>)}),
+    'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"channel_move::move_complete">>)}),
     Ref = wh_util:rand_hex_binary(12),
     Usurp = [{<<"Call-ID">>, CallId}
              ,{<<"Media-Node">>, Node}
@@ -206,148 +210,174 @@ handle_cast(init, #state{node=Node, callid=CallId}=State) ->
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     wapi_call:publish_usurp_publisher(CallId, Usurp),
-    {noreply, State#state{sanity_check_tref=TRef, ref = Ref}};
-handle_cast({update_node, Node}, #state{node=Node}=State) ->
-    {noreply, State};
-handle_cast({update_node, Node}, #state{node=OldNode, callid=CallId}=State) ->
+    {'noreply', State#state{sanity_check_tref=TRef
+                            ,ref = Ref
+                           }};
+handle_cast({'update_node', Node}, #state{node=Node}=State) ->
+    {'noreply', State};
+handle_cast({'update_node', Node}, #state{node=OldNode
+                                          ,callid=CallId
+                                         }=State) ->
     lager:debug("node has changed from ~s to ~s", [OldNode, Node]),
-    erlang:monitor_node(OldNode, false),
-    _ = gproc:unreg({p, l, {call_events_process, OldNode, CallId}}),
-    _ = gproc:unreg({p, l, {call_event, OldNode, CallId}}),
-    _ = gproc:unreg({p, l, {events, OldNode, <<"channel_move::move_released">>}}),
-    _ = gproc:unreg({p, l, {events, OldNode, <<"channel_move::move_complete">>}}),
-    {noreply, State#state{node=Node}, 0};
-handle_cast({passive}, State) ->
+    erlang:monitor_node(OldNode, 'false'),
+    _ = gproc:unreg({'p', 'l', {'call_events_process', OldNode, CallId}}),
+    _ = gproc:unreg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(OldNode, CallId)}),
+    _ = gproc:unreg({'p', 'l', ?FS_EVENT_REG_MSG(OldNode, <<"channel_move::move_released">>)}),
+    _ = gproc:unreg({'p', 'l', ?FS_EVENT_REG_MSG(OldNode, <<"channel_move::move_complete">>)}),
+    {'noreply', State#state{node=Node}, 0};
+handle_cast({'passive'}, State) ->
     lager:debug("publisher has been usurp'd by newer process on another ecallmgr, moving to passive mode", []),
-    {noreply, State#state{passive=true}};
-handle_cast({channel_redirected, Props}, State) ->
+    {'noreply', State#state{passive='true'}};
+handle_cast({'channel_redirected', Props}, State) ->
     lager:debug("our channel has been redirected, shutting down immediately"),
     process_channel_event(Props),
-    {stop, {shutdown, redirect}, State};
-handle_cast({graceful_shutdown}, #state{node=Node}=State) ->
+    {'stop', {'shutdown', 'redirect'}, State};
+handle_cast({'graceful_shutdown'}, #state{node=Node}=State) ->
     lager:debug("call event listener on node ~s received graceful shutdown request", [Node]),
-    erlang:send_after(5000, self(), {shutdown}),
-    {noreply, State};
-handle_cast({shutdown}, #state{node=Node}=State) ->
+    erlang:send_after(5000, self(), {'shutdown'}),
+    {'noreply', State};
+handle_cast({'shutdown'}, #state{node=Node}=State) ->
     lager:debug("call event listener on node ~s received shutdown request", [Node]),
-    {stop, normal, State};
-handle_cast({transferer, _}, State) ->
+    {'stop', 'normal', State};
+handle_cast({'transferer', _}, State) ->
     lager:debug("call control has been transfered."),
-    {stop, normal, State};
+    {'stop', 'normal', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Handling all non call/cast messages
 %%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%% @spec handle_info(Info, State) -> {'noreply', State} |
+%%                                   {'noreply', State, Timeout} |
+%%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({event, [CallId | _]}, #state{callid=CallId, passive=true}=State) ->
-    {noreply, State};
-handle_info({event, [CallId | Props]}, #state{node=Node, callid=CallId}=State) ->
+handle_info({'event', [CallId | _]}, #state{callid=CallId
+                                          ,passive='true'
+                                         }=State) ->
+    {'noreply', State};
+handle_info({'event', [CallId | Props]}, #state{node=Node
+                                                ,callid=CallId
+                                               }=State) ->
     case {props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props))
           ,props:get_value(<<"Application">>, Props)}
     of
         {_, <<"redirect">>} ->
-            gen_listener:cast(self(), {channel_redirected, Props}),
-            {noreply, State};
+            gen_listener:cast(self(), {'channel_redirected', Props}),
+            {'noreply', State};
         {<<"CHANNEL_DESTROY">>, _} ->
             maybe_process_channel_destroy(Node, CallId, Props),
-            {noreply, State};
+            {'noreply', State};
         {<<"channel_move::move_released">>, _} ->
             lager:debug("channel move released call on our node", []),
-            {stop, normal, State};
+            {'stop', 'normal', State};
         {_, _} ->
             process_channel_event(Props),
-            {noreply, State}
+            {'noreply', State}
     end;
-handle_info({nodedown, _}, #state{node=Node, is_node_up=true}=State) ->
+handle_info({'nodedown', _}, #state{node=Node
+                                    ,is_node_up='true'
+                                   }=State) ->
     lager:debug("lost connection to node ~s, waiting for reconnection", [Node]),
-    erlang:monitor_node(Node, false),
-    TRef = erlang:send_after(?NODE_CHECK_PERIOD, self(), {check_node_status}),
-    {noreply, State#state{node_down_tref=TRef, is_node_up=false}, hibernate};
-handle_info({check_node_status}, #state{is_node_up=false, failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
+    erlang:monitor_node(Node, 'false'),
+    TRef = erlang:send_after(?NODE_CHECK_PERIOD, self(), {'check_node_status'}),
+    {'noreply', State#state{node_down_tref=TRef, is_node_up='false'}, 'hibernate'};
+handle_info({'check_node_status'}, #state{is_node_up='false'
+                                          ,failed_node_checks=FNC
+                                         }=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
     lager:debug("node still not up after ~p checks, giving up", [FNC]),
-    {stop, normal, State};
-handle_info({check_node_status}, #state{node=Node, callid=CallId, is_node_up=false, failed_node_checks=FNC}=State) ->
+    {'stop', 'normal', State};
+handle_info({'check_node_status'}, #state{node=Node
+                                          ,callid=CallId
+                                          ,is_node_up='false'
+                                          ,failed_node_checks=FNC
+                                         }=State) ->
     case ecallmgr_util:is_node_up(Node, CallId) of
-        true ->
+        'true' ->
             lager:debug("reconnected to node ~s and call is active", [Node]),
-            {noreply, State#state{node_down_tref=undefined, is_node_up=true, failed_node_checks=0}, hibernate};
-        false ->
+            {'noreply', State#state{node_down_tref='undefined'
+                                    ,is_node_up='true'
+                                    ,failed_node_checks=0
+                                   }
+             ,'hibernate'};
+        'false' ->
             lager:debug("node ~s still not up, waiting ~pms to test again", [Node, ?NODE_CHECK_PERIOD]),
-            TRef = erlang:send_after(?NODE_CHECK_PERIOD, self(), {check_node_status}),
-            {noreply, State#state{node_down_tref=TRef, failed_node_checks=FNC+1}}
+            TRef = erlang:send_after(?NODE_CHECK_PERIOD, self(), {'check_node_status'}),
+            {'noreply', State#state{node_down_tref=TRef
+                                    ,failed_node_checks=FNC+1
+                                   }
+            ,'hibernate'}
     end;
-handle_info(timeout, #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
+handle_info('timeout', #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
     lager:debug("unable to establish initial connectivity to the media node, laterz"),
-    {stop, normal, State};
-handle_info(timeout, #state{node=Node
-                            ,callid=CallId
-                            ,failed_node_checks=FNC
-                            ,ref=Ref
-                           }=State) ->
-    erlang:monitor_node(Node, true),
+    {'stop', 'normal', State};
+handle_info('timeout', #state{node=Node
+                              ,callid=CallId
+                              ,failed_node_checks=FNC
+                              ,ref=Ref
+                             }=State) ->
+    erlang:monitor_node(Node, 'true'),
     %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
     case freeswitch:api(Node, 'uuid_exists', CallId) of
-        timeout ->
+        'timeout' ->
             lager:warning("timeout trying to find call on node ~s, trying again", [Node]),
-            {noreply, State#state{failed_node_checks=FNC+1}, 1000};
-        {error, Reason} ->
+            {'noreply', State#state{failed_node_checks=FNC+1}, 1000};
+        {'error', Reason} ->
             lager:warning("unable to find call on node ~s: ~p", [Node, Reason]),
-            {stop, normal, State};
-        {ok, <<"true">>} ->
+            {'stop', 'normal', State};
+        {'ok', <<"true">>} ->
             lager:debug("processing call events from ~s", [Node]),
-            true = gproc:reg({p, l, {call_events_process, Node, CallId}}),
-            true = gproc:reg({p, l, {call_event, Node, CallId}}),
-            true = gproc:reg({p, l, {events, Node, <<"channel_move::move_released">>}}),
-            true = gproc:reg({p, l, {events, Node, <<"channel_move::move_complete">>}}),
+            'true' = gproc:reg({'p', 'l', {'call_events_process', Node, CallId}}),
+            'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
+            'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"channel_move::move_released">>)}),
+            'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"channel_move::move_complete">>)}),
             Usurp = [{<<"Call-ID">>, CallId}
                      ,{<<"Media-Node">>, Node}
                      ,{<<"Reference">>, Ref}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
             wapi_call:publish_usurp_publisher(CallId, Usurp),
-            {noreply, State#state{failed_node_checks=0}};
-        {ok, Reason} ->
+            {'noreply', State#state{failed_node_checks=0}};
+        {'ok', Reason} ->
             lager:warning("unable to find call on node ~s: ~p", [Node, Reason]),
-            {stop, normal, State}
+            {'stop', 'normal', State}
     end;
-handle_info({sanity_check}, #state{callid=CallId}=State) ->
+handle_info({'sanity_check'}, #state{callid=CallId}=State) ->
     case ecallmgr_fs_channel:exists(CallId) of
-        true ->
+        'true' ->
             lager:debug("listener passed sanity check, call is still up"),
-            TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
-            {noreply, State#state{sanity_check_tref=TRef}};
-        false ->
+            TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {'sanity_check'}),
+            {'noreply', State#state{sanity_check_tref=TRef}};
+        'false' ->
             lager:debug("call no longer exists, shutting down immediately"),
-            {stop, normal, State#state{sanity_check_tref=undefined}}
+            {'stop', 'normal', State#state{sanity_check_tref='undefined'}}
     end;
-handle_info({shutdown}, State) ->
-    {stop, normal, State};
+handle_info({'shutdown'}, State) ->
+    {'stop', 'normal', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Allows listener to pass options to handlers
 %%
-%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @spec handle_event(JObj, State) -> {'reply', Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{ref=Ref, callid=CallId, node=Node}) ->
-    {reply, [{reference, Ref}
-             ,{call_id, CallId}
-             ,{node, Node}
-            ]}.
+handle_event(_JObj, #state{ref=Ref
+                           ,callid=CallId
+                           ,node=Node
+                          }) ->
+    {'reply', [{'reference', Ref}
+               ,{'call_id', CallId}
+               ,{'node', Node}
+              ]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -360,7 +390,9 @@ handle_event(_JObj, #state{ref=Ref, callid=CallId, node=Node}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{node_down_tref=NDTRef, sanity_check_tref=SCTRef}) ->
+terminate(_Reason, #state{node_down_tref=NDTRef
+                          ,sanity_check_tref=SCTRef
+                         }) ->
     catch (erlang:cancel_timer(SCTRef)),
     catch (erlang:cancel_timer(NDTRef)),
     lager:debug("goodbye and thanks for all the fish: ~p", [_Reason]).
@@ -382,9 +414,9 @@ code_change(_OldVsn, State, _Extra) ->
 -spec maybe_process_channel_destroy(atom(), ne_binary(), wh_proplist()) -> 'ok'.
 maybe_process_channel_destroy(Node, CallId, Props) ->
     case ecallmgr_fs_channel:node(CallId) of
-        {ok, Node} -> process_channel_destroy(Node, CallId, Props);
-        {error, _} -> process_channel_destroy(Node, CallId, Props);
-        {ok, _NewNode} ->
+        {'ok', Node} -> process_channel_destroy(Node, CallId, Props);
+        {'error', _} -> process_channel_destroy(Node, CallId, Props);
+        {'ok', _NewNode} ->
             lager:debug("surpressing destroy; ~s is on ~s, not ~s: publishing channel move instead", [CallId, _NewNode, Node]),
             publish_event(create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props))
     end.
@@ -394,13 +426,13 @@ process_channel_destroy(_, _, Props) ->
     EventName = props:get_value(<<"Event-Name">>, Props),
     ApplicationName = props:get_value(<<"Application">>, Props),
     publish_event(create_event(EventName, ApplicationName, Props)),
-    gen_server:cast(self(), {graceful_shutdown}).
+    gen_server:cast(self(), {'graceful_shutdown'}).
 
 -spec process_channel_event(wh_proplist()) -> 'ok'.
 process_channel_event(Props) ->
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
                              props:get_value(<<"Unique-ID">>, Props)),
-    put(callid, CallId),
+    put('callid', CallId),
     Masqueraded = is_masquerade(Props),
     EventName = get_event_name(Props, Masqueraded),
     ApplicationName = get_event_application(Props, Masqueraded),
@@ -470,14 +502,14 @@ create_event_props(EventName, ApplicationName, Props) ->
 is_channel_moving(Props) ->
     wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)).
 
--spec publish_event(proplist()) -> 'ok'.
+-spec publish_event(wh_proplist()) -> 'ok'.
 publish_event(Props) ->
     %% call_control publishes channel create/destroy on the control
     %% events queue by calling create_event then this directly.
     EventName = wh_util:to_lower_binary(props:get_value(<<"Event-Name">>, Props, <<>>)),
     ApplicationName = wh_util:to_lower_binary(props:get_value(<<"Application-Name">>, Props, <<>>)),
     CallId = props:get_value(<<"Call-ID">>, Props),
-    put(callid, CallId),
+    put('callid', CallId),
 
     case {ApplicationName, EventName} of
         {_, <<"dtmf">>} ->
@@ -500,21 +532,21 @@ is_masquerade(Props) ->
     case props:get_value(<<"Event-Subclass">>, Props) of
         %% If this is a event created by whistle, then use
         %% the flag it as masqueraded
-        <<"whistle::", _/binary>> -> true;
+        <<"whistle::", _/binary>> -> 'true';
         %% otherwise process as the genuine article
-        _Else -> false
+        _Else -> 'false'
     end.
 
 -spec get_event_name(wh_proplist(), boolean()) -> api_binary().
-get_event_name(Props, true) -> props:get_value(<<"whistle_event_name">>, Props);
-get_event_name(Props, false) -> props:get_value(<<"Event-Name">>, Props).
+get_event_name(Props, 'true') -> props:get_value(<<"whistle_event_name">>, Props);
+get_event_name(Props, 'false') -> props:get_value(<<"Event-Name">>, Props).
 
 -spec get_event_application(wh_proplist(), boolean()) -> api_binary().
-get_event_application(Props, true) ->
+get_event_application(Props, 'true') ->
     %% when the evet is masqueraded override the actual application
     %% with what whistle wants the event to be
     props:get_value(<<"whistle_application_name">>, Props);
-get_event_application(Props, false) ->
+get_event_application(Props, 'false') ->
     props:get_value(<<"Application">>, Props
                     ,props:get_value(<<"Event-Subclass">>, Props)).
 
@@ -600,7 +632,7 @@ conference_specific(Prop) ->
     end.
 
 -spec silence_terminated('undefined' | integer()) -> 'undefined' | boolean().
-silence_terminated(undefined) -> undefined;
+silence_terminated('undefined') -> 'undefined';
 silence_terminated(Hits) when is_integer(Hits) -> Hits =:= 0.
 
 -spec get_fs_var(atom(), ne_binary(), ne_binary(), binary()) -> binary().
@@ -613,17 +645,17 @@ get_fs_var(Node, CallId, Var, Default) ->
     end.
 
 -spec should_publish(ne_binary(), ne_binary(), boolean()) -> boolean().
-should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, false) ->
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, 'false') ->
     lager:debug("suppressing bridge execute complete in favour the whistle masquerade of this event"),
-    false;
-should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, false) ->
+    'false';
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, 'false') ->
     lager:debug("suppressing intercept execute complete in favour the whistle masquerade of this event"),
-    false;
-should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>, false) ->
+    'false';
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>, 'false') ->
     lager:debug("suppressing execute_extension execute complete in favour the whistle masquerade of this event"),
-    false;
+    'false';
 should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
-    props:get_value(Application, ?FS_APPLICATION_NAMES) =/= undefined;
+    props:get_value(Application, ?FS_APPLICATION_NAMES) =/= 'undefined';
 should_publish(EventName, _, _) ->
     lists:member(EventName, ?CALL_EVENTS).
 
@@ -632,7 +664,7 @@ get_transfer_history(Props) ->
     SerializedHistory = props:get_value(<<"variable_transfer_history">>, Props),
     Hist = [HistJObj
             || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory),
-               (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, [global]))) =/= undefined],
+               (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, ['global']))) =/= 'undefined'],
     wh_json:from_list(Hist).
 
 -spec create_trnsf_history_object(list()) -> {ne_binary(), wh_json:object()} | 'undefined'.
@@ -649,19 +681,19 @@ create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
     %% as it does for inline dialplan actions (like those created during partial attended)
     %% so we have to put it together to take it apart... I KNOW! ARRRG
     Dialplan = lists:last(binary:split(wh_util:join_binary(Props, <<":">>), <<",">>)),
-    [Exten | _] = binary:split(Dialplan, <<"/">>, [global]),
+    [Exten | _] = binary:split(Dialplan, <<"/">>, ['global']),
     Trans = [{<<"Call-ID">>, CallId}
              ,{<<"Type">>, <<"blind">>}
              ,{<<"Extension">>, Exten}
             ],
     {Epoch, wh_json:from_list(Trans)};
 create_trnsf_history_object(_) ->
-    undefined.
+    'undefined'.
 
 -spec get_channel_state(wh_proplist()) -> ne_binary().
 get_channel_state(Prop) ->
     case props:get_value(props:get_value(<<"Channel-State">>, Prop), ?FS_CHANNEL_STATES) of
-        undefined -> <<"unknown">>;
+        'undefined' -> <<"unknown">>;
         ChannelState -> ChannelState
     end.
 
@@ -689,7 +721,7 @@ get_hangup_code(Props) ->
 
 -spec find_event_value(ne_binaries(), wh_proplist()) -> api_binary().
 find_event_value(Keys, Props) ->
-    find_event_value(Keys, Props, undefined).
+    find_event_value(Keys, Props, 'undefined').
 
 -spec find_event_value(ne_binaries(), wh_proplist(), term()) -> term().
 find_event_value([], _, Default) -> Default;
