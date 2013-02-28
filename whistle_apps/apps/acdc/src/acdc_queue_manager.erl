@@ -262,48 +262,48 @@ init([Super, AcctId, QueueId]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({should_ignore_member_call, K}, _, #state{ignored_member_calls=Dict}=State) ->
+handle_call({'should_ignore_member_call', K}, _, #state{ignored_member_calls=Dict}=State) ->
     case catch dict:fetch(K, Dict) of
         {'EXIT', _} -> {'reply', 'false', State};
         _Res -> {'reply', 'true', State#state{ignored_member_calls=dict:erase(K, Dict)}}
     end;
 
-handle_call(config, _, #state{acct_id=AcctId
-                              ,queue_id=QueueId
-                             }=State) ->
+handle_call('config', _, #state{acct_id=AcctId
+                                ,queue_id=QueueId
+                               }=State) ->
     {'reply', {AcctId, QueueId}, State};
 
-handle_call(strategy, _, #state{strategy=Strategy}=State) ->
-    {'reply', Strategy, State, hibernate};
+handle_call('strategy', _, #state{strategy=Strategy}=State) ->
+    {'reply', Strategy, State, 'hibernate'};
 
-handle_call(agents_available, _, #state{strategy_state='undefined'}=State) ->
+handle_call('agents_available', _, #state{strategy_state='undefined'}=State) ->
     {'reply', 0, State};
-handle_call(agents_available, _, #state{strategy_state=[]}=State) ->
+handle_call('agents_available', _, #state{strategy_state=[]}=State) ->
     {'reply', 0, State};
-handle_call(agents_available, _, #state{strategy_state=[_|_]}=State) ->
+handle_call('agents_available', _, #state{strategy_state=[_|_]}=State) ->
     {'reply', 1, State};
-handle_call(agents_available, _, #state{strategy_state=SS}=State) ->
+handle_call('agents_available', _, #state{strategy_state=SS}=State) ->
     {'reply', queue:len(SS), State};
 
-handle_call(next_winner, _, #state{strategy='mi'}=State) ->
+handle_call('next_winner', _, #state{strategy='mi'}=State) ->
     {'reply', 'undefined', State};
-handle_call(next_winner, _, #state{strategy='rr'
-                                   ,strategy_state=SS
-                                  }=State) ->
+handle_call('next_winner', _, #state{strategy='rr'
+                                     ,strategy_state=SS
+                                    }=State) ->
     case queue:out(SS) of
-        {{value, Winner}, SS1} ->
-            {'reply', Winner, State#state{strategy_state=queue:in(Winner, SS1)}, hibernate};
-        {empty, _} ->
+        {{'value', Winner}, SS1} ->
+            {'reply', Winner, State#state{strategy_state=queue:in(Winner, SS1)}, 'hibernate'};
+        {'empty', _} ->
             {'reply', 'undefined', State}
     end;
 
-handle_call(current_agents, _, #state{strategy='rr'
-                                      ,strategy_state=Q
-                                      }=State) ->
+handle_call('current_agents', _, #state{strategy='rr'
+                                        ,strategy_state=Q
+                                       }=State) ->
     {'reply', queue:to_list(Q), State};
-handle_call(current_agents, _, #state{strategy='mi'
-                                      ,strategy_state=L
-                                      }=State) ->
+handle_call('current_agents', _, #state{strategy='mi'
+                                        ,strategy_state=L
+                                       }=State) ->
     {'reply', L, State};
 
 handle_call(_Request, _From, State) ->
