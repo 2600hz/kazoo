@@ -22,7 +22,9 @@
 -export([pickup/2, pickup/3, pickup/4, pickup/5, pickup/6
          ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5, b_pickup/6
         ]).
--export([redirect/3]).
+-export([redirect/2
+         ,redirect/3
+        ]).
 -export([answer/1, answer_now/1
          ,hangup/1, hangup/2
          ,queued_hangup/1
@@ -356,7 +358,12 @@ b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup
 %% Create a redirect request to the Contact on Server
 %% @end
 %%--------------------------------------------------------------------
+-spec redirect(ne_binary(), whapps_call:call()) -> 'ok'.
 -spec redirect(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+
+redirect(Contact, Call) ->
+    redirect(Contact, 'undefined', Call).
+
 redirect(Contact, Server, Call) ->
     lager:debug("redirect to ~s on ~s", [Contact, Server]),
     Command = [{<<"Redirect-Contact">>, Contact}
