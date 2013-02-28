@@ -75,7 +75,7 @@
 %% Recreate the non-exported types defined in the erlang supervisor source
 -type sup_child_spec() :: supervisor:child_spec().
 -type sup_child_specs() :: [sup_child_spec()] | [].
--type sup_start_flags() :: {supervisor:strategy(), integer(), integer()}.
+-type sup_start_flags() :: {supervisor:strategy(), pos_integer(), pos_integer()}.
 -type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}}.
 -type sup_child_id() :: pid() | 'undefined'.
 -type sup_startchild_err() :: 'already_present' | {'already_started', sup_child_id()} | term().
