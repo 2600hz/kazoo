@@ -10,26 +10,27 @@
 -behaviour(supervisor).
 
 -include_lib("whistle/include/wh_types.hrl").
--include_lib("stepswitch/src/stepswitch.hrl").
+-include("stepswitch.hrl").
 
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
-                              (N, pool) -> {N, {poolboy, start_link, [[{worker_module, stepswitch_cnam}
-                                                                       ,{name, {local, N}}
-                                                                       ,{size, 10}
-                                                                       ,{max_overflow, 50}
-                                                                       ,{neg_resp_threshold, 1}
-                                                                      ]
-                                                                     ]}
-                                            ,permanent, 5000, worker, [poolboy]
-                                           };
-                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
+-define(CHILD(Name, Type), fun(N, 'cache') -> {N, {'wh_cache', 'start_link', [N]}, 'permanent', 5000, 'worker', ['wh_cache']};
+                              (N, 'pool') -> {N, {'poolboy', 'start_link', [[{'worker_module', 'stepswitch_cnam'}
+                                                                             ,{'name', {'local', N}}
+                                                                             ,{'size', 10}
+                                                                             ,{'max_overflow', 50}
+                                                                             ,{'neg_resp_threshold', 1}
+                                                                            ]
+                                                                           ]}
+                                            ,'permanent', 5000, 'worker', ['poolboy']
+                                             };
+                              (N, 'supervisor'=T) ->{N, {N, 'start_link', []}, 'permanent', 'infinity', T, [N]};
+                              (N, T) -> {N, {N, 'start_link', []}, 'permanent', 5000, T, [N]} end(Name, Type)).
 
--define(CHILDREN, [{?STEPSWITCH_CACHE, cache}
-                   ,{?STEPSWITCH_CNAM_POOL, pool}
-                   ,{stepswitch_listener, worker}
+-define(CHILDREN, [{?STEPSWITCH_CACHE, 'cache'}
+                   ,{?STEPSWITCH_CNAM_POOL, 'pool'}
+                   ,{'stepswitch_listener', 'worker'}
                   ]).
 
 %% ===================================================================
@@ -43,8 +44,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -61,11 +61,11 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, Children}}.
