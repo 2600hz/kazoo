@@ -95,16 +95,17 @@ maybe_stop_agent(AcctId, AgentId) ->
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID),
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' ->
-            lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
+            lager:debug("agent ~s(~s) not found, nothing to do", [AgentId, AcctId]);
         P when is_pid(P) ->
-            lager:debug("agent ~s(~s) is logging out, stopping ~p", [AcctId, AgentId, P]),
+            lager:debug("agent ~s(~s) is logging out, stopping ~p", [AgentId, AgentId, P]),
 
             case catch acdc_agent_sup:agent(P) of
                 APid when is_pid(APid) -> acdc_agent:logout_agent(APid);
                 _ -> 'ok'
             end,
 
-            _ = acdc_agent_sup:stop(P),
+            _Stop = acdc_agent_sup:stop(P),
+            lager:debug("supervisor ~p stopping agent: ~p", [P, _Stop]),
             acdc_stats:agent_inactive(AcctId, AgentId)
     end.
 

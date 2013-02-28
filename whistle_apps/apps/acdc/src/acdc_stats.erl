@@ -306,23 +306,26 @@ stat_to_jobj(#call_stat{call_id=CallId
                         ,caller_id_number=CNum
                         ,miss_reason=MissReason
                        }, Prefix) ->
-    wh_json:from_list(
-      props:filter_undefined(
-        [{<<"call_id">>, CallId}
-         ,{<<"pvt_account_id">>, AcctId}
-         ,{<<"queue_id">>, QueueId}
-         ,{<<"agent_id">>, AgentId}
-         ,{<<"timestamp">>, TStamp}
-         ,{<<"wait_time">>, WaitTime}
-         ,{<<"talk_time">>, TalkTime}
-         ,{<<"abandon_reason">>, AR}
-         ,{<<"status">>, Status}
-         ,{<<"miss_reason">>, MissReason}
-         ,{<<"caller_id_name">>, CName}
-         ,{<<"caller_id_number">>, CNum}
-         ,{<<"pvt_type">>, <<"call_partial">>}
-         ,{<<"_id">>, doc_id(Prefix, TStamp)}
-        ]));
+    wh_doc:update_pvt_parameters(
+      wh_json:from_list(
+        props:filter_undefined(
+          [{<<"call_id">>, CallId}
+           ,{<<"pvt_account_id">>, AcctId}
+           ,{<<"queue_id">>, QueueId}
+           ,{<<"agent_id">>, AgentId}
+           ,{<<"timestamp">>, TStamp}
+           ,{<<"wait_time">>, WaitTime}
+           ,{<<"talk_time">>, TalkTime}
+           ,{<<"abandon_reason">>, AR}
+           ,{<<"status">>, Status}
+           ,{<<"miss_reason">>, MissReason}
+           ,{<<"caller_id_name">>, CName}
+           ,{<<"caller_id_number">>, CNum}
+           ,{<<"pvt_type">>, <<"call_partial">>}
+           ,{<<"_id">>, doc_id(Prefix, TStamp)}
+          ])), AcctId, [{account_id, AcctId}
+                        ,{account_db, db_name(AcctId)}
+                       ]);
 stat_to_jobj(#agent_stat{agent_id=AgentId
                          ,acct_id=AcctId
                          ,timestamp=TStamp
@@ -330,17 +333,20 @@ stat_to_jobj(#agent_stat{agent_id=AgentId
                          ,wait_time=WaitTime
                          ,call_id=CallId
                         }, Prefix) ->
-    wh_json:from_list(
-      props:filter_undefined(
-        [{<<"pvt_account_id">>, AcctId}
-         ,{<<"agent_id">>, AgentId}
-         ,{<<"timestamp">>, TStamp}
-         ,{<<"wait_time">>, WaitTime}
-         ,{<<"status">>, Status}
-         ,{<<"pvt_type">>, <<"agent_partial">>}
-         ,{<<"call_id">>, CallId}
-         ,{<<"_id">>, doc_id(Prefix, TStamp)}
-        ])).
+    wh_doc:update_pvt_parameters(
+      wh_json:from_list(
+        props:filter_undefined(
+          [{<<"pvt_account_id">>, AcctId}
+           ,{<<"agent_id">>, AgentId}
+           ,{<<"status">>, Status}
+           ,{<<"timestamp">>, TStamp}
+           ,{<<"wait_time">>, WaitTime}
+           ,{<<"pvt_type">>, <<"agent_partial">>}
+           ,{<<"call_id">>, CallId}
+           ,{<<"_id">>, doc_id(Prefix, TStamp)}
+          ])), AcctId, [{account_id, AcctId}
+                        ,{account_db, db_name(AcctId)}
+                       ]).
 
 -spec doc_id(ne_binary(), pos_integer()) -> ne_binary().
 doc_id(Prefix, Timestamp) ->

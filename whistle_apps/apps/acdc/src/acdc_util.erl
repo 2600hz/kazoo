@@ -183,7 +183,9 @@ update_agent_status(?NE_BINARY = AcctId, AgentId, Status, Options) ->
                ,{<<"timestamp">>, wh_util:current_tstamp()}
                | Options
               ]))
-          ,AcctId),
+          ,AcctId, [{account_id, AcctId
+                     ,{account_db, acdc_stats:db_name(AcctId)}
+                    }]),
     couch_mgr:save_doc(acdc_stats:db_name(AcctId), Doc).
 
 -spec proc_id() -> ne_binary().

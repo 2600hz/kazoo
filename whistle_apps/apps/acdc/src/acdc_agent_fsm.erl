@@ -1317,7 +1317,7 @@ callid(JObj) ->
 
 -spec hangup_cause(wh_json:object()) -> ne_binary().
 hangup_cause(JObj) ->
-    case wh_jeon:get_value(<<"Hangup-Cause">>, JObj) of
+    case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
         'undefined' -> <<"unknown">>;
         Cause -> Cause
     end.
