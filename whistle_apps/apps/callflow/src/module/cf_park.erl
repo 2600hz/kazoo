@@ -152,14 +152,31 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
                 OtherNode ->
                     lager:info("the parked call is on node ~s but this call is on node ~s, redirecting", [OtherNode, CallerNode]),
                     IP = get_node_ip(OtherNode),
-                    Contact = <<"sip:", (whapps_call:to_user(Call))/binary
-                                ,"@", (whapps_call:to_realm(Call))/binary>>,
-                    Server = <<"sip:", IP/binary, ":5060">>,
-                    whapps_call_command:redirect(Contact, Server, Call),
+                    send_redirect(IP, Call),
                     cf_exe:transfer(Call),
                     {ok, ParkedCalls}
             end
     end.
+
+-spec send_redirect(ne_binary(), whapps_call:call()) -> 'ok'.
+send_redirect(IP, Call) ->
+    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"redirect_via_proxy">>, true) of
+        'true' -> redirect_via_proxy(IP, Call);
+        'false' -> redirect_via_endpoint(IP, Call)
+    end.
+
+-spec redirect_via_proxy(ne_binary(), whapps_call:call()) -> 'ok'.
+redirect_via_proxy(IP, Call) ->
+    Contact = <<"sip:", (whapps_call:to_user(Call))/binary
+                ,"@", (whapps_call:to_realm(Call))/binary>>,
+    Server = <<"sip:", IP/binary, ":5060">>,
+    whapps_call_command:redirect(Contact, Server, Call).
+
+-spec redirect_via_endpoint(ne_binary(), whapps_call:call()) -> 'ok'.
+redirect_via_endpoint(IP, Call) ->
+    Contact = <<"sip:", (whapps_call:to_user(Call))/binary
+                ,"@", IP/binary, ":5060">>,
+    whapps_call_command:redirect(Contact, Call).
 
 %%--------------------------------------------------------------------
 %% @private
