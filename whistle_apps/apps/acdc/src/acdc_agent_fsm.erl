@@ -688,7 +688,7 @@ ringing({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     webseq:note(self(), 'right', <<"ready">>),
-    {'next_state', 'ready', clear_call(State, 'ready')};
+    {'next_state', 'ready', clear_call(State, 'failed')};
 
 ringing({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
                                                    ,acct_id=AcctId
