@@ -143,7 +143,7 @@ call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, JObj) ->
 call_event(FSM, <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, JObj) ->
     gen_fsm:send_event(FSM, {'channel_unbridged', callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_hungup', callid(JObj)});
+    gen_fsm:send_event(FSM, {'channel_hungup', callid(JObj), hangup_cause(JObj)});
 call_event(FSM, <<"call_event">>, <<"LEG_CREATED">>, JObj) ->
     gen_fsm:send_event(FSM, {'leg_created', callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"LEG_DESTROYED">>, JObj) ->
@@ -483,7 +483,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
     CallerExitKey = wh_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
-    AgentCallId = acdc_agent:outbound_call_id(CallId),
+    AgentCallId = acdc_agent:outbound_call_id(CallId, AgentId),
 
     CDRUrl = wh_json:get_ne_value(<<"CDR-Url">>, JObj),
     RecordingUrl = wh_json:get_ne_value(<<"Recording-URL">>, JObj),
@@ -537,8 +537,8 @@ ready({'member_connect_req', JObj}, #state{agent_proc=Srv}=State) ->
     webseq:evt(self(), webseq:process_pid(JObj), <<"member connect resp">>),
     {'next_state', 'ready', State};
 
-ready({'channel_hungup', CallId}, #state{agent_proc=Srv}=State) ->
-    lager:debug("channel hungup for ~s", [CallId]),
+ready({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv}=State) ->
+    lager:debug("channel hungup for ~s: ~s", [CallId, _Cause]),
     acdc_agent:channel_hungup(Srv, CallId),
     {'next_state', 'ready', State};
 ready({'channel_unbridged', CallId}, #state{agent_proc=_Srv}=State) ->
@@ -636,12 +636,12 @@ ringing({'originate_failed', E}, #state{agent_proc=Srv
     {'next_state', 'ready', clear_call(State, 'failed')};
 
 
-ringing({'agent_timeout', JObj}, #state{agent_proc=Srv
-                                        ,acct_id=AcctId
-                                        ,agent_id=AgentId
-                                        ,member_call_queue_id=QueueId
-                                        ,member_call_id=CallId
-                                       }=State) ->
+ringing({'agent_timeout', _JObj}, #state{agent_proc=Srv
+                                         ,acct_id=AcctId
+                                         ,agent_id=AgentId
+                                         ,member_call_queue_id=QueueId
+                                         ,member_call_id=CallId
+                                        }=State) ->
     acdc_agent:agent_timeout(Srv),
     lager:debug("recv timeout from queue process"),
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId, <<"timeout">>),
@@ -669,14 +669,14 @@ ringing({'channel_bridged', CallId}, #state{member_call_id=CallId
                                            ,connect_failures=0
                                           }};
 
-ringing({'channel_hungup', CallId}, #state{agent_proc=Srv
-                                           ,agent_call_id=CallId
-                                           ,acct_id=AcctId
-                                           ,agent_id=AgentId
-                                           ,member_call_queue_id=QueueId
-                                           ,member_call_id=MCallId
-                                          }=State) ->
-    lager:debug("agent did not answer their phone in time: ~s", [CallId]),
+ringing({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
+                                                   ,agent_call_id=CallId
+                                                   ,acct_id=AcctId
+                                                   ,agent_id=AgentId
+                                                   ,member_call_queue_id=QueueId
+                                                   ,member_call_id=MCallId
+                                                  }=State) ->
+    lager:debug("ringing agent failed: timeout on ~s ~s", [CallId, _Cause]),
 
     acdc_agent:member_connect_retry(Srv, MCallId),
     acdc_agent:channel_hungup(Srv, MCallId),
@@ -690,13 +690,13 @@ ringing({'channel_hungup', CallId}, #state{agent_proc=Srv
     webseq:note(self(), 'right', <<"ready">>),
     {'next_state', 'ready', clear_call(State, 'ready')};
 
-ringing({'channel_hungup', CallId}, #state{agent_proc=Srv
-                                           ,acct_id=AcctId
-                                           ,agent_id=AgentId
-                                           ,member_call_id=CallId
-                                           ,member_call_queue_id=QueueId
-                                          }=State) ->
-    lager:debug("caller's channel (~s) has gone down, stop agent's call", [CallId]),
+ringing({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
+                                                   ,acct_id=AcctId
+                                                   ,agent_id=AgentId
+                                                   ,member_call_id=CallId
+                                                   ,member_call_queue_id=QueueId
+                                                  }=State) ->
+    lager:debug("caller's channel (~s) has gone down, stop agent's call: ~s", [CallId, _Cause]),
     acdc_agent:channel_hungup(Srv, CallId),
 
     acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_HANGUP),
@@ -820,23 +820,23 @@ answered({'channel_bridged', CallId}, #state{agent_call_id=CallId
     acdc_agent:member_connect_accepted(Srv),
     {'next_state', 'answered', State};
 
-answered({'channel_hungup', CallId}, #state{member_call_id=CallId}=State) ->
-    lager:debug("caller's channel hung up"),
+answered({'channel_hungup', CallId, _Cause}, #state{member_call_id=CallId}=State) ->
+    lager:debug("caller's channel hung up: ~s", [_Cause]),
 
     webseq:evt(CallId, self(), <<"member hangup">>),
     webseq:note(self(), 'right', <<"wrapup">>),
     {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State)}};
 
-answered({'channel_hungup', CallId}, #state{agent_call_id=CallId}=State) ->
-    lager:debug("agent's channel has hung up"),
+answered({'channel_hungup', CallId, _Cause}, #state{agent_call_id=CallId}=State) ->
+    lager:debug("agent's channel has hung up: ~s", [_Cause]),
 
     webseq:evt(CallId, self(), <<"agent hangup">>),
 
     webseq:note(self(), 'right', <<"wrapup">>),
     {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State)}};
 
-answered({'channel_hungup', CallId}, #state{agent_proc=Srv}=State) ->
-    lager:debug("someone(~s) hungup, ignoring", [CallId]),
+answered({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv}=State) ->
+    lager:debug("someone(~s) hungup, ignoring: ~s", [CallId, _Cause]),
     acdc_agent:channel_hungup(Srv, CallId),
     {'next_state', 'answered', State};
 
@@ -934,8 +934,8 @@ wrapup({'sync_req', JObj}, #state{agent_proc=Srv
     acdc_agent:send_sync_resp(Srv, 'wrapup', JObj, [{<<"Time-Left">>, time_left(Ref)}]),
     {'next_state', 'wrapup', State};
 
-wrapup({'channel_hungup', CallId}, #state{agent_proc=Srv}=State) ->
-    lager:debug("channel ~s hungup", [CallId]),
+wrapup({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv}=State) ->
+    lager:debug("channel ~s hungup: ~s", [CallId, _Cause]),
     acdc_agent:channel_hungup(Srv, CallId),
     {'next_state', 'wrapup', State};
 
@@ -1034,12 +1034,12 @@ paused(status, _, #state{wrapup_ref=Ref}=State) ->
 paused('current_call', _, State) ->
     {'reply', 'undefined', 'paused', State}.
 
-outbound({'channel_hungup', CallId}, #state{agent_proc=Srv
-                                            ,outbound_call_id=CallId
-                                            ,acct_id=AcctId
-                                            ,agent_id=AgentId
-                                           }=State) ->
-    lager:debug("outbound channel ~s hungup, ready for action", [CallId]),
+outbound({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
+                                                    ,outbound_call_id=CallId
+                                                    ,acct_id=AcctId
+                                                    ,agent_id=AgentId
+                                                   }=State) ->
+    lager:debug("outbound channel ~s hungup, ready for action: ~s", [CallId, _Cause]),
     acdc_agent:channel_hungup(Srv, CallId),
 
     case wrapup_left(State) of
@@ -1313,6 +1313,13 @@ callid(JObj) ->
     case wh_json:get_value(<<"Call-ID">>, JObj) of
         'undefined' -> wh_json:get_value([<<"Call">>, <<"Call-ID">>], JObj);
         CallId -> CallId
+    end.
+
+-spec hangup_cause(wh_json:object()) -> ne_binary().
+hangup_cause(JObj) ->
+    case wh_jeon:get_value(<<"Hangup-Cause">>, JObj) of
+        'undefined' -> <<"unknown">>;
+        Cause -> Cause
     end.
 
 -spec update_agent_status_to_resume(ne_binary(), ne_binary()) ->

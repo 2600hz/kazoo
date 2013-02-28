@@ -32,7 +32,7 @@
          ,stop/1
          ,fsm_started/2
          ,add_endpoint_bindings/3
-         ,agent_call_id/3, outbound_call_id/1
+         ,agent_call_id/3, outbound_call_id/2
          ,unbind_from_cdr/2
          ,logout_agent/1
          ,agent_info/2
@@ -526,11 +526,11 @@ handle_cast({'bridge_to_member', Call, WinJObj, EPs, CDRUrl, RecordingUrl}, #sta
                                            ,wh_json:is_true(<<"Record-Caller">>, WinJObj, 'false')
                                           ),
 
-    AgentCallId = outbound_call_id(Call),
+    AgentCallId = outbound_call_id(Call, AgentId),
     acdc_util:bind_to_call_events(Call, CDRUrl),
     acdc_util:bind_to_call_events(AgentCallId, CDRUrl),
 
-    maybe_connect_to_agent(MyQ, EPs, Call, RingTimeout),
+    maybe_connect_to_agent(MyQ, EPs, Call, RingTimeout, AgentId),
 
     lager:debug("originate sent, waiting on successful bridge now"),
     update_my_queues_of_change(AcctId, AgentId, Qs),
@@ -547,13 +547,14 @@ handle_cast({'bridge_to_member', Call, WinJObj, EPs, CDRUrl, RecordingUrl}, #sta
 
 handle_cast({'bridge_to_member', Call, WinJObj, _, CDRUrl, RecordingUrl}, #state{is_thief='true'
                                                                                  ,agent=Agent
+                                                                                 ,agent_id=AgentId
                                                                                  ,cdr_urls=Urls
                                                                                 }=State) ->
     _ = whapps_call:put_callid(Call),
     lager:debug("connecting to thief at ~s", [whapps_call:call_id(Agent)]),
     acdc_util:bind_to_call_events(Call, CDRUrl),
 
-    AgentCallId = outbound_call_id(Call),
+    AgentCallId = outbound_call_id(Call, AgentId),
     acdc_util:bind_to_call_events(AgentCallId, CDRUrl),
 
     ShouldRecord = record_calls(Agent) orelse wh_json:is_true(<<"Record-Caller">>, WinJObj, 'false'),
@@ -571,10 +572,12 @@ handle_cast({'bridge_to_member', Call, WinJObj, _, CDRUrl, RecordingUrl}, #state
                            }
      ,'hibernate'};
 
-handle_cast({'monitor_call', Call, CDRUrl, RecordingUrl}, #state{cdr_urls=Urls}=State) ->
+handle_cast({'monitor_call', Call, CDRUrl, RecordingUrl}, #state{cdr_urls=Urls
+                                                                 ,agent_id=AgentId
+                                                                }=State) ->
     _ = whapps_call:put_callid(Call),
 
-    AgentCallId = outbound_call_id(Call),
+    AgentCallId = outbound_call_id(Call, AgentId),
 
     acdc_util:bind_to_call_events(Call, CDRUrl),
     acdc_util:bind_to_call_events(AgentCallId, CDRUrl),
@@ -853,8 +856,8 @@ call_id(Call) ->
                         end, 'undefined', Keys)
     end.
 
--spec maybe_connect_to_agent(ne_binary(), list(), whapps_call:call(), integer() | 'undefined') -> 'ok'.
-maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
+-spec maybe_connect_to_agent(ne_binary(), list(), whapps_call:call(), integer() | 'undefined', ne_binary()) -> 'ok'.
+maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId) ->
     put('callid', whapps_call:call_id(Call)),
 
     ReqId = wh_util:rand_hex_binary(6),
@@ -864,6 +867,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
                                    ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
                                    ,{<<"Request-ID">>, ReqId}
                                    ,{<<"Retain-CID">>, <<"true">>}
+                                   ,{<<"Agent-ID">>, AgentId}
                                   ]),
 
     Built = lists:foldl(fun(EP, Acc) ->
@@ -893,7 +897,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
               ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
               ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
               ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
-              ,{<<"Outbound-Call-ID">>, outbound_call_id(Call)}
+              ,{<<"Outbound-Call-ID">>, outbound_call_id(Call, AgentId)}
               ,{<<"Existing-Call-ID">>, whapps_call:call_id(Call)}
               | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
@@ -902,9 +906,9 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
 
     wapi_resource:publish_originate_req(Prop).
 
-outbound_call_id(CallId) when is_binary(CallId) ->
-    wh_util:to_hex_binary(erlang:md5(CallId));
-outbound_call_id(Call) -> outbound_call_id(whapps_call:call_id(Call)).
+outbound_call_id(CallId, AgentId) when is_binary(CallId) ->
+    <<(wh_util:to_hex_binary(erlang:md5(CallId)))/binary, "-", AgentId/binary>>;
+outbound_call_id(Call, AgentId) -> outbound_call_id(whapps_call:call_id(Call), AgentId).
 
 -spec login_to_queue(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 login_to_queue(AcctId, AgentId, QueueId) ->
