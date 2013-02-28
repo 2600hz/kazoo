@@ -50,11 +50,7 @@ eunit: compile-test
 	erl -noshell $(PA) \
 	-pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
 
-build-plt:
-	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
-		--apps kernel stdlib sasl inets crypto public_key ssl
-
 dialyze: 
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
-                --plt $(ROOT)/.platform_dialyzer.plt --no_native \
+                $(PA) --plt $(ROOT)/.platform_dialyzer.plt \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
