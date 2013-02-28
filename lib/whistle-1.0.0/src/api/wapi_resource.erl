@@ -307,7 +307,7 @@ publish_originate_req(JObj) ->
     publish_originate_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_originate_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?ORIGINATE_REQ_VALUES, fun ?MODULE:originate_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RESOURCE_REQ, [{immediate, true}]).
+    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RESOURCE_REQ).
 
 -spec publish_originate_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_originate_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -339,7 +339,7 @@ publish_eavesdrop_req(JObj) ->
     publish_eavesdrop_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_eavesdrop_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?EAVESDROP_REQ_VALUES, fun ?MODULE:eavesdrop_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_EAVESDROP_REQ, [{immediate, true}]).
+    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_EAVESDROP_REQ).
 
 -spec publish_eavesdrop_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_eavesdrop_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.

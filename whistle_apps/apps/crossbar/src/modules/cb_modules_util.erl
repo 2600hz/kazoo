@@ -126,7 +126,6 @@ default_bleg_cid(Call, #cb_context{query_json=JObj}=Context) ->
 
 originate_quickcall(Endpoints, Call, #cb_context{account_id=AccountId, req_id=RequestId}=Context) ->
     CCVs = [{<<"Account-ID">>, AccountId}
-            ,{<<"Auto-Answer">>, wh_util:to_binary(length(Endpoints) =:= 1)}
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Inherit-Codec">>, <<"false">>}
             ,{<<"Inception">>, <<"on-net">>}
@@ -140,7 +139,7 @@ originate_quickcall(Endpoints, Call, #cb_context{account_id=AccountId, req_id=Re
     Request = [{<<"Application-Name">>, <<"transfer">>}
                ,{<<"Application-Data">>, get_application_data(Context)}
                ,{<<"Msg-ID">>, MsgId}
-               ,{<<"Endpoints">>, Endpoints}
+               ,{<<"Endpoints">>, maybe_auto_answer(Endpoints)}
                ,{<<"Timeout">>, get_timeout(Context)}
                ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
                ,{<<"Media">>, get_media(Context)}
@@ -156,6 +155,11 @@ originate_quickcall(Endpoints, Call, #cb_context{account_id=AccountId, req_id=Re
               ],
     wapi_resource:publish_originate_req(props:filter_undefined(Request)),
     crossbar_util:response_202(<<"processing request">>, Context#cb_context{resp_data=Request}).
+
+maybe_auto_answer([Endpoint]) ->
+    [wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], <<"true">>, Endpoint)];
+maybe_auto_answer(Endpoints) ->
+    Endpoints.
 
 get_application_data(#cb_context{req_nouns=?DEVICES_QCALL_NOUNS}) ->
     wh_json:from_list([{<<"Route">>, _Number}]);
