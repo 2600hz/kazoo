@@ -95,12 +95,19 @@ handle(Data, Call) ->
 %% Determine the hostname of the switch
 %% @end
 %%--------------------------------------------------------------------
--spec get_switch_nodename('undefined' | ne_binary() | whapps_call:call()) -> 'undefined' | ne_binary().
-get_switch_nodename(CallId) ->
+-spec maybe_get_switch_nodename(whapps_call:call() | ne_binary()) -> api_binary().
+maybe_get_switch_nodename(CallId) ->
     case whapps_call_command:b_channel_status(CallId) of
-        {error, _} -> undefined;
-        {ok, JObj} ->
-            wh_json:get_ne_value(<<"Switch-Nodename">>, JObj)
+        {'error', _} -> 'undefined';
+        {'ok', JObj} ->
+            get_switch_nodename(CallId, JObj)
+    end.
+
+-spec get_switch_nodename(ne_binary() | whapps_call:call(), wh_json:object()) -> api_binary().
+get_switch_nodename(CallId, JObj) ->
+    case wh_json:get_ne_value(<<"Switch-Nodename">>, JObj) of
+        'undefined' -> maybe_get_switch_nodename(CallId);
+        Switch -> Switch
     end.
 
 %%--------------------------------------------------------------------
@@ -109,9 +116,9 @@ get_switch_nodename(CallId) ->
 %% Determine the appropriate action to retrieve a parked call
 %% @end
 %%--------------------------------------------------------------------
--spec retrieve(ne_binary(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_object()} | 
-                                                                                {'hungup', wh_json:json_object()} |
-                                                                                {'error', term()}.
+-spec retrieve(ne_binary(), wh_json:object(), whapps_call:call()) -> {'ok', wh_json:object()} | 
+                                                                     {'hungup', wh_json:object()} |
+                                                                     {'error', term()}.
 retrieve(SlotNumber, ParkedCalls, Call) ->
     case wh_json:get_value([<<"slots">>, SlotNumber], ParkedCalls) of
         undefined ->
@@ -121,7 +128,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
             CallerNode = whapps_call:switch_nodename(Call),
             ParkedCall = wh_json:get_ne_value(<<"Call-ID">>, Slot),
             lager:info("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller", [SlotNumber, ParkedCall]),
-            case get_switch_nodename(ParkedCall) of
+            case maybe_get_switch_nodename(ParkedCall) of
                 undefined ->
                     lager:info("the parked call has hungup, but is was still listed in the slot", []),
                     case cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)) of

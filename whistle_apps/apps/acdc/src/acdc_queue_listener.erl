@@ -610,7 +610,7 @@ maybe_nack(Call, Delivery, SharedPid) ->
 is_call_alive(Call) ->
     case whapps_call_command:b_channel_status(Call) of
         {'ok', _} -> 'true';
-        {'error', _} -> 'false'
+        {'error', _E} -> 'false'
     end.
 
 clear_call_state(#state{acct_id=AcctId

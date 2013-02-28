@@ -172,6 +172,7 @@ b_call_status(CallId) when is_binary(CallId) ->
                                ,fun wapi_call:call_status_resp_v/1
                               ),
     case Resp of
+        {'error', 'timeout'} -> {'ok', wh_json:new()};
         {'error', _}=E -> E;
         {'ok', JObj}=OK ->
             case wh_json:get_value(<<"Status">>, JObj) of
@@ -215,6 +216,7 @@ b_channel_status(ChannelId) when is_binary(ChannelId) ->
                                ,fun wapi_call:channel_status_resp_v/1
                               ),
     case Resp of
+        {'error', 'timeout'} -> {'ok', wh_json:new()};
         {'error', _}=E -> E;
         {'ok', JObj}=Ok ->
             case wh_json:get_value(<<"Status">>, JObj) of
