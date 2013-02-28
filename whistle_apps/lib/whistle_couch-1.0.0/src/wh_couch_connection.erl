@@ -59,9 +59,15 @@ config(URI, #wh_couch_connection{}=Connection) ->
         {'error', {'not_supported_scheme', _Scheme}=E} ->
             lager:debug("unsupported scheme: ~p", [_Scheme]),
             throw(E);
-        {'error', {'malformed_url', _Abs}=E} ->
+        {'error', {'malformed_url', _Abs}} ->
             lager:error("malformed url: ~s", [_Abs]),
-            throw(E);
+            throw({'error', 'malformed_url'});
+        {'error', {'malformed_url', _Scheme, _Uri}} ->
+            lager:error("malformed url: ~s", [_Uri]),
+            throw({'error', 'malformed_url'});
+        {'error', {Reason, _Scheme, _Uri}} ->
+            lager:error("error parsing uri ~s: ~p", [_Uri, Reason]),
+            throw({'error', Reason});
         {'ok', {_, UserInfo, Host, Port, _, _}} ->
             update_connection(Connection, Host, Port, UserInfo);
         {'http', UserInfo, H, P, _Path, _Q} ->
