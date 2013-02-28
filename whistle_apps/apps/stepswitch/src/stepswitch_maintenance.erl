@@ -24,9 +24,8 @@
 %% Flush the stepswitch local cache
 %% @end
 %%--------------------------------------------------------------------
--spec flush() -> ok.
-flush() ->
-    wh_cache:flush_local(?STEPSWITCH_CACHE).
+-spec flush() -> 'ok'.
+flush() -> wh_cache:flush_local(?STEPSWITCH_CACHE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -38,10 +37,13 @@ flush() ->
 refresh() ->
     lager:debug("ensuring database ~s exists", [?RESOURCES_DB]),
     couch_mgr:db_create(?RESOURCES_DB),
-    Views = whapps_util:get_views_json(stepswitch, "views"),
-    whapps_util:update_views(?RESOURCES_DB, Views, true),
-    case catch couch_mgr:all_docs(?RESOURCES_DB, [include_docs]) of
-        {ok, JObjs} ->
+    Views = whapps_util:get_views_json('stepswitch', "views"),
+    whapps_util:update_views(?RESOURCES_DB, Views, 'true'),
+    case catch couch_mgr:all_docs(?RESOURCES_DB, ['include_docs']) of
+        {'error', _} -> 'ok';
+        {'EXIT', _E} ->
+            lager:debug("failure looking up all docs in ~s: ~p", [?RESOURCES_DB, _E]);
+        {'ok', JObjs} ->
             _ = couch_mgr:del_docs(?RESOURCES_DB
                                    ,[Doc
                                      || JObj <- JObjs,
@@ -50,12 +52,7 @@ refresh() ->
                                             wh_json:get_value(<<"pvt_type">>, Doc) =:= <<"route">>
                                         end
                                     ]),
-            ok;
-        {error, _} ->
-            ok;
-        {'EXIT', _E} ->
-            lager:debug("failure looking up all docs in ~s: ~p", [?RESOURCES_DB, _E]),
-            ok
+            'ok'
     end.
 
 %%--------------------------------------------------------------------
@@ -64,9 +61,10 @@ refresh() ->
 %% Lookup a number in the route db and return the account ID if known
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_number(string()) -> {'ok', binary()} | {'error', atom()}.
-lookup_number(Number) ->
-    gen_server:call(stepswitch_listener, {lookup_number, Number}).
+-spec lookup_number(string()) ->
+                           {'ok', binary()} |
+                           {'error', atom()}.
+lookup_number(Number) -> gen_server:call('stepswitch_listener', {'lookup_number', Number}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -76,8 +74,7 @@ lookup_number(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reload_resources() -> 'ok'.
-reload_resources() ->
-    gen_server:call(stepswitch_listener, {reload_resrcs}).
+reload_resources() -> gen_server:call('stepswitch_listener', {'reload_resrcs'}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,11 +88,10 @@ reload_resources() ->
 -spec process_number(string(), list()) -> list() | {'error', atom()}.
 
 process_number(Number) ->
-    gen_server:call(stepswitch_listener, {process_number, Number}).
+    gen_server:call('stepswitch_listener', {'process_number', Number}).
 
 process_number(Number, Flags) ->
-    gen_server:call(stepswitch_listener, {process_number, Number, Flags}).
-
+    gen_server:call('stepswitch_listener', {'process_number', Number, Flags}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -103,16 +99,12 @@ process_number(Number, Flags) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec emergency_cid(ne_binary()) -> 'no_return'.
--spec emergency_cid(ne_binary(), text()) -> 'no_return'.
--spec emergency_cid(ne_binary(), 'undefined' | text(), text()) -> 'no_return'.
+-spec emergency_cid(ne_binary()) -> 'ok'.
+-spec emergency_cid(ne_binary(), text()) -> 'ok'.
+-spec emergency_cid(ne_binary(), 'undefined' | text(), text()) -> 'ok'.
 
-emergency_cid(Account) ->
-    emergency_cid(Account, undefined).
-
-emergency_cid(Account, ECID) ->
-    emergency_cid(Account, ECID, undefined).
-
+emergency_cid(Account) -> emergency_cid(Account, 'undefined').
+emergency_cid(Account, ECID) -> emergency_cid(Account, ECID, 'undefined').
 emergency_cid(Account, ECID, OCID) ->
     wh_cache:flush(),
     Props = [{<<"Account-ID">>, wh_util:to_binary(Account)}
@@ -121,5 +113,4 @@ emergency_cid(Account, ECID, OCID) ->
             ],
     JObj = wh_json:from_list(props:filter_empty(Props)),
     CID = stepswitch_outbound:get_emergency_cid_number(JObj),
-    lager:info("Emergency offnet requests for account ~s (given the following CIDs ~s and ~s) will use ~s", [Account, ECID, OCID, CID]),
-    no_return.
+    lager:info("Emergency offnet requests for account ~s (given the following CIDs ~s and ~s) will use ~s", [Account, ECID, OCID, CID]).

@@ -32,10 +32,11 @@
          ,amqp_pool_collect/2, amqp_pool_collect/3
         ]).
 -export([write_tts_file/2]).
+-export([decr_timeout/2]).
 
 -include("whistle_apps.hrl").
 
--define(REPLICATE_ENCODING, encoded).
+-define(REPLICATE_ENCODING, 'encoded').
 -define(AGG_LIST_BY_REALM, <<"accounts/listing_by_realm">>).
 -define(AGG_LIST_BY_NAME, <<"accounts/listing_by_name">>).
 -define(PROMPTS_CONFIG_CAT, <<"prompts">>).
@@ -533,3 +534,8 @@ write_tts_file(Path, Say) ->
     lager:debug("trying to save TTS media to ~s", [Path]),
     {ok, _, Wav} = whapps_speech:create(Say),
     file:write_file(Path, Wav).
+
+-spec decr_timeout(wh_timeout(), non_neg_integer() | wh_now()) -> wh_timeout().
+decr_timeout('infinity', _) -> 'infinity';
+decr_timeout(Timeout, Elapsed) when is_integer(Elapsed) -> Timeout - Elapsed;
+decr_timeout(Timeout, Start) -> decr_timeout(Timeout, wh_util:elapsed_ms(Start)).
