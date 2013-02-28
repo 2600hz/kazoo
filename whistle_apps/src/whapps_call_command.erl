@@ -1818,7 +1818,7 @@ get_event_type(JObj) ->
     {C, N, get_app(JObj)}.
 
 get_app(JObj) ->
-    case wh_json:get_value(<<"Application-Name">> JObj) of
+    case wh_json:get_value(<<"Application-Name">>, JObj) of
         'undefined' -> wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj);
         App -> App
     end.
