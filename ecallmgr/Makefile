@@ -3,9 +3,9 @@ ROOT = ..
 DIALYZER = dialyzer
 
 LIB_EBINS = $(shell find $(ROOT)/lib -maxdepth 2 -name ebin -print)
+PA = $(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN))
 
-ERLC_OPTS = +debug_info +warn_export_all \
-	$(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN)) \
+ERLC_OPTS = +debug_info +warn_export_all $(PA) \
 	-I $(ROOT)/lib  # +bin_opt_info
 
 DIRS = . \
@@ -47,13 +47,13 @@ clean:
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
+	erl -noshell -pa test $(PA) -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
 
 build-plt:
 	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
 		--apps kernel stdlib sasl inets crypto public_key ssl
 
 dialyze: 
-	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
+	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) $(PA) \
                 --plt $(ROOT)/.platform_dialyzer.plt --no_native \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
