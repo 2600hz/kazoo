@@ -583,10 +583,20 @@ get_unset_vars(JObj) ->
                                     ),
                    ([K, _] = string:tokens(binary_to_list(KV), "=")) =/= 'undefined'
              ],
-    case [[$u,$n,$s,$e,$t,$: | K] || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], wh_json:to_proplist(JObj))
-                                         ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)] of
+    case [[$u,$n,$s,$e,$t,$: | K]
+          || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], wh_json:to_proplist(JObj))
+                 ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)] 
+    of
         [] -> "";
-        Unset -> [string:join(Unset, "^"), "^"]
+        Unset -> [string:join(Unset, "^"), maybe_fix_fs_auto_answer_bug(Export)]
+    end.
+
+-spec maybe_fix_fs_auto_answer_bug([string(),...]) -> string().
+maybe_fix_fs_auto_answer_bug(Export) ->
+    case lists:member("sip_auto_answer", Export) of
+        true -> "^";
+        false ->
+            "^unset:sip_h_Call-Info^unset:sip_invite_params^set:sip_auto_answer=false^"
     end.
 
 -spec publish_error(ne_binary(), api_binary(), wh_json:object(), api_binary()) -> 'ok'.
