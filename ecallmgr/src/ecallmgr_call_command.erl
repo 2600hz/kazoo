@@ -342,6 +342,7 @@ get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
                                 [{"application", <<"set api_hangup_hook=conference ", PageId/binary, " kick all">>}
                                  ,{"application", <<"export sip_invite_params=intercom=true">>}
                                  ,{"application", <<"export sip_auto_answer=true">>}
+                                 ,{"application", <<"export alert_info=intercom">>}
                                  ,{"application", <<"set conference_auto_outcall_flags=mute">>}
                                  |DP
                                 ]
@@ -653,7 +654,7 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
             _ = ecallmgr_util:set(Node, UUID, ChannelVars),
 
             CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, wh_json:new())),
-            _ = [ ecallmgr_util:export(Node, UUID, ecallmgr_util:get_fs_kv(K, V, UUID)) || {K, V} <- CallVars],
+            _ = ecallmgr_util:export(Node, UUID, CallVars),
 
             {<<"set">>, noop}
     end;
