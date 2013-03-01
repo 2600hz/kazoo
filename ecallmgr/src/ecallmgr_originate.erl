@@ -596,7 +596,7 @@ maybe_fix_fs_auto_answer_bug(Export) ->
     case lists:member("sip_auto_answer", Export) of
         true -> "^";
         false ->
-            "^unset:sip_h_Call-Info^unset:sip_invite_params^set:sip_auto_answer=false^"
+            "^unset:sip_h_Call-Info^unset:sip_h_Alert-Info^unset:alert_info^unset:sip_invite_params^set:sip_auto_answer=false^"
     end.
 
 -spec publish_error(ne_binary(), api_binary(), wh_json:object(), api_binary()) -> 'ok'.

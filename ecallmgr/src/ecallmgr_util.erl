@@ -317,12 +317,18 @@ maybe_sanitize_fs_value(_, Val) -> Val.
 %% @end
 %%--------------------------------------------------------------------
 -spec set(atom(), ne_binary(), wh_proplist() | ne_binary()) -> ecallmgr_util:send_cmd_ret().
-set(_, _, []) ->
-    ok;
+set(_, _, []) -> ok;
+set(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V}]) ->
+    _ = send_cmd(Node, UUID, "set", "alert_info=intercom"),
+    send_cmd(Node, UUID, "set", get_fs_kv(K, V, UUID));
 set(Node, UUID, [{K, V}]) ->
     set(Node, UUID, get_fs_kv(K, V, UUID));
 set(Node, UUID, [{_, _}|_]=Props) ->
-    Multiset = lists:foldl(fun({K, V}, Acc) ->
+    Multiset = lists:foldl(fun({<<"Auto-Answer", _/binary>> = K, V}, Acc) ->
+                                   <<"|alert_info=intercom|"
+                                     ,(get_fs_kv(K, V, UUID))/binary
+                                     ,Acc/binary>>;
+                              ({K, V}, Acc) ->
                                    <<"|", (get_fs_kv(K, V, UUID))/binary, Acc/binary>>
                            end, <<>>, Props),
     send_cmd(Node, UUID, "multiset", <<"^^", Multiset/binary>>);
@@ -335,6 +341,14 @@ set(Node, UUID, Arg) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec export(atom(), ne_binary(), binary()) -> ecallmgr_util:send_cmd_ret().
+export(_, _, []) -> ok;
+export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V}|Props]) ->
+    _ = send_cmd(Node, UUID, "export", "alert_info=intercom"),
+    _ = send_cmd(Node, UUID, "export", get_fs_kv(K, V, UUID)),
+    export(Node, UUID, Props);
+export(Node, UUID, [{K, V}|Props]) ->
+    _ = send_cmd(Node, UUID, "export", get_fs_kv(K, V, UUID)),
+    export(Node, UUID, Props);
 export(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).
 

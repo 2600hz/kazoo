@@ -1,9 +1,8 @@
 -module(timezone_convert).
 -author("nisbus").
--import(localtime).
 -include("../include/tz_database.hrl").
 -export([timezone_to_timezone/3]).
-
+ 
 timezone_to_timezone(DateTime, "UTC", ToTz) ->
     D = convert_db_to_timezonedict(),
     TzName = lookup_timezone(ToTz, D),
