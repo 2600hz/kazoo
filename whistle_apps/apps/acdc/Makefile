@@ -54,6 +54,6 @@ eunit: compile-test
 	erl -noshell -pa test $(LIB_PA) $(WHAPPS_LIB_PA) -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
 
 dialyze: 
-	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
+	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) $(LIB_PA) $(WHAPPS_LIB_PA) \
                 --plt $(ROOT)/.platform_dialyzer.plt --no_native \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
