@@ -1187,12 +1187,10 @@ handle_event('load_endpoints', StateName, #state{acct_db=AcctDb
                       ),
     case catch acdc_util:get_endpoints(Call, AgentId) of
         [] ->
-            lager:debug("no endpoints, going down"),
+            lager:debug("no endpoints for this agent, going down"),
             acdc_agent:stop(Srv),
             {'stop', 'normal', State};
         [_|_]=EPs ->
-            lager:debug("endpoints loaded and registered: ~p", [EPs]),
-
             _ = [acdc_agent:add_endpoint_bindings(Srv
                                                   ,cf_util:get_sip_realm(EP, AcctId)
                                                   ,wh_json:get_value([<<"sip">>, <<"username">>], EP)
@@ -1228,8 +1226,7 @@ handle_event(_Event, StateName, State) ->
 %%--------------------------------------------------------------------
 handle_sync_event(_Event, _From, StateName, State) ->
     lager:debug("unhandled sync event in state ~s: ~p", [StateName, _Event]),
-    Reply = ok,
-    {'reply', Reply, StateName, State}.
+    {'reply', 'ok', StateName, State}.
 
 %%--------------------------------------------------------------------
 %% @private
