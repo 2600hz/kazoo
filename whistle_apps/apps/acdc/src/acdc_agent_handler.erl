@@ -69,7 +69,7 @@ maybe_agent_queue_change(_AcctId, _AgentId, _Evt, _QueueId) ->
     lager:debug("unhandled evt: ~s for ~s", [_Evt, _QueueId]).
 
 update_agent('undefined', _, _) -> 'ok';
-update_agent(Super, Q, F) when is_pid(Super) -> 
+update_agent(Super, Q, F) when is_pid(Super) ->
     F(acdc_agent_sup:agent(Super), Q).
 
 maybe_start_agent(AcctId, AgentId) ->
@@ -204,15 +204,71 @@ handle_agent_message(_, _, _EvtName) ->
 
 handle_config_change(JObj, _Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
+
+    handle_change(JObj, wh_json:get_value(<<"Type">>, JObj)).
+
+handle_change(JObj, <<"user">>) ->
     handle_agent_change(wh_json:get_value(<<"Database">>, JObj)
                         ,wh_json:get_value(<<"Account-ID">>, JObj)
                         ,wh_json:get_value(<<"ID">>, JObj)
                         ,wh_json:get_value(<<"Event-Name">>, JObj)
-                       ).
+                       );
+handle_change(JObj, <<"device">>) ->
+    handle_device_change(wh_json:get_value(<<"Database">>, JObj)
+                         ,wh_json:get_value(<<"Account-ID">>, JObj)
+                         ,wh_json:get_value(<<"ID">>, JObj)
+                         ,wh_json:get_value(<<"Rev">>, JObj)
+                         ,wh_json:get_value(<<"Event-Name">>, JObj)
+                        ).
+
+handle_device_change(AccountDb, AccountId, DeviceId, Rev, Type) ->
+    handle_device_change(AccountDb, AccountId, DeviceId, Rev, Type, 0).
+
+handle_device_change(_AccountDb, _AccountId, DeviceId, Rev, _Type, Cnt) when Cnt > 3 ->
+    lager:debug("retried ~p times to refresh endpoint ~s(~s), giving up", [Cnt, DeviceId, Rev]);
+handle_device_change(AccountDb, AccountId, DeviceId, Rev, <<"doc_created">>, Cnt) ->
+    case cf_endpoint:get(DeviceId, AccountDb) of
+        {'ok', EP} ->
+            case wh_json:get_value(<<"_rev">>, EP) of
+                Rev ->
+                    gproc:send(?ENDPOINT_UPDATE_REG(AccountId, DeviceId), ?ENDPOINT_CREATED(EP)),
+                    gproc:send(?OWNER_UPDATE_REG(AccountId, wh_json:get_value(<<"owner_id">>, EP)), ?ENDPOINT_CREATED(EP));
+                _OldRev ->
+                    timer:sleep(250),
+                    handle_device_change(AccountDb, AccountId, DeviceId, Rev, <<"doc_created">>, Cnt+1)
+            end;
+        _ -> lager:debug("ignoring the fact that device ~s was created", [DeviceId])
+    end;
+handle_device_change(AccountDb, AccountId, DeviceId, Rev, <<"doc_edited">>, Cnt) ->
+    case cf_endpoint:get(DeviceId, AccountDb) of
+        {'ok', EP} ->
+            case wh_json:get_value(<<"_rev">>, EP) of
+                Rev ->
+                    gproc:send(?ENDPOINT_UPDATE_REG(AccountId, DeviceId), ?ENDPOINT_EDITED(EP)),
+                    gproc:send(?OWNER_UPDATE_REG(AccountId, wh_json:get_value(<<"owner_id">>, EP)), ?ENDPOINT_EDITED(EP));
+                _OldRev ->
+                    timer:sleep(250),
+                    handle_device_change(AccountDb, AccountId, DeviceId, Rev, <<"doc_edited">>, Cnt+1)
+            end;
+        _ -> lager:debug("ignoring the fact that device ~s was edited", [DeviceId])
+    end;
+handle_device_change(AccountDb, AccountId, DeviceId, Rev, <<"doc_deleted">>, Cnt) ->
+    case cf_endpoint:get(DeviceId, AccountDb) of
+        {'ok', EP} ->
+            case wh_json:get_value(<<"_rev">>, EP) of
+                Rev ->
+                    gproc:send(?ENDPOINT_UPDATE_REG(AccountId, DeviceId), ?ENDPOINT_DELETED(EP)),
+                    gproc:send(?OWNER_UPDATE_REG(AccountId, wh_json:get_value(<<"owner_id">>, EP)), ?ENDPOINT_DELETED(EP));
+                _OldRev ->
+                    timer:sleep(250),
+                    handle_device_change(AccountDb, AccountId, DeviceId, Rev, <<"doc_deleted">>, Cnt+1)
+            end;
+        _ -> lager:debug("ignoring the fact that device ~s was edited", [DeviceId])
+    end.
 
 handle_agent_change(AccountDb, AccountId, AgentId, <<"doc_created">>) ->
     case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
-        'undefined' -> 
+        'undefined' ->
             {'ok', JObj} = couch_mgr:open_doc(AccountDb, AgentId),
             acdc_agents_sup:new(JObj);
         P when is_pid(P) -> 'ok'
@@ -220,10 +276,8 @@ handle_agent_change(AccountDb, AccountId, AgentId, <<"doc_created">>) ->
 handle_agent_change(AccountDb, AccountId, AgentId, <<"doc_edited">>) ->
     {'ok', JObj} = couch_mgr:open_doc(AccountDb, AgentId),
     case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
-        'undefined' -> 
-            acdc_agents_sup:new(JObj);
-        P when is_pid(P) -> 
-            acdc_agent_fsm:refresh(acdc_agent_sup:fsm(P), JObj)
+        'undefined' -> acdc_agents_sup:new(JObj);
+        P when is_pid(P) -> acdc_agent_fsm:refresh(acdc_agent_sup:fsm(P), JObj)
     end;
 handle_agent_change(_, AccountId, AgentId, <<"doc_deleted">>) ->
     case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of

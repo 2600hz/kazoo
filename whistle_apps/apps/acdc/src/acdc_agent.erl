@@ -31,7 +31,7 @@
          ,call_status_req/1, call_status_req/2
          ,stop/1
          ,fsm_started/2
-         ,add_endpoint_bindings/3
+         ,add_endpoint_bindings/3, remove_endpoint_bindings/3
          ,agent_call_id/3, outbound_call_id/2
          ,unbind_from_cdr/2
          ,logout_agent/1
@@ -254,6 +254,11 @@ add_endpoint_bindings(Srv, Realm, User) ->
     gen_listener:add_binding(Srv, 'route', [{'realm', Realm}
                                             ,{'user', User}
                                            ]).
+remove_endpoint_bindings(Srv, Realm, User) ->
+    lager:debug("removing route bindings to ~p for endpoint ~s@~s", [Srv, User, Realm]),
+    gen_listener:rm_binding(Srv, 'route', [{'realm', Realm}
+                                           ,{'user', User}
+                                          ]).
 
 unbind_from_cdr(Srv, CallId) -> gen_listener:cast(Srv, {'unbind_from_cdr', CallId}).
 

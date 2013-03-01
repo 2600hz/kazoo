@@ -96,13 +96,6 @@ get_endpoints(Call, {'ok', Devices}) ->
         wh_json:is_true(<<"enabled">>, EPDoc, 'false')
     ].
 
-    %% lists:foldl(fun(EPDoc, Acc) ->
-    %%                     case cf_endpoint:build(EPDoc, Call) of
-    %%                         {'ok', EP} -> EP ++ Acc;
-    %%                         {'error', _} -> Acc
-    %%                     end
-    %%             end, [], EPDocs).
-
 -spec get_endpoint(whapps_call:call(), ne_binary()) -> api_object().
 get_endpoint(Call, ?NE_BINARY = EndpointId) ->
     case couch_mgr:open_doc(whapps_call:account_db(Call), EndpointId) of
@@ -183,9 +176,9 @@ update_agent_status(?NE_BINARY = AcctId, AgentId, Status, Options) ->
                ,{<<"timestamp">>, wh_util:current_tstamp()}
                | Options
               ]))
-          ,AcctId, [{account_id, AcctId
-                     ,{account_db, acdc_stats:db_name(AcctId)}
-                    }]),
+          ,AcctId, [{'account_id', AcctId}
+                    ,{'account_db', acdc_stats:db_name(AcctId)}
+                   ]),
     couch_mgr:save_doc(acdc_stats:db_name(AcctId), Doc).
 
 -spec proc_id() -> ne_binary().

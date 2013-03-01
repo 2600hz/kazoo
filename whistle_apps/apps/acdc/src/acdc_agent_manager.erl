@@ -31,6 +31,7 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{'conf', [{'type', <<"user">>}]}
+                   ,{'conf', [{'type', <<"device">>}]}
                    ,{'acdc_agent', [{'restrict_to', ['status', 'stats_req']}]}
                    ,{'notifications', [{'restrict_to', ['presence_probe']}]}
                   ]).
