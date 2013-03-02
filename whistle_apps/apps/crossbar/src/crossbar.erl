@@ -24,61 +24,61 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    put(callid, ?LOG_SYSTEM_ID),
+    put('callid', ?LOG_SYSTEM_ID),
 
     _ = start_deps(),
 
     %% maybe move this into a config file?
     %% {Host, list({Path, Handler, Opts})}
-    Dispatch = [{'_', [{['v1', '...'], v1_resource, []}
-                       ,{'_', crossbar_default_handler, []}
+    Dispatch = [{'_', [{['v1', '...'], 'v1_resource', []}
+                       ,{'_', 'crossbar_default_handler', []}
                       ]}
                ],
 
     Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 8000),
     ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
     %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
-    cowboy:start_listener(v1_resource, 100
-                          ,cowboy_tcp_transport, [{port, Port}]
-                          ,cowboy_http_protocol, [{dispatch, Dispatch}
-                                                  ,{timeout, ReqTimeout}
-                                                  ,{onrequest, fun on_request/1}
-                                                  ,{onresponse, fun on_response/3}
-                                                 ]
+    cowboy:start_listener('v1_resource', 100
+                          ,'cowboy_tcp_transport', [{'port', Port}]
+                          ,'cowboy_http_protocol', [{'dispatch', Dispatch}
+                                                    ,{'timeout', ReqTimeout}
+                                                    ,{'onrequest', fun on_request/1}
+                                                    ,{'onresponse', fun on_response/3}
+                                                   ]
                          ),
 
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_ssl">>, false) of
-        false -> ok;
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_ssl">>, 'false') of
+        'false' -> 'ok';
         true ->
-            RootDir = code:lib_dir(crossbar),
+            RootDir = code:lib_dir('crossbar'),
 
             try
                 SSLCert = whapps_config:get_string(?CONFIG_CAT
                                                    ,<<"ssl_cert">>
-                                                       ,filename:join([RootDir, <<"priv/ssl/crossbar.crt">>])
+                                                   ,filename:join([RootDir, <<"priv/ssl/crossbar.crt">>])
                                                   ),
                 SSLKey = whapps_config:get_string(?CONFIG_CAT
                                                   ,<<"ssl_key">>
-                                                      ,filename:join([RootDir, <<"priv/ssl/crossbar.key">>])
+                                                  ,filename:join([RootDir, <<"priv/ssl/crossbar.key">>])
                                                  ),
 
                 SSLPort = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 8443),
                 SSLPassword = whapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, <<>>),
 
-                cowboy:start_listener(v1_resource_ssl, 100
-                                      ,cowboy_ssl_transport, [
-                                                              {port, SSLPort}
-                                                              ,{certfile, find_file(SSLCert, RootDir)}
-                                                              ,{keyfile, find_file(SSLKey, RootDir)}
-                                                              ,{password, SSLPassword}
-                                                             ]
-                                      ,cowboy_http_protocol, [{dispatch, Dispatch}
-                                                              ,{onrequest, fun on_request/1}
-                                                              ,{onresponse, fun on_response/3}
-                                                             ]
+                cowboy:start_listener('v1_resource_ssl', 100
+                                      ,'cowboy_ssl_transport', [
+                                                                {'port', SSLPort}
+                                                                ,{'certfile', find_file(SSLCert, RootDir)}
+                                                                ,{'keyfile', find_file(SSLKey, RootDir)}
+                                                                ,{'password', SSLPassword}
+                                                               ]
+                                      ,'cowboy_http_protocol', [{'dispatch', Dispatch}
+                                                                ,{'onrequest', fun on_request/1}
+                                                                ,{'onresponse', fun on_response/3}
+                                                               ]
                                      )
             catch
-                throw:{invalid_file, _File} ->
+                'throw':{'invalid_file', _File} ->
                     lager:info("SSL disabled: failed to find ~s (tried prepending ~s too)", [_File, RootDir])
             end
     end,
@@ -87,15 +87,15 @@ start_link() ->
 
 find_file(File, Root) ->
     case filelib:is_file(File) of
-        true -> File;
-        false ->
+        'true' -> File;
+        'false' ->
             FromRoot = filename:join([Root, File]),
             lager:info("failed to find file at ~s, trying ~s", [File, FromRoot]),
             case filelib:is_file(FromRoot) of
-                true -> FromRoot;
-                false ->
+                'true' -> FromRoot;
+                'false' ->
                     lager:info("failed to find file at ~s", [FromRoot]),
-                    throw({invalid_file, File})
+                    throw({'invalid_file', File})
             end
     end.
 
@@ -107,8 +107,8 @@ find_file(File, Root) ->
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
 stop() ->
-    cowboy:stop_listener(v1_resource),
-    ok = application:stop(crossbar).
+    cowboy:stop_listener('v1_resource'),
+    'ok' = application:stop('crossbar').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -117,10 +117,8 @@ stop() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec start_mod(atom() | string() | binary()) -> any().
-start_mod(CBMod) when not is_atom(CBMod) ->
-    start_mod(wh_util:to_atom(CBMod, true));
-start_mod(CBMod) ->
-    CBMod:init().
+start_mod(CBMod) when not is_atom(CBMod) -> start_mod(wh_util:to_atom(CBMod, 'true'));
+start_mod(CBMod) -> CBMod:init().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -130,13 +128,12 @@ start_mod(CBMod) ->
 %%--------------------------------------------------------------------
 -spec stop_mod(atom() | string() | binary()) -> any().
 
-stop_mod(CBMod) when not is_atom(CBMod) ->
-    stop_mod(wh_util:to_atom(CBMod, true));
+stop_mod(CBMod) when not is_atom(CBMod) -> stop_mod(wh_util:to_atom(CBMod, 'true'));
 stop_mod(CBMod) ->
     crossbar_bindings:flush_mod(CBMod),
-    case erlang:function_exported(CBMod, stop, 0) of
-        true -> CBMod:stop();
-        false -> ok
+    case erlang:function_exported(CBMod, 'stop', 0) of
+        'true' -> CBMod:stop();
+        'false' -> 'ok'
     end.
 
 %%--------------------------------------------------------------------
@@ -148,8 +145,8 @@ stop_mod(CBMod) ->
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [ wh_util:ensure_started(App) || App <- [sasl, crypto, inets, cowboy, whistle_amqp]],
-    ok.
+    _ = [ wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'inets', 'cowboy', 'whistle_amqp']],
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
