@@ -30,9 +30,10 @@
          ,code_change/3
         ]).
 
--record(state, {}).
+-record(state, {weight=0}).
 
 -define(TAB, ?MODULE).
+-define(ENSURE_TIME, 5000).
 
 %%%===================================================================
 %%% API
@@ -62,7 +63,8 @@ add(URI) ->
         {ok, Params} ->
             new(#wh_amqp_connection{uri=URI
                                     ,manager=wh_util:to_atom(URI, true)
-                                    ,params=Params})
+                                    ,params=Params
+                                    ,weight=ets:info(?MODULE, size)})
     end.
 
 -spec new(wh_amqp_connection()) -> wh_amqp_connection() | {'error', _}.
@@ -138,15 +140,27 @@ update_exchanges(URI, Exchanges) ->
     gen_server:cast(?MODULE, {update_exchanges, wh_util:to_binary(URI), Exchanges}).
 
 -spec connected(wh_amqp_connection()) -> wh_amqp_connection().
-connected(#wh_amqp_connection{connection=Pid}=Connection) when is_pid(Pid) ->
+connected(#wh_amqp_connection{connection=Pid, weight=Weight}=Connection) when is_pid(Pid) ->
+    CurrentWeight = current_weight(),
     C = gen_server:call(?MODULE, {connected, Connection}),
-    _ = wh_amqp_channels:reconnect(C),
+    _ = case Weight > CurrentWeight of
+            'true' -> gen_server:cast(?MODULE, {force_reconnect, Connection});
+            'false' -> 'ok'
+        end,
     C.
 
 -spec disconnected(wh_amqp_connection()) -> wh_amqp_connection().
 disconnected(#wh_amqp_connection{}=Connection) ->
     _ = wh_amqp_channels:lost_connection(Connection),
     gen_server:call(?MODULE, {disconnected, Connection}).
+
+current_weight() ->
+    case current() of
+        {ok, #wh_amqp_connection{weight=Weight}} ->
+            Weight;
+        {'error', _} ->
+            -1
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -182,28 +196,32 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({new, #wh_amqp_connection{uri=URI}=Connection}, _, State) ->
-    case ets:insert_new(?TAB, Connection) of
-        true -> {reply, Connection, State};
-        false -> {reply, find(URI), State}
+handle_call({new, #wh_amqp_connection{uri=URI}=Connection}
+            ,_, #state{weight=Weight}=State) ->
+    case ets:insert_new(?TAB, Connection#wh_amqp_connection{weight=Weight}) of
+        true -> {reply, Connection#wh_amqp_connection{weight=Weight}
+                 ,State#state{weight=Weight+1}, ?ENSURE_TIME};
+        false -> {reply, find(URI), State, ?ENSURE_TIME}
     end;
 handle_call({connected, #wh_amqp_connection{uri=URI, connection=Pid
-                                            ,connection_ref=Ref}=C}, _, State) ->
+                                            ,connection_ref=Ref}=C}
+            ,_, State) ->
     Updates = [{#wh_amqp_connection.connection, Pid}
                ,{#wh_amqp_connection.connection_ref, Ref}
                ,{#wh_amqp_connection.available, true}
               ],
     ets:update_element(?TAB, URI, Updates),
-    {reply, C#wh_amqp_connection{available=true}, State};
+    {reply, C#wh_amqp_connection{available=true}, State, ?ENSURE_TIME};
 handle_call({disconnected, #wh_amqp_connection{uri=URI}=C}, _, State) ->
     Updates = [{#wh_amqp_connection.connection, undefined}
                ,{#wh_amqp_connection.connection_ref, undefined}
                ,{#wh_amqp_connection.available, false}
               ],
     ets:update_element(?TAB, URI, Updates),
-    {reply, C#wh_amqp_connection{available=false}, State};
+    _ = wh_amqp_channels:reconnect(),
+    {reply, C#wh_amqp_connection{available=false}, State, ?ENSURE_TIME};
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {reply, {error, not_implemented}, State, ?ENSURE_TIME}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -215,11 +233,14 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({force_reconnect, Connection}, State) ->
+    wh_amqp_channels:force_reconnect(Connection),
+    {noreply, State, ?ENSURE_TIME};
 handle_cast({update_exchanges, URI, Exchanges}, State) ->
     ets:update_element(?TAB, URI, {#wh_amqp_connection.exchanges, Exchanges}),
-    {noreply, State};
+    {noreply, State, ?ENSURE_TIME};
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {noreply, State, ?ENSURE_TIME}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -231,8 +252,15 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info('timeout', State) ->
+    _ = case current() of
+            {'ok', #wh_amqp_connection{}=Connection} ->
+                wh_amqp_channels:force_reconnect(Connection);
+            {'error', _} -> 'ok'
+        end,
+    {noreply, State};
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {noreply, State, ?ENSURE_TIME}.
 
 %%--------------------------------------------------------------------
 %% @private

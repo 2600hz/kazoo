@@ -210,9 +210,11 @@ handle_command_result(_Else, _, _) ->
     {error, unexpected_result}.
 
 -spec open(wh_amqp_channel() | pid(), wh_amqp_connection()) -> wh_amqp_channel().
-open(Channel, #wh_amqp_connection{uri=URI}=Connection) ->
+open(#wh_amqp_channel{consumer=Consumer, reconnecting=Reconnecting}=Channel
+     ,#wh_amqp_connection{uri=URI}=Connection) ->
     case wh_amqp_connection:get_channel(Connection) of
         {ok, Pid} ->
+            gen_server:cast(Consumer, {'wh_amqp_channel', {'new_channel', Reconnecting}}),
             amqp_channel:register_return_handler(Pid, Channel#wh_amqp_channel.consumer),
             Routines = [fun(C) ->
                                 C#wh_amqp_channel{channel=Pid
@@ -223,7 +225,7 @@ open(Channel, #wh_amqp_connection{uri=URI}=Connection) ->
                         ,fun(#wh_amqp_channel{commands=Commands}=C) ->
                                  maybe_reestablish(C#wh_amqp_channel{commands=lists:reverse(Commands)
                                                                      ,reconnecting=true
-                                                                    }) 
+                                                                    })
                          end
                        ],
             lager:debug("create channel ~p for ~p", [Pid, Channel#wh_amqp_channel.consumer]),

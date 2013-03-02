@@ -268,7 +268,7 @@ handle_cast({'start_friends', QueueJObj}, #state{worker_sup=WorkerSup
                     {'stop', 'failed_fsm', State}
             end
     end;
-handle_cast({'created_queue', Q}, #state{my_q='undefined'}=State) ->
+handle_cast({'gen_listener', {'created_queue', Q}}, #state{my_q='undefined'}=State) ->
     {'noreply', State#state{my_q=Q}, 'hibernate'};
 
 handle_cast({'member_connect_req', MemberCallJObj, Delivery, Url}

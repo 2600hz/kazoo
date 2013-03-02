@@ -70,7 +70,8 @@ init([]) ->
     _ = [wh_amqp_connections:add(U) || U <- URIs],
     lager:info("waiting for first amqp connection...", []),
     wh_amqp_connections:wait_for_available(),
-    lager:debug("connected to: ~p", [wh_amqp_connections:current()]),
+    timer:sleep(2000),
+    lager:debug("current amqp connection: ~p", [wh_amqp_connections:current()]),
     {ok, #state{}, 100}.
 
 %%--------------------------------------------------------------------
