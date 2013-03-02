@@ -26,8 +26,8 @@
 -include("amqp_util.hrl").
 
 -define(SERVER, ?MODULE).
--define(START_TIMEOUT, 500).
--define(MAX_TIMEOUT, 5000).
+-define(START_TIMEOUT, 200).
+-define(MAX_TIMEOUT, 1000).
 
 %%%===================================================================
 %%% API
@@ -272,7 +272,6 @@ connected(State) ->
 
 -spec disconnected(wh_amqp_connection()) -> wh_amqp_connection().
 disconnected(State) ->
-    wh_amqp_channels:lost_connection(State),
     S = wh_amqp_connections:disconnected(State),
     close_connection(S).
 

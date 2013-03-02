@@ -25,6 +25,9 @@
 -export([reconnect/0
          ,reconnect/1
         ]).
+-export([force_reconnect/0
+         ,force_reconnect/1
+        ]).
 -export([monitor_channel/1]).
 -export([monitor_consumer/1]).
 -export([demonitor_channel/1]).
@@ -104,11 +107,19 @@ reconnect() ->
 
 -spec reconnect(wh_amqp_connection()) -> pid().
 reconnect(#wh_amqp_connection{}=Connection) ->
-    spawn(fun() ->
-                  Disconnected = #wh_amqp_channel{channel='undefined', _='_'},
-                  Matches = ets:match_object(?TAB, Disconnected, 1),
-                  reconnect(Matches, Connection)
-          end).
+    gen_server:cast(?MODULE, {reconnect, Connection}).
+
+-spec force_reconnect() -> pid() | {'error', _}.
+force_reconnect() ->
+    case wh_amqp_connections:current() of
+        {error, _}=E -> E;
+        {ok, Connection} ->
+            force_reconnect(Connection)
+    end.
+
+-spec force_reconnect(wh_amqp_connection()) -> pid().
+force_reconnect(#wh_amqp_connection{}=Connection) ->
+    gen_server:cast(?MODULE, {force_reconnect, Connection}).
 
 -spec monitor_channel(wh_amqp_channel()) -> wh_amqp_channel().
 monitor_channel(#wh_amqp_channel{channel=Pid}=Channel) when is_pid(Pid) ->
@@ -194,6 +205,31 @@ handle_call(_Msg, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({lost_connection, URI}, State) ->
     _ = demonitor_all_connection_channels(URI),
+    {noreply, State};
+handle_cast({reconnect, #wh_amqp_connection{uri=URI}=Connection}, State) ->
+    spawn(fun() ->
+                  Disconnected = #wh_amqp_channel{channel='undefined', _='_'},
+                  case ets:match_object(?TAB, Disconnected, 1) of
+                      '$end_of_table' -> 'ok';
+                      Matches ->
+                          lager:notice("reconnecting all disconnected channels to '~s'", [URI]),
+                          reconnect(Matches, Connection)
+                  end
+          end),
+    {noreply, State};
+handle_cast({force_reconnect, #wh_amqp_connection{uri=URI}=Connection}, State) ->
+    spawn(fun() ->
+                  MatchSpec = [{#wh_amqp_channel{uri = '$2', _ = '_'}
+                                ,[{'=/=', '$2', {const, URI}}]
+                                ,['$_']
+                               }],
+                  case ets:select(?TAB, MatchSpec, 1) of
+                      '$end_of_table' -> 'ok';
+                      Matches ->
+                          lager:notice("forcing all channels to connect to '~s'", [URI]),
+                          force_reconnect(Matches, Connection)
+                  end
+          end),
     {noreply, State};
 handle_cast({command, Pid, #'basic.qos'{}=Command}, State) ->
     _ = case ets:match(?TAB, #wh_amqp_channel{consumer=Pid, commands='$1', _='_'}) of
@@ -291,12 +327,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec reconnect({wh_amqp_channels(), _} | '$end_of_table', wh_amqp_connection()) -> 'ok'.
-reconnect('$end_of_table', #wh_amqp_connection{uri=URI}) ->
-    lager:notice("reconnected all disconnected channels to '~s'", [URI]),
-    ok;
+reconnect('$end_of_table', _) -> ok;
 reconnect({[Channel], Continuation}, Connection) ->
-    catch wh_amqp_channel:open(Channel, Connection),
+    catch wh_amqp_channel:open(Channel#wh_amqp_channel{reconnecting=true}
+                               ,Connection),
     reconnect(ets:match(Continuation), Connection).
+
+-spec force_reconnect({wh_amqp_channels(), _} | '$end_of_table', wh_amqp_connection()) -> 'ok'.
+force_reconnect('$end_of_table', _) -> ok;
+force_reconnect({[Channel], Continuation}, Connection) ->
+    catch wh_amqp_channel:close(Channel),
+    catch wh_amqp_channel:open(Channel#wh_amqp_channel{reconnecting=true}
+                               ,Connection),
+    force_reconnect(ets:select(Continuation), Connection).
 
 -spec filter_commands(pid(), function()) -> 'ok'.
 filter_commands(Pid, Filter) ->
@@ -318,8 +361,12 @@ handle_down_msg([_|_]=Matches, Reason) ->
 
 -spec handle_down_match(down_match(), _) -> any().
 handle_down_match({channel, #wh_amqp_channel{uri=URI}}
-                ,{shutdown,{connection_closing, Reason}}) ->
+                  ,{shutdown,{connection_closing, Reason}}) ->
     lager:critical("channel died when connection to '~s' was lost: ~p", [URI, Reason]),
+    demonitor_all_connection_channels(URI);
+handle_down_match({channel, #wh_amqp_channel{uri=URI}}
+                  ,shutdown) ->
+    lager:critical("channel died when connection to '~s' was lost: shutdown", [URI]),
     demonitor_all_connection_channels(URI);
 handle_down_match({channel, #wh_amqp_channel{uri=URI}=Channel}, Reason) ->
     lager:notice("channel went down while still connected to '~s': ~p", [URI, Reason]),

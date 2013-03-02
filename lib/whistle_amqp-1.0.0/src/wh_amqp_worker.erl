@@ -300,7 +300,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({created_queue, Q}, State) ->
+handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {noreply, State#state{queue=Q}};
 handle_cast({set_negative_threshold, NegThreshold}, State) ->
     lager:debug("set negative threshold to ~p", [NegThreshold]),

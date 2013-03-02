@@ -337,7 +337,7 @@ handle_cast({'fsm_started', FSMPid}, State) ->
                             ,my_id=acdc_util:proc_id(FSMPid)
                            }};
 
-handle_cast({'created_queue', Q}, State) ->
+handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{my_q=Q}, 'hibernate'};
 
 handle_cast({'queue_login', Q}, #state{agent_queues=Qs

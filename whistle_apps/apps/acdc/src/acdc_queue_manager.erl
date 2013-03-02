@@ -434,7 +434,10 @@ handle_cast({sync_with_agent, A}, #state{acct_id=AcctId}=State) ->
     end,
     {'noreply', State};
 
-handle_cast({'created_queue', _}, State) ->
+handle_cast({'gen_listener', {'created_queue', _}}, State) ->
+    {'noreply', State};
+
+handle_cast({'gen_listener', {'is_consuming', _}}, State) ->
     {'noreply', State};
 
 handle_cast(_Msg, State) ->

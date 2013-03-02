@@ -456,6 +456,7 @@ handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue=undefined}=Stat
     lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
     {noreply, State};
 handle_info(#'basic.consume_ok'{}, State) ->
+    gen_server:cast(self(), {'gen_listener', {'is_consuming', 'true'}}),
     {noreply, State#state{is_consuming=true}};
 handle_info({'$initialize_gen_listener', Timeout}, #state{bindings=Bindings
                                                           ,params=Params
@@ -469,7 +470,7 @@ handle_info({'$initialize_gen_listener', Timeout}, #state{bindings=Bindings
                  || {Type, BindProps} <- Bindings
                 ],
             _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
-            gen_server:cast(self(), {created_queue, Q}),
+            gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
             {noreply, State#state{queue=Q, is_consuming=false}}
     end;
 handle_info('$is_gen_listener_consuming', #state{is_consuming=false}=State) ->

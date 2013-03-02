@@ -361,9 +361,9 @@ handle_cast({add_event_listener, {M, F, A}}, #state{call=Call}=State) ->
             {'noreply', State}
     end;
 
-handle_cast({created_queue, ControllerQ}, #state{call=Call}=State) ->
-    {'noreply', launch_cf_module(State#state{call=whapps_call:set_controller_queue(ControllerQ, Call)
-                                           ,queue=ControllerQ})};
+handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
+    {'noreply', launch_cf_module(State#state{call=whapps_call:set_controller_queue(Q, Call)
+                                           ,queue=Q})};
 
 handle_cast({send_amqp, API, PubFun}, #state{call=Call}=State) ->
     send_amqp_message(Call, API, PubFun),
