@@ -64,7 +64,7 @@ add(URI) ->
             new(#wh_amqp_connection{uri=URI
                                     ,manager=wh_util:to_atom(URI, true)
                                     ,params=Params
-                                    ,weight=ets:info(?MODULE, size)})
+                                    ,weight=gen_server:call(?MODULE, assign_weight)})
     end.
 
 -spec new(wh_amqp_connection()) -> wh_amqp_connection() | {'error', _}.
@@ -196,11 +196,11 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({new, #wh_amqp_connection{uri=URI}=Connection}
-            ,_, #state{weight=Weight}=State) ->
-    case ets:insert_new(?TAB, Connection#wh_amqp_connection{weight=Weight}) of
-        true -> {reply, Connection#wh_amqp_connection{weight=Weight}
-                 ,State#state{weight=Weight+1}, ?ENSURE_TIME};
+handle_call(assign_weight, _, #state{weight=Weight}=State) ->
+    {reply, Weight, State#state{weight=Weight+1}};
+handle_call({new, #wh_amqp_connection{uri=URI}=Connection}, _, State) ->
+    case ets:insert_new(?TAB, Connection) of
+        true -> {reply, Connection, State, ?ENSURE_TIME};
         false -> {reply, find(URI), State, ?ENSURE_TIME}
     end;
 handle_call({connected, #wh_amqp_connection{uri=URI, connection=Pid
