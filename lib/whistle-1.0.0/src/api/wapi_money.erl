@@ -212,7 +212,7 @@ default_per_min_charge() ->
 base_call_cost(RateCost, RateMin, RateSurcharge) when is_number(RateCost),
                                                       is_integer(RateMin),
                                                       is_number(RateSurcharge) ->
-    RateCost * ( RateMin div 60 ) + RateSurcharge.
+    dollars_to_units(RateCost * ( RateMin div 60 ) + RateSurcharge).
 
 -spec version/0 :: () -> pos_integer().
 version() ->

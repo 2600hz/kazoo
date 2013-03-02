@@ -78,11 +78,11 @@ rate_resp(Rate, JObj) ->
                                          ,wh_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0)),
 
     lager:debug("base cost for a minute call: ~p", [BaseCost]),
-    [{<<"Rate">>, wh_json:get_binary_value(<<"rate_cost">>, Rate)}
+    [{<<"Rate">>, get_rate_cost(Rate)}
      ,{<<"Rate-Increment">>, wh_json:get_binary_value(<<"rate_increment">>, Rate)}
      ,{<<"Rate-Minimum">>, wh_json:get_binary_value(<<"rate_minimum">>, Rate)}
      ,{<<"Discount-Percentage">>, maybe_get_rate_discount(JObj)}
-     ,{<<"Surcharge">>, wh_json:get_binary_value(<<"rate_surcharge">>, Rate)}
+     ,{<<"Surcharge">>, get_surcharge(Rate)}
      ,{<<"Rate-Name">>, wh_json:get_binary_value(<<"rate_name">>, Rate)}
      ,{<<"Rate-ID">>, wh_json:get_binary_value(<<"rate_id">>, Rate)}
      ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
@@ -90,3 +90,13 @@ rate_resp(Rate, JObj) ->
      ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
+
+-spec get_surcharge(wh_json:object()) -> ne_binary().
+get_surcharge(Rate) ->
+    Surcharge = wh_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0),
+    wh_util:to_binary(wapi_money:dollars_to_units(Surcharge)).
+
+-spec get_rate_cost(wh_json:object()) -> ne_binary().
+get_rate_cost(Rate) ->
+    Cost = wh_json:get_float_value(<<"rate_cost">>, Rate, 0.0),
+    wh_util:to_binary(wapi_money:dollars_to_units(Cost)).

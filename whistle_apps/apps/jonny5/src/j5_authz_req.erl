@@ -19,8 +19,8 @@ handle_req(JObj, Props) ->
     true = wapi_authz:authz_req_v(JObj),
     wh_util:put_callid(JObj),
 
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    Limits = j5_util:get_limits(AccountId),
+    AuthAccountId = wh_json:get_value(<<"Auth-Account-ID">>, JObj),
+    Limits = j5_util:get_limits(AuthAccountId),
 
     Routines = [fun maybe_ignore_limits/3
                 ,fun maybe_no_limits/3
@@ -34,7 +34,7 @@ handle_req(JObj, Props) ->
     send_resp(JObj
               ,props:get_value(queue, Props)
               ,Limits
-              ,lists:foldl(fun(F, A) -> 
+              ,lists:foldl(fun(F, A) ->
                                    F(A, Limits, JObj) end
                            ,{error, not_processed}, Routines)
              ).
@@ -54,7 +54,7 @@ maybe_hard_limit({ok, limits_enabled}, Limits, JObj) ->
 maybe_hard_limit(Else, _, _) -> Else.
 
 -spec maybe_allotments(authz_resp(), #limits{}, wh_json:json_object()) -> authz_resp().
-maybe_allotments({ok, under_hard_limits}, Limits, JObj) -> 
+maybe_allotments({ok, under_hard_limits}, Limits, JObj) ->
     case j5_allotments:is_available(Limits, JObj) of
         true -> {ok, allotment};
         false -> {error, no_allotment}
@@ -62,7 +62,7 @@ maybe_allotments({ok, under_hard_limits}, Limits, JObj) ->
 maybe_allotments(Else, _, _) -> Else.
 
 -spec maybe_flat_rate(authz_resp(), #limits{}, wh_json:json_object()) -> authz_resp().
-maybe_flat_rate({error, no_allotment}, Limits, JObj) -> 
+maybe_flat_rate({error, no_allotment}, Limits, JObj) ->
     case j5_flat_rate:is_available(Limits, JObj) of
         true -> {ok, flat_rate};
         false -> {error, flat_rate_limit}
@@ -89,13 +89,13 @@ maybe_soft_limit(Else, _, _) -> Else.
 maybe_no_limits({ok, limits_enabled}=Ok, _, JObj) ->
     [Number, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
     case wnm_util:classify_number(Number) of
-        <<"emergency">> -> 
+        <<"emergency">> ->
             lager:debug("allowing emergency call", []),
             {ok, limits_disabled};
-        <<"tollfree_us">> -> 
+        <<"tollfree_us">> ->
             case wh_json:get_value(<<"Call-Direction">>, JObj) of
                 <<"outbound">> ->
-                    lager:debug("allowing inbound tollfree call", []),
+                    lager:debug("allowing outbound tollfree call", []),
                     {ok, limits_disabled};
                 _Else -> Ok
             end;

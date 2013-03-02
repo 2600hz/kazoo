@@ -517,12 +517,23 @@ authz_req(AccountId, Props) ->
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
      ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
-     ,{<<"Account-ID">>, AccountId}
+     ,{<<"Account-ID">>, props:get_value(?GET_CCV(<<"Account-ID">>), Props)}
+     ,{<<"Auth-Account-ID">>, AccountId}
      ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      ,{<<"Usage">>, ecallmgr_fs_nodes:account_summary(AccountId)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
+
+-spec rough_billing_seconds(wh_proplist()) -> non_neg_integer().
+rough_billing_seconds(Props) ->
+    case get_time_value(<<"Event-Date-Timestamp">>, Props)
+        - get_time_value(<<"Caller-Channel-Answered-Time">>, Props)
+        - 1
+    of
+        Seconds when Seconds >= 0 -> Seconds;
+        _Else -> 0
+    end.
 
 -spec reauthz_req(ne_binary(), ne_binary(), wh_proplist()) -> wh_proplist().
 reauthz_req(AccountId, Type, Props) ->
@@ -534,8 +545,10 @@ reauthz_req(AccountId, Type, Props) ->
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
      ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
-     ,{<<"Account-ID">>, AccountId}
+     ,{<<"Account-ID">>, props:get_value(?GET_CCV(<<"Account-ID">>), Props)}
+     ,{<<"Auth-Account-ID">>, AccountId}
      ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
+     ,{<<"Billing-Seconds">>, rough_billing_seconds(Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      ,{<<"Created-Time">>, get_time_value(<<"Caller-Channel-Created-Time">>, Props)}
      ,{<<"Answered-Time">>, get_time_value(<<"Caller-Channel-Answered-Time">>, Props)}

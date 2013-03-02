@@ -81,7 +81,7 @@ create_init_limits(AccountDb) ->
                               ,{<<"pvt_vsn">>, 1}
                              ]),
     case couch_mgr:save_doc(AccountDb, JObj) of
-        {ok, J} -> 
+        {ok, J} ->
             lager:debug("created initial limits document in db ~s", [AccountDb]),
             J;
          {error, _R} ->
@@ -158,7 +158,7 @@ write_to_ledger(Suffix, Props, Units, #limits{account_id=LedgerId, account_db=Le
                                        | Props
                                       ]),
             couch_mgr:save_doc(LedgerDb, Entry)
-    end. 
+    end.
 
 
 get_timestamp(JObj) ->
@@ -186,7 +186,7 @@ get_call_id(JObj) ->
 current_balance(_Ledger) -> get(j5_test_balance).
 -else.
 current_balance(Ledger) ->
-    wh_transaction:get_current_balance(Ledger).
+    wh_transactions:get_current_balance(Ledger).
 -endif.
 
 -spec get_session_id(wh_json:json_object()) -> ne_binary().

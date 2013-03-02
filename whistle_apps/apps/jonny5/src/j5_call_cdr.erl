@@ -22,7 +22,7 @@ handle_req(JObj, _Props) ->
     case wh_json:get_value(<<"Account-Billing">>, CCV) of
         <<"per_minute">> -> j5_credit:reconcile_cdr(AccountId, JObj);
         <<"allotment">> -> j5_allotments:reconcile_cdr(AccountId, JObj);
-        _ -> ok 
+        _ -> ok
     end,
     case wh_json:get_value(<<"Reseller-Billing">>, CCV) of
         <<"per_minute">> -> j5_credit:reconcile_cdr(ResellerId, JObj);

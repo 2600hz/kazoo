@@ -11,56 +11,246 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
--export([debit/2
-         ,credit/2
-        ]).
-
--export([set_id/2
-         ,set_description/2
-         ,set_pvt_account_id/2
-         ,set_sub_account_id/2
-         ,set_call_id/2
-        ]).
-
--export([save/1
-         ,fetch/2
-         ,get_current_balance/1
-        ]).
-
--export([get_reasons/1
-         ,is_reason/2
-         ,to_json/1
-         ,from_json/1
-        ]).
+-export([debit/2]).
+-export([credit/2]).
+-export([set_reason/2]).
+-export([set_event/2]).
+-export([set_description/2]).
+-export([set_call_id/2]).
+-export([set_sub_account_id/2]).
+-export([is_reason/2]).
+-export([to_json/1]).
+-export([save/1]).
 
 -export([reconcile_attempted/2]).
 
--define(REASONS, [{<<"per_minute_account">>, call}
-                  ,{<<"per_minute_sub_account">>, call}
-                  ,{<<"activation_charges">>, one_time}
-                  ,{<<"admin">>, one_time}
-                 ]).
+-record(wh_transaction, {id :: binary()
+                         ,description :: api_binary()
+                         ,call_id :: api_binary()
+                         ,sub_account_id :: ne_binary()
+                         ,event :: api_binary()
+                         ,pvt_reason :: ne_binary()
+                         ,pvt_code :: non_neg_integer()
+                         ,pvt_amount :: non_neg_integer()
+                         ,pvt_type :: ne_binary()
+                         ,pvt_created :: wh_now()
+                         ,pvt_modified :: wh_now()
+                         ,pvt_account_id :: ne_binary()
+                         ,pvt_account_db :: ne_binary()
+                         ,pvt_vsn = 2 :: integer()
+                        }).
 
--record(wh_transaction, {
-          id :: binary()
-         ,description :: binary()
-         ,sub_account_id :: ne_binary()
-         ,pvt_reason :: ne_binary()
-         ,pvt_amount :: integer()
-         ,pvt_type :: 'credit' | 'debit'
-         ,pvt_created :: wh_now()
-         ,pvt_modified :: wh_now()
-         ,pvt_account_id :: ne_binary()
-         ,pvt_account_db :: ne_binary()
-         ,pvt_vsn = 2 :: integer()
-         ,call_id :: binary()
-         }).
+-type transaction() :: #wh_transaction{}.
+-export_type([transaction/0]).
 
--type wh_transaction() :: #wh_transaction{}.
--type wh_transactions() :: [wh_transaction(), ...].
--export_type([wh_transaction/0
-              ,wh_transactions/0
-             ]).
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create transaction record of type credit (with Amount & Reason)
+%% @end
+%%--------------------------------------------------------------------
+-spec credit(ne_binary(), integer()) -> transaction().
+credit(Ledger, Amount) ->
+    create(Ledger, Amount, <<"credit">>).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create transaction record of type debit (with Amount & Reason)
+%% @end
+%%--------------------------------------------------------------------
+-spec debit(ne_binary(), integer()) -> transaction().
+debit(Ledger, Amount) ->
+    create(Ledger, Amount, <<"debit">>).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Set a restricted reason
+%% @end
+%%--------------------------------------------------------------------
+set_reason(Reason, #wh_transaction{}=Transaction) ->
+    Code = wh_transactions:reason_code(Reason),
+    Transaction#wh_transaction{pvt_reason=Reason
+                               ,pvt_code=Code
+                              }.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Set an event type that spawned the creation of this transaction
+%% @end
+%%--------------------------------------------------------------------
+set_event(Event, #wh_transaction{}=Transaction) ->
+    Transaction#wh_transaction{event=Event}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Set free form description
+%% @end
+%%--------------------------------------------------------------------
+-spec set_description(ne_binary(), transaction()) -> transaction().
+set_description(Desc, #wh_transaction{}=Transaction) when is_binary(Desc) ->
+    Transaction#wh_transaction{description=Desc}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Set sub account ID
+%% @end
+%%--------------------------------------------------------------------
+-spec set_sub_account_id(ne_binary(), transaction()) -> transaction().
+set_sub_account_id(AccountId, #wh_transaction{}=Transaction) when is_binary(AccountId) ->
+    Transaction#wh_transaction{sub_account_id=AccountId}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Set Call-Id
+%% @end
+%%--------------------------------------------------------------------
+-spec set_call_id(ne_binary(), transaction()) -> transaction().
+set_call_id(CallId, #wh_transaction{}=Transaction) when is_binary(CallId) ->
+    Transaction#wh_transaction{call_id=CallId}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec is_reason(ne_binary() | ne_binaries(), transaction()) -> boolean().
+is_reason(Reason, #wh_transaction{pvt_reason=Reason}) -> true;
+is_reason([Reason | _], #wh_transaction{pvt_reason=Reason}) -> true;
+is_reason([_ | Reasons], #wh_transaction{}=Transaction) ->
+    is_reason(Reasons, Transaction);
+is_reason([], #wh_transaction{}) -> false;
+is_reason(_, _) -> false.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Transform transaction record to Json object
+%% @end
+%%--------------------------------------------------------------------
+-spec to_json(transaction()) -> wh_json:object().
+to_json(#wh_transaction{}=T) ->
+    Props = [{<<"_id">>, T#wh_transaction.id}
+             ,{<<"description">>, T#wh_transaction.description}
+             ,{<<"call_id">>, T#wh_transaction.call_id}
+             ,{<<"sub_account_id">>, T#wh_transaction.sub_account_id}
+             ,{<<"event">>, T#wh_transaction.event}
+             ,{<<"pvt_reason">>, T#wh_transaction.pvt_reason}
+             ,{<<"pvt_code">>, T#wh_transaction.pvt_code}
+             ,{<<"pvt_amount">>, T#wh_transaction.pvt_amount}
+             ,{<<"pvt_type">>, T#wh_transaction.pvt_type}
+             ,{<<"pvt_created">>, T#wh_transaction.pvt_created}
+             ,{<<"pvt_modified">>, T#wh_transaction.pvt_modified}
+             ,{<<"pvt_account_id">>, T#wh_transaction.pvt_account_id}
+             ,{<<"pvt_account_db">>, T#wh_transaction.pvt_account_db}
+             ,{<<"pvt_vsn">>, T#wh_transaction.pvt_vsn}
+            ],
+    wh_json:from_list(props:filter_undefined(Props)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+save(#wh_transaction{}=Transaction) ->
+    prepare_transaction(Transaction).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Transform Json Object to transaction record
+%% @end
+%%--------------------------------------------------------------------
+-spec from_json/1 :: (wh_json:object()) -> transaction().
+from_json(JObj) ->
+    #wh_transaction{id = wh_json:get_ne_value(<<"_id">>, JObj)
+                    ,description = wh_json:get_ne_value(<<"description">>, JObj)
+                    ,call_id = wh_json:get_ne_value(<<"call_id">>, JObj)
+                    ,sub_account_id = wh_json:get_ne_value(<<"sub_account_id">>, JObj)
+                    ,event = wh_json:get_ne_value(<<"event">>, JObj)
+                    ,pvt_reason = wh_json:get_ne_value(<<"pvt_reason">>, JObj)
+                    ,pvt_code = wh_json:get_integer_value(<<"pvt_code">>, JObj, 0)
+                    ,pvt_amount = wh_json:get_integer_value(<<"pvt_amount">>, JObj, 0)
+                    ,pvt_type = wh_json:get_ne_value(<<"pvt_type">>, JObj)
+                    ,pvt_created = wh_json:get_ne_value(<<"pvt_created">>, JObj)
+                    ,pvt_modified = wh_json:get_ne_value(<<"pvt_modified">>, JObj)
+                    ,pvt_account_id = wh_json:get_ne_value(<<"pvt_account_id">>, JObj)
+                    ,pvt_account_db = wh_json:get_ne_value(<<"pvt_account_db">>, JObj)
+                    ,pvt_vsn = wh_json:get_integer_value(<<"pvt_vsn">>, JObj, 1)
+                   }.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+prepare_transaction(#wh_transaction{pvt_account_id='undefined'}) ->
+    {'error', 'account_id_missing'};
+prepare_transaction(#wh_transaction{pvt_account_db='undefined'}) ->
+    {'error', 'account_id_missing'};
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 1000 =< Code andalso Code < 2000 ->
+    prepare_call_transaction(Transaction);
+prepare_transaction(Transaction) ->
+    save_transaction(Transaction).
+
+prepare_call_transaction(#wh_transaction{call_id='undefined'}) ->
+    {'error', 'call_id_missing'};
+prepare_call_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=1002}) ->
+    {'error', 'sub_account_id_missing'};
+prepare_call_transaction(#wh_transaction{event='undefined'}) ->
+    {'error', 'event_missing'};
+prepare_call_transaction(#wh_transaction{call_id=CallId, event=Event}=Transaction) ->
+    save_transaction(Transaction#wh_transaction{id = <<CallId/binary, "-", Event/binary>>}).
+
+save_transaction(#wh_transaction{pvt_amount=0}=Transaction) ->
+    io:format("~p~n", [to_json(Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()})]),
+    {'ok', Transaction};
+save_transaction(#wh_transaction{pvt_account_db=AccountDb}=Transaction) ->
+    JObj = to_json(Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}),
+    io:format("~p~n", [JObj]),
+    case couch_mgr:save_doc(AccountDb, JObj) of
+        {'ok', J} -> {'ok', from_json(J)};
+        {'error', _}=E -> E
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Create transaction record
+%% @end
+%%--------------------------------------------------------------------
+-spec create(ne_binary(), non_neg_integer(), ne_binary()) -> transaction().
+create(Ledger, Amount, Type) ->
+    #wh_transaction{pvt_type=Type
+                    ,pvt_amount=abs(Amount)
+                    ,pvt_account_id=wh_util:format_account_id(Ledger, raw)
+                    ,pvt_account_db=wh_util:format_account_id(Ledger, encoded)
+                    ,pvt_created=wh_util:current_tstamp()
+                    ,pvt_modified=wh_util:current_tstamp()
+                   }.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 reconcile_attempted(AccountId, CallId) ->
@@ -88,461 +278,3 @@ reconcile_maybe_remove(JObj, DiscrepancyId, AccountDB) ->
             _ = couch_mgr:del_doc(AccountDB, DiscrepancyId),
             false
     end.
-
-
-
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec get_reasons/1 :: (boolean()) -> list(). 
-get_reasons(All) when All =:= true ->
-    lists:foldr(
-      fun({R, _}, Acc) -> 
-              [R | Acc]
-      end, [], ?REASONS);
-get_reasons(_) ->
-    lists:foldr(
-      fun({R, T}, Acc) -> 
-              case T =:= call of
-                  true ->
-                      Acc;
-                  false ->
-                      [R | Acc]
-              end
-      end, [], ?REASONS).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
-is_reason(Reason, #wh_transaction{pvt_reason=Reason}=Tr) ->
-    {true, Tr};
-is_reason([Reason | _], #wh_transaction{pvt_reason=Reason}=Tr) ->
-    {true, Tr};
-is_reason([_ | T], #wh_transaction{}=Tr) ->
-    is_reason(T, Tr);
-is_reason([], #wh_transaction{}=Tr) ->
-    {false, Tr};
-is_reason(_, Tr) ->
-    {false, Tr}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Transform transaction record to Json object
-%% @end
-%%--------------------------------------------------------------------
--spec to_json/1 :: (wh_transaction()) -> wh_json:object(). 
-to_json(#wh_transaction{call_id=undefined}=T) ->
-    wh_json:from_list([{<<"_id">>, T#wh_transaction.id}
-                       ,{<<"description">>, T#wh_transaction.description}
-                       ,{<<"sub_account_id">>, T#wh_transaction.sub_account_id}
-                       ,{<<"pvt_reason">>, T#wh_transaction.pvt_reason}
-                       ,{<<"pvt_amount">>, T#wh_transaction.pvt_amount}
-                       ,{<<"pvt_type">>, T#wh_transaction.pvt_type}
-                       ,{<<"pvt_created">>, T#wh_transaction.pvt_created}
-                       ,{<<"pvt_modified">>, T#wh_transaction.pvt_modified}
-                       ,{<<"pvt_account_id">>, T#wh_transaction.pvt_account_id}
-                       ,{<<"pvt_account_db">>, T#wh_transaction.pvt_account_db}
-                       ,{<<"pvt_vsn">>, T#wh_transaction.pvt_vsn}
-                      ]);
-to_json(#wh_transaction{}=T) ->
-    wh_json:from_list([{<<"_id">>, T#wh_transaction.id}
-                       ,{<<"description">>, T#wh_transaction.description}
-                       ,{<<"sub_account_id">>, T#wh_transaction.sub_account_id}
-                       ,{<<"pvt_reason">>, T#wh_transaction.pvt_reason}
-                       ,{<<"pvt_amount">>, T#wh_transaction.pvt_amount}
-                       ,{<<"pvt_type">>, T#wh_transaction.pvt_type}
-                       ,{<<"pvt_created">>, T#wh_transaction.pvt_created}
-                       ,{<<"pvt_modified">>, T#wh_transaction.pvt_modified}
-                       ,{<<"pvt_account_id">>, T#wh_transaction.pvt_account_id}
-                       ,{<<"pvt_account_db">>, T#wh_transaction.pvt_account_db}
-                       ,{<<"pvt_vsn">>, T#wh_transaction.pvt_vsn}
-                       ,{<<"call_id">>, T#wh_transaction.call_id}
-                      ]).
-    
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Transform Json Object to transaction record
-%% @end
-%%--------------------------------------------------------------------
--spec from_json/1 :: (wh_json:object()) -> wh_transaction(). 
-from_json(JObj) ->
-    Tr = #wh_transaction{
-      id = wh_json:get_ne_value(<<"_id">>, JObj)
-      ,description = wh_json:get_ne_value(<<"description">>, JObj)
-      ,sub_account_id = wh_json:get_ne_value(<<"sub_account_id">>, JObj)
-      ,pvt_reason = wh_json:get_ne_value(<<"pvt_reason">>, JObj)
-      ,pvt_amount = wh_json:get_ne_value(<<"pvt_amount">>, JObj)
-      ,pvt_type = wh_json:get_ne_value(<<"pvt_type">>, JObj)
-      ,pvt_created = wh_json:get_ne_value(<<"pvt_created">>, JObj)
-      ,pvt_modified = wh_json:get_ne_value(<<"pvt_modified">>, JObj)
-      ,pvt_account_id = wh_json:get_ne_value(<<"pvt_account_id">>, JObj)
-      ,pvt_account_db = wh_json:get_ne_value(<<"pvt_account_db">>, JObj)
-      ,pvt_vsn = wh_json:get_ne_value(<<"pvt_vsn">>, JObj)
-      ,call_id = wh_json:get_ne_value(<<"call_id">>, JObj)
-     },
-    compatibility(Tr, JObj).
-
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Create transaction record of type credit (with Amount & Reason)
-%% @end
-%%--------------------------------------------------------------------
--spec credit/2 :: (integer(), ne_binary()) -> wh_transaction(). 
-credit(Amount, Reason) ->
-    create(Amount, 'credit', Reason).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Create transaction record of type debit (with Amount & Reason)
-%% @end
-%%--------------------------------------------------------------------
--spec debit/2 :: (integer(), ne_binary()) -> wh_transaction(). 
-debit(Amount, Reason) ->
-    create(Amount, 'debit', Reason).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set free form description
-%% @end
-%%--------------------------------------------------------------------
--spec set_id/2 :: (ne_binary(), wh_transaction()) -> wh_transaction(). 
-set_id(Id, Transaction) ->
-    Transaction#wh_transaction{id=Id}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set free form description
-%% @end
-%%--------------------------------------------------------------------
--spec set_description/2 :: (ne_binary(), wh_transaction()) -> wh_transaction(). 
-set_description(Desc, Transaction) ->
-    Transaction#wh_transaction{description=Desc}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set private account ID
-%% @end
-%%--------------------------------------------------------------------
--spec set_pvt_account_id/2 :: (ne_binary(), wh_transaction()) -> wh_transaction(). 
-set_pvt_account_id(AccountId, Transaction) ->
-    Transaction#wh_transaction{pvt_account_id=AccountId}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set sub account ID
-%% @end
-%%--------------------------------------------------------------------
--spec set_sub_account_id/2 :: (ne_binary(), wh_transaction()) -> wh_transaction(). 
-set_sub_account_id(AccountId, Transaction) ->
-    Transaction#wh_transaction{sub_account_id=AccountId}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set Call-Id
-%% @end
-%%--------------------------------------------------------------------
--spec set_call_id/2 :: (ne_binary(), wh_transaction()) -> wh_transaction(). 
-set_call_id(CallId, #wh_transaction{pvt_reason= <<"per_minute_sub_account">>}=Tr) ->
-    Tr#wh_transaction{call_id=CallId};
-set_call_id(CallId, #wh_transaction{pvt_reason= <<"per_minute_account">>}=Tr) ->
-    Tr#wh_transaction{call_id=CallId};
-set_call_id(_, Tr) ->
-    Tr.
-
-%%--------------------------------------------------------------------
-%%
-%% DATABASE FUNCTIONS
-%%
-%%--------------------------------------------------------------------
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Save transaction to database
-%% @end
-%%--------------------------------------------------------------------
--spec save/1 :: (wh_transaction()) -> {ok,  wh_transaction()} | {error, wh_transaction(), list()}. 
-save(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
-    Transaction1 = set_private_properties(Transaction),
-    case validate(Transaction1) of
-        {true, Transaction2, _} ->
-            AccountDB = wh_util:format_account_id(AccountId, encoded),
-            case couch_mgr:save_doc(AccountDB, to_json(Transaction2)) of
-                {ok, T} ->
-                    {ok, from_json(T)};
-                {error, R} ->
-                    {error, Transaction2, R}
-            end;
-        {false, Tr, R} ->
-            {error, Tr, R}
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Fetch a transaction from the database
-%% @end
-%%--------------------------------------------------------------------
--spec fetch/2 :: (ne_binary(), ne_binary()) -> wh_transaction(). 
-fetch(AccountId, Id) ->    
-    AccountDB = wh_util:format_account_id(AccountId, encoded),
-    case couch_mgr:open_doc(AccountDB, Id) of
-        {ok, T} ->
-            from_json(T)
-    end.
-
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Fetch a transaction from the database
-%% @end
-%%--------------------------------------------------------------------
--spec get_current_balance/1 :: (ne_binary()) -> integer(). 
-get_current_balance(AccountId) ->    
-    AccountDB = wh_util:format_account_id(AccountId, encoded),
-    case couch_mgr:get_results(AccountDB, <<"transactions/credit_remaining">>, []) of
-        {ok, []} -> 
-            lager:debug("no current balance for ~s", [AccountId]),
-            0;
-        {ok, [ViewRes|_]} -> 
-            wh_json:get_integer_value(<<"value">>, ViewRes, 0);
-        {error, _R} -> 
-            lager:warning("unable to get current balance for ~s: ~p", [AccountId, _R]),
-            0
-    end.
-    
-%%--------------------------------------------------------------------
-%%
-%% PRIVATE FUNCTIONS
-%%
-%%--------------------------------------------------------------------
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Run compatibility routine
-%% @end
-%%--------------------------------------------------------------------
--spec compatibility/2 :: (wh_transaction(), wh_json:object()) -> wh_transaction(). 
-compatibility(Transaction, JObj) ->
-    Funs = [fun compatibility_amount/1
-            ,fun compatibility_reason/1
-            ,fun compatibility_account_id/1
-           ],
-    {Tr, _} = lists:foldl(fun(F, C) -> F(C) end, {Transaction, JObj}, Funs),
-    Tr.
-
--spec compatibility_amount/1 :: ({wh_transaction(), wh_json:object()}) -> {wh_transaction(), wh_json:object()}. 
-compatibility_amount({#wh_transaction{pvt_amount=undefined}=Tr, JObj}) ->
-    Amount = wh_json:get_ne_value(<<"amount">>, JObj),
-    {Tr#wh_transaction{pvt_amount=Amount}, JObj};
-compatibility_amount({Tr, JObj}) ->
-    {Tr, JObj}.
-
--spec compatibility_reason/1 :: ({wh_transaction(), wh_json:object()}) -> {wh_transaction(), wh_json:object()}. 
-compatibility_reason({#wh_transaction{pvt_reason=undefined}=Tr, JObj}) ->
-    Reason = wh_json:get_ne_value(<<"reason">>, JObj),
-    {Tr#wh_transaction{pvt_reason=Reason}, JObj};
-compatibility_reason({Tr, JObj}) ->
-    {Tr, JObj}.
-
--spec compatibility_account_id/1 :: ({wh_transaction(), wh_json:object()}) -> {wh_transaction(), wh_json:object()}. 
-compatibility_account_id({#wh_transaction{sub_account_id=undefined}=Tr, JObj}) ->
-    AccountId = wh_json:get_ne_value(<<"account_id">>, JObj),
-    {Tr#wh_transaction{sub_account_id=AccountId}, JObj};
-compatibility_account_id({Tr, JObj}) ->
-    {Tr, JObj}.
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create transaction record
-%% @end
-%%--------------------------------------------------------------------
--spec create/3 :: (integer(), atom(), atom()) -> wh_transaction() | {'error', 'unknow_reason'}.
-create(Amount, Op, Reason) when not is_integer(Amount) ->
-    create(wh_util:to_integer(Amount), Op, Reason);
-create(Amount, Op, Reason) when Amount < 0 ->
-    create(Amount*-1, Op, Reason);
-create(Amount, Op, Reason) when not is_binary(Reason) ->
-    create(Amount, Op, wh_util:to_binary(Reason));
-create(Amount, Op, Reason) ->
-    case lists:member(Reason, get_reasons(true)) of
-        true ->
-            #wh_transaction{pvt_reason=Reason
-                            ,pvt_type=Op
-                            ,pvt_amount=Amount
-                           };
-        false ->
-            {error, unknow_reason}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Return Errors of record when trying to save
-%% @end
-%%--------------------------------------------------------------------
--spec validate/1 :: (wh_transaction()) -> {true, wh_transaction(), undefined} | {false, wh_transaction(), list()}. 
-validate(Transaction) ->
-    {Tr, Errors} = validate_funs(Transaction),
-    case Errors of
-        [] ->
-            {true, Tr, undefined};
-        R ->
-            {false, Tr, R}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Call all the different validate function
-%% @end
-%%--------------------------------------------------------------------
--spec validate_funs/1 :: (wh_transaction()) -> {wh_transaction(), list()}. 
-validate_funs(#wh_transaction{}=Transaction) ->  
-    Funs = [fun validate_reason/1
-            ,fun validate_account_id/1
-            ,fun validate_sub_account_id/1
-            ,fun validate_call_id/1
-           ],
-    lists:foldl(fun(F, {Tr, Errs}) -> 
-                        case F(Tr) of 
-                            {ok, Tr1} -> 
-                                {Tr1, Errs}; 
-                            {error, Tr1, Err} -> 
-                                {Tr1, [Err | Errs]} 
-                        end 
-                end,
-                {Transaction, []}, Funs).
-            
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Check the account ID
-%% @end
-%%--------------------------------------------------------------------
--spec validate_reason/1 :: (wh_transaction()) -> {ok, wh_transaction()} | {error, wh_transaction(), unknow_reason}. 
-validate_reason(#wh_transaction{pvt_reason=Reason}=Tr) ->
-    case lists:member(Reason, get_reasons(true)) of
-        true -> {ok, Tr};
-        false -> {error, Tr, unknow_reason}
-    end.
-         
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Check the account ID
-%% @end
-%%--------------------------------------------------------------------
--spec validate_account_id/1 :: (wh_transaction()) -> {ok, wh_transaction()} | {error, wh_transaction(), account_id}. 
-validate_account_id(#wh_transaction{pvt_account_id=AccountId}=Tr) ->
-    case is_binary(AccountId) of
-        true -> {ok, Tr};
-        false -> {error, Tr, account_id}
-    end.
-            
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Check the account ID
-%% @end
-%%--------------------------------------------------------------------
--spec validate_sub_account_id/1 :: (wh_transaction()) -> {ok, wh_transaction()} | {error, wh_transaction(), sub_account_id}. 
-validate_sub_account_id(#wh_transaction{sub_account_id=SubAccountId, pvt_account_id=AccountId}=Tr) -> 
-    case SubAccountId =:= undefined of
-        true -> 
-            {ok, Tr#wh_transaction{sub_account_id=AccountId}};
-        false -> 
-            case is_binary(SubAccountId) of
-                true -> {ok, Tr};
-                false -> {error, Tr, sub_account_id}
-            end
-    end.
-
-         
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Check call ID
-%% @end
-%%--------------------------------------------------------------------
--spec validate_call_id/1 :: (wh_transaction()) -> {ok, wh_transaction()} | {error, wh_transaction(), atom()}. 
-validate_call_id(#wh_transaction{call_id=CallId, pvt_reason= <<"per_minute_sub_account">>}=Tr) ->
-    case is_binary(CallId) of
-        true -> {ok, Tr};
-        false -> {error, Tr, 'missing_call_id'}
-    end;
-validate_call_id(#wh_transaction{call_id=CallId, pvt_reason= <<"per_minute_account">>}=Tr) ->
-    case is_binary(CallId) of
-        true -> {ok, Tr};
-        false -> {error, Tr, 'missing_call_id'}
-    end;
-validate_call_id(Tr) ->
-    {ok, Tr}.
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Call functions to set private properties 
-%% @end
-%%--------------------------------------------------------------------    
--spec set_private_properties/1 :: (wh_transaction()) -> wh_transaction(). 
-set_private_properties(Transaction) ->
-    PvtFuns = [fun set_pvt_created/1
-               ,fun set_pvt_modified/1
-               ,fun set_pvt_account_db/1
-              ],
-    lists:foldl(fun(F, C) -> F(C) end, Transaction, PvtFuns).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Set creation date
-%% @end
-%%--------------------------------------------------------------------
--spec set_pvt_created/1 :: (wh_transaction()) -> wh_transaction(). 
-set_pvt_created(Transaction) ->
-    Transaction#wh_transaction{pvt_created=wh_util:current_tstamp()}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Set modification date
-%% @end
-%%--------------------------------------------------------------------
--spec set_pvt_modified/1 :: (wh_transaction()) -> wh_transaction(). 
-set_pvt_modified(Transaction) ->
-    Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}.
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Set private account DB
-%% @end
-%%--------------------------------------------------------------------
--spec set_pvt_account_db/1 :: (wh_transaction()) -> wh_transaction(). 
-set_pvt_account_db(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
-    AccountDB = wh_util:format_account_id(AccountId, encoded),
-    Transaction#wh_transaction{pvt_account_db=AccountDB}.

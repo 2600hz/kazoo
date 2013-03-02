@@ -182,7 +182,7 @@ format_account_id(AccountId, 'raw') -> AccountId.
 -spec current_account_balance(api_binary()) -> integer().
 current_account_balance('undefined') -> 0;
 current_account_balance(AccountId) ->
-    wh_transaction:get_current_balance(AccountId).
+    wh_transactions:get_current_balance(AccountId).
 
 %%--------------------------------------------------------------------
 %% @public

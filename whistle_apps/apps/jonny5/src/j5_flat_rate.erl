@@ -42,11 +42,11 @@ maybe_consume_flat_rate(Limits, JObj) ->
 -spec eligible_for_flat_rate(wh_json:object()) -> boolean().
 eligible_for_flat_rate(JObj) ->
     [Num, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
-    Number = wnm_util:to_e164(Num), 
+    Number = wnm_util:to_e164(Num),
     TrunkWhitelist = ?WHITELIST,
     TrunkBlacklist = ?BLACKLIST,
     (wh_util:is_empty(TrunkWhitelist) orelse re:run(Number, TrunkWhitelist) =/= nomatch)
-        andalso 
+        andalso
           (wh_util:is_empty(TrunkBlacklist) orelse re:run(Number, TrunkBlacklist) =:= nomatch).
 
 -spec get_inbound_resources(wh_json:object()) -> integer().
@@ -63,7 +63,7 @@ get_outbound_resources(JObj) ->
     case wh_json:get_value(<<"Call-Direction">>, JObj) of
         <<"outbound">> -> CurrentUsage + 1;
         _Else -> CurrentUsage
-    end.            
+    end.
 
 -spec consume_inbound_limits(j5_limits(), integer()) -> integer().
 consume_inbound_limits(_, 0) ->
@@ -76,10 +76,10 @@ consume_inbound_limits(#limits{inbound_trunks=0}, Resources) ->
     Resources;
 consume_inbound_limits(#limits{inbound_trunks=Trunks}, Resources) ->
     case Resources - Trunks of
-        Count when Count > 0 -> 
+        Count when Count > 0 ->
             lager:debug("all ~p inbound trunks consumed leaving ~p channels unaccounted for", [Trunks, Count]),  
             Count;
-        _Else -> 
+        _Else ->
             lager:debug("account is consuming ~p/~p inbound trunks", [abs(_Else), Trunks]),
             0
     end.
@@ -89,12 +89,12 @@ consume_twoway_limits(_, 0) -> 0;
 consume_twoway_limits(#limits{twoway_trunks=-1}, _) ->
     lager:debug("account has unlimited twoway trunks", []),
     0;
-consume_twoway_limits(#limits{twoway_trunks=0}, Resources) -> 
+consume_twoway_limits(#limits{twoway_trunks=0}, Resources) ->
     lager:debug("account has no two-way trunks", []),
     Resources;
 consume_twoway_limits(#limits{twoway_trunks=Trunks}, Resources) ->
     case Resources - Trunks of
-        Count when Count > 0 -> 
+        Count when Count > 0 ->
             lager:debug("all ~p two-way trunks consumed leaving ~p channels unaccounted for", [Trunks, Count]),  
             Count;
         _Else ->
