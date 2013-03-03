@@ -42,7 +42,7 @@
          ,method = 'get' :: http_method()
          ,call :: whapps_call:call()
          ,request_id :: ibrowse_req_id()
-         ,request_params :: wh_json:json_object()
+         ,request_params :: wh_json:object()
          ,response_body :: binary()
          ,response_content_type :: binary()
          ,response_pid :: pid() %% pid of the processing of the response
@@ -76,15 +76,18 @@ start_link(Call, JObj) ->
 stop_call(Srv, Call) ->
     gen_listener:cast(Srv, {stop, Call}).
 
--spec new_request(pid(), ne_binary(), http_method(), wh_json:json_object()) -> 'ok'.
+-spec new_request(pid(), ne_binary(), http_method()) -> 'ok'.
+-spec new_request(pid(), ne_binary(), http_method(), wh_json:object()) -> 'ok'.
+new_request(Srv, Uri, Method) ->
+    gen_listener:cast(Srv, {'request', Uri, Method}).
 new_request(Srv, Uri, Method, Params) ->
-    gen_listener:cast(Srv, {request, Uri, Method, Params}).
+    gen_listener:cast(Srv, {'request', Uri, Method, Params}).
 
 -spec updated_call(pid(), whapps_call:call()) -> 'ok'.
 updated_call(Srv, Call) ->
-    gen_listener:cast(Srv, {updated_call, Call}).
+    gen_listener:cast(Srv, {'updated_call', Call}).
 
--spec handle_call_event(wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     case props:get_value(pid, Props) of
         P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
@@ -121,11 +124,11 @@ init([Call, JObj]) ->
 
     ?MODULE:new_request(self(), VoiceUri, Method, BaseParams),
 
-    {ok, #state{
-       cdr_uri = wh_json:get_value(<<"CDR-URI">>, JObj)
-       ,call = Call
-       ,request_format = ReqFormat
-      }, hibernate}.
+    {'ok', #state{cdr_uri = wh_json:get_value(<<"CDR-URI">>, JObj)
+                  ,call = Call
+                  ,request_format = ReqFormat
+                 }
+     ,'hibernate'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -261,7 +264,7 @@ handle_info(_Info, State) ->
 %%                                    ignore
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(wh_json:json_object(), #state{}) -> gen_listener:handle_event_return().
+-spec handle_event(wh_json:object(), #state{}) -> gen_listener:handle_event_return().
 handle_event(_JObj, #state{response_pid=Pid}) ->
     {reply, [{pid, Pid}]}.
 
@@ -294,10 +297,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec send_req(whapps_call:call(), nonempty_string() | ne_binary(), http_method(), wh_json:json_object()) ->
-                            'ok' |
-                            {'ok', ibrowse_req_id()} |
-                            {'stop', whapps_call:call()}.
+-spec send_req(whapps_call:call(), nonempty_string() | ne_binary(), http_method(), wh_json:object()) ->
+                      'ok' |
+                      {'ok', ibrowse_req_id()} |
+                      {'stop', whapps_call:call()}.
 send_req(Call, Uri, get, BaseParams) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = wh_json:set_values(wh_json:to_proplist(BaseParams), UserParams),
