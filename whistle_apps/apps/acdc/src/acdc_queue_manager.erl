@@ -21,6 +21,7 @@
          ,handle_config_change/2
          ,should_ignore_member_call/3
          ,config/1
+         ,refresh/2
         ]).
 
 %% FSM helpers
@@ -200,6 +201,8 @@ should_ignore_member_call(Srv, Call, CallJObj) ->
     gen_listener:call(Srv, {'should_ignore_member_call', K}).
 
 config(Srv) -> gen_listener:call(Srv, 'config').
+
+refresh(Mgr, QueueJObj) -> gen_listener:cast(Mgr, {'refresh', QueueJObj}).
 
 strategy(Srv) -> gen_listener:call(Srv, 'strategy').
 next_winner(Srv) -> gen_listener:call(Srv, 'next_winner').
@@ -440,6 +443,10 @@ handle_cast({'gen_listener', {'created_queue', _}}, State) ->
 handle_cast({'gen_listener', {'is_consuming', _}}, State) ->
     {'noreply', State};
 
+handle_cast({'refresh', QueueJObj}, State) ->
+    lager:debug("refreshing queue configs"),
+    {'noreply', update_properties(QueueJObj, State), 'hibernate'};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -675,5 +682,9 @@ maybe_start_queue_workers(QueueSup, AgentCount) ->
         N when N >= AgentCount -> 'ok';
         N when N < AgentCount -> gen_listener:cast(self(), {start_worker, AgentCount-N})
     end.
-            
-    
+
+update_properties(QueueJObj, State) ->
+    State#state{
+      enter_when_empty=wh_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
+      ,moh=wh_json:get_value(<<"moh">>, QueueJObj)
+     }.

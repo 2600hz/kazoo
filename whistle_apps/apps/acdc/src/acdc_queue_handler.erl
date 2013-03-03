@@ -79,7 +79,9 @@ handle_queue_change(AccountDb, AccountId, QueueId, <<"doc_edited">>) ->
             WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
             [acdc_queue_fsm:refresh(acdc_queue_worker_sup:fsm(WorkerSup), JObj)
              || WorkerSup <- acdc_queue_workers_sup:workers(WorkersSup)
-            ]
+            ],
+            Mgr = acdc_queue_sup:manager(QueueSup),
+            acdc_queue_manager:refresh(Mgr, JObj)
     end;
 handle_queue_change(_, AccountId, QueueId, <<"doc_deleted">>) ->
     lager:debug("maybe stopping existing queue for ~s: ~s", [AccountId, QueueId]),

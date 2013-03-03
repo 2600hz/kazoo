@@ -641,7 +641,7 @@ connecting('current_call', _, #state{member_call=Call
 %%--------------------------------------------------------------------
 handle_event({'refresh', QueueJObj}, StateName, State) ->
     lager:debug("refreshing queue configs"),
-    {'next_state', StateName, update_properties(QueueJObj, State)};
+    {'next_state', StateName, update_properties(QueueJObj, State), 'hibernate'};
 handle_event(_Event, StateName, State) ->
     lager:debug("unhandled event in state ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
