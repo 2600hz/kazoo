@@ -53,7 +53,6 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                   {ne_binary(), ne_binary(), atom()}.
 -spec get_fs_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
                         fs_app() |
-                        
                         {'return', 'error'} |
                         {'error', ne_binary()} |
                         [fs_app(),...].
@@ -327,7 +326,7 @@ get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
         Media ->
             Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
             lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
-            [{"application", <<"set hold_music=", Stream/binary>>}
+            [{<<"set">>, <<"hold_music=", Stream/binary>>}
              ,{<<"endless_playback">>, <<"${hold_music}">>}
             ]
     end;
