@@ -326,7 +326,7 @@ get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
         Media ->
             Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
             lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
-            [{"application", <<"set hold_music=", Stream/binary>>}
+            [{<<"set">>, <<"hold_music=", Stream/binary>>}
              ,{<<"endless_playback">>, <<"${hold_music}">>}
             ]
     end;
