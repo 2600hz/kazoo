@@ -689,7 +689,7 @@ create_masquerade_event(Application, EventName, Boolean) ->
 media_path(MediaName, UUID, JObj) -> media_path(MediaName, 'new', UUID, JObj).
 
 -spec media_path(ne_binary(), 'extant' | 'new', ne_binary(), wh_json:object()) -> ne_binary().
-media_path(undefined, _Type, _UUID, _) -> <<"silence_stream://5">>;
+media_path('undefined', _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
     media_path(wh_util:to_binary(MediaName), Type, UUID, JObj);
 media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _) -> Media;
@@ -697,6 +697,7 @@ media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _) -> recording_filename(FSPath);
 media_path(<<?LOCAL_MEDIA_PATH, _/binary>> = FSPath, _Type, _UUID, _) -> FSPath;
 media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
+media_path(<<"https://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
 media_path(MediaName, Type, UUID, JObj) ->
     case lookup_media(MediaName, UUID, JObj, Type) of
         {'error', _E} ->
