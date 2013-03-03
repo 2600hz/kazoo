@@ -77,11 +77,10 @@ presence_mwi_query(JObj, _Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec unsolicited_owner_mwi_update(api_binary(), api_binary()) -> 'ok' | {'error', _}.
-unsolicited_owner_mwi_update('undefined', _) ->
-    {'error', 'missing_account_db'};
-unsolicited_owner_mwi_update(_, 'undefined') ->
-    {'error', 'missing_owner_id'};
+-spec unsolicited_owner_mwi_update(api_binary(), api_binary()) ->
+                                          'ok' | {'error', _}.
+unsolicited_owner_mwi_update('undefined', _) -> {'error', 'missing_account_db'};
+unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]}
                    ,'include_docs'
@@ -90,22 +89,21 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
         {'ok', JObjs} ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
             AccountId = wh_util:format_account_id(AccountDb, raw),
-            lists:foreach(fun(JObj) ->
-                                  J = wh_json:get_value(<<"doc">>, JObj),
-                                  Username = wh_json:get_value([<<"sip">>, <<"username">>], J),
-                                  Realm = get_sip_realm(J, AccountId),
-                                  OwnerId = get_endpoint_owner(J),
-                                  case wh_json:get_value([<<"sip">>, <<"method">>], J) =:= <<"password">>
-                                      andalso Username =/= 'undefined'
-                                      andalso Realm =/= 'undefined'
-                                      andalso OwnerId =/= 'undefined'
-                                  of
-                                      'true' ->
-                                          send_mwi_update(New, Saved, Username, Realm);
-                                      'false' ->
-                                          'ok'
-                                  end
-                          end, JObjs),
+            lists:foreach(
+              fun(JObj) ->
+                      J = wh_json:get_value(<<"doc">>, JObj),
+                      Username = wh_json:get_value([<<"sip">>, <<"username">>], J),
+                      Realm = get_sip_realm(J, AccountId),
+                      OwnerId = get_endpoint_owner(J),
+                      case wh_json:get_value([<<"sip">>, <<"method">>], J) =:= <<"password">>
+                          andalso Username =/= 'undefined'
+                          andalso Realm =/= 'undefined'
+                          andalso OwnerId =/= 'undefined'
+                      of
+                          'true' -> send_mwi_update(New, Saved, Username, Realm);
+                          'false' -> 'ok'
+                      end
+              end, JObjs),
             'ok';
         {'error', _R}=E ->
             lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
@@ -118,7 +116,8 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec unsolicited_endpoint_mwi_update(api_binary(), api_binary()) -> 'ok' | {'error', _}.
+-spec unsolicited_endpoint_mwi_update(api_binary(), api_binary()) ->
+                                             'ok' | {'error', _}.
 unsolicited_endpoint_mwi_update('undefined', _) ->
     {'error', 'missing_account_db'};
 unsolicited_endpoint_mwi_update(_, 'undefined') ->
@@ -142,8 +141,7 @@ maybe_send_endpoint_mwi_update(JObj, AccountDb) ->
         'true' ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
             send_mwi_update(New, Saved, Username, Realm);
-        'false' ->
-            {'error', 'not_appropriate'}
+        'false' -> {'error', 'not_appropriate'}
     end.
 
 %%--------------------------------------------------------------------
@@ -164,7 +162,9 @@ alpha_to_dialpad(Value) ->
 %%--------------------------------------------------------------------
 -spec strip_nonalpha(ne_binary()) -> ne_binary().
 strip_nonalpha(Value) ->
-    re:replace(Value, <<"[^[:alpha:]]">>, <<>>, [{return,binary}, global]).
+    re:replace(Value, <<"[^[:alpha:]]">>, <<>>, [{'return', 'binary'}
+                                                 ,'global'
+                                                ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -189,12 +189,12 @@ dialpad_digit(WXYZ) when WXYZ =:= $w orelse WXYZ =:= $x orelse WXYZ =:= $y orels
 %% @end
 %%--------------------------------------------------------------------
 -spec ignore_early_media(wh_json:objects()) -> api_binary().
-ignore_early_media([]) -> undefined;
+ignore_early_media([]) -> 'undefined';
 ignore_early_media(Endpoints) ->
     Ignore = lists:foldr(fun(Endpoint, Acc) ->
                                  wh_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
                                      or Acc
-                         end, false, Endpoints),
+                         end, 'false', Endpoints),
     wh_util:to_binary(Ignore).
 
 %%--------------------------------------------------------------------
@@ -205,12 +205,12 @@ ignore_early_media(Endpoints) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec correct_media_path(api_binary(), whapps_call:call()) -> api_binary().
-correct_media_path(undefined, _) -> undefined;
+correct_media_path('undefined', _) -> 'undefined';
 correct_media_path(<<"silence_stream://", _/binary>> = Media, _) -> Media;
 correct_media_path(<<"tone_stream://", _/binary>> = Media, _) -> Media;
 correct_media_path(Media, Call) ->
     case binary:match(Media, <<"/">>) of
-        nomatch -> <<$/, (whapps_call:account_id(Call))/binary, $/, Media/binary>>;
+        'nomatch' -> <<$/, (whapps_call:account_id(Call))/binary, $/, Media/binary>>;
         _Else -> Media
     end.
 
@@ -220,7 +220,9 @@ correct_media_path(Media, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec owner_ids_by_sip_username(ne_binary(), ne_binary()) -> {'ok', ne_binaries()} | {'error', _}.
+-spec owner_ids_by_sip_username(ne_binary(), ne_binary()) ->
+                                       {'ok', ne_binaries()} |
+                                       {'error', _}.
 owner_ids_by_sip_username(AccountDb, Username) ->
     case wh_cache:peek_local(?CALLFLOW_CACHE, ?SIP_USER_OWNERS_KEY(AccountDb, Username)) of
         {'ok', _}=Ok -> Ok;

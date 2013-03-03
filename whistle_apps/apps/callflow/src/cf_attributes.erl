@@ -235,18 +235,18 @@ determine_callee_attribute(Call) ->
 
 moh_attributes(Attribute, Call) ->
     case cf_endpoint:get(Call) of
-        {error, _R} ->
+        {'error', _R} ->
             lager:warning("unable to get endpoint: ~p", [_R]),
-            undefined;
-        {ok, Endpoint} ->
+            'undefined';
+        {'ok', Endpoint} ->
             Value = wh_json:get_ne_value([<<"music_on_hold">>, Attribute], Endpoint),
             maybe_normalize_moh_attribute(Value, Attribute, Call)
     end.
 
 moh_attributes(EndpointId, Attribute, Call) when is_binary(EndpointId) ->
     case cf_endpoint:get(EndpointId, Call) of
-        {error, _} -> undefined;
-        {ok, Endpoint} ->
+        {'error', _} -> 'undefined';
+        {'ok', Endpoint} ->
             Value = wh_json:get_ne_value([<<"music_on_hold">>, Attribute], Endpoint),
             maybe_normalize_moh_attribute(Value, Attribute, Call)
     end;
@@ -256,7 +256,7 @@ moh_attributes(Endpoint, Attribute, Call) ->
 
 
 -spec maybe_normalize_moh_attribute(api_binary(), ne_binary(), whapps_call:call()) -> api_binary().
-maybe_normalize_moh_attribute(undefined, _, _) -> undefined;
+maybe_normalize_moh_attribute('undefined', _, _) -> 'undefined';
 maybe_normalize_moh_attribute(Value, <<"media_id">>, Call) ->
     MediaId = cf_util:correct_media_path(Value, Call),
     lager:info("found music_on_hold media_id: '~p'", [MediaId]),
