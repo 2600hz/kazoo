@@ -216,7 +216,6 @@ handle_info({'ibrowse_async_headers', ReqId, "302", RespHeaders}
 
     ?MODULE:new_request(self(), Redirect1, Method, Params),
     {'noreply', State};
-
 handle_info({'ibrowse_async_headers', ReqId, "4"++ StatusCode, _RespHeaders}
             ,#state{request_id=ReqId}=State) ->
     lager:debug("recv client failure status code 4~s", [StatusCode]),
