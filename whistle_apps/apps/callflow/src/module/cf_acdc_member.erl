@@ -88,10 +88,7 @@ wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
     Wait = erlang:now(),
     receive
         {'amqp_msg', JObj} ->
-            process_message(MC, Timeout, Start, Wait, JObj, wh_util:get_event_type(JObj));
-        _Msg ->
-            lager:info("popping msg off: ~p", [_Msg]),
-            wait_for_bridge(MC, Timeout, Start)
+            process_message(MC, Timeout, Start, Wait, JObj, wh_util:get_event_type(JObj))
     after Timeout ->
             lager:info("failed to handle the call in time, proceeding"),
             cancel_member_call(Call, <<"member_timeout">>),
