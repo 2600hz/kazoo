@@ -21,6 +21,7 @@
          ,handle_config_change/2
          ,should_ignore_member_call/3
          ,config/1
+         ,refresh/2
         ]).
 
 %% FSM helpers
@@ -56,6 +57,7 @@
           ,enter_when_empty = 'true' :: boolean() % allow caller into queue if no agents are logged in
           ,moh :: api_binary()
          }).
+-type mgr_state() :: #state{}.
 
 -define(BINDINGS(A, Q), [{'conf', [{'type', <<"queue">>}
                                    ,{'db', wh_util:format_account_id(A, 'encoded')}
@@ -156,6 +158,14 @@ start_queue_call(JObj, Props, Call) ->
     lager:debug("answering call"),
     whapps_call_command:answer_now(Call),
 
+    case props:get_value('moh', Props) of
+        'undefined' -> whapps_call_command:hold(Call);
+        MediaId ->
+            MOH = cf_util:correct_media_path(MediaId, Call),
+            lager:debug("using MOH ~s", [MOH]),
+            whapps_call_command:hold(MOH, Call)
+    end,
+
     wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj),
     lager:debug("put call into shared messaging queue"),
 
@@ -201,6 +211,8 @@ should_ignore_member_call(Srv, Call, CallJObj) ->
 
 config(Srv) -> gen_listener:call(Srv, 'config').
 
+refresh(Mgr, QueueJObj) -> gen_listener:cast(Mgr, {'refresh', QueueJObj}).
+
 strategy(Srv) -> gen_listener:call(Srv, 'strategy').
 next_winner(Srv) -> gen_listener:call(Srv, 'next_winner').
 
@@ -239,14 +251,12 @@ init([Super, AcctId, QueueId]) ->
     _ = update_strategy_state(self(), Strategy, StrategyState),
 
     lager:debug("queue mgr started for ~s", [QueueId]),
-    {'ok', #state{acct_id=AcctId
-                  ,queue_id=QueueId
-                  ,supervisor=Super
-                  ,strategy=Strategy
-                  ,strategy_state=StrategyState
-                  ,enter_when_empty=wh_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
-                  ,moh=wh_json:get_value(<<"moh">>, QueueJObj)
-                 }}.
+    {'ok', update_properties(QueueJObj, #state{acct_id=AcctId
+                                               ,queue_id=QueueId
+                                               ,supervisor=Super
+                                               ,strategy=Strategy
+                                               ,strategy_state=StrategyState
+                                              })}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -440,6 +450,10 @@ handle_cast({'gen_listener', {'created_queue', _}}, State) ->
 handle_cast({'gen_listener', {'is_consuming', _}}, State) ->
     {'noreply', State};
 
+handle_cast({'refresh', QueueJObj}, State) ->
+    lager:debug("refreshing queue configs"),
+    {'noreply', update_properties(QueueJObj, State), 'hibernate'};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -458,8 +472,12 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
-handle_event(_JObj, #state{enter_when_empty=EnterWhenEmpty}) ->
-    {'reply', [{'enter_when_empty', EnterWhenEmpty}]}.
+handle_event(_JObj, #state{enter_when_empty=EnterWhenEmpty
+                           ,moh=MOH
+                          }) ->
+    {'reply', [{'enter_when_empty', EnterWhenEmpty}
+               ,{'moh', MOH}
+              ]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -606,7 +624,7 @@ sort_agent(A, B) ->
 %% Otherwise CRs will never be empty
 -spec remove_unknown_agents(pid(), wh_json:objects()) -> wh_json:objects().
 remove_unknown_agents(Mgr, CRs) ->
-    case gen_listener:call(Mgr, current_agents) of
+    case gen_listener:call(Mgr, 'current_agents') of
         [] -> [];
         Agents ->
             [CR || CR <- CRs,
@@ -636,29 +654,29 @@ create_strategy_state(Strategy, AcctDb, QueueId) ->
 create_strategy_state('rr', 'undefined', AcctDb, QueueId) ->
     create_strategy_state('rr', queue:new(), AcctDb, QueueId);
 create_strategy_state('rr', AgentQ, AcctDb, QueueId) ->
-    case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
-        {ok, []} -> lager:debug("no agents around"), AgentQ;
-        {ok, JObjs} ->
+    case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
+        {'ok', []} -> lager:debug("no agents around"), AgentQ;
+        {'ok', JObjs} ->
             Q = queue:from_list([Id || JObj <- JObjs,
                                        not queue:member((Id = wh_json:get_value(<<"id">>, JObj)), AgentQ)
                                 ]),
             queue:join(AgentQ, Q);
-        {error, _E} -> lager:debug("error creating strategy rr: ~p", [_E]), AgentQ
+        {'error', _E} -> lager:debug("error creating strategy rr: ~p", [_E]), AgentQ
     end;
 create_strategy_state('mi', 'undefined', AcctDb, QueueId) ->
     create_strategy_state('mi', [], AcctDb, QueueId);
 create_strategy_state('mi', AgentL, AcctDb, QueueId) ->
     case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
-        {ok, []} -> lager:debug("no agents around"), AgentL;
-        {ok, JObjs} ->
+        {'ok', []} -> lager:debug("no agents around"), AgentL;
+        {'ok', JObjs} ->
             lists:foldl(fun(JObj, Acc) ->
                                 Id = wh_json:get_value(<<"id">>, JObj),
                                 case lists:member(Id, Acc) of
-                                    true -> Acc;
-                                    false -> [Id | Acc]
+                                    'true' -> Acc;
+                                    'false' -> [Id | Acc]
                                 end
                         end, AgentL, JObjs);
-        {error, _E} -> lager:debug("error creating strategy mi: ~p", [_E]), AgentL
+        {'error', _E} -> lager:debug("error creating strategy mi: ~p", [_E]), AgentL
     end.
 
 update_strategy_state(Srv, 'rr', StrategyState) ->
@@ -673,7 +691,12 @@ maybe_start_queue_workers(QueueSup, AgentCount) ->
     WSup = acdc_queue_sup:workers_sup(QueueSup),
     case acdc_queue_workers_sup:worker_count(WSup) of
         N when N >= AgentCount -> 'ok';
-        N when N < AgentCount -> gen_listener:cast(self(), {start_worker, AgentCount-N})
+        N when N < AgentCount -> gen_listener:cast(self(), {'start_worker', AgentCount-N})
     end.
-            
-    
+
+-spec update_properties(wh_json:object(), mgr_state()) -> mgr_state().
+update_properties(QueueJObj, State) ->
+    State#state{
+      enter_when_empty=wh_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
+      ,moh=wh_json:get_value(<<"moh">>, QueueJObj)
+     }.
