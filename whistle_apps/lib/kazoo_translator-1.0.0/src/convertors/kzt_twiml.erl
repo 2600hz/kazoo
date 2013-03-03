@@ -17,16 +17,16 @@
 
 parse_cmds(XMLString) ->
     try xmerl_scan:string(wh_util:to_list(XMLString)) of
-        {#xmlElement{name='Response'}=XML, _} -> {ok, XML};
-        _ -> {error, not_parsed}
+        {#xmlElement{name='Response'}=XML, _} -> {'ok', XML};
+        _ -> {'error', 'not_parsed'}
     catch
-        _:_ -> {error, not_parsed}
+        _:_ -> {'error', 'not_parsed'}
     end.
 
--spec exec/2 :: (whapps_call:call(), #xmlElement{} | text()) ->
-                        {'error', whapps_call:call()} |
-                        {'request', whapps_call:call()} |
-                        {'stop', whapps_call:call()}.
+-spec exec(whapps_call:call(), xml_el() | text()) ->
+                  {'error', whapps_call:call()} |
+                  {'request', whapps_call:call()} |
+                  {'stop', whapps_call:call()}.
 exec(Call, #xmlElement{name='Response', content=Els}) ->
     exec_elements(Call, Els);
 exec(Call, Resp) ->
@@ -35,130 +35,108 @@ exec(Call, Resp) ->
             exec_elements(Call, Els);
         _Other ->
             lager:debug("failed to exec twiml: ~p", [_Other]),
-            {error, Call}
+            {'error', Call}
     catch
         _E:_R ->
             lager:debug("xml extraction fail: ~s: ~p: ~p", [_E, _R, Resp]),
-            {error, Call}
+            {'error', Call}
     end.
 
--spec exec_elements/2 :: (whapps_call:call(), xml_els()) ->
-                                 {'error', whapps_call:call()} |
-                                 {'request', whapps_call:call()} |
-                                 {'stop', whapps_call:call()}.
-exec_elements(Call, []) -> {ok, Call};
+-spec exec_elements(whapps_call:call(), xml_els()) ->
+                           {'error', whapps_call:call()} |
+                           {'request', whapps_call:call()} |
+                           {'stop', whapps_call:call()}.
+exec_elements(Call, []) -> {'ok', Call};
 exec_elements(Call, [#xmlText{}=_El|Els]) ->
     exec_elements(Call, Els);
 exec_elements(Call, [El|Els]) ->
     try exec_element(Call, El) of
-        {ok, Call1} -> exec_elements(Call1, Els);
-        {request, _Call}=REQ -> REQ;
-        {error, _Call}=ERR -> ERR;
-        {stop, _Call}=STOP -> STOP
+        {'ok', Call1} -> exec_elements(Call1, Els);
+        {'request', _Call}=REQ -> REQ;
+        {'error', _Call}=ERR -> ERR;
+        {'stop', _Call}=STOP -> STOP
     catch
-        throw:{unknown_element, Name} ->
+        'throw':{'unknown_element', Name} ->
             lager:debug("unknown element in response: ~s", [Name]),
-            {error, kzt_util:add_error(Call, <<"unknown_element">>, Name)};
+            {'error', kzt_util:add_error(Call, <<"unknown_element">>, Name)};
         _E:_R ->
             lager:debug("'~s' when execing el ~p: ~p", [_E, El, _R]),
             wh_util:log_stacktrace(),
-            {error, Call}
+            {'error', Call}
     end.
 
--spec exec_element/2 :: (whapps_call:call(), #xmlElement{}) ->
-                                {'ok', whapps_call:call()} |
-                                {'request', whapps_call:call()} |
-                                {'stop', whapps_call:call()} |
-                                {'error', whapps_call:call()}.
-exec_element(Call
-             ,#xmlElement{name='Dial'
-                          ,content=Endpoints
-                          ,attributes=Attrs
-                         }
-            ) ->
+-spec exec_element(whapps_call:call(), xml_el()) ->
+                          {'ok', whapps_call:call()} |
+                          {'request', whapps_call:call()} |
+                          {'stop', whapps_call:call()} |
+                          {'error', whapps_call:call()}.
+exec_element(Call, #xmlElement{name='Dial'
+                               ,content=Endpoints
+                               ,attributes=Attrs
+                              }) ->
     dial(Call, Endpoints, Attrs);
-exec_element(Call
-             ,#xmlElement{name='Record'
-                          ,content=[] % nothing inside the tags please
-                          ,attributes=Attrs
-                         }
-            ) ->
+exec_element(Call, #xmlElement{name='Record'
+                               ,content=[] % nothing inside the tags please
+                               ,attributes=Attrs
+                              }) ->
     record_call(Call, Attrs);
-exec_element(Call
-             ,#xmlElement{name='Gather'
-                          ,content=SubActions
-                          ,attributes=Attrs
-                         }
-            ) ->
+exec_element(Call, #xmlElement{name='Gather'
+                               ,content=SubActions
+                               ,attributes=Attrs
+                              }) ->
     gather(Call, SubActions, Attrs);
-exec_element(Call
-             ,#xmlElement{name='Play'
-                          ,content=ToPlay
-                          ,attributes=Attrs
-                         }
-            ) ->
+exec_element(Call, #xmlElement{name='Play'
+                               ,content=ToPlay
+                               ,attributes=Attrs
+                              }) ->
     case play(Call, ToPlay, Attrs) of
-        {ok, _}=OK -> OK;
-        {error, _E, Call1} ->
+        {'ok', _}=OK -> OK;
+        {'error', _E, Call1} ->
             lager:debug("play stopped with error ~p", [_E]),
-            {error, Call1}
+            {'error', Call1}
     end;
-exec_element(Call
-             ,#xmlElement{name='Say'
-                          ,content=ToSay
-                          ,attributes=Attrs
-                         }
-            ) ->
+exec_element(Call, #xmlElement{name='Say'
+                               ,content=ToSay
+                               ,attributes=Attrs
+                              }) ->
     case say(Call, ToSay, Attrs) of
-        {ok, _}=OK -> OK;
-        {error, _E, Call1} ->
+        {'ok', _}=OK -> OK;
+        {'error', _E, Call1} ->
             lager:debug("say stopped with error ~p", [_E]),
-            {error, Call1}
+            {'error', Call1}
     end;
-exec_element(Call
-             ,#xmlElement{name='Redirect'
-                          ,content=RedirectUrl
-                          ,attributes=Attrs
-                         }
-            ) ->
+exec_element(Call, #xmlElement{name='Redirect'
+                               ,content=RedirectUrl
+                               ,attributes=Attrs
+                              }) ->
     redirect(Call, RedirectUrl, Attrs);
-exec_element(Call
-             ,#xmlElement{name='Pause'
-                          ,content=[]
-                          ,attributes=Attrs
-                         }
-            ) ->
+exec_element(Call, #xmlElement{name='Pause'
+                               ,content=[]
+                               ,attributes=Attrs
+                              }) ->
     pause(Call, Attrs);
-exec_element(Call
-             ,#xmlElement{name='Variable'
-                          ,content=[]
-                          ,attributes=Attrs
-                         }
-            ) ->
+exec_element(Call, #xmlElement{name='Variable'
+                               ,content=[]
+                               ,attributes=Attrs
+                              }) ->
     set_variable(Call, Attrs);
-exec_element(Call
-             ,#xmlElement{name='Hangup'
-                          ,content=[]
-                          ,attributes=[]
-                         }
-            ) ->
+exec_element(Call, #xmlElement{name='Hangup'
+                               ,content=[]
+                               ,attributes=[]
+                              }) ->
     hangup(Call);
-exec_element(Call
-             ,#xmlElement{name='Reject'
-                          ,content=[]
-                          ,attributes=Attrs
-                         }
-            ) ->
+exec_element(Call, #xmlElement{name='Reject'
+                               ,content=[]
+                               ,attributes=Attrs
+                              }) ->
     reject(Call, Attrs);
-exec_element(_Call
-             ,#xmlElement{name=Unknown
-                          ,content=_Content
-                          ,attributes=_Attrs
-                         }
-            ) ->
-    throw({unknown_element, Unknown}).
+exec_element(_Call, #xmlElement{name=Unknown
+                                ,content=_Content
+                                ,attributes=_Attrs
+                               }) ->
+    throw({'unknown_element', Unknown}).
 
--spec req_params/1 :: (whapps_call:call()) -> wh_proplist().
+-spec req_params(whapps_call:call()) -> wh_proplist().
 req_params(Call) ->
     props:filter_undefined(
       [{<<"CallSid">>, whapps_call:call_id(Call)}
@@ -174,8 +152,8 @@ req_params(Call) ->
 %%------------------------------------------------------------------------------
 %% Verbs
 %%------------------------------------------------------------------------------
--spec dial/3 :: (whapps_call:call(), xml_els(), xml_els()) -> {'ok' | 'stop', whapps_call:call()}.
-dial(Call, [#xmlText{type=text}|_]=DialMeTxts, Attrs) ->
+-spec dial(whapps_call:call(), xml_els(), xml_els()) -> {'ok' | 'stop', whapps_call:call()}.
+dial(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
     whapps_call_command:answer(Call),
     DialMe = xml_text_to_binary(DialMeTxts),
     lager:debug("dial text DID '~s'", [DialMe]),
@@ -191,9 +169,9 @@ dial(Call, [#xmlText{type=text}|_]=DialMeTxts, Attrs) ->
                      ,{<<"Media">>, media_processing(Call1)}
                     ]),
 
-    ok = kzt_util:offnet_req(OffnetProps, Call1),
+    'ok' = kzt_util:offnet_req(OffnetProps, Call1),
 
-    {ok, Call2} = kzt_receiver:wait_for_offnet(
+    {'ok', Call2} = kzt_receiver:wait_for_offnet(
                     kzt_util:update_call_status(?STATUS_RINGING, Call1)
                    ),
     maybe_end_dial(Call2);
@@ -206,13 +184,13 @@ dial(Call, [#xmlElement{name='Conference'
     ConfProps = kzt_util:attributes_to_proplist(ConfAttrs),
     DialProps = kzt_util:attributes_to_proplist(DialAttrs),
 
-    _StartMuted = props:is_true(muted, ConfProps, false),
-    _PlayBeep = props:is_true(beep, ConfProps, true),
-    _StartConfOnEnter = props:is_true(startConferenceOnEnter, ConfProps, true),
-    _EndConfOnExit = props:is_true(endConferenceOnExit, ConfProps, false),
+    _StartMuted = props:is_true('muted', ConfProps, 'false'),
+    _PlayBeep = props:is_true('beep', ConfProps, 'true'),
+    _StartConfOnEnter = props:is_true('startConferenceOnEnter', ConfProps, 'true'),
+    _EndConfOnExit = props:is_true('endConferenceOnExit', ConfProps, 'false'),
 
     %% Will need to support fetching media OR TwiML
-    _WaitUrl = props:get_value(waitUrl, ConfProps),
+    _WaitUrl = props:get_value('waitUrl', ConfProps),
     _WaitMethod = kzt_util:http_method(ConfProps),
 
     _MaxParticipants = get_max_participants(ConfProps),
@@ -220,7 +198,7 @@ dial(Call, [#xmlElement{name='Conference'
     Call1 = setup_call_for_dial(Call, DialProps),
 
     lager:debug("dial into conference ~s, unsupported", [ConfId]),
-    {stop, Call1};
+    {'stop', Call1};
 
 dial(Call, [#xmlElement{name='Queue'
                         ,content=QueueIdTxts
@@ -232,7 +210,7 @@ dial(Call, [#xmlElement{name='Queue'
     QueueProps = kzt_util:attributes_to_proplist(QueueAttrs),
 
     %% Fetch TwiML to play to caller before connecting agent
-    _Url = props:get_value(url, QueueProps),
+    _Url = props:get_value('url', QueueProps),
     _Method = kzt_util:http_method(QueueProps),
 
     Call1 = setup_call_for_dial(
@@ -241,7 +219,7 @@ dial(Call, [#xmlElement{name='Queue'
              ),
 
     lager:debug("dial into queue ~s, unsupported", [QueueId]),
-    {stop, Call1};
+    {'stop', Call1};
 
 dial(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
     lager:debug("dialing endpoints"),
@@ -252,7 +230,7 @@ dial(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
     case xml_elements_to_endpoints(Call1, Endpoints) of
         [] ->
             lager:debug("no endpoints were available"),
-            {stop, Call1};
+            {'stop', Call1};
         EPs ->
             lager:debug("endpoints created, sending dial"),
             Timeout = dial_timeout(Props),
@@ -265,7 +243,7 @@ dial(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
                                        ,IgnoreEarlyMedia
                                        ,Call1
                                       ),
-            {ok, Call2} = kzt_receiver:wait_for_offnet(
+            {'ok', Call2} = kzt_receiver:wait_for_offnet(
                             kzt_util:update_call_status(?STATUS_RINGING, Call1)
                            ),
             maybe_end_dial(Call2)
@@ -284,20 +262,20 @@ setup_call_for_dial(Call, Props) ->
                 ,Setters
                ).
 
--spec maybe_end_dial/1 :: (whapps_call:call()) -> {'ok' | 'stop', whapps_call:call()}.
+-spec maybe_end_dial(whapps_call:call()) -> {'ok' | 'stop', whapps_call:call()}.
 maybe_end_dial(Call) ->
     case kzt_util:get_call_status(Call) of
-        ?STATUS_COMPLETED -> {stop, Call};
+        ?STATUS_COMPLETED -> {'stop', Call};
         _Status ->
             lager:debug("dial failed: ~s", [_Status]),
-            {ok, Call} % will progress to next TwiML element
+            {'ok', Call} % will progress to next TwiML element
     end.
 
--spec hangup/1 :: (whapps_call:call()) -> {'stop', whapps_call:call()}.
+-spec hangup(whapps_call:call()) -> {'stop', whapps_call:call()}.
 hangup(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:hangup(Call),
-    {stop, kzt_util:update_call_status(?STATUS_COMPLETED, Call)}.
+    {'stop', kzt_util:update_call_status(?STATUS_COMPLETED, Call)}.
 
 reject(Call, Attrs) ->
     Props = kzt_util:attributes_to_proplist(Attrs),
@@ -306,7 +284,7 @@ reject(Call, Attrs) ->
     Code = reject_code(Reason),
 
     _ = whapps_call_command:response(Code, Reason, reject_prompt(Props), Call),
-    {stop, kzt_util:update_call_status(reject_status(Code), Call)}.
+    {'stop', kzt_util:update_call_status(reject_status(Code), Call)}.
 
 pause(Call, Attrs) ->
     whapps_call_command:answer(Call),
@@ -315,26 +293,26 @@ pause(Call, Attrs) ->
     PauseFor = pause_for(Props),
     lager:debug("pause for ~b ms", [PauseFor]),
     timer:sleep(PauseFor),
-    {ok, Call}.
+    {'ok', Call}.
 
 set_variable(Call, Attrs) ->
     whapps_call_command:answer(Call),
     Props = kzt_util:attributes_to_proplist(Attrs),
-    {ok, kzt_translator:set_user_vars(
-           [{props:get_binary_value(key, Props), props:get_binary_value(value, Props)}]
-           ,Call
-          )}.
+    {'ok', kzt_translator:set_user_vars(
+             [{props:get_binary_value('key', Props), props:get_binary_value('value', Props)}]
+             ,Call
+            )}.
 
--spec set_variables/2 :: (whapps_call:call(), list()) -> whapps_call:call().
+-spec set_variables(whapps_call:call(), list()) -> whapps_call:call().
 set_variables(Call, Els) when is_list(Els) ->
     lists:foldl(fun(#xmlElement{attributes=Attrs}, C) ->
                         set_variable(C, Attrs);
                    (_, C) -> C
                 end, Call, Els).
 
--spec say/3 :: (whapps_call:call(), list(), list()) ->
-                       {'ok', whapps_call:call()} |
-                       {'error', _, whapps_call:call()}.
+-spec say(whapps_call:call(), list(), list()) ->
+                 {'ok', whapps_call:call()} |
+                 {'error', _, whapps_call:call()}.
 say(Call, XmlText, Attrs) ->
     whapps_call_command:answer(Call),
     SayMe = xml_text_to_binary(XmlText, whapps_config:get_integer(<<"pivot">>, <<"tts_text_size">>, ?TTS_SIZE_LIMIT)),
@@ -348,13 +326,13 @@ say(Call, XmlText, Attrs) ->
     lager:debug("SAY: ~s using voice ~s, in lang ~s, and engine ~s", [SayMe, Voice, Lang, Engine]),
 
     case loop_count(Props) of
-        0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Engine, infinity);
+        0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Engine, 'infinity');
         N when N > 0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Engine, N)
     end.
 
--spec play/3 :: (whapps_call:call(), list(), list()) ->
-                        {'ok', whapps_call:call()} |
-                        {'error', _, whapps_call:call()}.
+-spec play(whapps_call:call(), list(), list()) ->
+                  {'ok', whapps_call:call()} |
+                  {'error', _, whapps_call:call()}.
 play(Call, XmlText, Attrs) ->
     whapps_call_command:answer(Call),
     PlayMe = xml_text_to_binary(XmlText),
@@ -363,7 +341,7 @@ play(Call, XmlText, Attrs) ->
     Props = kzt_util:attributes_to_proplist(Attrs),
 
     case loop_count(Props) of
-        0 -> kzt_receiver:play_loop(Call, PlayMe, infinity);
+        0 -> kzt_receiver:play_loop(Call, PlayMe, 'infinity');
         N when N > 0 -> kzt_receiver:play_loop(Call, PlayMe, N)
     end.
 
@@ -388,7 +366,7 @@ redirect(Call, XmlText, Attrs) ->
     Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
                ,{fun kzt_util:set_voice_uri/2, NewUri}
               ],
-    {request, lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}.
+    {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}.
 
 gather(Call, SubActions, Attrs) ->
     lager:debug("gather: exec sub actions"),
@@ -396,10 +374,8 @@ gather(Call, SubActions, Attrs) ->
                        ,xml_elements(SubActions)
                       )
     of
-        {stop, C} -> gather(C, Attrs);
-        Other ->
-            lager:debug("other: ~p", [Other]),
-            Other
+        {'stop', C} -> gather(C, Attrs);
+        Other -> Other
     end.
 
 gather(Call, Attrs) ->
@@ -415,18 +391,18 @@ gather(Call, Attrs) ->
 gather(Call, FinishKey, Timeout, Props, N) ->
     lager:debug("gather: finish: ~s, timeout: ~p num: ~p", [FinishKey, Timeout, N]),
     case kzt_receiver:collect_dtmfs(Call, FinishKey, Timeout, N) of
-        {ok, timeout, C} -> gather_finished(C, Props);
-        {ok, dtmf_finish, C} -> gather_finished(C, Props);
-        {ok, C} -> gather_finished(C, Props);
-        {error, _E, _C}=ERR -> ERR;
-        {stop, _C}=STOP -> STOP
+        {'ok', 'timeout', C} -> gather_finished(C, Props);
+        {'ok', 'dtmf_finish', C} -> gather_finished(C, Props);
+        {'ok', C} -> gather_finished(C, Props);
+        {'error', _E, _C}=ERR -> ERR;
+        {'stop', _C}=STOP -> STOP
     end.
 
 gather_finished(Call, Props) ->
     case kzt_util:get_digits_collected(Call) of
         <<>> ->
             lager:debug("caller entered no digits, continuing"),
-            {ok, kzt_util:clear_digits_collected(Call)};
+            {'ok', kzt_util:clear_digits_collected(Call)};
         _DTMFs ->
             lager:debug("caller entered DTMFs: ~s", [_DTMFs]),
             CurrentUri = kzt_util:get_voice_uri(Call),
@@ -438,12 +414,12 @@ gather_finished(Call, Props) ->
             Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
                        ,{fun kzt_util:set_voice_uri/2, NewUri}
                       ],
-            {request, lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters)}
+            {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters)}
     end.
 
 record_call(Call, _Props) ->
     lager:debug("record_call not implemented"),
-    {stop, Call}.
+    {'stop', Call}.
 
 %%------------------------------------------------------------------------------
 %% Nouns
@@ -452,22 +428,22 @@ record_call(Call, _Props) ->
 %%------------------------------------------------------------------------------
 %% Helpers
 %%------------------------------------------------------------------------------
--spec xml_text_to_binary/1 :: ([#xmlText{},...]|[]) -> binary().
+-spec xml_text_to_binary(xml_texts()) -> binary().
 xml_text_to_binary(Vs) when is_list(Vs) ->
     iolist_to_binary([V || #xmlText{value=V, type='text'} <- Vs]).
 
 xml_text_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->
     B = xml_text_to_binary(Vs),
     case byte_size(B) > Size of
-        true -> erlang:binary_part(B, 0, Size);
-        false -> B
+        'true' -> erlang:binary_part(B, 0, Size);
+        'false' -> B
     end.
 
--spec xml_elements/1 :: (list()) -> xml_els().
+-spec xml_elements(list()) -> xml_els().
 xml_elements(Els) -> [El || #xmlElement{}=El <- Els].
 
--spec xml_elements_to_endpoints/2 :: (whapps_call:call(), xml_els()) -> wh_json:objects().
--spec xml_elements_to_endpoints/3 :: (whapps_call:call(), xml_els(), wh_json:objects()) ->
+-spec xml_elements_to_endpoints(whapps_call:call(), xml_els()) -> wh_json:objects().
+-spec xml_elements_to_endpoints(whapps_call:call(), xml_els(), wh_json:objects()) ->
                                              wh_json:objects().
 xml_elements_to_endpoints(Call, EPs) ->
     xml_elements_to_endpoints(Call, EPs, []).
@@ -482,9 +458,9 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
     DeviceId = xml_text_to_binary(DeviceIdTxt),
     lager:debug("maybe adding device ~s to ring group", [DeviceId]),
     case cf_endpoint:build(DeviceId, Call) of
-        {ok, [EP]} -> xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
-        {ok, DeviceEPs} -> xml_elements_to_endpoints(Call, EPs, DeviceEPs ++ Acc);
-        {error, _E} ->
+        {'ok', [EP]} -> xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
+        {'ok', DeviceEPs} -> xml_elements_to_endpoints(Call, EPs, DeviceEPs ++ Acc);
+        {'error', _E} ->
             lager:debug("failed to add device ~s: ~p", [DeviceId, _E]),
             xml_elements_to_endpoints(Call, EPs, Acc)
     end;
@@ -497,9 +473,9 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='User'
     lager:debug("maybe adding user ~s to ring group", [UserId]),
 
     case cf_endpoint:build(UserId, Call) of
-        {ok, [EP]} -> xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
-        {ok, UserEPs} -> xml_elements_to_endpoints(Call, EPs, UserEPs ++ Acc);
-        {error, _E} ->
+        {'ok', [EP]} -> xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
+        {'ok', UserEPs} -> xml_elements_to_endpoints(Call, EPs, UserEPs ++ Acc);
+        {'error', _E} ->
             lager:debug("failed to add user ~s: ~p", [UserId, _E]),
             xml_elements_to_endpoints(Call, EPs, Acc)
     end;
@@ -510,9 +486,9 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
                                  | EPs], Acc) ->
     Props = kzt_util:attributes_to_proplist(Attrs),
 
-    SendDigits = props:get_value(sendDigis, Props),
-    Url = props:get_value(url, Props),
-    Method = props:get_value(method, Props),
+    SendDigits = props:get_value('sendDigis', Props),
+    Url = props:get_value('url', Props),
+    Method = props:get_value('method', Props),
 
     DialMe = wmn_util:to_e164(xml_text_to_binary(Number)),
 
@@ -523,58 +499,58 @@ xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
     lager:debug("unknown endpoint: ~p", [_Xml]),
     xml_elements_to_endpoints(Call, EPs, Acc).
 
--spec caller_id/2 :: (wh_proplist(), whapps_call:call()) -> ne_binary().
+-spec caller_id(wh_proplist(), whapps_call:call()) -> ne_binary().
 caller_id(Props, Call) ->
     wh_util:to_binary(
-      props:get_value(callerId, Props, whapps_call:caller_id_number(Call))
+      props:get_value('callerId', Props, whapps_call:caller_id_number(Call))
      ).
 
-timelimit_s(Props) -> props:get_integer_value(timeLimit, Props, 14400).
-loop_count(Props) -> props:get_integer_value(loop, Props, 1).
+timelimit_s(Props) -> props:get_integer_value('timeLimit', Props, 14400).
+loop_count(Props) -> props:get_integer_value('loop', Props, 1).
 
 request_id(N, Call) -> iolist_to_binary([N, $@, whapps_call:from_realm(Call)]).
-should_record_call(Props) -> wh_util:is_true(props:get_value(record, Props, false)).
+should_record_call(Props) -> wh_util:is_true(props:get_value(record, Props, 'false')).
 
--spec hangup_dtmf/1 :: (wh_proplist() | api_binary()) -> api_binary().
+-spec hangup_dtmf(wh_proplist() | api_binary()) -> api_binary().
 hangup_dtmf(Props) when is_list(Props) ->
-    case props:get_value(hangupOnStar, Props) of
-        true -> <<"*">>;
-        _ -> hangup_dtmf(props:get_binary_value(hangupOn, Props))
+    case props:get_value('hangupOnStar', Props) of
+        'true' -> <<"*">>;
+        _ -> hangup_dtmf(props:get_binary_value('hangupOn', Props))
     end;
 hangup_dtmf(DTMF) ->
     case lists:member(DTMF, ?ANY_DIGIT) of
-        true -> DTMF;
-        false -> undefined
+        'true' -> DTMF;
+        'false' -> 'undefined'
     end.
 
 finish_dtmf(Props) when is_list(Props) ->
-    case props:get_binary_value(finishOnKey, Props) of
-        undefined -> <<"#">>;
+    case props:get_binary_value('finishOnKey', Props) of
+        'undefined' -> <<"#">>;
         DTMF ->
-            true = lists:member(DTMF, ?ANY_DIGIT),
+            'true' = lists:member(DTMF, ?ANY_DIGIT),
             DTMF
     end.
 
 media_processing(Call) ->
     media_processing(kzt_util:get_record_call(Call), kzt_util:get_hangup_dtmf(Call)).
 
-media_processing(false, undefined) -> <<"bypass">>;
-media_processing(_ShouldRecord, _HangupDTMF) -> <<"process">>.
+media_processing('false', 'undefined') -> <<"bypass">>;
+media_processing('true', _HangupDTMF) -> <<"process">>.
 
--spec get_voice/1 :: (wh_proplist()) -> ne_binary().
+-spec get_voice(wh_proplist()) -> ne_binary().
 get_voice(Props) ->
-    case props:get_binary_value(voice, Props) of
+    case props:get_binary_value('voice', Props) of
         <<"man">> -> <<"male">>;
         <<"male">> -> <<"male">>;
         <<"woman">> -> <<"female">>;
         <<"female">> -> <<"female">>;
-        undefined -> <<"male">>
+        'undefined' -> ?DEFAULT_TTS_VOICE
     end.
 
--spec get_lang/1 :: (wh_proplist()) -> ne_binary().
+-spec get_lang(wh_proplist()) -> ne_binary().
 get_lang(Props) ->
-    case props:get_binary_value(language, Props) of
-        undefined -> <<"en-US">>;
+    case props:get_binary_value('language', Props) of
+        'undefined' -> ?DEFAULT_TTS_LANG;
         <<"en">> -> <<"en-US">>;
         <<"en-gb">> -> <<"en-GB">>;
         <<"es">> -> <<"es">>;
@@ -583,44 +559,43 @@ get_lang(Props) ->
         <<"it">> -> <<"it">>
     end.
 
--spec get_engine/1 :: (wh_proplist()) -> ne_binary().
+-spec get_engine(wh_proplist()) -> ne_binary().
 get_engine(Props) ->
-    case props:get_binary_value(engine, Props) of
-        undefined -> whapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_provider">>, <<"flite">>);
+    case props:get_binary_value('engine', Props) of
+        'undefined' -> ?DEFAULT_TTS_ENGINE;
         Engine -> Engine
     end.
 
 get_max_participants(Props) when is_list(Props) ->
-    get_max_participants(props:get_integer_value(maxParticipants, Props, 40));
+    get_max_participants(props:get_integer_value('maxParticipants', Props, 40));
 get_max_participants(N) when is_integer(N), N =< 40, N > 0 -> N.
 
-
 %% limit pause to 1 hour (3600000 ms)
--spec pause_for/1 :: (wh_proplist()) -> 1000..3600000.
+-spec pause_for(wh_proplist()) -> 1000..3600000.
 pause_for(Props) ->
-    case props:get_integer_value(length, Props) of
-        undefined -> 1000;
+    case props:get_integer_value('length', Props) of
+        'undefined' -> 1000;
         N when is_integer(N), N > 0, N =< 3600 -> N * 1000;
         N when is_integer(N), N > 3600 -> 3600000
     end.
 
-action_url(Props) -> props:get_value(action, Props).
+action_url(Props) -> props:get_value('action', Props).
 
--spec dial_timeout/1 :: (wh_proplist() | pos_integer()) -> pos_integer().
+-spec dial_timeout(wh_proplist() | pos_integer()) -> pos_integer().
 dial_timeout(Props) when is_list(Props) ->
-    dial_timeout(props:get_integer_value(timeout, Props, 20));
+    dial_timeout(props:get_integer_value('timeout', Props, 20));
 dial_timeout(T) when T > 0 -> T.
 
 dial_strategy(Props) ->
-    case props:get_value(strategy, Props) of
-        undefined -> <<"simultaneous">>;
+    case props:get_value('strategy', Props) of
+        'undefined' -> <<"simultaneous">>;
         <<"simultaneous">> -> <<"simultaneous">>;
         <<"single">> -> <<"single">>
     end.
 
 reject_reason(Props) ->
-    case props:get_binary_value(reason, Props) of
-        undefined -> <<"rejected">>;
+    case props:get_binary_value('reason', Props) of
+        'undefined' -> <<"rejected">>;
         <<"rejected">> -> <<"rejected">>;
         <<"busy">> -> <<"busy">>
     end.
@@ -631,21 +606,19 @@ reject_code(<<"rejected">>) -> <<"503">>.
 reject_status(<<"486">>) -> ?STATUS_BUSY;
 reject_status(<<"503">>) -> ?STATUS_NOANSWER.
 
-reject_prompt(Props) ->
-    props:get_binary_value(prompt, Props).
+reject_prompt(Props) -> props:get_binary_value('prompt', Props).
 
--spec timeout_s/1 :: (wh_proplist()) -> pos_integer().
-timeout_s(Props) ->
-    timeout_s(Props, 30).
+-spec timeout_s(wh_proplist()) -> pos_integer().
+timeout_s(Props) -> timeout_s(Props, 30).
 timeout_s(Props, Default) ->
-    case props:get_integer_value(timeout, Props, Default) of
+    case props:get_integer_value('timeout', Props, Default) of
         N when is_integer(N), N > 3600 -> 3600;
         N when is_integer(N), N > 0 -> N
     end.
 
--spec num_digits/1 :: (wh_proplist()) -> wh_timeout().
+-spec num_digits(wh_proplist()) -> wh_timeout().
 num_digits(Props) ->
-    case props:get_integer_value(numDigits, Props) of
-        undefined -> infinity;
+    case props:get_integer_value('numDigits', Props) of
+        'undefined' -> 'infinity';
         N when is_integer(N), N > 0 -> N
     end.
