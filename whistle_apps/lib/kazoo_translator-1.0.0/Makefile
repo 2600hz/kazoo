@@ -9,7 +9,10 @@ ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/lib $(PA)
 	 # +bin_opt_info
 
 DIRS = . \
-	$(ROOT)/lib/whistle_amqp-1.0.0
+        $(ROOT)/lib/whistle-1.0.0 \
+	$(ROOT)/lib/whistle_amqp-1.0.0 \
+	$(ROOT)/whistle_apps/lib/whistle_couch-1.0.0 \
+        $(ROOT)/whistle_apps
 
 .PHONY: all compile clean
 
