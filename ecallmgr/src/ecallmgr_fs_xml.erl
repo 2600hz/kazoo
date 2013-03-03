@@ -28,7 +28,7 @@ acl_xml(AclsJObj) ->
 
     SectionEl = section_el(<<"configuration">>, ConfigEl),
 
-    {ok, xmerl:export([SectionEl], fs_xml)}.
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
 sip_profiles_xml(JObj) ->
     ProfilesEl = sofia_profiles_el(JObj),
@@ -37,7 +37,7 @@ sip_profiles_xml(JObj) ->
 
     SectionEl = section_el(<<"configuration">>, ConfigEl),
 
-    {ok, xmerl:export([SectionEl], fs_xml)}.
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
 -spec authn_resp_xml(api_terms()) -> {'ok', iolist()}.
 -spec authn_resp_xml(ne_binary(), wh_json:object()) -> {'ok', xml_els()}.
@@ -50,12 +50,12 @@ authn_resp_xml(JObj) ->
     UserId = wh_json:get_value(<<"User-ID">>, JObj),
 
     case authn_resp_xml(wh_json:get_value(<<"Auth-Method">>, JObj), JObj) of
-        {ok, []}=OK -> OK;
-        {ok, Elements} ->
+        {'ok', []}=OK -> OK;
+        {'ok', Elements} ->
             UserEl = user_el(wh_json:get_value(<<"Auth-Username">>, JObj, UserId), Elements),
             DomainEl = domain_el(wh_json:get_value(<<"Auth-Realm">>, JObj, DomainName), UserEl),
             SectionEl = section_el(<<"directory">>, DomainEl),
-            {ok, xmerl:export([SectionEl], fs_xml)}
+            {'ok', xmerl:export([SectionEl], 'fs_xml')}
     end.
 
 authn_resp_xml(<<"password">>, JObj) ->
@@ -65,7 +65,7 @@ authn_resp_xml(<<"password">>, JObj) ->
     VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj)],
     VariablesEl = variables_el(VariableEls),
 
-    {ok, [VariablesEl, ParamsEl]};
+    {'ok', [VariablesEl, ParamsEl]};
 authn_resp_xml(<<"a1-hash">>, JObj) ->
     PassEl = param_el(<<"a1-hash">>, wh_json:get_value(<<"Auth-Password">>, JObj)),
     ParamsEl = params_el([PassEl]),
@@ -73,7 +73,7 @@ authn_resp_xml(<<"a1-hash">>, JObj) ->
     VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj)],
     VariablesEl = variables_el(VariableEls),
 
-    {ok, [VariablesEl, ParamsEl]};
+    {'ok', [VariablesEl, ParamsEl]};
 authn_resp_xml(<<"ip">>, _JObj) ->
     empty_response();
 authn_resp_xml(_Method, _JObj) ->
@@ -89,12 +89,12 @@ reverse_authn_resp_xml([_|_]=RespProp) ->
                           );
 reverse_authn_resp_xml(JObj) ->
     case reverse_authn_resp_xml(wh_json:get_value(<<"Auth-Method">>, JObj), JObj) of
-        {ok, []}=OK -> OK;
-        {ok, Elements} ->
+        {'ok', []}=OK -> OK;
+        {'ok', Elements} ->
             UserEl = user_el(wh_json:get_value(<<"User-ID">>, JObj), Elements),
             DomainEl = domain_el(wh_json:get_value(<<"Domain-Name">>, JObj), UserEl),
             SectionEl = section_el(<<"directory">>, DomainEl),
-            {ok, xmerl:export([SectionEl], fs_xml)}
+            {'ok', xmerl:export([SectionEl], 'fs_xml')}
     end.
 
 reverse_authn_resp_xml(<<"password">>, JObj) ->
@@ -108,18 +108,17 @@ reverse_authn_resp_xml(<<"password">>, JObj) ->
     VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj)],
     VariablesEl = variables_el(VariableEls),
 
-    {ok, [VariablesEl, ParamsEl]};
+    {'ok', [VariablesEl, ParamsEl]};
 reverse_authn_resp_xml(_Method, _JObj) ->
     lager:debug("unknown method ~s", [_Method]),
     empty_response().
 
 -spec empty_response() -> {'ok', []}.
 empty_response() ->
-    {ok, ""}. %"<document type=\"freeswitch/xml\"></document>").
+    {'ok', ""}. %"<document type=\"freeswitch/xml\"></document>").
 
 -spec route_resp_xml(api_terms()) -> {'ok', iolist()}.
-route_resp_xml([_|_]=RespProp) ->
-    route_resp_xml(wh_json:from_list(RespProp));
+route_resp_xml([_|_]=RespProp) -> route_resp_xml(wh_json:from_list(RespProp));
 route_resp_xml(RespJObj) ->
     route_resp_xml(wh_json:get_value(<<"Method">>, RespJObj)
                    ,wh_json:get_value(<<"Routes">>, RespJObj, [])
@@ -127,6 +126,38 @@ route_resp_xml(RespJObj) ->
                   ).
 
 %% Prop = Route Response
+-type route_resp_fold_acc() :: {non_neg_integer(), xml_els()}.
+-spec route_resp_fold(wh_json:object(), route_resp_fold_acc()) -> route_resp_fold_acc().
+route_resp_fold(RouteJObj, {Idx, Acc}) ->
+    case ecallmgr_util:build_channel(RouteJObj) of
+        {'error', _} -> {Idx+1, Acc};
+        {'ok', Route} ->
+            BypassMedia = case wh_json:get_value(<<"Media">>, RouteJObj) of
+                              <<"bypass">> -> "true";
+                              _ -> "false" %% default to not bypassing media
+                          end,
+            RouteJObj1 =
+                case wh_json:get_value(<<"Progress-Timeout">>, RouteJObj) of
+                    'undefined' ->
+                        wh_json:set_value(<<"Progress-Timeout">>, <<"6">>, RouteJObj);
+                    I when is_integer(I) ->
+                        wh_json:set_value(<<"Progress-Timeout">>, integer_to_list(I), RouteJObj);
+                    _ -> RouteJObj
+                end,
+
+            ChannelVars = get_channel_vars(wh_json:to_proplist(RouteJObj1)),
+
+            BPEl = action_el(<<"set">>, [<<"bypass_media=">>, BypassMedia]),
+            HangupEl = action_el(<<"set">>, <<"hangup_after_bridge=true">>),
+            FailureEl = action_el(<<"set">>, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
+            BridgeEl = action_el(<<"set">>, [ChannelVars, Route]),
+
+            ConditionEl = condition_el([BPEl, HangupEl, FailureEl, BridgeEl]),
+            ExtEl = extension_el([<<"match_">>, Idx+$0], <<"true">>, [ConditionEl]),
+
+            {Idx+1, [ExtEl | Acc]}
+    end.
+
 -spec route_resp_xml(ne_binary(), wh_json:objects(), wh_json:object()) -> {'ok', iolist()}.
 route_resp_xml(<<"bridge">>, Routes, JObj) ->
     lager:debug("creating a bridge XML response"),
@@ -134,38 +165,7 @@ route_resp_xml(<<"bridge">>, Routes, JObj) ->
     RingbackEl = route_resp_ringback(JObj),
     TransferEl = route_resp_transfer_ringback(JObj),
     %% format the Route based on protocol
-    {_Idx, Extensions} = lists:foldr(
-                                   fun(RouteJObj, {Idx, Acc}) ->
-                                           case ecallmgr_util:build_channel(RouteJObj) of
-                                               {error, _} ->
-                                                   {Idx+1, Acc};
-                                               {ok, Route} ->
-                                                   BypassMedia = case wh_json:get_value(<<"Media">>, RouteJObj) of
-                                                                     <<"bypass">> -> "true";
-                                                                     _ -> "false" %% default to not bypassing media
-                                                                 end,
-
-                                                   RouteJObj1 = case wh_json:get_value(<<"Progress-Timeout">>, RouteJObj) of
-                                                                    undefined ->
-                                                                        wh_json:set_value(<<"Progress-Timeout">>, <<"6">>, RouteJObj);
-                                                                    I when is_integer(I) ->
-                                                                        wh_json:set_value(<<"Progress-Timeout">>, integer_to_list(I), RouteJObj);
-                                                                    _ -> RouteJObj
-                                                                end,
-
-                                                   ChannelVars = get_channel_vars(wh_json:to_proplist(RouteJObj1)),
-
-                                                   BPEl = action_el(<<"set">>, [<<"bypass_media=">>, BypassMedia]),
-                                                   HangupEl = action_el(<<"set">>, <<"hangup_after_bridge=true">>),
-                                                   FailureEl = action_el(<<"set">>, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
-                                                   BridgeEl = action_el(<<"set">>, [ChannelVars, Route]),
-
-                                                   ConditionEl = condition_el([BPEl, HangupEl, FailureEl, BridgeEl]),
-                                                   ExtEl = extension_el([<<"match_">>, Idx+$0], <<"true">>, [ConditionEl]),
-
-                                                   {Idx+1, [ExtEl | Acc]}
-                                           end
-                                   end, {1, []}, Routes),
+    {_Idx, Extensions} = lists:foldr(fun route_resp_fold/2, {1, []}, Routes),
 
     FailRespondEl = action_el(<<"respond">>, <<"${bridge_hangup_cause}">>),
     FailConditionEl = condition_el(FailRespondEl),
@@ -173,7 +173,7 @@ route_resp_xml(<<"bridge">>, Routes, JObj) ->
 
     ContextEl = context_el(?WHISTLE_CONTEXT, [LogEl, RingbackEl, TransferEl] ++ Extensions ++ [FailExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
-    {ok, xmerl:export([SectionEl], fs_xml)};
+    {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
 route_resp_xml(<<"park">>, _Routes, JObj) ->
     LogEl = route_resp_log_winning_node(),
@@ -182,17 +182,17 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
     ParkEl = action_el(<<"park">>),
 
     ParkConditionEl = case route_resp_pre_park_action(JObj) of
-                          undefined ->
+                          'undefined' ->
                               condition_el([LogEl, RingbackEl, TransferEl, ParkEl]);
                           PreParkEl ->
                               condition_el([LogEl, RingbackEl, TransferEl, PreParkEl, ParkEl])
                       end,
 
-    ParkExtEl = extension_el(<<"park">>, undefined, [ParkConditionEl]),
+    ParkExtEl = extension_el(<<"park">>, 'undefined', [ParkConditionEl]),
 
     ContextEl = context_el(?WHISTLE_CONTEXT, [ParkExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Park Response">>, ContextEl),
-    {ok, xmerl:export([SectionEl], fs_xml)};
+    {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
 route_resp_xml(<<"error">>, _Routes, JObj) ->
     LogEl = route_resp_log_winning_node(),
@@ -201,7 +201,7 @@ route_resp_xml(<<"error">>, _Routes, JObj) ->
     TransferEl = route_resp_transfer_ringback(JObj),
 
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
-    ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<"">>)],
+    ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
 
     ErrEl = action_el(<<"respond">>, [ErrCode, ErrMsg]),
     ErrCondEl = condition_el([LogEl, RingbackEl, TransferEl, ErrEl]),
@@ -209,13 +209,13 @@ route_resp_xml(<<"error">>, _Routes, JObj) ->
 
     ContextEl = context_el(?WHISTLE_CONTEXT, [ErrExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
-    {ok, xmerl:export([SectionEl], fs_xml)}.
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
 -spec not_found() -> {'ok', iolist()}.
 not_found() ->
     ResultEl = result_el(<<"not found">>),
     SectionEl = section_el(<<"result">>, <<"Route Not Found">>, ResultEl),
-    {ok, xmerl:export([SectionEl], fs_xml)}.
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
 -spec route_resp_log_winning_node() -> xml_el().
 route_resp_log_winning_node() ->
@@ -225,11 +225,11 @@ route_resp_log_winning_node() ->
 route_resp_ringback(JObj) ->
     case wh_json:get_value(<<"Ringback-Media">>, JObj) of
         'undefined' ->
-            {ok, RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
+            {'ok', RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
             action_el(<<"set">>, <<"ringback=", (wh_util:to_binary(RBSetting))/binary>>);
         Media ->
             MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
-            Stream = ecallmgr_util:media_path(Media, extant, MsgId, JObj),
+            Stream = ecallmgr_util:media_path(Media, 'extant', MsgId, JObj),
             action_el(<<"set">>, <<"ringback=", (wh_util:to_binary(Stream))/binary>>)
     end.
 
@@ -237,11 +237,11 @@ route_resp_ringback(JObj) ->
 route_resp_transfer_ringback(JObj) ->
     case wh_json:get_value(<<"Transfer-Media">>, JObj) of
         'undefined' ->
-            {ok, RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
+            {'ok', RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
             action_el(<<"set">>, <<"transfer_ringback=", (wh_util:to_binary(RBSetting))/binary>>);
         Media ->
             MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
-            Stream = ecallmgr_util:media_path(Media, extant, MsgId, JObj),
+            Stream = ecallmgr_util:media_path(Media, 'extant', MsgId, JObj),
             action_el(<<"set">>, <<"transfer_ringback=", (wh_util:to_binary(Stream))/binary>>)
     end.
 
@@ -250,10 +250,10 @@ route_resp_pre_park_action(JObj) ->
     case wh_json:get_value(<<"Pre-Park">>, JObj) of
         <<"ring_ready">> -> action_el(<<"ring_ready">>);
         <<"answer">> -> action_el(<<"answer">>);
-        _Else -> undefined
+        _Else -> 'undefined'
     end.
 
--spec get_leg_vars(wh_json:object() | wh_proplist()) -> [nonempty_string(),...].
+-spec get_leg_vars(wh_json:object() | wh_proplist()) -> iolist().
 get_leg_vars([_|_]=Prop) ->
     ["[", string:join([wh_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"];
 get_leg_vars(JObj) -> get_leg_vars(wh_json:to_proplist(JObj)).
@@ -264,23 +264,9 @@ get_channel_vars([_|_]=Prop) ->
     ["{", string:join([wh_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
 get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 
--spec get_channel_vars({binary(), binary() | wh_json:object()}, [binary(),...] | []) -> iolist().
+-spec get_channel_vars({binary(), binary() | wh_json:object()}, ne_binaries()) -> iolist().
 get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
-    lists:foldl(fun({<<"Force-Fax">>, Direction}, Acc) ->
-                        [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
-                   ({K, V}, Acc) ->
-                        case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
-                            false -> [list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K)
-                                                      ,"='", wh_util:to_list(V), "'"]) | Acc];
-                            {_, <<"group_confirm_file">>} -> [list_to_binary(["group_confirm_file='"
-                                                                             ,wh_util:to_list(ecallmgr_util:media_path(V, extant, get(callid), wh_json:new()))
-                                                                             ,"'"
-                                                                            ]) | Acc];
-                            {_, Prefix} ->
-                                Val = ecallmgr_util:maybe_sanitize_fs_value(K, V),
-                                [encode_fs_val(Prefix, Val) | Acc]
-                        end
-                end, Vars, wh_json:to_proplist(JObj));
+    lists:foldl(fun get_channel_vars_fold/2, Vars, wh_json:to_proplist(JObj));
 
 get_channel_vars({<<"SIP-Headers">>, SIPJObj}, Vars) ->
     SIPHeaders = wh_json:to_proplist(SIPJObj),
@@ -311,7 +297,7 @@ get_channel_vars({<<"origination_uuid">> = K, UUID}, Vars) ->
 
 get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
     [list_to_binary(["hold_music="
-                     ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, get(callid), wh_json:new()))
+                     ,wh_util:to_list(ecallmgr_util:media_path(Media, 'extant', get('callid'), wh_json:new()))
                     ])
      | Vars];
 
@@ -343,13 +329,31 @@ get_channel_vars({<<"Forward-IP">>, V}, Vars) ->
 
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
-        false -> Vars;
+        'false' -> Vars;
         {_, Prefix} ->
             Val = ecallmgr_util:maybe_sanitize_fs_value(AMQPHeader, V),
             [encode_fs_val(Prefix, Val) | Vars]
     end;
-get_channel_vars(_, Vars) ->
-    Vars.
+get_channel_vars(_, Vars) -> Vars.
+
+get_channel_vars_fold({<<"Force-Fax">>, Direction}, Acc) ->
+    [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
+get_channel_vars_fold({K, V}, Acc) ->
+    case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
+        'false' ->
+            [list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K)
+                             ,"='", wh_util:to_list(V), "'"])
+             | Acc];
+        {_, <<"group_confirm_file">>} ->
+            [list_to_binary(["group_confirm_file='"
+                             ,wh_util:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), wh_json:new()))
+                             ,"'"
+                            ])
+             | Acc];
+        {_, Prefix} ->
+            Val = ecallmgr_util:maybe_sanitize_fs_value(K, V),
+            [encode_fs_val(Prefix, Val) | Acc]
+    end.
 
 -spec codec_mappings(ne_binary()) -> ne_binary().
 codec_mappings(<<"G722_32">>) ->
@@ -373,12 +377,12 @@ encode(C, _) -> C.
 -spec get_channel_params(wh_json:object()) -> wh_json:json_proplist().
 get_channel_params(JObj) ->
     CV0 = case wh_json:get_value(<<"Tenant-ID">>, JObj) of
-              undefined -> [];
+              'undefined' -> [];
               TID -> [{list_to_binary([?CHANNEL_VAR_PREFIX, "Tenant-ID"]), TID}]
           end,
 
     CV1 = case wh_json:get_value(<<"Access-Group">>, JObj) of
-              undefined -> CV0;
+              'undefined' -> CV0;
               AG -> [{list_to_binary([?CHANNEL_VAR_PREFIX, "Access-Group"]), AG} | CV0]
           end,
 
@@ -394,10 +398,10 @@ arrange_acl_node({_, JObj}, Dict) ->
     NodeEl = acl_node_el(wh_json:get_value(<<"type">>, JObj), wh_json:get_value(<<"cidr">>, JObj)),
 
     case orddict:find(AclList, Dict) of
-        {ok, ListEl} ->
+        {'ok', ListEl} ->
             lager:debug("found existing list ~s", [AclList]),
             orddict:store(AclList, prepend_child(ListEl, NodeEl), Dict);
-        error ->
+        'error' ->
             lager:debug("creating new list xml for ~s", [AclList]),
             orddict:store(AclList, prepend_child(acl_list_el(AclList), NodeEl), Dict)
     end.
@@ -422,8 +426,8 @@ acl_list_el(Name, Default) ->
     acl_list_el(Name, Default, []).
 acl_list_el(Name, Default, Children) ->
     #xmlElement{name='list'
-                ,attributes=[xml_attrib(name, Name)
-                             ,xml_attrib(default, Default)
+                ,attributes=[xml_attrib('name', Name)
+                             ,xml_attrib('default', Default)
                             ]
                 ,content=Children
                }.
@@ -439,7 +443,7 @@ config_el(Name, Desc, #xmlElement{}=Content) ->
     config_el(Name, Desc, [Content]);
 config_el(Name, Desc, Content) ->
     #xmlElement{name='configuration'
-                ,attributes=[xml_attrib(name, Name)
+                ,attributes=[xml_attrib('name', Name)
                              ,xml_attrib(description, Desc)
                             ]
                 ,content=Content
@@ -451,7 +455,7 @@ section_el(Name, #xmlElement{}=Content) ->
     section_el(Name, [Content]);
 section_el(Name, Content) ->
     #xmlElement{name='section'
-                ,attributes=[xml_attrib(name, Name)]
+                ,attributes=[xml_attrib('name', Name)]
                 ,content=Content
                }.
 
@@ -459,7 +463,7 @@ section_el(Name, Desc, #xmlElement{}=Content) ->
     section_el(Name, Desc, [Content]);
 section_el(Name, Desc, Content) ->
     #xmlElement{name='section'
-                ,attributes=[xml_attrib(name, Name)
+                ,attributes=[xml_attrib('name', Name)
                              ,xml_attrib(description, Desc)
                             ]
                 ,content=Content
@@ -470,14 +474,14 @@ domain_el(Name, Child) when not is_list(Child) ->
     domain_el(Name, [Child]);
 domain_el(Name, Children) ->
     #xmlElement{name='domain'
-                ,attributes=[xml_attrib(name, Name)]
+                ,attributes=[xml_attrib('name', Name)]
                 ,content=Children
                }.
 
 -spec user_el(xml_attrib_value(), xml_els()) -> xml_el().
 user_el(Id, Children) ->
     #xmlElement{name='user'
-                ,attributes=[xml_attrib(id, Id)]
+                ,attributes=[xml_attrib('id', Id)]
                 ,content=Children
                }.
 
@@ -490,8 +494,8 @@ params_el(Children) ->
 -spec param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 param_el(Name, Value) ->
     #xmlElement{name='param'
-                ,attributes=[xml_attrib(name, Name)
-                             ,xml_attrib(value, Value)
+                ,attributes=[xml_attrib('name', Name)
+                             ,xml_attrib('value', Value)
                             ]
                }.
 
@@ -504,15 +508,15 @@ variables_el(Children) ->
 -spec variable_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 variable_el(Name, Value) ->
     #xmlElement{name='variable'
-                ,attributes=[xml_attrib(name, Name)
-                             ,xml_attrib(value, Value)
+                ,attributes=[xml_attrib('name', Name)
+                             ,xml_attrib('value', Value)
                             ]
                }.
 
 -spec context_el(xml_attrib_value(), xml_els()) -> xml_el().
 context_el(Name, Children) ->
     #xmlElement{name='context'
-                ,attributes=[xml_attrib(name, Name)]
+                ,attributes=[xml_attrib('name', Name)]
                 ,content=Children
                }.
 
@@ -523,15 +527,15 @@ extension_el(Children) ->
                 ,content=Children
                }.
 
-extension_el(Name, undefined, Children) ->
+extension_el(Name, 'undefined', Children) ->
     #xmlElement{name='extension'
-                ,attributes=[xml_attrib(name, Name)]
+                ,attributes=[xml_attrib('name', Name)]
                 ,content=Children
                };
 extension_el(Name, Continue, Children) ->
     #xmlElement{name='extension'
-                ,attributes=[xml_attrib(name, Name)
-                             ,xml_attrib(continue, wh_util:is_true(Continue))
+                ,attributes=[xml_attrib('name', Name)
+                             ,xml_attrib('continue', wh_util:is_true(Continue))
                             ]
                 ,content=Children
                }.
@@ -548,12 +552,12 @@ condition_el(Children) ->
 -spec action_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 action_el(App) ->
     #xmlElement{name='action'
-                ,attributes=[xml_attrib(application, App)]
+                ,attributes=[xml_attrib('application', App)]
                }.
 action_el(App, Data) ->
     #xmlElement{name='action'
-                ,attributes=[xml_attrib(application, App)
-                             ,xml_attrib(data, Data)
+                ,attributes=[xml_attrib('application', App)
+                             ,xml_attrib('data', Data)
                             ]
                }.
 
@@ -575,7 +579,7 @@ sofia_profiles_el(JObj) ->
     Content = lists:foldl(fun(Key, Xml) ->
                                   Profile = wh_json:get_value(Key, JObj),
                                   [#xmlElement{name='profile'
-                                               ,attributes=[xml_attrib(name, Key)]
+                                               ,attributes=[xml_attrib('name', Key)]
                                                ,content=sofia_profile_el(Profile)
                                               }
                                    | Xml
@@ -611,7 +615,7 @@ sofia_gateways_el(JObj) ->
     lists:foldl(fun(Key, Xml) ->
                         Gateway = wh_json:get_value(Key, JObj),
                         [#xmlElement{name='gateway'
-                                     ,attributes=[xml_attrib(name, Key)]
+                                     ,attributes=[xml_attrib('name', Key)]
                                      ,content=sofia_gateway_el(Gateway)
                                     }
                                     | Xml
