@@ -5,9 +5,11 @@ DIALYZER = dialyzer
 LIB_EBINS = $(shell find $(ROOT)/lib -maxdepth 2 -name ebin -print)
 WHAPPS_LIB_EBINS = $(shell find $(ROOT)/whistle_apps/lib -maxdepth 2 -name ebin -print)
 
+LIB_PA = $(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN))
+WHAPPS_LIB_PA = $(foreach WHAPPS_LIB_EBIN,$(WHAPPS_LIB_EBINS),-pa $(WHAPPS_LIB_EBIN))
+
 ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/lib \
-	$(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN)) \
-	$(foreach WHAPPS_LIB_EBIN,$(WHAPPS_LIB_EBINS),-pa $(WHAPPS_LIB_EBIN))
+	$(LIB_PA) $(WHAPPS_LIB_PA)
 
 DIRS = . \
         $(ROOT)/lib/whistle-1.0.0 \
@@ -49,11 +51,7 @@ clean:
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
-
-build-plt:
-	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
-		--apps kernel stdlib sasl inets crypto public_key ssl
+	erl -noshell -pa test $(LIB_PA) $(WHAPPS_LIB_PA) -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
 
 dialyze: 
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \

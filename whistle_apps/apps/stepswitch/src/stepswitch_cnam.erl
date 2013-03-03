@@ -103,12 +103,12 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({render, Props, Template}, _, TemplateName) ->
-    {ok, TemplateName} = erlydtl:compile(Template, TemplateName),
-    {ok, Result} = TemplateName:render(Props),
-    {reply, {ok, Result}, TemplateName};
+handle_call({'render', Props, Template}, _, TemplateName) ->
+    {'ok', TemplateName} = erlydtl:compile(Template, TemplateName),
+    {'ok', Result} = TemplateName:render(Props),
+    {'reply', {'ok', Result}, TemplateName};
 handle_call(_Request, _From, TemplateName) ->
-    {reply, {error, not_implemented}, TemplateName}.
+    {'reply', {'error', 'not_implemented'}, TemplateName}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -121,7 +121,7 @@ handle_call(_Request, _From, TemplateName) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, TemplateName) ->
-    {noreply, TemplateName}.
+    {'noreply', TemplateName}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -134,7 +134,7 @@ handle_cast(_Msg, TemplateName) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, TemplateName) ->
-    {noreply, TemplateName}.
+    {'noreply', TemplateName}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -145,7 +145,7 @@ handle_info(_Info, TemplateName) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _TemplateName) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -170,7 +170,7 @@ terminate(_Reason, _TemplateName) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, TemplateName, _Extra) ->
-    {ok, TemplateName}.
+    {'ok', TemplateName}.
 
 %%%===================================================================
 %%% Internal functions
@@ -181,9 +181,8 @@ code_change(_OldVsn, TemplateName, _Extra) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props('undefined' | wh_json:json_object()) -> 'undefined' | proplist().
-json_to_template_props(undefined) ->
-    undefined;
+-spec json_to_template_props(api_object()) -> 'undefined' | wh_proplist().
+json_to_template_props('undefined') -> 'undefined';
 json_to_template_props(JObj) ->
     normalize_proplist(wh_json:recursive_to_proplist(JObj)).
 
@@ -193,9 +192,8 @@ json_to_template_props(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_proplist(proplist()) -> proplist().
-normalize_proplist(Props) ->
-    [normalize_proplist_element(Elem) || Elem <- Props].
+-spec normalize_proplist(wh_proplist()) -> wh_proplist().
+normalize_proplist(Props) -> [normalize_proplist_element(Elem) || Elem <- Props].
 
 normalize_proplist_element({K, V}) when is_list(V) ->
     {normalize_value(K), normalize_proplist(V)};
@@ -206,15 +204,13 @@ normalize_proplist_element({K, V}) ->
 normalize_proplist_element(Else) ->
     Else.
 
-normalize_value(Value) ->
-    binary:replace(wh_util:to_lower_binary(Value), <<"-">>, <<"_">>, [global]).
+normalize_value(Value) -> binary:replace(wh_util:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
 
-cache_key(Number) ->
-    {cnam, Number}.
+cache_key(Number) -> {'cnam', Number}.
 
 fetch_cnam(Number, JObj) ->
     CNAM = make_request(Number, JObj),
-    CacheProps = [{expires, whapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)}],
+    CacheProps = [{'expires', whapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)}],
     wh_cache:store_local(?STEPSWITCH_CACHE, cache_key(Number), CNAM, CacheProps),
     CNAM.
 
@@ -225,13 +221,13 @@ make_request(Number, JObj) ->
     Headers = get_http_headers(),
     HTTPOptions = get_http_options(Url),
     case ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions) of
-        {ok, Status, _, ResponseBody} when size (ResponseBody) > 18 ->
+        {'ok', Status, _, ResponseBody} when size (ResponseBody) > 18 ->
             lager:debug("cnam lookup for ~p returned ~p: ~p", [Number, Status, ResponseBody]),
             binary:part(ResponseBody, 0, 18);
-        {ok, Status, _, ResponseBody} ->
+        {'ok', Status, _, ResponseBody} ->
             lager:debug("cnam lookup for ~p returned ~p: ~p", [Number, Status, ResponseBody]),
             ResponseBody;
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("cnam lookup for ~p failed: ~p", [Number, _R]),
             <<>>
     end.
@@ -239,20 +235,20 @@ make_request(Number, JObj) ->
 get_http_url(JObj) ->
     Template = whapps_config:get_binary(?CONFIG_CAT, <<"http_url">>, ?DEFAULT_URL),
     case binary:match(Template, <<"opencnam">>) of
-        nomatch ->
-            {ok, Url} = render(JObj, Template),
+        'nomatch' ->
+            {'ok', Url} = render(JObj, Template),
             lists:flatten(Url);
         _Else ->
-            {ok, Url} = render(JObj, Template),
+            {'ok', Url} = render(JObj, Template),
             lists:flatten([Url, "?ref=2600hz"])
     end.
 
 get_http_body(JObj) ->
     Template = whapps_config:get_binary(?CONFIG_CAT, <<"http_body">>, ?DEFAULT_CONTENT),
     case wh_util:is_empty(Template) of
-        true -> [];
-        false ->
-            {ok, Body} = render(Template, JObj),
+        'true' -> [];
+        'false' ->
+            {'ok', Body} = render(JObj, Template),
             lists:flatten(Body)
     end.
 
@@ -263,8 +259,8 @@ get_http_headers() ->
     ].
 
 get_http_options(Url) ->
-    Defaults = [{response_format, binary}
-                ,{connect_timeout, 500}
+    Defaults = [{'response_format', 'binary'}
+                ,{'connect_timeout', 500}
                ],
     Routines = [fun maybe_enable_ssl/2
                 ,fun maybe_enable_auth/2
@@ -272,31 +268,33 @@ get_http_options(Url) ->
     lists:foldl(fun(F, P) -> F(Url, P) end, Defaults, Routines).
 
 maybe_enable_ssl(<<"https", _/binary>>, Props) ->
-    [{ssl, [{verify, 0}]}|Props];
+    [{'ssl', [{'verify', 0}]}|Props];
 maybe_enable_ssl(_, Props) -> Props.
 
 maybe_enable_auth(_, Props) ->
     Username = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_username">>, <<>>),
     Password = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_password">>, <<>>),
     case wh_util:is_empty(Username) orelse wh_util:is_empty(Password) of
-        true -> Props;
-        false -> [{basic_auth, {Username, Password}}|Props]
+        'true' -> Props;
+        'false' -> [{'basic_auth', {Username, Password}}|Props]
     end.
 
 get_http_method() ->
     case whapps_config:get_binary(?CONFIG_CAT, <<"http_method">>, ?DEFAULT_METHOD) of
-        <<"post">> -> post;
-        <<"put">> -> put;
-        _Else -> get
+        <<"post">> -> 'post';
+        <<"put">> -> 'put';
+        _Else -> 'get'
     end.
 
--spec render(wh_json:json_object(), ne_binary()) -> {'ok', iolist()} | {'error', 'timeout'}.
+-spec render(wh_json:object(), ne_binary()) ->
+                    {'ok', iolist()} |
+                    {'error', 'timeout'}.
 render(JObj, Template) ->
-    case catch poolboy:checkout(?STEPSWITCH_CNAM_POOL, false, 1000) of
+    case catch poolboy:checkout(?STEPSWITCH_CNAM_POOL, 'false', 1000) of
         W when is_pid(W) ->
             Props = json_to_template_props(JObj),
-            Reply = gen_server:call(W, {render, Props, Template}),
+            Reply = gen_server:call(W, {'render', Props, Template}),
             poolboy:checkin(?STEPSWITCH_CNAM_POOL, W),
             Reply;
-        _Else -> {error, timeout}
+        _Else -> {'error', 'timeout'}
     end.

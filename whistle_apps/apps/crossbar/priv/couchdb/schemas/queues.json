@@ -95,6 +95,12 @@
         "description":"An optional HTTP URL to POST the CDR",
         "type":"string",
         "format":"uri"
+      },
+      "recording_url":{
+        "name":"Recording Url",
+        "description":"An optional HTTP URL to PUT the call recording after the call ends (and should respond to GET for retrieving the audio data)",
+        "type":"string",
+        "format":"uri"
       }
    }
 }

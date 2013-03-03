@@ -101,7 +101,7 @@ update_acdc_actor(Call, AgentId, <<"user">>) ->
     end.
 
 update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
-    lager:debug("going to new status ~s", [Status]),
+    lager:debug("agent ~s going to new status ~s", [AgentId, Status]),
 
     try update_agent_device(Call, AgentId, Status) of
         {'ok', _D} ->

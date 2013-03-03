@@ -21,8 +21,15 @@
 -define(PRESENCE_RED_FLASH, <<"early">>).
 -define(PRESENCE_RED_SOLID, <<"confirmed">>).
 
+-define(ENDPOINT_UPDATE_REG(AcctId, EPId), {'p', 'l', {'endpoint_update', AcctId, EPId}}).
+-define(ENDPOINT_CREATED(EP), {'endpoint_created', EP}).
+-define(ENDPOINT_EDITED(EP), {'endpoint_edited', EP}).
+-define(ENDPOINT_DELETED(EP), {'endpoint_deleted', EP}).
+
+-define(OWNER_UPDATE_REG(AcctId, OwnerId), {'p', 'l', {'owner_update', AcctId, OwnerId}}).
+
 -type abandon_reason() :: ?ABANDON_TIMEOUT | ?ABANDON_EXIT |
                           ?ABANDON_HANGUP.
 
--define(ACDC_HRL, true).
+-define(ACDC_HRL, 'true').
 -endif.

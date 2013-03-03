@@ -981,13 +981,13 @@ maybe_send_update(P, Ref, Update) when is_pid(P) ->
     end;
 maybe_send_update(_,_,_) -> 'ok'.
 
-maybe_start_auto_compaction_job() ->    
-    case compact_automatically() 
-        andalso (catch wh_couch_connections:test_admin_conn()) 
+maybe_start_auto_compaction_job() ->
+    case compact_automatically() andalso
+        (catch wh_couch_connections:test_admin_conn())
     of
         {'ok', _} ->
             gen_fsm:send_event(self(), 'compact');
-        _ -> 
+        _ ->
             erlang:send_after(?AUTOCOMPACTION_CHECK_TIMEOUT, self(), '$maybe_start_auto_compaction_job'),
             'ok'
     end.

@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -72,14 +72,14 @@ add(#wh_couch_connection{}=Connection) ->
     gen_server:cast(?MODULE, {add_connection, Connection}).
 
 -spec wait_for_connection() -> 'ok'.
-wait_for_connection() ->    
+wait_for_connection() ->
     try test_conn() of
         _ -> ok
     catch
         error:{badmatch,'$end_of_table'} ->
             timer:sleep(random:uniform(1000) + 100),
             wait_for_connection()
-    end.    
+    end.
 
 -spec get_host() -> string().
 get_host() ->
@@ -280,7 +280,7 @@ handle_cast({add_connection, #wh_couch_connection{}=Connection}, State) ->
     {noreply, State};
 handle_cast({update_connection, #wh_couch_connection{}=Connection}, State) ->
     true = ets:insert(?MODULE, Connection),
-    {noreply, State};    
+    {noreply, State};
 handle_cast({node_cookie, Cookie}, State) ->
     {noreply, State#state{cookie=Cookie}};
 handle_cast(_Msg, State) ->

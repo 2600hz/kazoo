@@ -158,30 +158,29 @@ call_status(CallId) when is_binary(CallId) ->
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     wapi_call:publish_call_status_req(CallId, Command);
-call_status(Call) ->
-    call_status(whapps_call:call_id(Call)).
+call_status(Call) -> call_status(whapps_call:call_id(Call)).
 
 -spec b_call_status(api_binary() | whapps_call:call()) -> whapps_api_std_return().
-b_call_status('undefined') -> {error, no_call_id};
+b_call_status('undefined') -> {'error', 'no_call_id'};
 b_call_status(CallId) when is_binary(CallId) ->
     Command = [{<<"Call-ID">>, CallId}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    Resp = wh_amqp_worker:call(whapps_amqp_pool
+    Resp = wh_amqp_worker:call('whapps_amqp_pool'
                                ,Command
                                ,fun(C) -> wapi_call:publish_call_status_req(CallId, C) end
                                ,fun wapi_call:call_status_resp_v/1
                               ),
     case Resp of
-        {error, _}=E -> E;
-        {ok, JObj}=Ok ->
+        {'error', 'timeout'} -> {'ok', wh_json:new()};
+        {'error', _}=E -> E;
+        {'ok', JObj}=OK ->
             case wh_json:get_value(<<"Status">>, JObj) of
-                <<"active">> -> Ok;
-                _Else -> {error, JObj}
+                <<"active">> -> OK;
+                _Else -> {'error', JObj}
             end
     end;
-b_call_status(Call) ->
-    b_call_status(whapps_call:call_id(Call)).
+b_call_status(Call) -> b_call_status(whapps_call:call_id(Call)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -202,11 +201,11 @@ channel_status(CallId, SrvQueue) when is_binary(CallId), is_binary(SrvQueue) ->
     wapi_call:publish_channel_status_req(CallId, Command).
 
 channel_status(Call) ->
-    true = whapps_call:is_call(Call),
+    'true' = whapps_call:is_call(Call),
     channel_status(whapps_call:call_id(Call), whapps_call:controller_queue(Call)).
 
 -spec b_channel_status(api_binary() | whapps_call:call()) -> whapps_api_std_return().
-b_channel_status('undefined') -> {error, no_channel_id};
+b_channel_status('undefined') -> {'error', no_channel_id};
 b_channel_status(ChannelId) when is_binary(ChannelId) ->
     Command = [{<<"Call-ID">>, ChannelId}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -217,15 +216,15 @@ b_channel_status(ChannelId) when is_binary(ChannelId) ->
                                ,fun wapi_call:channel_status_resp_v/1
                               ),
     case Resp of
-        {error, _}=E -> E;
-        {ok, JObj}=Ok ->
+        {'error', 'timeout'} -> {'ok', wh_json:new()};
+        {'error', _}=E -> E;
+        {'ok', JObj}=Ok ->
             case wh_json:get_value(<<"Status">>, JObj) of
                 <<"active">> -> Ok;
-                _Else -> {error, JObj}
+                _Else -> {'error', JObj}
             end
     end;
-b_channel_status(Call) ->
-    b_channel_status(whapps_call:call_id(Call)).
+b_channel_status(Call) -> b_channel_status(whapps_call:call_id(Call)).
 
 %%--------------------------------------------------------------------
 %% @pubic
@@ -251,7 +250,7 @@ audio_macro([], Call, Queue) ->
                  ]) | Queue
               ],
     Command = [{<<"Application-Name">>, <<"queue">>}
-               ,{<<"Commands">>, Prompts }
+               ,{<<"Commands">>, Prompts}
               ],
     send_command(Command, Call),
     NoopId;
@@ -359,10 +358,9 @@ b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup
 %% @end
 %%--------------------------------------------------------------------
 -spec redirect(ne_binary(), whapps_call:call()) -> 'ok'.
--spec redirect(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec redirect(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 
-redirect(Contact, Call) ->
-    redirect(Contact, 'undefined', Call).
+redirect(Contact, Call) -> redirect(Contact, 'undefined', Call).
 
 redirect(Contact, Server, Call) ->
     lager:debug("redirect to ~s on ~s", [Contact, Server]),
@@ -372,7 +370,7 @@ redirect(Contact, Server, Call) ->
               ],
     send_command(Command, Call),
     timer:sleep(2000),
-    ok.
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -391,10 +389,8 @@ flush_dtmf(Call) -> play(<<"silence_stream://50">>, Call).
 %% @end
 %%--------------------------------------------------------------------
 -spec set(api_object(), api_object(), whapps_call:call()) -> 'ok'.
-set('undefined', CallVars, Call) ->
-    set(wh_json:new(), CallVars, Call);
-set(ChannelVars, 'undefined', Call) ->
-    set(ChannelVars, wh_json:new(), Call);
+set('undefined', CallVars, Call) -> set(wh_json:new(), CallVars, Call);
+set(ChannelVars, 'undefined', Call) -> set(ChannelVars, wh_json:new(), Call);
 set(ChannelVars, CallVars, Call) ->
     case wh_json:is_empty(ChannelVars) andalso wh_json:is_empty(CallVars) of
         'true' -> 'ok';
@@ -427,8 +423,7 @@ set_terminators(Terminators, Call) ->
 -spec b_fetch(whapps_call:call()) -> whapps_api_std_return().
 -spec b_fetch(boolean(), whapps_call:call()) -> whapps_api_std_return().
 
-fetch(Call) ->
-    fetch(false, Call).
+fetch(Call) -> fetch('false', Call).
 fetch(FromOtherLeg, Call) ->
     Command = [{<<"Application-Name">>, <<"fetch">>}
                ,{<<"Insert-At">>, <<"now">>}
@@ -436,15 +431,13 @@ fetch(FromOtherLeg, Call) ->
               ],
     send_command(Command, Call).
 
-b_fetch(Call) ->
-    b_fetch(false, Call).
+b_fetch(Call) -> b_fetch('false', Call).
 b_fetch(FromOtherLeg, Call) ->
     fetch(FromOtherLeg, Call),
     case wait_for_message(<<"fetch">>) of
-        {ok, JObj} ->
-            {ok, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())};
-        {error, _}=E ->
-            E
+        {'ok', JObj} ->
+            {'ok', wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())};
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -456,7 +449,6 @@ b_fetch(FromOtherLeg, Call) ->
 -spec ring(whapps_call:call()) -> 'ok'.
 -spec b_ring(whapps_call:call()) -> whapps_api_error() |
                                     {'ok', wh_json:object()}.
-
 ring(Call) ->
     Command = [{<<"Application-Name">>, <<"ring">>}],
     send_command(Command, Call).
@@ -536,8 +528,6 @@ hangup(OtherLegOnly, Call) when is_boolean(OtherLegOnly) ->
               ],
     send_command(Command, Call).
 
-
-
 b_hangup(Call) ->
     hangup(Call),
     wait_for_hangup().
@@ -547,7 +537,6 @@ b_hangup(false, Call) ->
 b_hangup(true, Call) ->
     hangup(true, Call),
     wait_for_unbridge().
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -614,7 +603,7 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
 -spec b_bridge(wh_json:objects(), api_binary(), whapps_call:call()) -> whapps_api_bridge_return().
 -spec b_bridge(wh_json:objects(), api_binary(), api_binary(), whapps_call:call()) -> whapps_api_bridge_return().
 -spec b_bridge(wh_json:objects(), api_binary(), api_binary(), api_binary(), whapps_call:call()) -> whapps_api_bridge_return().
--spec b_bridge(wh_json:objects(), api_binary(), api_binary(), api_binary(), api_binary(), whapps_call:call()) 
+-spec b_bridge(wh_json:objects(), api_binary(), api_binary(), api_binary(), api_binary(), whapps_call:call())
                     -> whapps_api_bridge_return().
 -spec b_bridge(wh_json:objects(), api_binary(), api_binary(), api_binary(), api_binary(), api_object(), whapps_call:call())
                     -> whapps_api_bridge_return().
@@ -1013,7 +1002,7 @@ tones_command(Tones, Call) ->
 -spec prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 -spec prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 -spec prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), ne_binary()
-                                    ,whapps_call:call()) -> ok.
+                                    ,whapps_call:call()) -> 'ok'.
 -spec prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), ne_binary()
                                     ,ne_binaries(), whapps_call:call()) -> 'ok'.
 
@@ -1021,9 +1010,9 @@ tones_command(Tones, Call) ->
 -spec b_prompt_and_collect_digit(ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
--spec b_prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) 
+-spec b_prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call())
                                      -> b_play_and_collect_digits_return().
--spec b_prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), whapps_call:call()) 
+-spec b_prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), whapps_call:call())
                                      -> b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), ne_binary()
                                       ,whapps_call:call()) -> b_play_and_collect_digits_return().
@@ -1060,10 +1049,10 @@ b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Invali
     b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, ?ANY_DIGIT, Call).
 
 b_prompt_and_collect_digits(_MinDigits, _MaxDigits, _Prompt, <<"0">>, _Timeout, 'undefined', _Regex, _Terminators, _Call) ->
-    {ok, <<>>};
+    {'ok', <<>>};
 b_prompt_and_collect_digits(_MinDigits, _MaxDigits, _Prompt, <<"0">>, _Timeout, InvalidPrompt, _Regex, _Terminators, Call) ->
     _ = b_prompt(InvalidPrompt, Call),
-    {ok, <<>>};
+    {'ok', <<>>};
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
     b_play_and_collect_digits(MinDigits, MaxDigits, whapps_util:get_prompt(Prompt, Call), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
 
@@ -1092,9 +1081,9 @@ b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Invali
 -spec b_play_and_collect_digit(ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
 -spec b_play_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
 -spec b_play_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
--spec b_play_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) 
+-spec b_play_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call())
                                -> b_play_and_collect_digits_return().
--spec b_play_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), whapps_call:call()) 
+-spec b_play_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), whapps_call:call())
                                -> b_play_and_collect_digits_return().
 -spec b_play_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), ne_binary()
                                 ,whapps_call:call()) -> b_play_and_collect_digits_return().
@@ -1141,24 +1130,24 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
     b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, ?ANY_DIGIT, Call).
 
 b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, <<"0">>, _Timeout, 'undefined', _Regex, _Terminators, _Call) ->
-    {ok, <<>>};
+    {'ok', <<>>};
 b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, <<"0">>, _Timeout, MediaInvalid, _Regex, _Terminators, Call) ->
     _ = b_play(MediaInvalid, Call),
-    {ok, <<>>};
+    {'ok', <<>>};
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call) ->
     NoopId = play(Media, Terminators, Call),
     case collect_digits(MaxDigits, Timeout, <<"2000">>, NoopId, Call) of
-        {ok, Digits} ->
+        {'ok', Digits} ->
             MinSize = wh_util:to_integer(MinDigits),
             case re:run(Digits, Regex) of
                 {match, _} when byte_size(Digits) >= MinSize ->
-                    {ok, Digits};
+                    {'ok', Digits};
                 _ ->
                     RemainingTries = wh_util:to_binary(wh_util:to_integer(Tries) - 1),
                     b_play_and_collect_digits(MinDigits, MaxDigits, Media, RemainingTries
                                               ,Timeout, MediaInvalid, Regex, Terminators, Call)
             end;
-        {error, _}=Else -> Else
+        {'error', _}=Else -> Else
     end.
 
 %%--------------------------------------------------------------------
@@ -1348,9 +1337,9 @@ b_privacy(Mode, Call) ->
 -type collect_digits_return() :: {'error','channel_hungup' | 'channel_unbridge' | wh_json:object()} | {'ok', ne_binary()}.
 -spec collect_digits(integer() | ne_binary(), whapps_call:call()) -> collect_digits_return().
 -spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), whapps_call:call()) -> collect_digits_return().
--spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), whapps_call:call()) 
+-spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), whapps_call:call())
                           -> collect_digits_return().
--spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), api_binary(), whapps_call:call()) 
+-spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), api_binary(), whapps_call:call())
                           -> collect_digits_return().
 -spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), api_binary(), list()
                            ,whapps_call:call()) -> collect_digits_return().
@@ -1376,26 +1365,26 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, JObj} ->
+        {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } ->
+                {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _} ->
                     lager:debug("channel was unbridged while collecting digits"),
-                    {error, channel_unbridge};
-                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
+                    {'error', 'channel_unbridge'};
+                {<<"call_event">>, <<"CHANNEL_HANGUP">>, _} ->
                     lager:debug("channel was hungup while collecting digits"),
-                    {error, channel_hungup};
-                { <<"error">>, _, <<"noop">> } ->
+                    {'error', 'channel_hungup'};
+                {<<"error">>, _, <<"noop">>} ->
                     case wh_json:get_value([<<"Request">>, <<"Msg-ID">>], JObj, NoopId) of
                         NoopId when is_binary(NoopId), NoopId =/= <<>> ->
                             lager:debug("channel execution error while collecting digits: ~s", [wh_json:encode(JObj)]),
-                            {error, JObj};
+                            {'error', JObj};
                         _NID when is_binary(NoopId), NoopId =/= <<>> ->
                             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After);
                         _ ->
                             lager:debug("channel execution error while collecting digits: ~s", [wh_json:encode(JObj)]),
-                            {error, JObj}
+                            {'error', JObj}
                     end;
-                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">> } ->
+                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
                     %% Playback completed start timeout
                     case wh_json:get_value(<<"Application-Response">>, JObj) of
                         NoopId when is_binary(NoopId), NoopId =/= <<>> ->
@@ -1412,30 +1401,30 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                             T = case Digits of <<>> -> Timeout; _ -> After end,
                             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, T)
                     end;
-                { <<"call_event">>, <<"DTMF">>, _ } ->
+                {<<"call_event">>, <<"DTMF">>, _} ->
                     %% DTMF received, collect and start interdigit timeout
                     Digits =:= <<>> andalso flush(Call),
                     Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj, <<>>),
                     case lists:member(Digit, Terminators) of
-                        true ->
+                        'true' ->
                             lager:debug("collected digits ('~s') from caller, terminated with ~s", [Digits, Digit]),
-                            {ok, Digits};
-                        false ->
+                            {'ok', Digits};
+                        'false' ->
                             case <<Digits/binary, Digit/binary>> of
                                 D when size(D) < MaxDigits ->
                                     collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, D, Interdigit);
                                 D ->
                                     lager:debug("collected maximum digits ('~s') from caller", [D]),
-                                    {ok, D}
+                                    {'ok', D}
                             end
                     end;
                 _ ->
-                    collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, decr_timeout(After, Start))
+                    collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, whapps_util:decr_timeout(After, Start))
             end;
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, decr_timeout(After, Start))
+            collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, whapps_util:decr_timeout(After, Start))
     after
         After -> {'ok', Digits}
     end.
@@ -1463,24 +1452,24 @@ wait_for_message(Application, Event, Type) ->
 wait_for_message(Application, Event, Type, Timeout) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, JObj} ->
+        {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s", [Application]),
-                    {error, channel_destroy};
-                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
+                    {'error', 'channel_destroy'};
+                {<<"call_event">>, <<"CHANNEL_HANGUP">>, _} ->
                     lager:debug("channel was hungup while waiting for ~s", [Application]),
-                    {error, channel_hungup};
-                { <<"error">>, _, Application } ->
+                    {'error', 'channel_hungup'};
+                {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
-                    {error, JObj};
-                { Type, Event, Application } ->
-                    {ok, JObj};
+                    {'error', JObj};
+                {Type, Event, Application} ->
+                    {'ok', JObj};
                 _ ->
-                    wait_for_message(Application, Event, Type, decr_timeout(Timeout, Start))
+                    wait_for_message(Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
             end;
         _ ->
-            wait_for_message(Application, Event, Type, decr_timeout(Timeout, Start))
+            wait_for_message(Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
     after
         Timeout -> {'error', 'timeout'}
     end.
@@ -1511,27 +1500,22 @@ wait_for_application(Application, Event, Type, Timeout) ->
     receive
         {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
-                { <<"error">>, _, Application } ->
+                {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
                     {'error', JObj};
-                { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was hungup while waiting for ~s", [Application]),
                     {'error', 'channel_hungup'};
-                { Type, Event, Application } ->
+                {Type, Event, Application} ->
                     {'ok', JObj};
                 _ ->
-                    wait_for_application(Application, Event, Type, decr_timeout(Timeout, Start))
+                    wait_for_application(Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
             end;
         _ ->
-            wait_for_application(Application, Event, Type, decr_timeout(Timeout, Start))
+            wait_for_application(Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
     after
         Timeout -> {'error', 'timeout'}
     end.
-
--spec decr_timeout(wh_timeout(), non_neg_integer() | wh_now()) -> wh_timeout().
-decr_timeout('infinity', _) -> 'infinity';
-decr_timeout(Timeout, Elapsed) when is_integer(Elapsed) -> Timeout - Elapsed;
-decr_timeout(Timeout, Start) -> decr_timeout(Timeout, wh_util:elapsed_ms(Start)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1561,25 +1545,25 @@ wait_for_headless_application(Application, Event, Type) ->
 wait_for_headless_application(Application, Event, Type, Timeout) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, JObj} ->
+        {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
-                { <<"error">>, _, Application } ->
+                {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
-                    {error, JObj};
+                    {'error', JObj};
                 {<<"call_event">>,<<"CHANNEL_HANGUP_COMPLETE">>,_} ->
                     lager:debug("hangup occurred, waiting 5000 ms for ~s event", [Application]),
                     wait_for_headless_application(Application, Event, Type, 5000);
                 {<<"call_event">>,<<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("destroy occurred, waiting 5000 ms for ~s event", [Application]),
                     wait_for_headless_application(Application, Event, Type, 5000);
-                { Type, Event, Application } ->
-                    {ok, JObj};
+                {Type, Event, Application} ->
+                    {'ok', JObj};
                 _T ->
                     lager:debug("ignore ~p", [_T]),
-                    wait_for_headless_application(Application, Event, Type, decr_timeout(Timeout, Start))
+                    wait_for_headless_application(Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
             end;
         _ ->
-            wait_for_headless_application(Application, Event, Type, decr_timeout(Timeout, Start))
+            wait_for_headless_application(Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
     after
         Timeout -> {'error', 'timeout'}
     end.
@@ -1598,25 +1582,25 @@ wait_for_dtmf(Timeout) ->
     receive
         {'amqp_msg', JObj} ->
             case whapps_util:get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     lager:debug("channel was destroyed while waiting for DTMF"),
-                    {error, channel_destroy};
-                { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
+                    {'error', 'channel_destroy'};
+                {<<"call_event">>, <<"CHANNEL_HANGUP">>} ->
                     lager:debug("channel was destroyed while waiting for DTMF"),
-                    {error, channel_hungup};
-                { <<"error">>, _ } ->
+                    {'error', 'channel_hungup'};
+                {<<"error">>, _} ->
                     lager:debug("channel execution error while waiting for DTMF: ~s", [wh_json:encode(JObj)]),
-                    {error, JObj};
-                { <<"call_event">>, <<"DTMF">> } ->
-                    {ok, wh_json:get_value(<<"DTMF-Digit">>, JObj)};
+                    {'error', JObj};
+                {<<"call_event">>, <<"DTMF">>} ->
+                    {'ok', wh_json:get_value(<<"DTMF-Digit">>, JObj)};
                 _ ->
-                    wait_for_dtmf(decr_timeout(Timeout, Start))
+                    wait_for_dtmf(whapps_util:decr_timeout(Timeout, Start))
             end;
         _E ->
             lager:debug("unexpected ~p", [_E]),
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            wait_for_dtmf(decr_timeout(Timeout, Start))
+            wait_for_dtmf(whapps_util:decr_timeout(Timeout, Start))
     after
         Timeout -> {'ok', <<>>}
     end.
@@ -1642,19 +1626,19 @@ wait_for_bridge(Timeout, Fun, Call) ->
                                             wh_json:get_value(<<"Hangup-Cause">>, JObj)
                                            ),
             Result = case lists:member(AppResponse, ?SUCCESSFUL_HANGUPS) of
-                         true -> ok;
-                         false -> fail
+                         'true' -> 'ok';
+                         'false' -> 'fail'
                      end,
             case get_event_type(JObj) of
                 {<<"error">>, _, <<"bridge">>} ->
                     lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:encode(JObj)]),
-                    {error, JObj};
+                    {'error', JObj};
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
                     CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
                     lager:debug("channel bridged to ~s", [CallId]),
                     case is_function(Fun, 1) of
-                        false -> ok;
-                        true -> Fun(JObj)
+                        'false' -> 'ok';
+                        'true' -> Fun(JObj)
                     end,
                     wait_for_bridge(infinity, Fun, Call);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
@@ -1663,11 +1647,11 @@ wait_for_bridge(Timeout, Fun, Call) ->
                     lager:debug("bridge completed with result ~s catagorized as ~s", [AppResponse, Result]),
                     {Result, JObj};
                 _ ->
-                    wait_for_bridge(decr_timeout(Timeout, Start), Fun, Call)
+                    wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call)
             end;
         %% dont let the mailbox grow unbounded if
         %%   this process hangs around...
-        _ -> wait_for_bridge(decr_timeout(Timeout, Start), Fun, Call)
+        _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call)
     after
         Timeout -> {'error', 'timeout'}
     end.
@@ -1680,8 +1664,8 @@ wait_for_bridge(Timeout, Fun, Call) ->
 %%--------------------------------------------------------------------
 -spec wait_for_noop(api_binary()) -> whapps_api_std_return().
 wait_for_noop(NoopId) ->
-    case wait_for_message(<<"noop">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, infinity) of
-        {ok, JObj}=OK ->
+    case wait_for_message(<<"noop">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, 'infinity') of
+        {'ok', JObj}=OK ->
             case wh_json:get_value(<<"Application-Response">>, JObj) of
                 NoopId when is_binary(NoopId), NoopId =/= <<>> -> OK;
                 _No when is_binary(NoopId), NoopId =/= <<>> -> wait_for_noop(NoopId);
@@ -1699,19 +1683,13 @@ wait_for_noop(NoopId) ->
 -spec wait_for_channel_unbridge() -> {'ok', wh_json:object()}.
 wait_for_channel_unbridge() ->
     receive
-        {amqp_msg, JObj} ->
+        {'amqp_msg', JObj} ->
             case whapps_util:get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">> } ->
-                    {ok, JObj};
-                { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
-                    {ok, JObj};
-                _ ->
-                    wait_for_channel_unbridge()
+                {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>} -> {'ok', JObj};
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', JObj};
+                _ -> wait_for_channel_unbridge()
             end;
-        _ ->
-            %% dont let the mailbox grow unbounded if
-            %%   this process hangs around...
-            wait_for_channel_unbridge()
+        _ -> wait_for_channel_unbridge()
     end.
 
 %%--------------------------------------------------------------------
@@ -1723,19 +1701,13 @@ wait_for_channel_unbridge() ->
 -spec wait_for_channel_bridge() -> {'ok', wh_json:object()}.
 wait_for_channel_bridge() ->
     receive
-        {amqp_msg, JObj} ->
+        {'amqp_msg', JObj} ->
             case whapps_util:get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_BRIDGE">> } ->
-                    {ok, JObj};
-                { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
-                    {ok, JObj};
-                _ ->
-                    wait_for_channel_bridge()
+                {<<"call_event">>, <<"CHANNEL_BRIDGE">>} -> {'ok', JObj};
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', JObj};
+                _ -> wait_for_channel_bridge()
             end;
-        _ ->
-            %% dont let the mailbox grow unbounded if
-            %%   this process hangs around...
-            wait_for_channel_bridge()
+        _ -> wait_for_channel_bridge()
     end.
 
 %%--------------------------------------------------------------------
@@ -1747,17 +1719,12 @@ wait_for_channel_bridge() ->
 -spec wait_for_hangup() -> {'ok', 'channel_hungup'}.
 wait_for_hangup() ->
     receive
-        {amqp_msg, JObj} ->
+        {'amqp_msg', JObj} ->
             case whapps_util:get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
-                    {ok, channel_hungup};
-                _ ->
-                    wait_for_hangup()
+                {<<"call_event">>, <<"CHANNEL_HANGUP">>} -> {'ok', 'channel_hungup'};
+                _ -> wait_for_hangup()
             end;
-        _ ->
-            %% dont let the mailbox grow unbounded if
-            %%   this process hangs around...
-            wait_for_hangup()
+        _ -> wait_for_hangup()
     end.
 
 %%--------------------------------------------------------------------
@@ -1769,17 +1736,12 @@ wait_for_hangup() ->
 -spec wait_for_unbridge() -> {'ok', 'leg_hungup'}.
 wait_for_unbridge() ->
     receive
-        {amqp_msg, JObj} ->
+        {'amqp_msg', JObj} ->
             case whapps_util:get_event_type(JObj) of
-                { <<"call_event">>, <<"LEG_DESTROYED">> } ->
-                    {ok, leg_hungup};
-                _ ->
-                    wait_for_unbridge()
+                {<<"call_event">>, <<"LEG_DESTROYED">>} -> {'ok', 'leg_hungup'};
+                _ -> wait_for_unbridge()
             end;
-        _ ->
-            %% dont let the mailbox grow unbounded if
-            %%   this process hangs around...
-            wait_for_unbridge()
+        _ -> wait_for_unbridge()
     end.
 
 %%--------------------------------------------------------------------
@@ -1794,54 +1756,52 @@ wait_for_unbridge() ->
 wait_for_application_or_dtmf(Application, Timeout) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, JObj} ->
+        {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s or DTMF", [Application]),
-                    {error, channel_destroy};
-                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
+                    {'error', 'channel_destroy'};
+                {<<"call_event">>, <<"CHANNEL_HANGUP">>, _} ->
                     lager:debug("channel was hungup while waiting for ~s or DTMF", [Application]),
-                    {error, channel_hungup};
-                { <<"error">>, _, Application } ->
+                    {'error', 'channel_hungup'};
+                {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting ~s or DTMF: ~s", [Application, wh_json:encode(JObj)]),
-                    {error, JObj};
-                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Application} ->
-                    {ok, JObj};
-                { <<"call_event">>, <<"DTMF">>, _ } ->
-                    {dtmf, wh_json:get_value(<<"DTMF-Digit">>, JObj)};
+                    {'error', JObj};
+                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Application} -> {'ok', JObj};
+                {<<"call_event">>, <<"DTMF">>, _} -> {'dtmf', wh_json:get_value(<<"DTMF-Digit">>, JObj)};
                 _ ->
-                    wait_for_application_or_dtmf(Application, decr_timeout(Timeout, Start))
+                    wait_for_application_or_dtmf(Application, whapps_util:decr_timeout(Timeout, Start))
             end;
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            wait_for_application_or_dtmf(Application, decr_timeout(Timeout, Start))
+            wait_for_application_or_dtmf(Application, whapps_util:decr_timeout(Timeout, Start))
     after
         Timeout -> {'error', 'timeout'}
     end.
 
 -type wait_for_fax_ret() :: {'ok', wh_json:object()} |
                             {'error', 'channel_destroy' | 'channel_hungup' | wh_json:object()}.
+
+-define(WAIT_FOR_FAX_TIMEOUT, whapps_config:get_integer(<<"fax">>, <<"wait_for_fax_timeout_ms">>, 3600000)).
+
 -spec wait_for_fax() -> wait_for_fax_ret().
 -spec wait_for_fax(wh_timeout()) -> wait_for_fax_ret().
-wait_for_fax() -> wait_for_fax(3600000).
+wait_for_fax() -> wait_for_fax(?WAIT_FOR_FAX_TIMEOUT).
 wait_for_fax(Timeout) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, JObj} ->
+        {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
-                { <<"error">>, _, <<"receive_fax">> } ->
+                {<<"error">>, _, <<"receive_fax">>} ->
                     lager:debug("channel execution error while waiting for fax: ~s", [wh_json:encode(JObj)]),
-                    {error, JObj};
-                { <<"call_event">>, <<"CHANNEL_EXECUTE">>, <<"receive_fax">> } ->
-                    wait_for_fax(infinity);
-                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"receive_fax">> } ->
-                    {ok, wh_json:set_value(<<"Fax-Success">>, true, JObj)};
-                _ ->
-                    wait_for_fax(decr_timeout(Timeout, Start))
+                    {'error', JObj};
+                {<<"call_event">>, <<"CHANNEL_EXECUTE">>, <<"receive_fax">>} -> wait_for_fax('infinity');
+                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"receive_fax">>} ->
+                    {'ok', wh_json:set_value(<<"Fax-Success">>, 'true', JObj)};
+                _ -> wait_for_fax(whapps_util:decr_timeout(Timeout, Start))
             end;
-        _ ->
-            wait_for_fax(decr_timeout(Timeout, Start))
+        _ -> wait_for_fax(whapps_util:decr_timeout(Timeout, Start))
     after
         Timeout -> {'error', 'timeout'}
     end.
@@ -1852,15 +1812,16 @@ wait_for_fax(Timeout) ->
 %% Wait forever for the channel to hangup
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type(wh_json:object()) -> {binary(), binary(), binary()}.
+-spec get_event_type(wh_json:object()) -> {api_binary(), api_binary(), api_binary()}.
 get_event_type(JObj) ->
-    { wh_json:get_value(<<"Event-Category">>, JObj, <<>>)
-      ,wh_json:get_value(<<"Event-Name">>, JObj, <<>>)
-      ,wh_json:get_value(<<"Application-Name">>
-                         ,JObj
-                         ,wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj, <<>>)
-                        )
-    }.
+    {C, N} = wh_util:get_event_type(JObj),
+    {C, N, get_app(JObj)}.
+
+get_app(JObj) ->
+    case wh_json:get_value(<<"Application-Name">>, JObj) of
+        'undefined' -> wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj);
+        App -> App
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

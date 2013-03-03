@@ -382,8 +382,7 @@ randomize_list(List) ->
     {_, D1} = lists:unzip(D),
     D1.
 
-randomize_list(1, List) ->
-    randomize_list(List);
+randomize_list(1, List) -> randomize_list(List);
 randomize_list(T, List) ->
     lists:foldl(fun(_E, Acc) ->
                         randomize_list(Acc)
@@ -397,12 +396,20 @@ randomize_list(T, List) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec put_callid(wh_json:object() | wh_proplist() | ne_binary()) -> api_binary().
-put_callid(?NE_BINARY = CallId) ->
-    erlang:put(callid, CallId);
-put_callid(Prop) when is_list(Prop) ->
-    erlang:put(callid, props:get_value(<<"Call-ID">>, Prop, props:get_value(<<"Msg-ID">>, Prop, ?LOG_SYSTEM_ID)));
-put_callid(JObj) ->
-    erlang:put(callid, wh_json:get_binary_value(<<"Call-ID">>, JObj, wh_json:get_binary_value(<<"Msg-ID">>, JObj, ?LOG_SYSTEM_ID))).
+put_callid(?NE_BINARY = CallId) -> erlang:put('callid', CallId);
+put_callid(Prop) when is_list(Prop) -> erlang:put('callid', callid(Prop));
+put_callid(JObj) -> erlang:put('callid', callid(JObj)).
+
+callid(Prop) when is_list(Prop) ->
+    case props:get_value(<<"Call-ID">>, Prop) of
+        'undefined' -> props:get_value(<<"Msg-ID">>, Prop, ?LOG_SYSTEM_ID);
+        C -> C
+    end;
+callid(JObj) ->
+    case wh_json:get_binary_value(<<"Call-ID">>, JObj) of
+        'undefined' -> wh_json:get_binary_value(<<"Msg-ID">>, JObj, ?LOG_SYSTEM_ID);
+        C -> C
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -411,9 +418,15 @@ put_callid(JObj) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type(wh_json:object()) -> {api_binary(), api_binary()}.
-get_event_type(JObj) when not is_list(JObj) -> % guard against json_objects() being passed in
-    { wh_json:get_binary_value(<<"Event-Category">>, JObj), wh_json:get_binary_value(<<"Event-Name">>, JObj) }.
+-spec get_event_type(wh_json:object() | wh_proplist()) -> {api_binary(), api_binary()}.
+get_event_type(Props) when is_list(Props) ->
+    {props:get_value(<<"Event-Category">>, Props)
+     ,props:get_value(<<"Event-Name">>, Props)
+    };
+get_event_type(JObj) ->
+    {wh_json:get_value(<<"Event-Category">>, JObj)
+     ,wh_json:get_value(<<"Event-Name">>, JObj)
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -519,32 +532,21 @@ to_number(X) when is_list(X) ->
         'error':'badarg' -> list_to_float(X)
     end.
 
--spec to_list(X) -> list() when
-      X :: atom() | list() | binary() | integer() | float().
-to_list(X) when is_float(X) ->
-    mochinum:digits(X);
-to_list(X) when is_integer(X) ->
-    integer_to_list(X);
-to_list(X) when is_binary(X) ->
-    binary_to_list(X);
-to_list(X) when is_atom(X) ->
-    atom_to_list(X);
-to_list(X) when is_list(X) ->
-    X.
+-spec to_list(atom() | list() | binary() | integer() | float()) -> list().
+to_list(X) when is_float(X) -> mochinum:digits(X);
+to_list(X) when is_integer(X) -> integer_to_list(X);
+to_list(X) when is_binary(X) -> binary_to_list(X);
+to_list(X) when is_atom(X) -> atom_to_list(X);
+to_list(X) when is_list(X) -> X.
 
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
 -spec to_binary(atom() | string() | binary() | integer() | float()) -> binary().
-to_binary(X) when is_float(X) ->
-    to_binary(mochinum:digits(X));
-to_binary(X) when is_integer(X) ->
-    list_to_binary(integer_to_list(X));
-to_binary(X) when is_atom(X) ->
-    list_to_binary(atom_to_list(X));
-to_binary(X) when is_list(X) ->
-    iolist_to_binary(X);
-to_binary(X) when is_binary(X) ->
-    X.
+to_binary(X) when is_float(X) -> to_binary(mochinum:digits(X));
+to_binary(X) when is_integer(X) -> list_to_binary(integer_to_list(X));
+to_binary(X) when is_atom(X) -> list_to_binary(atom_to_list(X));
+to_binary(X) when is_list(X) -> iolist_to_binary(X);
+to_binary(X) when is_binary(X) -> X.
 
 %% the safer version, won't let you leak atoms
 -spec to_atom(atom() | list() | binary() | integer() | float()) -> atom().
@@ -625,10 +627,8 @@ is_proplist(_) -> 'false'.
 
 -spec to_lower_binary(term()) -> api_binary().
 to_lower_binary('undefined') -> 'undefined';
-to_lower_binary(Bin) when is_binary(Bin) ->
-    << <<(to_lower_char(B))>> || <<B>> <= Bin>>;
-to_lower_binary(Else) ->
-    to_lower_binary(to_binary(Else)).
+to_lower_binary(Bin) when is_binary(Bin) -> << <<(to_lower_char(B))>> || <<B>> <= Bin>>;
+to_lower_binary(Else) -> to_lower_binary(to_binary(Else)).
 
 -spec to_lower_string(term()) -> 'undefined' | list().
 to_lower_string('undefined') -> 'undefined';
@@ -638,12 +638,10 @@ to_lower_string(Else) ->
     to_lower_string(to_list(Else)).
 
 -spec ucfirst_binary(ne_binary()) -> ne_binary().
-ucfirst_binary(<<F:8, Bin/binary>>) ->
-    <<(to_upper_char(F)):8, Bin/binary>>.
+ucfirst_binary(<<F:8, Bin/binary>>) -> <<(to_upper_char(F)):8, Bin/binary>>.
 
 -spec lcfirst_binary(ne_binary()) -> ne_binary().
-lcfirst_binary(<<F:8, Bin/binary>>) ->
-    <<(to_lower_char(F)):8, Bin/binary>>.
+lcfirst_binary(<<F:8, Bin/binary>>) -> <<(to_lower_char(F)):8, Bin/binary>>.
 
 -spec to_lower_char(char()) -> char().
 to_lower_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
@@ -654,17 +652,13 @@ to_lower_char(C) -> C.
 
 -spec to_upper_binary(term()) -> api_binary().
 to_upper_binary('undefined') -> 'undefined';
-to_upper_binary(Bin) when is_binary(Bin) ->
-    << <<(to_upper_char(B))>> || <<B>> <= Bin>>;
-to_upper_binary(Else) ->
-    to_upper_binary(to_binary(Else)).
+to_upper_binary(Bin) when is_binary(Bin) -> << <<(to_upper_char(B))>> || <<B>> <= Bin>>;
+to_upper_binary(Else) -> to_upper_binary(to_binary(Else)).
 
 -spec to_upper_string(term()) -> 'undefined' | list().
 to_upper_string('undefined') -> 'undefined';
-to_upper_string(L) when is_list(L) ->
-    [to_upper_char(C) || C <- L];
-to_upper_string(Else) ->
-    to_upper_string(to_list(Else)).
+to_upper_string(L) when is_list(L) -> [to_upper_char(C) || C <- L];
+to_upper_string(Else) -> to_upper_string(to_list(Else)).
 
 -spec to_upper_char(char()) -> char().
 to_upper_char(C) when is_integer(C), $a =< C, C =< $z -> C - 32;
@@ -676,18 +670,13 @@ to_upper_char(C) -> C.
 -spec strip_binary(binary(), 'both' | 'left' | 'right') -> binary().
 -spec strip_left_binary(binary(), char()) -> binary().
 -spec strip_right_binary(binary(), char()) -> binary().
-strip_binary(B) ->
-    strip_binary(B, both).
+strip_binary(B) -> strip_binary(B, 'both').
 
-strip_binary(B, left) ->
-    strip_left_binary(B, $\s);
-strip_binary(B, right) ->
-    strip_right_binary(B, $\s);
-strip_binary(B, both) ->
-    strip_right_binary(strip_left_binary(B, $\s), $\s).
+strip_binary(B, 'left') -> strip_left_binary(B, $\s);
+strip_binary(B, 'right') -> strip_right_binary(B, $\s);
+strip_binary(B, 'both') -> strip_right_binary(strip_left_binary(B, $\s), $\s).
 
-strip_left_binary(<<C, B/binary>>, C) ->
-    strip_left_binary(B, C);
+strip_left_binary(<<C, B/binary>>, C) -> strip_left_binary(B, C);
 strip_left_binary(B, _) -> B.
 
 strip_right_binary(C, C) -> <<>>;
@@ -696,13 +685,11 @@ strip_right_binary(<<C, B/binary>>, C) ->
         <<>> -> <<>>;
         T -> <<C, T/binary>>
     end;
-strip_right_binary(<<A, B/binary>>, C) ->
-    <<A, (strip_right_binary(B, C))/binary>>;
+strip_right_binary(<<A, B/binary>>, C) -> <<A, (strip_right_binary(B, C))/binary>>;
 strip_right_binary(<<>>, _) -> <<>>.
 
 -spec binary_md5(text()) -> ne_binary().
-binary_md5(Text) ->
-    to_hex_binary(erlang:md5(to_binary(Text))).
+binary_md5(Text) -> to_hex_binary(erlang:md5(to_binary(Text))).
 
 -spec a1hash(ne_binary(), ne_binary(), ne_binary()) -> nonempty_string().
 a1hash(User, Realm, Password) ->
@@ -730,23 +717,22 @@ ceiling(X) ->
 
 %% returns current seconds
 -spec current_tstamp() -> non_neg_integer().
-current_tstamp() ->
-    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
+current_tstamp() -> calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
 %% fetch and cache the whistle version from the VERSION file in whistle's root folder
 -spec whistle_version() -> ne_binary().
 whistle_version() ->
     case wh_cache:fetch(?WHISTLE_VERSION_CACHE_KEY) of
-        {ok, Version} ->  Version;
-        {error, _} ->
-            VersionFile = filename:join([code:lib_dir(whistle), "..", "..", "VERSION"]),
+        {'ok', Version} ->  Version;
+        {'error', _} ->
+            VersionFile = filename:join([code:lib_dir('whistle'), "..", "..", "VERSION"]),
             whistle_version(VersionFile)
     end.
 
 -spec whistle_version(ne_binary() | nonempty_string()) -> ne_binary().
 whistle_version(FileName) ->
     case file:consult(FileName) of
-        {ok, [Version]} ->
+        {'ok', [Version]} ->
             wh_cache:store(?WHISTLE_VERSION_CACHE_KEY, Version),
             Version;
         _ ->
@@ -757,13 +743,13 @@ whistle_version(FileName) ->
 
 -spec write_pid(ne_binary() | nonempty_string() | iolist()) -> 'ok' | {'error', atom()}.
 write_pid(FileName) ->
-    file:write_file(FileName, io_lib:format("~s", [os:getpid()]), [write, binary]).
+    file:write_file(FileName, io_lib:format("~s", [os:getpid()]), ['write', 'binary']).
 
 -spec ensure_started(atom()) -> 'ok' | {'error', term()}.
 ensure_started(App) when is_atom(App) ->
     case application:start(App) of
-        ok -> ok;
-        {error, {already_started, App}} -> ok;
+        'ok' -> 'ok';
+        {'error', {'already_started', App}} -> 'ok';
         E -> E
     end.
 
@@ -785,36 +771,26 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
                                    [Y, Mo, D, H, Mi, S])).
 
 -spec microseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
-microseconds_to_seconds(Microseconds) ->
-    to_integer(Microseconds) div 1000000.
+microseconds_to_seconds(Microseconds) -> to_integer(Microseconds) div 1000000.
 
 -spec elapsed_s(wh_now() | pos_integer()) -> pos_integer().
 -spec elapsed_ms(wh_now() | pos_integer()) -> pos_integer().
 -spec elapsed_us(wh_now() | pos_integer()) -> pos_integer().
-elapsed_s({_,_,_}=Start) ->
-    timer:now_diff(erlang:now(), Start) div 1000000;
-elapsed_s(Start) when is_integer(Start) ->
-    current_tstamp() - Start.
+elapsed_s({_,_,_}=Start) -> timer:now_diff(erlang:now(), Start) div 1000000;
+elapsed_s(Start) when is_integer(Start) -> current_tstamp() - Start.
 
-elapsed_ms({_,_,_}=Start) ->
-    timer:now_diff(erlang:now(), Start) div 1000;
-elapsed_ms(Start) when is_integer(Start) ->
-    current_tstamp() - Start * 1000.
+elapsed_ms({_,_,_}=Start) -> timer:now_diff(erlang:now(), Start) div 1000;
+elapsed_ms(Start) when is_integer(Start) -> current_tstamp() - Start * 1000.
 
-elapsed_us({_,_,_}=Start) ->
-    timer:now_diff(erlang:now(), Start);
-elapsed_us(Start) when is_integer(Start) ->
-    current_tstamp() - Start * 1000000.
+elapsed_us({_,_,_}=Start) -> timer:now_diff(erlang:now(), Start);
+elapsed_us(Start) when is_integer(Start) -> current_tstamp() - Start * 1000000.
 
 -spec now_s(wh_now()) -> integer().
 -spec now_ms(wh_now()) -> integer().
 -spec now_us(wh_now()) -> integer().
-now_us({MegaSecs,Secs,MicroSecs}) ->
-    (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
-now_ms({_,_,_}=Now) ->
-    now_us(Now) div 1000.
-now_s({_,_,_}=Now) ->
-    now_us(Now) div 1000000.
+now_us({MegaSecs,Secs,MicroSecs}) -> (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
+now_ms({_,_,_}=Now) -> now_us(Now) div 1000.
+now_s({_,_,_}=Now) -> now_us(Now) div 1000000.
 
 -ifdef(TEST).
 

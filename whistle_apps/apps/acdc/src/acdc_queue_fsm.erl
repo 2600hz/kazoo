@@ -495,24 +495,6 @@ connecting({'accepted', AcceptJObj}, #state{queue_proc=Srv
             {'next_state', 'connecting', State}
     end;
 
-connecting({'retry', RetryJObj}, #state{queue_proc=Srv
-                                        ,connect_resps=[]
-                                        ,collect_ref=CollectRef
-                                        ,agent_ring_timer_ref=AgentRef
-                                       }=State) ->
-    lager:debug("recv retry from agent, but no other resps are available"),
-
-    webseq:evt(webseq:process_pid(RetryJObj), self(), <<"member call - retry">>),
-
-    acdc_queue_listener:member_connect_re_req(Srv),
-    maybe_stop_timer(CollectRef),
-    maybe_stop_timer(AgentRef),
-
-    {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()
-                                              ,agent_ring_timer_ref='undefined'
-                                              ,member_call_winner='undefined'
-                                             }};
-
 connecting({'retry', RetryJObj}, #state{agent_ring_timer_ref=AgentRef
                                         ,collect_ref=CollectRef
                                         ,member_call_winner=Winner

@@ -27,6 +27,10 @@
          ,refresh/2
          ,current_call/1
          ,status/1
+
+         ,new_endpoint/2
+         ,edited_endpoint/2
+         ,deleted_endpoint/2
         ]).
 
 -export([wait_for_listener/4]).
@@ -274,6 +278,13 @@ start_link(AcctId, AgentId, Supervisor, Props) ->
 
 start_link(AcctId, AgentId, Supervisor, Props, IsThief) ->
     gen_fsm:start_link(?MODULE, [AcctId, AgentId, Supervisor, Props, IsThief], []).
+
+new_endpoint(FSM, EP) ->
+    lager:debug("sending EP to ~p: ~p", [FSM, EP]).
+edited_endpoint(FSM, EP) ->
+    lager:debug("sending EP to ~p: ~p", [FSM, EP]),
+    gen_fsm:send_all_state_event(FSM, {'edited_endpoint', wh_json:get_value(<<"_id">>, EP), EP}).
+deleted_endpoint(FSM, EP) -> lager:debug("sending EP to ~p: ~p", [FSM, EP]).
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -688,7 +699,7 @@ ringing({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     webseq:note(self(), 'right', <<"ready">>),
-    {'next_state', 'ready', clear_call(State, 'ready')};
+    {'next_state', 'ready', clear_call(State, 'failed')};
 
 ringing({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
                                                    ,acct_id=AcctId
@@ -1187,18 +1198,14 @@ handle_event('load_endpoints', StateName, #state{acct_db=AcctDb
                       ),
     case catch acdc_util:get_endpoints(Call, AgentId) of
         [] ->
-            lager:debug("no endpoints, going down"),
+            lager:debug("no endpoints for this agent, going down"),
             acdc_agent:stop(Srv),
             {'stop', 'normal', State};
         [_|_]=EPs ->
-            lager:debug("endpoints loaded and registered: ~p", [EPs]),
+            _ = [monitor_endpoint(EP, AcctId, Srv) || EP <- EPs],
 
-            _ = [acdc_agent:add_endpoint_bindings(Srv
-                                                  ,cf_util:get_sip_realm(EP, AcctId)
-                                                  ,wh_json:get_value([<<"sip">>, <<"username">>], EP)
-                                                 )
-                 || EP <- EPs
-                ],
+            %% Inform us of things with us as owner
+            catch gproc:reg(?OWNER_UPDATE_REG(AcctId, AgentId)),
 
             {'next_state', StateName, State#state{endpoints=EPs}, 'hibernate'};
         {'EXIT', _E} ->
@@ -1228,8 +1235,7 @@ handle_event(_Event, StateName, State) ->
 %%--------------------------------------------------------------------
 handle_sync_event(_Event, _From, StateName, State) ->
     lager:debug("unhandled sync event in state ~s: ~p", [StateName, _Event]),
-    Reply = ok,
-    {'reply', Reply, StateName, State}.
+    {'reply', 'ok', StateName, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1247,6 +1253,44 @@ handle_sync_event(_Event, _From, StateName, State) ->
 handle_info({'timeout', _Ref, ?SYNC_RESPONSE_MESSAGE}=Msg, StateName, State) ->
     gen_fsm:send_event(self(), Msg),
     {'next_state', StateName, State};
+
+handle_info({'endpoint_edited', EP}, StateName, #state{endpoints=EPs
+                                                       ,acct_id=AcctId
+                                                       ,agent_id=AgentId
+                                                       ,agent_proc=Srv
+                                                      }=State) ->
+    EPId = wh_json:get_value(<<"_id">>, EP),
+    case wh_json:get_value(<<"owner_id">>, EP) of
+        AgentId ->
+            lager:debug("device ~s edited, we're the owner, maybe adding it", [EPId]),
+            {'next_state', StateName, State#state{endpoints=maybe_add_endpoint(EPId, EP, EPs, AcctId, Srv)}, 'hibernate'};
+        _OwnerId ->
+            lager:debug("device ~s edited, owner now ~s, maybe removing it", [EPId, _OwnerId]),
+            {'next_state', StateName, State#state{endpoints=maybe_remove_endpoint(EPId, EPs, AcctId, Srv)}, 'hibernate'}
+    end;
+handle_info({'endpoint_deleted', EP}, StateName, #state{endpoints=EPs
+                                                        ,acct_id=AcctId
+                                                        ,agent_proc=Srv
+                                                       }=State) ->
+    EPId = wh_json:get_value(<<"_id">>, EP),
+    lager:debug("device ~s deleted, maybe removing it", [EPId]),
+    {'next_state', StateName, State#state{endpoints=maybe_remove_endpoint(EPId, EPs, AcctId, Srv)}, 'hibernate'};
+
+handle_info({'endpoint_created', EP}, StateName, #state{endpoints=EPs
+                                                        ,acct_id=AcctId
+                                                        ,agent_id=AgentId
+                                                        ,agent_proc=Srv
+                                                       }=State) ->
+    EPId = wh_json:get_value(<<"_id">>, EP),
+    case wh_json:get_value(<<"owner_id">>, EP) of
+        AgentId ->
+            lager:debug("device ~s created, we're the owner, maybe adding it", [EPId]),
+            {'next_state', StateName, State#state{endpoints=maybe_add_endpoint(EPId, EP, EPs, AcctId, Srv)}, 'hibernate'};
+        _OwnerId ->
+            lager:debug("device ~s created, owner is ~s, ignoring", [EPId, _OwnerId]),
+            {'next_state', StateName, State}
+    end;
+
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled message in state ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
@@ -1454,3 +1498,38 @@ missed_reason(<<"NO_USER_RESPONSE">>) -> <<"rejected">>;
 missed_reason(<<"CALL_REJECTED">>) -> <<"rejected">>;
 missed_reason(<<"USER_BUSY">>) -> <<"rejected">>;
 missed_reason(Reason) -> Reason.
+
+monitor_endpoint(EP, AcctId, Srv) ->
+    %% Bind for outbound call requests
+    acdc_agent:add_endpoint_bindings(Srv
+                                     ,cf_util:get_sip_realm(EP, AcctId)
+                                     ,wh_json:get_value([<<"sip">>, <<"username">>], EP)
+                                    ),
+    %% Inform us of device changes
+    catch gproc:reg(?ENDPOINT_UPDATE_REG(AcctId, wh_json:get_value(<<"_id">>, EP))).
+
+unmonitor_endpoint(EP, AcctId, Srv) ->
+    %% Bind for outbound call requests
+    acdc_agent:remove_endpoint_bindings(Srv
+                                        ,cf_util:get_sip_realm(EP, AcctId)
+                                        ,wh_json:get_value([<<"sip">>, <<"username">>], EP)
+                                       ),
+    %% Inform us of device changes
+    catch gproc:unreg(?ENDPOINT_UPDATE_REG(AcctId, wh_json:get_value(<<"_id">>, EP))).
+
+maybe_add_endpoint(EPId, EP, EPs, AcctId, Srv) ->
+    case lists:partition(fun(E) -> wh_json:get_value(<<"_id">>, E) =:= EPId end, EPs) of
+        {[], _} ->
+            lager:debug("endpoint ~s not in our list, adding it", [EPId]),
+            [begin monitor_endpoint(EP, AcctId, Srv), EP end | EPs];
+        {_, _} -> EPs
+    end.
+
+maybe_remove_endpoint(EPId, EPs, AcctId, Srv) ->
+    case lists:partition(fun(EP) -> wh_json:get_value(<<"_id">>, EP) =:= EPId end, EPs) of
+        {[], _} -> EPs; %% unknown endpoint
+        {[RemoveEP], EPs1} ->
+            lager:debug("endpoint ~s in our list, removing it", [EPId]),
+            unmonitor_endpoint(RemoveEP, AcctId, Srv),
+            EPs1
+    end.

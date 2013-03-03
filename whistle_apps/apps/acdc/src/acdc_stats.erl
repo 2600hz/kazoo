@@ -258,7 +258,7 @@ store_stat(#call_stat{acct_id=AcctId}=Stat, Prefix) ->
     JObj = stat_to_jobj(Stat, Prefix),
     store_stat(AcctId, JObj);
 store_stat(#agent_stat{acct_id=AcctId}=Stat, Prefix) ->
-    JObj = wh_doc:update_pvt_parameters(stat_to_jobj(Stat, Prefix), AcctId),
+    JObj = stat_to_jobj(Stat, Prefix),
     store_stat(AcctId, JObj);
 store_stat(?NE_BINARY = AcctId, JObj) ->
     case couch_mgr:save_doc(db_name(AcctId), JObj) of
@@ -323,8 +323,8 @@ stat_to_jobj(#call_stat{call_id=CallId
            ,{<<"caller_id_number">>, CNum}
            ,{<<"pvt_type">>, <<"call_partial">>}
            ,{<<"_id">>, doc_id(Prefix, TStamp)}
-          ])), AcctId, [{account_id, AcctId}
-                        ,{account_db, db_name(AcctId)}
+          ])), AcctId, [{'account_id', AcctId}
+                        ,{'account_db', db_name(AcctId)}
                        ]);
 stat_to_jobj(#agent_stat{agent_id=AgentId
                          ,acct_id=AcctId
@@ -344,8 +344,8 @@ stat_to_jobj(#agent_stat{agent_id=AgentId
            ,{<<"pvt_type">>, <<"agent_partial">>}
            ,{<<"call_id">>, CallId}
            ,{<<"_id">>, doc_id(Prefix, TStamp)}
-          ])), AcctId, [{account_id, AcctId}
-                        ,{account_db, db_name(AcctId)}
+          ])), AcctId, [{'account_id', AcctId}
+                        ,{'account_db', db_name(AcctId)}
                        ]).
 
 -spec doc_id(ne_binary(), pos_integer()) -> ne_binary().

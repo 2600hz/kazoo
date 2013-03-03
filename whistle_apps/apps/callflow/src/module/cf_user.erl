@@ -31,15 +31,15 @@ handle(Data, Call) ->
     case length(Endpoints) > 0
         andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) 
     of
-        false ->
+        'false' ->
             lager:notice("user ~s has no endpoints", [UserId]),
             cf_exe:continue(Call);
-        {ok, _} ->
+        {'ok', _} ->
             lager:info("completed successful bridge to user"),
             cf_exe:stop(Call);
-        {fail, _}=F ->
+        {'fail', _}=F ->
             cf_util:handle_bridge_failure(F, Call);
-        {error, _R} ->
+        {'error', _R} ->
             lager:info("error bridging to user: ~p", [_R]),
             cf_exe:continue(Call)
     end.
@@ -52,12 +52,12 @@ handle(Data, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_endpoints(api_binary(), wh_json:object(), whapps_call:call()) -> wh_json:objects().
-get_endpoints(undefined, _, _) -> [];
+get_endpoints('undefined', _, _) -> [];
 get_endpoints(UserId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
     lists:foldr(fun(EndpointId, Acc) ->
                         case cf_endpoint:build(EndpointId, Params, Call) of
-                            {ok, Endpoint} -> Endpoint ++ Acc;
-                            {error, _E} -> Acc
+                            {'ok', Endpoint} -> Endpoint ++ Acc;
+                            {'error', _E} -> Acc
                         end
                 end, [], cf_attributes:owned_by(UserId, <<"device">>, Call)).

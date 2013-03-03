@@ -66,47 +66,50 @@ handle_req(<<"originate">>, JObj, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec attempt_to_fulfill_bridge_req(ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> bridge_resp() |
-                                                                                                          execute_ext_resp() |
-                                                                                                          {'error', 'no_resources'}.
+-spec attempt_to_fulfill_bridge_req(ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) ->
+                                           bridge_resp() |
+                                           execute_ext_resp() |
+                                           {'error', 'no_resources'}.
 attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
     Result = case lookup_number(Number) of
-                 {ok, AccountId} ->
+                 {'ok', AccountId} ->
                      lager:debug("found local extension, keeping onnet"),
                      execute_local_extension(Number, AccountId, CtrlQ, JObj);
                  _ ->
                      Flags = wh_json:get_value(<<"Flags">>, JObj, []),
-                     Resources = props:get_value(resources, Props),
+                     Resources = props:get_value('resources', Props),
                      {Endpoints, IsEmergency} = find_endpoints(Number, Flags, Resources, JObj),
                      bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj)
              end,
     case {Result, correct_shortdial(Number, JObj)} of
-        {{error, no_resources}, fail} -> Result;
-        {{error, no_resources}, CorrectedNumber} ->
+        {{'error', 'no_resources'}, 'fail'} -> Result;
+        {{'error', 'no_resources'}, CorrectedNumber} ->
             lager:debug("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
             attempt_to_fulfill_bridge_req(CorrectedNumber, CtrlQ, JObj, Props);
         _Else -> Result
     end.
 
--spec lookup_number(ne_binary()) -> {'ok', ne_binary()}|{'error', 'not_found'}.
+-spec lookup_number(ne_binary()) ->
+                           {'ok', ne_binary()} |
+                           {'error', 'not_found'}.
 lookup_number(Number) ->
     case stepswitch_util:lookup_number(Number) of
-        {ok, AccountId, Props} ->
-            case props:get_value(force_outbound, Props) of
-                true -> {error, not_found};
-                false -> {ok, AccountId}
+        {'ok', AccountId, Props} ->
+            case props:get_value('force_outbound', Props) of
+                'true' -> {'error', 'not_found'};
+                'false' -> {'ok', AccountId}
             end;
-        _ -> {error, not_found}
+        _ -> {'error', 'not_found'}
     end.
 
 -spec attempt_to_fulfill_originate_req(ne_binary(), wh_json:object(), wh_proplist()) -> originate_resp().
 attempt_to_fulfill_originate_req(Number, JObj, Props) ->
     Flags = wh_json:get_value(<<"Flags">>, JObj, []),
-    Resources = props:get_value(resources, Props),
+    Resources = props:get_value('resources', Props),
     {Endpoints, _} = find_endpoints(Number, Flags, Resources, JObj),
     case {originate_to_endpoints(Endpoints, JObj), correct_shortdial(Number, JObj)} of
-        {{error, no_resources}, fail} -> {error, no_resources};
-        {{error, no_resources}, CorrectedNumber} ->
+        {{'error', 'no_resources'}, 'fail'} -> {'error', 'no_resources'};
+        {{'error', 'no_resources'}, CorrectedNumber} ->
             lager:debug("found no resources for number as originated, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
             attempt_to_fulfill_originate_req(CorrectedNumber, JObj, Props);
         {Result, _} -> Result
@@ -121,35 +124,39 @@ attempt_to_fulfill_originate_req(Number, JObj, Props) ->
 %% the emergency CID.
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints(proplist(), boolean(), ne_binary(), wh_json:object()) -> {'error', 'no_resources'} | bridge_resp().
-bridge_to_endpoints([], _, _, _) ->
-    {error, no_resources};
+-spec bridge_to_endpoints(wh_proplist(), boolean(), ne_binary(), wh_json:object()) ->
+                                 {'error', 'no_resources'} |
+                                 bridge_resp().
+bridge_to_endpoints([], _, _, _) -> {'error', 'no_resources'};
 bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
     lager:debug("found resources that bridge the number...to the cloud!"),
     Q = create_queue(),
 
-    {CIDNum, CIDName} = case IsEmergency of
-                            'true' ->
-                                lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
-                                {get_emergency_cid_number(JObj)
-                                 ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj,
-                                                       wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj))};
-                            'false'  ->
-                                {wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj
-                                                      ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj))
-                                 ,wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj
-                                                       ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj))}
-                        end,
+    {CIDNum, CIDName} =
+        case IsEmergency of
+            'true' ->
+                lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
+                {get_emergency_cid_number(JObj)
+                 ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj,
+                                       wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj))
+                };
+            'false'  ->
+                {wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj
+                                      ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj))
+                 ,wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj
+                                       ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj))
+                }
+        end,
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
 
-    FromURI = case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, false) of
-                  true ->
+    FromURI = case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false') of
+                  'true' ->
                       case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
-                          {undefined, _} -> undefined;
-                          {_, undefined} -> undefined;
+                          {'undefined', _} -> 'undefined';
+                          {_, 'undefined'} -> 'undefined';
                           {FromNumber, FromRealm} -> <<"sip:", FromNumber/binary, "@", FromRealm/binary>>
                       end;
-                  false -> undefined
+                  'false' -> 'undefined'
               end,
     lager:debug("setting from-uri to ~s", [FromURI]),
 
@@ -164,8 +171,8 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
                               ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
 
     ForceFax = case wh_json:is_true(<<"Force-Fax">>, JObj) of
-                   false -> undefined;
-                   true -> <<"peer">>
+                   'false' -> 'undefined';
+                   'true' -> <<"peer">>
                end,
 
     Command = [{<<"Application-Name">>, <<"bridge">>}
@@ -198,11 +205,10 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
 %% the emergency CID.
 %% @end
 %%--------------------------------------------------------------------
--spec originate_to_endpoints(proplist(), wh_json:object()) ->
-                                          {'error', 'no_resources'} |
-                                          originate_resp().
-originate_to_endpoints([], _) ->
-    {error, no_resources};
+-spec originate_to_endpoints(wh_proplist(), wh_json:object()) ->
+                                    {'error', 'no_resources'} |
+                                    originate_resp().
+originate_to_endpoints([], _) -> {'error', 'no_resources'};
 originate_to_endpoints(Endpoints, JObj) ->
     lager:debug("found resources that can originate the number...to the cloud!"),
     Q = create_queue(),
@@ -212,14 +218,14 @@ originate_to_endpoints(Endpoints, JObj) ->
     CIDName = wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj
                                    ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj)),
 
-    FromURI = case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, false) of
-                  true ->
+    FromURI = case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false') of
+                  'true' ->
                       case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
-                          {undefined, _} -> undefined;
-                          {_, undefined} -> undefined;
+                          {'undefined', _} -> 'undefined';
+                          {_, 'undefined'} -> 'undefined';
                           {FromNumber, FromRealm} -> <<"sip:", FromNumber/binary, "@", FromRealm/binary>>
                       end;
-                  false -> undefined
+                  'false' -> 'undefined'
               end,
 
     lager:debug("setting from-uri to ~s", [FromURI]),
@@ -286,10 +292,10 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
             ,{<<"Global-Resource">>, <<"false">>}
            ],
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
-    Command = [{<<"Call-ID">>, get(callid)}
+    Command = [{<<"Call-ID">>, get('callid')}
                ,{<<"Extension">>, Number}
-               ,{<<"Reset">>, true}
-               ,{<<"Custom-Channel-Vars">>, wh_json:from_list([ KV || {_, V}=KV <- CCVs, V =/= undefined ])}
+               ,{<<"Reset">>, 'true'}
+               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
                ,{<<"Application-Name">>, <<"execute_extension">>}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
@@ -302,31 +308,28 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
 %% Consume AMQP messages waiting for the originate response/error
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_originate(ne_binary()) -> originate_resp() | {'error', 'no_resources'}.
+-spec wait_for_originate(ne_binary()) ->
+                                originate_resp() |
+                                {'error', 'no_resources'}.
 wait_for_originate(MsgId) ->
     receive
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
             JObj = wh_json:decode(Payload, CT),
             case get_event_type(JObj) of
-                {<<"resource">>, <<"originate_resp">>, _} ->
-                    hangup_result(JObj);
-                {<<"error">>, <<"originate_resp">>, _} ->
-                    {error, JObj};
-                {<<"dialplan">>, <<"originate_ready">>, _} ->
-                    {ready, JObj};
-                _  ->
-                    wait_for_originate(MsgId)
+                {<<"resource">>, <<"originate_resp">>, _} -> hangup_result(JObj);
+                {<<"error">>, <<"originate_resp">>, _} -> {'error', JObj};
+                {<<"dialplan">>, <<"originate_ready">>, _} -> {'ready', JObj};
+                _  -> wait_for_originate(MsgId)
             end;
         %% if there are no FS nodes connected (or ecallmgr is down) we get the message
         %% returned so we know...
         {#'basic.return'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
             JObj = wh_json:decode(Payload, CT),
             case wh_json:get_value(<<"Msg-ID">>, JObj) of
-                MsgId -> {error, no_resources};
+                MsgId -> {'error', 'no_resources'};
                 _Else -> wait_for_originate(MsgId)
             end;
-        _ ->
-            wait_for_originate(MsgId)
+        _ -> wait_for_originate(MsgId)
     end.
 
 %%--------------------------------------------------------------------
@@ -343,15 +346,11 @@ wait_for_execute_extension() ->
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
             JObj = wh_json:decode(Payload, CT),
             case get_event_type(JObj) of
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    hangup_result(JObj);
-                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>} ->
-                    {ok, execute_extension};
-                _  ->
-                    wait_for_execute_extension()
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} -> hangup_result(JObj);
+                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>} -> {'ok', 'execute_extension'};
+                _  -> wait_for_execute_extension()
             end;
-        _ ->
-            wait_for_execute_extension()
+        _ -> wait_for_execute_extension()
     end.
 
 %%--------------------------------------------------------------------
@@ -362,34 +361,23 @@ wait_for_execute_extension() ->
 %% response then set the CCVs accordingly.
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_bridge('infinity' | pos_integer()) -> bridge_resp().
+-spec wait_for_bridge(wh_timeout()) -> bridge_resp().
 wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
             JObj = wh_json:decode(Payload, CT),
             case get_event_type(JObj) of
-                {<<"error">>, <<"dialplan">>, _} ->
-                    {error, JObj};
+                {<<"error">>, <<"dialplan">>, _} -> {'error', JObj};
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
                     CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
                     lager:debug("outbound request bridged to call ~s", [CallId]),
-                    wait_for_bridge(infinity);
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    hangup_result(JObj);
-                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-                    hangup_result(JObj);
-                _ when Timeout =:= infinity ->
-                    wait_for_bridge(Timeout);
-                _ ->
-                    DiffMicro = timer:now_diff(erlang:now(), Start),
-                    wait_for_bridge(Timeout - (DiffMicro div 1000))
+                    wait_for_bridge('infinity');
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} -> hangup_result(JObj);
+                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} -> hangup_result(JObj);
+                _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout,Start))
             end;
-        _ when Timeout =:= infinity ->
-            wait_for_bridge(Timeout);
-        _ ->
-            DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_bridge(Timeout - (DiffMicro div 1000))
+        _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout,Start))
     end.
 
 %%--------------------------------------------------------------------
@@ -406,16 +394,16 @@ hangup_result(JObj) ->
     case wh_json:get_value(<<"Hangup-Code">>, JObj) of
         <<"sip:", Code/binary>> when SuccessfulCause ->
             try wh_util:to_integer(Code) < 400 of
-                true -> {ok, JObj};
-                false when SuccessfulCause -> 
-                    {fail, wh_json:set_value(<<"Application-Response">>, <<"NORMAL_TEMPORARY_FAILURE">>, JObj)};
-                false -> {fail, JObj}
+                'true' -> {'ok', JObj};
+                'false' when SuccessfulCause ->
+                    {'fail', wh_json:set_value(<<"Application-Response">>, <<"NORMAL_TEMPORARY_FAILURE">>, JObj)};
+                'false' -> {'fail', JObj}
             catch
-                _:_ when SuccessfulCause -> {ok, JObj}; 
-                _:_  -> {fail, JObj}
+                _:_ when SuccessfulCause -> {'ok', JObj};
+                _:_  -> {'fail', JObj}
             end;
-        _Else when SuccessfulCause -> {ok, JObj};
-        _Else -> {fail, JObj}
+        _Else when SuccessfulCause -> {'ok', JObj};
+        _Else -> {'fail', JObj}
     end.
 
 %%--------------------------------------------------------------------
@@ -430,11 +418,11 @@ hangup_result(JObj) ->
 create_queue() ->
     Q = amqp_util:new_queue(),
 
-    ok = amqp_util:basic_consume(Q),
-    ok = wapi_call:bind_q(Q, [{restrict_to, [events]}
-                              ,{callid, get(callid)}
-                             ]),
-    ok = wapi_self:bind_q(Q, []),
+    'ok' = amqp_util:basic_consume(Q),
+    'ok' = wapi_call:bind_q(Q, [{'restrict_to', ['events']}
+                                ,{'callid', get('callid')}
+                               ]),
+    'ok' = wapi_self:bind_q(Q, []),
     Q.
 
 %%--------------------------------------------------------------------
@@ -459,7 +447,8 @@ get_event_type(JObj) ->
 %% component of a Whistle dialplan bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec find_endpoints(ne_binary(), [] | [ne_binary(),...], endpoints(), wh_json:object()) -> {wh_proplist(), boolean()}.
+-spec find_endpoints(ne_binary(), ne_binaries(), endpoints(), wh_json:object()) ->
+                            {wh_proplist(), boolean()}.
 find_endpoints(Number, Flags, Resources, JObj) ->
     Endpoints = case Flags of
                     'undefined' ->
@@ -479,10 +468,9 @@ find_endpoints(Number, Flags, Resources, JObj) ->
 -spec contains_emergency_endpoint(endpoints()) -> boolean().
 -spec contains_emergency_endpoint(endpoints(), boolean()) -> boolean().
 contains_emergency_endpoint(Endpoints) ->
-    contains_emergency_endpoint(Endpoints, false).
+    contains_emergency_endpoint(Endpoints, 'false').
 
-contains_emergency_endpoint([], UseEmergency) ->
-    UseEmergency;
+contains_emergency_endpoint([], UseEmergency) -> UseEmergency;
 contains_emergency_endpoint([{_, _, _, _, IsEmergency}|T], UseEmergency) ->
     contains_emergency_endpoint(T, IsEmergency or UseEmergency).
 
@@ -523,8 +511,8 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
     lager:debug("found resource ~s (~s)", [Gateway#gateway.resource_id, Route]),
 
     FromUri = case Gateway#gateway.format_from_uri of
-                  false -> undefined;
-                  true ->
+                  'false' -> 'undefined';
+                  'true' ->
                       from_uri(wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj), Gateway#gateway.realm)
               end,
     lager:debug("setting from-uri to ~p on gateway ~p", [FromUri, Gateway#gateway.resource_id]),
@@ -559,7 +547,7 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec response({'error', 'no_resources'} | bridge_resp() | execute_ext_resp() | originate_resp(), wh_json:object()) -> wh_proplist().
-response({ok, Resp}, JObj) ->
+response({'ok', Resp}, JObj) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
@@ -568,7 +556,7 @@ response({ok, Resp}, JObj) ->
      ,{<<"Resource-Response">>, Resp}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
-response({ready, Resp}, JObj) ->
+response({'ready', Resp}, JObj) ->
     lager:debug("originate is ready to execute"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Resp)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -577,7 +565,7 @@ response({ready, Resp}, JObj) ->
      ,{<<"Resource-Response">>, Resp}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
-response({fail, Response}, JObj) ->
+response({'fail', Response}, JObj) ->
     lager:debug("resources for outbound request failed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
@@ -587,7 +575,7 @@ response({fail, Response}, JObj) ->
      ,{<<"Resource-Response">>, Response}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
-response({error, no_resources}, JObj) ->
+response({'error', 'no_resources'}, JObj) ->
     lager:debug("no available resources"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
@@ -597,7 +585,7 @@ response({error, no_resources}, JObj) ->
      ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
-response({error, timeout}, JObj) ->
+response({'error', 'timeout'}, JObj) ->
     lager:debug("attempt to connect to resources timed out"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
@@ -607,7 +595,7 @@ response({error, timeout}, JObj) ->
      ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
-response({error, Error}, JObj) ->
+response({'error', Error}, JObj) ->
     lager:debug("error during outbound request: ~s", [wh_util:to_binary(wh_json:encode(Error))]),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
@@ -634,8 +622,7 @@ correct_shortdial(Number, JObj) ->
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length > 0 ->
             wnm_util:to_e164(<<(binary:part(CIDNum, 0, Length))/binary, Number/binary>>);
-        _ ->
-            fail
+        _ -> 'fail'
     end.
 
 %%--------------------------------------------------------------------
@@ -647,9 +634,9 @@ correct_shortdial(Number, JObj) ->
 %%--------------------------------------------------------------------
 -spec get_account_name(ne_binary(), ne_binary()) -> ne_binary().
 get_account_name(Number, AccountId) when is_binary(Number) ->
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {ok, JObj} -> wh_json:get_ne_value(<<"name">>, JObj, Number);
+        {'ok', JObj} -> wh_json:get_ne_value(<<"name">>, JObj, Number);
         _ -> Number
     end.
 
@@ -663,48 +650,48 @@ get_account_name(Number, AccountId) when is_binary(Number) ->
 -spec get_emergency_cid_number(wh_json:object()) -> ne_binary().
 get_emergency_cid_number(JObj) ->
     Account = wh_json:get_value(<<"Account-ID">>, JObj),
-    AccountDb = wh_util:format_account_id(Account, encoded),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Candidates = [wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)
                   ,wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj)
                  ],
     Requested = wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj
                                      ,wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {ok, PhoneNumbers} ->
+        {'ok', PhoneNumbers} ->
             Numbers = wh_json:get_keys(wh_json:public_fields(PhoneNumbers)),
-            E911Enabled = [Number 
+            E911Enabled = [Number
                            || Number <- Numbers
                                   ,lists:member(<<"dash_e911">>, wh_json:get_value([Number, <<"features">>], PhoneNumbers, []))
                           ],
             get_emergency_cid_number(Requested, Candidates, E911Enabled);
-        {error, _R} ->
+        {'error', _R} ->
             lager:error("unable to fetch the ~s from account ~s: ~p", [?WNM_PHONE_NUMBER_DOC, Account, _R]),
             get_emergency_cid_number(Requested, Candidates, [])
     end.
 
--spec get_emergency_cid_number(ne_binary(), ['undefined' | ne_binary(),...], [ne_binary(),...] | []) -> ne_binary().
-%% if there are no e911 enabled numbers then either use the global system default 
+-spec get_emergency_cid_number(ne_binary(), api_binaries(), ne_binaries()) -> ne_binary().
+%% if there are no e911 enabled numbers then either use the global system default
 %% or the requested (if there isnt one)
 get_emergency_cid_number(Requested, _, []) ->
     case whapps_config:get_non_empty(<<"stepswitch">>, <<"default_emergency_cid_number">>) of
-        undefined -> Requested;
+        'undefined' -> Requested;
         DefaultE911 -> DefaultE911
     end;
 %% If neither their emergency cid or outgoung cid is e911 enabled but their account
 %% has other numbers with e911 then use the first...
-get_emergency_cid_number(_, [], [E911Enabled|_]) ->
-    E911Enabled;
+get_emergency_cid_number(_, [], [E911Enabled|_]) -> E911Enabled;
 %% due to the way we built the candidates list it can contain the atom 'undefined'
 %% handle that condition (ignore)
-get_emergency_cid_number(Requested, [undefined|Candidates], E911Enabled) ->
+get_emergency_cid_number(Requested, ['undefined'|Candidates], E911Enabled) ->
     get_emergency_cid_number(Requested, Candidates, E911Enabled);
 %% check if the first non-atom undefined element in the list is in the list of
 %% e911 enabled numbers, if so use it otherwise keep checking.
 get_emergency_cid_number(Requested, [Candidate|Candidates], E911Enabled) ->
     case lists:member(Candidate, E911Enabled) of
-        true -> Candidate;
-        false -> get_emergency_cid_number(Requested, Candidates, E911Enabled)
+        'true' -> Candidate;
+        'false' -> get_emergency_cid_number(Requested, Candidates, E911Enabled)
     end.
 
+-spec from_uri(api_binary(), ne_binary()) -> api_binary().
 from_uri(?NE_BINARY = CNum, Realm) -> <<"sip:", CNum/binary, "@", Realm/binary>>;
-from_uri(_, _) -> undefined.
+from_uri(_, _) -> 'undefined'.
