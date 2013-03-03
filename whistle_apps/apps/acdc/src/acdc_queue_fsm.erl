@@ -83,7 +83,6 @@
          ,enter_when_empty = true :: boolean() % if a queue is agent-less, can the caller enter?
          ,agent_wrapup_time = 0 :: integer() % forced wrapup time for an agent after a call
 
-         ,moh :: ne_binary() % media to play to customer while on hold
          ,announce :: ne_binary() % media to play to customer when about to be connected to agent
 
          ,caller_exit_key :: ne_binary() % DTMF a caller can press to leave the queue
@@ -205,7 +204,6 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
              ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
              ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
              ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj)
-             ,moh = wh_json:get_ne_value(<<"moh">>, QueueJObj)
              ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
              ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
              ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, 'false')
@@ -223,7 +221,6 @@ ready({'member_call', CallJObj, Delivery}, #state{queue_proc=QueueSrv
                                                   ,manager_proc=MgrSrv
                                                   ,connection_timeout=ConnTimeout
                                                   ,connection_timer_ref=ConnRef
-                                                  ,moh=MOH
                                                   ,cdr_url=Url
                                                  }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, CallJObj)),
@@ -232,9 +229,6 @@ ready({'member_call', CallJObj, Delivery}, #state{queue_proc=QueueSrv
     case acdc_queue_manager:should_ignore_member_call(MgrSrv, Call, CallJObj) of
         'false' ->
             lager:debug("member call received: ~s", [whapps_call:call_id(Call)]),
-
-            lager:debug("putting call on hold with moh ~s", [MOH]),
-            whapps_call_command:hold(MOH, Call),
 
             webseq:note(self(), 'right', [whapps_call:call_id(Call), <<": member call">>]),
             webseq:evt(whapps_call:call_id(Call), self(), <<"member call received">>),
@@ -768,7 +762,6 @@ update_properties(QueueJObj, State) ->
       ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
       ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
       ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj)
-      ,moh = wh_json:get_ne_value(<<"moh">>, QueueJObj)
       ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
       ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
       ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, 'false')

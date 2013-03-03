@@ -51,7 +51,6 @@
 -record(state, {
           queue_id :: ne_binary()
           ,acct_id :: ne_binary()
-          ,moh :: ne_binary()
 
            %% PIDs of the gang
           ,worker_sup :: pid()
@@ -192,7 +191,6 @@ init([WorkerSup, MgrPid, AcctId, QueueId]) ->
        queue_id = QueueId
        ,acct_id = AcctId
        ,my_id = acdc_util:proc_id()
-       ,moh = wh_json:get_value(<<"moh">>, QueueJObj)
 
        ,worker_sup = WorkerSup
        ,mgr_pid = MgrPid
