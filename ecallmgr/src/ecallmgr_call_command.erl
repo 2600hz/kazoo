@@ -79,6 +79,8 @@ get_fs_app(Node, UUID, JObj, <<"tts">>) ->
     case wapi_dialplan:tts_v(JObj) of
         'false' -> {'error', <<"tts failed to execute as JObj didn't validate">>};
         'true' ->
+            'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
+
             case wh_json:get_value(<<"Engine">>, JObj, <<"flite">>) of
                 <<"flite">> -> tts_flite(Node, UUID, JObj);
                 _E ->
@@ -145,8 +147,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
                         ,fun(V) ->
                                  case get_terminators(JObj) of
                                      'undefined' -> V;
-                                     Terminators ->
-                                         [Terminators|V]
+                                     Terminators -> [Terminators|V]
                                  end
                          end
                        ],
@@ -176,8 +177,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
                         ,fun(V) ->
                                  case get_terminators(JObj) of
                                      'undefined' -> V;
-                                     Terminators ->
-                                         [Terminators|V]
+                                     Terminators -> [Terminators|V]
                                  end
                          end
                         ,fun(V) -> [{<<"RECORD_APPEND">>, <<"true">>}
@@ -218,12 +218,12 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
                     %% stream file over HTTP PUT
                     lager:debug("stream ~s via HTTP PUT", [RecordingName]),
                     stream_over_http(Node, UUID, RecordingName, put, store, JObj),
-                    {<<"store">>, noop};
+                    {<<"store">>, 'noop'};
                 <<"post">> ->
                     %% stream file over HTTP POST
                     lager:debug("stream ~s via HTTP POST", [RecordingName]),
                     stream_over_http(Node, UUID, RecordingName, post, store, JObj),
-                    {<<"store">>, noop};
+                    {<<"store">>, 'noop'};
                 _Method ->
                     %% unhandled method
                     lager:debug("unhandled stream method ~s", [_Method]),
@@ -240,7 +240,7 @@ get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
             case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
                 <<"put">> ->
                     stream_over_http(Node, UUID, File, put, fax, JObj),
-                    {App, noop};
+                    {App, 'noop'};
                 _Method ->
                     lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
                     {'error', <<"invalid media transfer method">>}
@@ -511,7 +511,7 @@ get_fs_app(Node, UUID, JObj, <<"set_terminators">>) ->
         'false' -> {'error', <<"set_terminators failed to execute as JObj did not validate">>};
         'true' ->
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
-            {<<"set">>, noop}
+            {<<"set">>, 'noop'}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"set">>) ->
@@ -524,7 +524,7 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
             CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, wh_json:new())),
             _ = ecallmgr_util:export(Node, UUID, CallVars),
 
-            {<<"set">>, noop}
+            {<<"set">>, 'noop'}
     end;
 
 get_fs_app(_Node, _UUID, JObj, <<"respond">>) ->
@@ -553,7 +553,7 @@ get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
     spawn(fun() ->
                   send_fetch_call_event(Node, UUID, JObj)
           end),
-    {<<"fetch">>, noop};
+    {<<"fetch">>, 'noop'};
 
 get_fs_app(Node, UUID, JObj, <<"conference">>) ->
     case wapi_dialplan:conference_v(JObj) of
@@ -1097,8 +1097,7 @@ tts_flite_voice(JObj) ->
 -spec get_terminators(api_binary() | ne_binaries() | wh_json:object()) ->
                              {ne_binary(), ne_binary()}.
 get_terminators('undefined') -> 'undefined';
-get_terminators(Ts) when is_binary(Ts) ->
-    get_terminators([Ts]);
+get_terminators(Ts) when is_binary(Ts) -> get_terminators([Ts]);
 get_terminators([_|_]=Ts) ->
     case Ts =:= get('$prior_terminators') of
         'true' -> 'undefined';
