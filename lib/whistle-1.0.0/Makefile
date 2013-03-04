@@ -37,11 +37,11 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl src/api/*.erl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS) -o test/ -pa test/  $?
+	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ -pa $(ROOT)/lib $?
 
 clean:
 	rm -f ebin/*
-	rm -f test/*.beam
+	rm -f test/*
 	rm -f erl_crash.dump
 
 test: clean compile-test eunit
