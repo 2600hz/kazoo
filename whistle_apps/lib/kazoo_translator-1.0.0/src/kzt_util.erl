@@ -43,23 +43,23 @@
 
 -spec http_method(api_binary() | list()) -> 'get' | 'post'.
 http_method(L) when is_list(L) ->
-    http_method(props:get_value(method, L));
+    http_method(props:get_value('method', L));
 http_method(Method) ->
     case wh_util:to_atom(Method) of
-        get -> get;
-        post -> post;
-        'GET' -> get;
-        'POST' -> post;
-        undefined -> post
+        'get' -> 'get';
+        'post' -> 'post';
+        'GET' -> 'get';
+        'POST' -> 'post';
+        'undefined' -> 'post'
     end.
 
 -spec resolve_uri(nonempty_string() | ne_binary(), nonempty_string() | api_binary()) -> ne_binary().
-resolve_uri(Raw, undefined) -> wh_util:to_binary(Raw);
+resolve_uri(Raw, 'undefined') -> wh_util:to_binary(Raw);
 resolve_uri(_Raw, [$h,$t,$t,$p|_]=Abs) -> wh_util:to_binary(Abs);
 resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
 resolve_uri(RawPath, Relative) ->
     lager:debug("taking url ~s and applying path ~s", [RawPath, Relative]),
-    PathTokensRev = lists:reverse(binary:split(wh_util:to_binary(RawPath), <<"/">>, [global])),
+    PathTokensRev = lists:reverse(binary:split(wh_util:to_binary(RawPath), <<"/">>, ['global'])),
     UrlTokens = binary:split(wh_util:to_binary(Relative), <<"/">>),
 
     wh_util:join_binary(
