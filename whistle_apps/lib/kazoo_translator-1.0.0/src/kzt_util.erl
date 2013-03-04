@@ -41,7 +41,7 @@
 
 -define(SUPPORTED_METHODS, [get, post]).
 
--spec http_method/1 :: (api_binary() | list()) -> 'get' | 'post'.
+-spec http_method(api_binary() | list()) -> 'get' | 'post'.
 http_method(L) when is_list(L) ->
     http_method(props:get_value(method, L));
 http_method(Method) ->
@@ -53,7 +53,7 @@ http_method(Method) ->
         undefined -> post
     end.
 
--spec resolve_uri/2 :: (nonempty_string() | ne_binary(), nonempty_string() | api_binary()) -> ne_binary().
+-spec resolve_uri(nonempty_string() | ne_binary(), nonempty_string() | api_binary()) -> ne_binary().
 resolve_uri(Raw, undefined) -> wh_util:to_binary(Raw);
 resolve_uri(_Raw, [$h,$t,$t,$p|_]=Abs) -> wh_util:to_binary(Abs);
 resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
@@ -81,7 +81,7 @@ resolve_uri(RawPath, Relative) ->
        ), <<"/">>).
 
 %% see cf_offnet.erl
--spec offnet_req/2 :: (wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec offnet_req(wh_json:object(), whapps_call:call()) -> 'ok'.
 offnet_req(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
@@ -109,17 +109,17 @@ offnet_req(Data, Call) ->
            | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)],
     wapi_offnet_resource:publish_req(Req).
 
--spec update_call_status/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
--spec get_call_status/1 :: (whapps_call:call()) -> api_binary().
+-spec update_call_status(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_call_status(whapps_call:call()) -> api_binary().
 update_call_status(Status, Call) ->
     whapps_call:kvs_store(<<"call_status">>, Status, Call).
 get_call_status(Call) ->
     whapps_call:kvs_fetch(<<"call_status">>, Call).
 
--spec add_error/3 :: (whapps_call:call(), ne_binary(), term()) -> whapps_call:call().
+-spec add_error(whapps_call:call(), ne_binary(), term()) -> whapps_call:call().
 add_error(Call, K, V) ->
     case whapps_call:kvs_fetch(<<"response_errors">>, Call) of
-        undefined ->
+        'undefined' ->
             whapps_call:kvs_store(<<"response_errors">>, [{K, V}], Call);
         Vs ->
             whapps_call:kvs_append_list(<<"response_errors">>, [{K, V}|Vs], Call)
