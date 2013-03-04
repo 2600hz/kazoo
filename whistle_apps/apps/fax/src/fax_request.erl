@@ -104,8 +104,7 @@ init([Call, JObj]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -120,8 +119,9 @@ handle_call(_Request, _From, State) ->
 handle_cast(start_action, #state{call=Call, action='receive', owner_id=OwnerId}=State) ->
     {_Pid, _Ref}=Recv = spawn_monitor(?MODULE, receive_fax, [Call, OwnerId]),
     lager:debug("receiving a fax in ~p(~p)", [_Pid, _Ref]),
-
-    {noreply, State#state{handler=Recv}}.
+    {noreply, State#state{handler=Recv}};
+handle_cast(_Msg, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
