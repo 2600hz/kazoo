@@ -217,6 +217,21 @@ handle_info({'ibrowse_async_headers', ReqId, "302", RespHeaders}
     ?MODULE:new_request(self(), Redirect1, Method, Params),
     {'noreply', State};
 
+handle_info({'ibrowse_async_headers', ReqId, "4"++ StatusCode, _RespHeaders}
+            ,#state{request_id=ReqId}=State) ->
+    lager:debug("recv client failure status code 4~s", [StatusCode]),
+    {'noreply', State};
+handle_info({'ibrowse_async_headers', ReqId, "5"++ StatusCode, _RespHeaders}
+            ,#state{request_id=ReqId}=State) ->
+    lager:debug("recv server failure status code 5~s", [StatusCode]),
+    {'noreply', State};
+
+handle_info({'ibrowse_async_response', ReqId, {'error', 'connection_closed'}}
+            ,#state{request_id=ReqId
+                    ,response_body=_RespBody
+                   }=State) ->
+    lager:debug("connection closed unexpectedly: collected: ~s", [_RespBody]),
+    {'noreply', State};
 handle_info({'ibrowse_async_response', ReqId, Chunk}
             ,#state{request_id=ReqId
                     ,response_body=RespBody
