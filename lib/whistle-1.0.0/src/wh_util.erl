@@ -76,7 +76,7 @@
          ,change_syslog_log_level/1
         ]).
 
--define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, whistle_version}).
+-define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, 'whistle_version'}).
 
 %%--------------------------------------------------------------------
 %% @public
