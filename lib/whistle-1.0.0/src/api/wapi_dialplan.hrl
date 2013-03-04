@@ -11,10 +11,10 @@
 
 %% For dialplan messages, an optional insert-at tuple is common across all requests
 -define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).
--define(IS_TERMINATOR, fun(X) when is_list(X) -> true;
-                          (<<>>) -> true;
-                          (<<"none">>) -> true;
-                          (_) -> false
+-define(IS_TERMINATOR, fun(X) when is_list(X) -> 'true';
+                          (<<>>) -> 'true';
+                          (<<"none">>) -> 'true';
+                          (_) -> 'false'
                        end).
 
 -define(DIAL_METHOD_SINGLE, <<"single">>).
@@ -130,7 +130,7 @@
 -define(STORE_AMQP_RESP_VALUES, [{<<"Application-Name">>, <<"store">>}
                                  ,{<<"Media-Transfer-Method">>, <<"stream">>}
                                 ]).
--define(STORE_AMQP_RESP_TYPES, [{<<"Media-Content">>, fun(V) -> is_binary(V) orelse V =:= eof end}
+-define(STORE_AMQP_RESP_TYPES, [{<<"Media-Content">>, fun(V) -> is_binary(V) orelse V =:= 'eof' end}
                                 ,{<<"Media-Name">>, fun is_binary/1}
                                ]).
 
@@ -187,10 +187,10 @@
                                 ,{<<"Timeout">>, fun(Timeout) ->
                                                          %% <<"+123">> converts to 123, so yay!
                                                          try wh_util:to_integer(Timeout) of
-                                                             T when T < 0 -> false;
-                                                             _ -> true
+                                                             T when T < 0 -> 'false';
+                                                             _ -> 'true'
                                                          catch
-                                                             _:_ -> false
+                                                             _:_ -> 'false'
                                                          end
                                                  end}
                                ]).
