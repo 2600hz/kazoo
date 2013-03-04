@@ -106,10 +106,10 @@ exec_element(Call, #xmlElement{name='Say'
             {'error', Call1}
     end;
 exec_element(Call, #xmlElement{name='Redirect'
-                               ,content=RedirectUrl
+                               ,content=Url
                                ,attributes=Attrs
                               }) ->
-    redirect(Call, RedirectUrl, Attrs);
+    redirect(Call, Url, Attrs);
 exec_element(Call, #xmlElement{name='Pause'
                                ,content=[]
                                ,attributes=Attrs
@@ -353,6 +353,7 @@ redirect(Call, XmlText, Attrs) ->
     Props = kzt_util:attributes_to_proplist(Attrs),
 
     CurrentUri = kzt_util:get_voice_uri(Call),
+
     RedirectUri = xml_text_to_binary(XmlText),
 
     Call1 = case xml_elements(XmlText) of
@@ -434,7 +435,12 @@ record_call(Call, _Props) ->
 %%------------------------------------------------------------------------------
 -spec xml_text_to_binary(xml_texts()) -> binary().
 xml_text_to_binary(Vs) when is_list(Vs) ->
-    iolist_to_binary([V || #xmlText{value=V, type='text'} <- Vs]).
+    lists:foldl(fun(C, B) ->
+                        wh_util:strip_binary(B, C)
+                end
+                ,iolist_to_binary([V || #xmlText{value=V, type='text'} <- Vs])
+                ,[$\n, $ , $\n, $ ]
+               ).
 
 xml_text_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->
     B = xml_text_to_binary(Vs),
