@@ -323,11 +323,13 @@ say(Call, XmlText, Attrs) ->
     Lang = get_lang(Props),
     Engine = get_engine(Props),
 
+    Terminators = get_terminators(Props),
+
     lager:debug("SAY: ~s using voice ~s, in lang ~s, and engine ~s", [SayMe, Voice, Lang, Engine]),
 
     case loop_count(Props) of
-        0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Engine, 'infinity');
-        N when N > 0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Engine, N)
+        0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, 'infinity');
+        N when N > 0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, N)
     end.
 
 -spec play(whapps_call:call(), list(), list()) ->
@@ -368,14 +370,16 @@ redirect(Call, XmlText, Attrs) ->
               ],
     {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}.
 
+gather(Call, [], Attrs) -> gather(Call, Attrs);
 gather(Call, SubActions, Attrs) ->
     lager:debug("gather: exec sub actions"),
     case exec_elements(kzt_util:clear_digits_collected(Call)
                        ,xml_elements(SubActions)
                       )
     of
+        {'ok', C} -> gather(C, Attrs);
         {'stop', C} -> gather(C, Attrs);
-        Other -> Other
+        Other -> lager:debug("gather sub returned: ~p", [Other]), Other
     end.
 
 gather(Call, Attrs) ->
@@ -565,6 +569,9 @@ get_engine(Props) ->
         'undefined' -> ?DEFAULT_TTS_ENGINE;
         Engine -> Engine
     end.
+
+get_terminators(Props) ->
+    wapi_dialplan:terminators(props:get_binary_value('terminators', Props)).
 
 get_max_participants(Props) when is_list(Props) ->
     get_max_participants(props:get_integer_value('maxParticipants', Props, 40));
