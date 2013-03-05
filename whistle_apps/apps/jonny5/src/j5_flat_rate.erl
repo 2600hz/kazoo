@@ -29,8 +29,8 @@
 -spec is_available(j5_limits(), wh_json:object()) -> boolean().
 is_available(Limits, JObj) ->
     case eligible_for_flat_rate(JObj) of
-        false -> false;
-        true -> maybe_consume_flat_rate(Limits, JObj)
+        'false' -> 'false';
+        'true' -> maybe_consume_flat_rate(Limits, JObj)
     end.
 
 -spec maybe_consume_flat_rate(j5_limits(), wh_json:object()) -> boolean().
@@ -171,124 +171,124 @@ consume_twoway_limits_test() ->
 
 inbound_limits_test() ->
     %% New inbound, no current, unlimited
-    ?assertEqual(true, is_available(limits(-1, 0), inbound_jobj(0, 0))),
+    ?assertEqual('true', is_available(limits(-1, 0), inbound_jobj(0, 0))),
     %% New inbound, no current, limit to 0
-    ?assertEqual(false, is_available(limits(0, 0), inbound_jobj(0, 0))),
+    ?assertEqual('false', is_available(limits(0, 0), inbound_jobj(0, 0))),
     %% New inbound, no current, limit to 1
-    ?assertEqual(true, is_available(limits(1, 0), inbound_jobj(0, 0))),
+    ?assertEqual('true', is_available(limits(1, 0), inbound_jobj(0, 0))),
     %% New inbound, 1 current, limit to 0 (should never happen)
-    ?assertEqual(false, is_available(limits(0, 0), inbound_jobj(1, 0))),
+    ?assertEqual('false', is_available(limits(0, 0), inbound_jobj(1, 0))),
     %% New inbound, 1 current, limit to 1
-    ?assertEqual(false, is_available(limits(1, 0), inbound_jobj(1, 0))),
+    ?assertEqual('false', is_available(limits(1, 0), inbound_jobj(1, 0))),
     ok.
 
 outbound_limits_test() ->
     %% New outbound, no current, unlimited
-    ?assertEqual(true, is_available(limits(0, -1), outbound_jobj(0, 0))),
+    ?assertEqual('true', is_available(limits(0, -1), outbound_jobj(0, 0))),
     %% New outbound, no current, limit to 0
-    ?assertEqual(false, is_available(limits(0, 0), outbound_jobj(0, 0))),
+    ?assertEqual('false', is_available(limits(0, 0), outbound_jobj(0, 0))),
     %% New outbound, no current, limit to 1
-    ?assertEqual(true, is_available(limits(0, 1), outbound_jobj(0, 0))),
+    ?assertEqual('true', is_available(limits(0, 1), outbound_jobj(0, 0))),
     %% New outbound, 1 current, limit to 0 (should never happen)
-    ?assertEqual(false, is_available(limits(0, 0), outbound_jobj(0, 1))),
+    ?assertEqual('false', is_available(limits(0, 0), outbound_jobj(0, 1))),
     %% New outbound, 1 current, limit to 1
-    ?assertEqual(false, is_available(limits(0, 1), outbound_jobj(0, 1))),
+    ?assertEqual('false', is_available(limits(0, 1), outbound_jobj(0, 1))),
     ok.
 
 inbound_spillover_test() ->
     %% New inbound, no current, 0 inbound unlimited two-way limit
-    ?assertEqual(true, is_available(limits(0, -1), inbound_jobj(0, 0))),
+    ?assertEqual('true', is_available(limits(0, -1), inbound_jobj(0, 0))),
     %% New inbound, no current, 0 inbound 1 two-way limit
-    ?assertEqual(true, is_available(limits(0, 1), inbound_jobj(0, 0))),
+    ?assertEqual('true', is_available(limits(0, 1), inbound_jobj(0, 0))),
     %% New inbound, 1 current, 1 inbound and 1 outbound limit
-    ?assertEqual(true, is_available(limits(1, 1), inbound_jobj(1, 0))),
+    ?assertEqual('true', is_available(limits(1, 1), inbound_jobj(1, 0))),
     %% New outbound, 1 current inbound, 0 inbound and 1 outbound limit
-    ?assertEqual(false, is_available(limits(0, 1), outbound_jobj(1, 0))),
+    ?assertEqual('false', is_available(limits(0, 1), outbound_jobj(1, 0))),
     %% New outbound, 1 current inbound, 0 inbound and 2 outbound limit
-    ?assertEqual(true, is_available(limits(0, 2), outbound_jobj(1, 0))),
+    ?assertEqual('true', is_available(limits(0, 2), outbound_jobj(1, 0))),
     ok.
 
 eligible_test() ->
-    ?assertEqual(false, is_available(limits(-1, -1), request_jobj(<<"+18445555555">>))),
-    ?assertEqual(true, eligible_for_flat_rate(request_jobj(<<"+14158867900">>))),
-    ?assertEqual(true, eligible_for_flat_rate(request_jobj(<<"+12038699901">>))),
-    ?assertEqual(true, eligible_for_flat_rate(request_jobj(<<"+15103384922">>))),
-    ?assertEqual(true, eligible_for_flat_rate(request_jobj(<<"+15185712222">>))),
-    ?assertEqual(true, eligible_for_flat_rate(request_jobj(<<"+12038699978">>))),
+    ?assertEqual('false', is_available(limits(-1, -1), request_jobj(<<"+18445555555">>))),
+    ?assertEqual('true', eligible_for_flat_rate(request_jobj(<<"+14158867900">>))),
+    ?assertEqual('true', eligible_for_flat_rate(request_jobj(<<"+12038699901">>))),
+    ?assertEqual('true', eligible_for_flat_rate(request_jobj(<<"+15103384922">>))),
+    ?assertEqual('true', eligible_for_flat_rate(request_jobj(<<"+15185712222">>))),
+    ?assertEqual('true', eligible_for_flat_rate(request_jobj(<<"+12038699978">>))),
     %% US 900 numbers
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+19005555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+19005555555">>))),
     %% US 800 numbers
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18005555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18885555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18775555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18665555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18555555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18005555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18885555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18775555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18665555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18555555555">>))),
     %% Future US 800 numbers
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18445555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18335555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18225555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18805555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18815555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18825555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18835555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18845555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18855555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18865555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18875555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18895555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18445555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18335555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18225555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18805555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18815555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18825555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18835555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18845555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18855555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18865555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18875555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18895555555">>))),
     %% America Somoa
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+16845555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+16845555555">>))),
     %% Anguilla
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+12645555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+12645555555">>))),
     %% Antigua and Barbuda
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+12685555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+12685555555">>))),
     %% Bahamas
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+12425555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+12425555555">>))),
     %% Barbados
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+12465555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+12465555555">>))),
     %% Bermuda
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+14415555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+14415555555">>))),
     %% British Virgin Islands (awesome)
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+12845555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+12845555555">>))),
     %% Cayman Islands
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+13455555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+13455555555">>))),
     %% Dominica
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+17675555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+17675555555">>))),
     %% Dominican Republic
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18095555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18295555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18495555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18095555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18295555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18495555555">>))),
     %% Grenada
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+14735555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+14735555555">>))),
     %% Guam
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+16715555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+16715555555">>))),
     %% Jamaica
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18765555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18765555555">>))),
     %% Montserrat
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+16645555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+16645555555">>))),
     %% Northern Mariana Islans
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+16705555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+16705555555">>))),
     %% Puerto Rico
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+17875555555">>))),
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+19395555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+17875555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+19395555555">>))),
     %% Saint Kitts nad Nevis
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18695555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18695555555">>))),
     %% Saint Lucia
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+17585555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+17585555555">>))),
     %% Saint Vincent and the Grendadines
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+17845555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+17845555555">>))),
     %% Sint Maarten
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+17215555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+17215555555">>))),
     %% Trinidad and Tobago
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+18685555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+18685555555">>))),
     %% Turks and Caicos Islands
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+16495555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+16495555555">>))),
     %% United States Virgin Islands
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+13405555555">>))),
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+13405555555">>))),
     %% US International
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+447775707800">>))), 
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+33667790037">>))), 
-    ?assertEqual(false, eligible_for_flat_rate(request_jobj(<<"+4916096900000">>))), 
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+447775707800">>))), 
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+33667790037">>))), 
+    ?assertEqual('false', eligible_for_flat_rate(request_jobj(<<"+4916096900000">>))), 
     ok.
 
 -endif.

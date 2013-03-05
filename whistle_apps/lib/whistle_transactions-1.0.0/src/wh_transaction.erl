@@ -11,6 +11,18 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
+-export([description/1]).
+-export([call_id/1]).
+-export([sub_account_id/1]).
+-export([event/1]).
+-export([reason/1]).
+-export([code/1]).
+-export([amount/1]).
+-export([type/1]).
+-export([created/1]).
+-export([modified/1]).
+-export([account_id/1]).
+-export([account_db/1]).
 -export([debit/2]).
 -export([credit/2]).
 -export([set_reason/2]).
@@ -20,11 +32,12 @@
 -export([set_sub_account_id/2]).
 -export([is_reason/2]).
 -export([to_json/1]).
+-export([from_json/1]).
+-export([remove/1]).
 -export([save/1]).
 
--export([reconcile_attempted/2]).
-
 -record(wh_transaction, {id :: binary()
+                         ,rev :: api_binary()
                          ,description :: api_binary()
                          ,call_id :: api_binary()
                          ,sub_account_id :: ne_binary()
@@ -42,6 +55,118 @@
 
 -type transaction() :: #wh_transaction{}.
 -export_type([transaction/0]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+description(#wh_transaction{description=Description}) ->
+    Description.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+call_id(#wh_transaction{call_id=CallId}) ->
+    CallId.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+sub_account_id(#wh_transaction{sub_account_id=SubAccountId}) ->
+    SubAccountId.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+event(#wh_transaction{event=Event}) ->
+    Event.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+reason(#wh_transaction{pvt_reason=Reason}) ->
+    Reason.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+code(#wh_transaction{pvt_code=Code}) ->
+    Code.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+amount(#wh_transaction{pvt_amount=Amount}) ->
+    Amount.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+type(#wh_transaction{pvt_type=Type}) ->
+    Type.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+created(#wh_transaction{pvt_created='undefined'}) ->
+    wh_util:current_tstamp();
+created(#wh_transaction{pvt_created=Created}) ->
+    Created.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+modified(#wh_transaction{pvt_modified='undefined'}) ->
+    wh_util:current_tstamp();
+modified(#wh_transaction{pvt_modified=Modified}) ->
+    Modified.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+account_id(#wh_transaction{pvt_account_id=AccountId}) ->
+    AccountId.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+account_db(#wh_transaction{pvt_account_db=AccountDb}) ->
+    AccountDb.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -70,7 +195,7 @@ debit(Ledger, Amount) ->
 %% @end
 %%--------------------------------------------------------------------
 set_reason(Reason, #wh_transaction{}=Transaction) ->
-    Code = wh_transactions:reason_code(Reason),
+    Code = wht_util:reason_code(Reason),
     Transaction#wh_transaction{pvt_reason=Reason
                                ,pvt_code=Code
                               }.
@@ -137,6 +262,7 @@ is_reason(_, _) -> false.
 -spec to_json(transaction()) -> wh_json:object().
 to_json(#wh_transaction{}=T) ->
     Props = [{<<"_id">>, T#wh_transaction.id}
+             ,{<<"_rev">>, T#wh_transaction.rev}
              ,{<<"description">>, T#wh_transaction.description}
              ,{<<"call_id">>, T#wh_transaction.call_id}
              ,{<<"sub_account_id">>, T#wh_transaction.sub_account_id}
@@ -156,21 +282,13 @@ to_json(#wh_transaction{}=T) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
-save(#wh_transaction{}=Transaction) ->
-    prepare_transaction(Transaction).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% Transform Json Object to transaction record
 %% @end
 %%--------------------------------------------------------------------
 -spec from_json/1 :: (wh_json:object()) -> transaction().
 from_json(JObj) ->
     #wh_transaction{id = wh_json:get_ne_value(<<"_id">>, JObj)
+                    ,rev = wh_json:get_ne_value(<<"_rev">>, JObj)
                     ,description = wh_json:get_ne_value(<<"description">>, JObj)
                     ,call_id = wh_json:get_ne_value(<<"call_id">>, JObj)
                     ,sub_account_id = wh_json:get_ne_value(<<"sub_account_id">>, JObj)
@@ -187,6 +305,51 @@ from_json(JObj) ->
                    }.
 
 %%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec remove(transaction()) -> 'ok' | {'error', _}.
+remove(#wh_transaction{}=Transaction) ->
+    case prepare_transaction(Transaction) of
+        {'error', _}=E -> E;
+        #wh_transaction{}=T ->
+            remove_transaction(T)
+    end.
+
+-spec remove_transaction(transaction()) -> 'ok' | {'error', _}.
+remove_transaction(#wh_transaction{pvt_account_db=AccountDb}=Transaction) ->
+    case couch_mgr:del_doc(AccountDb, to_json(Transaction)) of
+        {'ok', _} -> 'ok';
+        {'error', _}=E -> E
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec save(transaction()) -> {'ok', transaction()} | {'error', _}.
+save(#wh_transaction{}=Transaction) ->
+    case prepare_transaction(Transaction) of
+        {'error', _}=E -> E;
+        #wh_transaction{}=T ->
+            save_transaction(T)
+    end.
+
+-spec save_transaction(transaction()) -> {'ok', transaction()} | {'error', _}.
+save_transaction(#wh_transaction{pvt_amount=0}=Transaction) ->
+    {'ok', Transaction};
+save_transaction(#wh_transaction{pvt_account_db=AccountDb}=Transaction) ->
+    JObj = to_json(Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}),
+    case couch_mgr:save_doc(AccountDb, JObj) of
+        {'ok', J} -> {'ok', from_json(J)};
+        {'error', _}=E -> E
+    end.
+
+%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
@@ -199,7 +362,7 @@ prepare_transaction(#wh_transaction{pvt_account_db='undefined'}) ->
 prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 1000 =< Code andalso Code < 2000 ->
     prepare_call_transaction(Transaction);
 prepare_transaction(Transaction) ->
-    save_transaction(Transaction).
+    Transaction.
 
 prepare_call_transaction(#wh_transaction{call_id='undefined'}) ->
     {'error', 'call_id_missing'};
@@ -208,18 +371,9 @@ prepare_call_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=10
 prepare_call_transaction(#wh_transaction{event='undefined'}) ->
     {'error', 'event_missing'};
 prepare_call_transaction(#wh_transaction{call_id=CallId, event=Event}=Transaction) ->
-    save_transaction(Transaction#wh_transaction{id = <<CallId/binary, "-", Event/binary>>}).
-
-save_transaction(#wh_transaction{pvt_amount=0}=Transaction) ->
-    io:format("~p~n", [to_json(Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()})]),
-    {'ok', Transaction};
-save_transaction(#wh_transaction{pvt_account_db=AccountDb}=Transaction) ->
-    JObj = to_json(Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}),
-    io:format("~p~n", [JObj]),
-    case couch_mgr:save_doc(AccountDb, JObj) of
-        {'ok', J} -> {'ok', from_json(J)};
-        {'error', _}=E -> E
-    end.
+    Transaction#wh_transaction{id = <<CallId/binary, "-"
+                                      ,(wh_util:to_upper_binary(Event))/binary>>
+                                   ,event=wh_util:to_lower_binary(Event)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -236,45 +390,3 @@ create(Ledger, Amount, Type) ->
                     ,pvt_created=wh_util:current_tstamp()
                     ,pvt_modified=wh_util:current_tstamp()
                    }.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-reconcile_attempted(AccountId, CallId) ->
-    AccountDB = wh_util:format_account_id(AccountId, encoded),
-    DiscrepancyId = <<CallId/binary, "-discrepancy">>,
-    case couch_mgr:open_doc(AccountDB, DiscrepancyId) of
-        {error, not_found} -> true;
-        {ok, JObj} -> reconcile_maybe_remove(JObj, DiscrepancyId, AccountDB);
-        _Else -> false
-    end.
-
-reconcile_maybe_remove(JObj, DiscrepancyId, AccountDB) ->
-    Current = wh_util:current_tstamp(),
-    Modified = wh_json:get_integer_value(<<"pvt_modified">>, JObj, Current), 
-    case Current - Modified > 300 of
-        false -> 
-            %% If the correction was recently written, wait till the next cycle to make sure
-            %% another j5_reconciler has not just placed this here
-            false;
-        true ->
-            %% If the correction was made some time ago then remove it as it has not
-            %% corrected the discrepancy, then wait for the next cycle to make sure
-            %% it wasn't the sole cause of the issue.... (due to previous bug this could happen)
-            lager:debug("removing erronous correction from previous reconciler version", []),
-            _ = couch_mgr:del_doc(AccountDB, DiscrepancyId),
-            false
-    end.

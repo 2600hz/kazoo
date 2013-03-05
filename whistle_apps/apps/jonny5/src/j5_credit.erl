@@ -15,17 +15,17 @@
 
 -spec is_available(#limits{}, wh_json:json_object()) -> boolean().
 is_available(#limits{account_id=AccountId}=Limits, JObj) ->
-    Balance = j5_util:current_balance(AccountId),
+    Balance = wht_util:current_balance(AccountId),
     prepay_is_available(Limits, Balance, JObj)
         orelse postpay_is_available(Limits, Balance, JObj).
 
 -spec reauthorize(#limits{}, wh_json:json_object()) -> 'ok'.
 reauthorize(#limits{reserve_amount=ReserveAmount}=Limits, JObj) ->
     case ReserveAmount - wht_util:call_cost(JObj) > 0 of
-        true ->
+        'true' ->
             lager:info("call has not exceeded the reserved amount yet", []),
             j5_reauthz_req:send_allow_resp(JObj);
-        false ->
+        'false' ->
             maybe_debit_next_minute(Limits, JObj)
     end.
 
@@ -35,43 +35,43 @@ reconcile_cdr(Account, JObj) ->
     Units = wh_transactions:call_charges(Account, CallId)
         - (-1 * wht_util:call_cost(JObj)),
     case Units > 0 of
-        true -> create_debit_transaction(<<"END">>, Units, Account, JObj);
-        false -> create_credit_transaction(<<"END">>, Units, Account, JObj)
+        'true' -> create_debit_transaction(<<"end">>, Units, Account, JObj);
+        'false' -> create_credit_transaction(<<"end">>, Units, Account, JObj)
     end.
 
 -spec prepay_is_available(#limits{}, integer(), wh_json:json_object()) -> boolean().
-prepay_is_available(#limits{allow_prepay=false}, _, _) ->
-    false;
-prepay_is_available(#limits{allow_prepay=true, reserve_amount=ReserveAmount
+prepay_is_available(#limits{allow_prepay='false'}, _, _) ->
+    'false';
+prepay_is_available(#limits{allow_prepay='true', reserve_amount=ReserveAmount
                             ,account_id=LedgerId}, Balance, JObj) ->
     case (Balance - ReserveAmount) > 0 of
-        false -> false;
-        true ->
-            create_debit_transaction(<<"RESERVATION">>, ReserveAmount, LedgerId, JObj),
-            true
+        'false' -> 'false';
+        'true' ->
+            create_debit_transaction(<<"reservation">>, ReserveAmount, LedgerId, JObj),
+            'true'
     end.
 
 -spec postpay_is_available(#limits{}, integer(), wh_json:json_object()) -> boolean().
-postpay_is_available(#limits{allow_postpay=false}, _, _) ->
-    false;
-postpay_is_available(#limits{allow_postpay=true, max_postpay_amount=MaxPostpay
+postpay_is_available(#limits{allow_postpay='false'}, _, _) ->
+    'false';
+postpay_is_available(#limits{allow_postpay='true', max_postpay_amount=MaxPostpay
                              ,reserve_amount=ReserveAmount, account_id=LedgerId}
                      ,Balance, JObj) ->
     case (Balance - ReserveAmount) > MaxPostpay of
-        false -> false;
-        true ->
-            create_debit_transaction(<<"RESERVATION">>, ReserveAmount, LedgerId, JObj),
-            true
+        'false' -> 'false';
+        'true' ->
+            create_debit_transaction(<<"reservation">>, ReserveAmount, LedgerId, JObj),
+            'true'
     end.
 
 -spec maybe_debit_next_minute(#limits{}, wh_json:json_object()) -> boolean().
 maybe_debit_next_minute(#limits{account_id=AccountId}=Limits, JObj) ->
     Amount = wht_util:per_minute_cost(JObj),
-    case is_credit_still_available(j5_util:current_balance(AccountId) - Amount, Limits) of
-        false ->
+    case is_credit_still_available(wht_util:current_balance(AccountId) - Amount, Limits) of
+        'false' ->
             lager:debug("account does not have the required credit to continue this call", []),
             j5_reauthz_req:send_deny_resp(JObj);
-        true ->
+        'true' ->
             lager:debug("account has the required credit to continue this call for another minute", []),
             Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp()),
             create_debit_transaction(wh_util:to_binary(Timestamp)
@@ -82,21 +82,21 @@ maybe_debit_next_minute(#limits{account_id=AccountId}=Limits, JObj) ->
     end.
 
 -spec is_credit_still_available(integer(), #limits{}) -> boolean().
-is_credit_still_available(Balance, #limits{allow_prepay=true}) when Balance > 0 ->
-    true;
-is_credit_still_available(Balance, #limits{allow_postpay=true, max_postpay_amount=MaxPostpay}) ->
+is_credit_still_available(Balance, #limits{allow_prepay='true'}) when Balance > 0 ->
+    'true';
+is_credit_still_available(Balance, #limits{allow_postpay='true', max_postpay_amount=MaxPostpay}) ->
     Balance > MaxPostpay;
 is_credit_still_available(_, _) ->
-    false.
+    'false'.
 
 create_debit_transaction(Event, Units, LedgerId, JObj) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     Routines = [fun(T) ->
                         AccountId = get_authz_account_id(JObj),
                         case AccountId =:= LedgerId of
-                            true ->
+                            'true' ->
                                wh_transaction:set_reason(<<"per_minute_call">>, T);
-                            false ->
+                            'false' ->
                                 T1 = wh_transaction:set_reason(<<"sub_account_per_minute_call">>, T),
                                 wh_transaction:set_sub_account_id(AccountId, T1)
                         end
@@ -115,9 +115,9 @@ create_credit_transaction(Event, Units, LedgerId, JObj) ->
     Routines = [fun(T) ->
                         AccountId = get_authz_account_id(JObj),
                         case AccountId =:= LedgerId of
-                            true ->
+                            'true' ->
                                wh_transaction:set_reason(<<"per_minute_call">>, T);
-                            false ->
+                            'false' ->
                                 T1 = wh_transaction:set_reason(<<"sub_account_per_minute_call">>, T),
                                 wh_transaction:set_sub_account_id(AccountId, T1)
                         end
@@ -138,15 +138,15 @@ get_authz_account_id(JObj) ->
 -ifdef(TEST).
 
 postpay_limits() ->
-    #limits{allow_postpay=true
-            ,allow_prepay=false
+    #limits{allow_postpay='true'
+            ,allow_prepay='false'
             ,max_postpay_amount=-10000
             ,reserve_amount=5000
            }.
 
 prepay_limits() ->
-    #limits{allow_postpay=false
-            ,allow_prepay=true
+    #limits{allow_postpay='false'
+            ,allow_prepay='true'
             ,max_postpay_amount=-10000
             ,reserve_amount=5000
            }.
@@ -157,33 +157,18 @@ request_jobj() ->
             ],
     wh_json:from_list(Props).
 
-is_available_test() ->
-    put(j5_test_balance, 0),
-    ?assertEqual(false, is_available(prepay_limits(), request_jobj())),
-    ?assertEqual(true, is_available(postpay_limits(), request_jobj())),
-    put(j5_test_balance, 10000),
-    ?assertEqual(true, is_available(prepay_limits(), request_jobj())),
-    ?assertEqual(true, is_available(postpay_limits(), request_jobj())),
-    put(j5_test_balance, -1000),
-    ?assertEqual(false, is_available(prepay_limits(), request_jobj())),
-    ?assertEqual(true, is_available(postpay_limits(), request_jobj())),
-    put(j5_test_balance, -10000),
-    ?assertEqual(false, is_available(prepay_limits(), request_jobj())),
-    ?assertEqual(false, is_available(postpay_limits(), request_jobj())),
-    ok.
-
 prepay_is_available_test() ->
-    ?assertEqual(false, prepay_is_available(prepay_limits(), 0, request_jobj())),
-    ?assertEqual(true, prepay_is_available(prepay_limits(), 10000, request_jobj())),
-    ?assertEqual(false, prepay_is_available(prepay_limits(), -1000, request_jobj())),
-    ?assertEqual(false, prepay_is_available(postpay_limits(), 0, request_jobj())),
+    ?assertEqual('false', prepay_is_available(prepay_limits(), 0, request_jobj())),
+    ?assertEqual('true', prepay_is_available(prepay_limits(), 10000, request_jobj())),
+    ?assertEqual('false', prepay_is_available(prepay_limits(), -1000, request_jobj())),
+    ?assertEqual('false', prepay_is_available(postpay_limits(), 0, request_jobj())),
     ok.
 
 postpay_is_available_test() ->
-    ?assertEqual(true, postpay_is_available(postpay_limits(), 0, request_jobj())),
-    ?assertEqual(true, postpay_is_available(postpay_limits(), 10000, request_jobj())),
-    ?assertEqual(false, postpay_is_available(postpay_limits(), -10000, request_jobj())),
-    ?assertEqual(false, postpay_is_available(prepay_limits(), 0, request_jobj())),
+    ?assertEqual('true', postpay_is_available(postpay_limits(), 0, request_jobj())),
+    ?assertEqual('true', postpay_is_available(postpay_limits(), 10000, request_jobj())),
+    ?assertEqual('false', postpay_is_available(postpay_limits(), -10000, request_jobj())),
+    ?assertEqual('false', postpay_is_available(prepay_limits(), 0, request_jobj())),
     ok.
 
 -endif.

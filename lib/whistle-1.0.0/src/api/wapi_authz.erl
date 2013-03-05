@@ -56,9 +56,6 @@
 -define(OPTIONAL_AUTHZ_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Type">>, <<"Global-Resource">>]).
 -define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                             ,{<<"Event-Name">>, <<"authz_resp">>}
-                            ,{<<"Type">>, [<<"flat_rate">>, <<"per_minute">>, <<"soft_limit">>
-                                               ,<<"allotment">>, <<"limits_disabled">>
-                                          ]}
                             ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
                             ,{<<"Global-Resource">>, [<<"true">>, <<"false">>]}
                            ]).

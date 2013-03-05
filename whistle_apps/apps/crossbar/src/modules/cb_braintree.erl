@@ -390,7 +390,7 @@ create_braintree_customer(#cb_context{account_id=AccountId}=Context) ->
 
 -spec current_account_dollars(ne_binary()) -> float().
 current_account_dollars(Account) ->
-    Units = wh_transactions:get_current_balance(Account),
+    Units = wht_util:current_balance(Account),
     wapi_money:units_to_dollars(Units).
 
 -spec maybe_charge_billing_id(float(), cb_context:context()) -> cb_context:context().
