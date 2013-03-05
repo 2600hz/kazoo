@@ -178,7 +178,7 @@ ensure_extension_present(Db, Id, Attachment, CT, Req0) ->
     of
         false ->
             try_to_store(Db, Id, Attachment, CT, Req0);
-        ?NE_BINARY = Extension ->            
+        ?NE_BINARY = Extension ->
             try_to_store(Db, Id, <<Attachment/binary, ".", Extension/binary>>, CT, Req0);
          _Else ->
             lager:debug("unable to correct missing extension for content-type: ~s", [CT]),
@@ -187,27 +187,39 @@ ensure_extension_present(Db, Id, Attachment, CT, Req0) ->
     end.
 
 -spec try_to_store/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), #http_req{}) ->
-                                {'ok', #http_req{}, 'ok'}. 
+                                {'ok', #http_req{}, 'ok'}.
 try_to_store(Db, Id, Attachment, CT, Req0) ->
-    Conflicts = case get(conflicts) of undefined -> 0; Count -> Count end,
     DbName = wh_util:format_account_id(Db, encoded),
-    {ok, Contents, Req1} = cowboy_http_req:body(Req0),    
+    {ok, Contents, Req1} = cowboy_http_req:body(Req0),
     Options = [{content_type, wh_util:to_list(CT)}
                ,{content_length, byte_size(Contents)}
               ],
-
     lager:debug("putting ~s onto ~s(~s): ~s", [Attachment, Id, DbName, CT]),
-
     case couch_mgr:put_attachment(DbName, Id, Attachment, Contents, Options) of
         {ok, JObj} ->
             lager:debug("successfully stored(~p) ~p ~p ~p", [CT, DbName, Id, Attachment]),
             {ok, success(JObj, Req1), ok};
-        {error, conflict} when Conflicts < 2 ->
-            put(conflicts, Conflicts + 1),
-            try_to_store(Db, Id, Attachment, CT, Req1);
+        {error, conflict} ->
+            maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req1);
         {error, Reason} ->
             lager:debug("unable to store file: ~p", [Reason]),
             {ok, failure(Reason, Req1), ok}
+    end.
+
+-spec maybe_resolve_conflict(ne_binary(), ne_binary(), ne_binary(), binary(), wh_proplist(), #http_req{}) ->
+                                    {'ok', #http_req{}, 'ok'}.
+maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req0) ->
+    timer:sleep(5000),
+    lager:debug("putting ~s onto ~s(~s): ~-800p", [Attachment, Id, DbName, Options]),
+    case couch_mgr:put_attachment(DbName, Id, Attachment, Contents, Options) of
+        {ok, JObj} ->
+            lager:debug("successfully stored ~p ~p ~p", [DbName, Id, Attachment]),
+            {ok, success(JObj, Req0), ok};
+        {error, conflict} ->
+            maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req0);
+        {error, Reason} ->
+            lager:debug("unable to store file: ~p", [Reason]),
+            {ok, failure(Reason, Req0), ok}
     end.
 
 -spec success/2 :: (wh_json:object(), #http_req{}) -> #http_req{}.
