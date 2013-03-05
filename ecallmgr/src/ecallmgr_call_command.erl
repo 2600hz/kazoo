@@ -24,10 +24,8 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
     case DestID =:= UUID of
         'true' ->
             case get_fs_app(Node, UUID, JObj, App) of
-                {'error', Msg} ->
-                    throw({'msg', Msg});
-                {'return', Result} ->
-                    Result;
+                {'error', Msg} -> throw({'msg', Msg});
+                {'return', Result} -> Result;
                 {AppName, 'noop'} ->
                     ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
                 {AppName, AppData} ->
@@ -182,7 +180,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
                          end
                         ,fun(V) -> [{<<"RECORD_APPEND">>, <<"true">>}
                                     ,{<<"enable_file_write_buffering">>, <<"false">>}
-                                    |V
+                                    | V
                                    ]
                          end
                        ],
@@ -227,7 +225,7 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
                 _Method ->
                     %% unhandled method
                     lager:debug("unhandled stream method ~s", [_Method]),
-                    {return, error}
+                    {'return', 'error'}
             end
     end;
 
