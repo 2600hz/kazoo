@@ -20,6 +20,8 @@
 
 -define(KZT_USER_VARS, <<"user_vars">>).
 
+-define(CONFIG_CAT, <<"pivot">>).
+
 -define(TTS_CONFIG_CAT, <<"speech">>).
 -define(TTS_SIZE_LIMIT, 4000).
 

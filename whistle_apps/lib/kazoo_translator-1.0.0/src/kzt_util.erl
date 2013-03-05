@@ -15,16 +15,27 @@
          ,get_request_vars/1
          ,add_error/3, get_errors/1
          ,set_hangup_dtmf/2, get_hangup_dtmf/1
+         ,set_digit_pressed/2, get_digit_pressed/1
          ,set_call_timeout/2, get_call_timeout/1
          ,set_call_time_limit/2, get_call_time_limit/1
          ,set_record_call/2, get_record_call/1
          ,set_voice_uri/2, get_voice_uri/1
          ,set_voice_uri_method/2, get_voice_uri_method/1
+
          ,set_digits_collected/2, get_digits_collected/1
          ,add_digit_collected/2, clear_digits_collected/1
+
          ,attributes_to_proplist/1
+
          ,set_recording_url/2, get_recording_url/1
          ,set_recording_duration/2, get_recording_duration/1
+         ,set_recording_sid/2, get_recording_sid/1
+
+         ,set_transcription_sid/2, get_transcription_sid/1
+         ,set_transcription_text/2, get_transcription_text/1
+         ,set_transcription_status/2, get_transcription_status/1
+         ,set_transcription_url/2, get_transcription_url/1
+
          ,set_dial_call_status/2, get_dial_call_status/1
          ,set_dial_call_sid/2, get_dial_call_sid/1
          ,set_dial_call_duration/2, get_dial_call_duration/1
@@ -39,11 +50,8 @@
 
 -include("kzt.hrl").
 
--define(SUPPORTED_METHODS, [get, post]).
-
 -spec http_method(api_binary() | list()) -> 'get' | 'post'.
-http_method(L) when is_list(L) ->
-    http_method(props:get_value('method', L));
+http_method(L) when is_list(L) -> http_method(props:get_value('method', L));
 http_method(Method) ->
     case wh_util:to_atom(Method) of
         'get' -> 'get';
@@ -130,6 +138,9 @@ get_errors(Call) -> whapps_call:kvs_fetch(<<"response_errors">>, Call).
 set_hangup_dtmf(DTMF, Call) -> whapps_call:kvs_store(<<"hangup_dtmf">>, DTMF, Call).
 get_hangup_dtmf(Call) -> whapps_call:kvs_fetch(<<"hangup_dtmf">>, Call).
 
+set_digit_pressed(DTMF, Call) -> whapps_call:kvs_store(<<"digit_pressed">>, DTMF, Call).
+get_digit_pressed(Call) -> whapps_call:kvs_fetch(<<"digit_pressed">>, Call).
+
 set_record_call(R, Call) -> whapps_call:kvs_store(<<"record_call">>, R, Call).
 get_record_call(Call) -> whapps_call:kvs_fetch(<<"record_call">>, Call).
 
@@ -156,6 +167,21 @@ get_recording_url(Call) -> whapps_call:kvs_fetch(<<"recording_url">>, Call).
 
 set_recording_duration(RD, Call) -> whapps_call:kvs_store(<<"recording_duration">>, RD, Call).
 get_recording_duration(Call) -> whapps_call:kvs_fetch(<<"recording_duration">>, Call).
+
+set_recording_sid(SID, Call) -> whapps_call:kvs_store(<<"recording_sid">>, SID, Call).
+get_recording_sid(Call) -> whapps_call:kvs_fetch(<<"recording_sid">>, Call).
+
+set_transcription_sid(SID, Call) -> whapps_call:kvs_store(<<"transcription_sid">>, SID, Call).
+get_transcription_sid(Call) -> whapps_call:kvs_fetch(<<"transcription_sid">>, Call).
+
+set_transcription_text(RD, Call) -> whapps_call:kvs_store(<<"transcription_text">>, RD, Call).
+get_transcription_text(Call) -> whapps_call:kvs_fetch(<<"transcription_text">>, Call).
+
+set_transcription_status(RD, Call) -> whapps_call:kvs_store(<<"transcription_status">>, RD, Call).
+get_transcription_status(Call) -> whapps_call:kvs_fetch(<<"transcription_status">>, Call).
+
+set_transcription_url(RD, Call) -> whapps_call:kvs_store(<<"transcription_url">>, RD, Call).
+get_transcription_url(Call) -> whapps_call:kvs_fetch(<<"transcription_url">>, Call).
 
 set_dial_call_status(DCS, Call) -> whapps_call:kvs_store(<<"dial_call_status">>, DCS, Call).
 get_dial_call_status(Call) -> whapps_call:kvs_fetch(<<"dial_call_status">>, Call).

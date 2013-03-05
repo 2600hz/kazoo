@@ -14,18 +14,20 @@
          ,wait_for_noop/2
          ,say_loop/6, say_loop/7
          ,play_loop/3, play_loop/4
+         ,record_loop/1
          ,collect_dtmfs/4
+
+         ,recording_meta/2
         ]).
 
--record(offnet_req, {
-          call :: whapps_call:call()
-         ,hangup_dtmf :: api_binary()
-         ,record_call :: boolean()
-         ,call_timeout :: integer()
-         ,call_time_limit :: integer()
-         ,start :: wh_now()
-         ,call_b_leg :: api_binary()
-         }).
+-record(offnet_req, {call :: whapps_call:call()
+                     ,hangup_dtmf :: api_binary()
+                     ,record_call :: boolean()
+                     ,call_timeout :: integer()
+                     ,call_time_limit :: integer()
+                     ,start :: wh_now()
+                     ,call_b_leg :: api_binary()
+                    }).
 -type offnet_req() :: #offnet_req{}.
 
 -define(DEFAULT_EVENT_WAIT, 10000). % 10s or 10000ms
@@ -76,8 +78,8 @@ say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, N) ->
                        {'ok', whapps_call:call()} |
                        {'error', _, whapps_call:call()}.
 -spec play_loop(whapps_call:call(), ne_binary(), list() | 'undefined', wh_timeout()) ->
-                             {'ok', whapps_call:call()} |
-                             {'error', _, whapps_call:call()}.
+                       {'ok', whapps_call:call()} |
+                       {'error', _, whapps_call:call()}.
 play_loop(Call, PlayMe, N) -> play_loop(Call, PlayMe, 'undefined', N).
 play_loop(Call, _, _, 0) -> {'ok', Call};
 play_loop(Call, PlayMe, Terminators, N) ->
@@ -88,19 +90,62 @@ play_loop(Call, PlayMe, Terminators, N) ->
         {'error', _, _}=ERR -> lager:debug("err: ~p", [ERR]), ERR
     end.
 
+record_loop(Call) ->
+    case wait_for_call_event(Call, <<"RECORD_STOP">>) of
+        {'ok', EvtJObj} ->
+            Len = wh_util:milliseconds_to_seconds(wh_json:get_value(<<"Length">>, EvtJObj, 0)),
+            DTMF = wh_json:get_value(<<"DTMF-Digit">>, EvtJObj, <<"hangup">>),
+
+            lager:debug("recording ended: len: ~p dtmf: ~p", [Len, DTMF]),
+
+            Fs = [{fun kzt_util:set_digit_pressed/2, DTMF}
+                  ,{fun kzt_util:set_recording_duration/2, Len}
+                 ],
+            {'ok', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Fs)};
+        {'error', 'channel_destroy', EvtJObj} ->
+            Len = wh_util:milliseconds_to_seconds(wh_json:get_value(<<"Length">>, EvtJObj, 0)),
+
+            lager:debug("recording ended (hangup): len: ~p", [Len]),
+
+            Fs = [{fun kzt_util:set_digit_pressed/2, <<"hangup">>}
+                  ,{fun kzt_util:set_recording_duration/2, Len}
+                 ],
+            {'ok', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Fs)};
+        {'error', E, _}=ERR -> lager:debug("error: ~p", [E]), ERR
+    end.
+
+wait_for_call_event(Call, EvtName) ->
+    case whapps_call_command:receive_event(?DEFAULT_EVENT_WAIT) of
+        {'ok', JObj} -> process_call_event(Call, EvtName, JObj);
+        {'error', 'timeout'} ->
+            case whapps_call_command:b_channel_status(Call) of
+                {'ok', _} -> wait_for_call_event(Call, EvtName);
+                {'error', 'timeout'} -> wait_for_call_event(Call, EvtName);
+                {'error', E} -> {'error', E, Call}
+            end
+    end.
+
+process_call_event(Call, EvtName, JObj) ->
+    case wh_util:get_event_type(JObj) of
+        {<<"call_event">>, EvtName} -> {'ok', JObj};
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'error', 'channel_destroy', JObj};
+        {<<"call_event">>, _Evt} -> wait_for_call_event(Call, EvtName);
+        {_, _} -> wait_for_call_event(Call, EvtName)
+    end.
+
 -spec decr_loop_counter(wh_timeout()) -> wh_timeout().
-decr_loop_counter(infinity) -> infinity;
+decr_loop_counter('infinity') -> 'infinity';
 decr_loop_counter(N) when is_integer(N), N > 0 -> N-1;
 decr_loop_counter(_) -> 0.
 
 -spec wait_for_noop(whapps_call:call(), ne_binary()) ->
-                                 {'ok', whapps_call:call()} |
-                                 {'error', noop_error(), whapps_call:call()}.
+                           {'ok', whapps_call:call()} |
+                           {'error', noop_error(), whapps_call:call()}.
 wait_for_noop(Call, NoopId) ->
     case whapps_call_command:receive_event(?DEFAULT_EVENT_WAIT) of
         {'ok', JObj} -> process_noop_event(Call, NoopId, JObj);
         {'error', 'timeout'} ->
-            case whapps_call_command:b_call_status(Call) of
+            case whapps_call_command:b_channel_status(Call) of
                 {'ok', _} -> wait_for_noop(Call, NoopId);
                 {'error', E} -> {'error', E, Call}
             end
@@ -108,12 +153,12 @@ wait_for_noop(Call, NoopId) ->
 
 -type noop_error() :: 'channel_destroy' | 'channel_hungup'.
 -spec process_noop_event(whapps_call:call(), ne_binary(), wh_json:object()) ->
-                                      {'ok', whapps_call:call()} |
-                                      {'error', noop_error(), whapps_call:call()}.
+                                {'ok', whapps_call:call()} |
+                                {'error', noop_error(), whapps_call:call()}.
 process_noop_event(Call, NoopId, JObj) ->
     case wh_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'error', 'channel_destroy', Call};
-        {<<"call_event">>, <<"CHANNEL_HANGUP">>} -> {'error', 'channel_hungup', Call};
+        {<<"call_event">>, <<"CHANNEL_HANGUP_COMPLETE">>} -> {'error', 'channel_hungup', Call};
         {<<"call_event">>, <<"DTMF">>} ->
             DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
             lager:debug("adding dtmf tone '~s' to collection", [DTMF]),
@@ -155,8 +200,7 @@ wait_for_hangup(Call) ->
                 {<<"call_event">>,<<"CHANNEL_DESTROY">>} ->
                     lager:debug("channel was destroyed"),
                     {'ok', kzt_util:update_call_status(call_status(wh_json:get_value(<<"Hangup-Cause">>, JObj)), Call)};
-                _Type ->
-                    wait_for_hangup(Call)
+                _Type -> wait_for_hangup(Call)
             end;
         {'error', 'timeout'} ->
             lager:debug("timeout waiting for hangup...seems peculiar"),
@@ -249,7 +293,7 @@ process_offnet_event(#offnet_req{call=Call
                                      ,call=lists:foldl(fun({V, F}, CallAcc) ->
                                                                F(V, CallAcc)
                                                        end
-                                  ,Call, Updates)
+                                                       ,Call, Updates)
                                     }));
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
             HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
@@ -283,7 +327,7 @@ maybe_start_recording(#offnet_req{record_call='true'
     RecordingName = recording_name(whapps_call:call_id(Call), OtherLegId),
 
     lager:debug("starting recording '~s'", [RecordingName]),
-    {ok, MediaJObj} = recording_meta(Call, RecordingName),
+    {'ok', MediaJObj} = recording_meta(Call, RecordingName),
     whapps_call_command:record_call(RecordingName, <<"start">>
                                     ,CallTimeLimit, Call
                                    ),

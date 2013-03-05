@@ -147,6 +147,14 @@ req_params(Call) ->
        ,{<<"ApiVersion">>, <<"2010-04-01">>}
        ,{<<"Direction">>, <<"inbound">>}
        ,{<<"CallerName">>, whapps_call:caller_id_name(Call)}
+       ,{<<"RecordingUrl">>, kzt_util:get_recording_url(Call)}
+       ,{<<"RecordingDuration">>, kzt_util:get_recording_duration(Call)}
+       ,{<<"RecordingSid">>, kzt_util:get_recording_sid(Call)}
+       ,{<<"Digits">>, kzt_util:get_digit_pressed(Call)}
+       ,{<<"TranscriptionSid">>, kzt_util:get_transcription_sid(Call)}
+       ,{<<"TranscriptionText">>, kzt_util:get_transcription_text(Call)}
+       ,{<<"TranscriptionStatus">>, kzt_util:get_transcription_status(Call)}
+       ,{<<"TranscriptionUrl">>, kzt_util:get_transcription_url(Call)}
       ]).
 
 %%------------------------------------------------------------------------------
@@ -422,9 +430,84 @@ gather_finished(Call, Props) ->
             {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters)}
     end.
 
-record_call(Call, _Props) ->
+record_call(Call, Props) ->
     lager:debug("record_call not implemented"),
-    {'stop', Call}.
+
+    Timeout = timeout_s(Props, 5),
+    FinishOnKey = get_finish_key(Props),
+    MaxLength = get_max_length(Props),
+
+    MediaName = media_name(Call),
+
+    case props:is_true('playBeep', Props, 'true') of
+        'true' -> play_beep(Call);
+        'false' -> 'ok'
+    end,
+
+    whapps_call_command:record(MediaName, FinishOnKey, MaxLength, 200, Timeout, Call),
+
+    case kzt_receiver:record_loop(Call) of
+        {'ok', Call1} -> finish_record_call(Call1, Props, MediaName);
+        _E -> lager:debug("call record failed: ~p", [_E]), {'stop', Call}
+    end.
+
+-spec finish_record_call(whapps_call:call(), wh_proplist(), ne_binary()) -> {'request', whapps_call:call()}.
+finish_record_call(Call, Props, MediaName) ->
+    CurrentUri = kzt_util:get_voice_uri(Call),
+    NewUri = kzt_util:resolve_uri(CurrentUri, action_url(Props)),
+    Method = kzt_util:http_method(Props),
+
+    lager:debug("recording of ~s finished; using method '~s' to ~s from ~s", [MediaName, Method, NewUri, CurrentUri]),
+
+    Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
+               ,{fun kzt_util:set_voice_uri/2, NewUri}
+              ],
+
+    RecordingUrl = props:get_value('recordingUrl', Props, NewUri),
+    Setters1 =
+        case should_store_recording(RecordingUrl) of
+            'false' ->
+                lager:debug("not storing the recording"),
+                Setters;
+            {'true', 'local'} ->
+                {'ok', MediaJObj} = kzt_receiver:recording_meta(Call, MediaName),
+                StoreUrl = wapi_dialplan:store_url(Call, MediaJObj),
+
+                lager:debug("storing ~s locally to ~s", [MediaName, StoreUrl]),
+
+                whapps_call_command:store(MediaName, StoreUrl, Call),
+                [{fun kzt_util:set_recording_url/2, StoreUrl}
+                 | Setters];
+            {'true', Url} ->
+                StoreUrl = wapi_dialplan:offsite_store_url(Url, MediaName),
+
+                lager:debug("storing ~s offsite to ~s", [MediaName, StoreUrl]),
+
+                whapps_call_command:store(MediaName, StoreUrl, Call),
+                [{fun kzt_util:set_recording_url/2, StoreUrl}
+                 | Setters]
+        end,
+    {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters1)}.
+
+-spec should_store_recording(api_binary()) -> {'true', ne_binary() | 'local'} | 'false'.
+should_store_recording(Url) ->
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
+        'true' when is_binary(Url) -> {'true', Url};
+        'true' -> {'true', 'local'};
+        'false' when is_binary(Url) -> {'true', Url};
+        'false' -> 'false'
+    end.
+
+play_beep(Call) ->
+    Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
+                              ,{<<"Duration-ON">>, <<"500">>}
+                              ,{<<"Duration-OFF">>, <<"100">>}
+                             ]),
+    whapps_call_command:tones([Tone], Call).
+
+media_name(Call) ->
+    Format = whapps_config:get(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>),
+    <<"call_recording_", (whapps_call:call_id(Call))/binary, ".", Format/binary>>.
 
 %%------------------------------------------------------------------------------
 %% Nouns
@@ -519,7 +602,7 @@ timelimit_s(Props) -> props:get_integer_value('timeLimit', Props, 14400).
 loop_count(Props) -> props:get_integer_value('loop', Props, 1).
 
 request_id(N, Call) -> iolist_to_binary([N, $@, whapps_call:from_realm(Call)]).
-should_record_call(Props) -> wh_util:is_true(props:get_value(record, Props, 'false')).
+should_record_call(Props) -> wh_util:is_true(props:get_value('record', Props, 'false')).
 
 -spec hangup_dtmf(wh_proplist() | api_binary()) -> api_binary().
 hangup_dtmf(Props) when is_list(Props) ->
@@ -533,9 +616,10 @@ hangup_dtmf(DTMF) ->
         'false' -> 'undefined'
     end.
 
-finish_dtmf(Props) when is_list(Props) ->
+finish_dtmf(Props) -> finish_dtmf(Props, <<"#">>).
+finish_dtmf(Props, Default) when is_list(Props) ->
     case props:get_binary_value('finishOnKey', Props) of
-        'undefined' -> <<"#">>;
+        'undefined' -> Default;
         DTMF ->
             'true' = lists:member(DTMF, ?ANY_DIGIT),
             DTMF
@@ -576,8 +660,18 @@ get_engine(Props) ->
         Engine -> Engine
     end.
 
+get_finish_key(Props) ->
+    wapi_dialplan:terminators(props:get_binary_value('finishOnKey', Props)).
 get_terminators(Props) ->
     wapi_dialplan:terminators(props:get_binary_value('terminators', Props)).
+
+-spec get_max_length(wh_proplist()) -> pos_integer().
+get_max_length(Props) ->
+    Max = whapps_config:get_integer(?MODULE, <<"max_length">>, 3600),
+    case props:get_integer_value('maxLength', Props) of
+        'undefined' -> Max;
+        N when N > 0, N =< Max -> N
+    end.
 
 get_max_participants(Props) when is_list(Props) ->
     get_max_participants(props:get_integer_value('maxParticipants', Props, 40));
@@ -597,7 +691,7 @@ action_url(Props) -> props:get_value('action', Props).
 -spec dial_timeout(wh_proplist() | pos_integer()) -> pos_integer().
 dial_timeout(Props) when is_list(Props) ->
     dial_timeout(props:get_integer_value('timeout', Props, 20));
-dial_timeout(T) when T > 0 -> T.
+dial_timeout(T) when is_integer(T), T > 0 -> T.
 
 dial_strategy(Props) ->
     case props:get_value('strategy', Props) of
