@@ -66,6 +66,7 @@
 -export([dial_method_single/0
          ,dial_method_simultaneous/0
          ,terminators/1
+         ,local_store_url/2, offsite_store_url/2
         ]).
 
 -export([bind_q/2
@@ -968,3 +969,21 @@ unbind_q(Queue, _Prop) ->
 terminators(Bin) when is_binary(Bin) ->
     [<<B>> || <<B>> <= Bin, lists:member(<<B>>, ?ANY_DIGIT)];
 terminators('undefined') -> ?ANY_DIGIT.
+
+-spec local_store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
+local_store_url(Call, JObj) ->
+    AccountDb = whapps_call:account_db(Call),
+    MediaId = wh_json:get_value(<<"_id">>, JObj),
+    MediaName = wh_json:get_value(<<"name">>, JObj),
+
+    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    list_to_binary([wh_couch_connections:get_url(), AccountDb
+                    ,"/", MediaId
+                    ,"/", MediaName
+                    ,"?rev=", Rev
+                   ]).
+
+-spec offsite_store_url(api_binary(), ne_binary()) -> ne_binary().
+offsite_store_url('undefined', _) -> throw({'error', <<"URL not defined">>});
+offsite_store_url(Url, MediaName) ->
+    iolist_to_binary([wh_util:strip_right_binary(Url, $/), "/", MediaName]).
