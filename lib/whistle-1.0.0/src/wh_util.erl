@@ -61,6 +61,7 @@
          ,pretty_print_datetime/1
         ]).
 -export([microseconds_to_seconds/1
+         ,milliseconds_to_seconds/1
          ,elapsed_s/1, elapsed_ms/1, elapsed_us/1
          ,now_s/1, now_ms/1, now_us/1
         ]).
@@ -764,6 +765,7 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
 
 -spec microseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) -> to_integer(Microseconds) div 1000000.
+milliseconds_to_seconds(Milliseconds) -> to_integer(Milliseconds) div 1000.
 
 -spec elapsed_s(wh_now() | pos_integer()) -> pos_integer().
 -spec elapsed_ms(wh_now() | pos_integer()) -> pos_integer().
