@@ -457,7 +457,7 @@ maybe_aggregate_device(DeviceId, #cb_context{resp_status=success, doc=JObj}=Cont
         true ->
             lager:debug("adding device to the sip auth aggregate"),
             couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
-            wapi_switch:publish_reload_acls(),
+            _ = wapi_switch:publish_reload_acls(),
             true
     end;
 maybe_aggregate_device(_, _) -> false.
@@ -475,7 +475,7 @@ maybe_remove_aggreate(DeviceId, #cb_context{resp_status=success}) ->
     case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
         {ok, JObj} ->
             couch_mgr:del_doc(?WH_SIP_DB, JObj),
-            wapi_switch:publish_reload_acls(),
+            _ = wapi_switch:publish_reload_acls(),
             true;
         {error, not_found} -> false
     end;

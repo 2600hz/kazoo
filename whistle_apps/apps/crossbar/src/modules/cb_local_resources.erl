@@ -254,7 +254,8 @@ maybe_aggregate_resource(#cb_context{resp_status=success, doc=JObj}=Context) ->
         true ->
             lager:debug("adding resource to the sip auth aggregate"),
             couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
-            wapi_switch:publish_reload_gateways(),
+            _ = wapi_switch:publish_reload_gateways(),
+            _ = wapi_switch:publish_reload_acls(),
             true
     end;
 maybe_aggregate_resource(_) -> false.
@@ -264,7 +265,8 @@ maybe_remove_aggregate(ResourceId, #cb_context{resp_status=success}) ->
     case couch_mgr:open_doc(?WH_SIP_DB, ResourceId) of
         {ok, JObj} ->
             couch_mgr:del_doc(?WH_SIP_DB, JObj),
-            wapi_switch:publish_reload_gateways(),
+            _ = wapi_switch:publish_reload_gateways(),
+            _ = wapi_switch:publish_reload_acls(),
             true;
         {error, not_found} -> false
     end;
