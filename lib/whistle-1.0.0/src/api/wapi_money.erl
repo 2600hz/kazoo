@@ -22,22 +22,9 @@
          ,publish_debit/1, publish_debit/2
          ,publish_balance_req/1, publish_balance_req/2
          ,publish_balance_resp/2, publish_balance_resp/3
-         ,dollars_to_units/1, units_to_dollars/1
-         ,default_per_min_charge/0
-         ,base_call_cost/3, version/0
-         ,convert_units/3
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
-
-%% tracked in hundred-ths of a cent
--define(DOLLAR_TO_UNIT, 10000).
--define(WAPI_MONEY_VERSION, 2).
-
-%% track how the above has changed, for migration
--define(MONEY_VERSION_TO_UNIT, [{1, 1000}
-                                ,{2, 10000}
-                               ]).
 
 -define(CREDIT_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Transaction-ID">>]).
 -define(OPTIONAL_CREDIT_HEADERS, []).
@@ -194,34 +181,3 @@ publish_balance_resp(Queue, Req) ->
 publish_balance_resp(Queue, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?BALANCE_RESP_VALUES, fun ?MODULE:balance_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
-
--spec dollars_to_units/1 :: (float() | integer()) -> integer().
-dollars_to_units(Dollars) when is_number(Dollars) ->
-    round(Dollars * ?DOLLAR_TO_UNIT).
-
--spec units_to_dollars/1 :: (integer()) -> float().
-units_to_dollars(Units) when is_integer(Units) ->
-    Units / ?DOLLAR_TO_UNIT.
-
-%% How much to charge a per_min call at the outset
--spec default_per_min_charge/0 :: () -> pos_integer().
-default_per_min_charge() ->
-    dollars_to_units(whapps_config:get_float(?MODULE, <<"default_per_min_charge">>, 0.5)). % $0.50 default removed
-
--spec base_call_cost/3 :: (float() | integer(), integer(), float() | integer()) -> float().
-base_call_cost(RateCost, RateMin, RateSurcharge) when is_number(RateCost),
-                                                      is_integer(RateMin),
-                                                      is_number(RateSurcharge) ->
-    RateCost * ( RateMin div 60 ) + RateSurcharge.
-
--spec version/0 :: () -> pos_integer().
-version() ->
-    ?WAPI_MONEY_VERSION.
-
--spec convert_units/3 :: (non_neg_integer(), pos_integer(), pos_integer()) -> pos_integer().
-convert_units(0, _, _) -> 0;
-convert_units(Units, Ver, Ver) -> Units;
-convert_units(Units, FromVersion, ToVersion) when is_integer(Units), is_integer(FromVersion), is_integer(ToVersion) ->
-    FromUnitFactor = props:get_integer_value(wh_util:to_integer(FromVersion), ?MONEY_VERSION_TO_UNIT),
-    ToUnitFactor = props:get_integer_value(wh_util:to_integer(ToVersion), ?MONEY_VERSION_TO_UNIT),
-    round(Units * (ToUnitFactor / FromUnitFactor)).

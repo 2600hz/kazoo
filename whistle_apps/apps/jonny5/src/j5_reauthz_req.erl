@@ -19,7 +19,7 @@
 
 -spec handle_req(wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    true = wapi_authz:reauthz_req_v(JObj),
+    'true' = wapi_authz:reauthz_req_v(JObj),
     wh_util:put_callid(JObj),
 
     timer:sleep(crypto:rand_uniform(0, 1000)),
@@ -32,10 +32,10 @@ handle_req(JObj, _Props) ->
     maybe_skip_reauth(wh_json:get_value(<<"Call-Direction">>, JObj), Limits, JObj).
 
 -spec maybe_skip_reauth(ne_binary(), #limits{}, wh_json:json_object()) -> 'ok'.
-maybe_skip_reauth(<<"outbound">>, #limits{soft_limit_outbound=true}, JObj) ->
+maybe_skip_reauth(<<"outbound">>, #limits{soft_limit_outbound='true'}, JObj) ->
     lager:debug("outbound calls are not enforcing (soft limit)", []),
     send_allow_resp(JObj);
-maybe_skip_reauth(<<"inbound">>, #limits{soft_limit_inbound=true}, JObj) ->
+maybe_skip_reauth(<<"inbound">>, #limits{soft_limit_inbound='true'}, JObj) ->
     lager:debug("inbound calls are not enforcing (soft limit)", []),
     send_allow_resp(JObj);
 maybe_skip_reauth(_, Limits, JObj) ->
@@ -43,14 +43,14 @@ maybe_skip_reauth(_, Limits, JObj) ->
         <<"allotment">> -> j5_allotments:reauthorize(Limits, JObj);
         <<"per_minute">> -> j5_credit:reauthorize(Limits, JObj);
         _Else -> send_allow_resp(JObj)
-    end.    
+    end.
 
 -spec send_allow_resp(wh_json:json_object()) -> 'ok'.
 -spec send_allow_resp(wh_json:json_object(), wh_json:json_object()) -> 'ok'.
 
 send_allow_resp(JObj) ->
     send_allow_resp(JObj, undefined).
-    
+
 send_allow_resp(JObj, CCVs) ->
     lager:debug("reauthorization succeeded", []),
     send_resp(JObj, CCVs, <<"true">>).
@@ -60,7 +60,7 @@ send_allow_resp(JObj, CCVs) ->
 
 send_deny_resp(JObj) ->
     send_deny_resp(JObj, undefined).
-    
+
 send_deny_resp(JObj, CCVs) ->
     lager:debug("reauthorization failed", []),
     send_resp(JObj, CCVs, <<"false">>).

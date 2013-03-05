@@ -205,7 +205,7 @@ calc_internal_cost(RateDoc, Cdr) ->
     Surcharge = wh_json:get_float_value(<<"rate_surcharge">>, RateDoc, 0.0),
     BillingSecs = wh_json:get_integer_value(<<"billing_seconds">>, Cdr, 0),
 
-    whapps_util:calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs).
+    wht_util:calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs).
 
 filter_cdr_fields(JObj) ->
     JObj.

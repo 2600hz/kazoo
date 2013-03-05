@@ -73,16 +73,16 @@ maybe_get_rate_discount(JObj) ->
 -spec rate_resp(wh_json:object(), wh_json:object()) -> wh_proplist().
 rate_resp(Rate, JObj) ->
     lager:debug("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
-    BaseCost = wapi_money:base_call_cost(wh_json:get_float_value(<<"rate_cost">>, Rate, 0.01)
-                                         ,wh_json:get_integer_value(<<"rate_minimum">>, Rate, 60)
-                                         ,wh_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0)),
-
+    RateCost = get_rate_cost(Rate),
+    RateSurcharge = get_surcharge(Rate),
+    RateMinimum = wh_json:get_integer_value(<<"rate_minimum">>, Rate, 60),
+    BaseCost = wht_util:base_call_cost(RateCost, RateMinimum, RateSurcharge),
     lager:debug("base cost for a minute call: ~p", [BaseCost]),
-    [{<<"Rate">>, wh_json:get_binary_value(<<"rate_cost">>, Rate)}
-     ,{<<"Rate-Increment">>, wh_json:get_binary_value(<<"rate_increment">>, Rate)}
-     ,{<<"Rate-Minimum">>, wh_json:get_binary_value(<<"rate_minimum">>, Rate)}
+    [{<<"Rate">>, wh_util:to_binary(RateCost)}
+     ,{<<"Rate-Increment">>, wh_json:get_binary_value(<<"rate_increment">>, Rate, <<"60">>)}
+     ,{<<"Rate-Minimum">>, wh_util:to_binary(RateMinimum)}
      ,{<<"Discount-Percentage">>, maybe_get_rate_discount(JObj)}
-     ,{<<"Surcharge">>, wh_json:get_binary_value(<<"rate_surcharge">>, Rate)}
+     ,{<<"Surcharge">>, wh_util:to_binary(RateSurcharge)}
      ,{<<"Rate-Name">>, wh_json:get_binary_value(<<"rate_name">>, Rate)}
      ,{<<"Rate-ID">>, wh_json:get_binary_value(<<"rate_id">>, Rate)}
      ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
@@ -90,3 +90,13 @@ rate_resp(Rate, JObj) ->
      ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
+
+-spec get_surcharge(wh_json:object()) -> ne_binary().
+get_surcharge(Rate) ->
+    Surcharge = wh_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0),
+    wht_util:dollars_to_units(Surcharge).
+
+-spec get_rate_cost(wh_json:object()) -> ne_binary().
+get_rate_cost(Rate) ->
+    Cost = wh_json:get_float_value(<<"rate_cost">>, Rate, 0.0),
+    wht_util:dollars_to_units(Cost).

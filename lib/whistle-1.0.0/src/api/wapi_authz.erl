@@ -35,7 +35,7 @@
 -define(AUTHZ_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Call-ID">>
                                 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                 ,<<"Account-ID">>, <<"Request">>, <<"Usage">>
-                                ,<<"Call-Direction">>
+                                ,<<"Call-Direction">>, <<"Auth-Account-ID">>
                            ]).
 -define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>]).
 -define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
@@ -56,16 +56,13 @@
 -define(OPTIONAL_AUTHZ_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Type">>, <<"Global-Resource">>]).
 -define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                             ,{<<"Event-Name">>, <<"authz_resp">>}
-                            ,{<<"Type">>, [<<"flat_rate">>, <<"per_minute">>, <<"soft_limit">>
-                                               ,<<"allotment">>, <<"limits_disabled">>
-                                          ]}
                             ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
                             ,{<<"Global-Resource">>, [<<"true">>, <<"false">>]}
                            ]).
 -define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %% Reauthorization Requests
--define(REAUTHZ_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Call-ID">>, <<"Account-ID">>, <<"Type">>]).
+-define(REAUTHZ_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Call-ID">>, <<"Auth-Account-ID">>, <<"Type">>]).
 -define(OPTIONAL_REAUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>
                                            ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                            ,<<"Account-ID">>, <<"Request">>
@@ -73,6 +70,7 @@
                                            ,<<"Answered-Time">>, <<"Progress-Time">>
                                            ,<<"Progress-Media-Time">>, <<"Hangup-Time">>
                                            ,<<"Transfer-Time">>, <<"Timestamp">>
+                                           ,<<"Account-ID">>, <<"Billing-Seconds">>
                                       ]).
 -define(REAUTHZ_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                              ,{<<"Event-Name">>, <<"reauthz_req">>}
