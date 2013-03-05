@@ -291,27 +291,31 @@ post(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
     end.
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
-put(#cb_context{req_data=ReqData, resp_data=RespData}=Context, ?CREDITS_PATH_TOKEN) ->
-    Units = wapi_money:dollars_to_units(wh_json:get_float_value(<<"amount">>, ReqData)),
-    lager:debug("putting ~p units", [Units]),
-    BTCleanup = [<<"billing_address">>
-                 ,<<"shipping_address">>
-                 ,[<<"card">>, <<"billing_address">>]
-                 ,[?CUSTOMER_PATH_TOKEN, <<"credit_cards">>]
-                 ,[?CUSTOMER_PATH_TOKEN, ?ADDRESSES_PATH_TOKEN]
-                ],
-    Props = [{<<"amount">>, Units}
-             ,{<<"pvt_type">>, <<"credit">>}
-             ,{<<"braintree">>, wh_json:delete_keys(BTCleanup, RespData)}
-            ],
-    #cb_context{resp_status=success, doc=Saved}
-        = crossbar_doc:ensure_saved(Context#cb_context{doc=wh_json:from_list(Props)}),
-    wapi_money:publish_credit([{<<"Amount">>, Units}
-                               ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Saved)}
-                               ,{<<"Transaction-ID">>, wh_json:get_value(<<"_id">>, Saved)}
-                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                              ]),
-    Context;
+put(#cb_context{req_data=ReqData, resp_data=RespData
+                ,account_id=AccountId, auth_account_id=AuthAccountId}=Context, ?CREDITS_PATH_TOKEN) ->
+    Amount = wh_json:get_float_value(<<"amount">>, ReqData, 0.0),
+    Units = wht_money:dollars_to_units(Amount),
+    BTData = wh_json:delete_keys([<<"billing_address">>
+                                  ,<<"shipping_address">>
+                                  ,[<<"card">>, <<"billing_address">>]
+                                  ,[?CUSTOMER_PATH_TOKEN, <<"credit_cards">>]
+                                  ,[?CUSTOMER_PATH_TOKEN, ?ADDRESSES_PATH_TOKEN]
+                                 ], RespData),
+    case add_credit_to_account(BTData, Units, AccountId, AuthAccountId) of
+        {'ok', Transaction} ->
+            wapi_money:publish_credit([{<<"Amount">>, Units}
+                                       ,{<<"Account-ID">>, wh_transaction:account_id(Transaction)}
+                                       ,{<<"Transaction-ID">>, wh_transaction:id(Transaction)}
+                                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                      ]),
+            JObj = wh_transaction:to_json(Transaction),
+            Context#cb_context{resp_status=success
+                               ,doc=JObj
+                               ,resp_data=wh_json:public_fields(JObj)
+                              };
+        {'error', Reason} ->
+            crossbar_util:response(error, <<"transaction error">>, 500, Reason, Context)
+    end;
 put(Context, ?ADDRESSES_PATH_TOKEN) ->
     try braintree_address:create(cb_context:fetch(braintree, Context)) of
         #bt_address{}=Address ->
@@ -390,8 +394,8 @@ create_braintree_customer(#cb_context{account_id=AccountId}=Context) ->
 
 -spec current_account_dollars(ne_binary()) -> float().
 current_account_dollars(Account) ->
-    Units = wh_transaction:get_current_balance(Account),
-    wapi_money:units_to_dollars(Units).
+    Units = wht_util:current_balance(Account),
+    wht_util:units_to_dollars(Units).
 
 -spec maybe_charge_billing_id(float(), cb_context:context()) -> cb_context:context().
 maybe_charge_billing_id(Amount, #cb_context{auth_account_id=AuthAccountId, account_id=AccountId}=Context) ->
@@ -423,3 +427,23 @@ charge_billing_id(Amount, #cb_context{account_id=AccountId, req_data=JObj}=Conte
         throw:{Error, Reason} ->
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end.
+
+-spec add_credit_to_account(wh_json:object(), integer(), ne_binary(), ne_binary()) -> 'ok'.
+add_credit_to_account(BraintreeData, Units, LedgerId, AccountId) ->
+    lager:debug("putting ~p units", [Units]),
+    Routines = [fun(T) ->
+                        case LedgerId =/= AccountId of
+                            'false' ->
+                                wh_transaction:set_reason(<<"manual_addition">>, T);
+                            'true' ->
+                                T1 = wh_transaction:set_sub_account_id(AccountId, T),
+                                wh_transaction:set_reason(<<"sub_account_manual_addition">>, T1)
+                        end
+                end
+                ,fun(T) -> wh_transaction:set_bookkeeper_info(BraintreeData, T) end
+                ,fun(T) ->
+                         wh_transaction:set_description(<<"credit addition from credit card">>, T)
+                 end
+               ],
+    Transaction = lists:foldl(fun(F, T) -> F(T) end, wh_transaction:credit(LedgerId, Units), Routines),
+    wh_transaction:save(Transaction).

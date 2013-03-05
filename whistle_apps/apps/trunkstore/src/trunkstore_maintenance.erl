@@ -72,7 +72,7 @@ create_ts_doc(AcctDB, AcctID, TSJObj) ->
 
 create_credit_doc(AcctDB, AcctID, TSJObj) ->
     Credit = wh_json:get_value([<<"account">>, <<"credits">>, <<"prepay">>], TSJObj, 0.0),
-    Units = wapi_money:dollars_to_units(wh_util:to_float(Credit)),
+    Units = wht_util:dollars_to_units(wh_util:to_float(Credit)),
     lager:info("Putting ~p units", [Units]),
     Transaction = wh_json:from_list([{<<"amount">>, Units}
                                      ,{<<"pvt_type">>, <<"credit">>}

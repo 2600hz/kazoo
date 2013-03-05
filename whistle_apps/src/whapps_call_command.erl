@@ -358,10 +358,10 @@ b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup
 %% @end
 %%--------------------------------------------------------------------
 -spec redirect(ne_binary(), whapps_call:call()) -> 'ok'.
+redirect(Contact, Call) ->
+    redirect(Contact, 'undefined', Call).
+
 -spec redirect(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
-
-redirect(Contact, Call) -> redirect(Contact, 'undefined', Call).
-
 redirect(Contact, Server, Call) ->
     lager:debug("redirect to ~s on ~s", [Contact, Server]),
     Command = [{<<"Redirect-Contact">>, Contact}

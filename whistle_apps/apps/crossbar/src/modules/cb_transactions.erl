@@ -84,7 +84,7 @@ validate(#cb_context{req_verb = <<"get">>,  query_json=Query}=Context) ->
     end.
 
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"current_balance">>) ->
-    Balance = wh_transaction:get_current_balance(AccountId),
+    Balance = wh_transactions:get_current_balance(AccountId),
     JObj = wh_json:from_list([{<<"balance">>, Balance}]),
     Context#cb_context{resp_status=success, resp_data=JObj};
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, TransactionId) ->

@@ -164,7 +164,7 @@ maybe_save_in_account('undefined', JObj) ->
 maybe_save_in_account(AccountId, JObj) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Props = [{'type', 'cdr'}
-             ,{'crossbar_doc_vsn', 1}
+             ,{'crossbar_doc_vsn', 2}
             ],
     J = wh_doc:update_pvt_parameters(JObj, AccountDb, Props),
     case couch_mgr:save_doc(AccountDb, J) of
@@ -176,7 +176,7 @@ maybe_save_in_account(AccountId, JObj) ->
 -spec save_in_anonymous_cdrs(wh_json:object()) -> 'ok'.
 save_in_anonymous_cdrs(JObj) ->
     Props = [{'type', 'cdr'}
-             ,{'crossbar_doc_vsn', 1}
+             ,{'crossbar_doc_vsn', 2}
             ],
     J = wh_doc:update_pvt_parameters(JObj, ?WH_ANONYMOUS_CDR_DB, Props),
     case couch_mgr:save_doc(?WH_ANONYMOUS_CDR_DB, J) of

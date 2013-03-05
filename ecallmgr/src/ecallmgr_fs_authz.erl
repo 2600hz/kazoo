@@ -36,7 +36,7 @@
                         ,<<"Discount-Percentage">>
                    ]).
 
--define(HEARTBEAT_ON_ANSWER(CallId), <<"api_on_answer=uuid_session_heartbeat ", CallId/binary, " 10">>).
+-define(HEARTBEAT_ON_ANSWER(CallId), <<"api_on_answer=uuid_session_heartbeat ", CallId/binary, " 60">>).
 
 %%%===================================================================
 %%% API
@@ -67,41 +67,41 @@ kill_channel(<<"inbound">>, CallId, Node) ->
     %% Give any pending route requests a chance to cleanly terminate this call,
     %% if it has not been processed yet.  Then chop its head off....
     timer:sleep(1000),
-    _ = freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " INCOMING_CALL_BARRED">>)),
-    ok;
+    _ = freeswitch:api(Node, 'uuid_kill', wh_util:to_list(<<CallId/binary, " INCOMING_CALL_BARRED">>)),
+    'ok';
 kill_channel(<<"outbound">>, CallId, Node) ->
-    _ = freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
-    ok.
+    _ = freeswitch:api(Node, 'uuid_kill', wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
+    'ok'.
 
 -spec handle_channel_create(wh_proplist(), ne_binary(), atom()) -> 'ok'.
 handle_channel_create(Props, CallId, Node) ->
-    put(callid, CallId),
+    put('callid', CallId),
     Authorized = maybe_authorize_channel(Props, Node),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized).
 
 -spec handle_session_heartbeat(wh_proplist(), atom()) -> 'ok'.
 handle_session_heartbeat(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
-    put(callid, CallId),
+    put('callid', CallId),
     lager:debug("received session heartbeat"),
     AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
     ResellerId = props:get_value(?GET_CCV(<<"Reseller-ID">>), Props),
     _ = case (not wh_util:is_empty(AccountId))
-            andalso should_reauth(?GET_CCV(<<"Account-Billing">>), Props) 
+            andalso should_reauth(?GET_CCV(<<"Account-Billing">>), Props)
         of
-            false -> ok;
-            AType -> 
-                attempt_reauthorization(account, AccountId, AType, Props, Node)
+            'false' -> 'ok';
+            AType ->
+                attempt_reauthorization('account', AccountId, AType, Props, Node)
         end,
     _ = case (not wh_util:is_empty(ResellerId))
-            andalso AccountId =/= ResellerId 
-            andalso should_reauth(?GET_CCV(<<"Reseller-Billing">>), Props) 
+            andalso AccountId =/= ResellerId
+            andalso should_reauth(?GET_CCV(<<"Reseller-Billing">>), Props)
         of
-            false -> ok;
+            'false' -> 'ok';
             RType ->
-                attempt_reauthorization(reseller, ResellerId, RType, Props, Node)
-        end,    
-    ok.
+                attempt_reauthorization('reseller', ResellerId, RType, Props, Node)
+        end,
+    'ok'.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -119,11 +119,11 @@ handle_session_heartbeat(Props, Node) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put(callid, Node),
+    put('callid', Node),
     lager:info("starting new fs authz listener for ~s", [Node]),
-    case bind_to_events(props:get_value(client_version, Options), Node) of
-        ok -> {ok, #state{node=Node, options=Options}};
-        {error, Reason} ->
+    case bind_to_events(props:get_value('client_version', Options), Node) of
+        'ok' -> {'ok', #state{node=Node, options=Options}};
+        {'error', Reason} ->
             lager:critical("unable to establish authz bindings: ~p", [Reason]),
             {stop, Reason}
     end.
@@ -131,17 +131,17 @@ init([Node, Options]) ->
 bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
 %%    case freeswitch:event(Node, ['CHANNEL_CREATE', 'SESSION_HEARTBEAT']) of
     case freeswitch:event(Node, ['CHANNEL_CREATE']) of
-        timeout -> {error, timeout};
+        'timeout' -> {'error', 'timeout'};
         Else -> Else
     end;
 bind_to_events(_, Node) ->
-    case gproc:reg({p, l, {event, Node, <<"CHANNEL_CREATE">>}}) =:= true
-        andalso gproc:reg({p, l, {event, Node, <<"SESSION_HEARTBEAT">>}}) =:= true
+    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}}) =:= 'true'
+        andalso gproc:reg({'p', 'l', {'event', Node, <<"SESSION_HEARTBEAT">>}}) =:= 'true'
     of
-        true -> ok;
-        _ -> {error, gproc_badarg}
+        'true' -> 'ok';
+        _ -> {'error', 'gproc_badarg'}
     end.
-            
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -157,7 +157,7 @@ bind_to_events(_, Node) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -170,7 +170,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -182,15 +182,15 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({event, [CallId | Props]}, #state{node=Node}=State) ->
+handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
     _ = case props:get_value(<<"Event-Name">>, Props) of
             <<"SESSION_HEARTBEAT">> -> spawn(?MODULE, handle_session_heartbeat, [Props, Node]);
             <<"CHANNEL_CREATE">> -> spawn(?MODULE, handle_channel_create, [Props, CallId, Node]);
-            _ -> ok
+            _ -> 'ok'
         end,
-    {noreply, State};            
+    {'noreply', State};
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -215,7 +215,7 @@ terminate(_Reason, #state{node=Node}) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -224,44 +224,44 @@ code_change(_OldVsn, State, _Extra) ->
 maybe_authorize_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
-        true -> allow_call(Props, CallId, Node);
-        false -> is_authz_enabled(Props, CallId, Node)
+        'true' -> allow_call(Props, CallId, Node);
+        'false' -> is_authz_enabled(Props, CallId, Node)
     end.
 
 -spec is_authz_enabled(wh_proplist(), ne_binary(), atom()) -> boolean().
 is_authz_enabled(Props, CallId, Node) ->
-    case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)) of
-        true ->
+    case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, 'false')) of
+        'true' ->
             is_global_resource(Props, CallId, Node);
-        false ->
+        'false' ->
             lager:debug("config ecallmgr.authz is disabled"),
             allow_call(Props, CallId, Node)
     end.
 
 -spec is_global_resource(wh_proplist(), ne_binary(), atom()) -> boolean().
 is_global_resource(Props, CallId, Node) ->
-    GlobalResource = props:get_value(?GET_CCV(<<"Global-Resource">>), Props, true),
+    GlobalResource = props:get_value(?GET_CCV(<<"Global-Resource">>), Props, 'true'),
     case wh_util:is_true(GlobalResource) of
-        true -> is_consuming_resource(Props, CallId, Node);
-        false -> 
+        'true' -> is_consuming_resource(Props, CallId, Node);
+        'false' ->
             lager:debug("channel is a local resource"),
             allow_call(Props, CallId, Node)
     end.
-        
+
 -spec is_consuming_resource(wh_proplist(), ne_binary(), atom()) -> boolean().
 is_consuming_resource(Props, CallId, Node) ->
     case props:get_value(<<"Call-Direction">>, Props) of
         <<"outbound">> ->
-            case props:get_value(?GET_CCV(<<"Resource-ID">>), Props) =/= undefined of
-                true -> set_heartbeat_on_answer(Props, CallId, Node);
-                false ->
+            case props:get_value(?GET_CCV(<<"Resource-ID">>), Props) =/= 'undefined' of
+                'true' -> set_heartbeat_on_answer(Props, CallId, Node);
+                'false' ->
                     lager:debug("outbound channel is not consuming a resource"),
-                    allow_call(Props, CallId, Node) 
+                    allow_call(Props, CallId, Node)
             end;
         <<"inbound">> ->
-            case props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props) =:= undefined of
-                true -> set_heartbeat_on_answer(Props, CallId, Node);
-                false ->
+            case props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props) =:= 'undefined' of
+                'true' -> set_heartbeat_on_answer(Props, CallId, Node);
+                'false' ->
                     lager:debug("inbound channel is not consuming a resource"),
                     allow_call(Props, CallId, Node)
             end
@@ -277,14 +277,14 @@ set_heartbeat_on_answer(Props, CallId, Node) ->
 -spec ensure_account_id_exists(wh_proplist(), ne_binary(), atom()) -> boolean().
 ensure_account_id_exists(Props, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Account-ID">>), Props) of
-        undefined ->
-            case identify_account(undefined, Props) of
-                {error, not_required} ->
+        'undefined' ->
+            case identify_account('undefined', Props) of
+                {'error', 'not_required'} ->
                     allow_call(Props, CallId, Node);
-                {error, _R} -> 
+                {'error', _R} ->
                     lager:debug("unable to determine the account id: ~p", [_R]),
                     maybe_deny_call(Props, CallId, Node);
-                {ok, Resp} -> 
+                {'ok', Resp} ->
                     update_account_id(Resp, Props, CallId, Node)
             end;
         _Else ->
@@ -294,7 +294,7 @@ ensure_account_id_exists(Props, CallId, Node) ->
 -spec update_account_id(wh_proplist(), wh_proplist(), ne_binary(), atom()) -> boolean().
 update_account_id(Resp, Props, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Account-ID">>), Resp) of
-        undefined -> update_reseller_id(Resp, Props, CallId, Node);
+        'undefined' -> update_reseller_id(Resp, Props, CallId, Node);
         AccountId ->
             'ok' = ecallmgr_util:send_cmd(Node, CallId, "export", ?SET_CCV(<<"Account-ID">>, AccountId)),
             update_reseller_id(Resp, [{?GET_CCV(<<"Account-ID">>), AccountId}|Props], CallId, Node)
@@ -303,7 +303,7 @@ update_account_id(Resp, Props, CallId, Node) ->
 -spec update_reseller_id(wh_proplist(), wh_proplist(), ne_binary(), atom()) -> boolean().
 update_reseller_id(Resp, Props, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Reseller-ID">>), Resp) of
-        undefined -> authorize_account(Props, CallId, Node);
+        'undefined' -> authorize_account(Props, CallId, Node);
         ResellerId ->
             'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-ID">>, ResellerId)),
             authorize_account([{?GET_CCV(<<"Reseller-ID">>), ResellerId}|Props], CallId, Node)
@@ -313,13 +313,21 @@ update_reseller_id(Resp, Props, CallId, Node) ->
 authorize_account(Props, CallId, Node) ->
     AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
     case authorize(AccountId, Props) of
-        {error, _R} ->
-            lager:debug("failed to authorize account ~s: ~p", [AccountId, _R]),
-            maybe_deny_call(Props, CallId, Node);
-        {ok, Type} ->
+        {'deny', Type} ->
+            lager:debug("account ~s unauthorized: ~p", [AccountId, Type]),
+            case maybe_deny_call(Props, CallId, Node) of
+                'true' ->
+                    'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-Billing">>, Type)),
+                    authorize_reseller(Props, CallId, Node);
+                'false' -> 'false'
+            end;
+        {'ok', Type} ->
             lager:debug("call authorized by account ~s as ~s", [AccountId, Type]),
             'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-Billing">>, Type)),
-            authorize_reseller(Props, CallId, Node)
+            authorize_reseller(Props, CallId, Node);
+        {'error', _R} ->
+            lager:debug("failed to authorize account ~s: ~p", [AccountId, _R]),
+            maybe_deny_call(Props, CallId, Node)
     end.
 
 -spec authorize_reseller(wh_proplist(), ne_binary(), atom()) -> boolean().
@@ -327,17 +335,25 @@ authorize_reseller(Props, CallId, Node) ->
     ResellerId = props:get_value(?GET_CCV(<<"Reseller-ID">>), Props),
     AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
     case AccountId =:= ResellerId orelse authorize(ResellerId, Props) of
-        {error, account_limited} -> 
-            lager:debug("reseller has no remaining resources"),
-            maybe_deny_call(Props, CallId, Node);
-        {ok, Type} ->
+        'true' ->
+            rate_call(Props, CallId, Node);
+        {'deny', Type} ->
+            lager:debug("reseller ~s unauthorized: ~p", [AccountId, Type]),
+            case maybe_deny_call(Props, CallId, Node) of
+                'true' ->
+                    'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-Billing">>, Type)),
+                    rate_call(Props, CallId, Node);
+                'false' -> 'false'
+            end;
+        {'ok', Type} ->
             lager:debug("call authorized by reseller ~s as ~s", [ResellerId, Type]),
             'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-Billing">>, Type)),
             rate_call(Props, CallId, Node);
-        _Else ->
-            rate_call(Props, CallId, Node)
+        {'error', _R} ->
+            lager:debug("unable to authorize reseller: ~p", [_R]),
+            maybe_deny_call(Props, CallId, Node)
     end.
-        
+
 -spec rate_call(wh_proplist(), ne_binary(), atom()) -> 'true'.
 rate_call(Props, CallId, Node) ->
     spawn(?MODULE, rate_channel, [Props, Node]),
@@ -346,13 +362,18 @@ rate_call(Props, CallId, Node) ->
 -spec allow_call(wh_proplist(), ne_binary(), atom()) -> 'true'.
 allow_call(_, _, _) ->
     lager:debug("channel authorization succeeded, allowing call"),
-    true.
+    'true'.
 
 -spec maybe_deny_call(wh_proplist(), api_binary(), atom()) -> boolean().
-maybe_deny_call(Props, _, Node) ->
-    DryRun = wh_util:is_true(ecallmgr_config:get(<<"authz_dry_run">>, false)),
-    _ = DryRun orelse spawn(?MODULE, kill_channel, [Props, Node]),
-    DryRun orelse false.
+maybe_deny_call(Props, CallId, Node) ->
+    case wh_util:is_true(ecallmgr_config:get(<<"authz_dry_run">>, 'false')) of
+        'true' ->
+            rate_call(Props, CallId, Node),
+            'true';
+        'false' ->
+            spawn(?MODULE, kill_channel, [Props, Node]),
+            'false'
+    end.
 
 -spec rate_channel(wh_proplist(), atom()) -> 'ok'.
 rate_channel(Props, Node) ->
@@ -365,15 +386,15 @@ rate_channel(Props, Node) ->
                                   ,fun wapi_rate:resp_v/1
                                  ),
     case ReqResp of
-        {error, _R} -> lager:debug("rate request lookup failed: ~p", [_R]);
-        {ok, RespJObj} -> set_rating_ccvs(RespJObj, Node)
+        {'error', _R} -> lager:debug("rate request lookup failed: ~p", [_R]);
+        {'ok', RespJObj} -> set_rating_ccvs(RespJObj, Node)
     end.
 
 -spec authorize(api_binary(), wh_proplist()) ->
                              {'ok', ne_binary()} |
                              {'error', 'account_limited'} |
                              {'error', 'default_is_deny'}.
-authorize(undefined, _) -> {error, no_account};
+authorize('undefined', _) -> {'error', 'no_account'};
 authorize(AccountId, Props) ->
     lager:debug("channel authorization request started"),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
@@ -382,20 +403,20 @@ authorize(AccountId, Props) ->
                                   ,fun wapi_authz:authz_resp_v/1
                                   ,5000),
     case ReqResp of
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("authz request lookup failed: ~p", [_R]),
             authz_default();
-        {ok, RespJObj} ->
+        {'ok', RespJObj} ->
             case wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, RespJObj)) of
-                false -> {error, account_limited};
-                true -> {ok, wh_json:get_value(<<"Type">>, RespJObj)}
+                'false' -> {'deny', wh_json:get_value(<<"Type">>, RespJObj)};
+                'true' -> {'ok', wh_json:get_value(<<"Type">>, RespJObj)}
             end
     end.
 
 -spec reauthorize(api_binary(), ne_binary(), wh_proplist()) ->
                                {'ok', wh_json:object()} |
                                {'error', _}.
-reauthorize(undefined, _, _) -> {error, no_account};
+reauthorize('undefined', _, _) -> {'error', 'no_account'};
 reauthorize(AccountId, Type, Props) ->
     lager:debug("channel reauthorization request started"),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
@@ -404,13 +425,13 @@ reauthorize(AccountId, Type, Props) ->
                                   ,fun wapi_authz:reauthz_resp_v/1
                                   ,5000),
     case ReqResp of
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("reauthz request lookup failed: ~p", [_R]),
             authz_default();
-        {ok, RespJObj} ->
+        {'ok', RespJObj} ->
             case wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, RespJObj)) of
-                false -> {error, account_limited};
-                true -> {ok, RespJObj}
+                'false' -> {'error', 'account_limited'};
+                'true' -> {'ok', RespJObj}
             end
     end.
 
@@ -425,87 +446,86 @@ identify_account(_, Props) ->
                                   ,fun wapi_authz:identify_resp_v/1
                                   ,5000),
     case ReqResp of
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("authz identify request lookup failed: ~p", [_R]),
-            {error, unidentified_channel};
-        {ok, RespJObj} ->
+            {'error', 'unidentified_channel'};
+        {'ok', RespJObj} ->
             case wh_json:is_false(<<"Global-Resource">>, RespJObj) of
-                true -> 
+                'true' ->
                     lager:debug("identified channel as a local resource, allowing"),
-                    {error, not_required};
-                false ->
-                    {ok, [{?GET_CCV(<<"Account-ID">>), wh_json:get_value(<<"Account-ID">>, RespJObj)}
-                          ,{?GET_CCV(<<"Reseller-ID">>), wh_json:get_value(<<"Reseller-ID">>, RespJObj)}
-                          |Props
-                         ]}
+                    {'error', 'not_required'};
+                'false' ->
+                    {'ok', [{?GET_CCV(<<"Account-ID">>), wh_json:get_value(<<"Account-ID">>, RespJObj)}
+                            ,{?GET_CCV(<<"Reseller-ID">>), wh_json:get_value(<<"Reseller-ID">>, RespJObj)}
+                            |Props
+                           ]}
             end
     end.
 
 -spec attempt_reauthorization('account'|'reseller', api_binary(), ne_binary(), wh_proplist(), atom()) -> 'ok'.
 attempt_reauthorization(Billing, AccountId, Type, Props, Node) ->
     case reauthorize(AccountId, Type, Props) of
-        {error, account_limited} -> 
-            maybe_deny_call(Props, undefined, Node);
-        {ok, JObj} ->
+        {'error', 'account_limited'} ->
+            maybe_deny_call(Props, 'undefined', Node);
+        {'ok', JObj} ->
             CallId = props:get_value(<<"Unique-ID">>, Props),
             NewType = wh_json:get_value(<<"Type">>, JObj, Type),
             maybe_update_billing_type(Billing, Type, NewType, CallId, Node),
             CCVs = wh_json:get_ne_value(<<"Custom-Channel-Vars">>, JObj),
             maybe_update_ccvs(CCVs, CallId, Node);
-        _Else -> ok
+        _Else -> 'ok'
     end.
 
 -spec maybe_update_ccvs('undefined' | wh_json:object(), ne_binary(), atom()) -> 'ok'.
-maybe_update_ccvs(undefined, _, _) ->
-    ok;
+maybe_update_ccvs('undefined', _, _) ->
+    'ok';
 maybe_update_ccvs(CCVs, CallId, Node) ->
     ChannelVars = wh_json:to_proplist(CCVs),
     ecallmgr_util:set(Node, CallId, ChannelVars).
 
--spec maybe_update_billing_type(account|reseller, ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
+-spec maybe_update_billing_type('account'|'reseller', ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
 maybe_update_billing_type(_, Type, Type, _, _) ->
-    ok;
-maybe_update_billing_type(account, _, Type, CallId, Node) ->
+    'ok';
+maybe_update_billing_type('account', _, Type, CallId, Node) ->
     ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-Billing">>, Type));
-maybe_update_billing_type(reseller, _, Type, CallId, Node) ->
+maybe_update_billing_type('reseller', _, Type, CallId, Node) ->
     ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-Billing">>, Type)).
-        
+
 -spec should_reauth(ne_binary(), proplist()) -> ne_binary() | 'false'.
 should_reauth(BillingVar, Props) ->
     case props:get_value(BillingVar, Props) of
         <<"allotment">> = A -> A;
         <<"per_minute">> = P -> P;
-        _ -> false
+        _ -> 'false'
     end.
 
--spec authz_default() -> {'ok', ne_binary()} |
-                               {'error', 'account_limited'}.
+-spec authz_default() -> {'ok', ne_binary()} | {'error', 'account_limited'}.
 authz_default() ->
     case ecallmgr_config:get(<<"authz_default_action">>, <<"deny">>) of
-        <<"deny">> -> {error, account_limited};
+        <<"deny">> -> {'error', 'account_limited'};
         _Else ->
             DefaultType = ecallmgr_config:get(<<"authz_default_type">>, <<"per_minute">>),
             lager:debug("authorizing channel as config ecallmgr.authz_default_type: '~s'", [DefaultType]),
-            {ok, DefaultType}
+            {'ok', DefaultType}
     end.
 
 -spec set_rating_ccvs(wh_json:object(), atom()) -> 'ok'.
 set_rating_ccvs(JObj, Node) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    put(callid, CallId),
+    put('callid', CallId),
     lager:debug("setting rating information"),
-    Multiset = lists:foldl(fun(<<"Rate">>, Acc) ->
-                                   Rate = wh_json:get_binary_value(<<"Rate">>, JObj, <<"0.00">>),
-                                   <<"|ignore_display_updates=false"
-                                     ,"|effective_callee_id_name=$", Rate/binary, " per min ${effective_callee_id_name}"
-                                     ,"|", (?SET_CCV(<<"Rate">>, Rate))/binary
-                                     ,Acc/binary>>;
-                              (Key, Acc) ->
+    Multiset = lists:foldl(%%fun(<<"Rate">>, Acc) ->
+                           %%        Rate = wh_json:get_binary_value(<<"Rate">>, JObj, <<"0.00">>),
+                           %%        <<"|ignore_display_updates=false"
+                           %%          ,"|effective_callee_id_name=$", Rate/binary, " per min ${effective_callee_id_name}"
+                           %%          ,"|", (?SET_CCV(<<"Rate">>, Rate))/binary
+                           %%          ,Acc/binary>>;
+                              fun(Key, Acc) ->
                                    case wh_json:get_binary_value(Key, JObj) of
-                                       undefined -> Acc;
+                                       'undefined' -> Acc;
                                        Value ->
                                            <<"|", (?SET_CCV(Key, Value))/binary, Acc/binary>>
-                                   end 
+                                   end
                            end, <<>>, ?RATE_VARS),
     'ok' = ecallmgr_util:send_cmd(Node, CallId, "multiset", <<"^^", Multiset/binary>>).
 
@@ -517,12 +537,23 @@ authz_req(AccountId, Props) ->
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
      ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
-     ,{<<"Account-ID">>, AccountId}
+     ,{<<"Account-ID">>, props:get_value(?GET_CCV(<<"Account-ID">>), Props)}
+     ,{<<"Auth-Account-ID">>, AccountId}
      ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      ,{<<"Usage">>, ecallmgr_fs_nodes:account_summary(AccountId)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
+
+-spec rough_billing_seconds(wh_proplist()) -> non_neg_integer().
+rough_billing_seconds(Props) ->
+    case get_time_value(<<"Event-Date-Timestamp">>, Props)
+        - get_time_value(<<"Caller-Channel-Answered-Time">>, Props)
+        - 1
+    of
+        Seconds when Seconds >= 0 -> Seconds;
+        _Else -> 0
+    end.
 
 -spec reauthz_req(ne_binary(), ne_binary(), wh_proplist()) -> wh_proplist().
 reauthz_req(AccountId, Type, Props) ->
@@ -534,8 +565,10 @@ reauthz_req(AccountId, Type, Props) ->
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
      ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
-     ,{<<"Account-ID">>, AccountId}
+     ,{<<"Account-ID">>, props:get_value(?GET_CCV(<<"Account-ID">>), Props)}
+     ,{<<"Auth-Account-ID">>, AccountId}
      ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
+     ,{<<"Billing-Seconds">>, rough_billing_seconds(Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      ,{<<"Created-Time">>, get_time_value(<<"Caller-Channel-Created-Time">>, Props)}
      ,{<<"Answered-Time">>, get_time_value(<<"Caller-Channel-Answered-Time">>, Props)}

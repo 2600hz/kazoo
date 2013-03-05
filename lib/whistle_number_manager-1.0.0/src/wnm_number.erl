@@ -907,14 +907,11 @@ update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssign
     _ = commit_activations(N),
     N.
 
-commit_activations(#number{activations=[]}) ->
-    ok;
-commit_activations(#number{billing_id=undefined}) ->
-    ok;
-commit_activations(#number{activations=[Activation|Activations], billing_id=BillingId}=N) ->
-    LedgerDb = wh_util:format_account_id(BillingId, encoded),
-    _ = couch_mgr:ensure_saved(LedgerDb, Activation),
-    commit_activations(N#number{activations=Activations}).
+commit_activations(#number{billing_id=undefined}=Number) ->
+    Number;
+commit_activations(#number{activations=Activations}=N) ->
+    _ = wh_transactions:save(Activations),
+    N.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -936,9 +933,9 @@ activate_feature(Feature, 0, #number{features=Features}=N) ->
     lager:debug("no activation charge for ~s", [Feature]),
     N#number{features=sets:add_element(Feature, Features)};
 activate_feature(Feature, Units, #number{current_balance=undefined, billing_id=Account}=N) ->
-    activate_feature(Feature, Units, N#number{current_balance=wh_util:current_account_balance(Account)});
+    activate_feature(Feature, Units, N#number{current_balance=wht_util:current_balance(Account)});
 activate_feature(Feature, Units, #number{current_balance=Balance}=N) when Balance - Units < 0 ->
-    Reason = io_lib:format("not enough credit to activate feature '~s' for $~p", [Feature, wapi_money:units_to_dollars(Units)]),
+    Reason = io_lib:format("not enough credit to activate feature '~s' for $~p", [Feature, wht_util:units_to_dollars(Units)]),
     lager:debug("~s", [Reason]),
     error_service_restriction(Reason, N);
 activate_feature(Feature, Units, #number{current_balance=Balance, features=Features}=N) ->
@@ -969,7 +966,7 @@ activate_phone_number(0, #number{number=Number}=N) ->
 activate_phone_number(Units, #number{current_balance=undefined, billing_id=Account}=N) ->
     activate_phone_number(Units, N#number{current_balance=wh_util:current_account_balance(Account)});
 activate_phone_number(Units, #number{current_balance=Balance}=N) when Balance - Units < 0 ->
-    Reason = io_lib:format("not enough credit to activate number for $~p", [wapi_money:units_to_dollars(Units)]),
+    Reason = io_lib:format("not enough credit to activate number for $~p", [wht_util:units_to_dollars(Units)]),
     lager:debug("~s", [Reason]),
     error_service_restriction(Reason, N);
 activate_phone_number(Units, #number{current_balance=Balance}=N) ->
@@ -983,28 +980,31 @@ activate_phone_number(Units, #number{current_balance=Balance}=N) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec append_feature_debit/3 :: (wh_json:json_string(), integer(), wnm_number()) -> wh_json:json_objects().
-append_feature_debit(Feature, Units, #number{
-                                billing_id=Ledger
-                                ,assigned_to=AccountId
-                                ,activations=Activations
-                               }) ->
-    LedgerId = wh_util:format_account_id(Ledger, raw),
-    LedgerDb = wh_util:format_account_id(Ledger, encoded),
+append_feature_debit(Feature, Units, #number{billing_id=Ledger
+                                             ,assigned_to=AccountId
+                                             ,activations=Activations
+                                             ,number=Number
+                                            }) ->
+    LedgerId =  wh_util:format_account_id(Ledger, 'raw'),
+    Routines = [fun(T) ->
+                        case LedgerId =/= AccountId of
+                            'false' ->
+                                wh_transaction:set_reason(<<"feature_activation">>, T);
+                            'true' ->
+                                T1 = wh_transaction:set_sub_account_id(AccountId, T),
+                                wh_transaction:set_reason(<<"sub_account_feature_activation">>, T1)
+                        end
+                end
+                ,fun(T) -> wh_transaction:set_feature(Feature, T) end
+                ,fun(T) -> wh_transaction:set_number(Number, T) end
+                ,fun(T) ->
+                         wh_transaction:set_description(<<"number feature activation for "
+                                                          ,(wh_util:to_binary(Feature))/binary>>, T)
+                 end
+               ],
     lager:debug("staging feature '~s' activation charge $~p for ~s via billing account ~s"
-                ,[Feature, wapi_money:units_to_dollars(Units), AccountId, LedgerId]),
-    Timestamp = wh_util:current_tstamp(),
-    Entry = wh_json:from_list([{<<"reason">>, <<"phone number feature activation">>}
-                               ,{<<"feature">>, Feature}
-                               ,{<<"amount">>, Units}
-                               ,{<<"account_id">>, AccountId}
-                               ,{<<"pvt_account_id">>, LedgerId}
-                               ,{<<"pvt_account_db">>, LedgerDb}
-                               ,{<<"pvt_type">>, <<"debit">>}
-                               ,{<<"pvt_created">>, Timestamp}
-                               ,{<<"pvt_modified">>, Timestamp}
-                               ,{<<"pvt_vsn">>, 1}
-                              ]),
-    [Entry|Activations].
+                ,[Feature, wht_util:units_to_dollars(Units), AccountId, LedgerId]),
+    [lists:foldl(fun(F, T) -> F(T) end, wh_transaction:debit(Ledger, Units), Routines)|Activations].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1015,20 +1015,22 @@ append_feature_debit(Feature, Units, #number{
 -spec append_phone_number_debit/2 :: (integer(), wnm_number()) -> wh_json:json_objects().
 append_phone_number_debit(Units, #number{billing_id=Ledger, assigned_to=AccountId
                                          ,activations=Activations, number=Number}) ->
-    LedgerId = wh_util:format_account_id(Ledger, raw),
-    LedgerDb = wh_util:format_account_id(Ledger, encoded),
+    LedgerId =  wh_util:format_account_id(Ledger, 'raw'),
+    Routines = [fun(T) ->
+                        case LedgerId =/= AccountId of
+                            'false' ->
+                                wh_transaction:set_reason(<<"number_activation">>, T);
+                            'true' ->
+                                T1 = wh_transaction:set_sub_account_id(AccountId, T),
+                                wh_transaction:set_reason(<<"sub_account_feature_activation">>, T1)
+                        end
+                end
+                ,fun(T) -> wh_transaction:set_number(Number, T) end
+                ,fun(T) ->
+                         wh_transaction:set_description(<<"number activation for "
+                                                          ,(wh_util:to_binary(Number))/binary>>, T)
+                 end
+               ],
     lager:debug("staging number activation charge $~p for ~s via billing account ~s"
-                ,[wapi_money:units_to_dollars(Units), AccountId, LedgerId]),
-    Timestamp = wh_util:current_tstamp(),
-    Entry = wh_json:from_list([{<<"reason">>, <<"phone number activation">>}
-                               ,{<<"number">>, Number}
-                               ,{<<"amount">>, Units}
-                               ,{<<"account_id">>, AccountId}
-                               ,{<<"pvt_account_id">>, LedgerId}
-                               ,{<<"pvt_account_db">>, LedgerDb}
-                               ,{<<"pvt_type">>, <<"debit">>}
-                               ,{<<"pvt_created">>, Timestamp}
-                               ,{<<"pvt_modified">>, Timestamp}
-                               ,{<<"pvt_vsn">>, 1}
-                              ]),
-    [Entry|Activations].
+                ,[wht_money:units_to_dollars(Units), AccountId, LedgerId]),
+    [lists:foldl(fun(F, T) -> F(T) end, wh_transaction:debit(Ledger, Units), Routines)|Activations].
