@@ -85,14 +85,17 @@ validate(Context, Id) ->
 
 -spec post(#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _) ->
+    _ = wapi_switch:publish_reload_acls(),
     crossbar_doc:save(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}).
 
 -spec put(#cb_context{}) -> #cb_context{}.
 put(Context) ->
+    _ = wapi_switch:publish_reload_acls(),
     crossbar_doc:save(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}).
 
 -spec delete(#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _) ->
+    _ = wapi_switch:publish_reload_acls(),
     crossbar_doc:delete(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}).
 
 %%%===================================================================
