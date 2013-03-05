@@ -24,7 +24,7 @@ feature_activation_charge(<<"dash_e911">>, Services) ->
     feature_activation_charge(<<"e911">>, Services);
 feature_activation_charge(Feature, Services) ->
     Charge = wh_services:activation_charges(<<"number_services">>, Feature, Services),
-    wapi_money:dollars_to_units(Charge).
+    wht_util:dollars_to_units(Charge).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -38,7 +38,7 @@ phone_number_activation_charge(Number, Services) ->
         undefined -> 0;
         Classification ->
             Charge = wh_services:activation_charges(<<"phone_numbers">>, Classification, Services),
-            wapi_money:dollars_to_units(Charge)
+            wht_util:dollars_to_units(Charge)
     end.
 
 %%--------------------------------------------------------------------

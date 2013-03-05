@@ -83,7 +83,7 @@ handle_outbound_cnam(#number{current_number_doc=CurrentJObj, number_doc=JObj
 handle_inbound_cnam(#number{number_doc=JObj, features=Features}=N) ->
     N1 = case wh_json:is_true([<<"cnam">>, <<"inbound_lookup">>], JObj) of
              false -> N#number{features=sets:del_element(<<"inbound_cnam">>, Features)};
-             true -> N#number{features=sets:add_element(<<"inbound_cnam">>, Features)}
+             true ->  wnm_number:activate_feature(<<"inbound_cnam">>, N)
          end,
     support_depreciated_cnam(N1).
 
@@ -95,14 +95,7 @@ handle_inbound_cnam(#number{number_doc=JObj, features=Features}=N) ->
 %%--------------------------------------------------------------------
 -spec support_depreciated_cnam/1 :: (wnm_number()) -> wnm_number().
 support_depreciated_cnam(#number{features=Features}=N) ->
-    case sets:is_element(<<"outbound_cnam">>, Features)
-        orelse sets:is_element(<<"inbound_cnam">>, Features)
-    of
-        false -> 
-            N#number{features=sets:del_element(<<"cnam">>, Features)};
-        true ->
-            N#number{features=sets:add_element(<<"cnam">>, Features)}
-    end.
+    N#number{features=sets:del_element(<<"cnam">>, Features)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -112,8 +105,11 @@ support_depreciated_cnam(#number{features=Features}=N) ->
 %%--------------------------------------------------------------------
 -spec remove_all_cnam_features/1 :: (set()) -> set().
 remove_all_cnam_features(Features) ->
-    sets:del_element(<<"inbound_cnam">>
-                         ,sets:del_element(<<"outbound_cnam">>, Features)).
+    Routines = [fun(F) -> sets:del_element(<<"inbound_cnam">>, F) end
+                ,fun(F) -> sets:del_element(<<"outbound_cnam">>, F) end
+                ,fun(F) -> sets:del_element(<<"cnam">>, F) end
+               ],
+    lists:foldl(fun(F, Feature) -> F(Feature) end, Features, Routines).
 
 %%--------------------------------------------------------------------
 %% @private

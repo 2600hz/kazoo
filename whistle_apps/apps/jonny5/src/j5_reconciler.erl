@@ -35,19 +35,19 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
--spec process_account(ne_binary()) -> 'ok' | {'error', _}. 
+-spec process_account(ne_binary()) -> 'ok' | {'error', _}.
 process_account(Account) ->
     lager:debug("attempting to reconcile jonny5 credit/debit for account ~s", [Account]),
-    AccountDb = wh_util:format_account_id(Account, encoded),
-    ViewOptions = [reduce, group],
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    ViewOptions = ['reduce', 'group'],
     case couch_mgr:get_results(AccountDb, <<"transactions/reconcile_by_callid">>, ViewOptions) of
-        {error, _R}=E -> E;
-        {ok, JObjs} ->
-            _ = [correct_discrepancy(AccountDb, wh_json:get_value(<<"key">>, JObj), Amount)
+        {'error', _R}=E -> E;
+        {'ok', JObjs} ->
+            _ = [correct_discrepancy(AccountDb, wh_json:get_value(<<"key">>, JObj), Units)
                  || JObj <- JObjs
-                        ,not wh_util:is_empty(Amount = wh_json:get_value(<<"value">>, JObj, 0))
+                        ,not wh_util:is_empty(Units = wh_json:get_value(<<"value">>, JObj, 0))
                 ],
-            ok
+            'ok'
     end.
 
 %%%===================================================================
@@ -67,7 +67,7 @@ process_account(Account) ->
 %%--------------------------------------------------------------------
 init([]) ->
     gen_server:cast(self(), process_account),
-    {ok, []}.
+    {'ok', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -84,7 +84,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -96,18 +96,18 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(process_account, []) ->
+handle_cast('process_account', []) ->
     timer:sleep(crypto:rand_uniform(10000, 30000)),
-    gen_server:cast(self(), process_account),
-    {noreply, wh_util:shuffle_list(whapps_util:get_all_accounts())};
-handle_cast(process_account, [Account|Accounts]) ->
-    put(callid, ?LOG_SYSTEM_ID),
+    gen_server:cast(self(), 'process_account'),
+    {'noreply', wh_util:shuffle_list(whapps_util:get_all_accounts())};
+handle_cast('process_account', [Account|Accounts]) ->
+    put('callid', ?LOG_SYSTEM_ID),
     timer:sleep(crypto:rand_uniform(1000, 3000)),
     process_account(Account),
-    gen_server:cast(self(), process_account),
-    {noreply, Accounts};
+    gen_server:cast(self(), 'process_account'),
+    {'noreply', Accounts};
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -120,7 +120,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -145,196 +145,198 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec correct_discrepancy(ne_binary(), ne_binary(), integer()) -> wh_jobj_return().
-correct_discrepancy(Ledger, CallId, Amount) ->
-    put(callid, CallId),
+-spec correct_discrepancy(ne_binary(), ne_binary(), integer()) -> 'ok' | {'error', _}.
+correct_discrepancy(Ledger, CallId, Units) ->
+    put('callid', CallId),
     case maybe_get_cdr(Ledger, CallId) of
-        {error, _} -> ok;
-        {ok, JObj} -> 
-            proper_billing_type(JObj, Ledger, CallId, Amount)
+        {'error', 'not_found'} ->
+            lager:debug("CDR is missing, removing any existing call charges", []),
+            j5_util:remove_call_charges(Ledger, CallId);
+        {'error', _} -> 'ok';
+        {'ok', JObj} ->
+            proper_billing_type(JObj, Ledger, CallId, Units)
     end.
 
-proper_billing_type(JObj, Ledger, CallId, Amount) ->
-    case wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj) 
-        =:=  <<"per_minute">> 
-    of
-        false ->
-            maybe_remove_erronous_correction(Ledger, CallId);
-        true ->
-            maybe_attempt_reconcile(JObj, Ledger, CallId, Amount)
+-spec proper_billing_type(wh_json:object(), ne_binary(), ne_binary(), integer()) -> 'ok' | {'error', _}.
+proper_billing_type(JObj, Ledger, CallId, Units) ->
+    AccountBilling = wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj),
+    case AccountBilling =:=  <<"per_minute">> orelse AccountBilling =:= <<"per_minute_limit">> of
+        'false' ->
+            lager:debug("billing type is not per_minute, removing any existing call charges", []),
+            j5_util:remove_call_charges(Ledger, CallId);
+        'true' ->
+            maybe_attempt_reconcile(JObj, Ledger, CallId, Units)
 
     end.
 
-maybe_remove_erronous_correction(Ledger, CallId) ->
-    lager:debug("billing type does not require reconciliation, removing any existing discrepancy corrections", []),
-    LedgerDb = wh_util:format_account_id(Ledger, encoded),
-    ViewOptions = [{key, CallId}
-                   ,{reduce, false}
-                  ],
-    _ = case couch_mgr:get_results(LedgerDb, <<"transactions/reconcile_by_callid">>, ViewOptions) of
-            {ok, JObjs} ->
-                [begin
-                     Id = wh_json:get_value(<<"id">>, JObj),
-                     lager:debug("removing erronous charges ~s", [Id]),
-                     couch_mgr:del_doc(LedgerDb, Id)
-                 end
-                 || JObj <- JObjs
-                ];
-            {error, _R} ->
-                lager:warning("unable to determine erronous transaction ids: ~p", [_R])                
-        end,
-    {error, not_per_minute}.
-
-maybe_attempt_reconcile(JObj, Ledger, CallId, Amount) ->
-    case reconcile_grace_period_exceeded(JObj) 
+-spec maybe_attempt_reconcile(wh_json:object(), ne_binary(), ne_binary(), integer()) -> 'ok' | {'error', _}.
+maybe_attempt_reconcile(JObj, Ledger, CallId, Units) ->
+    case reconcile_grace_period_exceeded(JObj)
         andalso not_already_attempted(Ledger, CallId)
     of
-        false -> {error, contention};
-        true -> 
-            attempt_reconcile(JObj, Ledger, CallId, Amount)
+        'false' -> {'error', 'contention'};
+        'true' ->
+            attempt_reconcile(JObj, Ledger, CallId, Units)
     end.
 
-attempt_reconcile(JObj, Ledger, CallId, Amount) ->
-    case per_minute_discrepancy(Amount, j5_util:get_limits(Ledger), JObj) of
-        {error, _R} -> 
+-spec attempt_reconcile(wh_json:object(), ne_binary(), ne_binary(), integer()) -> 'ok' | {'error', _}.
+attempt_reconcile(JObj, Ledger, CallId, Units) ->
+    case per_minute_discrepancy(JObj, Ledger, CallId, Units) of
+        {'error', 'not_required'} -> 'ok';
+        {'error', _R}=E ->
             lager:warning("unable to correct discrepancy for ~s/~s: ~p", [Ledger, CallId, _R]),
-            ok;
-        {ok, Entry} -> 
-            _ = send_system_alert(Ledger, CallId, Amount, Entry),
-            ok
+            E;
+        {'ok', Transaction} ->
+            lager:notice("corrected $~p discrepancy for ~s/~s", [wht_util:units_to_dollars(Units)
+                                                                 ,Ledger, CallId
+                                                                ]),
+            _ = send_system_alert(Transaction),
+            'ok'
     end.
 
 -spec maybe_get_cdr(ne_binary(), ne_binary()) -> wh_jobj_return().
 maybe_get_cdr(Ledger, CallId) ->
-    LedgerDb = wh_util:format_account_id(Ledger, encoded),
+    LedgerDb = wh_util:format_account_id(Ledger, 'encoded'),
     case couch_mgr:open_doc(LedgerDb, CallId) of
-        {ok, JObj}=Ok -> 
+        {'ok', JObj}=Ok ->
             case wh_json:get_value(<<"call_id">>, JObj) =:= CallId of
-                true -> Ok;
-                false ->
+                'true' -> Ok;
+                'false' ->
                     lager:warning("CDR ~s/~s call-id disagrees with doc id", [Ledger, CallId]),
-                    create_cdr(Ledger, CallId)
+                    {'error', 'not_found'}
             end;
-        {error, not_found} -> 
+        {'error', 'not_found'} ->
             case call_has_ended(CallId) of
-                false -> 
+                'false' ->
                     lager:debug("ignoring discrepancy for active call", []),
-                    {error, call_active};
-                true ->
+                    {'error', 'call_active'};
+                'true' ->
                     lager:warning("CDR ~s/~s is missing...", [Ledger, CallId]),
-                    create_cdr(Ledger, CallId)
+                    {'error', 'not_found'}
             end;
-        {error, _R}=E ->
+        {'error', _R}=E ->
             lager:warning("unable to fetch CDR for ~s/~s: ~p", [Ledger, CallId, _R]),
             E
     end.
 
--spec create_cdr(ne_binary(), ne_binary()) -> wh_jobj_return().
-create_cdr(Ledger, CallId) ->
-    %% Call is down but cdr was not saved, crash?
-    AccountDb = wh_util:format_account_id(Ledger, encoded),
-    AccountId = wh_util:format_account_id(Ledger, raw),
-    Timestamp = wh_util:to_binary(wh_util:current_tstamp() - 3600),
-    CCVs = [{<<"account_id">>, AccountId}
-            ,{<<"account_billing">>, <<"per_minute">>}
-           ],
-    Props = [{<<"_id">>, CallId}
-             ,{<<"call_id">>, CallId}
-             ,{<<"timestamp">>, Timestamp}
-             ,{<<"custom_channel_vars">>, wh_json:from_list(CCVs)}
-             ,{<<"pvt_account_id">>, AccountId}
-             ,{<<"pvt_account_db">>, AccountDb}
-             ,{<<"pvt_created">>, Timestamp}
-             ,{<<"pvt_modified">>, Timestamp}
-             ,{<<"pvt_type">>, <<"cdr">>}
-             ,{<<"pvt_vsn">>, <<"0">>}
-            ],
-    {ok, wh_json:from_list(Props)}.
-
 -spec call_has_ended(ne_binary()) -> boolean().
 call_has_ended(CallId) ->
     case whapps_call_command:b_channel_status(CallId) of
-        {ok, _} ->
-            false;
-        {error, _R} -> 
-            true
-    end.    
+        {'ok', _} -> 'false';
+        {'error', _R} -> 'true'
+    end.
 
 -spec reconcile_grace_period_exceeded(wh_json:json_object()) -> boolean().
 reconcile_grace_period_exceeded(JObj) ->
     Current = wh_util:current_tstamp(),
-    Modified = wh_json:get_integer_value(<<"pvt_modified">>, JObj, Current), 
-    Current - Modified > 300.
-
--spec not_already_attempted/2 :: (ne_binary(), ne_binary()) -> boolean().
-not_already_attempted(LedgerDb, CallId) ->
-    wh_transaction:reconcile_attempted(LedgerDb, CallId).
-
-
--spec maybe_remove_correction/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> boolean().
-maybe_remove_correction(JObj, DiscrepancyId, LedgerDb) ->
-    Current = wh_util:current_tstamp(),
-    Modified = wh_json:get_integer_value(<<"pvt_modified">>, JObj, Current), 
+    Modified = wh_json:get_integer_value(<<"pvt_modified">>, JObj, Current),
     case Current - Modified > 300 of
-        false -> 
+        'true' -> 'true';
+        'false' ->
+            lager:debug("call has not exceeded the reconcile grace period yet", []),
+            'false'
+    end.
+
+-spec not_already_attempted(ne_binary(), ne_binary()) -> boolean().
+not_already_attempted(Ledger, CallId) ->
+    case wh_transactions:call_charges(Ledger, CallId, <<"discrepancy">>, 'false') of
+        [] -> 'true';
+        [Transaction|_] ->
+            maybe_remove_discrepancy(Transaction)
+    end.
+
+-spec maybe_remove_discrepancy(wh_transaction:transaction()) -> boolean().
+maybe_remove_discrepancy(Transaction) ->
+    Current = wh_util:current_tstamp(),
+    Modified = wh_transaction:modified(Transaction),
+    case Current - Modified > 300 of
+        'false' ->
             %% If the correction was recently written, wait till the next cycle to make sure
             %% another j5_reconciler has not just placed this here
-            false;
-        true ->
+            'false';
+        'true' ->
             %% If the correction was made some time ago then remove it as it has not
             %% corrected the discrepancy, then wait for the next cycle to make sure
             %% it wasn't the sole cause of the issue.... (due to previous bug this could happen)
             lager:debug("removing erronous correction from previous reconciler version", []),
-            _ = couch_mgr:del_doc(LedgerDb, DiscrepancyId),
-            false
+            wh_transaction:remove(Transaction),
+            'false'
     end.
 
--spec discrepancy_doc_id/1 :: (ne_binary()) -> ne_binary().
-discrepancy_doc_id(CallId) ->
-    %% This needs to stay in sync with the write to ledger function in j5_util
-    <<(wh_util:to_hex_binary(crypto:md5(CallId)))/binary, "-discrepancy">>.
-
--spec send_system_alert(ne_binary(), ne_binary(), integer(), wh_json:json_object()) -> pid().
-send_system_alert(Ledger, CallId, Amount, Entry) ->
+-spec send_system_alert(wh_transaction:transaction()) -> pid().
+send_system_alert(Transaction) ->
     spawn(fun() ->
-                  LedgerDb = wh_util:format_account_id(Ledger, encoded),
-                  LedgerId = wh_util:format_account_id(Ledger, raw),
-                  Dollars = wapi_money:units_to_dollars(abs(Amount)),
+                  LedgerDb = wh_transaction:account_db(Transaction),
+                  LedgerId = wh_transaction:account_id(Transaction),
                   Account = case couch_mgr:open_cache_doc(LedgerDb, LedgerId) of
-                                {ok, J} -> J;
-                                {error, _} -> wh_json:new()
+                                {'ok', J} -> J;
+                                {'error', _} -> wh_json:new()
                             end,
                   AccountName = wh_json:get_value(<<"name">>, Account),
                   AccountRealm = wh_json:get_value(<<"realm">>, Account),
-                  Balance = wapi_money:units_to_dollars(j5_util:current_balance(Ledger)),
+                  Balance = wht_util:units_to_dollars(wht_util:current_balance(LedgerId)),
+                  Dollars = wht_util:units_to_dollars(wh_transaction:amount(Transaction)),
+                  CallId = wh_transaction:call_id(Transaction),
                   Details = [{<<"Account-ID">>, LedgerId}
                              ,{<<"Account-Name">>, AccountName}
                              ,{<<"Account-Realm">>, AccountRealm}
                              ,{<<"Amount">>, <<"$", (wh_util:to_binary(Dollars))/binary>>}
-                             ,{<<"Type">>, wh_json:get_value(<<"pvt_type">>, Entry)}
+                             ,{<<"Type">>, wh_transaction:type(Transaction)}
                              ,{<<"Call-ID">>, CallId}
                              ,{<<"New-Balance">>, <<"$", (wh_util:to_binary(Balance))/binary>>}
                             ],
                   wh_notify:system_alert("account $~p discrepancy / ~s (~s) / Call ~s", [Dollars, AccountName, LedgerId, CallId], Details)
           end).
 
--spec per_minute_discrepancy(float(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
-per_minute_discrepancy(Units, #limits{account_id=AccountId}=Limits, JObj) when Units > 0 ->
-    Props = [{<<"reason">>, <<"jonny5 discrepancy correction">>}
-             ,{<<"balance">>, j5_util:current_balance(AccountId)}
-             ,{<<"pvt_type">>, <<"debit">>}
-            ],
-    j5_util:write_to_ledger(<<"discrepancy">>, Props, Units, Limits, JObj);
-per_minute_discrepancy(Units, #limits{account_id=AccountId}=Limits, JObj) when Units < 0 ->
-    Props = [{<<"reason">>, <<"jonny5 discrepancy correction">>}
-             ,{<<"balance">>, j5_util:current_balance(AccountId)}
-             ,{<<"pvt_type">>, <<"credit">>}
-            ],
-    j5_util:write_to_ledger(<<"discrepancy">>, Props, Units, Limits, JObj);
-per_minute_discrepancy(_, _, _) ->
-    {ok, wh_json:new()}.
+-spec per_minute_discrepancy(wh_json:object(), ne_binary(), ne_binary(), integer()) -> wh_jobj_return().
+per_minute_discrepancy(JObj, Ledger, CallId, Units) when Units > 0 ->
+    LedgerId = wh_util:format_account_id(Ledger, raw),
+    Routines = [fun(T) ->
+                        AccountId = get_authz_account_id(JObj),
+                        case AccountId =:= LedgerId of
+                            true ->
+                               wh_transaction:set_reason(<<"per_minute_call">>, T);
+                            false ->
+                                T1 = wh_transaction:set_reason(<<"sub_account_per_minute_call">>, T),
+                                wh_transaction:set_sub_account_id(AccountId, T1)
+                        end
+                end
+                ,fun(T) -> wh_transaction:set_event(<<"DISCREPANCY">>, T) end
+                ,fun(T) -> wh_transaction:set_call_id(CallId, T) end
+                ,fun(T) ->
+                         wh_transaction:set_description(<<"per minute call descrepancy">>, T)
+                 end
+               ],
+    T = lists:foldl(fun(F, T) -> F(T) end, wh_transaction:debit(LedgerId, Units), Routines),
+    wh_transaction:save(T);
+per_minute_discrepancy(JObj, Ledger, CallId, Units) when Units < 0 ->
+    LedgerId = wh_util:format_account_id(Ledger, raw),
+    Routines = [fun(T) ->
+                        AccountId = get_authz_account_id(JObj),
+                        case AccountId =:= LedgerId of
+                            true ->
+                               wh_transaction:set_reason(<<"per_minute_call">>, T);
+                            false ->
+                                T1 = wh_transaction:set_reason(<<"sub_account_per_minute_call">>, T),
+                                wh_transaction:set_sub_account_id(AccountId, T1)
+                        end
+                end
+                ,fun(T) -> wh_transaction:set_event(<<"DISCREPANCY">>, T) end
+                ,fun(T) -> wh_transaction:set_call_id(CallId, T) end
+                ,fun(T) ->
+                         wh_transaction:set_description(<<"per minute call descrepancy">>, T)
+                 end
+               ],
+    T = lists:foldl(fun(F, T) -> F(T) end, wh_transaction:credit(LedgerId, Units), Routines),
+    wh_transaction:save(T);
+per_minute_discrepancy(_, _, _, _) ->
+    {'error', 'not_required'}.
+
+-spec get_authz_account_id(wh_json:object()) -> api_binary().
+get_authz_account_id(JObj) ->
+    wh_json:get_value([<<"custom_channel_vars">>, <<"account_id">>], JObj).
