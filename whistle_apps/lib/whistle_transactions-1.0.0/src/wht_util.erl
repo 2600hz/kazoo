@@ -10,6 +10,7 @@
 
 -export([dollars_to_units/1]).
 -export([units_to_dollars/1]).
+-export([base_call_cost/3]).
 -export([current_balance/1]).
 -export([call_cost/1]).
 -export([per_minute_cost/1]).
@@ -23,10 +24,15 @@
 
 -define(REASONS, [{<<"per_minute_call">>, 1001}
                   ,{<<"sub_account_per_minute_call">>, 1002}
-                  ,{<<"activation_charge">>, 2001}
-                  ,{<<"manual_credit_addition">>, 3001}
-                  ,{<<"auto_credit_addition">>, 3002}
-                  ,{<<"admin_discretion">>, 3003}
+                  ,{<<"feature_activation">>, 2001}
+                  ,{<<"sub_account_feature_activation">>, 2002}
+                  ,{<<"number_activation">>, 2003}
+                  ,{<<"sub_account_number_activation">>, 2004}
+                  ,{<<"manual_addition">>, 3001}
+                  ,{<<"sub_account_manual_addition">>, 3002}
+                  ,{<<"auto_addition">>, 3003}
+                  ,{<<"sub_account_auto_addition">>, 3004}
+                  ,{<<"admin_discretion">>, 3005}
                   ,{<<"unknown">>, 9999}
                  ]).
 
@@ -48,9 +54,21 @@ dollars_to_units(Dollars) when is_number(Dollars) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec units_to_dollars(number()) -> float().
+-spec units_to_dollars(float() | number()) -> float().
 units_to_dollars(Units) when is_number(Units) ->
     trunc(Units) / ?DOLLAR_TO_UNIT.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec base_call_cost(integer(), integer(), integer()) -> integer().
+base_call_cost(RateCost, RateMin, RateSurcharge) when is_integer(RateCost),
+                                                      is_integer(RateMin),
+                                                      is_integer(RateSurcharge) ->
+    RateCost * ( RateMin div 60 ) + RateSurcharge.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -139,7 +157,7 @@ per_minute_cost(JObj) ->
 %% Secs :: billable seconds
 %% @end
 %%--------------------------------------------------------------------
--spec calculate_cost(integer() | integer(), integer(), integer(), integer(), integer()) -> float().
+-spec calculate_cost(integer(), integer(), integer(), integer(), integer()) -> integer().
 calculate_cost(_, _, _, _, 0) -> 0;
 calculate_cost(R, 0, RM, Sur, Secs) ->
     calculate_cost(R, 60, RM, Sur, Secs);

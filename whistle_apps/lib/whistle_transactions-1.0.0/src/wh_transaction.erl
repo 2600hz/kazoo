@@ -11,10 +11,14 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
+-export([id/1]).
 -export([description/1]).
 -export([call_id/1]).
 -export([sub_account_id/1]).
 -export([event/1]).
+-export([number/1]).
+-export([feature/1]).
+-export([bookkeeper_info/1]).
 -export([reason/1]).
 -export([code/1]).
 -export([amount/1]).
@@ -27,6 +31,9 @@
 -export([credit/2]).
 -export([set_reason/2]).
 -export([set_event/2]).
+-export([set_number/2]).
+-export([set_feature/2]).
+-export([set_bookkeeper_info/2]).
 -export([set_description/2]).
 -export([set_call_id/2]).
 -export([set_sub_account_id/2]).
@@ -42,6 +49,9 @@
                          ,call_id :: api_binary()
                          ,sub_account_id :: ne_binary()
                          ,event :: api_binary()
+                         ,number :: api_binary()
+                         ,feature :: api_binary()
+                         ,bookkeeper_info :: 'undefined' | wh_json:object()
                          ,pvt_reason :: ne_binary()
                          ,pvt_code :: non_neg_integer()
                          ,pvt_amount :: non_neg_integer()
@@ -55,6 +65,15 @@
 
 -type transaction() :: #wh_transaction{}.
 -export_type([transaction/0]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+id(#wh_transaction{id=Id}) ->
+    Id.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,6 +110,33 @@ sub_account_id(#wh_transaction{sub_account_id=SubAccountId}) ->
 %%--------------------------------------------------------------------
 event(#wh_transaction{event=Event}) ->
     Event.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+number(#wh_transaction{number=Number}) ->
+    Number.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+feature(#wh_transaction{feature=Feature}) ->
+    Feature.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+bookkeeper_info(#wh_transaction{bookkeeper_info=BookkeeperInfo}) ->
+    BookkeeperInfo.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -212,6 +258,33 @@ set_event(Event, #wh_transaction{}=Transaction) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+set_number(Number, #wh_transaction{}=Transaction) ->
+    Transaction#wh_transaction{number=Number}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+set_feature(Feature, #wh_transaction{}=Transaction) ->
+    Transaction#wh_transaction{feature=Feature}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+set_bookkeeper_info(BookkeeperInfo, #wh_transaction{}=Transaction) ->
+    Transaction#wh_transaction{bookkeeper_info=BookkeeperInfo}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Set free form description
 %% @end
 %%--------------------------------------------------------------------
@@ -267,6 +340,9 @@ to_json(#wh_transaction{}=T) ->
              ,{<<"call_id">>, T#wh_transaction.call_id}
              ,{<<"sub_account_id">>, T#wh_transaction.sub_account_id}
              ,{<<"event">>, T#wh_transaction.event}
+             ,{<<"number">>, T#wh_transaction.number}
+             ,{<<"feature">>, T#wh_transaction.feature}
+             ,{<<"bookkeeper_info">>, T#wh_transaction.bookkeeper_info}
              ,{<<"pvt_reason">>, T#wh_transaction.pvt_reason}
              ,{<<"pvt_code">>, T#wh_transaction.pvt_code}
              ,{<<"pvt_amount">>, T#wh_transaction.pvt_amount}
@@ -293,6 +369,9 @@ from_json(JObj) ->
                     ,call_id = wh_json:get_ne_value(<<"call_id">>, JObj)
                     ,sub_account_id = wh_json:get_ne_value(<<"sub_account_id">>, JObj)
                     ,event = wh_json:get_ne_value(<<"event">>, JObj)
+                    ,number = wh_json:get_ne_value(<<"number">>, JObj)
+                    ,feature = wh_json:get_ne_value(<<"feature">>, JObj)
+                    ,bookkeeper_info = wh_json:get_ne_value(<<"bookkeeper_info">>, JObj)
                     ,pvt_reason = wh_json:get_ne_value(<<"pvt_reason">>, JObj)
                     ,pvt_code = wh_json:get_integer_value(<<"pvt_code">>, JObj, 0)
                     ,pvt_amount = wh_json:get_integer_value(<<"pvt_amount">>, JObj, 0)
@@ -355,15 +434,23 @@ save_transaction(#wh_transaction{pvt_account_db=AccountDb}=Transaction) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec prepare_transaction(transaction()) -> transaction() | {'error', _}.
 prepare_transaction(#wh_transaction{pvt_account_id='undefined'}) ->
     {'error', 'account_id_missing'};
 prepare_transaction(#wh_transaction{pvt_account_db='undefined'}) ->
     {'error', 'account_id_missing'};
-prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 1000 =< Code andalso Code < 2000 ->
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 1001 =:= Code orelse 1002 =:= Code ->
     prepare_call_transaction(Transaction);
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 2001 =:= Code orelse 2002 =:= Code ->
+    prepare_feature_activation_transaction(Transaction);
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 2003 =:= Code orelse 2004 =:= Code ->
+    prepare_number_activation_transaction(Transaction);
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 3001 =:= Code orelse 3002 =:= Code ->
+    prepare_manual_addition_transaction(Transaction);
 prepare_transaction(Transaction) ->
     Transaction.
 
+-spec prepare_call_transaction(transaction()) -> transaction() | {'error', _}.
 prepare_call_transaction(#wh_transaction{call_id='undefined'}) ->
     {'error', 'call_id_missing'};
 prepare_call_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=1002}) ->
@@ -374,6 +461,32 @@ prepare_call_transaction(#wh_transaction{call_id=CallId, event=Event}=Transactio
     Transaction#wh_transaction{id = <<CallId/binary, "-"
                                       ,(wh_util:to_upper_binary(Event))/binary>>
                                    ,event=wh_util:to_lower_binary(Event)}.
+
+-spec prepare_feature_activation_transaction(transaction()) -> transaction() | {'error', _}.
+prepare_feature_activation_transaction(#wh_transaction{feature='undefined'}) ->
+    {'error', 'feature_name_missing'};
+prepare_feature_activation_transaction(#wh_transaction{number='undefined'}) ->
+    {'error', 'number_missing'};
+prepare_feature_activation_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=2002}) ->
+    {'error', 'sub_account_id_missing'};
+prepare_feature_activation_transaction(Transaction) ->
+    Transaction.
+
+-spec prepare_number_activation_transaction(transaction()) -> transaction() | {'error', _}.
+prepare_number_activation_transaction(#wh_transaction{number='undefined'}) ->
+    {'error', 'number_missing'};
+prepare_number_activation_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=2004}) ->
+    {'error', 'sub_account_id_missing'};
+prepare_number_activation_transaction(Transaction) ->
+    Transaction.
+
+-spec prepare_manual_addition_transaction(transaction()) -> transaction() | {'error', _}.
+prepare_manual_addition_transaction(#wh_transaction{bookkeeper_info='undefined'}) ->
+    {'error', 'bookkeeper_info_missing'};
+prepare_manual_addition_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=3002}) ->
+    {'error', 'sub_accuont_id_missing'};
+prepare_manual_addition_transaction(Transaction) ->
+    Transaction.
 
 %%--------------------------------------------------------------------
 %% @private

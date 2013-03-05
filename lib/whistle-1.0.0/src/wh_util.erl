@@ -22,7 +22,6 @@
 
 -export([log_stacktrace/0, log_stacktrace/1]).
 -export([format_account_id/1, format_account_id/2]).
--export([current_account_balance/1]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1]).
 -export([get_account_realm/1, get_account_realm/2]).
@@ -172,17 +171,6 @@ format_account_id(AccountId, 'encoded') when is_binary(AccountId) ->
     [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
     wh_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
 format_account_id(AccountId, 'raw') -> AccountId.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% get the provided leger (account_id/db) balance
-%% @end
-%%--------------------------------------------------------------------
--spec current_account_balance(api_binary()) -> integer().
-current_account_balance('undefined') -> 0;
-current_account_balance(AccountId) ->
-    wh_transactions:get_current_balance(AccountId).
 
 %%--------------------------------------------------------------------
 %% @public
