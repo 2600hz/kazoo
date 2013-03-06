@@ -26,17 +26,17 @@
          ,code_change/3
         ]).
 
--define(RESPONDERS, [{{?MODULE, handle_command}
+-define(RESPONDERS, [{{?MODULE, 'handle_command'}
                       ,[{<<"conference">>, <<"command">>}]
                      }
-                     ,{{?MODULE, handle_search_req}
+                     ,{{?MODULE, 'handle_search_req'}
                        ,[{<<"conference">>, <<"search_req">>}]
                       }
                     ]).
--define(BINDINGS, [{conference, [{restrict_to, [command, discovery]}]}]).
+-define(BINDINGS, [{'conference', [{'restrict_to', ['command', 'discovery']}]}]).
 -define(QUEUE_NAME, <<"ecallmgr_conference_listener">>).
--define(QUEUE_OPTIONS, [{exclusive, false}]).
--define(CONSUME_OPTIONS, [{exclusive, false}]).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -include("ecallmgr.hrl").
 
@@ -52,11 +52,11 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?MODULE,
-                            [{responders, ?RESPONDERS}
-                             ,{bindings, ?BINDINGS}
-                             ,{queue_name, ?QUEUE_NAME}
-                             ,{queue_options, ?QUEUE_OPTIONS}
-                             ,{consume_options, ?CONSUME_OPTIONS}
+                            [{'responders', ?RESPONDERS}
+                             ,{'bindings', ?BINDINGS}
+                             ,{'queue_name', ?QUEUE_NAME}
+                             ,{'queue_options', ?QUEUE_OPTIONS}
+                             ,{'consume_options', ?CONSUME_OPTIONS}
                             ], []).
 
 -spec handle_command(wh_json:object(), wh_proplist()) -> any().
