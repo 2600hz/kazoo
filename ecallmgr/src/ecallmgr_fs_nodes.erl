@@ -74,6 +74,7 @@
 %%% API
 %%%===================================================================
 
+-spec start_link() -> startlink_ret().
 start_link() -> gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% returns 'ok' or {'error', some_error_atom_explaining_more}
@@ -231,7 +232,6 @@ init([]) ->
     _ = spawn_link(fun() -> start_preconfigured_servers() end),
     _ = ets:new('sip_subscriptions', ['set', 'public', 'named_table', {'keypos', #sip_subscription.key}]),
     _ = ets:new(?CHANNELS_TBL, ['set', 'protected', 'named_table', {'keypos', #channel.uuid}]),
-    _ = ets:new(?CONFERENCES_TBL, ['set', 'protected', 'named_table', {'keypos', #conference.name}]),
     _ = erlang:send_after(?EXPIRE_CHECK, self(), 'expire_sip_subscriptions'),
     {'ok', #state{}}.
 
@@ -400,15 +400,6 @@ handle_cast({'sync_channels', Node, Channels}, State) ->
          || UUID <- sets:to_list(Add)
         ],
     {'noreply', State, 'hibernate'};
-handle_cast({'sync_conferences', Node, Conferences}, State) ->
-    lager:debug("ensuring conferences cache is in sync with ~s", [Node]),
-    CachedConferences = ets:match_object(?CONFERENCES_TBL, #conference{node = Node, _ = '_'}) ++
-        ets:match_object(?CONFERENCES_TBL, #participant{node = Node, _ = '_'}),
-    Remove = subtract_from(CachedConferences, Conferences),
-    Add = subtract_from(Conferences, CachedConferences),
-    _ = [ets:delete_object(?CONFERENCES_TBL, R) || R <- Remove],
-    _ = [ets:insert(?CONFERENCES_TBL, C) || C <- Add],
-    {'noreply', State, 'hibernate'};
 handle_cast({'flush_node_channels', Node}, State) ->
     lager:debug("flushing all channels in cache associated to node ~s", [Node]),
     MatchSpec = [{#channel{node = '$1', _ = '_'}
@@ -416,19 +407,6 @@ handle_cast({'flush_node_channels', Node}, State) ->
                   ,['true']}
                 ],
     ets:select_delete(?CHANNELS_TBL, MatchSpec),
-    {'noreply', State};
-handle_cast({'flush_node_conferences', Node}, State) ->
-    lager:debug("flushing all conferences in cache associated to node ~s", [Node]),
-    MatchSpecC = [{#conference{node = '$1', _ = '_'}
-                   ,[{'=:=', '$1', {'const', Node}}]
-                   ,['true']}
-                 ],
-    _ = ets:select_delete(?CHANNELS_TBL, MatchSpecC),
-    MatchSpecP = [{#participant{node = '$1', _ = '_'}
-                   ,[{'=:=', '$1', {'const', Node}}]
-                   ,['true']}
-                 ],
-    _ = ets:select_delete(?CHANNELS_TBL, MatchSpecP),
     {'noreply', State};
 handle_cast(_Cast, State) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
@@ -474,7 +452,6 @@ handle_info(_Info, State) ->
 terminate(_Reason, _State) ->
     ets:delete('sip_subscriptions'),
     ets:delete(?CHANNELS_TBL),
-    ets:delete(?CONFERENCES_TBL),
     lager:debug("fs nodes termination: ~p", [ _Reason]).
 
 %%--------------------------------------------------------------------

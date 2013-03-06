@@ -8,6 +8,10 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_conference).
 
+-behaviour(gen_server).
+
+-export([start_link/0]).
+
 -export([show_all/0
          ,new/2
          ,node/1
@@ -26,11 +30,20 @@
          ,props_to_participant_record/2
         ]).
 
--compile([{'no_auto_import', [node/1]}]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("ecallmgr.hrl").
 
--define(NODES_SRV, 'ecallmgr_fs_nodes').
+-compile([{'no_auto_import', [node/1]}]).
+
+-spec start_link() -> startlink_ret().
+start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 -spec show_all() -> wh_json:objects().
 show_all() ->
@@ -40,7 +53,7 @@ show_all() ->
 
 -spec new(atom(), wh_proplist()) -> 'ok'.
 new(Node, Props) ->
-    gen_server:call(?NODES_SRV, {'new_conference', props_to_record(Props, Node)}),
+    gen_server:cast(?MODULE, {'new_conference', props_to_record(Props, Node)}),
     ConferenceName = props:get_value(<<"Conference-Name">>, Props),
     case participants_list(ConferenceName) of
         [] -> 'ok';
@@ -81,13 +94,13 @@ all(Node, 'json') -> [record_to_json(C) || C <- all(Node, 'record')].
 
 -spec destroy(atom(), wh_proplist()) -> 'ok'.
 destroy(Node, Props) ->
-    gen_server:call(?NODES_SRV, {'conference_destroy', Node, props:get_value(<<"Conference-Name">>, Props)}).
+    gen_server:cast(?MODULE, {'conference_destroy', Node, props:get_value(<<"Conference-Name">>, Props)}).
 
 -spec participant_destroy(atom(), wh_proplist() | ne_binary()) -> 'ok'.
 participant_destroy(Node, Props) when is_list(Props) ->
     participant_destroy(Node, props:get_value(<<"Call-ID">>, Props));
 participant_destroy(Node, UUID) ->
-    gen_server:call(?NODES_SRV, {'participant_destroy', Node, UUID}).
+    gen_server:cast(?MODULE, {'participant_destroy', Node, UUID}).
 
 size(ConfId) ->
     case ets:lookup(?CONFERENCES_TBL, ConfId) of
@@ -95,7 +108,7 @@ size(ConfId) ->
         [#conference{participants=P}] -> P
     end.
 set_size(ConfId, Size) when is_integer(Size) ->
-    gen_server:call(?NODES_SRV, {'conference_update', ConfId, {#conference.participants, Size}}).
+    gen_server:cast(?MODULE, {'conference_update', ConfId, {#conference.participants, Size}}).
 
 -spec fetch(ne_binary()) ->
                    {'ok', wh_json:object()} |
@@ -127,7 +140,11 @@ participants_list(ConfId) ->
 
 -spec participants_uuids(ne_binary()) -> wh_json:objects().
 participants_uuids(ConfId) ->
-    ets:match(?CONFERENCES_TBL, #participant{conference_name=ConfId, uuid='$1', _='_'}).
+    ets:match(?CONFERENCES_TBL, #participant{conference_name=ConfId
+                                             ,uuid='$1'
+                                             ,node='$2'
+                                             ,_='_'
+                                            }).
 
 props_to_record(Props, Node) ->
     #conference{node=Node
@@ -255,21 +272,18 @@ participant_record_to_json(#participant{uuid=UUID
         ])).
 
 event(Node, 'undefined', Props) ->
-    lager:debug("conf event ~s", [props:get_value(<<"Action">>, Props)]),
     case props:get_value(<<"Action">>, Props) of
         <<"conference-create">> -> new(Node, Props);
-        <<"play-file">> -> relay_event(Props);
-        <<"play-file-done">> -> relay_event(Props);
+        <<"play-file">> = A -> relay_event(fix_props(Props, A));
+        <<"play-file-done">> = A -> relay_event(fix_props(Props, A));
         <<"floor-change">> -> update_conference(Node, Props);
         <<"conference-destroy">> -> destroy(Node, Props);
         <<"start-recording">> -> relay_event(Props);
         <<"stop-recording">> -> relay_event(Props);
         _Action -> lager:debug("unknown action with no uuid: ~s", [_Action])
     end;
+event(Node, [UUID], Props) -> event(Node, UUID, Props);
 event(Node, UUID, Props) ->
-    lager:debug("conf ~s: event ~s", [props:get_value(<<"Conference-Name">>, Props)
-                                      ,props:get_value(<<"Action">>, Props)
-                                     ]),
     case props:get_value(<<"Action">>, Props) of
         <<"add-member">> ->
             %% Apparently not all FS servers issue the "conference-create"
@@ -280,15 +294,39 @@ event(Node, UUID, Props) ->
         <<"start-talking">> -> update_all(Node, UUID, Props);
         <<"stop-talking">> -> update_all(Node, UUID, Props);
         <<"del-member">> -> participant_destroy(Node, UUID);
-        _Action -> lager:debug("unhandled conference action ~s", [_Action])
+        <<"play-file">> = A -> relay_event(UUID, Node, fix_props(Props, A));
+        <<"play-file-done">> = A -> relay_event(UUID, Node, fix_props(Props, A));
+        <<"play-file-member">> = A -> relay_event(UUID, Node, fix_props(Props, A));
+        <<"play-file-member-done">> = A -> relay_event(UUID, Node, fix_props(Props, A));
+        _Action -> lager:debug("unhandled conference action for ~s: ~s", [UUID, _Action])
     end.
+
+fix_props(Props, A) when A =:= <<"play-file">>; A =:= <<"play-file-member">> ->
+    [{<<"Event-Name">>, <<"CHANNEL_EXECUTE">>}
+     ,{<<"whistle_event_name">>, <<"CHANNEL_EXECUTE">>}
+     ,{<<"Application">>, A}
+     ,{<<"whistle_application_name">>, A}
+     ,{<<"Application-Data">>, props:get_value(<<"File">>, Props)}
+     | props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)
+    ];
+fix_props(Props, A) when A =:= <<"play-file-done">>; A =:= <<"play-file-member-done">> ->
+    [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+     ,{<<"whistle_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+     ,{<<"Application">>, A}
+     ,{<<"whistle_application_name">>, A}
+     ,{<<"Application-Data">>, props:get_value(<<"File">>, Props)}
+     | props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)
+    ];
+fix_props(Props, _A) ->
+    lager:debug("not fixing ~s", [_A]),
+    Props.
 
 update_all(Node, UUID, Props) ->
     update_conference(Node, Props),
     update_participant(Node, UUID, Props).
 
 update_participant(Node, UUID, Props) ->
-    gen_server:call(?NODES_SRV, {'participant_update'
+    gen_server:cast(?MODULE, {'participant_update'
                                  ,Node
                                  ,UUID
                                  ,[{#participant.node, Node} | participant_fields(Props)]
@@ -306,20 +344,23 @@ update_participant(Node, UUID, Props) ->
 
 update_conference(Node, Props) ->
     ProfileProps = ecallmgr_util:get_interface_properties(Node),
-    gen_server:call(?NODES_SRV, {'conference_update'
-                                 ,Node
-                                 ,props:get_value(<<"Conference-Name">>, Props)
-                                 ,[{#conference.node, Node}
-                                   ,{#conference.switch_url, props:get_value(<<"URL">>, ProfileProps)}
-                                   ,{#conference.switch_external_ip, props:get_value(<<"Ext-SIP-IP">>, ProfileProps)}
-                                   | conference_fields(Props)
-                                  ]
-                                }).
+    gen_server:cast(?MODULE, {'conference_update'
+                              ,Node
+                              ,props:get_value(<<"Conference-Name">>, Props)
+                              ,[{#conference.node, Node}
+                                ,{#conference.switch_url, props:get_value(<<"URL">>, ProfileProps)}
+                                ,{#conference.switch_external_ip, props:get_value(<<"Ext-SIP-IP">>, ProfileProps)}
+                                | conference_fields(Props)
+                               ]
+                             }).
 
 relay_event(Props) ->
-    [?NODES_SRV ! {'event', [UUID | Props]} ||
-        UUID <- participants_uuids(props:get_value(<<"Conference-Name">>, Props))
-    ].
+    [relay_event(UUID, Node, Props) || [UUID, Node] <- participants_uuids(props:get_value(<<"Conference-Name">>, Props))].
+relay_event(UUID, Node, Props) ->
+    EventName = props:get_value(<<"Event-Name">>, Props),
+    Payload = {'event', [UUID, {<<"Caller-Unique-ID">>, UUID} | Props]},
+    gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, Payload),
+    gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)}, Payload).
 
 -define(FS_CONF_FIELDS, [{<<"Conference-Unique-ID">>, #conference.uuid}
                          ,{<<"Conference-Size">>, #conference.participants, fun props:get_integer_value/2}
@@ -375,3 +416,135 @@ safe_integer_get(K, Props, D) ->
                 'error':'badarg' -> D
             end
     end.
+
+init([]) ->
+    put('callid', ?LOG_SYSTEM_ID),
+    process_flag('trap_exit', 'true'),
+    lager:info("starting FreeSWITCH conferences tracker"),
+
+    TID = ets:new(?CONFERENCES_TBL, ['set', 'protected', 'named_table', {'keypos', #conference.name}]),
+    {'ok', TID}.
+
+handle_call(_Req, _From, TID) ->
+    lager:debug("unhandled call from ~p: ~p", [_From, _Req]),
+    {'reply', {'error', 'unimplemented'}, TID}.
+
+handle_cast({'sync_conferences', Node, Conferences}, TID) ->
+    lager:debug("ensuring conferences cache is in sync with ~s", [Node]),
+
+    CachedConferences = ets:match_object(TID, #conference{node = Node, _ = '_'}) ++
+        ets:match_object(TID, #participant{node = Node, _ = '_'}),
+
+    Remove = subtract_from(CachedConferences, Conferences),
+    Add = subtract_from(Conferences, CachedConferences),
+
+    _ = [ets:delete_object(TID, R) || R <- Remove],
+    _ = [ets:insert(TID, C) || C <- Add],
+    {'noreply', TID};
+
+handle_cast({'flush_node_conferences', Node}, TID) ->
+    lager:debug("flushing all conferences in cache associated to node ~s", [Node]),
+    MatchSpecC = [{#conference{node = '$1', _ = '_'}
+                   ,[{'=:=', '$1', {'const', Node}}]
+                   ,['true']}
+                 ],
+    _ = ets:select_delete(TID, MatchSpecC),
+    MatchSpecP = [{#participant{node = '$1', _ = '_'}
+                   ,[{'=:=', '$1', {'const', Node}}]
+                   ,['true']}
+                 ],
+    _ = ets:select_delete(TID, MatchSpecP),
+    {'noreply', TID};
+
+handle_cast({'new_conference', #conference{node=Node, name=Name}=C}, TID) ->
+    case ets:lookup(TID, Name) of
+        [] ->
+            lager:debug("creating new conference ~s on node ~s", [Name, Node]),
+            ets:insert(TID, C);
+        [#conference{node=Node}] -> lager:debug("conference ~s already on node ~s", [Name, Node]);
+        [#conference{node=_Other}] -> lager:debug("conference ~s already on ~s, not ~s", [Name, _Other, Node])
+    end,
+    {'noreply', TID};
+handle_cast({'conference_update', Node, Name, Update}, TID) ->
+    case ets:lookup(TID, Name) of
+        [#conference{node=Node}] ->
+            ets:update_element(TID, Name, Update),
+            lager:debug("conference ~s already on node ~s", [Name, Node]);
+        [#conference{node=_Other}] -> lager:debug("conference ~s already on ~s, not ~s, ignoring update", [Name, _Other, Node]);
+        [] -> lager:debug("no conference ~s on ~s, ignoring update", [Name, Node])
+    end,
+    {'noreply', TID};
+
+handle_cast({'participant_update', Node, UUID, Update}, TID) ->
+    case ets:lookup(TID, UUID) of
+        [] ->
+            lager:debug("no participant ~s, creating", [Node]),
+            'true' = ets:insert_new(TID, #participant{uuid=UUID}),
+            'true' = ets:update_element(TID, UUID, Update);
+        [#participant{node=Node}] ->
+            lager:debug("participant ~s on ~s, applying update", [UUID, Node]),
+            ets:update_element(TID, UUID, Update);
+        [#participant{node=_OtherNode}] ->
+            lager:debug("participant ~s is on ~s, not ~s, ignoring update", [UUID, _OtherNode, Node])
+    end,
+    {'noreply', TID};
+
+handle_cast({'conference_destroy', Node, Name}, TID) ->
+    MatchSpecC = [{#conference{name='$1', node='$2', _ = '_'}
+                   ,[{'andalso', {'=:=', '$2', {'const', Node}}
+                      ,{'=:=', '$1', Name}
+                     }
+                    ],
+                   ['true']
+                  }],
+    N = ets:select_delete(TID, MatchSpecC),
+    lager:debug("removed ~p conference(s) with id ~s on ~s", [N, Name, Node]),
+
+    MatchSpecP = [{#participant{conference_name='$1', node='$2', _ = '_'}
+                   ,[{'andalso', {'=:=', '$2', {'const', Node}}
+                      ,{'=:=', '$1', Name}
+                     }
+                    ],
+                   ['true']
+                  }],
+    N1 = ets:select_delete(TID, MatchSpecP),
+    lager:debug("removed ~p participant(s) in conference ~s on ~s", [N1, Name, Node]),
+
+    {'noreply', TID};
+
+handle_cast({'participant_destroy', Node, UUID}, TID) ->
+    MatchSpec = [{#participant{uuid='$1', node='$2', _ = '_'}
+                  ,[{'andalso'
+                     ,{'=:=', '$2', {'const', Node}}
+                     ,{'=:=', '$1', UUID}
+                    }
+                   ],
+                  ['true']
+                 }],
+    N = ets:select_delete(TID, MatchSpec),
+    lager:debug("removed ~p participants(s) with id ~s on ~s", [N, UUID, Node]),
+    {'noreply', TID};
+
+handle_cast(_Req, TID) ->
+    lager:debug("unhandled cast: ~p", [_Req]),
+    {'noreply', TID}.
+
+handle_info(_Msg, TID) ->
+    lager:debug("unhandled msg: ~p", [_Msg]),
+    {'noreply', TID}.
+
+terminate(_Reason, TID) ->
+    ets:delete(TID),
+    lager:debug("FreeSWITCH conference tracker going down: ~p", [_Reason]).
+
+code_change(_OldVsn, TID, _Extra) ->
+    {'ok', TID}.
+
+subtract_from([], _) -> [];
+subtract_from(Set1, []) -> Set1;
+subtract_from(Set1, [S2|Set2]) ->
+    subtract_from([S1 || S1 <- Set1, should_remove(S1, S2)], Set2).
+
+should_remove(#participant{uuid=UUID1}, #participant{uuid=UUID2}) -> UUID1 =/= UUID2;
+should_remove(#conference{name=N1}, #conference{name=N2}) -> N1 =/= N2;
+should_remove(_, _) -> 'true'.

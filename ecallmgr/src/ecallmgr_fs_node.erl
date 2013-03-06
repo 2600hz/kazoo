@@ -43,7 +43,7 @@
                        ,[{<<"switch_event">>, <<"reload_gateways">>}]
                       }
                     ]).
--define(BINDINGS, [{switch, []}]).
+-define(BINDINGS, [{'switch', []}]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -216,11 +216,11 @@ handle_cast({'sync_channels'}, #state{node=Node}=State) ->
             ],
     Msg = {'sync_channels', Node, [Call || Call <- Calls, Call =/= 'undefined']},
     gen_server:cast('ecallmgr_fs_nodes', Msg),
-    {noreply, State};
+    {'noreply', State};
 handle_cast({'sync_conferences'}, #state{node=Node}=State) ->
     Conferences = show_conferences(Node),
     Msg = {'sync_conferences', Node, Conferences},
-    gen_server:cast('ecallmgr_fs_nodes', Msg),
+    gen_server:cast('ecallmgr_fs_conference', Msg),
     {'noreply', State};
 handle_cast(_Req, State) ->
     {'noreply', State}.
@@ -344,12 +344,12 @@ maybe_send_event(EventName, UUID, Props, Node) ->
     case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
         'true' -> 'ok';
         'false' ->
-            gproc:send({'p', 'l', {'event', Node, EventName}}, {'event', [UUID | Props]}),
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
             maybe_send_call_event(UUID, Props, Node)
     end.
 
 -spec maybe_send_call_event(api_binary(), wh_proplist(), atom()) -> any().
-maybe_send_call_event('undefined', _, _) -> ok;
+maybe_send_call_event('undefined', _, _) -> 'ok';
 maybe_send_call_event(CallId, Props, Node) ->
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}, {'event', [CallId | Props]}).
 
