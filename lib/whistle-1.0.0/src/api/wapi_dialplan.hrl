@@ -504,8 +504,13 @@
 -define(NOOP_REQ_TYPES, []).
 
 %% Conference
--define(CONFERENCE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Conference-ID">>]).
--define(OPTIONAL_CONFERENCE_REQ_HEADERS, [<<"Insert-At">>, <<"Mute">>, <<"Deaf">>, <<"Moderator">>]).
+-define(CONFERENCE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
+                                 ,<<"Conference-ID">>
+                                ]).
+-define(OPTIONAL_CONFERENCE_REQ_HEADERS, [<<"Insert-At">>
+                                          ,<<"Mute">>, <<"Deaf">>, <<"Moderator">>
+                                          ,<<"Reinvite">>
+                                         ]).
 -define(CONFERENCE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                 ,{<<"Event-Name">>, <<"command">>}
                                 ,{<<"Application-Name">>, <<"conference">>}
@@ -516,6 +521,7 @@
                                ,{<<"Mute">>, fun wh_util:is_boolean/1}
                                ,{<<"Deaf">>, fun wh_util:is_boolean/1}
                                ,{<<"Moderator">>, fun wh_util:is_boolean/1}
+                               ,{<<"Reinvite">>, fun wh_util:is_boolean/1}
                               ]).
 
 %% Originate Ready

@@ -26,23 +26,21 @@
          ,props_to_participant_record/2
         ]).
 
--compile([{no_auto_import, [node/1]}]).
+-compile([{'no_auto_import', [node/1]}]).
 
 -include("ecallmgr.hrl").
 
--define(NODES_SRV, ecallmgr_fs_nodes).
+-define(NODES_SRV, 'ecallmgr_fs_nodes').
 
 -spec show_all() -> wh_json:objects().
 show_all() ->
-    ets:foldl(fun(#conference{}=Conf, Acc) ->
-                      [record_to_json(Conf) | Acc];
-                 (#participant{}=P, Acc) ->
-                      [participant_record_to_json(P) | Acc]
+    ets:foldl(fun(#conference{}=Conf, Acc) -> [record_to_json(Conf) | Acc];
+                 (#participant{}=P, Acc) ->   [participant_record_to_json(P) | Acc]
               end, [], ?CONFERENCES_TBL).
 
 -spec new(atom(), wh_proplist()) -> 'ok'.
 new(Node, Props) ->
-    gen_server:cast(?NODES_SRV, {new_conference, props_to_record(Props, Node)}).
+    gen_server:cast(?NODES_SRV, {'new_conference', props_to_record(Props, Node)}).
 
 -spec node(ne_binary()) ->
                   {'ok', atom()} |
@@ -51,7 +49,10 @@ new(Node, Props) ->
 node(ConfName) ->
     case ets:lookup(?CONFERENCES_TBL, ConfName) of
         [#conference{node=Node}] -> {'ok', Node};
-        [#conference{} | _]=Cs -> {'error', 'multiple_conferences', [N || #conference{node=N} <- Cs]};
+        [#conference{} | _]=Cs ->
+            {'error', 'multiple_conferences'
+             ,[N || #conference{node=N} <- Cs]
+            };
         _ -> {'error', 'not_found'}
     end.
 
@@ -76,15 +77,15 @@ destroy(Node, Props) ->
 participant_destroy(Node, Props) when is_list(Props) ->
     participant_destroy(Node, props:get_value(<<"Call-ID">>, Props));
 participant_destroy(Node, UUID) ->
-    gen_server:cast(?NODES_SRV, {participant_destroy, Node, UUID}).
+    gen_server:cast(?NODES_SRV, {'participant_destroy', Node, UUID}).
 
 size(ConfId) ->
     case ets:lookup(?CONFERENCES_TBL, ConfId) of
-        [] -> {error, invalid_conference};
+        [] -> {'error', 'invalid_conference'};
         [#conference{participants=P}] -> P
     end.
 set_size(ConfId, Size) when is_integer(Size) ->
-    gen_server:cast(?NODES_SRV, {conference_update, ConfId, {#conference.participants, Size}}).
+    gen_server:cast(?NODES_SRV, {'conference_update', ConfId, {#conference.participants, Size}}).
 
 -spec fetch(ne_binary()) ->
                    {'ok', wh_json:object()} |
@@ -264,21 +265,21 @@ update_all(Node, UUID, Props) ->
     update_participant(Node, UUID, Props).
 
 update_participant(Node, UUID, Props) ->
-    gen_server:cast(?NODES_SRV, {participant_update
+    gen_server:cast(?NODES_SRV, {'participant_update'
                                  ,Node
                                  ,UUID
                                  ,[{#participant.node, Node} | participant_fields(Props)]
                                 }).
 
 update_conference(Node, Props) ->
-    gen_server:cast(?NODES_SRV, {conference_update
+    gen_server:cast(?NODES_SRV, {'conference_update'
                                  ,Node
                                  ,props:get_value(<<"Conference-Name">>, Props)
                                  ,[{#conference.node, Node} | conference_fields(Props)]
                                 }).
 
 relay_event(Props) ->
-    [ecallmgr_fs_nodes ! {event, [UUID | Props]} ||
+    [?NODES_SRV ! {'event', [UUID | Props]} ||
         UUID <- participants_uuids(props:get_value(<<"Conference-Name">>, Props))
     ].
 
@@ -319,7 +320,7 @@ maybe_include_key({K, Pos, Getter, Default}, Acc, Props) ->
 
 maybe_include_key(K, Pos, Acc, Props, Getter) when is_function(Getter, 2) ->
     case Getter(K, Props) of
-        undefined -> Acc;
+        'undefined' -> Acc;
         V -> [{Pos, V} | Acc]
     end.
 maybe_include_key(K, Pos, Acc, Props, Getter, Default) when is_function(Getter, 3) ->
@@ -327,11 +328,11 @@ maybe_include_key(K, Pos, Acc, Props, Getter, Default) when is_function(Getter, 
 
 safe_integer_get(K, Props, D) ->
     case props:get_value(K, Props) of
-        undefined -> D;
+        'undefined' -> D;
         V ->
             try wh_util:to_integer(V) of
                 I -> I
             catch
-                error:badarg -> D
+                'error':'badarg' -> D
             end
     end.
