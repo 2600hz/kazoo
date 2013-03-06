@@ -1236,11 +1236,13 @@ b_say(Say, Type, Method, Language, Call) ->
 -spec conference(ne_binary(), boolean(), whapps_call:call()) -> 'ok'.
 -spec conference(ne_binary(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
 -spec conference(ne_binary(), boolean(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
+-spec conference(ne_binary(), boolean(), boolean(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
 
 -spec b_conference(ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_conference(ne_binary(), boolean(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_conference(ne_binary(), boolean(), boolean(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_conference(ne_binary(), boolean(), boolean(), boolean(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_conference(ne_binary(), boolean(), boolean(), boolean(), boolean(), whapps_call:call()) -> whapps_api_std_return().
 
 conference(ConfId, Call) ->
     conference(ConfId, 'false', Call).
@@ -1249,11 +1251,14 @@ conference(ConfId, Mute, Call) ->
 conference(ConfId, Mute, Deaf, Call) ->
     conference(ConfId, Mute, Deaf, 'false', Call).
 conference(ConfId, Mute, Deaf, Moderator, Call) ->
+    conference(ConfId, Mute, Deaf, Moderator, 'false', Call).
+conference(ConfId, Mute, Deaf, Moderator, Reinvite, Call) ->
     Command = [{<<"Application-Name">>, <<"conference">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Mute">>, Mute}
                ,{<<"Deaf">>, Deaf}
                ,{<<"Moderator">>, Moderator}
+               ,{<<"Reinvite">>, Reinvite}
               ],
     send_command(Command, Call).
 
@@ -1264,7 +1269,9 @@ b_conference(ConfId, Mute, Call) ->
 b_conference(ConfId, Mute, Deaf, Call) ->
     b_conference(ConfId, Mute, Deaf, 'false', Call).
 b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
-    conference(ConfId, Mute, Deaf, Moderator, Call),
+    b_conference(ConfId, Mute, Deaf, Moderator, 'false', Call).
+b_conference(ConfId, Mute, Deaf, Moderator, Reinvite, Call) ->
+    conference(ConfId, Mute, Deaf, Moderator, Reinvite, Call),
     wait_for_message(<<"conference">>, <<"CHANNEL_EXECUTE">>).
 
 %%--------------------------------------------------------------------
