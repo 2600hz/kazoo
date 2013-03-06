@@ -17,22 +17,22 @@
 -define(POOL_SIZE, 100).
 -define(OVERFLOW_POOL_SIZE, 100).
 
--define(CHILD(Name, Type), fun(N, pool) -> {N, {poolboy, start_link, [[{worker_module, wh_amqp_worker}
-                                                                       ,{name, {local, N}}
-                                                                       ,{size, ?POOL_SIZE}
-                                                                       ,{max_overflow, ?OVERFLOW_POOL_SIZE}
+-define(CHILD(Name, Type), fun(N, 'pool') -> {N, {'poolboy', 'start_link', [[{'worker_module', 'wh_amqp_worker'}
+                                                                       ,{'name', {'local', N}}
+                                                                       ,{'size', ?POOL_SIZE}
+                                                                       ,{'max_overflow', ?OVERFLOW_POOL_SIZE}
                                                                       ]
                                                                      ]}
-                                            ,permanent, 5000, worker, [poolboy]
+                                              ,'permanent', 5000, 'worker', ['poolboy']
                                            };
-                              (N, worker=T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]};
-                              (N, supervisor=T) -> {N, {N, start_link, []}, permanent, infinity, T, [N]}
+                              (N, 'worker'=T) -> {N, {N, 'start_link', []}, 'permanent', 5000, T, [N]};
+                              (N, 'supervisor'=T) -> {N, {N, 'start_link', []}, 'permanent', 'infinity', T, [N]}
                            end(Name, Type)).
--define(CHILDREN, [{?ECALLMGR_AMQP_POOL, pool}
-                   ,{ecallmgr_init, worker}
-                   ,{ecallmgr_auxiliary_sup, supervisor}
-                   ,{ecallmgr_call_sup, supervisor}
-                   ,{ecallmgr_fs_sup, supervisor}
+-define(CHILDREN, [{?ECALLMGR_AMQP_POOL, 'pool'}
+                   ,{'ecallmgr_init', 'worker'}
+                   ,{'ecallmgr_auxiliary_sup', 'supervisor'}
+                   ,{'ecallmgr_call_sup', 'supervisor'}
+                   ,{'ecallmgr_fs_sup', 'supervisor'}
                   ]).
 
 %% ===================================================================
@@ -64,11 +64,11 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, Children}}.

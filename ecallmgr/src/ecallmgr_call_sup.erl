@@ -20,9 +20,9 @@
         ]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{ecallmgr_call_event_sup, supervisor}
-                   ,{ecallmgr_call_control_sup, supervisor}
+-define(CHILD(Name, Type), fun(N, T) -> {N, {N, 'start_link', []}, 'permanent', 'infinity', T, [N]} end(Name, Type)).
+-define(CHILDREN, [{'ecallmgr_call_event_sup', 'supervisor'}
+                   ,{'ecallmgr_call_control_sup', 'supervisor'}
                   ]).
 
 %% ===================================================================
@@ -43,7 +43,7 @@ start_event_process(Node, UUID) ->
     ecallmgr_call_event_sup:start_proc([Node, UUID]).
 
 start_control_process(Node, UUID) ->
-    ecallmgr_call_control_sup:start_proc([Node, UUID, undefined]).
+    ecallmgr_call_control_sup:start_proc([Node, UUID, 'undefined']).
 
 start_control_process(Node, UUID, SendTo) ->    
     ecallmgr_call_control_sup:start_proc([Node, UUID, SendTo]).
@@ -63,11 +63,11 @@ start_control_process(Node, UUID, SendTo) ->
 %%--------------------------------------------------------------------
 -spec init(list()) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, Children}}.

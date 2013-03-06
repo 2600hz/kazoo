@@ -29,6 +29,7 @@
                      }).
 -define(CHILDREN, [{'ecallmgr_fs_pinger_sup', 'supervisor'}
                    ,{'ecallmgr_fs_nodes', 'worker'}
+                   ,{'ecallmgr_fs_conference', 'worker'}
                   ]).
 
 %% ===================================================================
@@ -50,8 +51,7 @@ start_link() -> supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
                       {'ok','undefined' | pid(), term()}.
 add_node(Node, Options) -> supervisor:start_child(?SERVER, ?NODE(Node, [Node, Options])).
 
-find_node(Node) ->
-    find_node(supervisor:which_children(?MODULE), Node).
+find_node(Node) -> find_node(supervisor:which_children(?MODULE), Node).
 
 find_node([], _) -> 'undefined';
 find_node([{Node, Pid, 'supervisor', _}|_], Node) -> Pid;

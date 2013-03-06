@@ -28,11 +28,9 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+start_link() -> supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
-start_originate_proc(Node, JObj) ->
-    supervisor:start_child(?SERVER, [Node, JObj]).
+start_originate_proc(Node, JObj) -> supervisor:start_child(?SERVER, [Node, JObj]).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -52,14 +50,14 @@ start_originate_proc(Node, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    Restart = transient,
+    Restart = 'transient',
     Shutdown = 2000,
-    Type = worker,
+    Type = 'worker',
 
-    AChild = {ecallmgr_originate, {ecallmgr_originate, start_link, []},
-              Restart, Shutdown, Type, [ecallmgr_originate]},
+    AChild = {'ecallmgr_originate', {'ecallmgr_originate', 'start_link', []},
+              Restart, Shutdown, Type, ['ecallmgr_originate']},
 
-    {ok, {{simple_one_for_one, 5, 10}, [AChild]}}.
+    {'ok', {{'simple_one_for_one', 5, 10}, [AChild]}}.
 
 %%%===================================================================
 %%% Internal functions
