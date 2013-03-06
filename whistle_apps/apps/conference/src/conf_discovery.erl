@@ -208,7 +208,7 @@ handle_search_resp(JObj, _Props) ->
             lager:debug("running conference is on the same switch, joining on ~s", [SwitchHostname]),
             conf_participant:join_local(Srv);
         _Else ->
-            lager:debug("running conference is on a different switch, bridging to ~s", [_Else]),
+            lager:debug("running conference is on a different switch, bridging to ~s: ~p", [_Else, JObj]),
             conf_participant:join_remote(Srv, JObj)
     end.
 
