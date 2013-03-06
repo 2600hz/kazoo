@@ -207,6 +207,10 @@
 %% Dialplan-related applications
 %% convert from FS-named applications to Kazoo-named Dialplan applications
 -define(FS_APPLICATION_NAMES, [{<<"playback">>, <<"play">>}
+                               ,{<<"play-file">>, <<"play">>}
+                               ,{<<"play-file-done">>, <<"play">>}
+                               ,{<<"play-file-member">>, <<"play">>}
+                               ,{<<"play-file-member-done">>, <<"play">>}
                                ,{<<"speak">>, <<"tts">>}
                                ,{<<"hangup">>, <<"hangup">>}
                                ,{<<"record">>, <<"record">>}
@@ -254,8 +258,8 @@
                     ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE'
                     ,'CHANNEL_HANGUP', 'CHANNEL_HANGUP_COMPLETE', 'CHANNEL_DESTROY'
                     ,'CUSTOM', 'sofia::transfer', 'whistle::noop', 'whistle::masquerade'
-                    ,'conference::maintenance', 'channel_move::move_released'
-                    ,'channel_move::move_complete'
+                    ,'conference::maintenance'
+                    ,?CHANNEL_MOVE_RELEASED_EVENT, ?CHANNEL_MOVE_COMPLETE_EVENT
                    ]).
 
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>
