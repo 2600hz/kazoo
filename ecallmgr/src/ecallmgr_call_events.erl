@@ -201,8 +201,7 @@ handle_cast('init', #state{node=Node
     'true' = gproc:reg({'p', 'l', 'call_events_processes'}),
     'true' = gproc:reg({'p', 'l', {'call_events_process', Node, CallId}}),
     'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
-    'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"channel_move::move_released">>)}),
-    'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"channel_move::move_complete">>)}),
+    'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)}),
     Ref = wh_util:rand_hex_binary(12),
     Usurp = [{<<"Call-ID">>, CallId}
              ,{<<"Media-Node">>, Node}
@@ -222,8 +221,7 @@ handle_cast({'update_node', Node}, #state{node=OldNode
     erlang:monitor_node(OldNode, 'false'),
     _ = gproc:unreg({'p', 'l', {'call_events_process', OldNode, CallId}}),
     _ = gproc:unreg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(OldNode, CallId)}),
-    _ = gproc:unreg({'p', 'l', ?FS_EVENT_REG_MSG(OldNode, <<"channel_move::move_released">>)}),
-    _ = gproc:unreg({'p', 'l', ?FS_EVENT_REG_MSG(OldNode, <<"channel_move::move_complete">>)}),
+    _ = gproc:unreg({'p', 'l', ?FS_EVENT_REG_MSG(OldNode, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)}),
     {'noreply', State#state{node=Node}, 0};
 handle_cast({'passive'}, State) ->
     lager:debug("publisher has been usurp'd by newer process on another ecallmgr, moving to passive mode", []),
@@ -242,6 +240,8 @@ handle_cast({'shutdown'}, #state{node=Node}=State) ->
 handle_cast({'transferer', _}, State) ->
     lager:debug("call control has been transfered."),
     {'stop', 'normal', State};
+handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -272,7 +272,7 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
         {<<"CHANNEL_DESTROY">>, _} ->
             maybe_process_channel_destroy(Node, CallId, Props),
             {'noreply', State};
-        {<<"channel_move::move_released">>, _} ->
+        {?CHANNEL_MOVE_RELEASED_EVENT_BIN, _} ->
             lager:debug("channel move released call on our node", []),
             {'stop', 'normal', State};
         {_, _} ->
@@ -333,8 +333,7 @@ handle_info('timeout', #state{node=Node
             lager:debug("processing call events from ~s", [Node]),
             'true' = gproc:reg({'p', 'l', {'call_events_process', Node, CallId}}),
             'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
-            'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"channel_move::move_released">>)}),
-            'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"channel_move::move_complete">>)}),
+            'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)}),
             Usurp = [{<<"Call-ID">>, CallId}
                      ,{<<"Media-Node">>, Node}
                      ,{<<"Reference">>, Ref}
@@ -438,7 +437,7 @@ process_channel_event(Props) ->
     ApplicationName = get_event_application(Props, Masqueraded),
 
     case should_publish(EventName, ApplicationName, Masqueraded) of
-        'false' -> 'ok';
+        'false' -> lager:debug("not publishing ~s(~s): ~s", [EventName, ApplicationName, props:get_value(<<"Action">>, Props)]);
         'true' ->
             %% TODO: the adding of the node to the props is for event_specific conference
             %% clause until we can break the conference stuff into its own module
@@ -509,6 +508,7 @@ publish_event(Props) ->
     EventName = wh_util:to_lower_binary(props:get_value(<<"Event-Name">>, Props, <<>>)),
     ApplicationName = wh_util:to_lower_binary(props:get_value(<<"Application-Name">>, Props, <<>>)),
     CallId = props:get_value(<<"Call-ID">>, Props),
+
     put('callid', CallId),
 
     case {ApplicationName, EventName} of
@@ -543,7 +543,7 @@ get_event_name(Props, 'false') -> props:get_value(<<"Event-Name">>, Props).
 
 -spec get_event_application(wh_proplist(), boolean()) -> api_binary().
 get_event_application(Props, 'true') ->
-    %% when the evet is masqueraded override the actual application
+    %% when the event is masqueraded override the actual application
     %% with what whistle wants the event to be
     props:get_value(<<"whistle_application_name">>, Props);
 get_event_application(Props, 'false') ->
@@ -637,7 +637,7 @@ silence_terminated(Hits) when is_integer(Hits) -> Hits =:= 0.
 
 -spec get_fs_var(atom(), ne_binary(), ne_binary(), binary()) -> binary().
 get_fs_var(Node, CallId, Var, Default) ->
-    case freeswitch:api(Node, uuid_getvar, wh_util:to_list(<<CallId/binary, " ", Var/binary>>)) of
+    case freeswitch:api(Node, 'uuid_getvar', wh_util:to_list(<<CallId/binary, " ", Var/binary>>)) of
         {'ok', <<"_undef_">>} -> Default;
         {'ok', <<"_none_">>} -> Default;
         {'ok', Value} -> Value;
@@ -656,8 +656,7 @@ should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>, 'false')
     'false';
 should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
     props:get_value(Application, ?FS_APPLICATION_NAMES) =/= 'undefined';
-should_publish(EventName, _, _) ->
-    lists:member(EventName, ?CALL_EVENTS).
+should_publish(EventName, _, _) -> lists:member(EventName, ?CALL_EVENTS).
 
 -spec get_transfer_history(wh_proplist()) -> wh_json:object().
 get_transfer_history(Props) ->
