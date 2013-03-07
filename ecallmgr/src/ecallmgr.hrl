@@ -251,11 +251,11 @@
 -define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_ANSWER'
                     ,'CHANNEL_PARK', 'CHANNEL_ANSWER', 'CALL_UPDATE', 'DETECTED_TONE'
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
-                    ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE' %%, 'CHANNEL_EXECUTE_ERROR'
+                    ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE'
                     ,'CHANNEL_HANGUP', 'CHANNEL_HANGUP_COMPLETE', 'CHANNEL_DESTROY'
-                    ,'CUSTOM', 'sofia::transfer', 'loopback::bowout', 'whistle::noop'
-                    ,'whistle::masquerade', 'channel_move::move_released', 'channel_move::move_complete'
-                    ,'conference::maintenance'
+                    ,'CUSTOM', 'sofia::transfer', 'whistle::noop', 'whistle::masquerade'
+                    ,'conference::maintenance', 'channel_move::move_released'
+                    ,'channel_move::move_complete'
                    ]).
 
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>

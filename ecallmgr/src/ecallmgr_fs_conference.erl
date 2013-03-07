@@ -40,7 +40,17 @@ show_all() ->
 
 -spec new(atom(), wh_proplist()) -> 'ok'.
 new(Node, Props) ->
-    gen_server:cast(?NODES_SRV, {'new_conference', props_to_record(Props, Node)}).
+    gen_server:call(?NODES_SRV, {'new_conference', props_to_record(Props, Node)}),
+    ConferenceName = props:get_value(<<"Conference-Name">>, Props),
+    case participants_list(ConferenceName) of
+        [] -> 'ok';
+        Ps ->
+            Event = [{<<"Participants">>, Ps}
+                     ,{<<"Conference-ID">>, ConferenceName}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ],
+            wapi_conference:publish_participants_event(ConferenceName, Event)
+    end.
 
 -spec node(ne_binary()) ->
                   {'ok', atom()} |
@@ -71,13 +81,13 @@ all(Node, 'json') -> [record_to_json(C) || C <- all(Node, 'record')].
 
 -spec destroy(atom(), wh_proplist()) -> 'ok'.
 destroy(Node, Props) ->
-    gen_server:cast(?NODES_SRV, {'conference_destroy', Node, props:get_value(<<"Conference-Name">>, Props)}).
+    gen_server:call(?NODES_SRV, {'conference_destroy', Node, props:get_value(<<"Conference-Name">>, Props)}).
 
 -spec participant_destroy(atom(), wh_proplist() | ne_binary()) -> 'ok'.
 participant_destroy(Node, Props) when is_list(Props) ->
     participant_destroy(Node, props:get_value(<<"Call-ID">>, Props));
 participant_destroy(Node, UUID) ->
-    gen_server:cast(?NODES_SRV, {'participant_destroy', Node, UUID}).
+    gen_server:call(?NODES_SRV, {'participant_destroy', Node, UUID}).
 
 size(ConfId) ->
     case ets:lookup(?CONFERENCES_TBL, ConfId) of
@@ -85,7 +95,7 @@ size(ConfId) ->
         [#conference{participants=P}] -> P
     end.
 set_size(ConfId, Size) when is_integer(Size) ->
-    gen_server:cast(?NODES_SRV, {'conference_update', ConfId, {#conference.participants, Size}}).
+    gen_server:call(?NODES_SRV, {'conference_update', ConfId, {#conference.participants, Size}}).
 
 -spec fetch(ne_binary()) ->
                    {'ok', wh_json:object()} |
@@ -274,15 +284,25 @@ update_all(Node, UUID, Props) ->
     update_participant(Node, UUID, Props).
 
 update_participant(Node, UUID, Props) ->
-    gen_server:cast(?NODES_SRV, {'participant_update'
+    gen_server:call(?NODES_SRV, {'participant_update'
                                  ,Node
                                  ,UUID
                                  ,[{#participant.node, Node} | participant_fields(Props)]
-                                }).
+                                }),
+    ConferenceName = props:get_value(<<"Conference-Name">>, Props),
+    case participants_list(ConferenceName) of
+        [] -> 'ok';
+        Ps ->
+            Event = [{<<"Participants">>, Ps}
+                     ,{<<"Conference-ID">>, ConferenceName}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ],
+            wapi_conference:publish_participants_event(ConferenceName, Event)
+    end.
 
-update_conference(Node, Props) ->    
+update_conference(Node, Props) ->
     ProfileProps = ecallmgr_util:get_interface_properties(Node),
-    gen_server:cast(?NODES_SRV, {'conference_update'
+    gen_server:call(?NODES_SRV, {'conference_update'
                                  ,Node
                                  ,props:get_value(<<"Conference-Name">>, Props)
                                  ,[{#conference.node, Node}

@@ -50,5 +50,3 @@ update_record(Conf, 'run_time', V) ->
 update_record(Conf, _K, _V) ->
     lager:debug("unhandled conference k/v ~s: ~p", [_K, _V]),
     Conf.
-
-    

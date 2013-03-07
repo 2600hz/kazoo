@@ -1574,12 +1574,12 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
                     {'error', JObj};
                 {<<"call_event">>,<<"CHANNEL_HANGUP_COMPLETE">>,_} ->
-                    lager:debug("hangup occurred, waiting 5000 ms for ~s event", [Application]),
-                    wait_for_headless_application(Application, Event, Type, 5000);
+                    lager:debug("hangup occurred, waiting 60000 ms for ~s event", [Application]),
+                    wait_for_headless_application(Application, Event, Type, 60000);
                 {<<"call_event">>,<<"CHANNEL_DESTROY">>, _} ->
-                    lager:debug("destroy occurred, waiting 5000 ms for ~s event", [Application]),
-                    wait_for_headless_application(Application, Event, Type, 5000);
-                {Type, Event, Application} ->
+                    lager:debug("destroy occurred, waiting 60000 ms for ~s event", [Application]),
+                    wait_for_headless_application(Application, Event, Type, 60000);
+                { Type, Event, Application } ->
                     {'ok', JObj};
                 _T ->
                     lager:debug("ignore ~p", [_T]),

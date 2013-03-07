@@ -10,7 +10,7 @@
 
 -include("whapps_call_command.hrl").
 
--export([search/1, search/2]).
+-export([search/1]).
 -export([deaf_participant/2]).
 -export([participant_energy/3]).
 -export([kick/1, kick/2]).
@@ -31,25 +31,31 @@
 -export([send_command/2]).
 
 -spec search(whapps_conference:conference()) -> ne_binary().
--spec search(SearchId, whapps_conference:conference()) -> SearchId.
-
 search(Conference) ->
-    search('undefined', Conference).
-
-search('undefined', Conference) ->
-    search(couch_mgr:get_uuid(), Conference);
-search(SearchId, Conference) ->
-    Q = whapps_conference:controller_queue(Conference),
     AppName = whapps_conference:application_name(Conference),
     AppVersion = whapps_conference:application_version(Conference),
-
-    lager:debug("searching for conference: ~s", [whapps_conference:id(Conference)]),
-    Search = [{<<"Conference-ID">>, whapps_conference:id(Conference)}
-              ,{<<"Msg-ID">>, SearchId}
-              | wh_api:default_headers(Q, AppName, AppVersion)
+    ConferenceId = whapps_conference:id(Conference),
+    Req = [{<<"Conference-ID">>, ConferenceId}
+              | wh_api:default_headers(AppName, AppVersion)
              ],
-    wapi_conference:publish_search_req(Search),
-    SearchId.
+    ReqResp = whapps_util:amqp_pool_request(Req
+                                            ,fun wapi_conference:publish_search_req/1
+                                            ,fun wapi_conference:search_resp_v/1
+                                            ,2000
+                                           ),
+    lager:debug("searching for conference ~s", [ConferenceId]),
+    case ReqResp of
+        {'ok', _}=Ok ->
+            lager:info("recieved conference search response for ~s", [ConferenceId]),
+            Ok;
+        {'error', 'timeout'} ->
+            lager:warning("timeout while searching for conference ~s", [ConferenceId]),
+            timer:sleep(500),
+            search(Conference);
+        {'error', _R}=E ->
+            lager:info("recieved error while searching for ~s: ~-800p", [ConferenceId, _R]),
+            E
+    end.
 
 -spec deaf_participant(non_neg_integer(), whapps_conference:conference()) -> 'ok'.
 deaf_participant(ParticipantId, Conference) ->
