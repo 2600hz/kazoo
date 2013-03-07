@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2013, VoIP INC
 %%% @doc
 %%% Receive call events from freeSWITCH, publish to the call's event
 %%% queue

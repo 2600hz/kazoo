@@ -43,7 +43,7 @@
 -compile([{'no_auto_import', [node/1]}]).
 
 -spec start_link() -> startlink_ret().
-start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 -spec show_all() -> wh_json:objects().
 show_all() ->
@@ -276,10 +276,11 @@ event(Node, 'undefined', Props) ->
         <<"conference-create">> -> new(Node, Props);
         <<"play-file">> = A -> relay_event(fix_props(Props, A));
         <<"play-file-done">> = A -> relay_event(fix_props(Props, A));
+        <<"start-recording">> = A -> relay_event(fix_props(Props, A));
+        <<"stop-recording">> = A -> relay_event(fix_props(Props, A));
         <<"floor-change">> -> update_conference(Node, Props);
         <<"conference-destroy">> -> destroy(Node, Props);
-        <<"start-recording">> -> relay_event(Props);
-        <<"stop-recording">> -> relay_event(Props);
+
         _Action -> lager:debug("unknown action with no uuid: ~s", [_Action])
     end;
 event(Node, [UUID], Props) -> event(Node, UUID, Props);
@@ -298,6 +299,8 @@ event(Node, UUID, Props) ->
         <<"play-file-done">> = A -> relay_event(UUID, Node, fix_props(Props, A));
         <<"play-file-member">> = A -> relay_event(UUID, Node, fix_props(Props, A));
         <<"play-file-member-done">> = A -> relay_event(UUID, Node, fix_props(Props, A));
+        <<"start-recording">> = A -> relay_event(UUID, Node, fix_props(Props, A));
+        <<"stop-recording">> = A -> relay_event(UUID, Node, fix_props(Props, A));
         _Action -> lager:debug("unhandled conference action for ~s: ~s", [UUID, _Action])
     end.
 
@@ -315,6 +318,22 @@ fix_props(Props, A) when A =:= <<"play-file-done">>; A =:= <<"play-file-member-d
      ,{<<"Application">>, A}
      ,{<<"whistle_application_name">>, A}
      ,{<<"Application-Data">>, props:get_value(<<"File">>, Props)}
+     | props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)
+    ];
+fix_props(Props, A) when A =:= <<"start-recording">> ->
+    [{<<"Event-Name">>, <<"CHANNEL_EXECUTE">>}
+     ,{<<"whistle_event_name">>, <<"CHANNEL_EXECUTE">>}
+     ,{<<"Application">>, A}
+     ,{<<"whistle_application_name">>, A}
+     ,{<<"Application-Data">>, props:get_value(<<"Path">>, Props)}
+     | props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)
+    ];
+fix_props(Props, A) when A =:= <<"stop-recording">> ->
+    [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+     ,{<<"whistle_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+     ,{<<"Application">>, A}
+     ,{<<"whistle_application_name">>, A}
+     ,{<<"Application-Data">>, props:get_value(<<"Path">>, Props)}
      | props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)
     ];
 fix_props(Props, _A) ->

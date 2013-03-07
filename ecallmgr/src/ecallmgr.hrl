@@ -214,6 +214,8 @@
                                ,{<<"speak">>, <<"tts">>}
                                ,{<<"hangup">>, <<"hangup">>}
                                ,{<<"record">>, <<"record">>}
+                               ,{<<"start-recording">>, <<"record">>}
+                               ,{<<"stop-recording">>, <<"record">>}
                                ,{<<"playback">>, <<"tones">>}
                                ,{<<"park">>, <<"park">>}
                                ,{<<"set">>, <<"set">>}
