@@ -8,7 +8,10 @@
 %%%-------------------------------------------------------------------
 -module(whistle_couch_maintenance).
 
--export([start_auto_compaction/0
+-include("wh_couch.hrl").
+
+-export([flush/0
+         ,start_auto_compaction/0
          ,stop_auto_compaction/0
          ,compaction_status/0
          ,cancel_compaction_job/0
@@ -20,8 +23,11 @@
          ,compact_db/2
 
          ,test_connection/0
-         ,test_admin_connection/0         
+         ,test_admin_connection/0
         ]).
+
+flush() ->
+    wh_cache:flush_local(?WH_COUCH_CACHE).
 
 start_auto_compaction() ->
     couch_compactor_fsm:start_auto_compaction().
