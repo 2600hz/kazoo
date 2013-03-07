@@ -16,6 +16,12 @@
 
 -include("src/crossbar.hrl").
 
+%% 1 month
+-define(FETCH_DEFAULT, 60*60*24*30).
+%% 1 year
+-define(FETCH_MAX, 60*60*24*30*12).
+
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -77,25 +83,19 @@ validate(#cb_context{req_verb = <<"get">>,  query_json=Query}=Context) ->
     Reason = wh_json:get_value(<<"reason">>, Query, undefined),
     case Reason of
         <<"no_call">> ->
-            Reasons = wh_transaction:get_reasons(false),
-            fetch_by_date_and_reason(From, Reasons, Context);
+            Reasons = wht_util:reasons(2000),
+            fetch(From, Context, Reasons);
         _ ->
-            fetch_by_date(From, Context)    
+            fetch(From, Context)    
     end.
 
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"current_balance">>) ->
-    Balance = wh_transactions:get_current_balance(AccountId),
+    Balance = wht_util:units_to_dollars(wht_util:current_balance(AccountId)),
     JObj = wh_json:from_list([{<<"balance">>, Balance}]),
     Context#cb_context{resp_status=success, resp_data=JObj};
-validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, TransactionId) ->
-    try wh_transaction:fetch(AccountId, TransactionId) of
-        Transaction ->
-            JObj = clean_json_obj(wh_transaction:to_json(Transaction)),
-            Context#cb_context{resp_status=success, resp_data=JObj}
-    catch
-        _:_ ->
-            cb_context:add_system_error(bad_identifier, [{details, <<"Unknow transaction ID">>}], Context)
-    end.
+validate(Context, _) ->
+    cb_context:add_system_error(bad_identifier,  Context).
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -103,16 +103,15 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, Transa
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_by_date/2 :: (integer(), #cb_context{}) -> #cb_context{}.
-fetch_by_date(From, Context) ->
+-spec fetch/2 :: (integer(), #cb_context{}) -> #cb_context{}.
+-spec fetch/3 :: (integer(), #cb_context{}, ne_binary()) -> #cb_context{}.
+fetch(From, Context) ->
     case validate_date(From) of
         {true, Date} ->
-            Resp = fetch_since(Date, Context),
-            send_resp(Resp, Context);
+            filter(Date, Context);
         {false, undefined} ->
-            Month = (wh_util:current_tstamp() - 60*60*24*30),
-            Resp = fetch_since(Month, Context),
-            send_resp(Resp, Context);
+            Month = (wh_util:current_tstamp() - ?FETCH_DEFAULT),
+            filter(Month, Context);
         {false, R} ->
             cb_context:add_validation_error(<<"created_from">>
                                                 ,<<"date_range">>
@@ -120,21 +119,13 @@ fetch_by_date(From, Context) ->
                                             ,Context
                                            )
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_by_date_and_reason/3 :: (integer(), ne_binary(), #cb_context{}) -> #cb_context{}.
-fetch_by_date_and_reason(From, Reason, Context) ->
+fetch(From, Context, Reason) ->
     case validate_date(From) of
         {true, Date} ->
-            filter_by_date_reason(Date, Reason, Context);
+            filter(Date, Context, Reason);
         {false, undefined} ->
-            Month = (wh_util:current_tstamp() - 60*60*24*30),
-            filter_by_date_reason(Month, Reason, Context);
+            Month = (wh_util:current_tstamp() - ?FETCH_DEFAULT),
+            filter(Month, Context, Reason);
         {false, R} ->
             cb_context:add_validation_error(<<"created_from">>
                                                 ,<<"date_range">>
@@ -149,34 +140,28 @@ fetch_by_date_and_reason(From, Reason, Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_since/2 :: (integer(), cb_context:context()) -> cb_context:context().
-fetch_since(Date, #cb_context{account_id=AccountId}=Context) ->
+-spec filter/2 :: (integer(), cb_context:context()) -> cb_context:context().
+-spec filter/3 :: (integer(), #cb_context{}, ne_binary())  -> #cb_context{}.
+filter(Date, #cb_context{account_id=AccountId}=Context) ->
     try wh_transactions:fetch_since(AccountId, Date) of
         Transactions ->
-            {ok, Transactions}
+            send_resp({ok, Transactions}, Context)
     catch
         _:_ ->
-            {error, Context}
+            send_resp({error, Context}, Context)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec filter_by_date_reason/3 :: (integer(), ne_binary(), #cb_context{}) -> #cb_context{}.
-filter_by_date_reason(Date, Reason, Context) ->
-    case fetch_since(Date, Context) of
-        {ok, Transactions}  ->
+filter(Date, #cb_context{account_id=AccountId}=Context, Reason) ->
+    try wh_transactions:fetch_since(AccountId, Date) of
+        Transactions ->
             Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
-            send_resp({ok, Filtered}, Context);
-        Error ->
-            send_resp(Error, Context)
+            send_resp({ok, Filtered}, Context)
+    catch
+        _:_ ->
+            send_resp({error, Context}, Context)
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @private 
 %% @doc
 %% 
 %% @end
@@ -184,10 +169,10 @@ filter_by_date_reason(Date, Reason, Context) ->
 send_resp(Resp, Context) ->
     case Resp of 
         {ok, Transactions} ->
-            JObj = transactions_to_jobj(Transactions),
+            JObj = wh_transactions:to_public_json(Transactions),
             Context#cb_context{resp_status=success, resp_data=JObj};
         {error, C} ->
-            cb_context:add_system_error(bad_identifier, [{details,<<"Unknow transaction ID">>}], C)
+            cb_context:add_system_error(bad_identifier, [{details,<<"something went wrong while fetching the transaction">>}], C)
     end.
 
 
@@ -202,7 +187,7 @@ validate_date(undefined) ->
     {false, undefined};
 validate_date(Date) when is_integer(Date) ->
     Now = wh_util:current_tstamp(),
-    Max = 60*60*24*30*12,
+    Max = ?FETCH_MAX,
     Diff = Now - Date,
     case {Diff < 0, Diff > Max} of
         {true, _} ->
@@ -220,50 +205,3 @@ validate_date(Date) ->
         _:_ ->            
             {false, <<"created_from filter is not a timestamp">>}
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec transactions_to_jobj/1 :: (wh_transaction:wh_transactions()) -> [wh_json:object(), ...].
-transactions_to_jobj(Transactions) ->
-    JObj = [wh_transaction:to_json(Tr) ||  Tr <- Transactions],
-    [clean_json_obj(Obj) ||  Obj <- JObj].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec clean_json_obj/1 :: (wh_json:object()) -> wh_json:object().
-clean_json_obj(JObj) ->
-    CleanKeys = [{<<"_id">>, <<"id">>}
-                 ,{<<"pvt_amount">>, <<"amount">>}
-                 ,{<<"pvt_reason">>, <<"reason">>}
-                 ,{<<"pvt_type">>, <<"type">>}
-                 ,{<<"pvt_created">>, <<"created">>}
-                 ,{<<"pvt_vsn">>, <<"version">>}
-                ],
-    RemoveKeys = [<<"pvt_account_db">>
-                  ,<<"pvt_account_id">>
-                  ,<<"pvt_modified">>
-                 ],
-    CleanJObj = clean(CleanKeys, JObj),
-    wh_json:delete_keys(RemoveKeys, CleanJObj).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec clean/2 :: ([{ne_binary(), ne_binary()}, ...] ,wh_json:object()) -> wh_json:object().
-clean([], JObj) ->
-    JObj;
-clean([{OldKey, NewKey} | T], JObj) ->
-    Value = wh_json:get_value(OldKey, JObj),
-    J1 = wh_json:set_value(NewKey, Value, JObj),
-    clean(T, wh_json:delete_key(OldKey, J1)).

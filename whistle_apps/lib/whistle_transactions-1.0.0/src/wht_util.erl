@@ -8,6 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(wht_util).
 
+-export([reasons/0
+         ,reasons/1
+         ,reasons/2]).
 -export([dollars_to_units/1]).
 -export([units_to_dollars/1]).
 -export([base_call_cost/3]).
@@ -37,6 +40,19 @@
                  ]).
 
 -include_lib("whistle/include/wh_types.hrl").
+
+reasons() ->
+    ?REASONS.
+reasons(Min) ->
+    reasons(Min, 10000).
+reasons(Min, Max) ->
+    reasons(Min, Max, ?REASONS, []).
+reasons(_, _, [], Acc) ->
+    Acc;
+reasons(Min, Max, [{R, C} | T], Acc) when C > Min andalso C < Max ->
+    reasons(Min, Max, T, [R | Acc]);
+reasons(Min, Max, [_ | T], Acc) ->
+    reasons(Min, Max, T, Acc).
 
 %%--------------------------------------------------------------------
 %% @public

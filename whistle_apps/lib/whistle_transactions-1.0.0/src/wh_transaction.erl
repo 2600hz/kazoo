@@ -39,6 +39,7 @@
 -export([set_sub_account_id/2]).
 -export([is_reason/2]).
 -export([to_json/1]).
+-export([to_public_json/1]).
 -export([from_json/1]).
 -export([remove/1]).
 -export([save/1]).
@@ -354,6 +355,52 @@ to_json(#wh_transaction{}=T) ->
              ,{<<"pvt_vsn">>, T#wh_transaction.pvt_vsn}
             ],
     wh_json:from_list(props:filter_undefined(Props)).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Transform Json Object to transaction record
+%% @end
+%%--------------------------------------------------------------------
+-spec to_public_json/1 :: (transaction()) -> wh_json:object().
+to_public_json(Transaction) ->
+    JObj = to_json(Transaction),
+    clean_jobj(JObj).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_jobj/1 :: (wh_json:object()) -> wh_json:object().
+-spec clean_jobj/2 :: ([{ne_binary(), ne_binary()}, ...] ,wh_json:object()) -> wh_json:object().
+clean_jobj(JObj) ->
+    CleanKeys = [{<<"_id">>, <<"id">>}
+                 ,{<<"pvt_amount">>, <<"amount">>}
+                 ,{<<"pvt_reason">>, <<"reason">>}
+                 ,{<<"pvt_type">>, <<"type">>}
+                 ,{<<"pvt_created">>, <<"created">>}
+                 ,{<<"pvt_vsn">>, <<"version">>}
+                 ,{<<"pvt_code">>, <<"code">>}
+                ],
+    RemoveKeys = [<<"pvt_account_db">>
+                      ,<<"pvt_account_id">>
+                      ,<<"pvt_modified">>
+                      ,<<"_rev">>
+                 ],
+    CleanJObj = clean_jobj(CleanKeys, JObj),
+    wh_json:delete_keys(RemoveKeys, CleanJObj).
+clean_jobj([], JObj) ->
+    JObj;
+clean_jobj([{OldKey, NewKey} | T], JObj) ->
+    Value = wh_json:get_value(OldKey, JObj),
+    J1 = wh_json:set_value(NewKey, Value, JObj),
+    clean_jobj(T, wh_json:delete_key(OldKey, J1)).
+
+
 
 %%--------------------------------------------------------------------
 %% @public
