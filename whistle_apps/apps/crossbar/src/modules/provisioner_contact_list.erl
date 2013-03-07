@@ -54,10 +54,29 @@ get_extension_contacts(AccountDb) ->
     case couch_mgr:get_results(AccountDb, <<"contact_list/extensions">>, ViewOptions) of
         {error, _} -> [];
         {ok, JObjs} ->
+            Includes = get_contact_list_includes(AccountDb),
+            io:format("~p~n", [Includes]),
             lists:foldr(fun(JObj, Contacts) ->
-                                Extension = wh_json:get_value(<<"value">>, JObj),
-                                [jobj_to_contact(Extension)|Contacts]
+                                Key = wh_json:get_value(<<"key">>, JObj),
+                                case wh_util:is_empty(Includes)
+                                    orelse lists:member(Key, Includes)
+                                of
+                                    'false' -> Contacts;
+                                    'true' ->
+                                        Extension = wh_json:get_value(<<"value">>, JObj),
+                                        [jobj_to_contact(Extension)|Contacts]
+                                end
                         end, [], JObjs)
+    end.
+
+get_contact_list_includes(AccountDb) ->
+    Default = whapps_config:get(<<"crossbar.contact_list">>, <<"default_includes">>, []),
+    AccountId = wh_util:format_account_id(AccountDb, raw),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', JObj} ->
+            wh_json:get_value([<<"contact_list">>, <<"includes">>], JObj, Default);
+        {'error', _} ->
+            Default
     end.
 
 filter_excluded(Contacts, AccountDb) ->
@@ -145,7 +164,7 @@ maybe_fix_numbers(JObj) ->
 
 split_contact_numbers(Numbers) ->
     split_contact_numbers({[], []}, Numbers).
-    
+
 split_contact_numbers(Results, []) ->
     Results;
 split_contact_numbers({External, Internal}, [Number|Numbers]) ->
