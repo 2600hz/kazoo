@@ -121,7 +121,8 @@ handle_info({fetch, configuration, <<"configuration">>, <<"name">>, Conf, ID, _D
     {noreply, State};
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, _Data}, #state{node=Node}=State) ->
     lager:debug("unhandled fetch from section ~s for ~s:~s", [_Section, _Something, _Key]),
-    _ = freeswitch:fetch_reply(Node, ID, ""),
+    {'ok', Resp} = ecallmgr_fs_xml:not_found(),
+    _ = freeswitch:fetch_reply(Node, ID, iolist_to_binary(Resp)),
     {noreply, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -166,22 +167,22 @@ handle_config_req(Node, ID, <<"acl.conf">>) ->
     catch
         _E:_R ->
             lager:info("acl resp failed to convert to XML (~s): ~p", [_E, _R]),
-            {ok, Resp} = ecallmgr_fs_xml:empty_response(),
-            freeswitch:fetch_reply(Node, ID, Resp)
+            {ok, Resp} = ecallmgr_fs_xml:not_found(),
+            freeswitch:fetch_reply(Node, ID, iolist_to_binary(Resp))
     end;
 handle_config_req(Node, Id, <<"sofia.conf">>) ->
     put(callid, Id),
     case wh_util:is_true(ecallmgr_config:get(<<"sofia_conf">>)) of
-        true -> 
+        true ->
             do_sofia_conf(Node, Id);
         false ->
             lager:info("sofia conf disabled"),
-            {ok, Resp} = ecallmgr_fs_xml:empty_response(),
-            freeswitch:fetch_reply(Node, Id, Resp)
+            {ok, Resp} = ecallmgr_fs_xml:not_found(),
+            freeswitch:fetch_reply(Node, Id, iolist_to_binary(Resp))
     end;
 handle_config_req(Node, ID, _) ->
-    {ok, Resp} = ecallmgr_fs_xml:empty_response(),
-    freeswitch:fetch_reply(Node, ID, Resp).
+    {ok, Resp} = ecallmgr_fs_xml:not_found(),
+    freeswitch:fetch_reply(Node, ID, iolist_to_binary(Resp)).
 
 do_sofia_conf(Node, Id) ->
     Gateways = case wh_util:is_true(ecallmgr_config:get(<<"process_gateways">>, false)) of
@@ -194,17 +195,17 @@ do_sofia_conf(Node, Id) ->
     DefaultProfiles = wh_json:set_value([wh_util:to_binary(?DEFAULT_FS_PROFILE), <<"Gateways">>]
                                         ,Gateways
                                         ,wh_json:from_list(default_sip_profiles())),
-    try ecallmgr_fs_xml:sip_profiles_xml(DefaultProfiles) of 
-        {ok, ConfigXml} ->        
+    try ecallmgr_fs_xml:sip_profiles_xml(DefaultProfiles) of
+        {ok, ConfigXml} ->
             lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
             freeswitch:fetch_reply(Node, Id, erlang:iolist_to_binary(ConfigXml))
     catch
         _E:_R ->
             lager:info("sofia resp failed to convert to XML (~s): ~p", [_E, _R]),
-            {ok, Resp} = ecallmgr_fs_xml:empty_response(),
-            freeswitch:fetch_reply(Node, Id, Resp)
+            {ok, Resp} = ecallmgr_fs_xml:not_found(),
+            freeswitch:fetch_reply(Node, Id, iolist_to_binary(Resp))
     end.
- 
+
 generate_acl_xml(SysconfResp) ->
     false = wh_json:is_empty(SysconfResp),
     {ok, ConfigXml} = ecallmgr_fs_xml:acl_xml(SysconfResp),
@@ -319,7 +320,7 @@ maybe_kill_changed_gateway(GatewayName, Running, New, Node) ->
     case compare_node_gateways(Running, New) of
         false -> kill_gateway(GatewayName, Node);
         true -> ok
-    end.    
+    end.
 
 compare_node_gateways(Running, New) ->
     NewVersion = wh_json:get_value([<<"Variables">>, <<"Gateway-Version">>], New),

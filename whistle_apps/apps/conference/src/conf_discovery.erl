@@ -20,8 +20,6 @@
 %% API
 -export([start_link/0]).
 -export([handle_discovery_req/2]).
--export([handle_search_resp/2]).
--export([handle_search_error/2]).
 
 %% gen_server callbacks
 -export([init/1
@@ -36,12 +34,6 @@
 -define(RESPONDERS, [{{?MODULE, 'handle_discovery_req'}
                       ,[{<<"conference">>, <<"discovery_req">>}]
                      }
-                     ,{{?MODULE, 'handle_search_resp'}
-                       ,[{<<"conference">>, <<"search_resp">>}]
-                      }
-                     ,{{?MODULE, 'handle_search_error'}
-                       ,[{<<"conference">>, <<"error">>}]
-                      }
                     ]).
 -define(BINDINGS, [{'conference', [{'restrict_to', ['discovery']}]}
                    ,{'self', []}
@@ -72,144 +64,18 @@ start_link() ->
                             ], []).
 
 -spec handle_discovery_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_discovery_req(JObj, Props) ->
+handle_discovery_req(JObj, _) ->
     'true' = wapi_conference:discovery_req_v(JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     put('callid', whapps_call:call_id(Call)),
-
-    {'ok', Srv} = conf_participant_sup:start_participant(Call),
-    conf_participant:set_discovery_event(JObj, Srv),
-    lager:debug("started participant process as ~p", [Srv]),
-
-    conf_participant:consume_call_events(Srv),
-    whapps_call_command:answer(Call),
-
-    Updaters = [fun(C1) ->
-                        {'ok', C2} = validate_conference_pin(C1, Call),
-                        C2
-                end
-                ,fun(C) ->
-                         case wh_json:is_true(<<"Moderator">>, JObj, 'undefined') of
-                             'undefined' ->
-                                 case wh_json:get_value([<<"Conference-Doc">>, <<"moderator">>], JObj) of
-                                     'undefined' -> C;
-                                     _M ->
-                                         lager:debug("discovery request conf doc defines participant as moderator, overriding previous value"),
-                                         whapps_conference:set_moderator('true', C)
-                                 end;
-                             'true' ->
-                                 lager:debug("discovery request defines participant as moderator, overriding previous value"),
-                                 whapps_conference:set_moderator('true', C);
-                             'false' ->
-                                 lager:debug("discovery request defines participant as member, overriding previous value"),
-                                 whapps_conference:set_moderator('false', C)
-                         end
-                 end
-                ,fun(C) ->
-                         Q = hd(props:get_value('other_queues', Props)),
-                         whapps_conference:set_controller_queue(Q, C)
-                 end
-                ,fun(C) -> whapps_conference:set_application_version(<<"2.0.0">>, C) end
-                ,fun(C) -> whapps_conference:set_application_name(<<"conferences">>, C) end
-                ,fun(_) ->
-                         case wh_json:get_value(<<"Conference-Doc">>, JObj) of
-                             'undefined' ->
-                                 {'ok', C} = validate_conference_id(wh_json:get_value(<<"Conference-ID">>, JObj), Call),
-                                 C;
-                             Doc ->
-                                 N = wh_json:get_value(<<"name">>, Doc, wh_util:rand_hex_binary(8)),
-                                 lager:debug("conf doc (~s) set instead of conf id", [N]),
-                                 whapps_conference:set_id(N, create_conference(Doc, <<"none">>))
-                         end
-                 end
-               ],
-
-    Conf0 = case wh_json:get_value(<<"Conference-Doc">>, JObj) of
-                'undefined' -> whapps_conference:new();
-                Doc -> whapps_conference:from_conference_doc(Doc)
-            end,
-
-    %% This conference object represents the caller's configured role in this conference
-    %% Contrasted with the #participant{} in conf_participant, which is the "read-only" version
-    %% of what's going on in the actual conference
-    try whapps_conference:update(Updaters, Conf0) of
-        Conference ->
-            lager:info("should play welcome prompt: ~s", [whapps_conference:play_welcome(Conference)]),
-            _ = whapps_conference:play_welcome(Conference) andalso
-                whapps_call_command:b_prompt(<<"conf-welcome">>, Call),
-
-            search_for_conference(Conference, Srv)
-    catch
-        _:_E ->
-            lager:debug("failed to update conference record: ~p", [_E]),
-            wh_util:log_stacktrace(),
-            whapps_call_command:hangup(Call)
-    end.
-
--spec search_for_conference(whapps_conference:conference(), pid()) -> any().
-search_for_conference(Conference, Srv) ->
-    conf_participant:set_conference(Conference, Srv),
-    SearchId = couch_mgr:get_uuid(),
-    CacheProps = [{'expires', 300}],
-    wh_cache:store_local(?CONFERENCE_CACHE, {?MODULE, 'discovery', SearchId}, Srv, CacheProps),
-    lager:debug("publishing conference search request ~s", [SearchId]),
-    _ = whapps_conference_command:search(SearchId, Conference).
-%% whapps_call_command:prompt(<<"conf-joining_conference">>, Call).
-
-    %% TODO: send discovery event on error
-    %%    {ok, DiscoveryReq} = conf_participant:discovery_event(Srv),
-
--spec handle_search_error(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_search_error(JObj, _Props) ->
-    'true' = wapi_conference:conference_error_v(JObj),
-    <<"search_req">> = wh_json:get_value([<<"Request">>, <<"Event-Name">>], JObj),
-    SearchId = wh_json:get_value(<<"Msg-ID">>, JObj),
-    lager:debug("recieved search request error for ~s: ~p", [SearchId, JObj]),
-
-    {'ok', Srv} = wh_cache:fetch_local(?CONFERENCE_CACHE, {?MODULE, 'discovery', SearchId}),
-    lager:debug("found participant process as ~p", [Srv]),
-
-    {ok, Conference} = conf_participant:conference(Srv),
-    {ok, Call} = conf_participant:call(Srv),
-    put(callid, whapps_call:call_id(Call)),
-
-    lager:debug("participant switch nodename '~p'", [whapps_call:switch_nodename(Call)]),
-    [_, SwitchHostname] = binary:split(whapps_call:switch_nodename(Call), <<"@">>),
-    case negotiate_focus(SwitchHostname, Conference, Call) of
-        {'ok', _} ->
-            lager:debug("conference is not currently running but our update was accepted, starting on ~s", [SwitchHostname]),
-            conf_participant:join_local(Srv);
-        {'error', 'conflict'} ->
-            lager:debug("conference is not currently running but our update was in conflict, searching again"),
-            whapps_conference_command:search(SearchId, Conference);
-        {'error', _R} ->
-            lager:debug("conference is not currently running but our update failed: ~p", [_R]),
-            %% TODO: send discovery error
-            %%    {ok, DiscoveryReq} = conf_participant:discovery_event(Srv),
-            'ok'
-    end.
-
--spec handle_search_resp(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_search_resp(JObj, _Props) ->
-    'true' = wapi_conference:search_resp_v(JObj),
-    SearchId = wh_json:get_value(<<"Msg-ID">>, JObj),
-    lager:debug("recieved search response for ~s", [SearchId]),
-
-    {'ok', Srv} = wh_cache:fetch_local(?CONFERENCE_CACHE, {?MODULE, 'discovery', SearchId}),
-    lager:debug("found participant process as ~p", [Srv]),
-
-    {'ok', Call} = conf_participant:call(Srv),
-    put('callid', whapps_call:call_id(Call)),
-
-    lager:debug("participant switch nodename ~p", [whapps_call:switch_nodename(Call)]),
-    [_, SwitchHostname] = binary:split(whapps_call:switch_nodename(Call), <<"@">>),
-    case wh_json:get_value(<<"Switch-Hostname">>, JObj) of
-        SwitchHostname ->
-            lager:debug("running conference is on the same switch, joining on ~s", [SwitchHostname]),
-            conf_participant:join_local(Srv);
+    case conf_participant_sup:start_participant(Call) of
+        {'ok', Srv} ->
+            conf_participant:set_discovery_event(JObj, Srv),
+            conf_participant:consume_call_events(Srv),
+            whapps_call_command:answer(Call),
+            welcome_to_conference(Call, Srv);
         _Else ->
-            lager:debug("running conference is on a different switch, bridging to ~s: ~p", [_Else, JObj]),
-            conf_participant:join_remote(Srv, JObj)
+            discovery_failed(Call, 'undefined')
     end.
 
 %%%===================================================================
@@ -224,13 +90,6 @@ handle_search_resp(JObj, _Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:debug("starting new conference discovery process"),
-    Self = self(),
-    spawn(fun() ->
-                  QueueName = <<>>,
-                  Options = [],
-                  Bindings= [{'self', []}],
-                  gen_listener:add_queue(Self, QueueName, Options, Bindings)
-          end),
     {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
@@ -316,15 +175,152 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec welcome_to_conference(whapps_call:call(), pid()) -> 'ok'.
+welcome_to_conference(Call, Srv) ->
+    whapps_call_command:prompt(<<"conf-welcome">>, Call),
+    maybe_collect_conference_id(Call, Srv).
+
+-spec maybe_collect_conference_id(whapps_call:call(), pid()) -> 'ok'.
+maybe_collect_conference_id(Call, Srv) ->
+    case wh_json:get_value(<<"Conference-Doc">>, Srv) of
+        'undefined' ->
+            collect_conference_id(Call, Srv);
+        Doc ->
+            N = wh_json:get_value(<<"name">>, Doc, wh_util:rand_hex_binary(8)),
+            lager:debug("conf doc (~s) set instead of conf id", [N]),
+            Conference = whapps_conference:set_id(N, create_conference(Doc, <<"none">>)),
+            maybe_collect_conference_pin(Conference, Call, Srv)
+    end.
+
+-spec collect_conference_id(whapps_call:call(), pid()) -> 'ok'.
+collect_conference_id(Call, Srv) ->
+    {'ok', JObj} = conf_participant:discovery_event(Srv),
+    ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
+    case validate_conference_id(ConferenceId, Call) of
+        {'ok', Conference} ->
+            maybe_collect_conference_pin(Conference, Call, Srv);
+        {'error', _} ->
+            discovery_failed(Call, Srv)
+    end.
+
+-spec maybe_collect_conference_pin(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+maybe_collect_conference_pin(Conference, Call, Srv) ->
+    case whapps_conference:moderator(Conference) of
+        'true' ->
+            case whapps_conference:moderator_pins(Conference) of
+                [] ->
+                    lager:debug("moderator entry requires no pin"),
+                    prepare_whapps_conference(Conference, Call, Srv);
+                _Else ->
+                    collect_conference_pin('true', Conference, Call, Srv)
+            end;
+        'false' ->
+            case whapps_conference:member_pins(Conference) of
+                [] ->
+                    lager:debug("member entry requires no pin"),
+                    prepare_whapps_conference(Conference, Call, Srv);
+                _Else ->
+                    collect_conference_pin('false', Conference, Call, Srv)
+            end;
+        _Else ->
+            case wh_util:is_empty(whapps_conference:moderator_pins(Conference))
+                andalso wh_util:is_empty(whapps_conference:member_pins(Conference))
+            of
+                'false' ->
+                    collect_conference_pin('undefined', Conference, Call, Srv);
+                'true' ->
+                    C = whapps_conference:set_moderator('false', Conference),
+                    prepare_whapps_conference(C, Call, Srv)
+            end
+    end.
+
+-spec collect_conference_pin(boolean() | 'undefined', whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+collect_conference_pin(Type, Conference, Call, Srv) ->
+    case validate_conference_pin(Type, Conference, Call, 1) of
+        {'ok', C} ->
+            prepare_whapps_conference(C, Call, Srv);
+        {'error', _} ->
+            discovery_failed(Call, Srv)
+    end.
+
+-spec prepare_whapps_conference(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+prepare_whapps_conference(Conference, Call, Srv) ->
+    Routines = [fun(C) ->
+                        {'ok', JObj} = conf_participant:discovery_event(Srv),
+                        case wh_json:is_true(<<"Moderator">>, JObj, 'false')
+                            orelse wh_json:is_true([<<"Conference-Doc">>, <<"moderator">>], JObj)
+                        of
+                            'undefined' -> C;
+                            'true' ->
+                                lager:debug("discovery request defines participant as moderator, overriding previous value"),
+                                whapps_conference:set_moderator('true', C);
+                            'false' ->
+                                lager:debug("discovery request defines participant as member, overriding previous value"),
+                                whapps_conference:set_moderator('false', C)
+                        end
+                end
+                ,fun(C) -> whapps_conference:set_application_version(<<"2.0.0">>, C) end
+                ,fun(C) -> whapps_conference:set_application_name(<<"conferences">>, C) end
+               ],
+    C = whapps_conference:update(Routines, Conference),
+    search_for_conference(C, Call, Srv).
+
+-spec search_for_conference(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+search_for_conference(Conference, Call, Srv) ->
+    case whapps_conference_command:search(Conference) of
+        {'error', JObj} ->
+            handle_search_error(JObj, Conference, Call, Srv);
+        {'ok', JObj} ->
+            handle_search_resp(JObj, Conference, Call, Srv)
+    end.
+
+-spec handle_search_error(wh_json:object(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+handle_search_error(JObj, Conference, Call, Srv) ->
+    'true' = wapi_conference:conference_error_v(JObj),
+    <<"search_req">> = wh_json:get_value([<<"Request">>, <<"Event-Name">>], JObj),
+    lager:debug("participant switch nodename '~p'", [whapps_call:switch_nodename(Call)]),
+    [_, SwitchHostname] = binary:split(whapps_call:switch_nodename(Call), <<"@">>),
+    case negotiate_focus(SwitchHostname, Conference, Call) of
+        {'ok', _} ->
+            lager:debug("conference is not currently running but our update was accepted, starting on ~s", [SwitchHostname]),
+            conf_participant:set_conference(Conference, Srv),
+            conf_participant:join_local(Srv);
+        {'error', 'conflict'} ->
+            lager:debug("conference is not currently running but our update was in conflict, searching again"),
+            search_for_conference(Conference, Call, Srv);
+        {'error', _R} ->
+            lager:debug("conference is not currently running but our update failed: ~p", [_R]),
+            discovery_failed(Call, Srv)
+    end.
+
+-spec handle_search_resp(wh_json:object(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+handle_search_resp(JObj, Conference, Call, Srv) ->
+    lager:debug("participant switch nodename ~p", [whapps_call:switch_nodename(Call)]),
+    [_, SwitchHostname] = binary:split(whapps_call:switch_nodename(Call), <<"@">>),
+    case wh_json:get_value(<<"Switch-Hostname">>, JObj) of
+        SwitchHostname ->
+            lager:debug("running conference is on the same switch, joining on ~s", [SwitchHostname]),
+            conf_participant:set_conference(Conference, Srv),
+            conf_participant:join_local(Srv);
+        _Else ->
+            lager:debug("running conference is on a different switch, bridging to ~s: ~p", [_Else, JObj]),
+            conf_participant:set_conference(Conference, Srv),
+            conf_participant:join_remote(Srv, JObj)
+    end.
+
+-spec discovery_failed(whapps_call:call(), pid()) -> 'ok'.
+discovery_failed(Call, _) ->
+    whapps_call_command:hangup(Call).
+
 -spec validate_conference_id(api_binary(), whapps_call:call()) ->
-                                    {'ok', whapps_conference:conference()} |
-                                    {'error', term()}.
--spec validate_conference_id(api_binary(), whapps_call:call(), pos_integer()) ->
                                     {'ok', whapps_conference:conference()} |
                                     {'error', term()}.
 validate_conference_id(ConferenceId, Call) ->
     validate_conference_id(ConferenceId, Call, 1).
 
+-spec validate_conference_id(api_binary(), whapps_call:call(), pos_integer()) ->
+                                    {'ok', whapps_conference:conference()} |
+                                    {'error', term()}.
 validate_conference_id('undefined', Call, Loop) when Loop > 3 ->
     lager:debug("caller has failed to provide a valid conference number to many times"),
     _ = whapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),
@@ -344,7 +340,7 @@ validate_conference_id('undefined', Call, Loop) ->
                     {'ok', create_conference(wh_json:get_value(<<"doc">>, JObj), Digits)};
                 _Else ->
                     lager:debug("could not find conference number ~s: ~p", [Digits, _Else]),
-                    _ = whapps_call_command:b_prompt(<<"conf-bad_conf">>, Call),
+                    _ = whapps_call_command:prompt(<<"conf-bad_conf">>, Call),
                     validate_conference_id('undefined', Call, Loop + 1)
             end
     end;
@@ -359,37 +355,9 @@ validate_conference_id(ConferenceId, Call, Loop) ->
             validate_conference_id('undefined', Call, Loop)
     end.
 
--spec validate_conference_pin(whapps_conference:conference(), whapps_call:call()) ->
-                                     {'ok', whapps_conference:conference()} |
-                                     {'error', term()}.
 -spec validate_conference_pin('undefined' | boolean(), whapps_conference:conference(), whapps_call:call(), pos_integer()) ->
                                      {'ok', whapps_conference:conference()} |
                                      {'error', term()}.
-validate_conference_pin(Conference, Call) ->
-    case whapps_conference:moderator(Conference) of
-        'true' ->
-            case whapps_conference:moderator_pins(Conference) of
-                [] ->
-                    lager:debug("moderator entry requires no pin"),
-                    {'ok', Conference};
-                _Else -> validate_conference_pin('true', Conference, Call, 1)
-            end;
-        'false' ->
-            case whapps_conference:member_pins(Conference) of
-                [] ->
-                    lager:debug("member entry requires no pin"),
-                    {'ok', Conference};
-                _Else -> validate_conference_pin('false', Conference, Call, 1)
-            end;
-        _Else ->
-            case wh_util:is_empty(whapps_conference:moderator_pins(Conference))
-                andalso wh_util:is_empty(whapps_conference:member_pins(Conference))
-            of
-                'true' -> {'ok', whapps_conference:set_moderator('false', Conference)};
-                'false' -> validate_conference_pin('undefined', Conference, Call, 1)
-            end
-    end.
-
 validate_conference_pin(_, _, Call, Loop) when Loop > 3->
     lager:debug("caller has failed to provide a valid conference pin to many times"),
     _ = whapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),
@@ -408,7 +376,7 @@ validate_conference_pin('true', Conference, Call, Loop) ->
                     {'ok', Conference};
                 'false' ->
                     lager:debug("caller entered an invalid pin"),
-                    _ = whapps_call_command:b_prompt(<<"conf-bad_pin">>, Call),
+                    _ = whapps_call_command:prompt(<<"conf-bad_pin">>, Call),
                     validate_conference_pin('true', Conference, Call, Loop + 1)
             end
     end;
@@ -426,7 +394,7 @@ validate_conference_pin('false', Conference, Call, Loop) ->
                     {'ok', Conference};
                 'false' ->
                     lager:debug("caller entered an invalid pin"),
-                    _ = whapps_call_command:b_prompt(<<"conf-bad_pin">>, Call),
+                    _ = whapps_call_command:prompt(<<"conf-bad_pin">>, Call),
                     validate_conference_pin('false', Conference, Call, Loop + 1)
             end
     end;
@@ -450,7 +418,7 @@ validate_conference_pin(_, Conference, Call, Loop) ->
                     {'ok', whapps_conference:set_moderator('true', Conference)};
                 _Else ->
                     lager:debug("caller entered an invalid pin"),
-                    _ = whapps_call_command:b_prompt(<<"conf-bad_pin">>, Call),
+                    _ = whapps_call_command:prompt(<<"conf-bad_pin">>, Call),
                     validate_conference_pin('undefined', Conference, Call, Loop + 1)
             end
     end.
@@ -469,12 +437,12 @@ create_conference(JObj, Digits) ->
     ModeratorNumbers = wh_json:get_value([<<"moderator">>, <<"numbers">>], JObj, []),
     MemberNumbers = wh_json:get_value([<<"member">>, <<"numbers">>], JObj, []),
     case {lists:member(Digits, MemberNumbers), lists:member(Digits, ModeratorNumbers)} of
-        {true, false} ->
+        {'true', 'false'} ->
             lager:debug("the digits used to find the conference where unambiguously a member"),
-            whapps_conference:set_moderator(false, Conference);
-        {false, true} ->
+            whapps_conference:set_moderator('false', Conference);
+        {'false', 'true'} ->
             lager:debug("the digits used to find the conference where unambiguously a moderator"),
-            whapps_conference:set_moderator(true, Conference);
+            whapps_conference:set_moderator('true', Conference);
         %% the conference number is ambiguous regarding member: either both have the same number
         %%   or they joined by the discovery event having the conference id
         _Else -> Conference
