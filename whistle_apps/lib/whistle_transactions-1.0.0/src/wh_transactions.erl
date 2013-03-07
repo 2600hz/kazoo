@@ -19,6 +19,8 @@
 -export([fetch_last/2]).
 -export([save/1]).
 -export([remove/1]).
+-export([to_json/1]).
+-export([to_public_json/1]).
 
 -type wh_transactions() :: [wh_transaction:transaction(), ...].
 -export_type([wh_transactions/0]).
@@ -205,6 +207,27 @@ remove([Transaction | Transactions], Acc) ->
             remove(Transactions, [{'error', Transaction} | Acc])
     end.
 
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec to_json/1 :: (wh_transactions()) -> [wh_json:object(), ...].
+to_json(Transactions) ->
+    [wh_transaction:to_json(Tr) ||  Tr <- Transactions].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec to_public_json/1 :: (wh_transactions()) -> [wh_json:object(), ...].
+to_public_json(Transactions) ->
+    [wh_transaction:to_public_json(Tr) ||  Tr <- Transactions].
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -213,5 +236,4 @@ remove([Transaction | Transactions], Acc) ->
 %%--------------------------------------------------------------------
 -spec viewres_to_recordlist/1 :: (list()) -> wh_transaction:wh_transactions().
 viewres_to_recordlist(ViewRes) ->
-    L = [wh_json:get_value(<<"doc">>, Tr) || Tr <- ViewRes],
-    [wh_transaction:from_json(Tr) || Tr <- L].
+    [wh_transaction:from_json(wh_json:get_value(<<"doc">>, Tr)) || Tr <- ViewRes].
