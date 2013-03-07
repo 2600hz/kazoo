@@ -141,15 +141,11 @@ validate_request(CallflowId, Context) ->
 
 prepare_numbers(CallflowId, #cb_context{req_data=JObj}=Context) ->
     try [wnm_util:to_e164(Number) || Number <- wh_json:get_ne_value(<<"numbers">>, JObj, [])] of
-        [_|_]=Numbers -> 
+        [_|_]=Numbers ->
             C = Context#cb_context{req_data=wh_json:set_value(<<"numbers">>, Numbers, JObj)},
             validate_unique_numbers(CallflowId, Numbers, C);
-        _Else ->
-            C = cb_context:add_validation_error(<<"numbers">>
-                                                    ,<<"required">>
-                                                    ,<<"Callflows must be assigned at least one number">>
-                                                    ,Context),
-            validate_unique_numbers(CallflowId, [], C)
+        [] ->
+            prepare_patterns(CallflowId, Context)
     catch
         _:_ ->
             C = cb_context:add_validation_error(<<"numbers">>
@@ -157,6 +153,18 @@ prepare_numbers(CallflowId, #cb_context{req_data=JObj}=Context) ->
                                                     ,<<"Value is not of type array">>
                                                     ,Context),
             validate_unique_numbers(CallflowId, [], C#cb_context{req_data=wh_json:set_value(<<"numbers">>, [], JObj)})
+    end.
+
+prepare_patterns(CallflowId, #cb_context{req_data=JObj}=Context) ->
+    case wh_json:get_value(<<"patterns">>, JObj, []) of
+        [] ->
+            C = cb_context:add_validation_error(<<"numbers">>
+                                                    ,<<"required">>
+                                                    ,<<"Callflows must be assigned at least one number">>
+                                                    ,Context),
+            check_callflow_schema(CallflowId, C);
+        _Else ->
+            check_callflow_schema(CallflowId, Context)
     end.
 
 validate_unique_numbers(CallflowId, _, #cb_context{db_name=undefined}=Context) ->
@@ -181,7 +189,7 @@ check_callflow_schema(CallflowId, Context) ->
 on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
     Props = [{<<"pvt_type">>, <<"callflow">>}],
     Context#cb_context{doc=wh_json:set_values(Props, Doc)};
-on_successful_validation(CallflowId, #cb_context{}=Context) -> 
+on_successful_validation(CallflowId, #cb_context{}=Context) ->
     crossbar_doc:load_merge(CallflowId, Context).
 
 %%--------------------------------------------------------------------
@@ -205,7 +213,7 @@ maybe_reconcile_numbers(#cb_context{resp_status=success, doc=JObj
     case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, true) of
         false -> Context;
         true ->
-            CurrentJObj = cb_context:fetch(db_doc, Context, wh_json:new()), 
+            CurrentJObj = cb_context:fetch(db_doc, Context, wh_json:new()),
             Set1 = sets:from_list(wh_json:get_value(<<"numbers">>, CurrentJObj, [])),
             Set2 = sets:from_list(wh_json:get_value(<<"numbers">>, JObj, [])),
             NewNumbers = sets:subtract(Set2, Set1),
@@ -258,7 +266,7 @@ check_patterns_uniqueness([Number|Numbers], JObjs, Context) ->
 filter_callflow_list(undefined, JObjs) ->
     JObjs;
 filter_callflow_list(CallflowId, JObjs) ->
-    [JObj 
+    [JObj
      || JObj <- JObjs
             ,wh_json:get_value(<<"id">>, JObj) =/= CallflowId
     ].
@@ -281,7 +289,7 @@ add_number_conflict(Number, JObj, Context) ->
                                                 ,<<"Number ", Number/binary, " conflicts with featurecode callflow ", Id/binary>>
                                                 ,Context)
     end.
- 
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
