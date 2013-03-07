@@ -121,13 +121,10 @@ send_cmd(Node, UUID, "set", "ecallmgr_Account-ID=" ++ _ = Args) ->
 send_cmd(Node, UUID, "set", "ecallmgr_Precedence=" ++ _ = Args) ->
     _ = maybe_update_channel_cache(Args, UUID),
     send_cmd(Node, UUID, "export", Args);
-
 send_cmd(Node, UUID, "conference", Args) ->
     Args1 = iolist_to_binary([UUID, " conference:", Args, ",park inline"]),
     lager:debug("starting conference on ~s: ~s", [Node, Args1]),
-
     freeswitch:api(Node, uuid_transfer, wh_util:to_list(Args1));
-
 send_cmd(Node, UUID, AppName, Args) ->
     _ = maybe_update_channel_cache(Args, UUID),
     Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}

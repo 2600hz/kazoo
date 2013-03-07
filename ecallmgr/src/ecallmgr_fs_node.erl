@@ -20,6 +20,7 @@
 -export([show_channels/1]).
 -export([fs_node/1]).
 -export([hostname/1]).
+-export([process_event/3]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -164,19 +165,11 @@ init([Node, Options]) ->
             lager:critical("unable to establish node bindings: ~p", [Reason]),
             {stop, Reason};
         ok ->
-            lager:debug("event handler registered on node ~s", [Node]),            
-            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
-                                         ,'SESSION_HEARTBEAT', 'CUSTOM'
-                                         ,'sofia::register', 'sofia::transfer'
-                                         ,?CHANNEL_MOVE_RELEASED_EVENT, ?CHANNEL_MOVE_COMPLETE_EVENT
-                                         ,'whistle::broadcast', 'conference::maintenance'
-                                         ,'loopback::bowout'
-                                        ]),
-            lager:debug("bound to switch events on node ~s", [Node]),
             gproc:reg({p, l, fs_node}),
-            run_start_cmds(Node),
+            lager:debug("bound to switch events on node ~s", [Node]),
             sync_channels(self()),
             sync_conferences(self()),
+            run_start_cmds(Node),
             {'ok', #state{node=Node, options=Options}}
     end.
 
@@ -189,6 +182,7 @@ bind_to_events(_, Node) ->
     case freeswitch:register_event_handler(Node) of
         timeout -> {error, timeout};
         ok ->
+            lager:debug("event handler registered on node ~s", [Node]),
             case freeswitch:event(Node, ?FS_EVENTS) of
                 timeout -> {error, timeout};
                 Else -> Else
@@ -231,13 +225,11 @@ handle_cast({sync_channels}, #state{node=Node}=State) ->
     Msg = {sync_channels, Node, [Call || Call <- Calls, Call =/= undefined]},
     gen_server:cast(ecallmgr_fs_nodes, Msg),
     {noreply, State};
-
 handle_cast({sync_conferences}, #state{node=Node}=State) ->
     Conferences = show_conferences(Node),
     Msg = {sync_conferences, Node, Conferences},
     gen_server:cast(ecallmgr_fs_nodes, Msg),
     {noreply, State};
-
 handle_cast(_Req, State) ->
     {noreply, State}.
 
@@ -252,17 +244,14 @@ handle_cast(_Req, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({event, [UUID | Data]}, #state{node=Node}=State) ->
-    _ = process_event(UUID, Data, Node),
+    _ = spawn(?MODULE, process_event, [UUID, Data, Node]),
     {noreply, State};
-
 handle_info({bgok, _Job, _Result}, State) ->
     lager:debug("job ~s finished successfully: ~p", [_Job, _Result]),
     {noreply, State};
-
 handle_info({bgerror, _Job, _Result}, State) ->
     lager:debug("job ~s finished with an error: ~p", [_Job, _Result]),
     {noreply, State};
-
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {noreply, State}.
@@ -307,27 +296,54 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec process_event(api_binary(), wh_proplist(), atom()) -> 'ok'.
--spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
-
 process_event(UUID, Props, Node) ->
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
     process_event(EventName, UUID, Props, Node).
 
+-spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 process_event(<<"CHANNEL_CREATE">> = EventName, UUID, Props, Node) ->
+    _ = ecallmgr_fs_channel:new(Props, Node),
     _ = maybe_start_event_listener(Node, UUID),
     maybe_send_event(EventName, UUID, Props, Node);
-process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN = EventName, _, Props, Node) ->
+process_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
+    _ = ecallmgr_fs_channel:destroy(Props, Node),
+    _ = ecallmgr_fs_conference:participant_destroy(Node, UUID),
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"CHANNEL_ANSWER">> = EventName, UUID, Props, Node) ->
+    _ = ecallmgr_fs_channel:set_answered(UUID, 'true'),
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"CHANNEL_BRIDGE">> = EventName, UUID, Props, Node) ->
+    OtherLeg = get_other_leg(UUID, Props),
+    _ = ecallmgr_fs_channel:set_bridge(UUID, OtherLeg),
+    _ = ecallmgr_fs_channel:set_bridge(OtherLeg, UUID),
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"CHANNEL_UNBRIDGE">> = EventName, UUID, Props, Node) ->
+    OtherLeg = get_other_leg(UUID, Props),
+    _ = ecallmgr_fs_channel:set_bridge(UUID, 'undefined'),
+    _ = ecallmgr_fs_channel:set_bridge(OtherLeg, 'undefined'),
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"CHANNEL_EXECUTE_COMPLETE">> = EventName, UUID, Props, Node) ->
+    Data = props:get_value(<<"Application-Data">>, Props),
+    _ = case props:get_value(<<"Application">>, Props) of
+            <<"set">> -> process_channel_update(UUID, Data);
+            <<"export">> -> process_channel_update(UUID, Data);
+            <<"multiset">> -> process_channel_multiset(UUID, Data);
+            _Else -> 'ok'
+        end,
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"conference::maintenance">> = EventName, UUID, Props, Node) ->
+    _ = ecallmgr_fs_conference:event(Node, UUID, Props),
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
     gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
                ,?CHANNEL_MOVE_RELEASED_MSG(Node, UUID, Props)
-              ),
-    maybe_send_event(EventName, UUID, Props, Node);
-process_event(?CHANNEL_MOVE_COMPLETE_EVENT_BIN = EventName, _, Props, Node) ->
+              );
+process_event(?CHANNEL_MOVE_COMPLETE_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
     gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
                ,?CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Props)
-              ),
-    maybe_send_event(EventName, UUID, Props, Node);
+              );
 process_event(EventName, UUID, Props, Node) ->
     maybe_send_event(EventName, UUID, Props, Node).
 
@@ -378,12 +394,12 @@ process_cmds(Node, Cmds) ->
     end.
 
 -spec process_cmd(atom(), wh_json:object(), cmd_results()) -> cmd_results().
--spec process_cmd(atom(), ne_binary(), ne_binary(), cmd_results()) -> cmd_results().
 process_cmd(Node, JObj, Acc0) ->
     lists:foldl(fun({ApiCmd, ApiArg}, Acc) ->
                         process_cmd(Node, ApiCmd, ApiArg, Acc)
                 end, Acc0, wh_json:to_proplist(JObj)).
 
+-spec process_cmd(atom(), ne_binary(), ne_binary(), cmd_results()) -> cmd_results().
 process_cmd(Node, ApiCmd0, ApiArg, Acc) ->
     process_cmd(Node, ApiCmd0, ApiArg, Acc, 'binary').
 process_cmd(Node, ApiCmd0, ApiArg, Acc, ArgFormat) ->
@@ -448,7 +464,7 @@ print_api_response({'timeout', {Cmd, Arg}}) ->
 
 -spec show_channels_as_json(atom()) -> wh_json:objects().
 show_channels_as_json(Node) ->
-    case freeswitch:api(Node, show, "channels as delim |||") of
+    case freeswitch:api(Node, 'show', "channels as delim |||") of
         {'ok', Lines} ->
             case binary:split(Lines, <<"\n">>, ['global']) of
                 [<<>>|_] -> [];
@@ -482,3 +498,47 @@ maybe_start_event_listener(Node, UUID) ->
         {'ok', 'true'} -> ecallmgr_call_sup:start_event_process(Node, UUID);
         _E -> 'ok'
     end.
+
+-spec process_channel_multiset(ne_binary(), ne_binary()) -> any().
+process_channel_multiset(UUID, Datas) ->
+    [process_channel_update(UUID, Data)
+     || Data <- binary:split(Datas, <<"|">>, ['global'])
+    ].
+
+-spec process_channel_update(ne_binary(), ne_binary()) -> any().
+process_channel_update(UUID, Data) ->
+    case binary:split(Data, <<"=">>) of
+        [Var, Value] -> process_channel_update(UUID, Var, Value);
+        _Else -> 'ok'
+    end.
+
+-spec process_channel_update(ne_binary(), ne_binary(), ne_binary()) -> any().
+process_channel_update(UUID, <<"ecallmgr_", Var/binary>>, Value) ->
+    Normalized = wh_util:to_lower_binary(binary:replace(Var, <<"-">>, <<"_">> , ['global'])),
+    process_channel_update(UUID, Normalized, Value);
+process_channel_update(UUID, <<"hold_music">>, _) ->
+    ecallmgr_fs_channel:set_import_moh(UUID, 'false');
+process_channel_update(UUID, Var, Value) ->
+    try wh_util:to_atom(<<"set_", Var/binary>>) of
+        Function ->
+            Exports = ecallmgr_fs_channel:module_info('exports'),
+            case lists:keysearch(Function, 1, Exports) of
+                {'value', {_, 2}} -> ecallmgr_fs_channel:Function(UUID, Value);
+                _Else -> 'ok'
+            end
+    catch
+        _:_ -> 'ok'
+    end.
+
+get_other_leg(UUID, Props) ->
+    get_other_leg(UUID, Props, props:get_value(<<"Other-Leg-Unique-ID">>, Props)).
+
+get_other_leg(UUID, Props, 'undefined') ->
+    maybe_other_bridge_leg(UUID
+                           ,props:get_value(<<"Bridge-A-Unique-ID">>, Props)
+                           ,props:get_value(<<"Bridge-B-Unique-ID">>, Props)
+                          );
+get_other_leg(_UUID, _Props, OtherLeg) -> OtherLeg.
+
+maybe_other_bridge_leg(UUID, UUID, OtherLeg) -> OtherLeg;
+maybe_other_bridge_leg(UUID, OtherLeg, UUID) -> OtherLeg.

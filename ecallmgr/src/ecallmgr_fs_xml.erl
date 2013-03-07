@@ -11,9 +11,8 @@
 
 -export([get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
          ,route_resp_xml/1 ,authn_resp_xml/1, reverse_authn_resp_xml/1
-         ,acl_xml/1, route_not_found/0, empty_response/0
+         ,acl_xml/1, not_found/0, empty_response/0
          ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
-
          ,escape/2
         ]).
 
@@ -209,8 +208,8 @@ route_resp_xml(<<"error">>, _Routes, JObj) ->
     SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
     {ok, xmerl:export([SectionEl], fs_xml)}.
 
--spec route_not_found() -> {'ok', iolist()}.
-route_not_found() ->
+-spec not_found() -> {'ok', iolist()}.
+not_found() ->
     ResultEl = result_el(<<"not found">>),
     SectionEl = section_el(<<"result">>, <<"Route Not Found">>, ResultEl),
     {ok, xmerl:export([SectionEl], fs_xml)}.

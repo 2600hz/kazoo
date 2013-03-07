@@ -33,6 +33,7 @@
 -export([unmute_participant/1, unmute_participant_v/1]).
 -export([participant_volume_in/1, participant_volume_in_v/1]).
 -export([participant_volume_out/1, participant_volume_out_v/1]).
+-export([participants_event/1, participants_event_v/1]).
 -export([conference_error/1, conference_error_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
@@ -60,6 +61,7 @@
 -export([publish_participant_volume_in/2, publish_participant_volume_in/3]).
 -export([publish_participant_volume_out/2, publish_participant_volume_out/3]).
 -export([publish_error/2, publish_error/3]).
+-export([publish_participants_event/2, publish_participants_event/3]).
 -export([publish_command/2, publish_command/3]).
 
 -include_lib("whistle/include/wh_api.hrl").
@@ -289,7 +291,13 @@
 -define(PARTICIPANT_VOLUME_OUT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                                       ]).
 
-
+%% Conference Participants Event
+-define(PARTICIPANTS_EVENT_HEADERS, [<<"Participants">>, <<"Conference-ID">>]).
+-define(OPTIONAL_PARTICIPANTS_EVENT_HEADERS, []).
+-define(PARTICIPANTS_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                                   ,{<<"Event-Name">>, <<"participants_event">>}
+                                  ]).
+-define(PARTICIPANTS_EVENT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 %% Conference Error
 -define(CONFERENCE_ERROR_HEADERS, [<<"Error-Message">>, <<"Request">>]).
@@ -380,7 +388,7 @@ tones(JObj) ->
 tones_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?TONES_REQ_HEADERS, ?CONF_TONES_REQ_VALUES, ?TONES_REQ_TYPES);
 tones_v(JObj) ->
-    tones_v(wh_json:to_proplist(JObj)).    
+    tones_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -827,6 +835,26 @@ participant_volume_out_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec participants_event/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+participants_event(Prop) when is_list(Prop) ->
+    case participants_event_v(Prop) of
+        true -> wh_api:build_message(Prop, ?PARTICIPANTS_EVENT_HEADERS, ?OPTIONAL_PARTICIPANTS_EVENT_HEADERS);
+        false -> {error, "Proplist failed validation for participants_event response"}
+    end;
+participants_event(JObj) ->
+    participants_event(wh_json:to_proplist(JObj)).
+
+-spec participants_event_v/1 :: (api_terms()) -> boolean().
+participants_event_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PARTICIPANTS_EVENT_HEADERS, ?PARTICIPANTS_EVENT_VALUES, ?PARTICIPANTS_EVENT_TYPES);
+participants_event_v(JObj) ->
+    participants_event_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
 -spec conference_error/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 conference_error(Prop) when is_list(Prop) ->
     case conference_error_v(Prop) of
@@ -1185,6 +1213,19 @@ publish_participant_volume_out(ConferenceId, JObj) ->
 publish_participant_volume_out(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?PARTICIPANT_VOLUME_OUT_VALUES, fun ?MODULE:participant_volume_out/1),
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_participants_event/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_participants_event/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_participants_event(ConferenceId, JObj) ->
+    publish_participants_event(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_participants_event(ConferenceId, Event, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Event, ?PARTICIPANTS_EVENT_VALUES, fun ?MODULE:participants_event/1),
+    amqp_util:conference_publish(Payload, event, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc
