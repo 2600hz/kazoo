@@ -23,7 +23,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_mac_address/1 :: (cb_context:context()) -> 'undefined' | string().
@@ -93,8 +93,8 @@ do_full_provision_contact_list(#cb_context{db_name=AccountDb, account_id=Account
 do_full_provision_contact_list(AccountId, AccountDb) ->
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {ok, JObj} ->
-            Routines = [fun(J) -> wh_json:public_fields(J) end 
-                        ,fun(J) -> 
+            Routines = [fun(J) -> wh_json:public_fields(J) end
+                        ,fun(J) ->
                                  ResellerId = wh_services:find_reseller_id(AccountId),
                                  wh_json:set_value(<<"provider_id">>, ResellerId, J)
                          end
@@ -113,7 +113,7 @@ do_full_provision_contact_list(AccountId, AccountDb) ->
     end.
 
 should_build_contact_list(#cb_context{doc=JObj}=Context) ->
-    OriginalJObj = cb_context:fetch(db_doc, Context), 
+    OriginalJObj = cb_context:fetch(db_doc, Context),
     case wh_json:is_json_object(OriginalJObj) of
         false ->
             wh_json:get_value(<<"pvt_type">>, JObj) =:= <<"callflow">>;
@@ -142,11 +142,12 @@ get_provision_defaults(#cb_context{doc=JObj}=Context) ->
            ,"&product=", mochiweb_util:quote_plus(wh_json:get_string_value([<<"properties">>, <<"product">>], JObj))
           ],
     UrlString = lists:flatten(Url),
-    Headers = [KV || {_, V}=KV <- [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioner_host">>)}
-                                   ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioner_referer">>)}
-                                   ,{"User-Agent", wh_util:to_list(erlang:node())}
-                                  ],
-                     V =/= undefined
+    Headers = [{K, V}
+               || {K, V} <- [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
+                             ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
+                             ,{"User-Agent", wh_util:to_list(erlang:node())}
+                            ]
+                      ,V =/= undefined
               ],
     Body = [],
     HTTPOptions = [],
@@ -197,7 +198,7 @@ do_simple_provision(MACAddress, #cb_context{doc=JObj}=Context) ->
                    ],
             Encoded = mochiweb_util:urlencode(Body),
             lager:debug("posting to ~s with: ~-300p", [Url, Encoded]),
-            Res = ibrowse:send_req(Url, Headers, post, Encoded, HTTPOptions),            
+            Res = ibrowse:send_req(Url, Headers, post, Encoded, HTTPOptions),
             lager:debug("response from server: ~p", [Res]),
             true
     end.
@@ -225,19 +226,26 @@ send_to_full_provisioner(JObj, PartialURL) ->
     case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
         undefined -> false;
         Url ->
-            Headers = [{"Content-Type", "application/json"}],
+            Headers = [{K, V}
+                       || {K, V} <- [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
+                                     ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
+                                     ,{"User-Agent", wh_util:to_list(erlang:node())}
+                                     ,{"Content-Type", "application/json"}
+                                    ]
+                              ,V =/= undefined
+                      ],
             FullUrl = wh_util:to_lower_string(<<Url/binary, "/", PartialURL/binary>>),
             {ok, _, _, RawJObj} = ibrowse:send_req(FullUrl, Headers, get, "", [{inactivity_timeout, 10000}]),
             {Verb, Body} = case wh_json:get_integer_value([<<"error">>, <<"code">>], wh_json:decode(RawJObj)) of
-                               undefined -> 
+                               undefined ->
                                    Props = [{<<"provider_id">>, wh_json:get_value(<<"provider_id">>, JObj)}
                                             ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
                                             ,{<<"settings">>, JObj}
                                            ],
                                    J =  wh_json:from_list(props:filter_undefined(Props)),
                                    {post,  wh_util:to_list(wh_json:encode(J))};
-                               404 -> 
-                                   {put, wh_util:to_list(wh_json:encode(JObj))} 
+                               404 ->
+                                   {put, wh_util:to_list(wh_json:encode(JObj))}
                            end,
             lager:debug("making ~s request to ~s with: ~-300p", [Verb, FullUrl, Body]),  
             Res = ibrowse:send_req(FullUrl, Headers, Verb, Body, [{inactivity_timeout, 10000}]),
@@ -259,11 +267,11 @@ do_awesome_provision(_MACAddress, Context) ->
             send_provisioning_template(JObj, Context),
             true
     end.
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_merged_device(ne_binary(), cb_context:context()) -> {ok, cb_context:context()} | {error, binary()}.
@@ -277,10 +285,10 @@ get_merged_device(MACAddress, Context) ->
 -spec merge_device(ne_binary(), cb_context:context()) -> {ok, wh_json:json_object()} | {error, binary()}.
 merge_device(MACAddress, #cb_context{doc=JObj, account_id=AccountId}) ->
     Routines = [fun(J) -> wh_json:set_value(<<"mac_address">>, MACAddress, J) end
-                ,fun(J) -> 
+                ,fun(J) ->
                         OwnerId = wh_json:get_ne_value(<<"owner_id">>, JObj),
                         Owner = get_owner(OwnerId, AccountId),
-                        wh_json:merge_recursive(J, Owner) 
+                        wh_json:merge_recursive(J, Owner)
                  end
                 ,fun(J) -> wh_json:delete_key(<<"apps">>, J) end
                 ,fun(J) -> wh_json:set_value(<<"account_id">>, AccountId, J) end
@@ -315,7 +323,7 @@ send_provisioning_template(JObj, #cb_context{doc=Device}=Context) ->
     LineGenerators = [fun set_device_line_defaults/1
                       ,fun set_account_line_defaults/1
                      ],
-    TmplGenerators = [fun set_account_id/1 
+    TmplGenerators = [fun set_account_id/1
                       ,fun set_account_overrides/1
                       ,fun set_user_overrides/1
                       ,fun set_device_overrides/1
@@ -333,7 +341,7 @@ send_provisioning_template(JObj, #cb_context{doc=Device}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% If the device specifies a local template id then return that 
+%% If the device specifies a local template id then return that
 %% template
 %% @end
 %%--------------------------------------------------------------------
@@ -351,7 +359,7 @@ get_template(#cb_context{doc=Device, db_name=Db}) ->
         {ok, Attachment} ->
             {ok, wh_json:decode(Attachment)}
     end.
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -365,7 +373,7 @@ set_account_id(#cb_context{auth_account_id=AccountId}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% get the settings from the account doc that should be used in the 
+%% get the settings from the account doc that should be used in the
 %% base properties for the line
 %% @end
 %%--------------------------------------------------------------------
@@ -386,38 +394,38 @@ set_account_line_defaults(#cb_context{account_id=AccountId}) ->
               case wh_json:get_ne_value(<<"name">>, Account) of
                   undefined -> J;
                   Value -> wh_json:set_value([<<"displayname">>, <<"value">>], Value, J)
-              end              
+              end
       end
     ].
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% get the settings from the device doc that should be used in the 
+%% get the settings from the device doc that should be used in the
 %% base properties for the line
 %% @end
 %%--------------------------------------------------------------------
 -spec set_device_line_defaults(cb_context:context()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
 set_device_line_defaults(#cb_context{doc=Device}) ->
-    [fun(J) -> 
+    [fun(J) ->
              case wh_json:get_ne_value([<<"sip">>, <<"username">>], Device) of
                  undefined -> J;
                  Value -> wh_json:set_value([<<"authname">>, <<"value">>], Value, J)
              end
      end
-     ,fun(J) -> 
+     ,fun(J) ->
               case wh_json:get_ne_value([<<"sip">>, <<"username">>], Device) of
                   undefined -> J;
                   Value -> wh_json:set_value([<<"username">>, <<"value">>], Value, J)
               end
       end
-     ,fun(J) -> 
+     ,fun(J) ->
               case wh_json:get_ne_value([<<"sip">>, <<"password">>], Device) of
                   undefined -> J;
                   Value -> wh_json:set_value([<<"secret">>, <<"value">>], Value, J)
               end
       end
-     ,fun(J) -> 
+     ,fun(J) ->
               case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Device) of
                   undefined -> J;
                   Value -> wh_json:set_value([<<"server_host">>, <<"value">>], Value, J)
@@ -427,7 +435,7 @@ set_device_line_defaults(#cb_context{doc=Device}) ->
               case wh_json:get_ne_value(<<"name">>, Device) of
                   undefined -> J;
                   Value -> wh_json:set_value([<<"displayname">>, <<"value">>], Value, J)
-              end              
+              end
       end
     ].
 
@@ -468,7 +476,7 @@ set_account_overrides(#cb_context{account_id=AccountId}) ->
     [fun(J) ->
              case wh_json:get_value([<<"provision">>, <<"overrides">>], Account) of
                  undefined -> J;
-                 Overrides -> 
+                 Overrides ->
                      wh_json:merge_recursive(J, Overrides)
              end
      end
@@ -491,7 +499,7 @@ set_user_overrides(#cb_context{doc=Device, account_id=AccountId}) ->
     [fun(J) ->
              case wh_json:get_value([<<"provision">>, <<"overrides">>], User) of
                  undefined -> J;
-                 Overrides -> 
+                 Overrides ->
                      wh_json:merge_recursive(J, Overrides)
              end
      end
@@ -508,7 +516,7 @@ set_device_overrides(#cb_context{doc=Device}) ->
     [fun(J) ->
              case wh_json:get_value([<<"provision">>, <<"overrides">>], Device) of
                  undefined -> J;
-                 Overrides -> 
+                 Overrides ->
                      wh_json:merge_recursive(J, Overrides)
              end
      end
