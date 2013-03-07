@@ -175,7 +175,8 @@ get_user(AccountDb, Endpoint) ->
     case wh_json:get_keys([<<"hotdesk">>, <<"users">>], Endpoint) of
         [] -> get_user(AccountDb, wh_json:get_value(<<"owner_id">>, Endpoint));
         [OwnerId] -> get_user(AccountDb, OwnerId);
-        [_|_]-> wh_json:new()
+        [_|_]=OwnerIds->
+            find_attr_key_value(AccountDb, OwnerIds, 5)
     end.
 
 -spec create_endpoint_name(api_binary(), api_binary(), api_binary(), api_binary()) -> api_binary().
@@ -184,6 +185,19 @@ create_endpoint_name('undefined', 'undefined', Endpoint, _) -> Endpoint;
 create_endpoint_name(First, 'undefined', _, _) -> First;
 create_endpoint_name('undefined', Last, _, _) -> Last;
 create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
+
+-spec find_attr_key_value(ne_binary(), ne_binaries(), integer()) -> wh_json:object().
+find_attr_key_value(_, [], Value) ->
+    wh_json:from_list({[?CF_ATTR_LOWER_KEY, ?CF_ATTR_UPPER_KEY], Value});
+find_attr_key_value(AccountDb, [OwnerId|OwerIds], Value) ->
+    case wh_json:get_integer_value([?CF_ATTR_LOWER_KEY, ?CF_ATTR_UPPER_KEY]
+                                   ,get_user(AccountDb, OwnerId), 5)
+    of
+        V when V < Value ->
+            find_attr_key_value(AccountDb, OwerIds, V);
+        _ ->
+            find_attr_key_value(AccountDb, OwerIds, Value)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
