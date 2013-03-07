@@ -17,8 +17,8 @@ start(MCall, AcctId, AgentCallId) ->
             ,{<<"Account-ID">>, AcctId}
             ,{<<"Endpoint-ID">>, <<"5381e0c5caa8d34eec06e0f75d0b4189">>}
             ,{<<"Eavesdrop-Call-ID">>, AgentCallId}
-            ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(MCall)}
-            ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(MCall)}
+            ,{<<"Outbound-Caller-ID-Name">>, whapps_call:caller_id_name(MCall)}
+            ,{<<"Outbound-Caller-ID-Number">>, whapps_call:caller_id_number(MCall)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     eavesdrop_req(Prop).

@@ -139,12 +139,12 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
                 lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
                 {get_emergency_cid_number(JObj)
                  ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj,
-                                       wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj))
+                                       wh_json:get_ne_value(<<"Outbound-Caller-ID-Name">>, JObj))
                 };
             'false'  ->
-                {wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj
+                {wh_json:get_ne_value(<<"Outbound-Caller-ID-Number">>, JObj
                                       ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj))
-                 ,wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj
+                 ,wh_json:get_ne_value(<<"Outbound-Caller-ID-Name">>, JObj
                                        ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj))
                 }
         end,
@@ -183,8 +183,8 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
                ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
                ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
                ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
-               ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
-               ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
+               ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+               ,{<<"Outbound-Caller-ID-Name">>, CIDName}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                ,{<<"Continue-On-Fail">>, <<"true">>}
@@ -214,9 +214,9 @@ originate_to_endpoints(Endpoints, JObj) ->
     lager:debug("found resources that can originate the number...to the cloud!"),
     Q = create_queue(),
 
-    CIDNum = wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj
+    CIDNum = wh_json:get_ne_value(<<"Outbound-Caller-ID-Number">>, JObj
                                   ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
-    CIDName = wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj
+    CIDName = wh_json:get_ne_value(<<"Outbound-Caller-ID-Name">>, JObj
                                    ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj)),
 
     FromURI = case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false') of
@@ -252,8 +252,8 @@ originate_to_endpoints(Endpoints, JObj) ->
                  ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
                  ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
                  ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
-                 ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
-                 ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
+                 ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+                 ,{<<"Outbound-Caller-ID-Name">>, CIDName}
                  ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                  ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                  ,{<<"Continue-On-Fail">>, <<"true">>}
@@ -277,9 +277,9 @@ originate_to_endpoints(Endpoints, JObj) ->
 execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
     lager:debug("number belongs to another account, executing callflow from that account"),
     Q = create_queue(),
-    CIDNum = wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj
+    CIDNum = wh_json:get_ne_value(<<"Outbound-Caller-ID-Number">>, JObj
                                   ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
-    CIDName = wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj
+    CIDName = wh_json:get_ne_value(<<"Outbound-Caller-ID-Name">>, JObj
                                    ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj)),
 
     CCVs = [{<<"Account-ID">>, AccountId}
@@ -514,7 +514,7 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
     FromUri = case Gateway#gateway.format_from_uri of
                   'false' -> 'undefined';
                   'true' ->
-                      from_uri(wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj), Gateway#gateway.realm)
+                      from_uri(wh_json:get_value(<<"Outbound-Caller-ID-Number">>, JObj), Gateway#gateway.realm)
               end,
     lager:debug("setting from-uri to ~p on gateway ~p", [FromUri, Gateway#gateway.resource_id]),
 
@@ -617,7 +617,7 @@ response({'error', Error}, JObj) ->
 %%--------------------------------------------------------------------
 -spec correct_shortdial(ne_binary(), wh_json:object()) -> ne_binary() | 'fail'.
 correct_shortdial(Number, JObj) ->
-    CIDNum = wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj
+    CIDNum = wh_json:get_ne_value(<<"Outbound-Caller-ID-Number">>, JObj
                                ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
     MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
@@ -653,10 +653,10 @@ get_emergency_cid_number(JObj) ->
     Account = wh_json:get_value(<<"Account-ID">>, JObj),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Candidates = [wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)
-                  ,wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj)
+                  ,wh_json:get_ne_value(<<"Outbound-Caller-ID-Number">>, JObj)
                  ],
     Requested = wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj
-                                     ,wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
+                                     ,wh_json:get_ne_value(<<"Outbound-Caller-ID-Number">>, JObj)),
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'ok', PhoneNumbers} ->
             Numbers = wh_json:get_keys(wh_json:public_fields(PhoneNumbers)),

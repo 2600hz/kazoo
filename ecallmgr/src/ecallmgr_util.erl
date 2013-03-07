@@ -295,9 +295,9 @@ get_fs_kv(Key, Val, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_sanitize_fs_value(text(), text()) -> binary().
-maybe_sanitize_fs_value(<<"Outgoing-Caller-ID-Name">>, Val) ->
+maybe_sanitize_fs_value(<<"Outbound-Caller-ID-Name">>, Val) ->
     re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<"">>, [global, {return, binary}]);
-maybe_sanitize_fs_value(<<"Outgoing-Callee-ID-Name">>, Val) ->
+maybe_sanitize_fs_value(<<"Outbound-Callee-ID-Name">>, Val) ->
     re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<"">>, [global, {return, binary}]);
 maybe_sanitize_fs_value(<<"Caller-ID-Name">>, Val) ->
     re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<"">>, [global, {return, binary}]);

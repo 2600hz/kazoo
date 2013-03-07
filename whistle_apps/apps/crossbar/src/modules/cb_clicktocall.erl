@@ -252,10 +252,10 @@ originate_call(Contact, JObj, AccountId) ->
                ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
                ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
                ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
-               ,{<<"Outgoing-Callee-ID-Name">>, Exten}
-               ,{<<"Outgoing-Callee-ID-Number">>, Exten}
-               ,{<<"Outgoing-Caller-ID-Name">>, FriendlyName}
-               ,{<<"Outgoing-Caller-ID-Number">>, Contact}
+               ,{<<"Outbound-Callee-ID-Name">>, Exten}
+               ,{<<"Outbound-Callee-ID-Number">>, Exten}
+               ,{<<"Outbound-Caller-ID-Name">>, FriendlyName}
+               ,{<<"Outbound-Caller-ID-Number">>, Contact}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                ,{<<"Continue-On-Fail">>, <<"true">>}

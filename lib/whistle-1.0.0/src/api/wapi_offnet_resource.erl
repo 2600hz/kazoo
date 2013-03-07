@@ -23,7 +23,7 @@
                                           ,<<"Application-Name">>
                                      ]).
 -define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS, [<<"Timeout">>, <<"Ignore-Early-Media">>, <<"Flags">>, <<"Media">>
-                                                   ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
+                                                   ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
                                                    ,<<"Emergency-Caller-ID-Name">>, <<"Emergency-Caller-ID-Number">>
                                                    ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
                                                    ,<<"Hold-Media">>, <<"Presence-ID">>, <<"Account-Realm">>

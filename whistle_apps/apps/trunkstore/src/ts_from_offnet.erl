@@ -215,8 +215,8 @@ try_failover_e164(State, ToDID) ->
            ,{<<"Flags">>, wh_json:get_value(<<"flags">>, EP)}
            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, EP)}
            ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, EP)}
-           ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
-           ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
+           ,{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"Outbound-Caller-ID-Name">>, EP)}
+           ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"Outbound-Caller-ID-Number">>, EP)}
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
           ],

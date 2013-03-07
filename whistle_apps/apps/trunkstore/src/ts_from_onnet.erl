@@ -87,8 +87,8 @@ onnet_data(State) ->
                                       ]) of
                    {undefined, undefined} -> EmergencyCallerID;
                    {CIDName, CIDNum} ->
-                       [{<<"Outgoing-Caller-ID-Name">>, CIDName}
-                        ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
+                       [{<<"Outbound-Caller-ID-Name">>, CIDName}
+                        ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
                         | EmergencyCallerID
                        ]
                end,

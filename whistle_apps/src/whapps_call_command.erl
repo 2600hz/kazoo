@@ -66,7 +66,10 @@
          play_and_collect_digits/7, play_and_collect_digits/8, play_and_collect_digits/9
         ]).
 -export([say/2, say/3, say/4, say/5]).
--export([conference/2, conference/3, conference/4, conference/5]).
+
+-export([conference/2, conference/3, conference/4, conference/5, conference/6]).
+-export([b_conference/2, b_conference/3, b_conference/4, b_conference/5, b_conference/6]).
+
 -export([noop/1]).
 -export([flush/1, flush_dtmf/1]).
 -export([privacy/1
@@ -92,7 +95,6 @@
          b_play_and_collect_digits/7, b_play_and_collect_digits/8, b_play_and_collect_digits/9
         ]).
 -export([b_say/2, b_say/3, b_say/4, b_say/5]).
--export([b_conference/2, b_conference/3, b_conference/4, b_conference/5]).
 -export([b_noop/1]).
 -export([b_flush/1]).
 -export([b_privacy/1

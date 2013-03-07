@@ -646,9 +646,9 @@ publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
 publish_originate_uuid('undefined', _, _, _) -> ok;
 publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
     Resp = props:filter_undefined(
-             [{<<"Outgoing-Call-ID">>, UUID}
+             [{<<"Outbound-Call-ID">>, UUID}
               ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-              ,{<<"Outgoing-Call-Control-Queue">>, CtrlQueue}
+              ,{<<"Outbound-Call-Control-Queue">>, CtrlQueue}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     wapi_resource:publish_originate_uuid(ServerId, Resp).

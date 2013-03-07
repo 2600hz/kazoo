@@ -143,10 +143,10 @@ originate_quickcall(Endpoints, Call, #cb_context{account_id=AccountId, req_id=Re
                ,{<<"Timeout">>, get_timeout(Context)}
                ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
                ,{<<"Media">>, get_media(Context)}
-               ,{<<"Outgoing-Caller-ID-Name">>, <<"Device QuickCall">>}
-               ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:request_user(Call)}
-               ,{<<"Outgoing-Callee-ID-Name">>, get_caller_id_name(Context)}
-               ,{<<"Outgoing-Callee-ID-Number">>, get_caller_id_number(Context)}
+               ,{<<"Outbound-Caller-ID-Name">>, <<"Device QuickCall">>}
+               ,{<<"Outbound-Caller-ID-Number">>, whapps_call:request_user(Call)}
+               ,{<<"Outbound-Callee-ID-Name">>, get_caller_id_name(Context)}
+               ,{<<"Outbound-Callee-ID-Number">>, get_caller_id_number(Context)}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
                ,{<<"Continue-On-Fail">>, <<"false">>}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}

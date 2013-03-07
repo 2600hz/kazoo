@@ -900,8 +900,8 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId) ->
               ,{<<"Application-Name">>, <<"bridge">>}
               ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
               ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
-              ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
-              ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+              ,{<<"Outbound-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+              ,{<<"Outbound-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
               ,{<<"Outbound-Call-ID">>, outbound_call_id(Call, AgentId)}
               ,{<<"Existing-Call-ID">>, whapps_call:call_id(Call)}
               | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)

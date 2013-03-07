@@ -157,10 +157,10 @@
 -define(SPECIAL_CHANNEL_VARS, [{<<"Auto-Answer">>, <<"sip_auto_answer">>}
                                ,{<<"Auto-Answer-Notify">>, <<"sip_auto_answer_notify">>}
                                ,{<<"Eavesdrop-Group">>, <<"eavesdrop_group">>}
-                               ,{<<"Outgoing-Caller-ID-Name">>, <<"origination_caller_id_name">>}
-                               ,{<<"Outgoing-Caller-ID-Number">>,<<"origination_caller_id_number">>}
-                               ,{<<"Outgoing-Callee-ID-Name">>, <<"origination_callee_id_name">>}
-                               ,{<<"Outgoing-Callee-ID-Number">>, <<"origination_callee_id_number">>}
+                               ,{<<"Outbound-Caller-ID-Name">>, <<"origination_caller_id_name">>}
+                               ,{<<"Outbound-Caller-ID-Number">>,<<"origination_caller_id_number">>}
+                               ,{<<"Outbound-Callee-ID-Name">>, <<"origination_callee_id_name">>}
+                               ,{<<"Outbound-Callee-ID-Number">>, <<"origination_callee_id_number">>}
                                ,{<<"Auth-User">>, <<"sip_auth_username">>}
                                ,{<<"Auth-Password">>, <<"sip_auth_password">>}
                                ,{<<"Caller-ID-Name">>, <<"effective_caller_id_name">>}

@@ -54,8 +54,8 @@ send_eavesdrop(JObj, EPs, AcctId) ->
                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
                 ,{<<"Timeout">>, Timeout}
                 ,{<<"Endpoints">>, [wh_json:set_values([{<<"Endpoint-Timeout">>, Timeout}
-                                                        ,{<<"Outgoing-Caller-ID-Name">>, CallerIdName}
-                                                        ,{<<"Outgoing-Caller-ID-Number">>, CallerIdNumber}
+                                                        ,{<<"Outbound-Caller-ID-Name">>, CallerIdName}
+                                                        ,{<<"Outbound-Caller-ID-Number">>, CallerIdNumber}
                                                        ]
                                                        ,EP)
                                     || EP <- EPs
@@ -119,7 +119,7 @@ send_originate_execute(JObj, Q) ->
     wapi_dialplan:publish_originate_execute(wh_json:get_value(<<"Server-ID">>, JObj), Prop).
 
 find_caller_id(JObj) ->
-    find_caller_id(JObj, [{<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>}
+    find_caller_id(JObj, [{<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>}
                           ,{<<"Caller-ID-Name">>, <<"Caller-ID-Number">>}
                          ]).
 

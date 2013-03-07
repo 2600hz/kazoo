@@ -23,8 +23,8 @@
 -define(BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
 -define(OPTIONAL_BRIDGE_REQ_HEADERS
         ,[<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
-              ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
-              ,<<"Outgoing-Callee-ID-Name">>, <<"Outgoing-Callee-ID-Number">>
+              ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
+              ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
               ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
               ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
               ,<<"Dial-Endpoint-Method">>, <<"Insert-At">>
@@ -54,8 +54,8 @@
         ,[ <<"Route">>, <<"To-User">>
                ,<<"To-Realm">>, <<"To-DID">>
                ,<<"To-IP">>, <<"To-Username">>
-               ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
-               ,<<"Outgoing-Callee-ID-Name">>, <<"Outgoing-Callee-ID-Number">>
+               ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
+               ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
                ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>, <<"Hold-Media">>

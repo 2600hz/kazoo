@@ -120,8 +120,8 @@
 -define(ORIGINATE_STARTED_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %% Origintate UUID
--define(ORIGINATE_UUID_HEADERS, [<<"Outgoing-Call-ID">>]).
--define(OPTIONAL_ORIGINATE_UUID_HEADERS, [<<"Outgoing-Call-Control-Queue">>]).
+-define(ORIGINATE_UUID_HEADERS, [<<"Outbound-Call-ID">>]).
+-define(OPTIONAL_ORIGINATE_UUID_HEADERS, [<<"Outbound-Call-Control-Queue">>]).
 -define(ORIGINATE_UUID_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                    ,{<<"Event-Name">>, <<"originate_uuid">>}
                                   ]).

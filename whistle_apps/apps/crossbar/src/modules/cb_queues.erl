@@ -345,8 +345,8 @@ default_eavesdrop_req(Context) ->
      ,{<<"Account-ID">>, cb_context:account_id(Context)}
      ,{<<"Endpoint-ID">>, cb_context:req_value(Context, <<"id">>)}
      ,{<<"Endpoint-Timeout">>, wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>, 20))}
-     ,{<<"Outgoing-Caller-ID-Name">>, cb_context:req_value(Context, <<"caller_id_name">>)}
-     ,{<<"Outgoing-Caller-ID-Number">>, cb_context:req_value(Context, <<"caller_id_number">>)}
+     ,{<<"Outbound-Caller-ID-Name">>, cb_context:req_value(Context, <<"caller_id_name">>)}
+     ,{<<"Outbound-Caller-ID-Number">>, cb_context:req_value(Context, <<"caller_id_number">>)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
