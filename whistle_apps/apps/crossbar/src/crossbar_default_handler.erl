@@ -22,7 +22,7 @@ init({_Any, 'http'}, Req, []) ->
 
 -spec handle(#http_req{}, State) -> {'ok', #http_req{}, State}.
 handle(Req, State) ->
-    {'ok', Req1} = cowboy_http_req:reply(200, [], <<"Howdy, new world!\n">>, Req),
+    {'ok', Req1} = cowboy_http_req:reply(200, [], <<"\x1b[32mHowdy, new world! \x1b[0m\n">>, Req),
     {'ok', Req1, State}.
 
 -spec terminate(#http_req{}, term()) -> 'ok'.
