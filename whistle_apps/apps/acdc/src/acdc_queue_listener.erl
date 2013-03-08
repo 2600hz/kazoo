@@ -539,7 +539,7 @@ send_agent_timeout(RespJObj, Call, QueueId) ->
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     publish(wh_json:get_value(<<"Server-ID">>, RespJObj), Prop
-            ,fun wapi_acdc_queue:agent_timeout/2).
+            ,fun wapi_acdc_queue:publish_agent_timeout/2).
 
 send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, CallId) ->
     Resp = props:filter_undefined(
