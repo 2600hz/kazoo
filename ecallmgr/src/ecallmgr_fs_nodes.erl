@@ -31,7 +31,6 @@
 -export([sync_channels/0, sync_channels/1
          ,sync_conferences/0, sync_conferences/1
          ,flush_node_channels/1
-         ,flush_node_conferences/1
         ]).
 
 -export([init/1
@@ -206,10 +205,6 @@ sync_conferences(Node) ->
 flush_node_channels(Node) ->
     gen_server:cast(?MODULE, {'flush_node_channels', wh_util:to_atom(Node, 'true')}).
 
--spec flush_node_conferences(string() | binary() | atom()) -> 'ok'.
-flush_node_conferences(Node) ->
-    gen_server:cast(?MODULE, {'flush_node_conferences', wh_util:to_atom(Node, 'true')}).
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -271,67 +266,6 @@ handle_call({'add_fs_node', NodeName, Cookie, Options}, From, State) ->
     {'noreply', State};
 handle_call('nodes', _From, #state{nodes=Nodes}=State) ->
     {'reply', dict:to_list(Nodes), State};
-handle_call({'new_conference', #conference{node=Node, name=Name}=C}, _, State) ->
-    case ets:lookup(?CONFERENCES_TBL, Name) of
-        [] ->
-            lager:debug("creating new conference ~s on node ~s", [Name, Node]),
-            ets:insert(?CONFERENCES_TBL, C);
-        [#conference{node=Node}] -> lager:debug("conference ~s already on node ~s", [Name, Node]);
-        [#conference{node=_Other}] -> lager:debug("conference ~s already on ~s, not ~s", [Name, _Other, Node])
-    end,
-    {'reply', 'ok', State, 'hibernate'};
-handle_call({'conference_update', Node, Name, Update}, _, State) ->
-    case ets:lookup(?CONFERENCES_TBL, Name) of
-        [#conference{node=Node}] ->
-            ets:update_element(?CONFERENCES_TBL, Name, Update),
-            lager:debug("conference ~s already on node ~s", [Name, Node]);
-        [#conference{node=_Other}] -> lager:debug("conference ~s already on ~s, not ~s, ignoring update", [Name, _Other, Node]);
-        [] -> lager:debug("no conference ~s on ~s, ignoring update", [Name, Node])
-    end,
-    {'reply', 'ok', State, 'hibernate'};
-handle_call({'conference_destroy', Node, Name}, _, State) ->
-    MatchSpecC = [{#conference{name='$1', node='$2', _ = '_'}
-                   ,[{'andalso'
-                      ,{'=:=', '$2', {'const', Node}}
-                      ,{'=:=', '$1', Name}}
-                    ],
-                   ['true']
-                  }],
-    N = ets:select_delete(?CONFERENCES_TBL, MatchSpecC),
-    lager:debug("removed ~p conference(s) with id ~s on ~s", [N, Name, Node]),
-    MatchSpecP = [{#participant{conference_name='$1', node='$2', _ = '_'}
-                   ,[{'andalso', {'=:=', '$2', {'const', Node}}
-                      ,{'=:=', '$1', Name}}
-                    ],
-                   ['true']
-                  }],
-    N1 = ets:select_delete(?CONFERENCES_TBL, MatchSpecP),
-    lager:debug("removed ~p participant(s) in conference ~s on ~s", [N1, Name, Node]),
-    {'reply', 'ok', State, 'hibernate'};
-handle_call({'participant_update', Node, UUID, Update}, _, State) ->
-    case ets:lookup(?CONFERENCES_TBL, UUID) of
-        [] ->
-            lager:debug("no participant ~s, creating", [Node]),
-            'true' = ets:insert_new(?CONFERENCES_TBL, #participant{uuid=UUID}),
-            'true' = ets:update_element(?CONFERENCES_TBL, UUID, Update);
-        [#participant{node=Node}] ->
-            lager:debug("participant ~s on ~s, applying update", [UUID, Node]),
-            ets:update_element(?CONFERENCES_TBL, UUID, Update);
-        [#participant{node=_OtherNode}] ->
-            lager:debug("participant ~s is on ~s, not ~s, ignoring update", [UUID, _OtherNode, Node])
-    end,
-    {'reply', 'ok', State, 'hibernate'};
-handle_call({'participant_destroy', Node, UUID}, _, State) ->
-    MatchSpec = [{#participant{uuid='$1', node='$2', _ = '_'}
-                  ,[{'andalso'
-                     ,{'=:=', '$2', {'const', Node}}
-                     ,{'=:=', '$1', UUID}}
-                   ],
-                  ['true']
-                 }],
-    N = ets:select_delete(?CONFERENCES_TBL, MatchSpec),
-    lager:debug("removed ~p participants(s) with id ~s on ~s", [N, UUID, Node]),
-    {'reply', 'ok', State, 'hibernate'};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 

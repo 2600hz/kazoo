@@ -7,16 +7,15 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_api.hrl").
 
--define(ECALLMGR_AMQP_POOL, ecallmgr_amqp_pool).
+-define(ECALLMGR_AMQP_POOL, 'ecallmgr_amqp_pool').
 
--define(ECALLMGR_UTIL_CACHE, ecallmgr_util_cache).
--define(ECALLMGR_REG_CACHE, ecallmgr_reg_cache).
--define(ECALLMGR_CALL_CACHE, ecallmgr_call_cache).
+-define(ECALLMGR_UTIL_CACHE, 'ecallmgr_util_cache').
+-define(ECALLMGR_REG_CACHE, 'ecallmgr_reg_cache').
+-define(ECALLMGR_CALL_CACHE, 'ecallmgr_call_cache').
 
--define(CHANNELS_TBL, ecallmgr_channels).
--define(CONFERENCES_TBL, ecallmgr_conferences).
+-define(CHANNELS_TBL, 'ecallmgr_channels').
 
--define(ECALLMGR_PLAYBACK_MEDIA_KEY(M), {playback_media, M}).
+-define(ECALLMGR_PLAYBACK_MEDIA_KEY(M), {'playback_media', M}).
 
 -define(WHISTLE_CONTEXT, <<"context_2">>).
 
@@ -43,14 +42,13 @@
                              {'error', 'badarg' | 'session_attach_failed' | 'badsession' | 'baduuid'} |
                              'timeout'.
 
--record(sip_subscription, {
-          key :: api_binary() | '_'
-         ,to :: api_binary() | '$1' | '_'
-         ,from :: api_binary() | '$2' | '_'
-         ,node :: atom() | '$1' | '_'
-         ,expires = 300 :: pos_integer() | '$1' | '_'
-         ,timestamp = wh_util:current_tstamp() :: pos_integer() | '$2' | '_'
-         }).
+-record(sip_subscription, {key :: api_binary() | '_'
+                           ,to :: api_binary() | '$1' | '_'
+                           ,from :: api_binary() | '$2' | '_'
+                           ,node :: atom() | '$1' | '_'
+                           ,expires = 300 :: pos_integer() | '$1' | '_'
+                           ,timestamp = wh_util:current_tstamp() :: pos_integer() | '$2' | '_'
+                          }).
 
 -record(channel, {uuid :: api_binary() | '$1' | '_'
                   ,destination :: api_binary() | '_'
@@ -83,45 +81,6 @@
 -type channel() :: #channel{}.
 -type channels() :: [channel(),...] | [].
 
--record(conference, {name :: api_binary() | '$1' | '_'
-                     ,uuid :: api_binary() | '$1' | '_'
-                     ,node :: atom() | '$1' | '$2' | '_'
-                     ,participants = 0 :: non_neg_integer() | '_'
-                     ,profile_name = <<"default">> :: ne_binary() | '_'
-                     ,with_floor :: non_neg_integer() | '_' % which participant has the floor
-                     ,lost_floor :: non_neg_integer() | '_' % which participant has lost the floor
-                     ,running = 'true' :: boolean() | '_'
-                     ,answered = 'true' :: boolean() | '_'
-                     ,enforce_min = 'true' :: boolean() | '_'
-                     ,dynamic = 'true' :: boolean() | '_'
-                     ,exit_sound = 'true' :: boolean() | '_'
-                     ,enter_sound = 'true' :: boolean() | '_'
-                     ,run_time = 0 :: non_neg_integer() | '_'
-                     ,switch_hostname :: api_binary() | '_'
-                     ,switch_url :: api_binary() | '_'
-                     ,switch_external_ip :: api_binary() | '_'
-                    }).
--type conference() :: #conference{}.
--type conferences() :: [conference(),...] | [].
-
--record(participant, {uuid :: api_binary() | '$1' | '_'
-                      ,node :: atom() | '$2' | '_'
-                      ,conference_name :: api_binary() | '$1'| '_'
-                      ,floor = 'false' :: boolean() | '_'
-                      ,hear = 'true' :: boolean() | '_'
-                      ,speak = 'true' :: boolean() | '_'
-                      ,talking = 'false' :: boolean() | '_'
-                      ,mute_detect = 'false' :: boolean() | '_'
-                      ,member_id = 0 :: non_neg_integer() | '_'
-                      ,member_type :: api_binary() | '_'
-                      ,energy_level = 0 :: non_neg_integer() | '_'
-                      ,current_energy = 0 :: non_neg_integer() | '_'
-                      ,video = 'false' :: boolean() | '_'
-                      ,is_moderator = 'false' :: boolean() | '_'
-                     }).
--type participant() :: #participant{}.
--type participants() :: [participant(),...] | [].
-
 -define(DEFAULT_DOMAIN, <<"whistle.2600hz.org">>).
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, 10000). % 10 seconds
 -define(MAX_NODE_RESTART_FAILURES, 3).
@@ -134,10 +93,10 @@
 -define(APP_NAME, <<"ecallmgr">>).
 -define(APP_VERSION, <<"0.8.0">>).
 
--define(STARTUP_FILE, [code:lib_dir(ecallmgr, priv), "/startup.config"]).
--define(SETTINGS_FILE, [code:lib_dir(ecallmgr, priv), "/settings.config"]).
+-define(STARTUP_FILE, [code:lib_dir('ecallmgr', 'priv'), "/startup.config"]).
+-define(SETTINGS_FILE, [code:lib_dir('ecallmgr', 'priv'), "/settings.config"]).
 
--define(AUTHZ_RESPONSE_KEY(CallId), {authz_response, CallId}).
+-define(AUTHZ_RESPONSE_KEY(CallId), {'authz_response', CallId}).
 
 -define(STARTUP_FILE_CONTENTS, <<"{'fs_nodes', []}.
 {'fs_cmds', [{'load', \"mod_sofia\"}

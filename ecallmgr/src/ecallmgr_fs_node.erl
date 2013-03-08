@@ -214,13 +214,11 @@ handle_cast({'sync_channels'}, #state{node=Node}=State) ->
     Calls = [wh_json:get_value(<<"uuid">>, J)
              || J <- show_channels_as_json(Node)
             ],
-    Msg = {'sync_channels', Node, [Call || Call <- Calls, Call =/= 'undefined']},
+    Msg = {'sync_channels', Node, props:filter_undefined(Calls)},
     gen_server:cast('ecallmgr_fs_nodes', Msg),
     {'noreply', State};
 handle_cast({'sync_conferences'}, #state{node=Node}=State) ->
-    Conferences = show_conferences(Node),
-    Msg = {'sync_conferences', Node, Conferences},
-    gen_server:cast('ecallmgr_fs_conference', Msg),
+    ecallmgr_fs_conference:sync_conferences(Node),
     {'noreply', State};
 handle_cast(_Req, State) ->
     {'noreply', State}.
@@ -236,7 +234,7 @@ handle_cast(_Req, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', [UUID | Data]}, #state{node=Node}=State) ->
-    _ = spawn(?MODULE, process_event, [UUID, Data, Node]),
+    _ = spawn(?MODULE, 'process_event', [UUID, Data, Node]),
     {'noreply', State};
 handle_info({'bgok', _Job, _Result}, State) ->
     lager:debug("job ~s finished successfully: ~p", [_Job, _Result]),
@@ -282,7 +280,7 @@ terminate(_Reason, #state{node=Node}) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -466,19 +464,6 @@ show_channels_as_json(Node) ->
                      || Line <- Rest,
                         ((Values = binary:split(Line, <<"|||">>, ['global'])) =/= [Line])
                     ]
-            end;
-        {'error', _} -> [];
-        'timeout' -> []
-    end.
-
--spec show_conferences(atom()) -> conferences() | participants().
-show_conferences(Node) ->
-    case freeswitch:api(Node, 'conference', "xml_list") of
-        {'ok', XmlStr} ->
-            {Xml, _} = xmerl_scan:string(wh_util:to_list(XmlStr)),
-            case catch ecallmgr_fs_conference:xml_list_to_records(Xml, Node) of
-                {'EXIT', _R} -> [];
-                Rs -> Rs
             end;
         {'error', _} -> [];
         'timeout' -> []
