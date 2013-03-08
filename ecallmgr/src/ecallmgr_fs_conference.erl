@@ -126,7 +126,7 @@ fetch_full(ConfId) ->
     case ets:lookup(?CONFERENCES_TBL, ConfId) of
         [Conf] -> add_participants_to_conference_json(ConfId, record_to_json(Conf));
         _Else -> {'error', 'not_found'}
-   end.
+    end.
 
 add_participants_to_conference_json(ConfId, ConfJObj) ->
     {'ok', wh_json:set_value(<<"Participants">>, participants_list(ConfId), ConfJObj)}.
@@ -175,8 +175,7 @@ props_to_participant_record(Node, Props) ->
                 }.
 
 -spec xml_list_to_records(xml_els(), atom()) -> conferences() | participants().
-xml_list_to_records(Xml, Node) ->
-    xml_list_to_records(Xml, Node, []).
+xml_list_to_records(Xml, Node) -> xml_list_to_records(Xml, Node, []).
 
 xml_list_to_records(#xmlElement{name='conferences'
                                 ,content=Cs
@@ -205,9 +204,10 @@ xml_members_to_records([#xmlElement{name='members'
                                     ,content=Participants
                                    }
                         |_], Node) ->
-    [fs_xml_member:xml_to_participant(P, Node) || #xmlElement{name='member'}=P <- Participants];
-xml_members_to_records([_El|Els], Node) ->
-    xml_members_to_records(Els, Node).
+    [fs_xml_member:xml_to_participant(P, Node) ||
+        #xmlElement{name='member'}=P <- Participants
+    ];
+xml_members_to_records([_El|Els], Node) -> xml_members_to_records(Els, Node).
 
 record_to_json(#conference{uuid=UUID
                            ,name=Name

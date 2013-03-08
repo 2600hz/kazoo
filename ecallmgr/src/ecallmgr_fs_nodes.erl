@@ -292,7 +292,7 @@ handle_call({'conference_update', Node, Name, Update}, _, State) ->
 handle_call({'conference_destroy', Node, Name}, _, State) ->
     MatchSpecC = [{#conference{name='$1', node='$2', _ = '_'}
                    ,[{'andalso'
-                      ,{'=:=', '$2', {const, Node}}
+                      ,{'=:=', '$2', {'const', Node}}
                       ,{'=:=', '$1', Name}}
                     ],
                    ['true']
@@ -300,7 +300,7 @@ handle_call({'conference_destroy', Node, Name}, _, State) ->
     N = ets:select_delete(?CONFERENCES_TBL, MatchSpecC),
     lager:debug("removed ~p conference(s) with id ~s on ~s", [N, Name, Node]),
     MatchSpecP = [{#participant{conference_name='$1', node='$2', _ = '_'}
-                   ,[{'andalso', {'=:=', '$2', {const, Node}}
+                   ,[{'andalso', {'=:=', '$2', {'const', Node}}
                       ,{'=:=', '$1', Name}}
                     ],
                    ['true']
@@ -324,7 +324,7 @@ handle_call({'participant_update', Node, UUID, Update}, _, State) ->
 handle_call({'participant_destroy', Node, UUID}, _, State) ->
     MatchSpec = [{#participant{uuid='$1', node='$2', _ = '_'}
                   ,[{'andalso'
-                     ,{'=:=', '$2', {const, Node}}
+                     ,{'=:=', '$2', {'const', Node}}
                      ,{'=:=', '$1', UUID}}
                    ],
                   ['true']
@@ -366,10 +366,10 @@ handle_cast({'channel_update', UUID, Update}, State) ->
     {'noreply', State, 'hibernate'};
 handle_cast({'destroy_channel', UUID, Node}, State) ->
     MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
-                  ,[{'andalso', {'=:=', '$2', {const, Node}}
+                  ,[{'andalso', {'=:=', '$2', {'const', Node}}
                      ,{'=:=', '$1', UUID}}
                    ],
-                  [true]
+                  ['true']
                  }],
     N = ets:select_delete(?CHANNELS_TBL, MatchSpec),
     lager:debug("removed ~p channel(s) with id ~s on ~s", [N, UUID, Node]),
@@ -425,8 +425,8 @@ handle_cast(_Cast, State) ->
 handle_info('expire_sip_subscriptions', Cache) ->
     Now = wh_util:current_tstamp(),
     DeleteSpec = [{#sip_subscription{expires = '$1', timestamp = '$2', _ = '_'},
-                   [{'>', {const, Now}, {'+', '$2', '$1'}}],
-                   [true]}
+                   [{'>', {'const', Now}, {'+', '$2', '$1'}}],
+                   ['true']}
                  ],
     ets:select_delete('sip_subscriptions', DeleteSpec),
     _ = erlang:send_after(?EXPIRE_CHECK, self(), 'expire_sip_subscriptions'),
@@ -806,12 +806,3 @@ classify_channel(#channel{direction = <<"outbound">>
     AStats#astats{resource_consumers=sets:add_element(BillingId, ResourceConsumers)
                   ,billing_ids=sets:add_element(BillingId, BillingIds)
                  }.
-
-subtract_from([], _) -> [];
-subtract_from(Set1, []) -> Set1;
-subtract_from(Set1, [S2|Set2]) ->
-    subtract_from([S1 || S1 <- Set1, should_remove(S1, S2)], Set2).
-
-should_remove(#participant{uuid=UUID1}, #participant{uuid=UUID2}) -> UUID1 =/= UUID2;
-should_remove(#conference{name=N1}, #conference{name=N2}) -> N1 =/= N2;
-should_remove(_, _) -> 'true'.
