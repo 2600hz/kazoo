@@ -301,6 +301,7 @@ event(Node, UUID, Props) ->
         <<"play-file-member-done">> = A -> relay_event(UUID, Node, fix_props(Props, A));
         <<"start-recording">> = A -> relay_event(UUID, Node, fix_props(Props, A));
         <<"stop-recording">> = A -> relay_event(UUID, Node, fix_props(Props, A));
+
         _Action -> lager:debug("unhandled conference action for ~s: ~s", [UUID, _Action])
     end.
 

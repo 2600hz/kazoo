@@ -72,16 +72,16 @@ send_cmd(Node, UUID, "xferext", Dialplan) ->
                    lager:debug("building xferext on node ~s: ~s", [Node, V]),
                    {wh_util:to_list(K), wh_util:to_list(V)}
                end || {K, V} <- Dialplan],
-    ok = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]);
+    'ok' = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]);
 send_cmd(Node, UUID, App, Args) when not is_list(Args) ->
     send_cmd(Node, UUID, App, wh_util:to_list(Args));
 send_cmd(Node, UUID, "record_call", Args) ->
     lager:debug("execute on node ~s: uuid_record(~s)", [Node, Args]),
     case freeswitch:api(Node, uuid_record, Args) of
-        {ok, _Msg}=Ret ->
+        {'ok', _Msg}=Ret ->
             lager:debug("executing uuid_record returned: ~s", [_Msg]),
             Ret;
-        {error, <<"-ERR ", E/binary>>} ->
+        {'error', <<"-ERR ", E/binary>>} ->
             lager:debug("error executing uuid_record: ~s", [E]),
             Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
                                   ,",whistle_application_response="
@@ -89,15 +89,15 @@ send_cmd(Node, UUID, "record_call", Args) ->
                                  ]),
             lager:debug("publishing event: ~s", [Evt]),
             _ = send_cmd(Node, UUID, "application", Evt),
-            {error, E};
-        timeout ->
+            {'error', E};
+        'timeout' ->
             lager:debug("timeout executing uuid_record"),
             Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
                                   ,",whistle_application_response=timeout"
                                  ]),
             lager:debug("publishing event: ~s", [Evt]),
             _ = send_cmd(Node, UUID, "application", Evt),
-            {error, timeout}
+            {'error', 'timeout'}
     end;
 send_cmd(Node, UUID, "playstop", _Args) ->
     lager:debug("execute on node ~s: uuid_break(~s all)", [Node, UUID]),
@@ -175,7 +175,7 @@ get_interface_properties(Node) ->
 
 get_interface_properties(Node, Interface) ->
     case freeswitch:api(Node, 'sofia', wh_util:to_list(list_to_binary(["status profile ", Interface]))) of
-        {ok, Response} ->
+        {'ok', Response} ->
             R = binary:replace(Response, <<" ">>, <<>>, [global]),
             [KV || Line <- binary:split(R, <<"\n">>, [global]),
                    (KV = case binary:split(Line, <<"\t">>) of
@@ -246,10 +246,10 @@ fix_value("Event-Date-Timestamp", TStamp) ->
     wh_util:microseconds_to_seconds(wh_util:to_integer(TStamp));
 fix_value(_K, V) -> V.
 
--spec unserialize_fs_array(api_binary()) -> [ne_binary(),...] | [].
-unserialize_fs_array(undefined) -> [];
+-spec unserialize_fs_array(api_binary()) -> ne_binaries().
+unserialize_fs_array('undefined') -> [];
 unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
-    binary:split(Serialized, <<"|:">>, [global]);
+    binary:split(Serialized, <<"|:">>, ['global']);
 unserialize_fs_array(_) -> [].
 
 %% convert a raw FS list of vars  to a proplist
@@ -260,8 +260,8 @@ varstr_to_proplist(VarStr) ->
 
 -spec get_setting(wh_json:json_string()) -> {'ok', term()}.
 -spec get_setting(wh_json:json_string(), Default) -> {'ok', term() | Default}.
-get_setting(Setting) -> {ok, ecallmgr_config:get(Setting)}.
-get_setting(Setting, Default) -> {ok, ecallmgr_config:get(Setting, Default)}.
+get_setting(Setting) -> {'ok', ecallmgr_config:get(Setting)}.
+get_setting(Setting, Default) -> {'ok', ecallmgr_config:get(Setting, Default)}.
 
 -spec is_node_up(atom()) -> boolean().
 is_node_up(Node) -> ecallmgr_fs_nodes:is_node_up(Node).
@@ -471,8 +471,8 @@ build_bridge_channels(Endpoints) ->
 %% If the Invite-Format is "route" then we have been handed a sip route, do that now
 build_bridge_channels([#bridge_endpoint{invite_format = <<"route">>}=Endpoint|Endpoints], Channels) ->
     case build_channel(Endpoint) of
-        {error, _} -> build_bridge_channels(Endpoints, Channels);
-        {ok, Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
+        {'error', _} -> build_bridge_channels(Endpoints, Channels);
+        {'ok', Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
     end;
 %% If this does not have an explicted sip route and we have no ip address, lookup the registration
 build_bridge_channels([#bridge_endpoint{ip_address = undefined}=Endpoint|Endpoints], Channels) ->
@@ -482,8 +482,8 @@ build_bridge_channels([#bridge_endpoint{ip_address = undefined}=Endpoint|Endpoin
 %% If we have been given a IP to route to then do that now
 build_bridge_channels([Endpoint|Endpoints], Channels) ->
     case build_channel(Endpoint) of
-        {error, _} -> build_bridge_channels(Endpoints, Channels);
-        {ok, Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
+        {'error', _} -> build_bridge_channels(Endpoints, Channels);
+        {'ok', Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
     end;
 %% wait for any registration lookups to complete
 build_bridge_channels([], IntermediateResults) ->
@@ -496,9 +496,9 @@ build_bridge_channels([], IntermediateResults) ->
 -spec maybe_collect_worker_channel(pid(), bridge_channels()) -> bridge_channels().
 maybe_collect_worker_channel(Pid, Channels) ->
     receive
-        {Pid, {error, _}} ->
+        {Pid, {'error', _}} ->
             Channels;
-        {Pid, {ok, Channel}} ->
+        {Pid, {'ok', Channel}} ->
             [Channel|Channels]
     after
         2000 -> Channels
@@ -510,25 +510,36 @@ build_channel(#bridge_endpoint{endpoint_type = <<"skype">>}=Endpoint) ->
     build_skype_channel(Endpoint);
 build_channel(#bridge_endpoint{endpoint_type = <<"sip">>}=Endpoint) ->
     build_sip_channel(Endpoint);
-build_channel(EndpointJObj) ->
-    build_channel(endpoint_jobj_to_record(EndpointJObj)).
+build_channel(EndpointJObj) -> build_channel(endpoint_jobj_to_record(EndpointJObj)).
 
 -spec build_freetdm_channel(bridge_endpoint()) ->
-                                         {'ok', bridge_channel()} |
-                                         {'error', 'number_not_provided'}.
-build_freetdm_channel(#bridge_endpoint{number=undefined}) ->
-    {error, number_not_provided};
-build_freetdm_channel(#bridge_endpoint{invite_format = <<"e164">>, number=Number
-                                                ,span=Span, channel_selection=ChannelSelection}) ->
-    {ok, <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", (wnm_util:to_e164(Number))/binary>>};
-build_freetdm_channel(#bridge_endpoint{invite_format = <<"npan">>, number=Number
-                                                ,span=Span, channel_selection=ChannelSelection}) ->
-    {ok, <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", (wnm_util:to_npan(Number))/binary>>};
-build_freetdm_channel(#bridge_endpoint{invite_format = <<"1npan">>, number=Number
-                                                ,span=Span, channel_selection=ChannelSelection}) ->
-    {ok, <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", (wnm_util:to_1npan(Number))/binary>>};
-build_freetdm_channel(#bridge_endpoint{number=Number, span=Span, channel_selection=ChannelSelection}) ->
-    {ok, <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", Number/binary>>}.
+                                   {'ok', bridge_channel()} |
+                                   {'error', 'number_not_provided'}.
+build_freetdm_channel(#bridge_endpoint{number='undefined'}) ->
+    {'error', 'number_not_provided'};
+build_freetdm_channel(#bridge_endpoint{invite_format = <<"e164">>
+                                       ,number=Number
+                                       ,span=Span
+                                       ,channel_selection=ChannelSelection
+                                      }) ->
+    {'ok', <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", (wnm_util:to_e164(Number))/binary>>};
+build_freetdm_channel(#bridge_endpoint{invite_format = <<"npan">>
+                                       ,number=Number
+                                       ,span=Span
+                                       ,channel_selection=ChannelSelection
+                                      }) ->
+    {'ok', <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", (wnm_util:to_npan(Number))/binary>>};
+build_freetdm_channel(#bridge_endpoint{invite_format = <<"1npan">>
+                                       ,number=Number
+                                       ,span=Span
+                                       ,channel_selection=ChannelSelection
+                                      }) ->
+    {'ok', <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", (wnm_util:to_1npan(Number))/binary>>};
+build_freetdm_channel(#bridge_endpoint{number=Number
+                                       ,span=Span
+                                       ,channel_selection=ChannelSelection
+                                      }) ->
+    {'ok', <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", Number/binary>>}.
 
 -spec build_skype_channel(bridge_endpoint()) ->
                                        {'ok', bridge_channel()} |
@@ -536,10 +547,10 @@ build_freetdm_channel(#bridge_endpoint{number=Number, span=Span, channel_selecti
 build_skype_channel(#bridge_endpoint{user='undefined'}) ->
     {'error', 'number_not_provided'};
 build_skype_channel(#bridge_endpoint{user=User, interface=IFace}) ->
-    {ok, <<"skypopen/", IFace/binary, "/", User/binary>>}.
+    {'ok', <<"skypopen/", IFace/binary, "/", User/binary>>}.
 
 -spec build_sip_channel(bridge_endpoint()) ->
-                                     {'ok', bridge_channel()} |
+                               {'ok', bridge_channel()} |
                                {'error', _}.
 build_sip_channel(Endpoint) ->
     Routines = [fun(C) -> maybe_clean_contact(C, Endpoint) end
@@ -556,22 +567,19 @@ build_sip_channel(Endpoint) ->
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:warning("Failed to build sip channel (~s): ~p", [_E, _R]),
-            lager:warning("st:"),
             wh_util:log_stacktrace(ST),
             {'error', 'invalid'}
     end.
 
 -spec get_sip_contact(bridge_endpoint()) -> ne_binary().
-get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) ->
-    Route;
+get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) -> Route;
 get_sip_contact(#bridge_endpoint{ip_address='undefined'
                                  ,realm=Realm
                                  ,username=Username
                                 }) ->
-    {ok, Contact} = ecallmgr_registrar:lookup_contact(Realm, Username),
+    {'ok', Contact} = ecallmgr_registrar:lookup_contact(Realm, Username),
     binary:replace(Contact, <<">">>, <<>>);
-get_sip_contact(#bridge_endpoint{ip_address=IPAddress}) ->
-    IPAddress.
+get_sip_contact(#bridge_endpoint{ip_address=IPAddress}) -> IPAddress.
 
 -spec maybe_clean_contact(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_clean_contact(<<"sip:", Contact/binary>>, Endpoint) ->
@@ -587,8 +595,7 @@ ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"route">>}) 
 ensure_username_present(Contact, Endpoint) ->
     case binary:split(Contact, <<"@">>) of
         [_, _] -> Contact;
-        _ ->
-            <<(guess_username(Endpoint))/binary, "@", Contact/binary>>
+        _ -> <<(guess_username(Endpoint))/binary, "@", Contact/binary>>
     end.
 
 -spec guess_username(bridge_endpoint()) -> ne_binary().
@@ -600,7 +607,7 @@ guess_username(_) -> <<"kazoo">>.
 -spec maybe_replace_fs_path(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address='undefined'}) -> Contact;
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address = <<"sip:", _/binary>> = Proxy}) ->
-    case re:replace(Contact, <<";fs_path=[^;?]*">>, <<";fs_path=", Proxy/binary>>, [{return, binary}]) of
+    case re:replace(Contact, <<";fs_path=[^;?]*">>, <<";fs_path=", Proxy/binary>>, [{'return', 'binary'}]) of
         Contact ->
             %% NOTE: this will be invalid if the channel has headers, see rfc3261 19.1.1
             <<Contact/binary, ";fs_path=", Proxy/binary>>;
@@ -629,36 +636,32 @@ maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"username">>
                                            }) when Username =/= 'undefined' ->
     re:replace(Contact, "^[^\@]+", Username, [{'return', 'binary'}]);
 
-maybe_format_user(Contact, #bridge_endpoint{number='undefined'}) ->
-    Contact;
+maybe_format_user(Contact, #bridge_endpoint{number='undefined'}) -> Contact;
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"e164">>, number=Number}) ->
     re:replace(Contact, "^[^\@]+", wnm_util:to_e164(Number), [{'return', 'binary'}]);
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"npan">>, number=Number}) ->
     re:replace(Contact, "^[^\@]+", wnm_util:to_npan(Number), [{'return', 'binary'}]);
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"1npan">>, number=Number}) ->
     re:replace(Contact, "^[^\@]+", wnm_util:to_1npan(Number), [{'return', 'binary'}]);
-maybe_format_user(Contact, _) ->
-    Contact.
+maybe_format_user(Contact, _) -> Contact.
 
 -spec maybe_set_interface(ne_binary(), bridge_endpoint()) -> ne_binary().
-maybe_set_interface(<<"sofia/", _/binary>>=Contact, _) ->
-    Contact;
-maybe_set_interface(<<"loopback/", _/binary>>=Contact, _) ->
-    Contact;
-maybe_set_interface(Contact, #bridge_endpoint{sip_interface=undefined}) ->
+maybe_set_interface(<<"sofia/", _/binary>>=Contact, _) -> Contact;
+maybe_set_interface(<<"loopback/", _/binary>>=Contact, _) -> Contact;
+maybe_set_interface(Contact, #bridge_endpoint{sip_interface='undefined'}) ->
     <<?SIP_INTERFACE, Contact/binary>>;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface=SIPInterface}) ->
     <<SIPInterface/binary, Contact/binary>>.
 
 -spec append_channel_vars(ne_binary(), bridge_endpoint()) -> ne_binary().
-append_channel_vars(Contact, #bridge_endpoint{include_channel_vars=false}) ->
-    false = wh_util:is_empty(Contact),
+append_channel_vars(Contact, #bridge_endpoint{include_channel_vars='false'}) ->
+    'false' = wh_util:is_empty(Contact),
     Contact;
 append_channel_vars(Contact, #bridge_endpoint{channel_vars=["[",[],"]"]}) ->
-    false = wh_util:is_empty(Contact),
+    'false' = wh_util:is_empty(Contact),
     Contact;
 append_channel_vars(Contact, #bridge_endpoint{channel_vars=ChannelVars}) ->
-    false = wh_util:is_empty(Contact),
+    'false' = wh_util:is_empty(Contact),
     list_to_binary([ChannelVars, Contact]).
 
 %%--------------------------------------------------------------------
@@ -668,12 +671,12 @@ append_channel_vars(Contact, #bridge_endpoint{channel_vars=ChannelVars}) ->
 %%--------------------------------------------------------------------
 -spec create_masquerade_event(ne_binary(), ne_binary()) -> ne_binary().
 create_masquerade_event(Application, EventName) ->
-    create_masquerade_event(Application, EventName, true).
+    create_masquerade_event(Application, EventName, 'true').
 
 create_masquerade_event(Application, EventName, Boolean) ->
     Prefix = case Boolean of
-                 true -> <<"event ">>;
-                 false -> <<>>
+                 'true' -> <<"event ">>;
+                 'false' -> <<>>
              end,
     <<Prefix/binary, "Event-Name=CUSTOM,Event-Subclass=whistle::masquerade"
       ,",whistle_event_name=", EventName/binary
@@ -685,31 +688,24 @@ create_masquerade_event(Application, EventName, Boolean) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec media_path(ne_binary(), ne_binary(), wh_json:object()) -> ne_binary().
-media_path(MediaName, UUID, JObj) ->
-    media_path(MediaName, new, UUID, JObj).
+media_path(MediaName, UUID, JObj) -> media_path(MediaName, 'new', UUID, JObj).
 
 -spec media_path(ne_binary(), 'extant' | 'new', ne_binary(), wh_json:object()) -> ne_binary().
 media_path(undefined, _Type, _UUID, _) ->
     <<"silence_stream://5">>;
 media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
     media_path(wh_util:to_binary(MediaName), Type, UUID, JObj);
-media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _) ->
-    Media;
-media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _) ->
-    Media;
-media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _) ->
-    recording_filename(FSPath);
-media_path(<<?LOCAL_MEDIA_PATH, _/binary>> = FSPath, _Type, _UUID, _) ->
-    FSPath;
-media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) ->
-    get_fs_playback(URI);
+media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _) -> Media;
+media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _) -> Media;
+media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _) -> recording_filename(FSPath);
+media_path(<<?LOCAL_MEDIA_PATH, _/binary>> = FSPath, _Type, _UUID, _) -> FSPath;
+media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
 media_path(MediaName, Type, UUID, JObj) ->
     case lookup_media(MediaName, UUID, JObj, Type) of
         {'error', _E} ->
             lager:warning("failed to get media path for ~s: ~p", [MediaName, _E]),
             wh_util:to_binary(MediaName);
-        {ok, Path} ->
-            wh_util:to_binary(get_fs_playback(Path))
+        {'ok', Path} -> wh_util:to_binary(get_fs_playback(Path))
     end.
 
 -spec fax_filename(ne_binary()) -> file:filename().
@@ -720,8 +716,7 @@ fax_filename(UUID) ->
                   ]).
 
 -spec recording_filename(ne_binary()) -> file:filename().
-recording_filename(<<"local_stream://", MediaName/binary>>) ->
-    recording_filename(MediaName);
+recording_filename(<<"local_stream://", MediaName/binary>>) -> recording_filename(MediaName);
 recording_filename(MediaName) ->
     Ext = recording_extension(MediaName),
     RootName = filename:basename(MediaName, Ext),
@@ -735,10 +730,8 @@ recording_filename(MediaName) ->
                              ,RecordingName),
     RecordingName.
 
-recording_directory(<<"/", _/binary>> = FullPath) ->
-    filename:dirname(FullPath);
-recording_directory(_RelativePath) ->
-    ecallmgr_config:get(<<"recording_file_path">>, <<"/tmp/">>).
+recording_directory(<<"/", _/binary>> = FullPath) -> filename:dirname(FullPath);
+recording_directory(_RelativePath) -> ecallmgr_config:get(<<"recording_file_path">>, <<"/tmp/">>).
 
 recording_extension(MediaName) ->
     case filename:extension(MediaName) of
@@ -746,7 +739,7 @@ recording_extension(MediaName) ->
             ecallmgr_config:get(<<"default_recording_extension">>, <<".mp3">>);
         <<".mp3">> = MP3 -> MP3;
         <<".wav">> = WAV -> WAV;
-        _ -> <<".mp3">>
+        _ -> ecallmgr_config:get(<<"default_recording_extension">>, <<".mp3">>)
     end.
 
 %%--------------------------------------------------------------------
@@ -755,63 +748,64 @@ recording_extension(MediaName) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_fs_playback(ne_binary()) -> ne_binary().
-get_fs_playback(<<?LOCAL_MEDIA_PATH, _/binary>> = URI) ->
-    URI;
-get_fs_playback(URI) ->
-    maybe_playback_via_vlc(URI).
+get_fs_playback(<<?LOCAL_MEDIA_PATH, _/binary>> = URI) -> URI;
+get_fs_playback(URI) -> maybe_playback_via_vlc(URI).
 
 maybe_playback_via_vlc(URI) ->
-    case wh_util:is_true(ecallmgr_config:get(<<"use_vlc">>, false)) of
-        false -> maybe_playback_via_shout(URI);
-        true ->
+    case wh_util:is_true(ecallmgr_config:get(<<"use_vlc">>, 'false')) of
+        'false' -> maybe_playback_via_shout(URI);
+        'true' ->
             lager:debug("media is streamed via VLC, prepending ~s", [URI]),
             <<"vlc://", URI/binary>>
     end.
 
 maybe_playback_via_shout(URI) ->
     case filename:extension(URI) =:= <<".mp3">>
-        andalso wh_util:is_true(ecallmgr_config:get(<<"use_shout">>, false))
+        andalso wh_util:is_true(ecallmgr_config:get(<<"use_shout">>, 'false'))
     of
-        false -> maybe_playback_via_http_cache(URI);
-        true ->
+        'false' -> maybe_playback_via_http_cache(URI);
+        'true' ->
             lager:debug("media is streamed via shout, updating ~s", [URI]),
             binary:replace(URI, [<<"http">>, <<"https">>], <<"shout">>)
     end.
 
 maybe_playback_via_http_cache(URI) ->
-    case wh_util:is_true(ecallmgr_config:get(<<"use_http_cache">>, true)) of
-        false -> URI;
-        true ->
+    case wh_util:is_true(ecallmgr_config:get(<<"use_http_cache">>, 'true')) of
+        'false' -> URI;
+        'true' ->
             lager:debug("media is streamed via http_cache, using ~s", [URI]),
             <<"${http_get(", URI/binary, ")}">>
     end.
 
 %% given a proplist of a FS event, return the Whistle-equivalent app name(s).
 %% a FS event could have multiple Whistle equivalents
--spec convert_fs_evt_name(ne_binary()) -> [ne_binary(),...] | [].
+-spec convert_fs_evt_name(ne_binary()) -> ne_binaries().
 convert_fs_evt_name(EvtName) ->
     [ WhAppEvt || {FSEvt, WhAppEvt} <- ?FS_APPLICATION_NAMES, FSEvt =:= EvtName].
 
 %% given a Whistle Dialplan Application name, return the FS-equivalent event name
 %% A Whistle Dialplan Application name is 1-to-1 with the FS-equivalent
--spec convert_whistle_app_name(ne_binary()) -> [ne_binary(),...] | [].
+-spec convert_whistle_app_name(ne_binary()) -> ne_binaries().
 convert_whistle_app_name(App) ->
     [EvtName || {EvtName, AppName} <- ?FS_APPLICATION_NAMES, App =:= AppName].
 
 -type media_types() :: 'new' | 'extant'.
--spec lookup_media(ne_binary(), ne_binary(), wh_json:object(), media_types()) -> {'ok', ne_binary()} | {'error', _}.
+-spec lookup_media(ne_binary(), ne_binary(), wh_json:object(), media_types()) ->
+                          {'ok', ne_binary()} |
+                          {'error', _}.
 lookup_media(MediaName, CallId, JObj, Type) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE
                               ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName))
     of
-        {ok, _Path}=Ok ->
+        {'ok', _Path}=Ok ->
             lager:debug("media ~s exists in playback cache as ~s", [MediaName, _Path]),
             Ok;
-        {error, not_found} ->
-            request_media_url(MediaName, CallId, JObj, Type)
+        {'error', 'not_found'} -> request_media_url(MediaName, CallId, JObj, Type)
     end.
 
--spec request_media_url(ne_binary(), ne_binary(), wh_json:object(), media_types()) -> {'ok', ne_binary()} | {'error', _}.
+-spec request_media_url(ne_binary(), ne_binary(), wh_json:object(), media_types()) ->
+                               {'ok', ne_binary()} |
+                               {'error', _}.
 request_media_url(MediaName, CallId, JObj, Type) ->
     Request = wh_json:set_values(
                 props:filter_undefined(
@@ -828,11 +822,11 @@ request_media_url(MediaName, CallId, JObj, Type) ->
                                   ,fun wapi_media:resp_v/1
                                  ),
     case ReqResp of
-        {error, _}=E -> E;
-        {ok, MediaResp} ->
+        {'error', _}=E -> E;
+        {'ok', MediaResp} ->
             URL = wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>),
             _ = maybe_cache_media_url(URL, MediaName),
-            {ok, URL}
+            {'ok', URL}
     end.
 
 -spec maybe_cache_media_url(ne_binary(), ne_binary()) -> 'ok'.
