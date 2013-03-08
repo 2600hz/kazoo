@@ -271,7 +271,11 @@ event(Node, UUID, Props) ->
                                       ,props:get_value(<<"Action">>, Props)
                                      ]),
     case props:get_value(<<"Action">>, Props) of
-        <<"add-member">> -> update_all(Node, UUID, Props);
+        <<"add-member">> ->
+            %% Apparently not all FS servers issue the "conference-create"
+            %% event so lets have a plan-B in place....
+            new(Node, Props),
+            update_all(Node, UUID, Props);
         <<"floor-change">> -> update_all(Node, UUID, Props);
         <<"start-talking">> -> update_all(Node, UUID, Props);
         <<"stop-talking">> -> update_all(Node, UUID, Props);

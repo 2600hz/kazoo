@@ -188,7 +188,7 @@ create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 
 -spec find_attr_key_value(ne_binary(), ne_binaries(), integer()) -> wh_json:object().
 find_attr_key_value(_, [], Value) ->
-    wh_json:from_list({[?CF_ATTR_LOWER_KEY, ?CF_ATTR_UPPER_KEY], Value});
+    wh_json:from_list([{?CF_ATTR_LOWER_KEY, wh_json:from_list([{?CF_ATTR_UPPER_KEY, Value}])}]);
 find_attr_key_value(AccountDb, [OwnerId|OwerIds], Value) ->
     case wh_json:get_integer_value([?CF_ATTR_LOWER_KEY, ?CF_ATTR_UPPER_KEY]
                                    ,get_user(AccountDb, OwnerId), 5)
