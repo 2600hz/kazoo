@@ -44,6 +44,7 @@ init() ->
 -spec handle_req(ne_binary(), wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, Props) ->
     _ = whapps_util:put_callid(JObj),
+    _ = wh_amqp_channel:remove_consumer_pid(),
     true = wapi_offnet_resource:req_v(JObj),
     lager:debug("received outbound request"),
     handle_req(wh_json:get_value(<<"Resource-Type">>, JObj), JObj, Props).
