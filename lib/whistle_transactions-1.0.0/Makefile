@@ -1,4 +1,4 @@
-ROOT = ../../..
+ROOT = ../..
 DIALYZER = dialyzer
 REBAR = $(ROOT)/bin/rebar
 
