@@ -868,7 +868,6 @@ execute_control_request(Cmd, #state{node=Node
                                     ,self=Srv
                                    }) ->
     put(callid, CallId),
-
     try
         lager:debug("executing call command '~s' ~s", [wh_json:get_value(<<"Application-Name">>, Cmd)
                                                        ,wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)
