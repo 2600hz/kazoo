@@ -94,7 +94,7 @@ maybe_follow_groups([], _, Context) ->
     maybe_update_docs(Context);
 maybe_follow_groups([JObj|JObjs], Ids, #cb_context{doc=Docs}=Context) ->
     case wh_json:get_value(<<"pvt_type">>, JObj) of
-        <<"group">> -> 
+        <<"group">> ->
             follow_group(JObj, JObjs, Ids, Context);
         _Else ->
             maybe_follow_groups(JObjs, Ids, Context#cb_context{doc=[JObj|Docs]})
@@ -124,7 +124,7 @@ follow_group(JObj, JObjs, Ids, Context) ->
 -spec maybe_update_docs/1 :: (cb_context:context()) -> cb_context:context().
 maybe_update_docs(Context) ->
     case get_doc_updates(Context) of
-        undefined -> 
+        undefined ->
             lager:debug("no update provided, returing docs", []),
             Context;
         Updates ->
@@ -143,7 +143,7 @@ revalidate_docs([JObj|JObjs], Context) ->
 
 -spec revalidate_doc/2 :: (wh_json:object(), cb_context:context()) -> cb_context:context().
 revalidate_doc(JObj, Context) ->
-    case wh_json:get_value(<<"_id">>, JObj) of 
+    case wh_json:get_value(<<"_id">>, JObj) of
         undefined -> Context;
         Id -> revalidate_doc(Id, JObj, Context)
     end.
@@ -157,7 +157,7 @@ revalidate_doc(Id, JObj, Context) ->
                                                          ,Details
                                                          ,#cb_context{}),
             import_results(Id, InterimContext, Context);
-        Binding -> 
+        Binding ->
             Payload = [#cb_context{req_verb = <<"post">>
                                    ,method = 'POST'
                                    ,auth_token = Context#cb_context.auth_token
@@ -166,9 +166,10 @@ revalidate_doc(Id, JObj, Context) ->
                                    ,account_id = Context#cb_context.account_id
                                    ,db_name = Context#cb_context.db_name
                                    ,req_id = Context#cb_context.req_id
-                                   ,query_json = Context#cb_context.query_json                         
+                                   ,query_json = Context#cb_context.query_json
                                    ,doc=JObj
                                    ,req_data=JObj
+                                   ,resp_status=fatal
                                    ,load_merge_bypass=JObj}
                        | [Id]
                       ],
@@ -195,7 +196,7 @@ maybe_save_docs([JObj|JObjs], Context) ->
 maybe_save_doc(JObj, Context) ->
     case wh_json:get_value(<<"_id">>, JObj) of
         undefined -> Context;
-        Id -> 
+        Id ->
             maybe_save_doc(Id, JObj, Context)
     end.
 
@@ -217,14 +218,15 @@ maybe_save_doc(Id, JObj, Context) ->
                                    ,account_id = Context#cb_context.account_id
                                    ,db_name = Context#cb_context.db_name
                                    ,req_id = Context#cb_context.req_id
-                                   ,query_json = Context#cb_context.query_json                                   
+                                   ,query_json = Context#cb_context.query_json
                                    ,doc=JObj
-                                   ,req_data=JObj} 
+                                   ,req_data=JObj
+                                   ,resp_status='success'}
                        | [Id]
                       ],
             run_binding(Binding, Payload, Id, Context)
-    end.            
- 
+    end.
+
 -spec delete/1 :: (cb_context:context()) -> cb_context:context().
 delete(#cb_context{doc=JObjs}=Context) ->
     maybe_delete_docs(JObjs, Context#cb_context{resp_data=wh_json:new()}).
@@ -239,13 +241,13 @@ maybe_delete_docs([JObj|JObjs], Context) ->
 maybe_delete_doc(JObj, Context) ->
     case wh_json:get_value(<<"_id">>, JObj) of
         undefined -> Context;
-        Id -> 
+        Id ->
             maybe_delete_doc(Id, JObj, Context)
     end.
 
 -spec maybe_delete_doc/3 :: (ne_binary(), wh_json:object(), cb_context:context()) -> cb_context:context().
 maybe_delete_doc(Id, JObj, Context) ->
-    lager:debug("try to delete ~p~n", [Id]),
+    lager:debug("try to delete ~p", [Id]),
     case get_delete_binding(JObj) of
         undefined ->
             Details = [{type, wh_json:get_value(<<"pvt_type">>, JObj)}],
@@ -262,9 +264,9 @@ maybe_delete_doc(Id, JObj, Context) ->
                                    ,account_id = Context#cb_context.account_id
                                    ,db_name = Context#cb_context.db_name
                                    ,req_id = Context#cb_context.req_id
-                                   ,query_json = Context#cb_context.query_json                                   
+                                   ,query_json = Context#cb_context.query_json
                                    ,doc=JObj
-                                   ,req_data=JObj} 
+                                   ,req_data=JObj}
                        | [Id]
                       ],
             run_binding(Binding, Payload, Id, Context)
@@ -272,7 +274,7 @@ maybe_delete_doc(Id, JObj, Context) ->
 
 -spec run_binding/4 :: (ne_binary(), list(), ne_binary(), cb_context:context()) -> cb_context:context().
 run_binding(Binding, Payload, Id, Context) ->
-    lager:debug("bulk update running: ~p~n", [Binding]),
+    lager:debug("bulk update running: ~p", [Binding]),
     InterimContext = crossbar_bindings:fold(Binding, Payload),
     import_results(Id, cb_context:import_errors(InterimContext), Context).
 

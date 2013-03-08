@@ -10,6 +10,7 @@
 
 -export([consumer_pid/0
          ,consumer_pid/1
+         ,remove_consumer_pid/0
         ]).
 -export([new/0
          ,new/1
@@ -27,14 +28,18 @@
 -include("amqp_util.hrl").
 
 -spec consumer_pid() -> pid().
--spec consumer_pid(pid()) -> 'undefined' | pid().
 consumer_pid() ->
     case get('$wh_amqp_consumer') of
         Pid when is_pid(Pid) -> Pid;
         _Else -> self()
     end.
 
+-spec consumer_pid(pid()) -> 'undefined' | pid().
 consumer_pid(Pid) when is_pid(Pid) -> put('$wh_amqp_consumer', Pid).
+
+-spec remove_consumer_pid() -> 'undefined'.
+remove_consumer_pid() ->
+    put('$wh_amqp_consumer', 'undefined').
 
 -spec new() -> wh_amqp_channel() | {'error', _}.
 new() -> new(wh_amqp_channels:new()).
