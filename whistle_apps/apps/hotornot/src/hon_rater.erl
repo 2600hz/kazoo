@@ -79,6 +79,7 @@ rate_resp(Rate, JObj) ->
     RateMinimum = wh_json:get_integer_value(<<"rate_minimum">>, Rate, 60),
     BaseCost = wht_util:base_call_cost(RateCost, RateMinimum, RateSurcharge),
     lager:debug("base cost for a minute call: ~p", [BaseCost]),
+    UpdateCalleeId = maybe_update_callee_id(JObj),
     [{<<"Rate">>, wh_util:to_binary(RateCost)}
      ,{<<"Rate-Increment">>, wh_json:get_binary_value(<<"rate_increment">>, Rate, <<"60">>)}
      ,{<<"Rate-Minimum">>, wh_util:to_binary(RateMinimum)}
@@ -89,6 +90,7 @@ rate_resp(Rate, JObj) ->
      ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
      ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+     ,{<<"Update-Callee-ID">>, UpdateCalleeId}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
@@ -101,3 +103,15 @@ get_surcharge(Rate) ->
 get_rate_cost(Rate) ->
     Cost = wh_json:get_float_value(<<"rate_cost">>, Rate, 0.0),
     wht_util:dollars_to_units(Cost).
+
+-spec maybe_update_callee_id(wh_json:object()) -> boolean().
+maybe_update_callee_id(JObj) ->
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {ok, AccountDoc} ->
+            wh_json:is_true([<<"caller_id_options">>, <<"show_rate">>], AccountDoc, 'false');
+        {error, _R} ->
+            lager:debug("failed to load account ~p for update callee id ~p", [AccountId, _R]),
+            'false'
+    end.
