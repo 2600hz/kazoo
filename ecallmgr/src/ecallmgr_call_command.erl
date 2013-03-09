@@ -689,7 +689,7 @@ get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
 get_fs_app(Node, UUID, JObj, <<"conference">>) ->
     case wapi_dialplan:conference_v(JObj) of
         'false' -> {'error', <<"conference failed to execute as JObj did not validate">>};
-        'true' -> get_conference_app(Node, UUID, JObj, wh_json:is_true(<<"Redirect">>, JObj, 'false'))
+        'true' -> get_conference_app(Node, UUID, JObj, wh_json:is_true(<<"Reinvite">>, JObj, 'false'))
     end;
 
 get_fs_app(_Node, _UUID, _JObj, _App) ->
