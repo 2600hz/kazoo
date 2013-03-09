@@ -514,13 +514,9 @@ set_rating_ccvs(JObj, Node) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put('callid', CallId),
     lager:debug("setting rating information"),
-    Multiset = lists:foldl(%%fun(<<"Rate">>, Acc) ->
-                           %%        Rate = wh_json:get_binary_value(<<"Rate">>, JObj, <<"0.00">>),
-                           %%        <<"|ignore_display_updates=false"
-                           %%          ,"|effective_callee_id_name=$", Rate/binary, " per min ${effective_callee_id_name}"
-                           %%          ,"|", (?SET_CCV(<<"Rate">>, Rate))/binary
-                           %%          ,Acc/binary>>;
-                              fun(Key, Acc) ->
+    Multiset = lists:foldl(fun(<<"Rate">>, Acc) ->
+                                   maybe_update_callee_id(JObj, Acc);
+                              (Key, Acc) ->
                                    case wh_json:get_binary_value(Key, JObj) of
                                        'undefined' -> Acc;
                                        Value ->
@@ -528,6 +524,22 @@ set_rating_ccvs(JObj, Node) ->
                                    end
                            end, <<>>, ?RATE_VARS),
     'ok' = ecallmgr_util:send_cmd(Node, CallId, "multiset", <<"^^", Multiset/binary>>).
+
+-spec maybe_update_callee_id(wh_json:object(), binary()) -> binary().
+maybe_update_callee_id(JObj, Acc) ->
+    Rate = wh_json:get_binary_value(<<"Rate">>, JObj, <<"0.00">>),
+    case wh_json:is_true(<<"Update-Callee-ID">>, JObj, 'false') of
+        true ->
+            ConvertedRate = wh_util:to_binary(wht_util:units_to_dollars(wh_util:to_number(Rate))),
+            <<"|ignore_display_updates=false"
+              ,"|effective_callee_id_name=$", ConvertedRate/binary
+              ," per min ${effective_callee_id_name}"
+              ,"|", (?SET_CCV(<<"Rate">>, Rate))/binary
+              ,Acc/binary>>;
+        false -> 
+            <<"|", (?SET_CCV(<<"Rate">>, Rate))/binary
+              ,Acc/binary>>
+    end.
 
 -spec authz_req(ne_binary(), wh_proplist()) -> wh_proplist().
 authz_req(AccountId, Props) ->
