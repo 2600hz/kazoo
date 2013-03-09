@@ -66,6 +66,7 @@
          ,kvs_fetch_keys/1
          ,kvs_filter/2
          ,kvs_find/2
+         ,kvs_flush/1
          ,kvs_fold/3
          ,kvs_from_proplist/2
          ,kvs_is_key/2
@@ -629,6 +630,9 @@ kvs_append_list(Key, ValList, #whapps_call{kvs=Dict}=Call) ->
 -spec kvs_erase(term(), call()) -> call().
 kvs_erase(Key, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:erase(wh_util:to_binary(Key), Dict)}.
+
+-spec kvs_flush(call()) -> call().
+kvs_flush(#whapps_call{}=Call) -> Call#whapps_call{kvs=orddict:new()}.
 
 -spec kvs_fetch(wh_json:json_string(), call()) -> term().
 -spec kvs_fetch(wh_json:json_string(), Default, call()) -> term() | Default.
