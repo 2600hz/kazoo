@@ -11,12 +11,14 @@
 -include("callflow.hrl").
 
 -export([temporal_rules/1]).
+-export([groups/1]).
 -export([caller_id/2]).
 -export([callee_id/2]).
 -export([moh_attributes/2, moh_attributes/3]).
 -export([owner_id/1, owner_id/2]).
 -export([presence_id/1, presence_id/2]).
 -export([owned_by/2, owned_by/3]).
+-export([owner_ids/2]).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -31,6 +33,19 @@ temporal_rules(Call) ->
         {error, _} -> []
     end.
 
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec groups(whapps_call:call()) -> wh_json:json_objects().
+groups(Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    ViewOptions = [],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/groups">>, ViewOptions) of
+        {'ok', JObj} -> JObj;
+        {'error', _} -> wh_json:new()
+    end.
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
@@ -299,6 +314,20 @@ owner_id(ObjectId, Call) ->
         {'error', _R} ->
             lager:warning("unable to find owner for ~s: ~p", [ObjectId, _R]),
             'undefined'
+    end.
+
+owner_ids('undefined', _Call) -> [];
+owner_ids(ObjectId, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    ViewOptions = [{'key', ObjectId}],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owner">>, ViewOptions) of
+        {'ok', []} -> [];
+        {'ok', [JObj]} -> [wh_json:get_value(<<"value">>, JObj)];
+        {'ok', [_|_]=JObjs} ->
+            [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
+        {'error', _R} ->
+            lager:warning("unable to find owner for ~s: ~p", [ObjectId, _R]),
+            []
     end.
 
 %%--------------------------------------------------------------------
