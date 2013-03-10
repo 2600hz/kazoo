@@ -61,7 +61,8 @@ close() ->
 -spec close(wh_amqp_channel()) -> wh_amqp_channel().
 close(#wh_amqp_channel{channel=Pid
                        ,commands=[#'basic.consume'{consumer_tag=CTag}
-                                  |Commands]
+                                  |Commands
+                                 ]
                       }=Channel) when is_pid(Pid) ->
     lager:debug("canceled consumer ~s via channel ~p", [CTag, Pid]),
     catch amqp_channel:call(Pid, #'basic.cancel'{consumer_tag=CTag}),
@@ -99,6 +100,19 @@ publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub
     Now = wh_util:now_us(now()),
     publish(BasicPub, AmqpMsg#'amqp_msg'{props=Props#'P_basic'{timestamp=Now}});
 publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
+    case wh_amqp_channels:get_channel() of
+        #wh_amqp_channel{channel=Pid} when is_pid(Pid) ->
+            amqp_channel:call(Pid, BasicPub, AmqpMsg),
+            lager:debug("published to ~s exchange (routing key ~s) via ~p", [_Exchange, _RK, Pid]);
+        #wh_amqp_channel{} ->
+            wh_amqp_channels:reconnect(),
+            timer:sleep(100),
+            retry_publish(BasicPub, AmqpMsg),
+            lager:debug("dropping payload to ~s exchange (routing key ~s): ~s", [_Exchange, _RK, AmqpMsg#'amqp_msg'.payload])
+    end.
+
+-spec retry_publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
+retry_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
     case wh_amqp_channels:get_channel() of
         #wh_amqp_channel{channel=Pid} when is_pid(Pid) ->
             amqp_channel:call(Pid, BasicPub, AmqpMsg),

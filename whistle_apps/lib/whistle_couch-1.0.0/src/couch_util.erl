@@ -432,7 +432,10 @@ do_save_doc(#db{}=Db, Docs, Options) when is_list(Docs) ->
 do_save_doc(#db{}=Db, Doc, Options) ->
     case ?RETRY_504(couchbeam:save_doc(Db, maybe_set_docid(Doc), Options)) of
         {'ok', JObj}=Ok ->
-            spawn(fun() -> publish_doc(Db, JObj) end),
+            _ = case couch_mgr:change_notice() of
+                    'true' -> spawn(fun() -> publish_doc(Db, JObj) end);
+                    'false' -> 'ok'
+                end,
             Ok;
         Else -> Else
     end.
@@ -459,7 +462,10 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
             case ?RETRY_504(couchbeam:save_docs(Db, [maybe_set_docid(D) || D <- Docs], Options)) of
                 {'ok', Res} ->
                     JObjs = Res++Acc,
-                    publish_doc_change(Db, Docs, JObjs),
+                    _ = case couch_mgr:change_notice() of
+                            'true' -> spawn(fun() -> publish_doc_change(Db, Docs, JObjs) end);
+                            'false' -> 'ok'
+                        end,
                     {'ok', JObjs};
                 {'error', _}=E -> E
             end;
