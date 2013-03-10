@@ -560,8 +560,7 @@ sync_participant(Participants, Call, #participant{in_conference='true'}=Particip
                                    };
         {'error', 'not_found'} ->
             lager:debug("participant is not present in conference anymore, terminating"),
-            gen_listener:cast(self(), 'hungup'),
-            Participant#participant{in_conference='false'}
+            Participant
     end.
 
 -spec sync_moderator(wh_json:object(), whapps_call:call(), participant()) -> participant().
