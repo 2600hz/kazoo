@@ -17,7 +17,9 @@
         ]).
 
 -define(ORIGIN_BINDINGS, [[]]).
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
+                      ,'new_channel_flush'
+                     ]).
 -define(CHILD(Name, Type), fun(N, 'cache') -> {N, {'wh_cache', 'start_link', [N, ?CACHE_PROPS]}
                                                ,'permanent', 5000, 'worker', ['wh_cache']};
                               (N, 'supervisor'=T) -> {N, {N, 'start_link', []}, 'permanent', 'infinity', T, [N]};
