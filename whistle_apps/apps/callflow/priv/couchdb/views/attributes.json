@@ -29,6 +29,9 @@
        },
        "sip_username": {
            "map": "function (doc) {if (doc.pvt_deleted) return;if (doc.hotdesk && doc.hotdesk.users && Object.keys(doc.hotdesk.users).length) {var owners = Object.keys(doc.hotdesk.users);} else if (doc.owner_id) {var owners = new Array();owners.push(doc.owner_id);} else {var owners = new Array();}if (doc.sip && doc.sip.username && doc.sip.method == 'password' && !doc.pvt_deleted) {emit(doc.sip.username, owners);} else if (doc.pvt_type === 'sys_info' && !doc.pvt_deleted) {for (i in doc.servers) {var auth = doc.servers[i].auth;if (auth.auth_user && auth.auth_method == 'password') {emit(auth.auth_user, owners);}}}}"
+       },
+       "groups": {
+		   "map": "function (doc) {if (doc.pvt_type != 'group' || doc.pvt_deleted || !doc.endpoints) return;emit(null, doc.endpoints);}"
        }
    }
 }
