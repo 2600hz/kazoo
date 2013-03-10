@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(negative_test_util).
@@ -182,8 +182,7 @@ non_existent_user_test() ->
 
 invalid_password_test() ->
     Params = [{username, <<"guest">>}, {password, test_util:uuid()}],
-    ?assertMatch({error, auth_failure},
-                 test_util:new_connection(just_network, Params)).
+    ?assertMatch({error, auth_failure}, test_util:new_connection(Params)).
 
 non_existent_vhost_test() ->
     Params = [{virtual_host, test_util:uuid()}],

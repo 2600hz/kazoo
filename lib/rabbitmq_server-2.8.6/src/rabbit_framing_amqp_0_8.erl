@@ -13,7 +13,7 @@
 %%  The Original Code is RabbitMQ.
 %%
 %%  The Initial Developer of the Original Code is VMware, Inc.
-%%  Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%%  Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 -module(rabbit_framing_amqp_0_8).
 -include("rabbit_framing.hrl").
@@ -48,8 +48,8 @@
       'table' | 'byte' | 'double' | 'float' | 'long' |
       'short' | 'bool' | 'binary' | 'void' | 'array').
 -type(amqp_property_type() ::
-      'shortstr' | 'longstr' | 'octet' | 'shortint' | 'longint' |
-      'longlongint' | 'timestamp' | 'bit' | 'table').
+      'shortstr' | 'longstr' | 'octet' | 'short' | 'long' |
+      'longlong' | 'timestamp' | 'bit' | 'table').
 
 -type(amqp_table() :: [{binary(), amqp_field_type(), amqp_value()}]).
 -type(amqp_array() :: [{amqp_field_type(), amqp_value()}]).
@@ -136,60 +136,60 @@
        | #'test.string_ok'{} | #'test.table'{} | #'test.table_ok'{} | #'test.content'{}
        | #'test.content_ok'{} )).
 -type(amqp_method_field_name() ::
-       ( consumer_tag | redelivered | type | passive
-       | durable | exchange | auto_delete | internal
-       | nowait | delivery_tag | exchange | arguments
-       | string_2 | reply_text | ticket | exchange
-       | if_unused | routing_key | reply_code | nowait
-       | message_count | table | integer_4 | integer_op
-       | ticket | reply_code | queue | ticket
-       | ticket | passive | ticket | string_result
-       | durable | exclusive | reply_text | exchange
-       | auto_delete | no_ack | nowait | consumer_tag
-       | arguments | queue | immediate | no_local
-       | queue | queue | message_count | consumer_count
-       | content_checksum | exchange | delivery_tag | no_local
-       | exclusive | requeue | delivery_tag | exchange
-       | ticket | routing_key | queue | exchange
-       | prefetch_size | routing_key | exchange | nowait
-       | routing_key | arguments | queue | mandatory
-       | requeue | consumer_tag | nowait | dtx_identifier
-       | ticket | queue | ticket | operation
-       | arguments | nowait | version_minor | ticket
-       | integer_1 | ticket | exchange | prefetch_count
-       | message_count | mandatory | immediate | no_ack
-       | queue | exclusive | ticket | queue
-       | result | if_unused | meta_data | if_empty
-       | exclusive | nowait | prefetch_count | requeue
-       | consumer_tag | exclusive | global | passive
-       | message_count | staged_size | routing_key | exchange
-       | response | delivery_tag | channel_max | delivery_tag
-       | locales | frame_max | routing_key | heartbeat
-       | consume_rate | routing_key | channel_max | nowait
-       | frame_max | heartbeat | identifier | redelivered
-       | reply_text | virtual_host | capabilities | routing_key
-       | consumer_tag | insist | consumer_tag | integer_2
-       | known_hosts | exchange | client_properties | prefetch_count
-       | requeue | host | delivery_tag | known_hosts
-       | consumer_tag | ticket | content_size | reply_code
-       | operation | reply_text | queue | ticket
-       | class_id | routing_key | method_id | string_1
-       | integer_result | consumer_tag | no_local | no_ack
-       | out_of_band | ticket | nowait | active
-       | consumer_tag | active | routing_key | mandatory
-       | exchange | consumer_tag | reply_code | prefetch_size
-       | reply_text | details | global | identifier
-       | identifier | reply_code | result | cluster_id
-       | reply_text | consumer_tag | delivery_tag | class_id
-       | nowait | nowait | method_id | exchange
-       | routing_key | delivery_tag | multiple | version_major
-       | multiple | realm | immediate | string_op
-       | server_properties | challenge | mechanisms | integer_3
-       | active | global | write | queue
-       | read | mechanism | prefetch_size | redelivered
-       | response | consumer_tag | locale | consumer_tag
-       | reply_code | nowait | consumer_tag | ticket
-       | exchange | consumer_tag )).
+       ( nowait | prefetch_count | challenge | message_count
+       | response | delivery_tag | ticket | global
+       | consumer_tag | frame_max | immediate | heartbeat
+       | consumer_tag | routing_key | channel_max | identifier
+       | frame_max | heartbeat | delivery_tag | nowait
+       | virtual_host | reply_code | integer_4 | capabilities
+       | ticket | insist | known_hosts | prefetch_count
+       | redelivered | prefetch_count | consumer_tag | host
+       | staged_size | known_hosts | no_ack | queue
+       | meta_data | reply_code | reply_text | exchange
+       | class_id | consumer_tag | method_id | exchange
+       | consumer_tag | no_local | exchange | nowait
+       | no_ack | out_of_band | multiple | routing_key
+       | nowait | reply_code | routing_key | consumer_tag
+       | active | operation | result | consumer_tag
+       | consumer_tag | content_checksum | active | exchange
+       | channel_max | ticket | reply_code | queue
+       | delivery_tag | reply_text | details | delivery_tag
+       | consumer_tag | identifier | ticket | reply_code
+       | consume_rate | reply_text | queue | queue
+       | class_id | exchange | method_id | exchange
+       | delivery_tag | routing_key | result | string_op
+       | version_major | content_size | realm | exchange
+       | routing_key | exclusive | passive | active
+       | write | delivery_tag | read | mechanism
+       | queue | response | mandatory | consumer_tag
+       | locale | reply_code | identifier | ticket
+       | integer_result | cluster_id | exchange | arguments
+       | version_minor | type | ticket | nowait
+       | passive | durable | auto_delete | internal
+       | nowait | exclusive | routing_key | arguments
+       | server_properties | string_2 | integer_2 | operation
+       | consumer_tag | ticket | exchange | delivery_tag
+       | if_unused | exclusive | mechanisms | nowait
+       | requeue | message_count | table | consumer_tag
+       | integer_op | routing_key | ticket | queue
+       | string_result | passive | locales | dtx_identifier
+       | durable | delivery_tag | exclusive | auto_delete
+       | nowait | arguments | redelivered | reply_text
+       | requeue | redelivered | queue | routing_key
+       | message_count | consumer_count | no_local | global
+       | global | exclusive | requeue | ticket
+       | client_properties | multiple | queue | exchange
+       | reply_text | routing_key | queue | nowait
+       | integer_3 | integer_1 | arguments | routing_key
+       | prefetch_size | routing_key | consumer_tag | ticket
+       | ticket | requeue | nowait | reply_text
+       | no_ack | ticket | exchange | consumer_tag
+       | queue | immediate | no_local | nowait
+       | ticket | ticket | exchange | exchange
+       | message_count | mandatory | mandatory | string_1
+       | immediate | prefetch_size | prefetch_size | ticket
+       | consumer_tag | queue | if_unused | if_empty
+       | exchange | nowait )).
 -type(amqp_property_record() ::
        ( #'P_connection'{} | #'P_channel'{} | #'P_access'{} | #'P_exchange'{}
        | #'P_queue'{} | #'P_basic'{} | #'P_file'{} | #'P_stream'{}
@@ -251,25 +251,78 @@ shortstr_size(S) ->
         _                   -> exit(method_field_shortstr_overflow)
     end.
 
--define(SHORTSTR_PROP(P, R, L, S, X),
-        if P =:= 0 -> {undefined, R};
-           true    -> <<L:8/unsigned, S:L/binary, X/binary>> = R,
-                      {S, X}
+-define(SHORTSTR_VAL(R, L, V, X),
+        begin
+            <<L:8/unsigned, V:L/binary, X/binary>> = R,
+            {V, X}
         end).
--define(TABLE_PROP(P, R, L, T, X),
-        if P =:= 0 -> {undefined, R};
-           true    -> <<L:32/unsigned, T:L/binary, X/binary>> = R,
-                      {rabbit_binary_parser:parse_table(T), X}
+
+-define(LONGSTR_VAL(R, L, V, X),
+        begin
+            <<L:32/unsigned, V:L/binary, X/binary>> = R,
+            {V, X}
         end).
--define(OCTET_PROP(P, R, I, X),
-        if P =:= 0 -> {undefined, R};
-           true    -> <<I:8/unsigned, X/binary>> = R,
-                      {I, X}
+
+-define(SHORT_VAL(R, L, V, X),
+        begin
+            <<V:8/unsigned, X/binary>> = R,
+            {V, X}
         end).
--define(TIMESTAMP_PROP(P, R, I, X),
-        if P =:= 0 -> {undefined, R};
-           true    -> <<I:64/unsigned, X/binary>> = R,
-                      {I, X}
+
+-define(LONG_VAL(R, L, V, X),
+        begin
+            <<V:32/unsigned, X/binary>> = R,
+            {V, X}
+        end).
+
+-define(LONGLONG_VAL(R, L, V, X),
+        begin
+            <<V:64/unsigned, X/binary>> = R,
+            {V, X}
+        end).
+
+-define(OCTET_VAL(R, L, V, X),
+        begin
+            <<V:8/unsigned, X/binary>> = R,
+            {V, X}
+        end).
+
+-define(TABLE_VAL(R, L, V, X),
+        begin
+            <<L:32/unsigned, V:L/binary, X/binary>> = R,
+            {rabbit_binary_parser:parse_table(V), X}
+        end).
+
+-define(TIMESTAMP_VAL(R, L, V, X),
+        begin
+            <<V:64/unsigned, X/binary>> = R,
+            {V, X}
+        end).
+
+-define(SHORTSTR_PROP(X, L),
+        begin
+            L = size(X),
+            if L < 256 -> <<L:8, X:L/binary>>;
+               true    -> exit(content_properties_shortstr_overflow)
+            end
+        end).
+
+-define(LONGSTR_PROP(X, L),
+        begin
+            L = size(X),
+            <<L:32, X:L/binary>>
+        end).
+
+-define(OCTET_PROP(X, L),     <<X:8/unsigned>>).
+-define(SHORT_PROP(X, L),     <<X:16/unsigned>>).
+-define(LONG_PROP(X, L),      <<X:32/unsigned>>).
+-define(LONGLONG_PROP(X, L),  <<X:64/unsigned>>).
+-define(TIMESTAMP_PROP(X, L), <<X:64/unsigned>>).
+
+-define(TABLE_PROP(X, T),
+        begin
+            T = rabbit_binary_generator:generate_table(X),
+            <<(size(T)):32, T/binary>>
         end).
 
 version() -> {0, 8, 0}.
@@ -1105,62 +1158,66 @@ decode_method_fields('test.content_ok', <<F0:32/unsigned>>) ->
   #'test.content_ok'{content_checksum = F0};
 decode_method_fields(Name, BinaryFields) ->
   rabbit_misc:frame_error(Name, BinaryFields).
-decode_properties(10, _) ->
+decode_properties(10, <<>>) ->
   #'P_connection'{};
-decode_properties(20, _) ->
+decode_properties(20, <<>>) ->
   #'P_channel'{};
-decode_properties(30, _) ->
+decode_properties(30, <<>>) ->
   #'P_access'{};
-decode_properties(40, _) ->
+decode_properties(40, <<>>) ->
   #'P_exchange'{};
-decode_properties(50, _) ->
+decode_properties(50, <<>>) ->
   #'P_queue'{};
 decode_properties(60, <<P0:1, P1:1, P2:1, P3:1, P4:1, P5:1, P6:1, P7:1, P8:1, P9:1, P10:1, P11:1, P12:1, P13:1, _:2, R0/binary>>) ->
-  {F0, R1} = ?SHORTSTR_PROP(P0, R0, L0, S0, X0),
-  {F1, R2} = ?SHORTSTR_PROP(P1, R1, L1, S1, X1),
-  {F2, R3} = ?TABLE_PROP(P2, R2, L2, S2, X2),
-  {F3, R4} = ?OCTET_PROP(P3, R3, I3, X3),
-  {F4, R5} = ?OCTET_PROP(P4, R4, I4, X4),
-  {F5, R6} = ?SHORTSTR_PROP(P5, R5, L5, S5, X5),
-  {F6, R7} = ?SHORTSTR_PROP(P6, R6, L6, S6, X6),
-  {F7, R8} = ?SHORTSTR_PROP(P7, R7, L7, S7, X7),
-  {F8, R9} = ?SHORTSTR_PROP(P8, R8, L8, S8, X8),
-  {F9, R10} = ?TIMESTAMP_PROP(P9, R9, I9, X9),
-  {F10, R11} = ?SHORTSTR_PROP(P10, R10, L10, S10, X10),
-  {F11, R12} = ?SHORTSTR_PROP(P11, R11, L11, S11, X11),
-  {F12, R13} = ?SHORTSTR_PROP(P12, R12, L12, S12, X12),
-  {F13, <<>>} = ?SHORTSTR_PROP(P13, R13, L13, S13, X13),
+  {F0, R1} = if P0 =:= 0 -> {undefined, R0}; true -> ?SHORTSTR_VAL(R0, L0, V0, X0) end,
+  {F1, R2} = if P1 =:= 0 -> {undefined, R1}; true -> ?SHORTSTR_VAL(R1, L1, V1, X1) end,
+  {F2, R3} = if P2 =:= 0 -> {undefined, R2}; true -> ?TABLE_VAL(R2, L2, V2, X2) end,
+  {F3, R4} = if P3 =:= 0 -> {undefined, R3}; true -> ?OCTET_VAL(R3, L3, V3, X3) end,
+  {F4, R5} = if P4 =:= 0 -> {undefined, R4}; true -> ?OCTET_VAL(R4, L4, V4, X4) end,
+  {F5, R6} = if P5 =:= 0 -> {undefined, R5}; true -> ?SHORTSTR_VAL(R5, L5, V5, X5) end,
+  {F6, R7} = if P6 =:= 0 -> {undefined, R6}; true -> ?SHORTSTR_VAL(R6, L6, V6, X6) end,
+  {F7, R8} = if P7 =:= 0 -> {undefined, R7}; true -> ?SHORTSTR_VAL(R7, L7, V7, X7) end,
+  {F8, R9} = if P8 =:= 0 -> {undefined, R8}; true -> ?SHORTSTR_VAL(R8, L8, V8, X8) end,
+  {F9, R10} = if P9 =:= 0 -> {undefined, R9}; true -> ?TIMESTAMP_VAL(R9, L9, V9, X9) end,
+  {F10, R11} = if P10 =:= 0 -> {undefined, R10}; true -> ?SHORTSTR_VAL(R10, L10, V10, X10) end,
+  {F11, R12} = if P11 =:= 0 -> {undefined, R11}; true -> ?SHORTSTR_VAL(R11, L11, V11, X11) end,
+  {F12, R13} = if P12 =:= 0 -> {undefined, R12}; true -> ?SHORTSTR_VAL(R12, L12, V12, X12) end,
+  {F13, R14} = if P13 =:= 0 -> {undefined, R13}; true -> ?SHORTSTR_VAL(R13, L13, V13, X13) end,
+  <<>> = R14,
   #'P_basic'{content_type = F0, content_encoding = F1, headers = F2, delivery_mode = F3, priority = F4, correlation_id = F5, reply_to = F6, expiration = F7, message_id = F8, timestamp = F9, type = F10, user_id = F11, app_id = F12, cluster_id = F13};
 decode_properties(70, <<P0:1, P1:1, P2:1, P3:1, P4:1, P5:1, P6:1, P7:1, P8:1, _:7, R0/binary>>) ->
-  {F0, R1} = ?SHORTSTR_PROP(P0, R0, L0, S0, X0),
-  {F1, R2} = ?SHORTSTR_PROP(P1, R1, L1, S1, X1),
-  {F2, R3} = ?TABLE_PROP(P2, R2, L2, S2, X2),
-  {F3, R4} = ?OCTET_PROP(P3, R3, I3, X3),
-  {F4, R5} = ?SHORTSTR_PROP(P4, R4, L4, S4, X4),
-  {F5, R6} = ?SHORTSTR_PROP(P5, R5, L5, S5, X5),
-  {F6, R7} = ?SHORTSTR_PROP(P6, R6, L6, S6, X6),
-  {F7, R8} = ?TIMESTAMP_PROP(P7, R7, I7, X7),
-  {F8, <<>>} = ?SHORTSTR_PROP(P8, R8, L8, S8, X8),
+  {F0, R1} = if P0 =:= 0 -> {undefined, R0}; true -> ?SHORTSTR_VAL(R0, L0, V0, X0) end,
+  {F1, R2} = if P1 =:= 0 -> {undefined, R1}; true -> ?SHORTSTR_VAL(R1, L1, V1, X1) end,
+  {F2, R3} = if P2 =:= 0 -> {undefined, R2}; true -> ?TABLE_VAL(R2, L2, V2, X2) end,
+  {F3, R4} = if P3 =:= 0 -> {undefined, R3}; true -> ?OCTET_VAL(R3, L3, V3, X3) end,
+  {F4, R5} = if P4 =:= 0 -> {undefined, R4}; true -> ?SHORTSTR_VAL(R4, L4, V4, X4) end,
+  {F5, R6} = if P5 =:= 0 -> {undefined, R5}; true -> ?SHORTSTR_VAL(R5, L5, V5, X5) end,
+  {F6, R7} = if P6 =:= 0 -> {undefined, R6}; true -> ?SHORTSTR_VAL(R6, L6, V6, X6) end,
+  {F7, R8} = if P7 =:= 0 -> {undefined, R7}; true -> ?TIMESTAMP_VAL(R7, L7, V7, X7) end,
+  {F8, R9} = if P8 =:= 0 -> {undefined, R8}; true -> ?SHORTSTR_VAL(R8, L8, V8, X8) end,
+  <<>> = R9,
   #'P_file'{content_type = F0, content_encoding = F1, headers = F2, priority = F3, reply_to = F4, message_id = F5, filename = F6, timestamp = F7, cluster_id = F8};
 decode_properties(80, <<P0:1, P1:1, P2:1, P3:1, P4:1, _:11, R0/binary>>) ->
-  {F0, R1} = ?SHORTSTR_PROP(P0, R0, L0, S0, X0),
-  {F1, R2} = ?SHORTSTR_PROP(P1, R1, L1, S1, X1),
-  {F2, R3} = ?TABLE_PROP(P2, R2, L2, S2, X2),
-  {F3, R4} = ?OCTET_PROP(P3, R3, I3, X3),
-  {F4, <<>>} = ?TIMESTAMP_PROP(P4, R4, I4, X4),
+  {F0, R1} = if P0 =:= 0 -> {undefined, R0}; true -> ?SHORTSTR_VAL(R0, L0, V0, X0) end,
+  {F1, R2} = if P1 =:= 0 -> {undefined, R1}; true -> ?SHORTSTR_VAL(R1, L1, V1, X1) end,
+  {F2, R3} = if P2 =:= 0 -> {undefined, R2}; true -> ?TABLE_VAL(R2, L2, V2, X2) end,
+  {F3, R4} = if P3 =:= 0 -> {undefined, R3}; true -> ?OCTET_VAL(R3, L3, V3, X3) end,
+  {F4, R5} = if P4 =:= 0 -> {undefined, R4}; true -> ?TIMESTAMP_VAL(R4, L4, V4, X4) end,
+  <<>> = R5,
   #'P_stream'{content_type = F0, content_encoding = F1, headers = F2, priority = F3, timestamp = F4};
-decode_properties(90, _) ->
+decode_properties(90, <<>>) ->
   #'P_tx'{};
-decode_properties(100, _) ->
+decode_properties(100, <<>>) ->
   #'P_dtx'{};
 decode_properties(110, <<P0:1, P1:1, P2:1, P3:1, P4:1, _:11, R0/binary>>) ->
-  {F0, R1} = ?TABLE_PROP(P0, R0, L0, S0, X0),
-  {F1, R2} = ?SHORTSTR_PROP(P1, R1, L1, S1, X1),
-  {F2, R3} = ?SHORTSTR_PROP(P2, R2, L2, S2, X2),
-  {F3, R4} = ?OCTET_PROP(P3, R3, I3, X3),
-  {F4, <<>>} = ?OCTET_PROP(P4, R4, I4, X4),
+  {F0, R1} = if P0 =:= 0 -> {undefined, R0}; true -> ?TABLE_VAL(R0, L0, V0, X0) end,
+  {F1, R2} = if P1 =:= 0 -> {undefined, R1}; true -> ?SHORTSTR_VAL(R1, L1, V1, X1) end,
+  {F2, R3} = if P2 =:= 0 -> {undefined, R2}; true -> ?SHORTSTR_VAL(R2, L2, V2, X2) end,
+  {F3, R4} = if P3 =:= 0 -> {undefined, R3}; true -> ?OCTET_VAL(R3, L3, V3, X3) end,
+  {F4, R5} = if P4 =:= 0 -> {undefined, R4}; true -> ?OCTET_VAL(R4, L4, V4, X4) end,
+  <<>> = R5,
   #'P_tunnel'{headers = F0, proxy_name = F1, data_name = F2, durable = F3, broadcast = F4};
-decode_properties(120, _) ->
+decode_properties(120, <<>>) ->
   #'P_test'{};
 decode_properties(ClassId, _BinaryFields) -> exit({unknown_class_id, ClassId}).
 encode_method_fields(#'connection.start'{version_major = F0, version_minor = F1, server_properties = F2, mechanisms = F3, locales = F4}) ->
@@ -1482,29 +1539,66 @@ encode_method_fields(#'test.content_ok'{content_checksum = F0}) ->
   <<F0:32/unsigned>>;
 encode_method_fields(Record) -> exit({unknown_method_name, element(1, Record)}).
 encode_properties(#'P_connection'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(#'P_channel'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(#'P_access'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(#'P_exchange'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(#'P_queue'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(#'P_basic'{content_type = F0, content_encoding = F1, headers = F2, delivery_mode = F3, priority = F4, correlation_id = F5, reply_to = F6, expiration = F7, message_id = F8, timestamp = F9, type = F10, user_id = F11, app_id = F12, cluster_id = F13}) ->
-  rabbit_binary_generator:encode_properties([shortstr, shortstr, table, octet, octet, shortstr, shortstr, shortstr, shortstr, timestamp, shortstr, shortstr, shortstr, shortstr], [F0, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13]);
+  R0 = [<<>>],
+  {P0, R1} = if F0 =:= undefined -> {0, R0}; true -> {1, [?SHORTSTR_PROP(F0, L0) | R0]} end,
+  {P1, R2} = if F1 =:= undefined -> {0, R1}; true -> {1, [?SHORTSTR_PROP(F1, L1) | R1]} end,
+  {P2, R3} = if F2 =:= undefined -> {0, R2}; true -> {1, [?TABLE_PROP(F2, L2) | R2]} end,
+  {P3, R4} = if F3 =:= undefined -> {0, R3}; true -> {1, [?OCTET_PROP(F3, L3) | R3]} end,
+  {P4, R5} = if F4 =:= undefined -> {0, R4}; true -> {1, [?OCTET_PROP(F4, L4) | R4]} end,
+  {P5, R6} = if F5 =:= undefined -> {0, R5}; true -> {1, [?SHORTSTR_PROP(F5, L5) | R5]} end,
+  {P6, R7} = if F6 =:= undefined -> {0, R6}; true -> {1, [?SHORTSTR_PROP(F6, L6) | R6]} end,
+  {P7, R8} = if F7 =:= undefined -> {0, R7}; true -> {1, [?SHORTSTR_PROP(F7, L7) | R7]} end,
+  {P8, R9} = if F8 =:= undefined -> {0, R8}; true -> {1, [?SHORTSTR_PROP(F8, L8) | R8]} end,
+  {P9, R10} = if F9 =:= undefined -> {0, R9}; true -> {1, [?TIMESTAMP_PROP(F9, L9) | R9]} end,
+  {P10, R11} = if F10 =:= undefined -> {0, R10}; true -> {1, [?SHORTSTR_PROP(F10, L10) | R10]} end,
+  {P11, R12} = if F11 =:= undefined -> {0, R11}; true -> {1, [?SHORTSTR_PROP(F11, L11) | R11]} end,
+  {P12, R13} = if F12 =:= undefined -> {0, R12}; true -> {1, [?SHORTSTR_PROP(F12, L12) | R12]} end,
+  {P13, R14} = if F13 =:= undefined -> {0, R13}; true -> {1, [?SHORTSTR_PROP(F13, L13) | R13]} end,
+  list_to_binary([<<P0:1, P1:1, P2:1, P3:1, P4:1, P5:1, P6:1, P7:1, P8:1, P9:1, P10:1, P11:1, P12:1, P13:1, 0:2>> | lists:reverse(R14)]);
 encode_properties(#'P_file'{content_type = F0, content_encoding = F1, headers = F2, priority = F3, reply_to = F4, message_id = F5, filename = F6, timestamp = F7, cluster_id = F8}) ->
-  rabbit_binary_generator:encode_properties([shortstr, shortstr, table, octet, shortstr, shortstr, shortstr, timestamp, shortstr], [F0, F1, F2, F3, F4, F5, F6, F7, F8]);
+  R0 = [<<>>],
+  {P0, R1} = if F0 =:= undefined -> {0, R0}; true -> {1, [?SHORTSTR_PROP(F0, L0) | R0]} end,
+  {P1, R2} = if F1 =:= undefined -> {0, R1}; true -> {1, [?SHORTSTR_PROP(F1, L1) | R1]} end,
+  {P2, R3} = if F2 =:= undefined -> {0, R2}; true -> {1, [?TABLE_PROP(F2, L2) | R2]} end,
+  {P3, R4} = if F3 =:= undefined -> {0, R3}; true -> {1, [?OCTET_PROP(F3, L3) | R3]} end,
+  {P4, R5} = if F4 =:= undefined -> {0, R4}; true -> {1, [?SHORTSTR_PROP(F4, L4) | R4]} end,
+  {P5, R6} = if F5 =:= undefined -> {0, R5}; true -> {1, [?SHORTSTR_PROP(F5, L5) | R5]} end,
+  {P6, R7} = if F6 =:= undefined -> {0, R6}; true -> {1, [?SHORTSTR_PROP(F6, L6) | R6]} end,
+  {P7, R8} = if F7 =:= undefined -> {0, R7}; true -> {1, [?TIMESTAMP_PROP(F7, L7) | R7]} end,
+  {P8, R9} = if F8 =:= undefined -> {0, R8}; true -> {1, [?SHORTSTR_PROP(F8, L8) | R8]} end,
+  list_to_binary([<<P0:1, P1:1, P2:1, P3:1, P4:1, P5:1, P6:1, P7:1, P8:1, 0:7>> | lists:reverse(R9)]);
 encode_properties(#'P_stream'{content_type = F0, content_encoding = F1, headers = F2, priority = F3, timestamp = F4}) ->
-  rabbit_binary_generator:encode_properties([shortstr, shortstr, table, octet, timestamp], [F0, F1, F2, F3, F4]);
+  R0 = [<<>>],
+  {P0, R1} = if F0 =:= undefined -> {0, R0}; true -> {1, [?SHORTSTR_PROP(F0, L0) | R0]} end,
+  {P1, R2} = if F1 =:= undefined -> {0, R1}; true -> {1, [?SHORTSTR_PROP(F1, L1) | R1]} end,
+  {P2, R3} = if F2 =:= undefined -> {0, R2}; true -> {1, [?TABLE_PROP(F2, L2) | R2]} end,
+  {P3, R4} = if F3 =:= undefined -> {0, R3}; true -> {1, [?OCTET_PROP(F3, L3) | R3]} end,
+  {P4, R5} = if F4 =:= undefined -> {0, R4}; true -> {1, [?TIMESTAMP_PROP(F4, L4) | R4]} end,
+  list_to_binary([<<P0:1, P1:1, P2:1, P3:1, P4:1, 0:11>> | lists:reverse(R5)]);
 encode_properties(#'P_tx'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(#'P_dtx'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(#'P_tunnel'{headers = F0, proxy_name = F1, data_name = F2, durable = F3, broadcast = F4}) ->
-  rabbit_binary_generator:encode_properties([table, shortstr, shortstr, octet, octet], [F0, F1, F2, F3, F4]);
+  R0 = [<<>>],
+  {P0, R1} = if F0 =:= undefined -> {0, R0}; true -> {1, [?TABLE_PROP(F0, L0) | R0]} end,
+  {P1, R2} = if F1 =:= undefined -> {0, R1}; true -> {1, [?SHORTSTR_PROP(F1, L1) | R1]} end,
+  {P2, R3} = if F2 =:= undefined -> {0, R2}; true -> {1, [?SHORTSTR_PROP(F2, L2) | R2]} end,
+  {P3, R4} = if F3 =:= undefined -> {0, R3}; true -> {1, [?OCTET_PROP(F3, L3) | R3]} end,
+  {P4, R5} = if F4 =:= undefined -> {0, R4}; true -> {1, [?OCTET_PROP(F4, L4) | R4]} end,
+  list_to_binary([<<P0:1, P1:1, P2:1, P3:1, P4:1, 0:11>> | lists:reverse(R5)]);
 encode_properties(#'P_test'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(Record) -> exit({unknown_properties_record, Record}).
 lookup_amqp_exception(not_delivered) -> {false, ?NOT_DELIVERED, <<"NOT_DELIVERED">>};
 lookup_amqp_exception(content_too_large) -> {false, ?CONTENT_TOO_LARGE, <<"CONTENT_TOO_LARGE">>};

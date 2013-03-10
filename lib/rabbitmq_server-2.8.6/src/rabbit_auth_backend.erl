@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(rabbit_auth_backend).
@@ -20,7 +20,7 @@
 
 %% A description proplist as with auth mechanisms,
 %% exchanges. Currently unused.
--callback description() -> [proplist:property()].
+-callback description() -> [proplists:property()].
 
 %% Check a user can log in, given a username and a proplist of
 %% authentication information (e.g. [{password, Password}]).

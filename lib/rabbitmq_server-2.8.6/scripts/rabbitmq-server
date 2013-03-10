@@ -12,7 +12,7 @@
 ##  The Original Code is RabbitMQ.
 ##
 ##  The Initial Developer of the Original Code is VMware, Inc.
-##  Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+##  Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 ##
 
 # Get default settings with user overrides for (RABBITMQ_)<var_name>
@@ -86,7 +86,7 @@ if ! erl -pa "$RABBITMQ_EBIN_ROOT" \
 	    -noinput \
 	    -hidden \
 	    -s rabbit_prelaunch \
-	    -name rabbitmqprelaunch$$ \
+	    -sname rabbitmqprelaunch$$ \
 	    -extra "${RABBITMQ_NODENAME}";
     then
         exit 1;
@@ -106,7 +106,7 @@ set -f
 exec erl \
     -pa ${RABBITMQ_EBIN_ROOT} \
     ${RABBITMQ_START_RABBIT} \
-    -name ${RABBITMQ_NODENAME} \
+    -sname ${RABBITMQ_NODENAME} \
     -boot start_sasl \
     ${RABBITMQ_CONFIG_ARG} \
     +W w \

@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(rabbit_misc).
@@ -21,7 +21,7 @@
 -export([method_record_type/1, polite_pause/0, polite_pause/1]).
 -export([die/1, frame_error/2, amqp_error/4, quit/1,
          protocol_error/3, protocol_error/4, protocol_error/1]).
--export([not_found/1, assert_args_equivalence/4]).
+-export([not_found/1, absent/1, assert_args_equivalence/4]).
 -export([dirty_read/1]).
 -export([table_lookup/2, set_table_value/4]).
 -export([r/3, r/2, r_arg/4, rs/1]).
@@ -46,6 +46,7 @@
 -export([sort_field_table/1]).
 -export([pid_to_string/1, string_to_pid/1]).
 -export([version_compare/2, version_compare/3]).
+-export([version_minor_equivalent/2]).
 -export([dict_cons/3, orddict_cons/3, gb_trees_cons/3]).
 -export([gb_trees_fold/3, gb_trees_foreach/2]).
 -export([parse_arguments/3]).
@@ -60,11 +61,22 @@
 -export([multi_call/2]).
 -export([os_cmd/1]).
 -export([gb_sets_difference/2]).
+-export([version/0]).
+-export([sequence_error/1]).
+-export([json_encode/1, json_decode/1, json_to_term/1, term_to_json/1]).
+-export([check_expiry/1]).
+-export([base64url/1]).
+-export([interval_operation/4]).
+-export([ensure_timer/4, stop_timer/2]).
+-export([get_parent/0]).
 
 %% Horrible macro to use in guards
 -define(IS_BENIGN_EXIT(R),
         R =:= noproc; R =:= noconnection; R =:= nodedown; R =:= normal;
             R =:= shutdown).
+
+%% This is dictated by `erlang:send_after' on which we depend to implement TTL.
+-define(MAX_EXPIRY_TIMER, 4294967295).
 
 %%----------------------------------------------------------------------------
 
@@ -107,6 +119,7 @@
 -spec(protocol_error/1 ::
         (rabbit_types:amqp_error()) -> channel_or_connection_exit()).
 -spec(not_found/1 :: (rabbit_types:r(atom())) -> rabbit_types:channel_exit()).
+-spec(absent/1 :: (rabbit_types:amqqueue()) -> rabbit_types:channel_exit()).
 -spec(assert_args_equivalence/4 :: (rabbit_framing:amqp_table(),
                                     rabbit_framing:amqp_table(),
                                     rabbit_types:r(any()), [binary()]) ->
@@ -181,6 +194,7 @@
 -spec(version_compare/3 ::
         (string(), string(), ('lt' | 'lte' | 'eq' | 'gte' | 'gt'))
         -> boolean()).
+-spec(version_minor_equivalent/2 :: (string(), string()) -> boolean()).
 -spec(dict_cons/3 :: (any(), any(), dict()) -> dict()).
 -spec(orddict_cons/3 :: (any(), any(), orddict:orddict()) -> orddict:orddict()).
 -spec(gb_trees_cons/3 :: (any(), any(), gb_tree()) -> gb_tree()).
@@ -217,7 +231,21 @@
         ([pid()], any()) -> {[{pid(), any()}], [{pid(), any()}]}).
 -spec(os_cmd/1 :: (string()) -> string()).
 -spec(gb_sets_difference/2 :: (gb_set(), gb_set()) -> gb_set()).
-
+-spec(version/0 :: () -> string()).
+-spec(sequence_error/1 :: ([({'error', any()} | any())])
+                       -> {'error', any()} | any()).
+-spec(json_encode/1 :: (any()) -> {'ok', string()} | {'error', any()}).
+-spec(json_decode/1 :: (string()) -> {'ok', any()} | 'error').
+-spec(json_to_term/1 :: (any()) -> any()).
+-spec(term_to_json/1 :: (any()) -> any()).
+-spec(check_expiry/1 :: (integer()) -> rabbit_types:ok_or_error(any())).
+-spec(base64url/1 :: (binary()) -> string()).
+-spec(interval_operation/4 ::
+        ({atom(), atom(), any()}, float(), non_neg_integer(), non_neg_integer())
+        -> {any(), non_neg_integer()}).
+-spec(ensure_timer/4 :: (A, non_neg_integer(), non_neg_integer(), any()) -> A).
+-spec(stop_timer/2 :: (A, non_neg_integer()) -> A).
+-spec(get_parent/0 :: () -> pid()).
 -endif.
 
 %%----------------------------------------------------------------------------
@@ -253,6 +281,15 @@ protocol_error(#amqp_error{} = Error) ->
     exit(Error).
 
 not_found(R) -> protocol_error(not_found, "no ~s", [rs(R)]).
+
+absent(#amqqueue{name = QueueName, pid = QPid, durable = true}) ->
+    %% The assertion of durability is mainly there because we mention
+    %% durability in the error message. That way we will hopefully
+    %% notice if at some future point our logic changes s.t. we get
+    %% here with non-durable queues.
+    protocol_error(not_found,
+                   "home node '~s' of durable ~s is down or inaccessible",
+                   [node(QPid), rs(QueueName)]).
 
 type_class(byte)      -> int;
 type_class(short)     -> int;
@@ -319,13 +356,12 @@ set_table_value(Table, Key, Type, Value) ->
     sort_field_table(
       lists:keystore(Key, 1, Table, {Key, Type, Value})).
 
-r(#resource{virtual_host = VHostPath}, Kind, Name)
-  when is_binary(Name) ->
+r(#resource{virtual_host = VHostPath}, Kind, Name) ->
     #resource{virtual_host = VHostPath, kind = Kind, name = Name};
-r(VHostPath, Kind, Name) when is_binary(Name) andalso is_binary(VHostPath) ->
+r(VHostPath, Kind, Name) ->
     #resource{virtual_host = VHostPath, kind = Kind, name = Name}.
 
-r(VHostPath, Kind) when is_binary(VHostPath) ->
+r(VHostPath, Kind) ->
     #resource{virtual_host = VHostPath, kind = Kind, name = '_'}.
 
 r_arg(#resource{virtual_host = VHostPath}, Kind, Table, Key) ->
@@ -703,6 +739,16 @@ version_compare(A,  B) ->
        ANum > BNum   -> gt
     end.
 
+%% a.b.c and a.b.d match, but a.b.c and a.d.e don't. If
+%% versions do not match that pattern, just compare them.
+version_minor_equivalent(A, B) ->
+    {ok, RE} = re:compile("^(\\d+\\.\\d+)(\\.\\d+)\$"),
+    Opts = [{capture, all_but_first, list}],
+    case {re:run(A, RE, Opts), re:run(B, RE, Opts)} of
+        {{match, [A1|_]}, {match, [B1|_]}} -> A1 =:= B1;
+        _                                  -> A =:= B
+    end.
+
 dropdot(A) -> lists:dropwhile(fun (X) -> X =:= $. end, A).
 
 dict_cons(Key, Value, Dict) ->
@@ -934,3 +980,122 @@ os_cmd(Command) ->
 
 gb_sets_difference(S1, S2) ->
     gb_sets:fold(fun gb_sets:delete_any/2, S1, S2).
+
+version() ->
+    {ok, VSN} = application:get_key(rabbit, vsn),
+    VSN.
+
+sequence_error([T])                      -> T;
+sequence_error([{error, _} = Error | _]) -> Error;
+sequence_error([_ | Rest])               -> sequence_error(Rest).
+
+json_encode(Term) ->
+    try
+        {ok, mochijson2:encode(Term)}
+    catch
+        exit:{json_encode, E} ->
+            {error, E}
+    end.
+
+json_decode(Term) ->
+    try
+        {ok, mochijson2:decode(Term)}
+    catch
+        %% Sadly `mochijson2:decode/1' does not offer a nice way to catch
+        %% decoding errors...
+        error:_ -> error
+    end.
+
+json_to_term({struct, L}) ->
+    [{K, json_to_term(V)} || {K, V} <- L];
+json_to_term(L) when is_list(L) ->
+    [json_to_term(I) || I <- L];
+json_to_term(V) when is_binary(V) orelse is_number(V) orelse V =:= null orelse
+                     V =:= true orelse V =:= false ->
+    V.
+
+%% This has the flaw that empty lists will never be JSON objects, so use with
+%% care.
+term_to_json([{_, _}|_] = L) ->
+    {struct, [{K, term_to_json(V)} || {K, V} <- L]};
+term_to_json(L) when is_list(L) ->
+    [term_to_json(I) || I <- L];
+term_to_json(V) when is_binary(V) orelse is_number(V) orelse V =:= null orelse
+                     V =:= true orelse V =:= false ->
+    V.
+
+check_expiry(N) when N > ?MAX_EXPIRY_TIMER -> {error, {value_too_big, N}};
+check_expiry(N) when N < 0                 -> {error, {value_negative, N}};
+check_expiry(_N)                           -> ok.
+
+base64url(In) ->
+    lists:reverse(lists:foldl(fun ($\+, Acc) -> [$\- | Acc];
+                                  ($\/, Acc) -> [$\_ | Acc];
+                                  ($\=, Acc) -> Acc;
+                                  (Chr, Acc) -> [Chr | Acc]
+                              end, [], base64:encode_to_string(In))).
+
+%% Ideally, you'd want Fun to run every IdealInterval. but you don't
+%% want it to take more than MaxRatio of IdealInterval. So if it takes
+%% more then you want to run it less often. So we time how long it
+%% takes to run, and then suggest how long you should wait before
+%% running it again. Times are in millis.
+interval_operation({M, F, A}, MaxRatio, IdealInterval, LastInterval) ->
+    {Micros, Res} = timer:tc(M, F, A),
+    {Res, case {Micros > 1000 * (MaxRatio * IdealInterval),
+                Micros > 1000 * (MaxRatio * LastInterval)} of
+              {true,  true}  -> round(LastInterval * 1.5);
+              {true,  false} -> LastInterval;
+              {false, false} -> lists:max([IdealInterval,
+                                           round(LastInterval / 1.5)])
+          end}.
+
+ensure_timer(State, Idx, After, Msg) ->
+    case element(Idx, State) of
+        undefined -> TRef = erlang:send_after(After, self(), Msg),
+                     setelement(Idx, State, TRef);
+        _         -> State
+    end.
+
+stop_timer(State, Idx) ->
+    case element(Idx, State) of
+        undefined -> State;
+        TRef      -> case erlang:cancel_timer(TRef) of
+                         false -> State;
+                         _     -> setelement(Idx, State, undefined)
+                     end
+    end.
+
+%% -------------------------------------------------------------------------
+%% Begin copypasta from gen_server2.erl
+
+get_parent() ->
+    case get('$ancestors') of
+        [Parent | _] when is_pid (Parent) -> Parent;
+        [Parent | _] when is_atom(Parent) -> name_to_pid(Parent);
+        _ -> exit(process_was_not_started_by_proc_lib)
+    end.
+
+name_to_pid(Name) ->
+    case whereis(Name) of
+        undefined -> case whereis_name(Name) of
+                         undefined -> exit(could_not_find_registerd_name);
+                         Pid       -> Pid
+                     end;
+        Pid       -> Pid
+    end.
+
+whereis_name(Name) ->
+    case ets:lookup(global_names, Name) of
+        [{_Name, Pid, _Method, _RPid, _Ref}] ->
+            if node(Pid) == node() -> case erlang:is_process_alive(Pid) of
+                                          true  -> Pid;
+                                          false -> undefined
+                                      end;
+               true                -> Pid
+            end;
+        [] -> undefined
+    end.
+
+%% End copypasta from gen_server2.erl
+%% -------------------------------------------------------------------------

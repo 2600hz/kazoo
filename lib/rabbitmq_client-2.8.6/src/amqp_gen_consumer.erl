@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2011-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2011-2013 VMware, Inc.  All rights reserved.
 %%
 
 %% @doc A behaviour module for implementing consumers for
@@ -241,8 +241,7 @@ handle_info(Info, State = #state{module_state = MState,
         {ok, NewMState} ->
             {noreply, State#state{module_state = NewMState}};
         {error, Reason, NewMState} ->
-            {stop, {error, Reason}, {error, Reason},
-             State#state{module_state = NewMState}}
+            {stop, {error, Reason}, State#state{module_state = NewMState}}
     end.
 
 terminate(Reason, #state{module = ConsumerModule, module_state = MState}) ->

@@ -47,7 +47,6 @@ ifndef USE_SPECS
 USE_SPECS:=$(shell erl -noshell -eval 'io:format([list_to_integer(X) || X <- string:tokens(erlang:system_info(version), ".")] >= [5,9]), halt().')
 endif
 
-USE_PROPER_QC = false
 ifndef USE_PROPER_QC
 # PropEr needs to be installed for property checking
 # http://proper.softlab.ntua.gr/
@@ -57,7 +56,7 @@ endif
 #other args: +native +"{hipe,[o3,verbose]}" -Ddebug=true +debug_info +no_strict_record_tests
 ERLC_OPTS=-I $(INCLUDE_DIR) -o $(EBIN_DIR) -Wall -v +debug_info $(call boolean_macro,$(USE_SPECS),use_specs) $(call boolean_macro,$(USE_PROPER_QC),use_proper_qc)
 
-VERSION?=2.8.6
+VERSION?=0.0.0
 PLUGINS_SRC_DIR?=$(shell [ -d "plugins-src" ] && echo "plugins-src" || echo )
 PLUGINS_DIR=plugins
 TARBALL_NAME=rabbitmq-server-$(VERSION)
@@ -102,11 +101,7 @@ ifneq "$(DEFAULT_GOAL_MAKE)" "$(firstword $(sort $(DEFAULT_GOAL_MAKE) $(MAKE_VER
 .DEFAULT_GOAL=all
 endif
 
-all: app
-
-app: compile
-
-compile: $(TARGETS)
+all: $(TARGETS)
 
 .PHONY: plugins check-xref
 ifneq "$(PLUGINS_SRC_DIR)" ""
@@ -152,7 +147,7 @@ $(SOURCE_DIR)/rabbit_framing_amqp_0_8.erl: codegen.py $(AMQP_CODEGEN_DIR)/amqp_c
 
 dialyze: $(BEAM_TARGETS) $(BASIC_PLT)
 	dialyzer --plt $(BASIC_PLT) --no_native --fullpath \
-	  -Wrace_conditions $(BEAM_TARGETS)
+	   $(BEAM_TARGETS)
 
 # rabbit.plt is used by rabbitmq-erlang-client's dialyze make target
 create-plt: $(RABBIT_PLT)
@@ -167,7 +162,7 @@ $(BASIC_PLT): $(BEAM_TARGETS)
 	else \
 	    dialyzer --output_plt $@ --build_plt \
 		--apps erts kernel stdlib compiler sasl os_mon mnesia tools \
-		  public_key crypto ssl; \
+		  public_key crypto ssl xmerl; \
 	fi
 
 clean:

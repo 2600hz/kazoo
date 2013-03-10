@@ -13,7 +13,7 @@
 %%  The Original Code is RabbitMQ.
 %%
 %%  The Initial Developer of the Original Code is VMware, Inc.
-%%  Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%%  Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 -module(rabbit_framing_amqp_0_9_1).
 -include("rabbit_framing.hrl").
@@ -48,8 +48,8 @@
       'table' | 'byte' | 'double' | 'float' | 'long' |
       'short' | 'bool' | 'binary' | 'void' | 'array').
 -type(amqp_property_type() ::
-      'shortstr' | 'longstr' | 'octet' | 'shortint' | 'longint' |
-      'longlongint' | 'timestamp' | 'bit' | 'table').
+      'shortstr' | 'longstr' | 'octet' | 'short' | 'long' |
+      'longlong' | 'timestamp' | 'bit' | 'table').
 
 -type(amqp_table() :: [{binary(), amqp_field_type(), amqp_value()}]).
 -type(amqp_array() :: [{amqp_field_type(), amqp_value()}]).
@@ -115,43 +115,43 @@
        | #'tx.commit'{} | #'tx.commit_ok'{} | #'tx.rollback'{} | #'tx.rollback_ok'{}
        | #'confirm.select'{} | #'confirm.select_ok'{} )).
 -type(amqp_method_field_name() ::
-       ( routing_key | realm | exclusive | passive
-       | active | write | read | no_local
-       | queue | ticket | ticket | exchange
-       | no_ack | consumer_tag | no_ack | type
-       | passive | durable | auto_delete | internal
-       | nowait | frame_max | exclusive | arguments
-       | routing_key | mandatory | ticket | exchange
-       | if_unused | nowait | nowait | reply_text
-       | exchange | ticket | destination | source
-       | delivery_tag | arguments | routing_key | nowait
-       | arguments | exchange | routing_key | ticket
-       | destination | source | requeue | routing_key
-       | nowait | arguments | queue | ticket
-       | delivery_tag | nowait | redelivered | exchange
-       | ticket | message_count | reply_code | ticket
-       | server_properties | active | queue | passive
-       | durable | exclusive | auto_delete | nowait
-       | routing_key | exchange | arguments | delivery_tag
-       | queue | message_count | routing_key | prefetch_count
-       | consumer_count | nowait | requeue | version_major
-       | version_minor | queue | mechanisms | locales
-       | global | nowait | immediate | arguments
-       | mechanism | nowait | response | locale
-       | client_properties | cluster_id | consumer_tag | ticket
-       | queue | nowait | channel_max | delivery_tag
-       | message_count | heartbeat | channel_max | consumer_tag
-       | frame_max | heartbeat | multiple | if_empty
-       | redelivered | virtual_host | capabilities | insist
-       | message_count | response | known_hosts | requeue
-       | consumer_tag | delivery_tag | reply_code | reply_text
-       | ticket | class_id | method_id | exchange
-       | arguments | multiple | ticket | out_of_band
-       | channel_id | queue | challenge | prefetch_size
-       | requeue | active | if_unused | routing_key
+       ( ticket | nowait | arguments | delivery_tag
+       | queue | message_count | ticket | multiple
+       | consumer_count | queue | requeue | version_major
+       | ticket | queue | mechanisms | exchange
+       | locales | nowait | client_properties | mechanism
+       | response | locale | nowait | routing_key
+       | challenge | queue | response | multiple
+       | channel_max | no_local | queue | message_count
+       | heartbeat | requeue | channel_max | frame_max
+       | reply_code | heartbeat | no_ack | if_empty
+       | no_ack | virtual_host | capabilities | insist
+       | message_count | routing_key | known_hosts | exclusive
+       | frame_max | reply_code | reply_text | class_id
+       | method_id | arguments | nowait | out_of_band
+       | consumer_tag | channel_id | arguments | active
+       | prefetch_size | ticket | active | global
        | reply_code | reply_text | ticket | class_id
-       | exchange | method_id | ticket | queue
-       | consumer_tag )).
+       | method_id | immediate | ticket | queue
+       | consumer_tag | version_minor | realm | queue
+       | exclusive | passive | active | write
+       | read | if_unused | server_properties | ticket
+       | ticket | exchange | exchange | requeue
+       | type | routing_key | passive | durable
+       | auto_delete | internal | exchange | nowait
+       | nowait | arguments | prefetch_count | routing_key
+       | nowait | mandatory | ticket | exchange
+       | if_unused | consumer_tag | nowait | reply_text
+       | exchange | ticket | destination | ticket
+       | source | routing_key | arguments | consumer_tag
+       | nowait | arguments | requeue | exchange
+       | routing_key | ticket | delivery_tag | destination
+       | delivery_tag | nowait | source | routing_key
+       | nowait | arguments | cluster_id | redelivered
+       | delivery_tag | redelivered | exchange | routing_key
+       | message_count | ticket | consumer_tag | delivery_tag
+       | queue | passive | durable | exclusive
+       | auto_delete )).
 -type(amqp_property_record() ::
        ( #'P_connection'{} | #'P_channel'{} | #'P_access'{} | #'P_exchange'{}
        | #'P_queue'{} | #'P_basic'{} | #'P_tx'{} | #'P_confirm'{} )).
@@ -208,25 +208,78 @@ shortstr_size(S) ->
         _                   -> exit(method_field_shortstr_overflow)
     end.
 
--define(SHORTSTR_PROP(P, R, L, S, X),
-        if P =:= 0 -> {undefined, R};
-           true    -> <<L:8/unsigned, S:L/binary, X/binary>> = R,
-                      {S, X}
+-define(SHORTSTR_VAL(R, L, V, X),
+        begin
+            <<L:8/unsigned, V:L/binary, X/binary>> = R,
+            {V, X}
         end).
--define(TABLE_PROP(P, R, L, T, X),
-        if P =:= 0 -> {undefined, R};
-           true    -> <<L:32/unsigned, T:L/binary, X/binary>> = R,
-                      {rabbit_binary_parser:parse_table(T), X}
+
+-define(LONGSTR_VAL(R, L, V, X),
+        begin
+            <<L:32/unsigned, V:L/binary, X/binary>> = R,
+            {V, X}
         end).
--define(OCTET_PROP(P, R, I, X),
-        if P =:= 0 -> {undefined, R};
-           true    -> <<I:8/unsigned, X/binary>> = R,
-                      {I, X}
+
+-define(SHORT_VAL(R, L, V, X),
+        begin
+            <<V:8/unsigned, X/binary>> = R,
+            {V, X}
         end).
--define(TIMESTAMP_PROP(P, R, I, X),
-        if P =:= 0 -> {undefined, R};
-           true    -> <<I:64/unsigned, X/binary>> = R,
-                      {I, X}
+
+-define(LONG_VAL(R, L, V, X),
+        begin
+            <<V:32/unsigned, X/binary>> = R,
+            {V, X}
+        end).
+
+-define(LONGLONG_VAL(R, L, V, X),
+        begin
+            <<V:64/unsigned, X/binary>> = R,
+            {V, X}
+        end).
+
+-define(OCTET_VAL(R, L, V, X),
+        begin
+            <<V:8/unsigned, X/binary>> = R,
+            {V, X}
+        end).
+
+-define(TABLE_VAL(R, L, V, X),
+        begin
+            <<L:32/unsigned, V:L/binary, X/binary>> = R,
+            {rabbit_binary_parser:parse_table(V), X}
+        end).
+
+-define(TIMESTAMP_VAL(R, L, V, X),
+        begin
+            <<V:64/unsigned, X/binary>> = R,
+            {V, X}
+        end).
+
+-define(SHORTSTR_PROP(X, L),
+        begin
+            L = size(X),
+            if L < 256 -> <<L:8, X:L/binary>>;
+               true    -> exit(content_properties_shortstr_overflow)
+            end
+        end).
+
+-define(LONGSTR_PROP(X, L),
+        begin
+            L = size(X),
+            <<L:32, X:L/binary>>
+        end).
+
+-define(OCTET_PROP(X, L),     <<X:8/unsigned>>).
+-define(SHORT_PROP(X, L),     <<X:16/unsigned>>).
+-define(LONG_PROP(X, L),      <<X:32/unsigned>>).
+-define(LONGLONG_PROP(X, L),  <<X:64/unsigned>>).
+-define(TIMESTAMP_PROP(X, L), <<X:64/unsigned>>).
+
+-define(TABLE_PROP(X, T),
+        begin
+            T = rabbit_binary_generator:generate_table(X),
+            <<(size(T)):32, T/binary>>
         end).
 
 version() -> {0, 9, 1}.
@@ -797,35 +850,36 @@ decode_method_fields('confirm.select_ok', <<>>) ->
   #'confirm.select_ok'{};
 decode_method_fields(Name, BinaryFields) ->
   rabbit_misc:frame_error(Name, BinaryFields).
-decode_properties(10, _) ->
+decode_properties(10, <<>>) ->
   #'P_connection'{};
-decode_properties(20, _) ->
+decode_properties(20, <<>>) ->
   #'P_channel'{};
-decode_properties(30, _) ->
+decode_properties(30, <<>>) ->
   #'P_access'{};
-decode_properties(40, _) ->
+decode_properties(40, <<>>) ->
   #'P_exchange'{};
-decode_properties(50, _) ->
+decode_properties(50, <<>>) ->
   #'P_queue'{};
 decode_properties(60, <<P0:1, P1:1, P2:1, P3:1, P4:1, P5:1, P6:1, P7:1, P8:1, P9:1, P10:1, P11:1, P12:1, P13:1, _:2, R0/binary>>) ->
-  {F0, R1} = ?SHORTSTR_PROP(P0, R0, L0, S0, X0),
-  {F1, R2} = ?SHORTSTR_PROP(P1, R1, L1, S1, X1),
-  {F2, R3} = ?TABLE_PROP(P2, R2, L2, S2, X2),
-  {F3, R4} = ?OCTET_PROP(P3, R3, I3, X3),
-  {F4, R5} = ?OCTET_PROP(P4, R4, I4, X4),
-  {F5, R6} = ?SHORTSTR_PROP(P5, R5, L5, S5, X5),
-  {F6, R7} = ?SHORTSTR_PROP(P6, R6, L6, S6, X6),
-  {F7, R8} = ?SHORTSTR_PROP(P7, R7, L7, S7, X7),
-  {F8, R9} = ?SHORTSTR_PROP(P8, R8, L8, S8, X8),
-  {F9, R10} = ?TIMESTAMP_PROP(P9, R9, I9, X9),
-  {F10, R11} = ?SHORTSTR_PROP(P10, R10, L10, S10, X10),
-  {F11, R12} = ?SHORTSTR_PROP(P11, R11, L11, S11, X11),
-  {F12, R13} = ?SHORTSTR_PROP(P12, R12, L12, S12, X12),
-  {F13, <<>>} = ?SHORTSTR_PROP(P13, R13, L13, S13, X13),
+  {F0, R1} = if P0 =:= 0 -> {undefined, R0}; true -> ?SHORTSTR_VAL(R0, L0, V0, X0) end,
+  {F1, R2} = if P1 =:= 0 -> {undefined, R1}; true -> ?SHORTSTR_VAL(R1, L1, V1, X1) end,
+  {F2, R3} = if P2 =:= 0 -> {undefined, R2}; true -> ?TABLE_VAL(R2, L2, V2, X2) end,
+  {F3, R4} = if P3 =:= 0 -> {undefined, R3}; true -> ?OCTET_VAL(R3, L3, V3, X3) end,
+  {F4, R5} = if P4 =:= 0 -> {undefined, R4}; true -> ?OCTET_VAL(R4, L4, V4, X4) end,
+  {F5, R6} = if P5 =:= 0 -> {undefined, R5}; true -> ?SHORTSTR_VAL(R5, L5, V5, X5) end,
+  {F6, R7} = if P6 =:= 0 -> {undefined, R6}; true -> ?SHORTSTR_VAL(R6, L6, V6, X6) end,
+  {F7, R8} = if P7 =:= 0 -> {undefined, R7}; true -> ?SHORTSTR_VAL(R7, L7, V7, X7) end,
+  {F8, R9} = if P8 =:= 0 -> {undefined, R8}; true -> ?SHORTSTR_VAL(R8, L8, V8, X8) end,
+  {F9, R10} = if P9 =:= 0 -> {undefined, R9}; true -> ?TIMESTAMP_VAL(R9, L9, V9, X9) end,
+  {F10, R11} = if P10 =:= 0 -> {undefined, R10}; true -> ?SHORTSTR_VAL(R10, L10, V10, X10) end,
+  {F11, R12} = if P11 =:= 0 -> {undefined, R11}; true -> ?SHORTSTR_VAL(R11, L11, V11, X11) end,
+  {F12, R13} = if P12 =:= 0 -> {undefined, R12}; true -> ?SHORTSTR_VAL(R12, L12, V12, X12) end,
+  {F13, R14} = if P13 =:= 0 -> {undefined, R13}; true -> ?SHORTSTR_VAL(R13, L13, V13, X13) end,
+  <<>> = R14,
   #'P_basic'{content_type = F0, content_encoding = F1, headers = F2, delivery_mode = F3, priority = F4, correlation_id = F5, reply_to = F6, expiration = F7, message_id = F8, timestamp = F9, type = F10, user_id = F11, app_id = F12, cluster_id = F13};
-decode_properties(90, _) ->
+decode_properties(90, <<>>) ->
   #'P_tx'{};
-decode_properties(85, _) ->
+decode_properties(85, <<>>) ->
   #'P_confirm'{};
 decode_properties(ClassId, _BinaryFields) -> exit({unknown_class_id, ClassId}).
 encode_method_fields(#'connection.start'{version_major = F0, version_minor = F1, server_properties = F2, mechanisms = F3, locales = F4}) ->
@@ -1048,21 +1102,36 @@ encode_method_fields(#'confirm.select_ok'{}) ->
   <<>>;
 encode_method_fields(Record) -> exit({unknown_method_name, element(1, Record)}).
 encode_properties(#'P_connection'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(#'P_channel'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(#'P_access'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(#'P_exchange'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(#'P_queue'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(#'P_basic'{content_type = F0, content_encoding = F1, headers = F2, delivery_mode = F3, priority = F4, correlation_id = F5, reply_to = F6, expiration = F7, message_id = F8, timestamp = F9, type = F10, user_id = F11, app_id = F12, cluster_id = F13}) ->
-  rabbit_binary_generator:encode_properties([shortstr, shortstr, table, octet, octet, shortstr, shortstr, shortstr, shortstr, timestamp, shortstr, shortstr, shortstr, shortstr], [F0, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13]);
+  R0 = [<<>>],
+  {P0, R1} = if F0 =:= undefined -> {0, R0}; true -> {1, [?SHORTSTR_PROP(F0, L0) | R0]} end,
+  {P1, R2} = if F1 =:= undefined -> {0, R1}; true -> {1, [?SHORTSTR_PROP(F1, L1) | R1]} end,
+  {P2, R3} = if F2 =:= undefined -> {0, R2}; true -> {1, [?TABLE_PROP(F2, L2) | R2]} end,
+  {P3, R4} = if F3 =:= undefined -> {0, R3}; true -> {1, [?OCTET_PROP(F3, L3) | R3]} end,
+  {P4, R5} = if F4 =:= undefined -> {0, R4}; true -> {1, [?OCTET_PROP(F4, L4) | R4]} end,
+  {P5, R6} = if F5 =:= undefined -> {0, R5}; true -> {1, [?SHORTSTR_PROP(F5, L5) | R5]} end,
+  {P6, R7} = if F6 =:= undefined -> {0, R6}; true -> {1, [?SHORTSTR_PROP(F6, L6) | R6]} end,
+  {P7, R8} = if F7 =:= undefined -> {0, R7}; true -> {1, [?SHORTSTR_PROP(F7, L7) | R7]} end,
+  {P8, R9} = if F8 =:= undefined -> {0, R8}; true -> {1, [?SHORTSTR_PROP(F8, L8) | R8]} end,
+  {P9, R10} = if F9 =:= undefined -> {0, R9}; true -> {1, [?TIMESTAMP_PROP(F9, L9) | R9]} end,
+  {P10, R11} = if F10 =:= undefined -> {0, R10}; true -> {1, [?SHORTSTR_PROP(F10, L10) | R10]} end,
+  {P11, R12} = if F11 =:= undefined -> {0, R11}; true -> {1, [?SHORTSTR_PROP(F11, L11) | R11]} end,
+  {P12, R13} = if F12 =:= undefined -> {0, R12}; true -> {1, [?SHORTSTR_PROP(F12, L12) | R12]} end,
+  {P13, R14} = if F13 =:= undefined -> {0, R13}; true -> {1, [?SHORTSTR_PROP(F13, L13) | R13]} end,
+  list_to_binary([<<P0:1, P1:1, P2:1, P3:1, P4:1, P5:1, P6:1, P7:1, P8:1, P9:1, P10:1, P11:1, P12:1, P13:1, 0:2>> | lists:reverse(R14)]);
 encode_properties(#'P_tx'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(#'P_confirm'{}) ->
-  rabbit_binary_generator:encode_properties([], []);
+  <<>>;
 encode_properties(Record) -> exit({unknown_properties_record, Record}).
 lookup_amqp_exception(content_too_large) -> {false, ?CONTENT_TOO_LARGE, <<"CONTENT_TOO_LARGE">>};
 lookup_amqp_exception(no_route) -> {false, ?NO_ROUTE, <<"NO_ROUTE">>};

@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(gm_speed_test).
@@ -44,7 +44,8 @@ terminate(Owner, _Reason) ->
 %% other
 
 wile_e_coyote(Time, WriteUnit) ->
-    {ok, Pid} = gm:start_link(?MODULE, ?MODULE, self()),
+    {ok, Pid} = gm:start_link(?MODULE, ?MODULE, self(),
+                              fun rabbit_misc:execute_mnesia_transaction/1),
     receive joined -> ok end,
     timer:sleep(1000), %% wait for all to join
     timer:send_after(Time, stop),

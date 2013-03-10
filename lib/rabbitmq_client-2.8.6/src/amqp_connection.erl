@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 %% @type close_reason(Type) = {shutdown, amqp_reason(Type)}.
@@ -70,9 +70,10 @@
 -include("amqp_client_internal.hrl").
 
 -export([open_channel/1, open_channel/2, open_channel/3]).
--export([start/1, close/1, close/3]).
+-export([start/1, close/1, close/2, close/3]).
 -export([error_atom/1]).
 -export([info/2, info_keys/1, info_keys/0]).
+-export([socket_adapter_info/2]).
 
 -define(DEFAULT_CONSUMER, {amqp_selective_consumer, []}).
 
@@ -88,6 +89,7 @@
 %% <ul>
 %% <li>username :: binary() - The name of a user registered with the broker,
 %%     defaults to &lt;&lt;guest"&gt;&gt;</li>
+%% <li>password :: binary() - The password of user, defaults to 'none'</li>
 %% <li>virtual_host :: binary() - The name of a virtual host in the broker,
 %%     defaults to &lt;&lt;"/"&gt;&gt;</li>
 %% <li>node :: atom() - The node the broker runs on (direct only)</li>
@@ -146,11 +148,7 @@
 %% the default ports will be selected depending on whether this is a
 %% normal or an SSL connection.
 start(AmqpParams) ->
-    case amqp_client:start() of
-        ok                                      -> ok;
-        {error, {already_started, amqp_client}} -> ok;
-        {error, _} = E                          -> throw(E)
-    end,
+    ensure_started(),
     AmqpParams1 =
         case AmqpParams of
             #amqp_params_network{port = undefined, ssl_options = none} ->
@@ -162,6 +160,24 @@ start(AmqpParams) ->
         end,
     {ok, _Sup, Connection} = amqp_sup:start_connection_sup(AmqpParams1),
     amqp_gen_connection:connect(Connection).
+
+%% Usually the amqp_client application will already be running. We
+%% check whether that is the case by invoking an undocumented function
+%% which does not require a synchronous call to the application
+%% controller. That way we don't risk a dead-lock if, say, the
+%% application controller is in the process of shutting down the very
+%% application which is making this call.
+ensure_started() ->
+    case application_controller:get_master(amqp_client) of
+        undefined ->
+            case amqp_client:start() of
+                ok                                      -> ok;
+                {error, {already_started, amqp_client}} -> ok;
+                {error, _} = E                          -> throw(E)
+            end;
+        _ ->
+            ok
+    end.
 
 %%---------------------------------------------------------------------------
 %% Commands
@@ -218,6 +234,14 @@ open_channel(ConnectionPid, ChannelNumber,
 close(ConnectionPid) ->
     close(ConnectionPid, 200, <<"Goodbye">>).
 
+%% @spec (ConnectionPid, Timeout) -> ok | Error
+%% where
+%%      ConnectionPid = pid()
+%%      Timeout = integer()
+%% @doc Closes the channel, using the supplied Timeout value.
+close(ConnectionPid, Timeout) ->
+    close(ConnectionPid, 200, <<"Goodbye">>, Timeout).
+
 %% @spec (ConnectionPid, Code, Text) -> ok | closing
 %% where
 %%      ConnectionPid = pid()
@@ -226,11 +250,23 @@ close(ConnectionPid) ->
 %% @doc Closes the AMQP connection, allowing the caller to set the reply
 %% code and text.
 close(ConnectionPid, Code, Text) ->
-    Close = #'connection.close'{reply_text =  Text,
+    close(ConnectionPid, Code, Text, infinity).
+
+%% @spec (ConnectionPid, Code, Text, Timeout) -> ok | closing
+%% where
+%%      ConnectionPid = pid()
+%%      Code = integer()
+%%      Text = binary()
+%%      Timeout = integer()
+%% @doc Closes the AMQP connection, allowing the caller to set the reply
+%% code and text, as well as a timeout for the operation, after which the
+%% connection will be abruptly terminated.
+close(ConnectionPid, Code, Text, Timeout) ->
+    Close = #'connection.close'{reply_text = Text,
                                 reply_code = Code,
                                 class_id   = 0,
                                 method_id  = 0},
-    amqp_gen_connection:close(ConnectionPid, Close).
+    amqp_gen_connection:close(ConnectionPid, Close, Timeout).
 
 %%---------------------------------------------------------------------------
 %% Other functions
@@ -297,3 +333,8 @@ info_keys(ConnectionPid) ->
 %% atoms that can be used for a certain connection, use info_keys/1.
 info_keys() ->
     amqp_gen_connection:info_keys().
+
+%% @doc Takes a socket and a protocol, returns an #amqp_adapter_info{}
+%% based on the socket for the protocol given.
+socket_adapter_info(Sock, Protocol) ->
+    amqp_direct_connection:socket_adapter_info(Sock, Protocol).

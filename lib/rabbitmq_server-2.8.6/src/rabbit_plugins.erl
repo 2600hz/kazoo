@@ -11,25 +11,13 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2011-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2011-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(rabbit_plugins).
 -include("rabbit.hrl").
 
 -export([setup/0, active/0, read_enabled/1, list/1, dependencies/3]).
-
--define(VERBOSE_DEF, {?VERBOSE_OPT, flag}).
--define(MINIMAL_DEF, {?MINIMAL_OPT, flag}).
--define(ENABLED_DEF, {?ENABLED_OPT, flag}).
--define(ENABLED_ALL_DEF, {?ENABLED_ALL_OPT, flag}).
-
--define(GLOBAL_DEFS, []).
-
--define(COMMANDS,
-        [{list, [?VERBOSE_DEF, ?MINIMAL_DEF, ?ENABLED_DEF, ?ENABLED_ALL_DEF]},
-         enable,
-         disable]).
 
 %%----------------------------------------------------------------------------
 
@@ -76,8 +64,8 @@ list(PluginsDir) ->
                     [plugin_info(PluginsDir, Plug) || Plug <- EZs ++ FreeApps]),
     case Problems of
         [] -> ok;
-        _  -> io:format("Warning: Problem reading some plugins: ~p~n",
-                        [Problems])
+        _  -> error_logger:warning_msg(
+                "Problem reading some plugins: ~p~n", [Problems])
     end,
     Plugins.
 
@@ -100,8 +88,13 @@ dependencies(Reverse, Sources, AllPlugins) ->
     {ok, G} = rabbit_misc:build_acyclic_graph(
                 fun (App, _Deps) -> [{App, App}] end,
                 fun (App,  Deps) -> [{App, Dep} || Dep <- Deps] end,
-                [{Name, Deps}
-                 || #plugin{name = Name, dependencies = Deps} <- AllPlugins]),
+                lists:ukeysort(
+                  1, [{Name, Deps} ||
+                         #plugin{name         = Name,
+                                 dependencies = Deps} <- AllPlugins] ++
+                      [{Dep,   []} ||
+                          #plugin{dependencies = Deps} <- AllPlugins,
+                          Dep                          <- Deps])),
     Dests = case Reverse of
                 false -> digraph_utils:reachable(Sources, G);
                 true  -> digraph_utils:reaching(Sources, G)
@@ -119,8 +112,9 @@ prepare_plugins(EnabledFile, PluginsDistDir, ExpandDir) ->
 
     case Enabled -- plugin_names(ToUnpackPlugins) of
         []      -> ok;
-        Missing -> io:format("Warning: the following enabled plugins were "
-                             "not found: ~p~n", [Missing])
+        Missing -> error_logger:warning_msg(
+                     "The following enabled plugins were not found: ~p~n",
+                     [Missing])
     end,
 
     %% Eliminate the contents of the destination directory

@@ -11,20 +11,25 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(rabbit_writer).
 -include("rabbit.hrl").
 -include("rabbit_framing.hrl").
 
--export([start/5, start_link/5, mainloop/2, mainloop1/2]).
+-export([start/5, start_link/5, start/6, start_link/6]).
 -export([send_command/2, send_command/3,
          send_command_sync/2, send_command_sync/3,
-         send_command_and_notify/4, send_command_and_notify/5]).
+         send_command_and_notify/4, send_command_and_notify/5,
+         flush/1]).
 -export([internal_send_command/4, internal_send_command/6]).
 
--record(wstate, {sock, channel, frame_max, protocol, pending}).
+%% internal
+-export([mainloop/1, mainloop1/1]).
+
+-record(wstate, {sock, channel, frame_max, protocol, reader,
+                 stats_timer, pending}).
 
 -define(HIBERNATE_AFTER, 5000).
 
@@ -39,6 +44,14 @@
 -spec(start_link/5 ::
         (rabbit_net:socket(), rabbit_channel:channel_number(),
          non_neg_integer(), rabbit_types:protocol(), pid())
+        -> rabbit_types:ok(pid())).
+-spec(start/6 ::
+        (rabbit_net:socket(), rabbit_channel:channel_number(),
+         non_neg_integer(), rabbit_types:protocol(), pid(), boolean())
+        -> rabbit_types:ok(pid())).
+-spec(start_link/6 ::
+        (rabbit_net:socket(), rabbit_channel:channel_number(),
+         non_neg_integer(), rabbit_types:protocol(), pid(), boolean())
         -> rabbit_types:ok(pid())).
 -spec(send_command/2 ::
         (pid(), rabbit_framing:amqp_method_record()) -> 'ok').
@@ -57,6 +70,7 @@
         (pid(), pid(), pid(), rabbit_framing:amqp_method_record(),
          rabbit_types:content())
         -> 'ok').
+-spec(flush/1 :: (pid()) -> 'ok').
 -spec(internal_send_command/4 ::
         (rabbit_net:socket(), rabbit_channel:channel_number(),
          rabbit_framing:amqp_method_record(), rabbit_types:protocol())
@@ -67,50 +81,58 @@
          non_neg_integer(), rabbit_types:protocol())
         -> 'ok').
 
--spec(mainloop/2 :: (_,_) -> 'done').
--spec(mainloop1/2 :: (_,_) -> any()).
-
 -endif.
 
 %%---------------------------------------------------------------------------
 
 start(Sock, Channel, FrameMax, Protocol, ReaderPid) ->
-    {ok,
-     proc_lib:spawn(?MODULE, mainloop, [ReaderPid,
-                                        #wstate{sock = Sock,
-                                                channel = Channel,
-                                                frame_max = FrameMax,
-                                                protocol = Protocol,
-                                                pending = []}])}.
+    start(Sock, Channel, FrameMax, Protocol, ReaderPid, false).
 
 start_link(Sock, Channel, FrameMax, Protocol, ReaderPid) ->
-    {ok,
-     proc_lib:spawn_link(?MODULE, mainloop, [ReaderPid,
-                                             #wstate{sock = Sock,
-                                                     channel = Channel,
-                                                     frame_max = FrameMax,
-                                                     protocol = Protocol,
-                                                     pending = []}])}.
+    start_link(Sock, Channel, FrameMax, Protocol, ReaderPid, false).
 
-mainloop(ReaderPid, State) ->
+start(Sock, Channel, FrameMax, Protocol, ReaderPid, ReaderWantsStats) ->
+    State = initial_state(Sock, Channel, FrameMax, Protocol, ReaderPid,
+                          ReaderWantsStats),
+    {ok, proc_lib:spawn(?MODULE, mainloop, [State])}.
+
+start_link(Sock, Channel, FrameMax, Protocol, ReaderPid, ReaderWantsStats) ->
+    State = initial_state(Sock, Channel, FrameMax, Protocol, ReaderPid,
+                          ReaderWantsStats),
+    {ok, proc_lib:spawn_link(?MODULE, mainloop, [State])}.
+
+initial_state(Sock, Channel, FrameMax, Protocol, ReaderPid, ReaderWantsStats) ->
+    (case ReaderWantsStats of
+         true  -> fun rabbit_event:init_stats_timer/2;
+         false -> fun rabbit_event:init_disabled_stats_timer/2
+     end)(#wstate{sock      = Sock,
+                  channel   = Channel,
+                  frame_max = FrameMax,
+                  protocol  = Protocol,
+                  reader    = ReaderPid,
+                  pending   = []},
+          #wstate.stats_timer).
+
+mainloop(State) ->
     try
-        mainloop1(ReaderPid, State)
+        mainloop1(State)
     catch
-        exit:Error -> ReaderPid ! {channel_exit, #wstate.channel, Error}
+        exit:Error -> #wstate{reader = ReaderPid, channel = Channel} = State,
+                      ReaderPid ! {channel_exit, Channel, Error}
     end,
     done.
 
-mainloop1(ReaderPid, State = #wstate{pending = []}) ->
+mainloop1(State = #wstate{pending = []}) ->
     receive
-        Message -> ?MODULE:mainloop1(ReaderPid, handle_message(Message, State))
+        Message -> ?MODULE:mainloop1(handle_message(Message, State))
     after ?HIBERNATE_AFTER ->
-            erlang:hibernate(?MODULE, mainloop, [ReaderPid, State])
+            erlang:hibernate(?MODULE, mainloop, [State])
     end;
-mainloop1(ReaderPid, State) ->
+mainloop1(State) ->
     receive
-        Message -> ?MODULE:mainloop1(ReaderPid, handle_message(Message, State))
+        Message -> ?MODULE:mainloop1(handle_message(Message, State))
     after 0 ->
-            ?MODULE:mainloop1(ReaderPid, flush(State))
+            ?MODULE:mainloop1(internal_flush(State))
     end.
 
 handle_message({send_command, MethodRecord}, State) ->
@@ -118,12 +140,18 @@ handle_message({send_command, MethodRecord}, State) ->
 handle_message({send_command, MethodRecord, Content}, State) ->
     internal_send_command_async(MethodRecord, Content, State);
 handle_message({'$gen_call', From, {send_command_sync, MethodRecord}}, State) ->
-    State1 = flush(internal_send_command_async(MethodRecord, State)),
+    State1 = internal_flush(
+               internal_send_command_async(MethodRecord, State)),
     gen_server:reply(From, ok),
     State1;
 handle_message({'$gen_call', From, {send_command_sync, MethodRecord, Content}},
                State) ->
-    State1 = flush(internal_send_command_async(MethodRecord, Content, State)),
+    State1 = internal_flush(
+               internal_send_command_async(MethodRecord, Content, State)),
+    gen_server:reply(From, ok),
+    State1;
+handle_message({'$gen_call', From, flush}, State) ->
+    State1 = internal_flush(State),
     gen_server:reply(From, ok),
     State1;
 handle_message({send_command_and_notify, QPid, ChPid, MethodRecord}, State) ->
@@ -139,9 +167,12 @@ handle_message({'DOWN', _MRef, process, QPid, _Reason}, State) ->
     rabbit_amqqueue:notify_sent_queue_down(QPid),
     State;
 handle_message({inet_reply, _, ok}, State) ->
-    State;
+    rabbit_event:ensure_stats_timer(State, #wstate.stats_timer, emit_stats);
 handle_message({inet_reply, _, Status}, _State) ->
     exit({writer, send_failed, Status});
+handle_message(emit_stats, State = #wstate{reader = ReaderPid}) ->
+    ReaderPid ! ensure_stats,
+    rabbit_event:reset_stats_timer(State, #wstate.stats_timer);
 handle_message(Message, _State) ->
     exit({writer, message_not_understood, Message}).
 
@@ -168,6 +199,8 @@ send_command_and_notify(W, Q, ChPid, MethodRecord) ->
 send_command_and_notify(W, Q, ChPid, MethodRecord, Content) ->
     W ! {send_command_and_notify, Q, ChPid, MethodRecord, Content},
     ok.
+
+flush(W) -> call(W, flush).
 
 %%---------------------------------------------------------------------------
 
@@ -228,13 +261,13 @@ internal_send_command_async(MethodRecord, Content,
 
 maybe_flush(State = #wstate{pending = Pending}) ->
     case iolist_size(Pending) >= ?FLUSH_THRESHOLD of
-        true  -> flush(State);
+        true  -> internal_flush(State);
         false -> State
     end.
 
-flush(State = #wstate{pending = []}) ->
+internal_flush(State = #wstate{pending = []}) ->
     State;
-flush(State = #wstate{sock = Sock, pending = Pending}) ->
+internal_flush(State = #wstate{sock = Sock, pending = Pending}) ->
     ok = port_cmd(Sock, lists:reverse(Pending)),
     State#wstate{pending = []}.
 

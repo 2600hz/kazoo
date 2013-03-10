@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2011-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2011-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(rabbit_file).
@@ -105,9 +105,9 @@ with_fhc_handle(Fun) ->
     with_fhc_handle(1, Fun).
 
 with_fhc_handle(N, Fun) ->
-    [ ok = file_handle_cache:obtain() || _ <- lists:seq(1, N)],
+    ok = file_handle_cache:obtain(N),
     try Fun()
-    after [ ok = file_handle_cache:release() || _ <- lists:seq(1, N)]
+    after ok = file_handle_cache:release(N)
     end.
 
 read_term_file(File) ->

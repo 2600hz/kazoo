@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 %% @private
@@ -20,7 +20,6 @@
 -include("amqp_client_internal.hrl").
 
 -behaviour(amqp_gen_connection).
-
 -export([init/1, terminate/2, connect/4, do/2, open_channel_args/1, i/2,
          info_keys/0, handle_message/2, closing/3, channels_terminated/1]).
 
@@ -69,6 +68,8 @@ handle_message({channel_exit, Reason}, State) ->
     {stop, {channel0_died, Reason}, State};
 handle_message(heartbeat_timeout, State) ->
     {stop, heartbeat_timeout, State};
+handle_message(closing_timeout, State = #state{closing_reason = Reason}) ->
+    {stop, Reason, State};
 %% see http://erlang.org/pipermail/erlang-bugs/2012-June/002933.html
 handle_message({Ref, {error, Reason}},
                State = #state{waiting_socket_close = Waiting,
@@ -149,9 +150,15 @@ do_connect({Addr, Family},
             E
     end.
 
+inet_address_preference() ->
+    case application:get_env(amqp_client, prefer_ipv6) of
+        {ok, true}  -> [inet6, inet];
+        {ok, false} -> [inet, inet6]
+    end.
+
 gethostaddr(Host) ->
     Lookups = [{Family, inet:getaddr(Host, Family)}
-               || Family <- [inet, inet6]],
+               || Family <- inet_address_preference()],
     [{IP, Family} || {Family, {ok, IP}} <- Lookups].
 
 try_handshake(AmqpParams, SIF, ChMgr, State) ->
@@ -257,7 +264,7 @@ client_properties(UserProperties) ->
                {<<"version">>,   longstr, list_to_binary(Vsn)},
                {<<"platform">>,  longstr, <<"Erlang">>},
                {<<"copyright">>, longstr,
-                <<"Copyright (c) 2007-2012 VMware, Inc.">>},
+                <<"Copyright (c) 2007-2013 VMware, Inc.">>},
                {<<"information">>, longstr,
                 <<"Licensed under the MPL.  "
                   "See http://www.rabbitmq.com/">>},
