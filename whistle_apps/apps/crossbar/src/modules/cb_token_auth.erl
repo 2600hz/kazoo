@@ -56,10 +56,12 @@ init(Parent) ->
 -spec finish_request(cb_context:context()) -> any().
 finish_request(#cb_context{auth_doc=undefined}) -> ok;
 finish_request(#cb_context{auth_doc=AuthDoc}) ->
+    couch_mgr:suppress_change_notice(),
     lager:debug("updating auth doc: ~s:~s", [wh_json:get_value(<<"_id">>, AuthDoc)
-                                            ,wh_json:get_value(<<"_rev">>, AuthDoc)
+                                             ,wh_json:get_value(<<"_rev">>, AuthDoc)
                                             ]),
-    couch_mgr:save_doc(?TOKEN_DB, AuthDoc).
+    couch_mgr:save_doc(?TOKEN_DB, AuthDoc),
+    couch_mgr:enable_change_notice().
 
 cleanup_loop(Expiry) ->
     Timeout = Expiry * 1000,

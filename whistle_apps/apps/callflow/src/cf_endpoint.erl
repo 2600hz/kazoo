@@ -32,12 +32,12 @@
 get(Call) ->
     get(whapps_call:authorizing_id(Call), Call).
 
-get(undefined, _Call) ->
-    {error, invalid_endpoint_id};
+get('undefined', _Call) ->
+    {'error', 'invalid_endpoint_id'};
 get(EndpointId, AccountDb) when is_binary(AccountDb) ->
     case wh_cache:peek_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}) of
-        {ok, Endpoint} -> {ok, Endpoint};
-        {error, not_found} ->
+        {'ok', Endpoint} -> {'ok', Endpoint};
+        {'error', 'not_found'} ->
             maybe_fetch_endpoint(EndpointId, AccountDb)
     end;
 get(EndpointId, Call) ->
@@ -46,9 +46,9 @@ get(EndpointId, Call) ->
 -spec maybe_fetch_endpoint(ne_binary(), ne_binary()) -> wh_jobj_return().
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, EndpointId) of
-        {ok, JObj} ->
+        {'ok', JObj} ->
             maybe_have_endpoint(JObj, EndpointId, AccountDb);
-        {error, _R}=E ->
+        {'error', _R}=E ->
             lager:info("unable to fetch endpoint ~s: ~p", [EndpointId, _R]),
             E
     end.
@@ -58,45 +58,61 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
     case wh_json:get_value(<<"pvt_type">>, JObj) of
         <<"device">> ->
             Endpoint = merge_attributes(JObj),
-            CacheProps = [{origin, cache_origin(JObj, EndpointId, AccountDb)}],
+            CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
             wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
-            {ok, Endpoint};
+            {'ok', Endpoint};
         _Else ->
             lager:info("endpoint module does not manage document type ~s", [_Else]),
-            {error, not_device}
+            {'error', 'not_device'}
     end.
 
 -spec cache_origin/3 :: (wh_json:object(), ne_binary(), ne_binary()) ->  list().
 cache_origin(JObj, EndpointId, AccountDb) ->
+    Routines = [fun(P) -> [{'db', AccountDb, EndpointId}|P] end
+                ,fun(P) ->
+                         [{'db', AccountDb, wh_util:format_account_id(AccountDb, 'raw')}
+                          |P
+                         ]
+                 end
+                ,fun(P) -> maybe_cached_owner_id(P, JObj, AccountDb) end
+                ,fun(P) -> maybe_cached_hotdesk_ids(P, JObj, AccountDb) end
+               ],
+    lists:foldl(fun(F, P) -> F(P) end, [], Routines).
+
+-spec maybe_cached_owner_id(wh_proplist(), wh_json:object(), ne_binary()) -> wh_proplist().
+maybe_cached_owner_id(Props, JObj, AccountDb) ->
     case wh_json:get_value(<<"owner_id">>, JObj) of
-        undefined ->
-            [{db, AccountDb, EndpointId}
-             ,{db, AccountDb, wh_util:format_account_id(AccountDb, raw)}
-            ];
-         OwnerId ->
-            [{db, AccountDb, EndpointId}
-             ,{db, AccountDb, OwnerId}
-             ,{db, AccountDb, wh_util:format_account_id(AccountDb, raw)}
-            ]
+        'undefined' -> Props;
+        OwnerId -> [{'db', AccountDb, OwnerId}|Props]
+    end.
+
+-spec maybe_cached_hotdesk_ids(wh_proplist(), wh_json:object(), ne_binary()) -> wh_proplist().
+maybe_cached_hotdesk_ids(Props, JObj, AccountDb) ->
+    case wh_json:get_keys([<<"hotdesk">>, <<"users">>], JObj) of
+        'undefined' -> Props;
+         OwnerIds ->
+            lists:foldl(fun(Id, P) ->
+                                [{'db', AccountDb, Id}|P]
+                        end, Props, OwnerIds)
     end.
 
 -spec merge_attributes/1 :: (wh_json:object()) -> wh_json:object().
 merge_attributes(Endpoint) ->
-    Keys = [<<"music_on_hold">>
-                ,<<"ringtones">>
-                ,<<"caller_id">>
-                ,<<"caller_id_options">>
-                ,<<"name">>
-                ,<<"do_not_disturb">>
-                ,<<"call_forward">>
-                ,<<"call_restriction">>
-                ,?CF_ATTR_LOWER_KEY
+    Keys = [<<"call_restriction">>
+            ,<<"music_on_hold">>
+            ,<<"ringtones">>
+            ,<<"caller_id">>
+            ,<<"caller_id_options">>
+            ,<<"name">>
+            ,<<"do_not_disturb">>
+            ,<<"call_forward">>
+            ,?CF_ATTR_LOWER_KEY
            ],
-    merge_attributes(Keys, undefined, Endpoint, undefined).
+    merge_attributes(Keys, 'undefined', Endpoint, 'undefined').
 
 -spec merge_attributes/4 :: (ne_binaries(), 'undefined' | wh_json:object(), wh_json:object(), 'undefined' | wh_json:object()) ->
                                            wh_json:object().
-merge_attributes(Keys, Account, Endpoint, undefined) ->
+merge_attributes(Keys, Account, Endpoint, 'undefined') ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
     JObj = get_user(AccountDb, Endpoint),
     Id = wh_json:get_value(<<"_id">>, JObj),
@@ -104,16 +120,18 @@ merge_attributes(Keys, Account, Endpoint, undefined) ->
                      ,Account
                      ,wh_json:set_value(<<"owner_id">>, Id, Endpoint)
                      ,JObj);
-merge_attributes(Keys, undefined, Endpoint, Owner) ->
+merge_attributes(Keys, 'undefined', Endpoint, Owner) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, Endpoint),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {ok, JObj} ->
+        {'ok', JObj} ->
             merge_attributes(Keys, JObj, Endpoint, Owner);
-        {error, _} ->
+        {'error', _} ->
             merge_attributes(Keys, wh_json:new(), Endpoint, Owner)
     end;
 merge_attributes([], _, Endpoint, _) -> Endpoint;
+
+
 merge_attributes([<<"call_restriction">>|Keys], Account, Endpoint, Owner) ->
     Classifiers = wh_json:get_keys(wnm_util:available_classifiers()),
     Update = merge_call_restrictions(Classifiers, Account, Endpoint, Owner),
@@ -123,9 +141,9 @@ merge_attributes([?CF_ATTR_LOWER_KEY|Keys], Account, Endpoint, Owner) ->
     OwnerAttr = wh_json:get_integer_value(FullKey, Owner, 5),
     EndpointAttr = wh_json:get_integer_value(FullKey, Endpoint, 5),
     case EndpointAttr < OwnerAttr of
-        true ->
+        'true' ->
             merge_attributes(Keys, Account, Endpoint, Owner);
-        false ->
+        'false' ->
             Update = wh_json:set_value(FullKey, OwnerAttr, Endpoint),
             merge_attributes(Keys, Account, Update, Owner)
     end;
@@ -139,8 +157,8 @@ merge_attributes([<<"name">> = Key|Keys], Account, Endpoint, Owner) ->
 merge_attributes([<<"call_forward">> = Key|Keys], Account, Endpoint, Owner) ->
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
     case wh_json:is_true(<<"enabled">>, EndpointAttr) of
-        true -> merge_attributes(Keys, Account, Endpoint, Owner);
-        false ->
+        'true' -> merge_attributes(Keys, Account, Endpoint, Owner);
+        'false' ->
             AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
             OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
             Merged1 = wh_json:merge_recursive(AccountAttr, EndpointAttr),
@@ -159,14 +177,26 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
 merge_call_restrictions([], _, Endpoint, _) -> Endpoint;
 merge_call_restrictions([Key|Keys], Account, Endpoint, Owner) ->
     case wh_json:get_value([<<"call_restriction">>, Key, <<"action">>], Account) =:= <<"deny">>
-        orelse wh_json:get_value([<<"call_restriction">>, Key, <<"action">>], Owner) =:= <<"deny">>
+        orelse wh_json:get_value([<<"call_restriction">>, Key, <<"action">>], Owner)
     of
-        true ->
+        'true' ->
+            %% denied at the account level
             Update = wh_json:set_value([<<"call_restriction">>, Key, <<"action">>], <<"deny">>, Endpoint),
             merge_call_restrictions(Keys, Account, Update, Owner);
-        false ->
+        <<"deny">> ->
+            %% denied at the user level
+            Update = wh_json:set_value([<<"call_restriction">>, Key, <<"action">>], <<"deny">>, Endpoint),
+            merge_call_restrictions(Keys, Account, Update, Owner);
+        <<"allow">> ->
+            %% allowed at the user level
+            Update = wh_json:set_value([<<"call_restriction">>, Key, <<"action">>], <<"allow">>, Endpoint),
+            merge_call_restrictions(Keys, Account, Update, Owner);
+        _Else ->
+            %% user inherit or no user, either way use the device restrictions
             merge_call_restrictions(Keys, Account, Endpoint, Owner)
     end.
+
+
 
 -spec get_user(ne_binary(), api_binary() | wh_json:object()) -> wh_json:object().
 get_user(_, 'undefined') -> wh_json:new();
@@ -182,30 +212,95 @@ get_user(AccountDb, Endpoint) ->
         [] ->
             get_user(AccountDb, wh_json:get_value(<<"owner_id">>, Endpoint));
         [OwnerId] ->
-            get_user(AccountDb, OwnerId);
+            fix_user_restrictions(get_user(AccountDb, OwnerId));
         [_|_]=OwnerIds->
-            find_attr_key_value(AccountDb, OwnerIds, 5)
+            J = convert_to_single_user(get_users(AccountDb, OwnerIds)),
+            fix_user_restrictions(J)
     end.
+
+-spec get_users(ne_binary(), ne_binaries()) -> wh_json:objects().
+get_users(AccountDb, OwnerIds) ->
+    get_users(AccountDb, OwnerIds, []).
+
+-spec get_users(ne_binary(), ne_binaries(), wh_json:objects()) -> wh_json:objects().
+get_users(_, [], Users) ->
+    Users;
+get_users(AccountDb, [OwnerId|OwnerIds], Users) ->
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+        {'ok', JObj} ->
+            get_users(AccountDb, OwnerIds, [JObj|Users]);
+        {'error', _R} ->
+            lager:warning("failed to load endpoint owner ~s: ~p", [OwnerId, _R]),
+            get_users(AccountDb, OwnerIds, Users)
+    end.
+
+-spec fix_user_restrictions(wh_json:object()) -> wh_json:object().
+fix_user_restrictions(JObj) ->
+    lists:foldl(fun(Key, J) ->
+                        case wh_json:get_value([<<"call_restriction">>
+                                                ,Key
+                                                ,<<"action">>
+                                               ], J)
+                        of
+                            <<"deny">> -> J;
+                            _Else ->
+                                %% this ensures we override the device
+                                %% but only when there is a user associated
+                                wh_json:set_value([<<"call_restriction">>
+                                                   ,Key
+                                                   ,<<"action">>
+                                                  ], <<"allow">>, J)
+                        end
+                end, JObj, wh_json:get_keys(wnm_util:available_classifiers())).
+
+-spec convert_to_single_user(wh_json:objects()) -> wh_json:object().
+convert_to_single_user(JObjs) ->
+    Routines = [fun singlfy_user_attr_keys/2
+                ,fun singlfy_user_restrictions/2
+               ],
+    lists:foldl(fun(F, J) -> F(JObjs, J) end, wh_json:new(), Routines).
+
+-spec singlfy_user_attr_keys(wh_json:objects(), wh_json:object()) -> wh_json:object().
+singlfy_user_attr_keys(JObjs, JObj) ->
+    Value = lists:foldl(fun(J, V1) ->
+                                case wh_json:get_integer_value([?CF_ATTR_LOWER_KEY
+                                                                ,?CF_ATTR_UPPER_KEY
+                                                               ], J, 5)
+                                of
+                                    V2 when V2 < V1 -> V2;
+                                    _ -> V1
+                                end
+                        end, 5, JObjs),
+    wh_json:set_value([?CF_ATTR_LOWER_KEY, ?CF_ATTR_UPPER_KEY], Value, JObj).
+
+-spec singlfy_user_restrictions(wh_json:objects(), wh_json:object()) -> wh_json:object().
+singlfy_user_restrictions(JObjs, JObj) ->
+    lists:foldl(fun(Key, J) ->
+                        Fun = fun(Elem) -> do_all_restrict(Key, Elem) end,
+                        case lists:all(Fun, JObjs) of
+                            'false' -> J;
+                            'true' ->
+                                 wh_json:set_value([<<"call_restriction">>
+                                                    ,Key
+                                                    ,<<"action">>
+                                                   ], <<"deny">>, J)
+                        end
+                end, JObj, wh_json:get_keys(wnm_util:available_classifiers())).
+
+-spec do_all_restrict(ne_binary(), wh_json:object()) -> boolean().
+do_all_restrict(Key, JObj) ->
+    wh_json:get_value([<<"call_restriction">>
+                       ,Key
+                       ,<<"action">>
+                      ], JObj) =:= <<"deny">>.
+
 
 -spec create_endpoint_name(api_binary(), api_binary(), api_binary(), api_binary()) -> api_binary().
-create_endpoint_name(undefined, undefined, undefined, Account) -> Account;
-create_endpoint_name(undefined, undefined, Endpoint, _) -> Endpoint;
-create_endpoint_name(First, undefined, _, _) -> First;
-create_endpoint_name(undefined, Last, _, _) -> Last;
+create_endpoint_name('undefined', 'undefined', 'undefined', Account) -> Account;
+create_endpoint_name('undefined', 'undefined', Endpoint, _) -> Endpoint;
+create_endpoint_name(First, 'undefined', _, _) -> First;
+create_endpoint_name('undefined', Last, _, _) -> Last;
 create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
-
--spec find_attr_key_value(ne_binary(), ne_binaries(), integer()) -> wh_json:object().
-find_attr_key_value(_, [], Value) ->
-    wh_json:from_list([{?CF_ATTR_LOWER_KEY, wh_json:from_list([{?CF_ATTR_UPPER_KEY, Value}])}]);
-find_attr_key_value(AccountDb, [OwnerId|OwerIds], Value) ->
-    case wh_json:get_integer_value([?CF_ATTR_LOWER_KEY, ?CF_ATTR_UPPER_KEY]
-                                   ,get_user(AccountDb, OwnerId), 5)
-    of
-        V when V < Value ->
-            find_attr_key_value(AccountDb, OwerIds, V);
-        _ ->
-            find_attr_key_value(AccountDb, OwerIds, Value)
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -216,7 +311,7 @@ find_attr_key_value(AccountDb, [OwnerId|OwerIds], Value) ->
 -spec flush(ne_binary(), ne_binary()) -> any().
 flush(Db, Id) ->
     wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}),
-    {ok, Rev} = couch_mgr:lookup_doc_rev(Db, Id),
+    {'ok', Rev} = couch_mgr:lookup_doc_rev(Db, Id),
     Props =
         [{<<"ID">>, Id}
          ,{<<"Database">>, Db}
@@ -253,19 +348,19 @@ flush(Db, Id) ->
 build(EndpointId, Call) ->
     build(EndpointId, wh_json:new(), Call).
 
-build(undefined, _Properties, _Call) ->
-    {error, endpoint_id_undefined};
-build(EndpointId, undefined, Call) when is_binary(EndpointId) ->
+build('undefined', _Properties, _Call) ->
+    {'error', 'endpoint_id_undefined'};
+build(EndpointId, 'undefined', Call) when is_binary(EndpointId) ->
     build(EndpointId, wh_json:new(), Call);
 build(EndpointId, Properties, Call) when is_binary(EndpointId) ->
     case ?MODULE:get(EndpointId, Call) of
-        {ok, Endpoint} -> build(Endpoint, Properties, Call);
-        {error, _}=E -> E
+        {'ok', Endpoint} -> build(Endpoint, Properties, Call);
+        {'error', _}=E -> E
     end;
 build(Endpoint, Properties, Call) ->
     case should_create_endpoint(Endpoint, Properties, Call) of
-        ok -> create_endpoints(Endpoint, Properties, Call);
-        {error, _}=E -> E
+        'ok' -> create_endpoints(Endpoint, Properties, Call);
+        {'error', _}=E -> E
     end.
 
 -spec should_create_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
@@ -282,10 +377,10 @@ should_create_endpoint(Endpoint, Properties, Call) ->
 -type ep_routines_v() :: [ep_routine_v(),...] | [].
 -spec should_create_endpoint(ep_routines_v(), wh_json:object(), wh_json:object(),  whapps_call:call()) ->
                                           'ok' | {'error', _}.
-should_create_endpoint([], _, _, _) -> ok;
+should_create_endpoint([], _, _, _) -> 'ok';
 should_create_endpoint([Routine|Routines], Endpoint, Properties, Call) when is_function(Routine, 3) ->
     case Routine(Endpoint, Properties, Call) of
-        ok -> should_create_endpoint(Routines, Endpoint, Properties, Call);
+        'ok' -> should_create_endpoint(Routines, Endpoint, Properties, Call);
         Else -> Else
     end.
 
@@ -301,10 +396,10 @@ maybe_owner_called_self(Endpoint, Properties, Call) ->
         orelse (not is_binary(EndpointOwnerId))
         orelse EndpointOwnerId =/= OwnerId
     of
-        true -> ok;
-        false ->
+        'true' -> 'ok';
+        'false' ->
             lager:info("owner ~s stop calling your self...stop calling your self...", [OwnerId]),
-            {error, owner_called_self}
+            {'error', 'owner_called_self'}
     end.
 
 -spec maybe_endpoint_called_self(wh_json:object(), wh_json:object(),  whapps_call:call()) ->
@@ -319,10 +414,10 @@ maybe_endpoint_called_self(Endpoint, Properties, Call) ->
         orelse (not is_binary(EndpointId))
         orelse AuthorizingId =/= EndpointId
     of
-        true -> ok;
-        false ->
+        'true' -> 'ok';
+        'false' ->
             lager:info("endpoint ~s is calling self", [EndpointId]),
-            {error, endpoint_called_self}
+            {'error', 'endpoint_called_self'}
     end.
 
 -spec maybe_endpoint_disabled(wh_json:object(), wh_json:object(), whapps_call:call()) ->
@@ -330,11 +425,11 @@ maybe_endpoint_called_self(Endpoint, Properties, Call) ->
                                            {'error', 'endpoint_disabled'}.
 maybe_endpoint_disabled(Endpoint, _, _) ->
     case wh_json:is_false(<<"enabled">>, Endpoint) of
-        false -> ok;
-        true ->
+        'false' -> 'ok';
+        'true' ->
             EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
             lager:info("endpoint ~s is disabled", [EndpointId]),
-            {error, endpoint_disabled}
+            {'error', 'endpoint_disabled'}
     end.
 
 -spec maybe_do_not_disturb(wh_json:object(), wh_json:object(),  whapps_call:call()) ->
@@ -343,11 +438,11 @@ maybe_endpoint_disabled(Endpoint, _, _) ->
 maybe_do_not_disturb(Endpoint, _, _) ->
     DND = wh_json:get_ne_value(<<"do_not_disturb">>, Endpoint, wh_json:new()),
     case wh_json:is_true(<<"enabled">>, DND) of
-        false -> ok;
-        true ->
+        'false' -> 'ok';
+        'true' ->
             EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
             lager:info("do not distrub endpoint ~s", [EndpointId]),
-            {error, do_not_disturb}
+            {'error', 'do_not_disturb'}
     end.
 
 %%--------------------------------------------------------------------
@@ -369,7 +464,7 @@ create_endpoints(Endpoint, Properties, Call) ->
           end,
     case lists:foldl(Fun, [], Routines) of
         [] -> {'error', 'no_endpoints'};
-        Endpoints -> {ok, Endpoints}
+        Endpoints -> {'ok', Endpoints}
     end.
 
 -type ep_routine() :: fun((wh_json:object(), wh_json:object(), whapps_call:call()) ->
@@ -378,7 +473,7 @@ create_endpoints(Endpoint, Properties, Call) ->
                                        wh_json:objects().
 try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_function(Routine, 3) ->
     try Routine(Endpoint, Properties, Call) of
-        {error, _} -> Endpoints;
+        {'error', _} -> Endpoints;
         JObj -> [JObj|Endpoints]
     catch
         _E:_R ->
@@ -394,12 +489,12 @@ maybe_create_fwd_endpoint(Endpoint, Properties, Call) ->
     CallFowarding = wh_json:get_ne_value(<<"call_forward">>, Endpoint, wh_json:new()),
     Source = wh_json:get_value(<<"source">>, Properties),
     case wh_json:is_true(<<"enabled">>, CallFowarding)
-        andalso (wh_json:is_false(<<"direct_calls_only">>, CallFowarding, true)
+        andalso (wh_json:is_false(<<"direct_calls_only">>, CallFowarding, 'true')
                  orelse
                    (not lists:member(Source, ?NON_DIRECT_MODULES)))
     of
-        false -> {error, cf_not_appropriate};
-        true ->
+        'false' -> {'error', 'cf_not_appropriate'};
+        'true' ->
             lager:info("creating call forwarding endpoint", []),
             create_call_fwd_endpoint(Endpoint, Properties, CallFowarding, Call)
     end.
@@ -412,8 +507,8 @@ maybe_create_endpoint(Endpoint, Properties, Call) ->
     case wh_json:is_true(<<"enabled">>, CallFowarding)
         andalso wh_json:is_true(<<"substitute">>, CallFowarding)
     of
-        true -> {error, cf_substitute};
-        false ->
+        'true' -> {'error', 'cf_substitute'};
+        'false' ->
             maybe_create_endpoint(get_endpoint_type(Endpoint), Endpoint, Properties, Call)
     end.
 
@@ -429,7 +524,7 @@ maybe_create_endpoint(<<"skype">>, Endpoint, Properties, Call) ->
 -spec get_endpoint_type(wh_json:object()) -> ne_binary().
 get_endpoint_type(Endpoint) ->
     case wh_json:get_value(<<"endpoint_type">>, Endpoint) of
-        undefined -> guess_endpoint_type(Endpoint);
+        'undefined' -> guess_endpoint_type(Endpoint);
         Type -> Type
     end.
 
@@ -438,7 +533,7 @@ guess_endpoint_type(Endpoint) ->
     guess_endpoint_type(Endpoint, [<<"sip">>, <<"skype">>]).
 guess_endpoint_type(Endpoint, [Type|Types]) ->
     case wh_json:get_value(Type, Endpoint) of
-        undefined -> guess_endpoint_type(Endpoint, Types);
+        'undefined' -> guess_endpoint_type(Endpoint, Types);
         _ -> Type
     end;
 guess_endpoint_type(_Endpoint, []) -> <<"sip">>.
@@ -463,13 +558,13 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
         case cf_attributes:caller_id(<<"internal">>, Call) of
             %% if both the internal name and number are the same as the current
             %% caller id then leave it alone
-            {CIDNum, CIDName} -> {undefined, undefined};
+            {CIDNum, CIDName} -> {'undefined', 'undefined'};
             %% if both the internal name is the same as the current
             %% caller id then leave it alone
-            {AltCIDNum, CIDName} -> {AltCIDNum, undefined};
+            {AltCIDNum, CIDName} -> {AltCIDNum, 'undefined'};
             %% if both the internal number is the same as the current
             %% caller id then leave it alone
-            {CIDNum, AltCIDName} -> {undefined, AltCIDName};
+            {CIDNum, AltCIDName} -> {'undefined', AltCIDName};
             %% if both the internal number and name are different, use them!
             {AltCIDNum, AltCIDName} -> {AltCIDNum, AltCIDName}
         end,
@@ -480,8 +575,8 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
     SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
 
     ForceFax = case wh_json:is_true(<<"fax_option">>, MediaJObj) of
-                   false -> undefined;
-                   true -> <<"self">>
+                   'false' -> 'undefined';
+                   'true' -> <<"self">>
                end,
 
     Prop =
@@ -551,9 +646,9 @@ to_did(Endpoint, Call) ->
 -spec to_user(wh_json:object(), wh_json:object()) -> api_binary().
 to_user(SIPJObj, Properties) ->
     case wh_json:get_ne_value(<<"static_invite">>, Properties) of
-        undefined ->
+        'undefined' ->
             case wh_json:get_ne_value(<<"static_invite">>, SIPJObj) of
-                undefined -> wh_json:get_value(<<"username">>, SIPJObj);
+                'undefined' -> wh_json:get_value(<<"username">>, SIPJObj);
                 To -> To
             end;
         To -> To
@@ -580,8 +675,8 @@ create_call_fwd_endpoint(Endpoint, Properties, CallFwd, Call) ->
     IgnoreEarlyMedia = case wh_json:is_true(<<"require_keypress">>, CallFwd)
                            orelse not wh_json:is_true(<<"substitute">>, CallFwd)
                        of
-                           true -> <<"true">>;
-                           false -> wh_json:get_binary_boolean(<<"ignore_early_media">>, CallFwd)
+                           'true' -> <<"true">>;
+                           'false' -> wh_json:get_binary_boolean(<<"ignore_early_media">>, CallFwd)
                        end,
     Prop = [{<<"Invite-Format">>, <<"route">>}
             ,{<<"To-DID">>, wh_json:get_value(<<"number">>, Endpoint, whapps_call:request_user(Call))}
@@ -608,20 +703,20 @@ generate_sip_headers(Endpoint, Call) ->
     Inception = whapps_call:inception(Call),
     HeaderFuns = [fun(J) ->
                           case wh_json:get_value([<<"sip">>, <<"custom_sip_headers">>], Endpoint) of
-                              undefined -> J;
+                              'undefined' -> J;
                               CustomHeaders ->
                                   wh_json:merge_jobjs(CustomHeaders, J)
                           end
                   end
                   ,fun(J) when Inception =:= <<"off-net">> ->
                            case wh_json:get_value([<<"ringtones">>, <<"external">>], Endpoint) of
-                               undefined -> J;
+                               'undefined' -> J;
                                Ringtone ->
                                    wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
                            end;
                       (J) ->
                            case wh_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint) of
-                               undefined -> J;
+                               'undefined' -> J;
                                Ringtone ->
                                    wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
                            end
@@ -641,34 +736,34 @@ generate_sip_headers(Endpoint, Call) ->
 -spec generate_ccvs(wh_json:object(), whapps_call:call(), 'undefined' | wh_json:object()) -> wh_json:object().
 
 generate_ccvs(Endpoint, Call) ->
-    generate_ccvs(Endpoint, Call, undefined).
+    generate_ccvs(Endpoint, Call, 'undefined').
 
 generate_ccvs(Endpoint, Call, CallFwd) ->
     CCVFuns = [fun(J) ->
                        case wh_json:is_true(<<"keep_caller_id">>, CallFwd) of
-                           false -> J;
-                           true ->
+                           'false' -> J;
+                           'true' ->
                                lager:info("call forwarding configured to keep the caller id"),
                                wh_json:set_value(<<"Retain-CID">>, <<"true">>, J)
                        end
                end
                ,fun(J) ->
                         case wh_json:get_value(<<"_id">>, Endpoint) of
-                            undefined -> J;
+                            'undefined' -> J;
                             EndpointId ->
                                 wh_json:set_value(<<"Authorizing-ID">>, EndpointId, J)
                         end
                 end
                ,fun(J) ->
                         case wh_json:get_value(<<"owner_id">>, Endpoint) of
-                            undefined -> J;
+                            'undefined' -> J;
                             OwnerId ->
                                 wh_json:set_value(<<"Owner-ID">>, OwnerId, J)
                         end
                 end
                ,fun(J) ->
                         case wh_json:get_value(<<"pvt_account_id">>, Endpoint) of
-                            undefined ->
+                            'undefined' ->
                                 wh_json:set_value(<<"Account-ID">>, whapps_call:account_id(Call), J);
                             PvtAccountId ->
                                 wh_json:set_value(<<"Account-ID">>, PvtAccountId, J)
@@ -676,7 +771,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                 end
                ,fun(J) ->
                         case CallFwd of
-                            undefined -> J;
+                            'undefined' -> J;
                             _ ->
                                 wh_json:set_values([{<<"Call-Forward">>, <<"true">>}
                                                     ,{<<"Authorizing-Type">>, <<"device">>}
@@ -685,7 +780,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                 end
                ,fun(J) ->
                         case wh_json:is_true(<<"require_keypress">>, CallFwd) of
-                            false -> J;
+                            'false' -> J;
                             _ ->
                                 lager:info("call forwarding configured to require key press"),
                                 Confirm = [{<<"Confirm-Key">>, <<"1">>}
@@ -705,7 +800,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                             <<"device">> ->
                                 lager:info("setting inherit_codec"),
                                 wh_json:set_value(<<"Inherit-Codec">>, <<"true">>, J);
-                            false -> J
+                            'false' -> J
                         end
                 end
               ],
@@ -722,7 +817,7 @@ maybe_format_caller_id_number(_Endpoint, CIDNum, _Call) ->
 %% TODO: MOVE FROM CF_ATTRIBUTES
     CIDNum.
 %%    case cf_attributes:caller_id_attributes(Endpoint, <<"format">>, Call) of
-%%        undefined -> CIDNum;
+%%        'undefined' -> CIDNum;
 %%        FormatObj ->
 %%            case wh_json:is_json_object(FormatObj) of
 %%                false -> CIDNum;

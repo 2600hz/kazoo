@@ -65,7 +65,7 @@ load(DocId, #cb_context{}=Context) ->
 load(_, #cb_context{resp_status=error}=Context, _) ->
     Context;
 load(?NE_BINARY = DocId, #cb_context{db_name=Db}=Context, Opts) ->
-    case couch_mgr:open_doc(Db, DocId, Opts) of
+    case couch_mgr:open_cache_doc(Db, DocId, Opts) of
         {error, Error} -> handle_couch_mgr_errors(Error, DocId, Context);
         {ok, JObj} ->
             lager:debug("loaded doc ~s from ~s", [DocId, Db]),

@@ -69,6 +69,10 @@
 -export([get_uuid/0, get_uuid/1
          ,get_uuids/1, get_uuids/2
         ]).
+-export([suppress_change_notice/0
+         ,enable_change_notice/0
+         ,change_notice/0
+        ]).
 
 %% Types
 -export_type([get_results_return/0]).
@@ -868,13 +872,31 @@ get_uuids(Count) -> get_uuids(Count, ?UUID_SIZE).
 get_uuids(Count, Size) -> [get_uuid(Size) || _ <- lists:seq(1, Count)].
 
 %%%===================================================================
+%%% Misc functions
+%%%===================================================================
+-spec suppress_change_notice() -> 'false'.
+suppress_change_notice() ->
+    put('$wh_couch_change_notice', 'false').
+
+-spec enable_change_notice() -> 'true'.
+enable_change_notice() ->
+    put('$wh_couch_change_notice', 'true').
+
+-spec change_notice() -> boolean().
+change_notice() ->
+    case get('$wh_couch_change_notice') of
+        'false' -> 'false';
+        _Else -> 'true'
+    end.
+
+%%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% NOTE: the attempt to correct the dbname is not very erlang like, but 
+%% NOTE: the attempt to correct the dbname is not very erlang like, but
 %%  when since there are more places that expect an error and do not
 %%  handle a crash appropriately/gracefully this is a quick solution....
 %% @end

@@ -319,7 +319,6 @@ update_hotdesk_endpoint(AccountDb, JObj, Fun) ->
     EndpointId = wh_json:get_value(<<"_id">>, JObj),
     case couch_mgr:save_doc(AccountDb, Fun(JObj)) of
         {'ok', _}=Ok ->
-            _ = cf_endpoint:flush(AccountDb, EndpointId),
             _ = cf_util:unsolicited_endpoint_mwi_update(AccountDb, EndpointId),
             Ok;
         {'error', 'conflict'} ->
