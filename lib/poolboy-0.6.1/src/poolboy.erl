@@ -1,406 +1,324 @@
 %% Poolboy - A hunky Erlang worker pool factory
 
 -module(poolboy).
--behaviour(gen_fsm).
+-behaviour(gen_server).
 
--export([start_link/1, checkout/1, checkout/2, checkout/3, checkin/2, stop/1]).
--export([add_worker/2, add_worker/3, rm_worker/2]).
--export([init/1, ready/2, ready/3, overflow/2, overflow/3, full/2, full/3,
-         handle_event/3, handle_sync_event/4, handle_info/3, terminate/3,
-         code_change/4]).
+-export([checkout/1, checkout/2, checkout/3, checkin/2, transaction/2,
+         transaction/3, child_spec/2, child_spec/3, start/1, start/2,
+         start_link/1, start_link/2, stop/1, status/1]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
+         code_change/3]).
 
 -define(TIMEOUT, 5000).
--define(DEFAULT_INIT_FUN, fun(Worker) -> {ok, Worker} end).
--define(DEFAULT_STOP_FUN, fun(Worker) -> Worker ! stop end).
 
 -record(state, {
+    supervisor :: pid(),
     workers :: queue(),
-    worker_sup :: pid(),
-    waiting = queue:new() :: queue(),
-    monitors = [] :: list(),
+    waiting :: queue(),
+    monitors :: ets:tid(),
     size = 5 :: non_neg_integer(),
     overflow = 0 :: non_neg_integer(),
-    max_overflow = 10 :: non_neg_integer(),
-    worker_init = ?DEFAULT_INIT_FUN :: fun((Worker :: pid()) -> {ok, pid()}),
-    worker_stop = ?DEFAULT_STOP_FUN :: fun((Worker :: pid()) -> stop)
+    max_overflow = 10 :: non_neg_integer()
 }).
-
--spec add_worker(Pool :: node(), fun((Worker :: pid()) -> {ok, pid()})) -> 'ok'.
--spec add_worker(Pool :: node(), fun((Worker :: pid()) -> {ok, pid()}), list()) -> 'ok'.
-add_worker(Pool, InitFun) ->
-    add_worker(Pool, InitFun, []).
-add_worker(Pool, InitFun, InitArgs) ->
-    gen_fsm:send_all_state_event(Pool, {add_worker, InitFun, InitArgs}).
-
--spec rm_worker(Pool :: node(), pid()) -> 'ok'.
-rm_worker(Pool, Pid) ->
-    gen_fsm:send_all_state_event(Pool, {rm_worker, Pid}).
 
 -spec checkout(Pool :: node()) -> pid().
 checkout(Pool) ->
     checkout(Pool, true).
 
--spec checkout(Pool :: node(), boolean()) -> pid() | full.
+-spec checkout(Pool :: node(), Block :: boolean()) -> pid() | full.
 checkout(Pool, Block) ->
     checkout(Pool, Block, ?TIMEOUT).
 
 -spec checkout(Pool :: node(), Block :: boolean(), Timeout :: timeout())
     -> pid() | full.
 checkout(Pool, Block, Timeout) ->
-    gen_fsm:sync_send_event(Pool, {checkout, Block, Timeout}, Timeout).
+    gen_server:call(Pool, {checkout, Block, Timeout}, Timeout).
 
 -spec checkin(Pool :: node(), Worker :: pid()) -> ok.
-checkin(Pool, Worker) ->
-    gen_fsm:send_event(Pool, {checkin, Worker}).
+checkin(Pool, Worker) when is_pid(Worker) ->
+    gen_server:cast(Pool, {checkin, Worker}).
 
-start_link(Args) ->
-    case proplists:get_value(name, Args) of
-        undefined ->
-            gen_fsm:start_link(?MODULE, Args, []);
-        Name ->
-            gen_fsm:start_link(Name, ?MODULE, Args, [])
+-spec transaction(Pool :: node(), Fun :: fun((Worker :: pid()) -> any()))
+    -> any().
+transaction(Pool, Fun) ->
+    transaction(Pool, Fun, ?TIMEOUT).
+
+-spec transaction(Pool :: node(), Fun :: fun((Worker :: pid()) -> any()), 
+    Timeout :: timeout()) -> any().
+transaction(Pool, Fun, Timeout) ->
+    Worker = poolboy:checkout(Pool, true, Timeout),
+    try
+        Fun(Worker)
+    after
+        ok = poolboy:checkin(Pool, Worker)
     end.
 
+-spec child_spec(Pool :: node(), PoolArgs :: proplists:proplist())
+    -> supervisor:child_spec().
+child_spec(Pool, PoolArgs) ->
+    child_spec(Pool, PoolArgs, []).
+
+-spec child_spec(Pool :: node(),
+                 PoolArgs :: proplists:proplist(),
+                 WorkerArgs :: proplists:proplist())
+    -> supervisor:child_spec().
+child_spec(Pool, PoolArgs, WorkerArgs) ->
+    {Pool, {poolboy, start_link, [PoolArgs, WorkerArgs]},
+     permanent, 5000, worker, [poolboy]}.
+
+-spec start(PoolArgs :: proplists:proplist())
+    -> {ok, pid()}.
+start(PoolArgs) ->
+    start(PoolArgs, PoolArgs).
+
+-spec start(PoolArgs :: proplists:proplist(),
+            WorkerArgs:: proplists:proplist())
+    -> {ok, pid()}.
+start(PoolArgs, WorkerArgs) ->
+    start_pool(start, PoolArgs, WorkerArgs).
+
+-spec start_link(PoolArgs :: proplists:proplist())
+    -> {ok, pid()}.
+start_link(PoolArgs)  ->
+    %% for backwards compatability, pass the pool args as the worker args as well
+    start_link(PoolArgs, PoolArgs).
+
+-spec start_link(PoolArgs :: proplists:proplist(),
+                 WorkerArgs:: proplists:proplist())
+    -> {ok, pid()}.
+start_link(PoolArgs, WorkerArgs)  ->
+    start_pool(start_link, PoolArgs, WorkerArgs).
+
+-spec stop(Pool :: node()) -> ok.
 stop(Pool) ->
-    gen_fsm:sync_send_all_state_event(Pool, stop).
+    gen_server:call(Pool, stop).
 
-init(Args) ->
+-spec status(Pool :: node()) -> {atom(), integer(), integer(), integer()}.
+status(Pool) ->
+    gen_server:call(Pool, status).
+
+init({PoolArgs, WorkerArgs}) ->
     process_flag(trap_exit, true),
-    init(Args, #state{}).
+    Waiting = queue:new(),
+    Monitors = ets:new(monitors, [private]),
+    init(PoolArgs, WorkerArgs, #state{waiting = Waiting, monitors = Monitors}).
 
-init([{worker_module, Mod} | Rest], State) ->
-    {ok, Sup} = poolboy_sup:start_link(Mod, Rest),
-    init(Rest, State#state{worker_sup=Sup});
-init([{size, Size} | Rest], State) ->
-    init(Rest, State#state{size=Size});
-init([{max_overflow, MaxOverflow} | Rest], State) ->
-    init(Rest, State#state{max_overflow=MaxOverflow});
-init([{init_fun, InitFun} | Rest], State) when is_function(InitFun) ->
-    init(Rest, State#state{worker_init=InitFun});
-init([{stop_fun, StopFun} | Rest], State) when is_function(StopFun) ->
-    init(Rest, State#state{worker_stop=StopFun});
-init([_ | Rest], State) ->
-    init(Rest, State);
-init([], #state{size=Size, worker_sup=Sup, worker_init=InitFun,
-        max_overflow=MaxOverflow}=State) ->
-    Workers = prepopulate(Size, Sup, InitFun),
-    StartState = case queue:len(Workers) of
-        0 when MaxOverflow =:= 0 -> full;
-        0 -> overflow;
-        _ -> ready
-    end,
-    {ok, StartState, State#state{workers=Workers}}.
+init([{worker_module, Mod} | Rest], WorkerArgs, State) when is_atom(Mod) ->
+    {ok, Sup} = poolboy_sup:start_link(Mod, WorkerArgs),
+    init(Rest, WorkerArgs, State#state{supervisor = Sup});
+init([{size, Size} | Rest], WorkerArgs, State) when is_integer(Size) ->
+    init(Rest, WorkerArgs, State#state{size = Size});
+init([{max_overflow, MaxOverflow} | Rest], WorkerArgs, State) when is_integer(MaxOverflow) ->
+    init(Rest, WorkerArgs, State#state{max_overflow = MaxOverflow});
+init([_ | Rest], WorkerArgs, State) ->
+    init(Rest, WorkerArgs, State);
+init([], _WorkerArgs, #state{size = Size, supervisor = Sup} = State) ->
+    Workers = prepopulate(Size, Sup),
+    {ok, State#state{workers = Workers}}.
 
-ready({checkin, Pid}, State) ->
-    case lists:keytake(Pid, 1, State#state.monitors) of
-        {value, {_, Ref}, Monitors} ->
-            erlang:demonitor(Ref),
-            Workers = queue:in(Pid, State#state.workers),
-            {next_state, ready, State#state{workers=Workers,
-                                            monitors=Monitors}};
-        false ->
-            %% unknown process checked in, ignore it
-            {next_state, ready, State}
+handle_cast({checkin, Pid}, State = #state{monitors = Monitors}) ->
+    case ets:lookup(Monitors, Pid) of
+        [{Pid, Ref}] ->
+            true = erlang:demonitor(Ref),
+            true = ets:delete(Monitors, Pid),
+            NewState = handle_checkin(Pid, State),
+            {noreply, NewState};
+        [] ->
+            {noreply, State}
     end;
-ready(_Event, State) ->
-    {next_state, ready, State}.
 
-ready({checkout, Block, Timeout}, {FromPid, _}=From, State) ->
-    #state{workers = Workers,
-           worker_sup = Sup,
-           max_overflow = MaxOverflow,
-           worker_init = InitFun} = State,
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+handle_call({checkout, Block, Timeout}, {FromPid, _} = From, State) ->
+    #state{supervisor = Sup,
+           workers = Workers,
+           monitors = Monitors,
+           overflow = Overflow,
+           max_overflow = MaxOverflow} = State,
     case queue:out(Workers) of
         {{value, Pid}, Left} ->
             Ref = erlang:monitor(process, FromPid),
-            Monitors = [{Pid, Ref} | State#state.monitors],
-            NextState = case queue:len(Left) of
-                0 when MaxOverflow == 0 ->
-                    full;
-                0 ->
-                    overflow;
-                _ ->
-                    ready
-            end,
-            {reply, Pid, NextState, State#state{workers=Left,
-                                                monitors=Monitors}};
-        {empty, Empty} when MaxOverflow > 0 ->
-            {Pid, Ref} = new_worker(Sup, FromPid, InitFun),
-            Monitors = [{Pid, Ref} | State#state.monitors],
-            {reply, Pid, overflow, State#state{workers=Empty,
-                                               monitors=Monitors,
-                                               overflow=1}};
+            true = ets:insert(Monitors, {Pid, Ref}),
+            {reply, Pid, State#state{workers = Left}};
+        {empty, Empty} when MaxOverflow > 0, Overflow < MaxOverflow ->
+            {Pid, Ref} = new_worker(Sup, FromPid),
+            true = ets:insert(Monitors, {Pid, Ref}),
+            {reply, Pid, State#state{workers = Empty, overflow = Overflow + 1}};
         {empty, Empty} when Block =:= false ->
-            {reply, full, full, State#state{workers=Empty}};
+            {reply, full, State#state{workers = Empty}};
         {empty, Empty} ->
-            Waiting = State#state.waiting,
-            {next_state, full, State#state{workers=Empty,
-                                           waiting=add_waiting(From, Timeout, Waiting)}}
+            Waiting = add_waiting(From, Timeout, State#state.waiting),
+            {noreply, State#state{workers = Empty, waiting = Waiting}}
     end;
-ready(_Event, _From, State) ->
-    {reply, ok, ready, State}.
 
-overflow({checkin, Pid}, #state{overflow=0}=State) ->
-    case lists:keytake(Pid, 1, State#state.monitors) of
-        {value, {_, Ref}, Monitors} ->
-            erlang:demonitor(Ref),
-            NextState = case State#state.size > 0 of
-                true -> ready;
-                _ -> overflow
-            end,
-            {next_state, NextState, State#state{overflow=0, monitors=Monitors,
-                                                workers=queue:in(Pid, State#state.workers)}};
-        false ->
-            %% unknown process checked in, ignore it
-            {next_state, overflow, State}
-    end;
-overflow({checkin, Pid}, State) ->
-    #state{overflow=Overflow, worker_stop=StopFun} = State,
-    case lists:keytake(Pid, 1, State#state.monitors) of
-        {value, {_, Ref}, Monitors} ->
-            dismiss_worker(Pid, StopFun),
-            erlang:demonitor(Ref),
-            {next_state, overflow, State#state{overflow=Overflow-1,
-                                               monitors=Monitors}};
-        _ ->
-            %% unknown process checked in, ignore it
-            {next_state, overflow, State}
-    end;
-overflow(_Event, State) ->
-    {next_state, overflow, State}.
-
-overflow({checkout, Block, Timeout}, From, #state{overflow=Overflow,
-                                                  max_overflow=MaxOverflow
-                                                  }=State) when Overflow >= MaxOverflow ->
-    case Block of
-        false ->
-            {reply, full, full, State};
-        Block ->
-            Waiting = State#state.waiting,
-            {next_state, full, State#state{waiting=add_waiting(From, Timeout, Waiting)}}
-    end;
-overflow({checkout, _Block, _Timeout}, {From, _}, State) ->
-    #state{worker_sup=Sup, overflow=Overflow,
-        worker_init=InitFun, max_overflow=MaxOverflow} = State,
-    {Pid, Ref} = new_worker(Sup, From, InitFun),
-    Monitors = [{Pid, Ref} | State#state.monitors],
-    NewOverflow = Overflow + 1,
-    Next = case NewOverflow >= MaxOverflow of
-        true -> full;
-        _ -> overflow
-    end,
-    {reply, Pid, Next, State#state{monitors=Monitors,
-                                   overflow=NewOverflow}};
-overflow(_Event, _From, State) ->
-    {reply, ok, overflow, State}.
-
-full({checkin, Pid}, State) ->
-    #state{waiting = Waiting, max_overflow = MaxOverflow,
-           overflow = Overflow, worker_stop = StopFun} = State,
-    case lists:keytake(Pid, 1, State#state.monitors) of
-        {value, {_, Ref0}, Monitors} ->
-            erlang:demonitor(Ref0),
-            case queue:out(Waiting) of
-                {{value, {{FromPid, _}=From, Timeout, StartTime}}, Left} ->
-                    case wait_valid(StartTime, Timeout) of
-                        true ->
-                            Ref = erlang:monitor(process, FromPid),
-                            Monitors1 = [{Pid, Ref} | Monitors],
-                            gen_fsm:reply(From, Pid),
-                            {next_state, full, State#state{waiting=Left,
-                                                           monitors=Monitors1}};
-                        _ ->
-                            %% replay this event with cleaned up waiting queue
-                            full({checkin, Pid}, State#state{waiting=Left})
-                    end;
-                {empty, Empty} when MaxOverflow < 1 ->
-                    Workers = queue:in(Pid, State#state.workers),
-                    {next_state, ready, State#state{workers=Workers, waiting=Empty,
-                                                    monitors=Monitors}};
-                {empty, Empty} ->
-                    dismiss_worker(Pid, StopFun),
-                    {next_state, overflow, State#state{waiting=Empty,
-                                                       monitors=Monitors,
-                                                       overflow=Overflow-1}}
-            end;
-        false ->
-            %% unknown process checked in, ignore it
-            {next_state, full, State}
-    end;
-full(_Event, State) ->
-    {next_state, full, State}.
-
-full({checkout, false, _Timeout}, _From, State) ->
-    {reply, full, full, State};
-full({checkout, _Block, Timeout}, From, #state{waiting=Waiting}=State) ->
-    {next_state, full, State#state{waiting=add_waiting(From, Timeout, Waiting)}};
-full(_Event, _From, State) ->
-    {reply, ok, full, State}.
-
-handle_event({add_worker, InitFun, InitArgs}, _StateName, #state{workers=Workers
-                                                                 ,worker_sup=Sup
-                                                                 ,size=Size
-                                                                }=State) ->
-    Workers1 = queue:in(new_worker(Sup, InitFun, InitArgs), Workers),
-    {next_state, ready, State#state{workers=Workers1, size=Size+1}};
-
-handle_event({rm_worker, Pid}, StateName, #state{worker_stop=StopFun
-                                                 ,size=Size
-                                                }=State) ->
-    dismiss_worker(Pid, StopFun),
-    {next_state, StateName, State#state{size=Size-1}};
-
-handle_event(_Event, StateName, State) ->
-    {next_state, StateName, State}.
-
-handle_sync_event(get_avail_workers, _From, StateName, State) ->
+handle_call(status, _From, State) ->
+    #state{workers = Workers,
+           monitors = Monitors,
+           overflow = Overflow} = State,
+    StateName = state_name(State),
+    {reply, {StateName, queue:len(Workers), Overflow, ets:info(Monitors, size)}, State};
+handle_call(get_avail_workers, _From, State) ->
     Workers = State#state.workers,
     WorkerList = queue:to_list(Workers),
-    {reply, WorkerList, StateName, State};
-handle_sync_event(get_all_workers, _From, StateName, State) ->
-    Sup = State#state.worker_sup,
+    {reply, WorkerList, State};
+handle_call(get_all_workers, _From, State) ->
+    Sup = State#state.supervisor,
     WorkerList = supervisor:which_children(Sup),
-    {reply, WorkerList, StateName, State};
-handle_sync_event(get_all_monitors, _From, StateName, State) ->
-    Monitors = State#state.monitors,
-    {reply, Monitors, StateName, State};
-handle_sync_event(stop, _From, _StateName,State) ->
-    Sup = State#state.worker_sup,
-    exit(Sup, shutdown),
+    {reply, WorkerList, State};
+handle_call(get_all_monitors, _From, State) ->
+    Monitors = ets:tab2list(State#state.monitors),
+    {reply, Monitors, State};
+handle_call(stop, _From, State) ->
+    Sup = State#state.supervisor,
+    true = exit(Sup, shutdown),
     {stop, normal, ok, State};
-handle_sync_event(status, _From, StateName, State) ->
-    {reply, {StateName, queue:len(State#state.workers),
-            State#state.overflow, length(State#state.monitors)},
-        StateName, State};
-handle_sync_event(_Event, _From, StateName, State) ->
+handle_call(_Msg, _From, State) ->
     Reply = {error, invalid_message},
-    {reply, Reply, StateName, State}.
+    {reply, Reply, State}.
 
-handle_info({'DOWN', Ref, _, _, _}, StateName, State) ->
-    case lists:keyfind(Ref, 2, State#state.monitors) of
-        {Pid, Ref} ->
-            exit(Pid, kill),
-            {next_state, StateName, State};
-        false ->
-            {next_state, StateName, State}
+handle_info({'DOWN', Ref, _, _, _}, State) ->
+    case ets:match(State#state.monitors, {'$1', Ref}) of
+        [[Pid]] ->
+            Sup = State#state.supervisor,
+            ok = supervisor:terminate_child(Sup, Pid),
+            %% Don't wait for the EXIT message to come in.
+            %% Deal with the worker exit right now to avoid
+            %% a race condition with messages waiting in the
+            %% mailbox.
+            true = ets:delete(State#state.monitors, Pid),
+            NewState = handle_worker_exit(Pid, State),
+            {noreply, NewState};
+        [] ->
+            {noreply, State}
     end;
-handle_info({'EXIT', Pid, Reason}, StateName, State) ->
-    #state{worker_sup = Sup,
-           overflow = Overflow,
-           waiting = Waiting,
-           max_overflow = MaxOverflow,
-           worker_init = InitFun} = State,
-    case lists:keytake(Pid, 1, State#state.monitors) of
-        {value, {_, Ref}, Monitors} -> erlang:demonitor(Ref),
-            case StateName of
-                ready ->
-                    W = queue:filter(fun (P) -> P =/= Pid end, State#state.workers),
-                    {next_state, ready, State#state{workers=queue:in(new_worker(Sup, InitFun), W),
-                                                    monitors=Monitors}};
-                overflow when Overflow == 0 ->
-                    W = queue:filter(fun (P) -> P =/= Pid end, State#state.workers),
-                    {next_state, ready, State#state{workers=queue:in(new_worker(Sup, InitFun), W),
-                                                    monitors=Monitors}};
-                overflow ->
-                    {next_state, overflow, State#state{monitors=Monitors,
-                                                       overflow=Overflow-1}};
-                full when MaxOverflow < 1 ->
-                    case queue:out(Waiting) of
-                        {{value, {{FromPid, _}=From, Timeout, StartTime}}, LeftWaiting} ->
-                            case wait_valid(StartTime, Timeout) of
-                                true ->
-                                    MonitorRef = erlang:monitor(process, FromPid),
-                                    NewWorker = new_worker(Sup, InitFun),
-                                    Monitors2 = [{NewWorker, MonitorRef} | Monitors],
-                                    gen_fsm:reply(From, NewWorker),
-                                    {next_state, full, State#state{waiting=LeftWaiting,
-                                                                   monitors=Monitors2}};
-                                _ ->
-                                    %% replay it
-                                    handle_info({'EXIT', Pid, Reason}, StateName, State#state{waiting=LeftWaiting})
-                            end;
-                        {empty, Empty} ->
-                            Workers2 = queue:in(new_worker(Sup, InitFun), State#state.workers),
-                            {next_state, ready, State#state{monitors=Monitors,
-                                                            waiting=Empty,
-                                                            workers=Workers2}}
-                    end;
-                full when Overflow =< MaxOverflow ->
-                    case queue:out(Waiting) of
-                        {{value, {{FromPid, _}=From, Timeout, StartTime}}, LeftWaiting} ->
-                            case wait_valid(StartTime, Timeout) of
-                                true ->
-                                    MonitorRef = erlang:monitor(process, FromPid),
-                                    NewWorker = new_worker(Sup, InitFun),
-                                    Monitors2 = [{NewWorker, MonitorRef} | Monitors],
-                                    gen_fsm:reply(From, NewWorker),
-                                    {next_state, full, State#state{waiting=LeftWaiting,
-                                                                   monitors=Monitors2}};
-                                _ ->
-                                    %% replay it
-                                    handle_info({'EXIT', Pid, Reason}, StateName, State#state{waiting=LeftWaiting})
-                            end;
-                        {empty, Empty} ->
-                            {next_state, overflow, State#state{monitors=Monitors,
-                                                               overflow=Overflow-1,
-                                                               waiting=Empty}}
-                    end;
-                full ->
-                    {next_state, full, State#state{monitors=Monitors,
-                                                   overflow=Overflow-1}}
-            end;
-        _ ->
-            %% not a monitored pid, is it in the worker queue?
+handle_info({'EXIT', Pid, _Reason}, State) ->
+    #state{supervisor = Sup,
+           monitors = Monitors} = State,
+    case ets:lookup(Monitors, Pid) of
+        [{Pid, Ref}] ->
+            true = erlang:demonitor(Ref),
+            true = ets:delete(Monitors, Pid),
+            NewState = handle_worker_exit(Pid, State),
+            {noreply, NewState};
+        [] ->
             case queue:member(Pid, State#state.workers) of
                 true ->
-                    %% a checked in worker died
                     W = queue:filter(fun (P) -> P =/= Pid end, State#state.workers),
-                    {next_state, StateName, State#state{workers=queue:in(new_worker(Sup, InitFun), W)}};
-                _ ->
-                    %% completely irrelevant pid exited, don't change anything
-                    {next_state, StateName, State}
+                    {noreply, State#state{workers = queue:in(new_worker(Sup), W)}};
+                false ->
+                    {noreply, State}
             end
     end;
-handle_info(_Info, StateName, State) ->
-    {next_state, StateName, State}.
 
-terminate(_Reason, _StateName, _State) -> ok.
+handle_info(_Info, State) ->
+    {noreply, State}.
 
-code_change(_OldVsn, StateName, State, _Extra) ->
-    {ok, StateName, State}.
+terminate(_Reason, _State) ->
+    ok.
 
-new_worker(Sup, InitFun) ->
-    new_worker(Sup, InitFun, []).
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
-new_worker(Sup, InitFun, InitArgs) when is_function(InitFun) ->
-    {ok, Pid} = supervisor:start_child(Sup, InitArgs),
-    {ok, Pid1} = InitFun(Pid),
-    link(Pid1),
-    Pid1;
-new_worker(Sup, FromPid, InitFun) when is_pid(FromPid) ->
-    Pid = new_worker(Sup, InitFun),
+start_pool(StartFun, PoolArgs, WorkerArgs) ->
+    case proplists:get_value(name, PoolArgs) of
+        undefined ->
+            gen_server:StartFun(?MODULE, {PoolArgs, WorkerArgs}, []);
+        Name ->
+            gen_server:StartFun(Name, ?MODULE, {PoolArgs, WorkerArgs}, [])
+    end.
+
+new_worker(Sup) ->
+    {ok, Pid} = supervisor:start_child(Sup, []),
+    true = link(Pid),
+    Pid.
+
+new_worker(Sup, FromPid) ->
+    Pid = new_worker(Sup),
     Ref = erlang:monitor(process, FromPid),
     {Pid, Ref}.
 
-dismiss_worker(Pid, StopFun) ->
-    unlink(Pid),
-    StopFun(Pid).
+dismiss_worker(Sup, Pid) ->
+    true = unlink(Pid),
+    supervisor:terminate_child(Sup, Pid).
 
-prepopulate(0, _Sup, _InitFun) ->
+prepopulate(N, _Sup) when N < 1 ->
     queue:new();
-prepopulate(N, Sup, InitFun) ->
-    prepopulate(N, Sup, queue:new(), InitFun).
+prepopulate(N, Sup) ->
+    prepopulate(N, Sup, queue:new()).
 
-prepopulate(0, _Sup, Workers, _InitFun) ->
+prepopulate(0, _Sup, Workers) ->
     Workers;
-prepopulate(N, Sup, Workers, InitFun) ->
-    prepopulate(N-1, Sup, queue:in(new_worker(Sup, InitFun), Workers), InitFun).
+prepopulate(N, Sup, Workers) ->
+    prepopulate(N-1, Sup, queue:in(new_worker(Sup), Workers)).
 
-add_waiting(From, Timeout, Queue) ->
-    queue:in({From, Timeout, os:timestamp()}, Queue).
+add_waiting(Pid, Timeout, Queue) ->
+    queue:in({Pid, Timeout, os:timestamp()}, Queue).
 
-wait_valid(infinity, _) ->
+wait_valid(infinity, _Timeout) ->
     true;
 wait_valid(StartTime, Timeout) ->
     Waited = timer:now_diff(os:timestamp(), StartTime),
     (Waited div 1000) < Timeout.
+
+handle_checkin(Pid, State) ->
+    #state{supervisor = Sup,
+           waiting = Waiting,
+           monitors = Monitors,
+           overflow = Overflow} = State,
+    case queue:out(Waiting) of
+        {{value, {{FromPid, _} = From, Timeout, StartTime}}, Left} ->
+            case wait_valid(StartTime, Timeout) of
+                true ->
+                    Ref1 = erlang:monitor(process, FromPid),
+                    true = ets:insert(Monitors, {Pid, Ref1}),
+                    gen_server:reply(From, Pid),
+                    State#state{waiting = Left};
+                false ->
+                    handle_checkin(Pid, State#state{waiting = Left})
+            end;
+        {empty, Empty} when Overflow > 0 ->
+            ok = dismiss_worker(Sup, Pid),
+            State#state{waiting = Empty, overflow = Overflow - 1};
+        {empty, Empty} ->
+            Workers = queue:in(Pid, State#state.workers),
+            State#state{workers = Workers, waiting = Empty, overflow = 0}
+    end.
+
+handle_worker_exit(Pid, State) ->
+    #state{supervisor = Sup,
+           monitors = Monitors,
+           overflow = Overflow} = State,
+    case queue:out(State#state.waiting) of
+        {{value, {{FromPid, _} = From, Timeout, StartTime}}, LeftWaiting} ->
+            case wait_valid(StartTime, Timeout) of
+                true ->
+                    MonitorRef = erlang:monitor(process, FromPid),
+                    NewWorker = new_worker(State#state.supervisor),
+                    true = ets:insert(Monitors, {NewWorker, MonitorRef}),
+                    gen_server:reply(From, NewWorker),
+                    State#state{waiting = LeftWaiting};
+                _ ->
+                    handle_worker_exit(Pid, State#state{waiting = LeftWaiting})
+            end;
+        {empty, Empty} when Overflow > 0 ->
+            State#state{overflow = Overflow - 1, waiting = Empty};
+        {empty, Empty} ->
+            Workers = queue:in(
+                new_worker(Sup),
+                queue:filter(fun (P) -> P =/= Pid end, State#state.workers)
+            ),
+            State#state{workers = Workers, waiting = Empty}
+    end.
+
+state_name(State = #state{overflow = Overflow}) when Overflow < 1 ->
+    #state{max_overflow = MaxOverflow, workers = Workers} = State,
+    case queue:len(Workers) == 0 of
+        true when MaxOverflow < 1 -> full;
+        true -> overflow;
+        false -> ready
+    end;
+state_name(#state{overflow = MaxOverflow, max_overflow = MaxOverflow}) ->
+    full;
+state_name(_State) ->
+    overflow.
