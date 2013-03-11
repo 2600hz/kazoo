@@ -370,6 +370,7 @@ validate_account(JObj, Context) ->
     Payload = [Context#cb_context{req_data=JObj
                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]
                                   ,req_verb = <<"put">>
+                                  ,resp_status = 'fatal'
                                  }
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.accounts">>, Payload) of
@@ -392,6 +393,7 @@ validate_user(JObj, Context) ->
     Payload = [Context#cb_context{req_data=JObj
                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]
                                   ,req_verb = <<"put">>
+                                  ,resp_status = 'fatal'
                                  }
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.users">>, Payload) of
