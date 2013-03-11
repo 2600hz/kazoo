@@ -188,6 +188,9 @@ handle_call({demonitor_channel, Channel}, _, State) ->
     {reply, maybe_demonitor_channel(Channel), State};
 handle_call({demonitor_consumer, Channel}, _, State) ->
     {reply, maybe_demonitor_consumer(Channel), State};
+handle_call({lost_connection, URI}, _, State) ->
+    _ = demonitor_all_connection_channels(URI),
+    {reply, ok, State};
 handle_call(stop, _, State) ->
     {stop, normal, ok, State};
 handle_call(_Msg, _From, State) ->
@@ -203,9 +206,6 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({lost_connection, URI}, State) ->
-    _ = demonitor_all_connection_channels(URI),
-    {noreply, State};
 handle_cast({reconnect, #wh_amqp_connection{uri=URI}=Connection}, State) ->
     spawn(fun() ->
                   Disconnected = #wh_amqp_channel{channel='undefined', _='_'},

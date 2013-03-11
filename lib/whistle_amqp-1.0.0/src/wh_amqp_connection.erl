@@ -137,16 +137,6 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({exchange_declared, #'exchange.declare'{exchange=Name}=Command}
-            ,#wh_amqp_connection{uri=URI}=State) ->
-    Exchanges = [Command
-                 |lists:filter(fun(#'exchange.declare'{exchange=N}) ->
-                                       N =/= Name;
-                                  (_) -> true
-                               end, State#wh_amqp_connection.exchanges)
-                ],
-    wh_amqp_connections:update_exchanges(URI, Exchanges),
-    {noreply, State#wh_amqp_connection{exchanges=Exchanges}};
 handle_cast(start_prechannel, #wh_amqp_connection{available=true, prechannels=Channels}=State) ->
     _ = case length(Channels) < 20 of
             true ->
@@ -242,22 +232,13 @@ prepare_connection(State) ->
             lager:critical("failed to open control channel to new amqp broker: ~p", [_R]),
             disconnected(State);
         {ok, Pid} ->
-            rebuild_exchanges(Pid, State)
+            rebuild_exchanges(State#wh_amqp_connection{control_channel=Pid})
     end.
 
--spec rebuild_exchanges(pid(), wh_amqp_connection()) -> wh_amqp_connection().
-rebuild_exchanges(Pid, #wh_amqp_connection{exchanges=Exchanges}=State) ->
-    rebuild_exchanges(Exchanges, Pid, State).
-
--spec rebuild_exchanges(wh_exchanges(), pid(), wh_amqp_connection()) -> wh_amqp_connection().
-rebuild_exchanges([], _, State) ->
-    start_prechannels(State);
-rebuild_exchanges([#'exchange.declare'{exchange=_Ex, type=_Ty}=Command
-                   |Exchanges
-                  ], Pid, State) ->
-    lager:debug("redeclared ~s exchange ~s via channel ~p", [_Ty, _Ex, Pid]),
-    amqp_channel:call(Pid, Command),
-    rebuild_exchanges(Exchanges, Pid, State).
+-spec rebuild_exchanges(wh_amqp_connection()) -> wh_amqp_connection().
+rebuild_exchanges(State) ->
+    _ = wh_amqp_connections:redeclare_exchanges(State),
+    start_prechannels(State).
 
 -spec start_prechannels(wh_amqp_connection()) -> wh_amqp_connection().
 start_prechannels(State) ->

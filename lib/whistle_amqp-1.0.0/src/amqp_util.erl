@@ -896,7 +896,7 @@ basic_nack(DTag) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_host_available/0 :: () -> boolean().
-is_host_available() -> wh_amqp_connections:available().
+is_host_available() -> wh_amqp_connections:is_available().
 
 %%------------------------------------------------------------------------------
 %% @public
