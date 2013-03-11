@@ -23,7 +23,9 @@
          ,remove/1
         ]).
 -export([publish/2]).
--export([command/1]).
+-export([command/1
+         ,command/2
+        ]).
 
 -include("amqp_util.hrl").
 
@@ -45,10 +47,13 @@ remove_consumer_pid() ->
 new() -> new(wh_amqp_channels:new()).
 
 -spec new(wh_amqp_channel()) -> wh_amqp_channel() | {'error', _}.
+new(#wh_amqp_connection{}=Connection) ->
+    open(wh_amqp_channels:new(), Connection);
 new(#wh_amqp_channel{}=Channel) ->
     case wh_amqp_connections:current() of
         {error, _}=E -> E;
-        {ok, Connection} -> open(Channel, Connection)
+        {ok, Connection} ->
+            open(Channel, Connection)
     end.
 
 -spec close() -> wh_amqp_channel().
@@ -155,33 +160,19 @@ command(#wh_amqp_channel{channel=Pid
                      (_) ->
                           ok
                   end, Commands);
-command(#wh_amqp_channel{}=Channel, #'exchange.declare'{}=Command) ->
-    maybe_declare_exchange(Command, Channel);
+command(_, #'exchange.declare'{exchange=_Ex, type=_Ty}=Command) ->
+    lager:debug("declared ~s exchange ~s", [_Ty, _Ex]),
+    _ = wh_amqp_connections:declare_exchange(Command),
+    ok;
 command(#wh_amqp_channel{channel=Pid}=Channel, Command) ->
     Result = amqp_channel:call(Pid, Command),
     handle_command_result(Result, Command, Channel).
-
--spec maybe_declare_exchange(#'exchange.declare'{}, wh_amqp_channel()) -> command_ret().
-maybe_declare_exchange(#'exchange.declare'{}=Command
-                       ,#wh_amqp_channel{channel=Pid}=Channel) ->
-    case wh_amqp_channels:is_exchange_declared(Channel, Command) of
-        true -> ok;
-        false ->
-            Result = amqp_channel:call(Pid, Command),
-            handle_command_result(Result, Command, Channel)
-    end.
 
 -spec handle_command_result(command_ret(), wh_amqp_command(), wh_amqp_channel()) -> command_ret().
 handle_command_result({error, _}=Error, _, _) ->
     Error;
 handle_command_result({ok, Ok}, Command, Channel) ->
     handle_command_result(Ok, Command, Channel);
-handle_command_result(#'exchange.declare_ok'{}
-                      ,#'exchange.declare'{exchange=_Ex, type=_Ty}=Command
-                      ,#wh_amqp_channel{channel=Pid}=Channel) ->
-    lager:debug("declared ~s exchange ~s via channel ~p", [_Ty, _Ex, Pid]),
-    _ = wh_amqp_channels:command(Channel, Command),
-    ok;
 handle_command_result(#'basic.qos_ok'{}
                       ,#'basic.qos'{prefetch_count=Prefetch}=Command
                       ,#wh_amqp_channel{channel=Pid}=Channel) ->
