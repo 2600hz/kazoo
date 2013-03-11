@@ -66,8 +66,8 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -78,8 +78,8 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 content_types_provided(#cb_context{}=Context) ->
-    CTPs = [{to_json, [{<<"application">>, <<"json">>}]}
-            ,{to_csv, [{<<"application">>, <<"octet-stream">>}]}
+    CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}
+            ,{'to_csv', [{<<"application">>, <<"octet-stream">>}]}
            ],
     cb_context:add_content_types_provided(Context, CTPs).
 
@@ -109,26 +109,26 @@ validate(#cb_context{req_verb = <<"get">>}=Context, CDRId) ->
 -spec load_cdr_summary(cb_context:context()) -> cb_context:context().
 load_cdr_summary(#cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, [_AID]} | _]}=Context) ->
     lager:debug("loading cdrs for account ~s", [_AID]),
-    case create_view_options(undefined, Context) of
-        {ok, ViewOptions} -> load_view(?CB_LIST, ViewOptions, Context);
-        {error, C} -> C
+    case create_view_options('undefined', Context) of
+        {'ok', ViewOptions} -> load_view(?CB_LIST, ViewOptions, Context);
+        {'error', C} -> C
     end;
 load_cdr_summary(#cb_context{req_nouns=[_, {<<"users">>, [UserId] } | _]}=Context) ->
     lager:debug("loading cdrs for user ~s", [UserId]),
     case create_view_options(UserId, Context) of
-        {ok, ViewOptions} -> load_view(?CB_LIST_BY_USER, ViewOptions, Context);
-        {error, C} -> C
+        {'ok', ViewOptions} -> load_view(?CB_LIST_BY_USER, ViewOptions, Context);
+        {'error', C} -> C
     end;
 load_cdr_summary(Context) ->
     lager:debug("invalid URL chain for cdr summary request"),
-    cb_context:add_system_error(faulty_request, Context).
+    cb_context:add_system_error('faulty_request', Context).
 
 load_view(View, ViewOptions, #cb_context{query_json=JObj}=Context) ->
     {G, L} = case cb_modules_util:is_superduper_admin(Context) of
-                 false -> {false, false};
-                 true ->
-                     {whapps_config:get_is_true(?CONFIG_CAT, <<"calculate_internal_cost_for_global_resources">>, false)
-                      ,whapps_config:get_is_true(?CONFIG_CAT, <<"calcuate_internal_cost_for_local_resources">>, false)
+                 'false' -> {'false', 'false'};
+                 'true' ->
+                     {whapps_config:get_is_true(?CONFIG_CAT, <<"calculate_internal_cost_for_global_resources">>, 'false')
+                      ,whapps_config:get_is_true(?CONFIG_CAT, <<"calcuate_internal_cost_for_local_resources">>, 'false')
                      }
              end,
     crossbar_doc:load_view(View
@@ -139,10 +139,10 @@ load_view(View, ViewOptions, #cb_context{query_json=JObj}=Context) ->
                            ,fun(CDR, Acc) -> normalize_view_results(CDR, Acc, G, L) end
                           ).
 
-maybe_load_doc(true, _, ViewOptions) ->
-    [include_doc | ViewOptions];
-maybe_load_doc(_, true, ViewOptions) ->
-    [include_doc | ViewOptions];
+maybe_load_doc('true', _, ViewOptions) ->
+    ['include_docs' | ViewOptions];
+maybe_load_doc(_, 'true', ViewOptions) ->
+    ['include_docs' | ViewOptions];
 maybe_load_doc(_, _, ViewOptions) ->
     ViewOptions.
 
@@ -163,49 +163,57 @@ load_cdr(CdrId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(wh_json:object(), wh_json:objects(), boolean(), boolean()) -> wh_json:objects().
-normalize_view_results(JObj, Acc, false, false) ->
+normalize_view_results(JObj, Acc, 'false', 'false') ->
     [filter_cdr_fields(wh_json:get_value(<<"value">>, JObj))|Acc];
 normalize_view_results(JObj, Acc, G, L) ->
     V = filter_cdr_fields(wh_json:get_value(<<"value">>, JObj)),
     case wh_json:get_value(<<"doc">>, JObj) of
-        undefined -> [V | Acc];
+        'undefined' -> [V | Acc];
         Doc -> update_cdr_fields(Acc, G, L, V, Doc)
     end.
 
-update_cdr_fields(Acc, true, _, V, Cdr) ->
+update_cdr_fields(Acc, 'true', _, V, Cdr) ->
     case wh_json:get_value(<<"pvt_internal_cost">>, Cdr) of
-        undefined -> update_cdr_fields(Acc, V, Cdr);
+        'undefined' -> update_cdr_fields(Acc, V, Cdr);
         Cost -> [wh_json:set_value(<<"internal_cost">>, Cost, V) | Acc]
     end.
 
 update_cdr_fields(Acc, V, Cdr) ->
-    case wh_json:get_value([<<"custom_channel_vars">>, <<"rate_id">>], Cdr) of
-        undefined -> [V | Acc];
+    case wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], Cdr) of
+        'undefined' -> [V | Acc];
         RateId -> add_internal_cost(Acc, V, Cdr, RateId)
     end.
 
 add_internal_cost(Acc, V, Cdr, RateId) ->
     case couch_mgr:open_doc(?WH_RATES_DB, RateId) of
-        {ok, RateDoc} ->
+        {'ok', RateDoc} ->
             Cost = calc_internal_cost(RateDoc, Cdr),
-
             _ = spawn(fun() ->
                               AcctDb = wh_json:get_value(<<"pvt_account_db">>, Cdr),
                               couch_mgr:save_doc(AcctDb, wh_json:set_value(<<"pvt_internal_cost">>, Cost, Cdr))
                       end),
-
             [wh_json:set_value(<<"internal_cost">>, Cost, V) | Acc];
         _ -> [V | Acc]
     end.
 
 calc_internal_cost(RateDoc, Cdr) ->
-    Rate = wh_json:get_float_value(<<"pvt_rate_cost">>, RateDoc, 0.0),
+    Rate = wh_util:to_integer(wh_json:get_float_value(<<"pvt_rate_cost">>, RateDoc, 0.0)),
     RateIncr = wh_json:get_integer_value(<<"rate_increment">>, RateDoc, 60),
     RateMin = wh_json:get_integer_value(<<"rate_minimum">>, RateDoc, 60),
-    Surcharge = wh_json:get_float_value(<<"rate_surcharge">>, RateDoc, 0.0),
+    Surcharge = wh_util:to_integer(wh_json:get_float_value(<<"rate_surcharge">>, RateDoc, 0.0)),
     BillingSecs = wh_json:get_integer_value(<<"billing_seconds">>, Cdr, 0),
-
-    wht_util:calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs).
+    case wh_json:get_value(<<"pvt_vsn">>, Cdr) of 
+        1 -> 
+            Cost = wht_util:calculate_cost(wht_util:dollars_to_units(Rate)
+                                           ,RateIncr
+                                           ,RateMin
+                                           ,wht_util:dollars_to_units(Surcharge)
+                                           ,BillingSecs),
+            wht_util:units_to_dollars(Cost);
+        _ -> 
+            Cost = wht_util:calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
+            wht_util:units_to_dollars(Cost)
+    end.
 
 filter_cdr_fields(JObj) ->
     JObj.
@@ -225,14 +233,14 @@ create_view_options(OwnerId, #cb_context{query_json=JObj}=Context) ->
     From = wh_json:get_integer_value(<<"created_from">>, JObj, wh_util:current_tstamp() - MaxRange),
     Diff = To - From,
     case {Diff < 0, Diff > MaxRange} of
-        {true, _} ->
+        {'true', _} ->
             Message = <<"created_from is prior to created_to">>,
-            {error, cb_context:add_validation_error(<<"created_from">>, <<"date_range">>, Message, Context)};
-        {_, true} ->
+            {'error', cb_context:add_validation_error(<<"created_from">>, <<"date_range">>, Message, Context)};
+        {_, 'true'} ->
             Message = <<"created_to is more than ", (wh_util:to_binary(MaxRange))/binary, " seconds from created_from">>,
-            {error, cb_context:add_validation_error(<<"created_from">>, <<"date_range">>, Message, Context)};
-        {false, false} when OwnerId =:= undefined ->
-            {ok, [{<<"startkey">>, From}, {<<"endkey">>, To}]};
-        {false, false} ->
-            {ok, [{<<"startkey">>, [OwnerId, From]}, {<<"endkey">>, [OwnerId, To]}]}
+            {'error', cb_context:add_validation_error(<<"created_from">>, <<"date_range">>, Message, Context)};
+        {'false', 'false'} when OwnerId =:= 'undefined' ->
+            {'ok', [{<<"startkey">>, From}, {<<"endkey">>, To}]};
+        {'false', 'false'} ->
+            {'ok', [{<<"startkey">>, [OwnerId, From]}, {<<"endkey">>, [OwnerId, To]}]}
     end.
