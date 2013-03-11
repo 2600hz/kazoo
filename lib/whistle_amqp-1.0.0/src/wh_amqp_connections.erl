@@ -18,10 +18,16 @@
 -export([current/0]).
 -export([find/1]).
 -export([available/0]).
+-export([is_available/0]).
+-export([exchanges/0
+         ,exchanges/1
+        ]).
 -export([wait_for_available/0]).
 -export([update_exchanges/2]).
 -export([connected/1]).
 -export([disconnected/1]).
+-export([declare_exchange/1]).
+-export([redeclare_exchanges/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -30,7 +36,9 @@
          ,code_change/3
         ]).
 
--record(state, {weight=0}).
+-record(state, {weight=0
+                ,exchanges=dict:new()
+               }).
 
 -define(TAB, ?MODULE).
 -define(ENSURE_TIME, 5000).
@@ -109,6 +117,11 @@ current() ->
             {error, no_available_connection}
     end.
 
+-spec available() -> wh_amqp_connections().
+available() ->
+    Match = #wh_amqp_connection{available=true, _='_'},
+    ets:match_object(?TAB, Match).
+
 -spec find(ne_binary() | string()) -> wh_amqp_connection() |
                                       {'error', 'not_found'}.
 find(URI) ->
@@ -119,8 +132,8 @@ find(URI) ->
             {error, not_found}
     end.
 
--spec available() -> boolean().
-available() ->
+-spec is_available() -> boolean().
+is_available() ->
     case current() of
         {ok, _} -> true;
         {error, _} -> false
@@ -128,12 +141,25 @@ available() ->
 
 -spec wait_for_available/0 :: () -> 'ok'.
 wait_for_available() ->
-    case available() of
+    case is_available() of
         true -> ok;
         false ->
             timer:sleep(random:uniform(1000) + 100),
             wait_for_available()
     end.
+
+-spec exchanges() -> [#'exchange.declare'{},...] | [].
+exchanges() ->
+    gen_server:call(?MODULE, exchanges).
+
+-spec exchanges(ne_binary()) -> [#'exchange.declare'{},...] | [].
+exchanges(URI) ->
+    case find(URI) of
+        #wh_amqp_connection{exchanges=Exchanges} ->
+            Exchanges;
+        {error, not_found} -> []
+    end.
+
 
 -spec update_exchanges(string() | ne_binary(), wh_exchanges()) -> 'ok'.
 update_exchanges(URI, Exchanges) ->
@@ -154,13 +180,14 @@ disconnected(#wh_amqp_connection{}=Connection) ->
     _ = wh_amqp_channels:lost_connection(Connection),
     gen_server:call(?MODULE, {disconnected, Connection}).
 
-current_weight() ->
-    case current() of
-        {ok, #wh_amqp_connection{weight=Weight}} ->
-            Weight;
-        {'error', _} ->
-            -1
-    end.
+-spec declare_exchange(#'exchange.declare'{}) -> ok.
+declare_exchange(#'exchange.declare'{}=Command) ->
+    gen_server:cast(?MODULE, {add_exchange, Command}),
+    declare_exchange(available(), Command).
+
+-spec redeclare_exchanges(wh_amqp_connection()) -> ok.
+redeclare_exchanges(#wh_amqp_connection{}=Connection) ->
+    redeclare_exchanges(exchanges(), Connection).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -196,6 +223,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(exchanges, _, #state{exchanges=Exchanges}=State) ->
+    {reply, [V || {_, V} <- dict:to_list(Exchanges)], State};
 handle_call(assign_weight, _, #state{weight=Weight}=State) ->
     {reply, Weight, State#state{weight=Weight+1}};
 handle_call({new, #wh_amqp_connection{uri=URI}=Connection}, _, State) ->
@@ -204,11 +233,13 @@ handle_call({new, #wh_amqp_connection{uri=URI}=Connection}, _, State) ->
         false -> {reply, find(URI), State, ?ENSURE_TIME}
     end;
 handle_call({connected, #wh_amqp_connection{uri=URI, connection=Pid
-                                            ,connection_ref=Ref}=C}
+                                            ,connection_ref=Ref
+                                            ,control_channel=CtrlPid}=C}
             ,_, State) ->
     Updates = [{#wh_amqp_connection.connection, Pid}
                ,{#wh_amqp_connection.connection_ref, Ref}
                ,{#wh_amqp_connection.available, true}
+               ,{#wh_amqp_connection.control_channel, CtrlPid}
               ],
     ets:update_element(?TAB, URI, Updates),
     {reply, C#wh_amqp_connection{available=true}, State, ?ENSURE_TIME};
@@ -216,6 +247,8 @@ handle_call({disconnected, #wh_amqp_connection{uri=URI}=C}, _, State) ->
     Updates = [{#wh_amqp_connection.connection, undefined}
                ,{#wh_amqp_connection.connection_ref, undefined}
                ,{#wh_amqp_connection.available, false}
+               ,{#wh_amqp_connection.exchanges, []}
+               ,{#wh_amqp_connection.control_channel, undefined}
               ],
     ets:update_element(?TAB, URI, Updates),
     _ = wh_amqp_channels:reconnect(),
@@ -236,7 +269,16 @@ handle_call(_Request, _From, State) ->
 handle_cast({force_reconnect, Connection}, State) ->
     wh_amqp_channels:force_reconnect(Connection),
     {noreply, State, ?ENSURE_TIME};
-handle_cast({update_exchanges, URI, Exchanges}, State) ->
+handle_cast({add_exchange, #'exchange.declare'{exchange=Name}=Command}
+            ,#state{exchanges=Exchanges}=State) ->
+    {noreply, State#state{exchanges=dict:store(Name, Command, Exchanges)}, ?ENSURE_TIME};
+handle_cast({add_exchange, URI, #'exchange.declare'{exchange=Name}=Command}, State) ->
+    Exchanges = [Command
+                 |lists:filter(fun(#'exchange.declare'{exchange=N}) ->
+                                       N =/= Name;
+                                  (_) -> true
+                               end, exchanges(URI))
+                ],
     ets:update_element(?TAB, URI, {#wh_amqp_connection.exchanges, Exchanges}),
     {noreply, State, ?ENSURE_TIME};
 handle_cast(_Msg, State) ->
@@ -290,3 +332,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec current_weight() -> integer().
+current_weight() ->
+    case current() of
+        {ok, #wh_amqp_connection{weight=Weight}} ->
+            Weight;
+        {'error', _} ->
+            -1
+    end.
+
+-spec declare_exchange(wh_amqp_connections(), #'exchange.declare'{}) -> ok.
+declare_exchange([], _) -> ok;
+declare_exchange([#wh_amqp_connection{control_channel=Pid
+                                      ,uri=URI}
+                  | Connections
+                 ], #'exchange.declare'{exchange=Name, type=_Ty}=Command) ->
+    _ = case amqp_channel:call(Pid, Command) of
+            #'exchange.declare_ok'{} ->
+                lager:debug("declared ~s exchange ~s on ~s via ~p", [_Ty, Name, URI, Pid]),
+                gen_server:cast(?MODULE, {add_exchange, URI, Command});
+            _Else -> ok
+        end,
+    declare_exchange(Connections, Command).
+
+-spec redeclare_exchanges([#'exchange.declare'{},...] | [], wh_amqp_connection()) -> ok.
+redeclare_exchanges([], _) -> ok;
+redeclare_exchanges([Command|Commands], Connection)->
+    _ = declare_exchange([Connection], Command),
+    redeclare_exchanges(Commands, Connection).
