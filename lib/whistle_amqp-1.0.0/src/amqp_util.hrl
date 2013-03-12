@@ -131,7 +131,6 @@
                              ,available = false :: boolean()
                              ,prechannels = [] :: [{reference(), pid()},...] | [] | '_'
                              ,exchanges = [] :: wh_exchanges() | '_'
-                             ,weight
                             }).
 -type wh_amqp_connection() :: #wh_amqp_connection{}.
 -type wh_amqp_connections() :: [wh_amqp_connection(),...] | [].
