@@ -78,7 +78,7 @@ close(#wh_amqp_channel{channel=Pid
                                  ]
                       }=Channel) when is_pid(Pid) ->
     lager:debug("removed queue ~s via channel ~p", [Queue, Pid]),
-    catch amqp_channel:call(Pid, #'queue.delete'{queue=Queue}),
+    catch amqp_channel:call(Pid, #'queue.delete'{queue=Queue, nowait='true'}),
     close(Channel#wh_amqp_channel{commands=Commands});
 close(#wh_amqp_channel{commands=[_|Commands]}=Channel) ->
     close(Channel#wh_amqp_channel{commands=Commands});
@@ -117,11 +117,10 @@ publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg)
         #wh_amqp_channel{channel=Pid, uri=URI} when is_pid(Pid) ->
             amqp_channel:call(Pid, BasicPub, AmqpMsg),
             lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p", [_Exchange, URI, _RK, Pid]);
-        #wh_amqp_channel{uri=URI} ->
+        #wh_amqp_channel{} ->
             wh_amqp_channels:reconnect(),
             timer:sleep(100),
-            retry_publish(BasicPub, AmqpMsg),
-            lager:debug("dropping payload to ~s(~s) exchange (routing key ~s): ~s", [_Exchange, URI, _RK, AmqpMsg#'amqp_msg'.payload])
+            retry_publish(BasicPub, AmqpMsg)
     end.
 
 -spec retry_publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.

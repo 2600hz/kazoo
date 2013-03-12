@@ -21,11 +21,10 @@
          ,size/1, set_size/2
          ,xml_list_to_records/2
          ,fetch/1, fetch_full/1
-
+         ,flush_node/1
          ,sync_conferences/1
 
          %% Participant-specific
-         ,participant_destroy/2
          ,participants_list/1
          ,participants_uuids/1
          ,participant_record_to_json/1
@@ -103,17 +102,7 @@ sync_conferences(Node) -> gen_server:cast(?MODULE, {'sync_conferences', Node}).
 
 -spec new(atom(), wh_proplist()) -> 'ok'.
 new(Node, Props) ->
-    gen_server:cast(?MODULE, {'new_conference', props_to_record(Props, Node)}),
-    ConferenceName = props:get_value(<<"Conference-Name">>, Props),
-    case participants_list(ConferenceName) of
-        [] -> 'ok';
-        Ps ->
-            Event = [{<<"Participants">>, Ps}
-                     ,{<<"Conference-ID">>, ConferenceName}
-                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                    ],
-            wapi_conference:publish_participants_event(ConferenceName, Event)
-    end.
+    gen_server:call(?MODULE, {'new_conference', props_to_record(Props, Node)}).
 
 -spec node(ne_binary()) ->
                   {'ok', atom()} |
@@ -144,13 +133,28 @@ all(Node, 'json') -> [record_to_json(C) || C <- all(Node, 'record')].
 
 -spec destroy(atom(), wh_proplist()) -> 'ok'.
 destroy(Node, Props) ->
-    gen_server:cast(?MODULE, {'conference_destroy', Node, props:get_value(<<"Conference-Name">>, Props)}).
+    gen_server:call(?MODULE, {'conference_destroy', Node, props:get_value(<<"Conference-Name">>, Props)}).
 
--spec participant_destroy(atom(), wh_proplist() | ne_binary()) -> 'ok'.
-participant_destroy(Node, Props) when is_list(Props) ->
-    participant_destroy(Node, props:get_value(<<"Call-ID">>, Props));
-participant_destroy(Node, UUID) ->
-    gen_server:cast(?MODULE, {'participant_destroy', Node, UUID}).
+-spec participant_destroy(atom(), ne_binary(), wh_proplist()) -> 'ok'.
+participant_destroy(Node, UUID, Props) when is_list(Props) ->
+    gen_server:call(?MODULE, {'participant_destroy', Node, UUID}),
+    ConferenceName = props:get_value(<<"Conference-Name">>, Props),
+    case participants_list(ConferenceName) of
+        [] ->
+            %% On some systems the conference-destroy is not reliable
+            %% so once the last participant leaves ensure its destroyed
+            destroy(Node, Props);
+        Ps ->
+            Event = [{<<"Participants">>, Ps}
+                     ,{<<"Conference-ID">>, ConferenceName}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ],
+            Publisher = fun(P) -> wapi_conference:publish_participants_event(ConferenceName, P) end,
+            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                                ,Event
+                                ,Publisher
+                               )
+    end.
 
 size(ConfId) ->
     case ets:lookup(?CONFERENCES_TBL, ConfId) of
@@ -158,7 +162,7 @@ size(ConfId) ->
         [#conference{participants=P}] -> P
     end.
 set_size(ConfId, Size) when is_integer(Size) ->
-    gen_server:cast(?MODULE, {'conference_update', ConfId, {#conference.participants, Size}}).
+    gen_server:call(?MODULE, {'conference_update', ConfId, {#conference.participants, Size}}).
 
 -spec fetch(ne_binary()) ->
                    {'ok', wh_json:object()} |
@@ -177,6 +181,10 @@ fetch_full(ConfId) ->
         [Conf] -> add_participants_to_conference_json(ConfId, record_to_json(Conf));
         _Else -> {'error', 'not_found'}
     end.
+
+-spec flush_node(atom()) -> 'ok'.
+flush_node(Node) ->
+    gen_server:cast(?MODULE, {'flush_node_conferences', Node}).
 
 add_participants_to_conference_json(ConfId, ConfJObj) ->
     {'ok', wh_json:set_value(<<"Participants">>, participants_list(ConfId), ConfJObj)}.
@@ -344,14 +352,13 @@ event(Node, UUID, Props) ->
         <<"floor-change">> -> update_all(Node, UUID, Props);
         <<"start-talking">> -> update_all(Node, UUID, Props);
         <<"stop-talking">> -> update_all(Node, UUID, Props);
-        <<"del-member">> -> participant_destroy(Node, UUID);
+        <<"del-member">> -> participant_destroy(Node, UUID, Props);
         <<"play-file">> = A -> relay_event(UUID, Node, fix_props(Props, A));
         <<"play-file-done">> = A -> relay_event(UUID, Node, fix_props(Props, A));
         <<"play-file-member">> = A -> relay_event(UUID, Node, fix_props(Props, A));
         <<"play-file-member-done">> = A -> relay_event(UUID, Node, fix_props(Props, A));
         <<"start-recording">> = A -> relay_event(UUID, Node, fix_props(Props, A));
         <<"stop-recording">> = A -> relay_event(UUID, Node, fix_props(Props, A));
-
         _Action -> lager:debug("unhandled conference action for ~s: ~s", [UUID, _Action])
     end.
 
@@ -396,7 +403,7 @@ update_all(Node, UUID, Props) ->
     update_participant(Node, UUID, Props).
 
 update_participant(Node, UUID, Props) ->
-    gen_server:cast(?MODULE, {'participant_update'
+    gen_server:call(?MODULE, {'participant_update'
                                  ,Node
                                  ,UUID
                                  ,[{#participant.node, Node} | participant_fields(Props)]
@@ -409,12 +416,16 @@ update_participant(Node, UUID, Props) ->
                      ,{<<"Conference-ID">>, ConferenceName}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
-            wapi_conference:publish_participants_event(ConferenceName, Event)
+            Publisher = fun(P) -> wapi_conference:publish_participants_event(ConferenceName, P) end,
+            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                                ,Event
+                                ,Publisher
+                               )
     end.
 
 update_conference(Node, Props) ->
     ProfileProps = ecallmgr_util:get_interface_properties(Node),
-    gen_server:cast(?MODULE, {'conference_update'
+    gen_server:call(?MODULE, {'conference_update'
                               ,Node
                               ,props:get_value(<<"Conference-Name">>, Props)
                               ,[{#conference.node, Node}
@@ -495,6 +506,76 @@ init([]) ->
     TID = ets:new(?CONFERENCES_TBL, ['set', 'protected', 'named_table', {'keypos', #conference.name}]),
     {'ok', TID}.
 
+handle_call({'new_conference', #conference{node=Node, name=Name}=C}, _, TID) ->
+    case ets:lookup(TID, Name) of
+        [] ->
+            lager:info("creating new conference ~s on node ~s", [Name, Node]),
+            ets:insert(TID, C);
+        [#conference{node=Node}] -> lager:debug("conference ~s already on node ~s", [Name, Node]);
+        [#conference{node=_Other}] -> lager:debug("conference ~s already on ~s, not ~s", [Name, _Other, Node])
+    end,
+    {'reply', 'ok', TID};
+
+handle_call({'conference_update', Node, Name, Update}, _, TID) ->
+    case ets:lookup(TID, Name) of
+        [#conference{node=Node}] ->
+            ets:update_element(TID, Name, Update),
+            lager:debug("conference ~s already on node ~s", [Name, Node]);
+        [#conference{node=_Other}] -> lager:debug("conference ~s already on ~s, not ~s, ignoring update", [Name, _Other, Node]);
+        [] -> lager:debug("no conference ~s on ~s, ignoring update", [Name, Node])
+    end,
+    {'reply', 'ok', TID};
+
+handle_call({'participant_update', Node, UUID, Update}, _, TID) ->
+    case ets:lookup(TID, UUID) of
+        [] ->
+            lager:info("creating participant ~s on node ~s", [UUID, Node]),
+            'true' = ets:insert_new(TID, #participant{uuid=UUID}),
+            'true' = ets:update_element(TID, UUID, Update);
+        [#participant{node=Node}] ->
+            lager:debug("participant ~s on ~s, applying update", [UUID, Node]),
+            ets:update_element(TID, UUID, Update);
+        [#participant{node=_OtherNode}] ->
+            lager:debug("participant ~s is on ~s, not ~s, ignoring update", [UUID, _OtherNode, Node])
+    end,
+    {'reply', 'ok', TID};
+
+handle_call({'conference_destroy', Node, Name}, _, TID) ->
+    MatchSpecC = [{#conference{name='$1', node='$2', _ = '_'}
+                   ,[{'andalso', {'=:=', '$2', {'const', Node}}
+                      ,{'=:=', '$1', Name}
+                     }
+                    ],
+                   ['true']
+                  }],
+    N = ets:select_delete(TID, MatchSpecC),
+    lager:info("removed ~p conference(s) with name ~s on ~s", [N, Name, Node]),
+
+    MatchSpecP = [{#participant{conference_name='$1', node='$2', _ = '_'}
+                   ,[{'andalso', {'=:=', '$2', {'const', Node}}
+                      ,{'=:=', '$1', Name}
+                     }
+                    ],
+                   ['true']
+                  }],
+    N1 = ets:select_delete(TID, MatchSpecP),
+    lager:info("removed ~p participant(s) in conference ~s on ~s", [N1, Name, Node]),
+
+    {'reply', 'ok', TID};
+
+handle_call({'participant_destroy', Node, UUID}, _, TID) ->
+    MatchSpec = [{#participant{uuid='$1', node='$2', _ = '_'}
+                  ,[{'andalso'
+                     ,{'=:=', '$2', {'const', Node}}
+                     ,{'=:=', '$1', UUID}
+                    }
+                   ],
+                  ['true']
+                 }],
+    N = ets:select_delete(TID, MatchSpec),
+    lager:info("removed ~p participants(s) with uuid ~s on ~s", [N, UUID, Node]),
+    {'reply', 'ok', TID};
+
 handle_call(_Req, _From, TID) ->
     lager:debug("unhandled call from ~p: ~p", [_From, _Req]),
     {'reply', {'error', 'unimplemented'}, TID}.
@@ -526,75 +607,6 @@ handle_cast({'flush_node_conferences', Node}, TID) ->
                    ,['true']}
                  ],
     _ = ets:select_delete(TID, MatchSpecP),
-    {'noreply', TID};
-
-handle_cast({'new_conference', #conference{node=Node, name=Name}=C}, TID) ->
-    case ets:lookup(TID, Name) of
-        [] ->
-            lager:info("creating new conference ~s on node ~s", [Name, Node]),
-            ets:insert(TID, C);
-        [#conference{node=Node}] -> lager:debug("conference ~s already on node ~s", [Name, Node]);
-        [#conference{node=_Other}] -> lager:debug("conference ~s already on ~s, not ~s", [Name, _Other, Node])
-    end,
-    {'noreply', TID};
-handle_cast({'conference_update', Node, Name, Update}, TID) ->
-    case ets:lookup(TID, Name) of
-        [#conference{node=Node}] ->
-            ets:update_element(TID, Name, Update),
-            lager:debug("conference ~s already on node ~s", [Name, Node]);
-        [#conference{node=_Other}] -> lager:debug("conference ~s already on ~s, not ~s, ignoring update", [Name, _Other, Node]);
-        [] -> lager:debug("no conference ~s on ~s, ignoring update", [Name, Node])
-    end,
-    {'noreply', TID};
-
-handle_cast({'participant_update', Node, UUID, Update}, TID) ->
-    case ets:lookup(TID, UUID) of
-        [] ->
-            lager:info("creating participant ~s on node ~s", [UUID, Node]),
-            'true' = ets:insert_new(TID, #participant{uuid=UUID}),
-            'true' = ets:update_element(TID, UUID, Update);
-        [#participant{node=Node}] ->
-            lager:debug("participant ~s on ~s, applying update", [UUID, Node]),
-            ets:update_element(TID, UUID, Update);
-        [#participant{node=_OtherNode}] ->
-            lager:debug("participant ~s is on ~s, not ~s, ignoring update", [UUID, _OtherNode, Node])
-    end,
-    {'noreply', TID};
-
-handle_cast({'conference_destroy', Node, Name}, TID) ->
-    MatchSpecC = [{#conference{name='$1', node='$2', _ = '_'}
-                   ,[{'andalso', {'=:=', '$2', {'const', Node}}
-                      ,{'=:=', '$1', Name}
-                     }
-                    ],
-                   ['true']
-                  }],
-    N = ets:select_delete(TID, MatchSpecC),
-    lager:info("removed ~p conference(s) with name ~s on ~s", [N, Name, Node]),
-
-    MatchSpecP = [{#participant{conference_name='$1', node='$2', _ = '_'}
-                   ,[{'andalso', {'=:=', '$2', {'const', Node}}
-                      ,{'=:=', '$1', Name}
-                     }
-                    ],
-                   ['true']
-                  }],
-    N1 = ets:select_delete(TID, MatchSpecP),
-    lager:info("removed ~p participant(s) in conference ~s on ~s", [N1, Name, Node]),
-
-    {'noreply', TID};
-
-handle_cast({'participant_destroy', Node, UUID}, TID) ->
-    MatchSpec = [{#participant{uuid='$1', node='$2', _ = '_'}
-                  ,[{'andalso'
-                     ,{'=:=', '$2', {'const', Node}}
-                     ,{'=:=', '$1', UUID}
-                    }
-                   ],
-                  ['true']
-                 }],
-    N = ets:select_delete(TID, MatchSpec),
-    lager:info("removed ~p participants(s) with uuid ~s on ~s", [N, UUID, Node]),
     {'noreply', TID};
 
 handle_cast(_Req, TID) ->

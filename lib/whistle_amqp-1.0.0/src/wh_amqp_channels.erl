@@ -405,17 +405,12 @@ demonitor_all_connection_channels(URI) when is_binary(URI) ->
                   ]
                   ,['$_']
                  }],
-    %% this case clause is here for cleaner logging...
-    case ets:select(?TAB, MatchSpec) of
-        [] -> ok;
-        Channels ->
-            lager:notice("removing ~p channels belonging to lost connection '~s'", [length(Channels), URI]),
-            demonitor_all_connection_channels(Channels)
-    end;
-demonitor_all_connection_channels([]) -> ok;
-demonitor_all_connection_channels([Channel|Channels]) ->
+    lager:notice("removing channels belonging to lost connection '~s'", [URI]),
+    demonitor_all_connection_channels(ets:select(?TAB, MatchSpec, 1));
+demonitor_all_connection_channels('$end_of_table') -> ok;
+demonitor_all_connection_channels({[Channel], Continuation}) ->
     _ = maybe_demonitor_channel(Channel),
-    demonitor_all_connection_channels(Channels).
+    demonitor_all_connection_channels(ets:match(Continuation)).
 
 -spec attempt_rebuild_channel(wh_amqp_channel()) -> wh_amqp_channel().
 attempt_rebuild_channel(Channel) ->
