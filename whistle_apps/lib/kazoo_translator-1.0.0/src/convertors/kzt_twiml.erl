@@ -334,6 +334,7 @@ say(Call, XmlText, Attrs) ->
     Terminators = get_terminators(Props),
 
     lager:debug("SAY: ~s using voice ~s, in lang ~s, and engine ~s", [SayMe, Voice, Lang, Engine]),
+    lager:debug("SAY: terminators: ~p", [Terminators]),
 
     case loop_count(Props) of
         0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, 'infinity');
@@ -430,14 +431,15 @@ gather_finished(Call, Props) ->
             {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters)}
     end.
 
-record_call(Call, Props) ->
-    lager:debug("record_call not implemented"),
-
+record_call(Call, Attrs) ->
+    Props = kzt_util:attributes_to_proplist(Attrs),
     Timeout = timeout_s(Props, 5),
     FinishOnKey = get_finish_key(Props),
     MaxLength = get_max_length(Props),
 
     MediaName = media_name(Call),
+
+    lager:debug("RECORD: ~s for ~b, finishable on ~p", [MediaName, MaxLength, FinishOnKey]),
 
     case props:is_true('playBeep', Props, 'true') of
         'true' -> play_beep(Call);
