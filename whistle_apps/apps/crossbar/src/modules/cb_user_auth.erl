@@ -160,7 +160,7 @@ maybe_authenticate_user(#cb_context{doc=JObj}=Context) ->
                     maybe_authenticate_user(Context, Credentials, Method, Account)
             end
     end.
-
+ 
 is_account_disabled(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
     AccountDb = wh_util:format_account_id(Account, encoded),
