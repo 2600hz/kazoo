@@ -94,9 +94,14 @@ record_loop(Call) ->
     case wait_for_call_event(Call, <<"RECORD_STOP">>) of
         {'ok', EvtJObj} ->
             Len = wh_util:milliseconds_to_seconds(wh_json:get_value(<<"Length">>, EvtJObj, 0)),
-            DTMF = wh_json:get_value(<<"DTMF-Digit">>, EvtJObj, <<"hangup">>),
+            DTMF = wh_json:get_value(<<"Terminator">>, EvtJObj, <<"hangup">>),
 
-            lager:debug("recording ended: len: ~p dtmf: ~p", [Len, DTMF]),
+            case wh_json:is_true(<<"Silence-Terminated">>, EvtJObj, 'false') of
+                'true' ->
+                    lager:debug("recording ended from silence after ~b s (dtmf was ~p)", [Len, DTMF]);
+                'false' ->
+                    lager:debug("recording ended: len: ~p dtmf: ~p", [Len, DTMF])
+            end,
 
             Fs = [{fun kzt_util:set_digit_pressed/2, DTMF}
                   ,{fun kzt_util:set_recording_duration/2, Len}
