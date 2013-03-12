@@ -109,7 +109,8 @@ remove(URI) ->
 current() ->
     Match = #wh_amqp_connection{available=true, _='_'},
     case ets:match_object(?TAB, Match) of
-        [Connection|_] -> {ok, Connection};
+        [Connection|_] ->
+            {ok, Connection};
         _Else ->
             {error, no_available_connection}
     end.
@@ -163,17 +164,21 @@ update_exchanges(URI, Exchanges) ->
     gen_server:cast(?MODULE, {update_exchanges, wh_util:to_binary(URI), Exchanges}).
 
 -spec connected(wh_amqp_connection()) -> wh_amqp_connection().
-connected(#wh_amqp_connection{connection=Pid, uri=Weight}=Connection) when is_pid(Pid) ->
-    CurrentWeight = case current() of
-                        {ok, #wh_amqp_connection{uri=URI}} -> URI;
-                        {error, no_available_connection} -> 0
-                    end,
-    C = gen_server:call(?MODULE, {connected, Connection}),
-    _ = case Weight > CurrentWeight of
-            'true' -> gen_server:cast(?MODULE, {force_reconnect, Connection});
-            'false' -> 'ok'
-        end,
-    C.
+connected(#wh_amqp_connection{connection=Pid, uri=NewURI}=Connection) when is_pid(Pid) ->
+    case current() of
+        {ok, #wh_amqp_connection{uri=CurrentURI}} ->
+            C = gen_server:call(?MODULE, {connected, Connection}),
+            _ = case NewURI < CurrentURI of
+                    'true' ->
+                        gen_server:cast(?MODULE, {force_reconnect, Connection});
+                    'false' -> 'ok'
+                end,
+            C;
+        {error, no_available_connection} ->
+            C = gen_server:call(?MODULE, {connected, Connection}),
+            gen_server:cast(?MODULE, {force_reconnect, Connection}),
+            C
+    end.
 
 -spec disconnected(wh_amqp_connection()) -> wh_amqp_connection().
 disconnected(#wh_amqp_connection{}=Connection) ->
@@ -206,7 +211,7 @@ redeclare_exchanges(#wh_amqp_connection{}=Connection) ->
 %%--------------------------------------------------------------------
 init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
-    _ = ets:new(?TAB, [named_table, {keypos, #wh_amqp_connection.uri}]),
+    _ = ets:new(?TAB, [named_table, ordered_set, {keypos, #wh_amqp_connection.uri}]),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -224,7 +229,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(exchanges, _, #state{exchanges=Exchanges}=State) ->
-    {reply, [V || {_, V} <- dict:to_list(Exchanges)], State};
+    {reply, [V || {_, V} <- dict:to_list(Exchanges)], State, ?ENSURE_TIME};
 handle_call({new, #wh_amqp_connection{uri=URI}=Connection}, _, State) ->
     case ets:insert_new(?TAB, Connection) of
         true -> {reply, Connection, State, ?ENSURE_TIME};
@@ -249,7 +254,6 @@ handle_call({disconnected, #wh_amqp_connection{uri=URI}=C}, _, State) ->
                ,{#wh_amqp_connection.control_channel, undefined}
               ],
     ets:update_element(?TAB, URI, Updates),
-    _ = wh_amqp_channels:reconnect(),
     {reply, C#wh_amqp_connection{available=false}, State, ?ENSURE_TIME};
 handle_call(_Request, _From, State) ->
     {reply, {error, not_implemented}, State, ?ENSURE_TIME}.

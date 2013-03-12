@@ -19,7 +19,6 @@
          ,fetch/1, fetch_full/1
 
          %% Participant-specific
-         ,participant_destroy/2
          ,participants_list/1
          ,participants_uuids/1
          ,participant_record_to_json/1
@@ -40,17 +39,7 @@ show_all() ->
 
 -spec new(atom(), wh_proplist()) -> 'ok'.
 new(Node, Props) ->
-    gen_server:call(?NODES_SRV, {'new_conference', props_to_record(Props, Node)}),
-    ConferenceName = props:get_value(<<"Conference-Name">>, Props),
-    case participants_list(ConferenceName) of
-        [] -> 'ok';
-        Ps ->
-            Event = [{<<"Participants">>, Ps}
-                     ,{<<"Conference-ID">>, ConferenceName}
-                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                    ],
-            wapi_conference:publish_participants_event(ConferenceName, Event)
-    end.
+    gen_server:call(?NODES_SRV, {'new_conference', props_to_record(Props, Node)}).
 
 -spec node(ne_binary()) ->
                   {'ok', atom()} |
@@ -83,11 +72,19 @@ all(Node, 'json') -> [record_to_json(C) || C <- all(Node, 'record')].
 destroy(Node, Props) ->
     gen_server:call(?NODES_SRV, {'conference_destroy', Node, props:get_value(<<"Conference-Name">>, Props)}).
 
--spec participant_destroy(atom(), wh_proplist() | ne_binary()) -> 'ok'.
-participant_destroy(Node, Props) when is_list(Props) ->
-    participant_destroy(Node, props:get_value(<<"Call-ID">>, Props));
-participant_destroy(Node, UUID) ->
-    gen_server:call(?NODES_SRV, {'participant_destroy', Node, UUID}).
+-spec participant_destroy(atom(), ne_binary(), wh_proplist()) -> 'ok'.
+participant_destroy(Node, UUID, Props) when is_list(Props) ->
+    gen_server:call(?NODES_SRV, {'participant_destroy', Node, UUID}),
+    ConferenceName = props:get_value(<<"Conference-Name">>, Props),
+    case participants_list(ConferenceName) of
+        [] -> destroy(Node, Props);
+        Ps ->
+            Event = [{<<"Participants">>, Ps}
+                     ,{<<"Conference-ID">>, ConferenceName}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ],
+            wapi_conference:publish_participants_event(ConferenceName, Event)
+    end.
 
 size(ConfId) ->
     case ets:lookup(?CONFERENCES_TBL, ConfId) of
@@ -279,7 +276,7 @@ event(Node, UUID, Props) ->
         <<"floor-change">> -> update_all(Node, UUID, Props);
         <<"start-talking">> -> update_all(Node, UUID, Props);
         <<"stop-talking">> -> update_all(Node, UUID, Props);
-        <<"del-member">> -> participant_destroy(Node, UUID);
+        <<"del-member">> -> participant_destroy(Node, UUID, Props);
         _Action -> lager:debug("unhandled conference action ~s", [_Action])
     end.
 
