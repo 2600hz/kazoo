@@ -91,7 +91,7 @@ updated_call(Srv, Call) ->
 handle_call_event(JObj, Props) ->
     case props:get_value('pid', Props) of
         P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
-        _ -> lager:debug("ignoring event: ~p", [wh_util:get_event_type(JObj)])
+        _ -> 'ok'
     end.
 
 %%%===================================================================
