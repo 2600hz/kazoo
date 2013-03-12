@@ -333,8 +333,7 @@ say(Call, XmlText, Attrs) ->
 
     Terminators = get_terminators(Props),
 
-    lager:debug("SAY: ~s using voice ~s, in lang ~s, and engine ~s", [SayMe, Voice, Lang, Engine]),
-    lager:debug("SAY: terminators: ~p", [Terminators]),
+    lager:debug("SAY: '~s' using voice ~s, in lang ~s, and engine ~s", [SayMe, Voice, Lang, Engine]),
 
     case loop_count(Props) of
         0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, 'infinity');
@@ -347,7 +346,7 @@ say(Call, XmlText, Attrs) ->
 play(Call, XmlText, Attrs) ->
     whapps_call_command:answer(Call),
     PlayMe = xml_text_to_binary(XmlText),
-    lager:debug("playing '~s'", [PlayMe]),
+    lager:debug("PLAY '~s'", [PlayMe]),
 
     Props = kzt_util:attributes_to_proplist(Attrs),
 
@@ -373,8 +372,6 @@ redirect(Call, XmlText, Attrs) ->
     NewUri = kzt_util:resolve_uri(CurrentUri, RedirectUri),
     Method = kzt_util:http_method(Props),
 
-    lager:debug("redirect using ~s to ~s from ~s", [Method, NewUri, CurrentUri]),
-
     Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
                ,{fun kzt_util:set_voice_uri/2, NewUri}
               ],
@@ -382,7 +379,7 @@ redirect(Call, XmlText, Attrs) ->
 
 gather(Call, [], Attrs) -> gather(Call, Attrs);
 gather(Call, SubActions, Attrs) ->
-    lager:debug("gather: exec sub actions"),
+    lager:debug("GATHER: exec sub actions"),
     case exec_elements(kzt_util:clear_digits_collected(Call)
                        ,xml_elements(SubActions)
                       )
@@ -403,7 +400,6 @@ gather(Call, Attrs) ->
     gather(Call, FinishKey, Timeout, Props, num_digits(Props)).
 
 gather(Call, FinishKey, Timeout, Props, N) ->
-    lager:debug("gather: finish: ~s, timeout: ~p num: ~p", [FinishKey, Timeout, N]),
     case kzt_receiver:collect_dtmfs(Call, FinishKey, Timeout, N) of
         {'ok', 'timeout', C} -> gather_finished(C, Props);
         {'ok', 'dtmf_finish', C} -> gather_finished(C, Props);
@@ -423,8 +419,6 @@ gather_finished(Call, Props) ->
             NewUri = kzt_util:resolve_uri(CurrentUri, action_url(Props)),
             Method = kzt_util:http_method(Props),
 
-            lager:debug("redirect w/ dtmf:'~s' using method '~s' to ~s from ~s", [_DTMFs, Method, NewUri, CurrentUri]),
-
             Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
                        ,{fun kzt_util:set_voice_uri/2, NewUri}
                       ],
@@ -439,7 +433,7 @@ record_call(Call, Attrs) ->
 
     MediaName = media_name(Call),
 
-    lager:debug("RECORD: ~s for ~b, finishable on ~p", [MediaName, MaxLength, FinishOnKey]),
+    lager:debug("RECORD: ~s for at most ~b s", [MediaName, MaxLength]),
 
     case props:is_true('playBeep', Props, 'true') of
         'true' -> play_beep(Call);
@@ -448,8 +442,9 @@ record_call(Call, Attrs) ->
 
     whapps_call_command:record(MediaName, FinishOnKey, MaxLength, 200, Timeout, Call),
 
-    case kzt_receiver:record_loop(Call) of
+    case kzt_receiver:record_loop(Call, Timeout) of
         {'ok', Call1} -> finish_record_call(Call1, Props, MediaName);
+        {'empty', Call1} -> {'ok', Call1};
         _E -> lager:debug("call record failed: ~p", [_E]), {'stop', Call}
     end.
 

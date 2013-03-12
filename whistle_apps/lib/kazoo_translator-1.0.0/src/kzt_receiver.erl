@@ -14,7 +14,7 @@
          ,wait_for_noop/2
          ,say_loop/6, say_loop/7
          ,play_loop/3, play_loop/4
-         ,record_loop/1
+         ,record_loop/2
          ,collect_dtmfs/4
 
          ,recording_meta/2
@@ -90,23 +90,29 @@ play_loop(Call, PlayMe, Terminators, N) ->
         {'error', _, _}=ERR -> lager:debug("err: ~p", [ERR]), ERR
     end.
 
-record_loop(Call) ->
+-spec record_loop(whapps_call:call(), pos_integer()) ->
+                         {'ok', whapps_call:call()} |
+                         {'empty', whapps_call:call()} |
+                         {'error', whapps_call:call()}.
+record_loop(Call, SilenceTimeout) ->
     case wait_for_call_event(Call, <<"RECORD_STOP">>) of
         {'ok', EvtJObj} ->
             Len = wh_util:milliseconds_to_seconds(wh_json:get_value(<<"Length">>, EvtJObj, 0)),
             DTMF = wh_json:get_value(<<"Terminator">>, EvtJObj, <<"hangup">>),
 
-            case wh_json:is_true(<<"Silence-Terminated">>, EvtJObj, 'false') of
-                'true' ->
-                    lager:debug("recording ended from silence after ~b s (dtmf was ~p)", [Len, DTMF]);
-                'false' ->
-                    lager:debug("recording ended: len: ~p dtmf: ~p", [Len, DTMF])
-            end,
-
-            Fs = [{fun kzt_util:set_digit_pressed/2, DTMF}
-                  ,{fun kzt_util:set_recording_duration/2, Len}
-                 ],
-            {'ok', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Fs)};
+            case {wh_json:is_true(<<"Silence-Terminated">>, EvtJObj, 'false')
+                  ,SilenceTimeout >= Len
+                 }
+            of
+                {'true', 'true'} ->
+                    lager:debug("recording stopped by silence, and was ~b s long (timeout was ~b, considering this empty", [Len, SilenceTimeout]),
+                    {'empty', Call};
+                _ ->
+                    Fs = [{fun kzt_util:set_digit_pressed/2, DTMF}
+                          ,{fun kzt_util:set_recording_duration/2, Len}
+                         ],
+                    {'ok', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Fs)}
+            end;
         {'error', 'channel_destroy', EvtJObj} ->
             Len = wh_util:milliseconds_to_seconds(wh_json:get_value(<<"Length">>, EvtJObj, 0)),
 
