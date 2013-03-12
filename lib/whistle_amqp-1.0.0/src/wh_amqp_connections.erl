@@ -36,9 +36,7 @@
          ,code_change/3
         ]).
 
--record(state, {weight=0
-                ,exchanges=dict:new()
-               }).
+-record(state, {exchanges=dict:new()}).
 
 -define(TAB, ?MODULE).
 -define(ENSURE_TIME, 5000).
@@ -71,8 +69,7 @@ add(URI) ->
         {ok, Params} ->
             new(#wh_amqp_connection{uri=URI
                                     ,manager=wh_util:to_atom(URI, true)
-                                    ,params=Params
-                                    ,weight=gen_server:call(?MODULE, assign_weight)})
+                                    ,params=Params})
     end.
 
 -spec new(wh_amqp_connection()) -> wh_amqp_connection() | {'error', _}.
@@ -166,8 +163,11 @@ update_exchanges(URI, Exchanges) ->
     gen_server:cast(?MODULE, {update_exchanges, wh_util:to_binary(URI), Exchanges}).
 
 -spec connected(wh_amqp_connection()) -> wh_amqp_connection().
-connected(#wh_amqp_connection{connection=Pid, weight=Weight}=Connection) when is_pid(Pid) ->
-    CurrentWeight = current_weight(),
+connected(#wh_amqp_connection{connection=Pid, uri=Weight}=Connection) when is_pid(Pid) ->
+    CurrentWeight = case current() of
+                        {ok, #wh_amqp_connection{uri=URI}} -> URI;
+                        {error, no_available_connection} -> 0
+                    end,
     C = gen_server:call(?MODULE, {connected, Connection}),
     _ = case Weight > CurrentWeight of
             'true' -> gen_server:cast(?MODULE, {force_reconnect, Connection});
@@ -225,8 +225,6 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call(exchanges, _, #state{exchanges=Exchanges}=State) ->
     {reply, [V || {_, V} <- dict:to_list(Exchanges)], State};
-handle_call(assign_weight, _, #state{weight=Weight}=State) ->
-    {reply, Weight, State#state{weight=Weight+1}};
 handle_call({new, #wh_amqp_connection{uri=URI}=Connection}, _, State) ->
     case ets:insert_new(?TAB, Connection) of
         true -> {reply, Connection, State, ?ENSURE_TIME};
@@ -332,15 +330,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec current_weight() -> integer().
-current_weight() ->
-    case current() of
-        {ok, #wh_amqp_connection{weight=Weight}} ->
-            Weight;
-        {'error', _} ->
-            -1
-    end.
-
 -spec declare_exchange(wh_amqp_connections(), #'exchange.declare'{}) -> ok.
 declare_exchange([], _) -> ok;
 declare_exchange([#wh_amqp_connection{control_channel=Pid
