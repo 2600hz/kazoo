@@ -299,7 +299,6 @@ process_event(<<"CHANNEL_CREATE">> = EventName, UUID, Props, Node) ->
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
     _ = ecallmgr_fs_channel:destroy(Props, Node),
-    _ = ecallmgr_fs_conference:participant_destroy(Node, UUID),
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(<<"CHANNEL_ANSWER">> = EventName, UUID, Props, Node) ->
     _ = ecallmgr_fs_channel:set_answered(UUID, 'true'),

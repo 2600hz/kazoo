@@ -423,12 +423,12 @@ handle_cast({'flush_node_conferences', Node}, State) ->
                    ,[{'=:=', '$1', {'const', Node}}]
                    ,['true']}
                  ],
-    _ = ets:select_delete(?CHANNELS_TBL, MatchSpecC),
+    _ = ets:select_delete(?CONFERENCES_TBL, MatchSpecC),
     MatchSpecP = [{#participant{node = '$1', _ = '_'}
                    ,[{'=:=', '$1', {'const', Node}}]
                    ,['true']}
                  ],
-    _ = ets:select_delete(?CHANNELS_TBL, MatchSpecP),
+    _ = ets:select_delete(?CONFERENCES_TBL, MatchSpecP),
     {'noreply', State};
 handle_cast(_Cast, State) ->
     lager:debug("unhandled cast: ~p", [_Cast]),

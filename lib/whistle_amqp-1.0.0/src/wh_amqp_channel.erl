@@ -78,7 +78,7 @@ close(#wh_amqp_channel{channel=Pid
                                  ]
                       }=Channel) when is_pid(Pid) ->
     lager:debug("removed queue ~s via channel ~p", [Queue, Pid]),
-    catch amqp_channel:call(Pid, #'queue.delete'{queue=Queue}),
+    catch amqp_channel:call(Pid, #'queue.delete'{queue=Queue, nowait='true'}),
     close(Channel#wh_amqp_channel{commands=Commands});
 close(#wh_amqp_channel{commands=[_|Commands]}=Channel) ->
     close(Channel#wh_amqp_channel{commands=Commands});
