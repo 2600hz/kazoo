@@ -46,6 +46,8 @@
          ,set_dequeued_call_duration/2, get_dequeued_call_duration/1
          ,set_media_meta/2, get_media_meta/1
          ,set_amqp_listener/2, get_amqp_listener/1
+
+
         ]).
 
 -include("kzt.hrl").
@@ -89,14 +91,15 @@ resolve_uri(RawPath, Relative) ->
        ), <<"/">>).
 
 %% see cf_offnet.erl
--spec offnet_req(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec offnet_req(wh_proplist(), whapps_call:call()) -> 'ok'.
 offnet_req(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
-    CIDNum = case whapps_call:kvs_fetch(dynamic_cid, Call) of
-                 undefined -> CIDNumber;
+    CIDNum = case whapps_call:kvs_fetch('dynamic_cid', Call) of
+                 'undefined' -> CIDNumber;
                  DynamicCID -> DynamicCID
              end,
+
     Req = [{<<"Call-ID">>, whapps_call:call_id(Call)}
            ,{<<"Resource-Type">>, <<"audio">>}
            ,{<<"To-DID">>, whapps_call:request_user(Call)}
@@ -104,17 +107,17 @@ offnet_req(Data, Call) ->
            ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
            ,{<<"Control-Queue">>, whapps_call:control_queue(Call)}
            ,{<<"Application-Name">>, <<"bridge">>}
-           ,{<<"Flags">>, wh_json:get_value(<<"flags">>, Data)}
-           ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
-           ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, Data)}
+           ,{<<"Flags">>, props:get_value(<<"flags">>, Data)}
+           ,{<<"Timeout">>, props:get_value(<<"timeout">>, Data)}
+           ,{<<"Ignore-Early-Media">>, props:get_value(<<"ignore_early_media">>, Data)}
            ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
            ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
            ,{<<"Outbound-Caller-ID-Name">>, CIDName}
            ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
            ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
-           ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
-           ,{<<"Media">>, wh_json:get_value(<<"Media">>, Data)}
-           | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)],
+           ,{<<"Ringback">>, props:get_value(<<"ringback">>, Data)}
+           | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
+          ] ++ Data,
     wapi_offnet_resource:publish_req(Req).
 
 -spec update_call_status(ne_binary(), whapps_call:call()) -> whapps_call:call().
