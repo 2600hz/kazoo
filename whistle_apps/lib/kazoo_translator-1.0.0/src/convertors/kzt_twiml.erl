@@ -163,7 +163,7 @@ req_params(Call) ->
 -spec dial(whapps_call:call(), xml_els(), xml_els()) -> {'ok' | 'stop', whapps_call:call()}.
 dial(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
     whapps_call_command:answer(Call),
-    DialMe = xml_text_to_binary(DialMeTxts),
+    DialMe = wnm_util:to_e164(cleanup_dial_me(xml_text_to_binary(DialMeTxts))),
     lager:debug("dial text DID '~s'", [DialMe]),
 
     Props = kzt_util:attributes_to_proplist(Attrs),
@@ -172,16 +172,17 @@ dial(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
                                 ,Props
                                ),
 
-    OffnetProps = wh_json:from_list(
-                    [{<<"Timeout">>, kzt_util:get_call_timeout(Call1)}
-                     ,{<<"Media">>, media_processing(Call1)}
-                    ]),
+    OffnetProps = [{<<"Timeout">>, kzt_util:get_call_timeout(Call1)}
+                   ,{<<"Media">>, media_processing(Call1)}
+                   ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"park_after_bridge">>, 'true'}])}
+                   ,{<<"Force-Outbound">>, force_outbound(Props)}
+                  ],
 
     'ok' = kzt_util:offnet_req(OffnetProps, Call1),
 
     {'ok', Call2} = kzt_receiver:wait_for_offnet(
-                    kzt_util:update_call_status(?STATUS_RINGING, Call1)
-                   ),
+                      kzt_util:update_call_status(?STATUS_RINGING, Call1)
+                     ),
     maybe_end_dial(Call2);
 dial(Call, [#xmlElement{name='Conference'
                         ,content=ConfIdTxts
@@ -245,18 +246,27 @@ dial(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
             IgnoreEarlyMedia = cf_util:ignore_early_media(EPs),
             Strategy = dial_strategy(Props),
 
-            whapps_call_command:bridge(EPs
-                                       ,Timeout
-                                       ,Strategy
-                                       ,IgnoreEarlyMedia
-                                       ,Call1
-                                      ),
+            send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call1),
+
             {'ok', Call2} = kzt_receiver:wait_for_offnet(
-                            kzt_util:update_call_status(?STATUS_RINGING, Call1)
-                           ),
+                              kzt_util:update_call_status(?STATUS_RINGING, Call1)
+                             ),
             maybe_end_dial(Call2)
     end.
 
+send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
+    B = [{<<"Application-Name">>, <<"bridge">>}
+         ,{<<"Endpoints">>, EPs}
+         ,{<<"Timeout">>, Timeout}
+         ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+         ,{<<"Dial-Endpoint-Method">>, Strategy}
+         ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"park_after_bridge">>, 'true'}])}
+        ],
+    lager:debug("kzt_cmd: ~p", [B]),
+    {ok, Bin} = wapi_dialplan:bridge(B),
+    lager:debug("kzt_json: ~s", [iolist_to_binary(Bin)]),
+    whapps_call_command:send_command(B, Call).
+        
 setup_call_for_dial(Call, Props) ->
     Setters = [{fun whapps_call:set_caller_id_number/2, caller_id(Props, Call)}
                ,{fun kzt_util:set_hangup_dtmf/2, hangup_dtmf(Props)}
@@ -275,7 +285,7 @@ maybe_end_dial(Call) ->
     case kzt_util:get_call_status(Call) of
         ?STATUS_COMPLETED -> {'stop', Call};
         _Status ->
-            lager:debug("dial failed: ~s", [_Status]),
+            lager:debug("a-leg status after bridge: ~s", [_Status]),
             {'ok', Call} % will progress to next TwiML element
     end.
 
@@ -726,3 +736,17 @@ num_digits(Props) ->
         'undefined' -> 'infinity';
         N when is_integer(N), N > 0 -> N
     end.
+
+-spec cleanup_dial_me(ne_binary()) -> ne_binary().
+cleanup_dial_me(Txt) -> << <<C>> || <<C>> <= Txt, is_numeric_or_plus(C)>>.
+
+-spec is_numeric_or_plus(pos_integer()) -> boolean().
+is_numeric_or_plus(Num) when Num >= $0, Num =< $9 -> 'true';
+is_numeric_or_plus($+) -> 'true';
+is_numeric_or_plus(_) -> 'false'.
+
+%% To maintain compatibility with Twilo, we force the call offnet (otherwise
+%% the redirect onnet steals our callid, and callflow/trunkstore/other could
+%% potentially hangup our A-leg. If the B-leg is forced offnet, we can still
+%% capture the failed B-leg and continue processing the TwiML (if any).
+force_outbound(Props) -> props:get_is_true('continueOnFail', Props, 'true').
