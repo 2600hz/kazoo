@@ -444,7 +444,7 @@ get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
                             'true' = ecallmgr_fs_channel:move(Target, OtherNode, Node),
                             get_call_pickup_app(Node, UUID, JObj, Target)
                     end;
-                {'error', not_found} ->
+                {'error', 'not_found'} ->
                     lager:debug("failed to find target callid ~s", [Target]),
                     {'error', <<"failed to find target callid ", Target/binary>>}
             end
