@@ -316,39 +316,38 @@ basic_publish(Exchange, ?NE_BINARY = RoutingKey, ?NE_BINARY = Payload, ContentTy
                                                                                                 is_binary(ContentType),
                                                                                                 is_list(Props) ->
     BP = #'basic.publish'{
-      exchange = Exchange
-      ,routing_key = RoutingKey
-      ,mandatory = props:get_value(mandatory, Props, false)
-      ,immediate = props:get_value(immediate, Props, false)
-     },
+            exchange = Exchange
+            ,routing_key = RoutingKey
+            ,mandatory = props:get_value(mandatory, Props, false)
+            ,immediate = props:get_value(immediate, Props, false)
+           },
 
     %% Add the message to the publish, converting to binary
     %% See http://www.rabbitmq.com/amqp-0-9-1-reference.html#class.basic
     MsgProps = #'P_basic'{
-      content_type = ContentType % MIME content type
-      ,content_encoding = props:get_value(content_encoding, Props) % MIME encoding
-      ,headers = props:get_value(headers, Props) % message headers
-      ,delivery_mode = props:get_value(delivery_mode, Props) % non-persistent(1) or persistent(2)
-      ,priority = props:get_value(priority, Props) % message priority, 0-9
-      ,correlation_id = props:get_value(correlation_id, Props) % correlation identifier
-      ,reply_to = props:get_value(reply_to, Props) % address to reply to
+                  content_type = ContentType % MIME content type
+                  ,content_encoding = props:get_value(content_encoding, Props) % MIME encoding
+                  ,headers = props:get_value(headers, Props) % message headers
+                  ,delivery_mode = props:get_value(delivery_mode, Props) % non-persistent(1) or persistent(2)
+                  ,priority = props:get_value(priority, Props) % message priority, 0-9
+                  ,correlation_id = props:get_value(correlation_id, Props) % correlation identifier
+                  ,reply_to = props:get_value(reply_to, Props) % address to reply to
 
                   %% TODO:: new rabbit wants an integer...
-%%      ,expiration = <<>>
-      ,expiration = props:get_value(expiration, Props) % expires time
+                  ,expiration = props:get_value(expiration, Props) % expires time
 
-      ,message_id = props:get_value(message_id, Props) % app message id
-      ,timestamp = props:get_value(timestamp, Props) % message timestamp
-      ,type = props:get_value(type, Props) % message type
-      ,user_id = props:get_value(user_id, Props) % creating user
-      ,app_id = props:get_value(app_id, Props) % creating app
-      ,cluster_id = props:get_value(cluster_id, Props) % cluster
-     },
+                  ,message_id = props:get_value(message_id, Props) % app message id
+                  ,timestamp = props:get_value(timestamp, Props) % message timestamp
+                  ,type = props:get_value(type, Props) % message type
+                  ,user_id = props:get_value(user_id, Props) % creating user
+                  ,app_id = props:get_value(app_id, Props) % creating app
+                  ,cluster_id = props:get_value(cluster_id, Props) % cluster
+                 },
 
     AM = #'amqp_msg'{
-      payload = Payload
-      ,props = MsgProps
-     },
+            payload = Payload
+            ,props = MsgProps
+           },
 
     wh_amqp_channel:publish(BP, AM).
 
