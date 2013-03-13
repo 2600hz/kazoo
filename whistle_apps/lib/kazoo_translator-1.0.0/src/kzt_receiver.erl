@@ -306,6 +306,37 @@ process_offnet_event(#offnet_req{call=Call
                                                        end
                                                        ,Call, Updates)
                                     }));
+
+        {{<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, CallId} ->
+            case wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj) of
+                CallBLeg ->
+                    HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
+                    lager:debug("b-leg (~s) has hungup(~s), continuing the call", [CallBLeg, HangupCause]),
+
+                    Updates = [{call_status(HangupCause), fun kzt_util:set_dial_call_status/2}],
+                    {'ok', lists:foldl(fun({V, F}, CallAcc) -> F(V, CallAcc) end
+                                       ,Call, Updates)
+                    };
+                _O ->
+                    lager:debug("unknown b-leg (~s) unbridged (waiting on ~s)", [_O, CallBLeg]),
+                    wait_for_offnet_events(update_offnet_timers(OffnetReq))
+            end;
+
+        {{<<"call_event">>, <<"CHANNEL_EXECUTE">>}, CallId} ->
+            wait_for_offnet_events(update_offnet_timers(OffnetReq));
+
+        {{<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>}, CallId} ->
+            case wh_json:get_value(<<"Application-Name">>, JObj) of
+                <<"bridge">> ->
+                    HangupCause = wh_json:get_value(<<"Application-Response">>, JObj),
+                    lager:debug("bridge completed: ~s", [HangupCause]),
+                    Updates = [{call_status(HangupCause), fun kzt_util:set_dial_call_status/2}],
+                    {'ok', lists:foldl(fun({V, F}, CallAcc) -> F(V, CallAcc) end
+                                       ,Call, Updates)
+                    };
+                _ -> wait_for_offnet_events(update_offnet_timers(OffnetReq))
+            end;
+
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
             HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
             lager:debug("caller channel finished: ~s", [HangupCause]),
@@ -321,7 +352,8 @@ process_offnet_event(#offnet_req{call=Call
                       ],
 
             {'ok', lists:foldl(fun({V, F}, CallAcc) -> F(V, CallAcc) end
-                               ,Call, Updates)};
+                               ,Call, Updates)
+            };
         {{_Cat, _Name}, _CallId} ->
             lager:debug("unhandled event for ~s: ~s: ~s: ~s"
                         ,[_CallId, _Cat, _Name, wh_json:get_value(<<"Application-Name">>, JObj)]
