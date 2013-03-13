@@ -30,6 +30,7 @@
                                                    ,<<"Control-Queue">>, <<"Call-ID">>, <<"Application-Data">>
                                                    ,<<"Account-ID">>, <<"Outbound-Call-ID">>, <<"Force-Fax">>
                                                    ,<<"Call-ID">>, <<"Mode">>, <<"Group-ID">> % Eavesdrop
+                                                   ,<<"Force-Outbound">>
                                               ]).
 -define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                      ,{<<"Event-Name">>, <<"offnet_req">>}
@@ -52,6 +53,7 @@
                                     ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                                     ,{<<"Flags">>, fun is_list/1}
                                     ,{<<"Force-Fax">>, fun wh_util:is_boolean/1}
+                                    ,{<<"Force-Outbound">>, fun wh_util:is_boolean/1}
                                    ]).
 
 %% Offnet Resource Response
