@@ -29,7 +29,7 @@
 -spec update_presence(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 update_presence(SlotNumber, PresenceId, AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
-    ParkedCalls = get_cached_parked_calls(AccountDb, AccountId),
+    ParkedCalls = get_parked_calls(AccountDb, AccountId),
     State = case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls) of
                 undefined -> <<"terminated">>;
                 ParkedCallId ->
@@ -39,6 +39,7 @@ update_presence(SlotNumber, PresenceId, AccountDb) ->
                     end
             end,
     ParkingId = wh_util:to_hex_binary(crypto:md5(PresenceId)),
+    lager:debug("sending presence resp for parking slot ~s(~s): ~s", [SlotNumber, PresenceId, State]),
     whapps_call_command:presence(State, PresenceId, ParkingId).
 
 %%--------------------------------------------------------------------
@@ -346,10 +347,12 @@ do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
 
 maybe_resolve_conflict(SlotNumber, Slot, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
-        {ok, JObj} -> do_save_slot(SlotNumber, Slot, JObj, Call);
-        {error, _}=E -> E
-    end.
+    {ok, JObj} = couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME),
+    {ok, JObj}=Ok = couch_mgr:save_doc(AccountDb, wh_json:set_value([<<"slots">>, SlotNumber], Slot, JObj)),
+    lager:info("successfully stored call parking data for slot ~s", [SlotNumber]),
+    CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
+    wh_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj, CacheProps),
+    Ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -453,6 +456,13 @@ get_parked_calls(Call) ->
     get_parked_calls(whapps_call:account_db(Call), whapps_call:account_id(Call)).
 
 get_parked_calls(AccountDb, AccountId) ->
+    case wh_cache:peek_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb)) of
+        {'ok', JObj} -> JObj;
+        {'error', 'not_found'} ->
+            fetch_parked_calls(AccountDb, AccountId)
+    end.
+
+fetch_parked_calls(AccountDb, AccountId) ->
     case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
         {error, not_found} ->
             Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
@@ -470,13 +480,6 @@ get_parked_calls(AccountDb, AccountId) ->
         {error, _R}=E ->
             lager:info("unable to get parked calls: ~p", [_R]),
             E
-    end.
-
-get_cached_parked_calls(AccountDb, AccountId) ->
-    case wh_cache:peek_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb)) of
-        {'ok', _}=Ok -> Ok;
-        {'error', 'not_found'} ->
-            get_parked_calls(AccountDb, AccountId)
     end.
 
 %%--------------------------------------------------------------------

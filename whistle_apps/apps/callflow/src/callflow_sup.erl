@@ -25,6 +25,7 @@
 -define(ORIGIN_BINDINGS, [[{type, <<"account">>}]
                           ,[{type, <<"user">>}]
                           ,[{type, <<"device">>}]
+                          ,[{type, <<"parked_calls">>}]
                          ]).
 -define(CACHE_PROPS, [{origin_bindings, ?ORIGIN_BINDINGS}
                       ,new_channel_flush
