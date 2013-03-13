@@ -616,7 +616,9 @@ shared_queue_name(AcctId, QueueId) ->
 -spec queue_size(ne_binary(), ne_binary()) -> integer() | 'undefined'.
 queue_size(AcctId, QueueId) ->
     Q = shared_queue_name(AcctId, QueueId),
-    amqp_util:new_queue(Q, [{'return_field', 'message_count'}]).
+    amqp_util:new_queue(Q, [{'return_field', 'message_count'}
+                            ,{'exclusive', 'false'}
+                           ]).
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Q, Props) ->

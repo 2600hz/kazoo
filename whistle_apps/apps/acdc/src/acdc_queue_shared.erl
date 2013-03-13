@@ -30,16 +30,16 @@
 
 -record(state, {fsm_pid :: pid()}).
 
--define(SHARED_BINDING_OPTIONS, [{consume_options, [{no_ack, false}
-                                                    ,{exclusive, false}
+-define(SHARED_BINDING_OPTIONS, [{'consume_options', [{'no_ack', 'false'}
+                                                    ,{'exclusive', 'false'}
                                                    ]}
-                                 ,{basic_qos, 1}
-                                 ,{queue_options, [{exclusive, false}]}
+                                 ,{'basic_qos', 1}
+                                 ,{'queue_options', [{'exclusive', 'false'}]}
                                 ]).
 
--define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{self, []}]).
+-define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{'self', []}]).
 
--define(RESPONDERS, [{{acdc_queue_handler, handle_member_call}
+-define(RESPONDERS, [{{'acdc_queue_handler', 'handle_member_call'}
                       ,[{<<"member">>, <<"call">>}]
                      }
                     ]).
@@ -58,9 +58,9 @@
 -spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(FSMPid, AcctId, QueueId) ->
     gen_listener:start_link(?MODULE
-                            ,[{bindings, ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
-                              ,{responders, ?RESPONDERS}
-                              ,{queue_name, wapi_acdc_queue:shared_queue_name(AcctId, QueueId)}
+                            ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', wapi_acdc_queue:shared_queue_name(AcctId, QueueId)}
                               | ?SHARED_BINDING_OPTIONS
                              ]
                             ,[FSMPid]
