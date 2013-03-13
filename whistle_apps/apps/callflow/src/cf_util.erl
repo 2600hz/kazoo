@@ -630,7 +630,6 @@ maybe_presence_parking_flow(Request, Realm, AccountDb) ->
 
 -spec presence_parking_slot_resp(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 presence_parking_slot_resp(SlotNumber, Request, Realm, AccountDb) ->
-    lager:info("replying to presence query for a parking slot"),
     cf_park:update_presence(SlotNumber, <<Request/binary, "@", Realm/binary>>, AccountDb).
 
 %%--------------------------------------------------------------------
