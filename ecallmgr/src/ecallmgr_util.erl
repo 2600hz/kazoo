@@ -279,11 +279,11 @@ is_node_up(Node, UUID) ->
 -spec get_fs_kv(ne_binary(), ne_binary(), ne_binary()) -> binary().
 get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
     list_to_binary(["hold_music="
-                    ,wh_util:to_list(media_path(Media, extant, UUID, wh_json:new()))
+                    ,wh_util:to_list(media_path(Media, 'extant', UUID, wh_json:new()))
                    ]);
 get_fs_kv(Key, Val, _) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
-        false ->
+        'false' ->
             list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "=", wh_util:to_list(Val)]);
         {_, Prefix} ->
             V = maybe_sanitize_fs_value(Key, Val),
