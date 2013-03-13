@@ -483,18 +483,17 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate({shutdown, transfer}, _) ->
-    lager:info("callflow execution has been transfered"),
-    ok;
+    lager:info("callflow execution has been transfered");
 terminate({shutdown, control_usurped}, _) ->
-    lager:info("the call has been usurped by an external process"),
-    ok;
+    lager:info("the call has been usurped by an external process");
 terminate(_Reason, #state{call=Call}) ->
-    Command = [{<<"Application-Name">>, <<"hangup">>}
+    Command = [{<<"Event-Name">>, <<"command">>}
+               ,{<<"Event-Category">>, <<"call">>}
+               ,{<<"Application-Name">>, <<"hangup">>}
                ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, whapps_call:control_queue_direct(Call), whapps_call:call_id_direct(Call)),
-    lager:info("callflow execution has been stopped: ~p", [_Reason]),
-    ok.
+    lager:info("callflow execution has been stopped: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
