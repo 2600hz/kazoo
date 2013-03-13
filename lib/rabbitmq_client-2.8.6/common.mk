@@ -74,9 +74,9 @@ TEST_TARGETS=$(patsubst $(TEST_DIR)/%.erl, $(TEST_DIR)/%.beam, $(TEST_SOURCES))
 LIBS_PATH_UNIX=$(DEPS_DIR):$(DIST_DIR)$(ERL_LIBS)
 IS_CYGWIN=$(shell if [ $(shell expr "$(shell uname -s)" : 'CYGWIN_NT') -gt 0 ]; then echo "true"; else echo "false"; fi)
 ifeq ($(IS_CYGWIN),true)
-    LIBS_PATH=ERL_LIBS="$(shell cygpath -wp $(LIBS_PATH_UNIX))"
+    LIBS_PATH=ERL_LIBS="$(shell cygpath -wp $(LIBS_PATH_UNIX))":$(BROKER_DIR)
 else
-    LIBS_PATH=ERL_LIBS=$(LIBS_PATH_UNIX)
+    LIBS_PATH=ERL_LIBS=$(LIBS_PATH_UNIX):$(BROKER_DIR)
 endif
 
 LOAD_PATH=$(EBIN_DIR) $(TEST_DIR) $(ERL_PATH)
