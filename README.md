@@ -118,4 +118,5 @@ ensure 2600hz is always leading the way in cloud telecom.
 
 * Visit http://2600hz.org
 * Read more at http://wiki.2600hz.org
+* Bugs and feature requests http://tickets.2600hz.org
 * Join us on IRC @ freenode.net in #2600hz
