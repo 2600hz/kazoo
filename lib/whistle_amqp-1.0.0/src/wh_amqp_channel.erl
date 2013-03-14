@@ -85,7 +85,7 @@ close(#wh_amqp_channel{commands=[_|Commands]}=Channel) ->
 close(#wh_amqp_channel{channel=Pid, uri=URI}=Channel) when is_pid(Pid) ->
     lager:debug("closed channel ~p on ~s", [Pid, URI]),
     C = wh_amqp_channels:demonitor_channel(Channel),
-    catch amqp_channel:close(Pid),
+    catch gen_server:call(Pid, {close, 200, <<"Goodbye">>}, 5000),
     C;
 close(Channel) ->
     Channel.
