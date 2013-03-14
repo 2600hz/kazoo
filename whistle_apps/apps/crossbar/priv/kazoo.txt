@@ -58,8 +58,6 @@ Kazoo
                                                  ....           
 ````
 
-[![Build Status](https://secure.travis-ci.org/2600hz/2600hz-platform.png)](http://travis-ci.org/2600hz/2600hz-platform)
-
 ### Cloud-Based Telecommunications For Everyone
 
 Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and
@@ -119,3 +117,4 @@ ensure 2600hz is always leading the way in cloud telecom.
 * Visit http://2600hz.org
 * Read more at http://wiki.2600hz.org
 * Join us on IRC @ freenode.net in #2600hz
+
