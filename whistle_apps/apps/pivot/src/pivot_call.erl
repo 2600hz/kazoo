@@ -112,8 +112,6 @@ handle_call_event(JObj, Props) ->
 init([Call, JObj]) ->
     put(callid, whapps_call:call_id(Call)),
 
-    get_my_queue(),
-
     Method = kzt_util:http_method(wh_json:get_value(<<"HTTP-Method">>, JObj, get)),
     VoiceUri = wh_json:get_value(<<"Voice-URI">>, JObj),
 
@@ -179,12 +177,8 @@ handle_cast({request, Uri, Method, Params}, #state{call=Call}=State) ->
 handle_cast({updated_call, Call}, State) ->
     {noreply, State#state{call=Call}};
 
-handle_cast({controller_queue, undefined}, State) ->
-    get_my_queue(),
-    {noreply, State};
-handle_cast({controller_queue, ControllerQ}, #state{call=Call}=State) ->
-    %% TODO: Block on waiting for controller queue
-    {noreply, State#state{call=whapps_call:set_controller_queue(ControllerQ, Call)}};
+handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
+    {noreply, State#state{call=whapps_call:set_controller_queue(Q, Call)}};
 
 handle_cast({stop, Call}, #state{cdr_uri=undefined}=State) ->
     lager:debug("no cdr callback, server going down"),
@@ -419,12 +413,3 @@ req_params(Format, Call) ->
         error:undef ->
             []
     end.
-
-get_my_queue() ->
-    Self = self(),
-    spawn(fun() ->
-                  ControllerQ = gen_listener:queue_name(Self),
-                  lager:debug("controller queue: ~s", [ControllerQ]),
-                  gen_listener:cast(Self, {controller_queue, ControllerQ})
-          end),
-    ok.
