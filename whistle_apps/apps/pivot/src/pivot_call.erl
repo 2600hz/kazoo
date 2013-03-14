@@ -109,7 +109,7 @@ handle_call_event(JObj, Props) ->
 init([Call, JObj]) ->
     put(callid, whapps_call:call_id(Call)),
 
-    get_my_queue(),
+    gen_listener:cast(?MODULE, {controller_queue, <<>>}),
 
     Method = kzt_util:http_method(wh_json:get_value(<<"HTTP-Method">>, JObj, get)),
     VoiceUri = wh_json:get_value(<<"Voice-URI">>, JObj),
