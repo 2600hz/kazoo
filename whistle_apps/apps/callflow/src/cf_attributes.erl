@@ -10,6 +10,7 @@
 
 -include("callflow.hrl").
 
+-export([valid_emergency_numbers/1]).
 -export([temporal_rules/1]).
 -export([groups/1]).
 -export([caller_id/2]).
@@ -110,25 +111,60 @@ maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call) ->
     end.
 
 -spec maybe_ensure_cid_valid(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
-maybe_ensure_cid_valid(Number, Name, true, <<"external">>, Call) ->
-    case whapps_config:get_is_true(<<"callflow">>, <<"ensure_valid_caller_id">>, false) of
-        true -> ensure_valid_caller_id(Number, Name, Call);
-        false ->
+maybe_ensure_cid_valid(Number, Name, 'true', <<"external">>, Call) ->
+    case whapps_config:get_is_true(<<"callflow">>, <<"ensure_valid_caller_id">>, 'false') of
+        'true' -> ensure_valid_caller_id(Number, Name, Call);
+        'false' ->
             lager:info("external caller id <~s> ~s", [Name, Number]),
+            {Number, Name}
+    end;
+maybe_ensure_cid_valid(Number, Name, 'true', <<"emergency">>, Call) ->
+    case whapps_config:get_is_true(<<"callflow">>, <<"ensure_valid_emergency_number">>, 'false') of
+        'true' -> ensure_valid_emergency_number(Number, Name, Call);
+        'false' ->
+            lager:info("emergecy caller id <~s> ~s", [Name, Number]),
             {Number, Name}
     end;
 maybe_ensure_cid_valid(Number, Name, _, Attribute, _) ->
     lager:info("~s caller id <~s> ~s", [Attribute, Name, Number]),
     {Number, Name}.
 
+-spec ensure_valid_emergency_number(api_binary(), api_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+ensure_valid_emergency_number('undefined', Name, Call) ->
+    Numbers = valid_emergency_numbers(Call),
+    find_valid_emergency_number(Numbers, 'undefined', Name);
+ensure_valid_emergency_number(Number, Name, Call) ->
+    Numbers = valid_emergency_numbers(Call),
+    case lists:member(Number, Numbers) of
+        'true' ->
+            lager:info("emergecy caller id <~s> ~s", [Name, Number]),
+            {Number, Name};
+        'false' ->
+            find_valid_emergency_number(Numbers, Number, Name)
+    end.
+
+-spec find_valid_emergency_number(ne_binaries(), ne_binary(), ne_binary()) -> {api_binary(), api_binary()}.
+find_valid_emergency_number([], Number, Name) ->
+    case whapps_config:get_non_empty(<<"callflow">>, <<"default_emergency_number">>, <<>>) of
+        'undefined' ->
+            lager:info("emergecy caller id <~s> ~s", [Name, Number]),
+            {Number, Name};
+        Default ->
+            lager:info("emergecy caller id <~s> ~s", [Name, Default]),
+            {Default, Name}
+    end;
+find_valid_emergency_number([Number|_], _, Name) ->
+    lager:info("emergecy caller id <~s> ~s", [Name, Number]),
+    {Number, Name}.
+
 -spec ensure_valid_caller_id(ne_binary(), ne_binary(), whapps_call:call()) ->
                                           {api_binary(), api_binary()}.
 ensure_valid_caller_id(Number, Name, Call) ->
     case is_valid_caller_id(Number, Call) of
-        true ->
+        'true' ->
             lager:info("valid external caller id <~s> ~s", [Name, Number]),
             {Number, Name};
-        false ->
+        'false' ->
             maybe_get_account_cid(Number, Name, Call)
     end.
 
@@ -137,8 +173,8 @@ maybe_get_account_cid(Number, Name, Call) ->
     AccountDb = whapps_call:account_db(Call),
     AccountId = whapps_call:account_id(Call),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {error, _} -> maybe_get_assigned_number(Number, Name, Call);
-        {ok, JObj} ->
+        {'error', _} -> maybe_get_assigned_number(Number, Name, Call);
+        {'ok', JObj} ->
             maybe_get_account_external_number(Number, Name, JObj, Call)
     end.
 
@@ -146,10 +182,10 @@ maybe_get_account_cid(Number, Name, Call) ->
 maybe_get_account_external_number(Number, Name, Account, Call) ->
     External = wh_json:get_ne_value([<<"caller_id">>, <<"external">>, <<"number">>], Account),
     case is_valid_caller_id(External, Call) of
-        true ->
+        'true' ->
             lager:info("valid account external caller id <~s> ~s", [Name, Number]),
             {External, Name};
-        false ->
+        'false' ->
             maybe_get_account_default_number(Number, Name, Account, Call)
     end.
 
@@ -157,10 +193,10 @@ maybe_get_account_external_number(Number, Name, Account, Call) ->
 maybe_get_account_default_number(Number, Name, Account, Call) ->
     Default = wh_json:get_ne_value([<<"caller_id">>, <<"default">>, <<"number">>], Account),
     case is_valid_caller_id(Default, Call) of
-        true ->
+        'true' ->
             lager:info("valid account default caller id <~s> ~s", [Name, Number]),
             {Default, Name};
-        false ->
+        'false' ->
             maybe_get_assigned_number(Number, Name, Call)
     end.
 
@@ -168,11 +204,11 @@ maybe_get_account_default_number(Number, Name, Account, Call) ->
 maybe_get_assigned_number(_, Name, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {error, _R} ->
+        {'error', _R} ->
             Number = default_cid_number(),
             lager:warning("could not open phone_numbers doc <~s> ~s: ~p", [Name, Number, _R]),
             {Number, Name};
-        {ok, JObj} ->
+        {'ok', JObj} ->
             PublicJObj = wh_json:public_fields(JObj),
             Numbers = [Num
                        || Num <- wh_json:get_keys(PublicJObj)
@@ -195,12 +231,12 @@ maybe_get_assigned_numbers([Number|_], Name, _) ->
     {Number, Name}.
 
 -spec is_valid_caller_id(api_binary(), whapps_call:call()) -> boolean().
-is_valid_caller_id(undefined, _) -> false;
+is_valid_caller_id('undefined', _) -> 'false';
 is_valid_caller_id(Number, Call) ->
     AccountId = whapps_call:account_id(Call),
     case wh_number_manager:lookup_account_by_number(Number) of
-        {ok, AccountId, _} -> true;
-        _Else -> false
+        {'ok', AccountId, _} -> 'true';
+        _Else -> 'false'
     end.
 
 %%-----------------------------------------------------------------------------
@@ -212,9 +248,9 @@ is_valid_caller_id(Number, Call) ->
                              {api_binary(), api_binary()}.
 callee_id(EndpointId, Call) when is_binary(EndpointId) ->
     case cf_endpoint:get(EndpointId, Call) of
-        {ok, Endpoint} -> callee_id(Endpoint, Call);
-        {error, _R} ->
-            maybe_normalize_callee(undefined, undefined, wh_json:new(), Call)
+        {'ok', Endpoint} -> callee_id(Endpoint, Call);
+        {'error', _R} ->
+            maybe_normalize_callee('undefined', 'undefined', wh_json:new(), Call)
     end;
 callee_id(Endpoint, Call) ->
     Attribute = determine_callee_attribute(Call),
@@ -225,9 +261,9 @@ callee_id(Endpoint, Call) ->
 
 -spec maybe_normalize_callee(api_binary(), api_binary(), wh_json:object(), whapps_call:call()) ->
                                           {api_binary(), api_binary()}.
-maybe_normalize_callee(undefined, Name, Endpoint, Call) ->
+maybe_normalize_callee('undefined', Name, Endpoint, Call) ->
     maybe_normalize_callee(whapps_call:request_user(Call), Name, Endpoint, Call);
-maybe_normalize_callee(Number, undefined, Endpoint, Call) ->
+maybe_normalize_callee(Number, 'undefined', Endpoint, Call) ->
     maybe_normalize_callee(Number, default_cid_name(Endpoint), Endpoint, Call);
 maybe_normalize_callee(Number, Name, _, _) ->
     lager:info("callee id <~s> ~s", [Name, Number]),
@@ -236,8 +272,8 @@ maybe_normalize_callee(Number, Name, _, _) ->
 -spec determine_callee_attribute(whapps_call:call()) -> ne_binary().
 determine_callee_attribute(Call) ->
     case whapps_call:inception(Call) =:= <<"off-net">> of
-        true -> <<"external">>;
-        false -> <<"internal">>
+        'true' -> <<"external">>;
+        'false' -> <<"internal">>
     end.
 
 %%-----------------------------------------------------------------------------
@@ -344,8 +380,8 @@ presence_id(Call) ->
 
 presence_id(EndpointId, Call) when is_binary(EndpointId) ->
     case cf_endpoint:get(EndpointId, Call) of
-        {ok, Endpoint} -> presence_id(Endpoint, Call);
-        {error, _} -> undefined
+        {'ok', Endpoint} -> presence_id(Endpoint, Call);
+        {'error', _} -> 'undefined'
     end;
 presence_id(Endpoint, Call) ->
     <<(wh_json:get_binary_value([<<"sip">>, <<"username">>], Endpoint, whapps_call:request_user(Call)))/binary
@@ -395,13 +431,26 @@ default_cid_number() ->
 -spec default_cid_name(wh_json:object()) -> ne_binary().
 default_cid_name(Endpoint) ->
     case wh_json:get_ne_value(<<"name">>, Endpoint) of
-        undefined -> whapps_config:get_non_empty(<<"callflow">>, <<"default_caller_id_name">>, <<"unknown">>);
+        'undefined' -> whapps_config:get_non_empty(<<"callflow">>, <<"default_caller_id_name">>, <<"unknown">>);
         Name -> Name
     end.
 
 -spec get_cid_or_default(ne_binary(), ne_binary(), wh_json:object()) -> api_binary().
 get_cid_or_default(Attribute, Property, Endpoint) ->
     case wh_json:get_ne_value([<<"caller_id">>, Attribute, Property], Endpoint) of
-        undefined -> wh_json:get_ne_value([<<"default">>, Property], Endpoint);
+        'undefined' -> wh_json:get_ne_value([<<"default">>, Property], Endpoint);
         Value -> Value
+    end.
+
+-spec valid_emergency_numbers(whapps_call:call()) -> ne_binaries().
+valid_emergency_numbers(Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:open_cache_doc(AccountDb, <<"phone_numbers">>) of
+        {'ok', JObj} ->
+            [Number
+             || Number <- wh_json:get_keys(JObj)
+                    ,lists:member(<<"dash_e911">>, wh_json:get_value([Number, <<"features">>], JObj, []))
+            ];
+        {'error', _} ->
+            []
     end.
