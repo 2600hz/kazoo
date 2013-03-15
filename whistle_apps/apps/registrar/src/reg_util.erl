@@ -236,6 +236,7 @@ search_for_registration(User, Realm) ->
                         ,[{<<"Username">>, User}
                           ,{<<"Realm">>, Realm}
                           ,{<<"Fields">>, [<<"Username">>, <<"Realm">>]}
+                          ,{<<"Suppress-Errors">>, <<"true">>}
                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                          ]
                         ,fun wapi_registration:publish_query_req/1

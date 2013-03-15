@@ -49,7 +49,9 @@
 
 %% Query Registrations
 -define(REG_QUERY_HEADERS, [<<"Realm">>]).
--define(OPTIONAL_REG_QUERY_HEADERS, [<<"Username">>, <<"Fields">>]).
+-define(OPTIONAL_REG_QUERY_HEADERS, [<<"Username">>, <<"Fields">>
+                                         ,<<"Suppress-Errors">>
+                                    ]).
 -define(REG_QUERY_VALUES, [{<<"Event-Category">>, <<"directory">>}
                            ,{<<"Event-Name">>, <<"reg_query">>}
                           ]).
