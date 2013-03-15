@@ -197,7 +197,7 @@ exec(Focus, ConferenceId, JObj) ->
         {'error', _Msg}=E ->
             lager:debug("command ~s failed: ~s", [App, _Msg]),
             send_response(App, E, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
-        {noop, Conference} ->
+        {'noop', Conference} ->
             send_response(App, {noop, Conference}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {<<"play">>, AppData} ->
             Result =
@@ -323,9 +323,9 @@ get_conf_command(<<"recordstop">>, _Focus, _ConferenceId, JObj) ->
 
 get_conf_command(<<"relate_participants">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:relate_participants_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference relate_participants failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             Args = list_to_binary([wh_json:get_binary_value(<<"Participant">>, JObj)
                                    ," ", wh_json:get_binary_value(<<"Other-Participant">>, JObj)
                                    ," ", wh_json:get_binary_value(<<"Relationship">>, JObj, <<"clear">>)

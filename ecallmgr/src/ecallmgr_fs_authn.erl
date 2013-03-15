@@ -27,7 +27,7 @@
         ]).
 
 -define(SERVER, ?MODULE).
--define(CREDS_KEY(Realm, Username), {?MODULE, authn, Username, Realm}).
+-define(CREDS_KEY(Realm, Username), {?MODULE, 'authn', Username, Realm}).
 
 -include("ecallmgr.hrl").
 
@@ -46,18 +46,14 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Node) ->
-    start_link(Node, []).
+start_link(Node) -> start_link(Node, []).
+start_link(Node, Options) -> gen_server:start_link(?MODULE, [Node, Options], []).
 
-start_link(Node, Options) ->
-    gen_server:start_link(?MODULE, [Node, Options], []).
-
--spec handle_sucessful_registration(proplist(), atom()) -> 'ok'.
+-spec handle_sucessful_registration(wh_proplist(), atom()) -> any().
 handle_sucessful_registration(Props, Node) ->
     lager:debug("received registration event"),
     ecallmgr_registrar:reg_success(Props, Node),
-    publish_register_event(Props, Node),
-    ok.
+    publish_register_event(Props, Node).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -75,35 +71,35 @@ handle_sucessful_registration(Props, Node) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put(callid, Node),
+    put('callid', Node),
     lager:info("starting new fs authn listener for ~s", [Node]),
-    case bind_to_events(props:get_value(client_version, Options), Node) of
-        ok -> {ok, #state{node=Node, options=Options}};
-        {error, Reason} ->
+    case bind_to_events(props:get_value('client_version', Options), Node) of
+        'ok' -> {'ok', #state{node=Node, options=Options}};
+        {'error', Reason} ->
             lager:critical("unable to establish authn bindings: ~p", [Reason]),
-            {stop, Reason}
+            {'stop', Reason}
     end.
 
 bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
     case freeswitch:event(Node, ['CUSTOM', 'sofia::register']) of
-        timeout -> {error, timeout};
-        ok -> bind_to_directory(Node);
+        'timeout' -> {'error', 'timeout'};
+        'ok' -> bind_to_directory(Node);
         Else -> Else
     end;
 bind_to_events(_, Node) ->
     case freeswitch:event(Node, ['CUSTOM', 'sofia::register']) of
-        timeout -> {error, timeout};
-        ok ->
-            case gproc:reg({p, l, {event, Node, <<"sofia::register">>}}) =:= true of
-                true -> bind_to_directory(Node);
-                false -> {error, gproc_badarg}
+        'timeout' -> {'error', 'timeout'};
+        'ok' ->
+            case gproc:reg({'p', 'l', {'event', Node, <<"sofia::register">>}}) =:= 'true' of
+                'true' -> bind_to_directory(Node);
+                'false' -> {'error', 'gproc_badarg'}
             end;
         Else -> Else
     end.
 
 bind_to_directory(Node) ->
-    case freeswitch:bind(Node, directory) of
-        timeout -> {error, timeout};
+    case freeswitch:bind(Node, 'directory') of
+        'timeout' -> {'error', 'timeout'};
         Else -> Else
     end.
 
@@ -122,7 +118,7 @@ bind_to_directory(Node) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -135,7 +131,8 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    lager:debug("unhandled cast: ~p", [_Msg]),
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -147,26 +144,27 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
-    spawn(?MODULE, handle_sucessful_registration, [Props, Node]),
-    {noreply, State};
-handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, Id, [undefined | Props]}
+handle_info({'event', [_ | Props]}, #state{node=Node}=State) ->
+    spawn(?MODULE, 'handle_sucessful_registration', [Props, Node]),
+    {'noreply', State};
+handle_info({'fetch', 'directory', <<"domain">>, <<"name">>, _Value, Id, ['undefined' | Props]}
             ,#state{node=Node}=State) ->
-    spawn(?MODULE, handle_directory_lookup, [Id, Props, Node]),
-    {noreply, State};
-handle_info({fetch, _Section, _Something, _Key, _Value, Id, [undefined | _Props]}, #state{node=Node}=State) ->
+    spawn(?MODULE, 'handle_directory_lookup', [Id, Props, Node]),
+    {'noreply', State};
+handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Props]}, #state{node=Node}=State) ->
     spawn(fun() ->
                   lager:debug("sending empyt reply for request (~s) for ~s ~s from ~s", [Id, _Section, _Something, Node]),
-                  {ok, Resp} = ecallmgr_fs_xml:empty_response(),
+                  {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
                   freeswitch:fetch_reply(Node, Id, Resp)
           end),
-    {noreply, State};
+    {'noreply', State};
 
 handle_info(_Info, State) ->
-    {noreply, State}.
+    lager:debug("unhandled msg: ~p", [_Info]),
+    {'noreply', State}.
 
 handle_directory_lookup(Id, Props, Node) ->
-    put(callid, Id),
+    put('callid', Id),
     case props:get_value(<<"sip_auth_method">>, Props) of
         <<"REGISTER">> ->
             lager:debug("received fetch request (~s) for sip registration creds from ~s", [Id, Node]);
@@ -180,7 +178,7 @@ handle_directory_lookup(Id, Props, Node) ->
         {<<"REQUEST_PARAMS">>, <<"reverse-auth-lookup">>} ->
             lookup_user(Node, Id, <<"reverse-lookup">>, Props);
         _Other ->
-            {ok, Resp} = ecallmgr_fs_xml:empty_response(),
+            {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
             _ = freeswitch:fetch_reply(Node, Id, Resp),
             lager:debug("ignoring request from ~s for ~p", [Node, _Other])
     end.
@@ -208,7 +206,7 @@ terminate(_Reason, #state{node=Node}) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -218,22 +216,24 @@ lookup_user(Node, Id, Method,  Props) ->
     Realm = props:get_value(<<"domain">>, Props, props:get_value(<<"Auth-Realm">>, Props)),
     Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
     ReqResp = maybe_query_registrar(Realm, Username, Node, Id, Method, Props),
-    {ok, Xml} = handle_lookup_resp(Method, Realm, Username, ReqResp),
-    lager:debug("sending XML to ~w: ~s", [Node, Xml]),
+    {'ok', Xml} = handle_lookup_resp(Method, Realm, Username, ReqResp),
+    lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
     freeswitch:fetch_reply(Node, Id, iolist_to_binary(Xml)).
 
--spec handle_lookup_resp(ne_binary(), ne_binary(), ne_binary(), {'ok', wh_json:object()} | {'error', _}) -> {'ok', _}.
-handle_lookup_resp(<<"reverse-lookup">>, Realm, Username, {ok, JObj}) ->
+-spec handle_lookup_resp(ne_binary(), ne_binary(), ne_binary()
+                         ,{'ok', wh_json:object()} | {'error', _}) ->
+                                {'ok', _}.
+handle_lookup_resp(<<"reverse-lookup">>, Realm, Username, {'ok', JObj}) ->
     Props = [{<<"Domain-Name">>, Realm}
              ,{<<"User-ID">>, Username}
             ],
     ecallmgr_fs_xml:reverse_authn_resp_xml(wh_json:set_values(Props, JObj));
-handle_lookup_resp(_, Realm, Username, {ok, JObj}) ->
+handle_lookup_resp(_, Realm, Username, {'ok', JObj}) ->
     Props = [{<<"Domain-Name">>, Realm}
              ,{<<"User-ID">>, Username}
             ],
     ecallmgr_fs_xml:authn_resp_xml(wh_json:set_values(Props, JObj));
-handle_lookup_resp(_, _, _, {error, _R}) ->
+handle_lookup_resp(_, _, _, {'error', _R}) ->
     lager:debug("authn request lookup failed: ~p", [_R]),
     ecallmgr_fs_xml:not_found().
 
@@ -241,16 +241,16 @@ handle_lookup_resp(_, _, _, {error, _R}) ->
 publish_register_event(Props, Node) ->
     ApiProp = lists:foldl(fun(K, Api) ->
                                   case props:get_value(wh_util:to_lower_binary(K), Props) of
-                                      undefined ->
+                                      'undefined' ->
                                           case props:get_value(K, Props) of
-                                              undefined -> Api;
+                                              'undefined' -> Api;
                                               V -> [{K, V} | Api]
                                           end;
                                       V -> [{K, V} | Api]
                                   end
                           end
                           ,[{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
-                            ,{<<"Call-ID">>, get(callid)}
+                            ,{<<"Call-ID">>, get('callid')}
                             ,{<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
                           ,wapi_registration:success_keys()),
@@ -260,15 +260,18 @@ publish_register_event(Props, Node) ->
                         ,fun wapi_registration:publish_success/1
                        ).
 
--spec maybe_query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec maybe_query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), wh_proplist()) ->
+                                   {'ok', wh_json:object()} |
+                                   {'error', _}.
 maybe_query_registrar(Realm, Username, Node, Id, Method, Props) ->
     case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?CREDS_KEY(Realm, Username)) of
-        {ok, _}=Ok -> Ok;
-        {error, not_found} ->
-            query_registrar(Realm, Username, Node, Id, Method, Props)
-end.
+        {'ok', _}=Ok -> Ok;
+        {'error', 'not_found'} -> query_registrar(Realm, Username, Node, Id, Method, Props)
+    end.
 
--spec query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), wh_proplist()) ->
+                             {'ok', wh_json:object()} |
+                             {'error', _}.
 query_registrar(Realm, Username, Node, Id, Method, Props) ->
     lager:debug("looking up credentials of ~s@~s for a ~s", [Username, Realm, Method]),
     Req = [{<<"Msg-ID">>, Id}
@@ -284,14 +287,15 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,props:filter_undefined(Req)
                                   ,fun wapi_authn:publish_req/1
-                                  ,fun wapi_authn:resp_v/1),
+                                  ,fun wapi_authn:resp_v/1
+                                 ),
     case ReqResp of
-        {error, _}=E -> E;
-        {ok, JObj}=Ok ->
+        {'error', _}=E -> E;
+        {'ok', JObj}=Ok ->
             lager:debug("received authn information"),
             AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
             AuthId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj),
-            CacheProps = [{origin, {db, wh_util:format_account_id(AccountId, encoded), AuthId}}],
+            CacheProps = [{'origin', {'db', wh_util:format_account_id(AccountId, 'encoded'), AuthId}}],
             wh_cache:store_local(?ECALLMGR_REG_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
             Ok
     end.
