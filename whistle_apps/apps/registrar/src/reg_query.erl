@@ -68,11 +68,25 @@ req_query_req(ApiJObj, _Props) ->
                    ],
             wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp);
         {error, not_found} ->
+            lager:debug("no registration for ~s@~s", [Username, Realm]),
+            maybe_send_error(MsgID, ApiJObj)
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%-----------------------------------------------------------------------------
+-spec maybe_send_error(ne_binary(), wh_json:object()) -> 'ok'.
+maybe_send_error(MsgID, ApiJObj) ->
+    case wh_json:is_true(<<"Suppress-Errors">>, ApiJObj) of
+        'true' -> 'ok';
+        'false' ->
             Resp = [{<<"Msg-ID">>, MsgID}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
-            wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp),
-            lager:debug("no registration for ~s@~s", [Username, Realm])
+            wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp)
     end.
 
 %%-----------------------------------------------------------------------------
