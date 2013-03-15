@@ -319,15 +319,44 @@ read(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request(cb_context:context()) -> cb_context:context().
 validate_request(Context) ->
-    check_phone_number_schema(Context).
+    maybe_add_porting_email(Context).
+
+maybe_add_porting_email(#cb_context{req_data=JObj}=Context) ->
+    case wh_json:get_ne_value(<<"port">>, JObj) =/= 'undefined'
+        andalso wh_json:get_ne_value([<<"port">>, <<"email">>], JObj) =:= 'undefined'
+    of
+        'false' -> check_phone_number_schema(Context);
+        'true' -> add_porting_email(Context)
+    end.
+
+add_porting_email(#cb_context{req_data=JObj}=Context) ->
+    case get_auth_user_email(Context) of
+        'undefined' -> check_phone_number_schema(Context);
+        Email ->
+            J = wh_json:set_value([<<"port">>, <<"email">>], Email, JObj),
+            check_phone_number_schema(Context#cb_context{req_data=J})
+    end.
 
 check_phone_number_schema(Context) ->
     cb_context:validate_request_data(<<"phone_numbers">>, Context).
+
+get_auth_user_email(#cb_context{auth_doc=JObj, auth_account_id=AccountId}) ->
+    case wh_json:get_value(<<"owner_id">>, JObj) of
+        'undefined' -> 'undefined';
+        UserId ->
+            AccountDb = wh_util:format_account_id(AccountId, encoded),
+            case couch_mgr:open_doc(AccountDb, UserId) of
+                {'ok', User} ->
+                    wh_json:get_value(<<"email">>, User);
+                {'error', _} ->
+                    'undefined'
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

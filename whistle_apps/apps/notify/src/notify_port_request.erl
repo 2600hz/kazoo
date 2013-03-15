@@ -52,7 +52,7 @@ handle_req(JObj, _Props) ->
     {ok, Account} = notify_util:get_account_doc(JObj),
 
     lager:debug("creating port change notice"),
-    
+
     Props = create_template_props(JObj, Account),
 
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"port_request">>, <<"email_text_template">>], Account),
@@ -66,7 +66,7 @@ handle_req(JObj, _Props) ->
 
     Number = wnm_util:normalize_number(wh_json:get_value(<<"Number">>, JObj)),
     NumberDb = wnm_util:number_to_db_name(Number),
-    
+
     Attachments = case couch_mgr:open_doc(NumberDb, Number) of
                       {ok, NumberJObj} ->
                           DocAttach = wh_json:get_value(<<"_attachments">>, NumberJObj, wh_json:new()),
@@ -91,11 +91,12 @@ handle_req(JObj, _Props) ->
 -spec create_template_props(wh_json:json_object(), wh_json:json_objects()) -> proplist().
 create_template_props(Event, Account) ->
     Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, Event)),
+    Port = wh_json:get_value(<<"Port">>, Event, wh_json:new()),
     [{<<"request">>, notify_util:json_to_template_props(Event)}
      ,{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
      ,{<<"service">>, notify_util:get_service_props(Account, ?MOD_CONFIG_CAT)}
-     ,{<<"send_from">>, get_send_from(Admin)}
+     ,{<<"send_from">>, get_send_from(Port, Admin)}
     ].
 
 %%--------------------------------------------------------------------
@@ -104,12 +105,13 @@ create_template_props(Event, Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_send_from(wh_json:json_object()) -> ne_binary().
-get_send_from(Admin) ->
-    DefaultFrom = wh_util:to_binary(node()),
-    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"send_from_admin_email">>, true) of
-        false -> DefaultFrom;
-        true -> wh_json:get_ne_value(<<"email">>, Admin, DefaultFrom)
+-spec get_send_from(wh_json:object(), wh_json:object()) -> ne_binary().
+get_send_from(Port, Admin) ->
+    case wh_json:get_ne_value(<<"email">>, Port) of
+        'undefined' ->
+            DefaultFrom = wh_util:to_binary(node()),
+            wh_json:get_ne_value(<<"email">>, Admin, DefaultFrom);
+         Email -> Email
     end.
 
 %%--------------------------------------------------------------------
@@ -139,7 +141,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
               ]
             },
     notify_util:send_email(From, To, Email),
-    ok.                
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private
