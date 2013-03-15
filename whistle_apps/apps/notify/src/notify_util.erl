@@ -283,7 +283,7 @@ find_admin(Account) when is_binary(Account) ->
             find_admin([AccountId | lists:reverse(Tree)])
     end;
 find_admin([AcctId|Tree]) ->
-    AccountDb = wh_util:format_account_id(AcctId),
+    AccountDb = wh_util:format_account_id(AcctId, 'encoded'),
     ViewOptions = [{'key', <<"user">>}
                    ,'include_docs'
                   ],
