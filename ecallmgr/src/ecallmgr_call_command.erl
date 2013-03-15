@@ -688,7 +688,7 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 get_conference_app(ChanNode, UUID, JObj, 'true') ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
     ConferenceConfig = wh_json:get_value(<<"Conference-Config">>, JObj, <<"default">>),
-    Cmd = list_to_binary([ConfName, "@", ConferenceConfig]),
+    Cmd = list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)]),
 
     case ecallmgr_fs_conferences:node(ConfName) of
         {'error', 'not_found'} ->
@@ -717,7 +717,27 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
     end;
 get_conference_app(_ChanNode, _UUID, JObj, 'false') ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-    {<<"conference">>, list_to_binary([ConfName, "@default"])}.
+    {<<"conference">>, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}.
+
+
+%% [{FreeSWITCH-Flag-Name, Kazoo-Flag-Name}]
+%% Conference-related entry flags
+%% convert from FS conference flags to Kazoo conference flags
+-define(CONFERENCE_FLAGS, [{<<"mute">>, <<"Mute">>}
+                           ,{<<"deaf">>, <<"Deaf">>}
+                           ,{<<"moderator">>, <<"Moderator">>}
+                           ]).
+
+-spec get_conference_flags(wh_json:object()) -> binary().
+get_conference_flags(JObj) ->
+    Flags = wh_json:foldl(fun(K, V, Acc) ->
+                                  case lists:keyfind(K, 2, ?CONFERENCE_FLAGS) of
+                                      'false' -> Acc;
+                                      {FSFlag, _} when V =:= 'true' -> [<<",">>, FSFlag | Acc];
+                                      _ -> Acc
+                                  end
+                          end, [], JObj),
+    <<"+flags{", (iolist_to_binary(lists:reverse(Flags)))/binary, "}">>.
 
 wait_for_conference(ConfName) ->
     case ecallmgr_fs_conferences:node(ConfName) of
