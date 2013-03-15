@@ -719,10 +719,10 @@ whistle_version() ->
 
 -spec whistle_version(ne_binary() | nonempty_string()) -> ne_binary().
 whistle_version(FileName) ->
-    case file:consult(FileName) of
-        {'ok', [Version]} ->
+    case file:read_file(FileName) of
+        {'ok', Version} ->
             wh_cache:store(?WHISTLE_VERSION_CACHE_KEY, Version),
-            Version;
+            list_to_binary(string:strip(binary_to_list(Version), right, $\n));
         _ ->
             Version = <<"not available">>,
             wh_cache:store(?WHISTLE_VERSION_CACHE_KEY, Version),
