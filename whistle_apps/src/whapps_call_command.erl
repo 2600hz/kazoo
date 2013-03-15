@@ -41,6 +41,7 @@
 -export([page/2, page/3, page/4, page/5, page/6]).
 -export([hold/1, hold/2
          ,b_hold/1, b_hold/2, b_hold/3
+         ,park/1
         ]).
 -export([play/2, play/3]).
 -export([prompt/2, prompt/3]).
@@ -245,18 +246,17 @@ relay_event(Pid, JObj) -> Pid ! {'amqp_msg', JObj}.
                            {'ok', wh_json:object()} |
                            {'other', wh_json:object()} |
                            {'error', 'timeout'}.
-receive_event(Timeout) ->
-    receive_event(Timeout, true).
-receive_event(T, _) when T =< 0 -> {error, timeout};
+receive_event(Timeout) -> receive_event(Timeout, 'true').
+receive_event(T, _) when T =< 0 -> {'error', 'timeout'};
 receive_event(Timeout, IgnoreOthers) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, JObj} -> {ok, JObj};
+        {'amqp_msg', JObj} -> {'ok', JObj};
         _ when IgnoreOthers ->
             receive_event(Timeout - wh_util:elapsed_ms(Start), IgnoreOthers);
-        Other -> {other, Other}
+        Other -> {'other', Other}
     after
-        Timeout -> {error, timeout}
+        Timeout -> {'error', 'timeout'}
     end.
 
 -spec audio_macro(audio_macro_prompts(), whapps_call:call()) -> ne_binary().
@@ -277,29 +277,29 @@ audio_macro([], Call, Queue) ->
               ],
     send_command(Command, Call),
     NoopId;
-audio_macro([{play, MediaName}|T], Call, Queue) ->
+audio_macro([{'play', MediaName}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(MediaName, ?ANY_DIGIT, Call) | Queue]);
-audio_macro([{play, MediaName, Terminators}|T], Call, Queue) ->
+audio_macro([{'play', MediaName, Terminators}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(MediaName, Terminators, Call) | Queue]);
-audio_macro([{prompt, PromptName}|T], Call, Queue) ->
+audio_macro([{'prompt', PromptName}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(whapps_util:get_prompt(PromptName, Call), ?ANY_DIGIT, Call) | Queue]);
-audio_macro([{prompt, PromptName, Lang}|T], Call, Queue) ->
+audio_macro([{'prompt', PromptName, Lang}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(whapps_util:get_prompt(PromptName, Lang, Call), ?ANY_DIGIT, Call) | Queue]);
-audio_macro([{say, Say}|T], Call, Queue) ->
+audio_macro([{'say', Say}|T], Call, Queue) ->
     audio_macro(T, Call, [say_command(Say, <<"name_spelled">>, <<"pronounced">>, <<"en">>, Call) | Queue]);
-audio_macro([{say, Say, Type}|T], Call, Queue) ->
+audio_macro([{'say', Say, Type}|T], Call, Queue) ->
     audio_macro(T, Call, [say_command(Say, Type, <<"pronounced">>, <<"en">>, Call) | Queue]);
-audio_macro([{say, Say, Type, Method}|T], Call, Queue) ->
+audio_macro([{'say', Say, Type, Method}|T], Call, Queue) ->
     audio_macro(T, Call, [say_command(Say, Type, Method, <<"en">>, Call) | Queue]);
-audio_macro([{say, Say, Type, Method, Language}|T], Call, Queue) ->
+audio_macro([{'say', Say, Type, Method, Language}|T], Call, Queue) ->
     audio_macro(T, Call, [say_command(Say, Type, Method, Language, Call) | Queue]);
-audio_macro([{tones, Tones}|T], Call, Queue) ->
+audio_macro([{'tones', Tones}|T], Call, Queue) ->
     audio_macro(T, Call, [tones_command(Tones, Call) | Queue]);
-audio_macro([{tts, Text}|T], Call, Queue) ->
+audio_macro([{'tts', Text}|T], Call, Queue) ->
     audio_macro(T, Call, [tts_command(Text, Call) | Queue]);
-audio_macro([{tts, Text, Voice}|T], Call, Queue) ->
+audio_macro([{'tts', Text, Voice}|T], Call, Queue) ->
     audio_macro(T, Call, [tts_command(Text, Voice, Call) | Queue]);
-audio_macro([{tts, Text, Voice, Lang}|T], Call, Queue) ->
+audio_macro([{'tts', Text, Voice, Lang}|T], Call, Queue) ->
     audio_macro(T, Call, [tts_command(Text, Voice, Lang, Call) | Queue]).
 
 %%--------------------------------------------------------------------
@@ -554,11 +554,11 @@ hangup(OtherLegOnly, Call) when is_boolean(OtherLegOnly) ->
 b_hangup(Call) ->
     hangup(Call),
     wait_for_hangup().
-b_hangup(false, Call) ->
+b_hangup('false', Call) ->
     hangup(Call),
     wait_for_hangup();
-b_hangup(true, Call) ->
-    hangup(true, Call),
+b_hangup('true', Call) ->
+    hangup('true', Call),
     wait_for_unbridge().
 
 %%--------------------------------------------------------------------
@@ -690,11 +690,17 @@ hold(MOH, Call) ->
 b_hold(Call) -> b_hold('infinity', 'undefined', Call).
 b_hold(Timeout, Call) when is_integer(Timeout) orelse Timeout =:= 'infinity' ->
     b_hold(Timeout, 'undefined', Call);
-b_hold(MOH, Call) ->
-    b_hold(infinity, MOH, Call).
+b_hold(MOH, Call) -> b_hold('infinity', MOH, Call).
 b_hold(Timeout, MOH, Call) ->
     hold(MOH, Call),
     wait_for_message(<<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Timeout).
+
+-spec park(whapps_call:call()) -> 'ok'.
+park(Call) ->
+    Command = [{<<"Application-Name">>, <<"park">>}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    send_command(Command, Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -709,17 +715,11 @@ b_hold(Timeout, MOH, Call) ->
 -spec b_prompt(ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_prompt(ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 
-prompt(Prompt, Call) ->
-    prompt(Prompt, <<"en">>, Call).
+prompt(Prompt, Call) -> prompt(Prompt, <<"en">>, Call).
+prompt(Prompt, Lang, Call) -> play(whapps_util:get_prompt(Prompt, Lang, Call), Call).
 
-prompt(Prompt, Lang, Call) ->
-    play(whapps_util:get_prompt(Prompt, Lang, Call), Call).
-
-b_prompt(Prompt, Call) ->
-    b_prompt(Prompt, <<"en">>, Call).
-
-b_prompt(Prompt, Lang, Call) ->
-    b_play(whapps_util:get_prompt(Prompt, Lang, Call), Call).
+b_prompt(Prompt, Call) -> b_prompt(Prompt, <<"en">>, Call).
+b_prompt(Prompt, Lang, Call) -> b_play(whapps_util:get_prompt(Prompt, Lang, Call), Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -735,8 +735,7 @@ b_prompt(Prompt, Lang, Call) ->
 -spec b_play(ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_play(ne_binary(), ne_binaries(), whapps_call:call()) -> whapps_api_std_return().
 
-play(Media, Call) ->
-    play(Media, ?ANY_DIGIT, Call).
+play(Media, Call) -> play(Media, ?ANY_DIGIT, Call).
 play(Media, Terminators, Call) ->
     NoopId = couch_mgr:get_uuid(),
     CallId = whapps_call:call_id(Call),
@@ -892,7 +891,7 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
     b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"5">>, Call).
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
-    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
+    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, 'infinity').
 
 -spec record_call(ne_binary(), whapps_call:call()) -> 'ok'.
 -spec record_call(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
@@ -924,15 +923,15 @@ record_call(MediaName, Action, TimeLimit, Terminators, Call) ->
                                  wait_for_headless_application_return().
 b_record_call(MediaName, Call) ->
     record_call(MediaName, Call),
-    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
+    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, 'infinity').
 b_record_call(MediaName, Action, Call) ->
     record_call(MediaName, Action, Call),
-    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
+    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, 'infinity').
 b_record_call(MediaName, Action, TimeLimit, Call) ->
     b_record_call(MediaName, Action, TimeLimit, ?ANY_DIGIT, Call).
 b_record_call(MediaName, Action, TimeLimit, Terminators, Call) ->
     record_call(MediaName, Action, TimeLimit, Terminators, Call),
-    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
+    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, 'infinity').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1225,7 +1224,7 @@ b_say(Say, Type, Method, Call) ->
     b_say(Say, Type, Method, <<"en">>, Call).
 b_say(Say, Type, Method, Language, Call) ->
     say(Say, Type, Method, Language, Call),
-    wait_for_message(<<"say">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, infinity).
+    wait_for_message(<<"say">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, 'infinity').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1672,7 +1671,7 @@ wait_for_bridge(Timeout, Fun, Call) ->
                         'false' -> 'ok';
                         'true' -> Fun(JObj)
                     end,
-                    wait_for_bridge(infinity, Fun, Call);
+                    wait_for_bridge('infinity', Fun, Call);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     {Result, JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
