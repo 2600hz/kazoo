@@ -240,7 +240,7 @@ get_http_url(JObj) ->
             lists:flatten(Url);
         _Else ->
             {'ok', Url} = render(JObj, Template),
-            lists:flatten([Url, "?ref=2600hz"])
+            lists:flatten([Url, "?ref=2600hz&format=pbx"])
     end.
 
 get_http_body(JObj) ->
