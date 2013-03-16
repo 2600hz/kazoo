@@ -71,7 +71,7 @@ close(#wh_amqp_channel{channel=Pid
                                  ]
                       }=Channel) when is_pid(Pid) ->
     lager:debug("canceled consumer ~s via channel ~p", [CTag, Pid]),
-    catch amqp_channel:call(Pid, #'basic.cancel'{consumer_tag=CTag}),
+    catch amqp_channel:call(Pid, #'basic.cancel'{consumer_tag=CTag, nowait='true'}),
     close(Channel#wh_amqp_channel{commands=Commands});
 close(#wh_amqp_channel{channel=Pid
                        ,commands=[#'queue.declare'{queue=Queue}
@@ -165,9 +165,11 @@ command(#wh_amqp_channel{consumer=Consumer
                          ,channel=Pid
                          ,commands=Commands
                         }=Channel
-        ,#'basic.consume'{}=Command) ->
-    case lists:member(#'basic.consume'{}, Commands) of
-        true -> ok;
+        ,#'basic.consume'{queue=Q}=Command) ->
+    case lists:keysearch(Q, #'basic.consume'.queue, Commands) of
+        {'value', _} ->
+            lager:debug("skipping existing basic consume for queue ~s", [Q]),
+            'ok';
         false ->
             Result = amqp_channel:subscribe(Pid, Command, Consumer),
             handle_command_result(Result, Command, Channel)

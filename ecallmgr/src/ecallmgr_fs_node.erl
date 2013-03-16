@@ -323,7 +323,7 @@ process_event(<<"CHANNEL_EXECUTE_COMPLETE">> = EventName, UUID, Props, Node) ->
         end,
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(<<"conference::maintenance">> = EventName, UUID, Props, Node) ->
-    _ = ecallmgr_fs_conference:event(Node, UUID, Props),
+    _ = ecallmgr_fs_conferences:event(Node, UUID, Props),
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
@@ -475,7 +475,7 @@ show_conferences(Node) ->
     case freeswitch:api(Node, 'conference', "xml_list") of
         {'ok', XmlStr} ->
             {Xml, _} = xmerl_scan:string(wh_util:to_list(XmlStr)),
-            case catch ecallmgr_fs_conference:xml_list_to_records(Xml, Node) of
+            case catch ecallmgr_fs_conferences:xml_list_to_records(Xml, Node) of
                 {'EXIT', _R} -> [];
                 Rs -> Rs
             end;

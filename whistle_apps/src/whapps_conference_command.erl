@@ -36,8 +36,8 @@ search(Conference) ->
     AppVersion = whapps_conference:application_version(Conference),
     ConferenceId = whapps_conference:id(Conference),
     Req = [{<<"Conference-ID">>, ConferenceId}
-              | wh_api:default_headers(AppName, AppVersion)
-             ],
+           | wh_api:default_headers(AppName, AppVersion)
+          ],
     ReqResp = whapps_util:amqp_pool_collect(Req
                                             ,fun wapi_conference:publish_search_req/1
                                             ,{'ecallmgr', fun wapi_conference:search_resp_v/1}
@@ -207,10 +207,12 @@ send_command([_|_]=Command, Conference) ->
     ConferenceId = whapps_conference:id(Conference),
     AppName = whapps_conference:application_name(Conference),
     AppVersion = whapps_conference:application_version(Conference),
+    Focus = whapps_conference:focus(Conference),
     Prop = Command ++ [{<<"Conference-ID">>, ConferenceId}
                        | wh_api:default_headers(Q, <<"conference">>, <<"command">>, AppName, AppVersion)
                       ],
-    %lager:debug("sending command for ~s: ~p", [ConferenceId, Prop]),
-    wapi_conference:publish_command(ConferenceId, Prop);
+    case wh_util:is_empty(Focus) of
+        'true' -> wapi_conference:publish_command(ConferenceId, Prop);
+        'false' -> wapi_conference:publish_targeted_command(Focus, Prop)
+    end;
 send_command(JObj, Conference) -> send_command(wh_json:to_proplist(JObj), Conference).
-

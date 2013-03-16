@@ -10,13 +10,8 @@
 
 -behaviour(gen_listener).
 
-%% API
--export([start_link/0
-         ,handle_command/2
-         ,handle_search_req/2
-        ]).
-
-%% gen_server callbacks
+-export([start_link/0]).
+-export([handle_search_req/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -26,14 +21,11 @@
          ,code_change/3
         ]).
 
--define(RESPONDERS, [{{?MODULE, 'handle_command'}
-                      ,[{<<"conference">>, <<"command">>}]
-                     }
-                     ,{{?MODULE, 'handle_search_req'}
+-define(RESPONDERS, [{{?MODULE, 'handle_search_req'}
                        ,[{<<"conference">>, <<"search_req">>}]
                       }
                     ]).
--define(BINDINGS, [{'conference', [{'restrict_to', ['command']}]}]).
+-define(BINDINGS, [{'conference', [{'restrict_to', ['discovery']}]}]).
 -define(QUEUE_NAME, <<"ecallmgr_conference_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
@@ -59,17 +51,11 @@ start_link() ->
                              ,{'consume_options', ?CONSUME_OPTIONS}
                             ], []).
 
--spec handle_command(wh_json:object(), wh_proplist()) -> any().
-handle_command(JObj, _Props) ->
-    ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
-    Focus = get_conference_focus(ConferenceId),
-    ecallmgr_conference_command:exec(Focus, ConferenceId, JObj).
-
 -spec handle_search_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_search_req(JObj, _Props) ->
     ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
     lager:debug("received search request for conference id ~s", [ConferenceId]),
-    case ecallmgr_fs_conference:fetch_full(ConferenceId) of
+    case ecallmgr_fs_conferences:fetch_full(ConferenceId) of
         {'error', 'not_found'} ->
             lager:debug("sending error search response, conference not found"),
             Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
@@ -98,16 +84,7 @@ handle_search_req(JObj, _Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     put('callid', ?LOG_SYSTEM_ID),
-    Self = self(),
-    ConsumerPid = wh_amqp_channel:consumer_pid(),
-    spawn(fun() ->
-                  wh_amqp_channel:consumer_pid(ConsumerPid),
-                  QueueName = <<>>,
-                  Options = [],
-                  Bindings= [{'conference', [{'restrict_to', ['discovery']}]}],
-                  gen_listener:add_queue(Self, QueueName, Options, Bindings)
-          end),
-    lager:debug("starting new ecallmgr conference listner process"),
+    lager:debug("starting new ecallmgr conference listener process"),
     {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
@@ -194,10 +171,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-%% TODO: Flush cache on conference end
--spec get_conference_focus(ne_binary()) -> atom().
-get_conference_focus(ConferenceId) ->
-    case ecallmgr_fs_conference:node(ConferenceId) of
-        {'error', 'not_found'} -> 'undefined';
-        {'ok', Focus} -> Focus
-    end.
