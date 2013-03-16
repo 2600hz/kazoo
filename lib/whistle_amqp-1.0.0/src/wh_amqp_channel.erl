@@ -133,11 +133,10 @@ publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg)
         #wh_amqp_channel{channel=Pid, uri=URI} when is_pid(Pid) ->
             amqp_channel:call(Pid, BasicPub, AmqpMsg),
             lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p", [_Exchange, URI, _RK, Pid]);
-        #wh_amqp_channel{uri=URI} ->
-            wh_amqp_channels:reconnect(),
-            timer:sleep(100),
-            retry_publish(BasicPub, AmqpMsg),
-            lager:debug("dropping payload to ~s(~s) exchange (routing key ~s): ~s", [_Exchange, URI, _RK, AmqpMsg#'amqp_msg'.payload])
+        #wh_amqp_channel{} ->
+            _ = wh_amqp_channels:reconnect(),
+            timer:sleep(250),
+            retry_publish(BasicPub, AmqpMsg)
     end.
 
 -spec retry_publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.

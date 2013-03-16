@@ -93,9 +93,9 @@ get_channel() ->
 
 -spec lost_connection(wh_amqp_connection()) -> 'ok'.
 lost_connection(#wh_amqp_connection{uri=URI}) ->
-    gen_server:cast(?MODULE, {lost_connection, URI});
+    gen_server:call(?MODULE, {lost_connection, URI});
 lost_connection(URI) ->
-    gen_server:cast(?MODULE, {lost_connection, wh_util:to_binary(URI)}).
+    gen_server:call(?MODULE, {lost_connection, wh_util:to_binary(URI)}).
 
 -spec reconnect() -> pid() | {'error', _}.
 reconnect() ->
@@ -444,6 +444,7 @@ maybe_demonitor_channel(#wh_amqp_channel{consumer=Consumer, channel_ref=Ref}=Cha
     erlang:demonitor(Ref, [flush]),
     ets:update_element(?TAB, Consumer, [{#wh_amqp_channel.channel_ref, undefined}
                                         ,{#wh_amqp_channel.channel, undefined}
+                                        ,{#wh_amqp_channel.uri, undefined}
                                        ]),
     Channel#wh_amqp_channel{channel_ref='undefined', channel='undefined'};
 maybe_demonitor_channel(#wh_amqp_channel{}=Channel) ->

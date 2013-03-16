@@ -18,7 +18,8 @@
 
 -define(ORIGIN_BINDINGS, [[]]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
-                      ,'new_channel_flush'
+                      ,'new_node_flush'
+                      ,'channel_reconnect_flush'
                      ]).
 -define(CHILD(Name, Type), fun(N, 'cache') -> {N, {'wh_cache', 'start_link', [N, ?CACHE_PROPS]}
                                                ,'permanent', 5000, 'worker', ['wh_cache']};

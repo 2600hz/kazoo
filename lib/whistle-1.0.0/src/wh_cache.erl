@@ -79,6 +79,9 @@
 -record(state, {name
                 ,tab
                 ,new_channel_flush=false
+                ,channel_reconnect_flush=false
+                ,new_node_flush=false
+                ,expire_node_flush=false
                 ,expire_period=?EXPIRE_PERIOD
                 ,props=[]
                }).
@@ -309,8 +312,19 @@ init([Name, ExpirePeriod, Props]) ->
     put(callid, Name),
     _ = erlang:send_after(ExpirePeriod, self(), {'expire', ExpirePeriod}),
     Tab = ets:new(Name, ['set', 'protected', 'named_table', {'keypos', #cache_obj.key}]),
+    _ = case props:get_value('new_node_flush', Props) of
+            'true' -> wh_nodes:notify_new();
+            _ -> 'ok'
+        end,
+    _ = case props:get_value('expire_node_flush', Props) of
+            'true' -> wh_nodes:notify_expire();
+            _ -> 'ok'
+        end,
     {'ok', #state{tab=Tab, name=Name
                   ,new_channel_flush=props:get_value('new_channel_flush', Props)
+                  ,channel_reconnect_flush=props:get_value('channel_reconnect_flush', Props)
+                  ,new_node_flush=props:get_value('new_node_flush', Props)
+                  ,expire_node_flush=props:get_value('expire_node_flush', Props)
                   ,expire_period=ExpirePeriod
                   ,props=Props
                  }}.
@@ -398,10 +412,25 @@ handle_cast({flush}, #state{tab=Tab}=State) ->
 handle_cast({change, {db, _, _}=Change}, #state{tab=Tab}=State) ->
     _ = maybe_erase_changed(Change, Tab),
     {noreply, State};
-handle_cast({'wh_amqp_channel', {'new_channel', 'true'}}, #state{name=Name, tab=Tab
+handle_cast({'wh_amqp_channel', {'new_channel', 'false'}}, #state{name=Name, tab=Tab
                                                                  ,new_channel_flush='true'}=State) ->
     ets:delete_all_objects(Tab),
-    lager:debug("new channel, flush everything", [Name]),
+    lager:debug("new channel, flush everything from ~s", [Name]),
+    {noreply, State};
+handle_cast({'wh_amqp_channel', {'new_channel', 'true'}}, #state{name=Name, tab=Tab
+                                                                 ,channel_reconnect_flush='true'}=State) ->
+    ets:delete_all_objects(Tab),
+    lager:debug("reconnected channel, flush everything from ~s", [Name]),
+    {noreply, State};
+handle_cast({'wh_nodes', {'expire', Node}}, #state{name=Name, tab=Tab
+                                                   ,expire_node_flush='true'}=State) ->
+    ets:delete_all_objects(Tab),
+    lager:debug("node ~s has expired, flush everything from ~s", [Node, Name]),
+    {noreply, State};
+handle_cast({'wh_nodes', {'new', Node}}, #state{name=Name, tab=Tab
+                                                ,new_node_flush='true'}=State) ->
+    ets:delete_all_objects(Tab),
+    lager:debug("new node ~s, flush everything from ~s", [Node, Name]),
     {noreply, State};
 handle_cast(_, State) ->
     {noreply, State, hibernate}.
