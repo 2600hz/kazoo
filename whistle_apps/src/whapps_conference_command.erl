@@ -38,17 +38,22 @@ search(Conference) ->
     Req = [{<<"Conference-ID">>, ConferenceId}
               | wh_api:default_headers(AppName, AppVersion)
              ],
-    ReqResp = whapps_util:amqp_pool_request(Req
+    ReqResp = whapps_util:amqp_pool_collect(Req
                                             ,fun wapi_conference:publish_search_req/1
-                                            ,fun wapi_conference:search_resp_v/1
-                                            ,2000
+                                            ,{'ecallmgr', fun wapi_conference:search_resp_v/1}
                                            ),
     lager:debug("searching for conference ~s", [ConferenceId]),
     case ReqResp of
-        {'ok', _}=Ok ->
-            lager:info("recieved conference search response for ~s", [ConferenceId]),
-            Ok;
-        {'error', 'timeout'} ->
+        {'ok', [Response|_]} ->
+            case wapi_conference:search_resp_v(Response) of
+                'true' ->
+                    lager:info("recieved valid conference search response for ~s", [ConferenceId]),
+                    {'ok', Response};
+                'false' ->
+                    lager:info("recieved invalid conference search response for ~s", [ConferenceId]),
+                    {'error', Response}
+            end;
+        {'timeout', _} ->
             lager:warning("timeout while searching for conference ~s", [ConferenceId]),
             timer:sleep(500),
             search(Conference);

@@ -92,20 +92,30 @@ maybe_query_registrar(Realm, Username) ->
                              {'error', 'not_found'}.
 query_registrar(Realm, Username) ->
     lager:debug("looking up registration information for ~s@~s", [Username, Realm]),
-    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,[{<<"Username">>, Username}
-                                    ,{<<"Realm">>, Realm}
-                                    ,{<<"Fields">>, []}
-                                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                   ]
-                                  ,fun wapi_registration:publish_query_req/1
-                                  ,fun wapi_registration:query_resp_v/1
-                                 ),
+    ReqResp = wh_amqp_worker:call_collect(?ECALLMGR_AMQP_POOL
+                                          ,[{<<"Username">>, Username}
+                                            ,{<<"Realm">>, Realm}
+                                            ,{<<"Fields">>, []}
+                                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                           ]
+                                          ,fun wapi_registration:publish_query_req/1
+                                          ,{'registrar', fun wapi_registration:query_resp_v/1}
+                                         ),
     case ReqResp of
-        {'error', _R} ->
-            lager:debug("did not receive registrar response: ~p", [_R]),
-            {'error', 'not_found'};
-        {'ok', RespJObj} ->
+        {'ok', [RespJObj|_]} ->
+            maybe_received_registration(RespJObj, Realm, Username);
+        _Else ->
+            lager:debug("did not receive a valid registrar response", []),
+            {'error', 'not_found'}
+    end.
+
+-spec maybe_received_registration(wh_json:object(), ne_binary(), ne_binary()) -> 
+                                         {'ok', wh_proplist()} |
+                                         {'error', 'not_found'}.
+maybe_received_registration(RespJObj, Realm, Username) ->
+    case wapi_registration:query_resp_v(RespJObj) of
+        'false' -> {'error', 'not_found'};
+        'true' ->
             lager:debug("received registration information"),
             JObj = wh_json:get_value(<<"Fields">>, RespJObj, wh_json:new()),
             Props = wh_json:to_proplist(JObj),

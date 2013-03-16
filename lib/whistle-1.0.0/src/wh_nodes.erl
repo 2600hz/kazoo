@@ -41,6 +41,7 @@
 
 -define(HEARTBEAT, 2000).
 -define(EXPIRE_PERIOD, 1000).
+-define(FUDGE_FACTOR, 1.25).
 -define(APP_NAME, <<"wh_nodes">>).
 -define(APP_VERSION, <<"0.1.0">>).
 
@@ -344,7 +345,7 @@ advertise_payload(Node) ->
 from_json(JObj) ->
     Node = wh_json:get_value(<<"Node">>, JObj),
     #node{node=wh_util:to_atom(Node, true)
-          ,expires=wh_json:get_integer_value(<<"Expires">>, JObj, ?HEARTBEAT)
+          ,expires=wh_json:get_integer_value(<<"Expires">>, JObj, ?HEARTBEAT) * ?FUDGE_FACTOR
           ,whapps=wh_json:get_value(<<"WhApps">>, JObj, [])
           ,media_servers=wh_json:get_value(<<"Media-Servers">>, JObj, [])
          }.
