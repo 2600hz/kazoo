@@ -16,6 +16,8 @@
 -export([channel_status_resp/1, channel_status_resp_v/1]).
 -export([call_status_req/1, call_status_req_v/1]).
 -export([call_status_resp/1, call_status_resp_v/1]).
+-export([query_auth_id_req/1, query_auth_id_req_v/1]).
+-export([query_auth_id_resp/1, query_auth_id_resp_v/1]).
 -export([cdr/1, cdr_v/1]).
 -export([callid_update/1, callid_update_v/1]).
 -export([control_transfer/1, control_transfer_v/1]).
@@ -30,6 +32,8 @@
 -export([publish_channel_status_resp/2, publish_channel_status_resp/3]).
 -export([publish_call_status_req/1 ,publish_call_status_req/2, publish_call_status_req/3]).
 -export([publish_call_status_resp/2, publish_call_status_resp/3]).
+-export([publish_query_auth_id_req/1 ,publish_query_auth_id_req/2, publish_query_auth_id_req/3]).
+-export([publish_query_auth_id_resp/2, publish_query_auth_id_resp/3]).
 -export([publish_cdr/2, publish_cdr/3]).
 -export([publish_callid_update/2, publish_callid_update/3]).
 -export([publish_control_transfer/2, publish_control_transfer/3]).
@@ -109,6 +113,22 @@
                                   ,{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
                                  ]).
 -define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
+
+%% Query Auth ID Req
+-define(QUERY_AUTH_ID_REQ_HEADERS, [<<"Auth-ID">>]).
+-define(OPTIONAL_QUERY_AUTH_ID_REQ_HEADERS, []).
+-define(QUERY_AUTH_ID_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                   ,{<<"Event-Name">>, <<"query_auth_id_req">>}
+                                  ]).
+-define(QUERY_AUTH_ID_REQ_TYPES, []).
+
+%% Query Auth ID Resp
+-define(QUERY_AUTH_ID_RESP_HEADERS, []).
+-define(OPTIONAL_QUERY_AUTH_ID_RESP_HEADERS, [<<"Channels">>]).
+-define(QUERY_AUTH_ID_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                    ,{<<"Event-Name">>, <<"query_auth_id_resp">>}
+                                   ]).
+-define(QUERY_AUTH_ID_RESP_TYPES, []).
 
 %% Call CDR
 -define(CALL_CDR_HEADERS, [ <<"Call-ID">>]).
@@ -251,6 +271,46 @@ call_status_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_STATUS_REQ_HEADERS, ?CALL_STATUS_REQ_VALUES, ?CALL_STATUS_REQ_TYPES);
 call_status_req_v(JObj) ->
     call_status_req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Inquire into the status of a call
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec query_auth_id_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+query_auth_id_req(Prop) when is_list(Prop) ->
+    case query_auth_id_req_v(Prop) of
+        true -> wh_api:build_message(Prop, ?QUERY_AUTH_ID_REQ_HEADERS, ?OPTIONAL_QUERY_AUTH_ID_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for auth id query req"}
+    end;
+query_auth_id_req(JObj) ->
+    query_auth_id_req(wh_json:to_proplist(JObj)).
+
+-spec query_auth_id_req_v(api_terms()) -> boolean().
+query_auth_id_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?QUERY_AUTH_ID_REQ_HEADERS, ?QUERY_AUTH_ID_REQ_VALUES, ?QUERY_AUTH_ID_REQ_TYPES);
+query_auth_id_req_v(JObj) ->
+    query_auth_id_req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Inquire into the status of a call
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec query_auth_id_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+query_auth_id_resp(Prop) when is_list(Prop) ->
+    case query_auth_id_resp_v(Prop) of
+        true -> wh_api:build_message(Prop, ?QUERY_AUTH_ID_RESP_HEADERS, ?OPTIONAL_QUERY_AUTH_ID_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for auth id query resp"}
+    end;
+query_auth_id_resp(JObj) ->
+    query_auth_id_resp(wh_json:to_proplist(JObj)).
+
+-spec query_auth_id_resp_v(api_terms()) -> boolean().
+query_auth_id_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?QUERY_AUTH_ID_RESP_HEADERS, ?QUERY_AUTH_ID_RESP_VALUES, ?QUERY_AUTH_ID_RESP_TYPES);
+query_auth_id_resp_v(JObj) ->
+    query_auth_id_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Respond with status of a call, either active or non-existant
@@ -500,6 +560,28 @@ publish_call_status_resp(RespQ, JObj) ->
     publish_call_status_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_status_resp(RespQ, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?CALL_STATUS_RESP_VALUES, fun ?MODULE:call_status_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+-spec publish_query_auth_id_req(api_terms()) -> 'ok'.
+-spec publish_query_auth_id_req(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_query_auth_id_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_query_auth_id_req(API) ->
+    case is_list(API) of
+        true -> publish_query_auth_id_req(props:get_value(<<"Auth-ID">>, API), API);
+        false -> publish_query_auth_id_req(wh_json:get_value(<<"Auth-ID">>, API), API)
+    end.
+publish_query_auth_id_req(AuthId, JObj) ->
+    publish_query_auth_id_req(AuthId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_query_auth_id_req(AuthId, Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?QUERY_AUTH_ID_REQ_VALUES, fun ?MODULE:query_auth_id_req/1),
+    amqp_util:callevt_publish(AuthId, Payload, status_req, ContentType).
+
+-spec publish_query_auth_id_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_query_auth_id_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_query_auth_id_resp(RespQ, JObj) ->
+    publish_query_auth_id_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_query_auth_id_resp(RespQ, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?QUERY_AUTH_ID_RESP_VALUES, fun ?MODULE:query_auth_id_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_cdr(ne_binary(), api_terms()) -> 'ok'.

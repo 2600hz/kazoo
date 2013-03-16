@@ -15,6 +15,7 @@
 -export([start_link/0]).
 -export([whapp_count/1]).
 -export([status/0]).
+-export([flush/0]).
 -export([handle_advertise/2]).
 -export([notify_new/0
          ,notify_new/1
@@ -124,6 +125,10 @@ status() ->
         ],
     'no_return'.
 
+-spec flush() -> 'ok'.
+flush() ->
+    gen_server:cast(?MODULE, 'flush').
+
 -spec notify_new() -> 'ok'.
 notify_new() ->
     notify_new(self()).
@@ -210,6 +215,9 @@ handle_cast({'wh_amqp_channel', {'new_channel', _}}, State) ->
     Reference = erlang:make_ref(),
     self() ! {'heartbeat', Reference},
     {noreply, State#state{heartbeat_ref=Reference}};
+handle_cast('flush', State) ->
+    ets:delete_all_objects(?MODULE),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 

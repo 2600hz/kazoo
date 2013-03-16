@@ -14,6 +14,7 @@
 -export([start_link/0]).
 -export([handle_channel_status/2]).
 -export([handle_call_status/2]).
+-export([handle_query_auth_id/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -29,6 +30,7 @@
 
 -define(RESPONDERS, [{{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
                      ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
+                     ,{{?MODULE, handle_query_auth_id}, [{<<"call_event">>, <<"query_auth_id_req">>}]}
                     ]).
 -define(BINDINGS, [{call, [{restrict_to, [status_req]}]}]).
 -define(QUEUE_NAME, <<>>).
@@ -56,6 +58,22 @@ start_link() ->
                                                         ,{queue_options, ?QUEUE_OPTIONS}
                                                         ,{consume_options, ?CONSUME_OPTIONS}
                                                        ], []).
+
+
+-spec handle_query_auth_id(wh_json:object(), proplist()) -> 'ok'.
+handle_query_auth_id(JObj, _Props) ->
+    true = wapi_call:query_auth_id_req_v(JObj),
+    AuthId = wh_json:get_value(<<"Auth-ID">>, JObj),
+    Channels = case ecallmgr_fs_nodes:channels_by_auth_id(AuthId) of
+                   {'error', 'not_found'} -> [];
+                   {'ok', C} -> C
+               end,
+    Resp = [{<<"Channels">>, Channels}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    wapi_call:publish_query_auth_id_resp(ServerId, Resp).
 
 -spec handle_channel_status(wh_json:json_object(), proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
