@@ -368,6 +368,8 @@ parse_path_tokens([], _Ebin, Events) ->
     Events;
 parse_path_tokens([<<"schemas">>=Mod|T], _, Events) ->
     [{Mod, T} | Events];
+parse_path_tokens([<<"braintree">>=Mod|T], _, Events) ->
+    [{Mod, T} | Events];
 parse_path_tokens([Mod|T], Ebin, Events) ->
     case is_cb_module(Mod, Ebin) of
         false ->
