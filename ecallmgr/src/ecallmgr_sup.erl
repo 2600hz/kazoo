@@ -33,6 +33,7 @@
                    ,{ecallmgr_auxiliary_sup, supervisor}
                    ,{ecallmgr_call_sup, supervisor}
                    ,{ecallmgr_fs_sup, supervisor}
+                   ,{wh_nodes, worker}
                   ]).
 
 %% ===================================================================

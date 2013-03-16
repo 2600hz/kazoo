@@ -19,6 +19,13 @@
 -export([unbind_q_from_targeted/1]).
 -export([targeted_publish/2, targeted_publish/3]).
 
+-export([nodes_exchange/0]).
+-export([new_nodes_queue/0, new_nodes_queue/1]).
+-export([delete_nodes_queue/1]).
+-export([bind_q_to_nodes/1, bind_q_to_nodes/2]).
+-export([unbind_q_from_nodes/1]).
+-export([nodes_publish/1, nodes_publish/2]).
+
 -export([whapps_exchange/0]).
 -export([new_whapps_queue/0, new_whapps_queue/1]).
 -export([delete_whapps_queue/1]).
@@ -119,6 +126,13 @@ targeted_publish(Queue, Payload) ->
     targeted_publish(Queue, Payload, ?DEFAULT_CONTENT_TYPE).
 targeted_publish(?NE_BINARY = Queue, Payload, ContentType) ->
     basic_publish(?EXCHANGE_TARGETED, Queue, Payload, ContentType).
+
+-spec nodes_publish/1 :: (amqp_payload()) -> 'ok'.
+-spec nodes_publish/2 :: (amqp_payload(), ne_binary()) -> 'ok'.
+nodes_publish(Payload) ->
+    nodes_publish(Payload, ?DEFAULT_CONTENT_TYPE).
+nodes_publish(Payload, ContentType) ->
+    basic_publish(?EXCHANGE_NODES, <<>>, Payload, ContentType, [maybe_publish]).
 
 -spec whapps_publish/2 :: (ne_binary(), amqp_payload()) -> 'ok'.
 -spec whapps_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
@@ -312,9 +326,9 @@ basic_publish(Exchange, RoutingKey, Payload, ContentType) ->
 
 basic_publish(Exchange, RoutingKey, Payload, ContentType, Prop) when is_list(Payload) ->
     basic_publish(Exchange, RoutingKey, iolist_to_binary(Payload), ContentType, Prop);
-basic_publish(Exchange, ?NE_BINARY = RoutingKey, ?NE_BINARY = Payload, ContentType, Props) when is_binary(Exchange),
-                                                                                                is_binary(ContentType),
-                                                                                                is_list(Props) ->
+basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props) when is_binary(Exchange),
+                                                                                   is_binary(ContentType),
+                                                                                   is_list(Props) ->
     BP = #'basic.publish'{
             exchange = Exchange
             ,routing_key = RoutingKey
@@ -349,7 +363,10 @@ basic_publish(Exchange, ?NE_BINARY = RoutingKey, ?NE_BINARY = Payload, ContentTy
             ,props = MsgProps
            },
 
-    wh_amqp_channel:publish(BP, AM).
+    case props:get_value(maybe_publish, Props, false) of
+        'true' -> wh_amqp_channel:maybe_publish(BP, AM);
+        'false' -> wh_amqp_channel:publish(BP, AM)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -357,13 +374,17 @@ basic_publish(Exchange, ?NE_BINARY = RoutingKey, ?NE_BINARY = Payload, ContentTy
 %% Create AMQP exchanges
 %% @end
 %%------------------------------------------------------------------------------
+-spec whapps_exchange/0 :: () -> 'ok'.
+whapps_exchange() ->
+    new_exchange(?EXCHANGE_WHAPPS, ?TYPE_WHAPPS).
+
 -spec targeted_exchange/0 :: () -> 'ok'.
 targeted_exchange() ->
     new_exchange(?EXCHANGE_TARGETED, ?TYPE_TARGETED).
 
--spec whapps_exchange/0 :: () -> 'ok'.
-whapps_exchange() ->
-    new_exchange(?EXCHANGE_WHAPPS, ?TYPE_WHAPPS).
+-spec nodes_exchange/0 :: () -> 'ok'.
+nodes_exchange() ->
+    new_exchange(?EXCHANGE_NODES, ?TYPE_NODES).
 
 -spec notifications_exchange/0 :: () -> 'ok'.
 notifications_exchange() ->
@@ -431,6 +452,14 @@ new_targeted_queue() ->
     new_targeted_queue(<<>>).
 
 new_targeted_queue(Queue) ->
+    new_queue(Queue, [{nowait, false}]).
+
+-spec new_nodes_queue/0 :: () -> ne_binary() | {'error', _}.
+-spec new_nodes_queue/1 :: (binary()) -> ne_binary() | {'error', _}.
+new_nodes_queue() ->
+    new_nodes_queue(<<>>).
+
+new_nodes_queue(Queue) ->
     new_queue(Queue, [{nowait, false}]).
 
 -spec new_whapps_queue/0 :: () -> ne_binary() | {'error', _}.
@@ -557,8 +586,11 @@ new_queue_name() ->
 %% @doc
 %% Delete AMQP queue
 %% @end
-       %%------------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 delete_targeted_queue(Queue) ->
+    queue_delete(Queue, []).
+
+delete_nodes_queue(Queue) ->
     queue_delete(Queue, []).
 
 delete_whapps_queue(Queue) ->
@@ -620,6 +652,12 @@ bind_q_to_targeted(Queue) ->
     bind_q_to_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
 bind_q_to_targeted(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TARGETED).
+
+-spec bind_q_to_nodes/1 :: (ne_binary()) -> 'ok'.
+bind_q_to_nodes(Queue) ->
+    bind_q_to_exchange(Queue, Queue, ?EXCHANGE_NODES).
+bind_q_to_nodes(Queue, Routing) ->
+    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_NODES).
 
 -spec bind_q_to_whapps/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 -spec bind_q_to_whapps/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
@@ -784,6 +822,9 @@ unbind_q_from_configuration(Queue, Routing) ->
 
 unbind_q_from_targeted(Queue) ->
     unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
+
+unbind_q_from_nodes(Queue) ->
+    unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_NODES).
 
 unbind_q_from_whapps(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_WHAPPS).

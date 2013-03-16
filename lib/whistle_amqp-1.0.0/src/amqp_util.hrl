@@ -90,6 +90,11 @@
 -define(EXCHANGE_SYSCONF, <<"sysconf">>).
 -define(TYPE_SYSCONF, <<"topic">>).
 
+%% Nodes Exchange
+%% - Used for internode communications
+-define(EXCHANGE_NODES, <<"nodes">>).
+-define(TYPE_NODES, <<"fanout">>).
+
 
 -type wh_amqp_command() :: #'queue.declare'{} | #'queue.bind'{} | #'queue.unbind'{} |
                            #'queue.delete'{} | #'basic.consume'{} | #'basic.cancel'{} |
