@@ -23,8 +23,13 @@
 -export([start_link/1
          ,call/4, call/5
          ,call_collect/3, call_collect/4
+         ,call_collect/5
          ,cast/3
-         ,any_resp/1, default_timeout/0
+         ,any_resp/1
+         ,default_timeout/0
+         ,collect_until_timeout/0
+         ,collect_from_whapp/1
+         ,collect_from_whapp_or_validate/2
          ,handle_resp/2
          ,send_request/4
         ]).
@@ -43,14 +48,23 @@
 
 -type publish_fun() :: fun((api_terms()) -> _).
 -type validate_fun() :: fun((api_terms()) -> boolean()).
+-type collect_util_fun() :: fun((wh_json:objects()) -> boolean()).
 
--export_type([publish_fun/0, validate_fun/0]).
+-type collect_util() :: collect_util_fun() | text() | {text(), validate_fun()}.
+-type timeout_or_until() :: wh_timeout() | collect_util().
+
+-export_type([publish_fun/0
+              ,validate_fun/0
+              ,collect_util/0
+              ,timeout_or_until/0
+             ]).
 
 -record(state, {current_msg_id :: ne_binary()
                 ,client_pid :: pid()
                 ,client_ref :: reference()
                 ,client_from :: {pid(), reference()}
-                ,client_vfun :: fun((api_terms()) -> boolean())
+                ,client_vfun :: validate_fun()
+                ,client_cfun = collect_until_timeout() :: collect_util_fun()
                 ,responses :: wh_json:objects()
                 ,neg_resp :: wh_json:object()
                 ,neg_resp_count = 0 :: non_neg_integer()
@@ -59,7 +73,7 @@
                 ,req_start_time :: wh_now()
                 ,callid :: ne_binary()
                 ,pool_ref :: server_ref()
-                ,defer_response = undefined :: 'undefined' | wh_json:object()
+                ,defer_response = 'undefined' :: 'undefined' | wh_json:object()
                 ,queue :: api_binary()
                }).
 
@@ -99,81 +113,102 @@ call(Srv, Req, PubFun, VFun) ->
 
 -spec call(server_ref(), api_terms(), publish_fun(), validate_fun(), wh_timeout()) -> {'ok', wh_json:object()} | {'error', _}.
 call(Srv, Req, PubFun, VFun, Timeout) ->
-    case catch poolboy:checkout(Srv, false, 1000) of
+    Prop = maybe_convert_to_proplist(Req),
+    case catch poolboy:checkout(Srv, 'false', 1000) of
         W when is_pid(W) ->
-            PoolName = pool_name_from_server_ref(Srv),
-            wh_counter:dec(<<"amqp.pools.", PoolName/binary, ".available">>),
-            Prop = case wh_json:is_json_object(Req) of
-                       true -> wh_json:to_proplist(Req);
-                       false -> Req
-                   end,
-            Reply = gen_listener:call(W, {request, Prop, PubFun, VFun, Timeout}, fudge_timeout(Timeout)),
+            Reply = gen_listener:call(W, {'request', Prop, PubFun, VFun, Timeout}
+                                      ,fudge_timeout(Timeout)),
             poolboy:checkin(Srv, W),
-            wh_counter:inc(<<"amqp.pools.", PoolName/binary, ".available">>),
             Reply;
-        full ->
+        'full' ->
             lager:critical("failed to checkout worker: full"),
-            {error, pool_full};
+            {'error', 'pool_full'};
         _Else ->
             lager:warning("poolboy error: ~p", [_Else]),
-            {error, poolboy_fault}
+            {'error', 'poolboy_fault'}
     end.
 
 -spec call_collect(server_ref(), api_terms(), publish_fun()) -> {'ok', wh_json:objects()} | {'error', _}.
 call_collect(Srv, Req, PubFun) ->
     call_collect(Srv, Req, PubFun, default_timeout()).
 
--spec call_collect(server_ref(), api_terms(), publish_fun(), pos_integer()) -> {'ok', wh_json:objects()} | {'error', _}.
-call_collect(Srv, Req, PubFun, Timeout) when is_integer(Timeout), Timeout >= 0 ->
-    case catch poolboy:checkout(Srv, false, 1000) of
+-spec call_collect(server_ref(), api_terms(), publish_fun(), timeout_or_until()) -> {'ok', wh_json:objects()} | {'error', _}.
+call_collect(Srv, Req, PubFun, UntilFun) when is_function(UntilFun) ->
+    call_collect(Srv, Req, PubFun, UntilFun, default_timeout());
+call_collect(Srv, Req, PubFun, Whapp) when is_atom(Whapp); is_binary(Whapp) ->
+    call_collect(Srv, Req, PubFun, Whapp, default_timeout());
+call_collect(Srv, Req, PubFun, {_, _}=Until) ->
+    call_collect(Srv, Req, PubFun, Until, default_timeout());
+call_collect(Srv, Req, PubFun, Timeout) ->
+    call_collect(Srv, Req, PubFun, collect_until_timeout(), Timeout).
+
+-spec call_collect(server_ref(), api_terms(), publish_fun(), collect_util(), wh_timeout()) -> 
+                          {'ok', wh_json:objects()} | {'timeout', wh_json:object()} | {'error', _}.
+call_collect(Srv, Req, PubFun, {Whapp, VFun}, Timeout) ->
+    call_collect(Srv, Req, PubFun, collect_from_whapp_or_validate(Whapp, VFun), Timeout);
+call_collect(Srv, Req, PubFun, Whapp, Timeout) when is_atom(Whapp); is_binary(Whapp) ->
+    call_collect(Srv, Req, PubFun, collect_from_whapp(Whapp), Timeout);
+call_collect(Srv, Req, PubFun, UntilFun, Timeout) when is_integer(Timeout), Timeout >= 0 ->
+    Prop = maybe_convert_to_proplist(Req),
+    case catch poolboy:checkout(Srv, 'false', 1000) of
         W when is_pid(W) ->
-            PoolName = pool_name_from_server_ref(Srv),
-            wh_counter:dec(<<"amqp.pools.", PoolName/binary, ".available">>),
-            Prop = case wh_json:is_json_object(Req) of
-                       true -> wh_json:to_proplist(Req);
-                       false -> Req
-                   end,
-            Reply = gen_listener:call(W, {request_collect, Prop, PubFun, Timeout}, fudge_timeout(Timeout)),
+            Reply = gen_listener:call(W, {'call_collect', Prop, PubFun, UntilFun, Timeout}
+                                      ,fudge_timeout(Timeout)),
             poolboy:checkin(Srv, W),
-            wh_counter:inc(<<"amqp.pools.", PoolName/binary, ".available">>),
             Reply;
         full ->
             lager:critical("failed to checkout worker: full"),
-            {error, pool_full};
+            {'error', 'pool_full'};
         _Else ->
             lager:warning("poolboy error: ~p", [_Else]),
-            {error, poolboy_fault}
+            {'error', 'poolboy_fault'}
     end.
 
 -spec cast(server_ref(), api_terms(), publish_fun()) -> 'ok' | {'error', _}.
 cast(Srv, Req, PubFun) ->
-    case catch poolboy:checkout(Srv, false, 1000) of
+    Prop = maybe_convert_to_proplist(Req),
+    case catch poolboy:checkout(Srv, 'false', 1000) of
         W when is_pid(W) ->
             poolboy:checkin(Srv, W),
-            Prop = case wh_json:is_json_object(Req) of
-                       true -> wh_json:to_proplist(Req);
-                       false -> Req
-                   end,
-            gen_listener:cast(W, {publish, Prop, PubFun});
-        full ->
+            gen_listener:cast(W, {'publish', Prop, PubFun});
+        'full' ->
             lager:debug("failed to checkout worker: full"),
-            {error, pool_full};
+            {'error', 'pool_full'};
         _Else ->
             lager:debug("poolboy error: ~p", [_Else]),
-            {error, poolboy_fault}
+            {'error', 'poolboy_fault'}
     end.
 
 -spec any_resp(any()) -> 'true'.
-any_resp(_) -> true.
+any_resp(_) -> 'true'.
+
+-spec collect_until_timeout() -> collect_util_fun().
+collect_until_timeout() ->
+    fun(_) -> 'false' end.
+
+-spec collect_from_whapp(text()) -> collect_util_fun().
+collect_from_whapp(Whapp) ->
+    Count = wh_nodes:whapp_count(Whapp),
+    lager:debug("attempting to collect ~p responses from ~s", [Count, Whapp]),
+    fun(Responses) -> length(Responses) >= Count end.
+
+-spec collect_from_whapp_or_validate(text(), validate_fun()) -> collect_util_fun().
+collect_from_whapp_or_validate(Whapp, VFun) ->
+    Count = wh_nodes:whapp_count(Whapp),
+    lager:debug("attempting to collect ~p responses from ~s or the first valid", [Count, Whapp]),
+    fun([Response|_]=Responses) ->
+            length(Responses) >= Count
+                orelse VFun(Response)
+    end.
 
 -spec handle_resp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_resp(JObj, Props) ->
-    gen_listener:cast(props:get_value(server, Props)
-                      ,{event, wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
+    gen_listener:cast(props:get_value('server', Props)
+                      ,{'event', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
 
 -spec send_request(ne_binary(), ne_binary(), publish_fun(), wh_proplist()) -> 'ok' | {'EXIT', _}.
 send_request(CallID, Self, PublishFun, ReqProp) when is_function(PublishFun, 1) ->
-    put(callid, CallID),
+    put('callid', CallID),
     Prop = [{<<"Server-ID">>, Self}
             ,{<<"Call-ID">>, CallID}
             | ReqProp
@@ -196,15 +231,13 @@ send_request(CallID, Self, PublishFun, ReqProp) when is_function(PublishFun, 1) 
 %% @end
 %%--------------------------------------------------------------------
 init([Args]) ->
-    put(callid, ?LOG_SYSTEM_ID),
+    put('callid', ?LOG_SYSTEM_ID),
     lager:debug("starting amqp worker"),
-    NegThreshold = props:get_value(neg_resp_threshold, Args, 1),
-    Pool = props:get_value(name, Args, undefined),
-    PoolName = pool_name_from_server_ref(Pool),
-    wh_counter:inc(<<"amqp.pools.", PoolName/binary, ".available">>),
-    {ok, #state{neg_resp_threshold=NegThreshold
-                ,pool_ref=Pool
-               }}.
+    NegThreshold = props:get_value('neg_resp_threshold', Args, 1),
+    Pool = props:get_value('name', Args, 'undefined'),
+    {'ok', #state{neg_resp_threshold=NegThreshold
+                  ,pool_ref=Pool
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -220,75 +253,72 @@ init([Args]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({request, ReqProp, _, _, _}, _, #state{queue=undefined}=State) ->
+handle_call({'request', ReqProp, _, _, _}, _, #state{queue='undefined'}=State) ->
     lager:debug("unable to publish request prior to queue creation: ~p", [ReqProp]),
-    {reply, {error, timeout}, reset(State)};
-handle_call({request, ReqProp, PublishFun, VFun, Timeout}
-           ,{ClientPid, _}=From, #state{queue=Q}=State) ->
-    _ = wh_util:put_callid(ReqProp),
-    CallID = get(callid),
-    ClientRef = erlang:monitor(process, ClientPid),
-    ReqRef = start_req_timeout(Timeout),
-    {ReqProp1, MsgID} = case props:get_value(<<"Msg-ID">>, ReqProp) of
-                            undefined ->
-                                M = wh_util:rand_hex_binary(8),
-                                {[{<<"Msg-ID">>, M} | ReqProp], M};
-                            M -> {ReqProp, M}
-                        end,
-    case ?MODULE:send_request(CallID, Q, PublishFun, ReqProp1) of
-        ok ->
-            lager:debug("published request with msg id ~s for ~p", [MsgID, ClientPid]),
-            {noreply, State#state{
-                        client_pid = ClientPid
-                        ,client_ref = ClientRef
-                        ,client_from = From
-                        ,client_vfun = VFun
-                        ,responses = undefined % how we know not to collect many responses
-                        ,neg_resp_count = 0
-                        ,current_msg_id = MsgID
-                        ,req_timeout_ref = ReqRef
-                        ,req_start_time = erlang:now()
-                        ,callid = CallID
-                       }, hibernate};
-        {'EXIT', Err} ->
-            lager:debug("failed to send request: ~p", [Err]),
-            {reply, {error, Err}, reset(State), hibernate}
-    end;
-handle_call({request_collect, ReqProp, _, _, _}, _, #state{queue=undefined}=State) ->
-    lager:debug("unable to publish collect request prior to queue creation: ~p", [ReqProp]),
-    {reply, {error, timeout}, reset(State)};
-handle_call({request_collect, ReqProp, PublishFun, Timeout}
+    {'reply', {'error', 'timeout'}, reset(State)};
+handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
             ,{ClientPid, _}=From, #state{queue=Q}=State) ->
     _ = wh_util:put_callid(ReqProp),
-    CallID = get(callid),
-    ClientRef = erlang:monitor(process, ClientPid),
-    ReqRef = start_req_timeout(Timeout),
+    CallID = get('callid'),
     {ReqProp1, MsgID} = case props:get_value(<<"Msg-ID">>, ReqProp) of
-                            undefined ->
+                            'undefined' ->
                                 M = wh_util:rand_hex_binary(8),
                                 {[{<<"Msg-ID">>, M} | ReqProp], M};
                             M -> {ReqProp, M}
                         end,
     case ?MODULE:send_request(CallID, Q, PublishFun, ReqProp1) of
-        ok ->
+        'ok' ->
             lager:debug("published request with msg id ~s for ~p", [MsgID, ClientPid]),
-            {noreply, State#state{
+            {'noreply', State#state{
+                          client_pid = ClientPid
+                          ,client_ref = erlang:monitor('process', ClientPid)
+                          ,client_from = From
+                          ,client_vfun = VFun
+                          ,responses = 'undefined' % how we know not to collect many responses
+                          ,neg_resp_count = 0
+                          ,current_msg_id = MsgID
+                          ,req_timeout_ref = start_req_timeout(Timeout)
+                          ,req_start_time = erlang:now()
+                          ,callid = CallID
+                         }, 'hibernate'};
+        {'EXIT', Err} ->
+            lager:debug("failed to send request: ~p", [Err]),
+            {'reply', {'error', Err}, reset(State), 'hibernate'}
+    end;
+handle_call({'call_collect', ReqProp, _, _, _}, _, #state{queue='undefined'}=State) ->
+    lager:debug("unable to publish collect request prior to queue creation: ~p", [ReqProp]),
+    {'reply', {'error', 'timeout'}, reset(State)};
+handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout}
+            ,{ClientPid, _}=From, #state{queue=Q}=State) ->
+    _ = wh_util:put_callid(ReqProp),
+    CallID = get('callid'),
+    {ReqProp1, MsgID} = case props:get_value(<<"Msg-ID">>, ReqProp) of
+                            'undefined' ->
+                                M = wh_util:rand_hex_binary(8),
+                                {[{<<"Msg-ID">>, M} | ReqProp], M};
+                            M -> {ReqProp, M}
+                        end,
+    case ?MODULE:send_request(CallID, Q, PublishFun, ReqProp1) of
+        'ok' ->
+            lager:debug("published request with msg id ~s for ~p", [MsgID, ClientPid]),
+            {'noreply', State#state{
                         client_pid = ClientPid
-                        ,client_ref = ClientRef
+                        ,client_ref = erlang:monitor('process', ClientPid)
                         ,client_from = From
+                        ,client_cfun = UntilFun
                         ,responses = [] % how we know to collect all responses
                         ,neg_resp_count = 0
                         ,current_msg_id = MsgID
-                        ,req_timeout_ref = ReqRef
+                        ,req_timeout_ref = start_req_timeout(Timeout)
                         ,req_start_time = erlang:now()
                         ,callid = CallID
-                       }, hibernate};
+                       }, 'hibernate'};
         {'EXIT', Err} ->
             lager:debug("failed to send request: ~p", [Err]),
-            {reply, {error, Err}, reset(State), hibernate}
+            {'reply', {'error', Err}, reset(State), 'hibernate'}
     end;
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -301,54 +331,66 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
-    {noreply, State#state{queue=Q}};
-handle_cast({set_negative_threshold, NegThreshold}, State) ->
+    {'noreply', State#state{queue=Q}};
+handle_cast({'set_negative_threshold', NegThreshold}, State) ->
     lager:debug("set negative threshold to ~p", [NegThreshold]),
-    {noreply, State#state{neg_resp_threshold = NegThreshold}, hibernate};
-handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
-                                         ,client_from = From
-                                         ,client_vfun = VFun
-                                         ,responses = undefined
-                                         ,req_start_time = StartTime
-                                         ,neg_resp_count = NegCount
-                                         ,neg_resp_threshold = NegThreshold
-                                        }=State) when NegCount < NegThreshold ->
+    {'noreply', State#state{neg_resp_threshold = NegThreshold}, 'hibernate'};
+handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
+                                           ,client_from = From
+                                           ,client_vfun = VFun
+                                           ,responses = 'undefined'
+                                           ,req_start_time = StartTime
+                                           ,neg_resp_count = NegCount
+                                           ,neg_resp_threshold = NegThreshold
+                                          }=State) when NegCount < NegThreshold ->
     _ = wh_util:put_callid(JObj),
     case VFun(JObj) of
-        true ->
+        'true' ->
             case wh_json:is_true(<<"Defer-Response">>, JObj) of
-                false ->
+                'false' ->
                     lager:debug("response for msg id ~s took ~b micro to return", [MsgId, timer:now_diff(erlang:now(), StartTime)]),
-                    gen_server:reply(From, {ok, JObj}),
-                    {noreply, reset(State), hibernate};
-                true ->
+                    gen_server:reply(From, {'ok', JObj}),
+                    {'noreply', reset(State), 'hibernate'};
+                'true' ->
                     lager:debug("defered response for msg id ~s, waiting for primary response", [MsgId]),
-                    {noreply, State#state{defer_response=JObj}, hibernate}
+                    {'noreply', State#state{defer_response=JObj}, 'hibernate'}
             end;
-        false ->
+        'false' ->
             lager:debug("response failed validator, waiting for more responses"),
-            {noreply, State#state{neg_resp_count = NegCount + 1
-                                  ,neg_resp=JObj
-                                 }, 0}
+            {'noreply', State#state{neg_resp_count = NegCount + 1
+                                    ,neg_resp=JObj
+                                   }, 0}
     end;
-handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
-                                         ,responses = Resps
-                                        }=State) when is_list(Resps) ->
+handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
+                                           ,client_from = From
+                                           ,client_cfun = UntilFun
+                                           ,responses = Resps
+                                           ,req_start_time = StartTime
+                                          }=State) when is_list(Resps) ->
     _ = wh_util:put_callid(JObj),
     lager:debug("recv a response"),
-    {noreply, State#state{responses=[JObj | Resps]}, hibernate};
-handle_cast({event, _MsgId, JObj}, #state{current_msg_id=_CurrMsgId}=State) ->
+    Responses = [JObj | Resps],
+    case UntilFun(Responses) of
+        'true' ->
+            lager:debug("responses have apparently met the criteria for the client, returning", []),
+            lager:debug("response for msg id ~s took ~b micro to return", [MsgId, timer:now_diff(erlang:now(), StartTime)]),
+            gen_server:reply(From, {'ok', Responses}),
+            {'noreply', reset(State), 'hibernate'};
+        'false' ->
+            {'noreply', State#state{responses=Responses}, 'hibernate'}
+    end;
+handle_cast({'event', _MsgId, JObj}, #state{current_msg_id=_CurrMsgId}=State) ->
     _ = wh_util:put_callid(JObj),
     lager:debug("received unexpected message with old/expired message id: ~s, waiting for ~s", [_MsgId, _CurrMsgId]),
-    {noreply, State};
-handle_cast({publish, ReqProp, _}, #state{queue=undefined}=State) ->
+    {'noreply', State};
+handle_cast({'publish', ReqProp, _}, #state{queue='undefined'}=State) ->
     lager:debug("unable to publish message prior to queue creation: ~p", [ReqProp]),
-    {noreply, reset(State)};
-handle_cast({publish, ReqProp, PublishFun}, State) ->
+    {'noreply', reset(State)};
+handle_cast({'publish', ReqProp, PublishFun}, State) ->
     catch PublishFun(ReqProp),
-    {noreply, reset(State)};
+    {'noreply', reset(State)};
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -360,66 +402,66 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', ClientRef, process, _Pid, _Reason}, #state{current_msg_id = _MsgID
-                                                                ,client_ref = ClientRef
-                                                                ,callid = CallID
-                                                               }=State) ->
-    put(callid, CallID),
+handle_info({'DOWN', ClientRef, 'process', _Pid, _Reason}, #state{current_msg_id = _MsgID
+                                                                  ,client_ref = ClientRef
+                                                                  ,callid = CallID
+                                                                 }=State) ->
+    put('callid', CallID),
     lager:debug("requestor processes ~p  died while waiting for msg id ~s", [_Pid, _MsgID]),
-    {noreply, reset(State), hibernate};
-handle_info(timeout, #state{neg_resp=ErrorJObj
-                            ,neg_resp_count=Thresh
-                            ,neg_resp_threshold=Thresh
-                            ,client_from=From
-                            ,responses=undefined
-                            ,defer_response=ReservedJObj
-                           }=State) ->
+    {'noreply', reset(State), 'hibernate'};
+handle_info('timeout', #state{neg_resp=ErrorJObj
+                              ,neg_resp_count=Thresh
+                              ,neg_resp_threshold=Thresh
+                              ,client_from=From
+                              ,responses='undefined'
+                              ,defer_response=ReservedJObj
+                             }=State) ->
     case wh_util:is_empty(ReservedJObj) of
-        true ->
+        'true' ->
             lager:debug("negative response threshold reached, returning last negative message"),
-            gen_server:reply(From, {error, ErrorJObj});
-        false ->
+            gen_server:reply(From, {'error', ErrorJObj});
+        'false' ->
             lager:debug("negative response threshold reached, returning defered response"),
-            gen_server:reply(From, {ok, ReservedJObj})
+            gen_server:reply(From, {'ok', ReservedJObj})
     end,
-    {noreply, reset(State), hibernate};
-handle_info(timeout, #state{responses=Resps
-                            ,client_from=From
-                           }=State) when is_list(Resps) ->
+    {'noreply', reset(State), 'hibernate'};
+handle_info('timeout', #state{responses=Resps
+                              ,client_from=From
+                             }=State) when is_list(Resps) ->
     lager:debug("timeout reached, returning responses"),
-    gen_server:reply(From, {ok, Resps}),
-    {noreply, reset(State), hibernate};
-handle_info(timeout, State) ->
-    {noreply, State};
-handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id= _MsgID
-                                                   ,req_timeout_ref=ReqRef
-                                                   ,callid=CallID
-                                                   ,responses=undefined
-                                                   ,client_from=From
-                                                   ,defer_response=ReservedJObj
-                                                  }=State) ->
-    put(callid, CallID),
+    gen_server:reply(From, {'error', Resps}),
+    {'noreply', reset(State), 'hibernate'};
+handle_info('timeout', State) ->
+    {'noreply', State};
+handle_info({'timeout', ReqRef, 'req_timeout'}, #state{current_msg_id= _MsgID
+                                                       ,req_timeout_ref=ReqRef
+                                                       ,callid=CallID
+                                                       ,responses='undefined'
+                                                       ,client_from=From
+                                                       ,defer_response=ReservedJObj
+                                                      }=State) ->
+    put('callid', CallID),
     case wh_util:is_empty(ReservedJObj) of
-        true ->
+        'true' ->
             lager:debug("request timeout exceeded for msg id: ~s", [_MsgID]),
-            gen_server:reply(From, {error, timeout});
-        false ->
+            gen_server:reply(From, {'error', 'timeout'});
+        'false' ->
             lager:debug("only received defered response for msg id: ~s", [_MsgID]),
-            gen_server:reply(From, {ok, ReservedJObj})
+            gen_server:reply(From, {'ok', ReservedJObj})
     end,
-    {noreply, reset(State), hibernate};
-handle_info({timeout, ReqRef, req_timeout}, #state{responses=Resps
-                                                   ,req_timeout_ref=ReqRef
-                                                   ,client_from=From
-                                                   ,callid=CallId
-                                                   }=State) ->
-    put(callid, CallId),
+    {'noreply', reset(State), 'hibernate'};
+handle_info({'timeout', ReqRef, 'req_timeout'}, #state{responses=Resps
+                                                       ,req_timeout_ref=ReqRef
+                                                       ,client_from=From
+                                                       ,callid=CallId
+                                                      }=State) ->
+    put('callid', CallId),
     lager:debug("req timeout for call_collect"),
-    gen_server:reply(From, {ok, Resps}),
-    {noreply, reset(State), hibernate};
+    gen_server:reply(From, {'timeout', Resps}),
+    {'noreply', reset(State), 'hibernate'};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -430,7 +472,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -443,9 +485,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{pool_ref=Pool}) ->
-    PoolName = pool_name_from_server_ref(Pool),
-    wh_counter:dec(<<"amqp.pools.", PoolName/binary, ".available">>),
+terminate(_Reason, _State) ->
     lager:debug("amqp worker terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
@@ -457,7 +497,7 @@ terminate(_Reason, #state{pool_ref=Pool}) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -466,38 +506,29 @@ code_change(_OldVsn, State, _Extra) ->
 reset(#state{req_timeout_ref = ReqRef
              ,client_ref = ClientRef
             }=State) ->
-    put(callid, ?LOG_SYSTEM_ID),
+    put('callid', ?LOG_SYSTEM_ID),
     _ = case is_reference(ReqRef) of
-            true -> erlang:cancel_timer(ReqRef);
-            false -> ok
+            'true' -> erlang:cancel_timer(ReqRef);
+            'false' -> 'ok'
         end,
     _ = case is_reference(ClientRef) of
-            true -> erlang:demonitor(ClientRef, [flush]);
-            false -> ok
+            'true' -> erlang:demonitor(ClientRef, ['flush']);
+            'false' -> 'ok'
         end,
-    State#state{client_pid = undefined
-                ,client_ref = undefined
-                ,client_from = undefined
-                ,client_vfun = undefined
-                ,neg_resp = undefined
+    State#state{client_pid = 'undefined'
+                ,client_ref = 'undefined'
+                ,client_from = 'undefined'
+                ,client_vfun = 'undefined'
+                ,client_cfun = collect_until_timeout()
+                ,neg_resp = 'undefined'
                 ,neg_resp_count = 0
-                ,current_msg_id = undefined
-                ,req_timeout_ref = undefined
-                ,req_start_time = undefined
-                ,callid = undefined
-                ,defer_response = undefined
-                ,responses = undefined
+                ,current_msg_id = 'undefined'
+                ,req_timeout_ref = 'undefined'
+                ,req_start_time = 'undefined'
+                ,callid = 'undefined'
+                ,defer_response = 'undefined'
+                ,responses = 'undefined'
                }.
-
--spec pool_name_from_server_ref/1 :: (server_ref()) -> ne_binary().
-pool_name_from_server_ref({_, Name}) when is_atom(Name)->
-    wh_util:to_binary(Name);
-pool_name_from_server_ref({via, _, Name}) when is_atom(Name) ->
-    wh_util:to_binary(Name);
-pool_name_from_server_ref(Name) when is_atom(Name) ->
-    wh_util:to_binary(Name);
-pool_name_from_server_ref(Pid) when is_pid(Pid) ->
-    wh_util:to_binary(pid_to_list(Pid)).
 
 -spec fudge_timeout/1 :: (wh_timeout()) -> wh_timeout().
 fudge_timeout('infinity'=T) -> T;
@@ -506,4 +537,11 @@ fudge_timeout(T) -> T + ?FUDGE.
 -spec start_req_timeout/1 :: (wh_timeout()) -> reference().
 start_req_timeout('infinity') -> make_ref();
 start_req_timeout(Timeout) ->
-    erlang:start_timer(Timeout, self(), req_timeout).
+    erlang:start_timer(Timeout, self(), 'req_timeout').
+
+-spec maybe_convert_to_proplist(wh_proplist() | wh_json:object()) -> wh_proplist().
+maybe_convert_to_proplist(Req) ->
+    case wh_json:is_json_object(Req) of
+        'true' -> wh_json:to_proplist(Req);
+        'false' -> Req
+    end.

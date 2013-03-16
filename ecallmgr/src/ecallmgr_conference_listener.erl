@@ -33,7 +33,7 @@
                        ,[{<<"conference">>, <<"search_req">>}]
                       }
                     ]).
--define(BINDINGS, [{'conference', [{'restrict_to', ['command', 'discovery']}]}]).
+-define(BINDINGS, [{'conference', [{'restrict_to', ['command']}]}]).
 -define(QUEUE_NAME, <<"ecallmgr_conference_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
@@ -98,6 +98,15 @@ handle_search_req(JObj, _Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     put('callid', ?LOG_SYSTEM_ID),
+    Self = self(),
+    ConsumerPid = wh_amqp_channel:consumer_pid(),
+    spawn(fun() ->
+                  wh_amqp_channel:consumer_pid(ConsumerPid),
+                  QueueName = <<>>,
+                  Options = [],
+                  Bindings= [{'conference', [{'restrict_to', ['discovery']}]}],
+                  gen_listener:add_queue(Self, QueueName, Options, Bindings)
+          end),
     lager:debug("starting new ecallmgr conference listner process"),
     {'ok', 'ok'}.
 

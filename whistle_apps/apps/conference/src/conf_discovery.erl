@@ -268,16 +268,14 @@ prepare_whapps_conference(Conference, Call, Srv) ->
 -spec search_for_conference(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 search_for_conference(Conference, Call, Srv) ->
     case whapps_conference_command:search(Conference) of
-        {'error', JObj} ->
-            handle_search_error(JObj, Conference, Call, Srv);
+        {'error', _} ->
+            handle_search_error(Conference, Call, Srv);
         {'ok', JObj} ->
             handle_search_resp(JObj, Conference, Call, Srv)
     end.
 
--spec handle_search_error(wh_json:object(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
-handle_search_error(JObj, Conference, Call, Srv) ->
-    'true' = wapi_conference:conference_error_v(JObj),
-    <<"search_req">> = wh_json:get_value([<<"Request">>, <<"Event-Name">>], JObj),
+-spec handle_search_error(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+handle_search_error(Conference, Call, Srv) ->
     lager:debug("participant switch nodename '~p'", [whapps_call:switch_nodename(Call)]),
     [_, SwitchHostname] = binary:split(whapps_call:switch_nodename(Call), <<"@">>),
     case negotiate_focus(SwitchHostname, Conference, Call) of
