@@ -39,13 +39,13 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--define(HEARTBEAT, 2000).
+-define(HEARTBEAT, 5000).
 -define(EXPIRE_PERIOD, 1000).
 -define(FUDGE_FACTOR, 1.25).
 -define(APP_NAME, <<"wh_nodes">>).
 -define(APP_VERSION, <<"0.1.0">>).
 
--record(state, {heartbeat_tref :: 'undefined' | timer:ref()
+-record(state, {heartbeat_ref :: 'undefined' | reference()
                 ,tab
                 ,notify_new = sets:new() :: set()
                 ,notify_expire = sets:new() :: set()
@@ -206,11 +206,10 @@ handle_cast({'advertise', JObj}, #state{tab=Tab}=State) ->
             'false' -> ets:insert(Tab, Node)
         end,
     {noreply, State};
-handle_cast({'wh_amqp_channel', {'new_channel', _}}, #state{heartbeat_tref=TRef}=State) ->
-    timer:cancel(TRef),
-    self() ! 'hearbeat',
-    Heartbeat = timer:send_interval(?HEARTBEAT, 'hearbeat'),
-    {noreply, State#state{heartbeat_tref=Heartbeat}};
+handle_cast({'wh_amqp_channel', {'new_channel', _}}, State) ->
+    Reference = erlang:make_ref(),
+    self() ! {'heartbeat', Reference},
+    {noreply, State#state{heartbeat_ref=Reference}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -236,10 +235,12 @@ handle_info('expire_nodes', #state{tab=Tab}=State) ->
     _ = spawn(fun() -> notify_expire(Nodes, State) end),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
     {noreply, State};
-handle_info('hearbeat', State) ->
+handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref}=State) ->
     Node = create_node(),
     wapi_nodes:publish_advertise(advertise_payload(Node)),
-    {noreply, State};
+    Reference = erlang:make_ref(),
+    _ = erlang:send_after(?HEARTBEAT, self(), {'heartbeat', Reference}),
+    {noreply, State#state{heartbeat_ref=Reference}};
 handle_info({'DOWN', Ref, 'process', Pid, _}, #state{notify_new=NewSet
                                                      ,notify_expire=ExpireSet}=State) ->
     erlang:demonitor(Ref, ['flush']),
