@@ -9,6 +9,10 @@
 -module(whistle_maintenance).
 
 -export([nodes/0]).
+-export([syslog_level/1
+         ,error_level/1
+         ,console_level/1
+        ]).
 -export([gc_all/0, gc_pids/1
          ,gc_top_mem_consumers/0, gc_top_mem_consumers/1
          ,top_mem_consumers/0, top_mem_consumers/1
@@ -26,6 +30,15 @@
 -spec top_mem_consumers/0 :: () -> {wh_proplist_kv(pid(), integer()), wh_proplist_kv(pid(), integer())}.
 -spec top_mem_consumers/1 :: (pos_integer()) -> {wh_proplist_kv(pid(), integer()), wh_proplist_kv(pid(), integer())}.
 -spec etop/0 :: () -> 'ok'.
+
+syslog_level(Level) ->
+    wh_util:change_syslog_log_level(wh_util:to_atom(Level)).
+
+error_level(Level) ->
+    wh_util:change_error_log_level(wh_util:to_atom(Level)).
+
+console_level(Level) ->
+    wh_util:change_console_log_level(wh_util:to_atom(Level)).
 
 nodes() ->
     wh_nodes:status().
