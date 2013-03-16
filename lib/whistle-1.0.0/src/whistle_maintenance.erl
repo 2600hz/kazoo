@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(whistle_maintenance).
 
+-export([nodes/0]).
 -export([gc_all/0, gc_pids/1
          ,gc_top_mem_consumers/0, gc_top_mem_consumers/1
          ,top_mem_consumers/0, top_mem_consumers/1
@@ -26,6 +27,8 @@
 -spec top_mem_consumers/1 :: (pos_integer()) -> {wh_proplist_kv(pid(), integer()), wh_proplist_kv(pid(), integer())}.
 -spec etop/0 :: () -> 'ok'.
 
+nodes() ->
+    wh_nodes:status().
 
 gc_all() ->
     gc_pids(processes()).

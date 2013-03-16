@@ -22,6 +22,7 @@
 -export([remove/0
          ,remove/1
         ]).
+-export([maybe_publish/2]).
 -export([publish/2]).
 -export([command/1
          ,command/2
@@ -51,7 +52,7 @@ new(#wh_amqp_connection{}=Connection) ->
     open(wh_amqp_channels:new(), Connection);
 new(#wh_amqp_channel{}=Channel) ->
     case wh_amqp_connections:current() of
-        {error, _}=E -> E;
+        {error, _} -> Channel;
         {ok, Connection} ->
             open(Channel, Connection)
     end.
@@ -105,6 +106,21 @@ remove(#wh_amqp_channel{channel=Pid}=Channel) when is_pid(Pid) ->
     remove(close(Channel));
 remove(#wh_amqp_channel{}=Channel) ->
     wh_amqp_channels:remove(Channel).
+
+-spec maybe_publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
+maybe_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub
+        ,#'amqp_msg'{props=#'P_basic'{timestamp='undefined'}=Props}=AmqpMsg
+       ) ->
+    Now = wh_util:now_us(now()),
+    maybe_publish(BasicPub, AmqpMsg#'amqp_msg'{props=Props#'P_basic'{timestamp=Now}});
+maybe_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
+    case wh_amqp_channels:find() of
+        #wh_amqp_channel{channel=Pid, uri=URI} when is_pid(Pid) ->
+            amqp_channel:call(Pid, BasicPub, AmqpMsg),
+            lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p", [_Exchange, URI, _RK, Pid]);
+        _Else ->
+            lager:debug("dropping payload to ~s exchange (routing key ~s): ~s", [_Exchange, _RK, AmqpMsg#'amqp_msg'.payload])
+    end.
 
 -spec publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
 publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub

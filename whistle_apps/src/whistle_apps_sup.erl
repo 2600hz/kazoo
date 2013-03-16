@@ -50,6 +50,7 @@
                    ,{?WHAPPS_AMQP_POOL, pool}
                    ,{whapps_controller, worker}
                    ,{whistle_services_sup, supervisor}
+                   ,{wh_nodes, worker}
                   ]).
 
 %% ===================================================================
