@@ -11,6 +11,7 @@
 -behaviour(gen_server).
 
 -include("amqp_util.hrl").
+-include_lib("rabbitmq_client/include/amqp_client.hrl").
 
 -export([start_link/0]).
 -export([add/1]).
@@ -66,6 +67,10 @@ add(URI) ->
         {error, {Info, _}} ->
             lager:error("failed to parse amqp URI '~s': ~p", [URI, Info]),
             {error, invalid_uri};
+        {ok, #amqp_params_network{}=Params} ->
+            new(#wh_amqp_connection{uri=URI
+                                    ,manager=wh_util:to_atom(URI, true)
+                                    ,params=Params#amqp_params_network{connection_timeout=500}});
         {ok, Params} ->
             new(#wh_amqp_connection{uri=URI
                                     ,manager=wh_util:to_atom(URI, true)
