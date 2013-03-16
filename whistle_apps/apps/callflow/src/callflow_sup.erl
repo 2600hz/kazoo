@@ -28,7 +28,8 @@
                           ,[{type, <<"parked_calls">>}]
                          ]).
 -define(CACHE_PROPS, [{origin_bindings, ?ORIGIN_BINDINGS}
-                      ,new_channel_flush
+                      ,new_node_flush
+                      ,channel_reconnect_flush
                      ]).
 -define(CACHE(), {?CALLFLOW_CACHE, {wh_cache, start_link, [?CALLFLOW_CACHE, ?CACHE_PROPS]}
                   ,permanent, 5000, worker, [wh_cache]}).

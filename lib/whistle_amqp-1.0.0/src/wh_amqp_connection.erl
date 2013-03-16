@@ -108,10 +108,6 @@ init([#wh_amqp_connection{uri=URI}=Connection]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(teardown_channels, _, State) ->
-    io:format("~p: teardown channels~n", [self()]),
-    %% TODO find and teardown channels using this connection...
-    {reply, ok, State};
 handle_call(get_channel, _, #wh_amqp_connection{available=true, prechannels=[]}=State) ->
     gen_server:cast(self(), start_prechannel),
     {reply, {error, no_channels}, State};
@@ -163,7 +159,6 @@ handle_cast(_Msg, State) ->
 handle_info({'DOWN', Ref, process, _Pid, Reason}
             ,#wh_amqp_connection{connection_ref=Ref}=State) ->
     lager:critical("connection to the AMQP broker died: ~p", [Reason]),
-    %%    notify_consumers({amqp_channel_event, Reason}, Name),
     self() ! {connect, ?START_TIMEOUT},
     {noreply, disconnected(State), hibernate};
 handle_info({'DOWN', Ref, process, _Pid, _Reason}
@@ -171,19 +166,16 @@ handle_info({'DOWN', Ref, process, _Pid, _Reason}
     erlang:demonitor(Ref, [flush]),
     gen_server:cast(self(), start_prechannel),
     {noreply, State#wh_amqp_connection{prechannels=lists:keydelete(Ref, 1, Channels)}};
-%%handle_info({#'basic.return'{}, #amqp_msg{}}=ReturnMsg, State) ->
-%%    wh_amqp_mgr:notify_return_handlers(ReturnMsg),
-%%    {noreply, State};
 handle_info({connect, Timeout}, #wh_amqp_connection{uri=URI, params=Params}=State) ->
     case amqp_connection:start(Params) of
         {error, auth_failure} ->
             lager:warning("amqp authentication failure with '~s', will retry in ~p", [URI, Timeout]),
             _Ref = erlang:send_after(Timeout, self(), {connect, next_timeout(Timeout)}),
-            {noreply, disconnected(State), hibernate};
+            {noreply, State, hibernate};
         {error, _Reason} ->
             lager:warning("failed to connect to '~s' will retry in ~p: ~p", [URI, Timeout, _Reason]),
             _Ref = erlang:send_after(Timeout, self(), {connect, next_timeout(Timeout)}),
-            {noreply, disconnected(State), hibernate};
+            {noreply, State, hibernate};
         {ok, Pid} ->
             lager:notice("connected successfully to '~s'", [URI]),
             Ref = erlang:monitor(process, Pid),

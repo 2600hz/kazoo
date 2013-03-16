@@ -42,7 +42,8 @@
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]}  end(Name, Type)).
 
 -define(WHAPPS(Whapps), {whapps_sup, {whapps_sup, start_link, [Whapps]}, permanent, 5000, supervisor, [whapps_sup]}).
--define(CHILDREN, [{wh_cache, worker}
+-define(CHILDREN, [{wh_nodes, worker}
+                   ,{wh_cache, worker}
                    ,{?WHAPPS_CONFIG_CACHE, cache}
                    ,{whistle_couch_sup, supervisor}
                    ,{whistle_apps_init, worker}
@@ -50,7 +51,6 @@
                    ,{?WHAPPS_AMQP_POOL, pool}
                    ,{whapps_controller, worker}
                    ,{whistle_services_sup, supervisor}
-                   ,{wh_nodes, worker}
                   ]).
 
 %% ===================================================================

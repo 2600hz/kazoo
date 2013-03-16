@@ -134,8 +134,8 @@ publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg)
             amqp_channel:call(Pid, BasicPub, AmqpMsg),
             lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p", [_Exchange, URI, _RK, Pid]);
         #wh_amqp_channel{} ->
-            wh_amqp_channels:reconnect(),
-            timer:sleep(100),
+            _ = wh_amqp_channels:reconnect(),
+            timer:sleep(250),
             retry_publish(BasicPub, AmqpMsg)
     end.
 
