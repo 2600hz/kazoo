@@ -26,9 +26,9 @@
                       }
                     ]).
 -define(BINDINGS, [{'conference', [{'restrict_to', ['discovery']}]}]).
--define(QUEUE_NAME, <<"ecallmgr_conference_listener">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 -include("ecallmgr.hrl").
 
