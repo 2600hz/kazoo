@@ -701,7 +701,7 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
     ConferenceConfig = wh_json:get_value(<<"Conference-Config">>, JObj, <<"default">>),
     Cmd = list_to_binary([ConfName, "@", ConferenceConfig]),
 
-    case ecallmgr_fs_conference:node(ConfName) of
+    case ecallmgr_fs_conferences:node(ConfName) of
         {'error', 'not_found'} ->
             lager:debug("conference ~s hasn't been started yet", [ConfName]),
             {'ok', _} = ecallmgr_util:send_cmd(ChanNode, UUID, "conference", Cmd),
@@ -731,7 +731,7 @@ get_conference_app(_ChanNode, _UUID, JObj, 'false') ->
     {<<"conference">>, list_to_binary([ConfName, "@default"])}.
 
 wait_for_conference(ConfName) ->
-    case ecallmgr_fs_conference:node(ConfName) of
+    case ecallmgr_fs_conferences:node(ConfName) of
         {'ok', _N}=OK -> OK;
         {'error', 'not_found'} ->
             timer:sleep(100),

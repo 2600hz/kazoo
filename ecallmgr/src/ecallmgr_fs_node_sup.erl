@@ -19,8 +19,9 @@
                                    (N, M, A) ->
                                         {N, {M, 'start_link', A}, 'permanent', 6000, 'worker', [N]}
                                 end(Name, Mod, Args)).
--define(CHILDREN, [<<"_node">>, <<"_authn">>, <<"_route">>, <<"_config">>
-                   ,<<"_resource">>, <<"_notify">>, <<"_authz">>, <<"_cdr">>
+-define(CHILDREN, [<<"_node">>, <<"_authn">>, <<"_route">>
+                       ,<<"_config">>, <<"_resource">>, <<"_notify">>
+                       ,<<"_authz">>, <<"_cdr">>, <<"_conference">>
                   ]).
 
 %% ===================================================================

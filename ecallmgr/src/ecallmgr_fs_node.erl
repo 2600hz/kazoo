@@ -14,9 +14,7 @@
 -export([start_link/1, start_link/2]).
 -export([handle_reload_acls/2]).
 -export([handle_reload_gtws/2]).
--export([sync_channels/1
-         ,sync_conferences/1
-        ]).
+-export([sync_channels/1]).
 -export([show_channels/1]).
 -export([fs_node/1]).
 -export([hostname/1]).
@@ -84,9 +82,6 @@ start_link(Node, Options) ->
 
 -spec sync_channels(pid()) -> 'ok'.
 sync_channels(Srv) -> gen_server:cast(Srv, {'sync_channels'}).
-
--spec sync_conferences(pid()) -> 'ok'.
-sync_conferences(Srv) -> gen_server:cast(Srv, {'sync_conferences'}).
 
 -spec hostname(pid()) -> api_binary().
 hostname(Srv) ->
@@ -160,7 +155,6 @@ init([Node, Options]) ->
             gproc:reg({'p', 'l', 'fs_node'}),
             lager:debug("bound to switch events on node ~s", [Node]),
             sync_channels(self()),
-            sync_conferences(self()),
             run_start_cmds(Node),
             {'ok', #state{node=Node, options=Options}}
     end.
@@ -216,9 +210,6 @@ handle_cast({'sync_channels'}, #state{node=Node}=State) ->
             ],
     Msg = {'sync_channels', Node, props:filter_undefined(Calls)},
     gen_server:cast('ecallmgr_fs_nodes', Msg),
-    {'noreply', State};
-handle_cast({'sync_conferences'}, #state{node=Node}=State) ->
-    ecallmgr_fs_conference:sync_conferences(Node),
     {'noreply', State};
 handle_cast(_Req, State) ->
     {'noreply', State}.
@@ -321,7 +312,7 @@ process_event(<<"CHANNEL_EXECUTE_COMPLETE">> = EventName, UUID, Props, Node) ->
         end,
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(<<"conference::maintenance">> = EventName, UUID, Props, Node) ->
-    _ = ecallmgr_fs_conference:event(Node, UUID, Props),
+    _ = ecallmgr_fs_conferences:event(Node, UUID, Props),
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),

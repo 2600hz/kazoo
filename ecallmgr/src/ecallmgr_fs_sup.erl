@@ -29,7 +29,7 @@
                      }).
 -define(CHILDREN, [{'ecallmgr_fs_pinger_sup', 'supervisor'}
                    ,{'ecallmgr_fs_nodes', 'worker'}
-                   ,{'ecallmgr_fs_conference', 'worker'}
+                   ,{'ecallmgr_fs_conferences', 'worker'}
                   ]).
 
 %% ===================================================================

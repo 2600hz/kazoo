@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(wapi_conference).
 
+-export([focus_queue_name/1]).
 -export([search_req/1, search_req_v/1]).
 -export([search_resp/1, search_resp_v/1]).
 -export([discovery_req/1, discovery_req_v/1]).
@@ -63,6 +64,7 @@
 -export([publish_error/2, publish_error/3]).
 -export([publish_participants_event/2, publish_participants_event/3]).
 -export([publish_command/2, publish_command/3]).
+-export([publish_targeted_command/2, publish_targeted_command/3]).
 
 -include_lib("whistle/include/wh_api.hrl").
 -include("wapi_dialplan.hrl").
@@ -292,7 +294,7 @@
                                       ]).
 
 %% Conference Participants Event
--define(PARTICIPANTS_EVENT_HEADERS, [<<"Participants">>, <<"Conference-ID">>]).
+-define(PARTICIPANTS_EVENT_HEADERS, [<<"Participants">>, <<"Conference-ID">>, <<"Focus">>]).
 -define(OPTIONAL_PARTICIPANTS_EVENT_HEADERS, []).
 -define(PARTICIPANTS_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                    ,{<<"Event-Name">>, <<"participants_event">>}
@@ -327,6 +329,9 @@
                          ,{<<"say">>, ?CONF_SAY_REQ_VALUES, fun ?MODULE:say/1}
                          ,{<<"tts">>, ?CONF_SAY_REQ_VALUES, fun ?MODULE:tts/1}
                         ]).
+
+focus_queue_name(Focus) ->
+    <<(wh_util:to_binary(Focus))/binary, "_conference">>.
 
 %%--------------------------------------------------------------------
 %% @doc Create a tone on the channel - see wiki
@@ -1256,4 +1261,23 @@ publish_command(ConferenceId, Req, ContentType) ->
         {_, Values, Fun} ->
             {ok, Payload} = wh_api:prepare_api_payload(Req, Values, Fun),
             amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType)
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_targeted_command/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_targeted_command/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_targeted_command(Focus, JObj) ->
+    publish_targeted_command(Focus, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_targeted_command(Focus, Req, ContentType) ->
+    App = props:get_value(<<"Application-Name">>, Req),
+    case lists:keyfind(App, 1, ?APPLICTION_MAP) of
+        false -> throw({invalid_conference_command, Req});
+        {_, Values, Fun} ->
+            {ok, Payload} = wh_api:prepare_api_payload(Req, Values, Fun),
+            Queue = focus_queue_name(Focus),
+            amqp_util:targeted_publish(Queue, Payload, ContentType)
     end.

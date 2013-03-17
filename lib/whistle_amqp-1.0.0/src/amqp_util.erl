@@ -854,7 +854,7 @@ basic_consume(Queue) ->
 basic_consume(Queue, Options) ->
     BC = #'basic.consume'{
       queue = Queue
-      ,consumer_tag = Queue
+      ,consumer_tag = <<>>
       ,no_local = props:get_value(no_local, Options, false)
       ,no_ack = props:get_value(no_ack, Options, true)
       ,exclusive = props:get_value(exclusive, Options, true)

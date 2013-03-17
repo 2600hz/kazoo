@@ -23,15 +23,13 @@
 -export([nodeup/1]).
 -export([is_node_up/1]).
 -export([status/0]).
--export([account_summary/1]).
 
+%% TODO: move to ecallmgr_fs_channels
+-export([account_summary/1]).
 -export([get_call_precedence/1]).
 -export([channels_by_auth_id/1]).
-
--export([sync_channels/0, sync_channels/1
-         ,sync_conferences/0, sync_conferences/1
-         ,flush_node_channels/1
-        ]).
+-export([flush_node_channels/1]).
+%%
 
 -export([init/1
          ,handle_call/3
@@ -169,38 +167,6 @@ channels_by_auth_id(AuthorizingId) ->
                            ]}
     end.
 
--spec sync_channels() -> 'ok'.
--spec sync_channels(string() | binary() | atom()) -> 'ok'.
-sync_channels() ->
-    _ = [ecallmgr_fs_node:sync_channels(Srv)
-         || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
-        ],
-    'ok'.
-
-sync_channels(Node) ->
-    N = wh_util:to_atom(Node, 'true'),
-    _ = [ecallmgr_fs_node:sync_channels(Srv)
-         || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
-                ,ecallmgr_fs_node:fs_node(Srv) =:= N
-        ],
-    'ok'.
-
--spec sync_conferences() -> 'ok'.
--spec sync_conferences(string() | binary() | atom()) -> 'ok'.
-sync_conferences() ->
-    _ = [ecallmgr_fs_node:sync_conferences(Srv)
-         || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
-        ],
-    'ok'.
-
-sync_conferences(Node) ->
-    N = wh_util:to_atom(Node, 'true'),
-    _ = [ecallmgr_fs_node:sync_conferences(Srv)
-         || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
-                ,ecallmgr_fs_node:fs_node(Srv) =:= N
-        ],
-    'ok'.
-
 -spec flush_node_channels(string() | binary() | atom()) -> 'ok'.
 flush_node_channels(Node) ->
     gen_server:cast(?MODULE, {'flush_node_channels', wh_util:to_atom(Node, 'true')}).
@@ -308,6 +274,7 @@ handle_cast({'destroy_channel', UUID, Node}, State) ->
     N = ets:select_delete(?CHANNELS_TBL, MatchSpec),
     lager:debug("removed ~p channel(s) with id ~s on ~s", [N, UUID, Node]),
     {'noreply', State, 'hibernate'};
+%% TODO: move to ecallmgr_fs_channels
 handle_cast({'sync_channels', Node, Channels}, State) ->
     lager:debug("ensuring channel cache is in sync with ~s", [Node]),
     MatchSpec = [{#channel{uuid = '$1', node = '$2', _ = '_'}
@@ -342,6 +309,7 @@ handle_cast({'flush_node_channels', Node}, State) ->
                 ],
     ets:select_delete(?CHANNELS_TBL, MatchSpec),
     {'noreply', State};
+%%
 handle_cast(_Cast, State) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
     {'noreply', State, 'hibernate'}.
@@ -459,7 +427,7 @@ handle_nodeup(#node{}=Node, #state{self=Srv}) ->
         'ok' ->
             gen_listener:cast(Srv, {'update_node', NewNode#node{connected='true'}})
     end.
-    
+
 -spec handle_nodedown(fs_node(), state()) -> 'ok'.
 handle_nodedown(#node{node=NodeName}=Node, #state{self=Srv}) ->
     lager:critical("recieved node down notice for ~s", [NodeName]),
@@ -536,7 +504,7 @@ maybe_disconnect_from_node(#node{node=NodeName, connected='true'}=Node) ->
 maybe_disconnect_from_node(#node{connected='false'}) ->
     'ok'.
 
--spec maybe_start_node_pinger(fs_node()) -> 'ok'. 
+-spec maybe_start_node_pinger(fs_node()) -> 'ok'.
 maybe_start_node_pinger(#node{node=NodeName, options=Props}=Node) ->
     case ecallmgr_fs_pinger_sup:add_node(NodeName, Props) of
         {'ok', _} -> 'ok';
