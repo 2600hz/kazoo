@@ -12,6 +12,7 @@
          ,allowed_methods/0
          ,resource_exists/0
          ,validate/1
+         ,lookup_regs/1
         ]).
 
 -include("src/crossbar.hrl").
@@ -53,46 +54,48 @@ validate(#cb_context{req_verb = <<"get">>, db_name=DbName, account_id=AccountId}
 
 -spec lookup_regs(ne_binary()) -> wh_json:json_objects().
 lookup_regs(AccountRealm) ->
-    Q = amqp_util:new_queue(),
-    ok = amqp_util:bind_q_to_targeted(Q),
-    ok = amqp_util:basic_consume(Q),
     Req = [{<<"Realm">>, AccountRealm}
            ,{<<"Fields">>, []}
-           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wapi_registration:publish_query_req(Req),
-    [normalize_registration(JObj) || {_, JObj} <- collect_registrar_responses([])].
-
--spec collect_registrar_responses(wh_proplist()) -> wh_proplist().
-collect_registrar_responses(Registrations) ->
-    receive
-        {_, #amqp_msg{payload = Payload}} ->
-            JObj = wh_json:decode(Payload),
-            true = wapi_registration:query_resp_v(JObj),
-            case wh_json:get_value(<<"Fields">>, JObj) of
-                undefined -> collect_registrar_responses(Registrations);
-                Response -> 
-                    Regs = accumulate_unique_registrations(Response, Registrations),
-                    collect_registrar_responses(Regs)
-            end
-    after
-        500 -> Registrations
+    ReqResp = whapps_util:amqp_pool_collect(Req
+                                            ,fun wapi_registration:publish_query_req/1
+                                            ,'registrar'
+                                           ),
+    case ReqResp of
+        {'error', _} -> [];
+        {_, JObjs} ->
+            merge_responses(JObjs)
     end.
 
--spec accumulate_unique_registrations(wh_json:json_objects(), wh_proplist()) -> wh_proplist().
-accumulate_unique_registrations([], Accumulator) ->
-    Accumulator;
-accumulate_unique_registrations([Registration|Registrations], Accumulator) ->
-    AuthorizingId = wh_json:get_value(<<"Authorizing-ID">>, Registration),
-    case AuthorizingId =:= undefined orelse proplists:is_defined(AuthorizingId, Accumulator) of
-        true -> accumulate_unique_registrations(Registrations, Accumulator);
-        false -> accumulate_unique_registrations(Registrations, [{AuthorizingId, Registration}|Accumulator])
-    end.
-            
+merge_responses(JObjs) ->
+    [normalize_registration(JObj)
+     || {_, JObj} <- dict:to_list(merge_responses(JObjs, dict:new()))
+    ].
+
+merge_responses([], Regs) ->
+    Regs;
+merge_responses([JObj|JObjs], Regs) ->
+    merge_responses(JObjs, merge_response(JObj, Regs)).
+
+merge_response(JObj, Regs) ->
+    Fields = case wh_json:is_true(<<"Multiple">>, JObj) of
+                 'true' -> wh_json:get_value(<<"Fields">>, JObj, []);
+                 'false' ->
+                     [wh_json:get_value(<<"Fields">>, JObj, wh_json:new())]
+             end,
+    lists:foldl(fun(J, R) ->
+                        case wh_json:get_ne_value(<<"Contact">>, J) of
+                            'undefined' -> R;
+                            Contact ->
+                                dict:store(Contact, J, R)
+                        end
+                end, Regs, Fields).
+
 normalize_registration(JObj) ->
     Contact = wh_json:get_binary_value(<<"Contact">>, JObj, <<>>),
     Updaters = [fun(J) -> wh_json:delete_keys(?MASK_REG_FIELDS, J) end
-                ,fun(J) -> 
+                ,fun(J) ->
                          case re:run(Contact, "sip:[^@]+@(.*?):([0-9]+)", [{capture, [1, 2], binary}]) of
                              {match,[Ip, Port]} ->
                                  wh_json:set_value(<<"Contact-IP">>, Ip
@@ -100,7 +103,7 @@ normalize_registration(JObj) ->
                              _Else -> J
                          end
                  end
-                ,fun(J) -> 
+                ,fun(J) ->
                          case re:run(Contact, "received=sip:([^:;]+):?([0-9]+)?", [{capture, [1, 2], binary}]) of
                              {match,[Ip, Port]} ->
                                  wh_json:set_value(<<"Received-IP">>, Ip
@@ -108,7 +111,7 @@ normalize_registration(JObj) ->
                              _Else -> J
                          end
                  end
-                ,fun(J) -> 
+                ,fun(J) ->
                          case re:run(Contact, "fs_path=sip:([^:;]+):?([0-9]+)?", [{capture, [1, 2], binary}]) of
                              {match,[Ip, Port]} ->
                                  wh_json:set_value(<<"Proxy-IP">>, Ip
