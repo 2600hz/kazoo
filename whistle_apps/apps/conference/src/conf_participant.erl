@@ -350,16 +350,11 @@ handle_cast({'route_win', JObj}, #participant{conference=Conference
     gen_listener:rm_binding(self(), route, []),
     gen_listener:rm_binding(self(), authn, []),
     B = whapps_call:from_route_win(JObj, Bridge),
-    _ = spawn(fun() ->
-                      put(callid, whapps_call:call_id(B)),
-                      lager:debug("answering conference call"),
-                      whapps_call_command:answer(B),
-                      ConferenceId = whapps_conference:id(Conference),
-                      lager:debug("joining as moderation: ~s", [whapps_conference:moderator(Conference)]),
-                      whapps_call_command:conference(ConferenceId, 'false', 'false', whapps_conference:moderator(Conference), B),
-                      lager:debug("requesting conference participants"),
-                      whapps_conference_command:participants(Conference)
-              end),
+    lager:debug("answering conference call bridge ~s", [whapps_call:call_id(B)]),
+    whapps_call_command:answer(B),
+    ConferenceId = whapps_conference:id(Conference),
+    lager:debug("call ~s joining as moderator ~s", [whapps_call:call_id(B), whapps_conference:moderator(Conference)]),
+    whapps_call_command:conference(ConferenceId, 'false', 'false', whapps_conference:moderator(Conference), B),
     {'noreply', Participant#participant{bridge=B}};
 handle_cast({'sync_participant', JObj}, #participant{bridge='undefined'
                                                      ,call=Call
