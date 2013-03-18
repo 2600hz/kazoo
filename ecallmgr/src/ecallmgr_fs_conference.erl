@@ -328,7 +328,7 @@ get_conf_command(<<"relate_participants">>, _Focus, _ConferenceId, JObj) ->
         'true' ->
             Args = list_to_binary([wh_json:get_binary_value(<<"Participant">>, JObj)
                                    ," ", wh_json:get_binary_value(<<"Other-Participant">>, JObj)
-                                   ," ", wh_json:get_binary_value(<<"Relationship">>, JObj, <<"clear">>)
+                                   ," ", relationship(wh_json:get_binary_value(<<"Relationship">>, JObj))
                                   ]),
             {<<"relate">>, Args}
     end;
@@ -484,3 +484,7 @@ send_response(_, 'timeout', RespQ, Command) ->
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     wapi_conference:publish_error(RespQ, Error).
+
+relationship(<<"mute">>) -> <<"nospeak">>;
+relationship(<<"deaf">>) -> <<"nohear">>;
+relationship(_) -> <<"clear">>.
