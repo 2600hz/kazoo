@@ -209,7 +209,7 @@ load_device_summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
@@ -368,25 +368,38 @@ lookup_regs(AccountRealm) ->
            ,{<<"Fields">>, [<<"Authorizing-ID">>]}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    Resp =  whapps_util:amqp_pool_request(Req
-                                          ,fun wapi_registration:publish_query_req/1
-                                          ,fun wapi_registration:query_resp_v/1
-                                          ,1000),
+    Resp = whapps_util:amqp_pool_collect(Req
+                                         ,fun wapi_registration:publish_query_req/1
+                                         ,'registrar'
+                                        ),
     case Resp of
         {error, _E} ->
             lager:debug("error getting reg: ~p", [_E]),
             [];
-        {ok, JObj} -> extract_device_registrations(JObj)
+        {_, JObjs} ->
+            [wh_json:from_list([{<<"device_id">>, AuthorizingId}
+                                ,{<<"registered">>, true}
+                               ])
+             || AuthorizingId <- extract_device_registrations(JObjs)
+            ]
     end.
 
--spec extract_device_registrations(wh_json:object()) -> wh_json:objects().
-extract_device_registrations(JObj) ->
-    [wh_json:from_list([{<<"device_id">>, AuthorizingId}
-                        ,{<<"registered">>, true}
-                       ])
-     || Reg <- wh_json:get_value(<<"Fields">>, JObj, [])
-            ,(AuthorizingId = wh_json:get_value(<<"Authorizing-ID">>, Reg)) =/= undefined
-    ].
+-spec extract_device_registrations(wh_json:objects()) -> ne_binaries().
+extract_device_registrations(JObjs) ->
+    sets:to_list(extract_device_registrations(JObjs, sets:new())).
+
+-spec extract_device_registrations(wh_json:objects(), set()) -> set().
+extract_device_registrations([], Set) ->
+    Set;
+extract_device_registrations([JObj|JObjs], Set) ->
+    Fields = wh_json:get_value(<<"Fields">>, JObj, []),
+    S = lists:foldl(fun(J, S) ->
+                            case wh_json:get_ne_value(<<"Authorizing-ID">>, J) of
+                                'undefined' -> S;
+                                AuthId -> sets:add_element(AuthId, S)
+                            end
+                    end, Set, Fields),
+    extract_device_registrations(JObjs, S).
 
 %%--------------------------------------------------------------------
 %% @private
