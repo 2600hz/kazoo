@@ -294,7 +294,7 @@ post(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
 put(#cb_context{req_data=ReqData, resp_data=RespData
                 ,account_id=AccountId, auth_account_id=AuthAccountId}=Context, ?CREDITS_PATH_TOKEN) ->
     Amount = wh_json:get_float_value(<<"amount">>, ReqData, 0.0),
-    Units = wht_money:dollars_to_units(Amount),
+    Units = wht_util:dollars_to_units(Amount),
     BTData = wh_json:delete_keys([<<"billing_address">>
                                   ,<<"shipping_address">>
                                   ,[<<"card">>, <<"billing_address">>]
