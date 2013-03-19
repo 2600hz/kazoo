@@ -62,10 +62,13 @@ start_link() ->
 init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
     Init = get_config(),
-    URIs = case props:get_value(amqp_uri, Init, ?DEFAULT_AMQP_URI) of
-               URI = "amqp://"++_ -> [URI];
-               URI = "amqps://"++_ -> [URI];
-               URI when is_list(URI) -> URI
+    URIs = case props:get_value(uri, Init, ?DEFAULT_AMQP_URI) of
+               URI = "amqp://"++_ -> 
+                   [URI];
+               URI = "amqps://"++_ -> 
+                   [URI];
+               URI when is_list(URI) -> 
+                   URI
            end,
     _ = [wh_amqp_connections:add(U) || U <- URIs],
     lager:info("waiting for first amqp connection...", []),
@@ -151,14 +154,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec get_config/0 :: () -> wh_proplist().
 get_config() ->
-    case file:consult(?STARTUP_FILE) of
-        {ok, Startup} ->
-            lager:info("successfully loaded amqp config ~s", [?STARTUP_FILE]),
-            Startup;
-        {error, enoent} ->
-            lager:error("amqp config ~s is missing", [?STARTUP_FILE]),
-            [];
-        {error, _E} ->
-            lager:error("failed to load amqp config ~s: ~p", [?STARTUP_FILE, _E]),
-            []
-    end.
+    [{'uri', wh_config:get_string('amqp', 'uri')}
+     %%,{'use_federation', wh_config:get('amqp', 'use_federation')}
+    ].
