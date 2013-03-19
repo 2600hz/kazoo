@@ -43,6 +43,9 @@
 
 -define(CONFERENCES_TBL, 'ecallmgr_conferences').
 
+-define(PARTICIPANT_UPDATE_MSG(Node, UUID, Updates), {'participant_update', Node, UUID, Updates}).
+-define(PARTICIPANT_DESTROY_MSG(Node, UUID), {'participant_destroy', Node, UUID}).
+
 -record(conference, {name :: api_binary() | '$1' | '_'
                      ,uuid :: api_binary() | '$1' | '_'
                      ,node :: atom() | '$1' | '$2' | '_'
@@ -164,8 +167,8 @@ destroy(Node, Props) ->
 
 -spec participant_destroy(atom(), ne_binary(), wh_proplist()) -> 'ok'.
 participant_destroy(Node, UUID, Props) when is_list(Props) ->
-    gen_server:call(?MODULE, {'participant_destroy', Node, UUID}),
-    maybe_publish_participants_event(Node, UUID, Props).
+    gen_server:call(?MODULE, ?PARTICIPANT_DESTROY_MSG(Node, UUID)),
+    publish_participant_destroy_event(Node, UUID, Props).
 
 size(ConfId) ->
     case ets:lookup(?CONFERENCES_TBL, ConfId) of
@@ -339,19 +342,21 @@ handle_call({'conference_update', Node, Name, Update}, _, TID) ->
         [] -> lager:debug("no conference ~s on ~s, ignoring update", [Name, Node])
     end,
     {'reply', 'ok', TID};
-handle_call({'participant_update', Node, UUID, Update}, _, TID) ->
+handle_call(?PARTICIPANT_UPDATE_MSG(Node, UUID, Update), _, TID) ->
     case ets:lookup(TID, UUID) of
         [] ->
             lager:info("creating participant ~s on node ~s", [UUID, Node]),
             'true' = ets:insert_new(TID, #participant{uuid=UUID}),
-            'true' = ets:update_element(TID, UUID, Update);
+            'true' = ets:update_element(TID, UUID, Update),
+            {'reply', 'new', TID};
         [#participant{node=Node}] ->
             lager:debug("participant ~s on ~s, applying update", [UUID, Node]),
-            ets:update_element(TID, UUID, Update);
+            ets:update_element(TID, UUID, Update),
+            {'reply', 'existing', TID};
         [#participant{node=_OtherNode}] ->
-            lager:debug("participant ~s is on ~s, not ~s, ignoring update", [UUID, _OtherNode, Node])
-    end,
-    {'reply', 'ok', TID};
+            lager:debug("participant ~s is on ~s, not ~s, ignoring update", [UUID, _OtherNode, Node]),
+            {'reply', 'ignore', TID}
+    end;
 handle_call({'conference_destroy', Node, Name}, _, TID) ->
     MatchSpecC = [{#conference{name='$1', node='$2', _ = '_'}
                    ,[{'andalso', {'=:=', '$2', {'const', Node}}
@@ -373,7 +378,7 @@ handle_call({'conference_destroy', Node, Name}, _, TID) ->
     N1 = ets:select_delete(TID, MatchSpecP),
     lager:info("removed ~p participant(s) in conference ~s on ~s", [N1, Name, Node]),
     {'reply', 'ok', TID};
-handle_call({'participant_destroy', Node, UUID}, _, TID) ->
+handle_call(?PARTICIPANT_DESTROY_MSG(Node, UUID), _, TID) ->
     MatchSpec = [{#participant{uuid='$1', node='$2', _ = '_'}
                   ,[{'andalso'
                      ,{'=:=', '$2', {'const', Node}}
@@ -449,7 +454,7 @@ handle_info(_Msg, TID) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -474,8 +479,7 @@ terminate(_Reason, TID) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
-code_change(_OldVsn, TID, _Extra) ->
-    {'ok', TID}.
+code_change(_OldVsn, TID, _Extra) -> {'ok', TID}.
 
 %%%===================================================================
 %%% Internal functions
@@ -638,12 +642,12 @@ update_all(Node, UUID, Props) ->
     update_participant(Node, UUID, Props).
 
 update_participant(Node, UUID, Props) ->
-    gen_server:call(?MODULE, {'participant_update'
-                                 ,Node
-                                 ,UUID
-                                 ,[{#participant.node, Node} | participant_fields(Props)]
-                                }),
-    maybe_publish_participants_event(Node, UUID, Props).
+    case gen_server:call(?MODULE, ?PARTICIPANT_UPDATE_MSG(Node, UUID
+                                                          ,[{#participant.node, Node} | participant_fields(Props)]
+                                                         )) of
+        'new' -> publish_new_participant_event(Node, UUID, Props);
+        _ -> 'ok'
+    end.
 
 update_conference(Node, Props) ->
     ProfileProps = ecallmgr_util:get_interface_properties(Node),
@@ -866,22 +870,34 @@ update_from_flags(P, [_|Els]) -> update_from_flags(P, Els).
 
 xml_text_to_binary(Els) -> iolist_to_binary([V || #xmlText{value=V} <- Els]).
 
-maybe_publish_participants_event(Node, _, Props) ->
+publish_new_participant_event(Node, _UUID, Props) ->
     ConferenceName = props:get_value(<<"Conference-Name">>, Props),
-    case participants_list(ConferenceName) of
-        [] ->
-            %% On some systems the conference-destroy is not reliable
-            %% so once the last participant leaves ensure its destroyed
-            destroy(Node, Props);
-        Participants ->
-            Event = [{<<"Participants">>, Participants}
-                     ,{<<"Focus">>, wh_util:to_binary(Node)}
-                     ,{<<"Conference-ID">>, ConferenceName}
-                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                    ],
-            Publisher = fun(P) -> wapi_conference:publish_participants_event(ConferenceName, P) end,
-            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                                ,Event
-                                ,Publisher
-                               )
+    Event = [{<<"Participants">>, participants_list(ConferenceName)}
+             ,{<<"Focus">>, wh_util:to_binary(Node)}
+             ,{<<"Conference-ID">>, ConferenceName}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    Publisher = fun(P) -> wapi_conference:publish_participants_event(ConferenceName, P) end,
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                        ,Event
+                        ,Publisher
+                       ).
+
+publish_participant_destroy_event(Node, _UUID, Props) ->
+    ConferenceName = props:get_value(<<"Conference-Name">>, Props),
+    Event = [{<<"Participants">>, (Participants = participants_list(ConferenceName))}
+             ,{<<"Focus">>, wh_util:to_binary(Node)}
+             ,{<<"Conference-ID">>, ConferenceName}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    Publisher = fun(P) -> wapi_conference:publish_participants_event(ConferenceName, P) end,
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                        ,Event
+                        ,Publisher
+                       ),
+    case Participants of
+        %% On some systems the conference-destroy is not reliable
+        %% so once the last participant leaves ensure its destroyed
+        [] -> destroy(Node, Props);
+        _ -> 'ok'
     end.
