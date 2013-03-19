@@ -14,6 +14,7 @@
 -export([start_link/2
          ,handle_resp/3
          ,handle_call_event/2
+         ,handle_offnet_event/2
          ,stop_call/2
          ,new_request/3, new_request/4
          ,updated_call/2
@@ -67,9 +68,14 @@ start_link(Call, JObj) ->
     gen_listener:start_link(?MODULE, [{'bindings', [{'call', [{'callid', CallId}
                                                               ,{'restrict_to', ['events', 'cdr']}
                                                              ]}
+                                                    ,{'self', []}
                                                    ]}
                                       ,{'responders', [{{?MODULE, 'handle_call_event'}
-                                                        ,[{<<"*">>, <<"*">>}]}
+                                                        ,[{<<"call_event">>, <<"*">>}]
+                                                       }
+                                                       ,{{?MODULE, 'handle_offnet_event'}
+                                                         ,[{<<"resource">>, <<"offnet_resp">>}]
+                                                        }
                                                       ]}
                                      ], [Call, JObj]).
 
@@ -89,6 +95,15 @@ updated_call(Srv, Call) ->
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
+    lager:debug("kzt_call_evt: ~p", [JObj]),
+    case props:get_value('pid', Props) of
+        P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
+        _ -> 'ok'
+    end.
+
+-spec handle_offnet_event(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_offnet_event(JObj, Props) ->
+    lager:debug("kzt_offnet: ~p", [JObj]),
     case props:get_value('pid', Props) of
         P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
         _ -> 'ok'
