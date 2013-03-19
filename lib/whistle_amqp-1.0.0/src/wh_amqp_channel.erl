@@ -166,11 +166,15 @@ command(#wh_amqp_channel{consumer=Consumer
                          ,commands=Commands
                         }=Channel
         ,#'basic.consume'{queue=Q}=Command) ->
-    case lists:keysearch(Q, #'basic.consume'.queue, Commands) of
-        {'value', _} ->
+    case lists:any(fun(#'basic.consume'{queue=Queue}) ->
+                           Queue =:= Q;
+                      (_) -> 'false'
+                   end, Commands)
+    of
+        'true' ->
             lager:debug("skipping existing basic consume for queue ~s", [Q]),
             'ok';
-        false ->
+        'false' ->
             Result = amqp_channel:subscribe(Pid, Command, Consumer),
             handle_command_result(Result, Command, Channel)
     end;
