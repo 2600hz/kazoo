@@ -95,7 +95,6 @@ updated_call(Srv, Call) ->
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
-    lager:debug("kzt_call_evt: ~p", [JObj]),
     case props:get_value('pid', Props) of
         P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
         _ -> 'ok'
@@ -103,7 +102,6 @@ handle_call_event(JObj, Props) ->
 
 -spec handle_offnet_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_offnet_event(JObj, Props) ->
-    lager:debug("kzt_offnet: ~p", [JObj]),
     case props:get_value('pid', Props) of
         P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
         _ -> 'ok'
