@@ -208,8 +208,8 @@ update(Updaters, Conference) ->
 id(#whapps_conference{id=Id}) ->
     Id.
 
--spec set_id(ne_binary(), conference()) -> conference().
-set_id(Id, Conference) when is_binary(Id) ->
+-spec set_id(api_binary(), conference()) -> conference().
+set_id(Id, Conference) when is_binary(Id); Id =:= 'undefined' ->
     Conference#whapps_conference{id=Id}.
 
 -spec application_name(conference()) -> ne_binary().
