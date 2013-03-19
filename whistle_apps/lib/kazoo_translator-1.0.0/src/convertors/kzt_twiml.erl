@@ -15,6 +15,12 @@
          ,req_params/1
         ]).
 
+-export([timeout_s/1
+         ,reject_reason/1
+         ,reject_status/1
+         ,reject_code/1
+        ]).
+
 parse_cmds(XMLString) ->
     try xmerl_scan:string(wh_util:to_list(XMLString)) of
         {#xmlElement{name='Response'}=XML, _} -> {'ok', XML};
@@ -74,7 +80,7 @@ exec_element(Call, #xmlElement{name='Dial'
                                ,content=Endpoints
                                ,attributes=Attrs
                               }) ->
-    dial(Call, Endpoints, Attrs);
+    kzt_twiml_dial:exec(Call, Endpoints, Attrs);
 exec_element(Call, #xmlElement{name='Record'
                                ,content=[] % nothing inside the tags please
                                ,attributes=Attrs
@@ -160,136 +166,6 @@ req_params(Call) ->
 %%------------------------------------------------------------------------------
 %% Verbs
 %%------------------------------------------------------------------------------
--spec dial(whapps_call:call(), xml_els(), xml_els()) -> {'ok' | 'stop', whapps_call:call()}.
-dial(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
-    whapps_call_command:answer(Call),
-    DialMe = wnm_util:to_e164(cleanup_dial_me(xml_text_to_binary(DialMeTxts))),
-    lager:debug("dial text DID '~s'", [DialMe]),
-
-    Props = kzt_util:attributes_to_proplist(Attrs),
-
-    Call1 = setup_call_for_dial(whapps_call:set_request(request_id(DialMe, Call), Call)
-                                ,Props
-                               ),
-
-    OffnetProps = [{<<"Timeout">>, kzt_util:get_call_timeout(Call1)}
-                   ,{<<"Media">>, media_processing(Call1)}
-                   ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"park_after_bridge">>, 'true'}])}
-                   ,{<<"Force-Outbound">>, force_outbound(Props)}
-                   ,{<<"Server-ID">>, whapps_call:controller_queue(Call1)}
-                  ],
-
-    'ok' = kzt_util:offnet_req(OffnetProps, Call1),
-
-    {'ok', Call2} = kzt_receiver:wait_for_offnet(
-                      kzt_util:update_call_status(?STATUS_RINGING, Call1)
-                     ),
-    maybe_end_dial(Call2);
-dial(Call, [#xmlElement{name='Conference'
-                        ,content=ConfIdTxts
-                        ,attributes=ConfAttrs
-                       }], DialAttrs) ->
-    ConfId = xml_text_to_binary(ConfIdTxts),
-
-    ConfProps = kzt_util:attributes_to_proplist(ConfAttrs),
-    DialProps = kzt_util:attributes_to_proplist(DialAttrs),
-
-    _StartMuted = props:is_true('muted', ConfProps, 'false'),
-    _PlayBeep = props:is_true('beep', ConfProps, 'true'),
-    _StartConfOnEnter = props:is_true('startConferenceOnEnter', ConfProps, 'true'),
-    _EndConfOnExit = props:is_true('endConferenceOnExit', ConfProps, 'false'),
-
-    %% Will need to support fetching media OR TwiML
-    _WaitUrl = props:get_value('waitUrl', ConfProps),
-    _WaitMethod = kzt_util:http_method(ConfProps),
-
-    _MaxParticipants = get_max_participants(ConfProps),
-
-    Call1 = setup_call_for_dial(Call, DialProps),
-
-    lager:debug("dial into conference ~s, unsupported", [ConfId]),
-    {'stop', Call1};
-
-dial(Call, [#xmlElement{name='Queue'
-                        ,content=QueueIdTxts
-                        ,attributes=QueueAttrs
-                       }], DialAttrs) ->
-    DialProps = kzt_util:attributes_to_proplist(DialAttrs),
-
-    QueueId = xml_text_to_binary(QueueIdTxts),
-    QueueProps = kzt_util:attributes_to_proplist(QueueAttrs),
-
-    %% Fetch TwiML to play to caller before connecting agent
-    _Url = props:get_value('url', QueueProps),
-    _Method = kzt_util:http_method(QueueProps),
-
-    Call1 = setup_call_for_dial(
-              kzt_util:set_queue_sid(QueueId, Call)
-              ,DialProps
-             ),
-
-    lager:debug("dial into queue ~s, unsupported", [QueueId]),
-    {'stop', Call1};
-
-dial(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
-    lager:debug("dialing endpoints"),
-
-    Props = kzt_util:attributes_to_proplist(Attrs),
-    Call1 = setup_call_for_dial(Call, Props),
-
-    case xml_elements_to_endpoints(Call1, Endpoints) of
-        [] ->
-            lager:debug("no endpoints were available"),
-            {'stop', Call1};
-        EPs ->
-            lager:debug("endpoints created, sending dial"),
-            Timeout = dial_timeout(Props),
-            IgnoreEarlyMedia = cf_util:ignore_early_media(EPs),
-            Strategy = dial_strategy(Props),
-
-            send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call1),
-
-            {'ok', Call2} = kzt_receiver:wait_for_offnet(
-                              kzt_util:update_call_status(?STATUS_RINGING, Call1)
-                             ),
-            maybe_end_dial(Call2)
-    end.
-
-send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
-    B = [{<<"Application-Name">>, <<"bridge">>}
-         ,{<<"Endpoints">>, EPs}
-         ,{<<"Timeout">>, Timeout}
-         ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-         ,{<<"Dial-Endpoint-Method">>, Strategy}
-         ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"park_after_bridge">>, 'true'}])}
-        ],
-    lager:debug("kzt_cmd: ~p", [B]),
-    {ok, Bin} = wapi_dialplan:bridge(B),
-    lager:debug("kzt_json: ~s", [iolist_to_binary(Bin)]),
-    whapps_call_command:send_command(B, Call).
-        
-setup_call_for_dial(Call, Props) ->
-    Setters = [{fun whapps_call:set_caller_id_number/2, caller_id(Props, Call)}
-               ,{fun kzt_util:set_hangup_dtmf/2, hangup_dtmf(Props)}
-               ,{fun kzt_util:set_record_call/2, should_record_call(Props)}
-               ,{fun kzt_util:set_call_timeout/2, timeout_s(Props)}
-               ,{fun kzt_util:set_call_time_limit/2, timelimit_s(Props)}
-              ],
-
-    lists:foldl(fun({F, V}, C) when is_function(F, 2) -> F(V, C) end
-                ,Call
-                ,Setters
-               ).
-
--spec maybe_end_dial(whapps_call:call()) -> {'ok' | 'stop', whapps_call:call()}.
-maybe_end_dial(Call) ->
-    case kzt_util:get_call_status(Call) of
-        ?STATUS_COMPLETED -> {'stop', Call};
-        _Status ->
-            lager:debug("a-leg status after bridge: ~s", [_Status]),
-            {'ok', Call} % will progress to next TwiML element
-    end.
-
 -spec hangup(whapps_call:call()) -> {'stop', whapps_call:call()}.
 hangup(Call) ->
     whapps_call_command:answer(Call),
@@ -297,7 +173,7 @@ hangup(Call) ->
     {'stop', kzt_util:update_call_status(?STATUS_COMPLETED, Call)}.
 
 reject(Call, Attrs) ->
-    Props = kzt_util:attributes_to_proplist(Attrs),
+    Props = kzt_util:xml_attributes_to_proplist(Attrs),
 
     Reason = reject_reason(Props),
     Code = reject_code(Reason),
@@ -307,7 +183,7 @@ reject(Call, Attrs) ->
 
 pause(Call, Attrs) ->
     whapps_call_command:answer(Call),
-    Props = kzt_util:attributes_to_proplist(Attrs),
+    Props = kzt_util:xml_attributes_to_proplist(Attrs),
 
     PauseFor = pause_for(Props),
     lager:debug("pause for ~b ms", [PauseFor]),
@@ -316,7 +192,7 @@ pause(Call, Attrs) ->
 
 set_variable(Call, Attrs) ->
     whapps_call_command:answer(Call),
-    Props = kzt_util:attributes_to_proplist(Attrs),
+    Props = kzt_util:xml_attributes_to_proplist(Attrs),
     {'ok', kzt_translator:set_user_vars(
              [{props:get_binary_value('key', Props), props:get_binary_value('value', Props)}]
              ,Call
@@ -334,9 +210,9 @@ set_variables(Call, Els) when is_list(Els) ->
                  {'error', _, whapps_call:call()}.
 say(Call, XmlText, Attrs) ->
     whapps_call_command:answer(Call),
-    SayMe = xml_text_to_binary(XmlText, whapps_config:get_integer(<<"pivot">>, <<"tts_text_size">>, ?TTS_SIZE_LIMIT)),
+    SayMe = kzt_util:xml_text_to_binary(XmlText, whapps_config:get_integer(<<"pivot">>, <<"tts_text_size">>, ?TTS_SIZE_LIMIT)),
 
-    Props = kzt_util:attributes_to_proplist(Attrs),
+    Props = kzt_util:xml_attributes_to_proplist(Attrs),
 
     Voice = get_voice(Props),
     Lang = get_lang(Props),
@@ -356,10 +232,10 @@ say(Call, XmlText, Attrs) ->
                   {'error', _, whapps_call:call()}.
 play(Call, XmlText, Attrs) ->
     whapps_call_command:answer(Call),
-    PlayMe = xml_text_to_binary(XmlText),
+    PlayMe = kzt_util:xml_text_to_binary(XmlText),
     lager:debug("PLAY '~s'", [PlayMe]),
 
-    Props = kzt_util:attributes_to_proplist(Attrs),
+    Props = kzt_util:xml_attributes_to_proplist(Attrs),
 
     case loop_count(Props) of
         0 -> kzt_receiver:play_loop(Call, PlayMe, 'infinity');
@@ -369,13 +245,13 @@ play(Call, XmlText, Attrs) ->
 redirect(Call, XmlText, Attrs) ->
     whapps_call_command:answer(Call),
 
-    Props = kzt_util:attributes_to_proplist(Attrs),
+    Props = kzt_util:xml_attributes_to_proplist(Attrs),
 
     CurrentUri = kzt_util:get_voice_uri(Call),
 
-    RedirectUri = xml_text_to_binary(XmlText),
+    RedirectUri = kzt_util:xml_text_to_binary(XmlText),
 
-    Call1 = case xml_elements(XmlText) of
+    Call1 = case kzt_util:xml_elements(XmlText) of
                 [] -> Call;
                 Els -> set_variables(Call, Els)
             end,
@@ -392,7 +268,7 @@ gather(Call, [], Attrs) -> gather(Call, Attrs);
 gather(Call, SubActions, Attrs) ->
     lager:debug("GATHER: exec sub actions"),
     case exec_elements(kzt_util:clear_digits_collected(Call)
-                       ,xml_elements(SubActions)
+                       ,kzt_util:xml_elements(SubActions)
                       )
     of
         {'ok', C} -> gather(C, Attrs);
@@ -403,7 +279,7 @@ gather(Call, SubActions, Attrs) ->
 gather(Call, Attrs) ->
     whapps_call_command:answer(Call),
 
-    Props = kzt_util:attributes_to_proplist(Attrs),
+    Props = kzt_util:xml_attributes_to_proplist(Attrs),
 
     Timeout = timeout_s(Props, 5) * 1000,
     FinishKey = finish_dtmf(Props),
@@ -437,7 +313,7 @@ gather_finished(Call, Props) ->
     end.
 
 record_call(Call, Attrs) ->
-    Props = kzt_util:attributes_to_proplist(Attrs),
+    Props = kzt_util:xml_attributes_to_proplist(Attrs),
     Timeout = timeout_s(Props, 5),
     FinishOnKey = get_finish_key(Props),
     MaxLength = get_max_length(Props),
@@ -524,105 +400,7 @@ media_name(Call) ->
 %%------------------------------------------------------------------------------
 %% Helpers
 %%------------------------------------------------------------------------------
--spec xml_text_to_binary(xml_texts()) -> binary().
-xml_text_to_binary(Vs) when is_list(Vs) ->
-    lists:foldl(fun(C, B) ->
-                        wh_util:strip_binary(B, C)
-                end
-                ,iolist_to_binary([V || #xmlText{value=V, type='text'} <- Vs])
-                ,[$\n, $ , $\n, $ ]
-               ).
-
-xml_text_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->
-    B = xml_text_to_binary(Vs),
-    case byte_size(B) > Size of
-        'true' -> erlang:binary_part(B, 0, Size);
-        'false' -> B
-    end.
-
--spec xml_elements(list()) -> xml_els().
-xml_elements(Els) -> [El || #xmlElement{}=El <- Els].
-
--spec xml_elements_to_endpoints(whapps_call:call(), xml_els()) -> wh_json:objects().
--spec xml_elements_to_endpoints(whapps_call:call(), xml_els(), wh_json:objects()) ->
-                                             wh_json:objects().
-xml_elements_to_endpoints(Call, EPs) ->
-    xml_elements_to_endpoints(Call, EPs, []).
-
-xml_elements_to_endpoints(_, [], Acc) -> Acc;
-xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
-                                             ,content=DeviceIdTxt
-                                             ,attributes=_DeviceAttrs
-                                            }
-                                 | EPs], Acc
-                         ) ->
-    DeviceId = xml_text_to_binary(DeviceIdTxt),
-    lager:debug("maybe adding device ~s to ring group", [DeviceId]),
-    case cf_endpoint:build(DeviceId, Call) of
-        {'ok', [EP]} -> xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
-        {'ok', DeviceEPs} -> xml_elements_to_endpoints(Call, EPs, DeviceEPs ++ Acc);
-        {'error', _E} ->
-            lager:debug("failed to add device ~s: ~p", [DeviceId, _E]),
-            xml_elements_to_endpoints(Call, EPs, Acc)
-    end;
-xml_elements_to_endpoints(Call, [#xmlElement{name='User'
-                                            ,content=UserIdTxt
-                                            ,attributes=_UserAttrs
-                                            }
-                                | EPs], Acc) ->
-    UserId = xml_text_to_binary(UserIdTxt),
-    lager:debug("maybe adding user ~s to ring group", [UserId]),
-
-    case cf_endpoint:build(UserId, Call) of
-        {'ok', [EP]} -> xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
-        {'ok', UserEPs} -> xml_elements_to_endpoints(Call, EPs, UserEPs ++ Acc);
-        {'error', _E} ->
-            lager:debug("failed to add user ~s: ~p", [UserId, _E]),
-            xml_elements_to_endpoints(Call, EPs, Acc)
-    end;
-xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
-                                             ,content=Number
-                                             ,attributes=Attrs
-                                            }
-                                 | EPs], Acc) ->
-    Props = kzt_util:attributes_to_proplist(Attrs),
-
-    SendDigits = props:get_value('sendDigis', Props),
-    Url = props:get_value('url', Props),
-    Method = props:get_value('method', Props),
-
-    DialMe = wmn_util:to_e164(xml_text_to_binary(Number)),
-
-    lager:debug("maybe add number ~s: send ~s, skipping", [DialMe, SendDigits]),
-    xml_elements_to_endpoints(Call, EPs, Acc);
-
-xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
-    lager:debug("unknown endpoint: ~p", [_Xml]),
-    xml_elements_to_endpoints(Call, EPs, Acc).
-
--spec caller_id(wh_proplist(), whapps_call:call()) -> ne_binary().
-caller_id(Props, Call) ->
-    wh_util:to_binary(
-      props:get_value('callerId', Props, whapps_call:caller_id_number(Call))
-     ).
-
-timelimit_s(Props) -> props:get_integer_value('timeLimit', Props, 14400).
 loop_count(Props) -> props:get_integer_value('loop', Props, 1).
-
-request_id(N, Call) -> iolist_to_binary([N, $@, whapps_call:from_realm(Call)]).
-should_record_call(Props) -> wh_util:is_true(props:get_value('record', Props, 'false')).
-
--spec hangup_dtmf(wh_proplist() | api_binary()) -> api_binary().
-hangup_dtmf(Props) when is_list(Props) ->
-    case props:get_value('hangupOnStar', Props) of
-        'true' -> <<"*">>;
-        _ -> hangup_dtmf(props:get_binary_value('hangupOn', Props))
-    end;
-hangup_dtmf(DTMF) ->
-    case lists:member(DTMF, ?ANY_DIGIT) of
-        'true' -> DTMF;
-        'false' -> 'undefined'
-    end.
 
 finish_dtmf(Props) -> finish_dtmf(Props, <<"#">>).
 finish_dtmf(Props, Default) when is_list(Props) ->
@@ -632,12 +410,6 @@ finish_dtmf(Props, Default) when is_list(Props) ->
             'true' = lists:member(DTMF, ?ANY_DIGIT),
             DTMF
     end.
-
-media_processing(Call) ->
-    media_processing(kzt_util:get_record_call(Call), kzt_util:get_hangup_dtmf(Call)).
-
-media_processing('false', 'undefined') -> <<"bypass">>;
-media_processing('true', _HangupDTMF) -> <<"process">>.
 
 -spec get_voice(wh_proplist()) -> ne_binary().
 get_voice(Props) ->
@@ -681,10 +453,6 @@ get_max_length(Props) ->
         N when N > 0, N =< Max -> N
     end.
 
-get_max_participants(Props) when is_list(Props) ->
-    get_max_participants(props:get_integer_value('maxParticipants', Props, 40));
-get_max_participants(N) when is_integer(N), N =< 40, N > 0 -> N.
-
 %% limit pause to 1 hour (3600000 ms)
 -spec pause_for(wh_proplist()) -> 1000..3600000.
 pause_for(Props) ->
@@ -695,31 +463,6 @@ pause_for(Props) ->
     end.
 
 action_url(Props) -> props:get_value('action', Props).
-
--spec dial_timeout(wh_proplist() | pos_integer()) -> pos_integer().
-dial_timeout(Props) when is_list(Props) ->
-    dial_timeout(props:get_integer_value('timeout', Props, 20));
-dial_timeout(T) when is_integer(T), T > 0 -> T.
-
-dial_strategy(Props) ->
-    case props:get_value('strategy', Props) of
-        'undefined' -> <<"simultaneous">>;
-        <<"simultaneous">> -> <<"simultaneous">>;
-        <<"single">> -> <<"single">>
-    end.
-
-reject_reason(Props) ->
-    case props:get_binary_value('reason', Props) of
-        'undefined' -> <<"rejected">>;
-        <<"rejected">> -> <<"rejected">>;
-        <<"busy">> -> <<"busy">>
-    end.
-
-reject_code(<<"busy">>) -> <<"486">>;
-reject_code(<<"rejected">>) -> <<"503">>.
-
-reject_status(<<"486">>) -> ?STATUS_BUSY;
-reject_status(<<"503">>) -> ?STATUS_NOANSWER.
 
 reject_prompt(Props) -> props:get_binary_value('prompt', Props).
 
@@ -738,16 +481,15 @@ num_digits(Props) ->
         N when is_integer(N), N > 0 -> N
     end.
 
--spec cleanup_dial_me(ne_binary()) -> ne_binary().
-cleanup_dial_me(Txt) -> << <<C>> || <<C>> <= Txt, is_numeric_or_plus(C)>>.
+reject_reason(Props) ->
+    case props:get_binary_value('reason', Props) of
+        'undefined' -> <<"rejected">>;
+        <<"rejected">> -> <<"rejected">>;
+        <<"busy">> -> <<"busy">>
+    end.
 
--spec is_numeric_or_plus(pos_integer()) -> boolean().
-is_numeric_or_plus(Num) when Num >= $0, Num =< $9 -> 'true';
-is_numeric_or_plus($+) -> 'true';
-is_numeric_or_plus(_) -> 'false'.
+reject_code(<<"busy">>) -> <<"486">>;
+reject_code(<<"rejected">>) -> <<"503">>.
 
-%% To maintain compatibility with Twilo, we force the call offnet (otherwise
-%% the redirect onnet steals our callid, and callflow/trunkstore/other could
-%% potentially hangup our A-leg. If the B-leg is forced offnet, we can still
-%% capture the failed B-leg and continue processing the TwiML (if any).
-force_outbound(Props) -> props:get_is_true('continueOnFail', Props, 'true').
+reject_status(<<"486">>) -> ?STATUS_BUSY;
+reject_status(<<"503">>) -> ?STATUS_NOANSWER.
