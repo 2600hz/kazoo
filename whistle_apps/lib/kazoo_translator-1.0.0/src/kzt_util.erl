@@ -25,7 +25,7 @@
          ,set_digits_collected/2, get_digits_collected/1
          ,add_digit_collected/2, clear_digits_collected/1
 
-         ,attributes_to_proplist/1
+         ,xml_attributes_to_proplist/1
 
          ,set_recording_url/2, get_recording_url/1
          ,set_recording_duration/2, get_recording_duration/1
@@ -47,7 +47,8 @@
          ,set_media_meta/2, get_media_meta/1
          ,set_amqp_listener/2, get_amqp_listener/1
 
-
+         ,xml_elements/1
+         ,xml_text_to_binary/1, xml_text_to_binary/2
         ]).
 
 -include("kzt.hrl").
@@ -229,8 +230,28 @@ get_request_vars(Call) ->
          ,{<<"CallStatus">>, get_call_status(Call)}
         ])).
 
-attributes_to_proplist(L) ->
+-spec xml_attributes_to_proplist(xml_attribs()) -> wh_proplist().
+xml_attributes_to_proplist(L) ->
     [{K, V} || #xmlAttribute{name=K, value=V} <- L].
+
+-spec xml_text_to_binary(xml_texts()) -> binary().
+xml_text_to_binary(Vs) when is_list(Vs) ->
+    lists:foldl(fun(C, B) ->
+                        wh_util:strip_binary(B, C)
+                end
+                ,iolist_to_binary([V || #xmlText{value=V, type='text'} <- Vs])
+                ,[$\n, $ , $\n, $ ]
+               ).
+
+xml_text_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->
+    B = xml_text_to_binary(Vs),
+    case byte_size(B) > Size of
+        'true' -> erlang:binary_part(B, 0, Size);
+        'false' -> B
+    end.
+
+-spec xml_elements(list()) -> xml_els().
+xml_elements(Els) -> [El || #xmlElement{}=El <- Els].
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
