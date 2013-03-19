@@ -176,6 +176,7 @@ dial(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
                    ,{<<"Media">>, media_processing(Call1)}
                    ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"park_after_bridge">>, 'true'}])}
                    ,{<<"Force-Outbound">>, force_outbound(Props)}
+                   ,{<<"Server-ID">>, whapps_call:controller_queue(Call1)}
                   ],
 
     'ok' = kzt_util:offnet_req(OffnetProps, Call1),
