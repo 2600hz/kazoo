@@ -53,20 +53,21 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put(callid, ?LOG_SYSTEM_ID),
-    {ok, Config} = get_config(),
+    put('callid', ?LOG_SYSTEM_ID),
+    Config= get_config(),
     %% TODO: for the time being just maintain backward compatability
     wh_couch_connections:add(create_connection(Config)),
     wh_couch_connections:add(create_admin_connection(Config)),
-    AutoCmpt = wh_util:is_true(props:get_value(compact_automatically, Config)),
-    CacheProps = [{expires, infinity}
-                  ,{origin, {db, ?WH_CONFIG_DB, <<"whistle_couch">>}}
+    AutoCmpt = wh_config:get('bigcouch', 'compact_automatically'),
+    CacheProps = [{'expires', 'infinity'}
+                  ,{'origin', {'db', ?WH_CONFIG_DB, <<"whistle_couch">>}}
                  ],
     wh_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, AutoCmpt, CacheProps),
-    wh_couch_connections:set_node_cookie(props:get_value(bigcouch_cookie, Config, change_me)),
+    Cookie = wh_config:get_atom('bigcouch', 'cookie', 'change_me'),
+    wh_couch_connections:set_node_cookie(Cookie),
     lager:info("waiting for first bigcouch/haproxy connection...", []),
     wh_couch_connections:wait_for_connection(),
-    {ok, #state{}, 100}.
+    {'ok', #state{}, 100}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -83,7 +84,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -96,7 +97,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -108,12 +109,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, State) ->
+handle_info('timeout', State) ->
 %%    _ = wh_couch_sup:stop_bootstrap(),
-    {noreply, State};
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -138,33 +139,27 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 -spec get_config() -> {'ok', wh_proplist()}.
 get_config() ->
-    case file:consult(?CONFIG_FILE_PATH) of
-        {ok, _}=Ok ->
-            lager:info("successfully loaded couch config ~s", [?CONFIG_FILE_PATH]),
-            Ok;
-        {'error', 'enoent'} ->
-            lager:error("couch config ~s is missing", [?CONFIG_FILE_PATH]),
-            get_config();
-        {'error', _E} ->
-            lager:error("failed to load couch config ~s: ~p", [?CONFIG_FILE_PATH, _E]),
-            get_config()
-    end.
+    [{'default_couch_host', 
+      {wh_config:get_default(bigcouch, ip, "")
+       ,wh_config:get_integer(bigcouch, port, 5984)
+       ,wh_config:get_string(bigcouch, username, "")
+       ,wh_config:get_string(bigcouch, password, "")
+       ,wh_config:get_integer(bigcouch, admin_port, 5986)
+      }
+     }].
 
 -spec create_connection(wh_proplist()) -> couch_connection().
 create_connection(Props) ->
     Routines = [fun(C) ->
                         import_config(props:get_value(default_couch_host, Props), C)
                 end
-                ,fun(C) ->
-                         import_config(props:get_value(couch_host, Props), C)
-                 end
                 ,fun(C) -> wh_couch_connection:set_admin(false, C) end
                ],
     lists:foldl(fun(F, C) -> F(C) end, #wh_couch_connection{id = 1}, Routines).
@@ -181,16 +176,6 @@ create_admin_connection(Props) ->
                                 import_config(Else, C)
                         end
                 end
-                ,fun(C) ->
-                         case props:get_value(couch_host, Props) of
-                             {Host, _, User, Pass, AdminPort} ->
-                                 import_config({Host, AdminPort, User, Pass}, C);
-                             {Host, _, User, Pass} ->
-                                 import_config({Host, User, Pass}, C);
-                             Else ->
-                                 import_config(Else, C)
-                         end
-                 end
                 ,fun(C) -> wh_couch_connection:set_admin(true, C) end
                ],
     lists:foldl(fun(F, C) -> F(C) end, #wh_couch_connection{id = 2}, Routines).
