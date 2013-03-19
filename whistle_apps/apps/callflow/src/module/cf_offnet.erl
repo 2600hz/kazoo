@@ -43,10 +43,6 @@ handle(Data, Call) ->
 offnet_req(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
-    CIDNum = case whapps_call:kvs_fetch(dynamic_cid, Call) of
-                 undefined -> CIDNumber;
-                 DynamicCID -> DynamicCID
-             end,
 
     Endpoint = case cf_endpoint:get(Call) of
                    {ok, JObj} -> JObj;
@@ -68,7 +64,7 @@ offnet_req(Data, Call) ->
            ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
            ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
            ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
-           ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
+           ,{<<"Outgoing-Caller-ID-Number">>, CIDNumber}
            ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
            ,{<<"SIP-Headers">>, build_sip_headers(Data, Call)}

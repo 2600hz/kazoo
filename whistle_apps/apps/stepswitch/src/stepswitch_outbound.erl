@@ -185,6 +185,8 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
                ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
                ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
+               ,{<<"Caller-ID-Number">>, CIDNum}
+               ,{<<"Caller-ID-Name">>, CIDName}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                ,{<<"Continue-On-Fail">>, <<"true">>}
@@ -254,6 +256,8 @@ originate_to_endpoints(Endpoints, JObj) ->
                  ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
                  ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
                  ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
+                 ,{<<"Caller-ID-Number">>, CIDNum}
+                 ,{<<"Caller-ID-Name">>, CIDName}
                  ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                  ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                  ,{<<"Continue-On-Fail">>, <<"true">>}
