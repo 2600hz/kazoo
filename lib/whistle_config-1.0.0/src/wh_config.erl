@@ -11,9 +11,20 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
--export([get/2
-         ,get/1
+-export([get/1
+         ,get/2
+         ,get_default/3
         ]).
+-export([get_atom/2
+         ,get_atom/3
+        ]).
+-export([get_integer/2
+         ,get_integer/3
+        ]).
+-export([get_string/2
+         ,get_string/3
+        ]).
+
 
 -define(CONFIG_FILE_ENV, "KAZOO_CONFIG").
 -define(CONFIG_FILE, "/tmp/kazoo/conf.ini").
@@ -27,7 +38,7 @@
 get(Section) ->
     case load() of 
         {'ok', Prop} ->
-            {Section, get_sections(Section, Prop)};
+            get_sections(Section, Prop);
         {'error', E} ->
             {'error', E}
     end.
@@ -39,10 +50,72 @@ get(Section) ->
 %% @end
 %%--------------------------------------------------------------------
 get(Section, Key) ->
+    get(Section, Key, 'undefined').
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Return values of the config file
+%% @end
+%%--------------------------------------------------------------------
+get_atom(Section, Key) ->
+    get(Section, Key, 'atom').
+
+get_atom(Section, Key, Default) ->
+    get_default(Section, Key, Default, 'atom').
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Return values of the config file
+%% @end
+%%--------------------------------------------------------------------
+get_integer(Section, Key) ->
+    get(Section, Key, 'integer').
+
+get_integer(Section, Key, Default) ->
+    get_default(Section, Key, Default, 'integer').
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Return values of the config file
+%% @end
+%%--------------------------------------------------------------------
+get_string(Section, Key) ->
+    get(Section, Key, 'string').
+
+get_string(Section, Key, Default) ->
+    get_default(Section, Key, Default, 'string').
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Return values of the config file
+%% @end
+%%--------------------------------------------------------------------
+get_default(Section, Key, Default) ->
+    get_default(Section, Key, Default, 'undefined').
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+get(Section, Keys, Type) when is_list(Keys) ->
+    V = lists:foldl(fun(Key, Acc) ->
+                            [V] = get(Section, Key, Type),
+                            [V | Acc]
+                    end, [], Keys),
+    lists:reverse(V);
+get(Section, Key, Type) ->
     case load() of 
         {'ok', Prop} ->
             Sections = get_sections(Section, Prop),
-            {Section, Key, get_values(Key, Sections)};
+            get_values(Key, Sections, Type);
         {'error', _E} ->
             _E
     end.
@@ -53,9 +126,31 @@ get(Section, Key) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
+get_default(Section, Key, Default, Type) ->
+    case load() of 
+        {'ok', Prop} ->
+            Sections = get_sections(Section, Prop),
+            case get_values(Key, Sections, Type) of
+                [] ->
+                    Default;
+                Values ->
+                    Values
+            end;
+        {'error', _E} ->
+            _E
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
 get_sections(Section, Prop) ->
     Sections = proplists:get_all_values(Section, Prop),
     format_sections(Sections).
+    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -123,14 +218,50 @@ is_local_section({SectionHost, _}) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
-get_values(Key, Sections) ->
-    get_values(Sections, Key, []).
+get_values(Key, Sections, Type) ->
+    get_values(Sections, Key, [], Type).
 
-get_values([], _, Acc) ->
-     lists:reverse(lists:append(Acc));
-get_values([{_, Values} | T], Key, Acc) ->
+get_values([], _, [], _) ->
+    [];
+get_values([], _, [Res | []], Type) ->
+    format_value(Res, Type);
+get_values([], _, Acc, Type) ->
+    format_values(Acc, Type);
+get_values([{_, Values} | T], Key, Acc, Type) ->
     V = proplists:get_all_values(Key, Values),
-    get_values(T, Key, [V | Acc]).
+    get_values(T, Key, lists:append([V | Acc]), Type).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+format_values(Values, Type) when is_list(Values) ->
+    lists:foldr(fun(V, Acc) -> 
+                        [format_value(V, Type) | Acc]
+                end, [], Values).
+
+format_value(Value, Type) ->
+    case Type of
+        'atom' ->
+            wh_util:to_atom(Value);
+        'string' ->
+            wh_util:to_lower_string(Value);
+        'integer' ->
+            wh_util:to_integer(Value);
+        _ ->
+            Value
+    end.
+
+
+
+
+
+
+
+
+    
 
 %%--------------------------------------------------------------------
 %% @private
