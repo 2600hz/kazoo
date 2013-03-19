@@ -1032,5 +1032,5 @@ append_phone_number_debit(Units, #number{billing_id=Ledger, assigned_to=AccountI
                  end
                ],
     lager:debug("staging number activation charge $~p for ~s via billing account ~s"
-                ,[wht_money:units_to_dollars(Units), AccountId, LedgerId]),
+                ,[wht_util:units_to_dollars(Units), AccountId, LedgerId]),
     [lists:foldl(fun(F, T) -> F(T) end, wh_transaction:debit(Ledger, Units), Routines)|Activations].
