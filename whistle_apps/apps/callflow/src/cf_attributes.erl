@@ -66,7 +66,15 @@ caller_id(Attribute, Call) ->
             Name = whapps_call:caller_id_name(Call),
             maybe_normalize_cid(Number, Name, 'false', Attribute, Call);
         'false' ->
-            maybe_get_endpoint_cid('true', Attribute, Call)
+            maybe_get_dynamic_cid('true', Attribute, Call)
+    end.
+
+-spec maybe_get_dynamic_cid(boolean(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+maybe_get_dynamic_cid(Validate, Attribute, Call) ->
+    case whapps_call:kvs_fetch('dynamic_cid', Call) of
+        'undefined' -> maybe_get_endpoint_cid(Validate, Attribute, Call);
+        DynamicCID ->
+            maybe_normalize_cid(DynamicCID, 'undefined', Validate, Attribute, Call)
     end.
 
 -spec maybe_get_endpoint_cid(boolean(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.

@@ -17,12 +17,12 @@
                     end).
 
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".dynamic_cid">>).
-                            
--record(prompts, {accept_tone = 
+
+-record(prompts, {accept_tone =
                       whapps_config:get_binary(?MOD_CONFIG_CAT, <<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>),
                   reject_tone =
                       whapps_config:get_binary(?MOD_CONFIG_CAT, <<"reject_prompt">>, <<"/system_media/dynamic-cid-invalid_using_default">>),
-                  default_prompt = 
+                  default_prompt =
                       whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_prompt">>, <<"/system_media/dynamic-cid-enter_cid">>)
                  }).
 
@@ -57,7 +57,7 @@ handle(Data, Call) ->
             end,
     Min = DynamicCID#dynamic_cid.min_digits,
     Max = DynamicCID#dynamic_cid.max_digits,
-    Regex = DynamicCID#dynamic_cid.whitelist, 
+    Regex = DynamicCID#dynamic_cid.whitelist,
     DefaultCID = DynamicCID#dynamic_cid.default_cid,
     CID = case whapps_call_command:b_play_and_collect_digits(Min, Max, Media, <<"1">>, <<"5000">>, undefined, Regex, Call) of
               {ok, <<>>} ->

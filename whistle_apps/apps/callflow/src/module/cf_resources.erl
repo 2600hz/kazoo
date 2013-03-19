@@ -43,8 +43,8 @@ handle(Data, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec bridge_to_resources(endpoints(), api_binary(), api_binary(), api_binary(), wh_json:json_object(), whapps_call:call()) -> 'ok'.
-bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Data, Call) ->
-    Endpoint = [create_endpoint(DestNum, Gtw, Call)
+bridge_to_resources([{DestNum, Rsc, CID}|T], Timeout, IgnoreEarlyMedia, Ringback, Data, Call) ->
+    Endpoint = [create_endpoint(DestNum, Gtw, CID, Call)
                 || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)
                ],
     SIPHeaders = build_sip_headers(Data, Call),
@@ -86,8 +86,8 @@ bridge_to_resources([], _, _, _, _, Call) ->
 %% for use with the whistle bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoint(ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_json:json_object().
-create_endpoint(DestNum, JObj, Call) ->
+-spec create_endpoint(ne_binary(), wh_json:json_object(), {api_binary(), api_binary()}, whapps_call:call()) -> wh_json:json_object().
+create_endpoint(DestNum, JObj, {CIDNumber, CIDName}, Call) ->
     AccountDb = whapps_call:account_db(Call),
     CNum = whapps_call:caller_id_number(Call),
     Rule = <<"sip:"
@@ -109,7 +109,7 @@ create_endpoint(DestNum, JObj, Call) ->
             ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
             ,{<<"From-URI">>, maybe_from_uri(AccountDb, JObj, CNum)}
             ,{<<"Ignore-Display-Updates">>, <<"true">>}
-            ,{<<"Global-Resource">>, false}
+            ,{<<"Global-Resource">>, <<"false">>}
            ],
     Endpoint = [{<<"Invite-Format">>, <<"route">>}
                 ,{<<"Route">>, Rule}
@@ -120,6 +120,8 @@ create_endpoint(DestNum, JObj, Call) ->
                 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
                 ,{<<"Force-Fax">>, ForceFax}
+                ,{<<"Caller-ID-Name">>, CIDName}
+                ,{<<"Caller-ID-Number">>, CIDNumber}
                ],
     wh_json:from_list(props:filter_undefined(Endpoint)).
 
@@ -143,14 +145,13 @@ find_endpoints(Data, Call) ->
                                                 ,<<"outbound_resource_flag_fields">>
                                                 ,[]
                                                ),
-
     ToDID = get_to_did(Data, Call),
     case couch_mgr:get_results(AccountDb, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
             lager:info("found resources, filtering by rules and flags"),
             {ok, [{Number
                    ,wh_json:get_value([<<"value">>], Resource, [])
-                   ,get_caller_id_type(Resource, Call)
+                   ,get_caller_id(Resource, Call)
                   }
                   || Resource <- Resources,
                      Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), ToDID),
@@ -189,7 +190,7 @@ is_flag_exported(Flag, [{F, 1}|Funs]) ->
     end;
 is_flag_exported(Flag, [_|Funs]) ->
     is_flag_exported(Flag, Funs).
-            
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -213,18 +214,13 @@ get_to_did(Data, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_caller_id_type(wh_json:json_object(), whapps_call:call()) -> 'raw' | binary().
-get_caller_id_type(Resource, Call) ->
+-spec get_caller_id(wh_json:json_object(), whapps_call:call()) -> {api_binary(), api_binary()}.
+get_caller_id(Resource, Call) ->
     case wh_json:is_true(<<"emergency">>, Resource) of
-        true ->
-            <<"emergency">>;
+        true -> cf_attributes:caller_id(<<"emergency">>, Call);
         false ->
-            CCVs = whapps_call:custom_channel_vars(Call),
             Type = wh_json:get_value([<<"value">>, <<"caller_id_options">>, <<"type">>], Resource, <<"external">>),
-            case wh_json:is_true(<<"CF-Keep-Caller-ID">>, CCVs) andalso (Type =/= <<"emergency">>) of
-                false -> Type;
-                true -> raw
-            end
+            cf_attributes:caller_id(Type, Call)
     end.
 
 %%--------------------------------------------------------------------
