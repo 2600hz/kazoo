@@ -10,10 +10,12 @@
 -module(wh_config).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
+
 
 -export([get/1
          ,get/2
-         ,get_default/3
+         ,get/3
         ]).
 -export([get_atom/2
          ,get_atom/3
@@ -28,6 +30,9 @@
 
 -define(CONFIG_FILE_ENV, "KAZOO_CONFIG").
 -define(CONFIG_FILE, "/tmp/kazoo/conf.ini").
+-define(DEFAULT_DEFAULT, []).
+
+-type section() :: 'bigcouch' | 'amqp'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -35,12 +40,21 @@
 %% Return a section of the config file
 %% @end
 %%--------------------------------------------------------------------
+-spec get(section()) -> wh_proplist() | ?DEFAULT_DEFAULT.
 get(Section) ->
-    case load() of 
-        {'ok', Prop} ->
-            get_sections(Section, Prop);
-        {'error', E} ->
-            {'error', E}
+    ?MODULE:get(Section, 'undefined').
+
+-spec get(section(), 'undefined') -> wh_proplist() | ?DEFAULT_DEFAULT;
+         (section(), atom()) -> list() | ?DEFAULT_DEFAULT.
+get(Section, Key) ->
+    get(Section, Key, ?DEFAULT_DEFAULT).
+
+-spec get(section(), 'undefined', Default) -> wh_proplist() | Default;
+         (section(), atom(), Default) -> list() | Default.
+get(Section, Key, Default) ->
+    case find_values(Section, Key) of
+        [] -> Default;
+        Else -> Else
     end.
 
 %%--------------------------------------------------------------------
@@ -49,21 +63,16 @@ get(Section) ->
 %% Return values of the config file
 %% @end
 %%--------------------------------------------------------------------
-get(Section, Key) ->
-    get(Section, Key, 'undefined').
-
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Return values of the config file
-%% @end
-%%--------------------------------------------------------------------
+-spec get_atom(section(), atom()) -> [atom(),...] | ?DEFAULT_DEFAULT.
 get_atom(Section, Key) ->
-    get(Section, Key, 'atom').
+    get_atom(Section, Key, ?DEFAULT_DEFAULT).
 
+-spec get_atom(section(), atom(), Default) -> [atom(),...] | Default.
 get_atom(Section, Key, Default) ->
-    get_default(Section, Key, Default, 'atom').
+    case ?MODULE:get(Section, Key, Default) of
+        Default -> Default;
+        [_|_]=Values -> [wh_util:to_atom(Value) || Value <- Values]
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -72,10 +81,13 @@ get_atom(Section, Key, Default) ->
 %% @end
 %%--------------------------------------------------------------------
 get_integer(Section, Key) ->
-    get(Section, Key, 'integer').
+    get_integer(Section, Key, ?DEFAULT_DEFAULT).
 
 get_integer(Section, Key, Default) ->
-    get_default(Section, Key, Default, 'integer').
+    case ?MODULE:get(Section, Key, Default) of
+        Default -> Default;
+        [_|_]=Values -> [wh_util:to_integer(Value) || Value <- Values]
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -84,81 +96,51 @@ get_integer(Section, Key, Default) ->
 %% @end
 %%--------------------------------------------------------------------
 get_string(Section, Key) ->
-    get(Section, Key, 'string').
+    get_string(Section, Key, ?DEFAULT_DEFAULT).
 
 get_string(Section, Key, Default) ->
-    get_default(Section, Key, Default, 'string').
-
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Return values of the config file
-%% @end
-%%--------------------------------------------------------------------
-get_default(Section, Key, Default) ->
-    get_default(Section, Key, Default, 'undefined').
+    case ?MODULE:get(Section, Key, Default) of
+        Default -> Default;
+        [_|_]=Values -> [wh_util:to_lower_string(Value) || Value <- Values]
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
-get(Section, Keys, Type) when is_list(Keys) ->
+find_values(Section, 'undefined') ->
+    {'ok', Prop} = load(),
+    get_sections(Section, Prop);
+find_values(Section, Keys) when is_list(Keys) ->
     V = lists:foldl(fun(Key, Acc) ->
-                            V = get(Section, Key, Type),
+                            V = find_values(Section, Key),
                             [V | Acc]
                     end, [], Keys),
     lists:reverse(V);
-get(Section, Key, Type) ->
-    case load() of 
-        {'ok', Prop} ->
-            Sections = get_sections(Section, Prop),
-            get_values(Key, Sections, Type);
-        {'error', _E} ->
-            _E
-    end.
+find_values(Section, Key) ->
+    {'ok', Prop} = load(),
+    Sections = get_sections(Section, Prop),
+    get_values(Key, Sections).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
-get_default(Section, Key, Default, Type) ->
-    case load() of 
-        {'ok', Prop} ->
-            Sections = get_sections(Section, Prop),
-            case get_values(Key, Sections, Type) of
-                [] ->
-                    Default;
-                Values ->
-                    Values
-            end;
-        {'error', _E} ->
-            _E
-    end.
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 get_sections(Section, Prop) ->
     Sections = proplists:get_all_values(Section, Prop),
     format_sections(Sections).
-    
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
-format_sections(Sections) -> 
+format_sections(Sections) ->
     format_sections(Sections, []).
 
 format_sections([], Acc) ->
@@ -174,7 +156,7 @@ format_sections([Section | T], Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 local_sections(Sections) ->
@@ -195,7 +177,7 @@ local_sections([Section | T], Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 is_local_section({SectionHost, _}) ->
@@ -215,58 +197,24 @@ is_local_section({SectionHost, _}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
-get_values(Key, Sections, Type) ->
-    get_values(Sections, Key, [], Type).
+get_values(Key, Sections) ->
+    get_values(Sections, Key, []).
 
-get_values([], _, [], _) ->
+get_values([], _, []) ->
     [];
-get_values([], _, [Res | []], Type) ->
-    format_value(Res, Type);
-get_values([], _, Acc, Type) ->
-    format_values(Acc, Type);
-get_values([{_, Values} | T], Key, Acc, Type) ->
+get_values([], _, Acc) ->
+    Acc;
+get_values([{_, Values} | T], Key, Acc) ->
     V = proplists:get_all_values(Key, Values),
-    get_values(T, Key, lists:append([V | Acc]), Type).
+    get_values(T, Key, lists:append([V | Acc])).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
-format_values(Values, Type) when is_list(Values) ->
-    lists:foldr(fun(V, Acc) -> 
-                        [format_value(V, Type) | Acc]
-                end, [], Values).
-
-format_value(Value, Type) ->
-    case Type of
-        'atom' ->
-            wh_util:to_atom(Value);
-        'string' ->
-            wh_util:to_lower_string(Value);
-        'integer' ->
-            wh_util:to_integer(Value);
-        _ ->
-            Value
-    end.
-
-
-
-
-
-
-
-
-    
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 load() ->
@@ -280,7 +228,7 @@ load() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 load_file(File) ->
@@ -288,7 +236,7 @@ load_file(File) ->
         {'ok', Prop} ->
             lager:info("loading config file ~p~n", [File]),
             {'ok', Prop};
-        Error ->
-            lager:error("error loading file ~p, ~p~n", [File ,Error]),
+        {'error', _}=Error ->
+            lager:error("error loading file ~p, ~p~n", [File, Error]),
             Error
     end.
