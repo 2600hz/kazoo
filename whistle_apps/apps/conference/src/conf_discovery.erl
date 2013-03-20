@@ -73,7 +73,7 @@ handle_discovery_req(JObj, _) ->
             conf_participant:set_discovery_event(JObj, Srv),
             conf_participant:consume_call_events(Srv),
             whapps_call_command:answer(Call),
-            welcome_to_conference(Call, Srv);
+            welcome_to_conference(Call, Srv, JObj);
         _Else ->
             discovery_failed(Call, 'undefined')
     end.
@@ -175,16 +175,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec welcome_to_conference(whapps_call:call(), pid()) -> 'ok'.
-welcome_to_conference(Call, Srv) ->
+-spec welcome_to_conference(whapps_call:call(), pid(), wh_json:object()) -> 'ok'.
+welcome_to_conference(Call, Srv, DiscoveryJObj) ->
     whapps_call_command:prompt(<<"conf-welcome">>, Call),
-    maybe_collect_conference_id(Call, Srv).
+    maybe_collect_conference_id(Call, Srv, DiscoveryJObj).
 
--spec maybe_collect_conference_id(whapps_call:call(), pid()) -> 'ok'.
-maybe_collect_conference_id(Call, Srv) ->
-    case wh_json:get_value(<<"Conference-Doc">>, Srv) of
-        'undefined' ->
-            collect_conference_id(Call, Srv);
+-spec maybe_collect_conference_id(whapps_call:call(), pid(), wh_json:object()) -> 'ok'.
+maybe_collect_conference_id(Call, Srv, DiscoveryJObj) ->
+    case wh_json:get_value(<<"Conference-Doc">>, DiscoveryJObj) of
+        'undefined' -> collect_conference_id(Call, Srv);
         Doc ->
             N = wh_json:get_value(<<"name">>, Doc, wh_util:rand_hex_binary(8)),
             lager:debug("conf doc (~s) set instead of conf id", [N]),

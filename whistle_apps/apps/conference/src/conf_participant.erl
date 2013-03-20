@@ -344,11 +344,11 @@ handle_cast({'authn_req', JObj}, #participant{conference=Conference
                         ,Call),
     {'noreply', Participant};
 handle_cast({'route_win', JObj}, #participant{conference=Conference
-                                            ,bridge=Bridge
-                                           }=Participant) ->
+                                              ,bridge=Bridge
+                                             }=Participant) ->
     lager:debug("won route for participant invite from local server"),
-    gen_listener:rm_binding(self(), route, []),
-    gen_listener:rm_binding(self(), authn, []),
+    gen_listener:rm_binding(self(), 'route', []),
+    gen_listener:rm_binding(self(), 'authn', []),
     B = whapps_call:from_route_win(JObj, Bridge),
     lager:debug("answering conference call bridge ~s", [whapps_call:call_id(B)]),
     whapps_call_command:answer(B),
