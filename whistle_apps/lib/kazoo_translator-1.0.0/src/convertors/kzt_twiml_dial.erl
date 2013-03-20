@@ -15,54 +15,47 @@
 -spec exec(whapps_call:call(), xml_els(), xml_els()) -> {'ok' | 'stop', whapps_call:call()}.
 exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
     whapps_call_command:answer(Call),
-    DialMe = wnm_util:to_e164(cleanup_dial_me(kzt_util:xml_text_to_binary(DialMeTxts))),
-    lager:debug("dial text DID '~s'", [DialMe]),
 
-    Props = kzt_util:xml_attributes_to_proplist(Attrs),
-
-    Call1 = setup_call_for_dial(whapps_call:set_request(request_id(DialMe, Call), Call)
-                                ,Props
-                               ),
-
-    OffnetProps = [{<<"Timeout">>, kzt_util:get_call_timeout(Call1)}
-                   ,{<<"Media">>, media_processing(Call1)}
-                   ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"park_after_bridge">>, 'true'}])}
-                   ,{<<"Force-Outbound">>, force_outbound(Props)}
-                   ,{<<"Server-ID">>, whapps_call:controller_queue(Call1)}
-                  ],
-    'ok' = kzt_util:offnet_req(OffnetProps, Call1),
-
-    {'ok', Call2} = kzt_receiver:wait_for_offnet(
-                      kzt_util:update_call_status(?STATUS_RINGING, Call1)
-                     ),
-    maybe_end_dial(Call2);
+    case wnm_util:to_e164(cleanup_dial_me(kzt_util:xml_text_to_binary(DialMeTxts))) of
+        <<>> ->
+            lager:debug("no text to dial, using only xml elements"),
+            exec(Call, kzt_util:xml_elements(DialMeTxts), Attrs);
+        DialMe -> dial_me(Call, Attrs, DialMe)
+    end;
 
 exec(Call, [#xmlElement{name='Conference'
                         ,content=ConfIdTxts
                         ,attributes=ConfAttrs
                        }], DialAttrs) ->
-    ConfId = kzt_util:xml_text_to_binary(ConfIdTxts),
+    whapps_call_command:answer(Call),
+
+    ConfId = conference_id(ConfIdTxts),
+    lager:debug("dial into conference '~s'", [ConfId]),
 
     ConfProps = kzt_util:xml_attributes_to_proplist(ConfAttrs),
     DialProps = kzt_util:xml_attributes_to_proplist(DialAttrs),
 
-    StartMuted = props:is_true('muted', ConfProps, 'false'),
-    PlayBeep = props:is_true('beep', ConfProps, 'true'),
-    StartConfOnEnter = props:is_true('startConferenceOnEnter', ConfProps, 'true'),
-    EndConfOnExit = props:is_true('endConferenceOnExit', ConfProps, 'false'),
+    ConfDoc = build_conference_doc(ConfId, ConfProps),
+    ConfReq = [{<<"Call">>, whapps_call:to_json(Call)}
+               ,{<<"Conference-Doc">>, ConfDoc}
+               ,{<<"Moderator">>, props:get_is_true('startConferenceOnEnter', ConfProps, 'true')}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    wapi_conference:publish_discovery_req(ConfReq),
+
+    lager:debug("published conference request"),
 
     %% Will need to support fetching media OR TwiML
     _WaitUrl = props:get_value('waitUrl', ConfProps),
     _WaitMethod = kzt_util:http_method(ConfProps),
 
-    MaxParticipants = get_max_participants(ConfProps),
+    {'ok', Call1} = kzt_receiver:wait_for_conference(
+                      kzt_util:update_call_status(?STATUS_ANSWERED, setup_call_for_dial(Call, DialProps))
+                     ),
 
-    %% enter_conference(),
-    %% maybe_start_hold_music(),
+    lager:debug("waited for offnet, maybe ending dial"),
 
-    Call1 = setup_call_for_dial(Call, DialProps),
-
-    lager:debug("dial into conference ~s, unsupported", [ConfId]),
+    maybe_end_dial(Call1),
     {'stop', Call1};
 
 exec(Call, [#xmlElement{name='Queue'
@@ -109,6 +102,28 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
                              ),
             maybe_end_dial(Call2)
     end.
+
+dial_me(Call, Attrs, DialMe) ->
+    lager:debug("dial text DID '~s'", [DialMe]),
+
+    Props = kzt_util:xml_attributes_to_proplist(Attrs),
+
+    Call1 = setup_call_for_dial(whapps_call:set_request(request_id(DialMe, Call), Call)
+                                ,Props
+                               ),
+
+    OffnetProps = [{<<"Timeout">>, kzt_util:get_call_timeout(Call1)}
+                   ,{<<"Media">>, media_processing(Call1)}
+                   ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"park_after_bridge">>, 'true'}])}
+                   ,{<<"Force-Outbound">>, force_outbound(Props)}
+                   ,{<<"Server-ID">>, whapps_call:controller_queue(Call1)}
+                  ],
+    'ok' = kzt_util:offnet_req(OffnetProps, Call1),
+
+    {'ok', Call2} = kzt_receiver:wait_for_offnet(
+                      kzt_util:update_call_status(?STATUS_RINGING, Call1)
+                     ),
+    maybe_end_dial(Call2).
 
 send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     B = [{<<"Application-Name">>, <<"bridge">>}
@@ -260,3 +275,44 @@ hangup_dtmf(DTMF) ->
 
 should_record_call(Props) -> wh_util:is_true(props:get_value('record', Props, 'false')).
 timelimit_s(Props) -> props:get_integer_value('timeLimit', Props, 14400).
+
+
+-spec build_conference_doc(ne_binary(), wh_proplist()) -> wh_json:object().
+build_conference_doc(ConfId, ConfProps) ->
+    StartOnEnter = props:is_true('startConferenceOnEnter', ConfProps),
+
+    wh_json:from_list([{<<"name">>, ConfId}
+                       ,{<<"play_welcome">>, 'false'}
+                       ,{<<"play_entry_tone">>, props:is_true('beep', ConfProps, 'true')}
+                       ,{<<"member">>, member_flags(ConfProps, StartOnEnter)}
+                       ,{<<"moderator">>, moderator_flags(ConfProps, StartOnEnter)}
+                       ,{<<"require_moderator">>, require_moderator(StartOnEnter)}
+                       ,{<<"wait_for_moderator">>, 'true'}
+                       ,{<<"max_members">>, get_max_participants(ConfProps)}
+                      ]).
+
+require_moderator('undefined') -> 'false';
+require_moderator('true') -> 'false';
+require_moderator('false') -> 'true'.
+
+member_flags(_, 'true') -> wh_json:new();
+member_flags(ConfProps, _) ->
+    wh_json:from_list([{<<"join_muted">>, props:is_true('muted', ConfProps, 'false')}
+                       ,{<<"join_deaf">>, props:is_true('deaf', ConfProps, 'false')}
+                       ,{<<"play_name">>, props:is_true('play_name', ConfProps, 'false')}
+                       ,{<<"play_entry_prompt">>, props:is_true('play_entry_prompt', ConfProps, 'true')}
+                      ]).
+
+moderator_flags(ConfProps, 'true') ->
+    wh_json:from_list([{<<"join_muted">>, props:is_true('muted', ConfProps, 'false')}
+                       ,{<<"join_deaf">>, props:is_true('deaf', ConfProps, 'false')}
+                       ,{<<"play_name">>, props:is_true('play_name', ConfProps, 'false')}
+                       ,{<<"play_entry_prompt">>, props:is_true('play_entry_prompt', ConfProps, 'true')}
+                      ]);
+moderator_flags(_, _) -> wh_json:new().
+
+conference_id(Txts) ->
+    Id = kzt_util:xml_text_to_binary(Txts),
+    MD5 = wh_util:to_hex_binary(erlang:md5(Id)),
+    lager:debug("conf name: ~s (~s)", [Id, MD5]),
+    MD5.

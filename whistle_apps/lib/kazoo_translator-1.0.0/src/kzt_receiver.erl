@@ -12,6 +12,8 @@
 
 -export([wait_for_offnet/1
          ,wait_for_noop/2
+         ,wait_for_hangup/1
+         ,wait_for_conference/1
          ,say_loop/6, say_loop/7
          ,play_loop/3, play_loop/4
          ,record_loop/2
@@ -20,7 +22,7 @@
          ,recording_meta/2
         ]).
 
--record(offnet_req, {call :: whapps_call:call()
+-record(dial_req, {call :: whapps_call:call()
                      ,hangup_dtmf :: api_binary()
                      ,record_call :: boolean()
                      ,call_timeout :: integer()
@@ -28,7 +30,7 @@
                      ,start :: wh_now()
                      ,call_b_leg :: api_binary()
                     }).
--type offnet_req() :: #offnet_req{}.
+-type dial_req() :: #dial_req{}.
 
 -define(DEFAULT_EVENT_WAIT, 10000). % 10s or 10000ms
 
@@ -190,13 +192,15 @@ wait_for_offnet(Call) ->
     CallTimeLimit = kzt_util:get_call_time_limit(Call) * 1000,
     CallTimeout = kzt_util:get_call_timeout(Call) * 1000,
 
-    wait_for_offnet_events(#offnet_req{call=Call
-                                       ,hangup_dtmf=HangupDTMF
-                                       ,record_call=RecordCall
-                                       ,call_timeout=CallTimeout
-                                       ,call_time_limit=CallTimeLimit
-                                       ,start=erlang:now()
-                                      }).
+    lager:debug("tl: ~p t: ~p", [kzt_util:get_call_time_limit(Call), kzt_util:get_call_timeout(Call)]),
+
+    wait_for_offnet_events(#dial_req{call=Call
+                                     ,hangup_dtmf=HangupDTMF
+                                     ,record_call=RecordCall
+                                     ,call_timeout=CallTimeout
+                                     ,call_time_limit=CallTimeLimit
+                                     ,start=erlang:now()
+                                    }).
 
 -spec wait_for_hangup(whapps_call:call()) -> {'ok', whapps_call:call()}.
 wait_for_hangup(Call) ->
@@ -218,6 +222,22 @@ wait_for_hangup(Call) ->
             {'ok', kzt_util:update_call_status(?STATUS_COMPLETED, Call)}
     end.
 
+-spec wait_for_conference(whapps_call:call()) -> {'ok', whapps_call:call()}.
+wait_for_conference(Call) ->
+    HangupDTMF = kzt_util:get_hangup_dtmf(Call),
+    RecordCall = kzt_util:get_record_call(Call),
+
+    CallTimeLimit = kzt_util:get_call_time_limit(Call) * 1000,
+    CallTimeout = kzt_util:get_call_timeout(Call) * 1000,
+
+    wait_for_conference_events(#dial_req{call=Call
+                                         ,hangup_dtmf=HangupDTMF
+                                         ,record_call=RecordCall
+                                         ,call_timeout=CallTimeout
+                                         ,call_time_limit=CallTimeLimit
+                                         ,start=erlang:now()
+                                        }).
+
 call_status(<<"ORIGINATOR_CANCEL">>) -> ?STATUS_COMPLETED;
 call_status(<<"NORMAL_CLEARING">>) -> ?STATUS_COMPLETED;
 call_status(<<"SUCCESS">>) -> ?STATUS_COMPLETED;
@@ -227,21 +247,23 @@ call_status(_Status) ->
     lager:debug("unhandled call status: ~p", [_Status]),
     ?STATUS_FAILED.
 
--spec wait_for_offnet_events(offnet_req()) -> {'ok', whapps_call:call()}.
-wait_for_offnet_events(#offnet_req{call_timeout=CallTimeout
-                                   ,call_time_limit=CallTimeLimit
-                                  }=OffnetReq) ->
+-spec wait_for_offnet_events(dial_req()) -> {'ok', whapps_call:call()}.
+wait_for_offnet_events(#dial_req{call_timeout=CallTimeout
+                                 ,call_time_limit=CallTimeLimit
+                                }=OffnetReq) ->
     RecvTimeout = which_time(CallTimeout, CallTimeLimit),
 
     case whapps_call_command:receive_event(RecvTimeout) of
         {'ok', JObj} -> process_offnet_event(OffnetReq, JObj);
-        {'error', 'timeout'} -> handle_offnet_timeout(OffnetReq)
+        {'error', 'timeout'} -> handle_offnet_timeout(OffnetReq);
+        _O -> lager:debug("recv offnet other: ~p", [_O]),
+              wait_for_offnet_events(OffnetReq)
     end.
 
-process_offnet_event(#offnet_req{call=Call
-                                 ,hangup_dtmf=HangupDTMF
-                                 ,call_b_leg=CallBLeg
-                                }=OffnetReq
+process_offnet_event(#dial_req{call=Call
+                               ,hangup_dtmf=HangupDTMF
+                               ,call_b_leg=CallBLeg
+                              }=OffnetReq
                      ,JObj) ->
     CallId = whapps_call:call_id(Call),
 
@@ -258,7 +280,7 @@ process_offnet_event(#offnet_req{call=Call
 
                     wait_for_offnet_events(
                       update_offnet_timers(
-                        OffnetReq#offnet_req{
+                        OffnetReq#dial_req{
                           call=kzt_util:add_digit_collected(DTMF, Call)
                          }));
                 'true' ->
@@ -282,7 +304,7 @@ process_offnet_event(#offnet_req{call=Call
 
             wait_for_offnet_events(
               update_offnet_timers(
-                OffnetReq#offnet_req{call_b_leg=BLeg
+                OffnetReq#dial_req{call_b_leg=BLeg
                                      ,call=lists:foldl(fun({V, F}, CallAcc) ->
                                                                F(V, CallAcc)
                                                        end
@@ -300,7 +322,7 @@ process_offnet_event(#offnet_req{call=Call
 
             wait_for_offnet_events(
               update_offnet_timers(
-                OffnetReq#offnet_req{call_timeout='undefined'
+                OffnetReq#dial_req{call_timeout='undefined'
                                      ,call=lists:foldl(fun({V, F}, CallAcc) ->
                                                                F(V, CallAcc)
                                                        end
@@ -361,8 +383,76 @@ process_offnet_event(#offnet_req{call=Call
             wait_for_offnet_events(update_offnet_timers(OffnetReq))
     end.
 
-maybe_start_recording(#offnet_req{record_call='false'}) -> 'undefined';
-maybe_start_recording(#offnet_req{record_call='true'
+-spec wait_for_conference_events(dial_req()) -> {'ok', whapps_call:call()}.
+wait_for_conference_events(#dial_req{call_timeout=CallTimeout
+                                     ,call_time_limit=CallTimeLimit
+                                    }=OffnetReq) ->
+    RecvTimeout = which_time(CallTimeout, CallTimeLimit),
+
+    case whapps_call_command:receive_event(RecvTimeout) of
+        {'ok', JObj} -> process_conference_event(OffnetReq, JObj);
+        {'error', 'timeout'} -> handle_conference_timeout(OffnetReq);
+        _O -> lager:debug("recv offnet other: ~p", [_O]),
+              wait_for_conference_events(OffnetReq)
+    end.
+
+process_conference_event(#dial_req{call=Call
+                                   ,hangup_dtmf=HangupDTMF
+                                  }=OffnetReq, JObj) ->
+    case wh_util:get_event_type(JObj) of
+        {<<"call_event">>, <<"DTMF">>} ->
+            case (DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj)) =:= HangupDTMF of
+                'false' ->
+                    lager:debug("caller pressed dtmf tone '~s', adding to collection", [DTMF]),
+
+                    wait_for_conference_events(
+                      update_offnet_timers(
+                        OffnetReq#dial_req{
+                          call=kzt_util:add_digit_collected(DTMF, Call)
+                         }));
+                'true' ->
+                    lager:debug("recv'd hangup DTMF '~s'", [HangupDTMF]),
+                    whapps_call_command:park(Call),
+                    {'ok', Call}
+            end;
+
+        {<<"call_event">>, <<"CHANNEL_EXECUTE">>} ->
+            case wh_json:get_value(<<"Application-Name">>, JObj) of
+                <<"conference">> ->
+                    lager:debug("conferencing has started to execute"),
+                    wait_for_conference_events(
+                      update_offnet_timers(
+                        OffnetReq#dial_req{call_timeout='undefined'}
+                       ));
+                _App ->
+                    lager:debug("ignoring the start of app ~s", [_App]),
+                    wait_for_conference_events(update_offnet_timers(OffnetReq))
+            end;
+
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
+            case wh_json:get_value(<<"Application-Name">>, JObj) of
+                <<"conference">> ->
+                    lager:debug("conferencing has ended"),
+                    whapps_call_command:park(Call),
+                    {'ok', Call};
+                _App ->
+                    lager:debug("ignoring the end of app ~s", [_App]),
+                    wait_for_conference_events(update_offnet_timers(OffnetReq))
+            end;
+
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+            lager:debug("call has ended"),
+            {'ok', Call};
+
+        {_Cat, _Name} ->
+            lager:debug("unhandled event for ~s: ~s: ~s"
+                        ,[_Cat, _Name, wh_json:get_value(<<"Application-Name">>, JObj)]
+                       ),
+            wait_for_conference_events(update_offnet_timers(OffnetReq))
+    end.
+
+maybe_start_recording(#dial_req{record_call='false'}) -> 'undefined';
+maybe_start_recording(#dial_req{record_call='true'
                                   ,call=Call
                                   ,call_time_limit=CallTimeLimit
                                  }) ->
@@ -403,15 +493,28 @@ recording_name(ALeg, BLeg) ->
     DateTime = wh_util:pretty_print_datetime(calendar:universal_time()),
     iolist_to_binary([DateTime, "_", ALeg, "_to_", BLeg, ".mp3"]).
 
--spec handle_offnet_timeout(offnet_req()) -> {'ok', whapps_call:call()}.
-handle_offnet_timeout(#offnet_req{
+-spec handle_offnet_timeout(dial_req()) -> {'ok', whapps_call:call()}.
+handle_offnet_timeout(#dial_req{
                          call=Call
                          ,call_timeout='undefined'
                         }) ->
     lager:debug("time limit for call exceeded"),
     whapps_call_command:hangup(Call),
-    wait_for_hangup(kzt_util:update_call_status(?STATUS_NOANSWER, Call));
-handle_offnet_timeout(#offnet_req{call=Call}) ->
+    {'ok', kzt_util:update_call_status(?STATUS_COMPLETED, Call)};
+handle_offnet_timeout(#dial_req{call=Call}) ->
+    lager:debug("timed out waiting for call to be answered by endpoint(s)"),
+    {'ok', kzt_util:update_call_status(?STATUS_NOANSWER, Call)}.
+
+-spec handle_conference_timeout(dial_req()) -> {'ok', whapps_call:call()}.
+handle_conference_timeout(#dial_req{
+                         call=Call
+                         ,call_timeout='undefined'
+                        }) ->
+    lager:debug("time limit for conference exceeded"),
+    whapps_call_command:park(Call),
+    {'ok', kzt_util:update_call_status(?STATUS_COMPLETED, Call)};
+handle_conference_timeout(#dial_req{call=Call}) ->
+    lager:debug("timed out waiting for call to be answered by the conference"),
     {'ok', kzt_util:update_call_status(?STATUS_NOANSWER, Call)}.
 
 -spec which_time(api_integer(), pos_integer()) -> non_neg_integer().
@@ -419,17 +522,17 @@ which_time('undefined', Timelimit) when is_integer(Timelimit), Timelimit > 0 -> 
 which_time(Timeout, _) when is_integer(Timeout), Timeout > 0 -> Timeout;
 which_time(_, _) -> 0.
 
--spec update_offnet_timers(offnet_req()) -> offnet_req().
-update_offnet_timers(#offnet_req{call_timeout='undefined'
-                                 ,call_time_limit=CallTimeLimit
-                                 ,start=Start
+-spec update_offnet_timers(dial_req()) -> dial_req().
+update_offnet_timers(#dial_req{call_timeout='undefined'
+                               ,call_time_limit=CallTimeLimit
+                               ,start=Start
                                 }=OffnetReq) ->
-    OffnetReq#offnet_req{call_time_limit=whapps_util:decr_timeout(CallTimeLimit, Start)
-                         ,start=erlang:now()
-                        };
-update_offnet_timers(#offnet_req{call_timeout=CallTimeout
-                                 ,start=Start
-                                }=OffnetReq) ->
-    OffnetReq#offnet_req{call_timeout=whapps_util:decr_timeout(CallTimeout, Start)
-                         ,start=erlang:now()
-                        }.
+    OffnetReq#dial_req{call_time_limit=whapps_util:decr_timeout(CallTimeLimit, Start)
+                       ,start=erlang:now()
+                      };
+update_offnet_timers(#dial_req{call_timeout=CallTimeout
+                               ,start=Start
+                              }=OffnetReq) ->
+    OffnetReq#dial_req{call_timeout=whapps_util:decr_timeout(CallTimeout, Start)
+                       ,start=erlang:now()
+                      }.
