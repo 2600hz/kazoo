@@ -107,7 +107,7 @@ get_default(Section, Key, Default) ->
 %%--------------------------------------------------------------------
 get(Section, Keys, Type) when is_list(Keys) ->
     V = lists:foldl(fun(Key, Acc) ->
-                            [V] = get(Section, Key, Type),
+                            V = get(Section, Key, Type),
                             [V | Acc]
                     end, [], Keys),
     lists:reverse(V);
