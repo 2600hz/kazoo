@@ -252,7 +252,8 @@ publish_register_event(Props, Node) ->
                           ,[{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
                             ,{<<"Call-ID">>, get('callid')}
                             ,{<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
-                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                           ]
                           ,wapi_registration:success_keys()),
     lager:debug("sending successful registration"),
     wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
