@@ -29,6 +29,7 @@
 -define(KEY_CONFERENCE_DISCOVERY, <<"conference.discovery">>).
 -define(KEY_CONFERENCE_COMMAND, <<"conference.command.">>).
 -define(KEY_CONFERENCE_EVENT, <<"conference.event.">>).
+-define(KEY_CONFERENCE_CONFIG, <<"conference.config.">>).
 
 %% To listen for auth requests, bind your queue in the CallMgr Exchange with the <<"auth.req">> routing key.
 %% To listen for route requests, bind your queue in the CallMgr Exchange with the <<"route.req">> routing key.

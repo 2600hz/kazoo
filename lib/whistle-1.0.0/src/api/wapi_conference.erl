@@ -36,6 +36,9 @@
 -export([participant_volume_out/1, participant_volume_out_v/1]).
 -export([participants_event/1, participants_event_v/1]).
 -export([conference_error/1, conference_error_v/1]).
+-export([config_req/1, config_req_v/1
+         ,config_resp/1, config_resp_v/1
+        ]).
 
 -export([bind_q/2, unbind_q/2]).
 
@@ -65,6 +68,9 @@
 -export([publish_participants_event/2, publish_participants_event/3]).
 -export([publish_command/2, publish_command/3]).
 -export([publish_targeted_command/2, publish_targeted_command/3]).
+-export([publish_config_req/1, publish_config_req/2
+         ,publish_config_resp/2, publish_config_resp/3
+        ]).
 
 -include_lib("whistle/include/wh_api.hrl").
 -include("wapi_dialplan.hrl").
@@ -105,7 +111,6 @@
                                 ,{<<"Event-Name">>, <<"discovery_resp">>}
                               ]).
 -define(DISCOVERY_RESP_TYPES, []).
-
 
 %% Conference Deaf
 -define(DEAF_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant">>]).
@@ -308,6 +313,20 @@
                                   ,{<<"Event-Name">>, <<"error">>}
                                  ]).
 -define(CONFERENCE_ERROR_TYPES, []).
+
+-define(CONFIG_REQ_HEADERS, [<<"Conference-Config">>]).
+-define(OPTIONAL_CONFIG_REQ_HEADERS, []).
+-define(CONFIG_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                            ,{<<"Event-Name">>, <<"config_req">>}
+                           ]).
+-define(CONFIG_REQ_TYPES, []).
+
+-define(CONFIG_RESP_HEADERS, [<<"Conference-Config-Data">>]).
+-define(OPTIONAL_CONFIG_RESP_HEADERS, []).
+-define(CONFIG_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                             ,{<<"Event-Name">>, <<"config_resp">>}
+                            ]).
+-define(CONFIG_RESP_TYPES, []).
 
 -define(APPLICTION_MAP, [{<<"deaf_participant">>, ?DEAF_PARTICIPANT_VALUES, fun ?MODULE:deaf_participant/1}
                          ,{<<"participant_energy">>, ?PARTICIPANT_ENERGY_VALUES, fun ?MODULE:participant_energy/1}
@@ -824,6 +843,42 @@ conference_error_v(JObj) -> conference_error_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec config_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+config_req(Prop) when is_list(Prop) ->
+    case config_req_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?CONFIG_REQ_HEADERS, ?OPTIONAL_CONFIG_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for config req"}
+    end;
+config_req(JObj) -> config_req(wh_json:to_proplist(JObj)).
+
+-spec config_req_v(api_terms()) -> boolean().
+config_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CONFIG_REQ_HEADERS, ?CONFIG_REQ_VALUES, ?CONFIG_REQ_TYPES);
+config_req_v(JObj) -> config_req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec config_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+config_resp(Prop) when is_list(Prop) ->
+    case config_resp_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?CONFIG_RESP_HEADERS, ?OPTIONAL_CONFIG_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for config resp"}
+    end;
+config_resp(JObj) -> config_resp(wh_json:to_proplist(JObj)).
+
+-spec config_resp_v(api_terms()) -> boolean().
+config_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CONFIG_RESP_HEADERS, ?CONFIG_RESP_VALUES, ?CONFIG_RESP_TYPES);
+config_resp_v(JObj) -> config_resp_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
 %% Bind a queue to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
@@ -844,6 +899,9 @@ bind_to_q(Q, ['command'|T]) ->
     bind_to_q(Q, T);
 bind_to_q(Q, ['event'|T]) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'event'),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['config'|T]) ->
+    'ok' = amqp_util:bind_q_to_conference(Q, 'config'),
     bind_to_q(Q, T);
 bind_to_q(Q, [{'conference', ConfId}|T]) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'event', ConfId),
@@ -876,6 +934,9 @@ unbind_from_q(Q, ['event'|T]) ->
 unbind_from_q(Q, [{'conference', ConfId}|T]) ->
     'ok' = amqp_util:unbind_q_from_conference(Q, 'event', ConfId),
     unbind_from_q(Q, T);
+unbind_from_q(Q, ['config'|T]) ->
+    'ok' = amqp_util:unbind_q_from_conference(Q, 'config'),
+    bind_to_q(Q, T);
 unbind_from_q(_Q, []) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -889,7 +950,7 @@ publish_search_req(JObj) ->
     publish_search_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_search_req(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?SEARCH_REQ_VALUES, fun ?MODULE:search_req/1),
-    amqp_util:conference_publish(Payload, discovery, undefined, [], ContentType).
+    amqp_util:conference_publish(Payload, 'discovery', 'undefined', [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -915,7 +976,7 @@ publish_discovery_req(JObj) ->
     publish_discovery_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_discovery_req(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?DISCOVERY_REQ_VALUES, fun ?MODULE:discovery_req/1),
-    amqp_util:conference_publish(Payload, discovery, undefined, [], ContentType).
+    amqp_util:conference_publish(Payload, 'discovery', 'undefined', [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -1184,7 +1245,8 @@ publish_participants_event(ConferenceId, Event, ContentType) ->
 %%--------------------------------------------------------------------
 -spec publish_error(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_error(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_error(Queue, JObj) -> publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_error(Queue, JObj) ->
+    publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(Queue, Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CONFERENCE_ERROR_VALUES, fun ?MODULE:conference_error/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
@@ -1196,7 +1258,8 @@ publish_error(Queue, Req, ContentType) ->
 %%--------------------------------------------------------------------
 -spec publish_command(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_command(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_command(ConferenceId, JObj) -> publish_command(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_command(ConferenceId, JObj) ->
+    publish_command(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_command(ConferenceId, Req, ContentType) ->
     App = props:get_value(<<"Application-Name">>, Req),
     case lists:keyfind(App, 1, ?APPLICTION_MAP) of
@@ -1224,3 +1287,29 @@ publish_targeted_command(Focus, Req, ContentType) ->
             Queue = focus_queue_name(Focus),
             amqp_util:targeted_publish(Queue, Payload, ContentType)
     end.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_config_req(api_terms()) -> 'ok'.
+-spec publish_config_req(api_terms(), ne_binary()) -> 'ok'.
+publish_config_req(JObj) ->
+    publish_config_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_config_req(Req, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CONFIG_REQ_VALUES, fun ?MODULE:config_req/1),
+    amqp_util:conference_publish(Payload, 'config', <<"*">>, [], ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_config_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_config_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_config_resp(Queue, JObj) ->
+    publish_config_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_config_resp(Queue, Req, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CONFIG_RESP_VALUES, fun ?MODULE:config_resp/1),
+    amqp_util:targeted_publish(Queue, Payload, ContentType).
