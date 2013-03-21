@@ -187,6 +187,7 @@ handle_config_req(Node, ID, _Conf) ->
     freeswitch:fetch_reply(Node, ID, iolist_to_binary(Resp)).
 
 handle_config_req(Node, ID, <<"conference.conf">>, Data) ->
+    put('callid', ID),
     ConfConfig = props:get_value(<<"profile_name">>, Data, <<"default">>),
     Cmd = 
         [{<<"Conference-Config">>, ConfConfig}
@@ -198,8 +199,8 @@ handle_config_req(Node, ID, <<"conference.conf">>, Data) ->
                                       )
               of
                   {'ok', Resp} ->
-                      lager:debug("recv config resp: ~p", [Resp]),
                       {'ok', Xml} = ecallmgr_fs_xml:conference_resp_xml(Resp),
+                      lager:debug("conference config xml: ~s", [Xml]),
                       Xml;
                   {'error', 'timeout'} ->
                       lager:debug("timed out waiting for conference config for ~s", [ConfConfig]),

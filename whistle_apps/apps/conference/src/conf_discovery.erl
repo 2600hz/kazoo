@@ -89,9 +89,10 @@ handle_config_req(JObj, _Props) ->
     lager:debug("looking up conference config '~s'", [ConfigName]),
     case whapps_config:get(<<"conferences">>, ConfigName) of
         'undefined' -> lager:debug("no config defined");
-        Profiles ->
-            lager:debug("profiles found: ~p", [Profiles]),
-            Resp = [{<<"Profiles">>, Profiles}
+        Profile ->
+            lager:debug("profile ~s found", [ConfigName]),
+            Resp = [{<<"Profiles">>, wh_json:from_list([{ConfigName, Profile}])}
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_conference:publish_config_resp(wh_json:get_value(<<"Server-ID">>, JObj)

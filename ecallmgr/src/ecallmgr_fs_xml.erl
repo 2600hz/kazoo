@@ -120,13 +120,18 @@ empty_response() ->
 
 -spec conference_resp_xml(api_terms()) -> {'ok', iolist()}.
 conference_resp_xml([_|_]=Resp) ->
-    {'ok', xmerl:export(conference_profiles_xml(props:get_value(<<"Profiles">>, Resp, wh_json:new())), 'fs_xml')};
+    Ps = props:get_value(<<"Profiles">>, Resp, wh_json:new()),
+    ProfilesEl = conference_profiles_xml(Ps),
+    {'ok', xmerl:export([ProfilesEl], 'fs_xml')};
 conference_resp_xml(Resp) ->
-    {'ok', xmerl:export(conference_profiles_xml(wh_json:get_value(<<"Profiles">>, Resp, wh_json:new())), 'fs_xml')}.
+    Ps = wh_json:get_value(<<"Profiles">>, Resp, wh_json:new()),
+    ProfilesEl = conference_profiles_xml(Ps),
+    {'ok', xmerl:export([ProfilesEl], 'fs_xml')}.
 
-conference_profiles_xml(Profiles) ->
-    ProfileEls = [conference_profile_xml(Name, Params) || {Name, Params} <- wh_json:to_proplist(Profiles)],
-    profiles_el(ProfileEls).
+conference_profiles_xml(Profiles) when is_list(Profiles) ->
+    ProfileEls = [conference_profile_xml(Name, Params) || {Name, Params} <- Profiles],
+    profiles_el(ProfileEls);
+conference_profiles_xml(Profiles) -> conference_profiles_xml(wh_json:to_proplist(Profiles)).
 
 conference_profile_xml(Name, Params) ->
     ParamEls = [param_el(K, V) || {K, V} <- wh_json:to_proplist(Params)],
