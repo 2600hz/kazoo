@@ -42,7 +42,7 @@ handle(Data, Call) ->
     end.
 
 -spec handle_action(ne_binary(), hotdesk(), whapps_call:call()) -> 'ok'.
-handle_action(<<"bridge">>, #hotdesk{enabled=false}, Call) ->
+handle_action(<<"bridge">>, #hotdesk{enabled='false'}, Call) ->
     cf_exe:continue(Call);
 handle_action(<<"bridge">>, Hotdesk, Call) ->
     case bridge_to_endpoints(Hotdesk, Call) of
@@ -86,8 +86,7 @@ bridge_to_endpoints(#hotdesk{endpoint_ids=EndpointIds}, Call) ->
 build_endpoints(EndpointIds, Call) ->
     build_endpoints(EndpointIds, [], Call).
 
-build_endpoints([], Endpoints, _) ->
-    Endpoints;
+build_endpoints([], Endpoints, _) -> Endpoints;
 build_endpoints([EndpointId|EndpointIds], Endpoints, Call) ->
     case cf_endpoint:build(EndpointId, Call) of
         {'ok', Endpoint} ->
@@ -111,11 +110,10 @@ build_endpoints([EndpointId|EndpointIds], Endpoints, Call) ->
 %% TODO: a UI bug keeps the hotdesk enabled from ever being true
 %%login(#hotdesk{enabled=false}, Call) ->
 %%    whapps_call_command:b_prompt(<<"hotdesk-disabled">>, Call);
-login(Hotdesk, Call) ->
-    maybe_require_login_pin(Hotdesk, Call).
+login(Hotdesk, Call) -> maybe_require_login_pin(Hotdesk, Call).
 
 -spec maybe_require_login_pin(hotdesk(), whapps_call:call()) -> 'ok'.
-maybe_require_login_pin(#hotdesk{require_pin=false}=Hotdesk, Call) ->
+maybe_require_login_pin(#hotdesk{require_pin='false'}=Hotdesk, Call) ->
     maybe_logout_elsewhere(Hotdesk, Call);
 maybe_require_login_pin(Hotdesk, Call) ->
     require_login_pin(Hotdesk, Call).
@@ -129,7 +127,7 @@ require_login_pin(_, Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
     lager:info("maximum number of invalid hotdesk pin attempts"),
     whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
     whapps_call_command:b_prompt(<<"vm-goodbye">>, Call);
-require_login_pin(#hotdesk{require_pin=true, pin=Pin}=Hotdesk, Call, Loop) ->
+require_login_pin(#hotdesk{require_pin='true', pin=Pin}=Hotdesk, Call, Loop) ->
     _ = whapps_call_command:answer(Call),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"hotdesk-enter_pin">>, <<"1">>, Call) of
         {'ok', Pin} ->
@@ -142,7 +140,7 @@ require_login_pin(#hotdesk{require_pin=true, pin=Pin}=Hotdesk, Call, Loop) ->
     end.
 
 -spec maybe_logout_elsewhere(hotdesk(), whapps_call:call()) -> 'ok'.
-maybe_logout_elsewhere(#hotdesk{keep_logged_in_elsewhere=false}=Hotdesk, Call) ->
+maybe_logout_elsewhere(#hotdesk{keep_logged_in_elsewhere='false'}=Hotdesk, Call) ->
     H = remove_from_endpoints(Hotdesk, Call),
     get_authorizing_id(H, Call);
 maybe_logout_elsewhere(Hotdesk, Call) ->
@@ -187,8 +185,7 @@ logged_in(_, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec logout(hotdesk(), whapps_call:call()) -> 'ok'.
-logout(Hotdesk, Call) ->
-    maybe_keep_logged_in_elsewhere(Hotdesk, Call).
+logout(Hotdesk, Call) -> maybe_keep_logged_in_elsewhere(Hotdesk, Call).
 
 -spec maybe_keep_logged_in_elsewhere(hotdesk(), whapps_call:call()) -> 'ok'.
 maybe_keep_logged_in_elsewhere(#hotdesk{keep_logged_in_elsewhere='true'}=Hotdesk
@@ -230,8 +227,7 @@ logged_out(_, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_hotdesk_profile(api_binary(), whapps_call:call()) -> hotdesk() | {'error', _}.
-get_hotdesk_profile('undefined', Call) ->
-    find_hotdesk_profile(Call, 1);
+get_hotdesk_profile('undefined', Call) -> find_hotdesk_profile(Call, 1);
 get_hotdesk_profile(OwnerId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, OwnerId) of
@@ -242,7 +238,8 @@ get_hotdesk_profile(OwnerId, Call) ->
             E
     end.
 
--spec find_hotdesk_profile(whapps_call:call(), 1..?MAX_LOGIN_ATTEMPTS) -> hotdesk() | {'error', _}.
+-spec find_hotdesk_profile(whapps_call:call(), 1..?MAX_LOGIN_ATTEMPTS) ->
+                                  hotdesk() | {'error', _}.
 find_hotdesk_profile(Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
     lager:info("too many failed attempts to get the hotdesk id"),
     whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
@@ -250,8 +247,7 @@ find_hotdesk_profile(Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
 find_hotdesk_profile(Call, Loop) ->
     whapps_call_command:answer(Call),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"10">>, <<"hotdesk-enter_id">>, <<"1">>, Call) of
-        {'ok', <<>>} ->
-            find_hotdesk_profile(Call, Loop + 1);
+        {'ok', <<>>} -> find_hotdesk_profile(Call, Loop + 1);
         {'ok', HotdeskId} ->
             case lookup_hotdesk_id(HotdeskId, Call) of
                 #hotdesk{}=Hotdesk -> Hotdesk;
