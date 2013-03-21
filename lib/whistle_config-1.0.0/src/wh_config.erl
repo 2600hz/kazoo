@@ -80,9 +80,11 @@ get_atom(Section, Key, Default) ->
 %% Return values of the config file
 %% @end
 %%--------------------------------------------------------------------
+-spec get_integer(section(), atom(), Default) -> [integer(),...] | ?DEFAULT_DEFAULT.
 get_integer(Section, Key) ->
     get_integer(Section, Key, ?DEFAULT_DEFAULT).
 
+-spec get_integer(section(), atom(), Default) -> [integer(),...] | Default.
 get_integer(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
         Default -> Default;
@@ -95,9 +97,11 @@ get_integer(Section, Key, Default) ->
 %% Return values of the config file
 %% @end
 %%--------------------------------------------------------------------
+-spec get_string(section(), string(), Default) -> [string(),...] | ?DEFAULT_DEFAULT.
 get_string(Section, Key) ->
     get_string(Section, Key, ?DEFAULT_DEFAULT).
 
+-spec get_string(section(), string(), Default) -> [string(),...] | Default.
 get_string(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
         Default -> Default;
@@ -110,6 +114,7 @@ get_string(Section, Key, Default) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec get_atom(section(), atom(), Default) -> [integer(),...] | ?DEFAULT_DEFAULT.
 find_values(Section, 'undefined') ->
     {'ok', Prop} = load(),
     get_sections(Section, Prop);
@@ -130,6 +135,7 @@ find_values(Section, Key) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec get_sections(section(), wh_proplist()) -> wh_proplist() | [].
 get_sections(Section, Prop) ->
     Sections = proplists:get_all_values(Section, Prop),
     format_sections(Sections).
@@ -140,6 +146,7 @@ get_sections(Section, Prop) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec format_sections(wh_proplist()) -> wh_proplist() | [].
 format_sections(Sections) ->
     format_sections(Sections, []).
 
@@ -159,6 +166,7 @@ format_sections([Section | T], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec local_sections(wh_proplist()) -> wh_proplist() | [].
 local_sections(Sections) ->
     local_sections(Sections, []).
 
@@ -180,6 +188,7 @@ local_sections([Section | T], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec is_local_section({ne_binary(), _}) -> {'false', 'generic'} | {boolean(), ne_binary()}.
 is_local_section({SectionHost, _}) ->
     LocalHost = wh_util:to_binary(wh_network_utils:get_hostname()),
     case SectionHost of
@@ -200,6 +209,7 @@ is_local_section({SectionHost, _}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec get_value(atom(), wh_proplist()) -> lists().
 get_values(Key, Sections) ->
     get_values(Sections, Key, []).
 
@@ -217,6 +227,7 @@ get_values([{_, Values} | T], Key, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec load() -> {'ok', wh_proplist()} | _.
 load() ->
     case os:getenv(?CONFIG_FILE_ENV) of
         'false' ->
@@ -231,6 +242,7 @@ load() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec load_file(string()) -> {'ok', wh_proplist()} | _.
 load_file(File) ->
     case zucchini:parse_file(File) of
         {'ok', Prop} ->

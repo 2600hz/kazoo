@@ -58,12 +58,12 @@ init([]) ->
     %% TODO: for the time being just maintain backward compatability
     wh_couch_connections:add(create_connection(Config)),
     wh_couch_connections:add(create_admin_connection(Config)),
-    AutoCmpt = wh_config:get('bigcouch', 'compact_automatically'),
+    [AutoCmpt|_] = wh_config:get('bigcouch', 'compact_automatically'),
     CacheProps = [{'expires', 'infinity'}
                   ,{'origin', {'db', ?WH_CONFIG_DB, <<"whistle_couch">>}}
                  ],
     wh_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, AutoCmpt, CacheProps),
-    Cookie = wh_config:get_atom('bigcouch', 'cookie', 'change_me'),
+    [Cookie|_] = wh_config:get_atom('bigcouch', 'cookie', 'change_me'),
     wh_couch_connections:set_node_cookie(Cookie),
     lager:info("waiting for first bigcouch/haproxy connection...", []),
     wh_couch_connections:wait_for_connection(),
@@ -146,14 +146,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec get_config() -> {'ok', wh_proplist()}.
 get_config() ->
-    [{'default_couch_host', 
-      {wh_config:get_default(bigcouch, ip, "")
-       ,wh_config:get_integer(bigcouch, port, 5984)
-       ,wh_config:get_string(bigcouch, username, "")
-       ,wh_config:get_string(bigcouch, password, "")
-       ,wh_config:get_integer(bigcouch, admin_port, 5986)
-      }
-     }].
+    [IP|_] = wh_config:get(bigcouch, ip, [""]),
+    [Port|_] = wh_config:get_integer(bigcouch, port, 5984),
+    [Username|_] = wh_config:get_string(bigcouch, username, [""]),
+    [Pwd|_] = wh_config:get_string(bigcouch, password, [""]),
+    [AdminPort|_] = wh_config:get_integer(bigcouch, admin_port, 5986),    
+    [{'default_couch_host', {IP, Port, Username, Pwd, AdminPort}}].
 
 -spec create_connection(wh_proplist()) -> couch_connection().
 create_connection(Props) ->

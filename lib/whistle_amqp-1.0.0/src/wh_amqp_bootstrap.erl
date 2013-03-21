@@ -42,7 +42,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -62,7 +62,7 @@ start_link() ->
 init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
     Init = get_config(),
-    URIs = case props:get_value(uri, Init, ?DEFAULT_AMQP_URI) of
+    URIs = case props:get_value('uri', Init, ?DEFAULT_AMQP_URI) of
                URI = "amqp://"++_ -> 
                    [URI];
                URI = "amqps://"++_ -> 
@@ -75,7 +75,7 @@ init([]) ->
     wh_amqp_connections:wait_for_available(),
     timer:sleep(2000),
     lager:debug("current amqp connection: ~p", [wh_amqp_connections:current()]),
-    {ok, #state{}, 100}.
+    {'ok', #state{}, 100}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -92,7 +92,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,7 +105,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -117,12 +117,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, State) ->
+handle_info('timeout', State) ->
     _ = wh_amqp_sup:stop_bootstrap(),
-    {noreply, State};
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -147,7 +147,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
