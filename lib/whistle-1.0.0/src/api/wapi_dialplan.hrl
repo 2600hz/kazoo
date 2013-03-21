@@ -509,7 +509,7 @@
                                 ]).
 -define(OPTIONAL_CONFERENCE_REQ_HEADERS, [<<"Insert-At">>
                                           ,<<"Mute">>, <<"Deaf">>, <<"Moderator">>
-                                          ,<<"Reinvite">>
+                                          ,<<"Reinvite">>, <<"Profile">>
                                          ]).
 -define(CONFERENCE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                 ,{<<"Event-Name">>, <<"command">>}
