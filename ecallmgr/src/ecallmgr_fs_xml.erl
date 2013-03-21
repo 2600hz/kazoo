@@ -14,6 +14,7 @@
          ,acl_xml/1, not_found/0, empty_response/0
          ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
          ,escape/2
+         ,conference_resp_xml/1
         ]).
 
 -include("ecallmgr.hrl").
@@ -116,6 +117,20 @@ reverse_authn_resp_xml(_Method, _JObj) ->
 -spec empty_response() -> {'ok', []}.
 empty_response() ->
     {'ok', ""}. %"<document type=\"freeswitch/xml\"></document>").
+
+-spec conference_resp_xml(api_terms()) -> {'ok', iolist()}.
+conference_resp_xml([_|_]=Resp) ->
+    {'ok', xmerl:export(conference_profiles_xml(props:get_value(<<"Profiles">>, Resp, wh_json:new())), 'fs_xml')};
+conference_resp_xml(Resp) ->
+    {'ok', xmerl:export(conference_profiles_xml(wh_json:get_value(<<"Profiles">>, Resp, wh_json:new())), 'fs_xml')}.
+
+conference_profiles_xml(Profiles) ->
+    ProfileEls = [conference_profile_xml(Name, Params) || {Name, Params} <- wh_json:to_proplist(Profiles)],
+    profiles_el(ProfileEls).
+
+conference_profile_xml(Name, Params) ->
+    ParamEls = [param_el(K, V) || {K, V} <- wh_json:to_proplist(Params)],
+    profile_el(Name, ParamEls).
 
 -spec route_resp_xml(api_terms()) -> {'ok', iolist()}.
 route_resp_xml([_|_]=RespProp) -> route_resp_xml(wh_json:from_list(RespProp));
@@ -497,6 +512,17 @@ param_el(Name, Value) ->
                 ,attributes=[xml_attrib('name', Name)
                              ,xml_attrib('value', Value)
                             ]
+               }.
+
+profile_el(Name, Children) ->
+    #xmlElement{name='profile'
+                ,content=Children
+                ,attributes=[xml_attrib('name', Name)]
+               }.
+
+profiles_el(Children) ->
+    #xmlElement{name='profiles'
+                ,content=Children
                }.
 
 -spec variables_el(xml_els()) -> xml_el().

@@ -321,7 +321,7 @@
                            ]).
 -define(CONFIG_REQ_TYPES, []).
 
--define(CONFIG_RESP_HEADERS, [<<"Conference-Config-Data">>]).
+-define(CONFIG_RESP_HEADERS, [<<"Profiles">>]).
 -define(OPTIONAL_CONFIG_RESP_HEADERS, []).
 -define(CONFIG_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
                              ,{<<"Event-Name">>, <<"config_resp">>}
