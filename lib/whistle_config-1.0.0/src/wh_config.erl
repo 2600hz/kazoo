@@ -80,7 +80,7 @@ get_atom(Section, Key, Default) ->
 %% Return values of the config file
 %% @end
 %%--------------------------------------------------------------------
--spec get_integer(section(), atom(), Default) -> [integer(),...] | ?DEFAULT_DEFAULT.
+-spec get_integer(section(), atom()) -> [integer(),...] | ?DEFAULT_DEFAULT.
 get_integer(Section, Key) ->
     get_integer(Section, Key, ?DEFAULT_DEFAULT).
 
@@ -97,7 +97,7 @@ get_integer(Section, Key, Default) ->
 %% Return values of the config file
 %% @end
 %%--------------------------------------------------------------------
--spec get_string(section(), string(), Default) -> [string(),...] | ?DEFAULT_DEFAULT.
+-spec get_string(section(), string()) -> [string(),...] | ?DEFAULT_DEFAULT.
 get_string(Section, Key) ->
     get_string(Section, Key, ?DEFAULT_DEFAULT).
 
@@ -114,7 +114,7 @@ get_string(Section, Key, Default) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_atom(section(), atom(), Default) -> [integer(),...] | ?DEFAULT_DEFAULT.
+%-spec find_values() -> .
 find_values(Section, 'undefined') ->
     {'ok', Prop} = load(),
     get_sections(Section, Prop);
@@ -209,7 +209,7 @@ is_local_section({SectionHost, _}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_value(atom(), wh_proplist()) -> lists().
+%-spec get_value(atom(), wh_proplist()) -> [].
 get_values(Key, Sections) ->
     get_values(Sections, Key, []).
 
