@@ -336,7 +336,6 @@ wait_for_listener(Supervisor, FSM, Props, IsThief) ->
                                        'true' -> {'ready', 'undefined'};
                                        _ ->
                                            gen_fsm:send_event(FSM, 'send_sync_event'),
-                                           gen_fsm:send_all_state_event(FSM, 'load_endpoints'),
                                            {'sync', start_sync_timer(FSM)}
                                    end,
 
@@ -503,7 +502,9 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
         MyId ->
             lager:debug("trying to ring agent ~s on ~s to connect to caller in queue ~s", [AgentId, AgentCallId, QueueId]),
 
-            acdc_agent:bridge_to_member(Srv, Call, JObj, EPs, CDRUrl, RecordingUrl),
+            UpdatedEPs = maybe_update_endpoints(EPs, Srv, Call),
+
+            acdc_agent:bridge_to_member(Srv, Call, JObj, UpdatedEPs, CDRUrl, RecordingUrl),
 
             webseq:evt(self(), CallId, <<"bridge">>),
             webseq:note(self(), 'right', <<"ringing">>),
@@ -514,6 +515,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                                                   ,member_call_queue_id=QueueId
                                                   ,caller_exit_key=CallerExitKey
                                                   ,agent_call_id=AgentCallId
+                                                  ,endpoints=UpdatedEPs
                                                  }};
         _OtherId ->
             lager:debug("monitoring agent ~s on ~s to connect to caller in queue ~s", [AgentId, AgentCallId, QueueId]),
@@ -1179,43 +1181,30 @@ handle_event({'refresh', AgentJObj}, StateName, State) ->
     lager:debug("refresh agent config: ~p", [AgentJObj]),
     {'next_state', StateName, State};
 
-handle_event('load_endpoints', StateName, #state{agent_proc='undefined'}=State) ->
-    lager:debug("agent proc not ready, not loading endpoints yet"),
-    gen_fsm:send_all_state_event(self(), 'load_endpoints'),
-    {'next_state', StateName, State};
-handle_event('load_endpoints', StateName, #state{acct_db=AcctDb
-                                                 ,agent_id=AgentId
-                                                 ,acct_id=AcctId
-                                                 ,agent_proc=Srv
-                                                }=State) ->
-    Setters = [fun(C) -> whapps_call:set_account_id(AcctId, C) end
-               ,fun(C) -> whapps_call:set_account_db(AcctDb, C) end
-               ,fun(C) -> whapps_call:set_owner_id(AgentId, C) end
-              ],
+handle_event(_Event, StateName, State) ->
+    lager:debug("unhandled event in state ~s: ~p", [StateName, _Event]),
+    {'next_state', StateName, State}.
 
-    Call = lists:foldl(fun(F, C) -> F(C) end
-                       ,whapps_call:new(), Setters
-                      ),
+get_endpoints(OrigEPs, Srv, Call, AgentId) ->
     case catch acdc_util:get_endpoints(Call, AgentId) of
         [] ->
             lager:debug("no endpoints for this agent, going down"),
             acdc_agent:stop(Srv),
-            {'stop', 'normal', State};
+            {'error', 'no_endpoints'};
         [_|_]=EPs ->
-            _ = [monitor_endpoint(EP, AcctId, Srv) || EP <- EPs],
+            AcctId = whapps_call:account_id(Call),
+
+            _ = [maybe_add_endpoint(EP, AcctId, Srv) || EP <- EPs],
 
             %% Inform us of things with us as owner
             catch gproc:reg(?OWNER_UPDATE_REG(AcctId, AgentId)),
 
-            {'next_state', StateName, State#state{endpoints=EPs}, 'hibernate'};
-        {'EXIT', _E} ->
+            {'ok', EPs};
+        {'EXIT', E} ->
             lager:debug("failed to load endpoints: ~p", [_E]),
             acdc_agent:stop(Srv),
-            {'stop', 'normal', State}
-    end;
-handle_event(_Event, StateName, State) ->
-    lager:debug("unhandled event in state ~s: ~p", [StateName, _Event]),
-    {'next_state', StateName, State}.
+            {'error', E}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1287,8 +1276,14 @@ handle_info({'endpoint_created', EP}, StateName, #state{endpoints=EPs
             lager:debug("device ~s created, we're the owner, maybe adding it", [EPId]),
             {'next_state', StateName, State#state{endpoints=maybe_add_endpoint(EPId, EP, EPs, AcctId, Srv)}, 'hibernate'};
         _OwnerId ->
-            lager:debug("device ~s created, owner is ~s, ignoring", [EPId, _OwnerId]),
-            {'next_state', StateName, State}
+            lager:debug("device ~s created, owner is ~s, maybe ignoring", [EPId, _OwnerId]),
+
+            case wh_json:get_value([<<"hotdesk">>, <<"users">>, AgentId], EP) of
+                'undefined' -> {'next_state', StateName, State};
+                _ ->
+            lager:debug("device ~s created, we're a hotdesk user, maybe adding it", [EPId]),
+            {'next_state', StateName, State#state{endpoints=maybe_add_endpoint(EPId, EP, EPs, AcctId, Srv)}, 'hibernate'}
+            end
     end;
 
 handle_info(_Info, StateName, State) ->
