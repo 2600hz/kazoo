@@ -11,6 +11,8 @@
 
 -behaviour(gen_fsm).
 
+-include_lib("eunit/include/eunit.hrl").
+
 %% API
 -export([start_link/2, start_link/3, start_link/4
          ,call_event/4
@@ -336,6 +338,7 @@ wait_for_listener(Supervisor, FSM, Props, IsThief) ->
                                        'true' -> {'ready', 'undefined'};
                                        _ ->
                                            gen_fsm:send_event(FSM, 'send_sync_event'),
+                                           gen_fsm:send_all_state_event(FSM, 'load_endpoints'),
                                            {'sync', start_sync_timer(FSM)}
                                    end,
 
@@ -484,9 +487,10 @@ ready({'sync_req', JObj}, #state{agent_proc=Srv}=State) ->
     {'next_state', 'ready', State};
 
 ready({'member_connect_win', JObj}, #state{agent_proc=Srv
-                                           ,endpoints=EPs
+                                           ,endpoints=OrigEPs
                                            ,agent_proc_id=MyId
                                            ,agent_id=AgentId
+                                           ,connect_failures=CF
                                           }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     CallId = whapps_call:call_id(Call),
@@ -506,21 +510,26 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
         MyId ->
             lager:debug("trying to ring agent ~s on ~s to connect to caller in queue ~s", [AgentId, AgentCallId, QueueId]),
 
-            UpdatedEPs = maybe_update_endpoints(EPs, Srv, Call),
+            case get_endpoints(OrigEPs, Srv, Call, AgentId) of
+                {'error', _E} ->
+                    lager:debug("can't to take the call, skip me: ~p", [_E]),
+                    acdc_agent:member_connect_retry(Srv, JObj),
+                    {'next_state', 'ready', State#state{connect_failures=CF+1}};
+                {'ok', UpdatedEPs} ->
+                    acdc_agent:bridge_to_member(Srv, Call, JObj, UpdatedEPs, CDRUrl, RecordingUrl),
 
-            acdc_agent:bridge_to_member(Srv, Call, JObj, UpdatedEPs, CDRUrl, RecordingUrl),
-
-            webseq:evt(self(), CallId, <<"bridge">>),
-            webseq:note(self(), 'right', <<"ringing">>),
-            {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
-                                                  ,member_call=Call
-                                                  ,member_call_id=CallId
-                                                  ,member_call_start=erlang:now()
-                                                  ,member_call_queue_id=QueueId
-                                                  ,caller_exit_key=CallerExitKey
-                                                  ,agent_call_id=AgentCallId
-                                                  ,endpoints=UpdatedEPs
-                                                 }};
+                    webseq:evt(self(), CallId, <<"bridge">>),
+                    webseq:note(self(), 'right', <<"ringing">>),
+                    {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
+                                                          ,member_call=Call
+                                                          ,member_call_id=CallId
+                                                          ,member_call_start=erlang:now()
+                                                          ,member_call_queue_id=QueueId
+                                                          ,caller_exit_key=CallerExitKey
+                                                          ,agent_call_id=AgentCallId
+                                                          ,endpoints=UpdatedEPs
+                                                         }}
+            end;
         _OtherId ->
             lager:debug("monitoring agent ~s on ~s to connect to caller in queue ~s", [AgentId, AgentCallId, QueueId]),
 
@@ -1188,30 +1197,36 @@ handle_event({'refresh', AgentJObj}, StateName, State) ->
     lager:debug("refresh agent config: ~p", [AgentJObj]),
     {'next_state', StateName, State};
 
+handle_event('load_endpoints', StateName, #state{agent_proc='undefined'}=State) ->
+    lager:debug("agent proc not ready, not loading endpoints yet"),
+    gen_fsm:send_all_state_event(self(), 'load_endpoints'),
+    {'next_state', StateName, State};
+handle_event('load_endpoints', StateName, #state{agent_id=AgentId
+                                                 ,agent_proc=Srv
+                                                 ,acct_id=AcctId
+                                                 ,acct_db=AcctDb
+                                                }=State) ->
+    Setters = [fun(C) -> whapps_call:set_account_id(AcctId, C) end
+               ,fun(C) -> whapps_call:set_account_db(AcctDb, C) end
+               ,fun(C) -> whapps_call:set_owner_id(AgentId, C) end
+              ],
+
+    Call = lists:foldl(fun(F, C) -> F(C) end
+                       ,whapps_call:new(), Setters
+                      ),
+
+    %% Inform us of things with us as owner
+    catch gproc:reg(?OWNER_UPDATE_REG(AcctId, AgentId)),
+
+    case get_endpoints([], Srv, Call, AgentId) of
+        {'error', 'no_endpoints'} -> {'next_state', StateName, State};
+        {'ok', EPs} -> {'next_state', StateName, State#state{endpoints=EPs}};
+        {'error', E} -> {'stop', E, State}
+    end;
+
 handle_event(_Event, StateName, State) ->
     lager:debug("unhandled event in state ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
-
-get_endpoints(OrigEPs, Srv, Call, AgentId) ->
-    case catch acdc_util:get_endpoints(Call, AgentId) of
-        [] ->
-            lager:debug("no endpoints for this agent, going down"),
-            acdc_agent:stop(Srv),
-            {'error', 'no_endpoints'};
-        [_|_]=EPs ->
-            AcctId = whapps_call:account_id(Call),
-
-            _ = [maybe_add_endpoint(EP, AcctId, Srv) || EP <- EPs],
-
-            %% Inform us of things with us as owner
-            catch gproc:reg(?OWNER_UPDATE_REG(AcctId, AgentId)),
-
-            {'ok', EPs};
-        {'EXIT', E} ->
-            lager:debug("failed to load endpoints: ~p", [_E]),
-            acdc_agent:stop(Srv),
-            {'error', E}
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
