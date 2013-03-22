@@ -748,7 +748,7 @@ change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
 -spec new_message(ne_binary(), pos_integer(), mailbox(), whapps_call:call()) -> any().
 new_message(AttachmentName, Length, Box, Call) ->
     lager:debug("saving new ~bms voicemail message and metadata", [Length]),
-    MediaId = message_media_doc(whapps_call:account_db(Call), Box),
+    MediaId = message_media_doc(whapps_call:account_db(Call), Box, AttachmentName),
 
     case store_recording(AttachmentName, MediaId, Call) of
         {ok, _StoreJObj} ->
@@ -1134,9 +1134,9 @@ store_recording(AttachmentName, DocId, Call) ->
 get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     _ = case couch_mgr:open_doc(AccountDb, MediaId) of
-            {ok, JObj} ->
+            {'ok', JObj} ->
                 case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
-                    [] -> ok;
+                    [] -> 'ok';
                     Existing ->
                         [begin
                              lager:info("need to remove ~s/~s/~s first", [AccountDb, MediaId, Attach]),
@@ -1145,9 +1145,9 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
                          || Attach <- Existing
                         ]
                 end;
-            {error, _} -> ok
+            {'error', _} -> 'ok'
         end,
-    {ok, URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
+    {'ok', URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
     URL.
 
 %%--------------------------------------------------------------------
@@ -1155,8 +1155,11 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec message_media_doc(ne_binary(), mailbox()) -> ne_binary().
-message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Timezone}) ->
+-spec message_media_doc(ne_binary(), mailbox(), ne_binary()) -> ne_binary().
+message_media_doc(Db, #mailbox{mailbox_number=BoxNum
+                               ,mailbox_id=Id
+                               ,timezone=Timezone
+                              }, AttachmentName) ->
     UtcSeconds = wh_util:current_tstamp(),
     UtcDateTime = calendar:gregorian_seconds_to_datetime(UtcSeconds),
     Name = case localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)) of
@@ -1169,7 +1172,7 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
                                    ,wh_util:to_binary(I), ":"
                                    ,wh_util:to_binary(S)
                                   ]);
-               {error, unknown_tz} ->
+               {'error', 'unknown_tz'} ->
                    lager:info("unknown timezone: ~s", [Timezone]),
                    {{Y,M,D},{H,I,S}} = UtcDateTime,
                    list_to_binary(["mailbox ", BoxNum, " message "
@@ -1189,11 +1192,12 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
              ,{<<"source_id">>, Id}
              ,{<<"media_source">>, <<"recording">>}
              ,{<<"media_type">>, Ext}
-             ,{<<"streamable">>, true}
+             ,{<<"media_filename">>, AttachmentName}
+             ,{<<"streamable">>, 'true'}
              ,{<<"utc_seconds">>, UtcSeconds}
             ],
-    Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{type, <<"private_media">>}]),
-    {ok, JObj} = couch_mgr:save_doc(Db, Doc),
+    Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{'type', <<"private_media">>}]),
+    {'ok', JObj} = couch_mgr:save_doc(Db, Doc),
     wh_json:get_value(<<"_id">>, JObj).
 
 %%--------------------------------------------------------------------
