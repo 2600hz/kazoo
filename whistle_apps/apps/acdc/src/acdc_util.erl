@@ -80,28 +80,7 @@ agent_devices(AcctDb, AgentId) ->
 -spec get_endpoints(whapps_call:call(), ne_binary() | couch_mgr:get_results_return()) ->
                                  wh_json:objects().
 get_endpoints(Call, ?NE_BINARY = AgentId) ->
-    AcctDb = whapps_call:account_db(Call),
-    get_endpoints(Call
-                  ,couch_mgr:get_results(AcctDb
-                                         ,<<"cf_attributes/owned">>
-                                         ,[{'key', [AgentId, <<"device">>]}]
-                                        )
-                 );
-get_endpoints(_Call, {'ok', []}) -> [];
-get_endpoints(_Call, {'error', _E}) -> [];
-get_endpoints(Call, {'ok', Devices}) ->
-    [EPDoc
-     || Device <- Devices,
-        (EPDoc = get_endpoint(Call, wh_json:get_value(<<"id">>, Device))) =/= 'undefined',
-        wh_json:is_true(<<"enabled">>, EPDoc, 'false')
-    ].
-
--spec get_endpoint(whapps_call:call(), ne_binary()) -> api_object().
-get_endpoint(Call, ?NE_BINARY = EndpointId) ->
-    case couch_mgr:open_doc(whapps_call:account_db(Call), EndpointId) of
-        {'ok', JObj} -> JObj;
-        {'error', _R} -> 'undefined'
-    end.
+    cf_user:get_endpoints(AgentId, [], Call).
 
 %% Handles subscribing/unsubscribing from call events
 -spec bind_to_call_events(api_binary() | whapps_call:call()) -> 'ok'.
