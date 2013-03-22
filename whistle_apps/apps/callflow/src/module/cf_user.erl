@@ -10,7 +10,9 @@
 
 -include("../callflow.hrl").
 
--export([handle/2]).
+-export([handle/2
+         ,get_endpoints/3
+        ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -51,7 +53,8 @@ handle(Data, Call) ->
 %% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints(api_binary(), wh_json:object(), whapps_call:call()) -> wh_json:objects().
+-spec get_endpoints(api_binary(), wh_json:object(), whapps_call:call()) ->
+                           wh_json:objects().
 get_endpoints('undefined', _, _) -> [];
 get_endpoints(UserId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
