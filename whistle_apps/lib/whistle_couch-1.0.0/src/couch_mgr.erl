@@ -99,15 +99,15 @@ load_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", wh_util:to_list(File)]),
     lager:debug("read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
     try
-        {ok, Bin} = file:read_file(Path),
+        {'ok', Bin} = file:read_file(Path),
         ?MODULE:save_doc(DbName, wh_json:decode(Bin)) %% if it crashes on the match, the catch will let us know
     catch
-        _Type:{badmatch,{error,Reason}} ->
+        _Type:{'badmatch',{'error',Reason}} ->
             lager:debug("badmatch error: ~p", [Reason]),
-            {error, Reason};
+            {'error', Reason};
         _Type:Reason ->
             lager:debug("exception: ~p", [Reason]),
-            {error, Reason}
+            {'error', Reason}
     end.
 
 %%--------------------------------------------------------------------
@@ -124,22 +124,22 @@ update_doc_from_file(DbName, App, File) when ?VALID_DBNAME ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
     lager:debug("update db ~s from CouchDB file: ~s", [DbName, Path]),
     try
-        {ok, Bin} = file:read_file(Path),
+        {'ok', Bin} = file:read_file(Path),
         JObj = wh_json:decode(Bin),
-        {ok, Rev} = ?MODULE:lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)),
+        {'ok', Rev} = ?MODULE:lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)),
         ?MODULE:save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj))
     catch
-        _Type:{badmatch,{error,Reason}} ->
+        _Type:{'badmatch',{'error',Reason}} ->
             lager:debug("bad match: ~p", [Reason]),
-            {error, Reason};
+            {'error', Reason};
         _Type:Reason ->
             lager:debug("exception: ~p", [Reason]),
-            {error, Reason}
+            {'error', Reason}
     end;
 update_doc_from_file(DbName, App, File) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> load_doc_from_file(Db, App, File);
-        {error, _}=E -> E
+        {'ok', Db} -> load_doc_from_file(Db, App, File);
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -154,10 +154,10 @@ update_doc_from_file(DbName, App, File) ->
                                   couchbeam_error().
 revise_doc_from_file(DbName, App, File) ->
     case ?MODULE:update_doc_from_file(DbName, App, File) of
-        {error, _E} ->
+        {'error', _E} ->
             lager:debug("failed to update doc: ~p", [_E]),
             ?MODULE:load_doc_from_file(DbName, App, File);
-        {ok, _}=Resp ->
+        {'ok', _}=Resp ->
             lager:debug("revised ~s", [File]),
             Resp
     end.
