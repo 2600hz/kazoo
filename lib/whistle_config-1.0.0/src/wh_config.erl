@@ -43,6 +43,10 @@
                                           ,{'compact_automatically', 'true'}
                                          ]
                             }
+                           ,{'log', [{'syslog', 'info'}
+                                     ,{'console', 'notice'}
+                                     ,{'file', 'error'}
+                                    ]}
                           ]).
 
 -type section() :: 'bigcouch' | 'amqp'.
