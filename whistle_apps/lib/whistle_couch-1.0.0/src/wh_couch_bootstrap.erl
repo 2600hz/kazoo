@@ -35,7 +35,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -58,12 +58,12 @@ init([]) ->
     %% TODO: for the time being just maintain backward compatability
     wh_couch_connections:add(create_connection(Config)),
     wh_couch_connections:add(create_admin_connection(Config)),
-    [AutoCmpt|_] = wh_config:get('bigcouch', 'compact_automatically'),
+    AutoCmpt = wh_config:get('bigcouch', 'compact_automatically', 'true'),
     CacheProps = [{'expires', 'infinity'}
                   ,{'origin', {'db', ?WH_CONFIG_DB, <<"whistle_couch">>}}
                  ],
     wh_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, AutoCmpt, CacheProps),
-    [Cookie|_] = wh_config:get_atom('bigcouch', 'cookie', 'change_me'),
+    Cookie = wh_config:get_atom('bigcouch', 'cookie', 'monster'),
     wh_couch_connections:set_node_cookie(Cookie),
     lager:info("waiting for first bigcouch/haproxy connection...", []),
     wh_couch_connections:wait_for_connection(),
@@ -146,26 +146,26 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec get_config() -> {'ok', wh_proplist()}.
 get_config() ->
-    [IP|_] = wh_config:get(bigcouch, ip, [""]),
-    [Port|_] = wh_config:get_integer(bigcouch, port, 5984),
-    [Username|_] = wh_config:get_string(bigcouch, username, [""]),
-    [Pwd|_] = wh_config:get_string(bigcouch, password, [""]),
-    [AdminPort|_] = wh_config:get_integer(bigcouch, admin_port, 5986),    
+    IP = wh_config:get('bigcouch', 'ip', "localhost"),
+    Port = wh_config:get_integer('bigcouch', 'port', 5984),
+    Username = wh_config:get_string('bigcouch', 'username', ""),
+    Pwd = wh_config:get_string('bigcouch', 'password', ""),
+    AdminPort = wh_config:get_integer('bigcouch', 'admin_port', 5986),    
     [{'default_couch_host', {IP, Port, Username, Pwd, AdminPort}}].
 
 -spec create_connection(wh_proplist()) -> couch_connection().
 create_connection(Props) ->
     Routines = [fun(C) ->
-                        import_config(props:get_value(default_couch_host, Props), C)
+                        import_config(props:get_value('default_couch_host', Props), C)
                 end
-                ,fun(C) -> wh_couch_connection:set_admin(false, C) end
+                ,fun(C) -> wh_couch_connection:set_admin('false', C) end
                ],
     lists:foldl(fun(F, C) -> F(C) end, #wh_couch_connection{id = 1}, Routines).
 
 -spec create_admin_connection(wh_proplist()) -> couch_connection().
 create_admin_connection(Props) ->
     Routines = [fun(C) ->
-                        case props:get_value(default_couch_host, Props) of
+                        case props:get_value('default_couch_host', Props) of
                             {Host, _, User, Pass, AdminPort} ->
                                 import_config({Host, AdminPort, User, Pass}, C);
                             {Host, _, User, Pass} ->
@@ -174,7 +174,7 @@ create_admin_connection(Props) ->
                                 import_config(Else, C)
                         end
                 end
-                ,fun(C) -> wh_couch_connection:set_admin(true, C) end
+                ,fun(C) -> wh_couch_connection:set_admin('true', C) end
                ],
     lists:foldl(fun(F, C) -> F(C) end, #wh_couch_connection{id = 2}, Routines).
 
