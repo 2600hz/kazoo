@@ -16,7 +16,7 @@
          ,stop/0, stop/1
         ]).
 
--define(DEPS, [sasl, crypto, public_key, ibrowse, couchbeam]).
+-define(DEPS, ['sasl', 'crypto', 'public_key', 'ibrowse', 'couchbeam']).
 
 %%
 start(_Type, _Args) ->
@@ -33,17 +33,15 @@ start_link() ->
 %% @doc Start the couch server.
 start() ->
     _ = start_deps(),
-    application:start(whistle_couch).
+    application:start('whistle_couch').
 
--spec start_deps/0 :: () -> any().
+-spec start_deps() -> any().
 start_deps() ->
     whistle_couch_deps:ensure(?MODULE),
     [wh_util:ensure_started(Dep) || Dep <- ?DEPS].
 
 %% @spec stop() -> ok
 %% @doc Stop the couch server.
-stop() ->
-    application:stop(whistle_couch).
+stop() -> application:stop('whistle_couch').
 
-stop(_) ->
-    ok.
+stop(_) -> 'ok'.
