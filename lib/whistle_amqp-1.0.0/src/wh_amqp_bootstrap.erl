@@ -26,7 +26,6 @@
 -include("amqp_util.hrl").
 
 -define(SERVER, ?MODULE).
--define(STARTUP_FILE, [code:lib_dir(whistle_amqp, priv), "/startup.config"]).
 
 -record(state, {}).
 
@@ -60,7 +59,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put(callid, ?LOG_SYSTEM_ID),
+    put('callid', ?LOG_SYSTEM_ID),
     Init = get_config(),
     URIs = case props:get_value('uri', Init, ?DEFAULT_AMQP_URI) of
                URI = "amqp://"++_ -> 
@@ -152,8 +151,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_config/0 :: () -> wh_proplist().
+-spec get_config() -> wh_proplist().
 get_config() ->
-    [{'uri', wh_config:get_string('amqp', 'uri')}
+    [{'uri', wh_config:get_string('amqp', 'uri', ?DEFAULT_AMQP_URI)}
      %%,{'use_federation', wh_config:get('amqp', 'use_federation')}
     ].
