@@ -153,7 +153,7 @@ demonitor_consumer(Channel) -> Channel.
 %% @spec init(Args) -> {ok, State} |
 %%                     {ok, State, Timeout} |
 %%                     ignore |
-%%                     {stop, Reason}
+%%                     {'stop', Reason}
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
@@ -167,43 +167,43 @@ init([]) ->
 %% Handling call messages
 %%
 %% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%                                   {'reply', Reply, State} |
+%%                                   {'reply', Reply, State, Timeout} |
+%%                                   {'noreply', State} |
+%%                                   {'noreply', State, Timeout} |
+%%                                   {'stop', Reason, Reply, State} |
+%%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 handle_call({new, #wh_amqp_channel{consumer=Pid}=Channel}, _, State) ->
     case ets:insert_new(?TAB, Channel) of
-        true -> {reply, Channel, State};
-        false -> {reply, find(Pid), State}
+        true -> {'reply', Channel, State};
+        false -> {'reply', find(Pid), State}
     end;
 handle_call({monitor_channel, Channel}, _, State) ->
-    {reply, maybe_monitor_channel(Channel), State};
+    {'reply', maybe_monitor_channel(Channel), State};
 handle_call({monitor_consumer, Channel}, _, State) ->
-    {reply, maybe_monitor_consumer(Channel), State};
+    {'reply', maybe_monitor_consumer(Channel), State};
 handle_call({demonitor_channel, Channel}, _, State) ->
-    {reply, maybe_demonitor_channel(Channel), State};
+    {'reply', maybe_demonitor_channel(Channel), State};
 handle_call({demonitor_consumer, Channel}, _, State) ->
-    {reply, maybe_demonitor_consumer(Channel), State};
+    {'reply', maybe_demonitor_consumer(Channel), State};
 handle_call({lost_connection, URI}, _, State) ->
     _ = demonitor_all_connection_channels(URI),
-    {reply, ok, State};
+    {'reply', ok, State};
 handle_call(stop, _, State) ->
-    {stop, normal, ok, State};
+    {'stop', normal, ok, State};
 handle_call(_Msg, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Handling cast messages
 %%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%% @spec handle_cast(Msg, State) -> {'noreply', State} |
+%%                                  {'noreply', State, Timeout} |
+%%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({reconnect, #wh_amqp_connection{uri=URI}=Connection}, State) ->
@@ -216,7 +216,7 @@ handle_cast({reconnect, #wh_amqp_connection{uri=URI}=Connection}, State) ->
                           reconnect(Matches, Connection)
                   end
           end),
-    {noreply, State};
+    {'noreply', State};
 handle_cast({force_reconnect, #wh_amqp_connection{uri=URI}=Connection}, State) ->
     spawn(fun() ->
                   MatchSpec = [{#wh_amqp_channel{uri = '$2', _ = '_'}
@@ -230,7 +230,7 @@ handle_cast({force_reconnect, #wh_amqp_connection{uri=URI}=Connection}, State) -
                           force_reconnect(Matches, Connection)
                   end
           end),
-    {noreply, State};
+    {'noreply', State};
 handle_cast({command, Pid, #'basic.qos'{}=Command}, State) ->
     _ = case ets:match(?TAB, #wh_amqp_channel{consumer=Pid, commands='$1', _='_'}) of
             [] -> ok;
@@ -243,60 +243,60 @@ handle_cast({command, Pid, #'basic.qos'{}=Command}, State) ->
                     ],
                 ets:update_element(?TAB, Pid, {#wh_amqp_channel.commands, C})
         end,
-    {noreply, State};
+    {'noreply', State};
 handle_cast({command, Pid, #'queue.delete'{queue=Queue}}, State) ->
     Filter = fun(#'queue.declare'{queue=Q}) when Q =:= Queue ->
                      false;
                 (_) -> true
              end,
     _ = filter_commands(Pid, Filter),
-    {noreply, State};
+    {'noreply', State};
 handle_cast({command, Pid, #'queue.unbind'{queue=Queue, exchange=Exchange
                                           ,routing_key=RoutingKey}}, State) ->
     Filter = fun(#'queue.bind'{queue=Q, exchange=E, routing_key=R})
                    when Q =:= Queue, E =:= Exchange, R =:= RoutingKey ->
-                     false;
-                (_) -> true
+                     'false';
+                (_) -> 'true'
              end,
     _ = filter_commands(Pid, Filter),
-    {noreply, State};
-handle_cast({command, Pid, #'basic.cancel'{consumer_tag=CTag}}, State) ->
-    Filter = fun(#'basic.consume'{consumer_tag=T}) when T =:= CTag ->
-                     false;
-                (_) -> true
+    {'noreply', State};
+handle_cast({'command', Pid, #'basic.cancel'{consumer_tag=CTag}}, State) ->
+    lager:debug("recv cancel for consumer ~s(~p)", [CTag, Pid]),
+    Filter = fun(#'basic.consume'{consumer_tag=T}) -> T =/= CTag;
+                (_) -> 'true'
              end,
     _ = filter_commands(Pid, Filter),
-    {noreply, State};
-handle_cast({command, Pid, Command}, State) ->
+    {'noreply', State};
+handle_cast({'command', Pid, Command}, State) ->
     _ = case ets:match(?TAB, #wh_amqp_channel{consumer=Pid, commands='$1', _='_'}) of
-            [] -> ok;
+            [] -> 'ok';
             [[Commands]] ->
                 Update = {#wh_amqp_channel.commands, [Command|Commands]},
                 ets:update_element(?TAB, Pid, Update)
         end,
-    {noreply, State};
-handle_cast({remove, Pid}, State) ->
+    {'noreply', State};
+handle_cast({'remove', Pid}, State) ->
     ets:delete(?TAB, Pid),
-    {noreply, State};
+    {'noreply', State};
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Handling all non call/cast messages
 %%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%% @spec handle_info(Info, State) -> {'noreply', State} |
+%%                                   {'noreply', State, Timeout} |
+%%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', Ref, process, _Pid, Reason}, State) ->
-    erlang:demonitor(Ref, [flush]),
+handle_info({'DOWN', Ref, 'process', _Pid, Reason}, State) ->
+    erlang:demonitor(Ref, ['flush']),
     handle_down_msg(find_reference(Ref), Reason),
-    {noreply, State, hibernate};
+    {'noreply', State, 'hibernate'};
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -344,7 +344,7 @@ force_reconnect({[Channel], Continuation}, Connection) ->
 -spec filter_commands(pid(), function()) -> 'ok'.
 filter_commands(Pid, Filter) ->
     case ets:match(?TAB, #wh_amqp_channel{consumer=Pid, commands='$1', _='_'}) of
-        [] -> ok;
+        [] -> 'ok';
         [[Commands]] ->
             Update = {#wh_amqp_channel.commands, lists:filter(Filter, Commands)},
             ets:update_element(?TAB, Pid, Update)
