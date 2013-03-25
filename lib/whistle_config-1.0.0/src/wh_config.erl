@@ -71,7 +71,7 @@ get_atom(Section, Key) ->
 get_atom(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
         Default -> Default;
-        [_|_]=Values -> [wh_util:to_atom(Value) || Value <- Values]
+        [_|_]=Values -> [wh_util:to_atom(Value, 'true') || Value <- Values]
     end.
 
 %%--------------------------------------------------------------------
