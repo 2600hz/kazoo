@@ -887,14 +887,8 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId) ->
                                    ,{<<"Agent-ID">>, AgentId}
                                   ]),
 
-    Built = lists:foldl(fun(EP, Acc) ->
-                                case cf_endpoint:build(EP, Call) of
-                                    {'ok', EP1} -> EP1 ++ Acc;
-                                    {'error', _} -> Acc
-                                end
-                        end, [], EPs),
     Endpoints = [wh_json:set_value(<<"Endpoint-Timeout">>, Timeout, EP)
-                 || EP <- Built
+                 || EP <- EPs
                 ],
 
     Prop = props:filter_undefined(
