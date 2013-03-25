@@ -62,7 +62,9 @@ reasons(Min, Max, [_ | T], Acc) ->
 %%--------------------------------------------------------------------
 -spec dollars_to_units(float() | integer()) -> integer().
 dollars_to_units(Dollars) when is_number(Dollars) ->
-    round(Dollars * ?DOLLAR_TO_UNIT).
+    round(Dollars * ?DOLLAR_TO_UNIT);
+dollars_to_units(Dollars) ->
+    dollars_to_units(wh_util:to_float(Dollars)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -72,7 +74,9 @@ dollars_to_units(Dollars) when is_number(Dollars) ->
 %%--------------------------------------------------------------------
 -spec units_to_dollars(float() | number()) -> float().
 units_to_dollars(Units) when is_number(Units) ->
-    trunc(Units) / ?DOLLAR_TO_UNIT.
+    trunc(Units) / ?DOLLAR_TO_UNIT;
+units_to_dollars(Units) ->
+    units_to_dollars(wh_util:to_integer(Units)).
 
 %%--------------------------------------------------------------------
 %% @public

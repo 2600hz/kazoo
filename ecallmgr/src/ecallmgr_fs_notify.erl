@@ -264,6 +264,8 @@ handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
             _ -> ok
         end,
     {noreply, State, hibernate};
+handle_info({'EXIT', _, _}, State) ->
+    {noreply, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
