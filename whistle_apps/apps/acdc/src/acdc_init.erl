@@ -9,7 +9,9 @@
 %%%-------------------------------------------------------------------
 -module(acdc_init).
 
--export([start_link/0, init_acdc/0]).
+-export([start_link/0
+         ,init_acdc/0
+        ]).
 
 -include("acdc.hrl").
 
@@ -29,7 +31,7 @@ init_account(AcctDb) ->
                 ,couch_mgr:get_results(AcctDb, <<"queues/crossbar_listing">>, [])
                ),
     init_agents(AcctId
-                ,couch_mgr:get_results(AcctDb, <<"agents/crossbar_listing">>, [])
+                ,couch_mgr:get_results(AcctDb, <<"users/crossbar_listing">>, [])
                ).
 
 -spec init_queues(ne_binary(), {'ok', wh_json:objects()} | {'error', _}) -> any().
@@ -65,13 +67,13 @@ init_agents(AcctId, {'ok', As}) ->
 wait_a_bit() -> timer:sleep(1000 + random:uniform(500)).
 
 try_queues_again(AcctId) -> try_again(AcctId, <<"queues/crossbar_listing">>).
-try_agents_again(AcctId) -> try_again(AcctId, <<"agents/crossbar_listing">>).
+try_agents_again(AcctId) -> try_again(AcctId, <<"users/crossbar_listing">>).
 
 try_again(AcctId, View) ->
     spawn(fun() ->
                   put('callid', ?MODULE),
                   wait_a_bit(),
-                  init_queues(AcctId, couch_mgr:get_results(wh_util:format_accuont_id(AcctId, 'encoded')
+                  init_queues(AcctId, couch_mgr:get_results(wh_util:format_account_id(AcctId, 'encoded')
                                                             ,View, []
                                                            ))
           end).
