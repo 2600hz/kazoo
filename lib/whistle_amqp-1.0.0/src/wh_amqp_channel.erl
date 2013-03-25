@@ -65,24 +65,10 @@ close() ->
     end.
 
 -spec close(wh_amqp_channel()) -> wh_amqp_channel().
-close(#wh_amqp_channel{channel=Pid
-                       ,commands=[#'basic.consume'{consumer_tag=CTag}
-                                  |Commands
-                                 ]
-                      }=Channel) when is_pid(Pid) ->
-    lager:debug("canceled consumer ~s via channel ~p", [CTag, Pid]),
-    catch amqp_channel:call(Pid, #'basic.cancel'{consumer_tag=CTag, nowait='true'}),
-    close(Channel#wh_amqp_channel{commands=Commands});
-close(#wh_amqp_channel{channel=Pid
-                       ,commands=[#'queue.declare'{queue=Queue}
-                                  |Commands
-                                 ]
-                      }=Channel) when is_pid(Pid) ->
-    lager:debug("removed queue ~s via channel ~p", [Queue, Pid]),
-    catch amqp_channel:call(Pid, #'queue.delete'{queue=Queue, nowait='true'}),
-    close(Channel#wh_amqp_channel{commands=Commands});
-close(#wh_amqp_channel{commands=[_|Commands]}=Channel) ->
-    close(Channel#wh_amqp_channel{commands=Commands});
+close(#wh_amqp_channel{commands=[_|_]}=Channel) ->
+    _ = cancel_consumers(Channel),
+    _ = cancel_queues(Channel),
+    close(Channel#wh_amqp_channel{commands=[]});
 close(#wh_amqp_channel{channel=Pid, uri=URI}=Channel) when is_pid(Pid) ->
     lager:debug("closed channel ~p on ~s", [Pid, URI]),
     C = wh_amqp_channels:demonitor_channel(Channel),
@@ -90,6 +76,34 @@ close(#wh_amqp_channel{channel=Pid, uri=URI}=Channel) when is_pid(Pid) ->
     C;
 close(Channel) ->
     Channel.
+
+-spec cancel_consumers(wh_amqp_channel()) -> wh_amqp_channel().
+cancel_consumers(#wh_amqp_channel{commands=[]}) ->
+    'ok';
+cancel_consumers(#wh_amqp_channel{channel=Pid
+                                  ,commands=[#'basic.consume'{consumer_tag=CTag}
+                                             |Commands
+                                            ]
+                                 }=Channel) when is_pid(Pid) ->
+    lager:debug("canceled consumer ~s via channel ~p", [CTag, Pid]),
+    catch amqp_channel:call(Pid, #'basic.cancel'{consumer_tag=CTag, nowait='true'}),
+    cancel_consumers(Channel#wh_amqp_channel{commands=Commands});
+cancel_consumers(#wh_amqp_channel{commands=[_|Commands]}=Channel) ->
+    cancel_consumers(Channel#wh_amqp_channel{commands=Commands}).
+
+-spec cancel_queues(wh_amqp_channel()) -> wh_amqp_channel().
+cancel_queues(#wh_amqp_channel{commands=[]}) ->
+    'ok';
+cancel_queues(#wh_amqp_channel{channel=Pid
+                               ,commands=[#'queue.declare'{queue=Queue}
+                                          |Commands
+                                         ]
+                              }=Channel) when is_pid(Pid) ->
+    lager:debug("removed queue ~s via channel ~p", [Queue, Pid]),
+    catch amqp_channel:call(Pid, #'queue.delete'{queue=Queue, if_unused='true', nowait='true'}),
+    cancel_queues(Channel#wh_amqp_channel{commands=Commands});
+cancel_queues(#wh_amqp_channel{commands=[_|Commands]}=Channel) ->
+    cancel_queues(Channel#wh_amqp_channel{commands=Commands}).
 
 -spec remove() -> 'ok'.
 remove() ->
