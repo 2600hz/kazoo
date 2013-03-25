@@ -138,7 +138,7 @@ update_agent_device(Call, AgentId, <<"logout">>) ->
             lager:debug("unsetting owner_id from ~s", [wh_json:get_value(<<"owner_id">>, Device)]),
             {'ok', _} = couch_mgr:save_doc(whapps_call:account_db(Call), wh_json:delete_key(<<"owner_id">>, Device));
         _Other ->
-            lager:debug("owner is ~s, not ~s, leaving as-is", [_Other, AgentId]),
+            lager:debug("owner is ~s, not ~s, leaving as-is: ~p", [_Other, AgentId, Device]),
             {'error', 'not_owner'}
     end;
 update_agent_device(_, _, _) -> {'ok', 'ok'}.
