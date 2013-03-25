@@ -380,10 +380,11 @@ wait('current_call', _, State) ->
 sync({'timeout', Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref
                                                       ,acct_id=AcctId
                                                       ,agent_id=AgentId
+                                                      ,agent_proc=Srv
                                                      }=State) when is_reference(Ref) ->
     lager:debug("done waiting for sync responses"),
     acdc_stats:agent_ready(AcctId, AgentId),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+    acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
 
     {'next_state', 'ready', State#state{sync_ref=Ref}};
 sync({'timeout', Ref, ?RESYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
@@ -415,6 +416,7 @@ sync({'sync_req', JObj}, #state{agent_proc=Srv
 sync({'sync_resp', JObj}, #state{sync_ref=Ref
                                  ,acct_id=AcctId
                                  ,agent_id=AgentId
+                                 ,agent_proc=Srv
                                 }=State) ->
     case catch wh_util:to_atom(wh_json:get_value(<<"Status">>, JObj)) of
         'sync' ->
@@ -424,7 +426,7 @@ sync({'sync_resp', JObj}, #state{sync_ref=Ref
             lager:debug("other agent is in ready state, joining"),
             _ = erlang:cancel_timer(Ref),
             acdc_stats:agent_ready(AcctId, AgentId),
-            acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+            acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
             {'next_state', 'ready', State#state{sync_ref='undefined'}, 'hibernate'};
         {'EXIT', _} ->
             lager:debug("other agent sent unusable state, ignoring"),
@@ -441,11 +443,12 @@ sync({'member_connect_req', _}, State) ->
 
 sync({'pause', Timeout}, #state{acct_id=AcctId
                                 ,agent_id=AgentId
+                                ,agent_proc=Srv
                                }=State) ->
     lager:debug("recv status update:, pausing for up to ~b s", [Timeout]),
     Ref = start_pause_timer(Timeout),
     acdc_stats:agent_paused(AcctId, AgentId, Timeout),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_FLASH),
+    acdc_agent:presence_update(Srv, ?PRESENCE_RED_FLASH),
     {'next_state', 'paused', State#state{sync_ref=Ref}};
 
 sync({'route_req', Call}, State) ->
@@ -467,11 +470,12 @@ sync('current_call', _, State) ->
 %%--------------------------------------------------------------------
 ready({'pause', Timeout}, #state{acct_id=AcctId
                                  ,agent_id=AgentId
+                                 ,agent_proc=Srv
                                 }=State) ->
     lager:debug("recv status update: pausing for up to ~b s", [Timeout]),
     Ref = start_pause_timer(Timeout),
     acdc_stats:agent_paused(AcctId, AgentId, Timeout),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_FLASH),
+    acdc_agent:presence_update(Srv, ?PRESENCE_RED_FLASH),
 
     webseq:note(self(), 'right', [<<"pause: ">>, wh_util:to_binary(Timeout)]),
 
@@ -1509,21 +1513,28 @@ missed_reason(<<"CALL_REJECTED">>) -> <<"rejected">>;
 missed_reason(<<"USER_BUSY">>) -> <<"rejected">>;
 missed_reason(Reason) -> Reason.
 
+find_username(EP) -> find_sip_username(EP, wh_json:get_value([<<"sip">>, <<"username">>], EP)).
+find_sip_username(EP, 'undefined') -> wh_json:get_value(<<"To-User">>, EP);
+find_sip_username(_EP, Username) -> Username.
+
+find_endpoint_id(EP) -> find_endpoint_id(EP, wh_json:get_value(<<"_id">>, EP)).
+find_endpoint_id(EP, 'undefined') -> wh_json:get_value(<<"Endpoint-ID">>, EP);
+find_endpoint_id(_EP, EPId) -> EPId.
+
 monitor_endpoint(EP, AcctId, Srv) ->
     %% Bind for outbound call requests
-    lager:debug("monitor ep: ~p", [EP]),
     acdc_agent:add_endpoint_bindings(Srv
                                      ,cf_util:get_sip_realm(EP, AcctId)
-                                     ,wh_json:get_value([<<"sip">>, <<"username">>], EP)
+                                     ,find_username(EP)
                                     ),
     %% Inform us of device changes
-    catch gproc:reg(?ENDPOINT_UPDATE_REG(AcctId, wh_json:get_value(<<"_id">>, EP))).
+    catch gproc:reg(?ENDPOINT_UPDATE_REG(AcctId, find_endpoint_id(EP))).
 
 unmonitor_endpoint(EP, AcctId, Srv) ->
     %% Bind for outbound call requests
     acdc_agent:remove_endpoint_bindings(Srv
                                         ,cf_util:get_sip_realm(EP, AcctId)
-                                        ,wh_json:get_value([<<"sip">>, <<"username">>], EP)
+                                        ,find_username(EP)
                                        ),
     %% Inform us of device changes
     catch gproc:unreg(?ENDPOINT_UPDATE_REG(AcctId, wh_json:get_value(<<"_id">>, EP))).
@@ -1578,9 +1589,9 @@ changed_endpoints(OrigEPs, EPs) ->
 changed_endpoints([], [], Add) -> {Add, []};
 changed_endpoints(OrigEPs, [], Add) -> {Add, OrigEPs};
 changed_endpoints(OrigEPs, [EP|EPs], Add) ->
-    EPId = wh_json:get_value(<<"_id">>, EP),
+    EPId = find_endpoint_id(EP),
     case lists:partition(fun(OEP) ->
-                                 wh_json:get_value(<<"_id">>, OEP) =:= EPId
+                                 find_endpoint_id(OEP) =:= EPId
                          end, OrigEPs)
     of
         {[], _} -> changed_endpoints(OrigEPs, EPs, [EP|Add]);
