@@ -1523,7 +1523,6 @@ find_endpoint_id(_EP, EPId) -> EPId.
 
 monitor_endpoint(EP, AcctId, Srv) ->
     %% Bind for outbound call requests
-    lager:debug("monitor ep: ~p", [EP]),
     acdc_agent:add_endpoint_bindings(Srv
                                      ,cf_util:get_sip_realm(EP, AcctId)
                                      ,find_username(EP)
