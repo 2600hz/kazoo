@@ -29,7 +29,7 @@
 
 
 -define(CONFIG_FILE_ENV, "KAZOO_CONFIG").
--define(CONFIG_FILE, "/etc/kazoo/conf.ini").
+-define(CONFIG_FILE, "/etc/kazoo/config.ini").
 -define(DEFAULT_DEFAULT, []).
 
 -type section() :: 'bigcouch' | 'amqp'.
