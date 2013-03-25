@@ -41,8 +41,7 @@ consumer_pid() ->
 consumer_pid(Pid) when is_pid(Pid) -> put('$wh_amqp_consumer', Pid).
 
 -spec remove_consumer_pid() -> 'undefined'.
-remove_consumer_pid() ->
-    put('$wh_amqp_consumer', 'undefined').
+remove_consumer_pid() -> put('$wh_amqp_consumer', 'undefined').
 
 -spec new() -> wh_amqp_channel() | {'error', _}.
 new() -> new(wh_amqp_channels:new()).
@@ -52,15 +51,15 @@ new(#wh_amqp_connection{}=Connection) ->
     open(wh_amqp_channels:new(), Connection);
 new(#wh_amqp_channel{}=Channel) ->
     case wh_amqp_connections:current() of
-        {error, _} -> Channel;
-        {ok, Connection} ->
+        {'error', _} -> Channel;
+        {'ok', Connection} ->
             open(Channel, Connection)
     end.
 
 -spec close() -> wh_amqp_channel().
 close() ->
     case wh_amqp_channels:find() of
-        {error, _} -> #wh_amqp_channel{};
+        {'error', _} -> #wh_amqp_channel{};
         #wh_amqp_channel{}=Channel -> close(Channel)
     end.
 
@@ -78,8 +77,7 @@ close(Channel) ->
     Channel.
 
 -spec cancel_consumers(wh_amqp_channel()) -> wh_amqp_channel().
-cancel_consumers(#wh_amqp_channel{commands=[]}) ->
-    'ok';
+cancel_consumers(#wh_amqp_channel{commands=[]}) -> 'ok';
 cancel_consumers(#wh_amqp_channel{channel=Pid
                                   ,commands=[#'basic.consume'{consumer_tag=CTag}
                                              |Commands
@@ -92,8 +90,7 @@ cancel_consumers(#wh_amqp_channel{commands=[_|Commands]}=Channel) ->
     cancel_consumers(Channel#wh_amqp_channel{commands=Commands}).
 
 -spec cancel_queues(wh_amqp_channel()) -> wh_amqp_channel().
-cancel_queues(#wh_amqp_channel{commands=[]}) ->
-    'ok';
+cancel_queues(#wh_amqp_channel{commands=[]}) -> 'ok';
 cancel_queues(#wh_amqp_channel{channel=Pid
                                ,commands=[#'queue.declare'{queue=Queue}
                                           |Commands
@@ -166,7 +163,7 @@ retry_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, Am
 -spec command(wh_amqp_command()) -> command_ret().
 command(Command) ->
     case wh_amqp_channels:get_channel() of
-        {error, _}=E -> E;
+        {'error', _}=E -> E;
         #wh_amqp_channel{}=Channel -> command(Channel, Command)
     end.
 
@@ -198,75 +195,74 @@ command(#wh_amqp_channel{channel=Pid
         ,#'basic.cancel'{nowait=NoWait}) ->
     lists:foreach(fun(#'basic.consume'{consumer_tag=CTag}) ->
                           Command = #'basic.cancel'{consumer_tag=CTag, nowait=NoWait},
+                          lager:debug("sending cancel for consumer ~s to ~p", [CTag, Pid]),
                           Result = amqp_channel:call(Pid, Command),
                           handle_command_result(Result, Command, Channel);
-                     (_) ->
-                          ok
+                     (_) -> 'ok'
                   end, Commands);
 command(_, #'exchange.declare'{exchange=_Ex, type=_Ty}=Command) ->
     lager:debug("declared ~s exchange ~s", [_Ty, _Ex]),
     _ = wh_amqp_connections:declare_exchange(Command),
-    ok;
+    'ok';
 command(#wh_amqp_channel{channel=Pid}=Channel, Command) ->
     Result = amqp_channel:call(Pid, Command),
     handle_command_result(Result, Command, Channel).
 
 -spec handle_command_result(command_ret(), wh_amqp_command(), wh_amqp_channel()) -> command_ret().
-handle_command_result({error, _}=Error, _, _) ->
-    Error;
-handle_command_result({ok, Ok}, Command, Channel) ->
+handle_command_result({'error', _}=Error, _, _) -> Error;
+handle_command_result({'ok', Ok}, Command, Channel) ->
     handle_command_result(Ok, Command, Channel);
 handle_command_result(#'basic.qos_ok'{}
                       ,#'basic.qos'{prefetch_count=Prefetch}=Command
                       ,#wh_amqp_channel{channel=Pid}=Channel) ->
     lager:debug("applied QOS prefetch ~p to channel ~p", [Prefetch, Pid]),
     _ = wh_amqp_channels:command(Channel, Command),
-    ok;
+    'ok';
 handle_command_result(#'queue.delete_ok'{}
                       ,#'queue.delete'{queue=Q}=Command
                       ,#wh_amqp_channel{channel=Pid}=Channel) ->
     lager:debug("deleted queue ~s via channel ~p", [Q, Pid]),
     _ = wh_amqp_channels:command(Channel, Command),
-    ok;
+    'ok';
 handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
                       ,#'queue.declare'{}=Command
                       ,#wh_amqp_channel{channel=Pid}=Channel) ->
     lager:debug("declared queue ~s via channel ~p", [Q, Pid]),
     _ = wh_amqp_channels:command(Channel, Command#'queue.declare'{queue=Q}),
-    {ok, Ok};
+    {'ok', Ok};
 handle_command_result(#'queue.unbind_ok'{}
                       ,#'queue.unbind'{exchange=_Exchange, routing_key=_RK, queue=_Q}=Command
                       ,#wh_amqp_channel{channel=Pid}=Channel) ->
     lager:debug("unbound ~s from ~s exchange (routing key ~s) via channel ~p", [_Q, _Exchange, _RK, Pid]),
     _ = wh_amqp_channels:command(Channel, Command),
-    ok;
+    'ok';
 handle_command_result(#'queue.bind_ok'{}
                       ,#'queue.bind'{exchange=_Exchange, routing_key=_RK, queue=_Q}=Command
                       ,#wh_amqp_channel{channel=Pid}=Channel) ->
     lager:debug("bound ~s to ~s exchange (routing key ~s) via channel ~p", [_Q, _Exchange, _RK, Pid]),
     _ = wh_amqp_channels:command(Channel, Command),
-    ok;
+    'ok';
 handle_command_result(#'basic.consume_ok'{consumer_tag=CTag}
                       ,#'basic.consume'{}=Command
                       ,#wh_amqp_channel{channel=Pid}=Channel) ->
     lager:debug("created consumer ~s via channel ~p", [CTag, Pid]),
     _ = wh_amqp_channels:command(Channel, Command#'basic.consume'{consumer_tag=CTag}),
-    ok;
+    'ok';
 handle_command_result(#'basic.cancel_ok'{consumer_tag=CTag}
                       ,#'basic.cancel'{}=Command
                       ,#wh_amqp_channel{channel=Pid}=Channel) ->
     lager:debug("canceled consumer ~s via channel ~p", [CTag, Pid]),
     _ = wh_amqp_channels:command(Channel, Command),
-    ok;
+    'ok';
 handle_command_result(_Else, _, _) ->
     lager:warning("unexpected AMQP command result: ~p", [_Else]),
-    {error, unexpected_result}.
+    {'error', 'unexpected_result'}.
 
 -spec open(wh_amqp_channel() | pid(), wh_amqp_connection()) -> wh_amqp_channel().
 open(#wh_amqp_channel{consumer=Consumer, reconnecting=Reconnecting}=Channel
      ,#wh_amqp_connection{uri=URI}=Connection) ->
     case wh_amqp_connection:get_channel(Connection) of
-        {ok, Pid} ->
+        {'ok', Pid} ->
             gen_server:cast(Consumer, {'wh_amqp_channel', {'new_channel', Reconnecting}}),
             amqp_channel:register_return_handler(Pid, Channel#wh_amqp_channel.consumer),
             Routines = [fun(C) ->
@@ -277,13 +273,13 @@ open(#wh_amqp_channel{consumer=Consumer, reconnecting=Reconnecting}=Channel
                         ,fun(C) -> wh_amqp_channels:monitor_consumer(C) end
                         ,fun(#wh_amqp_channel{commands=Commands}=C) ->
                                  maybe_reestablish(C#wh_amqp_channel{commands=lists:reverse(Commands)
-                                                                     ,reconnecting=true
+                                                                     ,reconnecting='true'
                                                                     })
                          end
                        ],
             lager:debug("create channel ~p for ~p on ~s", [Pid, Channel#wh_amqp_channel.consumer, URI]),
             lists:foldl(fun(F, C) -> F(C) end, Channel, Routines);
-        {error, _R} ->
+        {'error', _R} ->
             close(Channel)
     end;
 open(Channel, _) ->
@@ -292,7 +288,7 @@ open(Channel, _) ->
 
 -spec maybe_reestablish(wh_amqp_channel()) -> wh_amqp_channel().
 maybe_reestablish(#wh_amqp_channel{commands=[]}=Channel) ->
-    Channel#wh_amqp_channel{reconnecting=false};
+    Channel#wh_amqp_channel{reconnecting='false'};
 maybe_reestablish(#wh_amqp_channel{commands=[Command|Commands]}=Channel) ->
     _ = command(Channel#wh_amqp_channel{commands=[]}, Command),
     maybe_reestablish(Channel#wh_amqp_channel{commands=Commands}).
