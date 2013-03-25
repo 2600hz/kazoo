@@ -447,7 +447,7 @@ maybe_connect_to_node(#node{node=NodeName}=Node) ->
     case maybe_ping_node(Node) of
         {'error', _R}=E -> E;
         'ok' ->
-            lager:notice("succesfully connected to freeswitch node ~s", [NodeName]),
+            lager:notice("successfully connected to freeswitch node ~s", [NodeName]),
             'ok'
     end.
 
