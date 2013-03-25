@@ -35,7 +35,7 @@ done
 SCRIPT_DIR=`dirname $SCRIPT_PATH`
 RABBITMQ_HOME="${SCRIPT_DIR}/.."
 [ "x" = "x$HOSTNAME" ] && HOSTNAME=`env hostname`
-NODENAME=rabbit@${HOSTNAME%%.*}
+NODENAME=rabbit@${HOSTNAME}
 
 ## Set defaults
 . ${SCRIPT_DIR}/rabbitmq-defaults
