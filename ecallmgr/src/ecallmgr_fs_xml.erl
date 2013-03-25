@@ -183,7 +183,7 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
                           undefined ->
                               condition_el([LogEl, RingbackEl, ParkEl]);
                           PreParkEl ->
-                              condition_el([LogEl, RingbackEl, PreParkEl,  ParkEl])
+                              condition_el([LogEl, PreParkEl,  ParkEl])
                       end,
 
     ParkExtEl = extension_el(<<"park">>, undefined, [ParkConditionEl]),
@@ -296,9 +296,16 @@ get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
 get_channel_vars({<<"Codecs">>, []}, Vars) ->
     Vars;
 get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
-    Codecs = [ wh_util:to_list(C) || C <- Cs, not wh_util:is_empty(C) ],
-    CodecStr = string:join(Codecs, ","),
-    [ list_to_binary(["codec_string='", CodecStr, "'"]) | Vars];
+    Codecs = [wh_util:to_list(codec_mappings(C))
+               || C <- Cs
+                      ,not wh_util:is_empty(C)
+             ],
+    CodecStr = string:join(Codecs, ":"),
+    [list_to_binary(["codec_string='^^:", CodecStr, "'"
+                     ,",sip_codec_negotiation='greedy'"
+                    ])
+     |Vars
+    ];
 
 %% SPECIAL CASE: Timeout must be larger than zero
 get_channel_vars({<<"Timeout">>, V}, Vars) ->
@@ -323,6 +330,18 @@ get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     end;
 get_channel_vars(_, Vars) ->
     Vars.
+
+-spec codec_mappings(ne_binary()) -> ne_binary().
+codec_mappings(<<"G722_32">>) ->
+    <<"G7221@32000h">>;
+codec_mappings(<<"G722_16">>) ->
+    <<"G7221@16000h">>;
+codec_mappings(<<"CELT_32">>) ->
+    <<"CELT@32000h">>;
+codec_mappings(<<"CELT_48">>) ->
+    <<"CELT@48000h">>;
+codec_mappings(Codec) ->
+    Codec.
 
 encode_fs_val(Prefix, V) ->
     list_to_binary([Prefix, "='", escape(V, $'), "'"]).

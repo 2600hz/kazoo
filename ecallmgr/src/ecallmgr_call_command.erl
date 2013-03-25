@@ -423,28 +423,17 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
             DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
 
             Routines = [fun(DP) ->
-                                case wh_json:get_integer_value(<<"Timeout">>, JObj) of
+                                case wh_json:get_value(<<"Ringback">>, JObj) of
                                     'undefined' -> DP;
-                                    TO when TO > 2 ->
-                                        lager:debug("bridge will be attempted for ~p seconds", [TO]),
-                                        [{"application", "set call_timeout=" ++ wh_util:to_list(TO)}|DP];
-                                    _ ->
-                                        lager:debug("bridge 'timeout' invalid overwritting with 20 seconds", []),
-                                        [{"application", "set call_timeout=20"}|DP]
+                                    Ringback ->
+                                        Stream = ecallmgr_util:media_path(Ringback, extant, UUID, JObj),
+                                        lager:debug("bridge has custom ringback: ~s", [Stream]),
+                                        [{"application", <<"set ringback=", Stream/binary>>},
+                                         {"application", "set instant_ringback=true"}
+                                         |DP
+                                        ]
                                 end
-                          end
-                        ,fun(DP) ->
-                                 case wh_json:get_value(<<"Ringback">>, JObj) of
-                                     'undefined' -> DP;
-                                     Ringback ->
-                                         Stream = ecallmgr_util:media_path(Ringback, extant, UUID, JObj),
-                                         lager:debug("bridge has custom ringback: ~s", [Stream]),
-                                         [{"application", <<"set ringback=", Stream/binary>>},
-                                          {"application", "set instant_ringback=true"}
-                                          |DP
-                                         ]
-                                 end
-                         end
+                        end
                         ,fun(DP) ->
                                  case wh_json:get_value(<<"Hold-Media">>, JObj) of
                                      'undefined' ->
@@ -502,6 +491,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                         ,fun(DP) ->
                                  [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
                                   ,{"application", "set continue_on_fail=true"}
+                                  ,{"application", "set inherit_codec=true"}
                                   |DP
                                  ]
                          end
