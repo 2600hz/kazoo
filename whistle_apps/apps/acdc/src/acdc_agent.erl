@@ -36,6 +36,7 @@
          ,unbind_from_cdr/2
          ,logout_agent/1
          ,agent_info/2
+         ,presence_update/2
         ]).
 
 %% gen_server callbacks
@@ -249,6 +250,8 @@ call_status_req(Srv, CallId) ->
 fsm_started(Srv, FSM) ->
     gen_listener:cast(Srv, {'fsm_started', FSM}).
 
+add_endpoint_bindings(_Srv, _Realm, 'undefined') ->
+    lager:debug("ignoring adding endpoint bindings for undefined user @ ~s", [_Realm]);
 add_endpoint_bindings(Srv, Realm, User) ->
     lager:debug("adding route bindings to ~p for endpoint ~s@~s", [Srv, User, Realm]),
     gen_listener:add_binding(Srv, 'route', [{'realm', Realm}
@@ -263,6 +266,9 @@ remove_endpoint_bindings(Srv, Realm, User) ->
 unbind_from_cdr(Srv, CallId) -> gen_listener:cast(Srv, {'unbind_from_cdr', CallId}).
 
 logout_agent(Srv) -> gen_listener:cast(Srv, 'logout_agent').
+
+presence_update(Srv, PresenceState) ->
+    gen_listener:cast(Srv, {'presence_update', PresenceState}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -680,6 +686,12 @@ handle_cast('logout_agent', #state{acct_id=AcctId
 
     wapi_acdc_agent:publish_logout(Update),
     lager:debug("published agent logout message"),
+    {'noreply', State};
+
+handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
+                                                       ,agent_id=AgentId
+                                                      }=State) ->
+    acdc_util:presence_update(AcctId, AgentId, PresenceState),
     {'noreply', State};
 
 handle_cast(_Msg, State) ->
