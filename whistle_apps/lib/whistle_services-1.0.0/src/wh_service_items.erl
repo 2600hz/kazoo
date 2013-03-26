@@ -46,10 +46,20 @@ to_list(ServiceItems) ->
 %%--------------------------------------------------------------------
 -spec public_json/1 :: (items()) -> wh_json:objects().
 public_json(ServiceItems) ->
-    [wh_service_item:public_json(ServiceItem)
-     || {_, ServiceItem} <- dict:to_list(ServiceItems)
-    ].
-
+    lists:foldl(fun({_, ServiceItem}, JObj) -> 
+                        ItemJObj = wh_service_item:public_json(ServiceItem),
+                        Category = wh_service_item:category(ServiceItem),
+                        Item = wh_service_item:item(ServiceItem),                        
+                        case wh_json:get_value(Category, JObj) of
+                            'undefined' ->
+                                TJObj = wh_json:set_value(Item, ItemJObj, wh_json:new()),
+                                wh_json:set_value(Category, TJObj, JObj);
+                            VJObj ->
+                                TJObj = wh_json:set_value(Item, ItemJObj, VJObj),
+                                wh_json:set_value(Category, TJObj, JObj)
+                        end 
+                end, wh_json:new(), dict:to_list(ServiceItems)).
+    
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
