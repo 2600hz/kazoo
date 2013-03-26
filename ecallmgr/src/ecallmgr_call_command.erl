@@ -473,7 +473,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                          lager:debug("bridge will connect the media peer-to-peer"),
                                          [{"application", "set bypass_media=true"}|DP];
                                      _ ->
-                                         DP
+                                         maybe_bypass_endpoint_media(Endpoints, DP)
                                  end
                          end
                         ,fun(DP) ->
@@ -729,6 +729,23 @@ wait_for_conference(ConfName) ->
             lager:debug("conference on multiple nodes: ~p", [Ns]),
             {'error', 'multiple_conferences'}
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_bypass_endpoint_media(wh_json:objects(), wh_proplist()) -> wh_proplist().
+maybe_bypass_endpoint_media([Endpoint], DP) ->
+    case wh_json:is_true(<<"Bypass-Media">>, Endpoint) of
+        'true' ->
+            [{"application", "set bypass_media=true"}|DP];
+        'false' ->
+            DP
+    end;
+maybe_bypass_endpoint_media(_, DP) ->
+    DP.
 
 %%--------------------------------------------------------------------
 %% @private
