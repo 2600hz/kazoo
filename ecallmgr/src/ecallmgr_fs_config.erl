@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, start_link/2]). 
+-export([start_link/1, start_link/2]).
 -export([handle_config_req/3, handle_config_req/4]).
 -export([init/1
          ,handle_call/3
@@ -188,9 +188,9 @@ handle_config_req(Node, ID, _Conf) ->
 
 handle_config_req(Node, ID, <<"conference.conf">>, Data) ->
     put('callid', ID),
-    ConfConfig = props:get_value(<<"profile_name">>, Data, <<"default">>),
-    Cmd = 
-        [{<<"Conference-Config">>, ConfConfig}
+    Profile = props:get_value(<<"profile_name">>, Data, <<"default">>),
+    Cmd =
+        [{<<"Profile">>, Profile}
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     XmlResp = case wh_amqp_worker:call(?ECALLMGR_AMQP_POOL, Cmd
@@ -200,15 +200,15 @@ handle_config_req(Node, ID, <<"conference.conf">>, Data) ->
               of
                   {'ok', Resp} ->
                       {'ok', Xml} = ecallmgr_fs_xml:conference_resp_xml(Resp),
-                      lager:debug("conference config xml: ~s", [Xml]),
+                      lager:debug("conference profile xml for ~s: ~s", [Profile, Xml]),
                       Xml;
                   {'error', 'timeout'} ->
-                      lager:debug("timed out waiting for conference config for ~s", [ConfConfig]),
-                      {'ok', Resp} = ecallmgr_fs_xml:not_found(),            
+                      lager:debug("timed out waiting for conference profile for ~s", [Profile]),
+                      {'ok', Resp} = ecallmgr_fs_xml:not_found(),
                       Resp;
                   _Other ->
-                      lager:debug("failed to lookup config: ~p", [_Other]),
-                      {'ok', Resp} = ecallmgr_fs_xml:not_found(),            
+                      lager:debug("failed to lookup conference profile for ~s: ~p", [Profile, _Other]),
+                      {'ok', Resp} = ecallmgr_fs_xml:not_found(),
                       Resp
               end,
     freeswitch:fetch_reply(Node, ID, iolist_to_binary(XmlResp));

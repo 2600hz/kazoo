@@ -313,8 +313,8 @@ conference_publish(Payload, 'command', ConfId, Options) ->
 
 conference_publish(Payload, 'discovery', _, Options, ContentType) ->
     basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONFERENCE_DISCOVERY, Payload, ContentType, Options);
-conference_publish(Payload, 'config', _, Options, ContentType) ->
-    basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONFERENCE_CONFIG, Payload, ContentType, Options);
+conference_publish(Payload, 'config', ConfProfile, Options, ContentType) ->
+    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONFERENCE_CONFIG/binary, ConfProfile/binary>>, Payload, ContentType, Options);
 conference_publish(Payload, 'event', ConfId, Options, ContentType) ->
     basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary>>, Payload, ContentType, Options);
 conference_publish(Payload, 'command', ConfId, Options, ContentType) ->
@@ -723,8 +723,8 @@ bind_q_to_conference(Queue, 'event', ConfId) ->
     bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
 bind_q_to_conference(Queue, 'command', ConfId) ->
     bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
-bind_q_to_conference(Queue, 'config', _) ->
-    bind_q_to_exchange(Queue, ?KEY_CONFERENCE_CONFIG, ?EXCHANGE_CONFERENCE).
+bind_q_to_conference(Queue, 'config', ConfProfile) ->
+    bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_CONFIG/binary, ConfProfile/binary>>, ?EXCHANGE_CONFERENCE).
 
 -spec bind_q_to_exchange(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 -spec bind_q_to_exchange(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
@@ -784,8 +784,8 @@ unbind_q_from_conference(Queue, 'discovery', _) ->
     unbind_q_from_exchange(Queue, ?KEY_CONFERENCE_DISCOVERY, ?EXCHANGE_CONFERENCE);
 unbind_q_from_conference(Queue, 'event', ConfId) ->
     unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
-unbind_q_from_conference(Queue, 'config', _) ->
-    unbind_q_from_exchange(Queue, ?KEY_CONFERENCE_CONFIG, ?EXCHANGE_CONFERENCE);
+unbind_q_from_conference(Queue, 'config', ConfProfile) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_CONFIG/binary, ConfProfile/binary>>, ?EXCHANGE_CONFERENCE);
 unbind_q_from_conference(Queue, 'command', ConfId) ->
     unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
 
@@ -869,13 +869,13 @@ basic_cancel() -> wh_amqp_channel:command(#'basic.cancel'{}).
 access_request() -> access_request([]).
 access_request(Options) ->
     #'access.request'{
-       realm = props:get_value('realm', Options, <<"/data">>)
-       ,exclusive = props:get_value('exclusive', Options, 'false')
-       ,passive = props:get_value(passive, Options, 'true')
-       ,active = props:get_value(active, Options, 'true')
-       ,write = props:get_value(write, Options, 'true')
-       ,read = props:get_value(read, Options, 'true')
-      }.
+      realm = props:get_value('realm', Options, <<"/data">>)
+      ,exclusive = props:get_value('exclusive', Options, 'false')
+      ,passive = props:get_value('passive', Options, 'true')
+      ,active = props:get_value('active', Options, 'true')
+      ,write = props:get_value('write', Options, 'true')
+      ,read = props:get_value('read', Options, 'true')
+     }.
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -894,10 +894,8 @@ is_json(#'P_basic'{content_type=CT}) -> CT =:= ?DEFAULT_CONTENT_TYPE.
 %% @end
 %%------------------------------------------------------------------------------
 -spec basic_ack(integer() | #'basic.deliver'{}) -> 'ok'.
-basic_ack(#'basic.deliver'{delivery_tag=DTag}) ->
-    basic_ack(DTag);
-basic_ack(DTag) ->
-    wh_amqp_channel:command(#'basic.ack'{delivery_tag=DTag}).
+basic_ack(#'basic.deliver'{delivery_tag=DTag}) -> basic_ack(DTag);
+basic_ack(DTag) -> wh_amqp_channel:command(#'basic.ack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -907,10 +905,8 @@ basic_ack(DTag) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec basic_nack(integer() | #'basic.deliver'{}) -> 'ok'.
-basic_nack(#'basic.deliver'{delivery_tag=DTag}) ->
-    basic_nack(DTag);
-basic_nack(DTag) ->
-    wh_amqp_channel:command(#'basic.nack'{delivery_tag=DTag}).
+basic_nack(#'basic.deliver'{delivery_tag=DTag}) -> basic_nack(DTag);
+basic_nack(DTag) -> wh_amqp_channel:command(#'basic.nack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
 %% @public

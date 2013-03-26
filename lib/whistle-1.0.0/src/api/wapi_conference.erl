@@ -314,7 +314,7 @@
                                  ]).
 -define(CONFERENCE_ERROR_TYPES, []).
 
--define(CONFIG_REQ_HEADERS, [<<"Conference-Config">>]).
+-define(CONFIG_REQ_HEADERS, [<<"Profile">>]).
 -define(OPTIONAL_CONFIG_REQ_HEADERS, []).
 -define(CONFIG_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                             ,{<<"Event-Name">>, <<"config_req">>}
@@ -885,28 +885,29 @@ config_resp_v(JObj) -> config_resp_v(wh_json:to_proplist(JObj)).
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     amqp_util:conference_exchange(),
-    bind_to_q(Queue, props:get_value('restrict_to', Props)).
+    bind_to_q(Queue, props:get_value('restrict_to', Props), Props).
 
-bind_to_q(Q, 'undefined') ->
+bind_to_q(Q, 'undefined', _) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'discovery'),
     'ok' = amqp_util:bind_q_to_conference(Q, 'command'),
     amqp_util:bind_q_to_conference(Q, 'event');
-bind_to_q(Q, ['discovery'|T]) ->
+bind_to_q(Q, ['discovery'|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'discovery'),
-    bind_to_q(Q, T);
-bind_to_q(Q, ['command'|T]) ->
+    bind_to_q(Q, T, Props);
+bind_to_q(Q, ['command'|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'command'),
-    bind_to_q(Q, T);
-bind_to_q(Q, ['event'|T]) ->
+    bind_to_q(Q, T, Props);
+bind_to_q(Q, ['event'|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'event'),
-    bind_to_q(Q, T);
-bind_to_q(Q, ['config'|T]) ->
-    'ok' = amqp_util:bind_q_to_conference(Q, 'config'),
-    bind_to_q(Q, T);
-bind_to_q(Q, [{'conference', ConfId}|T]) ->
+    bind_to_q(Q, T, Props);
+bind_to_q(Q, ['config'|T], Props) ->
+    Profile = props:get_value('profile', Props, <<"*">>),
+    'ok' = amqp_util:bind_q_to_conference(Q, 'config', Profile),
+    bind_to_q(Q, T, Props);
+bind_to_q(Q, [{'conference', ConfId}|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'event', ConfId),
-    bind_to_q(Q, T);
-bind_to_q(_Q, []) -> 'ok'.
+    bind_to_q(Q, T, Props);
+bind_to_q(_Q, [], _) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -916,28 +917,29 @@ bind_to_q(_Q, []) -> 'ok'.
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     amqp_util:conference_exchange(),
-    unbind_from_q(Queue, props:get_value('restrict_to', Props)).
+    unbind_from_q(Queue, props:get_value('restrict_to', Props), Props).
 
-unbind_from_q(Q, 'undefined') ->
+unbind_from_q(Q, 'undefined', _) ->
     'ok' = amqp_util:unbind_q_from_conference(Q, 'discovery'),
     'ok' = amqp_util:unbind_q_from_conference(Q, 'command'),
     amqp_util:unbind_q_from_conference(Q, 'event');
-unbind_from_q(Q, ['discovery'|T]) ->
+unbind_from_q(Q, ['discovery'|T], Props) ->
     'ok' = amqp_util:unbind_q_from_conference(Q, 'discovery'),
-    unbind_from_q(Q, T);
-unbind_from_q(Q, ['command'|T]) ->
+    unbind_from_q(Q, T, Props);
+unbind_from_q(Q, ['command'|T], Props) ->
     'ok' = amqp_util:unbind_q_from_conference(Q, 'command'),
-    unbind_from_q(Q, T);
-unbind_from_q(Q, ['event'|T]) ->
+    unbind_from_q(Q, T, Props);
+unbind_from_q(Q, ['event'|T], Props) ->
     'ok' = amqp_util:unbind_q_from_conference(Q, 'event'),
-    unbind_from_q(Q, T);
-unbind_from_q(Q, [{'conference', ConfId}|T]) ->
+    unbind_from_q(Q, T, Props);
+unbind_from_q(Q, [{'conference', ConfId}|T], Props) ->
     'ok' = amqp_util:unbind_q_from_conference(Q, 'event', ConfId),
-    unbind_from_q(Q, T);
-unbind_from_q(Q, ['config'|T]) ->
-    'ok' = amqp_util:unbind_q_from_conference(Q, 'config'),
-    bind_to_q(Q, T);
-unbind_from_q(_Q, []) -> 'ok'.
+    unbind_from_q(Q, T, Props);
+unbind_from_q(Q, ['config'|T], Props) ->
+    Profile = props:get_value('profile', Props, <<"*">>),
+    'ok' = amqp_util:unbind_q_from_conference(Q, 'config', Profile),
+    unbind_from_q(Q, T, Props);
+unbind_from_q(_Q, [], _) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -1298,8 +1300,12 @@ publish_targeted_command(Focus, Req, ContentType) ->
 publish_config_req(JObj) ->
     publish_config_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_config_req(Req, ContentType) ->
+    Profile = profile(Req),
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CONFIG_REQ_VALUES, fun ?MODULE:config_req/1),
-    amqp_util:conference_publish(Payload, 'config', <<"*">>, [], ContentType).
+    amqp_util:conference_publish(Payload, 'config', Profile, [], ContentType).
+
+profile(Props) when is_list(Props) -> props:get_value(<<"Profile">>, Props);
+profile(JObj) -> wh_json:get_value(<<"Profile">>, JObj).
 
 %%--------------------------------------------------------------------
 %% @doc
