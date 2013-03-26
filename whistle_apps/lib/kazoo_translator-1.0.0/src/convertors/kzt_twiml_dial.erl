@@ -289,6 +289,7 @@ build_conference_doc(ConfId, ConfProps) ->
                        ,{<<"require_moderator">>, require_moderator(StartOnEnter)}
                        ,{<<"wait_for_moderator">>, 'true'}
                        ,{<<"max_members">>, get_max_participants(ConfProps)}
+                       ,{<<"profile">>, <<"pivot">>}
                       ]).
 
 require_moderator('undefined') -> 'false';

@@ -18,6 +18,7 @@
 -export([update/2]).
 
 -export([id/1, set_id/2]).
+-export([profile/1, set_profile/2]).
 -export([focus/1, set_focus/2]).
 -export([application_name/1, set_application_name/2]).
 -export([application_version/1, set_application_version/2]).
@@ -66,6 +67,7 @@
 -record(whapps_conference, {
           id :: api_binary()                           %% the conference id
          ,focus :: api_binary()                        %% the conference focus
+         ,profile = <<"default">> :: api_binary()      %% conference profile (config settings)
          ,controller_q :: api_binary()                 %% the controller queue, for responses
          ,bridge_username = <<"test">> :: ne_binary()  %% the username used for a conference bridge
          ,bridge_password = ?BRIDGE_PWD :: ne_binary() %% the password used for a conference bridge
@@ -103,6 +105,7 @@ from_json(JObj, Conference) ->
     KVS = orddict:from_list(wh_json:to_proplist(wh_json:get_value(<<"Key-Value-Store">>, JObj, wh_json:new()))),
     Conference#whapps_conference{
       id = wh_json:get_ne_value(<<"Conference-ID">>, JObj, id(Conference))
+      ,profile = wh_json:get_ne_value(<<"Profile">>, JObj, profile(Conference))
       ,focus = wh_json:get_ne_value(<<"Conference-Focus">>, JObj, focus(Conference))
       ,controller_q = wh_json:get_ne_value(<<"Controller-Queue">>, JObj, controller_queue(Conference))
       ,bridge_username = wh_json:get_ne_value(<<"Bridge-Username">>, JObj, bridge_username(Conference))
@@ -144,6 +147,7 @@ to_json(#whapps_conference{}=Conference) ->
 -spec to_proplist(conference()) -> wh_proplist().
 to_proplist(#whapps_conference{}=Conference) ->
     [{<<"Conference-ID">>, id(Conference)}
+     ,{<<"Profile">>, profile(Conference)}
      ,{<<"focus">>, focus(Conference)}
      ,{<<"Controller-Queue">>, controller_queue(Conference)}
      ,{<<"Bridge-Username">>, bridge_username(Conference)}
@@ -181,6 +185,7 @@ from_conference_doc(JObj, Conference) ->
     Moderator = wh_json:get_value(<<"moderator">>, JObj),
     Conference#whapps_conference{
       id = wh_json:get_ne_value(<<"_id">>, JObj, id(Conference))
+      ,profile = wh_json:get_ne_value(<<"profile">>, JObj, profile(Conference))
       ,focus = wh_json:get_ne_value(<<"focus">>, JObj, focus(Conference))
       ,bridge_username = wh_json:get_ne_value(<<"bridge_username">>, JObj, bridge_username(Conference))
       ,bridge_password = wh_json:get_ne_value(<<"bridge_password">>, JObj, bridge_password(Conference))
@@ -205,12 +210,18 @@ update(Updaters, Conference) ->
     lists:foldr(fun(F, C) -> F(C) end, Conference, Updaters).
 
 -spec id(conference()) -> api_binary().
-id(#whapps_conference{id=Id}) ->
-    Id.
+id(#whapps_conference{id=Id}) -> Id.
 
 -spec set_id(api_binary(), conference()) -> conference().
 set_id(Id, Conference) when is_binary(Id); Id =:= 'undefined' ->
     Conference#whapps_conference{id=Id}.
+
+-spec profile(conference()) -> api_binary().
+profile(#whapps_conference{profile=P}) -> P.
+
+-spec set_profile(api_binary(), conference()) -> conference().
+set_profile(P, Conference) when is_binary(P); P =:= 'undefined' ->
+    Conference#whapps_conference{profile=P}.
 
 -spec application_name(conference()) -> ne_binary().
 application_name(#whapps_conference{app_name=AppName}) ->
@@ -453,8 +464,7 @@ kvs_update_counter(Key, Number, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:update_counter(wh_util:to_binary(Key), Number, Dict)}.
 
 -spec flush() -> 'ok'.
-flush() ->
-    wh_cache:flush_local(?WHAPPS_CALL_CACHE).
+flush() -> wh_cache:flush_local(?WHAPPS_CALL_CACHE).
 
 -spec cache(conference()) -> 'ok'.
 -spec cache(conference(), pos_integer()) -> 'ok'.
@@ -463,10 +473,10 @@ cache(#whapps_conference{}=Conference) ->
     cache(Conference, 300000).
 
 cache(#whapps_conference{id=ConferenceId}=Conference, Expires) ->
-    CacheProps = [{expires, Expires}],
-    wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, conference, ConferenceId}, Conference, CacheProps).
+    CacheProps = [{'expires', Expires}],
+    wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}, Conference, CacheProps).
 
 -spec retrieve(ne_binary()) -> {'ok', conference()} |
-                                     {'error', 'not_found'}.
+                               {'error', 'not_found'}.
 retrieve(ConferenceId) ->
-    wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, conference, ConferenceId}).
+    wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}).
