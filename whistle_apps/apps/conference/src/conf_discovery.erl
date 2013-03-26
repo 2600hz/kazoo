@@ -85,10 +85,10 @@ handle_discovery_req(JObj, _) ->
 
 handle_config_req(JObj, _Props) ->
     'true' = wapi_conference:config_req_v(JObj),
-    ConfigName = wh_json:get_value(<<"Conference-Config">>, JObj),
-    lager:debug("looking up conference config '~s'", [ConfigName]),
+    ConfigName = wh_json:get_value(<<"Profile">>, JObj),
+    lager:debug("looking up conference profile '~s'", [ConfigName]),
     case whapps_config:get(<<"conferences">>, ConfigName) of
-        'undefined' -> lager:debug("no config defined");
+        'undefined' -> lager:debug("no profile defined");
         Profile ->
             lager:debug("profile ~s found", [ConfigName]),
             Resp = [{<<"Profiles">>, wh_json:from_list([{ConfigName, Profile}])}

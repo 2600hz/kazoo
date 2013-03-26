@@ -517,8 +517,8 @@ code_change(_OldVsn, Participant, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec find_participant(wh_proplist(), ne_binary()) ->
-                                    {'ok', wh_json:object()} |
-                                    {'error', 'not_found'}.
+                              {'ok', wh_json:object()} |
+                              {'error', 'not_found'}.
 find_participant([], _) -> {'error', 'not_found'};
 find_participant([Participant|Participants], CallId) ->
     case wh_json:get_value(<<"Call-ID">>, Participant) of
@@ -563,7 +563,8 @@ sync_participant(JObj, Call, #participant{in_conference='true'}=Participant) ->
 
 -spec sync_moderator(wh_json:object(), whapps_call:call(), participant()) -> participant().
 sync_moderator(JObj, Call, #participant{conference=Conference
-                                        ,discovery_event=DiscoveryEvent}=Participant) ->
+                                        ,discovery_event=DiscoveryEvent
+                                       }=Participant) ->
     ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
     lager:debug("caller has joined the local conference as moderator ~s", [ParticipantId]),
     Deaf = not wh_json:is_true(<<"Hear">>, JObj),
@@ -585,7 +586,8 @@ sync_moderator(JObj, Call, #participant{conference=Conference
 
 -spec sync_member(wh_json:object(), whapps_call:call(), participant()) -> participant().
 sync_member(JObj, Call, #participant{conference=Conference
-                                     ,discovery_event=DiscoveryEvent}=Participant) ->
+                                     ,discovery_event=DiscoveryEvent
+                                    }=Participant) ->
     ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
     lager:debug("caller has joined the local conference as member ~p", [ParticipantId]),
     Deaf = not wh_json:is_true(<<"Hear">>, JObj),
