@@ -224,7 +224,7 @@ cleanup_leaky_keys(AccountId, #cb_context{req_data=JObj}=Context) ->
     validate_realm_is_unique(AccountId, Context#cb_context{req_data=wh_json:delete_keys(RemoveKeys, JObj)}).
 
 -spec validate_realm_is_unique(api_binary(), cb_context:context()) -> cb_context:context().
-validate_realm_is_unique(AccountId, #cb_context{doc=JObj}=Context) ->
+validate_realm_is_unique(AccountId, #cb_context{req_data=JObj}=Context) ->
     Realm = wh_json:get_ne_value(<<"realm">>, JObj),
     case is_unique_realm(AccountId, Realm) of
         true -> validate_account_schema(AccountId, Context);
