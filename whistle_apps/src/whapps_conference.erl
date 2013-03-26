@@ -137,8 +137,8 @@ to_json(#whapps_conference{}=Conference) ->
               wh_json:is_json_term(V)
           ],
     wh_json:from_list([KV
-                       || {_, V}=KV <- [{<<"Key-Value-Store">>, wh_json:from_list(KVS)} |
-                                        props:delete(<<"Key-Value-Store">>, Props)
+                       || {_, V}=KV <- [{<<"Key-Value-Store">>, wh_json:from_list(KVS)}
+                                        | props:delete(<<"Key-Value-Store">>, Props)
                                        ],
                           V =/= 'undefined',
                           wh_json:is_json_term(V)
@@ -171,8 +171,8 @@ to_proplist(#whapps_conference{}=Conference) ->
     ].
 
 -spec is_conference(term()) -> boolean().
-is_conference(#whapps_conference{}) -> true;
-is_conference(_) -> false.
+is_conference(#whapps_conference{}) -> 'true';
+is_conference(_) -> 'false'.
 
 -spec from_conference_doc(wh_json:object()) -> conference().
 -spec from_conference_doc(wh_json:object(), conference()) -> conference().

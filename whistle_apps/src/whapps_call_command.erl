@@ -1368,12 +1368,12 @@ b_privacy(Mode, Call) ->
 -type collect_digits_return() :: {'error','channel_hungup' | 'channel_unbridge' | wh_json:object()} | {'ok', ne_binary()}.
 -spec collect_digits(integer() | ne_binary(), whapps_call:call()) -> collect_digits_return().
 -spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), whapps_call:call()) -> collect_digits_return().
--spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), whapps_call:call())
-                          -> collect_digits_return().
--spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), api_binary(), whapps_call:call())
-                          -> collect_digits_return().
+-spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), whapps_call:call()) ->
+                            collect_digits_return().
+-spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), api_binary(), whapps_call:call()) ->
+                            collect_digits_return().
 -spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), api_binary(), list()
-                           ,whapps_call:call()) -> collect_digits_return().
+                     ,whapps_call:call()) -> collect_digits_return().
 
 collect_digits(MaxDigits, Call) ->
     collect_digits(MaxDigits, 3000, Call).
@@ -1558,13 +1558,13 @@ wait_for_application(Application, Event, Type, Timeout) ->
 -type wait_for_headless_application_return() :: {'error', 'timeout' | wh_json:object()} |
                                                 {'ok', wh_json:object()}.
 -spec wait_for_headless_application(ne_binary()) ->
-                                                 wait_for_headless_application_return().
+                                           wait_for_headless_application_return().
 -spec wait_for_headless_application(ne_binary(), ne_binary()) ->
-                                                 wait_for_headless_application_return().
+                                           wait_for_headless_application_return().
 -spec wait_for_headless_application(ne_binary(), ne_binary(), ne_binary()) ->
-                                                 wait_for_headless_application_return().
+                                           wait_for_headless_application_return().
 -spec wait_for_headless_application(ne_binary(), ne_binary(), ne_binary(), wh_timeout()) ->
-                                                 wait_for_headless_application_return().
+                                           wait_for_headless_application_return().
 
 wait_for_headless_application(Application) ->
     wait_for_headless_application(Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
@@ -1782,8 +1782,8 @@ wait_for_unbridge() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_application_or_dtmf(ne_binary(), wh_timeout()) ->
-                                                whapps_api_std_return() |
-                                                {'dtmf', binary()}.
+                                          whapps_api_std_return() |
+                                          {'dtmf', binary()}.
 wait_for_application_or_dtmf(Application, Timeout) ->
     Start = erlang:now(),
     receive
@@ -1884,5 +1884,4 @@ send_command(Command, Call) when is_list(Command) ->
             wapi_dialplan:publish_command(CtrlQ, props:filter_undefined(Prop));
         'false' -> 'ok'
     end;
-send_command(JObj, Call) ->
-    send_command(wh_json:to_proplist(JObj), Call).
+send_command(JObj, Call) -> send_command(wh_json:to_proplist(JObj), Call).

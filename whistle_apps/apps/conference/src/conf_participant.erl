@@ -307,10 +307,7 @@ handle_cast('join_local', #participant{call=Call
             'true' ->
                 whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
         end,
-    _ = whapps_call_command:conference(whapps_conference:id(Conference)
-                                       ,'false', 'false'
-                                       ,whapps_conference:moderator(Conference)
-                                       ,Call),
+    send_conference_command(Conference, Call),
     {'noreply', Participant};
 handle_cast({'join_remote', JObj}, #participant{call=Call
                                                 ,conference=Conference
@@ -664,3 +661,24 @@ send_authn_response(MsgId, ServerId, Conference, Call) ->
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     wapi_authn:publish_resp(ServerId, Resp).
+
+send_conference_command(Conference, Call) ->
+    {Mute, Deaf} =
+        case whapps_conference:moderator(Conference) of
+            'true' ->
+                {whapps_conference:moderator_join_muted(Conference)
+                 ,whapps_conference:moderator_join_deaf(Conference)
+                };
+            'false' ->
+                {whapps_conference:member_join_muted(Conference)
+                 ,whapps_conference:member_join_deaf(Conference)
+                }
+        end,
+    Command = [{<<"Application-Name">>, <<"conference">>}
+               ,{<<"Conference-ID">>, whapps_conference:id(Conference)}
+               ,{<<"Mute">>, Mute}
+               ,{<<"Deaf">>, Deaf}
+               ,{<<"Moderator">>, whapps_conference:moderator(Conference)}
+               ,{<<"Profile">>, whapps_conference:profile(Conference)}
+              ],
+    whapps_call_command:send_command(Command, Call).

@@ -328,8 +328,7 @@ handle_search_resp(JObj, Conference, Call, Srv) ->
     end.
 
 -spec discovery_failed(whapps_call:call(), pid()) -> 'ok'.
-discovery_failed(Call, _) ->
-    whapps_call_command:hangup(Call).
+discovery_failed(Call, _) -> whapps_call_command:hangup(Call).
 
 -spec validate_conference_id(api_binary(), whapps_call:call()) ->
                                     {'ok', whapps_conference:conference()} |
