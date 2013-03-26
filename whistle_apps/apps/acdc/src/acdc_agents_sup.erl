@@ -20,6 +20,8 @@
          ,find_acct_supervisors/1
          ,find_agent_supervisor/2
          ,status/0
+         ,restart_acct/1
+         ,restart_agent/2
         ]).
 
 %% Supervisor callbacks
@@ -27,7 +29,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Restart, Shutdown, Type),
-        {Name, {Name, start_link, []}, Restart, Shutdown, Type, [Name]}).
+        {Name, {Name, 'start_link', []}, Restart, Shutdown, Type, [Name]}).
 
 %%%===================================================================
 %%% API functions
@@ -74,6 +76,13 @@ new_thief(Call, QueueId) -> supervisor:start_child(?MODULE, [Call, QueueId]).
 
 -spec workers() -> [pid(),...] | [].
 workers() -> [Pid || {_, Pid, 'supervisor', [_]} <- supervisor:which_children(?MODULE)].
+
+restart_acct(AcctId) -> [acdc_agent_sup:restart(AcctId, S) || S <- workers(), is_agent_in_acct(S, AcctId)].
+restart_agent(AcctId, AgentId) ->
+    case find_agent_supervisor(AcctId, AgentId) of
+        'undefined' -> lager:info("no supervisor for agent ~s(~s) to restart", [AgentId, AcctId]);
+        S -> acdc_agent_sup:restart(S)
+    end.
 
 -spec find_acct_supervisors(ne_binary()) -> [pid(),...] | [].
 find_acct_supervisors(AcctId) -> [S || S <- workers(), is_agent_in_acct(S, AcctId)].

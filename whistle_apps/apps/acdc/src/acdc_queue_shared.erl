@@ -31,8 +31,8 @@
 -record(state, {fsm_pid :: pid()}).
 
 -define(SHARED_BINDING_OPTIONS, [{'consume_options', [{'no_ack', 'false'}
-                                                    ,{'exclusive', 'false'}
-                                                   ]}
+                                                      ,{'exclusive', 'false'}
+                                                     ]}
                                  ,{'basic_qos', 1}
                                  ,{'queue_options', [{'exclusive', 'false'}]}
                                 ]).
@@ -88,12 +88,12 @@ nack(Srv, Delivery) -> gen_listener:nack(Srv, Delivery).
 %% @end
 %%--------------------------------------------------------------------
 init([FSMPid]) ->
-    put(callid, ?LOG_SYSTEM_ID),
+    put('callid', ?LOG_SYSTEM_ID),
 
     lager:debug("shared queue proc started, sending messages to FSM ~p", [FSMPid]),
-    {ok, #state{
-       fsm_pid=FSMPid
-      }}.
+    {'ok', #state{
+              fsm_pid=FSMPid
+             }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -110,8 +110,7 @@ init([FSMPid]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {'reply', 'ok', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -124,7 +123,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -136,9 +135,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'basic.cancel',_,'true'}, State) ->
+    lager:debug("recv basic.cancel...no!!!"),
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -150,7 +152,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{fsm_pid=FSM}) ->
-    {reply, [{fsm_pid, FSM}]}.
+    {'reply', [{'fsm_pid', FSM}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -175,7 +177,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
