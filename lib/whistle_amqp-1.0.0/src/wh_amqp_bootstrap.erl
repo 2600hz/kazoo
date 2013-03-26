@@ -153,6 +153,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec get_config() -> wh_proplist().
 get_config() ->
-    [{'uri', wh_config:get_string('amqp', 'uri', ?DEFAULT_AMQP_URI)}
+    [{'uri', wh_config:get('amqp', 'uri', ?DEFAULT_AMQP_URI)}
      %%,{'use_federation', wh_config:get('amqp', 'use_federation')}
     ].
