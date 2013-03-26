@@ -109,8 +109,9 @@ create_template_props(Event, Docs, Account) ->
                          ,{<<"from_realm">>, wh_json:get_value(<<"From-Realm">>, Event)}
                          ,{<<"to_user">>, pretty_print_did(ToE164)}
                          ,{<<"to_realm">>, wh_json:get_value(<<"To-Realm">>, Event)}
-                         ,{<<"voicemail_box">>, wh_json:get_value(<<"Voicemail-Box">>, Event)}
-                         ,{<<"voicemail_media">>, wh_json:get_value(<<"Voicemail-Name">>, Event)}
+                         ,{<<"box">>, wh_json:get_value(<<"Voicemail-Box">>, Event)}
+                         ,{<<"media">>, wh_json:get_value(<<"Voicemail-Name">>, Event)}
+                         ,{<<"length">>, preaty_print_length(Event)}
                          ,{<<"voicemail_transcription">>, wh_json:get_value([<<"Voicemail-Transcription">>, <<"text">>], Event)}
                          ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                         ]}
@@ -130,7 +131,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),
     Service = props:get_value(<<"service">>, Props),
     DB = props:get_value(<<"account_db">>, Props),
-    DocId = props:get_value(<<"voicemail_media">>, Voicemail),
+    DocId = props:get_value(<<"media">>, Voicemail),
 
     From = props:get_value(<<"send_from">>, Service),
     To = props:get_value(<<"email_address">>, Props),
@@ -204,3 +205,19 @@ pretty_print_did(<<"011", Rest/binary>>) ->
     pretty_print_did(wnm_util:to_e164(Rest));
 pretty_print_did(Other) ->
     Other.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec preaty_print_length('undefined' | integer() | wh_json:object()) -> ne_binary().
+preaty_print_length('undefined') ->
+    <<"00:00">>;
+preaty_print_length(Milliseconds) when is_integer(Milliseconds) ->
+    Seconds = round(Milliseconds / 1000) rem 60,
+    Minutes = round(Milliseconds / (1000*60)) rem 60,
+    wh_util:to_binary(io_lib:format("~2..0w:~2..0w", [Minutes, Seconds]));
+preaty_print_length(Event) ->
+    preaty_print_length(wh_json:get_integer_value(<<"Voicemail-Length">>, Event)).
