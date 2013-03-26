@@ -86,11 +86,11 @@ init([Text, JObj]) ->
                            ]),
 
     Format = wh_json:get_value(<<"Format">>, JObj, <<"wav">>),
-    Engine = wh_json:get_value(<<"Engine">>, JObj, whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>)),
+    Engine = wh_json:get_value(<<"Engine">>, JObj),
 
     {ok, ReqID} = whapps_speech:create(Engine, Text, Voice, Format, [{stream_to, self()}]),
 
-    Meta = wh_json:from_list([{<<"content_type">>, wh_media_util:content_type_of(Format)}
+    Meta = wh_json:from_list([{<<"content_type">>, wh_mime_types:from_extension(Format)}
                               ,{<<"media_name">>, wh_util:to_hex_binary(Text)}
                              ]),
 
