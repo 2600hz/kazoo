@@ -183,7 +183,7 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
                           undefined ->
                               condition_el([LogEl, RingbackEl, ParkEl]);
                           PreParkEl ->
-                              condition_el([LogEl, PreParkEl,  ParkEl])
+                              condition_el([LogEl, RingbackEl, PreParkEl, ParkEl])
                       end,
 
     ParkExtEl = extension_el(<<"park">>, undefined, [ParkConditionEl]),
@@ -301,9 +301,7 @@ get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
                       ,not wh_util:is_empty(C)
              ],
     CodecStr = string:join(Codecs, ":"),
-    [list_to_binary(["codec_string='^^:", CodecStr, "'"
-                     ,",sip_codec_negotiation='greedy'"
-                    ])
+    [list_to_binary(["absolute_codec_string='^^:", CodecStr, "'"])
      |Vars
     ];
 

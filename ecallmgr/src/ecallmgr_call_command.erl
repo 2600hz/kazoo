@@ -491,7 +491,6 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                         ,fun(DP) ->
                                  [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
                                   ,{"application", "set continue_on_fail=true"}
-                                  ,{"application", "set inherit_codec=true"}
                                   |DP
                                  ]
                          end
