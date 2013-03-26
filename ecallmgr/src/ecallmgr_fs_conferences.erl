@@ -277,12 +277,14 @@ handle_search_req(JObj, _Props) ->
             Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                      ,{<<"Error-Message">>, <<"Conference ", ConferenceId/binary, " not found">>}
                      ,{<<"Request">>, JObj}
+                     ,{<<"Conference-ID">>, ConferenceId}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
             wapi_conference:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Error);
         {'ok', Conference} ->
             lager:debug("sending affirmative search response for conference ~s", [ConferenceId]),
             Resp = wh_json:set_values([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+                                       ,{<<"Conference-ID">>, ConferenceId}
                                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                       ], Conference),
             wapi_conference:publish_search_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
