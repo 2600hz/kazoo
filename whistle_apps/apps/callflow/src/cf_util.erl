@@ -191,11 +191,13 @@ dialpad_digit(WXYZ) when WXYZ =:= $w orelse WXYZ =:= $x orelse WXYZ =:= $y orels
 -spec ignore_early_media(wh_json:objects()) -> api_binary().
 ignore_early_media([]) -> 'undefined';
 ignore_early_media(Endpoints) ->
-    Ignore = lists:foldr(fun(Endpoint, Acc) ->
-                                 wh_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
-                                     or Acc
-                         end, 'false', Endpoints),
-    wh_util:to_binary(Ignore).
+    case lists:any(fun(Endpoint) ->
+                           wh_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
+                   end, Endpoints)
+    of
+        'true' -> <<"true">>;
+        'false' -> 'undefined'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

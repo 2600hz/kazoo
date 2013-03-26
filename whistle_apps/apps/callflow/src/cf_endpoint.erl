@@ -570,21 +570,14 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
         end,
 
     OutgoingCIDNum = maybe_format_caller_id_number(Endpoint, IntCIDNumber, Call),
-
-    MediaJObj = wh_json:get_value(<<"media">>, Endpoint),
     SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
 
-    ForceFax = case wh_json:is_true(<<"fax_option">>, MediaJObj) of
-                   'false' -> 'undefined';
-                   'true' -> <<"self">>
-               end,
-
     Prop =
-        [{<<"Invite-Format">>, invite_format(SIPJObj)}
-         ,{<<"To-User">>, to_user(SIPJObj, Properties)}
-         ,{<<"To-Username">>, to_username(SIPJObj)}
+        [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
+         ,{<<"To-User">>, get_to_user(SIPJObj, Properties)}
+         ,{<<"To-Username">>, get_to_username(SIPJObj)}
          ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call))}
-         ,{<<"To-DID">>, to_did(Endpoint, Call)}
+         ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
          ,{<<"To-IP">>, wh_json:get_value(<<"ip">>, SIPJObj)}
          ,{<<"Route">>, wh_json:get_value(<<"route">>, SIPJObj)}
          ,{<<"Proxy-IP">>, wh_json:get_value(<<"proxy">>, SIPJObj)}
@@ -593,20 +586,19 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Outgoing-Caller-ID-Name">>, IntCIDName}
          ,{<<"Callee-ID-Number">>, CalleeNum}
          ,{<<"Callee-ID-Name">>, CalleeName}
-         ,{<<"Ignore-Early-Media">>, wh_json:is_true(<<"ignore_early_media">>, MediaJObj)}
-         ,{<<"Bypass-Media">>, wh_json:is_true(<<"bypass_media">>, MediaJObj)}
-         ,{<<"Endpoint-Progress-Timeout">>, wh_json:is_true(<<"progress_timeout">>, MediaJObj)}
-         ,{<<"Endpoint-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
-         ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
+         ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Endpoint)}
+         ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
+         ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
+         ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
+         ,{<<"Endpoint-Delay">>, get_delay(Properties)}
          ,{<<"Endpoint-ID">>, wh_json:get_value(<<"_id">>, Endpoint)}
-         %% TODO: MOVE FROM CF_ATTRIBUTES
-         %%,{<<"Codecs">>, cf_attributes:media_attributes(Endpoint, <<"codecs">>, Call)}
+         ,{<<"Codecs">>, get_codecs(Endpoint)}
          ,{<<"Hold-Media">>, cf_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
          ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
          ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
          ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
-         ,{<<"Flags">>, wh_json:get_value(<<"outbound_flags">>, Endpoint)}
-         ,{<<"Force-Fax">>, ForceFax}
+         ,{<<"Flags">>, get_outbound_flags(Endpoint)}
+         ,{<<"Force-Fax">>, get_force_fax(Endpoint)}
         ],
     wh_json:from_list(props:filter_undefined(Prop)).
 
@@ -625,39 +617,12 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
 
     Prop =
         [{<<"Invite-Format">>, <<"username">>}
-         ,{<<"To-User">>, to_user(SkypeJObj, Properties)}
-         ,{<<"To-Username">>, to_username(SkypeJObj)}
+         ,{<<"To-User">>, get_to_user(SkypeJObj, Properties)}
+         ,{<<"To-Username">>, get_to_username(SkypeJObj)}
          ,{<<"Endpoint-Type">>, <<"skype">>}
          ,{<<"Endpoint-Options">>, wh_json:from_list([{<<"Skype-RR">>, <<"true">>}])}
         ],
     wh_json:from_list(props:filter_undefined(Prop)).
-
-
--spec invite_format(wh_json:object()) -> ne_binary().
-invite_format(SIPJObj) ->
-    wh_json:get_value(<<"invite_format">>, SIPJObj, <<"username">>).
-
--spec to_did(wh_json:object(), whapps_call:call()) -> api_binary().
-to_did(Endpoint, Call) ->
-    wh_json:get_value([<<"sip">>, <<"number">>]
-                      ,Endpoint
-                      ,whapps_call:request_user(Call)
-                     ).
-
--spec to_user(wh_json:object(), wh_json:object()) -> api_binary().
-to_user(SIPJObj, Properties) ->
-    case wh_json:get_ne_value(<<"static_invite">>, Properties) of
-        'undefined' ->
-            case wh_json:get_ne_value(<<"static_invite">>, SIPJObj) of
-                'undefined' -> wh_json:get_value(<<"username">>, SIPJObj);
-                To -> To
-            end;
-        To -> To
-    end.
-
--spec to_username(wh_json:object()) -> api_binary().
-to_username(SIPJObj) ->
-    wh_json:get_value(<<"username">>, SIPJObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -684,9 +649,9 @@ create_call_fwd_endpoint(Endpoint, Properties, CallFwd, Call) ->
             ,{<<"Route">>, <<"loopback/", (wh_json:get_value(<<"number">>, CallFwd, <<"unknown">>))/binary>>}
             ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
             ,{<<"Bypass-Media">>, <<"false">>}
-            ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_binary_value([<<"media">>, <<"progress_timeout">>], Endpoint)}
-            ,{<<"Endpoint-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
-            ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
+            ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
+            ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
+            ,{<<"Endpoint-Delay">>, get_delay(Properties)}
             ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
             ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
             ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallFwd)}
@@ -796,16 +761,89 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                             _Else -> J
                         end
                 end
-               ,fun(J) ->
-                        case wh_json:get_value(<<"pvt_type">>, Endpoint) of
-                            <<"device">> ->
-                                lager:info("setting inherit_codec"),
-                                wh_json:set_value(<<"Inherit-Codec">>, <<"true">>, J);
-                            'false' -> J
-                        end
-                end
               ],
     lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), CCVFuns).
+
+-spec get_invite_format(wh_json:object()) -> ne_binary().
+get_invite_format(SIPJObj) ->
+    wh_json:get_value(<<"invite_format">>, SIPJObj, <<"username">>).
+
+-spec get_to_did(wh_json:object(), whapps_call:call()) -> api_binary().
+get_to_did(Endpoint, Call) ->
+    wh_json:get_value([<<"sip">>, <<"number">>]
+                      ,Endpoint
+                      ,whapps_call:request_user(Call)
+                     ).
+
+-spec get_to_user(wh_json:object(), wh_json:object()) -> api_binary().
+get_to_user(SIPJObj, Properties) ->
+    case wh_json:get_ne_value(<<"static_invite">>, Properties) of
+        'undefined' ->
+            case wh_json:get_ne_value(<<"static_invite">>, SIPJObj) of
+                'undefined' -> wh_json:get_value(<<"username">>, SIPJObj);
+                To -> To
+            end;
+        To -> To
+    end.
+
+-spec get_to_username(wh_json:object()) -> api_binary().
+get_to_username(SIPJObj) ->
+    wh_json:get_value(<<"username">>, SIPJObj).
+
+-spec get_timeout(wh_json:object()) -> api_binary().
+get_timeout(JObj) ->
+    case wh_json:get_integer_value(<<"timeout">>, JObj, 0) of
+        Timeout when Timeout > 0 -> wh_util:to_binary(Timeout);
+        _Else -> 'undefined'
+    end.
+
+-spec get_delay(wh_json:object()) -> api_binary().
+get_delay(JObj) ->
+    case wh_json:get_integer_value(<<"delay">>, JObj, 0) of
+        Delay when Delay > 0 -> wh_util:to_binary(Delay);
+        _Else -> 'undefined'
+    end.
+
+-spec get_outbound_flags(wh_json:object()) -> api_binary().
+get_outbound_flags(JObj) ->
+    wh_json:get_ne_value(<<"outbound_flags">>, JObj).
+
+-spec get_progress_timeout(wh_json:object()) -> api_binary().
+get_progress_timeout(JObj) ->
+    case wh_json:get_integer_value([<<"media">>, <<"progress_timeout">>], JObj, 0) of
+        Timeout when Timeout > 0 -> wh_util:to_binary(Timeout);
+        _Else -> 'undefined'
+    end.
+
+-spec get_ignore_early_media(wh_json:object()) -> api_binary().
+get_ignore_early_media(JObj) ->
+    case wh_json:is_true([<<"media">>, <<"ignore_early_media">>], JObj) of
+        'true' -> <<"true">>;
+        'false' -> 'undefined'
+    end.
+
+-spec get_bypass_media(wh_json:object()) -> api_binary().
+get_bypass_media(JObj) ->
+    case wh_json:is_true([<<"media">>, <<"peer_to_peer">>], JObj) of
+        'true' -> <<"true">>;
+        'false' -> 'undefined'
+    end.
+
+-spec get_codecs(wh_json:object()) -> 'undefined' | ne_binaries().
+get_codecs(JObj) ->
+    case wh_json:get_value([<<"media">>, <<"audio">>, <<"codecs">>], JObj, [])
+        ++ wh_json:get_value([<<"media">>, <<"video">>, <<"codecs">>], JObj, [])
+    of
+        [] -> 'undefined';
+        Codecs -> Codecs
+    end.
+
+-spec get_force_fax(wh_json:object()) -> api_binary().
+get_force_fax(JObj) ->
+    case wh_json:is_true([<<"media">>, <<"fax_option">>], JObj) of
+        'false' -> 'undefined';
+        'true' -> <<"self">>
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

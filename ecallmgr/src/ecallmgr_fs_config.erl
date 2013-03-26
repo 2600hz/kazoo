@@ -262,7 +262,7 @@ default_sip_settings() ->
      ,{<<"inbound-codec-prefs">>, <<"$${codecs}">>}
      ,{<<"outbound-codec-prefs">>, <<"$${codecs}">>}
      ,{<<"inbound-codec-negotiation">>, <<"generous">>}
-     ,{<<"inbound-late-negotiation">>, <<"true">>}
+     ,{<<"inbound-late-negotiation">>, <<"false">>}
      ,{<<"disable-transcoding">>, <<"false">>}
      ,{<<"t38-passthru">>, <<"true">>}
      ,{<<"all-reg-options-ping">>, <<"true">>}

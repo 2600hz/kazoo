@@ -29,7 +29,6 @@
 
 -define(CONFIG_FILE_ENV, "KAZOO_CONFIG").
 -define(CONFIG_FILE, "/etc/kazoo/config.ini").
-
 -define(SECTION_DEFAULTS, [{'amqp', [{'uri', "amqp://guest:guest@localhost:5672"}
                                      ,{'use_federation', 'false'}
                                     ]

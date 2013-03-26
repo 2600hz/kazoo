@@ -180,7 +180,6 @@ validate_request_data(Schema, #cb_context{req_data=Data}=Context) ->
     case wh_json_validator:is_valid(wh_json:public_fields(Data), Schema) of
         {fail, Errors} ->
             lager:debug("request data did not validate against ~s: ~p", [Schema, Errors]),
-            io:format("request data did not validate against ~s: ~p", [Schema, Errors]),
             lists:foldl(fun({Property, Error}, C) ->
                                 [Code, Message] = binary:split(Error, <<":">>),
                                 add_validation_error(Property, Code, Message, C)
