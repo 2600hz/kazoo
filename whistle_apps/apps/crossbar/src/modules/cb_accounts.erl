@@ -697,6 +697,7 @@ delete_remove_db(#cb_context{db_name=AccountDb, account_id=AccountId}=Context) -
 delete_remove_from_accounts(#cb_context{account_id=AccountId}=Context) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
         {ok, JObj} ->
+            _ = provisioner_util:maybe_delete_account(Context),
             crossbar_doc:delete(Context#cb_context{db_name=?WH_ACCOUNTS_DB
                                                    ,doc=JObj
                                                   });

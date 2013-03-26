@@ -16,8 +16,10 @@
 -export([get_old_mac_address/1]).
 -export([maybe_provision/1]).
 -export([maybe_delete_provision/1]).
+-export([maybe_delete_account/1]).
 -export([maybe_send_contact_list/1]).
 -export([get_provision_defaults/1]).
+
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 -define(TEMPLATE_ATTCH, <<"template">>).
@@ -110,6 +112,26 @@ maybe_delete_provision(#cb_context{resp_status=success}=Context) ->
     end;
 
 maybe_delete_provision(_) -> false.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_delete_account/1 :: (cb_context:context()) -> boolean().
+maybe_delete_account(#cb_context{account_id=AccountId}) ->
+    case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>) of
+        <<"super_awesome_provisioner">> ->
+            spawn(fun() ->
+                          delete_account(AccountId)
+                  end),
+            true;
+        _ -> false
+    end;
+
+maybe_delete_account(_) -> false.
+
 
 -spec maybe_send_contact_list/1 :: (cb_context:context()) -> cb_context:context().
 maybe_send_contact_list(#cb_context{resp_status=success}=Context) ->
@@ -255,6 +277,13 @@ do_simple_provision(MACAddress, #cb_context{doc=JObj}=Context) ->
 %% post data to a provisiong server
 %% @end
 %%--------------------------------------------------------------------
+-spec delete_account/1 :: (#cb_context{}) -> boolean().
+delete_account(#cb_context{account_id=AccountId}) ->
+    delete_account(AccountId);
+delete_account(AccountId) ->
+    PartialURL = <<AccountId/binary>>,
+    send_to_full_provisioner(PartialURL).
+
 -spec delete_full_provision/2 :: (string(), #cb_context{}) -> boolean().
 delete_full_provision(MACAddress, #cb_context{}=Context) ->
     case get_merged_device(MACAddress, Context) of
@@ -305,7 +334,7 @@ send_to_full_provisioner(PartialURL) ->
             lager:debug("making ~s request to ~s", ['delete', FullUrl]),  
             Res = ibrowse:send_req(FullUrl, Headers, 'delete', [], [{inactivity_timeout, 10000}]),
             lager:debug("response from server: ~p", [Res]),
-            io:format("MACPIE D ~p~n", [Res]),
+            io:format("MACPIE ~p~n", [Res]),
             true
     end.
 
@@ -324,7 +353,6 @@ send_to_full_provisioner(JObj, PartialURL) ->
                               ,V =/= undefined
                       ],
             FullUrl = wh_util:to_lower_string(<<Url/binary, "/", PartialURL/binary>>),
-            io:format("Full URL ~p~n", [FullUrl]),
             {ok, _, _, RawJObj} = ibrowse:send_req(FullUrl, Headers, get, "", [{inactivity_timeout, 10000}]),
             {Verb, Body} = case wh_json:get_integer_value([<<"error">>, <<"code">>], wh_json:decode(RawJObj)) of
                                undefined ->
@@ -340,7 +368,6 @@ send_to_full_provisioner(JObj, PartialURL) ->
             lager:debug("making ~s request to ~s with: ~-300p", [Verb, FullUrl, Body]),  
             Res = ibrowse:send_req(FullUrl, Headers, Verb, Body, [{inactivity_timeout, 10000}]),
             lager:debug("response from server: ~p", [Res]),
-            io:format("MACPIE ~p~n", [Res]),
             true
     end.
 
