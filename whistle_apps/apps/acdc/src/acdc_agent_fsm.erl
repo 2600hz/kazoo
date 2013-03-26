@@ -378,10 +378,11 @@ wait('current_call', _, State) ->
 sync({'timeout', Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref
                                                       ,acct_id=AcctId
                                                       ,agent_id=AgentId
+                                                      ,agent_proc=Srv
                                                      }=State) when is_reference(Ref) ->
     lager:debug("done waiting for sync responses"),
     acdc_stats:agent_ready(AcctId, AgentId),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+    acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
 
     {'next_state', 'ready', State#state{sync_ref=Ref}};
 sync({'timeout', Ref, ?RESYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
@@ -413,6 +414,7 @@ sync({'sync_req', JObj}, #state{agent_proc=Srv
 sync({'sync_resp', JObj}, #state{sync_ref=Ref
                                  ,acct_id=AcctId
                                  ,agent_id=AgentId
+                                 ,agent_proc=Srv
                                 }=State) ->
     case catch wh_util:to_atom(wh_json:get_value(<<"Status">>, JObj)) of
         'sync' ->
@@ -422,7 +424,7 @@ sync({'sync_resp', JObj}, #state{sync_ref=Ref
             lager:debug("other agent is in ready state, joining"),
             _ = erlang:cancel_timer(Ref),
             acdc_stats:agent_ready(AcctId, AgentId),
-            acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+            acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
             {'next_state', 'ready', State#state{sync_ref='undefined'}, 'hibernate'};
         {'EXIT', _} ->
             lager:debug("other agent sent unusable state, ignoring"),
@@ -439,11 +441,12 @@ sync({'member_connect_req', _}, State) ->
 
 sync({'pause', Timeout}, #state{acct_id=AcctId
                                 ,agent_id=AgentId
+                                ,agent_proc=Srv
                                }=State) ->
     lager:debug("recv status update:, pausing for up to ~b s", [Timeout]),
     Ref = start_pause_timer(Timeout),
     acdc_stats:agent_paused(AcctId, AgentId, Timeout),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_FLASH),
+    acdc_agent:presence_update(Srv, ?PRESENCE_RED_FLASH),
     {'next_state', 'paused', State#state{sync_ref=Ref}};
 
 sync({'route_req', Call}, State) ->
@@ -465,11 +468,12 @@ sync('current_call', _, State) ->
 %%--------------------------------------------------------------------
 ready({'pause', Timeout}, #state{acct_id=AcctId
                                  ,agent_id=AgentId
+                                 ,agent_proc=Srv
                                 }=State) ->
     lager:debug("recv status update: pausing for up to ~b s", [Timeout]),
     Ref = start_pause_timer(Timeout),
     acdc_stats:agent_paused(AcctId, AgentId, Timeout),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_FLASH),
+    acdc_agent:presence_update(Srv, ?PRESENCE_RED_FLASH),
 
     webseq:note(self(), 'right', [<<"pause: ">>, wh_util:to_binary(Timeout)]),
 
@@ -642,7 +646,7 @@ ringing({'originate_failed', E}, #state{agent_proc=Srv
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId, ErrReason),
     acdc_stats:agent_ready(AcctId, AgentId),
 
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+    acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
     webseq:note(self(), 'right', <<"ready">>),
     {'next_state', 'ready', clear_call(State, 'failed')};
 
@@ -659,7 +663,7 @@ ringing({'agent_timeout', _JObj}, #state{agent_proc=Srv
     webseq:note(self(), 'right', <<"ready">>),
     acdc_stats:agent_ready(AcctId, AgentId),
 
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+    acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
     {'next_state', 'ready', clear_call(State, 'failed')};
 
 ringing({'channel_bridged', CallId}, #state{member_call_id=CallId
@@ -697,7 +701,7 @@ ringing({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
 
     webseq:note(self(), 'right', <<"failed to answer phone in time">>),
 
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+    acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
     webseq:note(self(), 'right', <<"ready">>),
     {'next_state', 'ready', clear_call(State, 'failed')};
 
@@ -715,7 +719,7 @@ ringing({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
 
     webseq:note(self(), 'right', <<"caller hungup">>),
 
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+    acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
     webseq:note(self(), 'right', <<"ready">>),
     {'next_state', 'ready', clear_call(State, 'ready')};
 
@@ -733,7 +737,7 @@ ringing({'dtmf_pressed', DTMF}, #state{caller_exit_key=DTMF
     acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_EXIT),
     acdc_stats:agent_ready(AcctId, AgentId),
 
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+    acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
 
     webseq:note(self(), 'right', <<"member call hungup - DTMF">>),
 
@@ -813,7 +817,7 @@ answered({'dialplan_error', _App}, #state{agent_proc=Srv
 
     webseq:note(self(), 'right', <<"connecting to member failed">>),
 
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+    acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
     webseq:note(self(), 'right', <<"ready">>),
     {'next_state', 'ready', clear_call(State, 'ready')};
 
@@ -930,10 +934,11 @@ wrapup({'member_connect_win', JObj}, #state{agent_proc=Srv}=State) ->
 wrapup({'timeout', Ref, ?WRAPUP_FINISHED}, #state{wrapup_ref=Ref
                                                   ,acct_id=AcctId
                                                   ,agent_id=AgentId
+                                                  ,agent_proc=Srv
                                                  }=State) ->
     lager:debug("wrapup timer expired, ready for action!"),
     acdc_stats:agent_ready(AcctId, AgentId),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+    acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
 
     webseq:note(self(), 'right', <<"ready">>),
     {'next_state', 'ready', clear_call(State, 'ready')};
@@ -990,7 +995,7 @@ paused({'timeout', Ref, ?PAUSE_MESSAGE}, #state{sync_ref=Ref
     acdc_agent:send_status_resume(Srv),
 
     acdc_stats:agent_ready(AcctId, AgentId),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+    acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
 
     webseq:note(self(), 'right', <<"wrapup timer finished - timeout">>),
 
@@ -1008,7 +1013,7 @@ paused({'resume'}, #state{acct_id=AcctId
 
     acdc_agent:send_status_resume(Srv),
     acdc_stats:agent_ready(AcctId, AgentId),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+    acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
 
     webseq:note(self(), 'right', <<"wrapup timer finished - resumed">>),
     webseq:note(self(), 'right', <<"ready">>),
@@ -1060,7 +1065,7 @@ outbound({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
             {'next_state', 'wrapup', clear_call(State, 'wrapup'), 'hibernate'};
         _ ->
             acdc_stats:agent_ready(AcctId, AgentId),
-            acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+            acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
             webseq:note(self(), 'right', <<"ready">>),
             {'next_state', 'ready', clear_call(State, 'ready'), 'hibernate'}
     end;
@@ -1080,7 +1085,7 @@ outbound({'leg_destroyed', CallId}, #state{agent_proc=Srv
             {'next_state', 'wrapup', clear_call(State, 'wrapup'), 'hibernate'};
         _ ->
             acdc_stats:agent_ready(AcctId, AgentId),
-            acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+            acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
             webseq:note(self(), 'right', <<"ready">>),
             {'next_state', 'ready', clear_call(State, 'ready'), 'hibernate'}
     end;
@@ -1092,11 +1097,12 @@ outbound({'member_connect_win', JObj}, #state{agent_proc=Srv}=State) ->
 
 outbound({'pause', Timeout}, #state{acct_id=AcctId
                                     ,agent_id=AgentId
+                                    ,agent_proc=Srv
                                    }=State) ->
     lager:debug("recv a pause while on outbound call; assuming agent called to pause for ~b", [Timeout]),
     Ref = start_pause_timer(Timeout),
     acdc_stats:agent_paused(AcctId, AgentId, Timeout),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_FLASH),
+    acdc_agent:presence_update(Srv, ?PRESENCE_RED_FLASH),
     webseq:note(self(), 'right', <<"paused">>),
     {'next_state', 'paused', clear_call(State#state{sync_ref=Ref}, 'paused')};
 
@@ -1104,6 +1110,7 @@ outbound({'timeout', CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                          ,call_status_failures=Failures
                                                          ,acct_id=AcctId
                                                          ,agent_id=AgentId
+                                                         ,agent_proc=Srv
                                                         }=State) when Failures > 3 ->
     lager:debug("outbound call status failed ~b times, call is probably down", [Failures]),
     case wrapup_left(State) of
@@ -1113,7 +1120,7 @@ outbound({'timeout', CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
             {'next_state', 'wrapup', clear_call(State, 'wrapup'), 'hibernate'};
         _ ->
             acdc_stats:agent_ready(AcctId, AgentId),
-            acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+            acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
             webseq:note(self(), 'right', <<"ready">>),
             {'next_state', 'ready', clear_call(State, 'ready'), 'hibernate'}
     end;
@@ -1306,13 +1313,10 @@ handle_info(_Info, StateName, State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _StateName, #state{agent_proc=Srv
-                                      ,acct_id=AcctId
-                                      ,agent_id=AgentId
-                                     }) ->
+terminate(_Reason, _StateName, #state{agent_proc=Srv}) ->
     lager:debug("acdc agent fsm terminating while in ~s: ~p", [_StateName, _Reason]),
     acdc_agent:stop(Srv),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID).
+    acdc_agent:presence_update(Srv, ?PRESENCE_RED_SOLID).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1499,20 +1503,28 @@ missed_reason(<<"CALL_REJECTED">>) -> <<"rejected">>;
 missed_reason(<<"USER_BUSY">>) -> <<"rejected">>;
 missed_reason(Reason) -> Reason.
 
+find_username(EP) -> find_sip_username(EP, wh_json:get_value([<<"sip">>, <<"username">>], EP)).
+find_sip_username(EP, 'undefined') -> wh_json:get_value(<<"To-User">>, EP);
+find_sip_username(_EP, Username) -> Username.
+
+find_endpoint_id(EP) -> find_endpoint_id(EP, wh_json:get_value(<<"_id">>, EP)).
+find_endpoint_id(EP, 'undefined') -> wh_json:get_value(<<"Endpoint-ID">>, EP);
+find_endpoint_id(_EP, EPId) -> EPId.
+
 monitor_endpoint(EP, AcctId, Srv) ->
     %% Bind for outbound call requests
     acdc_agent:add_endpoint_bindings(Srv
                                      ,cf_util:get_sip_realm(EP, AcctId)
-                                     ,wh_json:get_value([<<"sip">>, <<"username">>], EP)
+                                     ,find_username(EP)
                                     ),
     %% Inform us of device changes
-    catch gproc:reg(?ENDPOINT_UPDATE_REG(AcctId, wh_json:get_value(<<"_id">>, EP))).
+    catch gproc:reg(?ENDPOINT_UPDATE_REG(AcctId, find_endpoint_id(EP))).
 
 unmonitor_endpoint(EP, AcctId, Srv) ->
     %% Bind for outbound call requests
     acdc_agent:remove_endpoint_bindings(Srv
                                         ,cf_util:get_sip_realm(EP, AcctId)
-                                        ,wh_json:get_value([<<"sip">>, <<"username">>], EP)
+                                        ,find_username(EP)
                                        ),
     %% Inform us of device changes
     catch gproc:unreg(?ENDPOINT_UPDATE_REG(AcctId, wh_json:get_value(<<"_id">>, EP))).
@@ -1533,3 +1545,69 @@ maybe_remove_endpoint(EPId, EPs, AcctId, Srv) ->
             unmonitor_endpoint(RemoveEP, AcctId, Srv),
             EPs1
     end.
+
+get_endpoints(OrigEPs, Srv, Call, AgentId) ->
+    case catch acdc_util:get_endpoints(Call, AgentId) of
+        [] ->
+            lager:debug("no endpoints for this agent, going down"),
+            acdc_agent:stop(Srv),
+            {'error', 'no_endpoints'};
+        [_|_]=EPs ->
+            AcctId = whapps_call:account_id(Call),
+
+            {Add, Rm} = changed_endpoints(OrigEPs, EPs),
+            _ = [monitor_endpoint(EP, AcctId, Srv) || EP <- Add],
+            _ = [unmonitor_endpoint(EP, AcctId, Srv) || EP <- Rm],
+            
+            {'ok', EPs};
+        {'EXIT', E} ->
+            lager:debug("failed to load endpoints: ~p", [E]),
+            acdc_agent:stop(Srv),
+            {'error', E}
+    end.
+
+%% {Add, Rm}
+%% Orig [] Curr [] => {[], []}
+%% Orig [X] Curr [X] => {[], []}
+%% Orig [X] Curr [Y] => {[Y], [X]}
+%% Orig [X, Y] Curr [Y] => {[], [X]}
+%% Orig [X] Curr [X, Y] => {[Y], []}
+changed_endpoints([], EPs) -> {EPs, []};
+changed_endpoints(OrigEPs, EPs) ->
+    changed_endpoints(OrigEPs, EPs, []).
+
+changed_endpoints([], [], Add) -> {Add, []};
+changed_endpoints(OrigEPs, [], Add) -> {Add, OrigEPs};
+changed_endpoints(OrigEPs, [EP|EPs], Add) ->
+    EPId = find_endpoint_id(EP),
+    case lists:partition(fun(OEP) ->
+                                 find_endpoint_id(OEP) =:= EPId
+                         end, OrigEPs)
+    of
+        {[], _} -> changed_endpoints(OrigEPs, EPs, [EP|Add]);
+        {_, RestOrigEPs} -> changed_endpoints(RestOrigEPs, EPs, Add)
+    end.
+
+-ifdef(TEST).
+
+changed_endpoints_test() ->
+    X = wh_json:from_list([{<<"_id">>, <<"x">>}]),
+    Y = wh_json:from_list([{<<"_id">>, <<"y">>}]),
+
+    ?assertEqual({[], []}, changed_endpoints([], [])),
+    ?assertEqual({[], []}, changed_endpoints([X], [X])),
+
+    ?assertEqual({[], []}, changed_endpoints([X, Y], [X, Y])),
+    ?assertEqual({[], []}, changed_endpoints([X, Y], [Y, X])),
+
+    ?assertEqual({[X], []}, changed_endpoints([], [X])),
+    ?assertEqual({[], [X]}, changed_endpoints([X], [])),
+
+    ?assertEqual({[X, Y], []}, changed_endpoints([], [X, Y])),
+    ?assertEqual({[], [X, Y]}, changed_endpoints([X, Y], [])),
+
+    ?assertEqual({[Y], []}, changed_endpoints([X], [X, Y])),
+    ?assertEqual({[], [X]}, changed_endpoints([X, Y], [Y])),
+
+    ?assertEqual({[X], [Y]}, changed_endpoints([Y], [X])).
+-endif.

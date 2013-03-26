@@ -294,20 +294,21 @@ handle_presence_probe(JObj, _Props) ->
     FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
     case whapps_util:get_account_by_realm(FromRealm) of
         {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, wh_util:format_account_id(AcctDb, 'raw'));
-        _ -> 'ok'
+        _ -> lager:debug("ignoring presence probe from realm ~s", [FromRealm])
     end.
 
 maybe_respond_to_presence_probe(JObj, AcctId) ->
     case wh_json:get_value(<<"To-User">>, JObj) of
-        'undefined' -> 'ok';
-        AgentId -> update_probe(JObj, acdc_agents_sup:find_agent_supervisor(AcctId, AgentId))
+        'undefined' -> lager:debug("no user on presence probe for ~s", [AcctId]);
+        AgentId ->
+            lager:debug("maybe updating presence probe for ~s(~s)", [AgentId, AcctId]),
+            update_probe(JObj, acdc_agents_sup:find_agent_supervisor(AcctId, AgentId))
     end.
 
-update_probe(JObj, 'undefined') ->
-    lager:debug("no agent present, redify!"),
-    send_probe(JObj, ?PRESENCE_RED_SOLID);
+update_probe(_JObj, 'undefined') ->
+    lager:debug("no supervisor for agent present, ignore");
 update_probe(JObj, P) when is_pid(P) ->
-    lager:debug("agent is active with super: ~p", [P]),
+    lager:debug("agent is active with supervisor: ~p", [P]),
     send_probe(JObj, ?PRESENCE_GREEN).
 
 send_probe(JObj, State) ->

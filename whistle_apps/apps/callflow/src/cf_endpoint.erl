@@ -57,7 +57,7 @@ maybe_fetch_endpoint(EndpointId, AccountDb) ->
 maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
     case wh_json:get_value(<<"pvt_type">>, JObj) of
         <<"device">> ->
-            Endpoint = merge_attributes(JObj),
+            Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj)),
             CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
             wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
             {'ok', Endpoint};
@@ -66,7 +66,7 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
             {'error', 'not_device'}
     end.
 
--spec cache_origin/3 :: (wh_json:object(), ne_binary(), ne_binary()) ->  list().
+-spec cache_origin(wh_json:object(), ne_binary(), ne_binary()) ->  list().
 cache_origin(JObj, EndpointId, AccountDb) ->
     Routines = [fun(P) -> [{'db', AccountDb, EndpointId}|P] end
                 ,fun(P) ->
@@ -96,7 +96,7 @@ maybe_cached_hotdesk_ids(Props, JObj, AccountDb) ->
                         end, Props, OwnerIds)
     end.
 
--spec merge_attributes/1 :: (wh_json:object()) -> wh_json:object().
+-spec merge_attributes(wh_json:object()) -> wh_json:object().
 merge_attributes(Endpoint) ->
     Keys = [<<"call_restriction">>
             ,<<"music_on_hold">>
@@ -110,8 +110,8 @@ merge_attributes(Endpoint) ->
            ],
     merge_attributes(Keys, 'undefined', Endpoint, 'undefined').
 
--spec merge_attributes/4 :: (ne_binaries(), 'undefined' | wh_json:object(), wh_json:object(), 'undefined' | wh_json:object()) ->
-                                           wh_json:object().
+-spec merge_attributes(ne_binaries(), api_object(), wh_json:object(), api_object()) ->
+                              wh_json:object().
 merge_attributes(Keys, Account, Endpoint, 'undefined') ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
     JObj = get_user(AccountDb, Endpoint),
@@ -173,7 +173,7 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     Merged2 = wh_json:merge_recursive(Merged1, OwnerAttr),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged2, Endpoint), Owner).
 
--spec merge_call_restrictions/4 :: (ne_binaries(), wh_json:object(), wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec merge_call_restrictions(ne_binaries(), wh_json:object(), wh_json:object(), wh_json:object()) -> wh_json:object().
 merge_call_restrictions([], _, Endpoint, _) -> Endpoint;
 merge_call_restrictions([Key|Keys], Account, Endpoint, Owner) ->
     case wh_json:get_value([<<"call_restriction">>, Key, <<"action">>], Account) =:= <<"deny">>
@@ -339,11 +339,11 @@ flush(Db, Id) ->
                       | 'do_not_disturb'.
 
 -spec build(api_binary() | wh_json:object(), whapps_call:call()) ->
-                         {'ok', wh_json:objects()} |
-                         {'error', build_errors()}.
--spec build(api_binary() | wh_json:object(), 'undefined' | wh_json:object(), whapps_call:call()) ->
-                         {'ok', wh_json:objects()} |
-                         {'error', build_errors()}.
+                   {'ok', wh_json:objects()} |
+                   {'error', build_errors()}.
+-spec build(api_binary() | wh_json:object(), api_object(), whapps_call:call()) ->
+                   {'ok', wh_json:objects()} |
+                   {'error', build_errors()}.
 
 build(EndpointId, Call) ->
     build(EndpointId, wh_json:new(), Call).
@@ -598,8 +598,9 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Endpoint-Progress-Timeout">>, wh_json:is_true(<<"progress_timeout">>, MediaJObj)}
          ,{<<"Endpoint-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
          ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
+         ,{<<"Endpoint-ID">>, wh_json:get_value(<<"_id">>, Endpoint)}
          %% TODO: MOVE FROM CF_ATTRIBUTES
-%%         ,{<<"Codecs">>, cf_attributes:media_attributes(Endpoint, <<"codecs">>, Call)}
+         %%,{<<"Codecs">>, cf_attributes:media_attributes(Endpoint, <<"codecs">>, Call)}
          ,{<<"Hold-Media">>, cf_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
          ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
          ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
@@ -733,7 +734,7 @@ generate_sip_headers(Endpoint, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec generate_ccvs(wh_json:object(), whapps_call:call()) -> wh_json:object().
--spec generate_ccvs(wh_json:object(), whapps_call:call(), 'undefined' | wh_json:object()) -> wh_json:object().
+-spec generate_ccvs(wh_json:object(), whapps_call:call(), api_object()) -> wh_json:object().
 
 generate_ccvs(Endpoint, Call) ->
     generate_ccvs(Endpoint, Call, 'undefined').
