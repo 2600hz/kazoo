@@ -53,35 +53,25 @@
 %% Create a tts audio file using a configured provider
 %%------------------------------------------------------------------------------
 -spec create/1 :: (ne_binary()) -> create_resp().
--spec create/2 :: (ne_binary(), ne_binary()) -> create_resp().
--spec create/3 :: (ne_binary(), ne_binary(), ne_binary()) -> create_resp().
--spec create/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) -> create_resp().
--spec create/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) -> provider_return().
-
 create(Text) ->
     create(Text, <<"female/en-US">>).
+
+-spec create/2 :: (ne_binary(), ne_binary()) -> create_resp().
 create(Text, Voice) ->
     create(Text, Voice, <<"wav">>).
+
+-spec create/3 :: (ne_binary(), ne_binary(), ne_binary()) -> create_resp().
 create(Text, Voice, Format) ->
     create(Text, Voice, Format, []).
+
+-spec create/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) -> create_resp().
 create(Text, Voice, Format, Options) ->
     Provider = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>),
-    case create(Provider, Text, Voice, Format, Options) of
-        {error, _R}=E ->
-            lager:debug("creating speech file failed with error ~p", [_R]),
-            E;
-        {ibrowse_req_id, ReqID} ->
-            lager:debug("streaming response ~p to provided option: ~p", [ReqID, props:get_value(stream_to, Options)]),
-            {ok, ReqID};
-        {ok, "200", Headers, Content} ->
-            ContentType = props:get_value("Content-Type", Headers),
-            ContentLength = props:get_value("Content-Length", Headers),
-            lager:debug("created speech file ~s of length ~s", [ContentType, ContentLength]),
-            {ok, wh_util:to_binary(ContentType), Content};
-        {ok, Code, _, Content} ->
-            lager:debug("creating speech file failed with code ~s: ~s", [Code, Content]),
-            {error, tts_provider_failure}
-    end.
+    create(Provider, Text, Voice, Format, Options).
+
+-spec create/5 :: (api_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) -> create_resp().
+create('undefined', Text, Voice, Format, Options) ->
+    create(Text, Voice, Format, Options);
 create(<<"ispeech">>, Text, Voice, Format, Options) ->
     VoiceMappings = [{<<"female/en-US">>, <<"usenglishfemale">>}
                      ,{<<"male/en-US">>, <<"usenglishmale">>}
@@ -89,8 +79,8 @@ create(<<"ispeech">>, Text, Voice, Format, Options) ->
                      ,{<<"male/en-GB">>, <<"ukenglishmale">>}
                     ],
     case props:get_value(Voice, VoiceMappings) of
-        undefined ->
-            {error, invalid_voice};
+        'undefined' ->
+            {'error', 'invalid_voice'};
         ISpeechVoice ->
             BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url">>, <<"http://api.ispeech.org/api/json">>),
             Props = [{<<"text">>, Text}
@@ -103,13 +93,13 @@ create(<<"ispeech">>, Text, Voice, Format, Options) ->
                      ,{<<"endpadding">>, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_end_padding">>, 0)} 
                     ],
             Headers = [{"Content-Type", "application/json; charset=UTF-8"}],
-            HTTPOptions = [{response_format, binary} | Options],
-
+            HTTPOptions = [{'response_format', 'binary'} | Options],
             Body = wh_json:encode(wh_json:from_list(Props)),
-            ibrowse:send_req(BaseUrl, Headers, post, Body, HTTPOptions)
+            Response = ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions),
+            create_response(Response)
     end;
 create(_, _, _, _, _) ->
-    {error, unknown_provider}.
+    {'error', 'unknown_provider'}.
 
 %%------------------------------------------------------------------------------
 %% Transcribe the audio binary
@@ -128,19 +118,19 @@ asr_freeform(Bin, ContentType, Locale) ->
 asr_freeform(Bin, ContentType, Locale, Options) ->
     Provider = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<"ispeech">>),
     case asr_freeform(Provider, Bin, ContentType, Locale, Options) of
-        {error, _R}=E ->
+        {'error', _R}=E ->
             lager:debug("asr failed with error ~p", [_R]),
             E;
-        {ibrowse_req_id, ReqID} ->
+        {'ibrowse_req_id', ReqID} ->
             lager:debug("streaming response ~p to provided option: ~p", [ReqID, props:get_value(stream_to, Options)]),
-            {ok, ReqID};
-        {ok, "200", _Headers, Content} ->
+            {'ok', ReqID};
+        {'ok', "200", _Headers, Content} ->
             lager:debug("asr of media succeeded: ~s", [Content]),
-            {ok, wh_json:decode(Content)};
-        {ok, Code, _Hdrs, Content} ->
+            {'ok', wh_json:decode(Content)};
+        {'ok', Code, _Hdrs, Content} ->
             lager:debug("asr of media failed with code ~s", [Code]),
             lager:debug("resp: ~s", [Content]),
-            {error, asr_provider_failure, wh_json:decode(Content)}
+            {'error', 'asr_provider_failure', wh_json:decode(Content)}
     end.
 
 asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Options) ->
@@ -157,14 +147,14 @@ asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Options) ->
              ,{<<"audio">>, base64:encode(Bin)}
             ],
     Headers = [{"Content-Type", "application/json"}],
-    HTTPOptions = [{response_format, binary} | Options],
+    HTTPOptions = [{'response_format', 'binary'} | Options],
 
     Body = wh_json:encode(wh_json:from_list(Props)),
     lager:debug("req body: ~s", [Body]),
 
-    ibrowse:send_req(BaseUrl, Headers, post, Body, HTTPOptions);
+    ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions);
 asr_freeform(_, _, _, _, _) ->
-    {error, unknown_provider}.
+    {'error', 'unknown_provider'}.
 
 %%------------------------------------------------------------------------------
 %% Transcribe the audio binary
@@ -183,19 +173,19 @@ asr_commands(Bin, Commands, ContentType, Locale) ->
 asr_commands(Bin, Commands, ContentType, Locale, Options) ->
     Provider = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<"ispeech">>),
     case asr_commands(Provider, Bin, Commands, ContentType, Locale, Options) of
-        {error, _R}=E ->
+        {'error', _R}=E ->
             lager:debug("asr failed with error ~p", [_R]),
             E;
-        {ibrowse_req_id, ReqID} ->
+        {'ibrowse_req_id', ReqID} ->
             lager:debug("streaming response ~p to provided option: ~p", [ReqID, props:get_value(stream_to, Options)]),
-            {ok, ReqID};
-        {ok, "200", _Headers, Content} ->
+            {'ok', ReqID};
+        {'ok', "200", _Headers, Content} ->
             lager:debug("asr of media succeeded: ~s", [Content]),
-            {ok, wh_json:decode(Content)};
-        {ok, Code, _Hdrs, Content} ->
+            {'ok', wh_json:decode(Content)};
+        {'ok', Code, _Hdrs, Content} ->
             lager:debug("asr of media failed with code ~s", [Code]),
             lager:debug("resp: ~s", [Content]),
-            {error, asr_provider_failure, wh_json:decode(Content)}
+            {'error', 'asr_provider_failure', wh_json:decode(Content)}
     end.
 
 asr_commands(<<"ispeech">>, Bin, Commands, ContentType, Locale, Options) ->
@@ -216,11 +206,27 @@ asr_commands(<<"ispeech">>, Bin, Commands, ContentType, Locale, Options) ->
              ,{<<"audio">>, base64:encode(Bin)}
             ],
     Headers = [{"Content-Type", "application/json"}],
-    HTTPOptions = [{response_format, binary} | Options],
+    HTTPOptions = [{'response_format', 'binary'} | Options],
 
     Body = wh_json:encode(wh_json:from_list(Props)),
     lager:debug("req body: ~s", [Body]),
 
-    ibrowse:send_req(BaseUrl, Headers, post, Body, HTTPOptions);
+    ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions);
 asr_commands(_, _, _, _, _, _) ->
-    {error, unknown_provider}.
+    {'error', 'unknown_provider'}.
+
+
+create_response({'error', _R}=E) ->
+    lager:warning("creating speech file failed with error ~p", [_R]),
+    E;
+create_response({'ibrowse_req_id', ReqID}) ->
+    lager:debug("speech file streaming as ~p", [ReqID]),
+    {'ok', ReqID};
+create_response({'ok', "200", Headers, Content}) ->
+    ContentType = props:get_value("Content-Type", Headers),
+    ContentLength = props:get_value("Content-Length", Headers),
+    lager:debug("created speech file ~s of length ~s", [ContentType, ContentLength]),
+    {'ok', wh_util:to_binary(ContentType), Content};
+create_response({'ok', Code, _, Content}) ->
+    lager:warning("creating speech file failed with code ~s: ~s", [Code, Content]),
+    {'error', 'tts_provider_failure'}.
