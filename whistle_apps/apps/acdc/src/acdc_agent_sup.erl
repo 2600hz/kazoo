@@ -18,7 +18,6 @@
          ,fsm/1, start_fsm/3, start_fsm/4
          ,stop/1
          ,status/1
-         ,restart/2
         ]).
 
 %% Supervisor callbacks
@@ -44,11 +43,6 @@
 start_link(AgentJObj) -> supervisor:start_link(?MODULE, [AgentJObj]).
 
 start_link(ThiefCall, QueueId) -> supervisor:start_link(?MODULE, [ThiefCall, QueueId]).
-
--spec restart(ne_binary(), pid()) -> 'true'.
-restart(AcctId, S) ->
-    exit(S, 'kill'),
-    acdc_init:init_acct_agents(AcctId).
 
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Supervisor) -> supervisor:terminate_child('acdc_agents_sup', Supervisor).
