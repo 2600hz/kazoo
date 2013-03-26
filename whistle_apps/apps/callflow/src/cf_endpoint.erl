@@ -594,7 +594,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Callee-ID-Number">>, CalleeNum}
          ,{<<"Callee-ID-Name">>, CalleeName}
          ,{<<"Ignore-Early-Media">>, wh_json:is_true(<<"ignore_early_media">>, MediaJObj)}
-         ,{<<"Bypass-Media">>, wh_json:is_true(<<"bypass_media">>, MediaJObj)}
+         ,{<<"Bypass-Media">>, wh_json:is_true(<<"peer_to_peer">>, MediaJObj)}
          ,{<<"Endpoint-Progress-Timeout">>, wh_json:is_true(<<"progress_timeout">>, MediaJObj)}
          ,{<<"Endpoint-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
          ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
