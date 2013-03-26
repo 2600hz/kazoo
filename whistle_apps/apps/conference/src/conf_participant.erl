@@ -304,8 +304,7 @@ handle_cast('join_local', #participant{call=Call
                                       }=Participant) ->
     _ = case whapps_conference:play_entry_prompt(Conference) of
             'false' -> 'ok';
-            'true' ->
-                whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
+            'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
         end,
     send_conference_command(Conference, Call),
     {'noreply', Participant};
@@ -314,8 +313,7 @@ handle_cast({'join_remote', JObj}, #participant{call=Call
                                                }=Participant) ->
     _ = case whapps_conference:play_entry_prompt(Conference) of
             'false' -> 'ok';
-            'true' ->
-                whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
+            'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
         end,
     gen_listener:add_binding(self(), 'route', []),
     gen_listener:add_binding(self(), 'authn', []),
@@ -563,7 +561,7 @@ sync_moderator(JObj, Call, #participant{conference=Conference
                                         ,discovery_event=DiscoveryEvent
                                        }=Participant) ->
     ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
-    lager:debug("caller has joined the local conference as moderator ~s", [ParticipantId]),
+    lager:debug("caller has joined the local conference as moderator ~p", [ParticipantId]),
     Deaf = not wh_json:is_true(<<"Hear">>, JObj),
     Muted = not wh_json:is_true(<<"Speak">>, JObj),
     gen_listener:cast(self(), 'play_moderator_entry'),
@@ -662,6 +660,7 @@ send_authn_response(MsgId, ServerId, Conference, Call) ->
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     wapi_authn:publish_resp(ServerId, Resp).
 
+-spec send_conference_command(whapps_conference:conference(), whapps_call:call()) -> 'ok'.
 send_conference_command(Conference, Call) ->
     {Mute, Deaf} =
         case whapps_conference:moderator(Conference) of

@@ -601,7 +601,7 @@ get_call_pickup_app(Node, UUID, JObj, Target) ->
 %%--------------------------------------------------------------------
 get_conference_app(ChanNode, UUID, JObj, 'true') ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-    ConferenceConfig = wh_json:get_value(<<"Conference-Config">>, JObj, <<"default">>),
+    ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
     Cmd = list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)]),
 
     case ecallmgr_fs_conferences:node(ConfName) of
@@ -631,7 +631,8 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
     end;
 get_conference_app(_ChanNode, _UUID, JObj, 'false') ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-    {<<"conference">>, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}.
+    ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
+    {<<"conference">>, list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)])}.
 
 %% [{FreeSWITCH-Flag-Name, Kazoo-Flag-Name}]
 %% Conference-related entry flags

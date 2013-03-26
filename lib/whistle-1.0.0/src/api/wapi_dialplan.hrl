@@ -536,6 +536,6 @@
 -define(ORIGINATE_EXECUTE_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_ORIGINATE_EXECUTE_HEADERS, []).
 -define(ORIGINATE_EXECUTE_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
-                                 ,{<<"Event-Name">>, <<"originate_execute">>}
-                                ]).
+                                   ,{<<"Event-Name">>, <<"originate_execute">>}
+                                  ]).
 -define(ORIGINATE_EXECUTE_TYPES, []).

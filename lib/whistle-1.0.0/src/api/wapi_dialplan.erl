@@ -833,8 +833,7 @@ conference(JObj) -> conference(wh_json:to_proplist(JObj)).
 -spec conference_v(api_terms()) -> boolean().
 conference_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CONFERENCE_REQ_HEADERS, ?CONFERENCE_REQ_VALUES, ?CONFERENCE_REQ_TYPES);
-conference_v(JObj) ->
-    conference_v(wh_json:to_proplist(JObj)).
+conference_v(JObj) -> conference_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Originate Ready/Execute

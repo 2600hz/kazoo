@@ -86,9 +86,8 @@ handle_discovery_req(JObj, _) ->
 handle_config_req(JObj, _Props) ->
     'true' = wapi_conference:config_req_v(JObj),
     ConfigName = wh_json:get_value(<<"Profile">>, JObj),
-    lager:debug("looking up conference profile '~s'", [ConfigName]),
     case whapps_config:get(<<"conferences">>, ConfigName) of
-        'undefined' -> lager:debug("no profile defined");
+        'undefined' -> lager:debug("no profile defined for ~s", [ConfigName]);
         Profile ->
             lager:debug("profile ~s found", [ConfigName]),
             Resp = [{<<"Profiles">>, wh_json:from_list([{ConfigName, Profile}])}
@@ -452,6 +451,7 @@ negotiate_focus(SwitchHostname, Conference, Call) ->
 -spec create_conference(wh_json:object(), binary()) -> whapps_conference:conference().
 create_conference(JObj, Digits) ->
     Conference = whapps_conference:from_conference_doc(JObj),
+    lager:debug("created conference with profile ~s: ~p", [whapps_conference:profile(Conference), JObj]),
     ModeratorNumbers = wh_json:get_value([<<"moderator">>, <<"numbers">>], JObj, []),
     MemberNumbers = wh_json:get_value([<<"member">>, <<"numbers">>], JObj, []),
     case {lists:member(Digits, MemberNumbers), lists:member(Digits, ModeratorNumbers)} of
