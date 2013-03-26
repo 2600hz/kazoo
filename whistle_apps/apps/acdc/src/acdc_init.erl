@@ -11,6 +11,9 @@
 
 -export([start_link/0
          ,init_acdc/0
+         ,init_acct/1
+         ,init_acct_queues/1
+         ,init_acct_agents/1
         ]).
 
 -include("acdc.hrl").
@@ -21,15 +24,36 @@ start_link() -> spawn(?MODULE, 'init_acdc', []), 'ignore'.
 -spec init_acdc() -> any().
 init_acdc() ->
     put('callid', ?MODULE),
-    [init_account(Acct) || Acct <- whapps_util:get_all_accounts('encoded')].
+    [init_acct(Acct) || Acct <- whapps_util:get_all_accounts('encoded')].
 
--spec init_account(ne_binary()) -> 'ok'.
-init_account(AcctDb) ->
-    lager:debug("init account: ~s", [AcctDb]),
+-spec init_acct(ne_binary()) -> 'ok'.
+init_acct(Acct) ->
+    AcctDb = wh_util:format_account_id(Acct, 'encoded'),
+    AcctId = wh_util:format_account_id(Acct, 'raw'),
 
-    init_queues((AcctId = wh_util:format_account_id(AcctDb, 'raw'))
+    lager:debug("init acdc account: ~s", [AcctId]),
+
+    init_queues(AcctId
                 ,couch_mgr:get_results(AcctDb, <<"queues/crossbar_listing">>, [])
                ),
+    init_agents(AcctId
+                ,couch_mgr:get_results(AcctDb, <<"users/crossbar_listing">>, [])
+               ).
+
+init_acct_queues(Acct) ->
+    AcctDb = wh_util:format_account_id(Acct, 'encoded'),
+    AcctId = wh_util:format_account_id(Acct, 'raw'),
+
+    lager:debug("init acdc account queues: ~s", [AcctId]),
+    init_agents(AcctId
+                ,couch_mgr:get_results(AcctDb, <<"queues/crossbar_listing">>, [])
+               ).
+
+init_acct_agents(Acct) ->
+    AcctDb = wh_util:format_account_id(Acct, 'encoded'),
+    AcctId = wh_util:format_account_id(Acct, 'raw'),
+
+    lager:debug("init acdc account agents: ~s", [AcctId]),
     init_agents(AcctId
                 ,couch_mgr:get_results(AcctDb, <<"users/crossbar_listing">>, [])
                ).
