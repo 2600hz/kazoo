@@ -173,7 +173,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context, DeviceId, <<"quickcall">>, _
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(#cb_context{}=Context, DeviceId) ->
-    Context1 = crossbar_doc:save(Context),
+    Context1 = crossbar_doc:save(Context),            
     _ = maybe_aggregate_device(DeviceId, Context1),
     _ = provisioner_util:maybe_provision(Context1),
     Context1.
@@ -188,6 +188,7 @@ put(#cb_context{}=Context) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(#cb_context{}=Context, DeviceId) ->
     Context1 = crossbar_doc:delete(Context),
+    _ = provisioner_util:maybe_delete_provision(Context),
     _ = maybe_remove_aggreate(DeviceId, Context),
     Context1.
 
