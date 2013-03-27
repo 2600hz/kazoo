@@ -19,6 +19,8 @@
          ,reject_reason/1
          ,reject_status/1
          ,reject_code/1
+         ,get_engine/1
+         ,get_voice/1
         ]).
 
 parse_cmds(XMLString) ->

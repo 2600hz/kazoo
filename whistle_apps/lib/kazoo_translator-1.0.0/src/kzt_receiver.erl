@@ -448,8 +448,11 @@ process_conference_event(#dial_req{call=Call
             ConfigName = wh_json:get_value(<<"Profile">>, JObj),
             lager:debug("conference profile ~s requested", [ConfigName]),
 
-            Profile = conference_profile(Call),
+            Profile = kzt_util:get_conference_profile(Call),
             Resp = [{<<"Profiles">>, wh_json:from_list([{ConfigName, Profile}])}
+                    ,{<<"Caller-Controls">>, kzt_util:get_caller_controls(Call)}
+                    ,{<<"Advertise">>, kzt_util:get_advertise(Call)}
+                    ,{<<"Chat-Permissions">>, kzt_util:get_chat_permissions(Call)}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
@@ -549,12 +552,3 @@ update_offnet_timers(#dial_req{call_timeout=CallTimeout
     OffnetReq#dial_req{call_timeout=whapps_util:decr_timeout(CallTimeout, Start)
                        ,start=erlang:now()
                       }.
-
-conference_profile(Call) ->
-    wh_json:from_list([{<<"rate">>, 8000}
-                       ,{<<"interval">>, 20}
-                       ,{<<"energy-level">>, 20}
-                       ,{<<"comfort-noise">>, 'true'}
-                       ,{<<"caller-id-name">>, whapps_call:caller_id_name(Call)}
-                       ,{<<"caller-id-number">>, whapps_call:caller_id_number(Call)}
-                      ]).

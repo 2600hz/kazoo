@@ -47,6 +47,11 @@
          ,set_media_meta/2, get_media_meta/1
          ,set_amqp_listener/2, get_amqp_listener/1
 
+         ,set_conference_profile/2, get_conference_profile/1
+         ,set_caller_controls/2, get_caller_controls/1
+         ,set_advertise/2, get_advertise/1
+         ,set_chat_permissions/2, get_chat_permissions/1
+
          ,xml_elements/1
          ,xml_text_to_binary/1, xml_text_to_binary/2
         ]).
@@ -216,6 +221,18 @@ get_media_meta(Call) -> whapps_call:kvs_fetch(<<"media_meta">>, Call).
 
 set_amqp_listener(Pid, Call) -> whapps_call:kvs_store(<<"amqp_listener">>, Pid, Call).
 get_amqp_listener(Call) -> whapps_call:kvs_fetch(<<"amqp_listener">>, Call).
+
+set_conference_profile(JObj, Call) -> whapps_call:kvs_store(<<"conference_profile">>, JObj, Call).
+get_conference_profile(Call) -> whapps_call:kvs_fetch(<<"conference_profile">>, Call).
+
+set_caller_controls(JObj, Call) -> whapps_call:kvs_store(<<"caller_controls">>, JObj, Call).
+get_caller_controls(Call) -> whapps_call:kvs_fetch(<<"caller_controls">>, Call).
+
+set_advertise(JObj, Call) -> whapps_call:kvs_store(<<"advertise">>, JObj, Call).
+get_advertise(Call) -> whapps_call:kvs_fetch(<<"advertise">>, Call).
+
+set_chat_permissions(JObj, Call) -> whapps_call:kvs_store(<<"chat_permissions">>, JObj, Call).
+get_chat_permissions(Call) -> whapps_call:kvs_fetch(<<"chat_permissions">>, Call).
 
 get_request_vars(Call) ->
     wh_json:from_list(
