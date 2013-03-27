@@ -82,19 +82,6 @@ handle_command(JObj, _Props) ->
 init([Node, Options]) ->
     put('callid', ?LOG_SYSTEM_ID),
     lager:info("starting new fs conference listener for ~s", [Node]),
-    Self = self(),
-    ConsumerPid = wh_amqp_channel:consumer_pid(),
-    spawn(fun() ->
-                  %% This queue is used to round-robin conference commands
-                  %% between listeners that have established connections
-                  %% to the conference focus when the upstream whapp
-                  %% knows the conference focus...
-                  wh_amqp_channel:consumer_pid(ConsumerPid),
-                  QueueName = wapi_conference:focus_queue_name(Node),
-                  QueueOptions = [{'exclusive', 'false'}],
-                  Bindings= [{'self', []}],
-                  gen_listener:add_queue(Self, QueueName, QueueOptions, Bindings)
-          end),
     ecallmgr_fs_conferences:sync_conferences(Node),
     {'ok', #state{node=Node, options=Options}}.
 
@@ -125,6 +112,23 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'gen_listener', {'created_queue', <<"ecallmgr_fs_conference">>}}, #state{node=Node}=State) ->
+    Self = self(),
+    ConsumerPid = wh_amqp_channel:consumer_pid(),
+    spawn(fun() ->
+                  %% This queue is used to round-robin conference commands
+                  %% between listeners that have established connections
+                  %% to the conference focus when the upstream whapp
+                  %% knows the conference focus...
+                  wh_amqp_channel:consumer_pid(ConsumerPid),
+                  QueueName = wapi_conference:focus_queue_name(Node),
+                  Options = [{'queue_options', [{'exclusive', 'false'}]}
+                             ,{'consume_options', [{'exclusive', 'false'}]}
+                            ],
+                  Bindings= [{'self', []}],
+                  gen_listener:add_queue(Self, QueueName, Options, Bindings)
+          end),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
