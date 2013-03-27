@@ -206,6 +206,7 @@ ignore_early_media(Endpoints) ->
 %%--------------------------------------------------------------------
 -spec correct_media_path(api_binary(), whapps_call:call()) -> api_binary().
 correct_media_path('undefined', _) -> 'undefined';
+correct_media_path(<<>>, _) -> 'undefined';
 correct_media_path(<<"silence_stream://", _/binary>> = Media, _) -> Media;
 correct_media_path(<<"tone_stream://", _/binary>> = Media, _) -> Media;
 correct_media_path(Media, Call) ->
