@@ -121,17 +121,54 @@ empty_response() ->
 -spec conference_resp_xml(api_terms()) -> {'ok', iolist()}.
 conference_resp_xml([_|_]=Resp) ->
     Ps = props:get_value(<<"Profiles">>, Resp, wh_json:new()),
+    CCs = props:get_value(<<"Caller-Controls">>, Resp, wh_json:new()),
+    As = props:get_value(<<"Advertise">>, Resp, wh_json:new()),
+    CPs = props:get_value(<<"Chat-Permissions">>, Resp, wh_json:new()),
+
     ProfilesEl = conference_profiles_xml(Ps),
-    {'ok', xmerl:export([ProfilesEl], 'fs_xml')};
-conference_resp_xml(Resp) ->
-    Ps = wh_json:get_value(<<"Profiles">>, Resp, wh_json:new()),
-    ProfilesEl = conference_profiles_xml(Ps),
-    {'ok', xmerl:export([ProfilesEl], 'fs_xml')}.
+    AdvertiseEl = advertise_xml(As),
+    CallerControlsEl = caller_controls_xml(CCs),
+    ChatPermsEl = chat_permissions_xml(CPs),
+
+    ConfigurationEl = config_el(<<"conference.conf">>, <<"Built by Kazoo">>
+                                ,[AdvertiseEl, ProfilesEl, CallerControlsEl, ChatPermsEl]
+                               ),
+
+    {'ok', xmerl:export([ConfigurationEl], 'fs_xml')};
+conference_resp_xml(Resp) -> conference_resp_xml(wh_json:to_proplist(Resp)).
 
 conference_profiles_xml(Profiles) when is_list(Profiles) ->
     ProfileEls = [conference_profile_xml(Name, Params) || {Name, Params} <- Profiles],
     profiles_el(ProfileEls);
 conference_profiles_xml(Profiles) -> conference_profiles_xml(wh_json:to_proplist(Profiles)).
+
+advertise_xml(As) when is_list(As) ->
+    RoomEls = [room_el(Name, Status) || {Name, Status} <- As],
+    advertise_el(RoomEls);
+advertise_xml(As) -> advertise_xml(wh_json:to_proplist(As)).
+
+caller_controls_xml(CCs) when is_list(CCs) ->
+    GroupsEls = [group_xml(Name, Params) || {Name, Params} <- CCs],
+    caller_controls_el(GroupsEls);
+caller_controls_xml(CCs) -> caller_controls_xml(wh_json:to_proplist(CCs)).
+
+group_xml(Name, Controls) ->
+    ControlEls = [control_el(wh_json:get_value(<<"action">>, Control)
+                             ,wh_json:get_value(<<"digits">>, Control)
+                             ,wh_json:get_value(<<"data">>, Control)
+                            )
+                  || Control <- Controls
+                 ],
+    group_el(Name, ControlEls).
+
+chat_permissions_xml(CPs) when is_list(CPs) ->
+    ProfileEls = [profile_xml(Name, Users) || {Name, Users} <- CPs],
+    chat_permissions_el(ProfileEls);
+chat_permissions_xml(CPs) -> chat_permissions_xml(wh_json:to_proplist(CPs)).
+
+profile_xml(Name, Users) ->
+    UserEls = [chat_user_el(User, Commands) || {User, Commands} <- wh_json:to_proplist(Users)],
+    profile_el(Name, UserEls).
 
 conference_profile_xml(Name, Params) ->
     ParamEls = [param_el(K, V) || {K, V} <- wh_json:to_proplist(Params)],
@@ -432,8 +469,8 @@ arrange_acl_node({_, JObj}, Dict) ->
 -spec acl_node_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 acl_node_el(Type, CIDR) ->
     #xmlElement{name='node'
-                ,attributes=[xml_attrib(type, Type)
-                             ,xml_attrib(cidr, CIDR)
+                ,attributes=[xml_attrib('type', Type)
+                             ,xml_attrib('cidr', CIDR)
                             ]
                }.
 
@@ -464,7 +501,7 @@ config_el(Name, Desc, #xmlElement{}=Content) ->
 config_el(Name, Desc, Content) ->
     #xmlElement{name='configuration'
                 ,attributes=[xml_attrib('name', Name)
-                             ,xml_attrib(description, Desc)
+                             ,xml_attrib('description', Desc)
                             ]
                 ,content=Content
                }.
@@ -484,7 +521,7 @@ section_el(Name, Desc, #xmlElement{}=Content) ->
 section_el(Name, Desc, Content) ->
     #xmlElement{name='section'
                 ,attributes=[xml_attrib('name', Name)
-                             ,xml_attrib(description, Desc)
+                             ,xml_attrib('description', Desc)
                             ]
                 ,content=Content
                }.
@@ -503,6 +540,14 @@ user_el(Id, Children) ->
     #xmlElement{name='user'
                 ,attributes=[xml_attrib('id', Id)]
                 ,content=Children
+               }.
+
+-spec chat_user_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
+chat_user_el(Name, Commands) ->
+    #xmlElement{name='user'
+                ,attributes=[xml_attrib('name', Name)
+                             ,xml_attrib('commands', Commands)
+                            ]
                }.
 
 -spec params_el(xml_els()) -> xml_el().
@@ -528,6 +573,43 @@ profile_el(Name, Children) ->
 profiles_el(Children) ->
     #xmlElement{name='profiles'
                 ,content=Children
+               }.
+
+group_el(Name, Children) ->
+    #xmlElement{name='group'
+                ,content=Children
+                ,attributes=[xml_attrib('name', Name)]
+               }.
+
+control_el(Action, Digits) ->
+    #xmlElement{name='control'
+                ,attributes=[xml_attrib('action', Action)
+                             ,xml_attrib('digits', Digits)
+                            ]
+               }.
+
+control_el(Action, Digits, 'undefined') -> control_el(Action, Digits);
+control_el(Action, Digits, Data) ->
+    #xmlElement{name='control'
+                ,attributes=[xml_attrib('action', Action)
+                             ,xml_attrib('digits', Digits)
+                             ,xml_attrib('data', Data)
+                            ]
+               }.
+
+advertise_el(Rooms) ->
+    #xmlElement{name='advertise'
+                ,content=Rooms
+               }.
+
+caller_controls_el(Groups) ->
+    #xmlElement{name='caller-controls'
+                ,content=Groups
+               }.
+
+chat_permissions_el(Profiles) ->
+    #xmlElement{name='chat-permissions'
+                ,content=Profiles
                }.
 
 -spec variables_el(xml_els()) -> xml_el().
@@ -595,7 +677,14 @@ action_el(App, Data) ->
 -spec result_el(xml_attrib_value()) -> xml_el().
 result_el(Status) ->
     #xmlElement{name='result'
-                ,attributes=[xml_attrib(status, Status)]
+                ,attributes=[xml_attrib('status', Status)]
+               }.
+
+room_el(Name, Status) ->
+    #xmlElement{name='room'
+                ,attributes=[xml_attrib('name', Name)
+                             ,xml_attrib('status', Status)
+                            ]
                }.
 
 -spec prepend_child(xml_el(), xml_el()) -> xml_el().
@@ -721,4 +810,3 @@ sofia_gateway_vars_xml_to_json([Var|Vars], JObj) ->
     Key = wh_util:get_xml_value("/variable/@name", Var),
     Value = wh_util:get_xml_value("/variable/@value", Var),
     sofia_gateway_vars_xml_to_json(Vars, wh_json:set_value(Key, Value, JObj)).
-

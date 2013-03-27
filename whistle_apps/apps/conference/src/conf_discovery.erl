@@ -86,17 +86,38 @@ handle_discovery_req(JObj, _) ->
 handle_config_req(JObj, _Props) ->
     'true' = wapi_conference:config_req_v(JObj),
     ConfigName = wh_json:get_value(<<"Profile">>, JObj),
-    case whapps_config:get(<<"conferences">>, ConfigName) of
+    case whapps_config:get(<<"conferences">>, [<<"profiles">>, ConfigName]) of
         'undefined' -> lager:debug("no profile defined for ~s", [ConfigName]);
         Profile ->
             lager:debug("profile ~s found", [ConfigName]),
             Resp = [{<<"Profiles">>, wh_json:from_list([{ConfigName, Profile}])}
+                    ,{<<"Caller-Controls">>, caller_controls(ConfigName)}
+                    ,{<<"Advertise">>, advertise(ConfigName)}
+                    ,{<<"Chat-Permissions">>, chat_permissions(ConfigName)}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_conference:publish_config_resp(wh_json:get_value(<<"Server-ID">>, JObj)
-                                                ,Resp
+                                                ,props:filter_undefined(Resp)
                                                )
+    end.
+
+caller_controls(ConfigName) ->
+    case whapps_config:get(<<"conferences">>, [<<"caller-controls">>, ConfigName]) of
+        'undefined' -> 'undefined';
+        Controls -> wh_json:from_list([{ConfigName, Controls}])
+    end.
+
+advertise(ConfigName) ->
+    case whapps_config:get(<<"conferences">>, [<<"advertise">>, ConfigName]) of
+        'undefined' -> 'undefined';
+        Advertise -> wh_json:from_list([{ConfigName, Advertise}])
+    end.
+
+chat_permissions(ConfigName) ->
+    case whapps_config:get(<<"conferences">>, [<<"chat-permissions">>, ConfigName]) of
+        'undefined' -> 'undefined';
+        Chat -> wh_json:from_list([{ConfigName, Chat}])
     end.
 
 %%%===================================================================
@@ -451,7 +472,6 @@ negotiate_focus(SwitchHostname, Conference, Call) ->
 -spec create_conference(wh_json:object(), binary()) -> whapps_conference:conference().
 create_conference(JObj, Digits) ->
     Conference = whapps_conference:from_conference_doc(JObj),
-    lager:debug("created conference with profile ~s: ~p", [whapps_conference:profile(Conference), JObj]),
     ModeratorNumbers = wh_json:get_value([<<"moderator">>, <<"numbers">>], JObj, []),
     MemberNumbers = wh_json:get_value([<<"member">>, <<"numbers">>], JObj, []),
     case {lists:member(Digits, MemberNumbers), lists:member(Digits, ModeratorNumbers)} of
