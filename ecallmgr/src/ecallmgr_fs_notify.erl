@@ -205,11 +205,11 @@ bind_to_notify_presence(Node) ->
     spawn(fun() ->
                   put(callid, Node),
                   QueueName = <<"ecallmgr_fs_notify_presence">>,
-                  QOptions = [{queue_options, [{exclusive, false}]}
-                              ,{consume_options, [{exclusive, false}]}
-                             ],
-                  Bindings= [{notifications, [{restrict_to, [presence_update]}]}],
-                  case gen_listener:add_queue(Self, QueueName, QOptions, Bindings) of
+                  Options = [{'queue_options', [{'exclusive', 'false'}]}
+                             ,{'consume_options', [{'exclusive', 'false'}]}
+                            ],
+                  Bindings= [{'notifications', [{'restrict_to', ['presence_update']}]}],
+                  case gen_listener:add_queue(Self, QueueName, Options, Bindings) of
                       {ok, _NewQ} -> lager:debug("handling presence updates on queue ~s", [_NewQ]);
                       {error, _E} -> lager:debug("failed to add queue ~s to ~p: ~p", [QueueName, Self, _E])
                   end

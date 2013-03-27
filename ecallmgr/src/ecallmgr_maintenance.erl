@@ -41,7 +41,7 @@ list_fs_nodes() ->
 
 -spec show_channels() -> 'no_return'.
 show_channels() ->
-    case ecallmgr_fs_channels:show_all() of
+    case ecallmgr_fs_channel:show_all() of
         [] -> io:format("no channels~n", []);
         [Channel|_]=Channels ->
             Headers = wh_util:join_binary([K
