@@ -13,8 +13,7 @@
 %% API
 -export([start_link/2
          ,handle_resp/3
-         ,handle_call_event/2
-         ,handle_offnet_event/2
+         ,maybe_relay_event/2
          ,stop_call/2
          ,new_request/3, new_request/4
          ,updated_call/2
@@ -70,12 +69,12 @@ start_link(Call, JObj) ->
                                                              ]}
                                                     ,{'self', []}
                                                    ]}
-                                      ,{'responders', [{{?MODULE, 'handle_call_event'}
-                                                        ,[{<<"call_event">>, <<"*">>}]
+                                      ,{'responders', [{{?MODULE, 'maybe_relay_event'}
+                                                        ,[{<<"conference">>, <<"config_req">>}
+                                                          ,{<<"call_event">>, <<"*">>}
+                                                          ,{<<"resource">>, <<"offnet_resp">>}
+                                                         ]
                                                        }
-                                                       ,{{?MODULE, 'handle_offnet_event'}
-                                                         ,[{<<"resource">>, <<"offnet_resp">>}]
-                                                        }
                                                       ]}
                                      ], [Call, JObj]).
 
@@ -90,18 +89,10 @@ new_request(Srv, Uri, Method, Params) ->
     gen_listener:cast(Srv, {'request', Uri, Method, Params}).
 
 -spec updated_call(pid(), whapps_call:call()) -> 'ok'.
-updated_call(Srv, Call) ->
-    gen_listener:cast(Srv, {'updated_call', Call}).
+updated_call(Srv, Call) -> gen_listener:cast(Srv, {'updated_call', Call}).
 
--spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_call_event(JObj, Props) ->
-    case props:get_value('pid', Props) of
-        P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
-        _ -> 'ok'
-    end.
-
--spec handle_offnet_event(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_offnet_event(JObj, Props) ->
+-spec maybe_relay_event(wh_json:object(), wh_proplist()) -> 'ok'.
+maybe_relay_event(JObj, Props) ->
     case props:get_value('pid', Props) of
         P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
         _ -> 'ok'
