@@ -557,6 +557,13 @@ params_el(Children) ->
                }.
 
 -spec param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
+param_el(<<"moh-sound">> = Name, MediaName) ->
+    Value = ecallmgr_util:media_path(MediaName, get('callid'), wh_json:new()),
+    #xmlElement{name='param'
+                ,attributes=[xml_attrib('name', Name)
+                             ,xml_attrib('value', Value)
+                            ]
+               };
 param_el(Name, Value) ->
     #xmlElement{name='param'
                 ,attributes=[xml_attrib('name', Name)
