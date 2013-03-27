@@ -158,10 +158,9 @@ start_queue_call(JObj, Props, Call) ->
     lager:debug("answering call"),
     whapps_call_command:answer_now(Call),
 
-    case props:get_value('moh', Props) of
+    case cf_util:correct_media_path(props:get_value('moh', Props), Call) of
         'undefined' -> whapps_call_command:hold(Call);
-        MediaId ->
-            MOH = cf_util:correct_media_path(MediaId, Call),
+        MOH ->
             lager:debug("using MOH ~s", [MOH]),
             whapps_call_command:hold(MOH, Call)
     end,

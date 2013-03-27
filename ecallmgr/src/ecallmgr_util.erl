@@ -395,10 +395,10 @@ endpoint_jobjs_to_records([Endpoint|Endpoints], IncludeVars, BridgeEndpoints) ->
     Key = endpoint_key(Endpoint),
     case wapi_dialplan:bridge_endpoint_v(Endpoint)
         andalso (not lists:keymember(Key, 1, BridgeEndpoints)) of
-        false ->
+        'false' ->
             lager:debug("skipping invalid or duplicate endpoint: ~-300p~n", [Key]),
             endpoint_jobjs_to_records(Endpoints, IncludeVars, BridgeEndpoints);
-        true ->
+        'true' ->
             lager:debug("building bridge endpoint: ~-300p~n", [Key]),
             BridgeEndpoint = endpoint_jobj_to_record(Endpoint, IncludeVars),
             endpoint_jobjs_to_records(Endpoints, IncludeVars
@@ -452,14 +452,14 @@ get_endpoint_channel_selection(Endpoint) ->
 
 -spec get_endpoint_interface(wh_json:object()) -> ne_binary().
 get_endpoint_interface(Endpoint) ->
-    case wh_json:is_true([<<"Endpoint-Options">>, <<"Skype-RR">>], Endpoint, false) of
-        false -> wh_json:get_value([<<"Endpoint-Options">>, <<"Skype-Interface">>], Endpoint);
-        true -> <<"RR">>
+    case wh_json:is_true([<<"Endpoint-Options">>, <<"Skype-RR">>], Endpoint, 'false') of
+        'false' -> wh_json:get_value([<<"Endpoint-Options">>, <<"Skype-Interface">>], Endpoint);
+        'true' -> <<"RR">>
     end.
 
 -spec build_simple_channels(bridge_endpoints()) -> bridge_channels().
 build_simple_channels(Endpoints) ->
-    EPs = endpoint_jobjs_to_records(Endpoints, false),
+    EPs = endpoint_jobjs_to_records(Endpoints, 'false'),
     build_bridge_channels(EPs, []).
 
 -spec build_bridge_channels(bridge_endpoints()) -> bridge_channels().
@@ -475,10 +475,10 @@ build_bridge_channels([#bridge_endpoint{invite_format = <<"route">>}=Endpoint|En
         {'ok', Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
     end;
 %% If this does not have an explicted sip route and we have no ip address, lookup the registration
-build_bridge_channels([#bridge_endpoint{ip_address = undefined}=Endpoint|Endpoints], Channels) ->
+build_bridge_channels([#bridge_endpoint{ip_address='undefined'}=Endpoint|Endpoints], Channels) ->
     S = self(),
     Pid = spawn(fun() -> S ! {self(), build_channel(Endpoint)} end),
-    build_bridge_channels(Endpoints, [{worker, Pid}|Channels]);
+    build_bridge_channels(Endpoints, [{'worker', Pid}|Channels]);
 %% If we have been given a IP to route to then do that now
 build_bridge_channels([Endpoint|Endpoints], Channels) ->
     case build_channel(Endpoint) of
@@ -487,7 +487,7 @@ build_bridge_channels([Endpoint|Endpoints], Channels) ->
     end;
 %% wait for any registration lookups to complete
 build_bridge_channels([], IntermediateResults) ->
-    lists:foldr(fun({worker, Pid}, Channels) ->
+    lists:foldr(fun({'worker', Pid}, Channels) ->
                         maybe_collect_worker_channel(Pid, Channels);
                  (Channel, Channels) ->
                         [Channel|Channels]
@@ -496,10 +496,8 @@ build_bridge_channels([], IntermediateResults) ->
 -spec maybe_collect_worker_channel(pid(), bridge_channels()) -> bridge_channels().
 maybe_collect_worker_channel(Pid, Channels) ->
     receive
-        {Pid, {'error', _}} ->
-            Channels;
-        {Pid, {'ok', Channel}} ->
-            [Channel|Channels]
+        {Pid, {'error', _}} -> Channels;
+        {Pid, {'ok', Channel}} -> [Channel|Channels]
     after
         2000 -> Channels
     end.
@@ -691,8 +689,7 @@ create_masquerade_event(Application, EventName, Boolean) ->
 media_path(MediaName, UUID, JObj) -> media_path(MediaName, 'new', UUID, JObj).
 
 -spec media_path(ne_binary(), 'extant' | 'new', ne_binary(), wh_json:object()) -> ne_binary().
-media_path(undefined, _Type, _UUID, _) ->
-    <<"silence_stream://5">>;
+media_path(undefined, _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
     media_path(wh_util:to_binary(MediaName), Type, UUID, JObj);
 media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _) -> Media;
