@@ -14,6 +14,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
+         ,content_types_provided/1
          ,validate/1, validate/2
          ,post/2
          ,delete/2
@@ -37,6 +38,7 @@
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.service_plans">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.service_plans">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.cdrs">>, ?MODULE, content_types_provided),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.service_plans">>, ?MODULE, validate),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.service_plans">>, ?MODULE, post),
     crossbar_bindings:bind(<<"v1_resource.execute.delete.service_plans">>, ?MODULE, delete).
@@ -164,6 +166,22 @@ delete(#cb_context{account_id=AccountId}=Context, PlanId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Add content types accepted and provided by this module
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec content_types_provided(cb_context:context()) -> cb_context:context().
+content_types_provided(#cb_context{}=Context) ->
+    CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}
+            ,{'to_csv', [{<<"application">>, <<"octet-stream">>}
+                         ,{<<"application">>, <<"text/csv">>}
+                        ]}
+           ],
+    cb_context:add_content_types_provided(Context, CTPs).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
@@ -234,3 +252,4 @@ is_service_plan(#cb_context{}=Context, PlanId, JObj) ->
     end.
 
             
+
