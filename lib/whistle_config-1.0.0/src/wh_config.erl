@@ -29,6 +29,7 @@
 
 -define(CONFIG_FILE_ENV, "KAZOO_CONFIG").
 -define(CONFIG_FILE, "/etc/kazoo/config.ini").
+-define(DEFAULT_DEFAULTS, []).
 -define(SECTION_DEFAULTS, [{'amqp', [{'uri', "amqp://guest:guest@localhost:5672"}
                                      ,{'use_federation', 'false'}
                                     ]
@@ -47,7 +48,6 @@
                                      ,{'file', 'error'}
                                     ]}
                           ]).
-
 -type section() :: 'bigcouch' | 'amqp'.
 
 %%--------------------------------------------------------------------
@@ -57,16 +57,17 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec get(section()) -> wh_proplist().
-get(Section) -> ?MODULE:get(Section, 'undefined').
+get(Section) -> 
+    ?MODULE:get(Section, ?DEFAULT_DEFAULTS).
 
 -spec get(section(), atom()) -> wh_proplist().
-get(Section, Key) -> get(Section, Key, 'undefined').
+get(Section, Key) -> 
+    get(Section, Key, ?DEFAULT_DEFAULTS).
 
 -spec get(section(), atom(), Default) -> wh_proplist() | Default.
 get(Section, Key, Default) ->
     case find_values(Section, Key) of
-        [] -> Default;
-        [V] -> V;
+        [] -> [Default];
         Else -> Else
     end.
 
@@ -76,15 +77,16 @@ get(Section, Key, Default) ->
 %% Return values of the config file
 %% @end
 %%--------------------------------------------------------------------
--spec get_atom(section(), atom()) -> [atom(),...] | 'undefined'.
-get_atom(Section, Key) -> get_atom(Section, Key, 'undefined').
+-spec get_atom(section(), atom()) -> [atom(),...] | ?DEFAULT_DEFAULTS.
+get_atom(Section, Key) -> 
+    get_atom(Section, Key, ?DEFAULT_DEFAULTS).
 
 -spec get_atom(section(), atom(), Default) -> [atom(),...] | Default.
 get_atom(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
-        Default -> Default;
+        Default -> [Default];
         [_|_]=Values -> [wh_util:to_atom(Value, 'true') || Value <- Values];
-        V -> wh_util:to_atom(V, 'true')
+        V -> [wh_util:to_atom(V, 'true')]
     end.
 
 %%--------------------------------------------------------------------
@@ -93,15 +95,16 @@ get_atom(Section, Key, Default) ->
 %% Return values of the config file
 %% @end
 %%--------------------------------------------------------------------
--spec get_integer(section(), atom()) -> [integer(),...] | 'undefined'.
-get_integer(Section, Key) -> get_integer(Section, Key, 'undefined').
+-spec get_integer(section(), atom()) -> [integer(),...] | ?DEFAULT_DEFAULTS.
+get_integer(Section, Key) -> 
+    get_integer(Section, Key, ?DEFAULT_DEFAULTS).
 
 -spec get_integer(section(), atom(), Default) -> [integer(),...] | Default.
 get_integer(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
-        Default -> Default;
+        Default -> [Default];
         [_|_]=Values -> [wh_util:to_integer(Value) || Value <- Values];
-        V -> wh_util:to_integer(V)
+        V -> [wh_util:to_integer(V)]
     end.
 
 %%--------------------------------------------------------------------
@@ -110,15 +113,16 @@ get_integer(Section, Key, Default) ->
 %% Return values of the config file
 %% @end
 %%--------------------------------------------------------------------
--spec get_string(section(), string()) -> [string(),...] | 'undefined'.
-get_string(Section, Key) -> get_string(Section, Key, 'undefined').
+-spec get_string(section(), string()) -> [string(),...] | ?DEFAULT_DEFAULTS.
+get_string(Section, Key) -> 
+    get_string(Section, Key, ?DEFAULT_DEFAULTS).
 
 -spec get_string(section(), string(), Default) -> [string(),...] | Default.
 get_string(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
-        Default -> Default;
+        Default -> [Default];
         [_|_]=Values -> [wh_util:to_lower_string(Value) || Value <- Values];
-        V -> wh_util:to_lower_string(V)
+        V -> [wh_util:to_lower_string(V)]
     end.
 
 %%--------------------------------------------------------------------
@@ -128,7 +132,7 @@ get_string(Section, Key, Default) ->
 %% @end
 %%--------------------------------------------------------------------
 %-spec find_values() -> .
-find_values(Section, 'undefined') ->
+find_values(Section, ?DEFAULT_DEFAULTS) ->
     {'ok', Prop} = load(),
     get_sections(Section, Prop);
 find_values(Section, Keys) when is_list(Keys) ->
@@ -150,7 +154,7 @@ find_values(Section, Key) ->
 %%--------------------------------------------------------------------
 -spec get_sections(section(), wh_proplist()) -> wh_proplist().
 get_sections(Section, Prop) ->
-    Sections = props:get_all_values(Section, Prop),
+    Sections = proplists:get_all_values(Section, Prop),
     format_sections(Sections).
 
 %%--------------------------------------------------------------------
@@ -215,10 +219,11 @@ is_local_section({SectionHost, _}) ->
 get_values(Key, Sections) -> get_values(Sections, Key, []).
 
 get_values([], _, []) -> [];
-get_values([], _, Acc) -> Acc;
+get_values([], _, Acc) -> 
+    lists:reverse(Acc);
 get_values([{_, Values} | T], Key, Acc) ->
     V = proplists:get_all_values(Key, Values),
-    get_values(T, Key, lists:append([V | Acc])).
+    get_values(T, Key, lists:append(V, Acc)).
 
 %%--------------------------------------------------------------------
 %% @private

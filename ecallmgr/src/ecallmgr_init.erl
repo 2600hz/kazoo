@@ -34,16 +34,13 @@ start_link() -> spawn(?MODULE, 'init', []), 'ignore'.
 
 init() ->
     put('callid', ?MODULE),
+    set_loglevel().
 
-    [set_loglevel(K, F, D)
-     || {K, F, D} <- [?CONSOLE_LOG_LEVEL
-                      ,?ERROR_LOG_LEVEL
-                      ,?SYSLOG_LOG_LEVEL
-                     ]].
-
-set_loglevel(K, F, D) ->
-    try wh_util:to_atom(ecallmgr_config:get(K, D)) of
-        L -> F(L), lager:info("updated ~s to level ~s", [K, L])
-    catch
-        _T:_R -> lager:info("failed to update ~s: ~s:~p", [K, _T, _R])
-    end.
+set_loglevel() ->
+    [Console|_] = wh_config:get_atom('log', 'console', 'notice'),
+    wh_util:change_console_log_level(Console),
+    [Syslog|_] = wh_config:get_atom('log', 'syslog', 'info'),
+    wh_util:change_syslog_log_level(Syslog),
+    [Error|_] = wh_config:get_atom('log', 'error', 'error'),
+    wh_util:change_error_log_level(Error),
+    'ok'.
