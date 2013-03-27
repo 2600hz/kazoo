@@ -248,14 +248,18 @@ handle_command_result(#'basic.consume_ok'{consumer_tag=CTag}
     lager:debug("created consumer ~s via channel ~p", [CTag, Pid]),
     _ = wh_amqp_channels:command(Channel, Command#'basic.consume'{consumer_tag=CTag}),
     'ok';
-handle_command_result(_
-                      ,#'basic.cancel'{consumer_tag=CTag}=Command
+handle_command_result(#'basic.cancel_ok'{consumer_tag=CTag}
+                      ,#'basic.cancel'{}=Command
                       ,#wh_amqp_channel{channel=Pid}=Channel) ->
     lager:debug("canceled consumer ~s via channel ~p", [CTag, Pid]),
     _ = wh_amqp_channels:command(Channel, Command),
     'ok';
-handle_command_result(_Else, _, _) ->
-    lager:warning("unexpected AMQP command result: ~p", [_Else]),
+handle_command_result('ok', Command, #wh_amqp_channel{channel=Pid}=Channel) ->
+    lager:debug("executed AMQP command ~s with no_wait option via channel ~p", [element(1, Command), Pid]),
+    _ = wh_amqp_channels:command(Channel, Command),
+    'ok';
+handle_command_result(_Else, _R, _) ->
+    lager:warning("unexpected AMQP command result: ~p", [_R]),
     {'error', 'unexpected_result'}.
 
 -spec open(wh_amqp_channel() | pid(), wh_amqp_connection()) -> wh_amqp_channel().
