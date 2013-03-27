@@ -35,6 +35,12 @@ exec(Call, [#xmlElement{name='Conference'
     ConfProps = kzt_util:xml_attributes_to_proplist(ConfAttrs),
     DialProps = kzt_util:xml_attributes_to_proplist(DialAttrs),
 
+    gen_listener:add_binding(kzt_util:get_amqp_listener(Call)
+                             ,'conference'
+                             ,[{'restrict_to', ['config']}
+                               ,{'profile', <<"pivot">>}
+                              ]),
+
     ConfDoc = build_conference_doc(ConfId, ConfProps),
     ConfReq = [{<<"Call">>, whapps_call:to_json(Call)}
                ,{<<"Conference-Doc">>, ConfDoc}

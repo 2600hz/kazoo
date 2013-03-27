@@ -444,6 +444,19 @@ process_conference_event(#dial_req{call=Call
             lager:debug("call has ended"),
             {'ok', Call};
 
+        {<<"conference">>, <<"config_req">>} ->
+            ConfigName = wh_json:get_value(<<"Profile">>, JObj),
+            lager:debug("conference profile ~s requested", [ConfigName]),
+
+            Profile = conference_profile(Call),
+            Resp = [{<<"Profiles">>, wh_json:from_list([{ConfigName, Profile}])}
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_conference:publish_config_resp(wh_json:get_value(<<"Server-ID">>, JObj)
+                                                ,Resp
+                                               ),
+            wait_for_conference_events(update_offnet_timers(OffnetReq));
         {_Cat, _Name} ->
             lager:debug("unhandled event for ~s: ~s: ~s"
                         ,[_Cat, _Name, wh_json:get_value(<<"Application-Name">>, JObj)]
@@ -536,3 +549,12 @@ update_offnet_timers(#dial_req{call_timeout=CallTimeout
     OffnetReq#dial_req{call_timeout=whapps_util:decr_timeout(CallTimeout, Start)
                        ,start=erlang:now()
                       }.
+
+conference_profile(Call) ->
+    wh_json:from_list([{<<"rate">>, 8000}
+                       ,{<<"interval">>, 20}
+                       ,{<<"energy-level">>, 20}
+                       ,{<<"comfort-noise">>, 'true'}
+                       ,{<<"caller-id-name">>, whapps_call:caller_id_name(Call)}
+                       ,{<<"caller-id-number">>, whapps_call:caller_id_number(Call)}
+                      ]).
