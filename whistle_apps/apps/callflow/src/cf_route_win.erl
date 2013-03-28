@@ -95,7 +95,6 @@ get_caller_groups(Groups, JObj, Call) ->
 -spec maybe_device_groups_intersect(ne_binary(), ne_binary(), wh_json:objects(), whapps_call:call()) -> boolean().
 maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
     CalleeGroups = get_group_associations(CalleeId, Groups),
-    io:format("result ~p~n", [sets:size(sets:intersection(CallerGroups, CalleeGroups)) =:= 0]),
     case sets:size(sets:intersection(CallerGroups, CalleeGroups)) =:= 0 of
         'false' -> 'false';
         'true' ->
