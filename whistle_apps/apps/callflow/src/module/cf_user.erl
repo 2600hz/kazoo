@@ -10,7 +10,9 @@
 
 -include("../callflow.hrl").
 
--export([handle/2]).
+-export([handle/2
+         ,get_endpoints/3
+        ]).
 
 %%--------------------------------------------------------------------
 %% @public

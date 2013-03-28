@@ -65,6 +65,9 @@ init_queues(AcctId, {'error', 'gateway_timeout'}) ->
     try_queues_again(AcctId),
     wait_a_bit(),
     'ok';
+init_queues(AcctId, {'error', 'not_found'}) ->
+    lager:debug("queues view not found in account ~s", [AcctId]),
+    'ok';
 init_queues(AcctId, {'error', _E}) ->
     lager:debug("error fetching queues: ~p", [_E]),
     try_queues_again(AcctId),
@@ -79,6 +82,9 @@ init_agents(AcctId, {'error', 'gateway_timeout'}) ->
     lager:debug("gateway timed out loading agents in account ~s, trying again in a moment", [AcctId]),
     try_agents_again(AcctId),
     wait_a_bit(),
+    'ok';
+init_agents(AcctId, {'error', 'not_found'}) ->
+    lager:debug("agents view not found in account ~s", [AcctId]),
     'ok';
 init_agents(AcctId, {'error', _E}) ->
     lager:debug("error fetching agents: ~p", [_E]),
