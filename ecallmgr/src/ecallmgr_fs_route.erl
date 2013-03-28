@@ -217,22 +217,36 @@ reply_affirmative(Node, FSID, CallId, RespJObj, Props) ->
     case freeswitch:fetch_reply(Node, FSID, iolist_to_binary(XML)) of
         ok ->
             lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),
-            RouteCCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, wh_json:new()),
-            CCVs = case props:get_value(?GET_CCV(<<"Billing-ID">>), Props) of
-                       undefined ->
-                           BillingId = wh_util:to_hex_binary(crypto:md5(CallId)),
-                           lager:debug("created new billing id ~s for channel ~s", [BillingId, CallId]),
-                           _ = ecallmgr_util:send_cmd(Node, CallId, <<"export">>, ?SET_CCV(<<"Billing-ID">>, BillingId)),
-                           wh_json:set_value(<<"Billing-ID">>, BillingId, RouteCCVs);
-                       _Else ->
-                           lager:debug("channel ~s already has billing id ~s", [CallId, _Else]),
-                           RouteCCVs
-                   end,
+            CCVs = update_custom_channel_vars(Node, CallId, RespJObj, Props),
             start_control_and_events(Node, CallId, ServerQ, CCVs);
         {error, Reason} ->
             lager:debug("node ~s rejected our route response, ~p", [Node, Reason]);
         timeout -> lager:error("received no reply from node ~s, timeout", [Node])
     end.
+
+-spec update_custom_channel_vars(ne_binary(), atom(), wh_json:object(), wh_proplist()) -> wh_json:object().
+update_custom_channel_vars(Node, CallId, JObj, Props) ->
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    maybe_add_billing_ccv(CCVs, CallId, Node, Props).
+
+-spec maybe_add_billing_ccv(wh_json:object(), ne_binary(), atom(), wh_proplist()) -> wh_json:object().
+maybe_add_billing_ccv(CCVs, CallId, Node, Props) ->
+    case props:get_value(?GET_CCV(<<"Billing-ID">>), Props) of
+        undefined ->
+            BillingId = wh_util:to_hex_binary(crypto:md5(CallId)),
+            lager:debug("created new billing id ~s for channel ~s", [BillingId, CallId]),
+            _ = ecallmgr_util:send_cmd(Node, CallId, <<"export">>, ?SET_CCV(<<"Billing-ID">>, BillingId)),
+            Vars = wh_json:set_value(<<"Billing-ID">>, BillingId, CCVs),
+            set_custom_channel_vars(Vars, Node, CallId);
+        _Else ->
+            lager:debug("channel ~s already has billing id ~s", [CallId, _Else]),
+            set_custom_channel_vars(CCVs, Node, CallId)
+    end.
+
+-spec set_custom_channel_vars(wh_json:object(), atom(), wh_json:object()) -> wh_json:object().
+set_custom_channel_vars(CCVs, Node, CallId) ->
+    _ = ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)),
+    CCVs.
 
 -spec start_control_and_events(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 start_control_and_events(Node, CallId, SendTo, CCVs) ->

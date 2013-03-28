@@ -79,10 +79,11 @@ send_park(#ts_callflow_state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=St
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
-            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+            ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())}
+            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+           ],
     lager:info("trunkstore knows how to route this call, sending park route response"),
     wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp),
-
     _ = amqp_util:bind_q_to_callevt(Q, CallID),
     _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
     _ = amqp_util:basic_consume(Q, [{exclusive, false}]), %% need to verify if this step is needed

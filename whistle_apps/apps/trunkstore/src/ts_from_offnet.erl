@@ -211,7 +211,9 @@ try_failover_e164(State, ToDID) ->
            ,{<<"Account-ID">>, AcctID}
            ,{<<"Control-Queue">>, CtlQ}
            ,{<<"Application-Name">>, <<"bridge">>}
-           ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Inception">>, <<"off-net">>}])}
+           ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Inception">>, <<"off-net">>}
+                                                           ,{<<"Account-ID">>, AcctID}
+                                                          ])}
            ,{<<"Flags">>, wh_json:get_value(<<"flags">>, EP)}
            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, EP)}
            ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, EP)}
@@ -248,10 +250,10 @@ get_endpoint_data(JObj) ->
     InFormat = props:get_value(<<"Invite-Format">>, RoutingData, <<"username">>),
     Invite = ts_util:invite_format(wh_util:to_lower_binary(InFormat), ToDID) ++ RoutingData,
 
-    {endpoint, wh_json:from_list([{<<"Custom-Channel-Vars">>, wh_json:from_list([
-                                                                                 {<<"Auth-User">>, AuthUser}
+    {endpoint, wh_json:from_list([{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Auth-User">>, AuthUser}
                                                                                  ,{<<"Auth-Realm">>, AuthRealm}
                                                                                  ,{<<"Direction">>, <<"inbound">>}
+                                                                                 ,{<<"Account-ID">>, AcctId}
                                                                                 ])
                                   }
                                   | Invite
