@@ -82,7 +82,6 @@ handle_command(JObj, _Props) ->
 init([Node, Options]) ->
     put('callid', ?LOG_SYSTEM_ID),
     lager:info("starting new fs conference listener for ~s", [Node]),
-    ecallmgr_fs_conferences:sync_conferences(Node),
     {'ok', #state{node=Node, options=Options}}.
 
 %%--------------------------------------------------------------------
