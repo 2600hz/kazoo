@@ -86,7 +86,7 @@ if ! erl -pa "$RABBITMQ_EBIN_ROOT" \
 	    -noinput \
 	    -hidden \
 	    -s rabbit_prelaunch \
-	    -sname rabbitmqprelaunch$$ \
+	    -name rabbitmqprelaunch$$ \
 	    -extra "${RABBITMQ_NODENAME}";
     then
         exit 1;
@@ -106,7 +106,7 @@ set -f
 exec erl \
     -pa ${RABBITMQ_EBIN_ROOT} \
     ${RABBITMQ_START_RABBIT} \
-    -sname ${RABBITMQ_NODENAME} \
+    -name ${RABBITMQ_NODENAME} \
     -boot start_sasl \
     ${RABBITMQ_CONFIG_ARG} \
     +W w \
