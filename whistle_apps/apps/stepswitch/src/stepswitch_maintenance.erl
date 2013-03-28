@@ -109,7 +109,7 @@ emergency_cid(Account, ECID, OCID) ->
     wh_cache:flush(),
     Props = [{<<"Account-ID">>, wh_util:to_binary(Account)}
              ,{<<"Emergency-Caller-ID-Number">>, ECID}
-             ,{<<"Outgoing-Caller-ID-Number">>, OCID}
+             ,{<<"Outbound-Caller-ID-Number">>, OCID}
             ],
     JObj = wh_json:from_list(props:filter_empty(Props)),
     CID = stepswitch_outbound:get_emergency_cid_number(JObj),

@@ -63,8 +63,8 @@ offnet_req(Data, Call) ->
            ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, Data)}
            ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
            ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
-           ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
-           ,{<<"Outgoing-Caller-ID-Number">>, CIDNumber}
+           ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+           ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
            ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
            ,{<<"SIP-Headers">>, build_sip_headers(Data, Call)}
