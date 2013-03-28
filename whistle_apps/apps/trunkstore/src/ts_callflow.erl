@@ -115,24 +115,20 @@ wait_for_win(#ts_callflow_state{aleg_callid=CallID}=State) ->
 wait_for_bridge(State) ->
     wait_for_bridge(State, ?WAIT_FOR_BRIDGE_TIMEOUT).
 wait_for_bridge(State, Timeout) ->
-    Start = erlang:now(),
     receive
         #'basic.consume_ok'{} -> wait_for_bridge(State, Timeout);
         {_, #amqp_msg{payload=Payload}} ->
             JObj = wh_json:decode(Payload),
             case process_event_for_bridge(State, JObj) of
                 ignore ->
-                    wait_for_bridge(State, Timeout - wh_util:elapsed_ms(Start));
+                    wait_for_bridge(State, ?WAIT_FOR_BRIDGE_TIMEOUT);
                 {bridged, _}=Success -> Success;
                 {error, _}=Error -> Error;
                 {hangup, _}=Hangup -> Hangup
             end;
         _E ->
             lager:info("unexpected msg: ~p", [_E]),
-            wait_for_bridge(State, Timeout - wh_util:elapsed_ms(Start))
-    after Timeout ->
-            lager:info("timeout waiting for bridge"),
-            {timeout, State}
+            wait_for_bridge(State, ?WAIT_FOR_BRIDGE_TIMEOUT)
     end.
 
 -spec process_event_for_bridge(ts_state(), wh_json:object()) -> 'ignore' | {'bridged' | 'error' | 'hangup', ts_state()}.
