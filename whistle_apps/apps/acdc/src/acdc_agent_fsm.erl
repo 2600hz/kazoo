@@ -199,8 +199,8 @@ originate_started(FSM, JObj) ->
     gen_fsm:send_event(FSM, {'originate_started', wh_json:get_value(<<"Call-ID">>, JObj)}).
 originate_uuid(FSM, JObj) ->
     gen_fsm:send_event(FSM, {'originate_uuid'
-                             ,wh_json:get_value(<<"Outgoing-Call-ID">>, JObj)
-                             ,wh_json:get_value(<<"Outgoing-Call-Control-Queue">>, JObj)
+                             ,wh_json:get_value(<<"Outbound-Call-ID">>, JObj)
+                             ,wh_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj)
                             }).
 
 %%--------------------------------------------------------------------
