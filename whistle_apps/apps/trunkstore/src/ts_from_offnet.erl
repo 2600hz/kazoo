@@ -232,8 +232,6 @@ try_failover_e164(State, ToDID) ->
 -spec get_endpoint_data(wh_json:json_object()) -> {'endpoint', wh_json:json_object()}.
 get_endpoint_data(JObj) ->
     %% wh_timer:tick("inbound_route/1"),
-    AcctId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     ToDID = wnm_util:to_e164(ToUser),
 
