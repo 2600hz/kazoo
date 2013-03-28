@@ -325,7 +325,7 @@ validate_conference_id('undefined', Call, Loop) when Loop > 3 ->
     {'error', 'too_many_attempts'};
 validate_conference_id('undefined', Call, Loop) ->
     lager:debug("requesting conference id from caller"),
-    case whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"conf-enter_conf_number">>, 1, Call) of
+    case whapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_number">>, 1, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
             AccountDb = whapps_call:account_db(Call),
@@ -362,7 +362,7 @@ validate_conference_pin(_, _, Call, Loop) when Loop > 3->
     {'error', 'too_many_attempts'};
 validate_conference_pin('true', Conference, Call, Loop) ->
     lager:debug("requesting moderator pin from caller"),
-    case whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"conf-enter_conf_pin">>, 1, Call) of
+    case whapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
             Pins = whapps_conference:moderator_pins(Conference),
@@ -380,7 +380,7 @@ validate_conference_pin('true', Conference, Call, Loop) ->
     end;
 validate_conference_pin('false', Conference, Call, Loop) ->
     lager:debug("requesting member pin from caller"),
-    case whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"conf-enter_conf_pin">>, 1, Call) of
+    case whapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
             Pins = whapps_conference:member_pins(Conference),
@@ -398,7 +398,7 @@ validate_conference_pin('false', Conference, Call, Loop) ->
     end;
 validate_conference_pin(_, Conference, Call, Loop) ->
     lager:debug("requesting conference pin from caller, which will be used to disambiguate member/moderator"),
-    case whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"conf-enter_conf_pin">>, 1, Call) of
+    case whapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
             MemberPins = whapps_conference:member_pins(Conference),
