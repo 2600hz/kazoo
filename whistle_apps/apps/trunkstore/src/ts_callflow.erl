@@ -178,6 +178,15 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg, my_q=Q, callctl_q=
             lager:info("leg to be billed for ~b seconds", [Duration]),
             {error, State};
 
+        {_, <<"cdr">>, <<"call_detail">> } ->
+            true = wapi_call:cdr_v(JObj),
+            Leg = wh_json:get_value(<<"Call-ID">>, JObj),
+            Duration = ts_util:get_call_duration(JObj),
+
+            lager:info("CDR received for leg ~s", [Leg]),
+            lager:info("leg to be billed for ~b seconds", [Duration]),
+            {error, State};
+
         { _, <<"resource_error">>, <<"resource">> } ->
             Code = wh_json:get_value(<<"Failure-Code">>, JObj, <<"486">>),
             Message = wh_json:get_value(<<"Failure-Message">>, JObj),

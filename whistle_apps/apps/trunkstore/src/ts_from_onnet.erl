@@ -141,9 +141,8 @@ wait_for_win(State, Command) ->
     case ts_callflow:wait_for_win(State) of
         {won, State1} ->
             send_offnet(State1, Command);
-        {lost, State2} ->
-            lager:info("did not win route, passive listening"),
-            wait_for_bridge(undefined, State2)
+        {lost, _} ->
+            normal
     end.
 
 send_offnet(State, Command) ->
