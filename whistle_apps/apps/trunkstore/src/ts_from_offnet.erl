@@ -75,9 +75,8 @@ wait_for_win(State, Command) ->
         {won, State1} ->
             lager:info("route won, sending command"),
             send_onnet(State1, Command);
-        {lost, State2} ->
-            lager:info("didn't win route, passive listening"),
-            wait_for_bridge(State2)
+        {lost, _} ->
+            normal
     end.
 
 send_onnet(State, Command) ->
