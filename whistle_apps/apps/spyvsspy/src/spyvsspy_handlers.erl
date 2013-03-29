@@ -14,15 +14,15 @@
 -include("spyvsspy.hrl").
 
 handle_eavesdrop_req(JObj, _Props) ->
-    true = wapi_resource:eavesdrop_req_v(JObj),
+    'true' = wapi_resource:eavesdrop_req_v(JObj),
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
 
     case get_endpoints(AcctId
                       ,wh_json:get_value(<<"Endpoint-ID">>, JObj)
                      )
     of
-        {ok, EPs} -> send_eavesdrop(JObj, EPs, AcctId);
-        {error, E} -> respond_error(JObj, E)
+        {'ok', EPs} -> send_eavesdrop(JObj, EPs, AcctId);
+        {'error', E} -> respond_error(JObj, E)
     end.
 
 get_endpoints(AcctId, EndpointId) ->
@@ -31,12 +31,12 @@ get_endpoints(AcctId, EndpointId) ->
 new_call(AcctId) ->
     whapps_call:from_json(wh_json:from_list(
                             [{<<"Account-ID">>, AcctId}
-                             ,{<<"Account-DB">>, wh_util:format_account_id(AcctId, encoded)}
+                             ,{<<"Account-DB">>, wh_util:format_account_id(AcctId, 'encoded')}
                             ])).
 
 get_group_and_call_id(JObj) ->
     case wh_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
-        undefined -> {undefined, wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)};
+        'undefined' -> {'undefined', wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)};
         GroupId -> {GroupId, wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj, <<"all">>)}
     end.
 
@@ -81,13 +81,13 @@ send_eavesdrop(JObj, EPs, AcctId) ->
     case whapps_util:amqp_pool_request(Prop
                                        ,fun wapi_resource:publish_originate_req/1
                                        ,fun wapi_dialplan:originate_ready_v/1
-                                       ,2000
+                                       ,5000
                                       ) of
-        {ok, OrigJObj} ->
+        {'ok', OrigJObj} ->
             lager:debug("originate is ready to execute"),
             send_originate_execute(OrigJObj, wh_json:get_value(<<"Server-ID">>, OrigJObj)),
             respond_success(JObj, OrigJObj);
-        {error, E} ->
+        {'error', E} ->
             lager:debug("error originating: ~p", [E]),
             respond_error(JObj, E)
     end.
@@ -108,7 +108,7 @@ respond_error(JObj, E) ->
                       ]).
 
 respond(ServerId, Props) ->
-    lager:debug("Respond to ~s: ~p", [ServerId, Props]),
+    lager:debug("respond to ~s: ~p", [ServerId, Props]),
     wapi_resource:publish_eavesdrop_resp(ServerId, Props).
 
 send_originate_execute(JObj, Q) ->
@@ -123,10 +123,9 @@ find_caller_id(JObj) ->
                           ,{<<"Caller-ID-Name">>, <<"Caller-ID-Number">>}
                          ]).
 
-find_caller_id(_JObj, []) ->
-    {<<"SpyVsSpy">>, <<"01010101">>};
+find_caller_id(_JObj, []) -> {<<"SpyVsSpy">>, <<"01010101">>};
 find_caller_id(JObj, [{KName, KNum}|Ks]) ->
     case wh_json:get_value(KName, JObj) of
-        undefined -> find_caller_id(JObj, Ks);
+        'undefined' -> find_caller_id(JObj, Ks);
         Name -> {Name, wh_json:get_value(KNum, JObj)}
     end.
