@@ -37,9 +37,9 @@ credit(AccountId, Amount) ->
     T = lists:foldl(fun(F, T) -> F(T) end, wh_transaction:credit(AccountId, Units), Routines),
     case wh_transaction:save(T) of
         {'ok', _} ->
-            io:format("credited account ~s $~s~n", [AccountId, Amount]);
+            lager:info("credited account ~p $~p~n", [AccountId, Amount]);
         {'error', _R} ->
-            io:format("failed to credit account: ~s~n ~p", [AccountId, _R])
+            lager:info("failed to credit account: ~s~n ~p", [AccountId, _R])
     end,
     'no_return'.
 
@@ -61,9 +61,9 @@ debit(AccountId, Amount) ->
     T = lists:foldl(fun(F, T) -> F(T) end, wh_transaction:debit(AccountId, Units), Routines),
     case wh_transaction:save(T) of
         {'ok', _} ->
-            io:format("debited account ~s $~s~n", [AccountId, Amount]);
+            lager:info("debited account ~s $ ~s~n", [AccountId, Amount]);
         {'error', _R} ->
-            io:format("failed to debit account: ~s~n ~p", [AccountId, _R])
+            lager:info("failed to debit account: ~s~n ~p", [AccountId, _R])
     end,
     'no_return'.
 
