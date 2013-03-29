@@ -1344,7 +1344,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec start_wrapup_timer(integer()) -> reference().
-start_wrapup_timer(Timeout) when Timeout < 0 -> start_wrapup_timer(0); % send immediately
+start_wrapup_timer(Timeout) when Timeout =< 0 -> start_wrapup_timer(1); % send immediately
 start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout*1000, ?WRAPUP_FINISHED).
 
 -spec start_sync_timer() -> reference().
