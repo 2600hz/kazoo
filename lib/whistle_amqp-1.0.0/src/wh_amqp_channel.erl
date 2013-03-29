@@ -225,6 +225,11 @@ handle_command_result(#'queue.delete_ok'{}
     _ = wh_amqp_channels:command(Channel, Command),
     'ok';
 handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
+                      ,#'queue.declare'{passive='true'}
+                      ,#wh_amqp_channel{channel=Pid}) ->
+    lager:debug("passive declared queue ~s via channel ~p", [Q, Pid]),
+    {'ok', Ok};
+handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
                       ,#'queue.declare'{}=Command
                       ,#wh_amqp_channel{channel=Pid}=Channel) ->
     lager:debug("declared queue ~s via channel ~p", [Q, Pid]),
