@@ -19,11 +19,11 @@ start_link() -> spawn(?MODULE, 'init', []), 'ignore'.
 init() ->
     put('callid', ?MODULE),
     case wh_config:get_atom('bigcouch', 'cookie') of
-        [] ->
-            lager:warning("failed to set whistle_apps cookie ~n", []);
         [Cookie|_] ->
             erlang:set_cookie(erlang:node(), Cookie),
-            lager:info("setting whistle_apps cookie to ~p~n", [Cookie])
+            lager:info("setting whistle_apps cookie to ~p~n", [Cookie]);
+        _ ->
+            lager:warning("failed to set whistle_apps cookie ~n", [])        
     end,
     set_loglevel().
 
