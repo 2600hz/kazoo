@@ -14,7 +14,7 @@
 
 -define(VIEW_BY_RULES, <<"cf_attributes/active_resources_by_rules">>).
 
--type endpoint() :: {binary(), wh_json:json_objects(), 'raw' | binary()}.
+-type endpoint() :: {binary(), wh_json:objects(), ne_binary(),  'raw' | binary()}.
 -type endpoints() :: [] | [endpoint()].
 
 %%--------------------------------------------------------------------
@@ -43,8 +43,8 @@ handle(Data, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec bridge_to_resources(endpoints(), api_binary(), api_binary(), api_binary(), wh_json:json_object(), whapps_call:call()) -> 'ok'.
-bridge_to_resources([{DestNum, Rsc, CID}|T], Timeout, IgnoreEarlyMedia, Ringback, Data, Call) ->
-    Endpoint = [create_endpoint(DestNum, Gtw, CID, Call)
+bridge_to_resources([{DestNum, Rsc, RscId, CID}|T], Timeout, IgnoreEarlyMedia, Ringback, Data, Call) ->
+    Endpoint = [create_endpoint(DestNum, Gtw, RscId, CID, Call)
                 || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)
                ],
     SIPHeaders = build_sip_headers(Data, Call),
@@ -86,8 +86,8 @@ bridge_to_resources([], _, _, _, _, Call) ->
 %% for use with the whistle bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoint(ne_binary(), wh_json:json_object(), {api_binary(), api_binary()}, whapps_call:call()) -> wh_json:json_object().
-create_endpoint(DestNum, JObj, {CIDNumber, CIDName}, Call) ->
+-spec create_endpoint(ne_binary(), wh_json:object(), ne_binary(), {api_binary(), api_binary()}, whapps_call:call()) -> wh_json:json_object().
+create_endpoint(DestNum, JObj, RscId, {CIDNumber, CIDName}, Call) ->
     AccountDb = whapps_call:account_db(Call),
     CNum = whapps_call:caller_id_number(Call),
     Rule = <<"sip:"
@@ -109,6 +109,7 @@ create_endpoint(DestNum, JObj, {CIDNumber, CIDName}, Call) ->
             ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
             ,{<<"From-URI">>, maybe_from_uri(AccountDb, JObj, CNum)}
             ,{<<"Ignore-Display-Updates">>, <<"true">>}
+            ,{<<"Resource-ID">>, RscId}
             ,{<<"Global-Resource">>, <<"false">>}
            ],
     Endpoint = [{<<"Invite-Format">>, <<"route">>}
@@ -150,7 +151,8 @@ find_endpoints(Data, Call) ->
         {ok, Resources} ->
             lager:info("found resources, filtering by rules and flags"),
             {ok, [{Number
-                   ,wh_json:get_value([<<"value">>], Resource, [])
+                   ,wh_json:get_value(<<"value">>, Resource, [])
+                   ,wh_json:get_value(<<"id">>, Resource)
                    ,get_caller_id(Resource, Call)
                   }
                   || Resource <- Resources,

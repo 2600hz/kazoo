@@ -241,7 +241,10 @@ is_authz_enabled(Props, CallId, Node) ->
 -spec is_global_resource(wh_proplist(), ne_binary(), atom()) -> boolean().
 is_global_resource(Props, CallId, Node) ->
     GlobalResource = props:get_value(?GET_CCV(<<"Global-Resource">>), Props, 'true'),
-    case wh_util:is_true(GlobalResource) of
+    RestrictLocal = ecallmgr_config:get(<<"authz_local_resources">>, <<"false">>),
+    case wh_util:is_true(GlobalResource)
+        orelse wh_util:is_true(RestrictLocal)
+    of
         'true' -> is_consuming_resource(Props, CallId, Node);
         'false' ->
             lager:debug("channel is a local resource"),
