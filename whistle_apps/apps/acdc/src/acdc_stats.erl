@@ -262,8 +262,18 @@ store_stat(#agent_stat{acct_id=AcctId}=Stat, Prefix) ->
     store_stat(AcctId, JObj);
 store_stat(?NE_BINARY = AcctId, JObj) ->
     case couch_mgr:save_doc(db_name(AcctId), JObj) of
-        {'ok', _} -> 'ok';
-        {'error', 'conflict'} -> 'ok';
+        {'ok', _JObj1} -> lager:debug("saved ~s(~s): c(~s) a(~s) t(~p)", [wh_json:get_value(<<"_id">>, _JObj1)
+                                                                          ,wh_json:get_value(<<"status">>, _JObj1)
+                                                                          ,wh_json:get_value(<<"call_id">>, _JObj1)
+                                                                          ,wh_json:get_value(<<"agent_id">>, _JObj1)
+                                                                          ,wh_json:get_value(<<"timestamp">>, _JObj1)
+                                                                         ]);
+        {'error', 'conflict'} -> lager:debug("conflict ~s(~s): c(~s) a(~s) t(~p)", [wh_json:get_value(<<"_id">>, JObj)
+                                                                                    ,wh_json:get_value(<<"status">>, JObj)
+                                                                                    ,wh_json:get_value(<<"call_id">>, JObj)
+                                                                                    ,wh_json:get_value(<<"agent_id">>, JObj)
+                                                                                    ,wh_json:get_value(<<"timestamp">>, JObj)
+                                                                                   ]);
         {'error', _E} ->
             lager:debug("error saving: ~p", [_E]),
             timer:sleep(250 + random:uniform(100)),
@@ -355,7 +365,7 @@ doc_id(Prefix, Timestamp) ->
 init_db(AcctId) ->
     DbName = db_name(AcctId),
     lager:debug("created db ~s: ~s", [DbName, couch_mgr:db_create(DbName)]),
-    lager:debug("revised docs in ~s: ~p", [AcctId, couch_mgr:revise_views_from_folder(DbName, acdc)]).
+    lager:debug("revised docs in ~s: ~p", [AcctId, couch_mgr:revise_views_from_folder(DbName, 'acdc')]).
 
 db_name(Acct) ->
     <<A:2/binary, B:2/binary, Rest/binary>> = wh_util:format_account_id(Acct, 'raw'),
