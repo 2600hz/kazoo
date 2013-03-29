@@ -46,7 +46,7 @@
 -include("acdc.hrl").
 
 %% How long should we wait for a response to our member_connect_req
--define(COLLECT_RESP_TIMEOUT, 3000).
+-define(COLLECT_RESP_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"queue_collect_resp_timeout">>, 2000)).
 -define(COLLECT_RESP_MESSAGE, 'collect_timer_expired').
 
 %% How long will the caller wait in the call queue before being bounced out
