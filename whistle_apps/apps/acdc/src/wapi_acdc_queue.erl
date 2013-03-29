@@ -618,6 +618,7 @@ queue_size(AcctId, QueueId) ->
     Q = shared_queue_name(AcctId, QueueId),
     amqp_util:new_queue(Q, [{'return_field', 'message_count'}
                             ,{'exclusive', 'false'}
+                            ,{'passive', 'true'}
                            ]).
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
