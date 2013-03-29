@@ -9,6 +9,9 @@
 %%%-------------------------------------------------------------------
 -module(wnm_util).
 
+-export([pretty_print/1
+         ,pretty_print/2
+        ]).
 -export([available_classifiers/0]).
 -export([classify_number/1]).
 -export([is_reconcilable/1]).
@@ -27,18 +30,22 @@
 -define(SERVER, ?MODULE).
 -define(DEFAULT_CLASSIFIERS, [{<<"tollfree_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+1(800|888|877|866|855)\\d{7}$">>}
                                                                      ,{<<"friendly_name">>, <<"US TollFree">>}
+                                                                     ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                                                                     ])}
                               ,{<<"toll_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+1900\\d{7}$">>}
                                                                   ,{<<"friendly_name">>, <<"US Toll">>}
+                                                                  ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                                                                  ])}
                               ,{<<"emergency">>, wh_json:from_list([{<<"regex">>, <<"^911$">>}
                                                                     ,{<<"friendly_name">>, <<"Emergency Dispatcher">>}
                                                                    ])}
                               ,{<<"caribbean">>, wh_json:from_list([{<<"regex">>, <<"^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7}$">>}
                                                                     ,{<<"friendly_name">>, <<"Caribbean">>}
+                                                                    ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                                                                    ])}
                               ,{<<"did_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>}
                                                                  ,{<<"friendly_name">>, <<"US DID">>}
+                                                                 ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                                                                 ])}
                               ,{<<"international">>, wh_json:from_list([{<<"regex">>, <<"^011\\d*$|^00\\d*$">>}
                                                                         ,{<<"friendly_name">>, <<"International">>}
@@ -56,6 +63,59 @@
                                  ]).
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$">>).
 
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec pretty_print(ne_binary()) -> ne_binary().
+pretty_print(Number) ->
+    case pretty_print_format(Number) of
+        'undefined' -> Number;
+        Format ->
+            pretty_print(Format, Number)
+    end.
+
+-spec pretty_print(ne_binary(), ne_binary()) -> ne_binary().
+pretty_print(Format, Number) ->
+    Num = wnm_util:normalize_number(Number),
+    pretty_print(Format, Num, <<>>).
+
+-spec pretty_print(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+pretty_print(<<>>, _, Acc) -> Acc;
+pretty_print(<<"\\S", Format/binary>>, Number, Acc) ->
+    pretty_print(Format, Number, <<Acc/binary, "S">>);
+pretty_print(<<"\\#", Format/binary>>, Number, Acc) ->
+    pretty_print(Format, Number, <<Acc/binary, "#">>);
+pretty_print(<<"\\*", Format/binary>>, Number, Acc) ->
+    pretty_print(Format, Number, <<Acc/binary, "*">>);
+pretty_print(<<"S", Format/binary>>, <<>>, Acc) ->
+    pretty_print(Format, <<>>, Acc);
+pretty_print(<<"#", Format/binary>>, <<>>, Acc) ->
+    pretty_print(Format, <<>>, Acc);
+pretty_print(<<"*", Format/binary>>, <<>>, Acc) ->
+    pretty_print(Format, <<>>, Acc);
+pretty_print(<<"S", Format/binary>>, Number, Acc) ->
+    pretty_print(Format, binary_tail(Number), Acc);
+pretty_print(<<"#", Format/binary>>, Number, Acc) ->
+    pretty_print(Format
+                 ,binary_tail(Number)
+                 ,<<Acc/binary, (binary_head(Number))/binary>>);
+pretty_print(<<"*", Format/binary>>, Number, Acc) ->
+    pretty_print(Format, <<>>, <<Acc/binary, Number/binary>>);
+pretty_print(<<Char, Format/binary>>, Number, Acc) ->
+    pretty_print(Format, Number, <<Acc/binary, Char/integer>>).
+
+-spec binary_tail(ne_binary()) -> ne_binary().
+binary_tail(Binary) ->
+    binary:part(Binary, 1, byte_size(Binary) - 1).
+
+-spec binary_head(ne_binary()) -> ne_binary().
+binary_head(Binary) ->
+    binary:part(Binary, 0, 1).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -72,7 +132,7 @@ available_classifiers() ->
 correct_depreciated_classifiers(Classifiers) ->
     correct_depreciated_classifiers(Classifiers, wh_json:new()).
 
--spec correct_depreciated_classifiers/2 :: (proplist(), wh_json:object()) -> wh_json:object().
+-spec correct_depreciated_classifiers/2 :: (wh_proplist(), wh_json:object()) -> wh_json:object().
 correct_depreciated_classifiers([], JObj) ->
     JObj;
 correct_depreciated_classifiers([{Classifier, Regex}|Classifiers], JObj) when is_binary(Regex) ->
@@ -82,12 +142,49 @@ correct_depreciated_classifiers([{Classifier, Regex}|Classifiers], JObj) when is
     correct_depreciated_classifiers(Classifiers, wh_json:set_value(Classifier, J, JObj));
 correct_depreciated_classifiers([{Classifier, J}|Classifiers], JObj) ->
     case wh_json:get_value(<<"friendly_name">>, J) of
-        undefined ->
+        'undefined' ->
             Updated = wh_json:set_value(<<"friendly_name">>, Classifier, JObj),
             correct_depreciated_classifiers(Classifiers, wh_json:set_value(Classifier, Updated, JObj));
         _Else ->
             correct_depreciated_classifiers(Classifiers, wh_json:set_value(Classifier, J, JObj))
-    end.            
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec pretty_print_format(ne_binary()) -> api_binary().
+pretty_print_format(Number) ->
+    Default = wh_json:from_list(?DEFAULT_CLASSIFIERS),
+    Classifiers = whapps_config:get(?WNM_CONFIG_CAT, <<"classifiers">>, Default),
+    Num = wnm_util:normalize_number(Number),
+    pretty_print_format(Num, wh_json:to_proplist(Classifiers)).
+
+-spec pretty_print_format(ne_binary(), wh_proplist()) -> api_binary().
+pretty_print_format(Num, []) ->
+    lager:debug("unable to get pretty print format for number ~s", [Num]),
+    maybe_use_us_default(Num);
+pretty_print_format(Num, [{Classification, Classifier}|Classifiers]) ->
+    case re:run(Num, get_classifier_regex(Classifier)) of
+        'nomatch' -> pretty_print_format(Num, Classifiers);
+        _ when is_binary(Classifier) ->
+            lager:debug("number '~s' is classified as ~s but no pretty print format available", [Num, Classification]),
+            maybe_use_us_default(Num);
+        _ ->
+            case wh_json:get_value(<<"pretty_print">>, Classifier) of
+                'undefined' -> maybe_use_us_default(Num);
+                Format -> Format
+            end
+    end.
+
+-spec maybe_use_us_default(ne_binary()) -> api_binary().
+maybe_use_us_default(<<"+1", _/binary>>) ->
+    lager:debug("using US number default pretty print", []),
+    <<"SS(###) ### - ####">>;
+maybe_use_us_default(_) ->
+    'undefined'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -96,7 +193,7 @@ correct_depreciated_classifiers([{Classifier, J}|Classifiers], JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec classify_number/1 :: (ne_binary()) -> 'undefined' | ne_binary().
--spec classify_number/2 :: (ne_binary(), proplist()) -> 'undefined' | ne_binary().
+-spec classify_number/2 :: (ne_binary(), wh_proplist()) -> 'undefined' | ne_binary().
 
 classify_number(Number) ->
     Default = wh_json:from_list(?DEFAULT_CLASSIFIERS),
@@ -106,10 +203,10 @@ classify_number(Number) ->
 
 classify_number(Num, []) ->
     lager:debug("unable to classify number ~s", [Num]),
-    undefined;
+    'undefined';
 classify_number(Num, [{Classification, Classifier}|Classifiers]) ->
     case re:run(Num, get_classifier_regex(Classifier)) of
-        nomatch -> classify_number(Num, Classifiers);
+        'nomatch' -> classify_number(Num, Classifiers);
         _ ->
             lager:debug("number '~s' is classified as ~s", [Num, Classification]),
             wh_util:to_binary(Classification)
@@ -132,12 +229,12 @@ is_reconcilable(Number) ->
     Regex = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"reconcile_regex">>, ?DEFAULT_RECONCILE_REGEX),
     Num = wnm_util:normalize_number(Number),
     case re:run(Num, Regex) of
-        nomatch ->
+        'nomatch' ->
             lager:debug("number '~s' is not reconcilable", [Num]),
-            false;
+            'false';
         _ ->
             lager:debug("number '~s' can be reconciled, proceeding", [Num]),
-            true
+            'true'
     end.
 
 %%--------------------------------------------------------------------
@@ -147,20 +244,20 @@ is_reconcilable(Number) ->
 %% and if return the name as well as the data
 %% @end
 %%--------------------------------------------------------------------
--spec get_carrier_module/1 :: (wh_json:json_object()) -> atom().
+-spec get_carrier_module/1 :: (wh_json:object()) -> atom().
 get_carrier_module(JObj) ->
     case wh_json:get_ne_value(<<"pvt_module_name">>, JObj) of
-        undefined -> 
+        'undefined' ->
             lager:debug("carrier module not specified on number document"),
-            undefined;
+            'undefined';
         Module ->
             Carriers = list_carrier_modules(),
             Carrier = wh_util:try_load_module(Module),
             case lists:member(Carrier, Carriers) of
-                true -> Carrier;
-                false -> 
+                'true' -> Carrier;
+                'false' ->
                     lager:debug("carrier module ~s specified on number document does not exist", [Carrier]),
-                    undefined
+                    'undefined'
             end
     end.
 
@@ -172,9 +269,9 @@ get_carrier_module(JObj) ->
 %%--------------------------------------------------------------------
 -spec list_carrier_modules/0 :: () -> [] | [atom(),...].
 list_carrier_modules() ->
-    CarrierModules = 
+    CarrierModules =
         whapps_config:get(?WNM_CONFIG_CAT, <<"carrier_modules">>, ?WNM_DEAFULT_CARRIER_MODULES),
-    [Module || M <- CarrierModules, (Module = wh_util:try_load_module(M)) =/= false].
+    [Module || M <- CarrierModules, (Module = wh_util:try_load_module(M)) =/= 'false'].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -192,7 +289,7 @@ number_to_db_name(<<NumPrefix:5/binary, _/binary>>) ->
        )
      );
 number_to_db_name(_) ->
-    undefined.
+    'undefined'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -214,10 +311,10 @@ is_e164(DID) ->
     DID =:= to_e164(DID).
 
 is_npan(DID) ->
-    re:run(DID, <<"^[2-9][0-9]{2}[2-9][0-9]{6}$">>) =/= nomatch.
+    re:run(DID, <<"^[2-9][0-9]{2}[2-9][0-9]{6}$">>) =/= 'nomatch'.
 
 is_1npan(DID) ->
-    re:run(DID, <<"^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$">>) =/= nomatch.
+    re:run(DID, <<"^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$">>) =/= 'nomatch'.
 
 %% +18001234567 -> +18001234567
 -spec to_e164/1 :: (ne_binary()) -> ne_binary().
@@ -231,10 +328,10 @@ to_e164(Number) ->
 maybe_convert_to_e164([], _, Number) ->
     Number;
 maybe_convert_to_e164([Regex|Regexs], Converters, Number) ->
-    case re:run(Number, Regex, [{capture, all, binary}]) of
-        nomatch -> 
+    case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
+        'nomatch' ->
             maybe_convert_to_e164(Regexs, Converters, Number);
-        {match, Captures} ->
+        {'match', Captures} ->
             Root = lists:last(Captures),
             Prefix = wh_json:get_binary_value([Regex, <<"prefix">>], Converters, <<>>),
             Suffix = wh_json:get_binary_value([Regex, <<"suffix">>], Converters, <<>>),
@@ -244,25 +341,25 @@ maybe_convert_to_e164([Regex|Regexs], Converters, Number) ->
 %% end up with 8001234567 from 1NPAN and E.164
 -spec to_npan/1 :: (ne_binary()) -> ne_binary().
 to_npan(Number) ->
-    case re:run(Number, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{capture, [1], binary}]) of
-        nomatch -> Number;
-        {match, [NPAN]} -> NPAN
+    case re:run(Number, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{'capture', [1], binary}]) of
+        'nomatch' -> Number;
+        {'match', [NPAN]} -> NPAN
     end.
 
 -spec to_1npan/1 :: (ne_binary()) -> ne_binary().
 to_1npan(Number) ->
-    case re:run(Number, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{capture, [1], binary}]) of
-        nomatch -> Number;
-        {match, [NPAN]} -> <<$1, NPAN/binary>>
+    case re:run(Number, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{'capture', [1], binary}]) of
+        'nomatch' -> Number;
+        {'match', [NPAN]} -> <<$1, NPAN/binary>>
     end.
 
--spec get_e164_converters/0 :: () -> wh_json:json_object().
+-spec get_e164_converters/0 :: () -> wh_json:object().
 get_e164_converters() ->
     Default = wh_json:from_list(?DEFAULT_E164_CONVERTERS),
     try whapps_config:get(?WNM_CONFIG_CAT, <<"e164_converters">>, Default) of
         Converters -> Converters
     catch
-        _:_ -> 
+        _:_ ->
             Default
     end.
 
@@ -273,17 +370,17 @@ get_e164_converters() ->
 %% order
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_id/1 :: (wh_json:json_object()) -> 'undefined' | ne_binary().
+-spec find_account_id/1 :: (wh_json:object()) -> 'undefined' | ne_binary().
 find_account_id(JObj) ->
     SearchFuns = [fun(_) -> wh_json:get_ne_value(<<"pvt_assigned_to">>, JObj) end
-                  ,fun(undefined) -> wh_json:get_ne_value(<<"pvt_reserved_for">>, JObj);
+                  ,fun('undefined') -> wh_json:get_ne_value(<<"pvt_reserved_for">>, JObj);
                       (Else) -> Else
                    end
-                  ,fun(undefined) -> wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, JObj);
+                  ,fun('undefined') -> wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, JObj);
                       (Else) -> Else
                    end
                  ],
-    lists:foldl(fun(F, A) -> F(A) end, undefined, SearchFuns).
+    lists:foldl(fun(F, A) -> F(A) end, 'undefined', SearchFuns).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -293,24 +390,24 @@ find_account_id(JObj) ->
 %%--------------------------------------------------------------------
 -spec get_all_number_dbs/0 :: () -> [ne_binary(),...] | [].
 get_all_number_dbs() ->
-    {ok, Databases} = couch_mgr:db_info(),
+    {'ok', Databases} = couch_mgr:db_info(),
     [Db || Db <- Databases, is_number_db(Db)].
 
-is_number_db(<<"numbers/", _/binary>>) -> true;
-is_number_db(<<"numbers%2f", _/binary>>) -> true;
-is_number_db(<<"numbers%2F", _/binary>>) -> true;
-is_number_db(_) -> false.
+is_number_db(<<"numbers/", _/binary>>) -> 'true';
+is_number_db(<<"numbers%2f", _/binary>>) -> 'true';
+is_number_db(<<"numbers%2F", _/binary>>) -> 'true';
+is_number_db(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec are_jobjs_identical/2 :: ('undefined' | wh_json:json_object(), 'undefined' | wh_json:json_object()) -> boolean().
-are_jobjs_identical(undefined, undefined) -> true;
-are_jobjs_identical(undefined, _) -> false;
-are_jobjs_identical(_, undefined) -> false;
+-spec are_jobjs_identical/2 :: ('undefined' | wh_json:object(), 'undefined' | wh_json:object()) -> boolean().
+are_jobjs_identical('undefined', 'undefined') -> 'true';
+are_jobjs_identical('undefined', _) -> 'false';
+are_jobjs_identical(_, 'undefined') -> 'false';
 are_jobjs_identical(JObj1, JObj2) ->
     [KV || {_, V}=KV <- wh_json:to_proplist(JObj1), (not wh_util:is_empty(V))]
         =:=
@@ -364,9 +461,9 @@ prop_to_e164() ->
 
 proper_test_() ->
     {"Runs the module's PropEr tests during eunit testing",
-     {timeout, 15000,
+     {'timeout', 15000,
       [
-       ?_assertEqual([], proper:module(?MODULE, [{max_shrinks, 0}]))
+       ?_assertEqual([], proper:module(?MODULE, [{'max_shrinks', 0}]))
       ]}}.
 
 to_e164_test() ->

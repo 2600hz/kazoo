@@ -96,23 +96,23 @@ create_template_props(Event, Docs, Account) ->
 
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, Event),
-    ToE164 = wnm_util:to_e164(wh_json:get_value(<<"To-User">>, Event)),
-    FromE164 = wnm_util:to_e164(wh_json:get_value(<<"From-User">>, Event)),
-    DateCalled = wh_util:to_integer(wh_json:get_value(<<"Fax-Timestamp">>, Event, Now)),
+    ToE164 = wh_json:get_value(<<"To-User">>, Event),
+    FromE164 = wh_json:get_value(<<"From-User">>, Event),
+    DateCalled = wh_json:get_integer_value(<<"Fax-Timestamp">>, Event, Now),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
     Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
-    
+
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
-     ,{<<"fax">>, [{<<"caller_id_number">>, pretty_print_did(CIDNum)}
-                   ,{<<"caller_id_name">>, CIDName}
+     ,{<<"fax">>, [{<<"caller_id_number">>, wnm_util:pretty_print(CIDNum)}
+                   ,{<<"caller_id_name">>, wnm_util:pretty_print(CIDName)}
                    ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
                    ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
-                   ,{<<"from_user">>, pretty_print_did(FromE164)}
+                   ,{<<"from_user">>, wnm_util:pretty_print(FromE164)}
                    ,{<<"from_realm">>, wh_json:get_value(<<"From-Realm">>, Event)}
-                   ,{<<"to_user">>, pretty_print_did(ToE164)}
+                   ,{<<"to_user">>, wnm_util:pretty_print(ToE164)}
                    ,{<<"to_realm">>, wh_json:get_value(<<"To-Realm">>, Event)}
                    ,{<<"fax_id">>, wh_json:get_value(<<"Fax-ID">>, Event)}
                    ,{<<"fax_media">>, wh_json:get_value(<<"Fax-Name">>, Event)}
@@ -185,20 +185,6 @@ get_file_name(Props, Ext) ->
     LocalDateTime = props:get_value(<<"date_called">>, Fax, <<"0000-00-00_00-00-00">>),
     FName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Ext]),
     re:replace(wh_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{return, binary}, global]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% create a friendly format for DIDs
-%% @end
-%%--------------------------------------------------------------------
--spec pretty_print_did(ne_binary()) -> ne_binary().
-pretty_print_did(<<"+1", Area:3/binary, Locale:3/binary, Rest:4/binary>>) ->
-    <<"1.", Area/binary, ".", Locale/binary, ".", Rest/binary>>;
-pretty_print_did(<<"011", Rest/binary>>) ->
-    pretty_print_did(wnm_util:to_e164(Rest));
-pretty_print_did(Other) ->
-    Other.
 
 %%--------------------------------------------------------------------
 %% @private
