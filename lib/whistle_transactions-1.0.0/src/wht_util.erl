@@ -21,6 +21,8 @@
 -export([default_reason/0]).
 -export([is_valid_reason/1]).
 -export([reason_code/1]).
+-export([collapse_call_transactions/1]).
+
 
 %% tracked in hundred-ths of a cent
 -define(DOLLAR_TO_UNIT, 10000).
@@ -219,3 +221,218 @@ is_valid_reason(Reason) ->
 reason_code(Reason) ->
     {_, Code} = lists:keyfind(Reason, 1, ?REASONS),
     Code.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec collapse_call_transactions([wh_json:object(), ...]) -> [wh_json:object(), ...].
+collapse_call_transactions(Transactions) ->
+    collapse_call_transactions(Transactions
+                               ,dict:new()
+                               ,[]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec collapse_call_transactions([wh_json:object(), ...]
+                                 ,dict()
+                                 ,[wh_json:object(), ...]) -> [wh_json:object(), ...].
+collapse_call_transactions([], Calls, Transactions) ->
+    clean_transactions(Transactions ++ dict:to_list(Calls));
+collapse_call_transactions([JObj|JObjs], Calls, Transactions) ->
+    case wh_json:get_integer_value(<<"code">>, JObj) of
+        Code when Code >= 1000 andalso Code < 2000 -> 
+            C = collapse_call_transaction(JObj, Calls),
+            collapse_call_transactions(JObjs, C, Transactions);
+        _Else ->
+            Amount = get_amount(JObj),
+            NJObj = wh_json:set_value(<<"amount">>, Amount, JObj),
+            collapse_call_transactions(JObjs, Calls, [NJObj|Transactions])
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec collapse_call_transaction(wh_json:object(), [wh_json:object(), ...]) -> wh_json:object().
+-spec collapse_call_transaction(binary(), wh_json:object(), [wh_json:object(), ...]) -> wh_json:object().
+collapse_call_transaction(JObj, Calls) ->
+    case wh_json:get_value(<<"call_id">>, JObj) of
+        'undefined' ->
+            Calls;
+        CallId ->
+            collapse_call_transaction(CallId, JObj, Calls)
+    end.
+
+collapse_call_transaction(CallId, JObj, Calls) ->
+    case dict:find(CallId, Calls) of
+        'error' ->
+            Amount = get_amount(JObj),
+            NJObj = wh_json:set_value(<<"amount">>, Amount, JObj),
+            dict:store(CallId, NJObj, Calls);
+        {'ok', Call} ->
+            Routines = [fun(C) -> collapse_created_time(C, JObj) end
+                        ,fun(C) -> collapse_ended_time(C, JObj) end
+                        ,fun(C) -> collapse_amount(C, JObj) end
+                       ],
+            C = lists:foldl(fun(F, C) -> F(C) end, Call, Routines),
+            dict:store(CallId, C, Calls)
+    end.
+    
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec collapse_created_time(wh_json:object(), [wh_json:object(), ...]) -> wh_json:object().
+collapse_created_time(Call, JObj) ->
+    CurrentCreated = wh_json:get_integer_value(<<"created">>, Call, 0),
+    MaybeCreated = wh_json:get_integer_value(<<"created">>, JObj, 0),
+    case CurrentCreated < MaybeCreated of
+        'true' -> Call;
+        'false' -> wh_json:set_value(<<"end">>, MaybeCreated, Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec collapse_ended_time(wh_json:object(), [wh_json:object(), ...]) -> wh_json:object().
+collapse_ended_time(Call, JObj) ->
+    CurrentEnd = wh_json:get_integer_value(<<"ended">>, Call, 0),
+    MaybeEnd = wh_json:get_integer_value(<<"created">>, JObj, 0),
+    case CurrentEnd > MaybeEnd of
+        'true' -> Call;
+        'false' -> wh_json:set_value(<<"end">>, MaybeEnd, Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec collapse_amount(wh_json:object(), [wh_json:object(), ...]) -> wh_json:object().
+collapse_amount(Call, JObj) ->
+    CurrentAmount = wh_json:get_value(<<"amount">>, Call, 0),
+    MaybeAmount = get_amount(JObj),
+    wh_json:set_value(<<"amount">>, MaybeAmount+CurrentAmount, Call).
+        
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec get_amount(wh_json:object()) -> float().
+get_amount(Call) ->
+    Amount = wh_json:get_value(<<"amount">>, Call, 0),
+    Type = wh_json:get_value(<<"type">>, Call),
+    case Type of
+        <<"debit">> ->
+            Amount*-1;
+        _ ->
+            Amount
+    end.
+            
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_transactions([wh_json:object(), ...]) -> [wh_json:object(), ...].
+-spec clean_transactions([wh_json:object(), ...], [wh_json:object(), ...]) -> [wh_json:object(), ...].
+clean_transactions(Transactions) ->
+    clean_transactions(Transactions, []).
+
+clean_transactions([], Acc) ->
+    Acc;
+clean_transactions([{_, Transaction}|Transactions], Acc) ->
+    Amount = wh_json:get_value(<<"amount">>, Transaction),
+    case Amount == 0 of
+        'false' ->
+            clean_transactions(Transactions, [clean_transaction(Transaction)|Acc]);
+        'true' ->
+            clean_transactions(Transactions, Acc)
+    end;
+clean_transactions([Transaction|Transactions], Acc) ->
+    clean_transactions(Transactions, [clean_transaction(Transaction)|Acc]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_transaction(wh_json:object()) -> wh_json:object().
+clean_transaction(Transaction) ->
+    Routines = [fun(T) -> clean_amount(T) end
+                ,fun(T) -> clean_version(T) end
+                ,fun(T) -> clean_event(T) end
+                ,fun(T) -> clean_id(T) end
+               ],
+    lists:foldl(fun(F, T) -> F(T) end, Transaction, Routines).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_amount(wh_json:object()) -> wh_json:object().
+clean_amount(Transaction) ->
+    Amount = wh_json:get_value(<<"amount">>, Transaction),
+    case Amount < 0 of
+        'true' ->
+            wh_json:set_values([{<<"type">>, <<"debit">>}
+                                ,{<<"amount">>, Amount*-1}
+                               ]
+                               ,Transaction);
+        'false' ->
+            wh_json:set_value(<<"type">>, <<"credit">>, Transaction)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_version(wh_json:object()) -> wh_json:object().
+clean_version(Transaction) ->
+    wh_json:delete_key(<<"version">>, Transaction).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_event(wh_json:object()) -> wh_json:object().
+clean_event(Transaction) ->
+    wh_json:delete_key(<<"event">>, Transaction).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_id(wh_json:object()) -> wh_json:object().
+clean_id(Transaction) ->
+    wh_json:delete_key(<<"id">>, Transaction).
+
+    
+

@@ -169,8 +169,10 @@ filter(Date, #cb_context{account_id=AccountId}=Context, Reason) ->
 send_resp(Resp, Context) ->
     case Resp of 
         {ok, Transactions} ->
-            JObj = wh_transactions:to_public_json(Transactions),
-            Context#cb_context{resp_status=success, resp_data=JObj};
+            JObj = wh_transactions:to_public_json(Transactions),            
+            Context#cb_context{resp_status=success
+                               ,resp_data=wht_util:collapse_call_transactions(JObj)
+                              };
         {error, C} ->
             cb_context:add_system_error(bad_identifier, [{details,<<"something went wrong while fetching the transaction">>}], C)
     end.
