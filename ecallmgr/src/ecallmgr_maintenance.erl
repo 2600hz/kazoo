@@ -29,19 +29,16 @@
 
 -spec add_fs_node(string() | binary() | atom()) -> 'ok'.
 add_fs_node(Node) when not is_atom(Node) ->
-    add_fs_node(wh_util:to_atom(Node, true));
-add_fs_node(Node) ->
-    ecallmgr_fs_nodes:add(Node).
+    add_fs_node(wh_util:to_atom(Node, 'true'));
+add_fs_node(Node) -> ecallmgr_fs_nodes:add(Node).
 
 -spec remove_fs_node(string() | binary() | atom()) -> 'ok'.
 remove_fs_node(Node) when not is_atom(Node) ->
-    remove_fs_node(wh_util:to_atom(Node, true));
-remove_fs_node(Node) ->
-    ecallmgr_fs_nodes:remove(Node).
+    remove_fs_node(wh_util:to_atom(Node, 'true'));
+remove_fs_node(Node) -> ecallmgr_fs_nodes:remove(Node).
 
 -spec list_fs_nodes() -> [atom(),...] | [].
-list_fs_nodes() ->
-    ecallmgr_fs_nodes:connected().
+list_fs_nodes() -> ecallmgr_fs_nodes:connected().
 
 -spec show_channels() -> 'no_return'.
 show_channels() ->
@@ -56,8 +53,7 @@ show_channels() ->
     end,
     'no_return'.
 
-do_show_channels([]) ->
-    'ok';
+do_show_channels([]) -> 'ok';
 do_show_channels([Channel|Channels]) ->
     Values = string:join([wh_util:to_list(V) || {_, V} <- wh_json:to_proplist(Channel)], ","),
     io:format("~s~n", [Values]),
