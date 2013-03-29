@@ -73,14 +73,14 @@
                 ,req_start_time :: wh_now()
                 ,callid :: ne_binary()
                 ,pool_ref :: server_ref()
-                ,defer_response = 'undefined' :: 'undefined' | wh_json:object()
+                ,defer_response :: api_object()
                 ,queue :: api_binary()
                }).
 
 -define(FUDGE, 2600).
 
--define(BINDINGS, [{self, []}]).
--define(RESPONDERS, [{{?MODULE, handle_resp}, [{<<"*">>, <<"*">>}]}]).
+-define(BINDINGS, [{'self', []}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_resp'}, [{<<"*">>, <<"*">>}]}]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -97,21 +97,25 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Args) ->
-    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
-                                      ,{responders, ?RESPONDERS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
+    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+                                      ,{'responders', ?RESPONDERS}
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Args]).
 
 -spec default_timeout() -> 2000.
 default_timeout() -> 2000.
 
--spec call(server_ref(), api_terms(), publish_fun(), validate_fun()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec call(server_ref(), api_terms(), publish_fun(), validate_fun()) ->
+                  {'ok', wh_json:object()} |
+                  {'error', _}.
 call(Srv, Req, PubFun, VFun) ->
     call(Srv, Req, PubFun, VFun, default_timeout()).
 
--spec call(server_ref(), api_terms(), publish_fun(), validate_fun(), wh_timeout()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec call(server_ref(), api_terms(), publish_fun(), validate_fun(), wh_timeout()) ->
+                  {'ok', wh_json:object()} |
+                  {'error', _}.
 call(Srv, Req, PubFun, VFun, Timeout) ->
     Prop = maybe_convert_to_proplist(Req),
     case catch poolboy:checkout(Srv, 'false', 1000) of
@@ -128,11 +132,15 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
             {'error', 'poolboy_fault'}
     end.
 
--spec call_collect(server_ref(), api_terms(), publish_fun()) -> {'ok', wh_json:objects()} | {'error', _}.
+-spec call_collect(server_ref(), api_terms(), publish_fun()) ->
+                          {'ok', wh_json:objects()} |
+                          {'error', _}.
 call_collect(Srv, Req, PubFun) ->
     call_collect(Srv, Req, PubFun, default_timeout()).
 
--spec call_collect(server_ref(), api_terms(), publish_fun(), timeout_or_until()) -> {'ok', wh_json:objects()} | {'error', _}.
+-spec call_collect(server_ref(), api_terms(), publish_fun(), timeout_or_until()) ->
+                          {'ok', wh_json:objects()} |
+                          {'error', _}.
 call_collect(Srv, Req, PubFun, UntilFun) when is_function(UntilFun) ->
     call_collect(Srv, Req, PubFun, UntilFun, default_timeout());
 call_collect(Srv, Req, PubFun, Whapp) when is_atom(Whapp); is_binary(Whapp) ->
@@ -143,7 +151,9 @@ call_collect(Srv, Req, PubFun, Timeout) ->
     call_collect(Srv, Req, PubFun, collect_until_timeout(), Timeout).
 
 -spec call_collect(server_ref(), api_terms(), publish_fun(), collect_util(), wh_timeout()) -> 
-                          {'ok', wh_json:objects()} | {'timeout', wh_json:object()} | {'error', _}.
+                          {'ok', wh_json:objects()} |
+                          {'timeout', wh_json:object()} |
+                          {'error', _}.
 call_collect(Srv, Req, PubFun, {Whapp, VFun}, Timeout) ->
     call_collect(Srv, Req, PubFun, collect_from_whapp_or_validate(Whapp, VFun), Timeout);
 call_collect(Srv, Req, PubFun, Whapp, Timeout) when is_atom(Whapp); is_binary(Whapp) ->
@@ -156,7 +166,7 @@ call_collect(Srv, Req, PubFun, UntilFun, Timeout) when is_integer(Timeout), Time
                                       ,fudge_timeout(Timeout)),
             poolboy:checkin(Srv, W),
             Reply;
-        full ->
+        'full' ->
             lager:critical("failed to checkout worker: full"),
             {'error', 'pool_full'};
         _Else ->
@@ -183,8 +193,7 @@ cast(Srv, Req, PubFun) ->
 any_resp(_) -> 'true'.
 
 -spec collect_until_timeout() -> collect_util_fun().
-collect_until_timeout() ->
-    fun(_) -> 'false' end.
+collect_until_timeout() -> fun(_) -> 'false' end.
 
 -spec collect_from_whapp(text()) -> collect_util_fun().
 collect_from_whapp(Whapp) ->
@@ -318,7 +327,7 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout}
             {'reply', {'error', Err}, reset(State), 'hibernate'}
     end;
 handle_call(_Request, _From, State) ->
-    {'reply', {'error', not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -390,6 +399,7 @@ handle_cast({'publish', ReqProp, PublishFun}, State) ->
     catch PublishFun(ReqProp),
     {'noreply', reset(State)};
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -502,7 +512,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec reset/1 :: (#state{}) -> #state{}.
+-spec reset(#state{}) -> #state{}.
 reset(#state{req_timeout_ref = ReqRef
              ,client_ref = ClientRef
             }=State) ->
@@ -530,11 +540,11 @@ reset(#state{req_timeout_ref = ReqRef
                 ,responses = 'undefined'
                }.
 
--spec fudge_timeout/1 :: (wh_timeout()) -> wh_timeout().
+-spec fudge_timeout(wh_timeout()) -> wh_timeout().
 fudge_timeout('infinity'=T) -> T;
 fudge_timeout(T) -> T + ?FUDGE.
 
--spec start_req_timeout/1 :: (wh_timeout()) -> reference().
+-spec start_req_timeout(wh_timeout()) -> reference().
 start_req_timeout('infinity') -> make_ref();
 start_req_timeout(Timeout) ->
     erlang:start_timer(Timeout, self(), 'req_timeout').
