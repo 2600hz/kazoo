@@ -271,7 +271,8 @@ handle_cast({'command', Pid, Command}, State) ->
     _ = case ets:match(?TAB, #wh_amqp_channel{consumer=Pid, commands='$1', _='_'}) of
             [] -> 'ok';
             [[Commands]] ->
-                Update = {#wh_amqp_channel.commands, [Command|Commands]},
+                C = [C || C <- Commands, C =/= Command],
+                Update = {#wh_amqp_channel.commands, [Command|C]},
                 ets:update_element(?TAB, Pid, Update)
         end,
     {'noreply', State};
