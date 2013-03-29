@@ -305,8 +305,7 @@ maybe_respond_to_presence_probe(JObj, AcctId) ->
             update_probe(JObj, acdc_agents_sup:find_agent_supervisor(AcctId, AgentId))
     end.
 
-update_probe(_JObj, 'undefined') ->
-    lager:debug("no supervisor for agent present, ignore");
+update_probe(_JObj, 'undefined') -> 'ok';
 update_probe(JObj, P) when is_pid(P) ->
     lager:debug("agent is active with supervisor: ~p", [P]),
     send_probe(JObj, ?PRESENCE_GREEN).

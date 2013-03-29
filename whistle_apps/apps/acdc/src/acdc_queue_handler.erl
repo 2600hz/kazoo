@@ -108,19 +108,22 @@ maybe_respond_to_presence_probe(JObj, AcctId) ->
             lager:debug("update presence probe for queue ~s(~s)", [QueueId, AcctId]),
             update_probe(JObj
                          ,acdc_queues_sup:find_queue_supervisor(AcctId, QueueId)
-                         ,wapi_acdc_queue:queue_size(AcctId, QueueId)
+                         ,AcctId, QueueId
                         )
     end.
 
-update_probe(_JObj, 'undefined', _Size) -> lager:debug("no supervisor for queue, ignore");
-update_probe(JObj, _Sup, 0) ->
-    lager:debug("no calls in queue, ignore!"),
-    send_probe(JObj, ?PRESENCE_GREEN);
-update_probe(JObj, _Sup, N) when is_integer(N), N > 0 ->
-    lager:debug("~b calls in queue, redify!", [N]),
-    send_probe(JObj, ?PRESENCE_RED_FLASH);
-update_probe(_JObj, _Sup, _Size) ->
-    lager:debug("~p for queue size, ignore!", [_Size]).
+update_probe(_JObj, 'undefined', _, _) -> 'ok';
+update_probe(JObj, _Sup, AcctId, QueueId) ->
+    case wapi_acdc_queue:queue_size(AcctId, QueueId) of
+        0 ->
+            lager:debug("no calls in queue, ignore!"),
+            send_probe(JObj, ?PRESENCE_GREEN);
+        N when is_integer(N), N > 0 ->
+            lager:debug("~b calls in queue, redify!", [N]),
+            send_probe(JObj, ?PRESENCE_RED_FLASH);
+        _E ->
+            lager:debug("unhandled size return: ~p", [_E])
+    end.
 
 send_probe(JObj, State) ->
     To = wh_json:get_value(<<"To">>, JObj),
