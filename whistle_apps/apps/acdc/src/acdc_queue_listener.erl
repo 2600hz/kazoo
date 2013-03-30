@@ -301,7 +301,6 @@ handle_cast({'member_connect_re_req'}, #state{my_q=MyQ
                                                                 }=State) ->
     case is_call_alive(Call) of
         'true' ->
-            lager:debug("call is still alive, re req connect"),
             send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId);
         'false' ->
             lager:debug("call appears down, don't re req connect"),
@@ -507,7 +506,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec send_member_connect_req(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
-    lager:debug("sending req via ~s", [MyQ]),
     Req = props:filter_undefined(
             [{<<"Account-ID">>, AcctId}
              ,{<<"Queue-ID">>, QueueId}
