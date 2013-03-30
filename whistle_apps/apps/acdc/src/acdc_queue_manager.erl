@@ -187,7 +187,7 @@ handle_member_call_cancel(JObj, Props) ->
                         ,wh_json:get_value(<<"Queue-ID">>, JObj)
                         ,wh_json:get_value(<<"Call-ID">>, JObj)
                        ),
-    gen_listener:cast(props:get_value('server', Props), {'member_call_cancel', K}).
+    gen_listener:cast(props:get_value('server', Props), {'member_call_cancel', K, JObj}).
 
 handle_agent_change(JObj, Prop) ->
     'true' = wapi_acdc_queue:agent_change_v(JObj),
@@ -339,7 +339,13 @@ handle_cast({update_queue_config, JObj}, #state{enter_when_empty=_EnterWhenEmpty
     lager:debug("maybe changing ewe from ~s to ~s", [_EnterWhenEmpty, EWE]),
     {'noreply', State#state{enter_when_empty=EWE}, hibernate};
 
-handle_cast({member_call_cancel, K}, #state{ignored_member_calls=Dict}=State) ->
+handle_cast({'member_call_cancel', K, JObj}, #state{ignored_member_calls=Dict}=State) ->
+    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+    QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    Reason = wh_json:get_value(<<"Reason">>, JObj),
+
+    acdc_stats:call_abandoned(AcctId, QueueId, CallId, Reason),
     {'noreply', State#state{
                 ignored_member_calls=dict:store(K, true, Dict)
                }};
