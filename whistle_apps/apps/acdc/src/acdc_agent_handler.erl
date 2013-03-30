@@ -13,6 +13,7 @@
          ,handle_sync_req/2
          ,handle_sync_resp/2
          ,handle_call_event/2
+         ,handle_new_channel/2
          ,handle_cdr/2
          ,handle_originate_resp/2
          ,handle_member_message/2
@@ -92,21 +93,21 @@ maybe_stop_agent(LPid, AcctId, AgentId) ->
     _ = wh_amqp_channel:consumer_pid(LPid),
     maybe_stop_agent(AcctId, AgentId).
 maybe_stop_agent(AcctId, AgentId) ->
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID),
+    catch acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID),
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' ->
             lager:debug("agent ~s(~s) not found, nothing to do", [AgentId, AcctId]);
         P when is_pid(P) ->
             lager:debug("agent ~s(~s) is logging out, stopping ~p", [AgentId, AgentId, P]),
+            acdc_stats:agent_inactive(AcctId, AgentId),
 
             case catch acdc_agent_sup:agent(P) of
                 APid when is_pid(APid) -> acdc_agent:logout_agent(APid);
-                _ -> 'ok'
+                _P -> lager:debug("failed to find agent listener for ~s: ~p", [AgentId, _P])
             end,
 
             _Stop = acdc_agent_sup:stop(P),
-            lager:debug("supervisor ~p stopping agent: ~p", [P, _Stop]),
-            acdc_stats:agent_inactive(AcctId, AgentId)
+            lager:debug("supervisor ~p stopping agent: ~p", [P, _Stop])
     end.
 
 maybe_pause_agent(AcctId, AgentId, Timeout) ->
@@ -150,6 +151,25 @@ handle_call_event(JObj, Props) ->
                 _ -> 'ok'
             end
     end.
+
+handle_new_channel(JObj, _Props) ->
+    'true' = wapi_call:new_channel_v(JObj),
+    _ = wh_util:put_callid(JObj),
+    handle_new_channel_acct(JObj, wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)).
+
+handle_new_channel_acct(_, 'undefined') -> 'ok';
+handle_new_channel_acct(JObj, AcctId) ->
+    [FromUser, _FromHost] = binary:split(wh_json:get_value(<<"From">>, JObj), <<"@">>),
+    [ToUser, _ToHost] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
+    [ReqUser, _ReqHost] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+
+    lager:debug("new channel in acct ~s: from ~s to ~s(~s)", [AcctId, FromUser, ToUser, ReqUser]),
+
+    gproc:send(?NEW_CHANNEL_REG(AcctId, FromUser), ?NEW_CHANNEL_FROM(CallId)),
+    gproc:send(?NEW_CHANNEL_REG(AcctId, ToUser), ?NEW_CHANNEL_TO(CallId)),
+    gproc:send(?NEW_CHANNEL_REG(AcctId, ReqUser), ?NEW_CHANNEL_TO(CallId)).
 
 handle_cdr(JObj, Props) ->
     'true' = wapi_call:cdr_v(JObj),

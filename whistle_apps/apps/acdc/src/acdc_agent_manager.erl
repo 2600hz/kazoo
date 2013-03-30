@@ -34,6 +34,7 @@
                    ,{'conf', [{'type', <<"device">>}]}
                    ,{'acdc_agent', [{'restrict_to', ['status', 'stats_req']}]}
                    ,{'notifications', [{'restrict_to', ['presence_probe']}]}
+                   ,{'call', [{'restrict_to', ['new_channel']}]}
                   ]).
 -define(RESPONDERS, [{{'acdc_agent_handler', 'handle_status_update'} 
                       ,[{<<"agent">>, <<"login">>}
@@ -44,6 +45,9 @@
                         ,{<<"agent">>, <<"logout_queue">>}
                        ]
                      }
+                     ,{{'acdc_agent_handler', 'handle_new_channel'}
+                       ,[{<<"channel">>, <<"new">>}]
+                      }
                      ,{{'acdc_agent_handler', 'handle_stats_req'}
                        ,[{<<"agent">>, <<"stats_req">>}]
                       }

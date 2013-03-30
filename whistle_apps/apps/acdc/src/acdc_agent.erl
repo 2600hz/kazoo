@@ -218,8 +218,8 @@ agent_call_id(Srv, ACallId, ACtrlQ) ->
 originate_execute(Srv, JObj) ->
     gen_listener:cast(Srv, {'originate_execute', JObj}).
 
-outbound_call(Srv, Call) ->
-    gen_listener:cast(Srv, {'outbound_call', Call}).
+outbound_call(Srv, CallId) ->
+    gen_listener:cast(Srv, {'outbound_call', CallId}).
 
 send_sync_req(Srv) -> gen_listener:cast(Srv, {'send_sync_req'}).
 
@@ -612,12 +612,12 @@ handle_cast({'originate_execute', JObj}, #state{my_q=Q}=State) ->
     send_originate_execute(JObj, Q),
     {'noreply', State#state{agent_call_id=ACallId}, 'hibernate'};
 
-handle_cast({'outbound_call', Call}, State) ->
-    _ = whapps_call:put_callid(Call),
-    acdc_util:bind_to_call_events(Call),
+handle_cast({'outbound_call', CallId}, State) ->
+    _ = wh_util:put_callid(CallId),
+    acdc_util:bind_to_call_events(CallId),
 
-    lager:debug("bound to agent's outbound call"),
-    {'noreply', State#state{call=Call}, 'hibernate'};
+    lager:debug("bound to agent's outbound call ~s", [CallId]),
+    {'noreply', State#state{call=whapps_call:set_call_id(CallId, whapps_call:new())}, 'hibernate'};
 
 handle_cast({'agent_call_id', ACallId, ACtrlQ}, State) ->
     lager:debug("agent call id set: ~s using ctrl ~s", [ACallId, ACtrlQ]),
@@ -724,10 +724,12 @@ handle_info(_Info, State) ->
 handle_event(_JObj, #state{fsm_pid='undefined'}) -> 'ignore';
 handle_event(_JObj, #state{fsm_pid=FSM
                            ,agent_id=AgentId
+                           ,acct_id=AcctId
                            ,cdr_urls=Urls
                           }) ->
     {'reply', [{'fsm_pid', FSM}
                ,{'agent_id', AgentId}
+               ,{'acct_id', AcctId}
                ,{'cdr_urls', Urls}
               ]}.
 

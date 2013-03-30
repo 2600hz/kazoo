@@ -80,7 +80,7 @@
 
 -define(WRAPUP_FINISHED, 'wrapup_finished').
 
--define(CALL_STATUS_TIMEOUT, 10000).
+-define(CALL_STATUS_TIMEOUT, 2600).
 -define(CALL_STATUS_MESSAGE, 'call_status_timeout').
 
 -record(state, {
@@ -453,6 +453,10 @@ sync({'pause', Timeout}, #state{acct_id=AcctId
 
 sync({'route_req', Call}, State) ->
     {'next_state', 'outbound', start_outbound_call_handling(Call, State), 'hibernate'};
+sync({'call_from', CallId}, State) ->
+    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+sync({'call_to', CallId}, State) ->
+    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 
 sync(_Evt, State) ->
     lager:debug("unhandled event while syncing: ~p", [_Evt]),
@@ -585,6 +589,10 @@ ready({'originate_failed', _E}, State) ->
 
 ready({'route_req', Call}, State) ->
     {'next_state', 'outbound', start_outbound_call_handling(Call, State), 'hibernate'};
+ready({'call_from', CallId}, State) ->
+    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+ready({'call_to', CallId}, State) ->
+    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 
 ready(_Evt, State) ->
     lager:debug("unhandled event while ready: ~p", [_Evt]),
@@ -781,6 +789,9 @@ ringing({'sync_req', JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:send_sync_resp(Srv, 'ringing', JObj),
     {'next_state', 'ringing', State};
 
+ringing(?NEW_CHANNEL_TO(_CallId), #state{agent_call_id=_CallId}=State) ->
+    {'next_state', 'ringing', State};
+
 ringing(_Evt, State) ->
     lager:debug("unhandled event while ringing: ~p", [_Evt]),
     {'next_state', 'ringing', State}.
@@ -909,6 +920,8 @@ answered({'channel_answered', MCallId}, #state{member_call_id=MCallId}=State) ->
 answered({'channel_answered', ACallId}, #state{agent_call_id=ACallId}=State) ->
     lager:debug("agent's channel ~s has answered", [ACallId]),
     {'next_state', 'answered', State};
+answered({'originate_started', _CallId}, State) ->
+    {'next_state', 'answered', State};
 
 answered(_Evt, State) ->
     lager:debug("unhandled event while answered: ~p", [_Evt]),
@@ -973,6 +986,13 @@ wrapup({'leg_destroyed', CallId}, #state{agent_proc=Srv}=State) ->
 
 wrapup({'route_req', Call}, State) ->
     {'next_state', 'outbound', start_outbound_call_handling(Call, State), 'hibernate'};
+wrapup({'call_from', CallId}, State) ->
+    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+wrapup({'call_to', CallId}, State) ->
+    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+
+wrapup({'originate_resp', _}, State) ->
+    {'next_state', 'wrapup', State};
 
 wrapup(_Evt, State) ->
     lager:debug("unhandled event while in wrapup: ~p", [_Evt]),
@@ -1048,6 +1068,10 @@ paused({'member_connect_win', JObj}, #state{agent_proc=Srv}=State) ->
 
 paused({'route_req', Call}, State) ->
     {'next_state', 'outbound', start_outbound_call_handling(Call, State), 'hibernate'};
+paused({'call_from', CallId}, State) ->
+    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+paused({'call_to', CallId}, State) ->
+    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 
 paused(_Evt, State) ->
     lager:debug("unhandled event while paused: ~p", [_Evt]),
@@ -1164,6 +1188,24 @@ outbound({'call_status', JObj}, #state{call_status_failures=Failures
 outbound({'timeout', WRef, ?WRAPUP_FINISHED}, #state{wrapup_ref=WRef}=State) ->
     lager:debug("wrapup timer ended while on outbound call"),
     {'next_state', 'outbound', State#state{wrapup_ref='undefined'}, 'hibernate'};
+
+outbound(?NEW_CHANNEL_FROM(CallId), #state{outbound_call_id=CallId}=State) ->
+    {'next_state', 'outbound', State};
+outbound(?NEW_CHANNEL_FROM(_CallId), #state{outbound_call_id=_CurrCallId}=State) ->
+    lager:debug("on outbound call(~s), also starting outbound call: ~s", [_CurrCallId, _CallId]),
+    {'next_state', 'outbound', State};
+
+outbound({'member_connect_req', _}, State) ->
+    {'next_state', 'outbound', State};
+
+outbound({'leg_created', _}, State) ->
+    {'next_state', 'outbound', State};
+outbound({'channel_answered', _}, State) ->
+    {'next_state', 'outbound', State};
+outbound({'channel_bridged', _}, State) ->
+    {'next_state', 'outbound', State};
+outbound({'channel_unbridged', _}, State) ->
+    {'next_state', 'outbound', State};
 
 outbound(_Msg, State) ->
     lager:debug("ignoring msg in outbound: ~p", [_Msg]),
@@ -1308,6 +1350,13 @@ handle_info({'endpoint_created', EP}, StateName, #state{endpoints=EPs
             end
     end;
 
+handle_info(?NEW_CHANNEL_FROM(_CallId)=Evt, StateName, State) ->
+    gen_fsm:send_event(self(), Evt),
+    {'next_state', StateName, State};
+handle_info(?NEW_CHANNEL_TO(_CallId)=Evt, StateName, State) ->
+    gen_fsm:send_event(self(), Evt),
+    {'next_state', StateName, State};
+
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled message in state ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
@@ -1402,9 +1451,10 @@ clear_call(#state{connect_failures=Fails
                   ,agent_id=AgentId
                   ,agent_proc=Srv
                  }=State, 'failed') when (Max - Fails) =< 1 ->
+    acdc_agent:logout_agent(Srv),
+    acdc_stats:agent_inactive(AcctId, AgentId),
     lager:debug("agent has failed to connect ~b times, logging out", [Fails+1]),
-    spawn('acdc_agent_handler', 'maybe_stop_agent', [Srv, AcctId, AgentId]),
-    clear_call(State#state{connect_failures=Fails+1}, 'ready');
+    clear_call(State#state{connect_failures=Fails+1}, 'paused');
 clear_call(#state{connect_failures=Fails
                  }=State, 'failed') ->
     clear_call(State#state{connect_failures=Fails+1}, 'ready');
@@ -1485,16 +1535,14 @@ wrapup_left('undefined') -> 0;
 wrapup_left(WRef) when is_reference(WRef) -> erlang:read_timer(WRef);
 wrapup_left(#state{wrapup_ref=WRef}) -> wrapup_left(WRef).
 
--spec start_outbound_call_handling(whapps_call:call(), fsm_state()) -> fsm_state().
-start_outbound_call_handling(Call, #state{agent_proc=Srv
-                                          ,acct_id=AcctId
-                                          ,agent_id=AgentId
-                                         }=State) ->
-    CallId = whapps_call:call_id(Call),
-    put('callid', CallId),
+-spec start_outbound_call_handling(ne_binary() | whapps_call:call(), fsm_state()) -> fsm_state().
+start_outbound_call_handling(CallId, #state{agent_proc=Srv
+                                            ,acct_id=AcctId
+                                            ,agent_id=AgentId
+                                           }=State) when is_binary(CallId) ->
+    _ = put('callid', CallId),
     lager:debug("agent making outbound call, not receiving calls"),
-
-    acdc_agent:outbound_call(Srv, Call),
+    acdc_agent:outbound_call(Srv, CallId),
     acdc_stats:agent_oncall(AcctId, AgentId, CallId),
 
     webseq:evt(CallId, self(), <<"outbound call started">>),
@@ -1503,7 +1551,9 @@ start_outbound_call_handling(Call, #state{agent_proc=Srv
     State#state{outbound_call_id=CallId
                 ,call_status_ref=start_call_status_timer()
                 ,call_status_failures=0
-               }.
+               };
+start_outbound_call_handling(Call, State) ->
+    start_outbound_call_handling(whapps_call:call_id(Call), State).
 
 missed_reason(<<"-ERR ", Reason/binary>>) ->
     missed_reason(binary:replace(Reason, <<"\n">>, <<>>, ['global']));
@@ -1528,7 +1578,8 @@ monitor_endpoint(EP, AcctId, Srv) ->
                                      ,find_username(EP)
                                     ),
     %% Inform us of device changes
-    catch gproc:reg(?ENDPOINT_UPDATE_REG(AcctId, find_endpoint_id(EP))).
+    catch gproc:reg(?ENDPOINT_UPDATE_REG(AcctId, find_endpoint_id(EP))),
+    catch gproc:reg(?NEW_CHANNEL_REG(AcctId, find_username(EP))).
 
 unmonitor_endpoint(EP, AcctId, Srv) ->
     %% Bind for outbound call requests
@@ -1537,7 +1588,8 @@ unmonitor_endpoint(EP, AcctId, Srv) ->
                                         ,find_username(EP)
                                        ),
     %% Inform us of device changes
-    catch gproc:unreg(?ENDPOINT_UPDATE_REG(AcctId, wh_json:get_value(<<"_id">>, EP))).
+    catch gproc:unreg(?ENDPOINT_UPDATE_REG(AcctId, wh_json:get_value(<<"_id">>, EP))),
+    catch gproc:unreg(?NEW_CHANNEL_REG(AcctId, find_username(EP))).
 
 maybe_add_endpoint(EPId, EP, EPs, AcctId, Srv) ->
     case lists:partition(fun(E) -> wh_json:get_value(<<"_id">>, E) =:= EPId end, EPs) of
