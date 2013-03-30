@@ -11,6 +11,7 @@
 
 -export([optional_call_event_headers/0]).
 
+-export([new_channel/1, new_channel_v/1]).
 -export([event/1, event_v/1]).
 -export([channel_status_req/1, channel_status_req_v/1]).
 -export([channel_status_resp/1, channel_status_resp_v/1]).
@@ -27,6 +28,7 @@
 
 -export([bind_q/2, unbind_q/2]).
 
+-export([publish_new_channel/1, publish_new_channel/2]).
 -export([publish_event/2, publish_event/3]).
 -export([publish_channel_status_req/1 ,publish_channel_status_req/2, publish_channel_status_req/3]).
 -export([publish_channel_status_resp/2, publish_channel_status_resp/3]).
@@ -47,6 +49,16 @@
 
 %% Routing key prefix for rating
 -define(KEY_RATING_REQ, <<"call.rating">>).
+
+-define(NEW_CHANNEL_ROUTING_KEY, <<"call.new_channel">>).
+-define(NEW_CHANNEL_HEADERS, [<<"Call-ID">>]).
+-define(OPTIONAL_NEW_CHANNEL_HEADERS, [<<"To">>, <<"From">>, <<"Request">>
+                                       | ?OPTIONAL_CALL_EVENT_HEADERS
+                                      ]).
+-define(NEW_CHANNEL_VALUES, [{<<"Event-Category">>, <<"channel">>}
+                             ,{<<"Event-Name">>, <<"new">>}
+                            ]).
+-define(NEW_CHANNEL_TYPES, []).
 
 %% Call Events
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).
@@ -200,17 +212,33 @@ optional_call_event_headers() ->
 -spec event(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 event(Prop) when is_list(Prop) ->
     case event_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CALL_EVENT_HEADERS, ?OPTIONAL_CALL_EVENT_HEADERS);
-        false -> {error, "Proplist failed validation for call_event"}
+        'true' -> wh_api:build_message(Prop, ?CALL_EVENT_HEADERS, ?OPTIONAL_CALL_EVENT_HEADERS);
+        'false' -> {'error', "Proplist failed validation for call_event"}
     end;
-event(JObj) ->
-    event(wh_json:to_proplist(JObj)).
+event(JObj) -> event(wh_json:to_proplist(JObj)).
 
 -spec event_v(api_terms()) -> boolean().
 event_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_EVENT_HEADERS, ?CALL_EVENT_VALUES, ?CALL_EVENT_TYPES);
-event_v(JObj) ->
-    event_v(wh_json:to_proplist(JObj)).
+event_v(JObj) -> event_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Format a call event from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec new_channel(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+new_channel(Prop) when is_list(Prop) ->
+    case new_channel_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?NEW_CHANNEL_HEADERS, ?OPTIONAL_NEW_CHANNEL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for new_channel"}
+    end;
+new_channel(JObj) -> new_channel(wh_json:to_proplist(JObj)).
+
+-spec new_channel_v(api_terms()) -> boolean().
+new_channel_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?NEW_CHANNEL_HEADERS, ?NEW_CHANNEL_VALUES, ?NEW_CHANNEL_TYPES);
+new_channel_v(JObj) -> new_channel_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Inquire into the status of a channel
@@ -220,17 +248,15 @@ event_v(JObj) ->
 -spec channel_status_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 channel_status_req(Prop) when is_list(Prop) ->
     case channel_status_req_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CHANNEL_STATUS_REQ_HEADERS, ?OPTIONAL_CHANNEL_STATUS_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for channel status req"}
+        'true' -> wh_api:build_message(Prop, ?CHANNEL_STATUS_REQ_HEADERS, ?OPTIONAL_CHANNEL_STATUS_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for channel status req"}
     end;
-channel_status_req(JObj) ->
-    channel_status_req(wh_json:to_proplist(JObj)).
+channel_status_req(JObj) -> channel_status_req(wh_json:to_proplist(JObj)).
 
 -spec channel_status_req_v(api_terms()) -> boolean().
 channel_status_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CHANNEL_STATUS_REQ_HEADERS, ?CHANNEL_STATUS_REQ_VALUES, ?CHANNEL_STATUS_REQ_TYPES);
-channel_status_req_v(JObj) ->
-    channel_status_req_v(wh_json:to_proplist(JObj)).
+channel_status_req_v(JObj) -> channel_status_req_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Respond with status of a channel, either active or non-existant
@@ -240,17 +266,15 @@ channel_status_req_v(JObj) ->
 -spec channel_status_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 channel_status_resp(Prop) when is_list(Prop) ->
     case channel_status_resp_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CHANNEL_STATUS_RESP_HEADERS, ?OPTIONAL_CHANNEL_STATUS_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for channel status resp"}
+        'true' -> wh_api:build_message(Prop, ?CHANNEL_STATUS_RESP_HEADERS, ?OPTIONAL_CHANNEL_STATUS_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for channel status resp"}
     end;
-channel_status_resp(JObj) ->
-    channel_status_resp(wh_json:to_proplist(JObj)).
+channel_status_resp(JObj) -> channel_status_resp(wh_json:to_proplist(JObj)).
 
 -spec channel_status_resp_v(api_terms()) -> boolean().
 channel_status_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CHANNEL_STATUS_RESP_HEADERS, ?CHANNEL_STATUS_RESP_VALUES, ?CHANNEL_STATUS_RESP_TYPES);
-channel_status_resp_v(JObj) ->
-    channel_status_resp_v(wh_json:to_proplist(JObj)).
+channel_status_resp_v(JObj) -> channel_status_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Inquire into the status of a call
@@ -260,17 +284,15 @@ channel_status_resp_v(JObj) ->
 -spec call_status_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 call_status_req(Prop) when is_list(Prop) ->
     case call_status_req_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CALL_STATUS_REQ_HEADERS, ?OPTIONAL_CALL_STATUS_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for call status req"}
+        'true' -> wh_api:build_message(Prop, ?CALL_STATUS_REQ_HEADERS, ?OPTIONAL_CALL_STATUS_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for call status req"}
     end;
-call_status_req(JObj) ->
-    call_status_req(wh_json:to_proplist(JObj)).
+call_status_req(JObj) -> call_status_req(wh_json:to_proplist(JObj)).
 
 -spec call_status_req_v(api_terms()) -> boolean().
 call_status_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_STATUS_REQ_HEADERS, ?CALL_STATUS_REQ_VALUES, ?CALL_STATUS_REQ_TYPES);
-call_status_req_v(JObj) ->
-    call_status_req_v(wh_json:to_proplist(JObj)).
+call_status_req_v(JObj) -> call_status_req_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Inquire into the status of a call
@@ -280,17 +302,15 @@ call_status_req_v(JObj) ->
 -spec query_auth_id_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 query_auth_id_req(Prop) when is_list(Prop) ->
     case query_auth_id_req_v(Prop) of
-        true -> wh_api:build_message(Prop, ?QUERY_AUTH_ID_REQ_HEADERS, ?OPTIONAL_QUERY_AUTH_ID_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for auth id query req"}
+        'true' -> wh_api:build_message(Prop, ?QUERY_AUTH_ID_REQ_HEADERS, ?OPTIONAL_QUERY_AUTH_ID_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for auth id query req"}
     end;
-query_auth_id_req(JObj) ->
-    query_auth_id_req(wh_json:to_proplist(JObj)).
+query_auth_id_req(JObj) -> query_auth_id_req(wh_json:to_proplist(JObj)).
 
 -spec query_auth_id_req_v(api_terms()) -> boolean().
 query_auth_id_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?QUERY_AUTH_ID_REQ_HEADERS, ?QUERY_AUTH_ID_REQ_VALUES, ?QUERY_AUTH_ID_REQ_TYPES);
-query_auth_id_req_v(JObj) ->
-    query_auth_id_req_v(wh_json:to_proplist(JObj)).
+query_auth_id_req_v(JObj) -> query_auth_id_req_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Inquire into the status of a call
@@ -300,17 +320,15 @@ query_auth_id_req_v(JObj) ->
 -spec query_auth_id_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 query_auth_id_resp(Prop) when is_list(Prop) ->
     case query_auth_id_resp_v(Prop) of
-        true -> wh_api:build_message(Prop, ?QUERY_AUTH_ID_RESP_HEADERS, ?OPTIONAL_QUERY_AUTH_ID_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for auth id query resp"}
+        'true' -> wh_api:build_message(Prop, ?QUERY_AUTH_ID_RESP_HEADERS, ?OPTIONAL_QUERY_AUTH_ID_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for auth id query resp"}
     end;
-query_auth_id_resp(JObj) ->
-    query_auth_id_resp(wh_json:to_proplist(JObj)).
+query_auth_id_resp(JObj) -> query_auth_id_resp(wh_json:to_proplist(JObj)).
 
 -spec query_auth_id_resp_v(api_terms()) -> boolean().
 query_auth_id_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?QUERY_AUTH_ID_RESP_HEADERS, ?QUERY_AUTH_ID_RESP_VALUES, ?QUERY_AUTH_ID_RESP_TYPES);
-query_auth_id_resp_v(JObj) ->
-    query_auth_id_resp_v(wh_json:to_proplist(JObj)).
+query_auth_id_resp_v(JObj) -> query_auth_id_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Respond with status of a call, either active or non-existant
@@ -320,17 +338,15 @@ query_auth_id_resp_v(JObj) ->
 -spec call_status_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 call_status_resp(Prop) when is_list(Prop) ->
     case call_status_resp_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CALL_STATUS_RESP_HEADERS, ?OPTIONAL_CALL_STATUS_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for call status resp"}
+        'true' -> wh_api:build_message(Prop, ?CALL_STATUS_RESP_HEADERS, ?OPTIONAL_CALL_STATUS_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for call status resp"}
     end;
-call_status_resp(JObj) ->
-    call_status_resp(wh_json:to_proplist(JObj)).
+call_status_resp(JObj) -> call_status_resp(wh_json:to_proplist(JObj)).
 
 -spec call_status_resp_v(api_terms()) -> boolean().
 call_status_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_STATUS_RESP_HEADERS, ?CALL_STATUS_RESP_VALUES, ?CALL_STATUS_RESP_TYPES);
-call_status_resp_v(JObj) ->
-    call_status_resp_v(wh_json:to_proplist(JObj)).
+call_status_resp_v(JObj) -> call_status_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Format a CDR for a call
@@ -340,17 +356,15 @@ call_status_resp_v(JObj) ->
 -spec cdr(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 cdr(Prop) when is_list(Prop) ->
     case cdr_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CALL_CDR_HEADERS, ?OPTIONAL_CALL_CDR_HEADERS);
-        false -> {error, "Proplist failed validation for call_cdr"}
+        'true' -> wh_api:build_message(Prop, ?CALL_CDR_HEADERS, ?OPTIONAL_CALL_CDR_HEADERS);
+        'false' -> {'error', "Proplist failed validation for call_cdr"}
     end;
-cdr(JObj) ->
-    cdr(wh_json:to_proplist(JObj)).
+cdr(JObj) -> cdr(wh_json:to_proplist(JObj)).
 
 -spec cdr_v(api_terms()) -> boolean().
 cdr_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_CDR_HEADERS, ?CALL_CDR_VALUES, ?CALL_CDR_TYPES);
-cdr_v(JObj) ->
-    cdr_v(wh_json:to_proplist(JObj)).
+cdr_v(JObj) -> cdr_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Format a call id update from the switch for the listener
@@ -360,17 +374,15 @@ cdr_v(JObj) ->
 -spec callid_update(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 callid_update(Prop) when is_list(Prop) ->
     case callid_update_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CALL_ID_UPDATE_HEADERS, ?OPTIONAL_CALL_ID_UPDATE_HEADERS);
-        false -> {error, "Proplist failed validation for callid_update"}
+        'true' -> wh_api:build_message(Prop, ?CALL_ID_UPDATE_HEADERS, ?OPTIONAL_CALL_ID_UPDATE_HEADERS);
+        'false' -> {'error', "Proplist failed validation for callid_update"}
     end;
-callid_update(JObj) ->
-    callid_update(wh_json:to_proplist(JObj)).
+callid_update(JObj) -> callid_update(wh_json:to_proplist(JObj)).
 
 -spec callid_update_v(api_terms()) -> boolean().
 callid_update_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_ID_UPDATE_HEADERS, ?CALL_ID_UPDATE_VALUES, ?CALL_ID_UPDATE_TYPES);
-callid_update_v(JObj) ->
-    callid_update_v(wh_json:to_proplist(JObj)).
+callid_update_v(JObj) -> callid_update_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Format a call id update from the switch for the listener
@@ -380,17 +392,15 @@ callid_update_v(JObj) ->
 -spec control_transfer(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 control_transfer(Prop) when is_list(Prop) ->
     case control_transfer_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CALL_CONTROL_TRANSFER_HEADERS, ?OPTIONAL_CALL_CONTROL_TRANSFER_HEADERS);
-        false -> {error, "Proplist failed validation for control_transfer"}
+        'true' -> wh_api:build_message(Prop, ?CALL_CONTROL_TRANSFER_HEADERS, ?OPTIONAL_CALL_CONTROL_TRANSFER_HEADERS);
+        'false' -> {'error', "Proplist failed validation for control_transfer"}
     end;
-control_transfer(JObj) ->
-    control_transfer(wh_json:to_proplist(JObj)).
+control_transfer(JObj) -> control_transfer(wh_json:to_proplist(JObj)).
 
 -spec control_transfer_v(api_terms()) -> boolean().
 control_transfer_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_CONTROL_TRANSFER_HEADERS, ?CALL_CONTROL_TRANSFER_VALUES, ?CALL_CONTROL_TRANSFER_TYPES);
-control_transfer_v(JObj) ->
-    control_transfer_v(wh_json:to_proplist(JObj)).
+control_transfer_v(JObj) -> control_transfer_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Format a call id update from the switch for the listener
@@ -400,18 +410,15 @@ control_transfer_v(JObj) ->
 -spec usurp_control(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 usurp_control(Prop) when is_list(Prop) ->
     case usurp_control_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CALL_USURP_CONTROL_HEADERS, ?OPTIONAL_CALL_USURP_CONTROL_HEADERS);
-        false -> {error, "Proplist failed validation for usurp_control"}
+        'true' -> wh_api:build_message(Prop, ?CALL_USURP_CONTROL_HEADERS, ?OPTIONAL_CALL_USURP_CONTROL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for usurp_control"}
     end;
-usurp_control(JObj) ->
-    usurp_control(wh_json:to_proplist(JObj)).
+usurp_control(JObj) -> usurp_control(wh_json:to_proplist(JObj)).
 
 -spec usurp_control_v(api_terms()) -> boolean().
 usurp_control_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_USURP_CONTROL_HEADERS, ?CALL_USURP_CONTROL_VALUES, ?CALL_USURP_CONTROL_TYPES);
-usurp_control_v(JObj) ->
-    usurp_control_v(wh_json:to_proplist(JObj)).
-
+usurp_control_v(JObj) -> usurp_control_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Format a call id update from the switch for the listener
@@ -421,18 +428,15 @@ usurp_control_v(JObj) ->
 -spec usurp_publisher(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 usurp_publisher(Prop) when is_list(Prop) ->
     case usurp_publisher_v(Prop) of
-        true -> wh_api:build_message(Prop, ?PUBLISHER_USURP_CONTROL_HEADERS, ?OPTIONAL_PUBLISHER_USURP_CONTROL_HEADERS);
-        false -> {error, "Proplist failed validation for usurp_publisher"}
+        'true' -> wh_api:build_message(Prop, ?PUBLISHER_USURP_CONTROL_HEADERS, ?OPTIONAL_PUBLISHER_USURP_CONTROL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for usurp_publisher"}
     end;
-usurp_publisher(JObj) ->
-    usurp_publisher(wh_json:to_proplist(JObj)).
+usurp_publisher(JObj) -> usurp_publisher(wh_json:to_proplist(JObj)).
 
 -spec usurp_publisher_v(api_terms()) -> boolean().
 usurp_publisher_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PUBLISHER_USURP_CONTROL_HEADERS, ?PUBLISHER_USURP_CONTROL_VALUES, ?PUBLISHER_USURP_CONTROL_TYPES);
-usurp_publisher_v(JObj) ->
-    usurp_publisher_v(wh_json:to_proplist(JObj)).
-
+usurp_publisher_v(JObj) -> usurp_publisher_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Format a call id update from the switch for the listener
@@ -442,102 +446,110 @@ usurp_publisher_v(JObj) ->
 -spec controller_queue(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 controller_queue(Prop) when is_list(Prop) ->
     case controller_queue_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CONTROLLER_QUEUE_HEADERS, ?OPTIONAL_CONTROLLER_QUEUE_HEADERS);
-        false -> {error, "Proplist failed validation for controller_queue"}
+        'true' -> wh_api:build_message(Prop, ?CONTROLLER_QUEUE_HEADERS, ?OPTIONAL_CONTROLLER_QUEUE_HEADERS);
+        'false' -> {'error', "Proplist failed validation for controller_queue"}
     end;
-controller_queue(JObj) ->
-    controller_queue(wh_json:to_proplist(JObj)).
+controller_queue(JObj) -> controller_queue(wh_json:to_proplist(JObj)).
 
 -spec controller_queue_v(api_terms()) -> boolean().
 controller_queue_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CONTROLLER_QUEUE_HEADERS, ?CONTROLLER_QUEUE_VALUES, ?CONTROLLER_QUEUE_TYPES);
-controller_queue_v(JObj) ->
-    controller_queue_v(wh_json:to_proplist(JObj)).
+controller_queue_v(JObj) -> controller_queue_v(wh_json:to_proplist(JObj)).
 
--spec bind_q(binary(), proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
-    CallID = props:get_value(callid, Props, <<"*">>),
+    CallID = props:get_value('callid', Props, <<"*">>),
     amqp_util:callevt_exchange(),
     amqp_util:callmgr_exchange(),
-    bind_q(Queue, props:get_value(restrict_to, Props), CallID).
+    bind_q(Queue, props:get_value('restrict_to', Props), CallID).
 
-bind_q(Q, undefined, CallID) ->
-    ok = amqp_util:bind_q_to_callevt(Q, CallID),
-    ok = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
-    ok = amqp_util:bind_q_to_callevt(Q, CallID, publisher_usurp);
+bind_q(Q, 'undefined', CallID) ->
+    'ok' = amqp_util:bind_q_to_callevt(Q, CallID),
+    'ok' = amqp_util:bind_q_to_callevt(Q, CallID, 'cdr'),
+    'ok' = amqp_util:bind_q_to_callmgr(Q, ?NEW_CHANNEL_ROUTING_KEY),
+    'ok' = amqp_util:bind_q_to_callevt(Q, CallID, 'publisher_usurp');
 
-bind_q(Q, [events|T], CallID) ->
+bind_q(Q, ['events'|T], CallID) ->
     _ = amqp_util:bind_q_to_callevt(Q, CallID),
     bind_q(Q, T, CallID);
-bind_q(Q, [cdr|T], CallID) ->
-    _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
+bind_q(Q, ['cdr'|T], CallID) ->
+    _ = amqp_util:bind_q_to_callevt(Q, CallID, 'cdr'),
     bind_q(Q, T, CallID);
-bind_q(Q, [status_req|T], CallID) ->
-    ok = amqp_util:bind_q_to_callevt(Q, CallID, status_req),
+bind_q(Q, ['status_req'|T], CallID) ->
+    'ok' = amqp_util:bind_q_to_callevt(Q, CallID, 'status_req'),
     bind_q(Q, T, CallID);
-bind_q(Q, [publisher_usurp|T], CallID) ->
-    ok = amqp_util:bind_q_to_callevt(Q, CallID, publisher_usurp),
+bind_q(Q, ['new_channel'|T], CallId) ->
+    'ok' = amqp_util:bind_q_to_callmgr(Q, ?NEW_CHANNEL_ROUTING_KEY),
+    bind_q(Q, T, CallId);
+bind_q(Q, ['publisher_usurp'|T], CallID) ->
+    'ok' = amqp_util:bind_q_to_callevt(Q, CallID, 'publisher_usurp'),
     bind_q(Q, T, CallID);
-bind_q(Q, [_|T], CallID) ->
-    bind_q(Q, T, CallID);
-bind_q(_Q, [], _CallID) ->
-    ok.
+bind_q(Q, [_|T], CallID) -> bind_q(Q, T, CallID);
+bind_q(_Q, [], _CallID) -> 'ok'.
 
--spec unbind_q(ne_binary(), proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
-    CallID = props:get_value(callid, Props, <<"*">>),
-    unbind_q(Queue, props:get_value(restrict_to, Props), CallID).
+    CallID = props:get_value('callid', Props, <<"*">>),
+    unbind_q(Queue, props:get_value('restrict_to', Props), CallID).
 
-unbind_q(Q, undefined, CallID) ->
-    ok = amqp_util:unbind_q_from_callevt(Q, CallID),
-    ok = amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
-    ok = amqp_util:unbind_q_from_callevt(Q, CallID, publisher_usurp);
+unbind_q(Q, 'undefined', CallID) ->
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID),
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID, 'cdr'),
+    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?NEW_CHANNEL_ROUTING_KEY),
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID, 'publisher_usurp');
 
-unbind_q(Q, [events|T], CallID) ->
-    ok = amqp_util:unbind_q_from_callevt(Q, CallID),
+unbind_q(Q, ['events'|T], CallID) ->
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID),
     unbind_q(Q, T, CallID);
-unbind_q(Q, [cdr|T], CallID) ->
-    ok = amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
+unbind_q(Q, ['cdr'|T], CallID) ->
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID, 'cdr'),
     unbind_q(Q, T, CallID);
-unbind_q(Q, [status_req|T], CallID) ->
-    ok = amqp_util:unbind_q_from_callevt(Q, CallID, status_req),
+unbind_q(Q, ['status_req'|T], CallID) ->
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID, 'status_req'),
     unbind_q(Q, T, CallID);
-unbind_q(Q, [publisher_usurp|T], CallID) ->
-    ok = amqp_util:unbind_q_from_callevt(Q, CallID, publisher_usurp),
+unbind_q(Q, ['new_channel'|T], CallId) ->
+    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?NEW_CHANNEL_ROUTING_KEY),
+    unbind_q(Q, T, CallId);
+unbind_q(Q, ['publisher_usurp'|T], CallID) ->
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID, 'publisher_usurp'),
     unbind_q(Q, T, CallID);
-unbind_q(Q, [_|T], CallID) ->
-    unbind_q(Q, T, CallID);
-unbind_q(_Q, [], _CallID) ->
-    ok.
+unbind_q(Q, [_|T], CallID) -> unbind_q(Q, T, CallID);
+unbind_q(_Q, [], _CallID) -> 'ok'.
 
 -spec publish_event(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_event(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_event(CallID, JObj) ->
-    publish_event(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_event(CallID, JObj) -> publish_event(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_event(CallID, Event, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Event, ?CALL_EVENT_VALUES, fun ?MODULE:event/1),
-    amqp_util:callevt_publish(CallID, Payload, event, ContentType).
+    {'ok', Payload} = wh_api:prepare_api_payload(Event, ?CALL_EVENT_VALUES, fun ?MODULE:event/1),
+    amqp_util:callevt_publish(CallID, Payload, 'event', ContentType).
+
+-spec publish_new_channel(api_terms()) -> 'ok'.
+-spec publish_new_channel(api_terms(), ne_binary()) -> 'ok'.
+publish_new_channel(JObj) -> publish_new_channel(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_new_channel(Event, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Event, ?NEW_CHANNEL_VALUES, fun ?MODULE:new_channel/1),
+    amqp_util:callmgr_publish(Payload, ContentType, ?NEW_CHANNEL_ROUTING_KEY).
 
 -spec publish_channel_status_req(api_terms()) -> 'ok'.
 -spec publish_channel_status_req(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_channel_status_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_channel_status_req(API) ->
     case is_list(API) of
-        true -> publish_channel_status_req(props:get_value(<<"Call-ID">>, API), API);
-        false -> publish_channel_status_req(wh_json:get_value(<<"Call-ID">>, API), API)
+        'true' -> publish_channel_status_req(props:get_value(<<"Call-ID">>, API), API);
+        'false' -> publish_channel_status_req(wh_json:get_value(<<"Call-ID">>, API), API)
     end.
 publish_channel_status_req(CallID, JObj) ->
     publish_channel_status_req(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_channel_status_req(CallID, Req, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Req, ?CHANNEL_STATUS_REQ_VALUES, fun ?MODULE:channel_status_req/1),
-    amqp_util:callevt_publish(CallID, Payload, status_req, ContentType).
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CHANNEL_STATUS_REQ_VALUES, fun ?MODULE:channel_status_req/1),
+    amqp_util:callevt_publish(CallID, Payload, 'status_req', ContentType).
 
 -spec publish_channel_status_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_channel_status_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_channel_status_resp(RespQ, JObj) ->
     publish_channel_status_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_channel_status_resp(RespQ, Resp, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?CHANNEL_STATUS_RESP_VALUES, fun ?MODULE:channel_status_resp/1),
+    {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?CHANNEL_STATUS_RESP_VALUES, fun ?MODULE:channel_status_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_call_status_req(api_terms()) -> 'ok'.
@@ -545,21 +557,21 @@ publish_channel_status_resp(RespQ, Resp, ContentType) ->
 -spec publish_call_status_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_call_status_req(API) ->
     case is_list(API) of
-        true -> publish_call_status_req(props:get_value(<<"Call-ID">>, API), API);
-        false -> publish_call_status_req(wh_json:get_value(<<"Call-ID">>, API), API)
+        'true' -> publish_call_status_req(props:get_value(<<"Call-ID">>, API), API);
+        'false' -> publish_call_status_req(wh_json:get_value(<<"Call-ID">>, API), API)
     end.
 publish_call_status_req(CallID, JObj) ->
     publish_call_status_req(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_status_req(CallID, Req, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Req, ?CALL_STATUS_REQ_VALUES, fun ?MODULE:call_status_req/1),
-    amqp_util:callevt_publish(CallID, Payload, status_req, ContentType).
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CALL_STATUS_REQ_VALUES, fun ?MODULE:call_status_req/1),
+    amqp_util:callevt_publish(CallID, Payload, 'status_req', ContentType).
 
 -spec publish_call_status_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_call_status_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_call_status_resp(RespQ, JObj) ->
     publish_call_status_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_status_resp(RespQ, Resp, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?CALL_STATUS_RESP_VALUES, fun ?MODULE:call_status_resp/1),
+    {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?CALL_STATUS_RESP_VALUES, fun ?MODULE:call_status_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_query_auth_id_req(api_terms()) -> 'ok'.
@@ -567,21 +579,21 @@ publish_call_status_resp(RespQ, Resp, ContentType) ->
 -spec publish_query_auth_id_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_query_auth_id_req(API) ->
     case is_list(API) of
-        true -> publish_query_auth_id_req(props:get_value(<<"Auth-ID">>, API), API);
-        false -> publish_query_auth_id_req(wh_json:get_value(<<"Auth-ID">>, API), API)
+        'true' -> publish_query_auth_id_req(props:get_value(<<"Auth-ID">>, API), API);
+        'false' -> publish_query_auth_id_req(wh_json:get_value(<<"Auth-ID">>, API), API)
     end.
 publish_query_auth_id_req(AuthId, JObj) ->
     publish_query_auth_id_req(AuthId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_auth_id_req(AuthId, Req, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Req, ?QUERY_AUTH_ID_REQ_VALUES, fun ?MODULE:query_auth_id_req/1),
-    amqp_util:callevt_publish(AuthId, Payload, status_req, ContentType).
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?QUERY_AUTH_ID_REQ_VALUES, fun ?MODULE:query_auth_id_req/1),
+    amqp_util:callevt_publish(AuthId, Payload, 'status_req', ContentType).
 
 -spec publish_query_auth_id_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_query_auth_id_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_query_auth_id_resp(RespQ, JObj) ->
     publish_query_auth_id_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_auth_id_resp(RespQ, Resp, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?QUERY_AUTH_ID_RESP_VALUES, fun ?MODULE:query_auth_id_resp/1),
+    {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?QUERY_AUTH_ID_RESP_VALUES, fun ?MODULE:query_auth_id_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_cdr(ne_binary(), api_terms()) -> 'ok'.
@@ -589,23 +601,23 @@ publish_query_auth_id_resp(RespQ, Resp, ContentType) ->
 publish_cdr(CallID, JObj) ->
     publish_cdr(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_cdr(CallID, CDR, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(CDR, ?CALL_CDR_VALUES, fun ?MODULE:cdr/1),
-    amqp_util:callevt_publish(CallID, Payload, cdr, ContentType).
+    {'ok', Payload} = wh_api:prepare_api_payload(CDR, ?CALL_CDR_VALUES, fun ?MODULE:cdr/1),
+    amqp_util:callevt_publish(CallID, Payload, 'cdr', ContentType).
 
 -spec publish_callid_update(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_callid_update(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_callid_update(CallID, JObj) ->
     publish_callid_update(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_callid_update(CallID, JObj, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CALL_ID_UPDATE_VALUES, fun ?MODULE:callid_update/1),
-    amqp_util:callevt_publish(CallID, Payload, event, ContentType).
+    {'ok', Payload} = wh_api:prepare_api_payload(JObj, ?CALL_ID_UPDATE_VALUES, fun ?MODULE:callid_update/1),
+    amqp_util:callevt_publish(CallID, Payload, 'event', ContentType).
 
 -spec publish_control_transfer(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_control_transfer(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_control_transfer(TargetQ, JObj) ->
     publish_control_transfer(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_control_transfer(TargetQ, JObj, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CALL_CONTROL_TRANSFER_VALUES, fun ?MODULE:control_transfer/1),
+    {'ok', Payload} = wh_api:prepare_api_payload(JObj, ?CALL_CONTROL_TRANSFER_VALUES, fun ?MODULE:control_transfer/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 -spec publish_controller_queue(ne_binary(), api_terms()) -> 'ok'.
@@ -613,7 +625,7 @@ publish_control_transfer(TargetQ, JObj, ContentType) ->
 publish_controller_queue(TargetQ, JObj) ->
     publish_controller_queue(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_controller_queue(TargetQ, JObj, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CONTROLLER_QUEUE_VALUES, fun ?MODULE:controller_queue/1),
+    {'ok', Payload} = wh_api:prepare_api_payload(JObj, ?CONTROLLER_QUEUE_VALUES, fun ?MODULE:controller_queue/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 -spec publish_usurp_control(ne_binary(), api_terms()) -> 'ok'.
@@ -621,19 +633,17 @@ publish_controller_queue(TargetQ, JObj, ContentType) ->
 publish_usurp_control(CallID, JObj) ->
     publish_usurp_control(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_usurp_control(CallID, JObj, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CALL_USURP_CONTROL_VALUES, fun ?MODULE:usurp_control/1),
-    amqp_util:callevt_publish(CallID, Payload, event, ContentType).
+    {'ok', Payload} = wh_api:prepare_api_payload(JObj, ?CALL_USURP_CONTROL_VALUES, fun ?MODULE:usurp_control/1),
+    amqp_util:callevt_publish(CallID, Payload, 'event', ContentType).
 
 -spec publish_usurp_publisher(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_usurp_publisher(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_usurp_publisher(CallID, JObj) ->
     publish_usurp_publisher(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_usurp_publisher(CallID, JObj, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(JObj, ?PUBLISHER_USURP_CONTROL_VALUES, fun ?MODULE:usurp_publisher/1),
-    amqp_util:callevt_publish(CallID, Payload, publisher_usurp, ContentType).
+    {'ok', Payload} = wh_api:prepare_api_payload(JObj, ?PUBLISHER_USURP_CONTROL_VALUES, fun ?MODULE:usurp_publisher/1),
+    amqp_util:callevt_publish(CallID, Payload, 'publisher_usurp', ContentType).
 
 -spec get_status(api_terms()) -> ne_binary().
-get_status(API) when is_list(API) ->
-    props:get_value(<<"Status">>, API);
-get_status(API) ->
-    wh_json:get_value(<<"Status">>, API).
+get_status(API) when is_list(API) -> props:get_value(<<"Status">>, API);
+get_status(API) -> wh_json:get_value(<<"Status">>, API).

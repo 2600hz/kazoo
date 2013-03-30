@@ -257,8 +257,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', [CallId | _]}, #state{callid=CallId
-                                          ,passive='true'
-                                         }=State) ->
+                                            ,passive='true'
+                                           }=State) ->
     {'noreply', State};
 handle_info({'event', [CallId | Props]}, #state{node=Node
                                                 ,callid=CallId
@@ -586,6 +586,13 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set">>, Prop) ->
     [{<<"Application-Name">>, props:get_value(<<"set">>, ?FS_APPLICATION_NAMES)}
      ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
     ];
+
+event_specific(<<"CHANNEL_CREATE">>, _, Prop) ->
+    [{<<"To">>, ecallmgr_util:get_sip_to(Prop)}
+     ,{<<"From">>, ecallmgr_util:get_sip_from(Prop)}
+     ,{<<"Request">>, ecallmgr_util:get_sip_request(Prop)}
+    ];
+
 event_specific(<<"RECORD_STOP">>, _, Prop) ->
     [{<<"Application-Name">>, <<"record">>}
      ,{<<"Application-Response">>, props:get_value(<<"Record-File-Path">>, Prop, props:get_value(<<"whistle_application_response">>, Prop))}

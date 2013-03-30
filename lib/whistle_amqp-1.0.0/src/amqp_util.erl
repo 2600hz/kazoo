@@ -228,21 +228,21 @@ callctl_publish(CtrlQ, Payload, ContentType, Props) ->
 -spec callevt_publish(ne_binary(), amqp_payload(), Type, ne_binary()) -> 'ok' when
       Type :: 'status_req' | 'event' | 'cdr' | 'publisher_usurp' | ne_binary().
 callevt_publish(Payload) ->
-    callevt_publish(Payload, ?DEFAULT_CONTENT_TYPE, media_req).
+    callevt_publish(Payload, ?DEFAULT_CONTENT_TYPE, 'media_req').
 
-callevt_publish(Payload, ContentType, media_req) ->
+callevt_publish(Payload, ContentType, 'media_req') ->
     basic_publish(?EXCHANGE_CALLEVT, ?KEY_CALL_MEDIA_REQ, Payload, ContentType);
 
-callevt_publish(CallID, Payload, event) ->
+callevt_publish(CallID, Payload, 'event') ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, (encode(CallID))/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 
-callevt_publish(CallID, Payload, status_req) ->
+callevt_publish(CallID, Payload, 'status_req') ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, (encode(CallID))/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 
-callevt_publish(CallID, Payload, publisher_usurp) ->
+callevt_publish(CallID, Payload, 'publisher_usurp') ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_PUBLISHER_USURP/binary, (encode(CallID))/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 
-callevt_publish(CallID, Payload, cdr) ->
+callevt_publish(CallID, Payload, 'cdr') ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 
 callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->

@@ -33,6 +33,7 @@
 -record(state, {node :: atom()
                 ,options = [] :: wh_proplist()
                }).
+-type state() :: #state{}.
 
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
                       ,[{<<"switch_event">>, <<"reload_acls">>}]
@@ -190,6 +191,7 @@ bind_to_events(_, Node) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call('node', _, state()) -> {'reply', atom(), state()}.
 handle_call('node', _From, #state{node=Node}=State) ->
     {'reply', Node, State}.
 
@@ -203,7 +205,7 @@ handle_call('node', _From, #state{node=Node}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), #state{}) -> {'noreply', #state{}}.
+-spec handle_cast(term(), state()) -> {'noreply', state()}.
 handle_cast({'sync_channels'}, #state{node=Node}=State) ->
     Calls = [wh_json:get_value(<<"uuid">>, J)
              || J <- show_channels_as_json(Node)
@@ -285,6 +287,7 @@ process_event(UUID, Props, Node) ->
 process_event(<<"CHANNEL_CREATE">> = EventName, UUID, Props, Node) ->
     _ = ecallmgr_fs_channel:new(Props, Node),
     _ = maybe_start_event_listener(Node, UUID),
+    _ = publish_new_channel_event(Props),
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
     _ = ecallmgr_fs_channel:destroy(Props, Node),
@@ -340,6 +343,12 @@ maybe_send_event(EventName, UUID, Props, Node) ->
 maybe_send_call_event('undefined', _, _) -> 'ok';
 maybe_send_call_event(CallId, Props, Node) ->
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}, {'event', [CallId | Props]}).
+
+-spec publish_new_channel_event(wh_proplist()) -> 'ok'.
+publish_new_channel_event(Props) ->
+    wapi_call:publish_new_channel(wh_api:default_headers(<<"channel">>, <<"new">>, ?APP_NAME, ?APP_VERSION) ++
+                                      ecallmgr_call_events:create_event_props(<<"CHANNEL_CREATE">>, 'undefined', Props)
+                                 ).
 
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
                       {'error', {atom(), nonempty_string()}, ne_binary()} |
