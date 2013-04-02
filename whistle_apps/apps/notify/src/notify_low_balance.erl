@@ -2,7 +2,7 @@
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Renders a custom account email template, or the system default,
-%%% and sends the email to the account admin
+%%% and sends the email with voicemail attachment to the user.
 %%% @end
 %%%
 %%% @contributors
@@ -43,17 +43,17 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:object(), proplist()) -> any().
 handle_req(JObj, _Props) ->
     true = wapi_notifications:low_balance_v(JObj),
     _ = whapps_util:put_callid(JObj),
 
-    lager:debug("account has a low balance, sending email notification"),
+    lager:debug("endpoint has become unregistered, sending email notification"),
 
     {ok, Account} = notify_util:get_account_doc(JObj),
 
-    lager:debug("creating low_balance notice"),
-    
+    lager:debug("creating deregisted notice"),
+
     Props = create_template_props(JObj, Account),
 
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"email_text_template">>], Account),
@@ -64,9 +64,9 @@ handle_req(JObj, _Props) ->
 
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-  
+
     To = wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"send_to">>], Account
-                           ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),  
+                           ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
     build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
 
 %%--------------------------------------------------------------------
@@ -75,10 +75,10 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object(), wh_json:objects()) -> wh_proplist().
+-spec create_template_props(wh_json:object(), wh_json:object()) -> wh_proplist().
 create_template_props(Event, Account) ->
-    [{<<"current_balance">>, notify_util:json_to_template_props(Event)}
-     ,{<<"account">>, notify_util:json_to_template_props(Account)}
+    [{<<"account">>, notify_util:json_to_template_props(Account)}
+     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
     ].
 
 %%--------------------------------------------------------------------
