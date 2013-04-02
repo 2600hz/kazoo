@@ -25,7 +25,7 @@
          ,put/1
         ]).
 
--include("src/crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_API, <<"accounts/listing_by_api">>).

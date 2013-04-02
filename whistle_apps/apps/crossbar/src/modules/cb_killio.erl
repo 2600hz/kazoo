@@ -19,7 +19,7 @@
          ,post/2
         ]).
 
--include("src/crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(PVT_TYPE, <<"skel">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).

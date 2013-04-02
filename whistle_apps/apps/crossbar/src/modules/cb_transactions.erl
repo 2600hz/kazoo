@@ -14,7 +14,7 @@
          ,validate/1, validate/2
         ]).
 
--include("src/crossbar.hrl").
+-include("crossbar.hrl").
 
 %% 1 month
 -define(FETCH_DEFAULT, 60*60*24*30).

@@ -20,7 +20,7 @@
          ,delete/3
         ]).
 
--include("src/crossbar.hrl").
+-include("crossbar.hrl").
 -include_lib("braintree/include/braintree.hrl").
 
 -define(CUSTOMER_PATH_TOKEN, <<"customer">>).
