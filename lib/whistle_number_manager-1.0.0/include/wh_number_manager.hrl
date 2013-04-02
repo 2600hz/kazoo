@@ -1,4 +1,4 @@
--ifndef(WNM_HRL).
+-ifndef(WH_NUMBER_MANAGER_HRL).
 
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_types.hrl").
@@ -63,8 +63,8 @@
                         provider_fault |
                         carrier_fault.
 
--type operation_return() :: {'ok', wh_json:json_object()} |
-                            {wnm_failures(), wh_json:json_object()}.
+-type operation_return() :: {'ok', wh_json:object()} |
+                            {wnm_failures(), wh_json:object()}.
 
 %%% NUMBER STATES
 %%% discovery    - The number was discovered via a carrier lookup but has not been reserved or purchased.
@@ -79,5 +79,5 @@
 %%% disconnected - Number is being ported or cancelled
 %%% cancelled    - Number has been cancelled with the carrier and will be removed from the system
 
--define(WNM_HRL, true).
+-define(WH_NUMBER_MANAGER_HRL, 'true').
 -endif.
