@@ -319,7 +319,11 @@ extract_all_ips(JObj) ->
     lists:foldr(fun(K, IPs) ->
                         case wh_json:get_value([K, <<"cidr">>], JObj) of
                             undefined -> IPs;
-                            CIDR -> [CIDR|IPs]
+                            CIDR ->
+                                AuthorizingId = wh_json:get_value([K, <<"authorizing_id">>], JObj),
+                                [{CIDR, AuthorizingId}
+                                 |IPs
+                                ]
                         end
                 end, [], wh_json:get_keys(JObj)).
 
@@ -336,7 +340,10 @@ extract_gateway_ips([Gateway|Gateways], Idx, IPs) ->
 
 -spec validate_ip(gateway_ip(), sip_auth_ips(), acl_ips(), ne_binary()) -> boolean().
 validate_ip(IP, SIPAuth, ACLs, ResourceId) ->
-    lists:all(fun(CIDR) -> not (wh_network_utils:verify_cidr(IP, CIDR)) end, ACLs)
+    lists:all(fun({CIDR, AuthId}) ->
+                      AuthId =:= ResourceId
+                          orelse not (wh_network_utils:verify_cidr(IP, CIDR))
+              end, ACLs)
         andalso lists:all(fun({AuthIp, Id}) ->
                                   IP =/= AuthIp
                                       orelse ResourceId =:= Id
