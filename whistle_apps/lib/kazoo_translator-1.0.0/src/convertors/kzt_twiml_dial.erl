@@ -199,7 +199,9 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
     DeviceId = kzt_util:xml_text_to_binary(DeviceIdTxt),
     lager:debug("maybe adding device ~s to ring group", [DeviceId]),
     case cf_endpoint:build(DeviceId, Call) of
-        {'ok', [EP]} -> xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
+        {'ok', []} ->
+            lager:debug("no device endpoint built for ~s, skipping", [DeviceId]),
+            xml_elements_to_endpoints(Call, EPs, Acc);
         {'ok', DeviceEPs} -> xml_elements_to_endpoints(Call, EPs, DeviceEPs ++ Acc);
         {'error', _E} ->
             lager:debug("failed to add device ~s: ~p", [DeviceId, _E]),
@@ -214,7 +216,9 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='User'
     lager:debug("maybe adding user ~s to ring group", [UserId]),
 
     case cf_endpoint:build(UserId, Call) of
-        {'ok', [EP]} -> xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
+        {'ok', []} ->
+            lager:debug("no user endpoints built for ~s, skipping", [UserId]),
+            xml_elements_to_endpoints(Call, EPs, Acc);
         {'ok', UserEPs} -> xml_elements_to_endpoints(Call, EPs, UserEPs ++ Acc);
         {'error', _E} ->
             lager:debug("failed to add user ~s: ~p", [UserId, _E]),
@@ -237,7 +241,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
     xml_elements_to_endpoints(Call, EPs, Acc);
 
 xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
-    lager:debug("unknown endpoint: ~p", [_Xml]),
+    lager:debug("unknown endpoint, skipping: ~p", [_Xml]),
     xml_elements_to_endpoints(Call, EPs, Acc).
 
 request_id(N, Call) -> iolist_to_binary([N, $@, whapps_call:from_realm(Call)]).
