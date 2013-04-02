@@ -23,6 +23,7 @@ whistle_apps/lib/*/c_src/*.o
 whistle_apps/lib/*/c_src/*/*.o
 whistle_apps/lib/*/deps/*/ebin/*.beam
 whistle_apps/lib/*/deps/*/ebin/*.app
+whistle_apps/lib/*/test/*
 whistle_apps/lib/*/dist/*
 whistle_apps/lib/erlydtl-0.7.0/src/erlydtl_parser.erl
 */deps/*/ebin/*.beam
