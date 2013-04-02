@@ -141,10 +141,8 @@ send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
          ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
          ,{<<"Dial-Endpoint-Method">>, Strategy}
          ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"park_after_bridge">>, 'true'}])}
+         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
-    lager:debug("kzt_cmd: ~p", [B]),
-    {'ok', Bin} = wapi_dialplan:bridge(B),
-    lager:debug("kzt_json: ~s", [iolist_to_binary(Bin)]),
     whapps_call_command:send_command(B, Call).
         
 setup_call_for_dial(Call, Props) ->
@@ -215,14 +213,11 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='User'
     UserId = kzt_util:xml_text_to_binary(UserIdTxt),
     lager:debug("maybe adding user ~s to ring group", [UserId]),
 
-    case cf_endpoint:build(UserId, Call) of
-        {'ok', []} ->
+    case cf_user:get_endpoints(UserId, wh_json:new(), Call) of
+        [] ->
             lager:debug("no user endpoints built for ~s, skipping", [UserId]),
             xml_elements_to_endpoints(Call, EPs, Acc);
-        {'ok', UserEPs} -> xml_elements_to_endpoints(Call, EPs, UserEPs ++ Acc);
-        {'error', _E} ->
-            lager:debug("failed to add user ~s: ~p", [UserId, _E]),
-            xml_elements_to_endpoints(Call, EPs, Acc)
+        UserEPs -> xml_elements_to_endpoints(Call, EPs, UserEPs ++ Acc)
     end;
 xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
                                              ,content=Number
@@ -232,13 +227,25 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
     Props = kzt_util:xml_attributes_to_proplist(Attrs),
 
     SendDigits = props:get_value('sendDigis', Props),
-    Url = props:get_value('url', Props),
-    Method = props:get_value('method', Props),
+    _Url = props:get_value('url', Props),
+    _Method = props:get_value('method', Props),
 
     DialMe = wmn_util:to_e164(kzt_util:xml_text_to_binary(Number)),
 
     lager:debug("maybe add number ~s: send ~s, skipping", [DialMe, SendDigits]),
     xml_elements_to_endpoints(Call, EPs, Acc);
+
+xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
+                                             ,content=Number
+                                             ,attributes=Attrs
+                                            }
+                                 | EPs], Acc) ->
+    _Props = kzt_util:xml_attributes_to_proplist(Attrs),
+
+    DialMe = wmn_util:to_e164(kzt_util:xml_text_to_binary(Number)),
+
+    lager:debug("maybe add sip ~s, skipping", [DialMe]),
+    xml_elements_to_endpoints(Call, EPs, Acc); 
 
 xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
     lager:debug("unknown endpoint, skipping: ~p", [_Xml]),
