@@ -242,10 +242,21 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
                                  | EPs], Acc) ->
     _Props = kzt_util:xml_attributes_to_proplist(Attrs),
 
-    DialMe = wmn_util:to_e164(kzt_util:xml_text_to_binary(Number)),
+    try wnm_sip:parse(kzt_util:xml_text_to_binary(Number)) of
+        Uri ->
+            lager:debug("maybe add SIP ~s", [wnm_sip:encode(Uri)]),
+            SipJObj = wh_json:from_list([{<<"invite_format">>, <<"route">>}
+                                         ,{<<"route">>, wnm_sip:encode(Uri)}
+                                        ]),
+            Device = wh_json:from_list([{<<"sip">>, SipJObj}]),
+            EP = cf_endpoint:create_sip_endpoint(Device, wh_json:new(), Call),
 
-    lager:debug("maybe add sip ~s, skipping", [DialMe]),
-    xml_elements_to_endpoints(Call, EPs, Acc); 
+            xml_elements_to_endpoints(Call, EPs, [EP|Acc])
+    catch
+        'throw':_E ->
+            lager:debug("failed to parse SIP uri: ~p", [_E]),
+            xml_elements_to_endpoints(Call, EPs, Acc)
+    end;
 
 xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
     lager:debug("unknown endpoint, skipping: ~p", [_Xml]),
