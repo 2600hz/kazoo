@@ -11,6 +11,7 @@
 
 -export([start_link/0]).
 -export([check/1]).
+-export([low_balance_threshold/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -298,12 +299,13 @@ maybe_test_for_low_balance(AccountId, AccountDb, JObj) ->
 -spec test_for_low_balance(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 test_for_low_balance(AccountId, AccountDb, JObj) ->
     Threshold = low_balance_threshold(AccountDb),
+    CurrentBalance = wht_util:current_balance(AccountId),
     lager:debug("checking if account ~s balance is bellow $~w", [AccountId, Threshold]),
-    case wht_util:current_balance(AccountId) < wht_util:dollars_to_units(Threshold) of
+    case CurrentBalance < wht_util:dollars_to_units(Threshold) of
         'false' ->
             maybe_reset_low_balance(AccountId, AccountDb, JObj);
         'true' ->
-            maybe_handle_low_balance(AccountId, AccountDb, JObj)
+            maybe_handle_low_balance(CurrentBalance, AccountId, AccountDb, JObj)
     end.
 
 -spec maybe_reset_low_balance(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
@@ -331,33 +333,33 @@ reset_low_balance(AccountId, AccountDb) ->
             'ok'
     end.
 
--spec maybe_handle_low_balance(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-maybe_handle_low_balance(AccountId, AccountDb, JObj) ->
+-spec maybe_handle_low_balance(integer(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_handle_low_balance(CurrentBalance, AccountId, AccountDb, JObj) ->
     case wh_json:is_true([<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>], JObj) 
         orelse wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>], JObj) =:= 'undefined' 
     of
         'true' -> 'ok';
         'false' ->
-            handle_low_balance(AccountId, AccountDb)
+            handle_low_balance(CurrentBalance, AccountId, AccountDb)
     end.
 
--spec handle_low_balance(ne_binary(), ne_binary()) -> 'ok'.
-handle_low_balance(AccountId, AccountDb) ->
+-spec handle_low_balance(integer(), ne_binary(), ne_binary()) -> 'ok'.
+handle_low_balance(CurrentBalance, AccountId, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
-            notify_low_balance(AccountId, AccountDb, JObj);
+            notify_low_balance(CurrentBalance, AccountId, AccountDb, JObj);
         _ -> 'ok'
     end.
 
--spec notify_low_balance(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-notify_low_balance(AccountId, AccountDb, JObj) ->
+-spec notify_low_balance(integer(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+notify_low_balance(CurrentBalance, AccountId, AccountDb, JObj) ->
     Account = wh_json:set_value([<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>]
                                 ,'true'
                                 ,JObj),
     case couch_mgr:save_doc(AccountDb, Account) of
         {'ok', _} ->
             couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, Account),
-            notify_low_balance:send(Account);
+            notify_low_balance:send(CurrentBalance, Account);
         _E ->
             lager:debug("unable to update low balance flag for account ~s: ~p~n", [AccountId, _E]),
             'ok'
