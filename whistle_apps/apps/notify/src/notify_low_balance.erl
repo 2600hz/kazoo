@@ -78,9 +78,19 @@ create_template_props(CurrentBalance, Account) ->
     Threshold = notify_account_crawler:low_balance_threshold(AccountDb),
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"service">>, notify_util:get_service_props(wh_json:new(), Account, ?MOD_CONFIG_CAT)}
-     ,{<<"current_balance">>, wh_util:to_binary(wht_util:units_to_dollars(CurrentBalance))}
-     ,{<<"threshold">>, wh_util:to_binary(Threshold)}
+     ,{<<"current_balance">>, pretty_print_dollars(wht_util:units_to_dollars(CurrentBalance))}
+     ,{<<"threshold">>, pretty_print_dollars(Threshold)}
     ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec pretty_print_dollars(float()) -> ne_binary().
+pretty_print_dollars(Amount) ->
+    wh_util:to_binary(io_lib:format("$~.2f", [Amount])).
 
 %%--------------------------------------------------------------------
 %% @private
