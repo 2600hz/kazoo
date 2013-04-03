@@ -675,7 +675,15 @@ bridge_handle_ringback(Node, UUID, JObj) ->
     case wh_json:get_value(<<"Ringback">>, JObj) of
         'undefined' ->
             case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Ringback">>], JObj) of
-                'undefined' -> 'ok';
+                'undefined' ->
+                    case ecallmgr_fs_channel:import_moh(UUID) of
+                        'true' ->
+                            [{"application", "export hold_music=${hold_music}"}
+                             ,{"application", "set import=hold_music"}
+                             |DP
+                            ];
+                        'false' -> DP
+                    end;
                 Media ->
                     Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
                     lager:debug("bridge has custom ringback in channel vars: ~s", [Stream]),
