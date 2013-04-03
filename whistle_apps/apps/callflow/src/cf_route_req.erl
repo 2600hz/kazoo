@@ -28,7 +28,7 @@ handle_req(JObj, Options) ->
                                                                         ,whapps_call:account_id(Call)
                                                                        ]),
                     cache_call(Flow, NoMatch, ControllerQ, Call),
-                    send_route_response(JObj, ControllerQ, Call);
+                    send_route_response(Flow, JObj, ControllerQ, Call);
                 {ok, _, true} ->
                     lager:info("only available callflow is a nomatch for a unauthorized call", []);
                 {error, R} ->
@@ -77,18 +77,36 @@ callflow_should_respond(Call) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_route_response(wh_json:object(), ne_binary(), whapps_call:call()) -> 'ok'.
-send_route_response(JObj, Q, Call) ->
-    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            ,{<<"Routes">>, []}
-            ,{<<"Method">>, <<"park">>}
-            ,{<<"Pre-Park">>, pre_park_action(Call)}
-            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-           ],
+-spec send_route_response(wh_json:object(), wh_json:object(), ne_binary(), whapps_call:call()) -> 'ok'.
+send_route_response(Flow, JObj, Q, Call) ->
+    Resp = props:filter_undefined([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                                   ,{<<"Routes">>, []}
+                                   ,{<<"Method">>, <<"park">>}
+                                   ,{<<"Transfer-Media">>, get_transfer_media(Flow, JObj)}
+                                   ,{<<"Ringback-Media">>, get_ringback_media(Flow, JObj)}
+                                   ,{<<"Pre-Park">>, pre_park_action(Call)}
+                                   | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                                  ]),
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
     Publisher = fun(P) -> wapi_route:publish_resp(ServerId, P) end,
     whapps_util:amqp_pool_send(Resp, Publisher),
     lager:info("callflows knows how to route the call! sent park response").
+
+-spec get_transfer_media(wh_json:object(), wh_json:object()) -> api_binary().
+get_transfer_media(Flow, JObj) ->
+    case wh_json:get_value([<<"ringback">>, <<"transfer">>], Flow) of
+        'undefined' ->
+            wh_json:get_value(<<"Transfer-Media">>, JObj);
+        MediaId -> MediaId
+    end.
+
+-spec get_ringback_media(wh_json:object(), wh_json:object()) -> api_binary().
+get_ringback_media(Flow, JObj) ->
+    case wh_json:get_value([<<"ringback">>, <<"early">>], Flow) of
+        'undefined' ->
+            wh_json:get_value(<<"Ringback-Media">>, JObj);
+        MediaId -> MediaId
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private
