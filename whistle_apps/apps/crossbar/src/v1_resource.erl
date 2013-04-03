@@ -553,19 +553,78 @@ to_binary(Req, #cb_context{resp_data=RespData}=Context) ->
 
 -spec to_csv(#http_req{}, cb_context:context()) ->
                           {iolist(), #http_req{}, cb_context:context()}.
-to_csv(Req, #cb_context{resp_data=RespData
-                        ,resp_headers=RespHeaders
-                       }=Context) ->
-    RespBody = json_objs_to_csv(RespData),
-
+to_csv(Req, #cb_context{resp_headers=RespHeaders}=Context) ->
+    RespBody = maybe_flatten_jobj(Context),
     RespHeaders1 = [{<<"Content-Type">>, <<"application/octet-stream">>}
                     ,{<<"Content-Length">>, iolist_size(RespBody)}
                     ,{<<"Content-Disposition">>, <<"attachment; filename=\"cdrs.csv\"">>}
                     | RespHeaders
                    ],
-
     {RespBody, v1_util:set_resp_headers(Req, Context#cb_context{resp_headers=RespHeaders1}), Context}.
 
+maybe_flatten_jobj(#cb_context{resp_data=RespData
+                               ,query_json=JsonQuery
+                              }) ->
+    Query = wh_json:to_proplist(JsonQuery),
+    case proplists:get_all_values(<<"identifier">>, Query) of
+        [] ->
+            json_objs_to_csv(RespData);
+        Identifier ->
+            Depth = wh_json:get_integer_value(<<"depth">>, JsonQuery, 1),
+            JObj = wh_json:flatten(RespData, Depth, Identifier),
+            Routines = [fun(J) -> check_integrity(J) end
+                        ,fun(J) -> create_csv_header(J) end
+                        ,fun(J) -> json_objs_to_csv(J) end
+                       ],
+            lists:foldl(
+              fun(F, J) -> 
+                      F(J)
+              end, JObj, Routines)
+    end.
+
+-spec get_headers([wh_json:object(), ...]) -> [ne_binary(), ...].
+get_headers(JObjs) ->
+    lists:foldl(
+      fun(JObj, Headers) ->
+              Keys = proplists:get_keys(wh_json:to_proplist(JObj)),
+              lists:foldl(
+                fun(Key, Hs) ->
+                        case lists:member(Key, Hs) of
+                            'false' ->
+                                [Key|Hs];
+                            'true' ->
+                                Hs
+                        end
+                end, Headers, Keys)
+      end, [], JObjs).
+
+-spec check_integrity(list()) -> [wh_json:object(), ...].
+check_integrity(JObjs) ->
+    Headers = get_headers(JObjs),
+    check_integrity(JObjs, Headers, []).    
+
+check_integrity([], _, Acc) ->
+    lists:reverse(Acc);
+check_integrity([JObj|JObjs], Headers, Acc) ->
+    NJObj = lists:foldl(
+              fun(Header, J) ->
+                      case wh_json:get_value(Header, J, 'undefined') of
+                          'undefined' ->
+                              wh_json:set_value(Header, <<"undefined">>, J);
+                          _ ->
+                              J
+                      end
+              end, JObj, Headers),
+    NJObj1 = wh_json:from_list(lists:keysort(1, wh_json:to_proplist(NJObj))),
+    check_integrity(JObjs, Headers, [NJObj1|Acc]).
+    
+-spec create_csv_header(list()) -> [wh_json:object(), ...].
+create_csv_header([]) ->
+    [];
+create_csv_header([JObj|_]=JObjs) ->
+    [JObj|JObjs].
+
+            
 -spec json_objs_to_csv(wh_json:json_objects()) -> iolist().
 json_objs_to_csv([]) -> [];
 json_objs_to_csv([J|JObjs]) ->

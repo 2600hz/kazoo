@@ -14,7 +14,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
-         ,content_types_provided/1
+         ,content_types_provided/1 ,content_types_provided/2
          ,validate/1, validate/2
          ,post/2
          ,delete/2
@@ -38,7 +38,7 @@
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.service_plans">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.service_plans">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.cdrs">>, ?MODULE, content_types_provided),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.service_plans">>, ?MODULE, content_types_provided),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.service_plans">>, ?MODULE, validate),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.service_plans">>, ?MODULE, post),
     crossbar_bindings:bind(<<"v1_resource.execute.delete.service_plans">>, ?MODULE, delete).
@@ -171,10 +171,19 @@ delete(#cb_context{account_id=AccountId}=Context, PlanId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
+-spec content_types_provided(cb_context:context(), ne_binary()) -> cb_context:context().
 content_types_provided(#cb_context{}=Context) ->
     CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}
             ,{'to_csv', [{<<"application">>, <<"octet-stream">>}
-                         ,{<<"application">>, <<"text/csv">>}
+                         ,{<<"text">>, <<"csv">>}
+                        ]}
+           ],
+    cb_context:add_content_types_provided(Context, CTPs).
+
+content_types_provided(#cb_context{}=Context, <<"current">>) ->
+    CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}
+            ,{'to_csv', [{<<"application">>, <<"octet-stream">>}
+                         ,{<<"text">>, <<"csv">>}
                         ]}
            ],
     cb_context:add_content_types_provided(Context, CTPs).

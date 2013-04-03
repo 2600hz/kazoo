@@ -61,6 +61,8 @@
 %% not for public use
 -export([prune/2, no_prune/2]).
 
+-export([flatten/3]).
+
 -export_type([json_object/0, json_objects/0
               ,json_string/0, json_strings/0
               ,json_term/0, json_terms/0
@@ -651,6 +653,54 @@ private_fields(JObj) -> filter(fun({K, _}) -> is_private_key(K) end, JObj).
 is_private_key(<<"_", _/binary>>) -> 'true';
 is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
+
+-spec flatten(object(), integer(), list()) -> objects().
+-spec flatten(any(), list(), list(), integer()) -> objects().
+flatten(JObj, Depth, Ids) when is_list(Ids) -> 
+    lists:foldl(
+      fun(Id, Acc) -> 
+              Acc ++ flatten(JObj, Depth, Id)
+      end, [], Ids);
+flatten(JObj, Depth, Id) -> 
+    lists:foldl(
+      fun(Obj, Acc) -> 
+              case Obj of
+                  {[Id|_], Data} ->
+                      [{Data}|Acc];
+                  _ ->
+                      Acc
+              end
+      end
+      ,[]
+      ,flatten(JObj, [], [], Depth)
+     ).
+      
+flatten({[_ | _] = Elems}, Acc, Keys, Depth) ->
+    flatten(Elems, Acc, Keys, Depth);
+flatten([_ | _] = Elems, Acc, Keys, Depth) ->
+    lists:foldl(fun (Value, A) -> 
+                        flatten(Value, A, Keys, Depth)
+                end,
+                Acc, Elems);
+flatten({Key, Value}, Acc, Keys, Depth) ->
+    case length(Keys) + 2 =:=  Depth of
+        false -> 
+            flatten(Value, Acc, [Key | Keys], Depth);
+        true ->
+            case flatten(Value, [], [Key | Keys], Depth) of
+                [] -> Acc;
+                Group ->
+                    Pos = lists:reverse([Key | Keys]),
+                    [{Pos, Group} | Acc]
+            end
+    end;
+flatten(Value, Acc, [K | Keys], Depth) ->
+    case length(Keys) + 1 =:= Depth of
+        false -> Acc;
+        true ->
+            [{K, Value} | Acc]
+    end.
+
 
 %% EUNIT TESTING
 -ifdef(TEST).
