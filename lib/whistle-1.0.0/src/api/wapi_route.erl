@@ -35,12 +35,13 @@
                             ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                            ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
-                                     ,<<"Max-Call-Length">>, <<"Media">>
-                                     ,<<"Transcode">>, <<"Codecs">>
-                                     ,<<"Custom-Channel-Vars">>
-                                     ,<<"Resource-Type">>, <<"Cost-Parameters">>
-                                     ,<<"From-Network-Addr">>
-                                     ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
+                                         ,<<"Max-Call-Length">>, <<"Media">>
+                                         ,<<"Transcode">>, <<"Codecs">>
+                                         ,<<"Custom-Channel-Vars">>
+                                         ,<<"Resource-Type">>, <<"Cost-Parameters">>
+                                         ,<<"From-Network-Addr">>
+                                         ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
+                                         ,<<"Ringback-Media">>, <<"Transfer-Media">>
                                     ]).
 -define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
@@ -72,12 +73,12 @@
 %% Route Responses
 -define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
-                                            ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
-                                            ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
-                                            ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
-                                            ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
-                                            ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
-                                            ,<<"Weight-Cost">>, <<"Weight-Location">>
+                                                ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
+                                                ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
+                                                ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
+                                                ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
+                                                ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+                                                ,<<"Weight-Cost">>, <<"Weight-Location">>
                                            ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
                                   ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
@@ -94,8 +95,9 @@
 %% Route Responses
 -define(ROUTE_RESP_HEADERS, [<<"Method">>]).
 -define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Routes">>
-                                      ,<<"Route-Error-Code">>, <<"Route-Error-Message">>
-                                      ,<<"Pre-Park">>
+                                          ,<<"Route-Error-Code">>, <<"Route-Error-Message">>
+                                          ,<<"Ringback-Media">>, <<"Transfer-Media">>
+                                          ,<<"Pre-Park">>
                                      ]).
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                             ,{<<"Event-Name">>, <<"route_resp">>}

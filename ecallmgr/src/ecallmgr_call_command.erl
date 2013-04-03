@@ -410,119 +410,22 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
             %% execute ring_ready so we dont leave the caller hanging with dead air.
             %% this does not test how many are ACTUALLY dialed (registered)
             %% since that is one of the things we want to be ringing during
-            DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
-                                <<"simultaneous">> when length(Endpoints) > 1 ->
-                                    lager:debug("bridge is simultaneous to multiple endpoints, starting local ringing"),
-                                    %% we don't really care if this succeeds, the call will fail later on
-                                    _ = ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),
-                                    <<",">>;
-                                _Else ->
-                                    <<"|">>
-                            end,
-
-            DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
-
-            Routines = [fun(DP) ->
-                                case wh_json:get_value(<<"Ringback">>, JObj) of
-                                    'undefined' -> DP;
-                                    Ringback ->
-                                        Stream = ecallmgr_util:media_path(Ringback, extant, UUID, JObj),
-                                        lager:debug("bridge has custom ringback: ~s", [Stream]),
-                                        [{"application", <<"set ringback=", Stream/binary>>},
-                                         {"application", "set instant_ringback=true"}
-                                         |DP
-                                        ]
-                                end
-                        end
-                        ,fun(DP) ->
-                                 case wh_json:get_value(<<"Hold-Media">>, JObj) of
-                                     'undefined' ->
-                                         case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
-                                             'undefined' ->
-                                                 case ecallmgr_fs_channel:import_moh(UUID) of
-                                                     'true' ->
-                                                         [{"application", "export hold_music=${hold_music}"}
-                                                          ,{"application", "set import=hold_music"}
-                                                          |DP
-                                                         ];
-                                                     'false' -> DP
-                                                 end;
-                                             Media ->
-                                                 Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
-                                                 lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
-                                                 [{"application", <<"set hold_music=", Stream/binary>>}|DP]
-                                         end;
-                                     Media ->
-                                         Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
-                                         lager:debug("bridge has custom music-on-hold: ~s", [Stream]),
-                                         [{"application", <<"set hold_music=", Stream/binary>>}|DP]
-                                 end
-                         end
-                        ,fun(DP) ->
-                                 case wh_json:is_true(<<"Secure-RTP">>, JObj, 'false') of
-                                     'true' -> [{"application", "set sip_secure_media=true"}|DP];
-                                     'false' -> DP
-                                 end
-                         end
-                        ,fun(DP) ->
-                                 case wh_json:get_value(<<"Media">>, JObj) of
-                                     <<"process">> ->
-                                         lager:debug("bridge will process media through host switch"),
-                                         [{"application", "set bypass_media=false"}|DP];
-                                     <<"bypass">> ->
-                                         lager:debug("bridge will connect the media peer-to-peer"),
-                                         [{"application", "set bypass_media=true"}|DP];
-                                     _ ->
-                                         maybe_bypass_endpoint_media(Endpoints, DP)
-                                 end
-                         end
-                        ,fun(DP) ->
-                                 CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
-                                 case wh_json:is_json_object(CCVs) of
-                                     'true' ->
-                                         [{"application", <<"set ", Var/binary, "=", (wh_util:to_binary(V))/binary>>}
-                                          || {K, V} <- wh_json:to_proplist(CCVs),
-                                             (Var = props:get_value(K, ?SPECIAL_CHANNEL_VARS)) =/= 'undefined'
-                                         ] ++ DP;
-                                     _ ->
-                                         DP
-                                 end
-                         end
-                        ,fun(DP) ->
-                                 [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
-                                  ,{"application", "set continue_on_fail=true"}
-                                  |DP
-                                 ]
-                         end
-                        ,fun(DP) ->
-                                 Props = case wh_json:find(<<"Force-Fax">>, Endpoints, wh_json:get_value(<<"Force-Fax">>, JObj)) of
-                                             'undefined' ->
-                                                 [{[<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], wh_util:rand_hex_binary(16)}];
-                                             Direction ->
-                                                 [{[<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], wh_util:rand_hex_binary(16)}
-                                                  ,{[<<"Custom-Channel-Vars">>, <<"Force-Fax">>], Direction}
-                                                 ]
-                                         end,
-                                 BridgeCmd = list_to_binary(["bridge "
-                                                             ,ecallmgr_fs_xml:get_channel_vars(wh_json:set_values(Props, JObj))
-                                                             ,DialStrings
-                                                            ]),
-                                 [{"application", BridgeCmd}|DP]
-                         end
-                        ,fun(DP) ->
-                                 [{"application", ecallmgr_util:create_masquerade_event(<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
-                                  ,{"application", "park "}
-                                  |DP
-                                 ]
-                         end
+            _ = bridge_handle_ringback(Node, UUID, JObj),
+            _ = bridge_maybe_early_media(Node, UUID, JObj),
+            lager:debug("creating bridge dialplan"),
+            Routines = [fun bridge_handle_hold_media/4
+                        ,fun bridge_handle_secure_rtp/4
+                        ,fun bridge_handle_bypass_media/4
+                        ,fun bridge_handle_ccvs/4
+                        ,fun bridge_pre_exec/4
+                        ,fun bridge_create_command/4
+                        ,fun bridge_post_exec/4
                        ],
-            case DialStrings of
-                <<>> ->
-                    {'error', <<"registrar returned no endpoints">>};
-                _ ->
-                    lager:debug("creating bridge dialplan"),
-                    {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Routines)}
-            end
+            lager:debug("creating bridge dialplan"),
+            XferExt = lists:foldr(fun(F, DP) ->
+                                          F(DP, Node, UUID, JObj) end
+                                  ,[], Routines),
+            {<<"xferext">>, XferExt}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
@@ -553,40 +456,16 @@ get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
     case wapi_dialplan:execute_extension_v(JObj) of
         'false' -> {'error', <<"execute extension failed to execute as JObj did not validate">>};
         'true' ->
-            Generators = [fun(DP) ->
-                                  case wh_json:is_true(<<"Reset">>, JObj) of
-                                      'false' -> ok;
-                                      'true' ->
-                                          create_dialplan_move_ccvs(<<"Execute-Extension-Original-">>, Node, UUID, DP)
-                                  end
-                          end
-                          ,fun(DP) ->
-                                   CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-                                   case wh_json:is_empty(CCVs) of
-                                       'true' -> DP;
-                                       'false' ->
-                                           ChannelVars = wh_json:to_proplist(CCVs),
-                                           [{"application", <<"set ", (ecallmgr_util:get_fs_kv(K, V, UUID))/binary>>}
-                                            || {K, V} <- ChannelVars] ++ DP
-                                   end
-                           end
-                          ,fun(DP) ->
-                                   [{"application", <<"set ", ?CHANNEL_VAR_PREFIX, "Executing-Extension=true">>}
-                                    ,{"application", <<"execute_extension ", (wh_json:get_value(<<"Extension">>, JObj))/binary>>}
-                                    |DP
-                                   ]
-                           end
-                          ,fun(DP) ->
-                                   [{"application", <<"unset ", ?CHANNEL_VAR_PREFIX, "Executing-Extension">>}
-                                    ,{"application", ecallmgr_util:create_masquerade_event(<<"execute_extension">>
-                                                                                           ,<<"CHANNEL_EXECUTE_COMPLETE">>
-                                                                                          )}
-                                    ,{"application", "park "}
-                                    |DP
-                                   ]
-                           end
-                          ],
-            {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
+            Routines = [fun execute_exten_handle_reset/4
+                        ,fun execute_exten_handle_ccvs/4
+                        ,fun execute_exten_pre_exec/4
+                        ,fun execute_exten_create_command/4
+                        ,fun execute_exten_post_exec/4
+                       ],
+            Extension = lists:foldr(fun(F, DP) ->
+                                            F(DP, Node, UUID, JObj)
+                                    end, [], Routines),
+            {<<"xferext">>, Extension}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
@@ -669,6 +548,7 @@ get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
             {<<"redirect">>, wh_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
     end;
 
+%% TODO: can we depreciate this command? It was prior to ecallmgr_fs_query....dont think anything is using it.
 get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
     spawn(fun() ->
                   send_fetch_call_event(Node, UUID, JObj)
@@ -685,6 +565,42 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
     lager:debug("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Call pickup command helpers
+%% @end
+%%--------------------------------------------------------------------
+-spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
+                                 {ne_binary(), ne_binary()}.
+get_call_pickup_app(Node, UUID, JObj, Target) ->
+    _ = case wh_json:is_true(<<"Park-After-Pickup">>, JObj, 'false') of
+            'false' -> ecallmgr_util:export(Node, UUID, <<"park_after_bridge=false">>);
+            'true' ->
+                _ = ecallmgr_util:set(Node, Target, <<"park_after_bridge=true">>),
+                ecallmgr_util:set(Node, UUID, <<"park_after_bridge=true">>)
+        end,
+
+    _ = case wh_json:is_true(<<"Continue-On-Fail">>, JObj, 'true') of
+            'false' -> ecallmgr_util:export(Node, UUID, <<"continue_on_fail=false">>);
+            'true' -> ecallmgr_util:export(Node, UUID, <<"continue_on_fail=true">>)
+        end,
+
+    _ = case wh_json:is_true(<<"Continue-On-Cancel">>, JObj, 'true') of
+            'false' -> ecallmgr_util:export(Node, UUID, <<"continue_on_cancel=false">>);
+            'true' -> ecallmgr_util:export(Node, UUID, <<"continue_on_cancel=true">>)
+        end,
+
+    _ = ecallmgr_util:export(Node, UUID, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
+
+    {<<"call_pickup">>, <<UUID/binary, " ", Target/binary>>}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Conference command helpers
+%% @end
+%%--------------------------------------------------------------------
 get_conference_app(ChanNode, UUID, JObj, 'true') ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
     ConferenceConfig = wh_json:get_value(<<"Conference-Config">>, JObj, <<"default">>),
@@ -719,7 +635,6 @@ get_conference_app(_ChanNode, _UUID, JObj, 'false') ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
     {<<"conference">>, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}.
 
-
 %% [{FreeSWITCH-Flag-Name, Kazoo-Flag-Name}]
 %% Conference-related entry flags
 %% convert from FS conference flags to Kazoo conference flags
@@ -753,9 +668,87 @@ wait_for_conference(ConfName) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
+%% Bridge command helpers
 %% @end
 %%--------------------------------------------------------------------
+bridge_handle_ringback(Node, UUID, JObj) ->
+    case wh_json:get_value(<<"Ringback">>, JObj) of
+        'undefined' ->
+            case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Ringback">>], JObj) of
+                'undefined' ->
+                    case ecallmgr_fs_channel:import_moh(UUID) of
+                        'true' ->
+                            [{"application", "export hold_music=${hold_music}"}
+                             ,{"application", "set import=hold_music"}
+                             |DP
+                            ];
+                        'false' -> DP
+                    end;
+                Media ->
+                    Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
+                    lager:debug("bridge has custom ringback in channel vars: ~s", [Stream]),
+                    ecallmgr_util:send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
+            end;
+        Media ->
+            Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
+            lager:debug("bridge has custom ringback: ~s", [Stream]),
+            ecallmgr_util:send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
+    end.
+
+bridge_maybe_early_media(Node, UUID, JObj) ->
+    case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
+        <<"simultaneous">> ->
+            case length(wh_json:get_ne_value(<<"Endpoints">>, JObj, [])) > 1 of
+                'false' -> 'ok';
+                'true' ->
+                    lager:debug("bridge is simultaneous to multiple endpoints, starting local ringing"),
+                    %% we don't really care if this succeeds, the call will fail later on
+                    ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, "")
+            end;
+        _Else -> 'ok'
+    end.
+
+bridge_handle_hold_media(DP, Node, UUID, JObj) ->
+    case wh_json:get_value(<<"Hold-Media">>, JObj) of
+        'undefined' ->
+            case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
+                'undefined' -> DP;
+                Media ->
+                    Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
+                    lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
+                    [{"application", <<"set hold_music=", Stream/binary>>}
+                     ,{"application", <<"set transfer_ringback=", Stream/binary>>}
+                     |DP
+                    ]
+            end;
+        Media ->
+            Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
+            lager:debug("bridge has custom music-on-hold: ~s", [Stream]),
+            [{"application", <<"set hold_music=", Stream/binary>>}
+             ,{"application", <<"set transfer_ringback=", Stream/binary>>}
+             |DP
+            ]
+    end.
+
+bridge_handle_secure_rtp(DP, Node, UUID, JObj) ->
+    case wh_json:is_true(<<"Secure-RTP">>, JObj, 'false') of
+        'true' -> [{"application", "set sip_secure_media=true"}|DP];
+        'false' -> DP
+    end.
+
+bridge_handle_bypass_media(DP, Node, UUID, JObj) ->
+    case wh_json:get_value(<<"Media">>, JObj) of
+        <<"process">> ->
+            lager:debug("bridge will process media through host switch"),
+            [{"application", "set bypass_media=false"}|DP];
+        <<"bypass">> ->
+            lager:debug("bridge will connect the media peer-to-peer"),
+            [{"application", "set bypass_media=true"}|DP];
+        _ ->
+            Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
+            maybe_bypass_endpoint_media(Endpoints, DP)
+    end.
+
 -spec maybe_bypass_endpoint_media(wh_json:objects(), wh_proplist()) -> wh_proplist().
 maybe_bypass_endpoint_media([Endpoint], DP) ->
     case wh_json:is_true(<<"Bypass-Media">>, Endpoint) of
@@ -767,39 +760,70 @@ maybe_bypass_endpoint_media([Endpoint], DP) ->
 maybe_bypass_endpoint_media(_, DP) ->
     DP.
 
+bridge_handle_ccvs(DP, Node, UUID, JObj) ->
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    case wh_json:is_json_object(CCVs) of
+        'true' ->
+            [{"application", <<"set ", Var/binary, "=", (wh_util:to_binary(V))/binary>>}
+             || {K, V} <- wh_json:to_proplist(CCVs),
+                (Var = props:get_value(K, ?SPECIAL_CHANNEL_VARS)) =/= 'undefined'
+            ] ++ DP;
+        _ ->
+            DP
+    end.
+
+bridge_pre_exec(DP, _, _, _) ->
+    [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
+     ,{"application", "set continue_on_fail=true"}
+     |DP
+    ].
+
+bridge_create_command(DP, Node, UUID, JObj) ->
+    Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
+    BridgeCmd = list_to_binary(["bridge "
+                                ,bridge_build_channels_vars(Endpoints, JObj)
+                                ,try_create_bridge_string(Endpoints, JObj)
+                               ]),
+    [{"application", BridgeCmd}|DP].
+
+try_create_bridge_string(Endpoints, JObj) ->
+    DialSeparator = bridge_determine_dial_separator(Endpoints, JObj),
+    case ecallmgr_util:build_bridge_string(Endpoints, DialSeparator) of
+        <<>> ->
+            lager:warning("bridge string resulted in no enpoints", []),
+            throw(<<"registrar returned no endpoints">>);
+        BridgeString -> BridgeString
+    end.
+
+bridge_build_channels_vars(Endpoints, JObj) ->
+    BridgeId = wh_util:rand_hex_binary(16),
+    Props = case wh_json:find(<<"Force-Fax">>, Endpoints, wh_json:get_value(<<"Force-Fax">>, JObj)) of
+                'undefined' ->
+                    [{[<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], BridgeId}];
+                Direction ->
+                    [{[<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], BridgeId}
+                     ,{[<<"Custom-Channel-Vars">>, <<"Force-Fax">>], Direction}
+                    ]
+            end,
+    ecallmgr_fs_xml:get_channel_vars(wh_json:set_values(Props, JObj)).
+
+bridge_determine_dial_separator(Endpoints, JObj) ->
+    case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
+        <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
+        _Else -> <<"|">>
+    end.
+
+bridge_post_exec(DP, _, _, _) ->
+    Event = ecallmgr_util:create_masquerade_event(<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>),
+    [{"application", Event}
+     ,{"application", "park "}
+     |DP
+    ].
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
-                                 {ne_binary(), ne_binary()}.
-get_call_pickup_app(Node, UUID, JObj, Target) ->
-    _ = case wh_json:is_true(<<"Park-After-Pickup">>, JObj, 'false') of
-            'false' -> ecallmgr_util:export(Node, UUID, <<"park_after_bridge=false">>);
-            'true' ->
-                _ = ecallmgr_util:set(Node, Target, <<"park_after_bridge=true">>),
-                ecallmgr_util:set(Node, UUID, <<"park_after_bridge=true">>)
-        end,
-
-    _ = case wh_json:is_true(<<"Continue-On-Fail">>, JObj, 'true') of
-            'false' -> ecallmgr_util:export(Node, UUID, <<"continue_on_fail=false">>);
-            'true' -> ecallmgr_util:export(Node, UUID, <<"continue_on_fail=true">>)
-        end,
-
-    _ = case wh_json:is_true(<<"Continue-On-Cancel">>, JObj, 'true') of
-            'false' -> ecallmgr_util:export(Node, UUID, <<"continue_on_cancel=false">>);
-            'true' -> ecallmgr_util:export(Node, UUID, <<"continue_on_cancel=true">>)
-        end,
-
-    _ = ecallmgr_util:export(Node, UUID, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
-
-    {<<"call_pickup">>, <<UUID/binary, " ", Target/binary>>}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
+%% Store command helpers
 %% @end
 %%--------------------------------------------------------------------
 -spec stream_over_http(atom(), ne_binary(), ne_binary(), 'put' | 'post', 'store' | 'fax', wh_json:object()) -> any().
@@ -846,40 +870,46 @@ send_fs_store(Node, Args, 'put') ->
 send_fs_store(Node, Args, 'post') ->
     freeswitch:api(Node, 'http_post', wh_util:to_list(Args)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec get_terminators(api_binary() | ne_binaries() | wh_json:object()) ->
-                             {ne_binary(), ne_binary()}.
-get_terminators('undefined') -> 'undefined';
-get_terminators(Ts) when is_binary(Ts) ->
-    get_terminators([Ts]);
-get_terminators([_|_]=Ts) ->
-    case Ts =:= get('$prior_terminators') of
-        'true' -> 'undefined';
-        'false' ->
-            put('$prior_terminators', Ts),
-            case wh_util:is_empty(Ts) of
-                'true' -> {<<"playback_terminators">>, <<"none">>};
-                'false' -> {<<"playback_terminators">>, wh_util:to_binary(Ts)}
-            end
-    end;
-get_terminators(JObj) -> get_terminators(wh_json:get_ne_value(<<"Terminators">>, JObj)).
+-spec send_store_call_event(atom(), ne_binary(), wh_json:object() | ne_binary()) -> 'ok'.
+send_store_call_event(Node, UUID, MediaTransResults) ->
+    Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
+    Prop = try freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
+               {'ok', Dump} -> ecallmgr_util:eventstr_to_proplist(Dump);
+               {'error', _Err} -> [];
+               'timeout' -> []
+           catch
+               _E:_R ->
+                   lager:debug("failed get params from uuid_dump"),
+                   lager:debug("~p : ~p", [_E, _R]),
+                   lager:debug("sending less interesting call_event message"),
+                   []
+           end,
+    EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
+                ,{<<"Call-ID">>, UUID}
+                ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop, <<>>)}
+                ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
+                ,{<<"Application-Name">>, <<"store">>}
+                ,{<<"Application-Response">>, MediaTransResults}
+                | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+               ],
+    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
+                   [] -> EvtProp1;
+                   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)}
+                                  | EvtProp1
+                                 ]
+               end,
+    wapi_call:publish_event(UUID, EvtProp2).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec set_terminators(atom(), ne_binary(), api_binary() | ne_binaries()) ->
-                             ecallmgr_util:send_cmd_ret().
-set_terminators(Node, UUID, Ts) ->
-    case get_terminators(Ts) of
-        'undefined' -> 'ok';
-        {K, V} -> ecallmgr_util:set(Node, UUID, <<K/binary, "=", V/binary>>)
-    end.
+-spec send_store_fax_call_event(ne_binary(), ne_binary()) -> 'ok'.
+send_store_fax_call_event(UUID, Results) ->
+    Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
+    Prop = [{<<"Msg-ID">>, Timestamp}
+            ,{<<"Call-ID">>, UUID}
+            ,{<<"Application-Name">>, <<"store_fax">>}
+            ,{<<"Application-Response">>, Results}
+            | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_call:publish_event(UUID, Prop).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -929,48 +959,44 @@ send_fetch_call_event(Node, UUID, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Execute extension helpers
 %% @end
 %%--------------------------------------------------------------------
--spec send_store_call_event(atom(), ne_binary(), wh_json:object() | ne_binary()) -> 'ok'.
-send_store_call_event(Node, UUID, MediaTransResults) ->
-    Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
-    Prop = try freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
-               {'ok', Dump} -> ecallmgr_util:eventstr_to_proplist(Dump);
-               {'error', _Err} -> [];
-               'timeout' -> []
-           catch
-               _E:_R ->
-                   lager:debug("failed get params from uuid_dump"),
-                   lager:debug("~p : ~p", [_E, _R]),
-                   lager:debug("sending less interesting call_event message"),
-                   []
-           end,
-    EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
-                ,{<<"Call-ID">>, UUID}
-                ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop, <<>>)}
-                ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
-                ,{<<"Application-Name">>, <<"store">>}
-                ,{<<"Application-Response">>, MediaTransResults}
-                | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-               ],
-    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
-                   [] -> EvtProp1;
-                   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)}
-                                  | EvtProp1
-                                 ]
-               end,
-    wapi_call:publish_event(UUID, EvtProp2).
+execute_exten_handle_reset(DP, Node, UUID, JObj) ->
+    case wh_json:is_true(<<"Reset">>, JObj) of
+        'false' -> ok;
+        'true' ->
+            create_dialplan_move_ccvs(<<"Execute-Extension-Original-">>, Node, UUID, DP)
+    end.
 
--spec send_store_fax_call_event(ne_binary(), ne_binary()) -> 'ok'.
-send_store_fax_call_event(UUID, Results) ->
-    Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
-    Prop = [{<<"Msg-ID">>, Timestamp}
-            ,{<<"Call-ID">>, UUID}
-            ,{<<"Application-Name">>, <<"store_fax">>}
-            ,{<<"Application-Response">>, Results}
-            | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-           ],
-    wapi_call:publish_event(UUID, Prop).
+execute_exten_handle_ccvs(DP, Node, UUID, JObj) ->
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    case wh_json:is_empty(CCVs) of
+        'true' -> DP;
+        'false' ->
+            ChannelVars = wh_json:to_proplist(CCVs),
+            [{"application", <<"set ", (ecallmgr_util:get_fs_kv(K, V, UUID))/binary>>}
+             || {K, V} <- ChannelVars] ++ DP
+    end.
+
+execute_exten_pre_exec(DP, Node, UUID, JObj) ->
+    [{"application", <<"set ", ?CHANNEL_VAR_PREFIX, "Executing-Extension=true">>}
+     | DP
+    ].
+
+execute_exten_create_command(DP, Node, UUID, JObj) ->
+    [{"application", <<"execute_extension ", (wh_json:get_value(<<"Extension">>, JObj))/binary>>}
+     |DP
+    ].
+
+execute_exten_post_exec(DP, Node, UUID, JObj) ->
+    [{"application", <<"unset ", ?CHANNEL_VAR_PREFIX, "Executing-Extension">>}
+     ,{"application", ecallmgr_util:create_masquerade_event(<<"execute_extension">>
+                                                                ,<<"CHANNEL_EXECUTE_COMPLETE">>
+                                                           )}
+     ,{"application", "park "}
+     |DP
+    ].
 
 -spec create_dialplan_move_ccvs(ne_binary(), atom(), ne_binary(), wh_proplist()) -> wh_proplist().
 create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
@@ -995,6 +1021,12 @@ create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
             DP
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Playback command helpers
+%% @end
+%%--------------------------------------------------------------------
 -spec play(atom(), ne_binary(), wh_json:object()) ->
                   {ne_binary(), ne_binary()}.
 play(Node, UUID, JObj) ->
@@ -1033,6 +1065,12 @@ play_bridged(UUID, JObj, F) ->
         'undefined' -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" both">>])}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% TTS command helpers
+%% @end
+%%--------------------------------------------------------------------
 -spec tts_flite(atom(), ne_binary(), wh_json:object()) ->
                        {ne_binary(), ne_binary()}.
 tts_flite(Node, UUID, JObj) ->
@@ -1049,4 +1087,34 @@ tts_flite_voice(JObj) ->
     case wh_json:is_json_object(JObj) of
         'true' -> tts_flite_voice(wh_json:get_value(<<"Voice">>, JObj));
         'false' -> tts_flite_voice(<<"female">>)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_terminators(api_binary() | ne_binaries() | wh_json:object()) ->
+                             {ne_binary(), ne_binary()}.
+get_terminators('undefined') -> 'undefined';
+get_terminators(Ts) when is_binary(Ts) ->
+    get_terminators([Ts]);
+get_terminators([_|_]=Ts) ->
+    case Ts =:= get('$prior_terminators') of
+        'true' -> 'undefined';
+        'false' ->
+            put('$prior_terminators', Ts),
+            case wh_util:is_empty(Ts) of
+                'true' -> {<<"playback_terminators">>, <<"none">>};
+                'false' -> {<<"playback_terminators">>, wh_util:to_binary(Ts)}
+            end
+    end;
+get_terminators(JObj) -> get_terminators(wh_json:get_ne_value(<<"Terminators">>, JObj)).
+
+-spec set_terminators(atom(), ne_binary(), api_binary() | ne_binaries()) ->
+                             ecallmgr_util:send_cmd_ret().
+set_terminators(Node, UUID, Ts) ->
+    case get_terminators(Ts) of
+        'undefined' -> 'ok';
+        {K, V} -> ecallmgr_util:set(Node, UUID, <<K/binary, "=", V/binary>>)
     end.
