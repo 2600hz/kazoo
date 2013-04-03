@@ -123,11 +123,10 @@ exec_element(Call, #xmlElement{name='Pause'
                                ,attributes=Attrs
                               }) ->
     pause(Call, Attrs);
-exec_element(Call, #xmlElement{name='Variable'
-                               ,content=[]
-                               ,attributes=Attrs
+exec_element(Call, #xmlElement{name='Set'
+                               ,content=Els
                               }) ->
-    set_variable(Call, Attrs);
+    set_variables(Call, Els);
 exec_element(Call, #xmlElement{name='Hangup'
                                ,content=[]
                                ,attributes=[]
@@ -202,7 +201,9 @@ set_variable(Call, Attrs) ->
 
 -spec set_variables(whapps_call:call(), list()) -> whapps_call:call().
 set_variables(Call, Els) when is_list(Els) ->
-    lists:foldl(fun(#xmlElement{attributes=Attrs}, C) ->
+    lists:foldl(fun(#xmlElement{name='Variable'
+                                ,attributes=Attrs
+                               }, C) ->
                         set_variable(C, Attrs);
                    (_, C) -> C
                 end, Call, Els).
@@ -337,7 +338,8 @@ record_call(Call, Attrs) ->
         _E -> lager:debug("call record failed: ~p", [_E]), {'stop', Call}
     end.
 
--spec finish_record_call(whapps_call:call(), wh_proplist(), ne_binary()) -> {'request', whapps_call:call()}.
+-spec finish_record_call(whapps_call:call(), wh_proplist(), ne_binary()) ->
+                                {'request', whapps_call:call()}.
 finish_record_call(Call, Props, MediaName) ->
     CurrentUri = kzt_util:get_voice_uri(Call),
     NewUri = kzt_util:resolve_uri(CurrentUri, action_url(Props)),
