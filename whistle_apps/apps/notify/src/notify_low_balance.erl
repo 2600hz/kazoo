@@ -2,7 +2,7 @@
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Renders a custom account email template, or the system default,
-%%% and sends the email to the account admin
+%%% and sends the email with voicemail attachment to the user.
 %%% @end
 %%%
 %%% @contributors
@@ -13,7 +13,9 @@
 %%%-------------------------------------------------------------------
 -module(notify_low_balance).
 
--export([init/0, handle_req/2]).
+-export([init/0, send/2]).
+-export([collect_recipients/1]).
+
 
 -include("notify.hrl").
 
@@ -43,31 +45,26 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
-handle_req(JObj, _Props) ->
-    true = wapi_notifications:low_balance_v(JObj),
-    _ = whapps_util:put_callid(JObj),
+-spec send(integer(), wh_json:object()) -> any().
+send(CurrentBalance, Account) ->
+    AccountId = wh_json:get_value(<<"_id">>, Account),
+    case collect_recipients(AccountId) of
+        [] -> 'ok';
+        To ->
+            lager:debug("sending low balance alert for account ~s", [AccountId]),
+            Props = create_template_props(CurrentBalance, Account),
 
-    lager:debug("account has a low balance, sending email notification"),
+            CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"email_text_template">>], Account),
+            {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
 
-    {ok, Account} = notify_util:get_account_doc(JObj),
+            CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"email_html_template">>], Account),
+            {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
 
-    lager:debug("creating low_balance notice"),
-    
-    Props = create_template_props(JObj, Account),
+            CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"email_subject_template">>], Account),
+            {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-    CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"email_text_template">>], Account),
-    {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
-
-    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"email_html_template">>], Account),
-    {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
-
-    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"email_subject_template">>], Account),
-    {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-  
-    To = wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"send_to">>], Account
-                           ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),  
-    build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
+            build_and_send_email(TxtBody, HTMLBody, Subject, To, Props)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -75,11 +72,25 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object(), wh_json:objects()) -> wh_proplist().
-create_template_props(Event, Account) ->
-    [{<<"current_balance">>, notify_util:json_to_template_props(Event)}
-     ,{<<"account">>, notify_util:json_to_template_props(Account)}
+-spec create_template_props(integer(), wh_json:object()) -> wh_proplist().
+create_template_props(CurrentBalance, Account) ->
+    AccountDb = wh_util:format_account_id(wh_json:get_value(<<"_id">>, Account), 'encoded'),
+    Threshold = notify_account_crawler:low_balance_threshold(AccountDb),
+    [{<<"account">>, notify_util:json_to_template_props(Account)}
+     ,{<<"service">>, notify_util:get_service_props(wh_json:new(), Account, ?MOD_CONFIG_CAT)}
+     ,{<<"current_balance">>, pretty_print_dollars(wht_util:units_to_dollars(CurrentBalance))}
+     ,{<<"threshold">>, pretty_print_dollars(Threshold)}
     ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec pretty_print_dollars(float()) -> ne_binary().
+pretty_print_dollars(Amount) ->
+    wh_util:to_binary(io_lib:format("$~.2f", [Amount])).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -108,3 +119,68 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
               ]
             },
     notify_util:send_email(From, To, Email).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec collect_recipients(ne_binary()) -> ne_binaries().
+collect_recipients(AccountId) ->
+    Routines = [fun(T) -> maybe_send_to_account_admins(AccountId, T) end
+                ,fun(T) -> maybe_send_to_master_support(T) end
+               ],
+    To = lists:foldl(fun(F, T) -> F(T) end, [], Routines),
+    sets:to_list(sets:from_list(To)).
+
+-spec maybe_send_to_account_admins(ne_binary(), ne_binaries()) -> ne_binaries().
+maybe_send_to_account_admins(AccountId, To) ->
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    maybe_send_to_account_admins(MasterAccountId, AccountId, To).
+
+-spec maybe_send_to_account_admins(ne_binary(), ne_binary(), ne_binaries()) -> ne_binaries().
+maybe_send_to_account_admins(MasterAccountId, AccountId, To) ->
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    maybe_send_to_account_admins(ResellerId, MasterAccountId, AccountId, To).
+
+-spec maybe_send_to_account_admins(ne_binary(), ne_binary(), ne_binary(), ne_binaries()) -> ne_binaries().
+maybe_send_to_account_admins(ResellerId, ResellerId, AccountId, To) ->
+    send_to_account_admins(AccountId, To);
+maybe_send_to_account_admins(ResellerId, MasterAccountId, AccountId, To) ->
+    lager:debug("following reseller tree for ~s to ~s", [AccountId, ResellerId]),
+    maybe_send_to_account_admins(MasterAccountId, ResellerId, To).
+
+-spec send_to_account_admins(ne_binary(), ne_binaries()) -> ne_binaries().
+send_to_account_admins(AccountId, To) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    ViewOptions = [{'key', <<"user">>}
+                   ,'include_docs'
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+        {'ok', JObjs} ->
+            find_account_admins(JObjs, To);
+        {'error', _R} ->
+            lager:debug("faild to find users in ~s: ~p", [AccountId, _R]),
+            To
+    end.
+
+-spec find_account_admins(wh_json:objects(), ne_binaries()) -> ne_binaries().
+find_account_admins([], To) ->
+    To;
+find_account_admins([JObj|JObjs], To) ->
+    Email = wh_json:get_ne_value([<<"doc">>, <<"email">>], JObj),
+    case wh_json:get_value([<<"doc">>, <<"priv_level">>], JObj) =:= <<"admin">>
+        andalso Email =/= 'undefined'
+    of
+        'false' -> find_account_admins(JObjs, To);
+        'true' ->
+            find_account_admins(JObjs, [Email|To])
+    end.
+
+-spec maybe_send_to_master_support(ne_binaries()) -> ne_binaries().
+maybe_send_to_master_support(To) ->
+    case whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>) of
+        'undefined' -> To;
+        DefaultTo -> [DefaultTo|To]
+    end.
