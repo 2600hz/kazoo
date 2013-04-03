@@ -231,10 +231,18 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
     _Url = props:get_value('url', Props),
     _Method = props:get_value('method', Props),
 
-    DialMe = wmn_util:to_e164(kzt_util:xml_text_to_binary(Number)),
+    DialMe = wnm_util:to_e164(kzt_util:xml_text_to_binary(Number)),
 
-    lager:debug("maybe add number ~s: send ~s, skipping", [DialMe, SendDigits]),
-    xml_elements_to_endpoints(Call, EPs, Acc);
+    lager:debug("maybe add number ~s: send ~s", [DialMe, SendDigits]),
+
+    CallFwd = wh_json:from_list([{<<"number">>, DialMe}
+                                 ,{<<"require_keypress">>, 'false'}
+                                 ,{<<"substribute">>, 'true'}
+                                ]),
+    EP = cf_endpoint:create_call_fwd_endpoint(wh_json:new(), wh_json:new()
+                                              ,CallFwd, Call),
+
+    xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
 
 xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
                                              ,content=Number
