@@ -1126,3 +1126,29 @@ set_terminators(Node, UUID, Ts) ->
         'undefined' -> 'ok';
         {K, V} -> ecallmgr_util:set(Node, UUID, <<K/binary, "=", V/binary>>)
     end.
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+all_conference_flags_test() ->
+    JObj = wh_json:from_list([{<<"Mute">>, 'true'}
+                              ,{<<"Deaf">>, 'true'}
+                              ,{<<"Moderator">>, 'true'}
+                             ]),
+    ?assertEqual(<<"+flags{mute,moderator,deaf}">>, get_conference_flags(JObj)).
+
+two_conference_flags_test() ->
+    JObj = wh_json:from_list([{<<"Mute">>, 'true'}
+                              ,{<<"Moderator">>, 'true'}
+                             ]),
+    ?assertEqual(<<"+flags{mute,moderator}">>, get_conference_flags(JObj)).
+
+one_conference_flag_test() ->
+    JObj = wh_json:from_list([{<<"Mute">>, 'true'}]),
+    ?assertEqual(<<"+flags{mute}">>, get_conference_flags(JObj)).
+
+no_conference_flags_test() ->
+    JObj = wh_json:new(),
+    ?assertEqual(<<>>, get_conference_flags(JObj)).
+
+-endif.
