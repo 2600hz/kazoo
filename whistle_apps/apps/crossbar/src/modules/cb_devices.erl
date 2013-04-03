@@ -27,7 +27,7 @@
          ,get_all_acl_ips/0
         ]).
 
--include("src/crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(QUICKCALL_URL, [{<<"devices">>, [_, <<"quickcall">>, _]}
                         ,{?WH_ACCOUNTS_DB, [_]}

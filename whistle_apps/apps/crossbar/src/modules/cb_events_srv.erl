@@ -35,7 +35,7 @@
 %% gen_listener handler callback
 -export([handle_req/2]).
 
--include("src/crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(RESPONDERS, [{?MODULE, [{<<"*">>, <<"*">>}]}]). % all matching event cat/name combos go to here
 -define(BINDINGS, []).

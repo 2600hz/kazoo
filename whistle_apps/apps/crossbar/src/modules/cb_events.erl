@@ -46,7 +46,7 @@
          ,delete/1, delete/2
         ]).
 
--include("src/crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(DEFAULT_USER, <<"events_user">>).
 -define(EVENT_DOC_ID(User), <<"event_sub_", User/binary>>).

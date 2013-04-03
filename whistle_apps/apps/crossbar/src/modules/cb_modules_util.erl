@@ -15,7 +15,7 @@
          ,is_superduper_admin/1
         ]).
 
--include("src/crossbar.hrl").
+-include("crossbar.hrl").
 
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->

@@ -22,7 +22,7 @@
          ,delete/2, delete/4
         ]).
 
--include("../../src/crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"vmboxes/crossbar_listing">>).
 

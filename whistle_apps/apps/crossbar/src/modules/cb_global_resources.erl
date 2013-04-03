@@ -21,7 +21,7 @@
          ,delete/2
         ]).
 
--include("src/crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"global_resources/crossbar_listing">>).
 -define(GLOBAL_RESOURCE_DB, <<"offnet">>).
