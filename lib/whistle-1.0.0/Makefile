@@ -48,7 +48,7 @@ test: clean compile-test eunit
 
 eunit: compile-test
 	erl -noshell $(PA) \
-	-pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
+	-pa test -eval "eunit:test([$(MODULES),$(API_MODULES)], [verbose])" -s init stop
 
 dialyze: 
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
