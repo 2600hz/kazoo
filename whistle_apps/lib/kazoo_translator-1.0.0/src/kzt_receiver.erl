@@ -23,13 +23,13 @@
         ]).
 
 -record(dial_req, {call :: whapps_call:call()
-                     ,hangup_dtmf :: api_binary()
-                     ,record_call :: boolean()
-                     ,call_timeout :: integer()
-                     ,call_time_limit :: integer()
-                     ,start :: wh_now()
-                     ,call_b_leg :: api_binary()
-                    }).
+                   ,hangup_dtmf :: api_binary()
+                   ,record_call :: boolean()
+                   ,call_timeout :: integer()
+                   ,call_time_limit :: integer()
+                   ,start :: wh_now()
+                   ,call_b_leg :: api_binary()
+                  }).
 -type dial_req() :: #dial_req{}.
 
 -define(DEFAULT_EVENT_WAIT, 10000). % 10s or 10000ms

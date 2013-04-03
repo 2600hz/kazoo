@@ -12,7 +12,8 @@
 
 -include("./src/kzt.hrl").
 
--spec exec(whapps_call:call(), xml_els(), xml_els()) -> {'ok' | 'stop', whapps_call:call()}.
+-spec exec(whapps_call:call(), xml_els(), xml_els()) ->
+                  {'ok' | 'stop', whapps_call:call()}.
 exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
     whapps_call_command:answer(Call),
 
@@ -262,7 +263,7 @@ xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
     lager:debug("unknown endpoint, skipping: ~p", [_Xml]),
     xml_elements_to_endpoints(Call, EPs, Acc).
 
-request_id(N, Call) -> iolist_to_binary([N, $@, whapps_call:from_realm(Call)]).
+request_id(N, Call) -> iolist_to_binary([N, <<"@">>, whapps_call:from_realm(Call)]).
 
 media_processing(Call) ->
     media_processing(kzt_util:get_record_call(Call), kzt_util:get_hangup_dtmf(Call)).
