@@ -128,10 +128,11 @@ route_resp_xml(RespJObj) ->
 
 %% Prop = Route Response
 -spec route_resp_xml(ne_binary(), wh_json:objects(), wh_json:object()) -> {'ok', iolist()}.
-route_resp_xml(<<"bridge">>, Routes, _JObj) ->
+route_resp_xml(<<"bridge">>, Routes, JObj) ->
     lager:debug("creating a bridge XML response"),
     LogEl = route_resp_log_winning_node(),
-    RingbackEl = route_resp_ringback(),
+    RingbackEl = route_resp_ringback(JObj),
+    TransferEl = route_resp_transfer_ringback(JObj),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldr(
                                    fun(RouteJObj, {Idx, Acc}) ->
@@ -170,20 +171,21 @@ route_resp_xml(<<"bridge">>, Routes, _JObj) ->
     FailConditionEl = condition_el(FailRespondEl),
     FailExtEl = extension_el(<<"failed_bridge">>, <<"false">>, [FailConditionEl]),
 
-    ContextEl = context_el(?WHISTLE_CONTEXT, [LogEl, RingbackEl] ++ Extensions ++ [FailExtEl]),
+    ContextEl = context_el(?WHISTLE_CONTEXT, [LogEl, RingbackEl, TransferEl] ++ Extensions ++ [FailExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
     {ok, xmerl:export([SectionEl], fs_xml)};
 
 route_resp_xml(<<"park">>, _Routes, JObj) ->
     LogEl = route_resp_log_winning_node(),
-    RingbackEl = route_resp_ringback(),
+    RingbackEl = route_resp_ringback(JObj),
+    TransferEl = route_resp_transfer_ringback(JObj),
     ParkEl = action_el(<<"park">>),
 
     ParkConditionEl = case route_resp_pre_park_action(JObj) of
                           undefined ->
-                              condition_el([LogEl, RingbackEl, ParkEl]);
+                              condition_el([LogEl, RingbackEl, TransferEl, ParkEl]);
                           PreParkEl ->
-                              condition_el([LogEl, RingbackEl, PreParkEl, ParkEl])
+                              condition_el([LogEl, RingbackEl, TransferEl, PreParkEl, ParkEl])
                       end,
 
     ParkExtEl = extension_el(<<"park">>, undefined, [ParkConditionEl]),
@@ -195,13 +197,14 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
 route_resp_xml(<<"error">>, _Routes, JObj) ->
     LogEl = route_resp_log_winning_node(),
 
-    RingbackEl = route_resp_ringback(),
+    RingbackEl = route_resp_ringback(JObj),
+    TransferEl = route_resp_transfer_ringback(JObj),
 
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<"">>)],
 
     ErrEl = action_el(<<"respond">>, [ErrCode, ErrMsg]),
-    ErrCondEl = condition_el([LogEl, RingbackEl, ErrEl]),
+    ErrCondEl = condition_el([LogEl, RingbackEl, TransferEl, ErrEl]),
     ErrExtEl = extension_el([ErrCondEl]),
 
     ContextEl = context_el(?WHISTLE_CONTEXT, [ErrExtEl]),
@@ -218,10 +221,29 @@ not_found() ->
 route_resp_log_winning_node() ->
     action_el(<<"log">>, [<<"NOTICE log|${uuid}|", (wh_util:to_binary(node()))/binary, " won call control">>]).
 
--spec route_resp_ringback() -> xml_el().
-route_resp_ringback() ->
-    {ok, RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
-    action_el(<<"set">>, <<"ringback=", (wh_util:to_binary(RBSetting))/binary>>).
+-spec route_resp_ringback(wh_json:object()) -> xml_el().
+route_resp_ringback(JObj) ->
+    case wh_json:get_value(<<"Ringback-Media">>, JObj) of
+        'undefined' ->
+            {ok, RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
+            action_el(<<"set">>, <<"ringback=", (wh_util:to_binary(RBSetting))/binary>>);
+        Media ->
+            MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+            Stream = ecallmgr_util:media_path(Media, extant, MsgId, JObj),
+            action_el(<<"set">>, <<"ringback=", (wh_util:to_binary(Stream))/binary>>)
+    end.
+
+-spec route_resp_transfer_ringback(wh_json:object()) -> xml_el().
+route_resp_transfer_ringback(JObj) ->
+    case wh_json:get_value(<<"Transfer-Media">>, JObj) of
+        'undefined' ->
+            {ok, RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
+            action_el(<<"set">>, <<"transfer_ringback=", (wh_util:to_binary(RBSetting))/binary>>);
+        Media ->
+            MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+            Stream = ecallmgr_util:media_path(Media, extant, MsgId, JObj),
+            action_el(<<"set">>, <<"transfer_ringback=", (wh_util:to_binary(Stream))/binary>>)
+    end.
 
 -spec route_resp_pre_park_action(wh_json:object()) -> 'undefined' | xml_el().
 route_resp_pre_park_action(JObj) ->

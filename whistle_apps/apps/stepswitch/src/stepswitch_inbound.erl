@@ -105,10 +105,24 @@ custom_channel_vars(AccountId, JObj) ->
 -spec relay_route_req(ne_binary(), proplist(), wh_json:json_object()) -> 'ok'.
 relay_route_req(AccountId, Props, JObj) ->
     Routines = [fun(J) -> custom_channel_vars(AccountId, J) end
-                ,fun(J) -> 
+                ,fun(J) ->
                          case props:get_value(inbound_cnam, Props) of
                              false -> J;
                              true -> stepswitch_cnam:lookup(J)
+                         end
+                 end
+                ,fun(J) ->
+                         case props:get_value(ringback_media, Props) of
+                             undefined -> J;
+                             MediaId ->
+                                 wh_json:set_value(<<"Ringback-Media">>, MediaId, J)
+                         end
+                 end
+                ,fun(J) ->
+                         case props:get_value(transfer_media, Props) of
+                             undefined -> J;
+                             MediaId ->
+                                 wh_json:set_value(<<"Transfer-Media">>, MediaId, J)
                          end
                  end
                ],

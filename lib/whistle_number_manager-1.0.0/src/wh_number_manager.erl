@@ -63,19 +63,19 @@ lookup_account_by_number(undefined) ->
     {error, not_reconcilable};
 lookup_account_by_number(Number) ->
     try wnm_number:get(Number) of
-        #number{assigned_to=undefined} -> 
+        #number{assigned_to=undefined} ->
             lager:debug("number ~s not assigned to an account", [Number]),
-            {error, unassigned};            
-        #number{assigned_to=AssignedTo, state = <<"port_in">>}=N -> 
+            {error, unassigned};
+        #number{assigned_to=AssignedTo, state = <<"port_in">>}=N ->
             lager:debug("number ~s is assigned to ~s in state port_in", [Number, AssignedTo]),
             {ok, AssignedTo, number_options(N)};
-        #number{assigned_to=AssignedTo, state = <<"in_service">>}=N -> 
+        #number{assigned_to=AssignedTo, state = <<"in_service">>}=N ->
             lager:debug("number ~s is assigned to ~s in state in_service", [Number, AssignedTo]),
             {ok, AssignedTo, number_options(N)};
-        #number{assigned_to=AssignedTo, state = <<"port_out">>}=N -> 
+        #number{assigned_to=AssignedTo, state = <<"port_out">>}=N ->
             lager:debug("number ~s is assigned to ~s in state port_in", [Number, AssignedTo]),
             {ok, AssignedTo, number_options(N)};
-        #number{assigned_to=AssignedTo, state=State} -> 
+        #number{assigned_to=AssignedTo, state=State} ->
             lager:debug("number ~s assigned to acccount id ~s but in state ~s", [Number, AssignedTo, State]),
             {error, {not_in_service, AssignedTo}}
     catch
@@ -88,13 +88,21 @@ number_options(#number{state=State, features=Features, module_name=Module}=Numbe
      ,{pending_port, State =:= <<"port_in">>}
      ,{local, Module =:= wnm_local}
      ,{inbound_cnam, sets:is_element(<<"inbound_cnam">>, Features)}
+     ,{ringback_media, find_early_ringback(Number)}
+     ,{transfer_media, find_transfer_ringback(Number)}
     ].
 
 should_force_outbound(#number{module_name=wnm_local}) -> true;
 should_force_outbound(#number{state = <<"port_in">>}) -> true;
 should_force_outbound(#number{state = <<"port_out">>}) -> true;
-should_force_outbound(#number{number_doc=JObj}) -> 
+should_force_outbound(#number{number_doc=JObj}) ->
     wh_json:is_true(<<"force_outbound">>, JObj, false).
+
+find_early_ringback(#number{number_doc=JObj}) ->
+    wh_json:get_ne_value([<<"ringback">>, <<"early">>], JObj).
+
+find_transfer_ringback(#number{number_doc=JObj}) ->
+    wh_json:get_ne_value([<<"ringback">>, <<"transfer">>], JObj).
 
 %%--------------------------------------------------------------------
 %% @public

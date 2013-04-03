@@ -146,7 +146,6 @@
                                ,{<<"Origination-UUID">>, <<"origination_uuid">>}
                                ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                                ,{<<"Eavesdrop-Group-ID">>, <<"eavesdrop_group">>}
-                               %% ,{<<"Hold-Media">>, <<"hold_music">>}
                                ,{<<"Loopback-Bowout">>, <<"loopback_bowout_on_execute">>}
                                ,{<<"tts_engine">>, <<"tts_engine">>}
                                ,{<<"tts_voice">>, <<"tts_voice">>}
