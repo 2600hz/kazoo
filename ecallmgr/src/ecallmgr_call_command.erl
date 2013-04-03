@@ -644,14 +644,24 @@ get_conference_app(_ChanNode, _UUID, JObj, 'false') ->
 
 -spec get_conference_flags(wh_json:object()) -> binary().
 get_conference_flags(JObj) ->
-    Flags = wh_json:foldl(fun(K, V, Acc) ->
-                                  case lists:keyfind(K, 2, ?CONFERENCE_FLAGS) of
-                                      'false' -> Acc;
-                                      {FSFlag, _} when V =:= 'true' -> [<<",">>, FSFlag | Acc];
-                                      _ -> Acc
-                                  end
-                          end, [], JObj),
-    <<"+flags{", (iolist_to_binary(lists:reverse(Flags)))/binary, "}">>.
+    case wh_json:to_proplist(JObj) of
+        [] -> <<>>;
+        [{_Key,_Val}=KV|L] ->
+            Flags = lists:foldl(fun maybe_add_conference_flag/2, [<<>>], L),
+            All = case maybe_add_conference_flag(KV, []) of
+                [] -> tl(Flags);
+                [<<",">> | T] -> T ++ Flags;
+                Fs -> Fs ++ Flags
+            end,
+            <<"+flags{", (iolist_to_binary(All))/binary, "}">>
+    end.
+
+maybe_add_conference_flag({K, V}, Acc) ->
+    case lists:keyfind(K, 2, ?CONFERENCE_FLAGS) of
+        'false' -> Acc;
+        {FSFlag, _} when V =:= 'true' -> [<<",">>, FSFlag | Acc];
+        _ -> Acc
+    end.
 
 wait_for_conference(ConfName) ->
     case ecallmgr_fs_conferences:node(ConfName) of
