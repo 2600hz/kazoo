@@ -1,33 +1,30 @@
-ROOT = ../..
-REBAR = $(ROOT)/bin/rebar
-
 .PHONY: rel stagedevrel deps test
 
-all: compile
+all: deps compile
 
 compile:
-	$(REBAR) compile
+	./rebar compile
 
 deps:
-	$(REBAR) get-deps
+	./rebar get-deps
 
 clean:
-	$(REBAR) clean
+	./rebar clean
 
 distclean: clean
-	$(REBAR) delete-deps
+	./rebar delete-deps
 
 test:
-	$(REBAR) compile eunit
+	./rebar compile eunit
 
 ##
 ## Doc targets
 ##
 docs:
-	$(REBAR) doc
+	./rebar doc
 
 APPS = kernel stdlib sasl erts ssl tools os_mon runtime_tools crypto inets \
-	xmerl webtool snmp public_key mnesia eunit syntax_tools compiler
+	xmerl webtool snmp public_key mnesia eunit
 COMBO_PLT = $(HOME)/.riak_combo_dialyzer_plt
 
 check_plt: compile
@@ -42,7 +39,7 @@ dialyzer: compile
 	@echo Use "'make build_plt'" to build PLT prior to using this target.
 	@echo
 	@sleep 1
-	dialyzer -Wno_return -Wunmatched_returns --plt $(COMBO_PLT) ebin | \
+	dialyzer -Wunmatched_returns --plt $(COMBO_PLT) ebin | \
 	    fgrep -v -f ./dialyzer.ignore-warnings
 
 cleanplt:

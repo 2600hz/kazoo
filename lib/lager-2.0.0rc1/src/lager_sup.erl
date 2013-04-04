@@ -1,4 +1,4 @@
-%% Copyright (c) 2011 Basho Technologies, Inc.  All Rights Reserved.
+%% Copyright (c) 2011-2012 Basho Technologies, Inc.  All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -32,6 +32,8 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
+    %% set up the config, is safe even during relups
+    lager_config:new(),
     Children = [
         {lager, {gen_event, start_link, [{local, lager_event}]},
             permanent, 5000, worker, [dynamic]},
@@ -41,6 +43,8 @@ init([]) ->
     %% check if the crash log is enabled
     Crash = case application:get_env(lager, crash_log) of
         {ok, undefined} ->
+            [];
+        {ok, false} ->
             [];
         {ok, File} ->
             MaxBytes = case application:get_env(lager, crash_log_msg_size) of

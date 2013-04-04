@@ -1,4 +1,4 @@
-%% Copyright (c) 2011 Basho Technologies, Inc.  All Rights Reserved.
+%% Copyright (c) 2011-2012 Basho Technologies, Inc.  All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -53,7 +53,7 @@
         date,
         count,
         flap=false
-    }).
+}).
 
 %% @private
 start_link(Filename, MaxBytes, Size, Date, Count) ->
@@ -241,8 +241,6 @@ filesystem_test_() ->
                 application:set_env(lager, handlers, [{lager_test_backend, info}]),
                 application:set_env(lager, error_logger_redirect, true),
                 application:unset_env(lager, crash_log),
-                application:start(compiler),
-                application:start(syntax_tools),
                 application:start(lager),
                 timer:sleep(100),
                 lager_test_backend:flush()
@@ -273,7 +271,7 @@ filesystem_test_() ->
                         file:write_file_info("crash_test.log", FInfo#file_info{mode = 0}),
                         {ok, _} = ?MODULE:start_link("crash_test.log", 65535, 0, undefined, 0),
                         ?assertEqual(1, lager_test_backend:count()),
-                        {_Level, _Time, [_, _, Message]} = lager_test_backend:pop(),
+                        {_Level, _Time, Message,_Metadata} = lager_test_backend:pop(),
                         ?assertEqual("Failed to open crash log file crash_test.log with error: permission denied", lists:flatten(Message))
                 end
             },
@@ -292,7 +290,7 @@ filesystem_test_() ->
                         _ = gen_event:which_handlers(error_logger),
                         ?assertEqual(3, lager_test_backend:count()),
                         lager_test_backend:pop(),
-                        {_Level, _Time, [_, _, Message]} = lager_test_backend:pop(),
+                        {_Level, _Time, Message,_Metadata} = lager_test_backend:pop(),
                         ?assertEqual("Failed to reopen crash log crash_test.log with error: permission denied", lists:flatten(Message))
                 end
             },
@@ -303,7 +301,7 @@ filesystem_test_() ->
                         file:write_file_info("crash_test.log", FInfo#file_info{mode = 0}),
                         {ok, _} = ?MODULE:start_link("crash_test.log", 65535, 0, undefined, 0),
                         ?assertEqual(1, lager_test_backend:count()),
-                        {_Level, _Time, [_, _, Message]} = lager_test_backend:pop(),
+                        {_Level, _Time, Message,_Metadata} = lager_test_backend:pop(),
                         ?assertEqual("Failed to open crash log file crash_test.log with error: permission denied", lists:flatten(Message)),
                         file:write_file_info("crash_test.log", FInfo#file_info{mode = OldPerms}),
                         sync_error_logger:error_msg("Test message~n"),
