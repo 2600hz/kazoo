@@ -45,3 +45,4 @@ Translation efforts are always appreciated. We're working on redesigning how our
 * Once you feel the code is ready for inclusion, issue a [pull request](https://help.github.com/articles/using-pull-requests)
   * Please keep your pull requests focused and specific to the task at hand
   * If, in the course of your work you add/modify/delete code unrelated to the core task, create a new ticket describing why you've made these additional changes, and issue a separate pull request.
+
