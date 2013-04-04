@@ -86,9 +86,9 @@ validate(#cb_context{req_verb = <<"get">>, doc=Doc}=Context) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
--spec route_by_type(ne_binary(), cb_context:context()) ->cb_context:context().
+-spec route_by_type(ne_binary(), cb_context:context()) ->cb_context:context(). 
 route_by_type(<<"undefined">>, Context) ->
-       crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 route_by_type(<<"device">>, #cb_context{doc=Doc, db_name=AccoundDb}=Context) -> 
     UserIds = wh_json:to_proplist(wh_json:get_value([<<"hotdesk">>, <<"users">>], Doc, wh_json:new())),
     JObjs = lists:foldl(
@@ -108,8 +108,9 @@ route_by_type(<<"device">>, #cb_context{doc=Doc, db_name=AccoundDb}=Context) ->
                                ,resp_data=RespData
                               }
     end;
-route_by_type(<<"user">>, Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+route_by_type(<<"user">>, #cb_context{doc=Doc}=Context) ->
+    UserId = wh_json:get_value(<<"_id">>, Doc),
+    crossbar_doc:load_view(?CB_LIST, [{<<"key">>, UserId}], Context, fun normalize_view_results/2).
 
 -spec get_username({ne_binary(), any()}, ne_binary()) -> wh_json:object().
 get_username({Id, _}, AccoundDb) ->
