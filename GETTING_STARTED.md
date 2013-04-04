@@ -38,5 +38,10 @@ Translation efforts are always appreciated. We're working on redesigning how our
 ### I know (or am learning) Erlang! How do I help with Kazoo?
 
 * Clone the repo
+  * If you're completely new to Git, read Github's [great introduction](https://help.github.com/articles/fork-a-repo) to forking repos
 * Squash a bug, build a feature, etc
-* Issue a pull request
+  * Browse the [ticket queue](https://2600hz.atlassian.net/browse/KAZOO) and find one you'd like to tackle.
+  * Feel free to drop a line to the [dev mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-dev) letting us know you're taking on a ticket, especially if you have questions.
+* Once you feel the code is ready for inclusion, issue a [pull request](https://help.github.com/articles/using-pull-requests)
+  * Please keep your pull requests focused and specific to the task at hand
+  * If, in the course of your work you add/modify/delete code unrelated to the core task, create a new ticket describing why you've made these additional changes, and issue a separate pull request.
