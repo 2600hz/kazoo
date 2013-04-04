@@ -282,6 +282,7 @@ collapse_call_transaction(CallId, JObj, Calls) ->
             Routines = [fun(C) -> collapse_created_time(C, JObj) end
                         ,fun(C) -> collapse_ended_time(C, JObj) end
                         ,fun(C) -> collapse_amount(C, JObj) end
+                        ,fun(C) -> collapse_meta_data(C, JObj) end
                        ],
             C = lists:foldl(fun(F, C) -> F(C) end, Call, Routines),
             dict:store(CallId, C, Calls)
@@ -328,6 +329,27 @@ collapse_amount(Call, JObj) ->
     CurrentAmount = wh_json:get_value(<<"amount">>, Call, 0),
     MaybeAmount = get_amount(JObj),
     wh_json:set_value(<<"amount">>, MaybeAmount+CurrentAmount, Call).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec collapse_meta_data(wh_json:object(), [wh_json:object(), ...]) -> wh_json:object().
+collapse_meta_data(Call, JObj) ->
+    case wh_json:get_value(<<"meta_data">>, Call, 'undefined') of
+        'undefined' ->
+            case wh_json:get_value(<<"meta_data">>, JObj, 'undefined') of
+                'undefined' ->
+                    Call;
+                MetaData ->
+                    wh_json:set_value(<<"meta_data">>, MetaData, Call)
+            end;
+        _ ->
+            Call
+    end.
         
 %%--------------------------------------------------------------------
 %% @private

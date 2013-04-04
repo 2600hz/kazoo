@@ -106,6 +106,14 @@ create_debit_transaction(Event, Units, LedgerId, JObj) ->
                 ,fun(T) ->
                          wh_transaction:set_description(<<"per minute call">>, T)
                  end
+                ,fun(T) ->
+                         case Event of
+                             <<"end">> ->
+                                 wh_transaction:set_meta_data(set_meta_data(JObj), T);
+                             _ ->
+                                 T
+                         end
+                 end
                ],
     T = lists:foldl(fun(F, T) -> F(T) end, wh_transaction:debit(LedgerId, Units), Routines),
     wh_transaction:save(T).
@@ -127,9 +135,26 @@ create_credit_transaction(Event, Units, LedgerId, JObj) ->
                 ,fun(T) ->
                          wh_transaction:set_description(<<"per minute call">>, T)
                  end
+                ,fun(T) ->
+                         case Event of
+                             <<"end">> ->
+                                 wh_transaction:set_meta_data(set_meta_data(JObj), T);
+                             _ ->
+                                 T
+                         end
+                 end
                ],
     T = lists:foldl(fun(F, T) -> F(T) end, wh_transaction:credit(LedgerId, Units), Routines),
     wh_transaction:save(T).
+
+set_meta_data(JObj) ->
+    wh_json:set_values([{<<"direction">>, wh_json:get_value(<<"Call-Direction">>, JObj, 'undefined')}
+                        ,{<<"duration">>, wh_json:get_value(<<"Billing-Seconds">>, JObj, 'undefined')}
+                        ,{<<"account_id">>, wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj, 'undefined')}
+                        ,{<<"to">>, wh_json:get_value(<<"Callee-ID-Number">>, JObj, 'undefined')}
+                        ,{<<"from">>, wh_json:get_value(<<"Caller-ID-Number">>, JObj, 'undefined')}
+                       ]
+                        ,wh_json:new()).
 
 get_authz_account_id(JObj) ->
     wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj).
