@@ -9,7 +9,7 @@
 
 -module(gen_changes).
 
--include("couchbeam.hrl").
+-include_lib("couchbeam/include/couchbeam.hrl").
 
 -behavior(gen_server).
 

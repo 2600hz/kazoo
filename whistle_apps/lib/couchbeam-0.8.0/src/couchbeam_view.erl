@@ -6,8 +6,7 @@
 -module(couchbeam_view).
 -author('Benoît Chesneau <benoitc@e-engura.org>').
 
--include("couchbeam.hrl").
--compile([{parse_transform, switchblade_transform}]).
+-include_lib("couchbeam/include/couchbeam.hrl").
 
 -export([stream/2, stream/3, stream/4,
          fetch/1, fetch/2, fetch/3,
