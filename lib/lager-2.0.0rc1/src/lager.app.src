@@ -19,13 +19,7 @@
                                            {file, "log/error.log"}, {level, error}, {size, 10485760}, {date, "$D0"}, {count, 5}]},
                      {lager_file_backend, [
                                            {file, "log/console.log"}, {level, info}, {size, 10485760}, {date, "$D0"}, {count, 5}]}
-                     ,{lager_syslog_backend, ["ecallmgr", local0, debug, {lager_kazoo_formatter,["|", {callid, <<"0000000000">>}, "|", module, ":", line, " (",pid, ") ", message, "\n"]}]}
-
-
-%: |47af49d1-a35aa390-5b3c9ef7@10.12.13.100|reg_success:84 (<0.25904.52>) successful registration 102@d6e471.sip.2600hz.com: "user" sip:102@71.250.237.35:19120;fs_path=sip:209.114.35.233;lr;received=sip:71.250.237.35:19120
-
-
-
+                     ,{lager_syslog_backend, ["2600hz", local0, debug, {lager_kazoo_formatter,["|", {callid, <<"0000000000">>}, "|", module, ":", line, " (",pid, ") ", message, "\n"]}]}
                     ]},
             %% What colors to use with what log levels
             {colored, false},
