@@ -34,9 +34,9 @@
 %%--------------------------------------------------------------------
 -spec init/0 :: () -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.transactions">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.transactions">>, ?MODULE, resource_exists),
-    crossbar_bindings:bind(<<"v1_resource.validate.transactions">>, ?MODULE, validate).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.transactions">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.transactions">>, ?MODULE, 'resource_exists'),
+    crossbar_bindings:bind(<<"v1_resource.validate.transactions">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -63,8 +63,8 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists/0 :: () -> 'true'.
 -spec resource_exists/1 :: (path_token()) -> 'true'.
-resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -81,7 +81,7 @@ resource_exists(_) -> true.
 validate(#cb_context{req_verb = <<"get">>,  query_json=Query}=Context) ->
     From = wh_json:get_integer_value(<<"created_from">>, Query, 0),
     To = wh_json:get_integer_value(<<"created_to">>, Query, 0),
-    Reason = wh_json:get_value(<<"reason">>, Query, undefined),
+    Reason = wh_json:get_value(<<"reason">>, Query, 'undefined'),
     case Reason of
         <<"no_call">> ->
             Reasons = wht_util:reasons(2000),
@@ -95,7 +95,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"cur
     JObj = wh_json:from_list([{<<"balance">>, Balance}]),
     Context#cb_context{resp_status=success, resp_data=JObj};
 validate(Context, _) ->
-    cb_context:add_system_error(bad_identifier,  Context).
+    cb_context:add_system_error('bad_identifier',  Context).
 
 
 %%--------------------------------------------------------------------
@@ -108,9 +108,9 @@ validate(Context, _) ->
 -spec fetch/4 :: (integer(), integer(), #cb_context{}, ne_binary()) -> #cb_context{}.
 fetch(From, To, Context) ->
     case validate_date(From, To) of
-        {true, VFrom, VTo} ->
+        {'true', VFrom, VTo} ->
             filter(VFrom, VTo, Context);
-        {false, R} ->
+        {'false', R} ->
             cb_context:add_validation_error(<<"created_from/created_to">>
                                                 ,<<"date_range">>
                                                 ,R
@@ -119,9 +119,9 @@ fetch(From, To, Context) ->
     end.
 fetch(From, To, Context, Reason) ->
     case validate_date(From, To) of
-        {true, VFrom, VTo} ->
+        {'true', VFrom, VTo} ->
             filter(VFrom, VTo, Context, Reason);
-        {false, R} ->
+        {'false', R} ->
             cb_context:add_validation_error(<<"created_from/created_to">>
                                                 ,<<"date_range">>
                                                 ,R
@@ -140,19 +140,19 @@ fetch(From, To, Context, Reason) ->
 filter(From, To, #cb_context{account_id=AccountId}=Context) ->
     try wh_transactions:fetch_since(AccountId, From, To) of
         Transactions ->
-            send_resp({ok, Transactions}, Context)
+            send_resp({'ok', Transactions}, Context)
     catch
         _:_ ->
-            send_resp({error, Context}, Context)
+            send_resp({'error', Context}, Context)
     end.
 filter(From, To, #cb_context{account_id=AccountId}=Context, Reason) ->
     try wh_transactions:fetch_since(AccountId, From, To) of
         Transactions ->
             Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
-            send_resp({ok, Filtered}, Context)
+            send_resp({'ok', Filtered}, Context)
     catch
         _:_ ->
-            send_resp({error, Context}, Context)
+            send_resp({'error', Context}, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -163,13 +163,13 @@ filter(From, To, #cb_context{account_id=AccountId}=Context, Reason) ->
 %%--------------------------------------------------------------------
 send_resp(Resp, Context) ->
     case Resp of 
-        {ok, Transactions} ->
+        {'ok', Transactions} ->
             JObj = wh_transactions:to_public_json(Transactions),
             Context#cb_context{resp_status=success
                                ,resp_data=wht_util:collapse_call_transactions(JObj)
                               };
-        {error, C} ->
-            cb_context:add_system_error(bad_identifier, [{details,<<"something went wrong while fetching the transaction">>}], C)
+        {'error', C} ->
+            cb_context:add_system_error('bad_identifier', [{'details',<<"something went wrong while fetching the transaction">>}], C)
     end.
 
 
@@ -190,12 +190,12 @@ validate_date(From, To) when is_integer(From) andalso is_integer(To) ->
     Max = ?FETCH_MAX,
     Diff = To - From,
     case {Diff < 0, Diff > Max} of
-        {true, _} ->
-            {false, <<"created_from is gretter than created_to">>};
-        {_, true} ->                    
-            {false, <<"Max range is a year">>};
-        {false, false} ->
-            {true, From, To}
+        {'true', _} ->
+            {'false', <<"created_from is gretter than created_to">>};
+        {_, 'true'} ->                    
+            {'false', <<"Max range is a year">>};
+        {'false', 'false'} ->
+            {'true', From, To}
     end;
 validate_date(From, To) ->
     try {wh_util:to_integer(From), wh_util:to_integer(To)} of
@@ -203,5 +203,5 @@ validate_date(From, To) ->
             validate_date(From1, To1)
     catch
         _:_ ->            
-            {false, <<"created_from or created_to filter is not a timestamp">>}
+            {'false', <<"created_from or created_to filter is not a timestamp">>}
     end.
