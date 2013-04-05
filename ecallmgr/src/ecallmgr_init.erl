@@ -34,7 +34,10 @@ start_link() -> spawn(?MODULE, 'init', []), 'ignore'.
 
 init() ->
     put('callid', ?MODULE),
-    set_loglevel().
+    set_loglevel(),
+
+    %% ecallmgr may be the first to start up, and it starts publishing here
+    amqp_util:sysconf_exchange().
 
 set_loglevel() ->
     [Console|_] = wh_config:get_atom('log', 'console', 'notice'),
