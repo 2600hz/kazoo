@@ -283,7 +283,11 @@ handle_cast({channel_redirected, _}, #state{callid=CallId
                                             ,controller_q=ControllerQ
                                            }=State) ->
     lager:debug("call control has been redirected, shutting down immediately"),
-    spawn(fun() -> publish_control_transfer(ControllerQ, CallId) end),
+    ConsumerPid = wh_amqp_channel:consumer_pid(),
+    spawn(fun() ->
+                  wh_amqp_channel:consumer_pid(ConsumerPid),
+                  publish_control_transfer(ControllerQ, CallId)
+          end),
     {stop, normal, State};
 handle_cast({transferer, _}, #state{last_removed_leg=undefined
                                     ,other_legs=[]
@@ -298,7 +302,11 @@ handle_cast({transferer, _}, #state{callid=CallId
                                     ,controller_q=ControllerQ
                                    }=State) ->
     lager:debug("call control has been transfered"),
-    spawn(fun() -> publish_control_transfer(ControllerQ, CallId) end),
+    ConsumerPid = wh_amqp_channel:consumer_pid(),
+    spawn(fun() ->
+                  wh_amqp_channel:consumer_pid(ConsumerPid),
+                  publish_control_transfer(ControllerQ, CallId)
+          end),
     {stop, normal, State};
 handle_cast({transferee, JObj}, #state{other_legs=Legs
                                        ,node=Node
@@ -314,7 +322,11 @@ handle_cast({transferee, JObj}, #state{other_legs=Legs
             lager:debug("new callid is the same as the old callid"),
             {noreply, State};
         NewCallId ->
-            spawn(fun() -> publish_callid_update(PrevCallId, NewCallId, queue_name(Self)) end),
+            ConsumerPid = wh_amqp_channel:consumer_pid(),
+            spawn(fun() ->
+                          wh_amqp_channel:consumer_pid(ConsumerPid),
+                          publish_callid_update(PrevCallId, NewCallId, queue_name(Self)) 
+                  end),
             lager:debug("updating callid from ~s to ~s", [PrevCallId, NewCallId]),
             put(callid, NewCallId),
             lager:debug("removing call event bindings for ~s", [PrevCallId]),
@@ -350,8 +362,10 @@ handle_cast({add_leg, JObj}, #state{other_legs=Legs
         true -> {noreply, State};
         false ->
             lager:debug("added leg ~s to call", [LegId]),
+            ConsumerPid = wh_amqp_channel:consumer_pid(),
             _ = spawn(fun() ->
                               _ = put(callid, CallId),
+                              wh_amqp_channel:consumer_pid(ConsumerPid),
                               publish_leg_addition(JObj)
                       end),
             {noreply, State#state{other_legs=[LegId|Legs]}}
@@ -370,8 +384,10 @@ handle_cast({rm_leg, JObj}, #state{other_legs=Legs
             {noreply, State};
         true ->
             lager:debug("removed leg ~s from call", [LegId]),
+            ConsumerPid = wh_amqp_channel:consumer_pid(),
             _ = spawn(fun() ->
                               put(callid, CallId),
+                              wh_amqp_channel:consumer_pid(ConsumerPid),
                               publish_leg_removal(JObj)
                       end),
             {noreply, State#state{other_legs=lists:delete(LegId, Legs)
