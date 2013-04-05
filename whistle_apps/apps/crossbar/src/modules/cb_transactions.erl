@@ -79,14 +79,15 @@ resource_exists(_) -> true.
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>,  query_json=Query}=Context) ->
-    From = wh_json:get_value(<<"created_from">>, Query, undefined),
+    From = wh_json:get_integer_value(<<"created_from">>, Query, 0),
+    To = wh_json:get_integer_value(<<"created_to">>, Query, 0),
     Reason = wh_json:get_value(<<"reason">>, Query, undefined),
     case Reason of
         <<"no_call">> ->
             Reasons = wht_util:reasons(2000),
-            fetch(From, Context, Reasons);
+            fetch(From, To, Context, Reasons);
         _ ->
-            fetch(From, Context)    
+            fetch(From, To, Context)    
     end.
 
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"current_balance">>) ->
@@ -103,31 +104,25 @@ validate(Context, _) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec fetch/2 :: (integer(), #cb_context{}) -> #cb_context{}.
--spec fetch/3 :: (integer(), #cb_context{}, ne_binary()) -> #cb_context{}.
-fetch(From, Context) ->
-    case validate_date(From) of
-        {true, Date} ->
-            filter(Date, Context);
-        {false, undefined} ->
-            Month = (wh_util:current_tstamp() - ?FETCH_DEFAULT),
-            filter(Month, Context);
+-spec fetch/3 :: (integer(), integer(), #cb_context{}) -> #cb_context{}.
+-spec fetch/4 :: (integer(), integer(), #cb_context{}, ne_binary()) -> #cb_context{}.
+fetch(From, To, Context) ->
+    case validate_date(From, To) of
+        {true, VFrom, VTo} ->
+            filter(VFrom, VTo, Context);
         {false, R} ->
-            cb_context:add_validation_error(<<"created_from">>
+            cb_context:add_validation_error(<<"created_from/created_to">>
                                                 ,<<"date_range">>
                                                 ,R
                                             ,Context
                                            )
     end.
-fetch(From, Context, Reason) ->
-    case validate_date(From) of
-        {true, Date} ->
-            filter(Date, Context, Reason);
-        {false, undefined} ->
-            Month = (wh_util:current_tstamp() - ?FETCH_DEFAULT),
-            filter(Month, Context, Reason);
+fetch(From, To, Context, Reason) ->
+    case validate_date(From, To) of
+        {true, VFrom, VTo} ->
+            filter(VFrom, VTo, Context, Reason);
         {false, R} ->
-            cb_context:add_validation_error(<<"created_from">>
+            cb_context:add_validation_error(<<"created_from/created_to">>
                                                 ,<<"date_range">>
                                                 ,R
                                             ,Context
@@ -140,18 +135,18 @@ fetch(From, Context, Reason) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec filter/2 :: (integer(), cb_context:context()) -> cb_context:context().
--spec filter/3 :: (integer(), #cb_context{}, ne_binary())  -> #cb_context{}.
-filter(Date, #cb_context{account_id=AccountId}=Context) ->
-    try wh_transactions:fetch_since(AccountId, Date) of
+-spec filter/3 :: (integer(), integer(), cb_context:context()) -> cb_context:context().
+-spec filter/4 :: (integer(), integer(), #cb_context{}, ne_binary())  -> #cb_context{}.
+filter(From, To, #cb_context{account_id=AccountId}=Context) ->
+    try wh_transactions:fetch_since(AccountId, From, To) of
         Transactions ->
             send_resp({ok, Transactions}, Context)
     catch
         _:_ ->
             send_resp({error, Context}, Context)
     end.
-filter(Date, #cb_context{account_id=AccountId}=Context, Reason) ->
-    try wh_transactions:fetch_since(AccountId, Date) of
+filter(From, To, #cb_context{account_id=AccountId}=Context, Reason) ->
+    try wh_transactions:fetch_since(AccountId, From, To) of
         Transactions ->
             Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
             send_resp({ok, Filtered}, Context)
@@ -169,7 +164,7 @@ filter(Date, #cb_context{account_id=AccountId}=Context, Reason) ->
 send_resp(Resp, Context) ->
     case Resp of 
         {ok, Transactions} ->
-            JObj = wh_transactions:to_public_json(Transactions),            
+            JObj = wh_transactions:to_public_json(Transactions),
             Context#cb_context{resp_status=success
                                ,resp_data=wht_util:collapse_call_transactions(JObj)
                               };
@@ -184,26 +179,29 @@ send_resp(Resp, Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec validate_date/1 :: (any()) -> {true, integer()} | {false, 0} | {false, ne_binary()}.
-validate_date(undefined) ->
-    {false, undefined};
-validate_date(Date) when is_integer(Date) ->
-    Now = wh_util:current_tstamp(),
+-spec validate_date/2 :: (any(), any()) -> {true, integer(), integer()} | {false, ne_binary()}.
+validate_date(0, 0) ->
+    validate_date(wh_util:current_tstamp()-?FETCH_DEFAULT, wh_util:current_tstamp());
+validate_date(0, To) ->
+    validate_date(To-?FETCH_DEFAULT, To);
+validate_date(From, 0) ->
+    validate_date(From, From+?FETCH_DEFAULT);
+validate_date(From, To) when is_integer(From) andalso is_integer(To) ->
     Max = ?FETCH_MAX,
-    Diff = Now - Date,
+    Diff = To - From,
     case {Diff < 0, Diff > Max} of
         {true, _} ->
-            {false, <<"created_from is gretter than current timestamp">>};
+            {false, <<"created_from is gretter than created_to">>};
         {_, true} ->                    
-            {false, <<"Max range is a year from now">>};
+            {false, <<"Max range is a year">>};
         {false, false} ->
-            {true, Date}
+            {true, From, To}
     end;
-validate_date(Date) ->
-    try wh_util:to_integer(Date) of
-        Date1 ->
-            validate_date(Date1)
+validate_date(From, To) ->
+    try {wh_util:to_integer(From), wh_util:to_integer(To)} of
+        {From1, To1} ->
+            validate_date(From1, To1)
     catch
         _:_ ->            
-            {false, <<"created_from filter is not a timestamp">>}
+            {false, <<"created_from or created_to filter is not a timestamp">>}
     end.
