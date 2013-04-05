@@ -12,18 +12,18 @@
 -export([run_sequence_steps/2]).
 -export([prepare_tools/2]).
 
--include_lib("lineman/src/lineman.hrl").
+-include("lineman.hrl").
 
 -define(SERVER, ?MODULE).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec start_link/2 :: (xml(), lineman_workorder:workorder()) -> pid().
+-spec start_link/2 :: (xml_el(), lineman_workorder:workorder()) -> pid().
 start_link(Sequence, Workorder) ->
     spawn_link(?MODULE, run_sequence_steps, [Sequence, Workorder]).
 
--spec run_sequence_steps/2 :: (xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
+-spec run_sequence_steps/2 :: (xml_el(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
 run_sequence_steps(Sequence, Workorder) ->
     
     Steps = [fun(W) -> prepare_tools(Sequence, W) end
@@ -31,7 +31,7 @@ run_sequence_steps(Sequence, Workorder) ->
             ],
     lists:foldl(fun(F, W) -> F(W) end, Workorder, Steps).
 
--spec prepare_tools/2 :: (xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
+-spec prepare_tools/2 :: (xml_el(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
 prepare_tools(#xmlElement{content=Content}, Workorder) ->
     lists:foldl(fun(#xmlElement{}=Xml, W) ->
                         {xmlObj, string, Tool} = xmerl_xpath:string("name()", Xml),
@@ -39,7 +39,7 @@ prepare_tools(#xmlElement{content=Content}, Workorder) ->
                    (_, W) -> W
                 end, Workorder, Content).
 
--spec execute_tools/2 :: (xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
+-spec execute_tools/2 :: (xml_el(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
 execute_tools(#xmlElement{content=Content}, Workorder) ->
     lists:foldl(fun(#xmlElement{}=Xml, W) ->
                         {xmlObj, string, Tool} = xmerl_xpath:string("name()", Xml),

@@ -44,8 +44,12 @@
          ,code_change/3
         ]).
 
+-ifdef(TEST).
 -include_lib("proper/include/proper.hrl").
--include_lib("lineman/src/lineman.hrl").
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
+-include("lineman.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -464,7 +468,6 @@ execute_binding({Mod, Fun}, Payload) when is_atom(Mod) ->
 
 %% EUNIT and PropEr TESTING %%
 
--include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 
 -define(ROUTINGS, [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>, <<"foo">>, <<"xap">>]).

@@ -26,7 +26,7 @@
 -export([completed_sequences/1]).
 -export([failed_sequences/1]).
 
--include_lib("lineman/src/lineman.hrl").
+-include("lineman.hrl").
 
 -record(workorder, {workorder
                     ,file
@@ -53,7 +53,7 @@
 empty() ->
     #workorder{}.
 
--spec read/1 :: (string()) -> {'ok', xml()} | {'error', atom()}.
+-spec read/1 :: (string()) -> {'ok', xml_el() | xml_els()} | {'error', atom()}.
 read(File) ->
     try xmerl_scan:file(File) of
         {error, _}=E -> E;
@@ -68,7 +68,7 @@ read(File) ->
 name(#workorder{name=Name}) ->
     Name.
 
--spec toolbag/1 :: (workorder()) -> xml().
+-spec toolbag/1 :: (workorder()) -> xml_el() | xml_els().
 toolbag(#workorder{toolbag=Toolbag}) ->
     Toolbag.
 
@@ -76,7 +76,7 @@ toolbag(#workorder{toolbag=Toolbag}) ->
 start(#workorder{start=Start}) ->
     Start.
 
--spec sequences/1 :: (workorder()) -> xml().
+-spec sequences/1 :: (workorder()) -> xml_el() | xml_els().
 sequences(#workorder{sequences=Sequences}) ->
     Sequences.
 
@@ -126,7 +126,7 @@ completed_sequences(#workorder{completed_sequences=Completed}) ->
 failed_sequences(#workorder{failed_sequences=Failed}) ->
     Failed.
 
--spec populate_workorder/2 :: (workorder(), xml()) -> workorder().
+-spec populate_workorder/2 :: (workorder(), xml_el() | xml_els()) -> workorder().
 populate_workorder(#workorder{file=File}=Workorder, Xml) ->
     Workorder#workorder{workorder=Xml
                         ,name = lineman_util:xml_binary_value("/workorder/parameters/name", Xml, File)
