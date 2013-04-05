@@ -16,6 +16,10 @@
 
 -include("src/crossbar.hrl").
 
+%%-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+%%-endif.
+
 %% 1 month
 -define(FETCH_DEFAULT, 60*60*24*30).
 %% 1 year
@@ -205,3 +209,20 @@ validate_date(From, To) ->
         _:_ ->            
             {'false', <<"created_from or created_to filter is not a timestamp">>}
     end.
+
+-ifdef(TEST).
+
+validate_date_test() ->
+    Tstamp = wh_util:current_tstamp(),
+    MaxFrom = Tstamp - ?FETCH_DEFAULT,
+    MaxTo = Tstamp + ?FETCH_DEFAULT,
+    ?assertMatch({'true', _, _}, validate_date(0, 0)),
+    ?assertMatch({'true', MaxFrom, Tstamp}, validate_date(0, Tstamp)),
+    ?assertMatch({'true', Tstamp, MaxTo}, validate_date(Tstamp, 0)),
+    T1 = Tstamp + 10,
+    ?assertMatch({'true', Tstamp, T1}, validate_date(Tstamp, T1)),
+    ?assertMatch({'false', _}, validate_date(T1, Tstamp)),
+    T2 = Tstamp + ?FETCH_MAX + 1,
+    ?assertMatch({'false', _}, validate_date(Tstamp, T2)).
+
+-endif.
