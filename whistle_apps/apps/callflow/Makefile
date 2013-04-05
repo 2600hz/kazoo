@@ -22,24 +22,25 @@ ERLC_OPTS = +debug_info +warn_export_all \
 all: compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+CF_MODULES = $(shell ls src/module/*.erl | sed 's/src\/module\///;s/\.erl/,/' | sed '$$s/.$$//')
 
 compile: ebin/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CF_MODULES)\]}/' \
 		> ebin/$(PROJECT).app
 	-@$(MAKE) ebin/$(PROJECT).app
 
-ebin/$(PROJECT).app: src/*.erl
+ebin/$(PROJECT).app: src/*.erl src/module/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CF_MODULES)\]}/' \
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
-test/$(PROJECT).app: src/*.erl
+test/$(PROJECT).app: src/*.erl src/module/*.erl
 	@mkdir -p test/
 	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
 
@@ -51,7 +52,7 @@ clean:
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
+	erl -noshell -pa test -eval "eunit:test([$(MODULES),$(CF_MODULES)], [verbose])" -s init stop
 
 dialyze:
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
