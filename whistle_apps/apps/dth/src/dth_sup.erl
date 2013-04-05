@@ -10,7 +10,7 @@
 -behaviour(supervisor).
 
 -include_lib("whistle/include/wh_types.hrl").
--include_lib("dth/src/dth.hrl").
+-include("dth.hrl").
 
 -export([start_link/0]).
 -export([init/1]).
