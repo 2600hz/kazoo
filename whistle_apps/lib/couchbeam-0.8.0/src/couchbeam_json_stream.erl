@@ -11,7 +11,6 @@
 % the License.
 
 -module(couchbeam_json_stream).
--compile([{parse_transform, switchblade_transform}]).
 
 -export([events/2, to_ejson/1, collect_object/2]).
 
