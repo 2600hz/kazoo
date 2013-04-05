@@ -1,30 +1,27 @@
-ROOT = ../..
-REBAR = $(ROOT)/bin/rebar
-
 .PHONY: rel stagedevrel deps test
 
-all: compile
+all: deps compile
 
 compile:
-	$(REBAR) compile
+	./rebar compile
 
 deps:
-	$(REBAR) get-deps
+	./rebar get-deps
 
 clean:
-	$(REBAR) clean
+	./rebar clean
 
 distclean: clean
-	$(REBAR) delete-deps
+	./rebar delete-deps
 
 test:
-	$(REBAR) eunit
+	./rebar eunit
 
 ##
 ## Doc targets
 ##
 docs:
-	$(REBAR) doc
+	./rebar doc
 
 APPS = kernel stdlib sasl erts ssl tools os_mon runtime_tools crypto inets \
 	xmerl webtool snmp public_key mnesia eunit syntax_tools compiler

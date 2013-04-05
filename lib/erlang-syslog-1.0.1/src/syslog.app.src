@@ -1,8 +1,8 @@
 {application, syslog,
  [
   {description, "Syslog for erlang"},
-  {vsn, "0.0.1"},
-  {registered, []},
+  {vsn, "1.0.1"},
+  {registered, [syslog_sup, syslog]},
   {applications, [
                   kernel,
                   stdlib

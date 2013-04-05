@@ -1,4 +1,6 @@
 * Overview
+  [[http://travis-ci.org/basho/lager_syslog][Travis-CI]] :: [[https://secure.travis-ci.org/basho/lager_syslog.png]]
+
   This is a syslog backend for [[https://github.com/basho/lager][Lager]]. It
   allows you to send messages out of lager and into the local syslog daemon.
 
@@ -22,6 +24,16 @@
 #+BEGIN_EXAMPLE
   {lager_syslog_backend, ["riak", local7, info]}
 #+END_EXAMPLE
+
+  If you want to log to multiple facilities at once, you can do something like
+  the following:
+
+#+BEGIN_EXAMPLE
+  {{lager_syslog_backend, "daemon facility"}, ["riak1", daemon, info]},
+  {{lager_syslog_backend, ftp}, ["riak2", ftp, notice]},
+#+END_EXAMPLE
+
+  You MUST give each instance of the file backend its own identifier.
 
   Refer to Lager's documentation for futher information on configuring handlers.
 
