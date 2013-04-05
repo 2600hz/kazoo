@@ -26,8 +26,7 @@ compile: ebin/$(PROJECT).app
 
 ebin/$(PROJECT).app: src/*.erl src/api/*.erl
 	@mkdir -p ebin/
-	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ -pa $(ROOT)/lib \
-		src/switchblade_transform.erl $?
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ -pa $(ROOT)/lib $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
@@ -41,7 +40,7 @@ test/$(PROJECT).app: src/*.erl src/api/*.erl
 
 clean:
 	rm -f ebin/*
-	rm -f test/*.beam
+	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
 test: clean compile-test eunit
