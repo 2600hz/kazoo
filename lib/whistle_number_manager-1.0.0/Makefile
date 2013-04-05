@@ -1,38 +1,59 @@
+PROJECT = whistle_number_manager
+
 ROOT = ../..
 DIALYZER = dialyzer
-REBAR = $(ROOT)/bin/rebar
+
+LIB_EBINS = $(shell find $(ROOT)/lib -maxdepth 2 -name ebin -print)
 
 DIRS =  . \
-		$(ROOT)/lib/whistle_amqp-1.0.0 \
-		$(ROOT)/lib/whistle-1.0.0 \
-		$(ROOT)/whistle_apps/lib/whistle_couch-1.0.0
+	$(ROOT)/lib/whistle-1.0.0 \
+	$(ROOT)/lib/whistle_amqp-1.0.0 \
+	$(ROOT)/whistle_apps/lib/whistle_couch-1.0.0 \
+	$(ROOT)/whistle_apps
 
-all: app
+ERLC_OPTS = +debug_info +warn_export_all \
+	$(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN)) \
+	-I $(ROOT)/lib # +bin_opt_info 
 
-app:
-	@$(REBAR) compile
+.PHONY: all compile clean
 
-deps:
-	@$(REBAR) get-deps
+all: compile
+
+MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+CS_MODULES = $(shell ls src/carriers/*.erl | sed 's/src\/carriers\///;s/\.erl/,/' | sed '$$s/.$$//')
+PSMODULES = $(shell ls src/providers/*.erl | sed 's/src\/providers\///;s/\.erl/,/' | sed '$$s/.$$//')
+
+compile: ebin/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CS_MODULES),$(PSMODULES)\]}/' \
+		> ebin/$(PROJECT).app
+	-@$(MAKE) ebin/$(PROJECT).app
+
+ebin/$(PROJECT).app: src/*.erl src/carriers/*.erl src/providers/*.erl
+	@mkdir -p ebin/
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
+
+compile-test: test/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CS_MODULES),$(PSMODULES)\]}/' \
+		> test/$(PROJECT).app
+	-@$(MAKE) test/$(PROJECT).app
+
+test/$(PROJECT).app: src/*.erl src/carriers/*.erl src/providers/*.erl
+	@mkdir -p test/
+	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
 
 clean:
-	@$(REBAR) clean
-	rm -f test/*.beam
+	rm -f ebin/*
+	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
-test: clean app eunit
+test: clean compile-test eunit
 
-eunit:
-	@$(REBAR) eunit skip_deps=true
+eunit: compile-test
+	erl -noshell -pa test -eval "eunit:test([$(MODULES),$(CS_MODULES),$(PSMODULES)], [verbose])" -s init stop
 
-build-plt:
-	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
-		--apps kernel stdlib sasl inets crypto public_key ssl
-
-dialyze: 
+dialyze:
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
-                --plt $(ROOT)/.platform_dialyzer.plt --no_native \
+		--plt $(ROOT)/.platform_dialyzer.plt --no_native \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
-
-docs:
-	@$(REBAR) doc skip_deps=true
