@@ -19,7 +19,7 @@
 -export([number/1]).
 -export([feature/1]).
 -export([bookkeeper_info/1]).
--export([meta_data/1]).
+-export([metadata/1]).
 -export([reason/1]).
 -export([code/1]).
 -export([amount/1]).
@@ -35,7 +35,7 @@
 -export([set_number/2]).
 -export([set_feature/2]).
 -export([set_bookkeeper_info/2]).
--export([set_meta_data/2]).
+-export([set_metadata/2]).
 -export([set_description/2]).
 -export([set_call_id/2]).
 -export([set_sub_account_id/2]).
@@ -55,7 +55,7 @@
                          ,number :: api_binary()
                          ,feature :: api_binary()
                          ,bookkeeper_info :: 'undefined' | wh_json:object()
-                         ,meta_data :: 'undefined' | wh_json:object()                                    
+                         ,metadata :: 'undefined' | wh_json:object()                                    
                          ,pvt_reason :: ne_binary()
                          ,pvt_code :: non_neg_integer()
                          ,pvt_amount :: non_neg_integer()
@@ -148,7 +148,7 @@ bookkeeper_info(#wh_transaction{bookkeeper_info=BookkeeperInfo}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-meta_data(#wh_transaction{meta_data=MetaData}) ->
+metadata(#wh_transaction{metadata=MetaData}) ->
     MetaData.
 
 %%--------------------------------------------------------------------
@@ -301,8 +301,8 @@ set_bookkeeper_info(BookkeeperInfo, #wh_transaction{}=Transaction) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-set_meta_data(MetaData, #wh_transaction{}=Transaction) ->
-    Transaction#wh_transaction{meta_data=MetaData}.
+set_metadata(MetaData, #wh_transaction{}=Transaction) ->
+    Transaction#wh_transaction{metadata=MetaData}.
 
 
 %%--------------------------------------------------------------------
@@ -366,7 +366,7 @@ to_json(#wh_transaction{}=T) ->
              ,{<<"number">>, T#wh_transaction.number}
              ,{<<"feature">>, T#wh_transaction.feature}
              ,{<<"bookkeeper_info">>, T#wh_transaction.bookkeeper_info}
-             ,{<<"meta_data">>, T#wh_transaction.meta_data}
+             ,{<<"metadata">>, T#wh_transaction.metadata}
              ,{<<"pvt_reason">>, T#wh_transaction.pvt_reason}
              ,{<<"pvt_code">>, T#wh_transaction.pvt_code}
              ,{<<"pvt_amount">>, T#wh_transaction.pvt_amount}
@@ -446,7 +446,7 @@ from_json(JObj) ->
                     ,number = wh_json:get_ne_value(<<"number">>, JObj)
                     ,feature = wh_json:get_ne_value(<<"feature">>, JObj)
                     ,bookkeeper_info = wh_json:get_ne_value(<<"bookkeeper_info">>, JObj)
-                    ,meta_data = wh_json:get_ne_value(<<"meta_data">>, JObj)
+                    ,metadata = wh_json:get_ne_value(<<"metadata">>, JObj)
                     ,pvt_reason = wh_json:get_ne_value(<<"pvt_reason">>, JObj)
                     ,pvt_code = wh_json:get_integer_value(<<"pvt_code">>, JObj, 0)
                     ,pvt_amount = wh_json:get_integer_value(<<"pvt_amount">>, JObj, 0)

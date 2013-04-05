@@ -109,7 +109,7 @@ create_debit_transaction(Event, Units, LedgerId, JObj) ->
                 ,fun(T) ->
                          case Event of
                              <<"end">> ->
-                                 wh_transaction:set_meta_data(set_meta_data(JObj), T);
+                                 wh_transaction:set_metadata(set_metadata(JObj), T);
                              _ ->
                                  T
                          end
@@ -138,7 +138,7 @@ create_credit_transaction(Event, Units, LedgerId, JObj) ->
                 ,fun(T) ->
                          case Event of
                              <<"end">> ->
-                                 wh_transaction:set_meta_data(set_meta_data(JObj), T);
+                                 wh_transaction:set_metadata(set_metadata(JObj), T);
                              _ ->
                                  T
                          end
@@ -147,7 +147,7 @@ create_credit_transaction(Event, Units, LedgerId, JObj) ->
     T = lists:foldl(fun(F, T) -> F(T) end, wh_transaction:credit(LedgerId, Units), Routines),
     wh_transaction:save(T).
 
-set_meta_data(JObj) ->
+set_metadata(JObj) ->
     wh_json:set_values([{<<"direction">>, wh_json:get_value(<<"Call-Direction">>, JObj, 'undefined')}
                         ,{<<"duration">>, wh_json:get_value(<<"Billing-Seconds">>, JObj, 'undefined')}
                         ,{<<"account_id">>, wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj, 'undefined')}
