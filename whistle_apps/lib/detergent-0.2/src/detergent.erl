@@ -30,7 +30,7 @@
 -export([qtest/0]).
 
 
--include_lib("detergent.hrl").
+-include_lib("detergent/include/detergent.hrl").
 
 -define(HTTP_REQ_TIMEOUT, 20000).
 

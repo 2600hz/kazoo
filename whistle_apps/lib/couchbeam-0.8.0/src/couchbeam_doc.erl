@@ -5,7 +5,7 @@
 
 -module(couchbeam_doc).
 -author('Benoît Chesneau <benoitc@e-engura.org>').
--include("couchbeam.hrl").
+-include_lib("couchbeam/include/couchbeam.hrl").
 
 -export([set_value/3, get_value/2, get_value/3,
          delete_value/2, extend/2, extend/3]).

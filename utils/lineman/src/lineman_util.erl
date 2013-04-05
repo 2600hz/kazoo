@@ -25,7 +25,7 @@
 -export([xml_integer_value/2, xml_integer_value/3]).
 -export([xml_boolean_value/2, xml_boolean_value/3]).
 
--include_lib("lineman/src/lineman.hrl").
+-include("lineman.hrl").
 
 -type xml_return_types() :: 'undefined' | 'binary' | 'string' | 'atom' | 'integer' | 'boolean'.
 
@@ -132,15 +132,15 @@ try_get_cookie_from_vmargs(File) ->
 %% the xml file easier to read.
 %% @end
 %%--------------------------------------------------------------------
--spec xml_content/1 :: (xml()) -> binary() | proplist().
+-spec xml_content/1 :: (xml_el() | xml_els()) -> binary() | wh_proplist().
 xml_content(Content) ->
     xml_content(Content, true).
 
--spec xml_content/2 :: (xml(), boolean()) -> binary() | proplist().
+-spec xml_content/2 :: (xml_el() | xml_els(), boolean()) -> binary() | wh_proplist().
 xml_content(Content, Clean) ->
     xml_content(Content, Clean, <<>>).
 
--spec xml_content/3 :: (xml(), boolean(), binary() | list()) -> binary() | proplist().
+-spec xml_content/3 :: (xml_el() | xml_els(), boolean(), binary() | list()) -> binary() | wh_proplist().
 xml_content(#xmlElement{content=Content}, Clean, Acc) ->
     xml_content(Content, Clean, Acc);
 xml_content([#xmlElement{content=Content}], Clean, Acc) ->
@@ -176,47 +176,47 @@ xml_content([], _, Acc) ->
 %% multiples are found.
 %% @end
 %%--------------------------------------------------------------------
--spec xml_attribute/2 :: (string(), xml()) -> binary() | 'undefined'.
+-spec xml_attribute/2 :: (string(), xml_el() | xml_els()) -> binary() | 'undefined'.
 xml_attribute(Attribute, Xml) ->
     xml_attribute(Attribute, Xml, undefined, binary).
 
--spec xml_string_attribute/2 :: (string(), xml()) -> string() | 'undefined'.
+-spec xml_string_attribute/2 :: (string(), xml_el() | xml_els()) -> string() | 'undefined'.
 xml_string_attribute(Attribute, Xml) ->
     xml_attribute(Attribute, Xml, undefined, string).
 
--spec xml_atom_attribute/2 :: (string(), xml()) -> atom() | 'undefined'.
+-spec xml_atom_attribute/2 :: (string(), xml_el() | xml_els()) -> atom() | 'undefined'.
 xml_atom_attribute(Attribute, Xml) ->
     xml_attribute(Attribute, Xml, undefined, atom).
 
--spec xml_integer_attribute/2 :: (string(), xml()) -> integer() | 'undefined'.
+-spec xml_integer_attribute/2 :: (string(), xml_el() | xml_els()) -> integer() | 'undefined'.
 xml_integer_attribute(Attribute, Xml) ->
     xml_attribute(Attribute, Xml, undefined, integer).
 
--spec xml_boolean_attribute/2 :: (string(), xml()) -> boolean() | 'undefined'.
+-spec xml_boolean_attribute/2 :: (string(), xml_el() | xml_els()) -> boolean() | 'undefined'.
 xml_boolean_attribute(Attribute, Xml) ->
     xml_attribute(Attribute, Xml, undefined, boolean).
 
--spec xml_attribute/3 :: (string(), xml(), Default) -> binary() | Default.
+-spec xml_attribute/3 :: (string(), xml_el() | xml_els(), Default) -> binary() | Default.
 xml_attribute(Attribute, Xml, Default) ->
     xml_attribute(Attribute, Xml, Default, binary).
 
--spec xml_string_attribute/3 :: (string(), xml(), Default) -> string() | Default.
+-spec xml_string_attribute/3 :: (string(), xml_el() | xml_els(), Default) -> string() | Default.
 xml_string_attribute(Attribute, Xml, Default) ->
     xml_attribute(Attribute, Xml, Default, string).
 
--spec xml_atom_attribute/3 :: (string(), xml(), Default) -> atom() | Default.
+-spec xml_atom_attribute/3 :: (string(), xml_el() | xml_els(), Default) -> atom() | Default.
 xml_atom_attribute(Attribute, Xml, Default) ->
     xml_attribute(Attribute, Xml, Default, atom).
 
--spec xml_integer_attribute/3 :: (string(), xml(), Default) -> integer() | Default.
+-spec xml_integer_attribute/3 :: (string(), xml_el() | xml_els(), Default) -> integer() | Default.
 xml_integer_attribute(Attribute, Xml, Default) ->
     xml_attribute(Attribute, Xml, Default, integer).
 
--spec xml_boolean_attribute/3 :: (string(), xml(), Default) -> boolean() | Default.
+-spec xml_boolean_attribute/3 :: (string(), xml_el() | xml_els(), Default) -> boolean() | Default.
 xml_boolean_attribute(Attribute, Xml, Default) ->
     xml_attribute(Attribute, Xml, Default, boolean).
 
--spec xml_attribute/4 :: (string(), xml(), term(), xml_return_types()) -> term().
+-spec xml_attribute/4 :: (string(), xml_el() | xml_els(), term(), xml_return_types()) -> term().
 xml_attribute(Attribute, Xml, Default, Type) ->
     case get_xml_attribute(Attribute, Xml) of
         undefined -> Default;
@@ -233,7 +233,7 @@ xml_attribute(Attribute, Xml, Default, Type) ->
         Value -> Value
     end.
 
--spec get_xml_attribute/2 :: (string(), xml()) -> 'undefined' | ne_binary().
+-spec get_xml_attribute/2 :: (string(), xml_el() | xml_els()) -> 'undefined' | ne_binary().
 get_xml_attribute(Attribute, Xml) ->
     case xmerl_xpath:string("@" ++ Attribute, Xml) of
         [#xmlAttribute{value=""}] -> undefined;
@@ -249,55 +249,55 @@ get_xml_attribute(Attribute, Xml) ->
 %% to read but still maintains newlines that are intentional
 %% @end
 %%-------------------------------------------------------------------
--spec xml_value/2 :: (string(), xml()) -> term().
+-spec xml_value/2 :: (string(), xml_el() | xml_els()) -> term().
 xml_value(Path, Xml) ->
     xml_value(Path, Xml, undefined, undefined).    
 
--spec xml_binary_value/2 :: (string(), xml()) -> binary() | 'undefined'.
+-spec xml_binary_value/2 :: (string(), xml_el() | xml_els()) -> binary() | 'undefined'.
 xml_binary_value(Path, Xml) ->
     xml_value(Path, Xml, undefined, binary).  
 
--spec xml_string_value/2 :: (string(), xml()) -> string() | 'undefined'.
+-spec xml_string_value/2 :: (string(), xml_el() | xml_els()) -> string() | 'undefined'.
 xml_string_value(Path, Xml) ->
     xml_value(Path, Xml, undefined, string).
 
--spec xml_atom_value/2 :: (string(), xml()) -> atom() | 'undefined'.
+-spec xml_atom_value/2 :: (string(), xml_el() | xml_els()) -> atom() | 'undefined'.
 xml_atom_value(Path, Xml) ->
     xml_value(Path, Xml, undefined, atom).
 
--spec xml_integer_value/2 :: (string(), xml()) -> integer() | 'undefined'.
+-spec xml_integer_value/2 :: (string(), xml_el() | xml_els()) -> integer() | 'undefined'.
 xml_integer_value(Path, Xml) ->
     xml_value(Path, Xml, undefined, integer).
 
--spec xml_boolean_value/2 :: (string(), xml()) -> boolean() | 'undefined'.
+-spec xml_boolean_value/2 :: (string(), xml_el() | xml_els()) -> boolean() | 'undefined'.
 xml_boolean_value(Path, Xml) ->
     xml_value(Path, Xml, undefined, boolean).
 
--spec xml_value/3 :: (string(), xml(), term()) -> term().
+-spec xml_value/3 :: (string(), xml_el() | xml_els(), term()) -> term().
 xml_value(Path, Xml, Default) ->
     xml_value(Path, Xml, Default, undefined).    
 
--spec xml_binary_value/3 :: (string(), xml(), Default) -> binary() | Default.
+-spec xml_binary_value/3 :: (string(), xml_el() | xml_els(), Default) -> binary() | Default.
 xml_binary_value(Path, Xml, Default) ->
     xml_value(Path, Xml, Default, binary).    
 
--spec xml_string_value/3 :: (string(), xml(), Default) -> string() | Default.
+-spec xml_string_value/3 :: (string(), xml_el() | xml_els(), Default) -> string() | Default.
 xml_string_value(Path, Xml, Default) ->
     xml_value(Path, Xml, Default, string).
 
--spec xml_atom_value/3 :: (string(), xml(), Default) -> atom() | Default.
+-spec xml_atom_value/3 :: (string(), xml_el() | xml_els(), Default) -> atom() | Default.
 xml_atom_value(Path, Xml, Default) ->
     xml_value(Path, Xml, Default, atom).
 
--spec xml_integer_value/3 :: (string(), xml(), Default) -> integer() | Default.
+-spec xml_integer_value/3 :: (string(), xml_el() | xml_els(), Default) -> integer() | Default.
 xml_integer_value(Path, Xml, Default) ->
     xml_value(Path, Xml, Default, integer).
 
--spec xml_boolean_value/3 :: (string(), xml(), Default) -> boolean() | Default.
+-spec xml_boolean_value/3 :: (string(), xml_el() | xml_els(), Default) -> boolean() | Default.
 xml_boolean_value(Path, Xml, Default) ->
     xml_value(Path, Xml, Default, boolean).
 
--spec xml_value/4 :: (string(), xml(), Default, xml_return_types()) -> binary() | Default.
+-spec xml_value/4 :: (string(), xml_el() | xml_els(), Default, xml_return_types()) -> binary() | Default.
 xml_value(Path, Xml, Default, Type) ->
     case xml_content(xmerl_xpath:string(Path, Xml)) of
         <<>> -> Default;

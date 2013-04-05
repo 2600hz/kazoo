@@ -6,7 +6,7 @@
 -module(couchbeam).
 -author('Benoît Chesneau <benoitc@e-engura.org>').
 
--include("couchbeam.hrl").
+-include_lib("couchbeam/include/couchbeam.hrl").
 
 -define(TIMEOUT, infinity).
 

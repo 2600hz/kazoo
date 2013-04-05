@@ -9,7 +9,7 @@
 
 -behaviour(supervisor).
 
--include_lib("lineman/src/lineman.hrl").
+-include("lineman.hrl").
 
 -export([start_link/0]).
 -export([reset_all/0]).
@@ -42,17 +42,17 @@ reset_all() ->
     [P ! reset || {_, P, _, _} <- supervisor:which_children(?MODULE)],
     ok.
 
--spec set_parameter/3 :: (text(), string(), xml()) -> term().
+-spec set_parameter/3 :: (text(), string(), xml_el()) -> term().
 set_parameter(Tool, Name, Xml) ->
     {ok, Mod} = maybe_get_tool(Tool),
     Mod:set_parameter(Name, Xml).
 
--spec prepare/3 :: (text(), xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
+-spec prepare/3 :: (text(), xml_el(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
 prepare(Tool, Xml, Workorder) ->
     {ok, Mod} = maybe_get_tool(Tool),
     Mod:prepare(Xml, Workorder).
 
--spec execute/3 :: (text(), xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
+-spec execute/3 :: (text(), xml_el(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
 execute(Tool, Xml, Workorder) ->
     {ok, Mod} = maybe_get_tool(Tool),
     Mod:execute(Xml, Workorder).

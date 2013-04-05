@@ -21,7 +21,7 @@
          ,code_change/3
         ]).
 
--include_lib("lineman/src/lineman.hrl").
+-include("lineman.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -219,7 +219,7 @@ start_sequences(Rate, Workorder) ->
     Pid = lineman_sequence:start_link(Sequence, Workorder),
     start_sequences(Rate - 1, lineman_workorder:add_running_sequence(Pid, NewSequences, Workorder)).
 
--spec next_sequence/2 :: (ne_binary(), list()) -> {'ok', xml(), list()}.
+-spec next_sequence/2 :: (ne_binary(), list()) -> {'ok', xml_el() | xml_els(), list()}.
 next_sequence(_, []) ->
     throw(<<"no sequences found">>);
 next_sequence(<<"random">>, Sequences) ->

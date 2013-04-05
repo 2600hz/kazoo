@@ -40,7 +40,7 @@ test/$(PROJECT).app: src/*.erl
 
 clean:
 	rm -f ebin/*
-	rm -f test/*.beam
+	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
 

@@ -1,44 +1,59 @@
+PROJECT = couchbeam
+
 ROOT = ../../..
-REBAR = $(ROOT)/bin/rebar
+DIALYZER = dialyzer
 
-ERL          ?= erl
-ERLC		     ?= erlc
-APP          := couchbeam
+LIB_EBINS = $(shell find $(ROOT)/lib -maxdepth 2 -name ebin -print)
+WHAPPS_LIB_EBINS = $(shell find $(ROOT)/whistle_apps/lib -maxdepth 2 -name ebin -print)
 
-.PHONY: deps doc
+DIRS =  . \
+	$(ROOT)/lib/whistle-1.0.0 \
+	$(ROOT)/lib/whistle_amqp-1.0.0 \
+	$(ROOT)/whistle_apps/lib/whistle_couch-1.0.0 \
+	$(ROOT)/whistle_apps
+
+ERLC_OPTS = +debug_info +warn_export_all \
+	$(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN)) \
+	$(foreach WHAPPS_LIB_EBIN,$(WHAPPS_LIB_EBINS),-pa $(WHAPPS_LIB_EBIN)) \
+	-I $(ROOT)/lib -I $(ROOT)/whistle_apps/lib # +bin_opt_info 
+
+.PHONY: all compile clean
 
 all: compile
 
-compile:
-	@$(REBAR) compile
+MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
 
-deps:
-	@$(REBAR) get-deps
+compile: ebin/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> ebin/$(PROJECT).app
+	-@$(MAKE) ebin/$(PROJECT).app
 
-doc:
-	@rebar doc	
+ebin/$(PROJECT).app: src/*.erl
+	@mkdir -p ebin/
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
-test: all	
-	@$(ERLC) -o t/ t/etap.erl
-	prove t/*.t
+compile-test: test/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> test/$(PROJECT).app
+	-@$(MAKE) test/$(PROJECT).app
 
-verbose-test: compile	
-	@$(ERLC) -o t/ t/etap.erl
-	prove -v t/*.t 
+test/$(PROJECT).app: src/*.erl
+	@mkdir -p test/
+	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
 
-cover: all
-	COVER=1 prove t/*.t
-	@$(ERL) -detached -noshell -eval 'etap_report:create()' -s init stop
+clean:
+	rm -f ebin/*
+	rm -f test/*.beam test/$(PROJECT).app
+	rm -f erl_crash.dump
 
-clean: 
-	@$(REBAR) clean
-	@rm -f t/*.beam
-	@rm -f doc/*.html doc/*.css doc/edoc-info doc/*.png
+test: clean compile-test eunit
 
-distclean: clean
-	@$(REBAR) delete-deps
-	@rm -rf deps
+eunit: compile-test
+	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
 
-dialyzer: compile
-	@dialyzer -Wno_return -c ebin
-
+dialyze:
+	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
+		--plt $(ROOT)/.platform_dialyzer.plt --no_native \
+		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
