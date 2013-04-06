@@ -29,6 +29,7 @@
 
 %% Doc related
 -export([open_cache_doc/4
+         ,cache_db_doc/3
          ,flush_cache_doc/4
          ,flush_cache_docs/0, flush_cache_docs/1
          ,open_doc/4
@@ -70,6 +71,8 @@
 -type db_create_options() :: [{'q',integer()} | {'n',integer()},...] | [].
 -export_type([db_create_options/0, couchbeam_errors/0]).
 
+-type ddoc() :: ne_binary() | 'all_docs' | 'design_docs'.
+
 %%------------------------------------------------------------------------------
 %% @public
 %% @doc How many documents are chunked when doing a bulk save
@@ -106,12 +109,12 @@ server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 -spec server_url(server()) -> ne_binary().
 server_url(#server{host=Host, port=Port, options=Options}) ->
     UserPass = case props:get_value(basic_auth, Options) of
-                   undefined -> <<>>;
+                   'undefined' -> <<>>;
                    {U, P} -> list_to_binary([U, <<":">>, P])
                end,
     Protocol = case wh_util:is_true(props:get_value(is_ssl, Options)) of
-                   false -> <<"http">>;
-                   true -> <<"https">>
+                   'false' -> <<"http">>;
+                   'true' -> <<"https">>
                end,
 
     list_to_binary([Protocol, <<"://">>, UserPass
@@ -138,15 +141,15 @@ db_create(#server{}=Conn, DbName) ->
 -spec db_create(server(), ne_binary(), db_create_options()) -> boolean().
 db_create(#server{}=Conn, DbName, Options) ->
     case couchbeam:create_db(Conn, wh_util:to_list(DbName), [], Options) of
-        {'error', _} -> false;
-        {'ok', _} -> true
+        {'error', _} -> 'false';
+        {'ok', _} -> 'true'
     end.
 
 -spec db_delete(server(), ne_binary()) -> boolean().
 db_delete(#server{}=Conn, DbName) ->
     case couchbeam:delete_db(Conn, wh_util:to_list(DbName)) of
-        {'error', _} -> false;
-        {'ok', _} -> true
+        {'error', _} -> 'false';
+        {'ok', _} -> 'true'
     end.
 
 -spec db_replicate(server(), wh_json:object() | wh_proplist()) ->
@@ -194,34 +197,34 @@ do_db_view_cleanup(#db{}=Db) ->
 -spec design_compact(server(), ne_binary(), ne_binary()) -> boolean().
 design_compact(#server{}=Conn, DbName, Design) ->
     case couchbeam:compact(get_db(Conn, DbName), Design) of
-        {'error', _E} -> false;
-        ok -> true
+        {'error', _E} -> 'false';
+        'ok' -> 'true'
     end.
 
 -spec design_info(server(), ne_binary(), ne_binary()) ->
-                               {'ok', wh_json:object()} |
-                               couchbeam_error().
+                         {'ok', wh_json:object()} |
+                         couchbeam_error().
 design_info(#server{}=Conn, DBName, Design) ->
     Db = get_db(Conn, DBName),
     do_get_design_info(Db, Design).
 
 -spec all_design_docs(server(), ne_binary(), wh_proplist()) ->
-                                   {'ok', wh_json:objects()} |
-                                   couchbeam_error().
+                             {'ok', wh_json:objects()} |
+                             couchbeam_error().
 all_design_docs(#server{}=Conn, DBName, Options) ->
     Db = get_db(Conn, DBName),
     do_fetch_results(Db, 'design_docs', Options).
 
 -spec all_docs(server(), ne_binary(), wh_proplist()) ->
-                            {'ok', wh_json:objects()} |
-                            couchbeam_error().
+                      {'ok', wh_json:objects()} |
+                      couchbeam_error().
 all_docs(#server{}=Conn, DbName, Options) ->
     Db = get_db(Conn, DbName),
     do_fetch_results(Db, 'all_docs', Options).
 
 -spec get_results(server(), ne_binary(), ne_binary(), wh_proplist()) ->
-                               {'ok', wh_json:objects() | ne_binaries()} |
-                               couchbeam_error().
+                         {'ok', wh_json:objects() | ne_binaries()} |
+                         couchbeam_error().
 get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = get_db(Conn, DbName),
     do_fetch_results(Db, DesignDoc, ViewOptions).
@@ -231,17 +234,16 @@ get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 %% list; that would be better, but for not, setting the view's "reduce" to the _count
 %% function will suffice (provided a reduce isn't already defined).
 -spec get_results_count(server(), ne_binary(), ne_binary(), wh_proplist()) ->
-                                     {'ok', integer()} |
-                                     couchbeam_error().
+                               {'ok', integer()} |
+                               couchbeam_error().
 get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = get_db(Conn, DbName),
     do_fetch_results_count(Db, DesignDoc, ViewOptions).
 
 %% Design Doc/View internal functions
-
--spec do_fetch_results(couchbeam_db(), ne_binary() | 'all_docs' | 'design_docs', wh_proplist()) ->
-                                    {'ok', wh_json:objects() | ne_binaries()} |
-                                    couchbeam_error().
+-spec do_fetch_results(couchbeam_db(), ddoc(), wh_proplist()) ->
+                              {'ok', wh_json:objects() | ne_binaries()} |
+                              couchbeam_error().
 do_fetch_results(Db, DesignDoc, Options) ->
     ?RETRY_504(
        case couchbeam_view:fetch(Db, DesignDoc, Options) of
@@ -257,7 +259,7 @@ format_error(E) ->
     lager:debug("unformatted error: ~p", [E]),
     E.
 
--spec do_fetch_results_count(couchbeam_db(), ne_binary() | 'all_docs' | 'design_docs', wh_proplist()) ->
+-spec do_fetch_results_count(couchbeam_db(), ddoc(), wh_proplist()) ->
                                     {'ok', integer() | 'undefined'} |
                                     couchbeam_error().
 do_fetch_results_count(Db, DesignDoc, Options) ->
@@ -293,16 +295,20 @@ do_get_design_info(#db{}=Db, Design) ->
                                   couchbeam_error().
 open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
     case wh_cache:peek_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}) of
-        {ok, _}=Ok -> Ok;
-        {error, not_found} ->
+        {'ok', _}=Ok -> Ok;
+        {'error', 'not_found'} ->
             case open_doc(Conn, DbName, DocId, Options) of
-                {error, _}=E -> E;
-                {ok, JObj}=Ok ->
-                    CacheProps = [{origin, {db, DbName, DocId}}],
+                {'error', _}=E -> E;
+                {'ok', JObj}=Ok ->
+                    CacheProps = [{'origin', {'db', DbName, DocId}}],
                     wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, JObj, CacheProps),
                     Ok
             end
     end.
+
+-spec cache_db_doc(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+cache_db_doc(DbName, DocId, Doc) ->
+    wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, Doc).
 
 -spec flush_cache_doc(server(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 flush_cache_doc(#server{}=Conn, DbName, DocId, _Options) ->
@@ -312,8 +318,8 @@ flush_cache_docs() -> wh_cache:flush_local(?WH_COUCH_CACHE).
 flush_cache_docs(DbName) ->
     Filter = fun({?MODULE, _, DbName1, _}=K, _) when DbName1 =:= DbName ->
                      wh_cache:erase_local(?WH_COUCH_CACHE, K),
-                     true;
-                (_, _) -> false
+                     'true';
+                (_, _) -> 'false'
              end,
     wh_cache:filter_local(?WH_COUCH_CACHE, Filter).
 
@@ -343,8 +349,8 @@ save_docs(#server{}=Conn, DbName, Docs, Options) ->
                             couchbeam_error().
 lookup_doc_rev(#server{}=Conn, DbName, DocId) ->
     case do_fetch_rev(get_db(Conn, DbName), DocId) of
-        ?NE_BINARY = Rev -> {ok, Rev};
-        {error, _}=E -> E
+        ?NE_BINARY = Rev -> {'ok', Rev};
+        {'error', _}=E -> E
     end.
 
 -spec ensure_saved(server(), ne_binary(), wh_json:object(), wh_proplist()) ->
@@ -394,7 +400,7 @@ do_delete_docs(#db{}=Db, Docs) ->
 prepare_doc_for_del(Doc) ->
     wh_json:from_list([{<<"_id">>, wh_json:get_value(<<"_id">>, Doc)}
                        ,{<<"_rev">>, wh_json:get_value(<<"_rev">>, Doc)}
-                       ,{<<"_deleted">>, true}
+                       ,{<<"_deleted">>, 'true'}
                       ]).
 
 -spec do_ensure_saved(couchbeam_db(), wh_json:object(), wh_proplist()) ->
@@ -574,8 +580,7 @@ maybe_add_rev(Db, DocId, Options) ->
     case props:get_value('rev', Options) =:= 'undefined'
         andalso do_fetch_rev(Db, DocId)
     of
-        ?NE_BINARY = Rev ->
-            [{'rev', Rev} | Options];
+        ?NE_BINARY = Rev -> [{'rev', Rev} | Options];
         _Else -> Options
     end.
 

@@ -32,10 +32,10 @@
          ,code_change/3
         ]).
 
--define(BINDINGS, [{nodes, []}
-                   ,{self, []}
+-define(BINDINGS, [{'nodes', []}
+                   ,{'self', []}
                   ]).
--define(RESPONDERS, [{{?MODULE, handle_advertise}, [{<<"nodes">>, <<"advertise">>}]}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_advertise'}, [{<<"nodes">>, <<"advertise">>}]}]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -73,11 +73,11 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link({'local', ?MODULE}, ?MODULE
-                            ,[{bindings, ?BINDINGS}
-                              ,{responders, ?RESPONDERS}
-                              ,{queue_name, ?QUEUE_NAME}
-                              ,{queue_options, ?QUEUE_OPTIONS}
-                              ,{consume_options, ?CONSUME_OPTIONS}
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}
+                              ,{'queue_options', ?QUEUE_OPTIONS}
+                              ,{'consume_options', ?CONSUME_OPTIONS}
                              ], []).
 
 -spec whapp_count(text()) -> integer().
@@ -169,7 +169,7 @@ handle_advertise(JObj, Props) ->
 init([]) ->
     Tab = ets:new(?MODULE, ['set', 'protected', 'named_table', {'keypos', #node.node}]),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
-    {ok, #state{tab=Tab}}.
+    {'ok', #state{tab=Tab}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -186,7 +186,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -200,34 +200,34 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'notify_new', Pid}, #state{notify_new=Set}=State) ->
     _ = erlang:monitor(process, Pid),
-    {noreply, State#state{notify_new=sets:add_element(Pid, Set)}};
+    {'noreply', State#state{notify_new=sets:add_element(Pid, Set)}};
 handle_cast({'notify_expire', Pid}, #state{notify_expire=Set}=State) ->
     _ = erlang:monitor(process, Pid),
-    {noreply, State#state{notify_expire=sets:add_element(Pid, Set)}};
+    {'noreply', State#state{notify_expire=sets:add_element(Pid, Set)}};
 handle_cast({'advertise', JObj}, #state{tab=Tab}=State) ->
     Node = from_json(JObj),
     _ = case ets:insert_new(Tab, Node) of
             'true' -> spawn(fun() -> notify_new(Node#node.node, State) end);
             'false' -> ets:insert(Tab, Node)
         end,
-    {noreply, State};
+    {'noreply', State};
 handle_cast({'wh_amqp_channel', {'new_channel', _}}, State) ->
     Reference = erlang:make_ref(),
     self() ! {'heartbeat', Reference},
-    {noreply, State#state{heartbeat_ref=Reference}};
+    {'noreply', State#state{heartbeat_ref=Reference}};
 handle_cast('flush', State) ->
     ets:delete_all_objects(?MODULE),
-    {noreply, State};
+    {'noreply', State};
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Handling all non call/cast messages
 %%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
+%% @spec handle_info(Info, State) -> {'noreply', State} |
+%%                                   {'noreply', State, Timeout} |
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
@@ -242,20 +242,20 @@ handle_info('expire_nodes', #state{tab=Tab}=State) ->
     _ = [ets:delete(Tab, Node) || Node <- Nodes],
     _ = spawn(fun() -> notify_expire(Nodes, State) end),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
-    {noreply, State};
+    {'noreply', State};
 handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref}=State) ->
     Node = create_node(),
     wapi_nodes:publish_advertise(advertise_payload(Node)),
     Reference = erlang:make_ref(),
     _ = erlang:send_after(?HEARTBEAT, self(), {'heartbeat', Reference}),
-    {noreply, State#state{heartbeat_ref=Reference}};
+    {'noreply', State#state{heartbeat_ref=Reference}};
 handle_info({'DOWN', Ref, 'process', Pid, _}, #state{notify_new=NewSet
                                                      ,notify_expire=ExpireSet}=State) ->
     erlang:demonitor(Ref, ['flush']),
-    {noreply, State#state{notify_new=sets:del_element(Pid, NewSet)
+    {'noreply', State#state{notify_new=sets:del_element(Pid, NewSet)
                           ,notify_expire=sets:del_element(Pid, ExpireSet)}};
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -266,7 +266,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private

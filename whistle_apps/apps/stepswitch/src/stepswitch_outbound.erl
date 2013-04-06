@@ -72,7 +72,7 @@ handle_req(<<"originate">>, JObj, Props) ->
                                            execute_ext_resp() |
                                            {'error', 'no_resources'}.
 attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
-    Result = case lookup_number(Number) of
+    Result = case lookup_number(Number, wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')) of
                  {'ok', AccountId} ->
                      lager:debug("found local extension, keeping onnet"),
                      execute_local_extension(Number, AccountId, CtrlQ, JObj);
@@ -90,13 +90,13 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
         _Else -> Result
     end.
 
--spec lookup_number(ne_binary()) ->
+-spec lookup_number(ne_binary(), boolean()) ->
                            {'ok', ne_binary()} |
                            {'error', 'not_found'}.
-lookup_number(Number) ->
+lookup_number(Number, ForceOutbound) ->
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
-            case props:get_value('force_outbound', Props) of
+            case props:get_value('force_outbound', Props) andalso ForceOutbound of
                 'true' -> {'error', 'not_found'};
                 'false' -> {'ok', AccountId}
             end;
@@ -286,6 +286,8 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
     CIDName = wh_json:get_ne_value(<<"Outbound-Caller-ID-Name">>, JObj
                                    ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj)),
 
+    OffCCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+
     CCVs = [{<<"Account-ID">>, AccountId}
             ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
             ,{<<"Inception">>, <<"off-net">>}
@@ -295,8 +297,10 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
             ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
             ,{<<"Callee-ID-Name">>, get_account_name(Number, AccountId)}
             ,{<<"Global-Resource">>, <<"false">>}
+            | wh_json:to_proplist(OffCCVs)
            ],
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
+
     Command = [{<<"Call-ID">>, get('callid')}
                ,{<<"Extension">>, Number}
                ,{<<"Reset">>, 'true'}

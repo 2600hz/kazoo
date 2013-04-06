@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(rabbit_registry).
@@ -107,7 +107,8 @@ sanity_check_module(ClassModule, Module) ->
 class_module(exchange)           -> rabbit_exchange_type;
 class_module(auth_mechanism)     -> rabbit_auth_mechanism;
 class_module(runtime_parameter)  -> rabbit_runtime_parameter;
-class_module(exchange_decorator) -> rabbit_exchange_decorator.
+class_module(exchange_decorator) -> rabbit_exchange_decorator;
+class_module(policy_validator)   -> rabbit_policy_validator.
 
 %%---------------------------------------------------------------------------
 

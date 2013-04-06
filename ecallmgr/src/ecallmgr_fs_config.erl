@@ -12,8 +12,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, start_link/2]). 
--export([handle_config_req/3]).
+-export([start_link/1, start_link/2]).
+-export([handle_config_req/3, handle_config_req/4]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -41,9 +41,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Node) ->
-    start_link(Node, []).
-
+start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
     gen_server:start_link(?MODULE, [Node, Options], []).
 
@@ -63,16 +61,16 @@ start_link(Node, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put(callid, Node),
+    put('callid', Node),
     lager:info("starting new fs config listener for ~s", [Node]),
-    case freeswitch:bind(Node, configuration) of
-        ok -> {ok, #state{node=Node, options=Options}};
-        {error, Reason} ->
+    case freeswitch:bind(Node, 'configuration') of
+        'ok' -> {'ok', #state{node=Node, options=Options}};
+        {'error', Reason} ->
             lager:critical("unable to establish config bindings: ~p", [Reason]),
-            {stop, Reason};
-        timeout ->
-            lager:critical("unable to establish config bindings: timeout", []),
-            {stop, timeout}
+            {'stop', Reason};
+        'timeout' ->
+            lager:critical("unable to establish config bindings: timeout waiting for ~s", [Node]),
+            {'stop', 'timeout'}
     end.
 
 %%--------------------------------------------------------------------
@@ -90,7 +88,7 @@ init([Node, Options]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -103,7 +101,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -115,18 +113,22 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({fetch, configuration, <<"configuration">>, <<"name">>, Conf, ID, _Data}, #state{node=Node}=State) ->
+handle_info({'fetch', 'configuration', <<"configuration">>, <<"name">>, Conf, ID, []}, #state{node=Node}=State) ->
     lager:debug("fetch configuration request from ~s: ~s", [Node, ID]),
-    spawn(?MODULE, handle_config_req, [Node, ID, Conf]),
-    {noreply, State};
+    spawn(?MODULE, 'handle_config_req', [Node, ID, Conf]),
+    {'noreply', State};
+handle_info({'fetch', 'configuration', <<"configuration">>, <<"name">>, Conf, ID, ['undefined' | Data]}, #state{node=Node}=State) ->
+    lager:debug("fetch configuration request from ~s: ~s", [Node, ID]),
+    spawn(?MODULE, 'handle_config_req', [Node, ID, Conf, Data]),
+    {'noreply', State};
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, _Data}, #state{node=Node}=State) ->
     lager:debug("unhandled fetch from section ~s for ~s:~s", [_Section, _Something, _Key]),
     {'ok', Resp} = ecallmgr_fs_xml:not_found(),
     _ = freeswitch:fetch_reply(Node, ID, iolist_to_binary(Resp)),
-    {noreply, State};
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -151,14 +153,14 @@ terminate(_Reason, #state{node=Node}) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 -spec handle_config_req(atom(), ne_binary(), ne_binary()) -> fs_sendmsg_ret().
 handle_config_req(Node, ID, <<"acl.conf">>) ->
-    put(callid, ID),
+    put('callid', ID),
     SysconfResp = ecallmgr_config:fetch(<<"acls">>, wh_json:new()),
     try generate_acl_xml(SysconfResp) of
         ConfigXml ->
@@ -167,27 +169,59 @@ handle_config_req(Node, ID, <<"acl.conf">>) ->
     catch
         _E:_R ->
             lager:info("acl resp failed to convert to XML (~s): ~p", [_E, _R]),
-            {ok, Resp} = ecallmgr_fs_xml:not_found(),
+            {'ok', Resp} = ecallmgr_fs_xml:not_found(),
             freeswitch:fetch_reply(Node, ID, iolist_to_binary(Resp))
     end;
 handle_config_req(Node, Id, <<"sofia.conf">>) ->
-    put(callid, Id),
+    put('callid', Id),
     case wh_util:is_true(ecallmgr_config:get(<<"sofia_conf">>)) of
-        true ->
-            do_sofia_conf(Node, Id);
-        false ->
+        'true' -> do_sofia_conf(Node, Id);
+        'false' ->
             lager:info("sofia conf disabled"),
-            {ok, Resp} = ecallmgr_fs_xml:not_found(),
+            {'ok', Resp} = ecallmgr_fs_xml:not_found(),
             freeswitch:fetch_reply(Node, Id, iolist_to_binary(Resp))
     end;
-handle_config_req(Node, ID, _) ->
-    {ok, Resp} = ecallmgr_fs_xml:not_found(),
+handle_config_req(Node, ID, _Conf) ->
+    lager:debug("ignoring conf ~s: ~s", [_Conf, ID]),
+    {'ok', Resp} = ecallmgr_fs_xml:not_found(),
+    freeswitch:fetch_reply(Node, ID, iolist_to_binary(Resp)).
+
+handle_config_req(Node, ID, <<"conference.conf">>, Data) ->
+    put('callid', ID),
+    Profile = props:get_value(<<"profile_name">>, Data, <<"default">>),
+    Cmd =
+        [{<<"Profile">>, Profile}
+         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+        ],
+    XmlResp = case wh_amqp_worker:call(?ECALLMGR_AMQP_POOL, Cmd
+                                       ,fun wapi_conference:publish_config_req/1
+                                       ,fun wapi_conference:config_resp_v/1
+                                      )
+              of
+                  {'ok', Resp} ->
+                      {'ok', Xml} = ecallmgr_fs_xml:conference_resp_xml(Resp),
+                      lager:debug("conference profile xml for ~s: ~s", [Profile, Xml]),
+                      Xml;
+                  {'error', 'timeout'} ->
+                      lager:debug("timed out waiting for conference profile for ~s", [Profile]),
+                      {'ok', Resp} = ecallmgr_fs_xml:not_found(),
+                      Resp;
+                  _Other ->
+                      lager:debug("failed to lookup conference profile for ~s: ~p", [Profile, _Other]),
+                      {'ok', Resp} = ecallmgr_fs_xml:not_found(),
+                      Resp
+              end,
+    freeswitch:fetch_reply(Node, ID, iolist_to_binary(XmlResp));
+
+handle_config_req(Node, ID, _Conf, _) ->
+    lager:debug("ignoring conf ~s: ~s", [_Conf, ID]),
+    {'ok', Resp} = ecallmgr_fs_xml:not_found(),
     freeswitch:fetch_reply(Node, ID, iolist_to_binary(Resp)).
 
 do_sofia_conf(Node, Id) ->
-    Gateways = case wh_util:is_true(ecallmgr_config:get(<<"process_gateways">>, false)) of
-                   false -> wh_json:new();
-                   true ->
+    Gateways = case wh_util:is_true(ecallmgr_config:get(<<"process_gateways">>, 'false')) of
+                   'false' -> wh_json:new();
+                   'true' ->
                        SysconfResp = ecallmgr_config:fetch(<<"gateways">>, wh_json:new()),
                        _ = maybe_kill_node_gateways(SysconfResp, Node),
                        SysconfResp
@@ -196,19 +230,19 @@ do_sofia_conf(Node, Id) ->
                                         ,Gateways
                                         ,wh_json:from_list(default_sip_profiles())),
     try ecallmgr_fs_xml:sip_profiles_xml(DefaultProfiles) of
-        {ok, ConfigXml} ->
+        {'ok', ConfigXml} ->
             lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
             freeswitch:fetch_reply(Node, Id, erlang:iolist_to_binary(ConfigXml))
     catch
         _E:_R ->
             lager:info("sofia resp failed to convert to XML (~s): ~p", [_E, _R]),
-            {ok, Resp} = ecallmgr_fs_xml:not_found(),
+            {'ok', Resp} = ecallmgr_fs_xml:not_found(),
             freeswitch:fetch_reply(Node, Id, iolist_to_binary(Resp))
     end.
 
 generate_acl_xml(SysconfResp) ->
-    false = wh_json:is_empty(SysconfResp),
-    {ok, ConfigXml} = ecallmgr_fs_xml:acl_xml(SysconfResp),
+    'false' = wh_json:is_empty(SysconfResp),
+    {'ok', ConfigXml} = ecallmgr_fs_xml:acl_xml(SysconfResp),
     erlang:iolist_to_binary(ConfigXml).
 
 default_sip_profiles() ->
@@ -283,8 +317,7 @@ default_sip_settings() ->
      ,{<<"auto-restart">>, <<"false">>}
     ].
 
-default_sip_gateways() ->
-    [].
+default_sip_gateways() -> [].
 
 maybe_kill_node_gateways(JObj, Node) ->
     try get_node_gateways(Node) of
@@ -294,40 +327,37 @@ maybe_kill_node_gateways(JObj, Node) ->
             RunningNames = wh_json:get_keys(Gateways),
             _ = maybe_kill_removed_gateways(RunningNames, JObj, Node)
     catch
-        _:_ -> ok
+        _:_ -> 'ok'
     end.
 
-maybe_kill_removed_gateways([], _, _) ->
-    ok;
+maybe_kill_removed_gateways([], _, _) -> 'ok';
 maybe_kill_removed_gateways([GatewayName|Names], JObj, Node) ->
     _ = case wh_json:get_value(GatewayName, JObj) of
-            undefined -> kill_gateway(GatewayName, Node);
-            _Else -> ok
+            'undefined' -> kill_gateway(GatewayName, Node);
+            _Else -> 'ok'
         end,
     maybe_kill_removed_gateways(Names, JObj, Node).
 
-maybe_kill_changed_gateways([], _, _, _) ->
-    ok;
+maybe_kill_changed_gateways([], _, _, _) -> 'ok';
 maybe_kill_changed_gateways([GatewayName|Names], Gateways, JObj, Node) ->
     Running =  wh_json:get_value(GatewayName, Gateways),
     New = wh_json:get_value(GatewayName, JObj),
     _ = maybe_kill_changed_gateway(GatewayName, Running, New, Node),
     maybe_kill_changed_gateways(Names, Gateways, JObj, Node).
 
-maybe_kill_changed_gateway(_, undefined, _, _) ->
-    ok;
+maybe_kill_changed_gateway(_, 'undefined', _, _) -> 'ok';
 maybe_kill_changed_gateway(GatewayName, Running, New, Node) ->
     case compare_node_gateways(Running, New) of
-        false -> kill_gateway(GatewayName, Node);
-        true -> ok
+        'false' -> kill_gateway(GatewayName, Node);
+        'true' -> 'ok'
     end.
 
 compare_node_gateways(Running, New) ->
     NewVersion = wh_json:get_value([<<"Variables">>, <<"Gateway-Version">>], New),
     case wh_json:get_value([<<"Inbound-Variables">>, <<"Gateway-Version">>], Running) of
-        undefined -> true;
-        NewVersion -> true;
-        _Else -> false
+        'undefined' -> 'true';
+        NewVersion -> 'true';
+        _Else -> 'false'
     end.
 
 kill_gateway(GatewayName, Node) ->
@@ -336,10 +366,10 @@ kill_gateway(GatewayName, Node) ->
             ," killgw "
             ,wh_util:to_list(GatewayName)
            ],
-    freeswitch:api(Node, sofia, lists:flatten(Args)).
+    freeswitch:api(Node, 'sofia', lists:flatten(Args)).
 
 get_node_gateways(Node) ->
-    {ok, Response} = freeswitch:api(Node, sofia, "xmlstatus gateway"),
+    {'ok', Response} = freeswitch:api(Node, 'sofia', "xmlstatus gateway"),
     {Xml, _} = xmerl_scan:string(wh_util:to_list(Response)),
     ecallmgr_fs_xml:sofia_gateways_xml_to_json(Xml).
 

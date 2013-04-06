@@ -304,21 +304,16 @@ handle_cast('join_local', #participant{call=Call
                                       }=Participant) ->
     _ = case whapps_conference:play_entry_prompt(Conference) of
             'false' -> 'ok';
-            'true' ->
-                whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
+            'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
         end,
-    _ = whapps_call_command:conference(whapps_conference:id(Conference)
-                                       ,'false', 'false'
-                                       ,whapps_conference:moderator(Conference)
-                                       ,Call),
+    send_conference_command(Conference, Call),
     {'noreply', Participant};
 handle_cast({'join_remote', JObj}, #participant{call=Call
                                                 ,conference=Conference
                                                }=Participant) ->
     _ = case whapps_conference:play_entry_prompt(Conference) of
             'false' -> 'ok';
-            'true' ->
-                whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
+            'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
         end,
     gen_listener:add_binding(self(), 'route', []),
     gen_listener:add_binding(self(), 'authn', []),
@@ -517,8 +512,8 @@ code_change(_OldVsn, Participant, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec find_participant(wh_proplist(), ne_binary()) ->
-                                    {'ok', wh_json:object()} |
-                                    {'error', 'not_found'}.
+                              {'ok', wh_json:object()} |
+                              {'error', 'not_found'}.
 find_participant([], _) -> {'error', 'not_found'};
 find_participant([Participant|Participants], CallId) ->
     case wh_json:get_value(<<"Call-ID">>, Participant) of
@@ -563,9 +558,10 @@ sync_participant(JObj, Call, #participant{in_conference='true'}=Participant) ->
 
 -spec sync_moderator(wh_json:object(), whapps_call:call(), participant()) -> participant().
 sync_moderator(JObj, Call, #participant{conference=Conference
-                                        ,discovery_event=DiscoveryEvent}=Participant) ->
+                                        ,discovery_event=DiscoveryEvent
+                                       }=Participant) ->
     ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
-    lager:debug("caller has joined the local conference as moderator ~s", [ParticipantId]),
+    lager:debug("caller has joined the local conference as moderator ~p", [ParticipantId]),
     Deaf = not wh_json:is_true(<<"Hear">>, JObj),
     Muted = not wh_json:is_true(<<"Speak">>, JObj),
     gen_listener:cast(self(), 'play_moderator_entry'),
@@ -585,7 +581,8 @@ sync_moderator(JObj, Call, #participant{conference=Conference
 
 -spec sync_member(wh_json:object(), whapps_call:call(), participant()) -> participant().
 sync_member(JObj, Call, #participant{conference=Conference
-                                     ,discovery_event=DiscoveryEvent}=Participant) ->
+                                     ,discovery_event=DiscoveryEvent
+                                    }=Participant) ->
     ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
     lager:debug("caller has joined the local conference as member ~p", [ParticipantId]),
     Deaf = not wh_json:is_true(<<"Hear">>, JObj),
@@ -662,3 +659,25 @@ send_authn_response(MsgId, ServerId, Conference, Call) ->
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     wapi_authn:publish_resp(ServerId, Resp).
+
+-spec send_conference_command(whapps_conference:conference(), whapps_call:call()) -> 'ok'.
+send_conference_command(Conference, Call) ->
+    {Mute, Deaf} =
+        case whapps_conference:moderator(Conference) of
+            'true' ->
+                {whapps_conference:moderator_join_muted(Conference)
+                 ,whapps_conference:moderator_join_deaf(Conference)
+                };
+            'false' ->
+                {whapps_conference:member_join_muted(Conference)
+                 ,whapps_conference:member_join_deaf(Conference)
+                }
+        end,
+    Command = [{<<"Application-Name">>, <<"conference">>}
+               ,{<<"Conference-ID">>, whapps_conference:id(Conference)}
+               ,{<<"Mute">>, Mute}
+               ,{<<"Deaf">>, Deaf}
+               ,{<<"Moderator">>, whapps_conference:moderator(Conference)}
+               ,{<<"Profile">>, whapps_conference:profile(Conference)}
+              ],
+    whapps_call_command:send_command(Command, Call).

@@ -55,12 +55,12 @@
 %% All fields are required general headers.
 %% @end
 %%--------------------------------------------------------------------
--spec default_headers_v/1 :: (api_terms()) -> boolean().
+-spec default_headers_v(api_terms()) -> boolean().
 
--spec default_headers/2 :: (ne_binary(), ne_binary()) -> wh_proplist().
--spec default_headers/3 :: (binary(), ne_binary(), ne_binary()) -> wh_proplist().
--spec default_headers/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
--spec default_headers/5 :: (binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
+-spec default_headers(ne_binary(), ne_binary()) -> wh_proplist().
+-spec default_headers(binary(), ne_binary(), ne_binary()) -> wh_proplist().
+-spec default_headers(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
+-spec default_headers(binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
 
 default_headers(AppName, AppVsn) ->
     default_headers(<<>>, AppName, AppVsn).
@@ -103,9 +103,9 @@ disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
 %% validation definitions and remove any empty values
 %% @end
 %%--------------------------------------------------------------------
--spec prepare_api_payload/2 :: (api_terms(), wh_proplist()) -> wh_proplist().
--spec prepare_api_payload/3 :: (api_terms(), wh_proplist(), fun((api_terms()) -> api_formatter_return())) ->
-                                       api_formatter_return().
+-spec prepare_api_payload(api_terms(), wh_proplist()) -> wh_proplist().
+-spec prepare_api_payload(api_terms(), wh_proplist(), fun((api_terms()) -> api_formatter_return())) ->
+                                 api_formatter_return().
 prepare_api_payload(Prop, HeaderValues) when is_list(Prop) ->
     CleanupFuns = [fun (P) -> remove_empty_values(P) end
                    ,fun (P) -> set_missing_values(P, ?DEFAULT_VALUES) end
@@ -127,7 +127,7 @@ prepare_api_payload(JObj, HeaderValues, FormatterFun) when is_function(Formatter
 %% validation definitions
 %% @end
 %%--------------------------------------------------------------------
--spec set_missing_values/2 :: (api_terms(), wh_proplist()) -> api_terms().
+-spec set_missing_values(api_terms(), wh_proplist()) -> api_terms().
 set_missing_values(Prop, HeaderValues) when is_list(Prop) ->
     lists:foldl(fun({_, V}, PropAcc) when is_list(V) ->
                         PropAcc;
@@ -146,7 +146,7 @@ set_missing_values(JObj, HeaderValues) ->
 %% type given
 %% @end
 %%--------------------------------------------------------------------
--spec remove_empty_values/1 :: (api_terms()) -> api_terms().
+-spec remove_empty_values(api_terms()) -> api_terms().
 remove_empty_values(Prop) when is_list(Prop) ->
     do_empty_value_removal(Prop, []);
 remove_empty_values(JObj) ->
@@ -173,7 +173,7 @@ do_empty_value_removal([{K,V}=KV|T], Acc) ->
             end
     end.
 
--spec is_empty/1 :: (term()) -> boolean().
+-spec is_empty(term()) -> boolean().
 is_empty(undefined) -> true;
 is_empty([]) -> true;
 is_empty(<<>>) -> true;
@@ -183,7 +183,7 @@ is_empty(_) -> false.
 %% @doc Extract just the default headers from a message
 %% @end
 %%--------------------------------------------------------------------
--spec extract_defaults/1 :: (api_terms()) -> wh_proplist().
+-spec extract_defaults(api_terms()) -> wh_proplist().
 extract_defaults(Prop) when is_list(Prop) ->
     %% not measurable faster over the foldl, but cleaner (imo)
     [ {H, V} || H <- ?DEFAULT_HEADERS ++ ?OPTIONAL_DEFAULT_HEADERS,
@@ -192,7 +192,7 @@ extract_defaults(Prop) when is_list(Prop) ->
 extract_defaults(JObj) ->
     extract_defaults(wh_json:to_proplist(JObj)).
 
--spec remove_defaults/1 :: (api_terms()) -> api_terms().
+-spec remove_defaults(api_terms()) -> api_terms().
 remove_defaults(Prop) when is_list(Prop) ->
     [ KV || {K, _}=KV <- Prop,
             (not lists:member(K, ?DEFAULT_HEADERS)),
@@ -206,7 +206,7 @@ remove_defaults(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec error_resp/1 :: (api_terms()) -> api_formatter_return().
+-spec error_resp(api_terms()) -> api_formatter_return().
 error_resp(Prop) when is_list(Prop) ->
     case error_resp_v(Prop) of
         true -> build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
@@ -215,14 +215,14 @@ error_resp(Prop) when is_list(Prop) ->
 error_resp(JObj) ->
     error_resp(wh_json:to_proplist(JObj)).
 
--spec error_resp_v/1 :: (api_terms()) -> boolean().
+-spec error_resp_v(api_terms()) -> boolean().
 error_resp_v(Prop) when is_list(Prop) ->
     validate(Prop, ?ERROR_RESP_HEADERS, ?ERROR_RESP_VALUES, ?ERROR_RESP_TYPES);
 error_resp_v(JObj) ->
     error_resp_v(wh_json:to_proplist(JObj)).
 
--spec publish_error/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_error/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_error(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_error(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_error(TargetQ, JObj) ->
     publish_error(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(TargetQ, Error, ContentType) ->
@@ -232,7 +232,7 @@ publish_error(TargetQ, Error, ContentType) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec validate/4 :: (api_terms(), api_headers(), wh_proplist(), wh_proplist()) -> boolean().
+-spec validate(api_terms(), api_headers(), wh_proplist(), wh_proplist()) -> boolean().
 validate(Prop, ReqH, Vals, Types) when is_list(Prop) ->
     case has_all(Prop, ?DEFAULT_HEADERS) andalso
         validate_message(Prop, ReqH, Vals, Types) of
@@ -244,7 +244,7 @@ validate(Prop, ReqH, Vals, Types) when is_list(Prop) ->
 validate(JObj, ReqH, Vals, Types) ->
     validate(wh_json:to_proplist(JObj), ReqH, Vals, Types).
 
--spec validate_message/4 :: (api_terms(), api_headers(), wh_proplist(), wh_proplist()) -> boolean().
+-spec validate_message(api_terms(), api_headers(), wh_proplist(), wh_proplist()) -> boolean().
 validate_message(Prop, ReqH, Vals, Types) when is_list(Prop) ->
     has_all(Prop, ReqH) andalso
         values_check(Prop, Vals) andalso
@@ -252,7 +252,7 @@ validate_message(Prop, ReqH, Vals, Types) when is_list(Prop) ->
 validate_message(JObj, ReqH, Vals, Types) ->
     validate_message(wh_json:to_proplist(JObj), ReqH, Vals, Types).
 
--spec build_message/3 :: (api_terms(), api_headers(), api_headers()) -> api_formatter_return().
+-spec build_message(api_terms(), api_headers(), api_headers()) -> api_formatter_return().
 build_message(Prop, ReqH, OptH) when is_list(Prop) ->
     case defaults(Prop) of
         {error, _Reason}=Error ->
@@ -268,7 +268,7 @@ build_message(Prop, ReqH, OptH) when is_list(Prop) ->
 build_message(JObj, ReqH, OptH) ->
     build_message(wh_json:to_proplist(JObj), ReqH, OptH).
 
--spec build_message_specific_headers/3 :: (wh_proplist() | {api_headers(), wh_proplist()}, api_headers(), api_headers()) -> {'ok', wh_proplist()} |
+-spec build_message_specific_headers(wh_proplist() | {api_headers(), wh_proplist()}, api_headers(), api_headers()) -> {'ok', wh_proplist()} |
                                                                                                                       {'error', string()}.
 build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
@@ -283,7 +283,7 @@ build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
 build_message_specific_headers(Prop, ReqH, OptH) ->
     build_message_specific_headers({[], Prop}, ReqH, OptH).
 
--spec build_message_specific/3 :: (Msg, ReqHeaders, OptHeaders) -> api_formatter_return() when
+-spec build_message_specific(Msg, ReqHeaders, OptHeaders) -> api_formatter_return() when
       Msg :: wh_proplist() | {api_headers(), wh_proplist()},
       ReqHeaders :: api_headers(),
       OptHeaders :: api_headers().
@@ -300,7 +300,7 @@ build_message_specific({Headers, Prop}, ReqH, OptH) ->
 build_message_specific(Prop, ReqH, OptH) ->
     build_message_specific({[], Prop}, ReqH, OptH).
 
--spec headers_to_json/1 :: (wh_proplist()) -> api_formatter_return().
+-spec headers_to_json(wh_proplist()) -> api_formatter_return().
 headers_to_json([_|_]=HeadersProp) ->
     try wh_json:encode(wh_json:from_list(HeadersProp)) of
         JSON -> {ok, JSON}
@@ -310,7 +310,7 @@ headers_to_json([_|_]=HeadersProp) ->
 
 %% Checks Prop for all default headers, throws error if one is missing
 %% defaults(PassedProps) -> { Headers, NewPropList } | {error, Reason}
--spec defaults/1 :: (api_terms()) -> {wh_proplist(), wh_proplist()} |
+-spec defaults(api_terms()) -> {wh_proplist(), wh_proplist()} |
                                      {'error', string()}.
 defaults(Prop) ->
     defaults(Prop, []).
@@ -322,7 +322,7 @@ defaults(Prop, Headers) ->
             update_optional_headers(Prop1, ?OPTIONAL_DEFAULT_HEADERS, Headers1)
     end.
 
--spec update_required_headers/3 :: (wh_proplist(), api_headers(), wh_proplist()) -> {wh_proplist(), wh_proplist()} |
+-spec update_required_headers(wh_proplist(), api_headers(), wh_proplist()) -> {wh_proplist(), wh_proplist()} |
                                                                               {'error', string()}.
 update_required_headers(Prop, Fields, Headers) ->
     case has_all(Prop, Fields) of
@@ -330,7 +330,7 @@ update_required_headers(Prop, Fields, Headers) ->
         false -> {error, "All required headers not defined"}
     end.
 
--spec update_optional_headers/3 :: (wh_proplist(), api_headers(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
+-spec update_optional_headers(wh_proplist(), api_headers(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
 update_optional_headers(Prop, Fields, Headers) ->
     case has_any(Prop, Fields) of
         true ->
@@ -340,13 +340,13 @@ update_optional_headers(Prop, Fields, Headers) ->
     end.
 
 %% add [Header] from Prop to HeadProp
--spec add_headers/3 :: (wh_proplist(), api_headers(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
+-spec add_headers(wh_proplist(), api_headers(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
 add_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) ->
                         {[{K, props:get_value(K, KVs)} | Headers1], props:delete(K, KVs)}
                 end, {Headers, Prop}, Fields).
 
--spec add_optional_headers/3 :: (wh_proplist(), api_headers(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
+-spec add_optional_headers(wh_proplist(), api_headers(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
 add_optional_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) ->
                         case props:get_value(K, KVs) of
@@ -356,7 +356,7 @@ add_optional_headers(Prop, Fields, Headers) ->
                 end, {Headers, Prop}, Fields).
 
 %% Checks Prop against a list of required headers, returns true | false
--spec has_all/2 :: (wh_proplist(), api_headers()) -> boolean().
+-spec has_all(wh_proplist(), api_headers()) -> boolean().
 has_all(Prop, Headers) ->
     lists:all(fun(Header) ->
                       case props:is_defined(Header, Prop) of
@@ -368,7 +368,7 @@ has_all(Prop, Headers) ->
               end, Headers).
 
 %% Checks Prop against a list of optional headers, returns true | false if at least one if found
--spec has_any/2 :: (wh_proplist(), api_headers()) -> boolean().
+-spec has_any(wh_proplist(), api_headers()) -> boolean().
 has_any(Prop, Headers) ->
     lists:any(fun(Header) -> props:is_defined(Header, Prop) end, Headers).
 

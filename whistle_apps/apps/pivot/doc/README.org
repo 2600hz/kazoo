@@ -1,142 +1,71 @@
 * Overview
 
-The Skel application serves as the barest of examples of creating a listener on
-the AMQP message bus, handling the JSON requests that come in, and responding
-with JSON as appropriate.
+The Pivot whapp gives developers greater control over callflows than what comes natively in Kazoo. Pivot attempts to corral the salient data and send it, via HTTP to the developer's web server. Pivot expects a response with appropriate XML or JSON, and will execute the callflow returned on behalf of the developer.
 
-The example listener is for route requests, but the reader should know that
-several other requests exist, not limited to authentication, authorization, and
-other whapp-specific requests.
+** Formats
 
-** The Listener
+*** TwiML-compatible
 
-Generally speaking, most action starts at the listener. The listener typically 
-builds on top of the gen_listener pattern (found in lib/whistle-1.0.0/src) to
-abstract the AMQP connection and reception of payloads off the message bus.
-Instead, the gen_listener behaviour allows the implementing module to specify
-the types of events to pull off the AMQP bus, and the handler modules/functions
-for each type of JSON payload received. The handlers run as processes separate
-from the listener process, allowing it to consuming AMQP payloads as quickly as
-possible.
+XML format based on Twilio's TwiML markup.
 
-The main areas of the listener that need editing are the bindings, responders,
-optional queue name, queue options, consume options, and QoS for initialization,
-and the handle_event/2 callback.
+**** Core Supported
 
-*** Initialization
+Default Request Data included:
+| Request Parameter | Kazoo Name     | Description                                                                      |
+| CallerName        | Caller-ID-Name | Name of the caller, if any                                                       |
+| Direction         | Direction      | Direction of the call (outbound if Kazoo originated the call, inbound otherwise) |
+| ApiVerson         | N/A            | Version string related to API changes                                            |
+| CallStatus        | N/A            | What state the call is currently in                                              |
+| To                | To-User        | Dialed number                                                                    |
+| From              | From-User      | Caller's number, if available                                                    |
+| AccountSid        | Account-ID     | Account ID processing the call                                                   |
+| CallSid           | Call-ID        | Unique identifier of the call leg                                                |
 
-The full example first:
+Optional/Conditional Request Data included:
+| Request Parameter | Kazoo Name          | Description                                           |
+| RecordingUrl      | Recording-URL       | Where a recording will be sent (via HTTP PUT request) |
+| RecordingDuration | Recording-Duration  | Length of the recording, if available                 |
+| RecordingSid      | Media-Name          | Name of the recording file                            |
+| Digits            | DTMF-Pressed        | The DTMF(s) (touch tone) pressed by the caller        |
+| DialCallStatus    | N/A                 | Call status of the b-leg                              |
+| DialCallSid       | Other-Leg-Unique-ID | Call-ID of the b-leg                                  |
+| DialCallDuration  | Billing-Seconds     | How many billable seconds the call lasted             |
 
-#+begin_src erlang
-  gen_listener:start_link(?MODULE
-                          ,[{bindings, [{api_module, [options]}
-                                        ,{other_api_module, [options]}
-                                       ]}
-                           ,{responders, [{ {callback_module, callback_function}
-                                            ,[{<<"category">>, <<"name">>}]
-                                          }
-                                         ]}
-                           ,{queue_name, <<>>}
-                           ,{queue_options, []}
-                           ,{consume_options, []}
-                           ,{basic_qos, 1}
-                          ], []).
-#+end_src
+Other optional data includes user-defined key/value pairs stored using the <Set> verb below.
 
-**** Bindings
+TwiML Verbs
+| Verb     | Description                                              | Nestable Verbs and Nouns                                          |
+| <Dial>   | Connect the caller to other endpoints                    | plain text DID, <Conference>, <Queue>, <Number>, <User>, <Device> |
+| <Record> | Record the caller                                        |                                                                   |
+| <Gather> | Collect DTMFs from the caller                            | <Play>, <Say>                                                     |
+| <Play>   | Play a media file (mp3, wav) to the caller               |                                                                   |
+| Say      | Use a TTS engine to say the supplied text                |                                                                   |
+| Redirect | Like an HTTP Redirect, make another HTTP request         | <Variable>                                                        |
+| Pause    | Pause callflow execution for supplied number of seconds  |                                                                   |
+| Hangup   | Hangup the caller                                        |                                                                   |
+| Reject   | Reject (and don't answer - won't start billing) the call |                                                                   |
 
-The AMQP APIs available can be found in the modules in lib/whistle-1.0.0/api/
-(prefixed with wapi_) and define the bindings needed to receive AMQP payloads of
-a certain type.
+Custom Verbs
+|Verb|Description|Nestable Nouns|
+|<Set>|Key value pair(s) to store along-side the call||
 
-For instance, to receive route requests, one would add the 'route' binding and
-payloads sent directly to our queue, one would configure the bindings list like:
+Core TwiML Nouns
+| Noun         | Description                                                        |
+| <Conference> | Conference room endpoint for <Dial>                                |
+| <Queue>      | Call queue to line callers up in                                   |
+| <Number>     | DID with extended attributes                                       |
+| <User>       | ID of an existing Kazoo User (works like the User callflow element |
+| <Device>     | ID of an existing Kazoo Device                                     |
+| <Sip>        | SIP URI to dial                                                    |
 
-#+begin_src erlang
-  {bindings, [{route, []}
-              ,{self, []}
-             ]
-  }
-#+end_src
+Custom Nouns
+| Noun       | Description                                                                   |
+| <Variable> | Includes 'key' and 'value' attributes; values will be put subsequent requests |
 
-These two 2-tuples will cause the gen_listener to call wapi_route:bind_q/2 and
-wapi_self:bind_q/2 with the listener's queue. When shutting down the listener,
-the unbind_q/2 variants will be called to cleanup the AMQP bindings.
+** Using Pivot
 
-Some of the wapi modules allow parameters to be passed in the second element of
-the tuple, changing either what bindings are added, or the binding key used. For
-instance, in lib/whistle-1.0.0/src/api/wapi_route.erl, one can see in the
-bind_q/2 function that one could specify a realm, which would restrict the route
-requests received by this listener to just the realm.
-
-**** Responders
-
-Now that we've bound to all appropriate AMQP messages we want to consume, we
-need to tell the gen_listener behaviour what to do with them when received. To
-do this, we pass in a list of responder module/function pairs and a list of
-event category and name pairs.
-
-In the case of binding to route requests, we know to expect to receive events
-with ("dialplan", "route_req") as the category/name. So we create a responder
-module skel_route_req.erl and define a handle_req/2 function. In the start_link
-parameters, we would inform gen_listener of this like so:
-
-#+begin_src erlang
-  {responders, [{{skel_route_req, handle_req}, [{<<"dialplan">>, <<"route_req">>}]}]}.
-#+end_src
-
-As you can see, the same callback can take more than one category/name pair. One
-could also create one callback module (skel_handlers, for instance) with a
-handle_* function specific to each type of category/name pair.
-
-If you want to handle more than one type of name for a given category, you can
-use the <<"*">> to match any catgeory or name. So, if we expect multiple event
-names for the dialplan category, and we want to use the same handler for each,
-we could denote that like:
-
-#+begin_src erlang
-  {responders, [{{skel_handlers, handle_dialplan_req}, [{<<"dialplan">>, <<"*">>}]}]}
-#+end_src
-
-**** The rest
-
-queue_name: If you want an auto-generated, anonymous queue, you can omit the
-queue_name tuple, or set it to {queue_name, <<>>} (this is the default). If you
-want to use a named queue, include the name as the second element:
-{queue_name, <<"named_queue">>}.
-
-queue_options: Another parameter that can be omitted from the list of configs
-sent to gen_listener, use this if you need different values than in
-lib/whistle_amqp-1.0.0/src/amqp_util.erl, the new_queue/2 function. This list
-controls how the broker creates the queue.
-
-consume_options: Ommitable as well, these options control how consupmtion from
-the queue will be managed (see basic_consume/2 in amqp_util.erl).
-
-basic_qos: Only needed if you need to control prefetch count from the queue to
-multiple consumers; otherwise omit from the list.
-
-*** handle_event/2
-
-The one interaction with the AMQP payload the listener module has is with the
-handle_event/2 callback. Before calling into the handler module(s)' functions,
-the gen_listener will pass the payload and the listener's state, allowing the
-listener to pass back a proplist of values the callbacks may need/want. The
-response from handle_event/2 should be {reply, ConfigList}, where ConfigList is
-an empty list or a list of key/value tuples.
-
-This ConfigList is prepended with the following default config pairs:
-{queue_name, Name} and {server, pid()}. Name is the name of the AMQP queue
-(needed when the callbacks might need responses to their own AMQP requests (and
-why you typically bind with {self, []}). The pid() is the PID of the listener
-process, in case you need to make queries from the process's state.
-
-The ConfigList ++ [{queue_name, Name}, {server, pid()}] is passed as the second
-argument to the handler module(s)' functions (the first being the AMQP payload.
-
-
-** Other setup
-
-Add the whapp directory name to whistle_apps/rebar.config to make sure it gets
-compiled by default when running 'rebar compile' from either the root or
-whistle_apps directory.
+1) Create a Pivot callflow to point to your webserver URL
+2) When a call is placed to the Pivot callflow, your webserver will receive a request
+3) Generate a response, using your language of choice, in a supported format
+  3a) see pivot/priv/samples for some example PHP scripts
+4) Marvel at how easy that was

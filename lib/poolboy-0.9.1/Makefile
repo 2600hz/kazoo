@@ -1,6 +1,4 @@
-ROOT = ../..
-REBAR = $(ROOT)/bin/rebar
-
+REBAR = ../../bin/rebar
 DIALYZER = dialyzer
 
 DIALYZER_WARNINGS = -Wunmatched_returns -Werror_handling \
@@ -15,6 +13,9 @@ compile:
 
 test: compile
 	@$(REBAR) eunit skip_deps=true
+
+qc: compile
+	@$(REBAR) qc skip_deps=true
 
 clean:
 	@$(REBAR) clean

@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(rabbit_types).
@@ -69,7 +69,6 @@
 -type(message() :: basic_message()).
 -type(delivery() ::
         #delivery{mandatory :: boolean(),
-                  immediate :: boolean(),
                   sender    :: pid(),
                   message   :: message()}).
 -type(message_properties() ::
@@ -118,8 +117,7 @@
                   exclusive_owner :: rabbit_types:maybe(pid()),
                   arguments       :: rabbit_framing:amqp_table(),
                   pid             :: rabbit_types:maybe(pid()),
-                  slave_pids      :: [pid()],
-                  mirror_nodes    :: [node()] | 'undefined' | 'all'}).
+                  slave_pids      :: [pid()]}).
 
 -type(exchange() ::
         #exchange{name        :: rabbit_exchange:name(),

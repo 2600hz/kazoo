@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(rabbit_channel_sup).
@@ -83,7 +83,7 @@ init(Type) ->
 
 child_specs({tcp, Sock, Channel, FrameMax, ReaderPid, Protocol}) ->
     [{writer, {rabbit_writer, start_link,
-               [Sock, Channel, FrameMax, Protocol, ReaderPid]},
+               [Sock, Channel, FrameMax, Protocol, ReaderPid, true]},
       intrinsic, ?MAX_WAIT, worker, [rabbit_writer]} | child_specs(direct)];
 child_specs(direct) ->
     [{limiter, {rabbit_limiter, start_link, []},

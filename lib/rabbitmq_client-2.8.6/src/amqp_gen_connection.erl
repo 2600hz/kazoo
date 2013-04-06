@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 %% @private
@@ -23,7 +23,7 @@
 
 -export([start_link/5, connect/1, open_channel/3, hard_error_in_channel/3,
          channel_internal_error/3, server_misbehaved/2, channels_terminated/1,
-         close/2, server_close/2, info/2, info_keys/0, info_keys/1]).
+         close/3, server_close/2, info/2, info_keys/0, info_keys/1]).
 -export([behaviour_info/1]).
 -export([init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2,
          handle_info/2]).
@@ -80,8 +80,8 @@ server_misbehaved(Pid, AmqpError) ->
 channels_terminated(Pid) ->
     gen_server:cast(Pid, channels_terminated).
 
-close(Pid, Close) ->
-    gen_server:call(Pid, {command, {close, Close}}, infinity).
+close(Pid, Close, Timeout) ->
+    gen_server:call(Pid, {command, {close, Close, Timeout}}, infinity).
 
 server_close(Pid, Close) ->
     gen_server:cast(Pid, {server_close, Close}).
@@ -249,8 +249,8 @@ handle_command({open_channel, ProposedNumber, Consumer}, _From,
     {reply, amqp_channels_manager:open_channel(ChMgr, ProposedNumber, Consumer,
                                                Mod:open_channel_args(MState)),
      State};
-handle_command({close, #'connection.close'{} = Close}, From, State) ->
-     app_initiated_close(Close, From, State).
+handle_command({close, #'connection.close'{} = Close, Timeout}, From, State) ->
+    app_initiated_close(Close, From, Timeout, State).
 
 %%---------------------------------------------------------------------------
 %% Handling methods from broker
@@ -274,7 +274,11 @@ handle_method(Other, State) ->
 %% Closing
 %%---------------------------------------------------------------------------
 
-app_initiated_close(Close, From, State) ->
+app_initiated_close(Close, From, Timeout, State) ->
+    case Timeout of
+        infinity -> ok;
+        _        -> erlang:send_after(Timeout, self(), closing_timeout)
+    end,
     set_closing_state(flush, #closing{reason = app_initiated_close,
                                       close = Close,
                                       from = From}, State).

@@ -11,11 +11,11 @@
 # The Original Code is RabbitMQ.
 #
 # The Initial Developer of the Original Code is VMware, Inc.
-# Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+# Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 #
 
-VERSION=2.8.6
-export ERL_LIBS=..
+VERSION=0.0.0
+
 SOURCE_PACKAGE_DIR=$(PACKAGE)-$(VERSION)-src
 SOURCE_PACKAGE_TAR_GZ=$(SOURCE_PACKAGE_DIR).tar.gz
 

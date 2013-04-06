@@ -603,8 +603,7 @@ handle_ccvs_update(CCVs, #whapps_call{}=Call) ->
     lists:foldl(fun({Var, Index}, C) ->
                         case wh_json:get_ne_value(Var, CCVs) of
                             'undefined' -> C;
-                            Value -> 
-                                setelement(Index, C, Value)
+                            Value -> setelement(Index, C, Value)
                         end
                 end, Call#whapps_call{ccvs=CCVs}, ?SPECIAL_VARS).
 

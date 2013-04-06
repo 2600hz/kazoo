@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(rabbit_error_logger).
@@ -81,7 +81,7 @@ publish1(RoutingKey, Format, Data, LogExch) ->
     %% second resolution, not millisecond.
     Timestamp = rabbit_misc:now_ms() div 1000,
     {ok, _RoutingRes, _DeliveredQPids} =
-        rabbit_basic:publish(LogExch, RoutingKey, false, false,
+        rabbit_basic:publish(LogExch, RoutingKey,
                              #'P_basic'{content_type = <<"text/plain">>,
                                         timestamp    = Timestamp},
                              list_to_binary(io_lib:format(Format, Data))),

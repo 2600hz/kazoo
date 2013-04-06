@@ -19,7 +19,9 @@
 
 %% API
 -export([start_link/0]).
--export([handle_discovery_req/2]).
+-export([handle_discovery_req/2
+         ,handle_config_req/2
+        ]).
 
 %% gen_server callbacks
 -export([init/1
@@ -34,8 +36,11 @@
 -define(RESPONDERS, [{{?MODULE, 'handle_discovery_req'}
                       ,[{<<"conference">>, <<"discovery_req">>}]
                      }
+                     ,{{?MODULE, 'handle_config_req'}
+                       ,[{<<"conference">>, <<"config_req">>}]
+                      }
                     ]).
--define(BINDINGS, [{'conference', [{'restrict_to', ['discovery']}]}
+-define(BINDINGS, [{'conference', [{'restrict_to', ['discovery', 'config']}]}
                    ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"conference_discovery">>).
@@ -76,6 +81,43 @@ handle_discovery_req(JObj, _) ->
             welcome_to_conference(Call, Srv, JObj);
         _Else ->
             discovery_failed(Call, 'undefined')
+    end.
+
+handle_config_req(JObj, _Props) ->
+    'true' = wapi_conference:config_req_v(JObj),
+    ConfigName = wh_json:get_value(<<"Profile">>, JObj),
+    case whapps_config:get(<<"conferences">>, [<<"profiles">>, ConfigName]) of
+        'undefined' -> lager:debug("no profile defined for ~s", [ConfigName]);
+        Profile ->
+            lager:debug("profile ~s found", [ConfigName]),
+            Resp = [{<<"Profiles">>, wh_json:from_list([{ConfigName, Profile}])}
+                    ,{<<"Caller-Controls">>, caller_controls(ConfigName)}
+                    ,{<<"Advertise">>, advertise(ConfigName)}
+                    ,{<<"Chat-Permissions">>, chat_permissions(ConfigName)}
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_conference:publish_config_resp(wh_json:get_value(<<"Server-ID">>, JObj)
+                                                ,props:filter_undefined(Resp)
+                                               )
+    end.
+
+caller_controls(ConfigName) ->
+    case whapps_config:get(<<"conferences">>, [<<"caller-controls">>, ConfigName]) of
+        'undefined' -> 'undefined';
+        Controls -> wh_json:from_list([{ConfigName, Controls}])
+    end.
+
+advertise(ConfigName) ->
+    case whapps_config:get(<<"conferences">>, [<<"advertise">>, ConfigName]) of
+        'undefined' -> 'undefined';
+        Advertise -> wh_json:from_list([{ConfigName, Advertise}])
+    end.
+
+chat_permissions(ConfigName) ->
+    case whapps_config:get(<<"conferences">>, [<<"chat-permissions">>, ConfigName]) of
+        'undefined' -> 'undefined';
+        Chat -> wh_json:from_list([{ConfigName, Chat}])
     end.
 
 %%%===================================================================
@@ -306,8 +348,7 @@ handle_search_resp(JObj, Conference, Call, Srv) ->
     end.
 
 -spec discovery_failed(whapps_call:call(), pid()) -> 'ok'.
-discovery_failed(Call, _) ->
-    whapps_call_command:hangup(Call).
+discovery_failed(Call, _) -> whapps_call_command:hangup(Call).
 
 -spec validate_conference_id(api_binary(), whapps_call:call()) ->
                                     {'ok', whapps_conference:conference()} |

@@ -325,32 +325,32 @@ handle_cast({'continue', Key}, #state{flow=Flow}=State) ->
                 'false' -> {'noreply', launch_cf_module(State#state{flow=NewFlow})}
             end
     end;
-handle_cast({stop}, State) ->
-    {stop, normal, State};
-handle_cast({transfer}, State) ->
-    {stop, {shutdown, transfer}, State};
-handle_cast({control_usurped}, State) ->
-    {stop, {shutdown, control_usurped}, State};
-handle_cast({branch, NewFlow}, State) ->
+handle_cast({'stop'}, State) ->
+    {'stop', 'normal', State};
+handle_cast({'transfer'}, State) ->
+    {'stop', {'shutdown', 'transfer'}, State};
+handle_cast({'control_usurped'}, State) ->
+    {'stop', {'shutdown', 'control_usurped'}, State};
+handle_cast({'branch', NewFlow}, State) ->
     lager:info("callflow has been branched"),
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
-handle_cast({callid_update, NewCallId, NewCtrlQ}, #state{call=Call}=State) ->
-    put(callid, NewCallId),
+handle_cast({'callid_update', NewCallId, NewCtrlQ}, #state{call=Call}=State) ->
+    put('callid', NewCallId),
     PrevCallId = whapps_call:call_id_direct(Call),
     lager:info("updating callid to ~s (from ~s), catch you on the flip side", [NewCallId, PrevCallId]),
     lager:info("removing call event bindings for ~s", [PrevCallId]),
-    gen_listener:rm_binding(self(), call, [{callid, PrevCallId}]),
+    gen_listener:rm_binding(self(), 'call', [{'callid', PrevCallId}]),
     lager:info("binding to new call events"),
-    gen_listener:add_binding(self(), call, [{callid, NewCallId}]),
+    gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),
     lager:info("updating control q to ~s", [NewCtrlQ]),
     NewCall = whapps_call:set_call_id(NewCallId, whapps_call:set_control_queue(NewCtrlQ, Call)),
     {'noreply', State#state{call=NewCall}};
 
-handle_cast({add_event_listener, {M, F, A}}, #state{call=Call}=State) ->
+handle_cast({'add_event_listener', {M, F, A}}, #state{call=Call}=State) ->
     try spawn_link(M, F, [Call | A]) of
         P when is_pid(P) ->
             lager:info("started event listener ~p from ~s:~s", [P, M, F]),
-            {'noreply', State#state{call=whapps_call:kvs_update(cf_event_pids
+            {'noreply', State#state{call=whapps_call:kvs_update('cf_event_pids'
                                                               ,fun(Ps) -> [P | Ps] end
                                                               ,[P]
                                                               ,Call
@@ -365,7 +365,7 @@ handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
     {'noreply', launch_cf_module(State#state{call=whapps_call:set_controller_queue(Q, Call)
                                            ,queue=Q})};
 
-handle_cast({send_amqp, API, PubFun}, #state{call=Call}=State) ->
+handle_cast({'send_amqp', API, PubFun}, #state{call=Call}=State) ->
     send_amqp_message(Call, API, PubFun),
     {'noreply', State};
 

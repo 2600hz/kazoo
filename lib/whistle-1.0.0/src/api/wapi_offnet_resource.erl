@@ -30,6 +30,7 @@
                                                    ,<<"Control-Queue">>, <<"Call-ID">>, <<"Application-Data">>
                                                    ,<<"Account-ID">>, <<"Outbound-Call-ID">>, <<"Force-Fax">>
                                                    ,<<"Call-ID">>, <<"Mode">>, <<"Group-ID">> % Eavesdrop
+                                                   ,<<"Force-Outbound">>
                                               ]).
 -define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                      ,{<<"Event-Name">>, <<"offnet_req">>}
@@ -52,6 +53,7 @@
                                     ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                                     ,{<<"Flags">>, fun is_list/1}
                                     ,{<<"Force-Fax">>, fun wh_util:is_boolean/1}
+                                    ,{<<"Force-Outbound">>, fun wh_util:is_boolean/1}
                                    ]).
 
 %% Offnet Resource Response
@@ -131,8 +133,7 @@ publish_req(Req, ContentType) ->
 
 -spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_resp(TargetQ, JObj) ->
-    publish_resp(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_resp(TargetQ, JObj) -> publish_resp(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(TargetQ, Resp, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?OFFNET_RESOURCE_RESP_VALUES, fun ?MODULE:resp/1),
+    {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?OFFNET_RESOURCE_RESP_VALUES, fun ?MODULE:resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).

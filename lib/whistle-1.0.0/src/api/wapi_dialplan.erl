@@ -65,6 +65,8 @@
 %% API Helpers
 -export([dial_method_single/0
          ,dial_method_simultaneous/0
+         ,terminators/1
+         ,local_store_url/2, offsite_store_url/2
         ]).
 
 -export([bind_q/2
@@ -139,7 +141,9 @@ bridge_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_endpoint(api_terms()) -> {'ok', wh_proplist()} | {'error', string()}.
+-spec bridge_endpoint(api_terms()) ->
+                             {'ok', wh_proplist()} |
+                             {'error', string()}.
 bridge_endpoint(Prop) when is_list(Prop) ->
     case bridge_endpoint_v(Prop) of
         'true' -> wh_api:build_message_specific(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS);
@@ -148,7 +152,9 @@ bridge_endpoint(Prop) when is_list(Prop) ->
 bridge_endpoint(JObj) ->
     bridge_endpoint(wh_json:to_proplist(JObj)).
 
--spec bridge_endpoint_headers(api_terms()) -> {'ok', wh_proplist()} | {'error', string()}.
+-spec bridge_endpoint_headers(api_terms()) ->
+                                     {'ok', wh_proplist()} |
+                                     {'error', string()}.
 bridge_endpoint_headers(Prop) when is_list(Prop) ->
     wh_api:build_message_specific_headers(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS);
 bridge_endpoint_headers(JObj) ->
@@ -179,29 +185,27 @@ page(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop1, ?PAGE_REQ_HEADERS, ?OPTIONAL_PAGE_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for page_req"}
     end;
-page(JObj) ->
-    page(wh_json:to_proplist(JObj)).
+page(JObj) -> page(wh_json:to_proplist(JObj)).
 
 -spec page_v(api_terms()) -> boolean().
 page_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PAGE_REQ_HEADERS, ?PAGE_REQ_VALUES, ?PAGE_REQ_TYPES);
-page_v(JObj) ->
-    page_v(wh_json:to_proplist(JObj)).
+page_v(JObj) -> page_v(wh_json:to_proplist(JObj)).
 
--spec store(api_terms()) -> {'ok', wh_proplist()} | {'error', string()}.
+-spec store(api_terms()) ->
+                   {'ok', wh_proplist()} |
+                   {'error', string()}.
 store(Prop) when is_list(Prop) ->
     case store_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?STORE_REQ_HEADERS, ?OPTIONAL_STORE_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for store"}
     end;
-store(JObj) ->
-    store(wh_json:to_proplist(JObj)).
+store(JObj) -> store(wh_json:to_proplist(JObj)).
 
 -spec store_v(api_terms()) -> boolean().
 store_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?STORE_REQ_HEADERS, ?STORE_REQ_VALUES, ?STORE_REQ_TYPES);
-store_v(JObj) ->
-    store_v(wh_json:to_proplist(JObj)).
+store_v(JObj) -> store_v(wh_json:to_proplist(JObj)).
 
 -spec store_amqp_resp(api_terms()) -> api_formatter_return().
 store_amqp_resp(Prop) when is_list(Prop) ->
@@ -209,14 +213,12 @@ store_amqp_resp(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?STORE_AMQP_RESP_HEADERS, ?OPTIONAL_STORE_AMQP_RESP_HEADERS);
         'false' -> {'error', "Proplist failed validate for store_amqp_resp"}
     end;
-store_amqp_resp(JObj) ->
-    store_amqp_resp(wh_json:to_proplist(JObj)).
+store_amqp_resp(JObj) -> store_amqp_resp(wh_json:to_proplist(JObj)).
 
 -spec store_amqp_resp_v(api_terms()) -> boolean().
 store_amqp_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?STORE_AMQP_RESP_HEADERS, ?STORE_AMQP_RESP_VALUES, ?STORE_AMQP_RESP_TYPES);
-store_amqp_resp_v(JObj) ->
-    store_amqp_resp_v(wh_json:to_proplist(JObj)).
+store_amqp_resp_v(JObj) -> store_amqp_resp_v(wh_json:to_proplist(JObj)).
 
 -spec store_http_resp(api_terms()) -> api_formatter_return().
 store_http_resp(Prop) when is_list(Prop) ->
@@ -224,14 +226,12 @@ store_http_resp(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?STORE_HTTP_RESP_HEADERS, ?OPTIONAL_STORE_HTTP_RESP_HEADERS);
         'false' -> {'error', "Proplist failed validate for store_http_resp"}
     end;
-store_http_resp(JObj) ->
-    store_http_resp(wh_json:to_proplist(JObj)).
+store_http_resp(JObj) -> store_http_resp(wh_json:to_proplist(JObj)).
 
 -spec store_http_resp_v(api_terms()) -> boolean().
 store_http_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?STORE_HTTP_RESP_HEADERS, ?STORE_HTTP_RESP_VALUES, ?STORE_HTTP_RESP_TYPES);
-store_http_resp_v(JObj) ->
-    store_http_resp_v(wh_json:to_proplist(JObj)).
+store_http_resp_v(JObj) -> store_http_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Create a DTMF (or DTMFs) on the channel - see wiki
@@ -244,14 +244,12 @@ send_dtmf(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?SEND_DTMF_HEADERS, ?OPTIONAL_SEND_DTMF_HEADERS);
         'false' -> {'error', "Prop failed validation for send_dtmf"}
     end;
-send_dtmf(JObj) ->
-    send_dtmf(wh_json:to_proplist(JObj)).
+send_dtmf(JObj) -> send_dtmf(wh_json:to_proplist(JObj)).
 
 -spec send_dtmf_v(api_terms()) -> boolean().
 send_dtmf_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?SEND_DTMF_HEADERS, ?SEND_DTMF_VALUES, ?SEND_DTMF_TYPES);
-send_dtmf_v(JObj) ->
-    send_dtmf_v(wh_json:to_proplist(JObj)).
+send_dtmf_v(JObj) -> send_dtmf_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Create a tone on the channel - see wiki
@@ -271,14 +269,12 @@ tones(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop1, ?TONES_REQ_HEADERS, ?OPTIONAL_TONES_REQ_HEADERS);
         'false' -> {'error', "Prop failed validation for tones_req"}
     end;
-tones(JObj) ->
-    tones(wh_json:to_proplist(JObj)).
+tones(JObj) -> tones(wh_json:to_proplist(JObj)).
 
 -spec tones_v(api_terms()) -> boolean().
 tones_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?TONES_REQ_HEADERS, ?TONES_REQ_VALUES, ?TONES_REQ_TYPES);
-tones_v(JObj) ->
-    tones_v(wh_json:to_proplist(JObj)).
+tones_v(JObj) -> tones_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc A Tone within a Tones request - see wiki
@@ -291,20 +287,19 @@ tones_req_tone(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message_specific(Prop, ?TONES_REQ_TONE_HEADERS, ?OPTIONAL_TONES_REQ_TONE_HEADERS);
         'false' -> {'error', "Proplist failed validation for tones_req_tone"}
     end;
-tones_req_tone(JObj) ->
-    tones_req_tone(wh_json:to_proplist(JObj)).
+tones_req_tone(JObj) -> tones_req_tone(wh_json:to_proplist(JObj)).
 
 -spec tones_req_tone_v(api_terms()) -> boolean().
 tones_req_tone_v(Prop) when is_list(Prop) ->
     wh_api:validate_message(Prop, ?TONES_REQ_TONE_HEADERS, ?TONES_REQ_TONE_VALUES, ?TONES_REQ_TONE_TYPES);
-tones_req_tone_v(JObj) ->
-    tones_req_tone_v(wh_json:to_proplist(JObj)).
+tones_req_tone_v(JObj) -> tones_req_tone_v(wh_json:to_proplist(JObj)).
 
--spec tones_req_tone_headers(api_terms()) -> {'ok', wh_proplist()} | {'error', string()}.
+-spec tones_req_tone_headers(api_terms()) ->
+                                    {'ok', wh_proplist()} |
+                                    {'error', string()}.
 tones_req_tone_headers(Prop) when is_list(Prop) ->
     wh_api:build_message_specific_headers(Prop, ?TONES_REQ_TONE_HEADERS, ?OPTIONAL_TONES_REQ_TONE_HEADERS);
-tones_req_tone_headers(JObj) ->
-    tones_req_tone_headers(wh_json:to_proplist(JObj)).
+tones_req_tone_headers(JObj) -> tones_req_tone_headers(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Detect tones on the line
@@ -317,14 +312,12 @@ tone_detect(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?TONE_DETECT_REQ_HEADERS, ?OPTIONAL_TONE_DETECT_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for tone_detect"}
     end;
-tone_detect(JObj) ->
-    tone_detect(wh_json:to_proplist(JObj)).
+tone_detect(JObj) -> tone_detect(wh_json:to_proplist(JObj)).
 
 -spec tone_detect_v(api_terms()) -> boolean().
 tone_detect_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?TONE_DETECT_REQ_HEADERS, ?TONE_DETECT_REQ_VALUES, ?TONE_DETECT_REQ_TYPES);
-tone_detect_v(JObj) ->
-    tone_detect_v(wh_json:to_proplist(JObj)).
+tone_detect_v(JObj) -> tone_detect_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Send a list of dialplan applications in bulk - see wiki
@@ -337,14 +330,12 @@ queue(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?QUEUE_REQ_HEADERS, ?OPTIONAL_QUEUE_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for queue_req"}
     end;
-queue(JObj) ->
-    queue(wh_json:to_proplist(JObj)).
+queue(JObj) -> queue(wh_json:to_proplist(JObj)).
 
 -spec queue_v(api_terms()) -> boolean().
 queue_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?QUEUE_REQ_HEADERS, ?QUEUE_REQ_VALUES, ?QUEUE_REQ_TYPES);
-queue_v(JObj) ->
-    queue_v(wh_json:to_proplist(JObj)).
+queue_v(JObj) -> queue_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Play media - see wiki
@@ -357,14 +348,12 @@ play(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?PLAY_REQ_HEADERS, ?OPTIONAL_PLAY_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for play"}
     end;
-play(JObj) ->
-    play(wh_json:to_proplist(JObj)).
+play(JObj) -> play(wh_json:to_proplist(JObj)).
 
 -spec play_v(api_terms()) -> boolean().
 play_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PLAY_REQ_HEADERS, ?PLAY_REQ_VALUES, ?PLAY_REQ_TYPES);
-play_v(JObj) ->
-    play_v(wh_json:to_proplist(JObj)).
+play_v(JObj) -> play_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Stop media from playing - see wiki
@@ -377,14 +366,12 @@ playstop(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?PLAY_STOP_REQ_HEADERS, ?OPTIONAL_PLAY_STOP_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for playstop"}
     end;
-playstop(JObj) ->
-    playstop(wh_json:to_proplist(JObj)).
+playstop(JObj) -> playstop(wh_json:to_proplist(JObj)).
 
 -spec playstop_v(api_terms()) -> boolean().
 playstop_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PLAY_STOP_REQ_HEADERS, ?PLAY_STOP_REQ_VALUES, ?PLAY_STOP_REQ_TYPES);
-playstop_v(JObj) ->
-    playstop_v(wh_json:to_proplist(JObj)).
+playstop_v(JObj) -> playstop_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc TTS - Text-to-speech - see wiki
@@ -397,14 +384,12 @@ tts(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?TTS_REQ_HEADERS, ?OPTIONAL_TTS_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for tts"}
     end;
-tts(JObj) ->
-    tts(wh_json:to_proplist(JObj)).
+tts(JObj) -> tts(wh_json:to_proplist(JObj)).
 
 -spec tts_v(api_terms()) -> boolean().
 tts_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?TTS_REQ_HEADERS, ?TTS_REQ_VALUES, ?TTS_REQ_TYPES);
-tts_v(JObj) ->
-    tts_v(wh_json:to_proplist(JObj)).
+tts_v(JObj) -> tts_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Record media - see wiki
@@ -417,14 +402,12 @@ record(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?RECORD_REQ_HEADERS, ?OPTIONAL_RECORD_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for record_req"}
     end;
-record(JObj) ->
-    record(wh_json:to_proplist(JObj)).
+record(JObj) -> record(wh_json:to_proplist(JObj)).
 
 -spec record_v(api_terms()) -> boolean().
 record_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?RECORD_REQ_HEADERS, ?RECORD_REQ_VALUES, ?RECORD_REQ_TYPES);
-record_v(JObj) ->
-    record_v(wh_json:to_proplist(JObj)).
+record_v(JObj) -> record_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Record call media - see wiki
@@ -437,14 +420,12 @@ record_call(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?RECORD_CALL_REQ_HEADERS, ?OPTIONAL_RECORD_CALL_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for record_call_req"}
     end;
-record_call(JObj) ->
-    record_call(wh_json:to_proplist(JObj)).
+record_call(JObj) -> record_call(wh_json:to_proplist(JObj)).
 
 -spec record_call_v(api_terms()) -> boolean().
 record_call_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?RECORD_CALL_REQ_HEADERS, ?RECORD_CALL_REQ_VALUES, ?RECORD_CALL_REQ_TYPES);
-record_call_v(JObj) ->
-    record_call_v(wh_json:to_proplist(JObj)).
+record_call_v(JObj) -> record_call_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Answer a session - see wiki
@@ -457,15 +438,12 @@ answer(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?ANSWER_REQ_HEADERS, ?OPTIONAL_ANSWER_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for answer_req"}
     end;
-answer(JObj) ->
-    answer(wh_json:to_proplist(JObj)).
+answer(JObj) -> answer(wh_json:to_proplist(JObj)).
 
 -spec answer_v(api_terms()) -> boolean().
 answer_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ANSWER_REQ_HEADERS, ?ANSWER_REQ_VALUES, ?ANSWER_REQ_TYPES);
-answer_v(JObj) ->
-    answer_v(wh_json:to_proplist(JObj)).
-
+answer_v(JObj) -> answer_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Privacy
@@ -478,14 +456,12 @@ privacy(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?PRIVACY_REQ_HEADERS, ?OPTIONAL_PRIVACY_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for privacy"}
     end;
-privacy(JObj) ->
-    privacy(wh_json:to_proplist(JObj)).
+privacy(JObj) -> privacy(wh_json:to_proplist(JObj)).
 
 -spec privacy_v(api_terms()) -> boolean().
 privacy_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PRIVACY_REQ_HEADERS, ?PRIVACY_REQ_VALUES, ?PRIVACY_REQ_TYPES);
-privacy_v(JObj) ->
-    privacy_v(wh_json:to_proplist(JObj)).
+privacy_v(JObj) -> privacy_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Progress a session - see wiki
@@ -498,14 +474,12 @@ progress(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?PROGRESS_REQ_HEADERS, ?OPTIONAL_PROGRESS_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for progress_req"}
     end;
-progress(JObj) ->
-    progress(wh_json:to_proplist(JObj)).
+progress(JObj) -> progress(wh_json:to_proplist(JObj)).
 
 -spec progress_v(api_terms()) -> boolean().
 progress_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PROGRESS_REQ_HEADERS, ?PROGRESS_REQ_VALUES, ?PROGRESS_REQ_TYPES);
-progress_v(JObj) ->
-    progress_v(wh_json:to_proplist(JObj)).
+progress_v(JObj) -> progress_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Ring a session - see wiki
@@ -518,14 +492,12 @@ ring(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?RING_REQ_HEADERS, ?OPTIONAL_RING_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for ring_req"}
     end;
-ring(JObj) ->
-    ring(wh_json:to_proplist(JObj)).
+ring(JObj) -> ring(wh_json:to_proplist(JObj)).
 
 -spec ring_v(api_terms()) -> boolean().
 ring_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?RING_REQ_HEADERS, ?RING_REQ_VALUES, ?RING_REQ_TYPES);
-ring_v(JObj) ->
-    ring_v(wh_json:to_proplist(JObj)).
+ring_v(JObj) -> ring_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Receive a fax, storing it to local disk - see wiki
@@ -538,14 +510,12 @@ receive_fax(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?RECV_FAX_HEADERS, ?OPTIONAL_RECV_FAX_HEADERS);
         'false' -> {'error', "Proplist failed validation for receive_fax"}
     end;
-receive_fax(JObj) ->
-    receive_fax(wh_json:to_proplist(JObj)).
+receive_fax(JObj) -> receive_fax(wh_json:to_proplist(JObj)).
 
 -spec receive_fax_v(api_terms()) -> boolean().
 receive_fax_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?RECV_FAX_HEADERS, ?RECV_FAX_VALUES, ?RECV_FAX_TYPES);
-receive_fax_v(JObj) ->
-    receive_fax_v(wh_json:to_proplist(JObj)).
+receive_fax_v(JObj) -> receive_fax_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Store a fax, storing it to the DB - see wiki
@@ -863,8 +833,7 @@ conference(JObj) -> conference(wh_json:to_proplist(JObj)).
 -spec conference_v(api_terms()) -> boolean().
 conference_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CONFERENCE_REQ_HEADERS, ?CONFERENCE_REQ_VALUES, ?CONFERENCE_REQ_TYPES);
-conference_v(JObj) ->
-    conference_v(wh_json:to_proplist(JObj)).
+conference_v(JObj) -> conference_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Originate Ready/Execute
@@ -913,14 +882,12 @@ error(Prop) when is_list(Prop) ->
         'true' ->  wh_api:build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
         'false' -> {'error', "Proplist failed validation for error_req"}
     end;
-error(JObj) ->
-    error(wh_json:to_proplist(JObj)).
+error(JObj) -> error(wh_json:to_proplist(JObj)).
 
 -spec error_v(api_terms()) -> boolean().
 error_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ERROR_RESP_HEADERS, [{<<"Event-Name">>, <<"dialplan">>} | ?ERROR_RESP_VALUES], ?ERROR_RESP_TYPES);
-error_v(JObj) ->
-    error_v(wh_json:to_proplist(JObj)).
+error_v(JObj) -> error_v(wh_json:to_proplist(JObj)).
 
 %% Takes a generic API JObj, determines what type it is, and calls the appropriate validator
 -spec publish_command(ne_binary(), api_terms()) -> 'ok'.
@@ -960,14 +927,14 @@ publish_error(CallID, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, [{<<"Event-Name">>, <<"dialplan">>}
                                                      | ?ERROR_RESP_VALUES
                                                     ], fun ?MODULE:error/1),
-    amqp_util:callevt_publish(CallID, Payload, event, ContentType).
+    amqp_util:callevt_publish(CallID, Payload, 'event', ContentType).
 
 -spec publish_event(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_event(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_event(CallID, JObj) ->
     publish_event(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_event(CallID, Payload, ContentType) ->
-    amqp_util:callevt_publish(CallID, Payload, event, ContentType).
+    amqp_util:callevt_publish(CallID, Payload, 'event', ContentType).
 
 -spec publish_originate_ready(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_originate_ready(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -985,11 +952,9 @@ publish_originate_execute(ServerId, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?ORIGINATE_EXECUTE_VALUES, fun ?MODULE:originate_execute/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
-dial_method_single() ->
-    ?DIAL_METHOD_SINGLE.
+dial_method_single() -> ?DIAL_METHOD_SINGLE.
 
-dial_method_simultaneous() ->
-    ?DIAL_METHOD_SIMUL.
+dial_method_simultaneous() -> ?DIAL_METHOD_SIMUL.
 
 bind_q(Queue, _Prop) ->
     _ = amqp_util:callctl_exchange(),
@@ -998,3 +963,26 @@ bind_q(Queue, _Prop) ->
 
 unbind_q(Queue, _Prop) ->
     amqp_util:unbind_q_from_callctl(Queue).
+
+-spec terminators(api_binary()) -> ne_binaries().
+terminators(Bin) when is_binary(Bin) ->
+    [<<B>> || <<B>> <= Bin, lists:member(<<B>>, ?ANY_DIGIT)];
+terminators('undefined') -> ?ANY_DIGIT.
+
+-spec local_store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
+local_store_url(Call, JObj) ->
+    AccountDb = whapps_call:account_db(Call),
+    MediaId = wh_json:get_value(<<"_id">>, JObj),
+    MediaName = wh_json:get_value(<<"name">>, JObj),
+
+    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    list_to_binary([wh_couch_connections:get_url(), AccountDb
+                    ,"/", MediaId
+                    ,"/", MediaName
+                    ,"?rev=", Rev
+                   ]).
+
+-spec offsite_store_url(api_binary(), ne_binary()) -> ne_binary().
+offsite_store_url('undefined', _) -> throw({'error', <<"URL not defined">>});
+offsite_store_url(Url, MediaName) ->
+    iolist_to_binary([wh_util:strip_right_binary(Url, $/), "/", MediaName]).

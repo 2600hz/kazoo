@@ -992,7 +992,7 @@ maybe_start_recording(Call, 'true', Url) ->
 
     case should_save_recording(Url) of
         'true' ->
-            StoreUrl = offsite_store_url(Url, MediaName),
+            StoreUrl = wapi_dialplan:offsite_store_url(Url, MediaName),
             whapps_call_command:set('undefined', wh_json:from_list([{<<"Recording-URL">>, StoreUrl}]), Call);
         'false' -> 'ok'
     end,
@@ -1011,26 +1011,18 @@ save_recording(Call, MediaName, Format, Url) ->
             {'ok', MediaJObj} = store_recording_meta(Call, MediaName, Format),
             lager:debug("stored meta: ~p", [MediaJObj]),
 
-            StoreUrl = store_url(Call, MediaJObj),
+            StoreUrl = wapi_dialplan:local_store_url(Call, MediaJObj),
             lager:debug("store url: ~s", [StoreUrl]),
 
-            store_recording(MediaName, StoreUrl, Call);
+            whapps_call_command:store_recording(MediaName, StoreUrl, Call);
         'false' when is_binary(Url) ->
-            StoreUrl = offsite_store_url(Url, MediaName),
+            StoreUrl = wapi_dialplan:offsite_store_url(Url, MediaName),
             lager:debug("using ~s to maybe store recording", [StoreUrl]),
 
-            store_recording(MediaName, StoreUrl, Call);
+            whapps_call_command:store_recording(MediaName, StoreUrl, Call);
         'false' ->
             lager:debug("no external url to use, not saving recording")
     end.
-
-offsite_store_url('undefined', _) -> <<"URL not defined">>;
-offsite_store_url(Url, MediaName) ->
-    iolist_to_binary([wh_util:strip_right_binary(Url, $/), "/", MediaName]).
-
--spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
-store_recording(MediaName, StoreUrl, Call) ->
-    'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).
 
 -spec store_recording_meta(whapps_call:call(), ne_binary(), ne_binary()) ->
                                   {'ok', wh_json:object()} |
@@ -1067,19 +1059,6 @@ get_recording_doc_id(CallId) -> <<"call_recording_", CallId/binary>>.
 -spec get_media_name(ne_binary(), ne_binary()) -> ne_binary().
 get_media_name(CallId, Ext) ->
     <<(get_recording_doc_id(CallId))/binary, ".", Ext/binary>>.
-
--spec store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
-store_url(Call, JObj) ->
-    AccountDb = whapps_call:account_db(Call),
-    MediaId = wh_json:get_value(<<"_id">>, JObj),
-    MediaName = wh_json:get_value(<<"name">>, JObj),
-
-    Rev = wh_json:get_value(<<"_rev">>, JObj),
-    list_to_binary([wh_couch_connections:get_url(), AccountDb
-                    ,"/", MediaId
-                    ,"/", MediaName
-                    ,"?rev=", Rev
-                   ]).
 
 -spec agent_id(agent()) -> api_binary().
 agent_id(Agent) ->

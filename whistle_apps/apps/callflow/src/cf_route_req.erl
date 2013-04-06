@@ -16,26 +16,24 @@
 handle_req(JObj, Options) ->
     Call = whapps_call:from_route_req(JObj),
     case is_binary(whapps_call:account_id(Call)) andalso callflow_should_respond(Call) of
-        true ->
+        'true' ->
             lager:info("received a request asking if callflows can route this call"),
             ControllerQ = props:get_value(queue, Options),
             AllowNoMatch = allow_no_match(Call),
             case cf_util:lookup_callflow(Call) of
-                %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
-                %% to use it for this call
-                {ok, Flow, NoMatch} when (not NoMatch) orelse AllowNoMatch ->
+                %% if NoMatch is 'false' then allow the callflow or if it is 'true'
+                %% and we are able/allowed to use it for this call
+                {'ok', Flow, NoMatch} when (not NoMatch) orelse AllowNoMatch ->
                     lager:info("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
-                                                                        ,whapps_call:account_id(Call)
-                                                                       ]),
+                                                                       ,whapps_call:account_id(Call)
+                                                                      ]),
                     cache_call(Flow, NoMatch, ControllerQ, Call),
                     send_route_response(Flow, JObj, ControllerQ, Call);
-                {ok, _, true} ->
-                    lager:info("only available callflow is a nomatch for a unauthorized call", []);
-                {error, R} ->
-                    lager:info("unable to find callflow ~p", [R])
+                {'ok', _, 'true'} ->
+                    lager:info("only available callflow is a nomatch for a unauthorized call");
+                {'error', R} -> lager:info("unable to find callflow ~p", [R])
             end;
-        false ->
-            ok
+        'false' -> 'ok'
     end.
 
 %%-----------------------------------------------------------------------------
@@ -48,8 +46,8 @@ handle_req(JObj, Options) ->
 %%-----------------------------------------------------------------------------
 -spec allow_no_match(whapps_call:call()) -> boolean().
 allow_no_match(Call) ->
-    whapps_call:custom_channel_var(<<"Referred-By">>, Call) =/= undefined
-        orelse (whapps_call:authorizing_type(Call) =/= undefined
+    whapps_call:custom_channel_var(<<"Referred-By">>, Call) =/= 'undefined'
+        orelse (whapps_call:authorizing_type(Call) =/= 'undefined'
                 andalso whapps_call:authorizing_type(Call) =/= <<"resource">>).
 
 %%-----------------------------------------------------------------------------
@@ -61,13 +59,13 @@ allow_no_match(Call) ->
 -spec callflow_should_respond(whapps_call:call()) -> boolean().
 callflow_should_respond(Call) ->
     case whapps_call:authorizing_type(Call) of
-        <<"user">> -> true;
-        <<"device">> -> true;
-        <<"callforward">> -> true;
-        <<"clicktocall">> -> true;
-        <<"resource">> -> true;
-        undefined -> true;
-        _Else -> false
+        <<"user">> -> 'true';
+        <<"device">> -> 'true';
+        <<"callforward">> -> 'true';
+        <<"clicktocall">> -> 'true';
+        <<"resource">> -> 'true';
+        'undefined' -> 'true';
+        _Else -> 'false'
     end.
 
 %%-----------------------------------------------------------------------------
@@ -116,12 +114,12 @@ get_ringback_media(Flow, JObj) ->
 %%-----------------------------------------------------------------------------
 -spec pre_park_action(whapps_call:call()) -> ne_binary().
 pre_park_action(Call) ->
-    case whapps_config:get_is_true(<<"callflow">>, <<"ring_ready_offnet">>, true)
+    case whapps_config:get_is_true(<<"callflow">>, <<"ring_ready_offnet">>, 'true')
         andalso whapps_call:inception(Call) =:= <<"off-net">>
-        andalso whapps_call:authorizing_type(Call) =:= undefined
+        andalso whapps_call:authorizing_type(Call) =:= 'undefined'
     of
-        false -> <<"none">>;
-        true -> <<"ring_ready">>
+        'false' -> <<"none">>;
+        'true' -> <<"ring_ready">>
     end.
 
 %%-----------------------------------------------------------------------------
@@ -134,10 +132,10 @@ pre_park_action(Call) ->
 -spec cache_call(wh_json:object(), boolean(), ne_binary(), whapps_call:call()) -> 'ok'.
 cache_call(Flow, NoMatch, ControllerQ, Call) ->
     Updaters = [fun(C) ->
-                        Props = [{cf_flow_id, wh_json:get_value(<<"_id">>, Flow)}
-                                 ,{cf_flow, wh_json:get_value(<<"flow">>, Flow)}
-                                 ,{cf_capture_group, wh_json:get_ne_value(<<"capture_group">>, Flow)}
-                                 ,{cf_no_match, NoMatch}
+                        Props = [{'cf_flow_id', wh_json:get_value(<<"_id">>, Flow)}
+                                 ,{'cf_flow', wh_json:get_value(<<"flow">>, Flow)}
+                                 ,{'cf_capture_group', wh_json:get_ne_value(<<"capture_group">>, Flow)}
+                                 ,{'cf_no_match', NoMatch}
                                 ],
                         whapps_call:kvs_store_proplist(Props, C)
                 end

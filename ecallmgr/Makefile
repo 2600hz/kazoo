@@ -2,6 +2,8 @@ PROJECT = ecallmgr
 ROOT = ..
 DIALYZER = dialyzer
 
+MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+
 LIB_EBINS = $(shell find $(ROOT)/lib -maxdepth 2 -name ebin -print)
 PA = $(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN))
 
@@ -15,8 +17,6 @@ DIRS = . \
 .PHONY: all compile clean
 
 all: compile
-
-MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
 
 compile: ebin/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
@@ -36,22 +36,19 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
+	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ -pa $(ROOT)/lib $?
 
 clean:
 	rm -f ebin/*
-	rm -f test/*.beam
+	rm -f test/*.*
 	rm -f erl_crash.dump
 
 
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test $(PA) -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
-
-build-plt:
-	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
-		--apps kernel stdlib sasl inets crypto public_key ssl
+	erl -noshell $(PA) \
+	-pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
 
 dialyze: 
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) $(PA) \

@@ -12,8 +12,9 @@
 
 -export([handle/2
          ,offnet_req/2
-         ,wait_for_offnet/0
         ]).
+
+-define(DEFAULT_EVENT_WAIT, 10000).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -24,16 +25,16 @@
 -spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     _ = offnet_req(Data, Call),
-    case wait_for_offnet() of
+    case wait_for_offnet(Call) of
         {<<"SUCCESS">>, _} ->
             lager:info("completed successful offnet request"),
             cf_exe:stop(Call);
         {Cause, Code} ->
             lager:info("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
-            case (cf_util:handle_bridge_failure(Cause, Call) =:= ok)
-                orelse (cf_util:handle_bridge_failure(Code, Call) =:= ok) of
-                true -> ok;
-                false ->
+            case (cf_util:handle_bridge_failure(Cause, Call) =:= 'ok')
+                orelse (cf_util:handle_bridge_failure(Code, Call) =:= 'ok') of
+                'true' -> 'ok';
+                'false' ->
                     cf_util:send_default_response(Cause, Call),
                     cf_exe:continue(Call)
             end
@@ -45,8 +46,8 @@ offnet_req(Data, Call) ->
     {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
 
     Endpoint = case cf_endpoint:get(Call) of
-                   {ok, JObj} -> JObj;
-                   {error, _} -> wh_json:new()
+                   {'ok', JObj} -> JObj;
+                   {'error', _} -> wh_json:new()
                end,
 
     Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
@@ -84,8 +85,8 @@ offnet_req(Data, Call) ->
 -spec get_to_did(wh_json:json_object(), whapps_call:call()) -> ne_binary().
 get_to_did(Data, Call) ->
     case wh_json:is_true(<<"do_not_normalize">>, Data) of
-        false -> whapps_call:request_user(Call);
-        true ->
+        'false' -> whapps_call:request_user(Call);
+        'true' ->
             Request = whapps_call:request(Call),
             [RequestUser, _] = binary:split(Request, <<"@">>),            
             RequestUser
@@ -97,27 +98,23 @@ get_to_did(Data, Call) ->
 %% Consume Erlang messages and return on offnet response
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_offnet() -> {ne_binary(), ne_binary() | 'undefined'}.
-wait_for_offnet() ->
-    receive
-        {amqp_msg, JObj} ->
+-spec wait_for_offnet(whapps_call:call()) -> {ne_binary(), ne_binary() | 'undefined'}.
+wait_for_offnet(Call) ->
+    case whapps_call_command:receive_event(?DEFAULT_EVENT_WAIT, 'true') of
+        {'ok', JObj} ->
             case wh_util:get_event_type(JObj) of
-                { <<"resource">>, <<"offnet_resp">> } ->
+                {<<"resource">>, <<"offnet_resp">>} ->
                     {wh_json:get_value(<<"Response-Message">>, JObj)
                      ,wh_json:get_value(<<"Response-Code">>, JObj)
                     };
-                { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     lager:info("recv channel destroy"),
                     {wh_json:get_value(<<"Hangup-Cause">>, JObj)
                      ,wh_json:get_value(<<"Hangup-Code">>, JObj)
                     };
-                _ ->
-                    wait_for_offnet()
+                _ -> wait_for_offnet(Call)
             end;
-        _ ->
-            %% dont let the mailbox grow unbounded if
-            %%   this process hangs around...
-            wait_for_offnet()
+        _ -> wait_for_offnet(Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -128,12 +125,12 @@ wait_for_offnet() ->
 %% build a json object of those now.
 %% @end
 %%--------------------------------------------------------------------
--spec build_sip_headers(wh_json:json_object(), whapps_call:call()) -> 'undefined' | wh_json:json_object().
+-spec build_sip_headers(wh_json:json_object(), whapps_call:call()) -> api_object().
 build_sip_headers(Data, Call) ->
     Builders = [fun(J) ->
                         case wh_json:is_true(<<"emit_account_id">>, Data) of
-                            false -> J;
-                            true -> 
+                            'false' -> J;
+                            'true' -> 
                                 wh_json:set_value(<<"X-Account-ID">>, whapps_call:account_id(Call), J)
                         end
                 end
@@ -141,6 +138,6 @@ build_sip_headers(Data, Call) ->
     CustomHeaders = wh_json:get_value(<<"custom_sip_headers">>, Data, wh_json:new()),
     JObj = lists:foldl(fun(F, J) -> F(J) end, CustomHeaders, Builders),
     case wh_util:is_empty(JObj) of
-        true -> undefined;
-        false -> JObj
+        'true' -> 'undefined';
+        'false' -> JObj
     end.
