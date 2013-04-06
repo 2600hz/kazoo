@@ -16,14 +16,16 @@ DIRS = . \
 all: compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+CARRIERS = $(shell ls src/carriers/*.erl | sed 's/src\/carriers\///;s/\.erl/,/' | sed '$$s/.$$//')
+PROVIDERS = $(shell ls src/providers/*.erl | sed 's/src\/providers\///;s/\.erl/,/' | sed '$$s/.$$//')
 
 compile: ebin/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CARRIERS),$(PROVIDERS)\]}/' \
 		> ebin/$(PROJECT).app
 	-@$(MAKE) ebin/$(PROJECT).app
 
-ebin/$(PROJECT).app: src/*.erl
+ebin/$(PROJECT).app: src/*.erl src/carriers/*.erl src/providers/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ -pa $(ROOT)/lib $?
 
