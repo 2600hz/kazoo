@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(handoff).
+-module(reorder).
 
 -include_lib("whistle/include/wh_types.hrl").
 
@@ -20,7 +20,7 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     _ = start_deps(),
-    handoff_sup:start_link().
+    reorder_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -30,7 +30,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec stop/0 :: () -> 'ok'.
 stop() ->
-    application:stop(handoff).
+    application:stop(reorder).
 
 %%--------------------------------------------------------------------
 %% @private

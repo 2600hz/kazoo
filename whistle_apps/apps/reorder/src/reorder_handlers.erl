@@ -6,13 +6,13 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(handoff_handlers).
+-module(reorder_handlers).
 
 -export([handle_route_req/2
          ,handle_route_win/2
         ]).
 
--include("handoff.hrl").
+-include("reorder.hrl").
 
 -spec handle_route_req/2 :: (wh_json:json_object(), wh_proplist()) -> any().
 handle_route_req(JObj, Props) ->
