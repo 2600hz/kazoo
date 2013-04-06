@@ -277,7 +277,6 @@ content_types_provided(Req, #cb_context{req_nouns=Nouns}=Context0) ->
                             Payload = [ContextAcc | Params],
                             crossbar_bindings:fold(Event, Payload)
                     end, Context0, Nouns),
-
     content_types_provided(Req, Context1, CTPs).
 
 content_types_provided(Req, Context, []) ->
@@ -324,7 +323,6 @@ default_content_types_accepted(Req, #cb_context{content_types_accepted=CTAs}=Con
                                                               ,ModCT)
                          end, L) % check each type against the default
           ],
-
     {CTA, Req, Context}.
 
 -spec content_types_accepted(content_type(), #http_req{}, cb_context:context()) ->
@@ -539,9 +537,13 @@ from_form(Req0, Context0) ->
 -spec to_json(#http_req{}, cb_context:context()) ->
                            {iolist() | ne_binary() | 'halt', #http_req{}, cb_context:context()}.
 to_json(Req, Context) ->
-    Event = <<"v1_resource.to_json">>,
-    _ = crossbar_bindings:map(Event, {Req, Context}),
-    v1_util:create_pull_response(Req, Context).
+    case is_csv_request(Context) of
+        'true' -> to_csv(Req, Context);
+        'false' ->
+            Event = <<"v1_resource.to_json">>,
+            _ = crossbar_bindings:map(Event, {Req, Context}),
+            v1_util:create_pull_response(Req, Context)
+    end.
 
 -spec to_binary(#http_req{}, cb_context:context()) ->
                              {binary(), #http_req{}, cb_context:context()}.
@@ -557,11 +559,20 @@ to_csv(Req, #cb_context{resp_headers=RespHeaders}=Context) ->
     RespBody = maybe_flatten_jobj(Context),
     RespHeaders1 = [{<<"Content-Type">>, <<"application/octet-stream">>}
                     ,{<<"Content-Length">>, iolist_size(RespBody)}
-                    ,{<<"Content-Disposition">>, <<"attachment; filename=\"cdrs.csv\"">>}
+                    ,{<<"Content-Disposition">>, <<"attachment; filename=\"data.csv\"">>}
                     | RespHeaders
                    ],
     {RespBody, v1_util:set_resp_headers(Req, Context#cb_context{resp_headers=RespHeaders1}), Context}.
 
+-spec is_csv_request(cb_context:context()) -> boolean().
+is_csv_request(#cb_context{query_json=Query}) ->
+    case wh_json:get_value(<<"accept">>, Query, 'false') of
+        <<"csv">> -> 
+            lager:debug("overriding req header to use csv", []),
+            'true';
+        _ -> 'false'
+    end.
+    
 maybe_flatten_jobj(#cb_context{resp_data=RespData
                                ,query_json=JsonQuery
                               }) ->
