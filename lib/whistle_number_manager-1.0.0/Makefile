@@ -31,11 +31,11 @@ ebin/$(PROJECT).app: src/*.erl src/carriers/*.erl src/providers/*.erl
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CARRIERS),$(PROVIDERS)\]}/' \
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
-test/$(PROJECT).app: src/*.erl
+test/$(PROJECT).app: src/*.erl src/carriers/*.erl src/providers/*.erl
 	@mkdir -p test/
 	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ -pa $(ROOT)/lib $?
 
@@ -48,7 +48,7 @@ test: clean compile-test eunit
 
 eunit: compile-test
 	erl -noshell $(PA) \
-	-pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
+	-pa test -eval "eunit:test([$(MODULES),$(CARRIERS),$(PROVIDERS)], [verbose])" -s init stop
 
 dialyze: 
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
