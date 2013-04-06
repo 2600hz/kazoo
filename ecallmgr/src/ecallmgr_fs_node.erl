@@ -317,6 +317,12 @@ process_event(<<"CHANNEL_EXECUTE_COMPLETE">> = EventName, UUID, Props, Node) ->
 process_event(<<"conference::maintenance">> = EventName, UUID, Props, Node) ->
     _ = ecallmgr_fs_conferences:event(Node, UUID, Props),
     maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"sofia::transferor">> = EventName, UUID, Props, Node) ->
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"sofia::transferee">> = EventName, UUID, Props, Node) ->
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"sofia::replaced">> = EventName, UUID, Props, Node) ->
+    maybe_send_event(EventName, UUID, Props, Node);
 process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
     gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}

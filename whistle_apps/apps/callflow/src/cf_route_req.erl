@@ -13,27 +13,31 @@
 -export([handle_req/2]).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_req(JObj, Options) ->
+handle_req(JObj, Props) ->
     Call = whapps_call:from_route_req(JObj),
-    case is_binary(whapps_call:account_id(Call)) andalso callflow_should_respond(Call) of
+    case is_binary(whapps_call:account_id(Call))
+        andalso callflow_should_respond(Call)
+    of
         'true' ->
             lager:info("received a request asking if callflows can route this call"),
-            ControllerQ = props:get_value(queue, Options),
             AllowNoMatch = allow_no_match(Call),
             case cf_util:lookup_callflow(Call) of
-                %% if NoMatch is 'false' then allow the callflow or if it is 'true'
-                %% and we are able/allowed to use it for this call
+                %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
+                %% to use it for this call
                 {'ok', Flow, NoMatch} when (not NoMatch) orelse AllowNoMatch ->
                     lager:info("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
                                                                        ,whapps_call:account_id(Call)
                                                                       ]),
+                    ControllerQ = props:get_value('queue', Props),
                     cache_call(Flow, NoMatch, ControllerQ, Call),
                     send_route_response(Flow, JObj, ControllerQ, Call);
                 {'ok', _, 'true'} ->
-                    lager:info("only available callflow is a nomatch for a unauthorized call");
-                {'error', R} -> lager:info("unable to find callflow ~p", [R])
+                    lager:info("only available callflow is a nomatch for a unauthorized call", []);
+                {'error', R} ->
+                    lager:info("unable to find callflow ~p", [R])
             end;
-        'false' -> 'ok'
+        'false' ->
+            'ok'
     end.
 
 %%-----------------------------------------------------------------------------
