@@ -334,7 +334,6 @@ send_to_full_provisioner(PartialURL) ->
             lager:debug("making ~s request to ~s", ['delete', FullUrl]),  
             Res = ibrowse:send_req(FullUrl, Headers, 'delete', [], [{inactivity_timeout, 10000}]),
             lager:debug("response from server: ~p", [Res]),
-            io:format("MACPIE ~p~n", [Res]),
             true
     end.
 

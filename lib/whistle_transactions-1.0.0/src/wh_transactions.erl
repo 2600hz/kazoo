@@ -15,7 +15,7 @@
          ,call_charges/4
         ]).
 -export([filter_by_reason/2]).
--export([fetch_since/2]).
+-export([fetch_since/3]).
 -export([fetch_last/2]).
 -export([save/1]).
 -export([remove/1]).
@@ -150,17 +150,16 @@ fetch_last(AccountId, Count) ->
 %% fetch last transaction from date to now
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_since(ne_binary(), integer()) -> wh_transactions().
-fetch_since(AccountId, Date) ->
+-spec fetch_since(ne_binary(), integer(), integer()) -> wh_transactions().
+fetch_since(AccountId, From, To) ->
     AccountDB = wh_util:format_account_id(AccountId, 'encoded'),
-    Now = wh_util:current_tstamp(),
-    ViewOptions = [{'startkey', Date}
-                   ,{'endkey', Now}
+    ViewOptions = [{'startkey', From}
+                   ,{'endkey', To}
                    ,'include_docs'
                   ],
     case couch_mgr:get_results(AccountDB, <<"transactions/by_timestamp">>, ViewOptions) of
         {'ok', []} ->
-            lager:debug("no transactions for that range from ~p to ~p on ~p", [Date, Now, AccountId]),
+            lager:debug("no transactions for that range from ~p to ~p on ~p", [From, To, AccountId]),
             [];
         {'ok', ViewRes} ->
             viewres_to_recordlist(ViewRes)
