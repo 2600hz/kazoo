@@ -229,7 +229,7 @@ update_custom_channel_vars(Node, CallId, JObj, Props) ->
 maybe_add_billing_ccv(CCVs, CallId, Node, Props) ->
     case props:get_value(?GET_CCV(<<"Billing-ID">>), Props) of
         'undefined' ->
-            BillingId = wh_util:to_hex_binary(crypto:md5(CallId)),
+            BillingId = wh_util:rand_hex_binary(16),
             lager:debug("created new billing id ~s for channel ~s", [BillingId, CallId]),
             _ = ecallmgr_util:send_cmd(Node, CallId, <<"export">>, ?SET_CCV(<<"Billing-ID">>, BillingId)),
             Vars = wh_json:set_value(<<"Billing-ID">>, BillingId, CCVs),
@@ -246,7 +246,8 @@ set_custom_channel_vars(CCVs, Node, CallId) ->
 
 -spec start_control_and_events(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 start_control_and_events(Node, CallId, SendTo, CCVs) ->
-    {'ok', CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallId, SendTo),
+    BillingId = wh_json:get_value(<<"Billing-ID">>, CCVs),
+    {'ok', CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallId, BillingId),
     {'ok', _EvtPid} = ecallmgr_call_sup:start_event_process(Node, CallId),
     CtlQ = ecallmgr_call_control:queue_name(CtlPid),
     CtlProp = [{<<"Msg-ID">>, CallId}

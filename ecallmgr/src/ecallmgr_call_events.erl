@@ -95,16 +95,16 @@ graceful_shutdown(Node, UUID) ->
     'ok'.
 
 shutdown(Node, UUID) ->
-    _ = [gen_listener:cast(Pid, {'shutdown'})
+    _ = [gen_listener:cast(Pid, 'shutdown')
          || Pid <- gproc:lookup_pids({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)})
         ],
     'ok'.
 
 -spec callid(pid()) -> ne_binary().
-callid(Srv) -> gen_listener:call(Srv, {'callid'}, 1000).
+callid(Srv) -> gen_listener:call(Srv, 'callid', 1000).
 
 -spec node(pid()) -> ne_binary().
-node(Srv) -> gen_listener:call(Srv, {'node'}, 1000).
+node(Srv) -> gen_listener:call(Srv, 'node', 1000).
 
 update_node(Srv, Node) -> gen_listener:cast(Srv, {'update_node', Node}).
 
@@ -157,9 +157,7 @@ handle_publisher_usurp(JObj, Props) ->
 -spec init([atom() | ne_binary(),...]) -> {'ok', #state{}}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put('callid', CallId),
-
     gen_listener:cast(self(), 'init'),
-
     {'ok', #state{node=Node, callid=CallId}}.
 
 %%--------------------------------------------------------------------
@@ -176,9 +174,9 @@ init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'node'}, _From, #state{node=Node}=State) ->
+handle_call('node', _From, #state{node=Node}=State) ->
     {'reply', Node, State};
-handle_call({'callid'}, _From, #state{callid=CallId}=State) ->
+handle_call('callid', _From, #state{callid=CallId}=State) ->
     {'reply', CallId, State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
@@ -197,7 +195,7 @@ handle_cast('init', #state{node=Node
                            ,callid=CallId
                           }=State) ->
     erlang:monitor_node(Node, 'true'),
-    TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {'sanity_check'}),
+    TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
     'true' = gproc:reg({'p', 'l', 'call_events_processes'}),
     'true' = gproc:reg({'p', 'l', {'call_events_process', Node, CallId}}),
     'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
@@ -232,9 +230,9 @@ handle_cast({'channel_redirected', Props}, State) ->
     {'stop', {'shutdown', 'redirect'}, State};
 handle_cast({'graceful_shutdown'}, #state{node=Node}=State) ->
     lager:debug("call event listener on node ~s received graceful shutdown request", [Node]),
-    erlang:send_after(5000, self(), {'shutdown'}),
+    erlang:send_after(5000, self(), 'shutdown'),
     {'noreply', State};
-handle_cast({'shutdown'}, #state{node=Node}=State) ->
+handle_cast('shutdown', #state{node=Node}=State) ->
     lager:debug("call event listener on node ~s received shutdown request", [Node]),
     {'stop', 'normal', State};
 handle_cast({'transferer', _}, State) ->
@@ -345,17 +343,17 @@ handle_info('timeout', #state{node=Node
             lager:warning("unable to find call on node ~s: ~p", [Node, Reason]),
             {'stop', 'normal', State}
     end;
-handle_info({'sanity_check'}, #state{callid=CallId}=State) ->
+handle_info('sanity_check', #state{callid=CallId}=State) ->
     case ecallmgr_fs_channel:exists(CallId) of
         'true' ->
             lager:debug("listener passed sanity check, call is still up"),
-            TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {'sanity_check'}),
+            TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
             {'noreply', State#state{sanity_check_tref=TRef}};
         'false' ->
             lager:debug("call no longer exists, shutting down immediately"),
             {'stop', 'normal', State#state{sanity_check_tref='undefined'}}
     end;
-handle_info({'shutdown'}, State) ->
+handle_info('shutdown', State) ->
     {'stop', 'normal', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -445,6 +443,12 @@ process_channel_event(Props) ->
     end.
 
 -spec create_event(ne_binary(), api_binary(), wh_proplist()) -> wh_proplist().
+create_event(_, <<"sofia::transferee">>, Props) ->
+    create_event(<<"CHANNEL_TRANSFEREE">>, <<"transfer">>, Props);
+create_event(_, <<"sofia::transferor">>, Props) ->
+    create_event(<<"CHANNEL_TRANSFEROR">>, <<"transfer">>, Props);
+create_event(_, <<"sofia::replaced">>, Props) ->
+    create_event(<<"CHANNEL_REPLACED">>, <<"transfer">>, Props);
 create_event(EventName, ApplicationName, Props) ->
     wh_api:default_headers(?EVENT_CAT, EventName, ?APP_NAME, ?APP_VERSION)
         ++ create_event_props(EventName, ApplicationName, Props).
@@ -494,6 +498,7 @@ create_event_props(EventName, ApplicationName, Props) ->
        ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
        ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
        ,{<<"Channel-Moving">>, wh_util:to_binary(is_channel_moving(Props))}
+       ,{<<"Replaced-By">>, props:get_value(<<"att_xfer_replaced_by">>, Props)}
        | event_specific(EventName, ApplicationName, Props)
       ]).
 
@@ -669,7 +674,14 @@ should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>, 'false')
     'false';
 should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
     props:get_value(Application, ?FS_APPLICATION_NAMES) =/= 'undefined';
-should_publish(EventName, _, _) -> lists:member(EventName, ?CALL_EVENTS).
+should_publish(_, <<"sofia::transferee">>, _) ->
+    'true';
+should_publish(_, <<"sofia::transferor">>, _) ->
+    'true';
+should_publish(_, <<"sofia::replaced">>, _) ->
+    'true';
+should_publish(EventName, _A, _) ->
+    lists:member(EventName, ?CALL_EVENTS).
 
 -spec get_transfer_history(wh_proplist()) -> wh_json:object().
 get_transfer_history(Props) ->
