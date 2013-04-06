@@ -397,7 +397,7 @@ control_queue_helper(_, #whapps_call{}=Call) ->
     Call#whapps_call{control_q_helper=fun ?MODULE:default_helper_function/2}.
 
 -spec set_controller_queue(ne_binary(), call()) -> call().
-set_controller_queue(ControllerQ, #whapps_call{call_id=CallId, control_q=CtrlQ}=Call) when is_binary(ControllerQ) ->
+set_controller_queue(ControllerQ, #whapps_call{}=Call) when is_binary(ControllerQ) ->
     Call#whapps_call{controller_q=ControllerQ}.
 
 -spec controller_queue(call()) -> binary().
