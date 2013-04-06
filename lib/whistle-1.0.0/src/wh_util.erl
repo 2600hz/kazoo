@@ -61,6 +61,7 @@
          ,pretty_print_datetime/1
         ]).
 -export([microseconds_to_seconds/1
+         ,milliseconds_to_seconds/1
          ,elapsed_s/1, elapsed_ms/1, elapsed_us/1
          ,now_s/1, now_ms/1, now_us/1
         ]).
@@ -76,7 +77,7 @@
          ,change_syslog_log_level/1
         ]).
 
--define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, whistle_version}).
+-define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, 'whistle_version'}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -665,7 +666,8 @@ strip_binary(B) -> strip_binary(B, 'both').
 
 strip_binary(B, 'left') -> strip_left_binary(B, $\s);
 strip_binary(B, 'right') -> strip_right_binary(B, $\s);
-strip_binary(B, 'both') -> strip_right_binary(strip_left_binary(B, $\s), $\s).
+strip_binary(B, 'both') -> strip_right_binary(strip_left_binary(B, $\s), $\s);
+strip_binary(B, C) when is_integer(C) -> strip_right_binary(strip_left_binary(B, C), C).
 
 strip_left_binary(<<C, B/binary>>, C) -> strip_left_binary(B, C);
 strip_left_binary(B, _) -> B.
@@ -763,6 +765,7 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
 
 -spec microseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) -> to_integer(Microseconds) div 1000000.
+milliseconds_to_seconds(Milliseconds) -> to_integer(Milliseconds) div 1000.
 
 -spec elapsed_s(wh_now() | pos_integer()) -> pos_integer().
 -spec elapsed_ms(wh_now() | pos_integer()) -> pos_integer().
@@ -926,5 +929,8 @@ to_boolean_test() ->
                                          catch _:_ -> 'true'
                                          end
                                  end, NotAll)).
+
+strip_test() ->
+    ?assertEqual(strip_binary(<<"...Hello.....">>, $.), <<"Hello">>).
 
 -endif.

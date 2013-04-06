@@ -27,9 +27,13 @@ Commands:
     force_reset
     rotate_logs <suffix>
 
-    cluster <clusternode> ...
-    force_cluster <clusternode> ...
+    join_cluster <clusternode>[<--ram>]
     cluster_status
+    change_cluster_node_type disc | ram
+    forget_cluster_node [--offline]
+    update_cluster_nodes clusternode
+    sync_queue queue
+    cancel_sync_queue queue
 
     add_user <username> <password>
     delete_user <username>
@@ -46,9 +50,13 @@ Commands:
     list_permissions [-p <vhostpath>]
     list_user_permissions <username>
 
-    set_parameter [-p <vhostpath>] <component_name> <key> <value>
+    set_parameter [-p <vhostpath>] <component_name> <name> <value>
     clear_parameter [-p <vhostpath>] <component_name> <key>
     list_parameters [-p <vhostpath>]
+
+    set_policy [-p <vhostpath>] <name> <pattern>  <definition> [<priority>] 
+    clear_policy [-p <vhostpath>] <name>
+    list_policies [-p <vhostpath>]
 
     list_queues [-p <vhostpath>] [<queueinfoitem> ...]
     list_exchanges [-p <vhostpath>] [<exchangeinfoitem> ...]
@@ -74,7 +82,8 @@ virtual host parameter for which to display results. The default value is \"/\".
 <queueinfoitem> must be a member of the list [name, durable, auto_delete, 
 arguments, policy, pid, owner_pid, exclusive_consumer_pid, 
 exclusive_consumer_tag, messages_ready, messages_unacknowledged, messages, 
-consumers, memory, slave_pids, synchronised_slave_pids].
+consumers, active_consumers, memory, slave_pids, synchronised_slave_pids, 
+status].
 
 <exchangeinfoitem> must be a member of the list [name, type, durable, 
 auto_delete, internal, arguments, policy].
@@ -82,8 +91,8 @@ auto_delete, internal, arguments, policy].
 <bindinginfoitem> must be a member of the list [source_name, source_kind, 
 destination_name, destination_kind, routing_key, arguments].
 
-<connectioninfoitem> must be a member of the list [pid, name, address, port, 
-peer_address, peer_port, ssl, ssl_protocol, ssl_key_exchange, ssl_cipher, 
+<connectioninfoitem> must be a member of the list [pid, name, port, host, 
+peer_port, peer_host, ssl, ssl_protocol, ssl_key_exchange, ssl_cipher, 
 ssl_hash, peer_cert_subject, peer_cert_issuer, peer_cert_validity, 
 last_blocked_by, last_blocked_age, state, channels, protocol, auth_mechanism, 
 user, vhost, timeout, frame_max, client_properties, recv_oct, recv_cnt, 

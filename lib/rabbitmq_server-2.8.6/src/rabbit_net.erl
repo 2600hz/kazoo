@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(rabbit_net).
@@ -20,7 +20,7 @@
 -export([is_ssl/1, ssl_info/1, controlling_process/2, getstat/2,
          recv/1, async_recv/3, port_command/2, getopts/2, setopts/2, send/2,
          close/1, fast_close/1, sockname/1, peername/1, peercert/1,
-         tune_buffer_size/1, connection_string/2]).
+         connection_string/2, socket_ends/2]).
 
 %%---------------------------------------------------------------------------
 
@@ -36,7 +36,7 @@
 -type(socket() :: port() | #ssl_socket{}).
 -type(opts() :: [{atom(), any()} |
                  {raw, non_neg_integer(), non_neg_integer(), binary()}]).
-
+-type(host_or_ip() :: binary() | inet:ip_address()).
 -spec(is_ssl/1 :: (socket()) -> boolean()).
 -spec(ssl_info/1 :: (socket())
                     -> 'nossl' | ok_val_or_error(
@@ -69,9 +69,12 @@
 -spec(peercert/1 ::
         (socket())
         -> 'nossl' | ok_val_or_error(rabbit_ssl:certificate())).
--spec(tune_buffer_size/1 :: (socket()) -> ok_or_any_error()).
 -spec(connection_string/2 ::
         (socket(), 'inbound' | 'outbound') -> ok_val_or_error(string())).
+-spec(socket_ends/2 ::
+        (socket(), 'inbound' | 'outbound')
+        -> ok_val_or_error({host_or_ip(), rabbit_networking:ip_port(),
+                            host_or_ip(), rabbit_networking:ip_port()})).
 
 -endif.
 
@@ -185,25 +188,38 @@ peername(Sock)   when is_port(Sock) -> inet:peername(Sock).
 peercert(Sock)   when ?IS_SSL(Sock) -> ssl:peercert(Sock#ssl_socket.ssl);
 peercert(Sock)   when is_port(Sock) -> nossl.
 
-tune_buffer_size(Sock) ->
-    case getopts(Sock, [sndbuf, recbuf, buffer]) of
-        {ok, BufSizes} -> BufSz = lists:max([Sz || {_Opt, Sz} <- BufSizes]),
-                          setopts(Sock, [{buffer, BufSz}]);
-        Err            -> Err
+connection_string(Sock, Direction) ->
+    case socket_ends(Sock, Direction) of
+        {ok, {FromAddress, FromPort, ToAddress, ToPort}} ->
+            {ok, rabbit_misc:format(
+                   "~s:~p -> ~s:~p",
+                   [maybe_ntoab(FromAddress), FromPort,
+                    maybe_ntoab(ToAddress),   ToPort])};
+        Error ->
+            Error
     end.
 
-connection_string(Sock, Direction) ->
-    {From, To} = case Direction of
-                     inbound  -> {fun peername/1, fun sockname/1};
-                     outbound -> {fun sockname/1, fun peername/1}
-                 end,
+socket_ends(Sock, Direction) ->
+    {From, To} = sock_funs(Direction),
     case {From(Sock), To(Sock)} of
         {{ok, {FromAddress, FromPort}}, {ok, {ToAddress, ToPort}}} ->
-            {ok, rabbit_misc:format("~s:~p -> ~s:~p",
-                                    [rabbit_misc:ntoab(FromAddress), FromPort,
-                                     rabbit_misc:ntoab(ToAddress),   ToPort])};
+            {ok, {rdns(FromAddress), FromPort,
+                  rdns(ToAddress),   ToPort}};
         {{error, _Reason} = Error, _} ->
             Error;
         {_, {error, _Reason} = Error} ->
             Error
     end.
+
+maybe_ntoab(Addr) when is_tuple(Addr) -> rabbit_misc:ntoab(Addr);
+maybe_ntoab(Host)                     -> Host.
+
+rdns(Addr) ->
+    {ok, Lookup} = application:get_env(rabbit, reverse_dns_lookups),
+    case Lookup of
+        true -> list_to_binary(rabbit_networking:tcp_host(Addr));
+        _    -> Addr
+    end.
+
+sock_funs(inbound)  -> {fun peername/1, fun sockname/1};
+sock_funs(outbound) -> {fun sockname/1, fun peername/1}.

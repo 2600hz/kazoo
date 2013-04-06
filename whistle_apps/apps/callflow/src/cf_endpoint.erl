@@ -14,8 +14,11 @@
 -export([get/1, get/2]).
 -export([flush/2]).
 -export([build/2, build/3]).
+-export([create_call_fwd_endpoint/4
+         ,create_sip_endpoint/3
+        ]).
 
--define(NON_DIRECT_MODULES, [cf_ring_group, acdc_util]).
+-define(NON_DIRECT_MODULES, ['cf_ring_group', 'acdc_util']).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -24,13 +27,12 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec get(whapps_call:call()) ->
-                       {'ok', wh_json:object()} |
-                       {'error', term()}.
+                 {'ok', wh_json:object()} |
+                 {'error', term()}.
 -spec get(api_binary(), ne_binary() | whapps_call:call()) ->
-                       {'ok', wh_json:object()} |
-                       {'error', term()}.
-get(Call) ->
-    get(whapps_call:authorizing_id(Call), Call).
+                 {'ok', wh_json:object()} |
+                 {'error', term()}.
+get(Call) -> get(whapps_call:authorizing_id(Call), Call).
 
 get('undefined', _Call) ->
     {'error', 'invalid_endpoint_id'};
@@ -483,8 +485,8 @@ try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_func
     end.
 
 -spec maybe_create_fwd_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                             wh_json:object() |
-                                             {'error', 'cf_not_appropriate'}.
+                                       wh_json:object() |
+                                       {'error', 'cf_not_appropriate'}.
 maybe_create_fwd_endpoint(Endpoint, Properties, Call) ->
     CallFowarding = wh_json:get_ne_value(<<"call_forward">>, Endpoint, wh_json:new()),
     Source = wh_json:get_value(<<"source">>, Properties),
@@ -495,13 +497,13 @@ maybe_create_fwd_endpoint(Endpoint, Properties, Call) ->
     of
         'false' -> {'error', 'cf_not_appropriate'};
         'true' ->
-            lager:info("creating call forwarding endpoint", []),
+            lager:info("creating call forwarding endpoint"),
             create_call_fwd_endpoint(Endpoint, Properties, CallFowarding, Call)
     end.
 
 -spec maybe_create_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                         wh_json:object() |
-                                         {'error', 'cf_substitute'}.
+                                   wh_json:object() |
+                                   {'error', 'cf_substitute'}.
 maybe_create_endpoint(Endpoint, Properties, Call) ->
     CallFowarding = wh_json:get_ne_value(<<"call_forward">>, Endpoint, wh_json:new()),
     case wh_json:is_true(<<"enabled">>, CallFowarding)
@@ -513,7 +515,7 @@ maybe_create_endpoint(Endpoint, Properties, Call) ->
     end.
 
 -spec maybe_create_endpoint(ne_binary(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                         wh_json:object().
+                                   wh_json:object().
 maybe_create_endpoint(<<"sip">>, Endpoint, Properties, Call) ->
     lager:info("building a SIP endpoint"),
     create_sip_endpoint(Endpoint, Properties, Call);
@@ -547,7 +549,7 @@ guess_endpoint_type(_Endpoint, []) -> <<"sip">>.
 %% @end
 %%--------------------------------------------------------------------
 -spec create_sip_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                       wh_json:object().
+                                 wh_json:object().
 create_sip_endpoint(Endpoint, Properties, Call) ->
     CIDName = whapps_call:caller_id_name(Call),
     CIDNum = whapps_call:caller_id_number(Call),
@@ -627,8 +629,8 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Creates the whistle API endpoint for a bridge call command when
-%% the deivce (or owner) has forwarded their phone.  This endpoint
+%% Creates the Kazoo API endpoint for a bridge call command when
+%% the device (or owner) has forwarded their phone.  This endpoint
 %% is comprised of a route based on CallFwd, the relevant settings
 %% from the actuall endpoint, and the properties of this endpoint in
 %% the callflow.

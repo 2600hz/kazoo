@@ -24,10 +24,8 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
     case DestID =:= UUID of
         'true' ->
             case get_fs_app(Node, UUID, JObj, App) of
-                {'error', Msg} ->
-                    throw({'msg', Msg});
-                {'return', Result} ->
-                    Result;
+                {'error', Msg} -> throw({'msg', Msg});
+                {'return', Result} -> Result;
                 {AppName, 'noop'} ->
                     ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
                 {AppName, AppData} ->
@@ -79,6 +77,8 @@ get_fs_app(Node, UUID, JObj, <<"tts">>) ->
     case wapi_dialplan:tts_v(JObj) of
         'false' -> {'error', <<"tts failed to execute as JObj didn't validate">>};
         'true' ->
+            'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
+
             case wh_json:get_value(<<"Engine">>, JObj, <<"flite">>) of
                 <<"flite">> -> tts_flite(Node, UUID, JObj);
                 _E ->
@@ -145,8 +145,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
                         ,fun(V) ->
                                  case get_terminators(JObj) of
                                      'undefined' -> V;
-                                     Terminators ->
-                                         [Terminators|V]
+                                     Terminators -> [Terminators|V]
                                  end
                          end
                        ],
@@ -176,13 +175,12 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
                         ,fun(V) ->
                                  case get_terminators(JObj) of
                                      'undefined' -> V;
-                                     Terminators ->
-                                         [Terminators|V]
+                                     Terminators -> [Terminators|V]
                                  end
                          end
                         ,fun(V) -> [{<<"RECORD_APPEND">>, <<"true">>}
                                     ,{<<"enable_file_write_buffering">>, <<"false">>}
-                                    |V
+                                    | V
                                    ]
                          end
                        ],
@@ -218,16 +216,16 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
                     %% stream file over HTTP PUT
                     lager:debug("stream ~s via HTTP PUT", [RecordingName]),
                     stream_over_http(Node, UUID, RecordingName, put, store, JObj),
-                    {<<"store">>, noop};
+                    {<<"store">>, 'noop'};
                 <<"post">> ->
                     %% stream file over HTTP POST
                     lager:debug("stream ~s via HTTP POST", [RecordingName]),
                     stream_over_http(Node, UUID, RecordingName, post, store, JObj),
-                    {<<"store">>, noop};
+                    {<<"store">>, 'noop'};
                 _Method ->
                     %% unhandled method
                     lager:debug("unhandled stream method ~s", [_Method]),
-                    {return, error}
+                    {'return', 'error'}
             end
     end;
 
@@ -240,7 +238,7 @@ get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
             case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
                 <<"put">> ->
                     stream_over_http(Node, UUID, File, put, fax, JObj),
-                    {App, noop};
+                    {App, 'noop'};
                 _Method ->
                     lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
                     {'error', <<"invalid media transfer method">>}
@@ -446,7 +444,7 @@ get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
                             'true' = ecallmgr_fs_channel:move(Target, OtherNode, Node),
                             get_call_pickup_app(Node, UUID, JObj, Target)
                     end;
-                {'error', not_found} ->
+                {'error', 'not_found'} ->
                     lager:debug("failed to find target callid ~s", [Target]),
                     {'error', <<"failed to find target callid ", Target/binary>>}
             end
@@ -511,7 +509,7 @@ get_fs_app(Node, UUID, JObj, <<"set_terminators">>) ->
         'false' -> {'error', <<"set_terminators failed to execute as JObj did not validate">>};
         'true' ->
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
-            {<<"set">>, noop}
+            {<<"set">>, 'noop'}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"set">>) ->
@@ -524,7 +522,7 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
             CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, wh_json:new())),
             _ = ecallmgr_util:export(Node, UUID, CallVars),
 
-            {<<"set">>, noop}
+            {<<"set">>, 'noop'}
     end;
 
 get_fs_app(_Node, _UUID, JObj, <<"respond">>) ->
@@ -553,7 +551,7 @@ get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
     spawn(fun() ->
                   send_fetch_call_event(Node, UUID, JObj)
           end),
-    {<<"fetch">>, noop};
+    {<<"fetch">>, 'noop'};
 
 get_fs_app(Node, UUID, JObj, <<"conference">>) ->
     case wapi_dialplan:conference_v(JObj) of
@@ -603,7 +601,7 @@ get_call_pickup_app(Node, UUID, JObj, Target) ->
 %%--------------------------------------------------------------------
 get_conference_app(ChanNode, UUID, JObj, 'true') ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-    ConferenceConfig = wh_json:get_value(<<"Conference-Config">>, JObj, <<"default">>),
+    ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
     Cmd = list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)]),
 
     case ecallmgr_fs_conferences:node(ConfName) of
@@ -633,7 +631,8 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
     end;
 get_conference_app(_ChanNode, _UUID, JObj, 'false') ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-    {<<"conference">>, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}.
+    ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
+    {<<"conference">>, list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)])}.
 
 %% [{FreeSWITCH-Flag-Name, Kazoo-Flag-Name}]
 %% Conference-related entry flags
@@ -645,14 +644,24 @@ get_conference_app(_ChanNode, _UUID, JObj, 'false') ->
 
 -spec get_conference_flags(wh_json:object()) -> binary().
 get_conference_flags(JObj) ->
-    Flags = wh_json:foldl(fun(K, V, Acc) ->
-                                  case lists:keyfind(K, 2, ?CONFERENCE_FLAGS) of
-                                      'false' -> Acc;
-                                      {FSFlag, _} when V =:= 'true' -> [<<",">>, FSFlag | Acc];
-                                      _ -> Acc
-                                  end
-                          end, [], JObj),
-    <<"+flags{", (iolist_to_binary(lists:reverse(Flags)))/binary, "}">>.
+    case wh_json:to_proplist(JObj) of
+        [] -> <<>>;
+        [{_Key,_Val}=KV|L] ->
+            Flags = lists:foldl(fun maybe_add_conference_flag/2, [<<>>], L),
+            All = case maybe_add_conference_flag(KV, []) of
+                [] -> tl(Flags);
+                [<<",">> | T] -> T ++ Flags;
+                Fs -> Fs ++ Flags
+            end,
+            <<"+flags{", (iolist_to_binary(All))/binary, "}">>
+    end.
+
+maybe_add_conference_flag({K, V}, Acc) ->
+    case lists:keyfind(K, 2, ?CONFERENCE_FLAGS) of
+        'false' -> Acc;
+        {FSFlag, _} when V =:= 'true' -> [<<",">>, FSFlag | Acc];
+        _ -> Acc
+    end.
 
 wait_for_conference(ConfName) ->
     case ecallmgr_fs_conferences:node(ConfName) of
@@ -1097,8 +1106,7 @@ tts_flite_voice(JObj) ->
 -spec get_terminators(api_binary() | ne_binaries() | wh_json:object()) ->
                              {ne_binary(), ne_binary()}.
 get_terminators('undefined') -> 'undefined';
-get_terminators(Ts) when is_binary(Ts) ->
-    get_terminators([Ts]);
+get_terminators(Ts) when is_binary(Ts) -> get_terminators([Ts]);
 get_terminators([_|_]=Ts) ->
     case Ts =:= get('$prior_terminators') of
         'true' -> 'undefined';
@@ -1118,3 +1126,29 @@ set_terminators(Node, UUID, Ts) ->
         'undefined' -> 'ok';
         {K, V} -> ecallmgr_util:set(Node, UUID, <<K/binary, "=", V/binary>>)
     end.
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+all_conference_flags_test() ->
+    JObj = wh_json:from_list([{<<"Mute">>, 'true'}
+                              ,{<<"Deaf">>, 'true'}
+                              ,{<<"Moderator">>, 'true'}
+                             ]),
+    ?assertEqual(<<"+flags{mute,moderator,deaf}">>, get_conference_flags(JObj)).
+
+two_conference_flags_test() ->
+    JObj = wh_json:from_list([{<<"Mute">>, 'true'}
+                              ,{<<"Moderator">>, 'true'}
+                             ]),
+    ?assertEqual(<<"+flags{mute,moderator}">>, get_conference_flags(JObj)).
+
+one_conference_flag_test() ->
+    JObj = wh_json:from_list([{<<"Mute">>, 'true'}]),
+    ?assertEqual(<<"+flags{mute}">>, get_conference_flags(JObj)).
+
+no_conference_flags_test() ->
+    JObj = wh_json:new(),
+    ?assertEqual(<<>>, get_conference_flags(JObj)).
+
+-endif.

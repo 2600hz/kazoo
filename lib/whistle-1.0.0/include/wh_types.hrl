@@ -123,5 +123,8 @@
 -type xml_el() :: #xmlElement{}.
 -type xml_els() :: [xml_el(),...] | [].
 
+-type xml_text() :: #xmlText{}.
+-type xml_texts() :: [xml_text(),...] | [].
+
 -define(WHISTLE_TYPES_INCLUDED, true).
 -endif.

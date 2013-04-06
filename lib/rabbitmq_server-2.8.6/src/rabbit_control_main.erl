@@ -11,13 +11,13 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(rabbit_control_main).
 -include("rabbit.hrl").
 
--export([start/0, stop/0, action/5]).
+-export([start/0, stop/0, action/5, sync_queue/1, cancel_sync_queue/1]).
 
 -define(RPC_TIMEOUT, infinity).
 -define(EXTERNAL_CHECK_INTERVAL, 1000).
@@ -25,10 +25,14 @@
 -define(QUIET_OPT, "-q").
 -define(NODE_OPT, "-n").
 -define(VHOST_OPT, "-p").
+-define(RAM_OPT, "--ram").
+-define(OFFLINE_OPT, "--offline").
 
 -define(QUIET_DEF, {?QUIET_OPT, flag}).
 -define(NODE_DEF(Node), {?NODE_OPT, {option, Node}}).
 -define(VHOST_DEF, {?VHOST_OPT, {option, "/"}}).
+-define(RAM_DEF, {?RAM_OPT, flag}).
+-define(OFFLINE_DEF, {?OFFLINE_OPT, flag}).
 
 -define(GLOBAL_DEFS(Node), [?QUIET_DEF, ?NODE_DEF(Node)]).
 
@@ -41,9 +45,13 @@
          force_reset,
          rotate_logs,
 
-         cluster,
-         force_cluster,
+         {join_cluster, [?RAM_DEF]},
+         change_cluster_node_type,
+         update_cluster_nodes,
+         {forget_cluster_node, [?OFFLINE_DEF]},
          cluster_status,
+         {sync_queue, [?VHOST_DEF]},
+         {cancel_sync_queue, [?VHOST_DEF]},
 
          add_user,
          delete_user,
@@ -63,6 +71,10 @@
          {set_parameter, [?VHOST_DEF]},
          {clear_parameter, [?VHOST_DEF]},
          {list_parameters, [?VHOST_DEF]},
+
+         {set_policy, [?VHOST_DEF]},
+         {clear_policy, [?VHOST_DEF]},
+         {list_policies, [?VHOST_DEF]},
 
          {list_queues, [?VHOST_DEF]},
          {list_exchanges, [?VHOST_DEF]},
@@ -92,7 +104,9 @@
          {"Bindings",  rabbit_binding,  info_all, info_keys},
          {"Consumers", rabbit_amqqueue, consumers_all, consumer_info_keys},
          {"Permissions", rabbit_auth_backend_internal, list_vhost_permissions,
-          vhost_perms_info_keys}]).
+          vhost_perms_info_keys},
+         {"Policies",   rabbit_policy,             list_formatted, info_keys},
+         {"Parameters", rabbit_runtime_parameters, list_formatted, info_keys}]).
 
 %%----------------------------------------------------------------------------
 
@@ -147,6 +161,12 @@ start() ->
                 false -> io:format("...done.~n")
             end,
             rabbit_misc:quit(0);
+        {ok, Info} ->
+            case Quiet of
+                true  -> ok;
+                false -> io:format("...done (~p).~n", [Info])
+            end,
+            rabbit_misc:quit(0);
         {'EXIT', {function_clause, [{?MODULE, action, _}    | _]}} -> %% < R15
             PrintInvalidCommandError(),
             usage();
@@ -156,7 +176,7 @@ start() ->
         {'EXIT', {badarg, _}} ->
             print_error("invalid parameter: ~p", [Args]),
             usage();
-        {error, {Problem, Reason}} when is_atom(Problem); is_binary(Reason) ->
+        {error, {Problem, Reason}} when is_atom(Problem), is_binary(Reason) ->
             %% We handle this common case specially to avoid ~p since
             %% that has i18n issues
             print_error("~s: ~s", [Problem, Reason]),
@@ -164,8 +184,8 @@ start() ->
         {error, Reason} ->
             print_error("~p", [Reason]),
             rabbit_misc:quit(2);
-        {parse_error, {_Line, Mod, Err}} ->
-            print_error("~s", [lists:flatten(Mod:format_error(Err))]),
+        {error_string, Reason} ->
+            print_error("~s", [Reason]),
             rabbit_misc:quit(2);
         {badrpc, {'EXIT', Reason}} ->
             print_error("~p", [Reason]),
@@ -239,17 +259,46 @@ action(force_reset, Node, [], _Opts, Inform) ->
     Inform("Forcefully resetting node ~p", [Node]),
     call(Node, {rabbit_mnesia, force_reset, []});
 
-action(cluster, Node, ClusterNodeSs, _Opts, Inform) ->
-    ClusterNodes = lists:map(fun list_to_atom/1, ClusterNodeSs),
-    Inform("Clustering node ~p with ~p",
-           [Node, ClusterNodes]),
-    rpc_call(Node, rabbit_mnesia, cluster, [ClusterNodes]);
+action(join_cluster, Node, [ClusterNodeS], Opts, Inform) ->
+    ClusterNode = list_to_atom(ClusterNodeS),
+    NodeType = case proplists:get_bool(?RAM_OPT, Opts) of
+                   true  -> ram;
+                   false -> disc
+               end,
+    Inform("Clustering node ~p with ~p", [Node, ClusterNode]),
+    rpc_call(Node, rabbit_mnesia, join_cluster, [ClusterNode, NodeType]);
 
-action(force_cluster, Node, ClusterNodeSs, _Opts, Inform) ->
-    ClusterNodes = lists:map(fun list_to_atom/1, ClusterNodeSs),
-    Inform("Forcefully clustering node ~p with ~p (ignoring offline nodes)",
-           [Node, ClusterNodes]),
-    rpc_call(Node, rabbit_mnesia, force_cluster, [ClusterNodes]);
+action(change_cluster_node_type, Node, ["ram"], _Opts, Inform) ->
+    Inform("Turning ~p into a ram node", [Node]),
+    rpc_call(Node, rabbit_mnesia, change_cluster_node_type, [ram]);
+action(change_cluster_node_type, Node, [Type], _Opts, Inform)
+  when Type =:= "disc" orelse Type =:= "disk" ->
+    Inform("Turning ~p into a disc node", [Node]),
+    rpc_call(Node, rabbit_mnesia, change_cluster_node_type, [disc]);
+
+action(update_cluster_nodes, Node, [ClusterNodeS], _Opts, Inform) ->
+    ClusterNode = list_to_atom(ClusterNodeS),
+    Inform("Updating cluster nodes for ~p from ~p", [Node, ClusterNode]),
+    rpc_call(Node, rabbit_mnesia, update_cluster_nodes, [ClusterNode]);
+
+action(forget_cluster_node, Node, [ClusterNodeS], Opts, Inform) ->
+    ClusterNode = list_to_atom(ClusterNodeS),
+    RemoveWhenOffline = proplists:get_bool(?OFFLINE_OPT, Opts),
+    Inform("Removing node ~p from cluster", [ClusterNode]),
+    rpc_call(Node, rabbit_mnesia, forget_cluster_node,
+             [ClusterNode, RemoveWhenOffline]);
+
+action(sync_queue, Node, [Q], Opts, Inform) ->
+    VHost = proplists:get_value(?VHOST_OPT, Opts),
+    QName = rabbit_misc:r(list_to_binary(VHost), queue, list_to_binary(Q)),
+    Inform("Synchronising ~s", [rabbit_misc:rs(QName)]),
+    rpc_call(Node, rabbit_control_main, sync_queue, [QName]);
+
+action(cancel_sync_queue, Node, [Q], Opts, Inform) ->
+    VHost = proplists:get_value(?VHOST_OPT, Opts),
+    QName = rabbit_misc:r(list_to_binary(VHost), queue, list_to_binary(Q)),
+    Inform("Stopping synchronising ~s", [rabbit_misc:rs(QName)]),
+    rpc_call(Node, rabbit_control_main, cancel_sync_queue, [QName]);
 
 action(wait, Node, [PidFile], _Opts, Inform) ->
     Inform("Waiting for ~p", [Node]),
@@ -357,7 +406,7 @@ action(list_bindings, Node, Args, Opts, Inform) ->
 
 action(list_connections, Node, Args, _Opts, Inform) ->
     Inform("Listing connections", []),
-    ArgAtoms = default_if_empty(Args, [user, peer_address, peer_port, state]),
+    ArgAtoms = default_if_empty(Args, [user, peer_host, peer_port, state]),
     display_info_list(rpc_call(Node, rabbit_networking, connection_info_all,
                                [ArgAtoms]),
                       ArgAtoms);
@@ -435,10 +484,32 @@ action(list_parameters, Node, [], Opts, Inform) ->
       rpc_call(Node, rabbit_runtime_parameters, list_formatted, [VHostArg]),
       rabbit_runtime_parameters:info_keys());
 
+action(set_policy, Node, [Key, Pattern, Defn | Prio], Opts, Inform)
+  when Prio == [] orelse length(Prio) == 1 ->
+    Msg = "Setting policy ~p for pattern ~p to ~p",
+    {InformMsg, Prio1} = case Prio of []  -> {Msg, undefined};
+                                      [P] -> {Msg ++ " with priority ~s", P}
+                         end,
+    VHostArg = list_to_binary(proplists:get_value(?VHOST_OPT, Opts)),
+    Inform(InformMsg, [Key, Pattern, Defn] ++ Prio),
+    rpc_call(Node, rabbit_policy, parse_set,
+             [VHostArg, list_to_binary(Key), Pattern, Defn, Prio1]);
+
+action(clear_policy, Node, [Key], Opts, Inform) ->
+    VHostArg = list_to_binary(proplists:get_value(?VHOST_OPT, Opts)),
+    Inform("Clearing policy ~p", [Key]),
+    rpc_call(Node, rabbit_policy, delete, [VHostArg, list_to_binary(Key)]);
+
+action(list_policies, Node, [], Opts, Inform) ->
+    VHostArg = list_to_binary(proplists:get_value(?VHOST_OPT, Opts)),
+    Inform("Listing policies", []),
+    display_info_list(rpc_call(Node, rabbit_policy, list_formatted, [VHostArg]),
+                      rabbit_policy:info_keys());
+
 action(report, Node, _Args, _Opts, Inform) ->
     Inform("Reporting server status on ~p~n~n", [erlang:universaltime()]),
     [begin ok = action(Action, N, [], [], Inform), io:nl() end ||
-        N      <- unsafe_rpc(Node, rabbit_mnesia, running_clustered_nodes, []),
+        N      <- unsafe_rpc(Node, rabbit_mnesia, cluster_nodes, [running]),
         Action <- [status, cluster_status, environment]],
     VHosts = unsafe_rpc(Node, rabbit_vhost, list, []),
     [print_report(Node, Q)      || Q <- ?GLOBAL_QUERIES],
@@ -454,11 +525,23 @@ action(eval, Node, [Expr], _Opts, _Inform) ->
                                       Node, erl_eval, exprs, [Parsed, []]),
                                 io:format("~p~n", [Value]),
                                 ok;
-                {error, E}   -> {parse_error, E}
+                {error, E}   -> {error_string, format_parse_error(E)}
             end;
         {error, E, _} ->
-            {parse_error, E}
+            {error_string, format_parse_error(E)}
     end.
+
+format_parse_error({_Line, Mod, Err}) -> lists:flatten(Mod:format_error(Err)).
+
+sync_queue(Q) ->
+    rabbit_amqqueue:with(
+      Q, fun(#amqqueue{pid = QPid}) -> rabbit_amqqueue:sync_mirrors(QPid) end).
+
+cancel_sync_queue(Q) ->
+    rabbit_amqqueue:with(
+      Q, fun(#amqqueue{pid = QPid}) ->
+                 rabbit_amqqueue:cancel_sync_mirrors(QPid)
+         end).
 
 %%----------------------------------------------------------------------------
 
@@ -558,7 +641,7 @@ display_info_list(Results, InfoItemKeys) when is_list(Results) ->
       fun (Result) -> display_row(
                         [format_info_item(proplists:get_value(X, Result)) ||
                             X <- InfoItemKeys])
-      end, Results),
+      end, lists:sort(Results)),
     ok;
 display_info_list(Other, _) ->
     Other.

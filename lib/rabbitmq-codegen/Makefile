@@ -1,8 +1,4 @@
-all: app
-
-app: compile
-
-compile:
+all:
 	echo "Please select a target from the Makefile."
 
 clean:

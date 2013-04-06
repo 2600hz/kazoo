@@ -1,3 +1,4 @@
+ebin/rabbit_routing_util.beam: src/rabbit_routing_util.erl include/amqp_client.hrl include/rabbit_routing_prefixes.hrl
 ebin/amqp_gen_consumer.beam: src/amqp_gen_consumer.erl include/amqp_client.hrl
 ebin/amqp_connection.beam: src/amqp_connection.erl include/amqp_client.hrl include/amqp_client_internal.hrl
 ebin/amqp_connection_type_sup.beam: src/amqp_connection_type_sup.erl include/amqp_client.hrl include/amqp_client_internal.hrl

@@ -279,11 +279,11 @@ is_node_up(Node, UUID) ->
 -spec get_fs_kv(ne_binary(), ne_binary(), ne_binary()) -> binary().
 get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
     list_to_binary(["hold_music="
-                    ,wh_util:to_list(media_path(Media, extant, UUID, wh_json:new()))
+                    ,wh_util:to_list(media_path(Media, 'extant', UUID, wh_json:new()))
                    ]);
 get_fs_kv(Key, Val, _) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
-        false ->
+        'false' ->
             list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "=", wh_util:to_list(Val)]);
         {_, Prefix} ->
             V = maybe_sanitize_fs_value(Key, Val),
@@ -689,7 +689,7 @@ create_masquerade_event(Application, EventName, Boolean) ->
 media_path(MediaName, UUID, JObj) -> media_path(MediaName, 'new', UUID, JObj).
 
 -spec media_path(ne_binary(), 'extant' | 'new', ne_binary(), wh_json:object()) -> ne_binary().
-media_path(undefined, _Type, _UUID, _) -> <<"silence_stream://5">>;
+media_path('undefined', _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
     media_path(wh_util:to_binary(MediaName), Type, UUID, JObj);
 media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _) -> Media;
@@ -697,6 +697,7 @@ media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _) -> recording_filename(FSPath);
 media_path(<<?LOCAL_MEDIA_PATH, _/binary>> = FSPath, _Type, _UUID, _) -> FSPath;
 media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
+media_path(<<"https://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
 media_path(MediaName, Type, UUID, JObj) ->
     case lookup_media(MediaName, UUID, JObj, Type) of
         {'error', _E} ->

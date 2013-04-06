@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 -ifndef(AMQP_CLIENT_HRL).
@@ -39,14 +39,15 @@
                               socket_options     = []}).
 
 -record(amqp_params_direct, {username          = <<"guest">>,
+                             password          = none,
                              virtual_host      = <<"/">>,
                              node              = node(),
                              adapter_info      = none,
                              client_properties = []}).
 
--record(amqp_adapter_info, {address         = unknown,
+-record(amqp_adapter_info, {host            = unknown,
                             port            = unknown,
-                            peer_address    = unknown,
+                            peer_host       = unknown,
                             peer_port       = unknown,
                             name            = unknown,
                             protocol        = unknown,

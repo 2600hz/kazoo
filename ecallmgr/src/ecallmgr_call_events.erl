@@ -598,7 +598,7 @@ event_specific(<<"RECORD_STOP">>, _, Prop) ->
      ,{<<"Application-Response">>, props:get_value(<<"Record-File-Path">>, Prop, props:get_value(<<"whistle_application_response">>, Prop))}
      ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Prop)}
      ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Prop)}
-     ,{<<"Silence-Terminated">>, silence_terminated(props:get_integer_value(<<"variable_silence_hits_left">>, Prop))}
+     ,{<<"Silence-Terminated">>, silence_terminated(Prop)}
     ];
 event_specific(<<"DETECTED_TONE">>, _, Prop) ->
     [{<<"Detected-Tone">>, props:get_value(<<"Detected-Tone">>, Prop)}];
@@ -638,9 +638,15 @@ conference_specific(Prop) ->
             end
     end.
 
--spec silence_terminated('undefined' | integer()) -> 'undefined' | boolean().
+-spec silence_terminated('undefined' | integer() | wh_proplist() | boolean()) -> 'undefined' | boolean().
 silence_terminated('undefined') -> 'undefined';
-silence_terminated(Hits) when is_integer(Hits) -> Hits =:= 0.
+silence_terminated(B) when is_boolean(B) -> B;
+silence_terminated(Hits) when is_integer(Hits) -> Hits =:= 0;
+silence_terminated(Prop) when is_list(Prop) ->
+    case props:get_value(<<"variable_silence_hits_exhausted">>, Prop) of
+        'undefined' -> silence_terminated(props:get_integer_value(<<"variable_record_silence_hits">>, Prop));
+        Ex -> wh_util:is_true(Ex)
+    end.
 
 -spec get_fs_var(atom(), ne_binary(), ne_binary(), binary()) -> binary().
 get_fs_var(Node, CallId, Var, Default) ->

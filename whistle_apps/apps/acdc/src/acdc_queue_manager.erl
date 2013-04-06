@@ -14,7 +14,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/3
+-export([start_link/2, start_link/3
          ,handle_member_call/2
          ,handle_member_call_cancel/2
          ,handle_agent_change/2
@@ -111,6 +111,18 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link(pid(), wh_json:object()) -> startlink_ret().
+start_link(Super, QueueJObj) ->
+    AcctId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
+    QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
+
+    gen_listener:start_link(?MODULE
+                            ,[{'bindings', ?BINDINGS(AcctId, QueueId)}
+                              ,{'responders', ?RESPONDERS}
+                             ]
+                            ,[Super, QueueJObj]
+                           ).
+
 -spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(Super, AcctId, QueueId) ->
     gen_listener:start_link(?MODULE
@@ -236,14 +248,29 @@ pick_winner(Srv, Resps) -> pick_winner(Srv, Resps, strategy(Srv), next_winner(Sr
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+init([Super, QueueJObj]) ->
+    AcctId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
+    QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
+
+    put('callid', <<"mgr_", QueueId/binary>>),
+
+    init(Super, AcctId, QueueId, QueueJObj);
+    
 init([Super, AcctId, QueueId]) ->
     put('callid', <<"mgr_", QueueId/binary>>),
-    process_flag('trap_exit', 'false'),
-
-    _ = start_secondary_queue(AcctId, QueueId),
 
     AcctDb = wh_util:format_account_id(AcctId, 'encoded'),
-    {'ok', QueueJObj} = couch_mgr:open_doc(AcctDb, QueueId),
+    {'ok', QueueJObj} = couch_mgr:open_cache_doc(AcctDb, QueueId),
+
+    init(Super, AcctId, QueueId, QueueJObj).
+
+init(Super, AcctId, QueueId, QueueJObj) ->
+    process_flag('trap_exit', 'false'),
+
+    AcctDb = wh_util:format_account_id(AcctId, 'encoded'),
+    couch_mgr:cache_db_doc(AcctDb, QueueId, QueueJObj),
+
+    _ = start_secondary_queue(AcctId, QueueId),
 
     gen_listener:cast(self(), {'start_workers'}),
     Strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj)),
@@ -318,8 +345,7 @@ handle_call('current_agents', _, #state{strategy='mi'
     {'reply', L, State};
 
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {'reply', Reply, State}.
+    {'reply', 'ok', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -331,13 +357,13 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({update_strategy, StrategyState}, State) ->
-    {'noreply', State#state{strategy_state=StrategyState}, hibernate};
+handle_cast({'update_strategy', StrategyState}, State) ->
+    {'noreply', State#state{strategy_state=StrategyState}, 'hibernate'};
 
-handle_cast({update_queue_config, JObj}, #state{enter_when_empty=_EnterWhenEmpty}=State) ->
-    EWE = wh_json:is_true([<<"Doc">>, <<"enter_when_empty">>], JObj, true),
+handle_cast({'update_queue_config', JObj}, #state{enter_when_empty=_EnterWhenEmpty}=State) ->
+    EWE = wh_json:is_true([<<"Doc">>, <<"enter_when_empty">>], JObj, 'true'),
     lager:debug("maybe changing ewe from ~s to ~s", [_EnterWhenEmpty, EWE]),
-    {'noreply', State#state{enter_when_empty=EWE}, hibernate};
+    {'noreply', State#state{enter_when_empty=EWE}, 'hibernate'};
 
 handle_cast({'member_call_cancel', K, JObj}, #state{ignored_member_calls=Dict}=State) ->
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
@@ -347,93 +373,92 @@ handle_cast({'member_call_cancel', K, JObj}, #state{ignored_member_calls=Dict}=S
 
     acdc_stats:call_abandoned(AcctId, QueueId, CallId, Reason),
     {'noreply', State#state{
-                ignored_member_calls=dict:store(K, true, Dict)
-               }};
-handle_cast({monitor_call, Call}, State) ->
-    gen_listener:add_binding(self(), call, [{callid, whapps_call:call_id(Call)}
-                                            ,{restrict_to, [events]}
-                                           ]),
+                  ignored_member_calls=dict:store(K, 'true', Dict)
+                 }};
+handle_cast({'monitor_call', Call}, State) ->
+    gen_listener:add_binding(self(), 'call', [{'callid', whapps_call:call_id(Call)}
+                                              ,{'restrict_to', ['events']}
+                                             ]),
     {'noreply', State};
-handle_cast({start_workers}, #state{acct_id=AcctId
-                                    ,queue_id=QueueId
-                                    ,supervisor=QueueSup
-                                   }=State) ->
+handle_cast({'start_workers'}, #state{acct_id=AcctId
+                                      ,queue_id=QueueId
+                                      ,supervisor=QueueSup
+                                     }=State) ->
     WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
-
-    case couch_mgr:get_results(wh_util:format_account_id(AcctId, encoded)
+    case couch_mgr:get_results(wh_util:format_account_id(AcctId, 'encoded')
                                ,<<"agents/agents_listing">>
-                               ,[{key, QueueId}
-                                 ,include_docs
-                                ]
+                                   ,[{'key', QueueId}
+                                     ,'include_docs'
+                                    ]
                               )
     of
-        {ok, Agents} ->
+        {'ok', Agents} ->
             _ = [start_agent_and_worker(WorkersSup, AcctId, QueueId
                                         ,wh_json:get_value(<<"doc">>, A)
                                        )
                  || A <- Agents
-                ], ok;
-        {error, _E} ->
+                ], 'ok';
+        {'error', _E} ->
             lager:debug("failed to find agent count: ~p", [_E]),
             QWC = whapps_config:get_integer(<<"acdc">>, <<"queue_worker_count">>, 5),
             acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, QWC)
     end,
     {'noreply', State};
 
-handle_cast({start_worker}, State) ->
-    handle_cast({start_worker, 1}, State);
-handle_cast({start_worker, N}, #state{acct_id=AcctId
-                                      ,queue_id=QueueId
-                                      ,supervisor=QueueSup
-                                     }=State) ->
+handle_cast({'start_worker'}, State) ->
+    handle_cast({'start_worker', 1}, State);
+handle_cast({'start_worker', N}, #state{acct_id=AcctId
+                                        ,queue_id=QueueId
+                                        ,supervisor=QueueSup
+                                       }=State) ->
     WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
     acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, N),
-    {noreply, State};
+    {'noreply', State};
 
-handle_cast({agent_available, AgentId}, #state{strategy=Strategy
-                                               ,strategy_state=StrategyState
-                                               ,known_agents=As
-                                              }=State) when is_binary(AgentId) ->
+handle_cast({'agent_available', AgentId}, #state{strategy=Strategy
+                                                 ,strategy_state=StrategyState
+                                                 ,known_agents=As
+                                                }=State) when is_binary(AgentId) ->
     lager:info("adding agent ~s to strategy ~s", [AgentId, Strategy]),
-    {StrategyState1, As1} = update_strategy_with_agent(Strategy, StrategyState, As, AgentId, add),
+    {StrategyState1, As1} = update_strategy_with_agent(Strategy, StrategyState, As, AgentId, 'add'),
     {'noreply', State#state{strategy_state=StrategyState1
-                          ,known_agents=As1
-                         }
-     ,hibernate};
-handle_cast({agent_available, JObj}, State) ->
-    handle_cast({agent_available, wh_json:get_value(<<"Agent-ID">>, JObj)}, State);
+                            ,known_agents=As1
+                           }
+     ,'hibernate'};
+handle_cast({'agent_available', JObj}, State) ->
+    handle_cast({'agent_available', wh_json:get_value(<<"Agent-ID">>, JObj)}, State);
 
-handle_cast({agent_ringing, AgentId}, #state{strategy=Strategy
-                                             ,strategy_state=StrategyState
-                                            }=State) when is_binary(AgentId) ->
+handle_cast({'agent_ringing', AgentId}, #state{strategy=Strategy
+                                               ,strategy_state=StrategyState
+                                              }=State) when is_binary(AgentId) ->
     lager:info("agent ~s ringing, maybe updating strategy ~s", [AgentId, Strategy]),
 
     StrategyState1 = maybe_update_strategy(Strategy, StrategyState, AgentId),
-    {'noreply', State#state{strategy_state=StrategyState1}, hibernate};
-handle_cast({agent_ringing, JObj}, State) ->
-    handle_cast({agent_ringing, wh_json:get_value(<<"Agent-ID">>, JObj)}, State);
+    {'noreply', State#state{strategy_state=StrategyState1}, 'hibernate'};
+handle_cast({'agent_ringing', JObj}, State) ->
+    handle_cast({'agent_ringing', wh_json:get_value(<<"Agent-ID">>, JObj)}, State);
 
-handle_cast({agent_unavailable, AgentId}, #state{strategy=Strategy
-                                                 ,strategy_state=StrategyState
-                                                 ,known_agents=As
-                                                 ,supervisor=QueueSup
-                                                }=State) when is_binary(AgentId) ->
+handle_cast({'agent_unavailable', AgentId}, #state{strategy=Strategy
+                                                   ,strategy_state=StrategyState
+                                                   ,known_agents=As
+                                                   ,supervisor=QueueSup
+                                                  }=State) when is_binary(AgentId) ->
     lager:info("agent ~s unavailable, maybe updating strategy ~s", [AgentId, Strategy]),
 
-    {StrategyState1, As1} = update_strategy_with_agent(Strategy, StrategyState, As, AgentId, remove),
+    {StrategyState1, As1} = update_strategy_with_agent(Strategy, StrategyState, As, AgentId, 'remove'),
 
     maybe_start_queue_workers(QueueSup, dict:size(As1)),
 
     {'noreply', State#state{strategy_state=StrategyState1
                             ,known_agents=As1
                            }
-     ,hibernate};
-handle_cast({agent_unavailable, JObj}, State) ->
-    handle_cast({agent_unavailable, wh_json:get_value(<<"Agent-ID">>, JObj)}, State);
+     ,'hibernate'};
+handle_cast({'agent_unavailable', JObj}, State) ->
+    handle_cast({'agent_unavailable', wh_json:get_value(<<"Agent-ID">>, JObj)}, State);
 
-handle_cast({reject_member_call, Call, JObj}, #state{acct_id=AcctId
-                                               ,queue_id=QueueId
-                                              }=State) ->
+handle_cast({'reject_member_call', Call, JObj}, #state{acct_id=AcctId
+                                                       ,queue_id=QueueId
+                                                      }=State) ->
     Prop = [{<<"Call-ID">>, whapps_call:call_id(Call)}
             ,{<<"Account-ID">>, AcctId}
             ,{<<"Queue-ID">>, QueueId}
@@ -444,10 +469,10 @@ handle_cast({reject_member_call, Call, JObj}, #state{acct_id=AcctId
     catch wapi_acdc_queue:publish_member_call_failure(Q, Prop),
     {'noreply', State};
 
-handle_cast({sync_with_agent, A}, #state{acct_id=AcctId}=State) ->
+handle_cast({'sync_with_agent', A}, #state{acct_id=AcctId}=State) ->
     case acdc_util:agent_status(AcctId, A) of
-        <<"logout">> -> gen_listener:cast(self(), {agent_unavailable, A});
-        _ -> gen_listener:cast(self(), {agent_available, A})
+        <<"logout">> -> gen_listener:cast(self(), {'agent_unavailable', A});
+        _ -> gen_listener:cast(self(), {'agent_available', A})
     end,
     {'noreply', State};
 
@@ -516,14 +541,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 start_secondary_queue(AcctId, QueueId) ->
     Self = self(),
-    spawn(fun() -> gen_listener:add_queue(Self
-                                          ,?SECONDARY_QUEUE_NAME(QueueId)
-                                          ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS}
-                                            ,{'consume_options', ?SECONDARY_CONSUME_OPTIONS}
-                                           ]
-                                          ,?SECONDARY_BINDINGS(AcctId, QueueId)
-                                         )
-          end).
+    _ = spawn(fun() -> gen_listener:add_queue(Self
+                                              ,?SECONDARY_QUEUE_NAME(QueueId)
+                                              ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS}
+                                                ,{'consume_options', ?SECONDARY_CONSUME_OPTIONS}
+                                               ]
+                                              ,?SECONDARY_BINDINGS(AcctId, QueueId)
+                                             )
+              end).
 
 make_ignore_key(AcctId, QueueId, CallId) ->
     {AcctId, QueueId, CallId}.
@@ -541,7 +566,7 @@ start_agent_and_worker(WorkersSup, AcctId, QueueId, AgentJObj) ->
 
             case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
                 'undefined' -> acdc_agents_sup:new(AgentJObj);
-                P when is_pid(P) -> ok
+                P when is_pid(P) -> 'ok'
             end
     end.
 
@@ -640,7 +665,7 @@ remove_unknown_agents(Mgr, CRs) ->
     end.
 
 -spec split_agents(ne_binary(), wh_json:objects()) ->
-                                {wh_json:objects(), wh_json:objects()}.
+                          {wh_json:objects(), wh_json:objects()}.
 split_agents(AgentId, Rest) ->
     lists:partition(fun(R) ->
                             AgentId =:= wh_json:get_value(<<"Agent-ID">>, R)

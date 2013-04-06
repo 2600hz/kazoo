@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 -module(rabbit_exchange_decorator).
@@ -31,7 +31,7 @@
 -type(tx() :: 'transaction' | 'none').
 -type(serial() :: pos_integer() | tx()).
 
--callback description() -> [proplist:property()].
+-callback description() -> [proplists:property()].
 
 %% Should Rabbit ensure that all binding events that are
 %% delivered to an individual exchange can be serialised? (they
