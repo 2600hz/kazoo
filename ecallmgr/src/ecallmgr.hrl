@@ -210,6 +210,8 @@
                           ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>
                           ,<<"CHANNEL_PROGRESS_MEDIA">>
                           ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PARK">>
+                          ,<<"CHANNEL_TRANSFEREE">>, <<"CHANNEL_TRANSFEROR">>
+                          ,<<"CHANNEL_REPLACED">>
                      ]).
 
 -define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_ANSWER'
@@ -217,7 +219,8 @@
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
                     ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE'
                     ,'CHANNEL_HANGUP', 'CHANNEL_HANGUP_COMPLETE', 'CHANNEL_DESTROY'
-                    ,'CUSTOM', 'sofia::transfer', 'whistle::noop', 'whistle::masquerade'
+                    ,'CUSTOM', 'whistle::noop', 'whistle::masquerade'
+                    ,'sofia::transferor', 'sofia::transferee', 'sofia::replaced'
                     ,'conference::maintenance'
                     ,?CHANNEL_MOVE_RELEASED_EVENT, ?CHANNEL_MOVE_COMPLETE_EVENT
                    ]).

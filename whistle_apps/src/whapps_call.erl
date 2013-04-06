@@ -398,16 +398,6 @@ control_queue_helper(_, #whapps_call{}=Call) ->
 
 -spec set_controller_queue(ne_binary(), call()) -> call().
 set_controller_queue(ControllerQ, #whapps_call{call_id=CallId, control_q=CtrlQ}=Call) when is_binary(ControllerQ) ->
-    spawn(fun() when is_binary(CtrlQ) ->
-                  Props = [{<<"Call-ID">>, CallId}
-                           ,{<<"Controller-Queue">>, ControllerQ}
-                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                          ],
-                  Publisher = fun(P) -> wapi_call:publish_controller_queue(CtrlQ, P) end,
-                  whapps_util:amqp_pool_send(Props, Publisher);
-             () ->
-                  ok
-          end),
     Call#whapps_call{controller_q=ControllerQ}.
 
 -spec controller_queue(call()) -> binary().
