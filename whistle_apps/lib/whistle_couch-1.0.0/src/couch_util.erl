@@ -87,7 +87,7 @@ max_bulk_insert() -> ?MAX_BULK_INSERT.
 get_new_connection(Host, Port, "", "") ->
     get_new_conn(Host, Port, ?IBROWSE_OPTS);
 get_new_connection(Host, Port, User, Pass) ->
-    get_new_conn(Host, Port, [{basic_auth, {User, Pass}} | ?IBROWSE_OPTS]).
+    get_new_conn(Host, Port, [{'basic_auth', {User, Pass}} | ?IBROWSE_OPTS]).
 
 -spec get_new_conn(nonempty_string() | ne_binary(), pos_integer(), wh_proplist()) -> server().
 get_new_conn(Host, Port, Opts) ->
@@ -105,13 +105,13 @@ server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 
 -spec server_url(server()) -> ne_binary().
 server_url(#server{host=Host, port=Port, options=Options}) ->
-    UserPass = case props:get_value(basic_auth, Options) of
-                   undefined -> <<>>;
+    UserPass = case props:get_value('basic_auth', Options) of
+                   'undefined' -> <<>>;
                    {U, P} -> list_to_binary([U, <<":">>, P])
                end,
-    Protocol = case wh_util:is_true(props:get_value(is_ssl, Options)) of
-                   false -> <<"http">>;
-                   true -> <<"https">>
+    Protocol = case wh_util:is_true(props:get_value('is_ssl', Options)) of
+                   'false' -> <<"http">>;
+                   'true' -> <<"https">>
                end,
 
     list_to_binary([Protocol, <<"://">>, UserPass
@@ -138,15 +138,15 @@ db_create(#server{}=Conn, DbName) ->
 -spec db_create(server(), ne_binary(), db_create_options()) -> boolean().
 db_create(#server{}=Conn, DbName, Options) ->
     case couchbeam:create_db(Conn, wh_util:to_list(DbName), [], Options) of
-        {'error', _} -> false;
-        {'ok', _} -> true
+        {'error', _} -> 'false';
+        {'ok', _} -> 'true'
     end.
 
 -spec db_delete(server(), ne_binary()) -> boolean().
 db_delete(#server{}=Conn, DbName) ->
     case couchbeam:delete_db(Conn, wh_util:to_list(DbName)) of
-        {'error', _} -> false;
-        {'ok', _} -> true
+        {'error', _} -> 'false';
+        {'ok', _} -> 'true'
     end.
 
 -spec db_replicate(server(), wh_json:object() | wh_proplist()) ->
@@ -194,8 +194,8 @@ do_db_view_cleanup(#db{}=Db) ->
 -spec design_compact(server(), ne_binary(), ne_binary()) -> boolean().
 design_compact(#server{}=Conn, DbName, Design) ->
     case couchbeam:compact(get_db(Conn, DbName), Design) of
-        {'error', _E} -> false;
-        ok -> true
+        {'error', _E} -> 'false';
+        'ok' -> 'true'
     end.
 
 -spec design_info(server(), ne_binary(), ne_binary()) ->
@@ -293,12 +293,12 @@ do_get_design_info(#db{}=Db, Design) ->
                                   couchbeam_error().
 open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
     case wh_cache:peek_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}) of
-        {ok, _}=Ok -> Ok;
-        {error, not_found} ->
+        {'ok', _}=Ok -> Ok;
+        {'error', 'not_found'} ->
             case open_doc(Conn, DbName, DocId, Options) of
-                {error, _}=E -> E;
-                {ok, JObj}=Ok ->
-                    CacheProps = [{origin, {db, DbName, DocId}}],
+                {'error', _}=E -> E;
+                {'ok', JObj}=Ok ->
+                    CacheProps = [{'origin', {'db', DbName, DocId}}],
                     wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, JObj, CacheProps),
                     Ok
             end
@@ -312,8 +312,8 @@ flush_cache_docs() -> wh_cache:flush_local(?WH_COUCH_CACHE).
 flush_cache_docs(DbName) ->
     Filter = fun({?MODULE, _, DbName1, _}=K, _) when DbName1 =:= DbName ->
                      wh_cache:erase_local(?WH_COUCH_CACHE, K),
-                     true;
-                (_, _) -> false
+                     'true';
+                (_, _) -> 'false'
              end,
     wh_cache:filter_local(?WH_COUCH_CACHE, Filter).
 
@@ -343,8 +343,8 @@ save_docs(#server{}=Conn, DbName, Docs, Options) ->
                             couchbeam_error().
 lookup_doc_rev(#server{}=Conn, DbName, DocId) ->
     case do_fetch_rev(get_db(Conn, DbName), DocId) of
-        ?NE_BINARY = Rev -> {ok, Rev};
-        {error, _}=E -> E
+        ?NE_BINARY = Rev -> {'ok', Rev};
+        {'error', _}=E -> E
     end.
 
 -spec ensure_saved(server(), ne_binary(), wh_json:object(), wh_proplist()) ->
@@ -394,7 +394,7 @@ do_delete_docs(#db{}=Db, Docs) ->
 prepare_doc_for_del(Doc) ->
     wh_json:from_list([{<<"_id">>, wh_json:get_value(<<"_id">>, Doc)}
                        ,{<<"_rev">>, wh_json:get_value(<<"_rev">>, Doc)}
-                       ,{<<"_deleted">>, true}
+                       ,{<<"_deleted">>, 'true'}
                       ]).
 
 -spec do_ensure_saved(couchbeam_db(), wh_json:object(), wh_proplist()) ->
