@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(handoff_sup).
+-module(reorder_sup).
 
 -behaviour(supervisor).
 
@@ -17,7 +17,7 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{handoff_cache, cache}, {handoff_listener, worker}]).
+-define(CHILDREN, [{reorder_cache, cache}, {reorder_listener, worker}]).
 
 %% ===================================================================
 %% API functions
