@@ -372,12 +372,15 @@ confirmed_presence_event(PresenceId, JObj) ->
     confirmed_presence_event(PresenceId, UniqueId, JObj).
 
 confirmed_presence_event(PresenceId, UniqueId, JObj) ->
+    [Number, _] = binary:split(PresenceId, <<"@">>),
     [{"unique-id", wh_util:to_list(UniqueId)}
      ,{"channel-state", "CS_ROUTING"}
      ,{"answer-state", "confirmed"}
      ,{"proto", "any"}
      ,{"login", "kazoo by 2600hz"}
      ,{"from", wh_util:to_list(PresenceId)}
+     ,{"variable_sip_to_user", wh_util:to_list(Number)}
+     ,{"variable_sip_from_user", wh_util:to_list(Number)}
      ,{"rpid", "unknown"}
      ,{"status", "Active"}
      ,{"event_type", "presence"}
@@ -398,12 +401,15 @@ early_presence_event(PresenceId, JObj) ->
     early_presence_event(PresenceId, UniqueId, JObj).
 
 early_presence_event(PresenceId, UniqueId, JObj) ->
+    [Number, _] = binary:split(PresenceId, <<"@">>),
     [{"unique-id", wh_util:to_list(UniqueId)}
      ,{"channel-state", "CS_ROUTING"}
      ,{"answer-state", "early"}
      ,{"proto", "any"}
      ,{"login", "kazoo by 2600hz"}
      ,{"from", wh_util:to_list(PresenceId)}
+     ,{"variable_sip_to_user", wh_util:to_list(Number)}
+     ,{"variable_sip_from_user", wh_util:to_list(Number)}
      ,{"rpid", "unknown"}
      ,{"status", "Active"}
      ,{"event_type", "presence"}
@@ -424,12 +430,15 @@ terminated_presence_event(PresenceId, JObj) ->
     terminated_presence_event(PresenceId, UniqueId, JObj).
 
 terminated_presence_event(PresenceId, UniqueId, JObj) ->
+    [Number, _] = binary:split(PresenceId, <<"@">>),
     [{"unique-id", wh_util:to_list(UniqueId)}
      ,{"channel-state", "CS_HANGUP"}
      ,{"answer-state", "terminated"}
      ,{"proto", "any"}
      ,{"login", "kazoo by 2600hz"}
      ,{"from", wh_util:to_list(PresenceId)}
+     ,{"variable_sip_to_user", wh_util:to_list(Number)}
+     ,{"variable_sip_from_user", wh_util:to_list(Number)}
      ,{"rpid", "unknown"}
      ,{"status", "Inactive"}
      ,{"event_type", "presence"}
@@ -441,9 +450,12 @@ terminated_presence_event(PresenceId, UniqueId, JObj) ->
 
 -spec empty_presence_event(ne_binary()) -> wh_proplist().
 empty_presence_event(PresenceId) ->
+    [Number, _] = binary:split(PresenceId, <<"@">>),
     [{"proto", "any"}
      ,{"login", "kazoo by 2600hz"}
      ,{"from", wh_util:to_list(PresenceId)}
+     ,{"variable_sip_to_user", wh_util:to_list(Number)}
+     ,{"variable_sip_from_user", wh_util:to_list(Number)}
      ,{"rpid", "unknown"}
      ,{"status", "Idle"}
      ,{"event_type", "presence"}
