@@ -1,12 +1,12 @@
-{application, handoff,
+{application, reorder,
  [
-  {description, "Skel - A handoffeton application useful for quickly creating services"},
+  {description, "Skel - A reordereton application useful for quickly creating services"},
   {vsn, "1"},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib
                  ]},
-  {mod, { handoff_app, []}},
+  {mod, { reorder_app, []}},
   {env, []}
  ]}.

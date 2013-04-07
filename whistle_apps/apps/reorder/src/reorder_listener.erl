@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(handoff_listener).
+-module(reorder_listener).
 
 -behaviour(gen_listener).
 
@@ -19,17 +19,17 @@
          ,code_change/3
         ]).
 
--include("handoff.hrl").
+-include("reorder.hrl").
 
 -record(state, {}).
 
--define(BINDINGS, [{route, []}
-                   ,{self, []}
+-define(BINDINGS, [{'route', []}
+                   ,{'self', []}
                   ]).
--define(RESPONDERS, [{ho_route_req, [{<<"dialplan">>, <<"route_req">>}]}]).
--define(QUEUE_NAME, <<"handoff_listerner">>).
--define(QUEUE_OPTIONS, [{exclusive, true}]).
--define(CONSUME_OPTIONS, [{exclusive, true}]).
+-define(RESPONDERS, [{'reorder', [{<<"dialplan">>, <<"route_req">>}]}]).
+-define(QUEUE_NAME, <<"reorder_listerner">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -43,12 +43,11 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
-                                      ,{responders, ?RESPONDERS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
-                                      ,{basic_qos, 1}
+    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+                                      ,{'responders', ?RESPONDERS}
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================
@@ -67,7 +66,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -84,7 +83,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -97,7 +96,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -110,7 +109,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -121,7 +120,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -146,7 +145,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
