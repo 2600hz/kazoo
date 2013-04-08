@@ -41,7 +41,7 @@ test/$(PROJECT).app: src/*.erl src/carriers/*.erl src/providers/*.erl
 
 clean:
 	rm -f ebin/*
-	rm -f test/*
+	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
 test: clean compile-test eunit
@@ -53,4 +53,3 @@ eunit: compile-test
 dialyze: 
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
                 $(PA) --plt $(ROOT)/.platform_dialyzer.plt \
-		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs

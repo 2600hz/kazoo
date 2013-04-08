@@ -8,7 +8,7 @@
 
 -module(couchbeam_attachments).
 
--include("couchbeam.hrl").
+-include_lib("couchbeam/include/couchbeam.hrl").
 
 -export([wait_for_attachment/2, attachment_acceptor/3]).
 -export([add_inline/3, add_inline/4,

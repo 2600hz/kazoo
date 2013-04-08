@@ -7,8 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(fax).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("fax/src/fax.hrl").
+-include("fax.hrl").
 
 -export([start_link/0, stop/0]).
 

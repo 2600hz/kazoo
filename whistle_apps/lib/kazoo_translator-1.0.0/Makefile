@@ -43,16 +43,15 @@ test/$(PROJECT).app: src/*.erl src/convertors/*.erl
 
 clean:
 	rm -f ebin/*
-	rm -f test/*.beam
+	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell $(PA) \
-	-pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
+	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
 
-dialyze: 
+dialyze:
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
-                $(PA) --plt $(ROOT)/.platform_dialyzer.plt \
+		--plt $(ROOT)/.platform_dialyzer.plt --no_native \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs

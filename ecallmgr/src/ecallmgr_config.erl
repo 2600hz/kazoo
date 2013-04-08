@@ -14,7 +14,7 @@
 -export([fetch/1, fetch/2, fetch/3]).
 -export([set/2, set/3]).
 
--compile([{no_auto_import, [get/1]}]).
+-compile([{'no_auto_import', [get/1]}]).
 
 -include("ecallmgr.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
@@ -52,7 +52,7 @@ flush(Key, Node) ->
 -spec get(wh_json:json_string(), Default, wh_json:json_string() | atom()) -> wh_json:json_term() | Default.
 
 get(Key) ->
-    get(Key, undefined).
+    get(Key, 'undefined').
 
 get(Key, Default) ->
     get(Key, Default, wh_util:to_binary(node())).
@@ -63,10 +63,10 @@ get(Key, Default, Node) when not is_binary(Node) ->
     get(Key, Default, wh_util:to_binary(Node));
 get(Key, Default, Node) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node)) of
-        {ok, V} -> V;
-        {error, E} when E =:= not_found orelse E =:= undefined ->
+        {'ok', V} -> V;
+        {'error', E} when E =:= 'not_found' orelse E =:= 'undefined' ->
             Value = fetch(Key, Default, Node),
-            CacheProps = [{origin, {db, ?WH_CONFIG_DB, <<"ecallmgr">>}}],
+            CacheProps = [{'origin', {'db', ?WH_CONFIG_DB, <<"ecallmgr">>}}],
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node), Value, CacheProps),
             Value
     end.
@@ -76,7 +76,7 @@ get(Key, Default, Node) ->
 -spec fetch(wh_json:json_string(), Default, wh_json:json_string() | atom()) -> wh_json:json_term() | Default.
 
 fetch(Key) ->
-    fetch(Key, undefined).
+    fetch(Key, 'undefined').
 
 fetch(Key, Default) ->
     fetch(Key, Default, wh_util:to_binary(node())).
@@ -100,10 +100,10 @@ fetch(Key, Default, Node) ->
                                   ,fun wapi_sysconf:get_resp_v/1
                                  ),
     case ReqResp of
-        {error, _R} -> 
+        {'error', _R} -> 
             lager:debug("unable to get config for key '~s' failed: ~p", [Key, _R]),
             Default;
-        {ok, JObj} ->
+        {'ok', JObj} ->
             get_response_value(JObj, Default)
     end.
 
@@ -118,7 +118,7 @@ set(Key, Value, Node) when not is_binary(Key) ->
 set(Key, Value, Node) when not is_binary(Node) ->
     set(Key, Value, wh_util:to_binary(Node));
 set(Key, Value, Node) ->
-    CacheProps = [{origin, {db, ?WH_CONFIG_DB, <<"ecallmgr">>}}],
+    CacheProps = [{'origin', {'db', ?WH_CONFIG_DB, <<"ecallmgr">>}}],
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node), Value, CacheProps),
     Req = [{<<"Category">>, <<"ecallmgr">>}
            ,{<<"Key">>, Key}
@@ -131,17 +131,17 @@ set(Key, Value, Node) ->
                                   ,fun wapi_sysconf:publish_set_req/1
                                   ,fun wh_amqp_worker:any_resp/1),
     case ReqResp of
-        {error, _R} -> 
+        {'error', _R} -> 
             lager:debug("set config for key '~s' failed: ~p", [Key, _R]);
-        {ok, _} ->
+        {'ok', _} ->
             lager:debug("set config for key '~s' to new value: ~p", [Key, Value])
     end.
 
 -spec get_response_value(wh_json:json_object(), term()) -> term().
 get_response_value(JObj, Default) ->
     case wh_json:get_value(<<"Value">>, JObj) of
-        undefined -> Default;
-        null -> Default;
+        'undefined' -> Default;
+        'null' -> Default;
         <<"undefined">> -> Default;
         <<"null">> -> Default;
         Value -> Value

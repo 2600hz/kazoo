@@ -1,37 +1,54 @@
+PROJECT = whistle_amqp
 ROOT = ../..
 DIALYZER = dialyzer
-REBAR = $(ROOT)/bin/rebar
 
-DIRS =  . \
-	$(ROOT)/lib/whistle-1.0.0 \
-	$(ROOT)/whistle_apps/lib/whistle_couch-1.0.0
+LIB_EBINS = $(shell find $(ROOT)/lib -maxdepth 2 -name ebin -print)
+PA = $(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN))
 
-all: app
+ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/lib $(PA)
+	 # +bin_opt_info
 
-app:
-	@$(REBAR) compile
+DIRS = . \
+	$(ROOT)/lib/whistle_amqp-1.0.0
 
-deps:
-	@$(REBAR) get-deps
+.PHONY: all compile clean
+
+all: compile
+
+MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+
+compile: ebin/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> ebin/$(PROJECT).app
+	-@$(MAKE) ebin/$(PROJECT).app
+
+ebin/$(PROJECT).app: src/*.erl
+	@mkdir -p ebin/
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ -pa $(ROOT)/lib $?
+
+compile-test: test/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> test/$(PROJECT).app
+	-@$(MAKE) test/$(PROJECT).app
+
+test/$(PROJECT).app: src/*.erl
+	@mkdir -p test/
+	erlc -v $(ERLC_OPTS) -o test/ -pa test/ $?
 
 clean:
-	@$(REBAR) clean
-	rm -f test/*.beam
+	rm -f ebin/*
+	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
-test: clean app eunit
+test: clean compile-test eunit
 
-eunit:
-	@$(REBAR) eunit skip_deps=true
-
-build-plt:
-	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
-		--apps kernel stdlib sasl inets crypto public_key ssl
+eunit: compile-test
+	erl -noshell $(PA) \
+	-pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
 
 dialyze: 
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
-                --plt $(ROOT)/.platform_dialyzer.plt --no_native \
+                $(PA) --plt $(ROOT)/.platform_dialyzer.plt \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
-
-docs:
-	@$(REBAR) doc skip_deps=true

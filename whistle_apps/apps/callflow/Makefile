@@ -1,19 +1,21 @@
 PROJECT = callflow
+
 ROOT = ../../..
 DIALYZER = dialyzer
 
 LIB_EBINS = $(shell find $(ROOT)/lib -maxdepth 2 -name ebin -print)
 WHAPPS_LIB_EBINS = $(shell find $(ROOT)/whistle_apps/lib -maxdepth 2 -name ebin -print)
 
-ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/lib \
-	$(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN)) \
-	$(foreach WHAPPS_LIB_EBIN,$(WHAPPS_LIB_EBINS),-pa $(WHAPPS_LIB_EBIN))
-
-DIRS = . \
-        $(ROOT)/lib/whistle-1.0.0 \
+DIRS =  . \
+	$(ROOT)/lib/whistle-1.0.0 \
 	$(ROOT)/lib/whistle_amqp-1.0.0 \
-        $(ROOT)/whistle_apps/lib/whistle_couch-1.0.0 \
-        $(ROOT)/whistle_apps
+	$(ROOT)/whistle_apps/lib/whistle_couch-1.0.0 \
+	$(ROOT)/whistle_apps
+
+ERLC_OPTS = +debug_info +warn_export_all \
+	$(foreach LIB_EBIN,$(LIB_EBINS),-pa $(LIB_EBIN)) \
+	$(foreach WHAPPS_LIB_EBIN,$(WHAPPS_LIB_EBINS),-pa $(WHAPPS_LIB_EBIN)) \
+	-I $(ROOT)/lib -I $(ROOT)/whistle_apps/lib # +bin_opt_info 
 
 .PHONY: all compile clean
 
@@ -40,11 +42,11 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl src/module/*.erl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS)  -o test/ -pa test/ $?
+	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
 
 clean:
 	rm -f ebin/*
-	rm -f test/*.beam
+	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
 test: clean compile-test eunit
@@ -52,11 +54,7 @@ test: clean compile-test eunit
 eunit: compile-test
 	erl -noshell -pa test -eval "eunit:test([$(MODULES),$(CF_MODULES)], [verbose])" -s init stop
 
-build-plt:
-	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
-		--apps kernel stdlib sasl inets crypto public_key ssl
-
-dialyze: 
+dialyze:
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
-                --plt $(ROOT)/.platform_dialyzer.plt --no_native \
+		--plt $(ROOT)/.platform_dialyzer.plt --no_native \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs

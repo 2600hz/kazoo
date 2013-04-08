@@ -40,9 +40,8 @@ test/$(PROJECT).app: src/*.erl
 
 clean:
 	rm -f ebin/*
-	rm -f test/*.*
+	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
-
 
 test: clean compile-test eunit
 

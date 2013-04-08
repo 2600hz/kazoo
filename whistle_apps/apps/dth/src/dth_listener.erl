@@ -21,7 +21,7 @@
          ,code_change/3
         ]).
 
--include_lib("dth/src/dth.hrl").
+-include("dth.hrl").
 
 -define(RESPONDERS, [{dth_cdr_handler, [{<<"call_detail">>, <<"cdr">>}]}
                      ,{dth_blacklist_req, [{<<"dth">>, <<"blacklist_req">>}]}

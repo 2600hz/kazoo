@@ -10,7 +10,7 @@
 
 -export([init/0, handle_req/2]).
 
--include_lib("dth/src/dth.hrl").
+-include("dth.hrl").
 
 init() ->
     ok.
