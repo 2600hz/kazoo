@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, 2600Hz
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -67,7 +67,13 @@
 
 -define(AUTOCOMPACTION_CHECK_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"autocompaction_check">>, 60000)).
 
+-define(MIN_RATIO, whapps_config:get_float(?CONFIG_CAT, <<"min_ratio">>, 1.5)).
+-define(MIN_DATA, whapps_config:get_integer(?CONFIG_CAT, <<"min_data_size">>, 1048576)).
+
 -define(SERVER, ?MODULE).
+
+-define(HEUR_NONE, 'none').
+-define(HEUR_RATIO, 'ratio').
 
 -type req_job() :: 'req_compact' |
                    {'req_compact_node', ne_binary()} |
@@ -75,6 +81,7 @@
                    {'req_compact_db', ne_binary(), ne_binary()}.
 
 -type not_compacting() :: {'error', 'compactor_down'}.
+-type compactor_heuristic() :: ?HEUR_NONE | ?HEUR_RATIO.
 
 -record(state, {
           nodes :: ne_binaries()
@@ -92,6 +99,7 @@
           ,queued_jobs = queue:new() :: queue()
           ,current_job_pid :: pid()
           ,current_job_ref :: reference()
+          ,current_job_heuristic = ?HEUR_NONE :: compactor_heuristic()
          }).
 
 %%%===================================================================
@@ -226,6 +234,7 @@ ready('compact', State) ->
                                           ,admin_conn='undefined'
                                           ,current_node='undefined'
                                           ,current_db='undefined'
+                                          ,current_job_heuristic=?HEUR_RATIO
                                          }};
 ready({'compact_node', N}, State) ->
     gen_fsm:send_event(self(), 'compact'),
@@ -234,6 +243,7 @@ ready({'compact_node', N}, State) ->
                                           ,admin_conn='undefined'
                                           ,current_node=N
                                           ,current_db='undefined'
+                                          ,current_job_heuristic=?HEUR_RATIO
                                          }};
 ready({'compact_db', D}, State) ->
     [N|Ns] = get_nodes(D),
@@ -244,6 +254,7 @@ ready({'compact_db', D}, State) ->
                                           ,admin_conn='undefined'
                                           ,current_node=N
                                           ,current_db=D
+                                          ,current_job_heuristic=?HEUR_NONE
                                          }};
 ready({'compact_db', N, D}, State) ->
     gen_fsm:send_event(self(), {'compact_db', N, D}),
@@ -253,6 +264,7 @@ ready({'compact_db', N, D}, State) ->
                                           ,admin_conn='undefined'
                                           ,current_node=N
                                           ,current_db=D
+                                          ,current_job_heuristic=?HEUR_NONE
                                          }};
 ready('next_job', #state{queued_jobs=Jobs}=State) ->
     case queue:out(Jobs) of
@@ -455,10 +467,14 @@ compact({'compact', N}, #state{admin_conn=AdminConn}=State) ->
 compact({'compact', N, D}, #state{conn=Conn
                                   ,admin_conn=AdminConn
                                   ,dbs=[]
+                                  ,current_job_heuristic=Heur
                                  }=State) ->
-    case couch_util:db_exists(Conn, encode_db(D)) of
+    Encoded = encode_db(D),
+    case couch_util:db_exists(Conn, Encoded) andalso
+        should_compact(Conn, Encoded, Heur)
+    of
         'false' ->
-            lager:debug("db ~s not found on ~s", [D, N]),
+            lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
             gen_fsm:send_event(self(), 'compact'),
             {'next_state', 'compact', State#state{current_db='undefined'}};
         'true' ->
@@ -474,10 +490,14 @@ compact({'compact', N, D}, #state{conn=Conn
 compact({'compact', N, D}, #state{conn=Conn
                                   ,admin_conn=AdminConn
                                   ,dbs=[Db|Dbs]
+                                  ,current_job_heuristic=Heur
                                  }=State) ->
-    case couch_util:db_exists(Conn, encode_db(D)) of
+    Encoded = encode_db(D),
+    case couch_util:db_exists(Conn, Encoded) andalso
+        should_compact(Conn, Encoded, Heur)
+    of
         'false' ->
-            lager:debug("db ~s not found on ~s", [D, N]),
+            lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
             gen_fsm:send_event(self(), {'compact', N, Db}),
             {'next_state', 'compact', State#state{dbs=Dbs
                                                   ,current_db=Db
@@ -498,10 +518,14 @@ compact({'compact_db', N, D}, #state{conn=Conn
                                      ,nodes=[]
                                      ,current_job_pid=P
                                      ,current_job_ref=Ref
+                                     ,current_job_heuristic=Heur
                                     }=State) ->
-    case couch_util:db_exists(Conn, encode_db(D)) of
+    Encoded = encode_db(D),
+    case couch_util:db_exists(Conn, Encoded) andalso
+        should_compact(Conn, Encoded, Heur)
+    of
         'false' ->
-            lager:debug("db ~s not found on ~s", [D, N]),
+            lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
             maybe_send_update(P, Ref, 'job_finished'),
             gen_fsm:send_event(self(), 'next_job'),
             {'next_state', 'ready', State#state{conn='undefined'
@@ -523,10 +547,14 @@ compact({'compact_db', N, D}, #state{conn=Conn
 compact({'compact_db', N, D}, #state{conn=Conn
                                      ,admin_conn=AdminConn
                                      ,nodes=[Node|Ns]
+                                     ,current_job_heuristic=Heur
                                     }=State) ->
-    case couch_util:db_exists(Conn, encode_db(D)) of
+    Encoded = encode_db(D),
+    case couch_util:db_exists(Conn, Encoded) andalso
+        should_compact(Conn, Encoded, Heur)
+    of
         'false' ->
-            lager:debug("db ~s not found on ~s", [D, N]),
+            lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
             gen_fsm:send_event(self(), {'compact_db', Node, D}),
             {'next_state', 'compact', State#state{nodes=Ns
                                                   ,current_node=Node
@@ -960,7 +988,8 @@ get_ports(Node, Cookie) ->
 get_ports(Node) ->
     try {get_port(Node, ["chttpd", "port"], fun wh_couch_connections:get_port/0)
          ,get_port(Node, ["httpd", "port"], fun wh_couch_connections:get_admin_port/0)
-        } of
+        }
+    of
         Ports -> Ports
     catch
         _E:_R ->
@@ -986,7 +1015,7 @@ maybe_start_auto_compaction_job() ->
         (catch wh_couch_connections:test_admin_conn())
     of
         {'ok', _} ->
-            gen_fsm:send_event(self(), 'compact');
+            gen_fsm:send_event_after(?AUTOCOMPACTION_CHECK_TIMEOUT, 'compact');
         _ ->
             erlang:send_after(?AUTOCOMPACTION_CHECK_TIMEOUT, self(), '$maybe_start_auto_compaction_job'),
             'ok'
@@ -1031,3 +1060,31 @@ compact_automatically(Boolean) ->
                  ],
     wh_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, Boolean, CacheProps).
 
+should_compact(_Conn, _Encoded, ?HEUR_NONE) -> 'true';
+should_compact(Conn, Encoded, ?HEUR_RATIO) ->
+    case couch_util:db_info(Conn, Encoded) of
+        {'ok', Info} -> should_compact_ratio(Info);
+        {'error', _E} ->
+            lager:debug("failed to lookup info: ~p", [_E]),
+            'true' % be pessimistic and compact the db
+    end.
+
+should_compact_ratio(Info) ->
+    Disk = wh_json:get_integer_value(<<"disk_size">>, Info),
+    Data = wh_json:get_integer_value([<<"other">>, <<"data_size">>], Info),
+    min_data_met(Data, ?MIN_DATA) andalso min_ratio_met(Data, Disk, ?MIN_RATIO).
+
+min_data_met(Data, Min) when Data > Min ->
+    'true';
+min_data_met(_Data, _Min) ->
+    lager:debug("data size ~b is under min_data_size threshold ~b", [_Data, _Min]),
+    'false'.
+
+min_ratio_met(Data, Disk, MinRatio) ->
+    case Data / Disk of
+        R when R > MinRatio ->
+            'true';
+        _R ->
+            lager:debug("ratio ~p is under min threshold ~p", [_R, MinRatio]),
+            'false'
+    end.

@@ -90,7 +90,7 @@ max_bulk_insert() -> ?MAX_BULK_INSERT.
 get_new_connection(Host, Port, "", "") ->
     get_new_conn(Host, Port, ?IBROWSE_OPTS);
 get_new_connection(Host, Port, User, Pass) ->
-    get_new_conn(Host, Port, [{basic_auth, {User, Pass}} | ?IBROWSE_OPTS]).
+    get_new_conn(Host, Port, [{'basic_auth', {User, Pass}} | ?IBROWSE_OPTS]).
 
 -spec get_new_conn(nonempty_string() | ne_binary(), pos_integer(), wh_proplist()) -> server().
 get_new_conn(Host, Port, Opts) ->
@@ -108,11 +108,11 @@ server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 
 -spec server_url(server()) -> ne_binary().
 server_url(#server{host=Host, port=Port, options=Options}) ->
-    UserPass = case props:get_value(basic_auth, Options) of
+    UserPass = case props:get_value('basic_auth', Options) of
                    'undefined' -> <<>>;
                    {U, P} -> list_to_binary([U, <<":">>, P])
                end,
-    Protocol = case wh_util:is_true(props:get_value(is_ssl, Options)) of
+    Protocol = case wh_util:is_true(props:get_value('is_ssl', Options)) of
                    'false' -> <<"http">>;
                    'true' -> <<"https">>
                end,
