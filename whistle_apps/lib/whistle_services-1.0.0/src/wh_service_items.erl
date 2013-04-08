@@ -16,7 +16,7 @@
 -type items() :: dict().
 -export_type([items/0]).
 
--include_lib("whistle_services/src/whistle_services.hrl").
+-include("whistle_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

@@ -36,6 +36,9 @@
 -export([set_bookkeepers/2]).
 -export([bookkeeper/2]).
 
+
+-include("whistle_services.hrl").
+
 -record(wh_service_item, {category :: api_binary()
                           ,item :: api_binary()
                           ,quantity = 0 :: integer()
@@ -49,8 +52,6 @@
 
 -type(item() :: #wh_service_item{}).
 -export_type([item/0]).
-
--include_lib("whistle_services/src/whistle_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

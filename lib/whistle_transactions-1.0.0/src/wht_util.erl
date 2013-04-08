@@ -23,6 +23,7 @@
 -export([reason_code/1]).
 -export([collapse_call_transactions/1]).
 
+-include("whistle_transactions.hrl").
 
 %% tracked in hundred-ths of a cent
 -define(DOLLAR_TO_UNIT, 10000).
@@ -40,8 +41,6 @@
                   ,{<<"admin_discretion">>, 3005}
                   ,{<<"unknown">>, 9999}
                  ]).
-
--include_lib("whistle/include/wh_types.hrl").
 
 reasons() ->
     ?REASONS.

@@ -16,8 +16,6 @@
 
 -include("../wnm.hrl").
 
--type xmlElement() :: #xmlElement{}.
-
 -define(WNM_DASH_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".dash_e911">>).
 
 -define(DASH_XML_PROLOG, "<?xml version=\"1.0\"?>").
@@ -27,6 +25,8 @@
                                                  ,<<"emergency_provisioning_url">>
                                                  ,<<"https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1">>)).
 -define(DASH_DEBUG, whapps_config:get_is_true(?WNM_DASH_CONFIG_CAT, <<"debug">>, false)).
+
+-type xmlElement() :: #xmlElement{}.
 
 %%--------------------------------------------------------------------
 %% @public

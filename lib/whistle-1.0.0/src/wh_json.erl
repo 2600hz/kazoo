@@ -9,13 +9,6 @@
 %%%-------------------------------------------------------------------
 -module(wh_json).
 
--include("wh_json.hrl").
-
--ifdef(TEST).
--include_lib("proper/include/proper.hrl").
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 %% don't import the get_keys/1 that fetches keys from the process dictionary
 -compile({no_auto_import, [get_keys/1]}).
 
@@ -63,12 +56,18 @@
 
 -export([flatten/3]).
 
+-ifdef(TEST).
+-include_lib("proper/include/proper.hrl").
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
+-include("wh_json.hrl").
+
 -export_type([json_object/0, json_objects/0
               ,json_string/0, json_strings/0
               ,json_term/0, json_terms/0
               ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2
               ,json_key/0
-
               ,object/0, objects/0, key/0
              ]).
 

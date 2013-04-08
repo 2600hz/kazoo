@@ -9,10 +9,6 @@
 %%%-------------------------------------------------------------------
 -module(wh_network_utils).
 
--include_lib("kernel/include/inet.hrl").
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
-
 -export([get_hostname/0]).
 -export([is_ipv4/1]).
 -export([is_ipv6/1]).
@@ -21,6 +17,11 @@
 -export([resolve/1]).
 -export([is_rfc1918_ip/1]).
 -export([iptuple_to_binary/1]).
+
+-include_lib("kernel/include/inet.hrl").
+
+-include("../include/wh_types.hrl").
+-include("../include/wh_log.hrl").
 
 -spec get_hostname() -> string().
 get_hostname() ->

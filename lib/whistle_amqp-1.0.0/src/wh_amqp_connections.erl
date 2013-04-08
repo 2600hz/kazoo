@@ -10,9 +10,6 @@
 
 -behaviour(gen_server).
 
--include("amqp_util.hrl").
--include_lib("rabbitmq_client/include/amqp_client.hrl").
-
 -export([start_link/0]).
 -export([add/1]).
 -export([remove/1]).
@@ -36,6 +33,10 @@
          ,terminate/2
          ,code_change/3
         ]).
+
+-include_lib("rabbitmq_client/include/amqp_client.hrl").
+
+-include("amqp_util.hrl").
 
 -record(state, {exchanges=dict:new()}).
 

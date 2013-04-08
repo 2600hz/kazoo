@@ -28,10 +28,6 @@
 
 -behaviour(gen_server).
 
--include_lib("whistle/include/wh_amqp.hrl").
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
-
 -export([behaviour_info/1]).
 
 -export([start_link/3
@@ -84,18 +80,36 @@
 
 -export([handle_event/4]).
 
--export_type([handle_event_return/0]).
+-include("../include/wh_amqp.hrl").
+-include("../include/wh_types.hrl").
+-include("../include/wh_log.hrl").
 
-behaviour_info('callbacks') ->
-    [{'init', 1}
-     ,{'handle_event', 2} %% Module passes back {'reply', Proplist}, passed as 2nd param to Responder:handle_req/2
-     ,{'handle_call', 3}
-     ,{'handle_cast', 2}
-     ,{'handle_info', 2}
-     ,{'terminate', 2}
-    ];
-behaviour_info(_) ->
-    'undefined'.
+-define(TIMEOUT_RETRY_CONN, 5000).
+-define(CALLBACK_TIMEOUT_MSG, 'callback_timeout').
+
+-define(START_TIMEOUT, 500).
+-define(MAX_TIMEOUT, 5000).
+
+-define(BIND_WAIT, 100).
+
+-define(INITIALIZE_MSG, {'$initialize_gen_listener', ?START_TIMEOUT}).
+-define(INITIALIZE_MSG(T), {'$initialize_gen_listener', next_timeout(T)}).
+
+-record(state, {
+          queue :: api_binary()
+         ,is_consuming = 'false' :: boolean()
+         ,responders = [] :: listener_utils:responders() %% { {EvtCat, EvtName}, Module }
+         ,bindings = [] :: bindings() %% {authentication, [{key, value},...]}
+         ,params = [] :: wh_proplist()
+         ,module :: atom()
+         ,module_state :: term()
+         ,module_timeout_ref :: reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
+         ,other_queues = [] :: [{ne_binary(), {wh_proplist(), wh_proplist()}},...] | [] %% {QueueName, {proplist(), wh_proplist()}}
+         ,self = self()
+         ,consumer_key = wh_amqp_channel:consumer_pid()
+         }).
+
+-type state() :: #state{}.
 
 -type handle_event_return() :: {'reply', wh_proplist()} | 'ignore'.
 
@@ -115,36 +129,23 @@ behaviour_info(_) ->
                          {'basic_qos', non_neg_integer()}
                         ].
 
--record(state, {
-          queue :: api_binary()
-         ,is_consuming = 'false' :: boolean()
-         ,responders = [] :: listener_utils:responders() %% { {EvtCat, EvtName}, Module }
-         ,bindings = [] :: bindings() %% {authentication, [{key, value},...]}
-         ,params = [] :: wh_proplist()
-         ,module :: atom()
-         ,module_state :: term()
-         ,module_timeout_ref :: reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
-         ,other_queues = [] :: [{ne_binary(), {wh_proplist(), wh_proplist()}},...] | [] %% {QueueName, {proplist(), wh_proplist()}}
-         ,self = self()
-         ,consumer_key = wh_amqp_channel:consumer_pid()
-         }).
--type state() :: #state{}.
-
--define(TIMEOUT_RETRY_CONN, 5000).
--define(CALLBACK_TIMEOUT_MSG, 'callback_timeout').
-
--define(START_TIMEOUT, 500).
--define(MAX_TIMEOUT, 5000).
-
--define(BIND_WAIT, 100).
-
--define(INITIALIZE_MSG, {'$initialize_gen_listener', ?START_TIMEOUT}).
--define(INITIALIZE_MSG(T), {'$initialize_gen_listener', next_timeout(T)}).
+-export_type([handle_event_return/0]).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec start_link(atom(), start_params(), list()) -> startlink_ret().
+behaviour_info('callbacks') ->
+    [{'init', 1}
+     ,{'handle_event', 2} %% Module passes back {'reply', Proplist}, passed as 2nd param to Responder:handle_req/2
+     ,{'handle_call', 3}
+     ,{'handle_cast', 2}
+     ,{'handle_info', 2}
+     ,{'terminate', 2}
+    ];
+behaviour_info(_) ->
+    'undefined'.
+
+  -spec start_link(atom(), start_params(), list()) -> startlink_ret().
 start_link(Module, Params, InitArgs) ->
     gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
 

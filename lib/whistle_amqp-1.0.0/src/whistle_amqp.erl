@@ -7,10 +7,10 @@
 %%%-------------------------------------------------------------------
 -module(whistle_amqp).
 
--include_lib("whistle/include/wh_types.hrl").
-
 -export([start_link/0, start/0]).
 -export([stop/0]).
+
+-include("amqp_util.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

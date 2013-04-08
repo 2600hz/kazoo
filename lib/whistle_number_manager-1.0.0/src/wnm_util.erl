@@ -9,11 +9,6 @@
 %%%-------------------------------------------------------------------
 -module(wnm_util).
 
--ifdef(TEST).
--include_lib("proper/include/proper.hrl").
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 -ifndef(TEST).
 -export([pretty_print/1
          ,pretty_print/2
@@ -32,6 +27,13 @@
 -export([find_account_id/1]).
 -export([get_all_number_dbs/0]).
 -export([are_jobjs_identical/2]).
+
+-ifdef(TEST).
+-include_lib("proper/include/proper.hrl").
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
+-include("wnm.hrl").
 
 -define(SERVER, ?MODULE).
 -define(DEFAULT_CLASSIFIERS, [{<<"tollfree_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+1(800|888|877|866|855)\\d{7}$">>}
@@ -68,8 +70,6 @@
                                    }
                                  ]).
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$">>).
-
--include("wnm.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

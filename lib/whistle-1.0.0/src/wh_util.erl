@@ -9,17 +9,6 @@
 %%%-------------------------------------------------------------------
 -module(wh_util).
 
--include_lib("kernel/include/inet.hrl").
-
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_databases.hrl").
-
--ifdef(TEST).
--include_lib("proper/include/proper.hrl").
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 -export([log_stacktrace/0, log_stacktrace/1]).
 -export([format_account_id/1, format_account_id/2]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
@@ -76,6 +65,16 @@
          ,change_error_log_level/1
          ,change_syslog_log_level/1
         ]).
+
+-include_lib("kernel/include/inet.hrl").
+-ifdef(TEST).
+-include_lib("proper/include/proper.hrl").
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
+-include("../include/wh_types.hrl").
+-include("../include/wh_log.hrl").
+-include("../include/wh_databases.hrl").
 
 -define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, 'whistle_version'}).
 

@@ -20,8 +20,8 @@
          ,ibrowse_cleanup/0
         ]).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_databases.hrl").
+-include("../include/wh_types.hrl").
+-include("../include/wh_databases.hrl").
 
 -spec gc_all/0 :: () -> 'ok'.
 -spec gc_pids/1 :: ([pid(),...]) -> 'ok'.

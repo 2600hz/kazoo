@@ -9,9 +9,6 @@
 
 -behaviour(gen_listener).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
-
 -export([start_link/0]).
 -export([whapp_count/1]).
 -export([status/0]).
@@ -31,6 +28,9 @@
          ,terminate/2
          ,code_change/3
         ]).
+
+-include("../include/wh_types.hrl").
+-include("../include/wh_log.hrl").
 
 -define(BINDINGS, [{'nodes', []}
                    ,{'self', []}
@@ -58,6 +58,7 @@
                ,media_servers = []
                ,last_heartbeat = wh_util:now_ms(now())
               }).
+
 -type(wh_node() :: #node{}).
 
 %%%===================================================================

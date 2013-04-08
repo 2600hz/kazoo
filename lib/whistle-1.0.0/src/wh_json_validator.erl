@@ -32,6 +32,18 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
+-define(SIMPLE_TYPES, [<<"string">>,<<"number">>,<<"integer">>,<<"boolean">>,<<"object">>
+                           ,<<"array">>,<<"null">>,<<"any">>]).
+
+%% Simplistic regex to match ISO-8601 string (in UTC, so TZ is Z for zulu)
+%% Matches YYYY-MM-DDThh:mm:ssZ explicitly
+-define(ISO_8601_REGEX, <<"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$">>).
+
+%% match alphanumeric, '.', '+', and '_' 1 or more times, the '@', then alphanumeric, '-', and '.' 1 or more times,
+%% ending with a '.', and then 1 or more alphanumeric, '_', or '-'
+-define(EMAIL_REGEX, <<"^[[\:alnum\:].+_]{1,}[@][[\:alnum\:]-.]{1,}([.]([[\:alnum\:]_-]{1,}))$">>).
+-define(HOSTNAME_REGEX, <<"^[[\:alnum\:]-.]{1,}([.]([[\:alnum\:]_-]{1,}))$">>).
+
 -type error_key() :: ne_binary() | [ne_binary(),...].
 -type error_tuple() :: {error_key(), ne_binary()}.
 -type error_proplist() :: [error_tuple(),...] | [].
@@ -45,18 +57,6 @@
 
 -type error_acc() :: [] | [{[ne_binary(),...], ne_binary()},...].
 -type jkey_acc() :: wh_json:json_key().
-
--define(SIMPLE_TYPES, [<<"string">>,<<"number">>,<<"integer">>,<<"boolean">>,<<"object">>
-                           ,<<"array">>,<<"null">>,<<"any">>]).
-
-%% Simplistic regex to match ISO-8601 string (in UTC, so TZ is Z for zulu)
-%% Matches YYYY-MM-DDThh:mm:ssZ explicitly
--define(ISO_8601_REGEX, <<"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$">>).
-
-%% match alphanumeric, '.', '+', and '_' 1 or more times, the '@', then alphanumeric, '-', and '.' 1 or more times,
-%% ending with a '.', and then 1 or more alphanumeric, '_', or '-'
--define(EMAIL_REGEX, <<"^[[\:alnum\:].+_]{1,}[@][[\:alnum\:]-.]{1,}([.]([[\:alnum\:]_-]{1,}))$">>).
--define(HOSTNAME_REGEX, <<"^[[\:alnum\:]-.]{1,}([.]([[\:alnum\:]_-]{1,}))$">>).
 
 %% Return true or [{JObjKey, ErrorMsg},...]
 -spec is_valid/2 :: (wh_json:object(), ne_binary() | wh_json:object()) ->

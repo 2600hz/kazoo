@@ -9,7 +9,7 @@
 
 -export([reconcile/1]).
 
--include_lib("whistle_services/src/whistle_services.hrl").
+-include("../whistle_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

@@ -42,8 +42,8 @@
          ,validate_message/4
         ]).
 
--include_lib("whistle/include/wh_api.hrl").
--include_lib("whistle/include/wh_log.hrl").
+-include("../include/wh_api.hrl").
+-include("../include/wh_log.hrl").
 
 %%%===================================================================
 %%% API

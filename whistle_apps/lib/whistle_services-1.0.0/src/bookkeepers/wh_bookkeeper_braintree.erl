@@ -7,10 +7,10 @@
 %%%-------------------------------------------------------------------
 -module(wh_bookkeeper_braintree).
 
--include_lib("whistle_services/src/whistle_services.hrl").
-
 -export([sync/2]).
 -export([is_good_standing/1]).
+
+-include("../whistle_services.hrl").
 
 -record(wh_service_update, {bt_subscription
                             ,plan_id

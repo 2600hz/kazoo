@@ -9,7 +9,7 @@
 
 -behaviour(application).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("whistle_services.hrl").
 
 -export([start/2, stop/1]).
 

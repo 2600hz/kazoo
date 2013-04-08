@@ -1,14 +1,14 @@
 -module(wh_call_response).
 
--include("../include/wh_types.hrl").
--include("../include/wh_log.hrl").
-
--define(CALL_RESPONSE_CONF, <<"call_response">>).
-
 -export([send/3, send/4, send/5]).
 -export([send_default/3]).
 -export([get_response/1]).
 -export([default_response/1]).
+
+-include("../include/wh_types.hrl").
+-include("../include/wh_log.hrl").
+
+-define(CALL_RESPONSE_CONF, <<"call_response">>).
 
 %%--------------------------------------------------------------------
 %% @public

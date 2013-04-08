@@ -6,10 +6,7 @@
 %%% @contributors
 %%% Peter Defebvre
 %%%-------------------------------------------------------------------
-
 -module(wh_transaction).
-
--include_lib("whistle/include/wh_types.hrl").
 
 -export([id/1]).
 -export([description/1]).
@@ -46,6 +43,8 @@
 -export([remove/1]).
 -export([save/1]).
 
+-include("whistle_transactions.hrl").
+
 -record(wh_transaction, {id :: binary()
                          ,rev :: api_binary()
                          ,description :: api_binary()
@@ -55,7 +54,7 @@
                          ,number :: api_binary()
                          ,feature :: api_binary()
                          ,bookkeeper_info :: 'undefined' | wh_json:object()
-                         ,metadata :: 'undefined' | wh_json:object()                                    
+                         ,metadata :: 'undefined' | wh_json:object()
                          ,pvt_reason :: ne_binary()
                          ,pvt_code :: non_neg_integer()
                          ,pvt_amount :: non_neg_integer()

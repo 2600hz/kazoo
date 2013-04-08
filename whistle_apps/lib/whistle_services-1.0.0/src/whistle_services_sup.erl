@@ -9,10 +9,10 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
-
 -export([start_link/0]).
 -export([init/1]).
+
+-include("whistle_services.hrl").
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).

@@ -37,8 +37,7 @@
 
 -export([is_reseller/1]).
 
--include_lib("whistle_services/src/whistle_services.hrl").
--include_lib("whistle/include/wh_databases.hrl").
+-include("whistle_services.hrl").
 
 -record(wh_services, {account_id = undefined
                       ,billing_id = undefined

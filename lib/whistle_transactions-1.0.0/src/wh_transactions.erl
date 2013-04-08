@@ -8,8 +8,6 @@
 %%%-------------------------------------------------------------------
 -module(wh_transactions).
 
--include_lib("whistle/include/wh_types.hrl").
-
 -export([call_charges/2
          ,call_charges/3
          ,call_charges/4
@@ -21,6 +19,8 @@
 -export([remove/1]).
 -export([to_json/1]).
 -export([to_public_json/1]).
+
+-include("whistle_transactions.hrl").
 
 -type wh_transactions() :: [wh_transaction:transaction(), ...].
 -export_type([wh_transactions/0]).

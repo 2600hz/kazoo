@@ -9,9 +9,6 @@
 
 -module(wh_config).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
-
 -export([get/1
          ,get/2
          ,get/3
@@ -26,6 +23,8 @@
          ,get_string/3
         ]).
 
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(CONFIG_FILE_ENV, "KAZOO_CONFIG").
 -define(CONFIG_FILE, "/etc/kazoo/config.ini").

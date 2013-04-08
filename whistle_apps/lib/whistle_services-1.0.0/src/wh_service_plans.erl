@@ -7,8 +7,6 @@
 %%%-------------------------------------------------------------------
 -module(wh_service_plans).
 
--include_lib("whistle_services/src/whistle_services.hrl").
-
 -export([empty/0]).
 -export([public_json/1]).
 -export([add_service_plan/3]).
@@ -20,6 +18,8 @@
          ,create_items/2
         ]).
 -export([public_json_items/1]).
+
+-include("whistle_services.hrl").
 
 -record(wh_service_plans, {vendor_id = undefined
                            ,plans = []

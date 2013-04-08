@@ -46,6 +46,13 @@
 
 -include("amqp_util.hrl").
 
+-define(FUDGE, 2600).
+-define(BINDINGS, [{'self', []}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_resp'}, [{<<"*">>, <<"*">>}]}]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
+
 -type publish_fun() :: fun((api_terms()) -> _).
 -type validate_fun() :: fun((api_terms()) -> boolean()).
 -type collect_util_fun() :: fun((wh_json:objects()) -> boolean()).
@@ -76,14 +83,6 @@
                 ,defer_response :: api_object()
                 ,queue :: api_binary()
                }).
-
--define(FUDGE, 2600).
-
--define(BINDINGS, [{'self', []}]).
--define(RESPONDERS, [{{?MODULE, 'handle_resp'}, [{<<"*">>, <<"*">>}]}]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API

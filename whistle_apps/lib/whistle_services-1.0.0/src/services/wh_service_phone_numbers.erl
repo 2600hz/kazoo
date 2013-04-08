@@ -11,7 +11,7 @@
 -export([feature_activation_charge/2]).
 -export([phone_number_activation_charge/2]).
 
--include_lib("whistle_services/src/whistle_services.hrl").
+-include("../whistle_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

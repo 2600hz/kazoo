@@ -7,11 +7,11 @@
 %%%-------------------------------------------------------------------
 -module(wh_service_plan).
 
--include_lib("whistle_services/src/whistle_services.hrl").
-
 -export([fetch/3]).
 -export([activation_charges/3]).
 -export([create_items/3]).
+
+-include("whistle_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

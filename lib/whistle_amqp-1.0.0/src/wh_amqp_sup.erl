@@ -9,11 +9,11 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
-
 -export([start_link/0]).
 -export([stop_bootstrap/0]).
 -export([init/1]).
+
+-include("amqp_util.hrl").
 
 -define(SERVER, ?MODULE).
 -define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).

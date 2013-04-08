@@ -17,7 +17,7 @@
 -export([cascade_reseller_id/2]).
 -export([set_reseller_id/2]).
 
--include_lib("whistle_services/src/whistle_services.hrl").
+-include("whistle_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

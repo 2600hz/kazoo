@@ -19,10 +19,10 @@
 -export([transaction/2, transaction/3]).
 -export([system_alert/2, system_alert/3]).
 
+-include("../include/wh_types.hrl").
+
 -define(APP_NAME, <<"whistle">>).
 -define(APP_VERSION, <<"1.2.1">>).
-
--include_lib("whistle/include/wh_types.hrl").
 
 -spec cnam_request/1 :: (wh_json:json_object()) -> 'ok'.
 -spec cnam_request/2 :: (wh_json:json_object(), wh_json:json_object()) -> 'ok'.

@@ -10,8 +10,6 @@
 
 -behaviour(gen_server).
 
--include("amqp_util.hrl").
-
 -export([start_link/0]).
 -export([new/0]).
 -export([remove/1]).
@@ -39,6 +37,8 @@
          ,terminate/2
          ,code_change/3
         ]).
+
+-include("amqp_util.hrl").
 
 -define(TAB, ?MODULE).
 

@@ -9,9 +9,9 @@
 
 -behaviour(application).
 
--include_lib("whistle/include/wh_types.hrl").
-
 -export([start/2, stop/1]).
+
+-include("whistle_transactions.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
