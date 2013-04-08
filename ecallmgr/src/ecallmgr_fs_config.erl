@@ -199,7 +199,8 @@ handle_config_req(Node, ID, <<"conference.conf">>, Data) ->
                                       )
               of
                   {'ok', Resp} ->
-                      {'ok', Xml} = ecallmgr_fs_xml:conference_resp_xml(Resp),
+                      FixedTTS = maybe_fix_conference_tts(Resp),
+                      {'ok', Xml} = ecallmgr_fs_xml:conference_resp_xml(FixedTTS),
                       lager:debug("conference profile xml for ~s: ~s", [Profile, Xml]),
                       Xml;
                   {'error', 'timeout'} ->
@@ -373,3 +374,18 @@ get_node_gateways(Node) ->
     {Xml, _} = xmerl_scan:string(wh_util:to_list(Response)),
     ecallmgr_fs_xml:sofia_gateways_xml_to_json(Xml).
 
+maybe_fix_conference_tts(Resp) ->
+    Ps = wh_json:get_value(<<"Profiles">>, Resp),
+    wh_json:set_value(<<"Profiles">>, wh_json:map(fun maybe_fix_profile_tts/2, Ps), Resp).
+
+maybe_fix_profile_tts(Name, Profile) ->
+    {Name, case wh_json:get_value(<<"tts-engine">>, Profile) of
+               'undefined' -> Profile;
+               <<"flite">> -> fix_flite_tts(Profile);
+               _ -> Profile
+           end}.
+fix_flite_tts(Profile) ->
+    lager:debug("wh_util fix profile ~p", [Profile]),
+    Voice = wh_json:get_value(<<"tts-voice">>, Profile),
+    wh_json:set_value(<<"tts-voice">>, ecallmgr_fs_flite:voice(Voice), Profile).
+            

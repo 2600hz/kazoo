@@ -80,7 +80,7 @@ get_fs_app(Node, UUID, JObj, <<"tts">>) ->
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 
             case wh_json:get_value(<<"Engine">>, JObj, <<"flite">>) of
-                <<"flite">> -> tts_flite(Node, UUID, JObj);
+                <<"flite">> -> ecallmgr_fs_flite:call_command(Node, UUID, JObj);
                 _E ->
                     lager:debug("engine to use: '~p'", [_E]),
                     SayMe = wh_json:get_value(<<"Text">>, JObj),
@@ -96,8 +96,7 @@ get_fs_app(Node, UUID, JObj, <<"tts">>) ->
 get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case wapi_dialplan:play_v(JObj) of
         'false' -> {'error', <<"play failed to execute as JObj did not validate">>};
-        'true' ->
-            play(Node, UUID, JObj)
+        'true' -> play(Node, UUID, JObj)
     end;
 
 get_fs_app(_Node, _UUID, JObj, <<"playstop">>) ->
@@ -1072,30 +1071,6 @@ play_bridged(UUID, JObj, F) ->
         <<"A">> ->     {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" aleg">>])};
         <<"Both">> ->  {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" both">>])};
         'undefined' -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" both">>])}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% TTS command helpers
-%% @end
-%%--------------------------------------------------------------------
--spec tts_flite(atom(), ne_binary(), wh_json:object()) ->
-                       {ne_binary(), ne_binary()}.
-tts_flite(Node, UUID, JObj) ->
-    _ = ecallmgr_util:set(Node, UUID
-                          ,[{<<"tts_engine">>, <<"flite">>}
-                            ,{<<"tts_voice">>, tts_flite_voice(JObj)}
-                           ]),
-    {<<"speak">>, wh_json:get_value(<<"Text">>, JObj)}.
-
--spec tts_flite_voice(api_binary() | wh_json:object()) -> ne_binary().
-tts_flite_voice(<<"male">>) -> <<"rms">>;
-tts_flite_voice(<<"female">>) -> <<"slt">>;
-tts_flite_voice(JObj) ->
-    case wh_json:is_json_object(JObj) of
-        'true' -> tts_flite_voice(wh_json:get_value(<<"Voice">>, JObj));
-        'false' -> tts_flite_voice(<<"female">>)
     end.
 
 %%--------------------------------------------------------------------
