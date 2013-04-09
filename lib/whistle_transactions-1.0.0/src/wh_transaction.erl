@@ -494,8 +494,6 @@ save(#wh_transaction{}=Transaction) ->
     end.
 
 -spec save_transaction(transaction()) -> {'ok', transaction()} | {'error', _}.
-save_transaction(#wh_transaction{pvt_amount=0}=Transaction) ->
-    {'ok', Transaction};
 save_transaction(#wh_transaction{pvt_account_db=AccountDb}=Transaction) ->
     JObj = to_json(Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}),
     case couch_mgr:save_doc(AccountDb, JObj) of
