@@ -611,7 +611,7 @@ authz_identify_req(Props) ->
 
 -spec rating_req(ne_binary(), wh_proplist()) -> wh_proplist().
 rating_req(CallId, Props) ->
-    AccountId = props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Account-ID">>, Props),
+    AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
     [{<<"To-DID">>, props:get_value(<<"Caller-Destination-Number">>, Props)}
      ,{<<"From-DID">>, props:get_value(<<"variable_effective_caller_id_number">>, Props
                                        ,props:get_value(<<"Caller-Caller-ID-Number">>, Props))}

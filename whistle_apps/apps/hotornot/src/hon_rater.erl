@@ -106,7 +106,14 @@ get_rate_cost(Rate) ->
 
 -spec maybe_update_callee_id(wh_json:object()) -> boolean().
 maybe_update_callee_id(JObj) ->
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj, 'undefined'),
+    case AccountId of
+        'undefined' -> 'false';
+        Id -> update_callee_id(Id)
+    end.
+
+-spec update_callee_id(wh_json:object()) -> boolean().
+update_callee_id(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {ok, AccountDoc} ->
@@ -115,3 +122,4 @@ maybe_update_callee_id(JObj) ->
             lager:debug("failed to load account ~p for update callee id ~p", [AccountId, _R]),
             'false'
     end.
+
