@@ -299,7 +299,7 @@ collapse_created_time(Call, JObj) ->
     MaybeCreated = wh_json:get_integer_value(<<"created">>, JObj, 0),
     case CurrentCreated < MaybeCreated of
         'true' -> Call;
-        'false' -> wh_json:set_value(<<"end">>, MaybeCreated, Call)
+        'false' -> wh_json:set_value(<<"created">>, MaybeCreated, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -314,7 +314,7 @@ collapse_ended_time(Call, JObj) ->
     MaybeEnd = wh_json:get_integer_value(<<"created">>, JObj, 0),
     case CurrentEnd > MaybeEnd of
         'true' -> Call;
-        'false' -> wh_json:set_value(<<"end">>, MaybeEnd, Call)
+        'false' -> wh_json:set_value(<<"ended">>, MaybeEnd, Call)
     end.
 
 %%--------------------------------------------------------------------
