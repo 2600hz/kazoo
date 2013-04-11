@@ -51,5 +51,6 @@ eunit: compile-test
 
 dialyze: 
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
+		--statistics \
                 $(PA) --plt $(ROOT)/.platform_dialyzer.plt \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
