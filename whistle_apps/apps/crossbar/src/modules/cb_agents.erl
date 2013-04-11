@@ -27,7 +27,7 @@
          ,validate/1, validate/2, validate/3
         ]).
 
--include("src/crossbar.hrl").
+-include("../crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".queues">>).
 

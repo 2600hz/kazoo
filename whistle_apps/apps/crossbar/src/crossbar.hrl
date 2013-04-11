@@ -7,7 +7,7 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
--include("src/crossbar_types.hrl").
+-include("crossbar_types.hrl").
 
 -define(CONFIG_CAT, <<"crossbar">>).
 

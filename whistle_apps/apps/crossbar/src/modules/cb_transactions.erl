@@ -14,7 +14,7 @@
          ,validate/1, validate/2
         ]).
 
--include("src/crossbar.hrl").
+-include("../crossbar.hrl").
 
 %%-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

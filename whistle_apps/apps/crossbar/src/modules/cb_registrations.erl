@@ -15,7 +15,7 @@
          ,lookup_regs/1
         ]).
 
--include("src/crossbar.hrl").
+-include("../crossbar.hrl").
 
 -define(MASK_REG_FIELDS, [<<"Account-DB">>, <<"Account-ID">>, <<"App-Name">>
                               ,<<"App-Version">>, <<"Event-Category">>, <<"Event-Name">>
