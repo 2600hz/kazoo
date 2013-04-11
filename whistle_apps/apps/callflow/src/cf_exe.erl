@@ -54,6 +54,7 @@
                 ,cf_module_pid :: pid()
                 ,status = <<"sane">> :: ne_binary()
                 ,queue :: api_binary()
+                ,self = self()
                }).
 -type state() :: #state{}.
 
@@ -403,7 +404,7 @@ handle_info(_Msg, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-handle_event(JObj, #state{cf_module_pid=Pid, call=Call, queue=ControllerQ}) ->
+handle_event(JObj, #state{cf_module_pid=Pid, call=Call, queue=ControllerQ, self=Self}) ->
     CallId = whapps_call:call_id_direct(Call),
     Others = whapps_call:kvs_fetch('cf_event_pids', [], Call),
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
@@ -428,16 +429,16 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call, queue=ControllerQ}) ->
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
             _ = case wh_json:get_value(<<"Controller-Queue">>, JObj) of
                     ControllerQ -> 'ok';
-                    _Else -> control_usurped(self())
+                    _Else -> control_usurped(Self)
                 end,
             'ignore';
         {{<<"error">>, _}, _} ->
             case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
-                CallId -> {'reply', [{'cf_module_pid', Pid}
-                                     ,{'cf_event_pids', Others}
+                CallId -> {'reply', [{cf_module_pid, Pid}
+                                     ,{cf_event_pids, Others}
                                     ]};
-                'undefined' -> {'reply', [{'cf_module_pid', Pid}
-                                          ,{'cf_event_pids', Others}
+                'undefined' -> {'reply', [{cf_module_pid, Pid}
+                                          ,{cf_event_pids, Others}
                                          ]};
                 _Else -> 'ignore'
             end;
