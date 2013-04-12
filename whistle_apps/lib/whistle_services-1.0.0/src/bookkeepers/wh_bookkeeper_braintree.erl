@@ -9,6 +9,7 @@
 
 -export([sync/2]).
 -export([is_good_standing/1]).
+-export([summary/1]).
 
 -include("../whistle_services.hrl").
 
@@ -78,6 +79,21 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
             Subscription = lists:foldl(fun(F, S) -> F(S) end, fetch_or_create_subscription(PlanId, Updates), Routines),
             sync(ServiceItems, AccountId, update_subscriptions(PlanId, Subscription, Updates))
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+summary(AccountId) ->
+    try braintree_customer:find(AccountId) of
+        T -> T
+    catch
+        throw:{'not_found', _} -> 'undefined'
+    end.
+
+
 
 %%--------------------------------------------------------------------
 %% @private

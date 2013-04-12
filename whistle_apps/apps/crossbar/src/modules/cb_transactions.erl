@@ -98,6 +98,11 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"cur
     Balance = wht_util:units_to_dollars(wht_util:current_balance(AccountId)),
     JObj = wh_json:from_list([{<<"balance">>, Balance}]),
     Context#cb_context{resp_status=success, resp_data=JObj};
+validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"monthly_recurring">>) ->
+    _T = wh_service_transactions:current_billing_period(<<"c901a714d30d22c975abbb3c1bd70870">>),
+    io:format("~n~p~n", [_T]),
+    JObj = wh_json:from_list([{<<"is_it_ready">>, <<"NOOO">>}]),
+    Context#cb_context{resp_status=success, resp_data=JObj};
 validate(Context, _) ->
     cb_context:add_system_error('bad_identifier',  Context).
 

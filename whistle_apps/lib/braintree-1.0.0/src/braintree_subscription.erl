@@ -438,9 +438,9 @@ xml_to_record(Xml, Base) ->
                                    || Discount <- xmerl_xpath:string(DiscountsPath, Xml)
                                   ]
 %%                     ,descriptor = get_xml_value([Base, "/token/text()"], Xml)
-%%                     ,transactions = [braintree_transaction:xml_to_record(Trans)
-%%                                      || Trans <- xmerl_xpath:string([Base, "/transactions/transaction"], Xml)
-%%                                     ]
+                     ,transactions = [braintree_transaction:xml_to_record(Trans)
+                                      || Trans <- xmerl_xpath:string([Base, "/transactions/transaction"], Xml)
+                                     ]
                      }.
    
 
