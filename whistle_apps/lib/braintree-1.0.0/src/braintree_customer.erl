@@ -161,7 +161,6 @@ all() ->
 find(CustomerId) ->
     Url = url(CustomerId),
     Xml = braintree_request:get(Url),
-    io:format("~n~p~n", [Xml]),
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
