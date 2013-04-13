@@ -99,13 +99,211 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"cur
     JObj = wh_json:from_list([{<<"balance">>, Balance}]),
     Context#cb_context{resp_status=success, resp_data=JObj};
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"monthly_recurring">>) ->
-    _T = wh_service_transactions:current_billing_period(<<"c901a714d30d22c975abbb3c1bd70870">>),
-    io:format("~n~p~n", [_T]),
-    JObj = wh_json:from_list([{<<"is_it_ready">>, <<"NOOO">>}]),
+    JObj = fetch_braintree_transactions(AccountId),
+    Context#cb_context{resp_status=success, resp_data=JObj};
+validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"subscriptions">>) ->
+    JObj = fetch_braintree_subscriptions(AccountId),
     Context#cb_context{resp_status=success, resp_data=JObj};
 validate(Context, _) ->
     cb_context:add_system_error('bad_identifier',  Context).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_braintree_transactions(ne_binary()) -> [wh_json:object(), ...].
+fetch_braintree_transactions(AccountId) ->
+    case  wh_service_transactions:current_billing_period(AccountId, 'transactions') of
+        'not_found' ->
+            wh_json:set_value(<<"error">>, <<"no_data_found">>, wh_json:new());
+        'unknow_error' ->
+            wh_json:set_value(<<"error">>, <<"unknow_braintree_error">>, wh_json:new());
+        BTransactions ->
+            filter_braintree_transactions(BTransactions)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_braintree_subscriptions(ne_binary()) -> [wh_json:object(), ...].
+fetch_braintree_subscriptions(AccountId) ->
+    case wh_service_transactions:current_billing_period(AccountId, 'subscriptions') of
+        'not_found' ->
+            wh_json:set_value(<<"error">>, <<"no_data_found">>, wh_json:new());
+        'unknow_error' ->
+            wh_json:set_value(<<"error">>, <<"unknow_braintree_error">>, wh_json:new());
+        BSubscriptions ->
+            filter_braintree_subscriptions(BSubscriptions)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_braintree_transactions([wh_json:object(), ...]) -> [wh_json:object(), ...].
+filter_braintree_transactions(BTransactions) ->
+    [filter_braintree_transaction(BTr) || BTr <- BTransactions].
+    
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_braintree_transaction(wh_json:object()) -> wh_json:object().
+filter_braintree_transaction(BTransaction) ->
+    Routines = [fun(BTr) -> clean_braintree_transaction(BTr) end
+                ,fun(BTr) -> is_prorated_braintree_transaction(BTr) end
+               ],
+    lists:foldl(fun(F, BTr) -> F(BTr) end, BTransaction, Routines).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_braintree_subscriptions([wh_json:object(), ...]) -> [wh_json:object(), ...].
+filter_braintree_subscriptions(BSubscriptions) ->
+    [filter_braintree_subscirption(BSub) || BSub <- BSubscriptions].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_braintree_subscirption(wh_json:object()) -> wh_json:object().
+filter_braintree_subscirption(BSubscription) ->
+    Routines = [fun(BSub) -> clean_braintree_subscription(BSub) end
+               ],
+    lists:foldl(fun(F, BSub) -> F(BSub) end, BSubscription, Routines).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_braintree_transaction(wh_json:object()) -> wh_json:object().
+clean_braintree_transaction(BTransaction) ->
+    RemoveKeys = [<<"status">>
+                      ,<<"type">>
+                      ,<<"currency_code">>
+                      ,<<"merchant_account_id">>
+                      ,<<"settlement_batch">>
+                      ,<<"avs_postal_response">>
+                      ,<<"avs_street_response">>
+                      ,<<"ccv_response_code">>
+                      ,<<"processor_authorization_code">>
+                      ,<<"processor_response_code">>
+                      ,<<"tax_exempt">>
+                      ,<<"billing_address">>
+                      ,<<"shipping_address">>
+                      ,<<"customer">>
+                      ,<<"card">>
+                 ],
+    wh_json:delete_keys(RemoveKeys, BTransaction).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_braintree_subscription(wh_json:object()) -> wh_json:object().
+clean_braintree_subscription(BSubscription) ->
+    RemoveKeys = [<<"billing_dom">>
+                      ,<<"failure_count">>
+                      ,<<"merchant_account_id">>
+                      ,<<"never_expires">>
+                      ,<<"paid_through_date">>
+                      ,<<"payment_token">>
+                      ,<<"trial_period">>
+                      ,<<"do_not_inherit">>
+                      ,<<"start_immediately">>
+                      ,<<"prorate_charges">>
+                      ,<<"revert_on_prorate_fail">>
+                      ,<<"replace_add_ons">>
+                      ,<<"create">>
+                 ],
+    wh_json:delete_keys(RemoveKeys, BSubscription).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec is_prorated_braintree_transaction(wh_json:object()) -> wh_json:object().
+is_prorated_braintree_transaction(BTransaction) ->
+    case wh_json:get_value(<<"subscription_id">>, BTransaction, 'false') of
+        'false' ->
+            wh_json:set_value(<<"prorated">>, 'false', BTransaction);
+        _Id ->
+            calculate_prorated(BTransaction)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate_prorated(wh_json:object()) -> wh_json:object().
+calculate_prorated(BTransaction) ->
+    Addon = calculate_addon(BTransaction),
+    Discount = calculate_discount(BTransaction),
+    Amount = wh_json:get_number_value(<<"amount">>, BTransaction, 0),
+    case (Addon - Discount) =:= Amount of
+        'true' ->
+            wh_json:set_value(<<"prorated">>, 'false', BTransaction);
+        'false' ->
+            wh_json:set_value(<<"prorated">>, 'true', BTransaction)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate_addon(wh_json:object()) -> float().
+calculate_addon(BTransaction) ->
+    Addons = wh_json:get_value(<<"add_ons">>, BTransaction),
+    calculate(Addons, 0).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate_discount(wh_json:object()) -> float().
+calculate_discount(BTransaction) ->
+    Addons = wh_json:get_value(<<"discounts">>, BTransaction),
+    calculate(Addons, 0).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate([wh_json:object(), ...], float()) -> float().
+calculate([], Acc) ->
+    Acc;
+calculate([Addon|Addons], Acc) ->
+    Amount = wh_json:get_number_value(<<"amount">>, Addon, 0),
+    Quantity = wh_json:get_number_value(<<"quantity">>, Addon, 0),
+    calculate(Addons, (Amount*Quantity+Acc)).
 
 %%--------------------------------------------------------------------
 %% @private
