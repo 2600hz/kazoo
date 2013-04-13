@@ -9,7 +9,7 @@
 
 -export([sync/2]).
 -export([is_good_standing/1]).
--export([transactions/1]).
+-export([transactions/3]).
 -export([subscriptions/1]).
 
 -include("../whistle_services.hrl").
@@ -87,9 +87,9 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec transactions(ne_binary()) -> atom() | [wh_json:object(), ...].
-transactions(AccountId) ->
-    try braintree_transaction:find_by_customer(AccountId) of
+-spec transactions(ne_binary(), atom(), atom()) -> atom() | [wh_json:object(), ...].
+transactions(AccountId, Min, Max) ->
+    try braintree_transaction:find_by_customer(AccountId, Min, Max) of
         Transactions -> 
             [braintree_transaction:record_to_json(Tr) || Tr <- Transactions]
     catch

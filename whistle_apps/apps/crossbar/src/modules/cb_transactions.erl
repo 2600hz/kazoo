@@ -98,8 +98,13 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"cur
     Balance = wht_util:units_to_dollars(wht_util:current_balance(AccountId)),
     JObj = wh_json:from_list([{<<"balance">>, Balance}]),
     Context#cb_context{resp_status=success, resp_data=JObj};
-validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"monthly_recurring">>) ->
-    JObj = fetch_braintree_transactions(AccountId),
+validate(#cb_context{req_verb = <<"get">>, account_id=AccountId, query_json=Query}=Context, <<"monthly_recurring">>) ->
+    {{Y, M, D}, _} = calendar:local_time(),
+    MinDefault =  <<(wh_util:to_binary(M-1))/binary, "/", (wh_util:to_binary(D))/binary, "/", (wh_util:to_binary(Y))/binary>>,
+    MaxDefault =  <<(wh_util:to_binary(M))/binary, "/", (wh_util:to_binary(D))/binary, "/", (wh_util:to_binary(Y))/binary>>,
+    Min = wh_json:get_integer_value(<<"created_from">>, Query, MinDefault),
+    Max = wh_json:get_integer_value(<<"created_to">>, Query, MaxDefault),
+    JObj = fetch_braintree_transactions(AccountId, Min, Max),
     Context#cb_context{resp_status=success, resp_data=JObj};
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"subscriptions">>) ->
     JObj = fetch_braintree_subscriptions(AccountId),
@@ -113,9 +118,9 @@ validate(Context, _) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_braintree_transactions(ne_binary()) -> [wh_json:object(), ...].
-fetch_braintree_transactions(AccountId) ->
-    case  wh_service_transactions:current_billing_period(AccountId, 'transactions') of
+-spec fetch_braintree_transactions(ne_binary(), ne_binary(), ne_binary()) -> [wh_json:object(), ...].
+fetch_braintree_transactions(AccountId, Min, Max) ->
+    case  wh_service_transactions:current_billing_period(AccountId, 'transactions', {Min, Max}) of
         'not_found' ->
             wh_json:set_value(<<"error">>, <<"no_data_found">>, wh_json:new());
         'unknow_error' ->
