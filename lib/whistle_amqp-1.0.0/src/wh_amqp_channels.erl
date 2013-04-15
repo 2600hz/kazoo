@@ -433,7 +433,7 @@ maybe_monitor_channel(#wh_amqp_channel{consumer=Consumer
                                        ,channel=Pid
                                        ,uri=URI
                                       }=Channel) when is_pid(Pid) ->
-    Ref = erlang:monitor(process, Pid),
+    Ref = erlang:monitor('process', Pid),
     ets:update_element(?TAB, Consumer, [{#wh_amqp_channel.channel_ref, Ref}
                                         ,{#wh_amqp_channel.channel, Pid}
                                         ,{#wh_amqp_channel.uri, URI}
