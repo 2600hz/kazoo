@@ -509,19 +509,11 @@ is_permitted(Req0, Context0) ->
 is_account_enabled(Req, #cb_context{auth_account_id='undefined'}=Context) ->
     {'true', Req, Context};
 is_account_enabled(Req, #cb_context{auth_account_id=AccountId}=Context) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of 
-        {'ok', JObj} -> 
-            case wh_json:is_true(<<"pvt_enabled">>, JObj, 'true') of
-                'false' ->
-                    Mess = [{'details', <<"account disabled">>}],
-                    ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Mess, Context));
-                'true' ->
-                    {'true', Req, Context}
-            end;
-        {'error', _E} -> 
-            Mess = [{'details', <<"error while checking if account is enabled">>}],
-            lager:debug("error while checking account ~p, ~p~n", [AccountId, _E]),
+    case wh_util:is_account_enabled(AccountId) of
+        'true' ->
+            {'true', Req, Context};
+        'false' ->
+            Mess = [{'details', <<"account disabled">>}],
             ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Mess, Context))
     end.
 
