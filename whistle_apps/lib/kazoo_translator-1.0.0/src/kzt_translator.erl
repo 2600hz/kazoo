@@ -50,7 +50,7 @@ find_candidate_translators(<<"text/xml">>) ->
 find_candidate_translators(<<"application/xml">>) ->
     ['kzt_twiml'];
 find_candidate_translators(<<"application/json">>) ->
-    ['kzt_2600hz'];
+    ['kzt_kazoo'];
 find_candidate_translators(_) ->
     [].
 

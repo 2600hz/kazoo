@@ -19,6 +19,7 @@
 exec(Call, FlowJObj) ->
     Prop = [{<<"Call">>, whapps_call:to_json(Call)}
             ,{<<"Flow">>, FlowJObj}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     wapi_callflow:publish_resume(Prop),
     {'usurp', Call}.
