@@ -64,4 +64,4 @@ publish_resume(JObj) ->
     publish_resume(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resume(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?RESUME_VALUES, fun ?MODULE:resume/1),
-    amqp_util:whapps_publish(Payload, ContentType, ?RESUME_ROUTING_KEY).
+    amqp_util:whapps_publish(?RESUME_ROUTING_KEY, Payload, ContentType).

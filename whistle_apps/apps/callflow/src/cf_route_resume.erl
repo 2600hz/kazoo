@@ -19,5 +19,6 @@ handle_req(JObj, _Props) ->
     whapps_call:put_callid(Call),
     lager:info("received call resume, taking control"),
     cf_route_win:maybe_restrict_call(
-      whapps_call:kvs_store('cf_flow', wh_json:get_value(<<"Flow">>, JObj), Call)
+      JObj
+      ,whapps_call:kvs_store('cf_flow', wh_json:get_value(<<"Flow">>, JObj), Call)
      ).
