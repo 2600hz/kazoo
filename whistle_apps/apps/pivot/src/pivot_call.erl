@@ -17,6 +17,7 @@
          ,stop_call/2
          ,new_request/3, new_request/4
          ,updated_call/2
+         ,usurp_executor/1
         ]).
 
 %% gen_server callbacks
@@ -91,6 +92,9 @@ new_request(Srv, Uri, Method, Params) ->
 -spec updated_call(pid(), whapps_call:call()) -> 'ok'.
 updated_call(Srv, Call) -> gen_listener:cast(Srv, {'updated_call', Call}).
 
+-spec usurp_executor(pid()) -> 'ok'.
+usurp_executor(Srv) -> gen_listener:cast(Srv, 'usurp').
+
 -spec maybe_relay_event(wh_json:object(), wh_proplist()) -> 'ok'.
 maybe_relay_event(JObj, Props) ->
     case props:get_value('pid', Props) of
@@ -159,6 +163,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('usurp', State) ->
+    lager:debug("terminating pivot call because of usurp"),
+    {'stop', 'normal', State#state{call='undefined'}};
 handle_cast({'request', Uri, Method}, #state{call=Call
                                              ,request_format=ReqFormat
                                             }=State) ->
@@ -379,6 +386,7 @@ handle_resp(Call, CT, RespBody) ->
     case process_resp(Call, CT, RespBody) of
         {'stop', Call1} -> ?MODULE:stop_call(Srv, Call1);
         {'ok', Call1} -> ?MODULE:stop_call(Srv, Call1);
+        {'usurp', _Call1} -> ?MODULE:usurp_executor(Srv);
         {'request', Call1} ->
             ?MODULE:updated_call(Srv, Call1),
             ?MODULE:new_request(Srv
@@ -403,6 +411,9 @@ process_resp(Call, CT, RespBody) ->
         {'request', _Call1}=Req ->
             lager:debug("translator says make another request"),
             Req;
+        {'usurp', _Call1}=U ->
+            lager:debug("translator has been usurped"),
+            U;
         {'error', Call1} ->
             lager:debug("error in translator, FAIL"),
             {'stop', Call1}
