@@ -161,23 +161,7 @@ maybe_authenticate_user(#cb_context{doc=JObj}=Context) ->
             lager:debug("failed to find account DB"),
             cb_context:add_system_error(invalid_credentials, Context);
         {ok, Account} ->
-            case is_account_disabled(Account) of 
-                'true' -> 
-                      cb_context:add_system_error('forbidden', [{'details', <<"account disabled">>}], Context);
-                'false' ->
-                    maybe_authenticate_user(Context, Credentials, Method, Account)
-            end
-    end.
-
-is_account_disabled(Account) ->
-    AccountId = wh_util:format_account_id(Account, raw),
-    AccountDb = wh_util:format_account_id(Account, encoded),
-    case couch_mgr:open_doc(AccountDb, AccountId) of 
-        {'ok', JObj} -> 
-            wh_json:is_true(<<"pvt_disabled">>, JObj, false);
-        {'error', _E} -> 
-            laer:debug("error while checking account ~p, ~p~n", [AccountId, _E]),
-            'false'
+            maybe_authenticate_user(Context, Credentials, Method, Account)
     end.
 
 maybe_authenticate_user(Context, _, _, []) ->

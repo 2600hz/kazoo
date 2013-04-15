@@ -499,10 +499,28 @@ is_permitted(Req0, Context0) ->
             ?MODULE:halt(Req0, cb_context:add_system_error(forbidden, Context0));
         [true|_] ->
             lager:debug("request was authz"),
-            {true, Req0, Context0};
+            is_account_enabled(Req0, Context0);
         [{true, Context1}|_] ->
             lager:debug("request was authz"),
-            {true, Req0, Context1}
+            is_account_enabled(Req0, Context1)
+    end.
+
+
+is_account_enabled(Req, #cb_context{auth_account_id=AccountId}=Context) ->
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of 
+        {'ok', JObj} -> 
+            case wh_json:is_true(<<"pvt_enabled">>, JObj, 'true') of
+                'false' ->
+                    Mess = [{'details', <<"account disabled">>}],
+                    ?MODULE:halt(Req, cb_context:add_system_error(forbidden, Mess, Context));
+                'true' ->
+                    {'true', Req, Context}
+            end;
+        {'error', _E} -> 
+            Mess = [{'details', <<"error while checking if account is enabled">>}],
+            lager:debug("error while checking account ~p, ~p~n", [AccountId, _E]),
+            ?MODULE:halt(Req, cb_context:add_system_error(forbidden, Mess, Context))
     end.
 
 -spec is_known_content_type(#http_req{}, cb_context:context()) -> {boolean(), #http_req{}, cb_context:context()}.
