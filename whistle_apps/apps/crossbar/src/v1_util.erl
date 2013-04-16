@@ -27,13 +27,6 @@
 
 -include("crossbar.hrl").
 
--define(AUTH_TYPE, [<<"user_auth">>
-                        ,<<"ip_auth">>
-                        ,<<"api_auth">>
-                        ,<<"token_auth">>
-                        ,<<"shared_auth">>
-                   ]).
-
 -type cowboy_multipart_response() :: {{'headers', cowboy_http:headers()} |
                                       {'data', binary()} |
                                       'end_of_part' |
@@ -495,46 +488,41 @@ get_auth_token(Req0, #cb_context{req_json=ReqJObj, query_json=QSJObj}=Context0) 
 is_permitted(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     lager:debug("options requests are permitted by default"),
     %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
-    {true, Req, Context};
+    {'true', Req, Context};
 is_permitted(Req0, #cb_context{req_nouns=[{<<"404">>, []}]}=Context0) ->
-    ?MODULE:halt(Req0, cb_context:add_system_error(not_found, Context0));
+    ?MODULE:halt(Req0, cb_context:add_system_error('not_found', Context0));
 is_permitted(Req0, Context0) ->
     Event = <<"v1_resource.authorize">>,
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
             lager:debug("no on authz the request"),
-            ?MODULE:halt(Req0, cb_context:add_system_error(forbidden, Context0));
-        [true|_] ->
+            ?MODULE:halt(Req0, cb_context:add_system_error('forbidden', Context0));
+        ['true'|_] ->
             lager:debug("request was authz"),
             is_account_enabled(Req0, Context0);
-        [{true, Context1}|_] ->
+        [{'true', Context1}|_] ->
             lager:debug("request was authz"),
             is_account_enabled(Req0, Context1)
     end.
 
 -spec is_account_enabled(#http_req{}, cb_context:context()) -> {'true' | 'halt', #http_req{}, cb_context:context()}.
-is_account_enabled(#http_req{path_info=[Path|_]}=Req, #cb_context{auth_account_id='undefined'}=Context) ->
-    case binary:match(Path, ?AUTH_TYPE) of
-        'nomatch' ->
-            ?MODULE:halt(Req, cb_context:add_system_error(forbidden, Context));
-        _ ->
-            {'true', Req, Context}
-    end;
+is_account_enabled(Req, #cb_context{auth_account_id='undefined'}=Context) ->
+    {'true', Req, Context};
 is_account_enabled(Req, #cb_context{auth_account_id=AccountId}=Context) ->
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of 
         {'ok', JObj} -> 
             case wh_json:is_true(<<"pvt_enabled">>, JObj, 'true') of
                 'false' ->
                     Mess = [{'details', <<"account disabled">>}],
-                    ?MODULE:halt(Req, cb_context:add_system_error(forbidden, Mess, Context));
+                    ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Mess, Context));
                 'true' ->
                     {'true', Req, Context}
             end;
         {'error', _E} -> 
             Mess = [{'details', <<"error while checking if account is enabled">>}],
             lager:debug("error while checking account ~p, ~p~n", [AccountId, _E]),
-            ?MODULE:halt(Req, cb_context:add_system_error(forbidden, Mess, Context))
+            ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Mess, Context))
     end.
 
 -spec is_known_content_type(#http_req{}, cb_context:context()) -> {boolean(), #http_req{}, cb_context:context()}.
