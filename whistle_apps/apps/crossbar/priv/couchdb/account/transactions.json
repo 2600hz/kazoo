@@ -7,11 +7,11 @@
             ,"reduce": "_sum"
         }
         ,"allotment_consumed": {
-            "map": "function(doc) { if ( (doc.pvt_type != 'credit_allotment' && doc.pvt_type != 'debit_allotment') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit_allotment' ? 1 : -1); emit([doc.name, doc.pvt_created], doc.amount * modifier); }"
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit_allotment' && doc.pvt_type != 'debit_allotment') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit_allotment' ? 1 : -1); emit([doc.name || doc.description, doc.pvt_created], doc.amount * modifier); }"
             ,"reduce": "_sum"
         }
         ,"per_minute_cost": {
-            "map": "function (doc) {if ((doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || !doc.pvt_code || 1000 > doc.pvt_code || doc.pvt_doc >= 2000 || doc.pvt_deleted || !doc.call_id) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1), amount = doc.pvt_amount || doc.amount; emit([doc.call_id, doc.event], amount * modifier);}"
+            "map": "function (doc) {if ((doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || !doc.pvt_code || 1000 > doc.pvt_code || doc.pvt_doc >= 2000 || doc.pvt_deleted || !doc.call_id) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1), amount = doc.pvt_amount || doc.amount || 0; emit([doc.call_id, doc.event], amount * modifier);}"
             ,"reduce": "_sum"
         }
         ,"by_timestamp": {
