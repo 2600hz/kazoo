@@ -498,7 +498,6 @@ is_permitted(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     {true, Req, Context};
 is_permitted(Req0, #cb_context{req_nouns=[{<<"404">>, []}]}=Context0) ->
     ?MODULE:halt(Req0, cb_context:add_system_error(not_found, Context0));
-
 is_permitted(Req0, Context0) ->
     Event = <<"v1_resource.authorize">>,
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
@@ -513,6 +512,7 @@ is_permitted(Req0, Context0) ->
             is_account_enabled(Req0, Context1)
     end.
 
+-spec is_account_enabled(#http_req{}, cb_context:context()) -> {'true' | 'halt', #http_req{}, cb_context:context()}.
 is_account_enabled(#http_req{path_info=[Path|_]}=Req, #cb_context{auth_account_id='undefined'}=Context) ->
     case binary:match(Path, ?AUTH_TYPE) of
         'nomatch' ->
