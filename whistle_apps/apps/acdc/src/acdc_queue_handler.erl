@@ -105,7 +105,6 @@ maybe_respond_to_presence_probe(JObj, AcctId) ->
     case wh_json:get_value(<<"To-User">>, JObj) of
         'undefined' -> 'ok';
         QueueId ->
-            lager:debug("update presence probe for queue ~s(~s)", [QueueId, AcctId]),
             update_probe(JObj
                          ,acdc_queues_sup:find_queue_supervisor(AcctId, QueueId)
                          ,AcctId, QueueId
