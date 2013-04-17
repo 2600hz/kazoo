@@ -334,13 +334,14 @@ wait_for_listener(Supervisor, FSM, Props, IsThief) ->
         P when is_pid(P) ->
             lager:debug("listener retrieved: ~p", [P]),
 
-            {NextState, SyncRef} = case props:get_value('skip_sync', Props) =:= 'true' orelse IsThief of
-                                       'true' -> {'ready', 'undefined'};
-                                       _ ->
-                                           gen_fsm:send_event(FSM, 'send_sync_event'),
-                                           gen_fsm:send_all_state_event(FSM, 'load_endpoints'),
-                                           {'sync', start_sync_timer(FSM)}
-                                   end,
+            {NextState, SyncRef} =
+                case props:get_value('skip_sync', Props) =:= 'true' orelse IsThief of
+                    'true' -> {'ready', 'undefined'};
+                    _ ->
+                        gen_fsm:send_event(FSM, 'send_sync_event'),
+                        gen_fsm:send_all_state_event(FSM, 'load_endpoints'),
+                        {'sync', start_sync_timer(FSM)}
+                end,
 
             gen_fsm:send_event(FSM, {'listener', P, NextState, SyncRef})
     end.

@@ -321,7 +321,6 @@ maybe_respond_to_presence_probe(JObj, AcctId) ->
     case wh_json:get_value(<<"To-User">>, JObj) of
         'undefined' -> lager:debug("no user on presence probe for ~s", [AcctId]);
         AgentId ->
-            lager:debug("maybe updating presence probe for ~s(~s)", [AgentId, AcctId]),
             update_probe(JObj, acdc_agents_sup:find_agent_supervisor(AcctId, AgentId))
     end.
 
