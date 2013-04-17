@@ -222,8 +222,6 @@ xml_to_record(Xml) ->
 xml_to_record(Xml, Base) ->
     AddOnsPath = lists:flatten([Base, "/add-ons/add-on"]),
     DiscountsPath = lists:flatten([Base, "/discounts/discount"]),
-    io:format("~p~n", [DiscountsPath]),
-    io:format("~p~n", [xmerl_xpath:string(DiscountsPath, Xml)]),
     BillingAddress = braintree_address:xml_to_record(Xml, [Base, "/billing"]),
     Card = braintree_card:xml_to_record(Xml, [Base, "/credit-card"]),
     #bt_transaction{id = get_xml_value([Base, "/id/text()"], Xml)
