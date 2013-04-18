@@ -248,6 +248,7 @@ filter_braintree_subscriptions(#cb_context{account_id=AccountId}=Context) ->
 filter_braintree_transaction(BTransaction) ->
     Routines = [fun(BTr) -> clean_braintree_transaction(BTr) end
                 ,fun(BTr) -> is_prorated_braintree_transaction(BTr) end
+                ,fun(BTr) -> correct_date_braintree_transaction(BTr) end
                ],
     lists:foldl(fun(F, BTr) -> F(BTr) end, BTransaction, Routines).
 
@@ -260,6 +261,7 @@ filter_braintree_transaction(BTransaction) ->
 -spec filter_braintree_subscirption(wh_json:object()) -> wh_json:object().
 filter_braintree_subscirption(BSubscription) ->
     Routines = [fun(BSub) -> clean_braintree_subscription(BSub) end
+                ,fun(BSub) -> correct_date_braintree_subscription(BSub) end
                ],
     lists:foldl(fun(F, BSub) -> F(BSub) end, BSubscription, Routines).
 
@@ -328,6 +330,57 @@ is_prorated_braintree_transaction(BTransaction) ->
             calculate_prorated(BTransaction)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec correct_date_braintree_transaction(wh_json:object()) -> wh_json:object().
+correct_date_braintree_transaction(BTransaction) ->
+    Keys = [<<"created_at">>, <<"update_at">>],
+    lists:foldl(
+      fun(Key, BTr) ->
+              case wh_json:get_value(Key, BTr, 'null') of
+                  'null' -> BTr;
+                  V1 ->
+                      V2 = string:substr(binary:bin_to_list(V1), 1, 10),
+                      [Y, M, D|_] = string:tokens(V2, "-"),
+                      {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
+                      DateTime = {{Y1, M1, D1}, {0, 0, 0}},
+                      Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
+                      wh_json:set_value(Key, Timestamp, BTr)
+                  end
+      end, BTransaction, Keys).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec correct_date_braintree_subscription(wh_json:object()) -> wh_json:object().
+correct_date_braintree_subscription(BSubscription) ->
+    Keys = [<<"billing_first_date">>
+                ,<<"billing_end_date">>
+                ,<<"billing_start_date">>
+                ,<<"next_bill_date">>
+           ],
+    lists:foldl(
+      fun(Key, BSub) ->
+              case wh_json:get_value(Key, BSub, 'null') of
+                  'null' -> BSub;
+                  V1 ->
+                      V2 = binary:bin_to_list(V1),
+                      [Y, M, D|_] = string:tokens(V2, "-"),
+                      {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
+                      DateTime = {{Y1, M1, D1}, {0, 0, 0}},
+                      Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
+                      wh_json:set_value(Key, Timestamp, BSub)
+                  end
+      end, BSubscription, Keys).
+        
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
