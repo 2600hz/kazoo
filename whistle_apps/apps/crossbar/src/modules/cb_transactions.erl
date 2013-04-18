@@ -98,17 +98,12 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"cur
     Balance = wht_util:units_to_dollars(wht_util:current_balance(AccountId)),
     JObj = wh_json:from_list([{<<"balance">>, Balance}]),
     Context#cb_context{resp_status=success, resp_data=JObj};
-validate(#cb_context{req_verb = <<"get">>, account_id=AccountId, query_json=Query}=Context, <<"monthly_recurring">>) ->
-    {{Y, M, D}, _} = calendar:local_time(),
-    MinDefault =  <<(wh_util:to_binary(M-1))/binary, "/", (wh_util:to_binary(D))/binary, "/", (wh_util:to_binary(Y))/binary>>,
-    MaxDefault =  <<(wh_util:to_binary(M))/binary, "/", (wh_util:to_binary(D))/binary, "/", (wh_util:to_binary(Y))/binary>>,
-    Min = wh_json:get_integer_value(<<"created_from">>, Query, MinDefault),
-    Max = wh_json:get_integer_value(<<"created_to">>, Query, MaxDefault),
-    JObj = fetch_braintree_transactions(AccountId, Min, Max),
-    Context#cb_context{resp_status=success, resp_data=JObj};
-validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"subscriptions">>) ->
-    JObj = fetch_braintree_subscriptions(AccountId),
-    Context#cb_context{resp_status=success, resp_data=JObj};
+validate(#cb_context{req_verb = <<"get">>, query_json=Query}=Context, <<"monthly_recurring">>) ->
+    From = wh_json:get_integer_value(<<"created_from">>, Query, 0),
+    To = wh_json:get_integer_value(<<"created_to">>, Query, 0),
+    fetch_braintree_transactions(From, To, Context);
+validate(#cb_context{req_verb = <<"get">>}=Context, <<"subscriptions">>) ->
+    fetch_braintree_subscriptions(Context);
 validate(Context, _) ->
     cb_context:add_system_error('bad_identifier',  Context).
 
@@ -118,15 +113,29 @@ validate(Context, _) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_braintree_transactions(ne_binary(), ne_binary(), ne_binary()) -> [wh_json:object(), ...].
-fetch_braintree_transactions(AccountId, Min, Max) ->
-    case  wh_service_transactions:current_billing_period(AccountId, 'transactions', {Min, Max}) of
-        'not_found' ->
-            wh_json:set_value(<<"error">>, <<"no_data_found">>, wh_json:new());
-        'unknow_error' ->
-            wh_json:set_value(<<"error">>, <<"unknow_braintree_error">>, wh_json:new());
-        BTransactions ->
-            filter_braintree_transactions(BTransactions)
+-spec fetch/3 :: (integer(), integer(), #cb_context{}) -> #cb_context{}.
+-spec fetch/4 :: (integer(), integer(), #cb_context{}, ne_binary()) -> #cb_context{}.
+fetch(From, To, Context) ->
+    case validate_date(From, To) of
+        {'true', VFrom, VTo} ->
+            filter(VFrom, VTo, Context);
+        {'false', R} ->
+            cb_context:add_validation_error(<<"created_from/created_to">>
+                                                ,<<"date_range">>
+                                                ,R
+                                            ,Context
+                                           )
+    end.
+fetch(From, To, Context, Reason) ->
+    case validate_date(From, To) of
+        {'true', VFrom, VTo} ->
+            filter(VFrom, VTo, Context, Reason);
+        {'false', R} ->
+            cb_context:add_validation_error(<<"created_from/created_to">>
+                                                ,<<"date_range">>
+                                                ,R
+                                            ,Context
+                                           )
     end.
 
 %%--------------------------------------------------------------------
@@ -135,26 +144,99 @@ fetch_braintree_transactions(AccountId, Min, Max) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_braintree_subscriptions(ne_binary()) -> [wh_json:object(), ...].
-fetch_braintree_subscriptions(AccountId) ->
+-spec fetch_braintree_transactions(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+fetch_braintree_transactions(Min, Max, Context) ->
+    case validate_date(Min, Max) of 
+        {'true', From, To} ->            
+            filter_braintree_transactions(
+              timestamp_to_braintree(From)
+              ,timestamp_to_braintree(To)
+              ,Context
+             );
+        {'false', R} ->
+            cb_context:add_validation_error(<<"created_from/created_to">>
+                                                ,<<"date_range">>
+                                                ,R
+                                            ,Context
+                                           )
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_braintree_subscriptions(cb_context:context()) -> cb_context:context().
+fetch_braintree_subscriptions(Context) ->
+    filter_braintree_subscriptions(Context).
+        
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec filter/3 :: (integer(), integer(), cb_context:context()) -> cb_context:context().
+-spec filter/4 :: (integer(), integer(), #cb_context{}, ne_binary())  -> #cb_context{}.
+filter(From, To, #cb_context{account_id=AccountId}=Context) ->
+    try wh_transactions:fetch_since(AccountId, From, To) of
+        Transactions ->
+            JObj = wh_transactions:to_public_json(Transactions),
+            JObj1 = wht_util:collapse_call_transactions(JObj),
+            send_resp({'ok', JObj1}, Context)
+    catch
+        _:_ ->
+            send_resp({'error', <<"error while fetching transactions">>}, Context)
+    end.
+filter(From, To, #cb_context{account_id=AccountId}=Context, Reason) ->
+    try wh_transactions:fetch_since(AccountId, From, To) of
+        Transactions ->
+            Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
+            JObj = wh_transactions:to_public_json(Filtered),
+            JObj1 = wht_util:collapse_call_transactions(JObj),
+            send_resp({'ok', JObj1}, Context)
+    catch
+        _:_ ->
+            send_resp({'error', <<"error while fetching transactions">>}, Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_braintree_transactions(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+filter_braintree_transactions(From, To, #cb_context{account_id=AccountId}=Context) ->
+    case  wh_service_transactions:current_billing_period(AccountId, 'transactions', {From, To}) of
+        'not_found' ->
+            send_resp({'error', <<"no data found in braintree">>}, Context);
+        'unknow_error' ->
+            send_resp({'error', <<"unknow  braintree error">>}, Context);
+        BTransactions ->
+            JObj = [filter_braintree_transaction(BTr) || BTr <- BTransactions],
+            send_resp({'ok', JObj}, Context)                
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_braintree_subscriptions(cb_context:context()) -> cb_context:context().
+filter_braintree_subscriptions(#cb_context{account_id=AccountId}=Context) ->
     case wh_service_transactions:current_billing_period(AccountId, 'subscriptions') of
         'not_found' ->
-            wh_json:set_value(<<"error">>, <<"no_data_found">>, wh_json:new());
+            send_resp({'error', <<"no data found in braintree">>}, Context);
         'unknow_error' ->
-            wh_json:set_value(<<"error">>, <<"unknow_braintree_error">>, wh_json:new());
+            send_resp({'error', <<"unknow braintree error">>}, Context);
         BSubscriptions ->
-            filter_braintree_subscriptions(BSubscriptions)
+            JObj = [filter_braintree_subscirption(BSub) || BSub <- BSubscriptions],
+            send_resp({'ok', JObj}, Context)                
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec filter_braintree_transactions([wh_json:object(), ...]) -> [wh_json:object(), ...].
-filter_braintree_transactions(BTransactions) ->
-    [filter_braintree_transaction(BTr) || BTr <- BTransactions].
     
 %%--------------------------------------------------------------------
 %% @private
@@ -168,16 +250,6 @@ filter_braintree_transaction(BTransaction) ->
                 ,fun(BTr) -> is_prorated_braintree_transaction(BTr) end
                ],
     lists:foldl(fun(F, BTr) -> F(BTr) end, BTransaction, Routines).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec filter_braintree_subscriptions([wh_json:object(), ...]) -> [wh_json:object(), ...].
-filter_braintree_subscriptions(BSubscriptions) ->
-    [filter_braintree_subscirption(BSub) || BSub <- BSubscriptions].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -310,62 +382,6 @@ calculate([Addon|Addons], Acc) ->
     Quantity = wh_json:get_number_value(<<"quantity">>, Addon, 0),
     calculate(Addons, (Amount*Quantity+Acc)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec fetch/3 :: (integer(), integer(), #cb_context{}) -> #cb_context{}.
--spec fetch/4 :: (integer(), integer(), #cb_context{}, ne_binary()) -> #cb_context{}.
-fetch(From, To, Context) ->
-    case validate_date(From, To) of
-        {'true', VFrom, VTo} ->
-            filter(VFrom, VTo, Context);
-        {'false', R} ->
-            cb_context:add_validation_error(<<"created_from/created_to">>
-                                                ,<<"date_range">>
-                                                ,R
-                                            ,Context
-                                           )
-    end.
-fetch(From, To, Context, Reason) ->
-    case validate_date(From, To) of
-        {'true', VFrom, VTo} ->
-            filter(VFrom, VTo, Context, Reason);
-        {'false', R} ->
-            cb_context:add_validation_error(<<"created_from/created_to">>
-                                                ,<<"date_range">>
-                                                ,R
-                                            ,Context
-                                           )
-    end.
-        
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec filter/3 :: (integer(), integer(), cb_context:context()) -> cb_context:context().
--spec filter/4 :: (integer(), integer(), #cb_context{}, ne_binary())  -> #cb_context{}.
-filter(From, To, #cb_context{account_id=AccountId}=Context) ->
-    try wh_transactions:fetch_since(AccountId, From, To) of
-        Transactions ->
-            send_resp({'ok', Transactions}, Context)
-    catch
-        _:_ ->
-            send_resp({'error', Context}, Context)
-    end.
-filter(From, To, #cb_context{account_id=AccountId}=Context, Reason) ->
-    try wh_transactions:fetch_since(AccountId, From, To) of
-        Transactions ->
-            Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
-            send_resp({'ok', Filtered}, Context)
-    catch
-        _:_ ->
-            send_resp({'error', Context}, Context)
-    end.
 
 %%--------------------------------------------------------------------
 %% @private 
@@ -375,14 +391,21 @@ filter(From, To, #cb_context{account_id=AccountId}=Context, Reason) ->
 %%--------------------------------------------------------------------
 send_resp(Resp, Context) ->
     case Resp of 
-        {'ok', Transactions} ->
-            JObj = wh_transactions:to_public_json(Transactions),
-            Context#cb_context{resp_status=success
-                               ,resp_data=wht_util:collapse_call_transactions(JObj)
-                              };
-        {'error', C} ->
-            cb_context:add_system_error('bad_identifier', [{'details',<<"something went wrong while fetching the transaction">>}], C)
+        {'ok', JObj} ->
+            Context#cb_context{resp_status=success, resp_data=JObj};
+        {'error', Details} ->
+            cb_context:add_system_error('bad_identifier', [{'details', Details}], Context)
     end.
+
+%%--------------------------------------------------------------------
+%% @private 
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+timestamp_to_braintree(Timestamp) ->
+    {{Y, M, D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    <<(wh_util:to_binary(M))/binary, "/", (wh_util:to_binary(D))/binary, "/", (wh_util:to_binary(Y))/binary>>.
 
 
 %%--------------------------------------------------------------------
