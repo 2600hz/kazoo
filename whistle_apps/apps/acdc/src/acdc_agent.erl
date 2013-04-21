@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2, start_link/3
+-export([start_link/2, start_link/3, start_link/5
          ,member_connect_resp/2
          ,member_connect_retry/2
          ,agent_timeout/1
@@ -154,25 +154,22 @@ start_link(Supervisor, AgentJObj) ->
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
     AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
 
-    case wh_json:get_value(<<"queues">>, AgentJObj) of
-        'undefined' ->
-            lager:debug("agent ~s has no queues, ignoring", [AgentId]),
-            {'error', 'no_queues'};
-        [] ->
-            lager:debug("agent ~s in ~s has no queues, ignoring", [AgentId, AcctId]),
-            {'error', 'no_queues'};
-        Queues ->
-            case acdc_util:agent_status(AcctId, AgentId) of
-                <<"logout">> -> {'error', 'logged_out'};
-                _S ->
-                    lager:debug("start bindings for ~s(~s) in ~s", [AcctId, AgentId, _S]),
-                    gen_listener:start_link(?MODULE
-                                            ,[{'bindings', ?BINDINGS(AcctId, AgentId)}
-                                              ,{'responders', ?RESPONDERS}
-                                             ]
-                                            ,[Supervisor, AgentJObj, Queues]
-                                           )
-            end
+    Queues = case wh_json:get_value(<<"queues">>, AgentJObj) of
+                 'undefined' -> [];
+                 Qs -> Qs
+             end,
+    start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues).
+start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues) ->
+    case acdc_util:agent_status(AcctId, AgentId) of
+        <<"logout">> -> {'error', 'logged_out'};
+        _S ->
+            lager:debug("start bindings for ~s(~s) in ~s", [AcctId, AgentId, _S]),
+            gen_listener:start_link(?MODULE
+                                    ,[{'bindings', ?BINDINGS(AcctId, AgentId)}
+                                      ,{'responders', ?RESPONDERS}
+                                     ]
+                                    ,[Supervisor, AgentJObj, Queues]
+                                   )
     end.
 
 start_link(Supervisor, ThiefCall, QueueId) ->

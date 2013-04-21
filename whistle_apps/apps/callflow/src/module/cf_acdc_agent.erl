@@ -15,8 +15,11 @@
 
 -export([handle/2
          ,find_agent/1
+         ,find_agent_status/2
          ,play_not_an_agent/1
          ,play_agent_invalid/1
+         ,login_agent/2
+         ,logout_agent/2
         ]).
 
 -include("../callflow.hrl").
