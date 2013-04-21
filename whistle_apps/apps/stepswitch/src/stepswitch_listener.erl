@@ -161,9 +161,11 @@ handle_info({document_deleted, DocId}, #state{resrcs=Resrcs}=State) ->
             lager:info("removing offnet resource ~s", [DocId]),
             {noreply, State#state{resrcs=lists:keydelete(DocId, #resrc.id, Resrcs)}, hibernate}
     end;
+handle_info({'document_deleted', _DocId, 'undefined'}, State) ->
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -172,7 +174,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{resrcs=Rs}) ->
-    {reply, [{resources, Rs}]}.
+    {'reply', [{'resources', Rs}]}.
 
 %%--------------------------------------------------------------------
 %% @private
