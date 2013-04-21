@@ -481,13 +481,14 @@ handle_cast({'sync_with_agent', A}, #state{acct_id=AcctId}=State) ->
 handle_cast({'gen_listener', {'created_queue', _}}, State) ->
     {'noreply', State};
 
-handle_cast({'gen_listener', {'is_consuming', _}}, State) ->
-    {'noreply', State};
-
 handle_cast({'refresh', QueueJObj}, State) ->
     lager:debug("refreshing queue configs"),
     {'noreply', update_properties(QueueJObj, State), 'hibernate'};
 
+handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.

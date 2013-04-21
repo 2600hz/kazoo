@@ -10,7 +10,7 @@
 -module(wh_json).
 
 %% don't import the get_keys/1 that fetches keys from the process dictionary
--compile({no_auto_import, [get_keys/1]}).
+-compile({'no_auto_import', [get_keys/1]}).
 
 -export([to_proplist/1, to_proplist/2]).
 -export([to_querystring/1]).

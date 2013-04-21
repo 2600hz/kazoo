@@ -446,6 +446,10 @@ handle_cast({'send_sync_resp', Strategy, StrategyState, ReqJObj}, #state{my_id=I
     publish_sync_resp(Strategy, StrategyState, ReqJObj, Id),
     {'noreply', State};
 
+handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
