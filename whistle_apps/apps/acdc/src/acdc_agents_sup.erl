@@ -14,7 +14,7 @@
 
 %% API
 -export([start_link/0
-         ,new/1, new/2
+         ,new/1, new/2, new/4
          ,new_thief/2
          ,workers/0
          ,find_acct_supervisors/1
@@ -68,6 +68,12 @@ new(AcctId, AgentId) ->
         'undefined' ->
             {'ok', Agent} = couch_mgr:open_doc(wh_util:format_account_id(AcctId, 'encoded'), AgentId),
             supervisor:start_child(?MODULE, [Agent]);
+        P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
+    end.
+
+new(AcctId, AgentId, AgentJObj, Queues) ->
+    case find_agent_supervisor(AcctId, AgentId) of
+        'undefined' -> supervisor:start_child(?MODULE, [AgentJObj, AcctId, AgentId, Queues]);
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
 

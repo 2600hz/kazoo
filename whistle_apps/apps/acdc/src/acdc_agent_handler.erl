@@ -60,6 +60,7 @@ maybe_agent_queue_change(AcctId, AgentId, <<"login_queue">>, QueueId) ->
     update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)
                  ,QueueId
                  ,fun acdc_agent:add_acdc_queue/2
+                 ,AcctId, AgentId
                 );
 maybe_agent_queue_change(AcctId, AgentId, <<"logout_queue">>, QueueId) ->
     update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)
@@ -69,7 +70,15 @@ maybe_agent_queue_change(AcctId, AgentId, <<"logout_queue">>, QueueId) ->
 maybe_agent_queue_change(_AcctId, _AgentId, _Evt, _QueueId) ->
     lager:debug("unhandled evt: ~s for ~s", [_Evt, _QueueId]).
 
-update_agent('undefined', _, _) -> 'ok';
+update_agent('undefined', QueueId, _F, AcctId, AgentId) ->
+    {'ok', AgentJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AcctId, 'encoded')
+                                                 ,AgentId
+                                                ),
+    acdc_agents_sup:new(AcctId, AgentId, AgentJObj, [QueueId]);
+update_agent(Super, Q, F, _, _) when is_pid(Super) ->
+    F(acdc_agent_sup:agent(Super), Q).
+
+update_agent('undefined', _QueueId, _F) -> 'ok';
 update_agent(Super, Q, F) when is_pid(Super) ->
     F(acdc_agent_sup:agent(Super), Q).
 
