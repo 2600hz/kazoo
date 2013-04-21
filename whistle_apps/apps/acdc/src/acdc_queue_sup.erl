@@ -25,7 +25,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Args, Shutdown, Type),
-        {Name, {Name, start_link, Args}, permanent, Shutdown, Type, [Name]}).
+        {Name, {Name, 'start_link', Args}, 'permanent', Shutdown, Type, [Name]}).
 
 %%%===================================================================
 %%% api functions
@@ -64,6 +64,13 @@ status(Supervisor) ->
     lager:info("Queue ~s (Account ~s)", [QueueId, AcctId]),
     lager:info("  Supervisor: ~p", [Supervisor]),
     lager:info("  Manager: ~p", [Manager]),
+
+    lager:info("    Known Agents:"),
+    case acdc_queue_manager:status(Manager) of
+        [] -> lager:info("      NONE");
+        As -> [lager:info("      ~s", [A]) || A <- As]
+    end,
+
     _ = acdc_queue_workers_sup:status(WorkersSup),
     'ok'.
 

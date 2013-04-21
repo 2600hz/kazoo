@@ -21,6 +21,7 @@
          ,handle_config_change/2
          ,should_ignore_member_call/3
          ,config/1
+         ,current_agents/1
          ,refresh/2
         ]).
 
@@ -223,6 +224,7 @@ should_ignore_member_call(Srv, Call, CallJObj) ->
     gen_listener:call(Srv, {'should_ignore_member_call', K}).
 
 config(Srv) -> gen_listener:call(Srv, 'config').
+current_agents(Srv) -> gen_listener:call(Srv, 'current_agents').
 
 refresh(Mgr, QueueJObj) -> gen_listener:cast(Mgr, {'refresh', QueueJObj}).
 
