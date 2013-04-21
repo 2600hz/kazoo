@@ -429,6 +429,8 @@ handle_cast({'flush_node_conferences', Node}, TID) ->
                  ],
     _ = ets:select_delete(TID, MatchSpecP),
     {'noreply', TID};
+handle_cast({'gen_listener',{'is_consuming',_IsComsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Req, TID) ->
     lager:debug("unhandled cast: ~p", [_Req]),
     {'noreply', TID}.
