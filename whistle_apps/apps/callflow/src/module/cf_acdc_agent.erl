@@ -141,6 +141,7 @@ send_new_status(Call, AgentId, PubFun, Timeout) ->
                ]),
     PubFun(Update).
 
+-spec find_agent(whapps_call:call()) -> {'ok', api_binary()}.
 find_agent(Call) ->
     case whapps_call:owner_id(Call) of
         'undefined' -> find_agent_by_authorization(Call
@@ -150,6 +151,8 @@ find_agent(Call) ->
         OwnerId -> {'ok', OwnerId}
     end.
 
+-spec find_agent_by_authorization(whapps_call:call(), ne_binary(), ne_binary()) ->
+                                         {'ok', api_binary()}.
 find_agent_by_authorization(Call, DeviceId, <<"device">>) ->
     {'ok', Device} = couch_mgr:open_doc(whapps_call:account_db(Call), DeviceId),
     {'ok', wh_json:get_value(<<"owner_id">>, Device)}.
