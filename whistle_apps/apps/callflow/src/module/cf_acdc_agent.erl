@@ -38,14 +38,19 @@ handle(Data, Call) ->
                 NewStatus = fix_data_status(wh_json:get_value(<<"action">>, Data)),
                 lager:info("agent ~s maybe changing status from ~s to ~s", [AgentId, Status, NewStatus]),
 
-                maybe_update_status(Call, AgentId, Status, NewStatus, Data)
+                maybe_update_status(Call, AgentId, Status, NewStatus, Data);
+            {'error', 'multiple_owners'} ->
+                lager:info("too many owners of device ~s, not logging in", [whapps_call:authorizing_id(Call)]),
+                play_agent_invalid(Call)
         end,
     lager:info("finished with acdc agent callflow"),
     cf_exe:continue(Call).
 
 -spec find_agent_status(whapps_call:call() | ne_binary(), ne_binary()) -> ne_binary().
-find_agent_status(?NE_BINARY = AcctId, AgentId) -> fix_agent_status(acdc_util:agent_status(AcctId, AgentId));
-find_agent_status(Call, AgentId) -> find_agent_status(whapps_call:account_id(Call), AgentId).
+find_agent_status(?NE_BINARY = AcctId, AgentId) ->
+    fix_agent_status(acdc_util:agent_status(AcctId, AgentId));
+find_agent_status(Call, AgentId) ->
+    find_agent_status(whapps_call:account_id(Call), AgentId).
 
 fix_agent_status(<<"resume">>) -> <<"login">>;
 fix_agent_status(<<"ready">>) -> <<"login">>;
@@ -141,21 +146,30 @@ send_new_status(Call, AgentId, PubFun, Timeout) ->
                ]),
     PubFun(Update).
 
--spec find_agent(whapps_call:call()) -> {'ok', api_binary()}.
+-type find_agent_error() :: 'unknown_endpoint' | 'multiple_owners'.
+-spec find_agent(whapps_call:call()) ->
+                        {'ok', api_binary()} |
+                        {'error', find_agent_error()}.
 find_agent(Call) ->
-    case whapps_call:owner_id(Call) of
-        'undefined' -> find_agent_by_authorization(Call
-                                                   ,whapps_call:authorizing_id(Call)
-                                                   ,whapps_call:authorizing_type(Call)
-                                                  );
-        OwnerId -> {'ok', OwnerId}
+    find_agent(Call, whapps_call:authorizing_id(Call)).
+
+find_agent(_Call, 'undefined') ->
+    {'error', 'unknown_endpoint'};
+find_agent(Call, EndpointId) ->
+    {'ok', Endpoint} = couch_mgr:open_doc(whapps_call:account_db(Call), EndpointId),
+    find_agent(Call, Endpoint, wh_json:get_value([<<"hotdesk">>, <<"users">>], Endpoint)).
+
+find_agent(Call, Endpoint, 'undefined') ->
+    find_agent_owner(Call, wh_json:get_value(<<"owner_id">>, Endpoint));
+find_agent(Call, Endpoint, Owners) ->
+    case wh_json:get_keys(Owners) of
+        [] -> find_agent_owner(Call, wh_json:get_value(<<"owner_id">>, Endpoint));
+        [OwnerId] -> {'ok', OwnerId};
+        _ -> {'error', 'multiple_owners'}
     end.
 
--spec find_agent_by_authorization(whapps_call:call(), ne_binary(), ne_binary()) ->
-                                         {'ok', api_binary()}.
-find_agent_by_authorization(Call, DeviceId, <<"device">>) ->
-    {'ok', Device} = couch_mgr:open_doc(whapps_call:account_db(Call), DeviceId),
-    {'ok', wh_json:get_value(<<"owner_id">>, Device)}.
+find_agent_owner(Call, 'undefined') -> {'ok', whapps_call:owner_id(Call)};
+find_agent_owner(_Call, EPOwnerId) -> {'ok', EPOwnerId}.
 
 play_not_an_agent(Call) -> whapps_call_command:b_prompt(<<"agent-not_call_center_agent">>, Call).
 play_agent_logged_in_already(Call) -> whapps_call_command:b_prompt(<<"agent-already_logged_in">>, Call).
