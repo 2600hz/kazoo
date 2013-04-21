@@ -494,6 +494,7 @@ ready({'sync_req', JObj}, #state{agent_proc=Srv}=State) ->
 ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                                            ,endpoints=OrigEPs
                                            ,agent_proc_id=MyId
+                                           ,acct_id=AcctId
                                            ,agent_id=AgentId
                                            ,connect_failures=CF
                                           }=State) ->
@@ -520,6 +521,11 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                     lager:debug("can't to take the call, skip me: ~p", [_E]),
                     acdc_agent:member_connect_retry(Srv, JObj),
                     {'next_state', 'ready', State#state{connect_failures=CF+1}};
+                {'ok', []} ->
+                    lager:info("agent ~s has no endpoints assigned; logging agent out", [AgentId]),
+                    acdc_agent:logout_agent(Srv),
+                    acdc_stats:agent_inactive(AcctId, AgentId),
+                    {'next_state', 'ready', State};
                 {'ok', UpdatedEPs} ->
                     acdc_agent:bridge_to_member(Srv, Call, JObj, UpdatedEPs, CDRUrl, RecordingUrl),
 
