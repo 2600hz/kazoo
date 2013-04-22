@@ -27,14 +27,13 @@
 
 -include("acdc.hrl").
 
+-define(DEFAULT_PAUSE ,whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)).
+
 -spec handle_status_update(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_status_update(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
-    Timeout = wh_json:get_integer_value(<<"Time-Limit">>, JObj
-                                        ,whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
-                                       ),
 
     lager:debug("status update recv for ~s (~s)", [AgentId, AcctId]),
 
@@ -47,6 +46,9 @@ handle_status_update(JObj, _Props) ->
             maybe_stop_agent(AcctId, AgentId);
         <<"pause">> ->
             'true' = wapi_acdc_agent:pause_v(JObj),
+
+            Timeout = wh_json:get_integer_value(<<"Time-Limit">>, JObj, ?DEFAULT_PAUSE),
+
             maybe_pause_agent(AcctId, AgentId, Timeout);
         <<"resume">> ->
             'true' = wapi_acdc_agent:resume_v(JObj),
