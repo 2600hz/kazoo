@@ -161,7 +161,9 @@ start_link(Supervisor, AgentJObj) ->
     start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues).
 start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues) ->
     case acdc_util:agent_status(AcctId, AgentId) of
-        <<"logout">> -> {'error', 'logged_out'};
+        <<"logout">> ->
+            lager:debug("agent ~s in ~s is logged out, ignoring", [AgentId, AcctId]),
+            {'error', 'logged_out'};
         _S ->
             lager:debug("start bindings for ~s(~s) in ~s", [AcctId, AgentId, _S]),
             gen_listener:start_link(?MODULE

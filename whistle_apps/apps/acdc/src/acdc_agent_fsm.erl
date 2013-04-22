@@ -14,7 +14,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
--export([start_link/2, start_link/3, start_link/4
+-export([start_link/2, start_link/3, start_link/4, start_link/5
          ,call_event/4
          ,member_connect_req/2
          ,member_connect_win/2
@@ -262,23 +262,26 @@ status(FSM) -> gen_fsm:sync_send_event(FSM, 'status').
 -spec start_link(ne_binary(), ne_binary(), pid(), wh_proplist()) -> startlink_ret().
 
 start_link(Supervisor, AgentJObj) when is_pid(Supervisor) ->
-    start_link(wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
-               ,wh_json:get_value(<<"_id">>, AgentJObj)
-               ,Supervisor
-               ,[]
-               ,'false'
-              ).
+    pvt_start_link(wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
+                   ,wh_json:get_value(<<"_id">>, AgentJObj)
+                   ,Supervisor
+                   ,[]
+                   ,'false'
+                  ).
 start_link(Supervisor, ThiefCall, _QueueId) ->
-    start_link(whapps_call:account_id(ThiefCall)
-               ,whapps_call:owner_id(ThiefCall)
-               ,Supervisor
-               ,[]
-               ,'true'
-              ).
+    pvt_start_link(whapps_call:account_id(ThiefCall)
+                   ,whapps_call:owner_id(ThiefCall)
+                   ,Supervisor
+                   ,[]
+                   ,'true'
+                  ).
 start_link(AcctId, AgentId, Supervisor, Props) ->
-    start_link(AcctId, AgentId, Supervisor, Props, 'false').
+    pvt_start_link(AcctId, AgentId, Supervisor, Props, 'false').
 
-start_link(AcctId, AgentId, Supervisor, Props, IsThief) ->
+start_link(Supervisor, _AgentJObj, AcctId, AgentId, _Queues) ->
+    pvt_start_link(AcctId, AgentId, Supervisor, [], 'false').
+
+pvt_start_link(AcctId, AgentId, Supervisor, Props, IsThief) ->
     gen_fsm:start_link(?MODULE, [AcctId, AgentId, Supervisor, Props, IsThief], []).
 
 new_endpoint(FSM, EP) ->
@@ -517,14 +520,21 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
             lager:debug("trying to ring agent ~s on ~s to connect to caller in queue ~s", [AgentId, AgentCallId, QueueId]),
 
             case get_endpoints(OrigEPs, Srv, Call, AgentId) of
+                {'error', 'no_endpoints'} ->
+                    lager:info("agent ~s has no endpoints assigned; logging agent out", [AgentId]),
+                    acdc_agent:logout_agent(Srv),
+                    acdc_stats:agent_inactive(AcctId, AgentId),
+                    acdc_agent:member_connect_retry(Srv, JObj),
+                    {'next_state', 'ready', State};
                 {'error', _E} ->
-                    lager:debug("can't to take the call, skip me: ~p", [_E]),
+                    lager:debug("can't take the call, skip me: ~p", [_E]),
                     acdc_agent:member_connect_retry(Srv, JObj),
                     {'next_state', 'ready', State#state{connect_failures=CF+1}};
                 {'ok', []} ->
                     lager:info("agent ~s has no endpoints assigned; logging agent out", [AgentId]),
                     acdc_agent:logout_agent(Srv),
                     acdc_stats:agent_inactive(AcctId, AgentId),
+                    acdc_agent:member_connect_retry(Srv, JObj),
                     {'next_state', 'ready', State};
                 {'ok', UpdatedEPs} ->
                     acdc_agent:bridge_to_member(Srv, Call, JObj, UpdatedEPs, CDRUrl, RecordingUrl),
@@ -1618,8 +1628,6 @@ maybe_remove_endpoint(EPId, EPs, AcctId, Srv) ->
 get_endpoints(OrigEPs, Srv, Call, AgentId) ->
     case catch acdc_util:get_endpoints(Call, AgentId) of
         [] ->
-            lager:debug("no endpoints for this agent, going down"),
-            acdc_agent:stop(Srv),
             {'error', 'no_endpoints'};
         [_|_]=EPs ->
             AcctId = whapps_call:account_id(Call),
