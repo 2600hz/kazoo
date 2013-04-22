@@ -13,7 +13,7 @@
 -include("acdc.hrl").
 
 %% API
--export([start_link/1, start_link/2
+-export([start_link/1, start_link/2, start_link/4
          ,agent/1
          ,fsm/1, start_fsm/3, start_fsm/4
          ,stop/1
@@ -41,8 +41,9 @@
 -spec start_link(wh_json:object()) -> startlink_ret().
 -spec start_link(whapps_call:call(), ne_binary()) -> startlink_ret().
 start_link(AgentJObj) -> supervisor:start_link(?MODULE, [AgentJObj]).
-
 start_link(ThiefCall, QueueId) -> supervisor:start_link(?MODULE, [ThiefCall, QueueId]).
+start_link(AcctId, AgentId, AgentJObj, Queues) ->
+    supervisor:start_link(?MODULE, [AcctId, AgentId, AgentJObj, Queues]).
 
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Supervisor) -> supervisor:terminate_child('acdc_agents_sup', Supervisor).

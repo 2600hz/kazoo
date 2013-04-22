@@ -57,12 +57,14 @@ handle_status_update(JObj, _Props) ->
     end.
 
 maybe_agent_queue_change(AcctId, AgentId, <<"login_queue">>, QueueId) ->
+    lager:debug("queue login for agent ~s into ~s", [AgentId, QueueId]),
     update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)
                  ,QueueId
                  ,fun acdc_agent:add_acdc_queue/2
                  ,AcctId, AgentId
                 );
 maybe_agent_queue_change(AcctId, AgentId, <<"logout_queue">>, QueueId) ->
+    lager:debug("queue logout for agent ~s into ~s", [AgentId, QueueId]),
     update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)
                  ,QueueId
                  ,fun acdc_agent:rm_acdc_queue/2
@@ -71,14 +73,18 @@ maybe_agent_queue_change(_AcctId, _AgentId, _Evt, _QueueId) ->
     lager:debug("unhandled evt: ~s for ~s", [_Evt, _QueueId]).
 
 update_agent('undefined', QueueId, _F, AcctId, AgentId) ->
+    lager:debug("new agent process needs starting"),
     {'ok', AgentJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AcctId, 'encoded')
                                                  ,AgentId
                                                 ),
+    lager:debug("agent loaded"),
+    acdc_stats:agent_active(AcctId, AgentId),
     acdc_agents_sup:new(AcctId, AgentId, AgentJObj, [QueueId]);
 update_agent(Super, Q, F, _, _) when is_pid(Super) ->
+    lager:debug("agent super ~p", [Super]),
     F(acdc_agent_sup:agent(Super), Q).
 
-update_agent('undefined', _QueueId, _F) -> 'ok';
+update_agent('undefined', _QueueId, _F) -> lager:debug("agent's supervisor not around, ignoring for queue ~s", [_QueueId]);
 update_agent(Super, Q, F) when is_pid(Super) ->
     F(acdc_agent_sup:agent(Super), Q).
 
