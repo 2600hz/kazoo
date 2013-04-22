@@ -34,6 +34,7 @@ handle(Data, Call) ->
                 QueueId = wh_json:get_value(<<"id">>, Data),
                 Status = cf_acdc_agent:find_agent_status(Call, AgentId),
 
+                update_queues(Call, AgentId, QueueId, Action),
                 maybe_update_status(Call, AgentId, QueueId, Status, Action);
             {'error', 'multiple_owners'} ->
                 lager:info("too many owners of device ~s, not logging in", [whapps_call:authorizing_id(Call)]),
@@ -76,3 +77,37 @@ send_agent_message(Call, AgentId, QueueId, PubFun) ->
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     PubFun(Prop).
+
+update_queues(Call, AgentId, QueueId, <<"login">>) ->
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), AgentId) of
+        {'error', _} -> 'ok';
+        {'ok', AgentJObj} ->
+            maybe_add_queue(Call, AgentJObj, QueueId)
+    end;
+update_queues(Call, AgentId, QueueId, <<"logout">>) ->
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), AgentId) of
+        {'error', _} -> 'ok';
+        {'ok', AgentJObj} ->
+            maybe_rm_queue(Call, AgentJObj, QueueId)
+    end.
+
+maybe_add_queue(Call, AgentJObj, QueueId) ->
+    Qs = wh_json:get_value(<<"queues">>, AgentJObj, []),
+    case lists:member(QueueId, Qs) of
+        'false' ->
+            save_agent(Call, wh_json:set_value(<<"queues">>, [QueueId | Qs], AgentJObj));
+        'true' -> 'ok'
+    end.
+
+maybe_rm_queue(Call, AgentJObj, QueueId) ->
+    Qs = wh_json:get_value(<<"queues">>, AgentJObj, []),
+    case lists:member(QueueId, Qs) of
+        'true' ->
+            Qs1 = lists:delete(QueueId, Qs),
+            QRemoved = wh_json:set_value(<<"queues">>, Qs1, AgentJObj),
+            save_agent(Call, QRemoved);
+        'false' -> 'ok'
+    end.
+
+save_agent(Call, AgentJObj) ->
+    couch_mgr:save_doc(whapps_call:account_db(Call), AgentJObj).
