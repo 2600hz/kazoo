@@ -43,6 +43,9 @@ handle(Data, Call) ->
 
 maybe_update_status(Call, AgentId, QueueId, <<"logout">>, <<"login">>) ->
     lager:info("agent ~s is logged out, log in to queue ~s", [AgentId, QueueId]),
+
+    update_status(Call, AgentId, <<"login">>),
+
     send_agent_message(Call, AgentId, QueueId, fun wapi_acdc_agent:publish_login_queue/1),
     whapps_call_command:b_prompt(<<"agent-logged_in">>, Call);
 maybe_update_status(Call, AgentId, QueueId, _Curr, <<"login">>) ->
@@ -57,6 +60,13 @@ maybe_update_status(Call, AgentId, QueueId, _Status, <<"logout">>) ->
 maybe_update_status(Call, _AgentId, _QueueId, _Status, _Action) ->
     lager:info("invalid agent action: ~s to ~s", [_Status, _Action]),
     cf_acdc_agent:play_agent_invalid(Call).
+
+update_status(Call, AgentId, Status) ->
+    Extra = [{<<"call_id">>, whapps_call:call_id(Call)}
+             ,{<<"method">>, <<"callflow">>}
+            ],
+
+    {'ok', _D} = acdc_util:update_agent_status(whapps_call:account_id(Call), AgentId, Status, Extra).
 
 send_agent_message(Call, AgentId, QueueId, PubFun) ->
     Prop = props:filter_undefined(
