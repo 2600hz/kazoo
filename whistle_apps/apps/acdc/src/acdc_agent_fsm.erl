@@ -525,7 +525,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                     acdc_agent:logout_agent(Srv),
                     acdc_stats:agent_inactive(AcctId, AgentId),
                     acdc_agent:member_connect_retry(Srv, JObj),
-                    {'next_state', 'ready', State};
+                    {'next_state', 'paused', State};
                 {'error', _E} ->
                     lager:debug("can't take the call, skip me: ~p", [_E]),
                     acdc_agent:member_connect_retry(Srv, JObj),
@@ -535,7 +535,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                     acdc_agent:logout_agent(Srv),
                     acdc_stats:agent_inactive(AcctId, AgentId),
                     acdc_agent:member_connect_retry(Srv, JObj),
-                    {'next_state', 'ready', State};
+                    {'next_state', 'paused', State};
                 {'ok', UpdatedEPs} ->
                     acdc_agent:bridge_to_member(Srv, Call, JObj, UpdatedEPs, CDRUrl, RecordingUrl),
 
