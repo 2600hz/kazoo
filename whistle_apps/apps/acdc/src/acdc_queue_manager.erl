@@ -21,6 +21,7 @@
          ,handle_config_change/2
          ,should_ignore_member_call/3
          ,config/1
+         ,current_agents/1
          ,refresh/2
         ]).
 
@@ -223,6 +224,7 @@ should_ignore_member_call(Srv, Call, CallJObj) ->
     gen_listener:call(Srv, {'should_ignore_member_call', K}).
 
 config(Srv) -> gen_listener:call(Srv, 'config').
+current_agents(Srv) -> gen_listener:call(Srv, 'current_agents').
 
 refresh(Mgr, QueueJObj) -> gen_listener:cast(Mgr, {'refresh', QueueJObj}).
 
@@ -479,13 +481,14 @@ handle_cast({'sync_with_agent', A}, #state{acct_id=AcctId}=State) ->
 handle_cast({'gen_listener', {'created_queue', _}}, State) ->
     {'noreply', State};
 
-handle_cast({'gen_listener', {'is_consuming', _}}, State) ->
-    {'noreply', State};
-
 handle_cast({'refresh', QueueJObj}, State) ->
     lager:debug("refreshing queue configs"),
     {'noreply', update_properties(QueueJObj, State), 'hibernate'};
 
+handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.

@@ -14,7 +14,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
--export([start_link/2, start_link/3, start_link/4
+-export([start_link/2, start_link/3, start_link/4, start_link/5
          ,call_event/4
          ,member_connect_req/2
          ,member_connect_win/2
@@ -262,23 +262,26 @@ status(FSM) -> gen_fsm:sync_send_event(FSM, 'status').
 -spec start_link(ne_binary(), ne_binary(), pid(), wh_proplist()) -> startlink_ret().
 
 start_link(Supervisor, AgentJObj) when is_pid(Supervisor) ->
-    start_link(wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
-               ,wh_json:get_value(<<"_id">>, AgentJObj)
-               ,Supervisor
-               ,[]
-               ,'false'
-              ).
+    pvt_start_link(wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
+                   ,wh_json:get_value(<<"_id">>, AgentJObj)
+                   ,Supervisor
+                   ,[]
+                   ,'false'
+                  ).
 start_link(Supervisor, ThiefCall, _QueueId) ->
-    start_link(whapps_call:account_id(ThiefCall)
-               ,whapps_call:owner_id(ThiefCall)
-               ,Supervisor
-               ,[]
-               ,'true'
-              ).
+    pvt_start_link(whapps_call:account_id(ThiefCall)
+                   ,whapps_call:owner_id(ThiefCall)
+                   ,Supervisor
+                   ,[]
+                   ,'true'
+                  ).
 start_link(AcctId, AgentId, Supervisor, Props) ->
-    start_link(AcctId, AgentId, Supervisor, Props, 'false').
+    pvt_start_link(AcctId, AgentId, Supervisor, Props, 'false').
 
-start_link(AcctId, AgentId, Supervisor, Props, IsThief) ->
+start_link(Supervisor, _AgentJObj, AcctId, AgentId, _Queues) ->
+    pvt_start_link(AcctId, AgentId, Supervisor, [], 'false').
+
+pvt_start_link(AcctId, AgentId, Supervisor, Props, IsThief) ->
     gen_fsm:start_link(?MODULE, [AcctId, AgentId, Supervisor, Props, IsThief], []).
 
 new_endpoint(FSM, EP) ->
@@ -334,13 +337,14 @@ wait_for_listener(Supervisor, FSM, Props, IsThief) ->
         P when is_pid(P) ->
             lager:debug("listener retrieved: ~p", [P]),
 
-            {NextState, SyncRef} = case props:get_value('skip_sync', Props) =:= 'true' orelse IsThief of
-                                       'true' -> {'ready', 'undefined'};
-                                       _ ->
-                                           gen_fsm:send_event(FSM, 'send_sync_event'),
-                                           gen_fsm:send_all_state_event(FSM, 'load_endpoints'),
-                                           {'sync', start_sync_timer(FSM)}
-                                   end,
+            {NextState, SyncRef} =
+                case props:get_value('skip_sync', Props) =:= 'true' orelse IsThief of
+                    'true' -> {'ready', 'undefined'};
+                    _ ->
+                        gen_fsm:send_event(FSM, 'send_sync_event'),
+                        gen_fsm:send_all_state_event(FSM, 'load_endpoints'),
+                        {'sync', start_sync_timer(FSM)}
+                end,
 
             gen_fsm:send_event(FSM, {'listener', P, NextState, SyncRef})
     end.
@@ -493,6 +497,7 @@ ready({'sync_req', JObj}, #state{agent_proc=Srv}=State) ->
 ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                                            ,endpoints=OrigEPs
                                            ,agent_proc_id=MyId
+                                           ,acct_id=AcctId
                                            ,agent_id=AgentId
                                            ,connect_failures=CF
                                           }=State) ->
@@ -515,10 +520,22 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
             lager:debug("trying to ring agent ~s on ~s to connect to caller in queue ~s", [AgentId, AgentCallId, QueueId]),
 
             case get_endpoints(OrigEPs, Srv, Call, AgentId) of
+                {'error', 'no_endpoints'} ->
+                    lager:info("agent ~s has no endpoints assigned; logging agent out", [AgentId]),
+                    acdc_agent:logout_agent(Srv),
+                    acdc_stats:agent_inactive(AcctId, AgentId),
+                    acdc_agent:member_connect_retry(Srv, JObj),
+                    {'next_state', 'ready', State};
                 {'error', _E} ->
-                    lager:debug("can't to take the call, skip me: ~p", [_E]),
+                    lager:debug("can't take the call, skip me: ~p", [_E]),
                     acdc_agent:member_connect_retry(Srv, JObj),
                     {'next_state', 'ready', State#state{connect_failures=CF+1}};
+                {'ok', []} ->
+                    lager:info("agent ~s has no endpoints assigned; logging agent out", [AgentId]),
+                    acdc_agent:logout_agent(Srv),
+                    acdc_stats:agent_inactive(AcctId, AgentId),
+                    acdc_agent:member_connect_retry(Srv, JObj),
+                    {'next_state', 'ready', State};
                 {'ok', UpdatedEPs} ->
                     acdc_agent:bridge_to_member(Srv, Call, JObj, UpdatedEPs, CDRUrl, RecordingUrl),
 
@@ -1038,7 +1055,7 @@ paused({'resume'}, #state{acct_id=AcctId
                           ,sync_ref=Ref
                          }=State) ->
     lager:debug("resume received, putting agent back into action"),
-    _ = erlang:cancel_timer(Ref),
+    maybe_stop_timer(Ref),
 
     _ = update_agent_status_to_resume(AcctId, AgentId),
 
@@ -1050,9 +1067,9 @@ paused({'resume'}, #state{acct_id=AcctId
     webseq:note(self(), 'right', <<"ready">>),
     {'next_state', 'ready', clear_call(State, 'ready')};
 
-paused({sync_req, JObj}, #state{agent_proc=Srv
-                                ,wrapup_ref=Ref
-                               }=State) ->
+paused({'sync_req', JObj}, #state{agent_proc=Srv
+                                  ,wrapup_ref=Ref
+                                 }=State) ->
     lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
     acdc_agent:send_sync_resp(Srv, 'paused', JObj, [{<<"Time-Left">>, time_left(Ref)}]),
     {'next_state', 'paused', State};
@@ -1067,17 +1084,26 @@ paused({'member_connect_win', JObj}, #state{agent_proc=Srv}=State) ->
     {'next_state', 'paused', State};
 
 paused({'route_req', Call}, State) ->
-    {'next_state', 'outbound', start_outbound_call_handling(Call, State), 'hibernate'};
+    {'next_state', 'paused', start_outbound_call_handling(Call, State), 'hibernate'};
 paused({'call_from', CallId}, State) ->
-    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+    {'next_state', 'paused', start_outbound_call_handling(CallId, State), 'hibernate'};
 paused({'call_to', CallId}, State) ->
-    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+    {'next_state', 'paused', start_outbound_call_handling(CallId, State), 'hibernate'};
+paused({'channel_hungup', CallId, _Reason}, #state{agent_proc=Srv
+                                                   ,wrapup_ref=Ref
+                                                   ,acct_id=AcctId
+                                                   ,agent_id=AgentId
+                                                  }=State) ->
+    lager:debug("channel ~s hungup: ~s", [CallId, _Reason]),
+    acdc_agent:channel_hungup(Srv, CallId),
+    acdc_stats:agent_paused(AcctId, AgentId, time_left(Ref)),
+    {'next_state', 'paused', State};
 
 paused(_Evt, State) ->
     lager:debug("unhandled event while paused: ~p", [_Evt]),
     {'next_state', 'paused', State}.
 
-paused(status, _, #state{wrapup_ref=Ref}=State) ->
+paused('status', _, #state{wrapup_ref=Ref}=State) ->
     {'reply', [{'state', <<"paused">>}
                ,{'wrapup_left', time_left(Ref)}
               ]
@@ -1098,7 +1124,8 @@ outbound({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
             acdc_stats:agent_wrapup(AcctId, AgentId, N),
             webseq:note(self(), 'right', <<"wrapup">>),
             {'next_state', 'wrapup', clear_call(State, 'wrapup'), 'hibernate'};
-        _ ->
+        _W ->
+            lager:debug("wrapup left: ~p", [_W]),
             acdc_stats:agent_ready(AcctId, AgentId),
             acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
             webseq:note(self(), 'right', <<"ready">>),
@@ -1407,8 +1434,9 @@ start_sync_timer(P) ->
 start_resync_timer() ->
     gen_fsm:start_timer(?RESYNC_RESPONSE_TIMEOUT, ?RESYNC_RESPONSE_MESSAGE).
 
--spec start_pause_timer(pos_integer()) -> reference().
+-spec start_pause_timer(pos_integer()) -> reference() | 'undefined'.
 start_pause_timer('undefined') -> start_pause_timer(1);
+start_pause_timer(0) -> 'undefined';
 start_pause_timer(Timeout) ->
     gen_fsm:start_timer(Timeout * 1000, ?PAUSE_MESSAGE).
 
@@ -1611,8 +1639,6 @@ maybe_remove_endpoint(EPId, EPs, AcctId, Srv) ->
 get_endpoints(OrigEPs, Srv, Call, AgentId) ->
     case catch acdc_util:get_endpoints(Call, AgentId) of
         [] ->
-            lager:debug("no endpoints for this agent, going down"),
-            acdc_agent:stop(Srv),
             {'error', 'no_endpoints'};
         [_|_]=EPs ->
             AcctId = whapps_call:account_id(Call),
