@@ -577,7 +577,7 @@ ready({'member_connect_req', _}, #state{max_connect_failures=Max
                                        }=State) when Fails >= Max ->
     lager:debug("agent has failed to connect ~b times, logging out", [Fails]),
     spawn('acdc_agent_handler', 'maybe_stop_agent', [Srv, AcctId, AgentId]),
-    {'next_state', 'ready', State};
+    {'next_state', 'paused', State};
 
 ready({'member_connect_req', JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:member_connect_resp(Srv, JObj),
