@@ -1055,7 +1055,7 @@ paused({'resume'}, #state{acct_id=AcctId
                           ,sync_ref=Ref
                          }=State) ->
     lager:debug("resume received, putting agent back into action"),
-    _ = erlang:cancel_timer(Ref),
+    maybe_stop_timer(Ref),
 
     _ = update_agent_status_to_resume(AcctId, AgentId),
 
@@ -1067,9 +1067,9 @@ paused({'resume'}, #state{acct_id=AcctId
     webseq:note(self(), 'right', <<"ready">>),
     {'next_state', 'ready', clear_call(State, 'ready')};
 
-paused({sync_req, JObj}, #state{agent_proc=Srv
-                                ,wrapup_ref=Ref
-                               }=State) ->
+paused({'sync_req', JObj}, #state{agent_proc=Srv
+                                  ,wrapup_ref=Ref
+                                 }=State) ->
     lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
     acdc_agent:send_sync_resp(Srv, 'paused', JObj, [{<<"Time-Left">>, time_left(Ref)}]),
     {'next_state', 'paused', State};
@@ -1084,17 +1084,26 @@ paused({'member_connect_win', JObj}, #state{agent_proc=Srv}=State) ->
     {'next_state', 'paused', State};
 
 paused({'route_req', Call}, State) ->
-    {'next_state', 'outbound', start_outbound_call_handling(Call, State), 'hibernate'};
+    {'next_state', 'paused', start_outbound_call_handling(Call, State), 'hibernate'};
 paused({'call_from', CallId}, State) ->
-    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+    {'next_state', 'paused', start_outbound_call_handling(CallId, State), 'hibernate'};
 paused({'call_to', CallId}, State) ->
-    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+    {'next_state', 'paused', start_outbound_call_handling(CallId, State), 'hibernate'};
+paused({'channel_hungup', CallId, _Reason}, #state{agent_proc=Srv
+                                                   ,wrapup_ref=Ref
+                                                   ,acct_id=AcctId
+                                                   ,agent_id=AgentId
+                                                  }=State) ->
+    lager:debug("channel ~s hungup: ~s", [CallId, _Reason]),
+    acdc_agent:channel_hungup(Srv, CallId),
+    acdc_stats:agent_paused(AcctId, AgentId, time_left(Ref)),
+    {'next_state', 'paused', State};
 
 paused(_Evt, State) ->
     lager:debug("unhandled event while paused: ~p", [_Evt]),
     {'next_state', 'paused', State}.
 
-paused(status, _, #state{wrapup_ref=Ref}=State) ->
+paused('status', _, #state{wrapup_ref=Ref}=State) ->
     {'reply', [{'state', <<"paused">>}
                ,{'wrapup_left', time_left(Ref)}
               ]
@@ -1115,7 +1124,8 @@ outbound({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
             acdc_stats:agent_wrapup(AcctId, AgentId, N),
             webseq:note(self(), 'right', <<"wrapup">>),
             {'next_state', 'wrapup', clear_call(State, 'wrapup'), 'hibernate'};
-        _ ->
+        _W ->
+            lager:debug("wrapup left: ~p", [_W]),
             acdc_stats:agent_ready(AcctId, AgentId),
             acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
             webseq:note(self(), 'right', <<"ready">>),
