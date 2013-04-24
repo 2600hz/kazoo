@@ -13,7 +13,7 @@ compile: $(MAKEDIRS)
 
 clean: ACTION = clean
 clean: $(MAKEDIRS)
-	rm -rf basho-lager_syslog/ lager-1.0.0/ syslog-0.0.1/
+	rm -rf basho-lager_syslog/ lager-1.0.0/ syslog-0.0.1/ lager_syslog-0.9.0/
 	$(REBAR) clean
 
 $(MAKEDIRS):
