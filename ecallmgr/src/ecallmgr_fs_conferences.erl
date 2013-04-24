@@ -23,6 +23,7 @@
          ,fetch/1, fetch_full/1
          ,flush_node/1
          ,sync_conferences/1
+         ,relay_event/1
         ]).
 %% Participant-specific
 -export([participants_list/1
@@ -621,6 +622,7 @@ fix_props(Props, A) when A =:= <<"play-file">>; A =:= <<"play-file-member">> ->
      | props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)
     ];
 fix_props(Props, A) when A =:= <<"play-file-done">>; A =:= <<"play-file-member-done">> ->
+    lager:debug("~s: ~p", [A, Props]),
     [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
      ,{<<"whistle_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
      ,{<<"Application">>, A}
@@ -678,6 +680,7 @@ relay_event(Props) ->
     ].
 relay_event(UUID, Node, Props) ->
     EventName = props:get_value(<<"Event-Name">>, Props),
+    lager:debug("relaying conf event ~s(~s) to ~s", [EventName, props:get_value(<<"Application">>, Props), UUID]),
     Payload = {'event', [UUID, {<<"Caller-Unique-ID">>, UUID} | Props]},
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, Payload),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)}, Payload).

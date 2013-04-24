@@ -447,7 +447,18 @@ get_conf_command(Cmd, _Focus, _ConferenceId, _JObj) ->
     lager:debug("unknown conference command ~s", [Cmd]),
     {error, list_to_binary([<<"unknown conference command: ">>, Cmd])}.
 
--spec send_response(ne_binary(), tuple(), api_binary(), wh_json:object()) -> ok.
+-spec send_response(ne_binary(), tuple(), api_binary(), wh_json:object()) -> 'ok'.
+send_response(<<"stop_play">>, {'ok', Res}, _Queue, Command) ->
+    Evt = [{<<"Conference-Name">>, wh_json:get_value(<<"Conference-ID">>, Command)}
+           ,{<<"Event-Date-Timestamp">>, wh_util:current_tstamp()}
+           ,{<<"Action">>,<<"play-file-done">>}
+           ,{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+           ,{<<"whistle_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+           ,{<<"Application">>, <<"play-file-done">>}
+           ,{<<"whistle_application_name">>, <<"play-file-done">>}
+           ,{<<"Application-Data">>, Res}
+          ],
+    ecallmgr_fs_conferences:relay_event(Evt);
 send_response(_, _, 'undefined', _) -> lager:debug("no server-id to respond");
 send_response(_, {'ok', <<"Non-Existant ID", _/binary>> = Msg}, RespQ, Command) ->
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
