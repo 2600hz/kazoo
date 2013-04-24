@@ -16,6 +16,7 @@
 -export([deaf_participant/1, deaf_participant_v/1]).
 -export([participant_energy/1, participant_energy_v/1]).
 -export([kick/1, kick_v/1]).
+-export([hup/1, hup_v/1]).
 -export([participants_req/1, participants_req_v/1]).
 -export([participants_resp/1, participants_resp_v/1]).
 -export([lock/1, lock_v/1]).
@@ -49,6 +50,7 @@
 -export([publish_deaf_participant/2, publish_deaf_participant/3]).
 -export([publish_participant_energy/2, publish_participant_energy/3]).
 -export([publish_kick/2, publish_kick/3]).
+-export([publish_hup/2, publish_hup/3]).
 -export([publish_participants_req/2, publish_participants_req/3]).
 -export([publish_participants_resp/2, publish_participants_resp/3]).
 -export([publish_lock/2, publish_lock/3]).
@@ -142,6 +144,16 @@
                       ,{<<"Application-Name">>, <<"kick">>}
                      ]).
 -define(KICK_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
+                    ]).
+
+%% Conference Hup
+-define(HUP_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
+-define(OPTIONAL_HUP_HEADERS, [<<"Participant">>]).
+-define(HUP_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                      ,{<<"Event-Name">>, <<"command">>}
+                      ,{<<"Application-Name">>, <<"hup">>}
+                     ]).
+-define(HUP_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                     ]).
 
 %% Conference Participants Req
@@ -331,6 +343,7 @@
 -define(APPLICTION_MAP, [{<<"deaf_participant">>, ?DEAF_PARTICIPANT_VALUES, fun ?MODULE:deaf_participant/1}
                          ,{<<"participant_energy">>, ?PARTICIPANT_ENERGY_VALUES, fun ?MODULE:participant_energy/1}
                          ,{<<"kick">>, ?KICK_VALUES, fun ?MODULE:kick/1}
+                         ,{<<"hup">>, ?HUP_VALUES, fun ?MODULE:hup/1}
                          ,{<<"participants">>, ?PARTICIPANTS_REQ_VALUES, fun ?MODULE:participants_req/1}
                          ,{<<"lock">>, ?LOCK_VALUES, fun ?MODULE:lock/1}
                          ,{<<"mute_participant">>, ?MUTE_PARTICIPANT_VALUES, fun ?MODULE:mute_participant/1}
@@ -534,6 +547,24 @@ kick(JObj) -> kick(wh_json:to_proplist(JObj)).
 kick_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?KICK_HEADERS, ?KICK_VALUES, ?KICK_TYPES);
 kick_v(JObj) -> kick_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec hup(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+hup(Prop) when is_list(Prop) ->
+    case hup_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?HUP_HEADERS, ?OPTIONAL_HUP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for hup"}
+    end;
+hup(JObj) -> hup(wh_json:to_proplist(JObj)).
+
+-spec hup_v(api_terms()) -> boolean().
+hup_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?HUP_HEADERS, ?HUP_VALUES, ?HUP_TYPES);
+hup_v(JObj) -> hup_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -1030,6 +1061,19 @@ publish_kick(ConferenceId, JObj) ->
     publish_kick(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_kick(ConferenceId, Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?KICK_VALUES, fun ?MODULE:kick/1),
+    amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_hup(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_hup(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_hup(ConferenceId, JObj) ->
+    publish_hup(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_hup(ConferenceId, Req, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?HUP_VALUES, fun ?MODULE:hup/1),
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------

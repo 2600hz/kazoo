@@ -237,17 +237,17 @@ exec(Focus, ConferenceId, JObj) ->
                               {'noop', wh_json:object()}.
 get_conf_command(<<"deaf_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:deaf_participant_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference deaf_participant failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             {<<"deaf">>, wh_json:get_binary_value(<<"Participant">>, JObj)}
     end;
 
 get_conf_command(<<"participant_energy">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:participant_energy_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference participant_energy failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             Args = list_to_binary([wh_json:get_binary_value(<<"Participant">>, JObj)
                                    ," ", wh_json:get_binary_value(<<"Energy-Level">>, JObj, <<"20">>)
                                   ]),
@@ -260,6 +260,14 @@ get_conf_command(<<"kick">>, _Focus, _ConferenceId, JObj) ->
             {'error', <<"conference kick failed to execute as JObj did not validate.">>};
         'true' ->
             {<<"hup">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
+    end;
+
+get_conf_command(<<"hup">>, _Focus, _ConferenceId, JObj) ->
+    case wapi_conference:hup_v(JObj) of
+        'false' ->
+            {'error', <<"conference hup failed to execute as JObj did not validate.">>};
+        'true' ->
+            {<<"hup">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"all">>)}
     end;
 
 get_conf_command(<<"participants">>, 'undefined', ConferenceId, _) ->
@@ -279,25 +287,25 @@ get_conf_command(<<"participants">>, _Focus, ConferenceId, JObj) ->
 
 get_conf_command(<<"lock">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:lock_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference lock failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             {<<"lock">>, <<>>}
     end;
 
 get_conf_command(<<"mute_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:mute_participant_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference mute_participant failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             {<<"mute">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
     end;
 
 get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
     case wapi_conference:play_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference play failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             UUID = wh_json:get_ne_value(<<"Call-ID">>, JObj, ConferenceId),
             Media = list_to_binary(["'", ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID, JObj), "'"]),
             Args = case wh_json:get_binary_value(<<"Participant">>, JObj) of
@@ -309,9 +317,9 @@ get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
 
 get_conf_command(<<"record">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:record_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference record failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
             RecordingName = ecallmgr_util:recording_filename(MediaName),
             {<<"recording">>, [<<"start ">>, RecordingName]}
@@ -339,9 +347,9 @@ get_conf_command(<<"relate_participants">>, _Focus, _ConferenceId, JObj) ->
 
 get_conf_command(<<"set">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:set_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference set failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             Args = list_to_binary([wh_json:get_binary_value(<<"Parameter">>, JObj)
                                    ," ", wh_json:get_binary_value(<<"Value">>, JObj)
                                   ]),
@@ -350,9 +358,9 @@ get_conf_command(<<"set">>, _Focus, _ConferenceId, JObj) ->
 
 get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:stop_play_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference stop_play failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             Affects = wh_json:get_binary_value(<<"Affects">>, JObj, <<"all">>),
             Args = case wh_json:get_binary_value(<<"Participant">>, JObj) of
                        undefined -> Affects;
@@ -363,33 +371,33 @@ get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
 
 get_conf_command(<<"undeaf_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:undeaf_participant_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference undeaf_participant failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             {<<"undeaf">>, wh_json:get_binary_value(<<"Participant">>, JObj)}
     end;
 
 get_conf_command(<<"unlock">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:unlock_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference unlock failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             {<<"unlock">>, <<>>}
     end;
 
 get_conf_command(<<"unmute_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:unmute_participant_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference unmute failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             {<<"unmute">>, wh_json:get_binary_value(<<"Participant">>, JObj)}
     end;
 
 get_conf_command(<<"participant_volume_in">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:participant_volume_in_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference participant_volume_in failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             Args = list_to_binary([wh_json:get_binary_value(<<"Participant">>, JObj)
                                    ," ", wh_json:get_binary_value(<<"Volume-In-Level">>, JObj, <<"0">>)
                                   ]),
@@ -398,9 +406,9 @@ get_conf_command(<<"participant_volume_in">>, _Focus, _ConferenceId, JObj) ->
 
 get_conf_command(<<"participant_volume_out">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:participant_volume_out_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference participant_volume_out failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             Args = list_to_binary([wh_json:get_binary_value(<<"Participant">>, JObj)
                                    ," ", wh_json:get_binary_value(<<"Volume-Out-Level">>, JObj, <<"0">>)
                                   ]),
