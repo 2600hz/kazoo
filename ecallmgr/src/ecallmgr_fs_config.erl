@@ -385,7 +385,6 @@ maybe_fix_profile_tts(Name, Profile) ->
                _ -> Profile
            end}.
 fix_flite_tts(Profile) ->
-    lager:debug("wh_util fix profile ~p", [Profile]),
     Voice = wh_json:get_value(<<"tts-voice">>, Profile),
     wh_json:set_value(<<"tts-voice">>, ecallmgr_fs_flite:voice(Voice), Profile).
             
