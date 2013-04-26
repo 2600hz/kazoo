@@ -9,6 +9,8 @@
 
 -export([sync/2]).
 -export([is_good_standing/1]).
+-export([transactions/3]).
+-export([subscriptions/1]).
 
 -include("../whistle_services.hrl").
 
@@ -78,6 +80,39 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
             Subscription = lists:foldl(fun(F, S) -> F(S) end, fetch_or_create_subscription(PlanId, Updates), Routines),
             sync(ServiceItems, AccountId, update_subscriptions(PlanId, Subscription, Updates))
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec transactions(ne_binary(), atom(), atom()) -> atom() | [wh_json:object(), ...].
+transactions(AccountId, Min, Max) ->
+    try braintree_transaction:find_by_customer(AccountId, Min, Max) of
+        Transactions -> 
+            [braintree_transaction:record_to_json(Tr) || Tr <- Transactions]
+    catch
+        throw:{'not_found', _} -> 'not_found';
+        _:_ -> 'unknow_error'
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------s
+-spec subscriptions(ne_binary()) -> atom() | [wh_json:object(), ...].
+subscriptions(AccountId) ->
+    try braintree_customer:find(AccountId) of
+        Customer -> 
+            [braintree_subscription:record_to_json(Sub) || Sub <-  braintree_customer:get_subscriptions(Customer)]
+    catch
+        throw:{'not_found', _} -> 'not_found';
+        _:_ -> 'unknow_error'
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private

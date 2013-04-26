@@ -9,7 +9,8 @@
 -module(braintree_transaction).
 
 -export([url/0, url/1, url/2]).
--export([find/1, find_by_customer/1]).
+-export([find/1]).
+-export([find_by_customer/1, find_by_customer/3]).
 -export([create/1, create/2]).
 -export([sale/1, sale/2]).
 -export([quick_sale/2, quick_sale/3]).
@@ -76,6 +77,27 @@ find_by_customer(CustomerId) ->
     [xml_to_record(Transaction)
      || Transaction <- xmerl_xpath:string("/credit-card-transactions/transaction", Xml)
     ].
+
+-spec find_by_customer(ne_binary(), ne_binary(), ne_binary()) -> bt_transactions().
+find_by_customer(CustomerId, Min, Max) ->
+    Url = url(<<"advanced_search">>),
+    Props = [{'customer_id', [{'is', CustomerId}]}
+             ,{'created_at', [{'checked', <<"created">>}
+                              ,{'min', Min}
+                              ,{'min_hour', 0}
+                              ,{'min_minute', 0}
+                              ,{'max', Max}
+                              ,{'max_hour', 23}
+                              ,{'max_minute', 59}
+                             ]}
+            ],
+    Request = make_doc_xml(Props, 'search'),
+    Xml = braintree_request:post(Url, Request),
+    [xml_to_record(Transaction)
+     || Transaction <- xmerl_xpath:string("/credit-card-transactions/transaction", Xml)
+    ].
+
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -200,8 +222,6 @@ xml_to_record(Xml) ->
 xml_to_record(Xml, Base) ->
     AddOnsPath = lists:flatten([Base, "/add-ons/add-on"]),
     DiscountsPath = lists:flatten([Base, "/discounts/discount"]),
-    io:format("~p~n", [DiscountsPath]),
-    io:format("~p~n", [xmerl_xpath:string(DiscountsPath, Xml)]),
     BillingAddress = braintree_address:xml_to_record(Xml, [Base, "/billing"]),
     Card = braintree_card:xml_to_record(Xml, [Base, "/credit-card"]),
     #bt_transaction{id = get_xml_value([Base, "/id/text()"], Xml)

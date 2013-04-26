@@ -98,9 +98,14 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"cur
     Balance = wht_util:units_to_dollars(wht_util:current_balance(AccountId)),
     JObj = wh_json:from_list([{<<"balance">>, Balance}]),
     Context#cb_context{resp_status=success, resp_data=JObj};
+validate(#cb_context{req_verb = <<"get">>, query_json=Query}=Context, <<"monthly_recurring">>) ->
+    From = wh_json:get_integer_value(<<"created_from">>, Query, 0),
+    To = wh_json:get_integer_value(<<"created_to">>, Query, 0),
+    fetch_braintree_transactions(From, To, Context);
+validate(#cb_context{req_verb = <<"get">>}=Context, <<"subscriptions">>) ->
+    fetch_braintree_subscriptions(Context);
 validate(Context, _) ->
     cb_context:add_system_error('bad_identifier',  Context).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -132,6 +137,39 @@ fetch(From, To, Context, Reason) ->
                                             ,Context
                                            )
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_braintree_transactions(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+fetch_braintree_transactions(Min, Max, Context) ->
+    case validate_date(Min, Max) of 
+        {'true', From, To} ->            
+            filter_braintree_transactions(
+              timestamp_to_braintree(From)
+              ,timestamp_to_braintree(To)
+              ,Context
+             );
+        {'false', R} ->
+            cb_context:add_validation_error(<<"created_from/created_to">>
+                                                ,<<"date_range">>
+                                                ,R
+                                            ,Context
+                                           )
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_braintree_subscriptions(cb_context:context()) -> cb_context:context().
+fetch_braintree_subscriptions(Context) ->
+    filter_braintree_subscriptions(Context).
         
 %%--------------------------------------------------------------------
 %% @private
@@ -144,20 +182,259 @@ fetch(From, To, Context, Reason) ->
 filter(From, To, #cb_context{account_id=AccountId}=Context) ->
     try wh_transactions:fetch_since(AccountId, From, To) of
         Transactions ->
-            send_resp({'ok', Transactions}, Context)
+            JObj = wh_transactions:to_public_json(Transactions),
+            JObj1 = wht_util:collapse_call_transactions(JObj),
+            send_resp({'ok', JObj1}, Context)
     catch
         _:_ ->
-            send_resp({'error', Context}, Context)
+            send_resp({'error', <<"error while fetching transactions">>}, Context)
     end.
 filter(From, To, #cb_context{account_id=AccountId}=Context, Reason) ->
     try wh_transactions:fetch_since(AccountId, From, To) of
         Transactions ->
             Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
-            send_resp({'ok', Filtered}, Context)
+            JObj = wh_transactions:to_public_json(Filtered),
+            JObj1 = wht_util:collapse_call_transactions(JObj),
+            send_resp({'ok', JObj1}, Context)
     catch
         _:_ ->
-            send_resp({'error', Context}, Context)
+            send_resp({'error', <<"error while fetching transactions">>}, Context)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_braintree_transactions(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+filter_braintree_transactions(From, To, #cb_context{account_id=AccountId}=Context) ->
+    case  wh_service_transactions:current_billing_period(AccountId, 'transactions', {From, To}) of
+        'not_found' ->
+            send_resp({'error', <<"no data found in braintree">>}, Context);
+        'unknow_error' ->
+            send_resp({'error', <<"unknow  braintree error">>}, Context);
+        BTransactions ->
+            JObjs = [filter_braintree_transaction(BTr) || BTr <- BTransactions],
+            send_resp({'ok', JObjs}, Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_braintree_subscriptions(cb_context:context()) -> cb_context:context().
+filter_braintree_subscriptions(#cb_context{account_id=AccountId}=Context) ->
+    case wh_service_transactions:current_billing_period(AccountId, 'subscriptions') of
+        'not_found' ->
+            send_resp({'error', <<"no data found in braintree">>}, Context);
+        'unknow_error' ->
+            send_resp({'error', <<"unknow braintree error">>}, Context);
+        BSubscriptions ->
+            JObjs = [filter_braintree_subscirption(BSub) || BSub <- BSubscriptions],
+            send_resp({'ok', JObjs}, Context)
+    end.
+
+    
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_braintree_transaction(wh_json:object()) -> wh_json:object().
+filter_braintree_transaction(BTransaction) ->
+    Routines = [fun(BTr) -> clean_braintree_transaction(BTr) end
+                ,fun(BTr) -> is_prorated_braintree_transaction(BTr) end
+                ,fun(BTr) -> correct_date_braintree_transaction(BTr) end
+               ],
+    lists:foldl(fun(F, BTr) -> F(BTr) end, BTransaction, Routines).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_braintree_subscirption(wh_json:object()) -> wh_json:object().
+filter_braintree_subscirption(BSubscription) ->
+    Routines = [fun(BSub) -> clean_braintree_subscription(BSub) end
+                ,fun(BSub) -> correct_date_braintree_subscription(BSub) end
+               ],
+    lists:foldl(fun(F, BSub) -> F(BSub) end, BSubscription, Routines).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_braintree_transaction(wh_json:object()) -> wh_json:object().
+clean_braintree_transaction(BTransaction) ->
+    RemoveKeys = [<<"status">>
+                      ,<<"type">>
+                      ,<<"currency_code">>
+                      ,<<"merchant_account_id">>
+                      ,<<"settlement_batch">>
+                      ,<<"avs_postal_response">>
+                      ,<<"avs_street_response">>
+                      ,<<"ccv_response_code">>
+                      ,<<"processor_authorization_code">>
+                      ,<<"processor_response_code">>
+                      ,<<"tax_exempt">>
+                      ,<<"billing_address">>
+                      ,<<"shipping_address">>
+                      ,<<"customer">>
+                      ,<<"card">>
+                 ],
+    wh_json:delete_keys(RemoveKeys, BTransaction).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_braintree_subscription(wh_json:object()) -> wh_json:object().
+clean_braintree_subscription(BSubscription) ->
+    RemoveKeys = [<<"billing_dom">>
+                      ,<<"failure_count">>
+                      ,<<"merchant_account_id">>
+                      ,<<"never_expires">>
+                      ,<<"paid_through_date">>
+                      ,<<"payment_token">>
+                      ,<<"trial_period">>
+                      ,<<"do_not_inherit">>
+                      ,<<"start_immediately">>
+                      ,<<"prorate_charges">>
+                      ,<<"revert_on_prorate_fail">>
+                      ,<<"replace_add_ons">>
+                      ,<<"create">>
+                 ],
+    wh_json:delete_keys(RemoveKeys, BSubscription).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec is_prorated_braintree_transaction(wh_json:object()) -> wh_json:object().
+is_prorated_braintree_transaction(BTransaction) ->
+    case wh_json:get_value(<<"subscription_id">>, BTransaction, 'false') of
+        'false' ->
+            wh_json:set_value(<<"prorated">>, 'false', BTransaction);
+        _Id ->
+            calculate_prorated(BTransaction)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec correct_date_braintree_transaction(wh_json:object()) -> wh_json:object().
+correct_date_braintree_transaction(BTransaction) ->
+    Keys = [<<"created_at">>, <<"update_at">>],
+    lists:foldl(
+      fun(Key, BTr) ->
+              case wh_json:get_value(Key, BTr, 'null') of
+                  'null' -> BTr;
+                  V1 ->
+                      V2 = string:substr(binary:bin_to_list(V1), 1, 10),
+                      [Y, M, D|_] = string:tokens(V2, "-"),
+                      {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
+                      DateTime = {{Y1, M1, D1}, {0, 0, 0}},
+                      Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
+                      wh_json:set_value(Key, Timestamp, BTr)
+                  end
+      end, BTransaction, Keys).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec correct_date_braintree_subscription(wh_json:object()) -> wh_json:object().
+correct_date_braintree_subscription(BSubscription) ->
+    Keys = [<<"billing_first_date">>
+                ,<<"billing_end_date">>
+                ,<<"billing_start_date">>
+                ,<<"next_bill_date">>
+           ],
+    lists:foldl(
+      fun(Key, BSub) ->
+              case wh_json:get_value(Key, BSub, 'null') of
+                  'null' -> BSub;
+                  V1 ->
+                      V2 = binary:bin_to_list(V1),
+                      [Y, M, D|_] = string:tokens(V2, "-"),
+                      {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
+                      DateTime = {{Y1, M1, D1}, {0, 0, 0}},
+                      Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
+                      wh_json:set_value(Key, Timestamp, BSub)
+                  end
+      end, BSubscription, Keys).
+        
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate_prorated(wh_json:object()) -> wh_json:object().
+calculate_prorated(BTransaction) ->
+    Addon = calculate_addon(BTransaction),
+    Discount = calculate_discount(BTransaction),
+    Amount = wh_json:get_number_value(<<"amount">>, BTransaction, 0),
+    case (Addon - Discount) =:= Amount of
+        'true' ->
+            wh_json:set_value(<<"prorated">>, 'false', BTransaction);
+        'false' ->
+            wh_json:set_value(<<"prorated">>, 'true', BTransaction)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate_addon(wh_json:object()) -> float().
+calculate_addon(BTransaction) ->
+    Addons = wh_json:get_value(<<"add_ons">>, BTransaction),
+    calculate(Addons, 0).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate_discount(wh_json:object()) -> float().
+calculate_discount(BTransaction) ->
+    Addons = wh_json:get_value(<<"discounts">>, BTransaction),
+    calculate(Addons, 0).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate([wh_json:object(), ...], float()) -> float().
+calculate([], Acc) ->
+    Acc;
+calculate([Addon|Addons], Acc) ->
+    Amount = wh_json:get_number_value(<<"amount">>, Addon, 0),
+    Quantity = wh_json:get_number_value(<<"quantity">>, Addon, 0),
+    calculate(Addons, (Amount*Quantity+Acc)).
+
 
 %%--------------------------------------------------------------------
 %% @private 
@@ -167,14 +444,21 @@ filter(From, To, #cb_context{account_id=AccountId}=Context, Reason) ->
 %%--------------------------------------------------------------------
 send_resp(Resp, Context) ->
     case Resp of 
-        {'ok', Transactions} ->
-            JObj = wh_transactions:to_public_json(Transactions),
-            Context#cb_context{resp_status=success
-                               ,resp_data=wht_util:collapse_call_transactions(JObj)
-                              };
-        {'error', C} ->
-            cb_context:add_system_error('bad_identifier', [{'details',<<"something went wrong while fetching the transaction">>}], C)
+        {'ok', JObj} ->
+            Context#cb_context{resp_status=success, resp_data=JObj};
+        {'error', Details} ->
+            cb_context:add_system_error('bad_identifier', [{'details', Details}], Context)
     end.
+
+%%--------------------------------------------------------------------
+%% @private 
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+timestamp_to_braintree(Timestamp) ->
+    {{Y, M, D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    <<(wh_util:to_binary(M))/binary, "/", (wh_util:to_binary(D))/binary, "/", (wh_util:to_binary(Y))/binary>>.
 
 
 %%--------------------------------------------------------------------
