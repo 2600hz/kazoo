@@ -13,6 +13,7 @@ compile: $(MAKEDIRS)
 
 clean: ACTION = clean
 clean: $(MAKEDIRS)
+	rm -rf erlang-syslog-1.0.1/ lager-2.0.0rc1/ lager_syslog-1.2.2/
 	$(REBAR) clean
 
 $(MAKEDIRS):
