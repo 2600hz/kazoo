@@ -83,6 +83,8 @@
 -define(CALL_STATUS_TIMEOUT, 2600).
 -define(CALL_STATUS_MESSAGE, 'call_status_timeout').
 
+-define(MAX_FAILURES, whapps_config:get_integer(?CONFIG_CAT, <<"max_connect_failures">>, 3)).
+
 -record(state, {
           acct_id :: ne_binary()
          ,acct_db :: ne_binary()
@@ -325,7 +327,7 @@ init([AcctId, AgentId, Supervisor, Props, IsThief]) ->
                           ,acct_db=wh_util:format_account_id(AcctId, 'encoded')
                           ,agent_id=AgentId
                           ,fsm_call_id=FSMCallId
-                          ,max_connect_failures=whapps_config:get_integer(?CONFIG_CAT, <<"max_connect_failures">>, 3)
+                          ,max_connect_failures=?MAX_FAILURES
                          }}.
 
 wait_for_listener(Supervisor, FSM, Props, IsThief) ->
@@ -575,8 +577,9 @@ ready({'member_connect_req', _}, #state{max_connect_failures=Max
                                         ,agent_id=AgentId
                                         ,agent_proc=Srv
                                        }=State) when Fails >= Max ->
-    lager:debug("agent has failed to connect ~b times, logging out", [Fails]),
-    spawn('acdc_agent_handler', 'maybe_stop_agent', [Srv, AcctId, AgentId]),
+    lager:info("agent has failed to connect ~b times, logging out", [Fails]),
+    acdc_agent:logout_agent(Srv),
+    acdc_stats:agent_inactive(AcctId, AgentId),
     {'next_state', 'paused', State};
 
 ready({'member_connect_req', JObj}, #state{agent_proc=Srv}=State) ->
@@ -671,6 +674,8 @@ ringing({'originate_failed', E}, #state{agent_proc=Srv
                                         ,agent_id=AgentId
                                         ,member_call_queue_id=QueueId
                                         ,member_call_id=CallId
+                                        ,connect_failures=Fails
+                                        ,max_connect_failures=MaxFails
                                        }=State) ->
     acdc_agent:member_connect_retry(Srv, CallId),
 
@@ -684,8 +689,8 @@ ringing({'originate_failed', E}, #state{agent_proc=Srv
 
     acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
     webseq:note(self(), 'right', <<"ready">>),
-    {'next_state', 'ready', clear_call(State, 'failed')};
 
+    {'next_state', return_to_state(Fails, MaxFails), clear_call(State, 'failed')};
 
 ringing({'agent_timeout', _JObj}, #state{agent_proc=Srv
                                          ,acct_id=AcctId
@@ -1483,8 +1488,7 @@ clear_call(#state{connect_failures=Fails
     acdc_stats:agent_inactive(AcctId, AgentId),
     lager:debug("agent has failed to connect ~b times, logging out", [Fails+1]),
     clear_call(State#state{connect_failures=Fails+1}, 'paused');
-clear_call(#state{connect_failures=Fails
-                 }=State, 'failed') ->
+clear_call(#state{connect_failures=Fails}=State, 'failed') ->
     clear_call(State#state{connect_failures=Fails+1}, 'ready');
 clear_call(#state{fsm_call_id=FSMCallId
                   ,call_status_ref=CSRef
@@ -1510,7 +1514,7 @@ clear_call(#state{fsm_call_id=FSMCallId
                }.
 
 -spec current_call(whapps_call:call() | 'undefined', atom(), ne_binary(), 'undefined' | wh_now()) ->
-                                api_object().
+                          api_object().
 current_call('undefined', _, _, _) -> 'undefined';
 current_call(Call, AgentState, QueueId, Start) ->
     wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
@@ -1653,6 +1657,9 @@ get_endpoints(OrigEPs, Srv, Call, AgentId) ->
             acdc_agent:stop(Srv),
             {'error', E}
     end.
+
+return_to_state(Fails, MaxFails) when Fails+1 >= MaxFails -> 'paused';
+return_to_state(_, _) -> 'ready'.
 
 %% {Add, Rm}
 %% Orig [] Curr [] => {[], []}
