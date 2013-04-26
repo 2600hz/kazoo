@@ -215,8 +215,8 @@ filter_braintree_transactions(From, To, #cb_context{account_id=AccountId}=Contex
         'unknow_error' ->
             send_resp({'error', <<"unknow  braintree error">>}, Context);
         BTransactions ->
-            JObj = [filter_braintree_transaction(BTr) || BTr <- BTransactions],
-            send_resp({'ok', JObj}, Context)                
+            JObjs = [filter_braintree_transaction(BTr) || BTr <- BTransactions],
+            send_resp({'ok', JObjs}, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -233,8 +233,8 @@ filter_braintree_subscriptions(#cb_context{account_id=AccountId}=Context) ->
         'unknow_error' ->
             send_resp({'error', <<"unknow braintree error">>}, Context);
         BSubscriptions ->
-            JObj = [filter_braintree_subscirption(BSub) || BSub <- BSubscriptions],
-            send_resp({'ok', JObj}, Context)                
+            JObjs = [filter_braintree_subscirption(BSub) || BSub <- BSubscriptions],
+            send_resp({'ok', JObjs}, Context)
     end.
 
     
