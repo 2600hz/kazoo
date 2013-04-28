@@ -792,19 +792,6 @@ convert_whistle_app_name(App) ->
                           {'ok', ne_binary()} |
                           {'error', _}.
 lookup_media(MediaName, CallId, JObj, Type) ->
-    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE
-                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName))
-    of
-        {'ok', _Path}=Ok ->
-            lager:debug("media ~s exists in playback cache as ~s", [MediaName, _Path]),
-            Ok;
-        {'error', 'not_found'} -> request_media_url(MediaName, CallId, JObj, Type)
-    end.
-
--spec request_media_url(ne_binary(), ne_binary(), wh_json:object(), media_types()) ->
-                               {'ok', ne_binary()} |
-                               {'error', _}.
-request_media_url(MediaName, CallId, JObj, Type) ->
     Request = wh_json:set_values(
                 props:filter_undefined(
                   [{<<"Media-Name">>, MediaName}
@@ -823,18 +810,5 @@ request_media_url(MediaName, CallId, JObj, Type) ->
         {'error', _}=E -> E;
         {'ok', MediaResp} ->
             URL = wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>),
-            _ = maybe_cache_media_url(URL, MediaName),
             {'ok', URL}
-    end.
-
--spec maybe_cache_media_url(ne_binary(), ne_binary()) -> 'ok'.
-maybe_cache_media_url(URL, MediaName) ->
-    %% Only single media_mgr proxies can not be cached as they
-    %% are processes started for each request
-    case binary:split(URL, <<"/">>, ['global']) of
-        [_HTTP,'_//',_Host,<<"single">>|_] -> 'ok';
-        _Else ->
-            wh_cache:store_local(?ECALLMGR_UTIL_CACHE
-                                 ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
-                                 ,URL)
     end.
