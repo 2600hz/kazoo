@@ -776,8 +776,9 @@ code_change(_OldVsn, State, _Extra) ->
 is_valid_queue(Q, Qs) -> lists:member(Q, Qs).
 
 -spec send_member_connect_resp(wh_json:object(), ne_binary()
-                                     ,ne_binary(), ne_binary(), wh_now() | 'undefined'
-                                    ) -> 'ok'.
+                               ,ne_binary(), ne_binary()
+                               , wh_now() | 'undefined'
+                              ) -> 'ok'.
 send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
     Queue = wh_json:get_value(<<"Server-ID">>, JObj),
     IdleTime = idle_time(LastConn),
@@ -859,7 +860,7 @@ send_status_update(AcctId, AgentId, 'resume') ->
     wapi_acdc_agent:publish_resume(Update).
 
 
--spec idle_time('undefined' | wh_now()) -> 'undefined' | integer().
+-spec idle_time('undefined' | wh_now()) -> api_integer().
 idle_time('undefined') -> 'undefined';
 idle_time(T) -> wh_util:elapsed_s(T).
 
@@ -879,7 +880,7 @@ call_id(Call) ->
                         end, 'undefined', Keys)
     end.
 
--spec maybe_connect_to_agent(ne_binary(), list(), whapps_call:call(), integer() | 'undefined', ne_binary()) -> 'ok'.
+-spec maybe_connect_to_agent(ne_binary(), list(), whapps_call:call(), api_integer(), ne_binary()) -> 'ok'.
 maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId) ->
     put('callid', whapps_call:call_id(Call)),
 
@@ -970,7 +971,7 @@ update_my_queues_of_change(AcctId, AgentId, Qs) ->
         ],
     'ok'.
 
--spec should_record_endpoints(wh_json:objects(), boolean(), boolean() | 'undefined') -> boolean().
+-spec should_record_endpoints(wh_json:objects(), boolean(), api_boolean()) -> boolean().
 should_record_endpoints(_EPs, 'true', _) -> 'true';
 should_record_endpoints(_EPs, 'false', 'true') -> 'true';
 should_record_endpoints(EPs, _, _) ->
