@@ -220,7 +220,8 @@ reply_affirmative(Node, FSID, CallId, RespJObj, Props) ->
         'timeout' -> lager:error("received no reply from node ~s, timeout", [Node])
     end.
 
--spec update_custom_channel_vars(ne_binary(), atom(), wh_json:object(), wh_proplist()) -> wh_json:object().
+-spec update_custom_channel_vars(atom(), ne_binary(), wh_json:object(), wh_proplist()) ->
+                                        wh_json:object().
 update_custom_channel_vars(Node, CallId, JObj, Props) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     maybe_add_billing_ccv(CCVs, CallId, Node, Props).

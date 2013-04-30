@@ -82,7 +82,7 @@ authn_resp_xml(_Method, _JObj) ->
     empty_response().
 
 -spec reverse_authn_resp_xml(api_terms()) -> {'ok', iolist()}.
--spec reverse_authn_resp_xml(ne_binary(), wh_json:json_object()) ->
+-spec reverse_authn_resp_xml(ne_binary(), wh_json:object()) ->
                                     {'ok', xml_els()}.
 reverse_authn_resp_xml([_|_]=RespProp) ->
     reverse_authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp)
@@ -425,7 +425,7 @@ codec_mappings(Codec) ->
     Codec.
 
 encode_fs_val(Prefix, V) ->
-    list_to_binary([Prefix, "='", escape(V, $'), "'"]).
+    list_to_binary([Prefix, "='", escape(V, 39), "'"]). % 39 = '
 escape(V, C) ->
     iolist_to_binary([encode(A, C) || <<A>> <= wh_util:to_binary(V)]).
 encode(C, C) -> [$\\, C];
