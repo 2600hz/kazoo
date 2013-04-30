@@ -240,7 +240,7 @@ maybe_add_billing_ccv(CCVs, CallId, Node, Props) ->
             set_custom_channel_vars(CCVs, Node, CallId)
     end.
 
--spec set_custom_channel_vars(wh_json:object(), atom(), wh_json:object()) -> wh_json:object().
+-spec set_custom_channel_vars(wh_json:object(), atom(), ne_binary()) -> wh_json:object().
 set_custom_channel_vars(CCVs, Node, CallId) ->
     _ = ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)),
     CCVs.

@@ -210,7 +210,7 @@ participants_list(ConfId) ->
             ]
     end.
 
--spec participants_uuids(ne_binary()) -> wh_json:objects().
+-spec participants_uuids(ne_binary()) -> [[ne_binary() | atom(),...],...] | [].
 participants_uuids(ConfId) ->
     ets:match(?CONFERENCES_TBL, #participant{conference_name=ConfId
                                              ,uuid='$1'
@@ -666,7 +666,9 @@ update_conference(Node, Props) ->
                              }).
 
 relay_event(Props) ->
-    [relay_event(UUID, Node, Props) || [UUID, Node] <- participants_uuids(props:get_value(<<"Conference-Name">>, Props))].
+    [relay_event(UUID, Node, Props)
+     || [UUID, Node] <- participants_uuids(props:get_value(<<"Conference-Name">>, Props))
+    ].
 relay_event(UUID, Node, Props) ->
     EventName = props:get_value(<<"Event-Name">>, Props),
     Payload = {'event', [UUID, {<<"Caller-Unique-ID">>, UUID} | Props]},
