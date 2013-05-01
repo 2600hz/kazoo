@@ -21,6 +21,8 @@
 -type api_object() :: wh_json:object() | 'undefined'.
 -type api_objects() :: wh_json:objects() | 'undefined'.
 -type api_boolean() :: boolean() | 'undefined'.
+-type api_atom() :: atom() | 'undefined'.
+-type api_string() :: string() | 'undefined'.
 
 -type api_number() :: number() | 'undefined'.
 -type api_integer() :: integer() | 'undefined'.
