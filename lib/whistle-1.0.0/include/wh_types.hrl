@@ -39,6 +39,7 @@
 -define(NE_BINARY, <<_:8,_/binary>>).
 -type ne_binary() :: <<_:8,_:_*8>>.
 -type ne_binaries() :: [ne_binary(),...] | [].
+-type binaries() :: [binary(),...] | [].
 
 %% when using gen_smtp to send emails, it takes a 5-tuple for a message-body part
 -type mail_message_body() :: {ne_binary(), ne_binary(), proplist(), proplist(), ne_binary() | iolist()}.
