@@ -133,12 +133,14 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
 
 -spec call_collect(server_ref(), api_terms(), publish_fun()) ->
                           {'ok', wh_json:objects()} |
+                          {'timeout', wh_json:objects()} |
                           {'error', _}.
 call_collect(Srv, Req, PubFun) ->
     call_collect(Srv, Req, PubFun, default_timeout()).
 
 -spec call_collect(server_ref(), api_terms(), publish_fun(), timeout_or_until()) ->
                           {'ok', wh_json:objects()} |
+                          {'timeout', wh_json:objects()} |
                           {'error', _}.
 call_collect(Srv, Req, PubFun, UntilFun) when is_function(UntilFun) ->
     call_collect(Srv, Req, PubFun, UntilFun, default_timeout());
@@ -151,7 +153,7 @@ call_collect(Srv, Req, PubFun, Timeout) ->
 
 -spec call_collect(server_ref(), api_terms(), publish_fun(), collect_util(), wh_timeout()) -> 
                           {'ok', wh_json:objects()} |
-                          {'timeout', wh_json:object()} |
+                          {'timeout', wh_json:objects()} |
                           {'error', _}.
 call_collect(Srv, Req, PubFun, {Whapp, VFun}, Timeout) ->
     call_collect(Srv, Req, PubFun, collect_from_whapp_or_validate(Whapp, VFun), Timeout);
