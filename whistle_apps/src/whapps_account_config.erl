@@ -14,6 +14,7 @@
 -export([get/2, get/3, get/4
          ,get_global/3, get_global/4
          ,set/4
+         ,set_global/4
          ,flush/1, flush/2
         ]).
 
@@ -97,6 +98,23 @@ set(Account, Config, Key, Value) ->
                                            ,wh_doc:update_pvt_parameters(JObj, AccountDb, [{'type', <<"account_config">>}])
                                           ),
     wh_cache:erase_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Config)),
+    JObj1.
+
+-spec set_global(ne_binary(), ne_binary(), wh_json:key(), wh_json:json_term()) ->
+                        wh_json:object().
+set_global(Account, Category, Key, Value) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+
+    Doc = case couch_mgr:open_doc(AccountDb, Category) of
+              {'ok', JObj} -> JObj;
+              {'error', _} -> wh_json:set_value(Key, whapps_config:get(Category, Key), wh_json:new())
+          end,
+
+    Doc1 = wh_json:set_value(Key, Value, wh_doc:update_pvt_parameters(Doc, AccountDb, [{'type', <<"account_config">>}])),
+
+    {'ok', JObj1} = couch_mgr:ensure_saved(AccountDb, Category, Doc1),
+    wh_cache:erase_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Category)),
     JObj1.
 
 config_doc_id(Config) -> <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>.
