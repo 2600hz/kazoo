@@ -12,24 +12,52 @@
 -include("whistle_apps.hrl").
 
 -export([get/2, get/3, get/4
+         ,get_global/3, get_global/4
          ,set/4
          ,flush/1, flush/2
         ]).
+
+%% get_global/{3,4} will search the account db first, then system_config for values
+get_global(Account, Category, Key) ->
+    get_global(Account, Category, Key, 'undefined').
+get_global(Account, Category, Key, Default) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    case wh_cache:peek_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Category)) of
+        {'ok', JObj} -> JObj;
+        {'error', 'not_found'} -> get_global_from_db(AccountId, Category, Key, Default)
+    end.
+
+get_global_from_db(AccountId, Category, Key, Default) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, Category) of
+        {'ok', JObj} -> get_global_from_doc(AccountId, Category, Key, Default, JObj);
+        {'error', _} -> whapps_config:get(Category, Key, Default)
+    end.
+
+get_global_from_doc(AccountId, Category, Key, Default, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        'undefined' -> whapps_config:get(Category, Key, Default);
+        V ->
+            wh_cache:store_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Category), JObj),
+            V
+    end.
 
 -spec get(ne_binary(), ne_binary()) -> wh_json:object().
 get(Account, Config) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case wh_cache:peek_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Config)) of
         {'ok', JObj} -> JObj;
-        {'error', 'not_found'} ->
-            AccountDb = wh_util:format_account_id(Account, 'encoded'),
-            DocId = config_doc_id(Config),
-            case couch_mgr:open_doc(AccountDb, DocId) of
-                {'error', _} -> wh_json:set_value(<<"_id">>, DocId, wh_json:new());
-                {'ok', JObj} ->
-                    wh_cache:store_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Config), JObj),
-                    JObj
-            end
+        {'error', 'not_found'} -> get_from_db(AccountId, Config)
+    end.
+
+get_from_db(AccountId, Config) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    DocId = config_doc_id(Config),
+    case couch_mgr:open_doc(AccountDb, DocId) of
+        {'error', _} -> wh_json:set_value(<<"_id">>, DocId, wh_json:new());
+        {'ok', JObj} ->
+            wh_cache:store_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Config), JObj),
+            JObj
     end.
 
 -spec flush(ne_binary()) -> 'ok'.
@@ -74,4 +102,3 @@ set(Account, Config, Key, Value) ->
 config_doc_id(Config) -> <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>.
 
 cache_key(AccountId, Config) -> {?MODULE, Config, AccountId}.
-    
