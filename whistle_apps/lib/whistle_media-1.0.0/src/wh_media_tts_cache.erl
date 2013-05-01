@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -34,12 +34,12 @@
 
 -record(state, {
           text :: ne_binary()
-         ,contents = <<>> :: binary()
-         ,status :: 'streaming' | 'ready'
-         ,ibrowse_req_id :: ibrowse_req_id()
-         ,reqs :: [{pid(), reference()},...] | []
-         ,meta :: wh_json:json_object()
-         ,timer_ref :: reference()
+          ,contents = <<>> :: binary()
+          ,status :: 'streaming' | 'ready'
+          ,ibrowse_req_id :: ibrowse_req_id()
+          ,reqs :: [{pid(), reference()},...] | []
+          ,meta :: wh_json:object()
+          ,timer_ref :: reference()
          }).
 
 %%%===================================================================
@@ -53,15 +53,13 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (ne_binary(), wh_json:json_object()) -> startlink_ret().
+-spec start_link(ne_binary(), wh_json:object()) -> startlink_ret().
 start_link(Text, JObj) ->
     gen_server:start_link(?MODULE, [Text, JObj], []).
 
-single(Srv) ->
-    gen_server:call(Srv, single).
+single(Srv) -> gen_server:call(Srv, 'single').
 
-continuous(Srv) ->
-    gen_server:call(Srv, continuous).
+continuous(Srv) -> gen_server:call(Srv, 'continuous').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -79,7 +77,7 @@ continuous(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Text, JObj]) ->
-    put(callid, wh_util:binary_md5(Text)),
+    put('callid', wh_util:binary_md5(Text)),
 
     Voice = list_to_binary([wh_json:get_value(<<"Voice">>, JObj, <<"female">>), "/"
                             ,wh_json:get_value(<<"Language">>, JObj, <<"en-US">>)
@@ -88,14 +86,14 @@ init([Text, JObj]) ->
     Format = wh_json:get_value(<<"Format">>, JObj, <<"wav">>),
     Engine = wh_json:get_value(<<"Engine">>, JObj),
 
-    {ok, ReqID} = whapps_speech:create(Engine, Text, Voice, Format, [{stream_to, self()}]),
+    {'ok', ReqID} = whapps_speech:create(Engine, Text, Voice, Format, [{'stream_to', self()}]),
 
     Meta = wh_json:from_list([{<<"content_type">>, wh_mime_types:from_extension(Format)}
                               ,{<<"media_name">>, wh_util:to_hex_binary(Text)}
                              ]),
 
     {'ok', #state{ibrowse_req_id = ReqID
-                  ,status = streaming
+                  ,status = 'streaming'
                   ,meta = Meta
                   ,contents = <<>>
                   ,reqs = []
@@ -116,22 +114,22 @@ init([Text, JObj]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(single, _From, #state{meta=Meta
-                                  ,contents=Contents
-                                  ,status=ready
-                                  ,timer_ref=TRef
-                                 }=State) ->
+handle_call('single', _From, #state{meta=Meta
+                                    ,contents=Contents
+                                    ,status=ready
+                                    ,timer_ref=TRef
+                                   }=State) ->
     %% doesn't currently check whether we're still streaming in from the DB
     lager:debug("returning media contents"),
     _ = stop_timer(TRef),
-    {reply, {Meta, Contents}, State#state{timer_ref=start_timer()}};
-handle_call(single, From, #state{reqs=Reqs
-                                 ,status=streaming
-                                }=State) ->
+    {'reply', {Meta, Contents}, State#state{timer_ref=start_timer()}};
+handle_call('single', From, #state{reqs=Reqs
+                                   ,status='streaming'
+                                  }=State) ->
     lager:debug("file not ready for ~p, queueing", [From]),
-    {noreply, State#state{reqs=[From | Reqs]}};
-handle_call(continuous, _From, #state{}=State) ->
-    {reply, ok, State}.
+    {'noreply', State#state{reqs=[From | Reqs]}};
+handle_call('continuous', _From, #state{}=State) ->
+    {'reply', 'ok', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -144,7 +142,7 @@ handle_call(continuous, _From, #state{}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -156,74 +154,72 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({timeout, TRef, ?TIMEOUT_MESSAGE}, #state{timer_ref=TRef}=State) ->
+handle_info({'timeout', TRef, ?TIMEOUT_MESSAGE}, #state{timer_ref=TRef}=State) ->
     lager:debug("timeout expired, going down"),
-    {stop, normal, State};
+    {'stop', 'normal', State};
 
-handle_info({ibrowse_async_headers, ReqID, "200", Hdrs}, #state{ibrowse_req_id=ReqID
-                                                                ,timer_ref=TRef
-                                                               }=State) ->
+handle_info({'ibrowse_async_headers', ReqID, "200", Hdrs}, #state{ibrowse_req_id=ReqID
+                                                                  ,timer_ref=TRef
+                                                                 }=State) ->
     lager:debug("successfully retrieved audio file for tts"),
     _ = stop_timer(TRef),
-    {noreply
-     ,State#state{meta=wh_json:normalize(wh_json:from_list(kv_to_bin(Hdrs)))
-                  ,timer_ref=start_timer()
-                 }
-     ,hibernate};
+    {'noreply', State#state{meta=wh_json:normalize(wh_json:from_list(kv_to_bin(Hdrs)))
+                            ,timer_ref=start_timer()
+                           }};
 
-handle_info({ibrowse_async_headers, ReqID, "202", Hdrs}, #state{ibrowse_req_id=ReqID}=State) ->
+handle_info({'ibrowse_async_headers', ReqID, "202", Hdrs}, #state{ibrowse_req_id=ReqID}=State) ->
     lager:debug("202 recv for tts request, awaiting further instructions"),
-    {noreply, State#state{meta=wh_json:normalize(wh_json:from_list(kv_to_bin(Hdrs)))}, hibernate};
+    {'noreply', State#state{meta=wh_json:normalize(wh_json:from_list(kv_to_bin(Hdrs)))}};
 
-handle_info({ibrowse_async_response, ReqID, Bin}, #state{ibrowse_req_id=ReqID
-                                                         ,meta=Meta
-                                                         ,contents=Contents
-                                                         ,timer_ref=TRef
-                                                        }=State) ->
+handle_info({'ibrowse_async_response', ReqID, Bin}, #state{ibrowse_req_id=ReqID
+                                                           ,meta=Meta
+                                                           ,contents=Contents
+                                                           ,timer_ref=TRef
+                                                          }=State) ->
     _ = stop_timer(TRef),
     case wh_json:get_value(<<"content_type">>, Meta) of
         <<"audio/", _/binary>> ->
             lager:debug("recv ~b bytes", [byte_size(Bin)]),
-            {noreply
-             ,State#state{contents = <<Contents/binary, Bin/binary>>
-                          ,timer_ref=start_timer()
-                         }
-             ,hibernate};
+            {'noreply', State#state{contents = <<Contents/binary, Bin/binary>>
+                                        ,timer_ref=start_timer()
+                                   }};
         <<"application/json">> ->
             lager:debug("JSON response: ~s", [Bin]),
-            {noreply, State, hibernate}
+            {'noreply', State, 'hibernate'}
     end;
 
-handle_info({ibrowse_async_headers, ReqID, Bin}, #state{ibrowse_req_id=ReqID
-                                                        ,contents=Contents
-                                                       }=State) ->
+handle_info({'ibrowse_async_headers', ReqID, Bin}, #state{ibrowse_req_id=ReqID
+                                                          ,contents=Contents
+                                                         }=State) ->
     lager:debug("recv ~b bytes", [byte_size(Bin)]),
-    {noreply, State#state{contents = <<Contents/binary, Bin/binary>>}, hibernate};
+    {'noreply', State#state{contents = <<Contents/binary, Bin/binary>>}};
 
-handle_info({ibrowse_async_response_end, ReqID}, #state{ibrowse_req_id=ReqID
-                                                        ,contents=Contents
-                                                        ,meta=Meta
-                                                        ,reqs=Reqs
-                                                        ,timer_ref=TRef
-                                                       }=State) ->
+handle_info({'ibrowse_async_response_end', ReqID}, #state{ibrowse_req_id=ReqID
+                                                          ,contents=Contents
+                                                          ,meta=Meta
+                                                          ,reqs=Reqs
+                                                          ,timer_ref=TRef
+                                                         }=State) ->
     _ = stop_timer(TRef),
     case Contents of
         <<>> ->
             lager:debug("no tts contents were received, going down"),
-            {stop, normal, State};
+            {'stop', 'normal', State};
         _ ->
             Res = {Meta, Contents},
             _ = [gen_server:reply(From, Res) || From <- Reqs],
 
             lager:debug("finished receiving file contents"),
-            {noreply, State#state{status=ready
-                                  ,timer_ref=start_timer()
-                                 }}
+            {'noreply', State#state{status=ready
+                                    ,timer_ref=start_timer()
+                                   }
+            ,'hibernate'
+            }
     end;
 
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State, hibernate}.
+    {'noreply', State, 'hibernate'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -248,7 +244,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -260,4 +256,4 @@ start_timer() ->
     erlang:start_timer(?TIMEOUT_LIFETIME, self(), ?TIMEOUT_MESSAGE).
 stop_timer(Ref) when is_reference(Ref) ->
     erlang:cancel_timer(Ref);
-stop_timer(_) -> ok.
+stop_timer(_) -> 'ok'.
