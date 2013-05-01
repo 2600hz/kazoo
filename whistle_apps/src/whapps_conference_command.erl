@@ -30,7 +30,9 @@
 
 -export([send_command/2]).
 
--spec search(whapps_conference:conference()) -> ne_binary().
+-spec search(whapps_conference:conference()) ->
+                    {'ok', wh_json:object()} |
+                    {'error', _}.
 search(Conference) ->
     AppName = whapps_conference:application_name(Conference),
     AppVersion = whapps_conference:application_version(Conference),
