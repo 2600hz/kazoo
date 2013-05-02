@@ -241,11 +241,21 @@ is_system_admin(Account) ->
 %% 'false'.
 %% @end
 %%--------------------------------------------------------------------
--spec is_account_enabled(api_binary()) -> 'true'. %boolean().
-is_account_enabled('undefined') -> 'true';
-is_account_enabled(_AccountId) ->
-    %% See WHISTLE-1201
-    'true'.
+-spec is_account_enabled(api_binary()) -> boolean().
+is_account_enabled('undefined') -> 
+    'true';
+is_account_enabled(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'ok', JObj} -> 
+            wh_json:is_true(<<"pvt_enabled">>, JObj, 'true');
+        {'error', _E} -> 
+            lager:debug("error while checking account ~p, ~p~n", [AccountId, _E]),
+            'true'
+    end.
+
+%% See WHISTLE-1201
 %%    case wh_cache:peek({?MODULE, is_account_enabled, AccountId}) of
 %%        {ok, Enabled} ->
 %%            lager:debug("account ~s enabled flag is ~s", [AccountId, Enabled]),
@@ -263,6 +273,9 @@ is_account_enabled(_AccountId) ->
 %%                    'true'
 %%            end
 %%    end.
+
+    
+
 
 %%--------------------------------------------------------------------
 %% @public
