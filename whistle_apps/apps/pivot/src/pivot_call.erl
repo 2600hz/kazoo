@@ -188,6 +188,11 @@ handle_cast({'stop', Call}, #state{cdr_uri='undefined'}=State) ->
     lager:debug("no cdr callback, server going down"),
     _ = whapps_call_command:hangup(Call),
     {'stop', 'normal', State};
+
+handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Req, State) ->
     lager:debug("unhandled cast: ~p", [_Req]),
     {'noreply', State}.
