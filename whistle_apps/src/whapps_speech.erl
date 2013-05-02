@@ -52,24 +52,24 @@
 %%------------------------------------------------------------------------------
 %% Create a tts audio file using a configured provider
 %%------------------------------------------------------------------------------
--spec create/1 :: (ne_binary()) -> create_resp().
+-spec create(ne_binary()) -> create_resp().
 create(Text) ->
     create(Text, <<"female/en-US">>).
 
--spec create/2 :: (ne_binary(), ne_binary()) -> create_resp().
+-spec create(ne_binary(), ne_binary()) -> create_resp().
 create(Text, Voice) ->
     create(Text, Voice, <<"wav">>).
 
--spec create/3 :: (ne_binary(), ne_binary(), ne_binary()) -> create_resp().
+-spec create(ne_binary(), ne_binary(), ne_binary()) -> create_resp().
 create(Text, Voice, Format) ->
     create(Text, Voice, Format, []).
 
--spec create/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) -> create_resp().
+-spec create(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> create_resp().
 create(Text, Voice, Format, Options) ->
     Provider = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>),
     create(Provider, Text, Voice, Format, Options).
 
--spec create/5 :: (api_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) -> create_resp().
+-spec create(api_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> create_resp().
 create('undefined', Text, Voice, Format, Options) ->
     create(Text, Voice, Format, Options);
 create(<<"ispeech">>, Text, Voice, Format, Options) ->
@@ -104,11 +104,11 @@ create(_, _, _, _, _) ->
 %%------------------------------------------------------------------------------
 %% Transcribe the audio binary
 %%------------------------------------------------------------------------------
--spec asr_freeform/1 :: (ne_binary()) -> asr_resp().
--spec asr_freeform/2 :: (ne_binary(), ne_binary()) -> asr_resp().
--spec asr_freeform/3 :: (ne_binary(), ne_binary(), ne_binary()) -> asr_resp().
--spec asr_freeform/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> asr_resp().
--spec asr_freeform/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> provider_return().
+-spec asr_freeform(ne_binary()) -> asr_resp().
+-spec asr_freeform(ne_binary(), ne_binary()) -> asr_resp().
+-spec asr_freeform(ne_binary(), ne_binary(), ne_binary()) -> asr_resp().
+-spec asr_freeform(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> asr_resp().
+-spec asr_freeform(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> provider_return().
 asr_freeform(Bin) ->
     asr_freeform(Bin, <<"application/x-wav">>).
 asr_freeform(Bin, ContentType) ->
@@ -159,11 +159,11 @@ asr_freeform(_, _, _, _, _) ->
 %%------------------------------------------------------------------------------
 %% Transcribe the audio binary
 %%------------------------------------------------------------------------------
--spec asr_commands/2 :: (ne_binary(), [ne_binary(),...]) -> asr_resp().
--spec asr_commands/3 :: (ne_binary(), [ne_binary(),...], ne_binary()) -> asr_resp().
--spec asr_commands/4 :: (ne_binary(), [ne_binary(),...], ne_binary(), ne_binary()) -> asr_resp().
--spec asr_commands/5 :: (ne_binary(), [ne_binary(),...], ne_binary(), ne_binary(), wh_proplist()) -> asr_resp().
--spec asr_commands/6 :: (ne_binary(), ne_binary(), [ne_binary(),...], ne_binary(), ne_binary(), wh_proplist()) -> provider_return().
+-spec asr_commands(ne_binary(), ne_binaries()) -> asr_resp().
+-spec asr_commands(ne_binary(), ne_binaries(), ne_binary()) -> asr_resp().
+-spec asr_commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary()) -> asr_resp().
+-spec asr_commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), wh_proplist()) -> asr_resp().
+-spec asr_commands(ne_binary(), ne_binary(), ne_binaries(), ne_binary(), ne_binary(), wh_proplist()) -> provider_return().
 asr_commands(Bin, Commands) ->
     asr_commands(Bin, Commands, <<"application/x-wav">>).
 asr_commands(Bin, Commands, ContentType) ->

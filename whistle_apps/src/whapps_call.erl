@@ -147,7 +147,7 @@ from_route_req(RouteReq) ->
 -spec from_route_req(wh_json:object(), call()) -> call().
 from_route_req(RouteReq, #whapps_call{}=Call) ->
     CallId = wh_json:get_value(<<"Call-ID">>, RouteReq, Call#whapps_call.call_id),
-    put(callid, CallId),
+    put('callid', CallId),
 
     CCVs = wh_json:merge_recursive(Call#whapps_call.ccvs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq, wh_json:new())),
     Request = wh_json:get_value(<<"Request">>, RouteReq, Call#whapps_call.request),
@@ -160,8 +160,8 @@ from_route_req(RouteReq, #whapps_call{}=Call) ->
                 end,
     AccountId = wh_json:get_value(<<"Account-ID">>, CCVs, Call#whapps_call.account_id),
     AccountDb = case is_binary(AccountId) of
-                    false -> Call#whapps_call.account_db;
-                    true ->  wh_util:format_account_id(AccountId, encoded)
+                    'false' -> Call#whapps_call.account_db;
+                    'true' ->  wh_util:format_account_id(AccountId, 'encoded')
                 end,
     [ToUser, ToRealm] = binary:split(To, <<"@">>),
     [FromUser, FromRealm] = binary:split(From, <<"@">>),
@@ -205,7 +205,7 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                                       ,owner_id=OldOwnerId
                                      }=Call) ->
     CallId = wh_json:get_value(<<"Call-ID">>, RouteWin, OldCallId),
-    put(callid, CallId),
+    put('callid', CallId),
 
     CCVs = wh_json:merge_recursive(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteWin, wh_json:new())),
     Inception = case wh_json:get_value(<<"Inception">>, CCVs) of
@@ -215,8 +215,8 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                 end,
     AccountId = wh_json:get_value(<<"Account-ID">>, CCVs, OldAccountId),
     AccountDb = case is_binary(AccountId) of
-                    false -> OldAccountDb;
-                    true ->  wh_util:format_account_id(AccountId, encoded)
+                    'false' -> OldAccountDb;
+                    'true' ->  wh_util:format_account_id(AccountId, 'encoded')
                 end,
 
     Call#whapps_call{call_id=CallId
@@ -333,8 +333,8 @@ to_proplist(#whapps_call{}=Call) ->
     ].
 
 -spec is_call(term()) -> boolean().
-is_call(#whapps_call{}) -> true;
-is_call(_) -> false.
+is_call(#whapps_call{}) -> 'true';
+is_call(_) -> 'false'.
 
 -spec exec([fun((call()) -> call()),...], call()) -> call().
 exec(Funs, #whapps_call{}=Call) ->
@@ -443,8 +443,10 @@ callee_id_number(#whapps_call{callee_id_number=CIDNumber}) ->
 -spec set_request(ne_binary(), call()) -> call().
 set_request(Request, #whapps_call{}=Call) when is_binary(Request) ->
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
-    Call#whapps_call{request=Request, request_user=wnm_util:to_e164(RequestUser)
-                     ,request_realm=RequestRealm}.
+    Call#whapps_call{request=Request
+                     ,request_user=wnm_util:to_e164(RequestUser)
+                     ,request_realm=RequestRealm
+                    }.
 
 -spec request(call()) -> ne_binary().
 request(#whapps_call{request=Request}) ->
@@ -729,7 +731,7 @@ retrieve(CallId) ->
                    ,fun(C) -> whapps_call:set_owner_id(<<"abcdefghi">>, C) end
                    ,fun(C) -> whapps_call:set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
                    ,fun(C) -> whapps_call:set_custom_channel_var(<<"key2">>, 2600, C) end
-                   ,fun(C) -> whapps_call:set_custom_channel_var([<<"key3">>, <<"key4">>], true, C) end
+                   ,fun(C) -> whapps_call:set_custom_channel_var([<<"key3">>, <<"key4">>], 'true', C) end
                    ,fun(C) -> whapps_call:kvs_store(<<"kvs_key_1">>, <<"kvs_value_1">>, C) end
                    ,fun(C) -> whapps_call:kvs_store(<<"kvs_key_2">>, <<"kvs_value_2">>, C) end
                    ,fun(C) -> whapps_call:kvs_store(<<"kvs_key_2">>, wh_json:from_list([{<<"sub_key_1">>, <<"sub_value_1">>}]), C) end
@@ -737,11 +739,11 @@ retrieve(CallId) ->
 
 %% TODO: I am out of the alloted time for this module, please add during another refactor
 from_route_request_test() ->
-    ok.
+    'ok'.
 
 %% TODO: I am out of the alloted time for this module, please add during another refactor
 from_route_win_test() ->
-    ok.
+    'ok'.
 
 json_conversion_test() ->
     Call1 = lists:foldr(fun(F, C) -> F(C) end, whapps_call:new(), ?UPDATERS),

@@ -21,6 +21,8 @@
 -type api_object() :: wh_json:object() | 'undefined'.
 -type api_objects() :: wh_json:objects() | 'undefined'.
 -type api_boolean() :: boolean() | 'undefined'.
+-type api_atom() :: atom() | 'undefined'.
+-type api_string() :: string() | 'undefined'.
 
 -type api_number() :: number() | 'undefined'.
 -type api_integer() :: integer() | 'undefined'.
@@ -39,6 +41,7 @@
 -define(NE_BINARY, <<_:8,_/binary>>).
 -type ne_binary() :: <<_:8,_:_*8>>.
 -type ne_binaries() :: [ne_binary(),...] | [].
+-type binaries() :: [binary(),...] | [].
 
 %% when using gen_smtp to send emails, it takes a 5-tuple for a message-body part
 -type mail_message_body() :: {ne_binary(), ne_binary(), proplist(), proplist(), ne_binary() | iolist()}.
