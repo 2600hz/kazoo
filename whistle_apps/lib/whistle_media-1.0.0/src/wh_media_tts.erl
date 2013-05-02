@@ -14,6 +14,7 @@
 
 get_uri(<<"tts://", Text/binary>>, JObj) ->
     {'ok', _TTSServer} = wh_media_cache_sup:find_tts_server(Text, JObj),
+    lager:debug("tts server for ~s at ~p", [Text, _TTSServer]),
 
     Format = wh_json:get_value(<<"Format">>, JObj, <<"wav">>),
     Host = wh_network_utils:get_hostname(),
