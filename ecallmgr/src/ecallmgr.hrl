@@ -165,6 +165,7 @@
 %% Dialplan-related applications
 %% convert from FS-named applications to Kazoo-named Dialplan applications
 -define(FS_APPLICATION_NAMES, [{<<"playback">>, <<"play">>}
+                               ,{<<"playback">>, <<"tts">>}
                                ,{<<"play-file">>, <<"play">>}
                                ,{<<"play-file-done">>, <<"play">>}
                                ,{<<"play-file-member">>, <<"play">>}
