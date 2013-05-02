@@ -64,7 +64,7 @@
 %% send the SendMsg proplist to the freeswitch node
 %% @end
 %%--------------------------------------------------------------------
--spec send_cmd(atom(), ne_binary(), ne_binary() | string(), ne_binary() | string()) -> send_cmd_ret().
+-spec send_cmd(atom(), ne_binary(), text(), text()) -> send_cmd_ret().
 send_cmd(Node, UUID, App, Args) when not is_list(App) ->
     send_cmd(Node, UUID, wh_util:to_list(App), Args);
 send_cmd(Node, UUID, "xferext", Dialplan) ->
@@ -101,21 +101,21 @@ send_cmd(Node, UUID, "record_call", Args) ->
     end;
 send_cmd(Node, UUID, "playstop", _Args) ->
     lager:debug("execute on node ~s: uuid_break(~s all)", [Node, UUID]),
-    freeswitch:api(Node, uuid_break, wh_util:to_list(<<UUID/binary, " all">>));
+    freeswitch:api(Node, 'uuid_break', wh_util:to_list(<<UUID/binary, " all">>));
 send_cmd(Node, UUID, "unbridge", _) ->
     lager:debug("execute on node ~s: uuid_park(~s)", [Node, UUID]),
-    freeswitch:api(Node, uuid_park, wh_util:to_list(UUID));
+    freeswitch:api(Node, 'uuid_park', wh_util:to_list(UUID));
 send_cmd(Node, _UUID, "broadcast", Args) ->
     lager:debug("execute on node ~s: uuid_broadcast(~s)", [Node, Args]),
-    Resp = freeswitch:api(Node, uuid_broadcast, wh_util:to_list(iolist_to_binary(Args))),
+    Resp = freeswitch:api(Node, 'uuid_broadcast', wh_util:to_list(iolist_to_binary(Args))),
     lager:debug("broadcast resulted in: ~p", [Resp]),
     Resp;
 send_cmd(Node, _UUID, "call_pickup", Args) ->
     lager:debug("execute on node ~s: uuid_bridge(~s)", [Node, Args]),
-    freeswitch:api(Node, uuid_bridge, wh_util:to_list(Args));
+    freeswitch:api(Node, 'uuid_bridge', wh_util:to_list(Args));
 send_cmd(Node, UUID, "hangup", _) ->
     lager:debug("terminate call on node ~s", [Node]),
-    freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
+    freeswitch:api(Node, 'uuid_kill', wh_util:to_list(UUID));
 send_cmd(Node, UUID, "set", "ecallmgr_Account-ID=" ++ _ = Args) ->
     _ = maybe_update_channel_cache(Args, UUID),
     send_cmd(Node, UUID, "export", Args);
@@ -125,7 +125,7 @@ send_cmd(Node, UUID, "set", "ecallmgr_Precedence=" ++ _ = Args) ->
 send_cmd(Node, UUID, "conference", Args) ->
     Args1 = iolist_to_binary([UUID, " conference:", Args, ",park inline"]),
     lager:debug("starting conference on ~s: ~s", [Node, Args1]),
-    freeswitch:api(Node, uuid_transfer, wh_util:to_list(Args1));
+    freeswitch:api(Node, 'uuid_transfer', wh_util:to_list(Args1));
 send_cmd(Node, UUID, AppName, Args) ->
     _ = maybe_update_channel_cache(Args, UUID),
     Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
@@ -159,7 +159,7 @@ maybe_update_channel_cache("ecallmgr_Presence-ID=" ++ Value, UUID) ->
 maybe_update_channel_cache("ecallmgr_Precedence=" ++ Value, UUID) ->
     ecallmgr_fs_channel:set_precedence(UUID, Value);
 maybe_update_channel_cache(_, _) ->
-    ok.
+    'ok'.
 
 -spec get_expires(wh_proplist()) -> integer().
 get_expires(Props) ->
