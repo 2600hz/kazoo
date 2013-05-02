@@ -81,15 +81,10 @@ get_fs_app(Node, UUID, JObj, <<"tts">>) ->
 
             case wh_json:get_value(<<"Engine">>, JObj, <<"flite">>) of
                 <<"flite">> -> ecallmgr_fs_flite:call_command(Node, UUID, JObj);
-                _E ->
-                    lager:debug("engine to use: '~p'", [_E]),
+                _Engine ->
                     SayMe = wh_json:get_value(<<"Text">>, JObj),
-                    lager:debug("tts to say: ~s", [SayMe]),
-                    App = play(Node, UUID, wh_json:set_value(<<"Media-Name">>, <<"tts://", SayMe/binary>>, JObj)),
-                    lager:debug("app to use: ~p", [App]),
-                    [App
-                     ,{"event", ecallmgr_util:create_masquerade_event(<<"tts">>, <<"CHANNEL_EXECUTE_COMPLETE">>, 'false')}
-                    ]
+                    lager:debug("using engine ~s to say: ~s", [_Engine, SayMe]),
+                    play(Node, UUID, wh_json:set_value(<<"Media-Name">>, <<"tts://", SayMe/binary>>, JObj))
             end
     end;
 
