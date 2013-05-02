@@ -40,21 +40,21 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{bindings, [{media, []}]}
-                                      ,{responders, [{{?MODULE, handle_media_req}
-                                                      ,[{<<"media">>, <<"media_req">>}]}
-                                                    ]}
+    gen_listener:start_link(?MODULE, [{'bindings', [{'media', []}]}
+                                      ,{'responders', [{{?MODULE, 'handle_media_req'}
+                                                        ,[{<<"media">>, <<"media_req">>}]}
+                                                      ]}
                                      ], []).
 
 handle_media_req(JObj, _Props) ->
-    true = wapi_media:req_v(JObj),
+    'true' = wapi_media:req_v(JObj),
     _ = wh_util:put_callid(JObj),
     lager:debug("recv media req for msg id: ~s", [wh_json:get_value(<<"Msg-ID">>, JObj)]),
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
     case wh_media_url:playback(MediaName, JObj) of
-        {error, ErrorMessage} ->
+        {'error', ErrorMessage} ->
             send_error_resp(JObj, ErrorMessage);
-        {ok, StreamURL} ->
+        {'ok', StreamURL} ->
             send_media_resp(JObj, StreamURL)
     end.
 
@@ -75,7 +75,7 @@ handle_media_req(JObj, _Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:debug("starting media_mgr listener"),
-    {ok, ok}.
+    {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -92,8 +92,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {'reply', {'error', 'not_supported'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -106,7 +105,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -119,10 +118,10 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -136,7 +135,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ok.
+    lager:debug("media listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -147,7 +146,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions

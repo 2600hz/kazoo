@@ -268,7 +268,7 @@ get_accounts_by_name(Name) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (wh_json:object()) -> {ne_binary(), ne_binary()}.
+-spec get_event_type(wh_json:object()) -> {ne_binary(), ne_binary()}.
 get_event_type(JObj) -> wh_util:get_event_type(JObj).
 
 %%--------------------------------------------------------------------
@@ -278,7 +278,7 @@ get_event_type(JObj) -> wh_util:get_event_type(JObj).
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (wh_json:object()) -> api_binary().
+-spec put_callid(wh_json:object()) -> api_binary().
 put_callid(JObj) -> wh_util:put_callid(JObj).
 
 %%--------------------------------------------------------------------
@@ -288,7 +288,7 @@ put_callid(JObj) -> wh_util:put_callid(JObj).
 %% this returns the cause and code for the call termination
 %% @end
 %%--------------------------------------------------------------------
--spec get_call_termination_reason/1 :: (wh_json:object()) -> {ne_binary(), ne_binary()}.
+-spec get_call_termination_reason(wh_json:object()) -> {ne_binary(), ne_binary()}.
 get_call_termination_reason(JObj) ->
     Cause = case wh_json:get_ne_value(<<"Application-Response">>, JObj) of
                undefined ->
@@ -305,7 +305,7 @@ get_call_termination_reason(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_views_json/2 :: (atom(), string()) -> wh_json:objects().
+-spec get_views_json(atom(), string()) -> wh_json:objects().
 get_views_json(App, Folder) ->
     Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
     [JObj
@@ -322,8 +322,8 @@ get_views_json(App, Folder) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_view_json/2 :: (atom(), ne_binary() | nonempty_string()) -> {ne_binary(), wh_json:object()}.
--spec get_view_json/1 :: (ne_binary() | nonempty_string()) -> {ne_binary(), wh_json:object()}.
+-spec get_view_json(atom(), ne_binary() | nonempty_string()) -> {ne_binary(), wh_json:object()}.
+-spec get_view_json(ne_binary() | nonempty_string()) -> {ne_binary(), wh_json:object()}.
 
 get_view_json(App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
@@ -341,9 +341,9 @@ get_view_json(Path) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_views/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
--spec update_views/3 :: (ne_binary(), wh_proplist(), boolean()) -> 'ok'.
--spec update_views/4 :: (wh_json:objects(), ne_binary(), wh_proplist(), boolean()) -> 'ok'.
+-spec update_views(ne_binary(), wh_proplist()) -> 'ok'.
+-spec update_views(ne_binary(), wh_proplist(), boolean()) -> 'ok'.
+-spec update_views(wh_json:objects(), ne_binary(), wh_proplist(), boolean()) -> 'ok'.
 
 update_views(Db, Views) ->
     update_views(Db, Views, false).
@@ -389,7 +389,7 @@ update_views([Found|Finds], Db, Views, Remove) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_aggregate_device/2 :: (ne_binary(), api_binary()) -> 'ok'.
+-spec add_aggregate_device(ne_binary(), api_binary()) -> 'ok'.
 add_aggregate_device(_, undefined) -> ok;
 add_aggregate_device(Db, Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
@@ -409,7 +409,7 @@ add_aggregate_device(Db, Device) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec rm_aggregate_device/2 :: (ne_binary(), api_binary()) -> 'ok'.
+-spec rm_aggregate_device(ne_binary(), api_binary()) -> 'ok'.
 rm_aggregate_device(_, undefined) -> ok;
 rm_aggregate_device(Db, Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
@@ -421,14 +421,14 @@ rm_aggregate_device(Db, Device) ->
             ok
     end.
 
--spec amqp_pool_send/2 :: (api_terms(), wh_amqp_worker:publish_fun()) -> 'ok' | {'error', any()}.
+-spec amqp_pool_send(api_terms(), wh_amqp_worker:publish_fun()) -> 'ok' | {'error', any()}.
 amqp_pool_send(Api, PubFun) when is_function(PubFun, 1) ->
     wh_amqp_worker:cast(?WHAPPS_AMQP_POOL, Api, PubFun).
 
--spec amqp_pool_request/3 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) ->
+-spec amqp_pool_request(api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) ->
                                      {'ok', wh_json:object()} |
                                      {'error', any()}.
--spec amqp_pool_request/4 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), wh_timeout()) ->
+-spec amqp_pool_request(api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), wh_timeout()) ->
                                      {'ok', wh_json:object()} |
                                      {'error', any()}.
 amqp_pool_request(Api, PubFun, ValidateFun) when is_function(PubFun, 1), is_function(ValidateFun, 1) ->
@@ -445,13 +445,13 @@ amqp_pool_request(Api, PubFun, ValidateFun, Timeout) when is_function(PubFun, 1)
 amqp_pool_collect(Api, PubFun) ->
     amqp_pool_collect(Api, PubFun, wh_amqp_worker:default_timeout()).
 
--spec amqp_pool_collect(api_terms(), wh_amqp_worker:publish_fun(), wh_ampq_worker:timeout_or_until()) ->
+-spec amqp_pool_collect(api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:timeout_or_until()) ->
                                {'ok', wh_json:objects()} |
                                {'error', any()}.
 amqp_pool_collect(Api, PubFun, TimeoutOrUntil) ->
     wh_amqp_worker:call_collect(?WHAPPS_AMQP_POOL, Api, PubFun, TimeoutOrUntil).
 
--spec amqp_pool_collect(api_terms(), wh_amqp_worker:publish_fun(), wh_ampq_worker:collect_until(), wh_timeout()) ->
+-spec amqp_pool_collect(api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:collect_until(), wh_timeout()) ->
                                {'ok', wh_json:objects()} |
                                {'error', any()}.
 amqp_pool_collect(Api, PubFun, Until, Timeout) ->
@@ -464,25 +464,25 @@ amqp_pool_collect(Api, PubFun, Until, Timeout) ->
 %% in the system_config DB. Defaults to Request (To is the other option)
 %% @end
 %%--------------------------------------------------------------------
--spec get_destination/3 :: (wh_json:object(), ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+-spec get_destination(wh_json:object(), ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 get_destination(JObj, Cat, Key) ->
     case whapps_config:get(Cat, Key, <<"Request">>) of
         <<"To">> ->
             case try_split(<<"To">>, JObj) of
                 {_,_}=UserRealm -> UserRealm;
-                undefined ->
+                'undefined' ->
                     case try_split(<<"Request">>, JObj) of
                         {_,_}=UserRealm -> UserRealm;
-                        undefined -> {wh_json:get_value(<<"To-DID">>, JObj), wh_json:get_value(<<"To-Realm">>, JObj)}
+                        'undefined' -> {wh_json:get_value(<<"To-DID">>, JObj), wh_json:get_value(<<"To-Realm">>, JObj)}
                     end
             end;
         _ ->
             case try_split(<<"Request">>, JObj) of
                 {_,_}=UserRealm -> UserRealm;
-                undefined ->
+                'undefined' ->
                     case try_split(<<"To">>, JObj) of
                         {_,_}=UserRealm -> UserRealm;
-                        undefined -> {wh_json:get_value(<<"To-DID">>, JObj), wh_json:get_value(<<"To-Realm">>, JObj)}
+                        'undefined' -> {wh_json:get_value(<<"To-DID">>, JObj), wh_json:get_value(<<"To-Realm">>, JObj)}
                     end
             end
     end.
@@ -493,38 +493,38 @@ get_destination(JObj, Cat, Key) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_prompt/2 :: (ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
--spec get_prompt/3 :: (ne_binary(), ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
+-spec get_prompt(ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
+-spec get_prompt(ne_binary(), ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
 
 get_prompt(Name, Call) ->
     get_prompt(Name, <<"en">>, Call).
 
-get_prompt(Name, Lang, undefined) ->
+get_prompt(Name, Lang, 'undefined') ->
     whapps_config:get(?PROMPTS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>);
 get_prompt(Name, Lang, Call) ->
     DefaultPrompt = whapps_config:get(?PROMPTS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>),
     JObj = whapps_account_config:get(whapps_call:account_id(Call), ?PROMPTS_CONFIG_CAT),
     wh_json:get_value([Lang, Name], JObj, DefaultPrompt).
 
--spec try_split/2 :: (ne_binary(), wh_json:object()) ->
-                             {ne_binary(), ne_binary()} |
-                             'undefined'.
+-spec try_split(ne_binary(), wh_json:object()) ->
+                       {ne_binary(), ne_binary()} |
+                       'undefined'.
 try_split(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
-        undefined -> undefined;
+        'undefined' -> 'undefined';
         Bin when is_binary(Bin) ->
             case binary:split(Bin, <<"@">>) of
-                [<<"nouser">>, _] -> undefined;
+                [<<"nouser">>, _] -> 'undefined';
                 [_, _]=Dest -> list_to_tuple(Dest)
             end
     end.
 
--spec write_tts_file/2 :: (ne_binary(), ne_binary()) ->
-                                  'ok' |
-                                  {'error', file:posix() | 'badarg' | 'terminated'}.
+-spec write_tts_file(ne_binary(), ne_binary()) ->
+                            'ok' |
+                            {'error', file:posix() | 'badarg' | 'terminated'}.
 write_tts_file(Path, Say) ->
     lager:debug("trying to save TTS media to ~s", [Path]),
-    {ok, _, Wav} = whapps_speech:create(Say),
+    {'ok', _, Wav} = whapps_speech:create(Say),
     file:write_file(Path, Wav).
 
 -spec decr_timeout(wh_timeout(), non_neg_integer() | wh_now()) -> wh_timeout().

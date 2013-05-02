@@ -116,7 +116,7 @@
 -export([collect_digits/2, collect_digits/3, collect_digits/4, collect_digits/5, collect_digits/6]).
 -export([send_command/2]).
 
--type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), [binary(),...]} |
+-type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
                               {'prompt', binary()} | {'prompt', binary(), binary()} |
                               {'say', binary()} | {'say', binary(), binary()} |
                               {'say', binary(), binary(), binary()} | {'say', binary(), binary(), binary(), binary()} |
@@ -300,7 +300,9 @@ audio_macro([{'tts', Text}|T], Call, Queue) ->
 audio_macro([{'tts', Text, Voice}|T], Call, Queue) ->
     audio_macro(T, Call, [tts_command(Text, Voice, Call) | Queue]);
 audio_macro([{'tts', Text, Voice, Lang}|T], Call, Queue) ->
-    audio_macro(T, Call, [tts_command(Text, Voice, Lang, Call) | Queue]).
+    audio_macro(T, Call, [tts_command(Text, Voice, Lang, Call) | Queue]);
+audio_macro([{'tts', Text, Voice, Lang, Engine}|T], Call, Queue) ->
+    audio_macro(T, Call, [tts_command(Text, Voice, Lang, ?ANY_DIGIT, Engine, Call) | Queue]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -789,7 +791,7 @@ tts(SayMe, Voice, Call) -> tts(SayMe, Voice, <<"en-US">>, Call).
 tts(SayMe, Voice, Lang, Call) -> tts(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
 tts(SayMe, Voice, Lang, Terminators, Call) ->
     tts(SayMe, Voice, Lang, Terminators
-        ,whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)
+        ,whapps_account_config:get_global(Call, ?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)
         ,Call
        ).
 tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
@@ -817,7 +819,7 @@ tts_command(SayMe, Voice, Call) -> tts_command(SayMe, Voice, <<"en-US">>, Call).
 tts_command(SayMe, Voice, Lang, Call) -> tts_command(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
 tts_command(SayMe, Voice, Lang, Terminators, Call) ->
     tts_command(SayMe, Voice, Lang, Terminators
-                ,whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)
+                ,whapps_account_config:get_global(Call, ?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)
                 ,Call
                ).
 tts_command(SayMe, Voice, Lang, Terminators, Engine, Call) ->
@@ -852,16 +854,16 @@ b_tts(SayMe, Voice, Lang, Terminators, Engine, Call) -> wait_for_noop(tts(SayMe,
 %% @end
 %%--------------------------------------------------------------------
 -spec record(ne_binary(), whapps_call:call()) -> 'ok'.
--spec record(ne_binary(), [binary(),...], whapps_call:call()) -> 'ok'.
--spec record(ne_binary(), [binary(),...],  api_binary() | integer(), whapps_call:call()) -> 'ok'.
--spec record(ne_binary(), [binary(),...],  api_binary() | integer(), api_binary() | integer(), whapps_call:call()) -> 'ok'.
--spec record(ne_binary(), [binary(),...],  api_binary() | integer(), api_binary() | integer(),  api_binary() | integer(), whapps_call:call()) -> 'ok'.
+-spec record(ne_binary(), binaries(), whapps_call:call()) -> 'ok'.
+-spec record(ne_binary(), binaries(),  api_binary() | integer(), whapps_call:call()) -> 'ok'.
+-spec record(ne_binary(), binaries(),  api_binary() | integer(), api_binary() | integer(), whapps_call:call()) -> 'ok'.
+-spec record(ne_binary(), binaries(),  api_binary() | integer(), api_binary() | integer(),  api_binary() | integer(), whapps_call:call()) -> 'ok'.
 
 -spec b_record(ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_record(ne_binary(), [binary(),...], whapps_call:call()) -> whapps_api_std_return().
--spec b_record(ne_binary(), [binary(),...], api_binary() | integer(), whapps_call:call()) -> whapps_api_std_return().
--spec b_record(ne_binary(), [binary(),...], api_binary() | integer(), api_binary() | integer(), whapps_call:call()) -> whapps_api_std_return().
--spec b_record(ne_binary(), [binary(),...], api_binary() | integer(), api_binary() | integer(), api_binary() | integer(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record(ne_binary(), binaries(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record(ne_binary(), binaries(), api_binary() | integer(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record(ne_binary(), binaries(), api_binary() | integer(), api_binary() | integer(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record(ne_binary(), binaries(), api_binary() | integer(), api_binary() | integer(), api_binary() | integer(), whapps_call:call()) -> whapps_api_std_return().
 
 record(MediaName, Call) ->
     record(MediaName, ?ANY_DIGIT, Call).

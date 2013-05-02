@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -28,13 +28,13 @@
 -include("whistle_media.hrl").
 
 -define(TIMEOUT_LIFETIME, 600000).
--define(TIMEOUT_MESSAGE, {'$wh_media_file_cache', file_timeout}).
+-define(TIMEOUT_MESSAGE, {'$wh_media_file_cache', 'file_timeout'}).
 
 -record(state, {
           db :: ne_binary()
          ,doc :: ne_binary()
          ,attach :: ne_binary()
-         ,meta :: wh_json:json_object()
+         ,meta :: wh_json:object()
          ,contents = <<>> :: binary()
          ,stream_ref :: reference()
          ,status :: 'streaming' | 'ready'
@@ -53,17 +53,15 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/3 :: (ne_binary(), ne_binary(), ne_binary()) -> startlink_ret().
-start_link(Db, Id, Attachment) ->    
-    gen_server:start_link(?MODULE, [Db, Id, Attachment, get(callid)], []).
+-spec start_link(ne_binary(), ne_binary(), ne_binary()) -> startlink_ret().
+start_link(Db, Id, Attachment) ->
+    gen_server:start_link(?MODULE, [Db, Id, Attachment, get('callid')], []).
 
--spec single/1 :: (pid()) -> {wh_json:object(), binary()}.
-single(Srv) ->
-    gen_server:call(Srv, single).
+-spec single(pid()) -> {wh_json:object(), binary()}.
+single(Srv) -> gen_server:call(Srv, 'single').
 
--spec continuous/1 :: (pid()) -> {wh_json:object(), binary()}.
-continuous(Srv) ->
-    gen_server:call(Srv, continuous).
+-spec continuous(pid()) -> {wh_json:object(), binary()}.
+continuous(Srv) -> gen_server:call(Srv, 'continuous').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -82,30 +80,30 @@ continuous(Srv) ->
 %%--------------------------------------------------------------------
 init([Db, Id, Attachment, CallId]) ->
     case wh_util:is_empty(CallId) of
-        true -> put(callid, ?LOG_SYSTEM_ID);
-        false -> put(callid, CallId)
+        'true' -> put('callid', ?LOG_SYSTEM_ID);
+        'false' -> put('callid', CallId)
     end,
     maybe_start_file_cache(Db, Id, Attachment).
 
 maybe_start_file_cache(Db, Id, Attachment) ->
     case couch_mgr:open_doc(Db, Id) of
-        {error, Reason} ->
+        {'error', Reason} ->
             lager:debug("unable get metadata for ~s on ~s in ~s: ~p", [Attachment, Id, Db, Reason]),
-            {stop, Reason};
-        {ok, JObj} ->
+            {'stop', Reason};
+        {'ok', JObj} ->
             lager:debug("starting cache for ~s on ~s in ~s", [Attachment, Id, Db]),
             Meta = wh_json:get_value([<<"_attachments">>, Attachment], JObj, wh_json:new()),
-            {ok, Ref} = couch_mgr:stream_attachment(Db, Id, Attachment),
-            {ok, #state{db=Db
-                        ,doc=Id
-                        ,attach=Attachment
-                        ,meta=Meta
-                        ,stream_ref=Ref
-                        ,status=streaming
-                        ,contents = <<>>
-                        ,reqs = [] %% buffer requests until file has completed streaming
-                        ,timer_ref=start_timer()
-                       }}
+            {'ok', Ref} = couch_mgr:stream_attachment(Db, Id, Attachment),
+            {'ok', #state{db=Db
+                          ,doc=Id
+                          ,attach=Attachment
+                          ,meta=Meta
+                          ,stream_ref=Ref
+                          ,status='streaming'
+                          ,contents = <<>>
+                          ,reqs = [] %% buffer requests until file has completed streaming
+                          ,timer_ref=start_timer()
+                         }}
     end.
 
 %%--------------------------------------------------------------------
@@ -122,22 +120,22 @@ maybe_start_file_cache(Db, Id, Attachment) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(single, _From, #state{meta=Meta
-                                  ,contents=Contents
-                                  ,status=ready
-                                  ,timer_ref=TRef
-                                 }=State) ->
+handle_call('single', _From, #state{meta=Meta
+                                    ,contents=Contents
+                                    ,status='ready'
+                                    ,timer_ref=TRef
+                                   }=State) ->
     %% doesn't currently check whether we're still streaming in from the DB
     lager:debug("returning media contents"),
     _ = stop_timer(TRef),
-    {reply, {Meta, Contents}, State#state{timer_ref=start_timer()}};
-handle_call(single, From, #state{reqs=Reqs
-                                 ,status=streaming
-                                }=State) ->
+    {'reply', {Meta, Contents}, State#state{timer_ref=start_timer()}};
+handle_call('single', From, #state{reqs=Reqs
+                                   ,status='streaming'
+                                  }=State) ->
     lager:debug("file not ready for ~p, queueing", [From]),
-    {noreply, State#state{reqs=[From | Reqs]}};
-handle_call(continuous, _From, #state{}=State) ->
-    {reply, ok, State}.
+    {'noreply', State#state{reqs=[From | Reqs]}};
+handle_call('continuous', _From, #state{}=State) ->
+    {'reply', 'ok', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -150,7 +148,7 @@ handle_call(continuous, _From, #state{}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -162,34 +160,36 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({timeout, TRef, ?TIMEOUT_MESSAGE}, #state{timer_ref=TRef}=State) ->
+handle_info({'timeout', TRef, ?TIMEOUT_MESSAGE}, #state{timer_ref=TRef}=State) ->
     lager:debug("timeout expired, going down"),
-    {stop, normal, State};
-handle_info({Ref, done}, #state{stream_ref=Ref
-                                ,reqs=Reqs
-                                ,contents=Contents
-                                ,meta=Meta
-                                ,timer_ref=TRef
-                               }=State) ->
+    {'stop', 'normal', State};
+handle_info({Ref, 'done'}, #state{stream_ref=Ref
+                                  ,reqs=Reqs
+                                  ,contents=Contents
+                                  ,meta=Meta
+                                  ,timer_ref=TRef
+                                 }=State) ->
     _ = stop_timer(TRef),
     Res = {Meta, Contents},
     _ = [gen_server:reply(From, Res) || From <- Reqs],
 
     lager:debug("finished receiving file contents"),
-    {noreply, State#state{status=ready
-                          ,timer_ref=start_timer()
-                         }};
-handle_info({Ref, {ok, Bin}}, #state{stream_ref=Ref
-                                     ,contents=Contents
-                                    }=State) ->
+    {'noreply', State#state{status='ready'
+                            ,timer_ref=start_timer()
+                            ,reqs = []
+                           }
+    ,'hibernate'};
+handle_info({Ref, {'ok', Bin}}, #state{stream_ref=Ref
+                                       ,contents=Contents
+                                      }=State) ->
     lager:debug("recv ~b bytes", [byte_size(Bin)]),
-    {noreply, State#state{contents = <<Contents/binary, Bin/binary>>}, hibernate};
-handle_info({Ref, {error, E}}, #state{stream_ref=Ref}=State) ->
+    {'noreply', State#state{contents = <<Contents/binary, Bin/binary>>}, 'hibernate'};
+handle_info({Ref, {'error', E}}, #state{stream_ref=Ref}=State) ->
     lager:debug("recv stream error: ~p", [E]),
-    {stop, normal, State};
+    {'stop', 'normal', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State, hibernate}.
+    {'noreply', State, 'hibernate'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -214,7 +214,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -223,4 +223,4 @@ start_timer() ->
     erlang:start_timer(?TIMEOUT_LIFETIME, self(), ?TIMEOUT_MESSAGE).
 stop_timer(Ref) when is_reference(Ref) ->
     erlang:cancel_timer(Ref);
-stop_timer(_) -> ok.
+stop_timer(_) -> 'ok'.
