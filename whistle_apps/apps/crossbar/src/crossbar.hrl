@@ -1,7 +1,5 @@
 -ifndef(CROSSBAR_HRL).
 
--include_lib("cowboy/include/http.hrl").
-
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").

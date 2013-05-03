@@ -388,7 +388,7 @@ load_siblings(AccountId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -579,7 +579,7 @@ load_initial_views(#cb_context{db_name=AccountDb})->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec replicate_account_definition(wh_json:json_object()) -> {'ok', wh_json:json_object()} | {'error', _}.
+-spec replicate_account_definition(wh_json:object()) -> {'ok', wh_json:object()} | {'error', _}.
 replicate_account_definition(JObj) ->
     AccountId = wh_json:get_value(<<"_id">>, JObj),
     case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of

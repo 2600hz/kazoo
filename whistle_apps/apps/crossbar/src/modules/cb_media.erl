@@ -307,7 +307,7 @@ on_successful_validation(MediaId, #cb_context{}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results(Doc :: wh_json:json_object(), Acc :: wh_json:json_objects()) -> wh_json:json_objects()).
+-spec(normalize_view_results(Doc :: wh_json:object(), Acc :: wh_json:objects()) -> wh_json:objects()).
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 

@@ -12,7 +12,7 @@
 
 -include("whistle_media.hrl").
 
--spec start_link/0 :: () -> 'ignore'.
+-spec start_link() -> 'ignore'.
 start_link() ->
     put(callid, ?LOG_SYSTEM_ID),
     _ = application:start(cowboy),
@@ -69,7 +69,7 @@ start_link() ->
     lager:debug("started media proxy on port ~p", [Port]),
     ignore.
 
--spec on_request/1 :: (#http_req{}) -> #http_req{}.
+-spec on_request(cowboy_req:req()) -> cowboy_req:req().
 on_request(Req0) ->
 
     {Method, Req1} = cowboy_http_req:method(Req0),
@@ -79,12 +79,12 @@ on_request(Req0) ->
     _ = wh_counter:inc(<<"media_proxy.requests.methods.", (wh_util:to_upper_binary(Method))/binary>>),
     Req1.
 
--spec on_response/3 :: (cowboy_http:status(), cowboy_http:headers(), #http_req{}) -> #http_req{}.
+-spec on_response(cowboy_http:status(), cowboy_http:headers(), cowboy_req:req()) -> cowboy_req:req().
 on_response(Status, _Headers, Req) ->
     wh_counter:inc(<<"media_proxy.responses.", (wh_util:to_binary(Status))/binary>>),
     Req.
 
--spec find_file/2 :: (string(), string()) -> string().    
+-spec find_file(string(), string()) -> string().    
 find_file(File, Root) ->
     case filelib:is_file(File) of
         true -> File;

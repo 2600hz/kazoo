@@ -140,7 +140,8 @@ set_resp_headers(Req, ContentType) ->
                                 ]
                ).
 
--spec set_resp_headers/5 :: (#http_req{}, pos_integer(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', #http_req{}}.
+-spec set_resp_headers(cowboy_req:req(), pos_integer(), ne_binary(), ne_binary(), ne_binary()) ->
+                              {'ok', cowboy_req:req()}.
 set_resp_headers(Req, ChunkSize, ContentType, MediaName, Url) ->
     lists:foldl(fun({K,V}, {ok, Req0Acc}) ->
                         cowboy_http_req:set_resp_header(K, V, Req0Acc)
@@ -157,7 +158,7 @@ set_resp_headers(Req, ChunkSize, ContentType, MediaName, Url) ->
                                 ]
                ).
 
--spec get_shout_header/2 :: (ne_binary(), ne_binary()) -> {0, ne_binary()}.
+-spec get_shout_header(ne_binary(), ne_binary()) -> {0, ne_binary()}.
 get_shout_header(MediaName, Url) ->
     Bin = list_to_binary(["StreamTitle='",MediaName
                           ,"';StreamUrl='",Url,"';"

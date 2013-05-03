@@ -137,18 +137,18 @@ response_deprecated(Context) ->
     create_response(error, <<"deprecated">>, 410, wh_json:new(), Context).
 
 -spec response_deprecated_redirect(cb_context:context(), wh_json:json_string()) -> cb_context:context().
--spec response_deprecated_redirect(cb_context:context(), wh_json:json_string(), wh_json:json_object()) -> cb_context:context().
+-spec response_deprecated_redirect(cb_context:context(), wh_json:json_string(), wh_json:object()) -> cb_context:context().
 response_deprecated_redirect(Context, RedirectUrl) ->
     response_deprecated_redirect(Context, RedirectUrl, wh_json:new()).
 response_deprecated_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj) ->
     create_response(error, <<"deprecated">>, 301, JObj
                     ,Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
 
--spec response_redirect(cb_context:context(), wh_json:json_string(), wh_json:json_object()) -> cb_context:context().
+-spec response_redirect(cb_context:context(), wh_json:json_string(), wh_json:object()) -> cb_context:context().
 response_redirect(Context, RedirectUrl, JObj) ->
     response_redirect(Context, RedirectUrl, JObj, 301).
 
--spec response_redirect(cb_context:context(), wh_json:json_string(), wh_json:json_object(), integer()) -> cb_context:context().
+-spec response_redirect(cb_context:context(), wh_json:json_string(), wh_json:object(), integer()) -> cb_context:context().
 response_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj, Redirect) ->
     create_response(error, <<"redirect">>, Redirect, JObj, Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
 %%--------------------------------------------------------------------
@@ -345,7 +345,7 @@ change_pvt_enabled(State, AccountId) ->
             {error, R}
     end.
 
--spec get_path(#http_req{}, ne_binary()) -> ne_binary().
+-spec get_path(cowboy_req:req(), ne_binary()) -> ne_binary().
 get_path(Req, Relative) ->
     {RawPath, _} = cowboy_http_req:raw_path(Req),
 

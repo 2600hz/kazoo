@@ -154,7 +154,7 @@ start_deps() ->
 %% Functions for onrequest and onresponse callbacks
 %% @end
 %%--------------------------------------------------------------------
--spec on_request(#http_req{}) -> #http_req{}.
+-spec on_request(cowboy_req:req()) -> cowboy_req:req().
 on_request(Req0) ->
     {Method, Req1} = cowboy_http_req:method(Req0),
     case Method of
@@ -164,7 +164,7 @@ on_request(Req0) ->
             Req1
     end.
 
--spec on_response(cowboy_http:status(), cowboy_http:headers(), #http_req{}) -> #http_req{}.
+-spec on_response(cowboy_http:status(), cowboy_http:headers(), cowboy_req:req()) -> cowboy_req:req().
 on_response(Status, _Headers, Req0) ->
     {Method, Req1} = cowboy_http_req:method(Req0),
     case Method of

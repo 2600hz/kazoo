@@ -358,6 +358,6 @@ on_successful_validation(Id, #cb_context{}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].

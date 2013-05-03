@@ -3,7 +3,6 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_media.hrl").
 -include_lib("whistle/include/wh_log.hrl").
--include_lib("cowboy/include/http.hrl").
 
 -define(WHS_CONFIG_CAT, <<"media">>).
 
@@ -18,5 +17,5 @@
 
 -define(CONFIG_CAT, <<"media_mgr">>).
 
--define(WH_MEDIA_HRL, true).
+-define(WH_MEDIA_HRL, 'true').
 -endif.

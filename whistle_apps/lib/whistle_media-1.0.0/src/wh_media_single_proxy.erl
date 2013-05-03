@@ -137,7 +137,8 @@ set_resp_headers(Req, ContentType) ->
                                   ]
                ).
 
--spec set_resp_headers(#http_req{}, pos_integer(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', #http_req{}}.
+-spec set_resp_headers(cowboy_req:req(), pos_integer(), ne_binary(), ne_binary(), ne_binary()) ->
+                              {'ok', cowboy_req:req()}.
 set_resp_headers(Req, ChunkSize, ContentType, MediaName, Url) ->
     lists:foldl(fun({K,V}, {'ok', Req0Acc}) ->
                         cowboy_http_req:set_resp_header(K, V, Req0Acc)

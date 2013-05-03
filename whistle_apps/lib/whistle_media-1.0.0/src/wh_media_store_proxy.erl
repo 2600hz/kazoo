@@ -15,9 +15,9 @@
 
 -include("whistle_media.hrl").
 
--spec init/3 :: ({_, _}, #http_req{}, wh_proplist()) ->
-                        {'ok', #http_req{}, ne_binaries()} |
-                        {'shutdown',  #http_req{}, 'ok'}.
+-spec init({_, _}, cowboy_req:req(), wh_proplist()) ->
+                  {'ok', cowboy_req:req(), ne_binaries()} |
+                  {'shutdown',  cowboy_req:req(), 'ok'}.
 init({_Transport, _Proto}, Req0, _Opts) ->
     put(callid, wh_util:rand_hex_binary(16)),
     case cowboy_http_req:path_info(Req0) of
@@ -28,9 +28,9 @@ init({_Transport, _Proto}, Req0, _Opts) ->
             {shutdown, Req2, ok}
     end.
 
--spec is_authentic/2 :: (ne_binaries(), #http_req{}) ->
-                                {'ok', #http_req{}, ne_binaries()} |
-                                {'shutdown',  #http_req{}, 'ok'}.
+-spec is_authentic(ne_binaries(), cowboy_req:req()) ->
+                          {'ok', cowboy_req:req(), ne_binaries()} |
+                          {'shutdown',  cowboy_req:req(), 'ok'}.
 is_authentic(PathTokens, Req0) ->
     case whapps_config:get_is_true(?CONFIG_CAT, <<"proxy_store_authenticate">>, true) of
         false -> 
@@ -40,9 +40,9 @@ is_authentic(PathTokens, Req0) ->
             maybe_basic_authentication(PathTokens, Req0)
     end.
 
--spec maybe_basic_authentication/2 :: (ne_binaries(), #http_req{}) ->
-                                              {'ok', #http_req{}, ne_binaries()} |
-                                              {'shutdown',  #http_req{}, 'ok'}.
+-spec maybe_basic_authentication(ne_binaries(), cowboy_req:req()) ->
+                                        {'ok', cowboy_req:req(), ne_binaries()} |
+                                        {'shutdown',  cowboy_req:req(), 'ok'}.
 maybe_basic_authentication(PathTokens, Req0) ->
     case credentials(Req0) of
         {undefined, undefined, Req1} ->
@@ -52,9 +52,9 @@ maybe_basic_authentication(PathTokens, Req0) ->
             maybe_basic_authentication(Username, Password, PathTokens, Req1)
     end.
 
--spec maybe_basic_authentication/4 :: (ne_binary(), ne_binary(), ne_binaries(), #http_req{}) ->
-                                              {'ok', #http_req{}, ne_binaries()} |
-                                              {'shutdown',  #http_req{}, 'ok'}.
+-spec maybe_basic_authentication(ne_binary(), ne_binary(), ne_binaries(), cowboy_req:req()) ->
+                                        {'ok', cowboy_req:req(), ne_binaries()} |
+                                        {'shutdown',  cowboy_req:req(), 'ok'}.
 maybe_basic_authentication(Username, Password, PathTokens, Req1) ->
     AuthUsername = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_username">>, <<>>),
     AuthPassword = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_password">>, <<>>),
@@ -67,18 +67,18 @@ maybe_basic_authentication(Username, Password, PathTokens, Req1) ->
             {shutdown, unauthorized(Req1), ok}
     end.    
 
--spec maybe_acl_authentication/2 :: (ne_binaries(), #http_req{}) ->
-                                            {'ok', #http_req{}, ne_binaries()} |
-                                            {'shutdown',  #http_req{}, 'ok'}.
+-spec maybe_acl_authentication(ne_binaries(), cowboy_req:req()) ->
+                                      {'ok', cowboy_req:req(), ne_binaries()} |
+                                      {'shutdown',  cowboy_req:req(), 'ok'}.
 maybe_acl_authentication(PathTokens, Req0) ->
     ACLs = whapps_config:get(?CONFIG_CAT, <<"proxy_store_acls">>, [<<"127.0.0.0/24">>]),
     {IpTuple, Req1} = cowboy_http_req:peer_addr(Req0),
     Ip = wh_network_utils:iptuple_to_binary(IpTuple),
     maybe_acl_authentication(ACLs, Ip, PathTokens, Req1).
 
--spec maybe_acl_authentication/4 :: (ne_binaries(), ne_binary(), ne_binaries(), #http_req{}) ->
-                                            {'ok', #http_req{}, ne_binaries()} |
-                                            {'shutdown',  #http_req{}, 'ok'}.
+-spec maybe_acl_authentication(ne_binaries(), ne_binary(), ne_binaries(), cowboy_req:req()) ->
+                                      {'ok', cowboy_req:req(), ne_binaries()} |
+                                      {'shutdown',  cowboy_req:req(), 'ok'}.
 maybe_acl_authentication([], Ip, _, Req0) ->
     lager:debug("ip address ~s can not be authenticated via ACLs", [Ip]),
     {shutdown, unauthorized(Req0), ok};
@@ -91,7 +91,7 @@ maybe_acl_authentication([ACL|ACLs], Ip, PathTokens, Req0) ->
             maybe_acl_authentication(ACLs, Ip, PathTokens, Req0)
     end.
 
--spec credentials/1 :: (#http_req{}) -> {api_binary(), api_binary(), #http_req{}}.
+-spec credentials(cowboy_req:req()) -> {api_binary(), api_binary(), cowboy_req:req()}.
 credentials(Req0) ->    
     case cowboy_http_req:header('Authorization', Req0) of
         {undefined, Req1} ->
@@ -101,7 +101,7 @@ credentials(Req0) ->
             {Username, Password, Req1}
     end.
 
--spec credentials_from_header/1 :: (ne_binary()) -> {api_binary(), api_binary()}.
+-spec credentials_from_header(ne_binary()) -> {api_binary(), api_binary()}.
 credentials_from_header(AuthorizationHeader) ->
     case binary:split(AuthorizationHeader, <<$ >>) of
         [<<"Basic">>, EncodedCredentials] ->
@@ -110,7 +110,7 @@ credentials_from_header(AuthorizationHeader) ->
             {undefined, undefined}
     end.
 
--spec decoded_credentials/1 :: (ne_binary()) -> {api_binary(), api_binary()}.
+-spec decoded_credentials(ne_binary()) -> {api_binary(), api_binary()}.
 decoded_credentials(EncodedCredentials) ->
     DecodedCredentials = base64:decode(EncodedCredentials),
     case binary:split(DecodedCredentials, <<$:>>) of
@@ -120,14 +120,14 @@ decoded_credentials(EncodedCredentials) ->
             {undefined, undefined}
     end.
 
--spec unauthorized/1 :: (#http_req{}) -> #http_req{}.
+-spec unauthorized(cowboy_req:req()) -> cowboy_req:req().
 unauthorized(Req0) ->    
     {ok, Req1} = cowboy_http_req:set_resp_header(<<"Www-Authenticate">>, <<"Basic realm=\"Kazoo Media Storage Proxy\"">>, Req0),
     {ok, Req2} = cowboy_http_req:set_resp_body(unauthorized_body(), Req1),
     {ok, Req3} = cowboy_http_req:reply(401, Req2),
     Req3.
 
--spec unauthorized_body/0 :: () -> ne_binary().
+-spec unauthorized_body() -> ne_binary().
 unauthorized_body() ->
     <<"
     <!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\"
@@ -141,12 +141,12 @@ unauthorized_body() ->
     </HTML>
     ">>.
 
--spec handle/2 :: (#http_req{}, ne_binaries()) -> {'ok', #http_req{}, 'ok'}.
+-spec handle(cowboy_req:req(), ne_binaries()) -> {'ok', cowboy_req:req(), 'ok'}.
 handle(Req0, [Db, Id, Attachment]) ->
     is_appropriate_content_type(Db, Id, Attachment, Req0).
 
--spec is_appropriate_content_type/4 :: (ne_binary(), ne_binary(), ne_binary(), #http_req{}) ->
-                                               {'ok', #http_req{}, 'ok'}.
+-spec is_appropriate_content_type(ne_binary(), ne_binary(), ne_binary(), cowboy_req:req()) ->
+                                               {'ok', cowboy_req:req(), 'ok'}.
 is_appropriate_content_type(Db, Id, Attachment, Req0) ->
     case cowboy_http_req:header('Content-Type', Req0) of
         {<<"audio/", _/binary>> = CT, Req1}->
@@ -157,7 +157,8 @@ is_appropriate_content_type(Db, Id, Attachment, Req0) ->
             is_appropriate_extension(Db, Id, Attachment, Req1)
     end.
 
--spec is_appropriate_extension/4 :: (ne_binary(), ne_binary(), ne_binary(), #http_req{}) -> {'ok', #http_req{}, 'ok'}.  
+-spec is_appropriate_extension(ne_binary(), ne_binary(), ne_binary(), cowboy_req:req()) ->
+                                      {'ok', cowboy_req:req(), 'ok'}.  
 is_appropriate_extension(Db, Id, Attachment, Req0) ->
     Extension = filename:extension(Attachment),
     case wh_mime_types:from_extension(Extension) of
@@ -170,8 +171,8 @@ is_appropriate_extension(Db, Id, Attachment, Req0) ->
             {ok, Req1, ok}
     end.
 
--spec ensure_extension_present/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), #http_req{}) ->
-                                            {'ok', #http_req{}, 'ok'}.
+-spec ensure_extension_present(ne_binary(), ne_binary(), ne_binary(), ne_binary(), cowboy_req:req()) ->
+                                      {'ok', cowboy_req:req(), 'ok'}.
 ensure_extension_present(Db, Id, Attachment, CT, Req0) ->
     case wh_util:is_empty(filename:extension(Attachment))
         andalso wh_mime_types:to_extension(CT)
@@ -186,8 +187,8 @@ ensure_extension_present(Db, Id, Attachment, CT, Req0) ->
             {ok, Req1, ok}
     end.
 
--spec try_to_store/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), #http_req{}) ->
-                                {'ok', #http_req{}, 'ok'}.
+-spec try_to_store(ne_binary(), ne_binary(), ne_binary(), ne_binary(), cowboy_req:req()) ->
+                          {'ok', cowboy_req:req(), 'ok'}.
 try_to_store(Db, Id, Attachment, CT, Req0) ->
     DbName = wh_util:format_account_id(Db, encoded),
     {ok, Contents, Req1} = cowboy_http_req:body(Req0),
@@ -206,8 +207,8 @@ try_to_store(Db, Id, Attachment, CT, Req0) ->
             {ok, failure(Reason, Req1), ok}
     end.
 
--spec maybe_resolve_conflict(ne_binary(), ne_binary(), ne_binary(), binary(), wh_proplist(), #http_req{}) ->
-                                    {'ok', #http_req{}, 'ok'}.
+-spec maybe_resolve_conflict(ne_binary(), ne_binary(), ne_binary(), binary(), wh_proplist(), cowboy_req:req()) ->
+                                    {'ok', cowboy_req:req(), 'ok'}.
 maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req0) ->
     timer:sleep(5000),
     lager:debug("putting ~s onto ~s(~s): ~-800p", [Attachment, Id, DbName, Options]),
@@ -222,20 +223,20 @@ maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req0) ->
             {ok, failure(Reason, Req0), ok}
     end.
 
--spec success/2 :: (wh_json:object(), #http_req{}) -> #http_req{}.
+-spec success(wh_json:object(), cowboy_req:req()) -> cowboy_req:req().
 success(JObj, Req0) ->
     Body = io_lib:format("~s~n", [wh_json:encode(wh_json:set_value(<<"ok">>, true, JObj))]),
     {ok, Req1} = cowboy_http_req:set_resp_body(Body, Req0),
     {ok, Req2} = cowboy_http_req:reply(200, Req1),
     Req2.
 
--spec failure/2 :: (term(), #http_req{}) -> #http_req{}.
+-spec failure(term(), cowboy_req:req()) -> cowboy_req:req().
 failure(Reason, Req0) ->
     Body = io_lib:format("~p~n", [Reason]),
     {ok, Req1} = cowboy_http_req:set_resp_body(Body, Req0),
     {ok, Req2} = cowboy_http_req:reply(500, Req1),
     Req2.
 
--spec terminate/2 :: (#http_req{}, _) -> 'ok'.
+-spec terminate(cowboy_req:req(), _) -> 'ok'.
 terminate(_Req, _State) ->
     ok.

@@ -12,27 +12,27 @@
 
 -export([init/3]).
 -export([handle/2]).
--export([terminate/2]).
+-export([terminate/3]).
 
 -include("crossbar.hrl").
 
--spec init({atom(), 'http'}, #http_req{}, wh_proplist()) -> {'ok', #http_req{}, 'undefined'}.
+-spec init({atom(), 'http'}, cowboy_req:req(), wh_proplist()) -> {'ok', cowboy_req:req(), 'undefined'}.
 init({_Any, 'http'}, Req, []) ->
     {'ok', Req, 'undefined'}.
 
--spec handle(#http_req{}, State) -> {'ok', #http_req{}, State}.
+-spec handle(cowboy_req:req(), State) -> {'ok', cowboy_req:req(), State}.
 handle(Req, State) ->
     Headers = [{'Content-Type', "text/plain; charset=UTF-8"}],
     {'ok', Req1} = cowboy_http_req:chunked_reply(200, Headers, Req),
-    Path = code:priv_dir(crossbar) ++ "/kazoo.txt",
+    Path = code:priv_dir('crossbar') ++ "/kazoo.txt",
     {'ok', Fd} = file:open(Path, 'read'),
     _ = readme_lines(Fd, Req1),
     {'ok', Req1, State}.
 
--spec terminate(#http_req{}, term()) -> 'ok'.
-terminate(_Req, _State) -> 'ok'.
+-spec terminate(term(), cowboy_req:req(), term()) -> 'ok'.
+terminate(_Reason, _Req, _State) -> 'ok'.
 
--spec readme_lines(file:fd(), #http_req{}) -> 'ok' | {'error', _}.
+-spec readme_lines(file:fd(), cowboy_req:req()) -> 'ok' | {'error', _}.
 readme_lines(Fd, Req) ->
     case file:read_line(Fd) of
         {'ok', Data} ->
