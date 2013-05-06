@@ -254,18 +254,24 @@ maybe_import_enabled(#cb_context{auth_account_id=AuthId
                                  ,resp_status=success, doc=JObj}=Context) ->
 
     case lists:member(AuthId, wh_json:get_value(<<"pvt_tree">>, JObj, [])) of
-        false ->
+        'false' ->
             Context#cb_context{doc=wh_json:delete_key(<<"enabled">>, JObj)};
-        true ->
+        'true' ->
             case wh_json:get_value(<<"enabled">>, JObj) of
-                undefined -> 
+                'undefined' -> 
                     Context;
                 Enabled ->
+                    _  = spawn(?MODULE, maybe_disable_sub_accounts, [Context, Enabled]),
                     Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, wh_util:is_true(Enabled)
                                                              ,wh_json:delete_key(<<"enabled">>, JObj))}
             end
     end.
 
+maybe_disable_sub_accounts(#cb_context{account_id=AccountId}, 'true') ->
+    crossbar_util:enable_account(AccountId);
+maybe_disable_sub_accounts(#cb_context{account_id=AccountId}, 'false') ->
+    crossbar_util:disable_account(AccountId).
+    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
