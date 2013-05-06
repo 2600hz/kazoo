@@ -26,13 +26,13 @@
                            ,{'from_form', [{<<"application">>, <<"x-www-form-urlencoded">>}]}
                            ,{'from_binary', [{<<"text">>, <<"csv">>}]}
                           ]).
--define(ALLOWED_METHODS, ['GET'
-                          ,'POST'
-                          ,'PUT'
-                          ,'DELETE'
-                          ,'OPTIONS'
-                          ,'HEAD'
-                          ,'PATCH'
+-define(ALLOWED_METHODS, [<<"GET">>
+                          ,<<"POST">>
+                          ,<<"PUT">>
+                          ,<<"DELETE">>
+                          ,<<"OPTIONS">>
+                          ,<<"HEAD">>
+                          ,<<"PATCH">>
                          ]).
 
 -define(CROSSBAR_CACHE, 'crossbar_cache').

@@ -14,67 +14,80 @@
 
 -spec start_link() -> 'ignore'.
 start_link() ->
-    put(callid, ?LOG_SYSTEM_ID),
-    _ = application:start(cowboy),
-    Dispatch = [
-                {'_', [{[<<"store">>,'...'], wh_media_store_proxy, []}
-                       ,{[<<"single">>, '...'], wh_media_single_proxy, []}
-                       ,{[<<"continuous">>,'...'], wh_media_continuous_proxy, []}
-                      ]}
-               ],
+    put('callid', ?LOG_SYSTEM_ID),
 
-    Port = whapps_config:get_integer(?CONFIG_CAT, <<"proxy_port">>, 24517),
-    Listeners = whapps_config:get_integer(?CONFIG_CAT, <<"proxy_listeners">>, 25),
-    %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
-    cowboy:start_listener(wh_media_proxy, Listeners
-                          ,cowboy_tcp_transport, [{port, Port}]
-                          ,cowboy_http_protocol, [{dispatch, Dispatch}]
-                         ),
+    _ = application:start('crypto'),
+    _ = application:start('ranch'),
+    _ = application:start('cowboy'),
 
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_ssl_proxy">>, false) of
-        false -> ok;
-        true ->
-            RootDir = code:lib_dir(whistle_media),
+    Dispatch = cowboy_router:compile([
+                                      {'_', [{<<"/store/[...]">>, 'wh_media_store_proxy', []}
+                                             ,{<<"/single/[...]">>, 'wh_media_single_proxy', []}
+                                             ,{<<"/continuous/[...]">>, 'wh_media_continuous_proxy', []}
+                                            ]}
+                                     ]),
+    maybe_start_plaintext(Dispatch),
+    maybe_start_ssl(Dispatch),
+
+    'ignore'.
+
+maybe_start_plaintext(Dispatch) ->
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_plaintext">>, 'true') of
+        'false' -> lager:debug("plaintext media proxy support not enabled");
+        'true' ->
+            Port = whapps_config:get_integer(?CONFIG_CAT, <<"proxy_port">>, 24517),
+            Listeners = whapps_config:get_integer(?CONFIG_CAT, <<"proxy_listeners">>, 25),
+
+            cowboy:start_http('wh_media_proxy', Listeners
+                              ,[{'port', Port}]
+                              ,[{'env', [{'dispatch', Dispatch}]}]
+                             ),
+            lager:info("started media proxy on port ~p", [Port])
+    end.
+
+maybe_start_ssl(Dispatch) ->
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_ssl_proxy">>, 'false') of
+        'false' -> lager:debug("ssl media proxy support not enabled");
+        'true' ->
+            RootDir = code:lib_dir('whistle_media'),
+
+            SSLCert = whapps_config:get_string(?CONFIG_CAT
+                                               ,<<"ssl_cert">>
+                                                   ,filename:join([RootDir, <<"priv/ssl/media_mgr.crt">>])
+                                              ),
+            SSLKey = whapps_config:get_string(?CONFIG_CAT
+                                              ,<<"ssl_key">>
+                                                  ,filename:join([RootDir, <<"priv/ssl/media_mgr.key">>])
+                                             ),
+
+            SSLPort = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 24518),
+            SSLPassword = whapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, <<>>),
+
+            Listeners = whapps_config:get_integer(?CONFIG_CAT, <<"proxy_listeners">>, 25),
 
             try
-                SSLCert = whapps_config:get_string(?CONFIG_CAT
-                                                   ,<<"ssl_cert">>
-                                                   ,filename:join([RootDir, <<"priv/ssl/media_mgr.crt">>])
-                                                  ),
-                SSLKey = whapps_config:get_string(?CONFIG_CAT
-                                                  ,<<"ssl_key">>
-                                                  ,filename:join([RootDir, <<"priv/ssl/media_mgr.key">>])
-                                                 ),
-
-                SSLPort = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 24518),
-                SSLPassword = whapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, <<>>),
-
-                cowboy:start_listener(media_mgr_ssl, 10
-                                      ,cowboy_ssl_transport, [{port, SSLPort}
-                                                              ,{certfile, find_file(SSLCert, RootDir)}
-                                                              ,{keyfile, find_file(SSLKey, RootDir)}
-                                                              ,{password, SSLPassword}
-                                                             ]
-                                      ,cowboy_http_protocol, [{dispatch, Dispatch}
-                                                              ,{onrequest, fun on_request/1}
-                                                              ,{onresponse, fun on_response/3}
-                                                             ]
-                                     ),
-                ok
+                cowboy:start_https('media_mgr_ssl', Listeners
+                                   ,[{'port', SSLPort}
+                                     ,{'certfile', find_file(SSLCert, RootDir)}
+                                     ,{'keyfile', find_file(SSLKey, RootDir)}
+                                     ,{'password', SSLPassword}
+                                    ]
+                                   ,[{'env', [{'dispatch', Dispatch}]}
+                                     ,{'onrequest', fun on_request/1}
+                                     ,{'onresponse', fun on_response/3}
+                                    ]
+                                  ),
+                lager:info("started ssl media proxy on port ~p", [SSLPort])
             catch
-                throw:{invalid_file, _File} ->
+                'throw':{'invalid_file', _File} ->
                     lager:info("SSL disabled: failed to find ~s (tried prepending ~s too)", [_File, RootDir])
             end
-    end,
-    lager:debug("started media proxy on port ~p", [Port]),
-    ignore.
+    end.
 
 -spec on_request(cowboy_req:req()) -> cowboy_req:req().
 on_request(Req0) ->
 
     {Method, Req1} = cowboy_http_req:method(Req0),
-
-
 
     _ = wh_counter:inc(<<"media_proxy.requests.methods.", (wh_util:to_upper_binary(Method))/binary>>),
     Req1.

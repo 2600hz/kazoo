@@ -28,62 +28,75 @@ start_link() ->
 
     _ = start_deps(),
 
-    %% maybe move this into a config file?
-    %% {Host, list({Path, Handler, Opts})}
-    Dispatch = [{'_', [{['v1', '...'], 'v1_resource', []}
-                       ,{'_', 'crossbar_default_handler', []}
-                      ]}
-               ],
+    Dispatch = cowboy_router:compile([
+                                      %% {HostMatch, list({PathMatch, Handler, Opts})}
+                                      {'_', [{<<"/v1/[...]">>, 'v1_resource', []}
+                                             ,{'_', 'crossbar_default_handler', []}
+                                            ]}
+                                     ]),
 
-    Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 8000),
-    ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
-    %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
-    cowboy:start_listener('v1_resource', 100
-                          ,'cowboy_tcp_transport', [{'port', Port}]
-                          ,'cowboy_http_protocol', [{'dispatch', Dispatch}
-                                                    ,{'timeout', ReqTimeout}
-                                                    ,{'onrequest', fun on_request/1}
-                                                    ,{'onresponse', fun on_response/3}
-                                                   ]
-                         ),
+    maybe_start_plaintext(Dispatch),
+    maybe_start_ssl(Dispatch),
 
+    crossbar_sup:start_link().
+
+maybe_start_plaintext(Dispatch) ->
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_plaintext">>, 'true') of
+        'false' -> lager:info("plaintext api support not enabled");
+        'true' ->
+            Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 8000),
+            ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
+            %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
+            cowboy:start_http('v1_resource', 100
+                              ,[{'port', Port}]
+                              ,[{'env', [{'dispatch', Dispatch}
+                                         ,{'timeout', ReqTimeout}
+                                        ]}
+                                ,{'onrequest', fun on_request/1}
+                                ,{'onresponse', fun on_response/4}
+                               ]
+                             )
+    end.
+
+maybe_start_ssl(Dispatch) ->
     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_ssl">>, 'false') of
-        'false' -> 'ok';
-        true ->
+        'false' -> lager:info("ssl api support not enabled");
+        'true' ->
             RootDir = code:lib_dir('crossbar'),
 
-            try
-                SSLCert = whapps_config:get_string(?CONFIG_CAT
-                                                   ,<<"ssl_cert">>
+            SSLCert = whapps_config:get_string(?CONFIG_CAT
+                                               ,<<"ssl_cert">>
                                                    ,filename:join([RootDir, <<"priv/ssl/crossbar.crt">>])
-                                                  ),
-                SSLKey = whapps_config:get_string(?CONFIG_CAT
-                                                  ,<<"ssl_key">>
+                                              ),
+            SSLKey = whapps_config:get_string(?CONFIG_CAT
+                                              ,<<"ssl_key">>
                                                   ,filename:join([RootDir, <<"priv/ssl/crossbar.key">>])
-                                                 ),
+                                             ),
 
-                SSLPort = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 8443),
-                SSLPassword = whapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, <<>>),
+            SSLPort = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 8443),
+            SSLPassword = whapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, <<>>),
 
-                cowboy:start_listener('v1_resource_ssl', 100
-                                      ,'cowboy_ssl_transport', [
-                                                                {'port', SSLPort}
-                                                                ,{'certfile', find_file(SSLCert, RootDir)}
-                                                                ,{'keyfile', find_file(SSLKey, RootDir)}
-                                                                ,{'password', SSLPassword}
-                                                               ]
-                                      ,'cowboy_http_protocol', [{'dispatch', Dispatch}
-                                                                ,{'onrequest', fun on_request/1}
-                                                                ,{'onresponse', fun on_response/3}
-                                                               ]
-                                     )
+            ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
+
+            try
+                cowboy:start_https('v1_resource_ssl', 100
+                                   ,[{'port', SSLPort}
+                                     ,{'certfile', find_file(SSLCert, RootDir)}
+                                     ,{'keyfile', find_file(SSLKey, RootDir)}
+                                     ,{'password', SSLPassword}
+                                    ]
+                                    ,[{'env', [{'dispatch', Dispatch}
+                                               ,{'timeout', ReqTimeout}
+                                              ]}
+                                      ,{'onrequest', fun on_request/1}
+                                      ,{'onresponse', fun on_response/4}
+                                     ]
+                                  )
             catch
                 'throw':{'invalid_file', _File} ->
                     lager:info("SSL disabled: failed to find ~s (tried prepending ~s too)", [_File, RootDir])
             end
-    end,
-
-    crossbar_sup:start_link().
+    end.
 
 find_file(File, Root) ->
     case filelib:is_file(File) of
@@ -145,7 +158,9 @@ stop_mod(CBMod) ->
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [ wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'inets', 'cowboy', 'whistle_amqp']],
+    _ = [ wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'inets'
+                                                 ,'ranch' ,'cowboy', 'whistle_amqp'
+                                                ]],
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -156,7 +171,7 @@ start_deps() ->
 %%--------------------------------------------------------------------
 -spec on_request(cowboy_req:req()) -> cowboy_req:req().
 on_request(Req0) ->
-    {Method, Req1} = cowboy_http_req:method(Req0),
+    {Method, Req1} = cowboy_req:method(Req0),
     case Method of
         'OPTIONS' -> Req1;
         _ ->
@@ -164,13 +179,13 @@ on_request(Req0) ->
             Req1
     end.
 
--spec on_response(cowboy_http:status(), cowboy_http:headers(), cowboy_req:req()) -> cowboy_req:req().
-on_response(Status, _Headers, Req0) ->
-    {Method, Req1} = cowboy_http_req:method(Req0),
+-spec on_response(cowboy_http:status(), cowboy_http:headers(), text(), cowboy_req:req()) -> cowboy_req:req().
+on_response(Status, _Headers, _Body, Req0) ->
+    {Method, Req1} = cowboy_req:method(Req0),
     case Method of
+        <<"OPTIONS">> -> Req1;
         'OPTIONS' -> Req1;
         _ ->
             wh_counter:inc(<<"crossbar.responses.", (wh_util:to_binary(Status))/binary>>),
             Req1
     end.
-    

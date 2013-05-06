@@ -45,7 +45,7 @@
 is_cors_preflight(Req0) ->
     case is_cors_request(Req0) of
         {'true', Req1} ->
-            case cowboy_http_req:method(Req1) of
+            case cowboy_req:method(Req1) of
                 {'OPTIONS', Req2} -> {'true', Req2};
                 {_M, Req2} -> {'false', Req2}
             end;
@@ -62,13 +62,15 @@ is_cors_preflight(Req0) ->
 -spec is_cors_request(cowboy_req:req()) -> {boolean(), cowboy_req:req()}.
 -spec is_cors_request(cowboy_req:req(), ne_binaries()) -> {boolean(), cowboy_req:req()}.
 is_cors_request(Req) ->
-    ReqHdrs = [<<"Origin">>, <<"Access-Control-Request-Method">>, <<"Access-Control-Request-Headers">>],
+    ReqHdrs = [<<"origin">>, <<"access-control-request-method">>, <<"access-control-request-headers">>],
+
     is_cors_request(Req, ReqHdrs).
 is_cors_request(Req, []) -> {'false', Req};
 is_cors_request(Req, [ReqHdr|ReqHdrs]) ->
-    case cowboy_http_req:header(ReqHdr, Req) of
-        {'undefined', Req1} -> is_cors_request(Req1, ReqHdrs);
-        {_H, Req1} -> {'true', Req1}
+    {Hdr, Req1} = cowboy_req:header(ReqHdr, Req),
+    case Hdr of
+        'undefined' -> is_cors_request(Req1, ReqHdrs);
+        _H -> {'true', Req1}
     end.
 
 %%--------------------------------------------------------------------
@@ -79,14 +81,9 @@ is_cors_request(Req, [ReqHdr|ReqHdrs]) ->
 -spec add_cors_headers(cowboy_req:req(), cb_context:context()) ->
                               {'ok', cowboy_req:req()}.
 add_cors_headers(Req0, #cb_context{allow_methods=Ms}=Context) ->
-    {ReqMethod0, Req1} = cowboy_http_req:header(<<"Access-Control-Request-Method">>, Req0),
+    {ReqMethod, Req1} = cowboy_req:header(<<"access-control-request-method">>, Req0),
 
-    ReqMethod = wh_util:to_binary(ReqMethod0),
-    Methods = [wh_util:to_binary(M)
-               || M <- [<<"OPTIONS">> | Ms],
-                  (not wh_util:is_empty(M))
-              ],
-
+    Methods = [<<"OPTIONS">> | Ms],
     Allow = case wh_util:is_empty(ReqMethod)
                 orelse lists:member(ReqMethod, Methods)
             of
@@ -94,9 +91,9 @@ add_cors_headers(Req0, #cb_context{allow_methods=Ms}=Context) ->
                 'true' -> Methods
             end,
 
-    lists:foldl(fun({H, V}, {'ok', ReqAcc}) ->
-                        cowboy_http_req:set_resp_header(H, V, ReqAcc)
-                end, {'ok', Req1}, get_cors_headers(Context#cb_context{allow_methods=Allow})).
+    lists:foldl(fun({H, V}, ReqAcc) ->
+                        cowboy_req:set_resp_header(H, V, ReqAcc)
+                end, Req1, get_cors_headers(Context#cb_context{allow_methods=Allow})).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,11 +102,11 @@ add_cors_headers(Req0, #cb_context{allow_methods=Ms}=Context) ->
 %%--------------------------------------------------------------------
 -spec get_cors_headers(cb_context:context()) -> wh_proplist().
 get_cors_headers(#cb_context{allow_methods=Allow}) ->
-    [{<<"Access-Control-Allow-Origin">>, <<"*">>}
-     ,{<<"Access-Control-Allow-Methods">>, wh_util:join_binary(Allow, <<", ">>)}
-     ,{<<"Access-Control-Allow-Headers">>, <<"Content-Type, Depth, User-Agent, X-Http-Method-Override, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token, If-Match">>}
-     ,{<<"Access-Control-Expose-Headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, Location, Etag, ETag">>}
-     ,{<<"Access-Control-Max-Age">>, wh_util:to_binary(?SECONDS_IN_DAY)}
+    [{<<"access-control-allow-origin">>, <<"*">>}
+     ,{<<"access-control-allow-methods">>, wh_util:join_binary(Allow, <<", ">>)}
+     ,{<<"access-control-allow-headers">>, <<"Content-Type, Depth, User-Agent, X-Http-Method-Override, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-control, X-Auth-Token, If-Match">>}
+     ,{<<"access-control-expose-Headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, Location, Etag, ETag">>}
+     ,{<<"access-control-max-age">>, wh_util:to_binary(?SECONDS_IN_DAY)}
     ].
 
 -spec get_req_data(cb_context:context(), cowboy_req:req()) ->
@@ -119,10 +116,12 @@ get_cors_headers(#cb_context{allow_methods=Allow}) ->
                           {cb_context:context(), cowboy_req:req()} |
                           {'halt', cb_context:context(), cowboy_req:req()}.
 get_req_data(Context, Req0) ->
-    {QS0, Req1} = cowboy_http_req:qs_vals(Req0),
+    {QS0, Req1} = cowboy_req:qs_vals(Req0),
     QS = wh_json:from_list(QS0),
 
-    get_req_data(Context, cowboy_http_req:parse_header('Content-Type', Req1), QS).
+    lager:debug("query string: ~p", [QS]),
+
+    get_req_data(Context, cowboy_req:header(<<"content-type">>, Req1), QS).
 
 get_req_data(Context, {'undefined', Req0}, QS) ->
     lager:debug("undefined content type when getting req data, assuming application/json"),
@@ -132,16 +131,16 @@ get_req_data(Context, {'undefined', Req0}, QS) ->
                         ,query_json=QS
                        }
      ,Req1};
-get_req_data(Context, {{<<"multipart">>, <<"form-data">>, _}, Req}, QS) ->
+get_req_data(Context, {<<"multipart/form-data">>, Req}, QS) ->
     lager:debug("multipart/form-data content type when getting req data"),
     maybe_extract_multipart(Context#cb_context{query_json=QS}, Req, QS);
 
 %% cURL defaults to this content-type, so check it for JSON if parsing fails
-get_req_data(Context, {{<<"application">>, <<"x-www-form-urlencoded">>, _}, Req1}, QS) ->
+get_req_data(Context, {{<<"application/x-www-form-urlencoded">>, _}, Req1}, QS) ->
     lager:debug("application/x-www-form-urlencoded content type when getting req data"),
     maybe_extract_multipart(Context#cb_context{query_json=QS}, Req1, QS);
 
-get_req_data(Context, {{<<"application">>, <<"json">>, _}, Req1}, QS) ->
+get_req_data(Context, {<<"application/json">>, Req1}, QS) ->
     lager:debug("application/json content type when getting req data"),
     {JSON, Req2} = get_json_body(Req1),
     {Context#cb_context{req_json=JSON
@@ -149,7 +148,7 @@ get_req_data(Context, {{<<"application">>, <<"json">>, _}, Req1}, QS) ->
                         ,query_json=QS
                        }
      ,Req2};
-get_req_data(Context, {{<<"application">>, <<"x-json">>, _}, Req1}, QS) ->
+get_req_data(Context, {<<"application/x-json">>, Req1}, QS) ->
     lager:debug("application/x-json content type when getting req data"),
     {JSON, Req2} = get_json_body(Req1),
     {Context#cb_context{req_json=JSON
@@ -157,15 +156,15 @@ get_req_data(Context, {{<<"application">>, <<"x-json">>, _}, Req1}, QS) ->
                         ,query_json=QS
                        }
      ,Req2};
-get_req_data(Context, {{<<"application">>, <<"base64">>, _}, Req1}, QS) ->
+get_req_data(Context, {<<"application/base64">>, Req1}, QS) ->
     lager:debug("application/base64 content type when getting req data"),
     decode_base64(Context#cb_context{query_json=QS}, <<"application/base64">>, Req1);
-get_req_data(Context, {{<<"application">>, <<"x-base64">>, _}, Req1}, QS) ->
+get_req_data(Context, {<<"application/x-base64">>, Req1}, QS) ->
     lager:debug("application/x-base64 content type when getting req data"),
     decode_base64(Context#cb_context{query_json=QS}, <<"application/base64">>, Req1);
-get_req_data(Context, {{ContentType, ContentSubType, _}, Req1}, QS) ->
-    lager:debug("unknown content-type: ~s/~s", [ContentType, ContentSubType]),
-    extract_file(Context#cb_context{query_json=QS}, list_to_binary([ContentType, "/", ContentSubType]), Req1).
+get_req_data(Context, {ContentType, Req1}, QS) ->
+    lager:debug("unknown content-type: ~s", [ContentType]),
+    extract_file(Context#cb_context{query_json=QS}, ContentType, Req1).
 
 -spec maybe_extract_multipart(cb_context:context(), cowboy_req:req(), wh_json:object()) ->
                                      {cb_context:context(), cowboy_req:req()} |
@@ -193,7 +192,7 @@ maybe_extract_multipart(Context, Req0, QS) ->
 -spec extract_multipart(cb_context:context(), cowboy_req:req()) ->
                                {cb_context:context(), cowboy_req:req()}.
 extract_multipart(#cb_context{req_files=Files}=Context, Req0) ->
-    MPData = cowboy_http_req:multipart_data(Req0),
+    MPData = cowboy_req:multipart_data(Req0),
 
     case extract_multipart_content(MPData, wh_json:new()) of
         {'eof', Req1} -> {Context, Req1};
@@ -208,27 +207,27 @@ extract_multipart_content({'eof', _}=EOF, _) -> EOF;
 extract_multipart_content({'end_of_part', Req}, JObj) -> {'end_of_part', JObj, Req};
 extract_multipart_content({{'headers', Headers}, Req}, JObj) ->
     lager:debug("setting multipart headers: ~p", [Headers]),
-    MPData = cowboy_http_req:multipart_data(Req),
+    MPData = cowboy_req:multipart_data(Req),
     extract_multipart_content(MPData, wh_json:set_value(<<"headers">>, Headers, JObj));
 extract_multipart_content({{'body', Datum}, Req}, JObj) ->
     extract_multipart_content({{'data', Datum}, Req}, JObj);
 extract_multipart_content({{'data', Datum}, Req}, JObj) ->
     Data = wh_json:get_value(<<"data">>, JObj, <<>>),
-    extract_multipart_content(cowboy_http_req:multipart_data(Req)
+    extract_multipart_content(cowboy_req:multipart_data(Req)
                               ,wh_json:set_value(<<"data">>, <<Data/binary, Datum/binary>>, JObj)
                              ).
 
 -spec extract_file(cb_context:context(), ne_binary(), cowboy_req:req()) ->
                           {cb_context:context(), cowboy_req:req()}.
 extract_file(Context, ContentType, Req0) ->
-    case cowboy_http_req:body(Req0) of
+    case cowboy_req:body(Req0) of
         {'error', 'badarg'} -> {Context, Req0};
         {'ok', FileContents, Req1} ->
             %% http://tools.ietf.org/html/rfc2045#page-17
-            case cowboy_http_req:header(<<"Content-Transfer-Encoding">>, Req1) of
+            case cowboy_req:header(<<"content-transfer-encoding">>, Req1) of
                 <<"base64">> -> decode_base64(Context, ContentType, Req1);
                 _Else ->
-                    {ContentLength, Req2} = cowboy_http_req:header('Content-Length', Req1),
+                    {ContentLength, Req2} = cowboy_req:header(<<"content-length">>, Req1),
                     Headers = wh_json:from_list([{<<"content_type">>, ContentType}
                                                  ,{<<"content_length">>, ContentLength}
                                                 ]),
@@ -245,7 +244,7 @@ extract_file(Context, ContentType, Req0) ->
 -spec decode_base64(cb_context:context(), ne_binary(), cowboy_req:req()) ->
                            {cb_context:context(), cowboy_req:req()}.
 decode_base64(Context, CT, Req0) ->
-    case cowboy_http_req:body(Req0) of
+    case cowboy_req:body(Req0) of
         {'error', _E} ->
             lager:debug("error getting request body: ~p", [_E]),
             {Context, Req0};
@@ -293,7 +292,7 @@ corrected_base64_decode(Base64) ->
 -spec get_json_body(cowboy_req:req(), ne_binary()) -> get_json_return().
 
 get_json_body(Req0) ->
-    case cowboy_http_req:body(Req0) of
+    case cowboy_req:body(Req0) of
         {'error', _E} ->
             lager:debug("request had no payload: ~s", [_E]),
             {wh_json:new(), Req0};
@@ -418,7 +417,7 @@ allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
         [] -> [];
         Succeeded ->
             AllowedSet = lists:foldr(fun(Response, Acc) ->
-                                             sets:intersection(Acc, sets:from_list(Response))
+                                             sets:intersection(Acc, sets:from_list([wh_util:to_binary(R) || R <- Response]))
                                      end, sets:from_list(Available), Succeeded),
             maybe_add_post_method(ReqVerb, HttpVerb, sets:to_list(AllowedSet))
     end.
@@ -465,7 +464,7 @@ is_authentic(Req0, Context0) ->
 get_auth_token(Req0, #cb_context{req_json=ReqJObj
                                  ,query_json=QSJObj
                                 }=Context0) ->
-    case cowboy_http_req:header(<<"X-Auth-Token">>, Req0) of
+    case cowboy_req:header(<<"x-auth-token">>, Req0) of
         {'undefined', Req1} ->
             case wh_json:get_value(<<"auth_token">>, ReqJObj) of
                 'undefined' ->
@@ -519,13 +518,13 @@ is_permitted(Req0, Context0) ->
                                    {boolean(), cowboy_req:req(), cb_context:context()}.
 is_known_content_type(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     lager:debug("ignore content type for options"),
-    {true, Req, Context};
+    {'true', Req, Context};
 is_known_content_type(Req, #cb_context{req_verb = <<"get">>}=Context) ->
     lager:debug("ignore content type for get"),
-    {true, Req, Context};
+    {'true', Req, Context};
 is_known_content_type(Req, #cb_context{req_verb = <<"delete">>}=Context) ->
     lager:debug("ignore content type for delete"),
-    {true, Req, Context};
+    {'true', Req, Context};
 is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     lager:debug("is_known_content_type"),
 
@@ -536,7 +535,7 @@ is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                             crossbar_bindings:fold(Event, Payload)
                     end, Context0, Nouns),
 
-    {CT, Req1} = cowboy_http_req:parse_header('Content-Type', Req0),
+    {CT, Req1} = cowboy_req:header(<<"content-type">>, Req0),
 
     is_known_content_type(Req1, Context1, ensure_content_type(CT)).
 
@@ -577,7 +576,10 @@ content_type_matches({Type, SubType, Opts}, {Type, SubType, ModOpts}) ->
     lists:all(fun({K, V}) ->
                       props:get_value(K, Opts) =:= V
               end, ModOpts);
+content_type_matches(CTA, {CT, SubCT, _}) when is_binary(CTA) ->
+    CTA =:= <<CT/binary, "/", SubCT>>;
 content_type_matches(_CTA, _CTAs) ->
+    lager:debug("cta: ~p, ctas: ~p", [_CTA, _CTAs]),
     'false'.
 
 -spec ensure_content_type(any()) -> content_type().
@@ -748,7 +750,7 @@ create_push_response(Req0, Context) ->
     {Content, Req1} = create_resp_content(Req0, Context),
     Req2 = set_resp_headers(Req1, Context),
     lager:debug("content: ~s", [wh_util:to_binary(Content)]),
-    {'ok', Req3} = cowboy_http_req:set_resp_body(Content, Req2),
+    Req3 = cowboy_req:set_resp_body(Content, Req2),
     Succeeded = succeeded(Context),
     lager:debug("is successful response: ~p", [Succeeded]),
     {Succeeded, Req3, Context}.
@@ -816,11 +818,10 @@ set_resp_headers(Req0, #cb_context{resp_headers=[]}) -> Req0;
 set_resp_headers(Req0, #cb_context{resp_headers=Headers}) ->
     lists:foldl(fun({Header, Value}, ReqAcc) ->
                         {H, V} = fix_header(Header, Value, ReqAcc),
-                        {'ok', ReqAcc1} = cowboy_http_req:set_resp_header(H, V, ReqAcc),
-                        ReqAcc1
+                        cowboy_req:set_resp_header(H, V, ReqAcc)
                 end, Req0, props:filter_empty(Headers)).
 
--spec fix_header(nonempty_string() | ne_binary(), nonempty_string() | ne_binary(), cowboy_req:req()) ->
+-spec fix_header(text(), text(), cowboy_req:req()) ->
                         {binary(), binary()}.
 fix_header(<<"Location">> = H, Path, Req) ->
     {H, crossbar_util:get_path(Req, Path)};
@@ -833,7 +834,7 @@ halt(Req0, #cb_context{resp_error_code=StatusCode}=Context) ->
     lager:debug("halting execution here"),
     {Content, Req1} = create_resp_content(Req0, Context),
     lager:debug("setting resp body: ~s", [Content]),
-    {'ok', Req2} = cowboy_http_req:set_resp_body(Content, Req1),
+    Req2 = cowboy_req:set_resp_body(Content, Req1),
     lager:debug("setting status code: ~p", [StatusCode]),
-    {'ok', Req3} = cowboy_http_req:reply(StatusCode, Req2),
+    {'ok', Req3} = cowboy_req:reply(StatusCode, Req2),
     {'halt', Req3, Context}.

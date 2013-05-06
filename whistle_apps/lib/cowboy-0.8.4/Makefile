@@ -51,9 +51,10 @@ clean:
 # Dependencies.
 
 $(DEPS_DIR)/ranch:
-	@mkdir -p $(DEPS_DIR)
-	git clone -n -- https://github.com/extend/ranch.git $(DEPS_DIR)/ranch
-	cd $(DEPS_DIR)/ranch ; git checkout -q $(RANCH_VSN)
+	echo "skipping"
+#	@mkdir -p $(DEPS_DIR)
+#	git clone -n -- https://github.com/extend/ranch.git $(DEPS_DIR)/ranch
+#	cd $(DEPS_DIR)/ranch ; git checkout -q $(RANCH_VSN)
 
 deps: $(DEPS_DIR)/ranch
 	@$(MAKE) -C $(DEPS_DIR)/ranch

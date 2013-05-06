@@ -52,25 +52,25 @@
 -spec init({'tcp' | 'ssl', 'http'}, cowboy_req:req(), wh_proplist()) ->
                   {'upgrade', 'protocol', 'cowboy_http_rest'}.
 init({'tcp', 'http'}, _Req, _Opts) ->
-    {'upgrade', 'protocol', 'cowboy_http_rest'};
+    {'upgrade', 'protocol', 'cowboy_rest'};
 init({'ssl', 'http'}, _Req, _Opts) ->
-    {'upgrade', 'protocol', 'cowboy_http_rest'}.
+    {'upgrade', 'protocol', 'cowboy_rest'}.
 
 -spec rest_init(cowboy_req:req(), wh_proplist()) ->
                        {'ok', cowboy_req:req(), cb_context:context()}.
 rest_init(Req0, Opts) ->
-    ReqId = case cowboy_http_req:header(<<"X-Request-Id">>, Req0) of
+    ReqId = case cowboy_req:header(<<"x-request-id">>, Req0) of
                 {'undefined', _} -> couch_mgr:get_uuid();
                 {UserReqId, _} -> wh_util:to_binary(UserReqId)
             end,
     put('callid', ReqId),
 
-    {Host, Req1} = cowboy_http_req:raw_host(Req0),
-    {Port, Req2} = cowboy_http_req:port(Req1),
-    {Path, Req3} = cowboy_http_req:raw_path(Req2),
-    {QS, Req4} = cowboy_http_req:raw_qs(Req3),
-    {Method, Req5} = cowboy_http_req:method(Req4),
-    {Peer, Req6} = cowboy_http_req:peer_addr(Req5),
+    {Host, Req1} = cowboy_req:host(Req0),
+    {Port, Req2} = cowboy_req:port(Req1),
+    {Path, Req3} = cowboy_req:path(Req2),
+    {QS, Req4} = cowboy_req:qs(Req3),
+    {Method, Req5} = cowboy_req:method(Req4),
+    {{Peer, _PeerPort}, Req6} = cowboy_req:peer(Req5),
     ClientIP = wh_network_utils:iptuple_to_binary(Peer),
 
     lager:debug("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
@@ -89,7 +89,8 @@ rest_init(Req0, Opts) ->
      },
 
     {Context1, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {Context0, Opts}),
-    {'ok', Req7} = cowboy_http_req:set_resp_header(<<"X-Request-ID">>, ReqId, Req6),
+    Req7 = cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req6),
+    lager:debug("begin req"),
     {'ok', Req7, Context1}.
 
 terminate(Req, Context) ->
@@ -127,9 +128,11 @@ known_methods(Req, Context) ->
 -spec allowed_methods(cowboy_req:req(), cb_context:context()) ->
                              {http_methods() | 'halt', cowboy_req:req(), cb_context:context()}.
 allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
-    {Tokens, Req1} = cowboy_http_req:path_info(Req0),
+    lager:debug("req: allowed_methods: ~p", [Methods]),
+    {Tokens, Req1} = cowboy_req:path_info(Req0),
     case v1_util:parse_path_tokens(Tokens) of
         [_|_] = Nouns ->
+            lager:debug("nouns: ~p", [Nouns]),
             %% Because we allow tunneling of verbs through the request,
             %% we have to check and see if we need to override the actual
             %% HTTP method with the tunneled version
@@ -147,7 +150,7 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
 -spec determine_http_verb(cowboy_req:req(), cb_context:context()) ->
                                  {http_methods() | 'halt', cowboy_req:req(), cb_context:context()}.
 determine_http_verb(Req0, Context) ->
-    {Method, Req1} = cowboy_http_req:method(Req0),
+    {Method, Req1} = cowboy_req:method(Req0),
     find_allowed_methods(Req1, Context#cb_context{req_verb=v1_util:get_http_verb(Method, Context)}).
 
 find_allowed_methods(Req0, #cb_context{allowed_methods=Methods
@@ -155,8 +158,9 @@ find_allowed_methods(Req0, #cb_context{allowed_methods=Methods
                                        ,req_nouns=[{Mod, Params}|_]
                                       }=Context) ->
     Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
-    {Method, Req1} = cowboy_http_req:method(Req0),
-    AllowMethods = v1_util:allow_methods(Responses, Methods, Verb, Method),
+    {Method, Req1} = cowboy_req:method(Req0),
+    AllowMethods = v1_util:allow_methods(Responses, Methods, Verb, wh_util:to_binary(Method)),
+
     maybe_add_cors_headers(Req1, Context#cb_context{allow_methods=AllowMethods}).
 
 -spec maybe_add_cors_headers(cowboy_req:req(), cb_context:context()) ->
@@ -164,9 +168,10 @@ find_allowed_methods(Req0, #cb_context{allowed_methods=Methods
 maybe_add_cors_headers(Req0, Context) ->
     case v1_util:is_cors_request(Req0) of
         {'true', Req1} ->
-            {'ok', Req2} = v1_util:add_cors_headers(Req1, Context),
+            Req2 = v1_util:add_cors_headers(Req1, Context),
             check_preflight(Req2, Context);
         {'false', Req1} ->
+            lager:debug("not cors request"),
             maybe_allow_method(Req1, Context)
     end.
 
@@ -174,15 +179,17 @@ maybe_add_cors_headers(Req0, Context) ->
                              {http_methods(), cowboy_req:req(), cb_context:context()}.
 check_preflight(Req0, #cb_context{req_verb = <<"options">>}=Context) ->
     lager:debug("allowing OPTIONS request for CORS preflight"),
-    {['OPTIONS'], Req0, Context};
+    {[<<"OPTIONS">>], Req0, Context};
 check_preflight(Req0, Context) ->
     maybe_allow_method(Req0, Context).
 
 maybe_allow_method(Req0, #cb_context{allow_methods=[]}=Context) ->
+    lager:debug("no allow methods"),
     v1_util:halt(Req0, cb_context:add_system_error('not_found', Context));
 maybe_allow_method(Req0, #cb_context{allow_methods=Methods, req_verb=Verb}=Context) ->
-    VerbAtom = wh_util:to_atom(wh_util:to_upper_binary(Verb)),
-    case lists:member(VerbAtom, Methods) of
+    VerbBig = wh_util:to_upper_binary(Verb),
+    lager:debug("is ~p in ~p", [VerbBig, Methods]),
+    case lists:member(VerbBig, Methods) of
         'true' ->
             {Methods, Req0, Context};
         'false' ->
@@ -198,13 +205,12 @@ malformed_request(Req, #cb_context{req_nouns=Nouns}=Context) ->
     case props:get_value(<<"accounts">>, Nouns) of
         [AcctId] ->
             case cb_accounts:validate(Context, AcctId) of
-                #cb_context{resp_status=success}=Context1 ->
+                #cb_context{resp_status='success'}=Context1 ->
                     {'false', Req, Context1};
                 Context1 ->
                     v1_util:halt(Req, Context1)
             end;
         _Other ->
-            lager:debug("other: ~p", [Nouns]),
             {'false', Req, Context}
     end.
 
@@ -236,13 +242,13 @@ known_content_type(Req, #cb_context{req_verb = <<"get">>}=Context) ->
 known_content_type(Req, #cb_context{req_verb = <<"delete">>}=Context) ->
     {'true', Req, Context};
 known_content_type(Req, Context) ->
-    {'ok', Req2} = case cowboy_http_req:header('Content-Type', Req) of
-                     {'undefined', Req1} ->
-                         cowboy_http_req:set_resp_header(<<"X-RFC2616">>
-                                                             ,<<"Section 14.17 (Try it, you'll like it)">>
-                                                             ,Req1);
-                     {_, Req1} -> {'ok', Req1}
-                 end,
+    Req2 = case cowboy_req:header(<<"content-type">>, Req) of
+               {'undefined', Req1} ->
+                   cowboy_req:set_resp_header(<<"X-RFC2616">>
+                                                  ,<<"Section 14.17 (Try it, you'll like it)">>
+                                                  ,Req1);
+               {_, Req1} -> Req1
+           end,
     v1_util:is_known_content_type(Req2, Context).
 
 -spec valid_entity_length(cowboy_req:req(), cb_context:context()) ->
@@ -256,8 +262,8 @@ options(Req0, Context) ->
     case v1_util:is_cors_request(Req0) of
         {'true', Req1} ->
             lager:debug("is CORS request"),
-            {'ok', Req2} = v1_util:add_cors_headers(Req1, Context),
-            {'ok', Req3} = cowboy_http_req:set_resp_body(<<>>, Req2),
+            Req2 = v1_util:add_cors_headers(Req1, Context),
+            Req3 = cowboy_req:set_resp_body(<<>>, Req2),
             {'ok', Req3, Context};
         {'false', Req1} ->
             lager:debug("is not CORS request"),
@@ -304,24 +310,26 @@ content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                             crossbar_bindings:fold(Event, Payload)
                     end, Context0, Nouns),
 
-    case cowboy_http_req:parse_header('Content-Type', Req0) of
-        {'undefined', Req1} -> default_content_types_accepted(Req1, Context1);
-        {CT, Req1} -> content_types_accepted(CT, Req1, Context1)
+    case cowboy_req:parse_header(<<"content-type">>, Req0) of
+        {'undefined', 'undefined', Req1} -> default_content_types_accepted(Req1, Context1);
+        {'ok', CT, Req1} -> content_types_accepted(CT, Req1, Context1)
     end.
 
 -spec default_content_types_accepted(cowboy_req:req(), cb_context:context()) ->
                                             {[{'undefined', atom()},...], cowboy_req:req(), cb_context:context()}.
 default_content_types_accepted(Req, #cb_context{content_types_accepted=CTAs}=Context) ->
-    CTA = [ {'undefined', Fun}
+    CTA = [ {'*', Fun}
             || {Fun, L} <- CTAs,
                lists:any(fun({Type, SubType}) ->
+                                 lager:debug("t: ~p sub: ~p", [Type, SubType]),
                                  v1_util:content_type_matches(?CROSSBAR_DEFAULT_CONTENT_TYPE
                                                               ,{Type, SubType, []});
                             ({_,_,_}=ModCT) ->
-                                 v1_util:content_type_matches(?CROSSBAR_DEFAULT_CONTENT_TYPE
-                                                              ,ModCT)
+                                 lager:debug("modct: ~p", [ModCT]),
+                                 v1_util:content_type_matches(?CROSSBAR_DEFAULT_CONTENT_TYPE, ModCT)
                          end, L) % check each type against the default
           ],
+    lager:debug("cta: ~p", [CTA]),
     {CTA, Req, Context}.
 
 -spec content_types_accepted(content_type(), cowboy_req:req(), cb_context:context()) ->
@@ -350,9 +358,9 @@ languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                             {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
                             {ReqAcc1, ContextAcc1}
                     end, {Req0, Context0}, Nouns),
-    case cowboy_http_req:parse_header('Accept-Language', Req1) of
-        {'undefined', Req2} -> {LangsProvided, Req2, Context1};
-        {[{A,_}|_]=_Accepted, Req2} ->
+    case cowboy_req:parse_header(<<"accept-language">>, Req1) of
+        {'undefined', 'undefined', Req2} -> {LangsProvided, Req2, Context1};
+        {'ok', [{A,_}|_]=_Accepted, Req2} ->
             lager:debug("adding first accept-lang header language: ~s", [A]),
             {LangsProvided ++ [A], Req2, Context1}
     end.
@@ -436,7 +444,7 @@ previously_existed(Req, State) ->
                                 {boolean(), cowboy_req:req(), cb_context:context()}.
 allow_missing_post(Req0, #cb_context{req_verb=_Verb}=Context) ->
     lager:debug("run: allow_missing_post when req_verb = ~s", [_Verb]),
-    {Method, Req1} = cowboy_http_req:method(Req0),
+    {Method, Req1} = cowboy_req:method(Req0),
     {Method =:= 'POST', Req1, Context}.
 
 -spec delete_resource(cowboy_req:req(), cb_context:context()) ->
@@ -657,7 +665,7 @@ correct_proplist(T) -> T.
 -spec multiple_choices(cowboy_req:req(), cb_context:context()) ->
                               {'false', cowboy_req:req(), cb_context:context()}.
 multiple_choices(Req, Context) ->
-    lager:debug("has resp_body: ~s", [cowboy_http_req:has_resp_body(Req)]),
+    lager:debug("has resp_body: ~s", [cowboy_req:has_resp_body(Req)]),
     {'false', Req, Context}.
 
 -spec generate_etag(cowboy_req:req(), cb_context:context()) ->

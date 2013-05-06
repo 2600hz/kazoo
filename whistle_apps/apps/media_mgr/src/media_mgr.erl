@@ -30,7 +30,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
 stop() ->
-    application:stop(media_mgr).
+    application:stop('media_mgr').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -41,5 +41,5 @@ stop() ->
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [wh_util:ensure_started(App) || App <- [sasl, crypto, whistle_amqp]],
-    ok.
+    _ = [wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'whistle_amqp']],
+    'ok'.
