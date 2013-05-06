@@ -141,7 +141,6 @@ send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
          ,{<<"Timeout">>, Timeout}
          ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
          ,{<<"Dial-Endpoint-Method">>, Strategy}
-         ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"park_after_bridge">>, 'true'}])}
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     whapps_call_command:send_command(B, Call).
@@ -159,7 +158,8 @@ setup_call_for_dial(Call, Props) ->
                 ,Setters
                ).
 
--spec maybe_end_dial(whapps_call:call()) -> {'ok' | 'stop', whapps_call:call()}.
+-spec maybe_end_dial(whapps_call:call()) ->
+                            {'ok' | 'stop', whapps_call:call()}.
 maybe_end_dial(Call) ->
     case kzt_util:get_call_status(Call) of
         ?STATUS_COMPLETED -> {'stop', Call};
@@ -182,9 +182,10 @@ is_numeric_or_plus(_) -> 'false'.
 %% capture the failed B-leg and continue processing the TwiML (if any).
 force_outbound(Props) -> props:get_is_true('continueOnFail', Props, 'true').
 
--spec xml_elements_to_endpoints(whapps_call:call(), xml_els()) -> wh_json:objects().
+-spec xml_elements_to_endpoints(whapps_call:call(), xml_els()) ->
+                                       wh_json:objects().
 -spec xml_elements_to_endpoints(whapps_call:call(), xml_els(), wh_json:objects()) ->
-                                             wh_json:objects().
+                                       wh_json:objects().
 xml_elements_to_endpoints(Call, EPs) ->
     xml_elements_to_endpoints(Call, EPs, []).
 

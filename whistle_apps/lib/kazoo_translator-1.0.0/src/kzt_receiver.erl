@@ -243,6 +243,7 @@ call_status(<<"NORMAL_CLEARING">>) -> ?STATUS_COMPLETED;
 call_status(<<"SUCCESS">>) -> ?STATUS_COMPLETED;
 call_status(<<"NO_ANSWER">>) -> ?STATUS_NOANSWER;
 call_status(<<"USER_BUSY">>) -> ?STATUS_BUSY;
+call_status(<<"CALL_REJECTED">>) -> ?STATUS_BUSY;
 call_status(_Status) ->
     lager:debug("unhandled call status: ~p", [_Status]),
     ?STATUS_FAILED.
@@ -333,16 +334,11 @@ process_offnet_event(#dial_req{call=Call
             case wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj) of
                 CallBLeg ->
                     HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
-                    lager:debug("b-leg (~s) has hungup(~s), continuing the call", [CallBLeg, HangupCause]),
-
-                    Updates = [{call_status(HangupCause), fun kzt_util:set_dial_call_status/2}],
-                    {'ok', lists:foldl(fun({V, F}, CallAcc) -> F(V, CallAcc) end
-                                       ,Call, Updates)
-                    };
+                    lager:debug("a-leg (~s) has unbridged from ~s(~s), continuing the call", [CallId, CallBLeg, HangupCause]);
                 _O ->
-                    lager:debug("unknown b-leg (~s) unbridged (waiting on ~s)", [_O, CallBLeg]),
-                    wait_for_offnet_events(update_offnet_timers(OffnetReq))
-            end;
+                    lager:debug("unknown b-leg (~s) unbridged (waiting on ~s)", [_O, CallBLeg])
+            end,
+            wait_for_offnet_events(update_offnet_timers(OffnetReq));
 
         {{<<"call_event">>, <<"CHANNEL_EXECUTE">>}, CallId} ->
             wait_for_offnet_events(update_offnet_timers(OffnetReq));
@@ -352,10 +348,16 @@ process_offnet_event(#dial_req{call=Call
                 <<"bridge">> ->
                     HangupCause = wh_json:get_value(<<"Application-Response">>, JObj),
                     lager:debug("bridge completed: ~s", [HangupCause]),
-                    Updates = [{call_status(HangupCause), fun kzt_util:set_dial_call_status/2}],
-                    {'ok', lists:foldl(fun({V, F}, CallAcc) -> F(V, CallAcc) end
-                                       ,Call, Updates)
-                    };
+
+                    Updates = [{call_status(HangupCause), fun kzt_util:set_dial_call_status/2}
+                               ,{dial_status(Call), fun kzt_util:set_dial_call_status/2}
+                              ],
+                    wait_for_offnet_events(
+                      update_offnet_timers(
+                        OffnetReq#dial_req{call=lists:foldl(fun({V, F}, Acc) -> F(V, Acc) end
+                                                            ,Call, Updates)
+                                          }
+                       ));
                 _ -> wait_for_offnet_events(update_offnet_timers(OffnetReq))
             end;
 
@@ -363,25 +365,27 @@ process_offnet_event(#dial_req{call=Call
             HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
             lager:debug("caller channel finished: ~s", [HangupCause]),
 
-            DialStatus = case kzt_util:get_dial_call_status(Call) of
-                             ?STATUS_ANSWERED -> ?STATUS_COMPLETED;
-                             ?STATUS_RINGING -> ?STATUS_NOANSWER;
-                             _ -> ?STATUS_FAILED
-                         end,
-
             Updates = [{call_status(HangupCause), fun kzt_util:update_call_status/2}
-                       ,{DialStatus, fun kzt_util:set_dial_call_status/2}
+                       ,{dial_status(Call), fun kzt_util:set_dial_call_status/2}
                       ],
 
             {'ok', lists:foldl(fun({V, F}, CallAcc) -> F(V, CallAcc) end
                                ,Call, Updates)
             };
+        {{<<"call_event">>, <<"CHANNEL_PARK">>}, CallId} ->
+            lager:debug("channel ~s has parked, probably means none of the bridge strings succeeded", [CallId]),
+            {'ok', Call};
         {{_Cat, _Name}, _CallId} ->
             lager:debug("unhandled event for ~s: ~s: ~s: ~s"
                         ,[_CallId, _Cat, _Name, wh_json:get_value(<<"Application-Name">>, JObj)]
                        ),
             wait_for_offnet_events(update_offnet_timers(OffnetReq))
     end.
+
+dial_status(?STATUS_ANSWERED) -> ?STATUS_COMPLETED;
+dial_status(?STATUS_RINGING) -> ?STATUS_NOANSWER;
+dial_status(Status) when is_binary(Status) -> ?STATUS_FAILED;
+dial_status(Call) -> dial_status(kzt_util:get_dial_call_status(Call)).
 
 -spec wait_for_conference_events(dial_req()) -> {'ok', whapps_call:call()}.
 wait_for_conference_events(#dial_req{call_timeout=CallTimeout
