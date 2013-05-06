@@ -13,6 +13,7 @@ compile: $(MAKEDIRS)
 
 clean: ACTION = clean
 clean: $(MAKEDIRS)
+	rm -rf cowboy-0.8.4/ ranch-0.8.1
 	$(REBAR) clean
 
 $(MAKEDIRS):
