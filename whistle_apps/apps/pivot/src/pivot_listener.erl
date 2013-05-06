@@ -24,22 +24,22 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{route, []}
-                   ,{self, []}
-                   ,{pivot, []}
+-define(BINDINGS, [{'route', []}
+                   ,{'self', []}
+                   ,{'pivot', []}
                   ]).
 -define(RESPONDERS, [
                      %% Received because of our route binding
-                     {{pivot_handlers, handle_route_req}, [{<<"dialplan">>, <<"route_req">>}]}
+                     {{'pivot_handlers', 'handle_route_req'}, [{<<"dialplan">>, <<"route_req">>}]}
 
                      %% Received because of our self binding (route_wins are sent to the route_resp's Server-ID
                      %% which is usually populated with the listener's queue name
-                     ,{{pivot_handlers, handle_route_win}, [{<<"dialplan">>, <<"route_win">>}]}
-                     ,{{pivot_handlers, handle_pivot_req}, [{<<"dialplan">>, <<"pivot_req">>}]}
+                     ,{{'pivot_handlers', 'handle_route_win'}, [{<<"dialplan">>, <<"route_win">>}]}
+                     ,{{'pivot_handlers', 'handle_pivot_req'}, [{<<"dialplan">>, <<"pivot_req">>}]}
                     ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_NAME, <<"pivot_listener">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -54,11 +54,11 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [
-                                      {bindings, ?BINDINGS}
-                                      ,{responders, ?RESPONDERS}
-                                      ,{queue_name, ?QUEUE_NAME}       % optional to include
-                                      ,{queue_options, ?QUEUE_OPTIONS} % optional to include
-                                      ,{consume_options, ?CONSUME_OPTIONS} % optional to include
+                                      {'bindings', ?BINDINGS}
+                                      ,{'responders', ?RESPONDERS}
+                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], []).
 
 %%%===================================================================
@@ -77,7 +77,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -94,7 +94,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -107,7 +107,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -120,7 +120,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -131,7 +131,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -156,7 +156,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
