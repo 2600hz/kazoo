@@ -26,45 +26,50 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    spawn(fun() -> put(callid, ?LOG_SYSTEM_ID), initialize_whapps() end),
-    ignore.
+    spawn(fun() -> put('callid', ?LOG_SYSTEM_ID), initialize_whapps() end),
+    'ignore'.
 
--spec start_app/1 :: (atom() | nonempty_string() | ne_binary()) -> 'ok' | 'error' | 'exists'.
+-spec start_app/1 :: (atom() | nonempty_string() | ne_binary()) ->
+                             'ok' | 'error' | 'exists'.
 start_app(App) when not is_atom(App) ->
-    start_app(wh_util:to_atom(App, true));
+    start_app(wh_util:to_atom(App, 'true'));
 start_app(App) when is_atom(App) ->
     lager:debug("attempting to start whapp ~s", [App]),
-    case lists:keyfind(App, 1, supervisor:which_children(whapps_sup)) of
+    case lists:keyfind(App, 1, supervisor:which_children('whapps_sup')) of
         {App, _, _, _} ->
             lager:notice("the ~s whapp is already running", [App]),
-            exists;
-        false ->
+            'exists';
+        'false' ->
             try
-                {ok, _} = whapps_sup:start_app(App),
+                {'ok', _} = whapps_sup:start_app(App),
                 lager:notice("started successfully started whapp ~s", [App]),
-                ok
+                'ok'
             catch
                 E:R ->
                     lager:critical("failed to start whapp ~s: ~p:~p", [App, E, R]),
-                    error
+                    'error'
             end
     end.
 
--spec stop_app/1 :: (atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
+-spec stop_app(atom() | nonempty_string() | ne_binary()) ->
+                      'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 stop_app(App) when not is_atom(App) ->
     stop_app(wh_util:to_atom(App));
 stop_app(App) ->
     lager:notice("stopping whistle application ~s", [App]),
     whapps_sup:stop_app(App).
 
--spec restart_app/1 :: (atom() | nonempty_string() | ne_binary()) -> {'ok', pid() | 'undefined'} | {'ok', pid() | 'undefined', term()} | {'error', term()}.
+-spec restart_app(atom() | nonempty_string() | ne_binary()) ->
+                         {'ok', pid() | 'undefined'} |
+                         {'ok', pid() | 'undefined', term()} |
+                         {'error', term()}.
 restart_app(App) when not is_atom(App) ->
     restart_app(wh_util:to_atom(App));
 restart_app(App) when is_atom(App) ->
     lager:info("restarting whistle application ~s", [App]),
     whapps_sup:restart_app(App).
 
--spec running_apps/0 :: () -> [atom(),...] | [].
+-spec running_apps() -> [atom(),...] | [].
 running_apps() ->
     try supervisor:which_children(whapps_sup) of
         Apps ->
@@ -75,15 +80,17 @@ running_apps() ->
     end. 
 
 initialize_whapps() ->
-    case whapps_config:get(?MODULE, <<"cookie">>) of
-        undefined -> ok;
+    CurrentCookie = erlang:get_cookie(),
+    case whapps_config:get(?MODULE, <<"cookie">>, CurrentCookie) of
+        'undefined' -> 'ok';
+        CurrentCookie -> 'ok';
         Cookie ->
             lager:debug("changing the erlang cookie to ~s", [Cookie]),
-            erlang:set_cookie(node(), wh_util:to_atom(Cookie, true))
+            erlang:set_cookie(node(), wh_util:to_atom(Cookie, 'true'))
     end,
     case couch_mgr:db_exists(?WH_ACCOUNTS_DB) of
-        false -> whapps_maintenance:refresh();
-        true -> ok
+        'false' -> whapps_maintenance:refresh();
+        'true' -> 'ok'
     end,
     WhApps = whapps_config:get(?MODULE, <<"whapps">>, []),
     StartWhApps = [wh_util:to_atom(WhApp, true) || WhApp <- WhApps],
