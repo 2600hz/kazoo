@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010 James Aimonetti
+%%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
-%%% Created :  7 Dec 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(crossbar_app).
 
@@ -21,14 +21,14 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(StartType, StartArgs) -> tuple(ok, pid()) | tuple(error, startlink_err()) when
-      StartType :: term(),
-      StartArgs :: term().
+-spec start(term(), term()) ->
+                   {'ok', pid()} |
+                   {'error', startlink_err()}.
 start(_StartType, _StartArgs) ->
     case crossbar:start_link() of
-	{ok, P} -> {ok, P};
-	{error, {already_started, P} } -> {ok, P};
-	{error, _}=E -> E
+        {'ok', P} -> {'ok', P};
+        {'error', {'already_started', P} } -> {'ok', P};
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -37,7 +37,6 @@ start(_StartType, _StartArgs) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(State) -> ok when
-      State :: term().
+-spec stop(term()) -> 'ok'.
 stop(_State) ->
-    ok.
+    crossbar:stop().
