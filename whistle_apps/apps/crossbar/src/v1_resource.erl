@@ -73,25 +73,23 @@ rest_init(Req0, Opts) ->
     {{Peer, _PeerPort}, Req6} = cowboy_req:peer(Req5),
     ClientIP = wh_network_utils:iptuple_to_binary(Peer),
 
-    lager:debug("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
+    lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
 
     Context0 = #cb_context{
-      req_id = wh_util:to_binary(ReqId)
-      ,raw_host = wh_util:to_binary(Host)
-      ,port = wh_util:to_integer(Port)
-      ,raw_path = wh_util:to_binary(Path)
-      ,raw_qs = wh_util:to_binary(QS)
-      ,method = wh_util:to_atom(Method)
-      ,resp_status = 'fatal'
-      ,resp_error_msg = <<"init failed">>
-      ,resp_error_code = 500
-      ,client_ip = ClientIP
-     },
+                  req_id = wh_util:to_binary(ReqId)
+                  ,raw_host = wh_util:to_binary(Host)
+                  ,port = wh_util:to_integer(Port)
+                  ,raw_path = wh_util:to_binary(Path)
+                  ,raw_qs = wh_util:to_binary(QS)
+                  ,method = wh_util:to_atom(Method)
+                  ,resp_status = 'fatal'
+                  ,resp_error_msg = <<"init failed">>
+                  ,resp_error_code = 500
+                  ,client_ip = ClientIP
+                 },
 
     {Context1, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {Context0, Opts}),
-    Req7 = cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req6),
-    lager:debug("begin req"),
-    {'ok', Req7, Context1}.
+    {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req6), Context1}.
 
 terminate(Req, Context) ->
     _ = v1_util:request_terminated(Req, Context),
@@ -101,10 +99,11 @@ rest_terminate(Req, #cb_context{start=T1
                                 ,method='OPTIONS'
                                }=Context) ->
     _ = v1_util:finish_request(Req, Context),
-    lager:debug("fulfilled in ~p ms", [wh_util:elapsed_ms(T1)]);
+    lager:info("OPTIONS request fulfilled in ~p ms", [wh_util:elapsed_ms(T1)]);
 rest_terminate(Req, #cb_context{start=T1
                                 ,resp_status=Status
                                 ,auth_account_id=AcctId
+                                ,req_verb=Verb
                                }=Context) ->
     case Status of
         'success' -> wh_counter:inc(<<"crossbar.requests.successes">>);
@@ -113,7 +112,7 @@ rest_terminate(Req, #cb_context{start=T1
 
     wh_counter:inc(<<"crossbar.requests.accounts.", (wh_util:to_binary(AcctId))/binary>>),
     _ = v1_util:finish_request(Req, Context),
-    lager:debug("fulfilled in ~p ms", [wh_util:elapsed_ms(T1)]).
+    lager:info("~s request fulfilled in ~p ms", [Verb, wh_util:elapsed_ms(T1)]).
 
 %%%===================================================================
 %%% CowboyHTTPRest API Callbacks
@@ -128,11 +127,10 @@ known_methods(Req, Context) ->
 -spec allowed_methods(cowboy_req:req(), cb_context:context()) ->
                              {http_methods() | 'halt', cowboy_req:req(), cb_context:context()}.
 allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
-    lager:debug("req: allowed_methods: ~p", [Methods]),
+    lager:debug("req: allowed_methods"),
     {Tokens, Req1} = cowboy_req:path_info(Req0),
     case v1_util:parse_path_tokens(Tokens) of
         [_|_] = Nouns ->
-            lager:debug("nouns: ~p", [Nouns]),
             %% Because we allow tunneling of verbs through the request,
             %% we have to check and see if we need to override the actual
             %% HTTP method with the tunneled version
@@ -186,7 +184,9 @@ check_preflight(Req0, Context) ->
 maybe_allow_method(Req0, #cb_context{allow_methods=[]}=Context) ->
     lager:debug("no allow methods"),
     v1_util:halt(Req0, cb_context:add_system_error('not_found', Context));
-maybe_allow_method(Req0, #cb_context{allow_methods=Methods, req_verb=Verb}=Context) ->
+maybe_allow_method(Req0, #cb_context{allow_methods=Methods
+                                     ,req_verb=Verb
+                                    }=Context) ->
     VerbBig = wh_util:to_upper_binary(Verb),
     lager:debug("is ~p in ~p", [VerbBig, Methods]),
     case lists:member(VerbBig, Methods) of

@@ -383,7 +383,6 @@ parse_path_tokens([Mod|T], Ebin, Events) ->
         'true' ->
             {Params, List2} = lists:splitwith(fun(Elem) -> not is_cb_module(Elem, Ebin) end, T),
             Params1 = [ wh_util:to_binary(P) || P <- Params ],
-            lager:debug("mod ~s has params ~p", [Mod, Params1]),
             parse_path_tokens(List2, Ebin, [{Mod, Params1} | Events])
     end.
 
