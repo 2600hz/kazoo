@@ -57,7 +57,7 @@ $(DEPS_DIR)/ranch:
 #	cd $(DEPS_DIR)/ranch ; git checkout -q $(RANCH_VSN)
 
 deps: $(DEPS_DIR)/ranch
-	@$(MAKE) -C $(DEPS_DIR)/ranch
+#	@$(MAKE) -C $(DEPS_DIR)/ranch
 
 clean-deps:
 	-@$(MAKE) -C $(DEPS_DIR)/ranch clean
