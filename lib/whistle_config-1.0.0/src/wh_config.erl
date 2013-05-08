@@ -43,6 +43,8 @@
                                           ,{'compact_automatically', 'true'}
                                          ]
                             }
+                           ,{'ecallmgr', [{'cookie', 'change_me'}]}
+                           ,{'whistle_apps', [{'cookie', 'change_me'}]}
                            ,{'log', [{'syslog', 'info'}
                                      ,{'console', 'notice'}
                                      ,{'file', 'error'}
@@ -59,6 +61,7 @@
 -spec get(section()) -> wh_proplist().
 get(Section) -> 
     ?MODULE:get(Section, ?DEFAULT_DEFAULTS).
+
 
 -spec get(section(), atom()) -> wh_proplist().
 get(Section, Key) -> 
@@ -84,9 +87,11 @@ get_atom(Section, Key) ->
 -spec get_atom(section(), atom(), Default) -> [atom(),...] | Default.
 get_atom(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
-        Default -> [Default];
-        [_|_]=Values -> [wh_util:to_atom(Value, 'true') || Value <- Values];
-        V -> [wh_util:to_atom(V, 'true')]
+        [Default] -> [Default];
+        [_|_]=Values -> 
+            [wh_util:to_atom(Value, 'true') || Value <- Values];
+        V ->
+            [wh_util:to_atom(V, 'true')]
     end.
 
 %%--------------------------------------------------------------------
@@ -102,7 +107,7 @@ get_integer(Section, Key) ->
 -spec get_integer(section(), atom(), Default) -> [integer(),...] | Default.
 get_integer(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
-        Default -> [Default];
+        [Default] -> [Default];
         [_|_]=Values -> [wh_util:to_integer(Value) || Value <- Values];
         V -> [wh_util:to_integer(V)]
     end.
@@ -120,7 +125,7 @@ get_string(Section, Key) ->
 -spec get_string(section(), string(), Default) -> [string(),...] | Default.
 get_string(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
-        Default -> [Default];
+        [Default] -> [Default];
         [_|_]=Values -> [wh_util:to_lower_string(Value) || Value <- Values];
         V -> [wh_util:to_lower_string(V)]
     end.
