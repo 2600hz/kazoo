@@ -526,8 +526,6 @@ is_known_content_type(Req, #cb_context{req_verb = <<"delete">>}=Context) ->
     lager:debug("ignore content type for delete"),
     {'true', Req, Context};
 is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
-    lager:debug("is_known_content_type"),
-
     Context1 =
         lists:foldr(fun({Mod, Params}, ContextAcc) ->
                             Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
@@ -556,10 +554,8 @@ is_known_content_type(Req, #cb_context{content_types_accepted=CTAs}=Context, CT)
                                           end, Acc, L)
                       end, [], CTAs),
 
-    lager:debug("is ~p in ~p", [CT, CTA]),
-
     IsAcceptable = is_acceptable_content_type(CT, CTA),
-    lager:debug("is acceptable content type: ~s", [IsAcceptable]),
+    lager:debug("is ~s acceptable content type: ~s", [CT, IsAcceptable]),
     {IsAcceptable, Req, Context}.
 
 -spec is_acceptable_content_type(content_type(), [content_type(),...] | []) -> boolean().
@@ -577,7 +573,7 @@ content_type_matches({Type, SubType, Opts}, {Type, SubType, ModOpts}) ->
                       props:get_value(K, Opts) =:= V
               end, ModOpts);
 content_type_matches(CTA, {CT, SubCT, _}) when is_binary(CTA) ->
-    CTA =:= <<CT/binary, "/", SubCT>>;
+    CTA =:= <<CT/binary, "/", SubCT/binary>>;
 content_type_matches(_CTA, _CTAs) ->
     lager:debug("cta: ~p, ctas: ~p", [_CTA, _CTAs]),
     'false'.
