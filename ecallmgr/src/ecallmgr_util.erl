@@ -801,6 +801,18 @@ convert_whistle_app_name(App) ->
 -type media_types() :: 'new' | 'extant'.
 -spec lookup_media(ne_binary(), ne_binary(), wh_json:object(), media_types()) -> {'ok', ne_binary()} | {'error', _}.
 lookup_media(MediaName, CallId, JObj, Type) ->
+    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE
+                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName))
+    of
+        {'ok', _Path}=Ok ->
+            lager:debug("media ~s exists in playback cache as ~s", [MediaName, _Path]),
+            Ok;
+        {'error', 'not_found'} ->
+            request_media_url(MediaName, CallId, JObj, Type)
+    end.
+
+-spec request_media_url(ne_binary(), ne_binary(), wh_json:object(), media_types()) -> {'ok', ne_binary()} | {'error', _}.
+request_media_url(MediaName, CallId, JObj, Type) ->
     Request = wh_json:set_values(
                 props:filter_undefined(
                   [{<<"Media-Name">>, MediaName}
@@ -816,8 +828,7 @@ lookup_media(MediaName, CallId, JObj, Type) ->
                                   ,fun wapi_media:resp_v/1
                                  ),
     case ReqResp of
-        {error, _}=E -> E;
-        {ok, MediaResp} ->
-            URL = wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>),
-            {'ok', URL}
+        {'error', _}=E -> E;
+        {'ok', MediaResp} ->
+            {'ok', wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}
     end.
