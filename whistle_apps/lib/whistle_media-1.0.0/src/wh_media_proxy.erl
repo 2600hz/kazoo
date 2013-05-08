@@ -53,11 +53,11 @@ maybe_start_ssl(Dispatch) ->
 
             SSLCert = whapps_config:get_string(?CONFIG_CAT
                                                ,<<"ssl_cert">>
-                                                   ,filename:join([RootDir, <<"priv/ssl/media_mgr.crt">>])
+                                               ,filename:join([RootDir, <<"priv/ssl/media_mgr.crt">>])
                                               ),
             SSLKey = whapps_config:get_string(?CONFIG_CAT
                                               ,<<"ssl_key">>
-                                                  ,filename:join([RootDir, <<"priv/ssl/media_mgr.key">>])
+                                              ,filename:join([RootDir, <<"priv/ssl/media_mgr.key">>])
                                              ),
 
             SSLPort = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 24518),
@@ -87,7 +87,7 @@ maybe_start_ssl(Dispatch) ->
 -spec on_request(cowboy_req:req()) -> cowboy_req:req().
 on_request(Req0) ->
 
-    {Method, Req1} = cowboy_http_req:method(Req0),
+    {Method, Req1} = cowboy_req:method(Req0),
 
     _ = wh_counter:inc(<<"media_proxy.requests.methods.", (wh_util:to_upper_binary(Method))/binary>>),
     Req1.
@@ -100,14 +100,14 @@ on_response(Status, _Headers, Req) ->
 -spec find_file(string(), string()) -> string().    
 find_file(File, Root) ->
     case filelib:is_file(File) of
-        true -> File;
-        false ->
+        'true' -> File;
+        'false' ->
             FromRoot = filename:join([Root, File]),
             lager:info("failed to find file at ~s, trying ~s", [File, FromRoot]),
             case filelib:is_file(FromRoot) of
-                true -> FromRoot;
-                false ->
+                'true' -> FromRoot;
+                'false' ->
                     lager:info("failed to find file at ~s", [FromRoot]),
-                    throw({invalid_file, File})
+                    throw({'invalid_file', File})
             end
     end.
