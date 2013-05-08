@@ -34,8 +34,14 @@ start_link() -> spawn(?MODULE, 'init', []), 'ignore'.
 
 init() ->
     put('callid', ?MODULE),
+    case wh_config:get_atom('ecallmgr', 'cookie') of
+        [[]] ->
+            lager:warning("failed to set ecallmgr cookie ~n", []);
+        [Cookie|_] ->
+            erlang:set_cookie(erlang:node(), Cookie),
+            lager:info("setting ecallmgr cookie to ~p~n", [Cookie])
+    end,
     set_loglevel(),
-
     %% ecallmgr may be the first to start up, and it starts publishing here
     amqp_util:sysconf_exchange().
 
