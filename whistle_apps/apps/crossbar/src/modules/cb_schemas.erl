@@ -18,7 +18,7 @@
          ,validate/1, validate/2, validate/3
         ]).
 
--include("src/crossbar.hrl").
+-include("../crossbar.hrl").
 
 -define(VALIDATION_PATH_TOKEN, <<"validation">>).
 

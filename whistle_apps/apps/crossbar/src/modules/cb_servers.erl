@@ -24,7 +24,7 @@
          ,delete/2
         ]).
 
--include("src/crossbar.hrl").
+-include("../crossbar.hrl").
 
 -define(SERVER_CONF, [code:lib_dir(crossbar, priv), "/servers/servers.conf"]).
 -define(SERVER_CONFIG_CATEGORY, <<"crossbar.servers">>).
