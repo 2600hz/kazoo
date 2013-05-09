@@ -10,9 +10,11 @@
 
 -include("callflow.hrl").
 
--export([handle_req/2]).
+-export([handle_req/2
+         ,maybe_restrict_call/2
+        ]).
 
--spec handle_req(wh_json:object(), proplist()) -> any().
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put('callid', CallId),
@@ -24,7 +26,7 @@ handle_req(JObj, _Options) ->
             lager:info("unable to find callflow during second lookup (HUH?) ~p", [R])
     end.
 
--spec maybe_restrict_call/2 :: (wh_json:object(), whapps_call:call()) -> 'ok' | {'ok', pid()}.
+-spec maybe_restrict_call(wh_json:object(), whapps_call:call()) -> 'ok' | {'ok', pid()}.
 maybe_restrict_call(JObj, Call) ->
     case should_restrict_call(Call) of
         'true' ->
@@ -38,7 +40,7 @@ maybe_restrict_call(JObj, Call) ->
             bootstrap_callflow_executer(JObj, Call)
     end.
 
--spec should_restrict_call/1 :: (whapps_call:call()) -> boolean().
+-spec should_restrict_call(whapps_call:call()) -> boolean().
 should_restrict_call(Call) ->
     case cf_endpoint:get(Call) of
         {'error', _R} ->
@@ -162,7 +164,7 @@ bootstrap_callflow_executer(_JObj, Call) ->
 -spec store_owner_id(whapps_call:call()) -> whapps_call:call().
 store_owner_id(Call) ->
     OwnerId = cf_attributes:owner_id(Call),
-    whapps_call:kvs_store(owner_id, OwnerId, Call).
+    whapps_call:kvs_store('owner_id', OwnerId, Call).
 
 %%-----------------------------------------------------------------------------
 %% @private

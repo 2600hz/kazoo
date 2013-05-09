@@ -22,7 +22,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Restart, Shutdown, Type),
-        {Name, {Name, start_link, []}, Restart, Shutdown, Type, [Name]}).
+        {Name, {Name, 'start_link', []}, Restart, Shutdown, Type, [Name]}).
 
 %% ===================================================================
 %% API functions
@@ -36,7 +36,7 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 -spec new(whapps_call:call()) -> sup_startchild_ret().
 new(Call) ->
@@ -44,7 +44,7 @@ new(Call) ->
 
 -spec workers() -> [pid(),...] | [].
 workers() ->
-    [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE)].
+    [ Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -61,10 +61,10 @@ workers() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = simple_one_for_one,
+    RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 0,
     MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(cf_exe, temporary, 2000, worker)]}}.
+    {'ok', {SupFlags, [?CHILD('cf_exe', 'temporary', 2000, 'worker')]}}.

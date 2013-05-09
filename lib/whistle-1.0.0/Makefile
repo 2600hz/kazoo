@@ -26,7 +26,7 @@ compile: ebin/$(PROJECT).app
 
 ebin/$(PROJECT).app: src/*.erl src/api/*.erl
 	@mkdir -p ebin/
-	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ -pa $(ROOT)/lib $?
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $(PA) $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
@@ -36,7 +36,7 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl src/api/*.erl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ -pa $(ROOT)/lib $?
+	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $(PA) $?
 
 clean:
 	rm -f ebin/*
@@ -51,5 +51,6 @@ eunit: compile-test
 
 dialyze: 
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
+		--statistics \
                 $(PA) --plt $(ROOT)/.platform_dialyzer.plt \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
