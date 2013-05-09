@@ -242,7 +242,7 @@ authenticate_shared_token(SharedToken, XBarUrl) ->
 %% an account and user, ensure those exist locally.
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_data(wh_json:json_object()) -> boolean().
+-spec import_missing_data(wh_json:object()) -> boolean().
 import_missing_data(RemoteData) ->
     Account = wh_json:get_value(<<"account">>, RemoteData),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, Account),
@@ -258,7 +258,7 @@ import_missing_data(RemoteData) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account(api_binary(), 'undefined' | wh_json:json_object()) -> boolean().
+-spec import_missing_account(api_binary(), 'undefined' | wh_json:object()) -> boolean().
 import_missing_account(undefined, _) ->
     lager:debug("shared auth reply did not define an account id"),
     false;
@@ -313,7 +313,7 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user(api_binary(), api_binary(), 'undefined' | wh_json:json_object()) -> boolean().
+-spec import_missing_user(api_binary(), api_binary(), 'undefined' | wh_json:object()) -> boolean().
 import_missing_user(_, undefined, _) ->
     lager:debug("shared auth reply did not define an user id"),
     false;

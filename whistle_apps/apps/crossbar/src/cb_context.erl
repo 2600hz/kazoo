@@ -31,6 +31,7 @@
          ,doc/1, set_doc/2
          ,resp_data/1, set_resp_data/2
          ,resp_status/1, set_resp_status/2
+         ,resp_headers/1, set_resp_header/3
 
          %% Special accessors
          ,req_value/2, req_value/3
@@ -56,6 +57,7 @@ req_id(#cb_context{req_id=ReqId}) -> ReqId.
 doc(#cb_context{doc=Doc}) -> Doc.
 resp_data(#cb_context{resp_data=RespData}) -> RespData.
 resp_status(#cb_context{resp_status=RespStatus}) -> RespStatus.
+resp_headers(#cb_context{resp_headers=RespHeaders}) -> RespHeaders.
 
 %% Setters
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
@@ -68,6 +70,8 @@ set_req_id(#cb_context{}=Context, ReqId) -> Context#cb_context{req_id=ReqId}.
 set_doc(#cb_context{}=Context, Doc) -> Context#cb_context{doc=Doc}.
 set_resp_data(#cb_context{}=Context, RespData) -> Context#cb_context{resp_data=RespData}.
 set_resp_status(#cb_context{}=Context, RespStatus) -> Context#cb_context{resp_status=RespStatus}.
+set_resp_header(K, V, #cb_context{resp_headers=RespHeaders}=Context) ->
+    Context#cb_context{resp_headers=lists:keystore(K, 1, RespHeaders, {K, V})}.
 
 %% Helpers
 

@@ -153,7 +153,7 @@ delete(Context, _) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -198,7 +198,7 @@ clear_history_set_type(#cb_context{doc=JObj}=Context) ->
 %% @end
 %%-------------------------------------------------------------------
 -spec originate_call(#cb_context{}) -> #cb_context{}.
--spec originate_call(ne_binary(), wh_json:json_object(), ne_binary()) -> {'success', ne_binary()} | {'error', ne_binary()}.
+-spec originate_call(ne_binary(), wh_json:object(), ne_binary()) -> {'success', ne_binary()} | {'error', ne_binary()}.
 
 originate_call(#cb_context{doc=JObj, req_data=Req, account_id=AccountId, db_name=Db}=Context) ->
     case get_c2c_contact(wh_json:get_string_value(<<"contact">>, Req)) of
@@ -326,7 +326,7 @@ create_c2c_history_item({error, Error}, Contact) ->
      ,{<<"cause">>, Error}
     ].
 
--spec save_history(wh_json:json_object(), wh_json:json_object(), ne_binary()) -> 'ok'.
+-spec save_history(wh_json:object(), wh_json:object(), ne_binary()) -> 'ok'.
 save_history(HistoryItem, JObj, Db) ->
     History = wh_json:get_value(<<"pvt_history">>, JObj, []),
     case couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_history">>, [HistoryItem | History], JObj)) of

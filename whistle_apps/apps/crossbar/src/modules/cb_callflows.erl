@@ -198,7 +198,7 @@ on_successful_validation(CallflowId, #cb_context{}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -296,7 +296,7 @@ add_number_conflict(Number, JObj, Context) ->
 %% collect addional informat about the objects referenced in the flow
 %% @end
 %%--------------------------------------------------------------------
--spec get_metadata('undefined' | wh_json:json_object(), ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+-spec get_metadata('undefined' | wh_json:object(), ne_binary(), wh_json:object()) -> wh_json:object().
 get_metadata(undefined, _, JObj) ->
     JObj;
 get_metadata(Flow, Db, JObj) ->
@@ -324,7 +324,7 @@ get_metadata(Flow, Db, JObj) ->
 %% exists in metadata.
 %% @end
 %%--------------------------------------------------------------------
--spec create_metadata/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+-spec create_metadata/3 :: (ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
 create_metadata(_, <<"_">>, JObj) -> JObj;
 create_metadata(_, Id, JObj) when byte_size(Id) < 2 -> JObj;
 create_metadata(Db, Id, JObj) ->
@@ -341,7 +341,7 @@ create_metadata(Db, Id, JObj) ->
             JObj
     end.
 
--spec create_metadata(wh_json:json_object()) -> wh_json:json_object().
+-spec create_metadata(wh_json:object()) -> wh_json:object().
 create_metadata(Doc) ->
     %% simple funciton for setting the same key in one json object
     %% with the value of that key in another, unless it doesnt exist

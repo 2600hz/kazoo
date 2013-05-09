@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -20,11 +20,13 @@
 -include("crossbar.hrl").
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
--define(CHILD(I, Type, Args), {I, {I, start, [Args]}, permanent, 5000, Type, dynamic}).
--define(CACHE(), {?CROSSBAR_CACHE, {wh_cache, start_link, [?CROSSBAR_CACHE]}, permanent, 5000, worker, [wh_cache]}).
--define(DISPATCH_FILE, [code:lib_dir(crossbar, priv), "/dispatch.conf"]).
--define(DEFAULT_LOG_DIR, wh_util:to_binary(code:lib_dir(crossbar, log))).
+-define(CHILD(I, Type), {I, {I, 'start_link', []}, 'permanent', 5000, Type, [I]}).
+-define(CHILD(I, Type, Args), {I, {I, 'start', [Args]}, 'permanent', 5000, Type, 'dynamic'}).
+
+-define(CACHE(), {?CROSSBAR_CACHE, {'wh_cache', 'start_link', [?CROSSBAR_CACHE]}, 'permanent', 5000, 'worker', ['wh_cache']}).
+
+-define(DISPATCH_FILE, [code:lib_dir('crossbar', 'priv'), "/dispatch.conf"]).
+-define(DEFAULT_LOG_DIR, wh_util:to_binary(code:lib_dir('crossbar', 'log'))).
 
 %% ===================================================================
 %% API functions
@@ -38,11 +40,11 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec child_spec(atom()) -> ?CHILD(atom, worker).
+-spec child_spec(atom()) -> ?CHILD(atom(), 'worker').
 child_spec(Mod) ->
-    ?CHILD(Mod, worker).
+    ?CHILD(Mod, 'worker').
 
 -spec find_proc(atom()) -> pid().
 find_proc(Mod) ->
@@ -56,7 +58,7 @@ find_proc(Mod) ->
 %%--------------------------------------------------------------------
 -spec upgrade() -> 'ok'.
 upgrade() ->
-    {ok, {_, Specs}} = init([]),
+    {'ok', {_, Specs}} = init([]),
 
     Old = sets:from_list([Name || {Name, _, _, _} <- supervisor:which_children(?MODULE)]),
     New = sets:from_list([Name || {Name, _, _, _, _, _} <- Specs]),
@@ -67,7 +69,7 @@ upgrade() ->
                           supervisor:delete_child(?MODULE, Id)
                   end, sets:to_list(Kill)),
     lists:foreach(fun(Spec) -> supervisor:start_child(?MODULE, Spec) end, Specs),
-    ok.
+    'ok'.
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -84,7 +86,7 @@ upgrade() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    {ok, {{one_for_one, 10, 10}, [?CACHE()
-                                  ,?CHILD(crossbar_bindings, worker)
-                                  ,?CHILD(crossbar_cleanup, worker)
-                                 ]}}.
+    {'ok', {{'one_for_one', 10, 10}, [?CACHE()
+                                      ,?CHILD('crossbar_bindings', 'worker')
+                                      ,?CHILD('crossbar_cleanup', 'worker')
+                                     ]}}.

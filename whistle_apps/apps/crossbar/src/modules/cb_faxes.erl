@@ -352,7 +352,7 @@ outgoing_summary(#cb_context{account_id=AccountId}=Context) ->
                            ,fun normalize_view_results/2
                           ).
 
--spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -362,6 +362,6 @@ normalize_view_results(JObj, Acc) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_incoming_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_incoming_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_incoming_view_results(JObj, Acc) ->
     [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))|Acc].

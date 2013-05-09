@@ -47,7 +47,7 @@
           ,user_id :: api_binary()
           ,max_events = 100 :: pos_integer()
           ,subscriptions = [] :: [queue_bindings:bind_types(),...] | []
-          ,events = queue:new() :: queue() %% queue(wh_json:json_object())
+          ,events = queue:new() :: queue() %% queue(wh_json:object())
           ,overflow = 'false' :: boolean() %% set to 'true' if events are dropped before being fetched; reset after fetch
          }).
 

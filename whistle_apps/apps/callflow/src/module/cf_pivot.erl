@@ -26,18 +26,19 @@
 %%   req_format: string(), data format and payload expected for initial
 %%     request (defaults to twiml for the moment),
 %%     formats: twiml, kazoo
-%%
+%%   cdr_url: string(), url to POST the CDR
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:json_object(), whapps_call:call()) -> any().
+-spec handle(wh_json:object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
     Prop = props:filter_empty(
              [{<<"Call">>, whapps_call:to_json(Call)}
               ,{<<"Voice-URI">>, wh_json:get_value(<<"voice_url">>, Data)}
               ,{<<"CDR-URI">>, wh_json:get_value(<<"cdr_url">>, Data)}
               ,{<<"Request-Format">>, wh_json:get_value(<<"req_format">>, Data)}
-              ,{<<"HTTP-Method">>, kzt_util:http_method(wh_json:get_atom_value(<<"http_method">>, Data, get))}
+              ,{<<"HTTP-Method">>, kzt_util:http_method(wh_json:get_atom_value(<<"http_method">>, Data, 'get'))}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     wapi_pivot:publish_req(Prop),
+    lager:info("published pivot request"),
     cf_exe:control_usurped(Call).

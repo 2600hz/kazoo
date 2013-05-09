@@ -116,7 +116,7 @@ put(#cb_context{doc=Data}=Context) ->
 %% Any errors will also be collected.
 %% @end
 %%--------------------------------------------------------------------
--spec create_extensions(wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}.
+-spec create_extensions(wh_json:object(), #cb_context{}, {proplist(), wh_json:object()}) -> {proplist(), wh_json:object()}.
 create_extensions(JObj, Context, Results) ->
     Extensions = wh_json:get_value(<<"extensions">>, JObj, []),
     create_extensions(Extensions, 1, Context, Results).
@@ -146,7 +146,7 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_account(wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}.
+-spec create_account(wh_json:object(), #cb_context{}, {proplist(), wh_json:object()}) -> {proplist(), wh_json:object()}.
 create_account(JObj, Context, {Pass, Fail}) ->
     Account = wh_json:get_value(<<"account">>, JObj, wh_json:new()),
     Generators = [fun(J) ->
@@ -171,7 +171,7 @@ create_account(JObj, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_phone_numbers(wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}.
+-spec create_phone_numbers(wh_json:object(), #cb_context{}, {proplist(), wh_json:object()}) -> {proplist(), wh_json:object()}.
 
 create_phone_numbers(JObj, Context, Results) ->
     PhoneNumbers = wh_json:get_value(<<"phone_numbers">>, JObj),
@@ -200,7 +200,7 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_braintree_cards(wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}.
+-spec create_braintree_cards(wh_json:object(), #cb_context{}, {proplist(), wh_json:object()}) -> {proplist(), wh_json:object()}.
 create_braintree_cards(JObj, Context, {Pass, Fail}) ->
     Account = get_context_jobj(<<"accounts">>, Pass),
     case wh_json:get_value(<<"_id">>, Account) of
@@ -236,8 +236,8 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_user(wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()})
-                       -> {proplist(), wh_json:json_object()}.
+-spec create_user(wh_json:object(), pos_integer(), #cb_context{}, {proplist(), wh_json:object()})
+                       -> {proplist(), wh_json:object()}.
 create_user(JObj, Iteration, Context, {Pass, Fail}) ->
     User = wh_json:get_value(<<"user">>, JObj, wh_json:new()),
     Generators = [fun(J) ->
@@ -290,8 +290,8 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_device(wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()})
-                         -> {proplist(), wh_json:json_object()}.
+-spec create_device(wh_json:object(), pos_integer(), #cb_context{}, {proplist(), wh_json:object()})
+                         -> {proplist(), wh_json:object()}.
 create_device(JObj, Iteration, Context, {Pass, Fail}) ->
     Device = wh_json:get_value(<<"device">>, JObj, wh_json:new()),
     Generators = [fun(J) ->
@@ -354,8 +354,8 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_vmbox(wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()})
-                        -> {proplist(), wh_json:json_object()}.
+-spec create_vmbox(wh_json:object(), pos_integer(), #cb_context{}, {proplist(), wh_json:object()})
+                        -> {proplist(), wh_json:object()}.
 create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
     VMBox = wh_json:get_value(<<"vmbox">>, JObj, wh_json:new()),
     Generators = [fun(J) ->
@@ -407,8 +407,8 @@ create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
 %% to the error json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_exten_callflow(wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()})
-                                 -> {proplist(), wh_json:json_object()}.
+-spec create_exten_callflow(wh_json:object(), pos_integer(), #cb_context{}, {proplist(), wh_json:object()})
+                                 -> {proplist(), wh_json:object()}.
 create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
     Callflow = wh_json:get_value(<<"callflow">>, JObj, wh_json:new()),
     Generators = [fun(J) ->
@@ -452,7 +452,7 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec populate_new_account(proplist(), #cb_context{}) -> #cb_context{}.
--spec populate_new_account(proplist(), ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+-spec populate_new_account(proplist(), ne_binary(), wh_json:object()) -> wh_json:object().
 
 populate_new_account(Props, _) ->
     Context = props:get_value(?WH_ACCOUNTS_DB, Props),
@@ -541,7 +541,7 @@ prepare_props(Props) ->
 %% context records for a specific key.
 %% @end
 %%--------------------------------------------------------------------
--spec get_context_jobj(ne_binary(), proplist()) -> wh_json:json_object().
+-spec get_context_jobj(ne_binary(), proplist()) -> wh_json:object().
 get_context_jobj(Key, Pass) ->
     case props:get_value(Key, Pass) of
         #cb_context{doc=JObj} -> JObj;
@@ -581,7 +581,7 @@ create_response(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec notfy_new_account(wh_json:json_object()) -> 'ok'.
+-spec notfy_new_account(wh_json:object()) -> 'ok'.
 notfy_new_account(JObj) ->
     Notify = [{<<"Account-Name">>, wh_json:get_value(<<"name">>, JObj)}
               ,{<<"Account-Realm">>, wh_json:get_value(<<"realm">>, JObj)}

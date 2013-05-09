@@ -213,8 +213,8 @@ validate_new_signup(#cb_context{req_data=JObj}=Context) ->
 %% Determines if the account realm is unique and if the account is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_account(wh_json:json_object() | 'undefined', cb_context:context()) ->
-                                    {path_tokens(), wh_json:json_object() | 'undefined'}.
+-spec validate_account(wh_json:object() | 'undefined', cb_context:context()) ->
+                                    {path_tokens(), wh_json:object() | 'undefined'}.
 validate_account(undefined, _) ->
     lager:debug("signup did not contain an account definition"),
     {[<<"account">>], undefined};
@@ -239,8 +239,8 @@ validate_account(Account, Context) ->
 %% Determines if the user object is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_user(wh_json:json_object() | 'undefined', cb_context:context()) ->
-                                 {path_tokens(), 'undefined' | wh_json:json_object()}.
+-spec validate_user(wh_json:object() | 'undefined', cb_context:context()) ->
+                                 {path_tokens(), 'undefined' | wh_json:object()}.
 validate_user(undefined, _) ->
     lager:debug("signup did not contain an user definition"),
     {[<<"user">>], undefined};
@@ -294,8 +294,8 @@ check_activation_key(ActivationKey, Context) ->
 %% Activate signup document by creating an account and user
 %% @end
 %%--------------------------------------------------------------------
--spec activate_signup(wh_json:json_object()) ->
-                                   {'ok', wh_json:json_object(), wh_json:json_object()} |
+-spec activate_signup(wh_json:object()) ->
+                                   {'ok', wh_json:object(), wh_json:object()} |
                                    {'error', 'creation_failed' | 'account_undefined' | 'user_undefined'}.
 activate_signup(JObj) ->
     case activate_account(wh_json:get_value(<<"pvt_account">>, JObj)) of
@@ -311,8 +311,8 @@ activate_signup(JObj) ->
 %% Create the account defined on the signup document
 %% @end
 %%--------------------------------------------------------------------
--spec activate_account('undefined' | wh_json:json_object()) ->
-                                    {'ok', wh_json:json_object()} |
+-spec activate_account('undefined' | wh_json:object()) ->
+                                    {'ok', wh_json:object()} |
                                     {'error', 'creation_failed' | 'account_undefined'}.
 activate_account(undefined) ->
     {error, account_undefined};
@@ -336,8 +336,8 @@ activate_account(Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec activate_user(wh_json:json_object(), 'undefined' | wh_json:json_object()) ->
-                                 {'ok', wh_json:json_object(), wh_json:json_object()} |
+-spec activate_user(wh_json:object(), 'undefined' | wh_json:object()) ->
+                                 {'ok', wh_json:object(), wh_json:object()} |
                                  {'error', 'user_undefined' | 'creation_failed'}.
 activate_user(_, undefined) ->
     {error, user_undefined};
