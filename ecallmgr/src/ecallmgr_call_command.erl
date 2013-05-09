@@ -703,7 +703,7 @@ bridge_maybe_early_media(Node, UUID, JObj) ->
         _Else -> 'ok'
     end.
 
-bridge_handle_hold_media(DP, Node, UUID, JObj) ->
+bridge_handle_hold_media(DP, _Node, UUID, JObj) ->
     case wh_json:get_value(<<"Hold-Media">>, JObj) of
         'undefined' ->
             case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
@@ -733,13 +733,13 @@ bridge_handle_hold_media(DP, Node, UUID, JObj) ->
             ]
     end.
 
-bridge_handle_secure_rtp(DP, Node, UUID, JObj) ->
+bridge_handle_secure_rtp(DP, _Node, _UUID, JObj) ->
     case wh_json:is_true(<<"Secure-RTP">>, JObj, 'false') of
         'true' -> [{"application", "set sip_secure_media=true"}|DP];
         'false' -> DP
     end.
 
-bridge_handle_bypass_media(DP, Node, UUID, JObj) ->
+bridge_handle_bypass_media(DP, _Node, _UUID, JObj) ->
     case wh_json:get_value(<<"Media">>, JObj) of
         <<"process">> ->
             lager:debug("bridge will process media through host switch"),
@@ -763,7 +763,7 @@ maybe_bypass_endpoint_media([Endpoint], DP) ->
 maybe_bypass_endpoint_media(_, DP) ->
     DP.
 
-bridge_handle_ccvs(DP, Node, UUID, JObj) ->
+bridge_handle_ccvs(DP, _Node, _UUID, JObj) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     case wh_json:is_json_object(CCVs) of
         'true' ->
@@ -781,7 +781,7 @@ bridge_pre_exec(DP, _, _, _) ->
      |DP
     ].
 
-bridge_create_command(DP, Node, UUID, JObj) ->
+bridge_create_command(DP, _Node, _UUID, JObj) ->
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
     BridgeCmd = list_to_binary(["bridge "
                                 ,bridge_build_channels_vars(Endpoints, JObj)
@@ -972,7 +972,7 @@ execute_exten_handle_reset(DP, Node, UUID, JObj) ->
             create_dialplan_move_ccvs(<<"Execute-Extension-Original-">>, Node, UUID, DP)
     end.
 
-execute_exten_handle_ccvs(DP, Node, UUID, JObj) ->
+execute_exten_handle_ccvs(DP, _Node, UUID, JObj) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     case wh_json:is_empty(CCVs) of
         'true' -> DP;
@@ -982,17 +982,17 @@ execute_exten_handle_ccvs(DP, Node, UUID, JObj) ->
              || {K, V} <- ChannelVars] ++ DP
     end.
 
-execute_exten_pre_exec(DP, Node, UUID, JObj) ->
+execute_exten_pre_exec(DP, _Node, _UUID, _JObj) ->
     [{"application", <<"set ", ?CHANNEL_VAR_PREFIX, "Executing-Extension=true">>}
      | DP
     ].
 
-execute_exten_create_command(DP, Node, UUID, JObj) ->
+execute_exten_create_command(DP, _Node, _UUID, JObj) ->
     [{"application", <<"execute_extension ", (wh_json:get_value(<<"Extension">>, JObj))/binary>>}
      |DP
     ].
 
-execute_exten_post_exec(DP, Node, UUID, JObj) ->
+execute_exten_post_exec(DP, _Node, _UUID, _JObj) ->
     [{"application", <<"unset ", ?CHANNEL_VAR_PREFIX, "Executing-Extension">>}
      ,{"application", ecallmgr_util:create_masquerade_event(<<"execute_extension">>
                                                                 ,<<"CHANNEL_EXECUTE_COMPLETE">>
@@ -1074,7 +1074,7 @@ play_bridged(UUID, JObj, F) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_terminators(api_binary() | ne_binaries() | wh_json:object()) ->
-                             {ne_binary(), ne_binary()}.
+                             {ne_binary(), ne_binary()} | 'undefined'.
 get_terminators('undefined') -> 'undefined';
 get_terminators(Ts) when is_binary(Ts) -> get_terminators([Ts]);
 get_terminators([_|_]=Ts) ->

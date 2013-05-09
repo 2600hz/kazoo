@@ -77,18 +77,15 @@ sync_channels(Node) ->
 
 -spec sync_conferences() -> 'ok'.
 sync_conferences() ->
-    _ = [ecallmgr_fs_node:sync_conferences(Srv)
-         || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
+    _ = [ecallmgr_fs_conferences:sync_conferences(N)
+         || N <- ecallmgr_fs_nodes:connected()
         ],
     'ok'.
 
 -spec sync_conferences(text()) -> 'ok'.
 sync_conferences(Node) ->
     N = wh_util:to_atom(Node, 'true'),
-    _ = [ecallmgr_fs_node:sync_conferences(Srv)
-         || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
-                ,ecallmgr_fs_node:fs_node(Srv) =:= N
-        ],
+    ecallmgr_fs_conferences:sync_conferences(N),
     'ok'.
 
 -spec flush_node_channels(string() | binary() | atom()) -> 'ok'.

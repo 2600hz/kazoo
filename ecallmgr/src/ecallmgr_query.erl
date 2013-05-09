@@ -28,11 +28,17 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
-                     ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
-                     ,{{?MODULE, handle_query_auth_id}, [{<<"call_event">>, <<"query_auth_id_req">>}]}
+-define(RESPONDERS, [{{?MODULE, 'handle_channel_status'}
+                      ,[{<<"call_event">>, <<"channel_status_req">>}]
+                     }
+                     ,{{?MODULE, 'handle_call_status'}
+                       ,[{<<"call_event">>, <<"call_status_req">>}]
+                      }
+                     ,{{?MODULE, 'handle_query_auth_id'}
+                       ,[{<<"call_event">>, <<"query_auth_id_req">>}]
+                      }
                     ]).
--define(BINDINGS, [{call, [{restrict_to, [status_req]}]}]).
+-define(BINDINGS, [{'call', [{'restrict_to', ['status_req']}]}]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -52,17 +58,18 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({local, ?SERVER}, ?MODULE, [{responders, ?RESPONDERS}
-                                                        ,{bindings, ?BINDINGS}
-                                                        ,{queue_name, ?QUEUE_NAME}
-                                                        ,{queue_options, ?QUEUE_OPTIONS}
-                                                        ,{consume_options, ?CONSUME_OPTIONS}
-                                                       ], []).
+    gen_listener:start_link({'local', ?SERVER}, ?MODULE
+                            ,[{'responders', ?RESPONDERS}
+                              ,{'bindings', ?BINDINGS}
+                              ,{'queue_name', ?QUEUE_NAME}
+                              ,{'queue_options', ?QUEUE_OPTIONS}
+                              ,{'consume_options', ?CONSUME_OPTIONS}
+                             ], []).
 
 
--spec handle_query_auth_id(wh_json:object(), proplist()) -> 'ok'.
+-spec handle_query_auth_id(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_query_auth_id(JObj, _Props) ->
-    true = wapi_call:query_auth_id_req_v(JObj),
+    'true' = wapi_call:query_auth_id_req_v(JObj),
     AuthId = wh_json:get_value(<<"Auth-ID">>, JObj),
     Channels = case ecallmgr_fs_nodes:channels_by_auth_id(AuthId) of
                    {'error', 'not_found'} -> [];
@@ -75,9 +82,9 @@ handle_query_auth_id(JObj, _Props) ->
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
     wapi_call:publish_query_auth_id_resp(ServerId, Resp).
 
--spec handle_channel_status(wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_channel_status(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
-    true = wapi_call:channel_status_req_v(JObj),
+    'true' = wapi_call:channel_status_req_v(JObj),
     _ = wh_util:put_callid(JObj),
 
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -85,7 +92,7 @@ handle_channel_status(JObj, _Props) ->
 
     AllNodesConnected = ecallmgr_fs_nodes:all_nodes_connected(),
     case ecallmgr_fs_channel:fetch(CallID) of
-        {error, not_found} when AllNodesConnected ->
+        {'error', 'not_found'} when AllNodesConnected ->
             lager:debug("no node found with channel ~s", [CallID]),
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"terminated">>}
@@ -94,9 +101,9 @@ handle_channel_status(JObj, _Props) ->
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-        {error, not_found} ->
+        {'error', 'not_found'} ->
             lager:debug("no node found with channel ~s, but we are not authoritative", [CallID]);
-        {ok, Channel} ->
+        {'ok', Channel} ->
             Node = wh_json:get_binary_value(<<"node">>, Channel),
             [_, Hostname] = binary:split(Node, <<"@">>),
             lager:debug("call is on ~s", [Hostname]),
@@ -110,9 +117,9 @@ handle_channel_status(JObj, _Props) ->
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
--spec handle_call_status(wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_call_status(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_status(JObj, _Props) ->
-    true = wapi_call:call_status_req_v(JObj),
+    'true' = wapi_call:call_status_req_v(JObj),
     _ = wh_util:put_callid(JObj),
 
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -120,7 +127,7 @@ handle_call_status(JObj, _Props) ->
 
     AllNodesConnected = ecallmgr_fs_nodes:all_nodes_connected(),
     case ecallmgr_fs_channel:fetch(CallID) of
-        {error, not_found} when AllNodesConnected ->
+        {'error', 'not_found'} when AllNodesConnected ->
             lager:debug("no node found with channel ~s", [CallID]),
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"terminated">>}
@@ -129,12 +136,12 @@ handle_call_status(JObj, _Props) ->
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-        {error, not_found} ->
+        {'error', 'not_found'} ->
             lager:debug("no node found with channel ~s, but we are not authoritative", [CallID]);
-        {ok, Channel} ->
+        {'ok', Channel} ->
             Node = wh_json:get_atom_value(<<"node">>, Channel),
             case uuid_dump(Node, CallID) of
-                error ->
+                'error' ->
                     lager:debug("failed to get channel info for ~s", [CallID]),
                     Resp = [{<<"Call-ID">>, CallID}
                             ,{<<"Status">>, <<"active">>}
@@ -143,7 +150,7 @@ handle_call_status(JObj, _Props) ->
                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                            ],
                     wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-                {ok, Props} ->
+                {'ok', Props} ->
                     lager:debug("got channel info for ~s, forming response", [CallID]),
                     ChannelCallID = props:get_value(<<"Channel-Call-UUID">>, Props),
                     Resp = create_call_status_resp(Props, ChannelCallID =:= CallID),
@@ -169,8 +176,8 @@ handle_call_status(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put(callid, ?LOG_SYSTEM_ID),
-    {ok, #state{}}.
+    put('callid', ?LOG_SYSTEM_ID),
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -187,7 +194,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -200,7 +207,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -213,7 +220,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    {noreply, State}.
+    lager:debug("unhandled message: ~p", [_Info]),
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -224,7 +232,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -238,7 +246,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ok.
+    lager:debug("ecallmgr_query terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -249,22 +257,24 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 -spec create_call_status_resp(wh_proplist(), boolean()) -> wh_proplist().
-create_call_status_resp(Props, true) ->
+create_call_status_resp(Props, 'true') ->
     {OLCIName, OLCINum} = case props:get_value(<<"Other-Leg-Direction">>, Props) of
                                <<"outbound">> ->
                                    {props:get_value(<<"Other-Leg-Callee-ID-Name">>, Props)
-                                    ,props:get_value(<<"Other-Leg-Callee-ID-Number">>, Props)};
+                                    ,props:get_value(<<"Other-Leg-Callee-ID-Number">>, Props)
+                                   };
                                <<"inbound">> ->
                                    {props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)
-                                    ,props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)};
-                              undefined ->
-                                  {undefined, undefined}
+                                    ,props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)
+                                   };
+                              'undefined' ->
+                                  {'undefined', 'undefined'}
                           end,
     [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
      ,{<<"Status">>, <<"active">>}
@@ -282,7 +292,7 @@ create_call_status_resp(Props, true) ->
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
      ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)];
-create_call_status_resp(Props, false) ->
+create_call_status_resp(Props, 'false') ->
     {OLCIName, OLCINum} = case props:get_value(<<"Call-Direction">>, Props) of
                                <<"outbound">> ->
                                    {props:get_value(<<"Caller-Callee-ID-Name">>, Props)
@@ -290,8 +300,8 @@ create_call_status_resp(Props, false) ->
                                <<"inbound">> ->
                                    {props:get_value(<<"Caller-Caller-ID-Name">>, Props)
                                     ,props:get_value(<<"Caller-Caller-ID-Number">>, Props)};
-                              undefined ->
-                                  {undefined, undefined}
+                              'undefined' ->
+                                  {'undefined', 'undefined'}
                            end,
     [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
      ,{<<"Status">>, <<"active">>}
@@ -311,18 +321,17 @@ create_call_status_resp(Props, false) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)].
 
 -spec uuid_dump(atom(), string() | binary()) ->
-                             {'ok', wh_proplist()} |
-                             'error'.
+                       {'ok', wh_proplist()} |
+                       'error'.
 uuid_dump(Node, UUID) ->
     uuid_dump(Node, UUID, wh_util:to_list(UUID)).
 uuid_dump(Node, UUID, ID) ->
     case catch freeswitch:api(Node, 'uuid_dump', ID) of
         {'ok', Result} ->
-            Props = ecallmgr_util:eventstr_to_proplist(Result),
-            {ok, Props};
+            {'ok', ecallmgr_util:eventstr_to_proplist(Result)};
         {'EXIT', {'badarg', _}} when is_list(ID) ->
             uuid_dump(Node, UUID, wh_util:to_binary(UUID));
         _Else ->
-            lager:debug("failed to get result from uuid_dump(~p) on ~p: ~p", [UUID, Node, _Else]),
+            lager:debug("failed to get result from uuid_dump(~s) on ~s: ~p", [UUID, Node, _Else]),
             'error'
     end.

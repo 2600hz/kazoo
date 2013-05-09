@@ -13,7 +13,10 @@
 %% Hangup Causes that are fine
 -define(SUCCESSFUL_HANGUPS, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
 
--type text() :: string() | atom() | binary().
+-type text() :: string() | atom() | binary() | iolist().
+
+-type atoms() :: [atom(),...] | [].
+-type pids() :: [pid(),...] | [].
 
 -type api_terms() :: wh_json:object() | wh_json:json_proplist().
 -type api_binary() :: ne_binary() | 'undefined'.
@@ -23,6 +26,8 @@
 -type api_boolean() :: boolean() | 'undefined'.
 -type api_atom() :: atom() | 'undefined'.
 -type api_string() :: string() | 'undefined'.
+-type api_reference() :: reference() | 'undefined'.
+-type api_pid() :: pid() | 'undefined'.
 
 -type api_number() :: number() | 'undefined'.
 -type api_integer() :: integer() | 'undefined'.

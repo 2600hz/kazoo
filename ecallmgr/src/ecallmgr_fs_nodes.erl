@@ -479,9 +479,6 @@ maybe_start_node_handlers(#node{node=NodeName
         {'error', _R}=E ->
             lager:warning("unable to start node ~s handlers: ~-255p", [NodeName, _R]),
             E;
-        'timeout' ->
-            lager:warning("connection timeout while starting node ~s handlers", [NodeName]),
-            {'error', 'timeout'};
         _Else ->
             lager:warning("unexpected result trying to start ~s node handlers: ~-255p", [NodeName, _Else]),
             {'error', 'failed_starting_handlers'}

@@ -31,9 +31,9 @@
                }).
 
 -define(RATE_VARS, [<<"Rate">>, <<"Rate-Increment">>
-                        ,<<"Rate-Minimum">>, <<"Surcharge">>
-                        ,<<"Rate-Name">>, <<"Base-Cost">>
-                        ,<<"Discount-Percentage">>
+                    ,<<"Rate-Minimum">>, <<"Surcharge">>
+                    ,<<"Rate-Name">>, <<"Base-Cost">>
+                    ,<<"Discount-Percentage">>
                    ]).
 
 -define(HEARTBEAT_ON_ANSWER(CallId), <<"api_on_answer=uuid_session_heartbeat ", CallId/binary, " 60">>).
@@ -125,7 +125,7 @@ init([Node, Options]) ->
         'ok' -> {'ok', #state{node=Node, options=Options}};
         {'error', Reason} ->
             lager:critical("unable to establish authz bindings: ~p", [Reason]),
-            {stop, Reason}
+            {'stop', Reason}
     end.
 
 bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
@@ -184,12 +184,15 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
     _ = case props:get_value(<<"Event-Name">>, Props) of
-            <<"SESSION_HEARTBEAT">> -> spawn(?MODULE, handle_session_heartbeat, [Props, Node]);
-            <<"CHANNEL_CREATE">> -> spawn(?MODULE, handle_channel_create, [Props, CallId, Node]);
+            <<"SESSION_HEARTBEAT">> ->
+                spawn(?MODULE, 'handle_session_heartbeat', [Props, Node]);
+            <<"CHANNEL_CREATE">> ->
+                spawn(?MODULE, 'handle_channel_create', [Props, CallId, Node]);
             _ -> 'ok'
         end,
     {'noreply', State};
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -359,7 +362,7 @@ authorize_reseller(Props, CallId, Node) ->
 
 -spec rate_call(wh_proplist(), ne_binary(), atom()) -> 'true'.
 rate_call(Props, CallId, Node) ->
-    spawn(?MODULE, rate_channel, [Props, Node]),
+    spawn(?MODULE, 'rate_channel', [Props, Node]),
     allow_call(Props, CallId, Node).
 
 -spec allow_call(wh_proplist(), ne_binary(), atom()) -> 'true'.
@@ -374,14 +377,14 @@ maybe_deny_call(Props, CallId, Node) ->
             rate_call(Props, CallId, Node),
             'true';
         'false' ->
-            spawn(?MODULE, kill_channel, [Props, Node]),
+            spawn(?MODULE, 'kill_channel', [Props, Node]),
             'false'
     end.
 
 -spec rate_channel(wh_proplist(), atom()) -> 'ok'.
 rate_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
-    put(callid, CallId),
+    put('callid', CallId),
     lager:debug("sending rate request"),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,rating_req(CallId, Props)
@@ -394,9 +397,10 @@ rate_channel(Props, Node) ->
     end.
 
 -spec authorize(api_binary(), wh_proplist()) ->
-                             {'ok', ne_binary()} |
-                             {'error', 'account_limited'} |
-                             {'error', 'default_is_deny'}.
+                       {'ok', api_binary()} |
+                       {'error', 'account_limited'} |
+                       {'error', 'default_is_deny'} |
+                       {'deny', api_binary()}.
 authorize('undefined', _) -> {'error', 'no_account'};
 authorize(AccountId, Props) ->
     lager:debug("channel authorization request started"),

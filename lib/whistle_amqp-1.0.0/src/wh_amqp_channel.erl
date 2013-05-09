@@ -37,7 +37,7 @@ consumer_pid() ->
         _Else -> self()
     end.
 
--spec consumer_pid(pid()) -> 'undefined' | pid().
+-spec consumer_pid(pid()) -> api_pid().
 consumer_pid(Pid) when is_pid(Pid) -> put('$wh_amqp_consumer', Pid).
 
 -spec remove_consumer_pid() -> 'undefined'.
@@ -71,7 +71,7 @@ close(#wh_amqp_channel{commands=[_|_]}=Channel) ->
 close(#wh_amqp_channel{channel=Pid, uri=URI}=Channel) when is_pid(Pid) ->
     lager:debug("closed channel ~p on ~s", [Pid, URI]),
     C = wh_amqp_channels:demonitor_channel(Channel),
-    catch gen_server:call(Pid, {close, 200, <<"Goodbye">>}, 5000),
+    catch gen_server:call(Pid, {'close', 200, <<"Goodbye">>}, 5000),
     C;
 close(Channel) ->
     Channel.
@@ -97,7 +97,10 @@ cancel_queues(#wh_amqp_channel{channel=Pid
                                          ]
                               }=Channel) when is_pid(Pid) ->
     lager:debug("removed queue ~s via channel ~p", [Queue, Pid]),
-    catch amqp_channel:call(Pid, #'queue.delete'{queue=Queue, if_unused='true', nowait='true'}),
+    catch amqp_channel:call(Pid, #'queue.delete'{queue=Queue
+                                                 ,if_unused='true'
+                                                 ,nowait='true'
+                                                }),
     cancel_queues(Channel#wh_amqp_channel{commands=Commands});
 cancel_queues(#wh_amqp_channel{commands=[_|Commands]}=Channel) ->
     cancel_queues(Channel#wh_amqp_channel{commands=Commands}).
@@ -106,8 +109,7 @@ cancel_queues(#wh_amqp_channel{commands=[_|Commands]}=Channel) ->
 remove() ->
     case wh_amqp_channels:find() of
         {'error', _} -> 'ok';
-        #wh_amqp_channel{}=Channel ->
-            remove(Channel)
+        #wh_amqp_channel{}=Channel -> remove(Channel)
     end.
 
 -spec remove(wh_amqp_channel()) -> 'ok'.
@@ -120,8 +122,8 @@ remove(#wh_amqp_channel{}=Channel) ->
 
 -spec maybe_publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
 maybe_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub
-        ,#'amqp_msg'{props=#'P_basic'{timestamp='undefined'}=Props}=AmqpMsg
-       ) ->
+              ,#'amqp_msg'{props=#'P_basic'{timestamp='undefined'}=Props}=AmqpMsg
+             ) ->
     Now = wh_util:now_us(now()),
     maybe_publish(BasicPub, AmqpMsg#'amqp_msg'{props=Props#'P_basic'{timestamp=Now}});
 maybe_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
