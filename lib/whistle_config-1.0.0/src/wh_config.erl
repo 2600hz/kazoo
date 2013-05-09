@@ -42,6 +42,8 @@
                                           ,{'compact_automatically', 'true'}
                                          ]
                             }
+                           ,{'ecallmgr', [{'cookie', 'change_me'}]}
+                           ,{'whistle_apps', [{'cookie', 'change_me'}]}
                            ,{'log', [{'syslog', 'info'}
                                      ,{'console', 'notice'}
                                      ,{'file', 'error'}
@@ -56,17 +58,18 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec get(section()) -> wh_proplist().
-get(Section) -> 
+get(Section) ->
     ?MODULE:get(Section, ?DEFAULT_DEFAULTS).
 
+
 -spec get(section(), atom()) -> wh_proplist().
-get(Section, Key) -> 
+get(Section, Key) ->
     get(Section, Key, ?DEFAULT_DEFAULTS).
 
 -spec get(section(), atom(), Default) -> wh_proplist() | Default.
 get(Section, Key, Default) ->
     case find_values(Section, Key) of
-        [] -> [Default];
+        [] -> Default;
         Else -> Else
     end.
 
@@ -77,15 +80,17 @@ get(Section, Key, Default) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_atom(section(), atom()) -> [atom(),...] | ?DEFAULT_DEFAULTS.
-get_atom(Section, Key) -> 
+get_atom(Section, Key) ->
     get_atom(Section, Key, ?DEFAULT_DEFAULTS).
 
 -spec get_atom(section(), atom(), Default) -> [atom(),...] | Default.
 get_atom(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
-        Default -> [Default];
-        [_|_]=Values -> [wh_util:to_atom(Value, 'true') || Value <- Values];
-        V -> [wh_util:to_atom(V, 'true')]
+        Default -> Default;
+        [_|_]=Values ->
+            [wh_util:to_atom(Value, 'true') || Value <- Values];
+        V ->
+            [wh_util:to_atom(V, 'true')]
     end.
 
 %%--------------------------------------------------------------------
@@ -95,13 +100,13 @@ get_atom(Section, Key, Default) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_integer(section(), atom()) -> [integer(),...] | ?DEFAULT_DEFAULTS.
-get_integer(Section, Key) -> 
+get_integer(Section, Key) ->
     get_integer(Section, Key, ?DEFAULT_DEFAULTS).
 
 -spec get_integer(section(), atom(), Default) -> [integer(),...] | Default.
 get_integer(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
-        Default -> [Default];
+        Default -> Default;
         [_|_]=Values -> [wh_util:to_integer(Value) || Value <- Values];
         V -> [wh_util:to_integer(V)]
     end.
@@ -113,13 +118,13 @@ get_integer(Section, Key, Default) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_string(section(), string()) -> [string(),...] | ?DEFAULT_DEFAULTS.
-get_string(Section, Key) -> 
+get_string(Section, Key) ->
     get_string(Section, Key, ?DEFAULT_DEFAULTS).
 
 -spec get_string(section(), string(), Default) -> [string(),...] | Default.
 get_string(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
-        Default -> [Default];
+        Default -> Default;
         [_|_]=Values -> [wh_util:to_lower_string(Value) || Value <- Values];
         V -> [wh_util:to_lower_string(V)]
     end.
@@ -218,7 +223,7 @@ is_local_section({SectionHost, _}) ->
 get_values(Key, Sections) -> get_values(Sections, Key, []).
 
 get_values([], _, []) -> [];
-get_values([], _, Acc) -> 
+get_values([], _, Acc) ->
     lists:reverse(Acc);
 get_values([{_, Values} | T], Key, Acc) ->
     V = proplists:get_all_values(Key, Values),
