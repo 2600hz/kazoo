@@ -5,18 +5,16 @@
 
 -type ok_return() :: {'ok', whapps_call:call()}.
 -type stop_return() :: {'stop', whapps_call:call()}.
-
-%% {request, Call, URI, Method, BaseParams}
+-type usurp_return() :: {'usurp', whapps_call:call()}.
 -type request_return() :: {'request', whapps_call:call()}.
 
 -type exec_element_return() ::
         ok_return() |
         stop_return() |
+        usurp_return() |
         request_return().
 
--type exec_return() ::
-        {'stop', whapps_call:call()} |
-        {'request', whapps_call:call(), ne_binary(), 'get' | 'post', api_terms()}.
+-type exec_return() :: exec_element_return().
 
 -define(KZT_USER_VARS, <<"user_vars">>).
 

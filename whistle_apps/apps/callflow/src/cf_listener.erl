@@ -24,13 +24,15 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{cf_route_req, [{<<"dialplan">>, <<"route_req">>}]}
-                     ,{cf_route_win, [{<<"dialplan">>, <<"route_win">>}]}
+-define(RESPONDERS, [{'cf_route_req', [{<<"dialplan">>, <<"route_req">>}]}
+                     ,{'cf_route_win', [{<<"dialplan">>, <<"route_win">>}]}
+                     ,{'cf_route_resume', [{<<"callflow">>, <<"resume">>}]}
                     ]).
--define(BINDINGS, [{route, []}
-                   ,{self, []}
+-define(BINDINGS, [{'route', []}
+                   ,{'self', []}
+                   ,{'callflow', []}
                   ]).
--define(QUEUE_NAME, <<"">>).
+-define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
@@ -46,11 +48,11 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                      ,{bindings, ?BINDINGS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
+    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+                                      ,{'bindings', ?BINDINGS}
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================
@@ -69,9 +71,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    process_flag(trap_exit, true),
+    process_flag('trap_exit', 'true'),
     lager:debug("starting new callflow listener"),
-    {ok, []}.
+    {'ok', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -88,7 +90,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Msg, _From, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -101,7 +103,7 @@ handle_call(_Msg, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -115,7 +117,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
     lager:info("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -126,7 +128,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,7 +154,7 @@ terminate(_Reason, _) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions

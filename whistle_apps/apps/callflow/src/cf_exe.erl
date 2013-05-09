@@ -69,6 +69,7 @@
 %% @spec start_link() -> {'ok', Pid} | 'ignore' | {'error', Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link(whapps_call:call()) -> startlink_ret().
 start_link(Call) ->
     CallId = whapps_call:call_id(Call),
     Bindings = [{'call', [{'callid', CallId}]}
@@ -508,7 +509,9 @@ launch_cf_module(#state{call=Call, flow=Flow}=State) ->
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow, wh_json:new()),
     {Pid, Action} = maybe_start_cf_module(Module, Data, Call),
-    State#state{cf_module_pid=Pid, call=whapps_call:kvs_store('cf_last_action', Action, Call)}.
+    State#state{cf_module_pid=Pid
+                ,call=whapps_call:kvs_store('cf_last_action', Action, Call)
+               }.
 
 -spec maybe_start_cf_module(ne_binary(), wh_proplist(), whapps_call:call()) ->
                                          {pid() | 'undefined', atom()}.

@@ -16,8 +16,8 @@
 
 -include("kzt.hrl").
 
--spec exec/2 :: (whapps_call:call(), list()) -> exec_return().
--spec exec/3 :: (whapps_call:call(), list(), ne_binary() | list()) -> exec_return().
+-spec exec(whapps_call:call(), list()) -> exec_return().
+-spec exec(whapps_call:call(), list(), ne_binary() | list()) -> exec_return().
 exec(Call, Cmds) ->
     exec(Call, Cmds, <<"text/xml">>).
 
@@ -25,19 +25,18 @@ exec(Call, Cmds, CT) when not is_binary(CT) ->
     exec(Call, Cmds, wh_util:to_binary(CT));
 exec(Call, Cmds, CT) ->
     case find_candidate_translators(CT) of
-        [] -> throw({error, no_translators, CT});
+        [] -> throw({'error', 'no_translators', CT});
         Mods ->
             case [{M, Cmd1} || M <- Mods,
                                begin {IsRecognized, Cmd1} = is_recognized(M, Cmds), IsRecognized end
                  ] of
-                [] -> throw({error, unrecognized_cmds});
-                [{Translator, Cmds1}|_] ->
-                    Translator:exec(Call, Cmds1)
+                [] -> throw({'error', 'unrecognized_cmds'});
+                [{Translator, Cmds1}|_] -> Translator:exec(Call, Cmds1)
             end
     end.
 
--spec get_user_vars/1 :: (whapps_call:call()) -> wh_json:object().
--spec set_user_vars/2 :: (wh_proplist(), whapps_call:call()) -> whapps_call:call().
+-spec get_user_vars(whapps_call:call()) -> wh_json:object().
+-spec set_user_vars(wh_proplist(), whapps_call:call()) -> whapps_call:call().
 get_user_vars(Call) ->
     ReqVars = kzt_util:get_request_vars(Call),
     UserVars = whapps_call:kvs_fetch(?KZT_USER_VARS, wh_json:new(), Call),
@@ -47,16 +46,16 @@ set_user_vars(Prop, Call) ->
     whapps_call:kvs_store(?KZT_USER_VARS, wh_json:set_values(Prop, UserVars), Call).
 
 find_candidate_translators(<<"text/xml">>) ->
-    [kzt_twiml];
+    ['kzt_twiml'];
 find_candidate_translators(<<"application/xml">>) ->
-    [kzt_twiml];
+    ['kzt_twiml'];
 find_candidate_translators(<<"application/json">>) ->
-    [kzt_2600hz];
+    ['kzt_kazoo'];
 find_candidate_translators(_) ->
     [].
 
 is_recognized(M, Cmds) ->
     case catch M:parse_cmds(Cmds) of
-        {error, _} -> {false, []};
-        {ok, Resp} -> {true, Resp}
+        {'error', _} -> {'false', []};
+        {'ok', Resp} -> {'true', Resp}
     end.

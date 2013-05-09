@@ -110,22 +110,29 @@ log_stacktrace(ST) ->
                      | 'warning'
                      | 'notice'
                      | 'info'
-                     | 'debug'.
+                     | 'debug'
+                     | ne_binary().
 
 -spec change_console_log_level(log_level()) -> 'ok'.
-change_console_log_level(L) ->
+change_console_log_level(L) when is_atom(L) ->
     lager:info("updated console_log to level ~s", [L]),
-    lager:set_loglevel('lager_console_backend', L).
+    lager:set_loglevel('lager_console_backend', L);
+change_console_log_level(L) ->
+    change_console_log_level(to_atom(L)).
 
 -spec change_error_log_level(log_level()) -> 'ok'.
-change_error_log_level(L) ->
+change_error_log_level(L) when is_atom(L) ->
     lager:info("updated error_log to level ~s", [L]),
-    lager:set_loglevel({'lager_file_backend', "log/error.log"}, L).
+    lager:set_loglevel({'lager_file_backend', "log/error.log"}, L);
+change_error_log_level(L) ->
+    change_error_log_level(to_atom(L)).
 
 -spec change_syslog_log_level(log_level()) -> 'ok'.
-change_syslog_log_level(L) ->
+change_syslog_log_level(L) when is_atom(L) ->
     lager:info("updated syslog_log to level ~s", [L]),
-    lager:set_loglevel({'lager_syslog_backend',{"2600hz",'local0'}}, L).
+    lager:set_loglevel({'lager_syslog_backend',{"2600hz",'local0'}}, L);
+change_syslog_log_level(L) ->
+    change_syslog_log_level(to_atom(L)).
 
 %%--------------------------------------------------------------------
 %% @public

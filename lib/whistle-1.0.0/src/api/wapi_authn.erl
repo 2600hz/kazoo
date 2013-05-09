@@ -13,7 +13,7 @@
 -export([req/1, req_v/1
          ,resp/1, resp_v/1
          ,error/1, error_v/1
-         ,bind_q/2, unbind_q/1, unbind_q/2
+         ,bind_q/2, unbind_q/2
          ,publish_req/1, publish_req/2
          ,publish_resp/2, publish_resp/3
          ,publish_error/2, publish_error/3
@@ -73,7 +73,7 @@
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
         case req_v(Prop) of
             true -> wh_api:build_message(Prop, ?AUTHN_REQ_HEADERS, ?OPTIONAL_AUTHN_REQ_HEADERS);
@@ -82,13 +82,13 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
 
--spec req_v/1 :: (api_terms()) -> boolean().
+-spec req_v(api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AUTHN_REQ_HEADERS, ?AUTHN_REQ_VALUES, ?AUTHN_REQ_TYPES);
 req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
 
--spec req_event_type/0 :: () -> {ne_binary(), ne_binary()}.
+-spec req_event_type() -> {ne_binary(), ne_binary()}.
 req_event_type() ->
     {?EVENT_CATEGORY, ?AUTHN_REQ_EVENT_NAME}.
 
@@ -97,7 +97,7 @@ req_event_type() ->
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
         true -> wh_api:build_message(Prop, ?AUTHN_RESP_HEADERS, ?OPTIONAL_AUTHN_RESP_HEADERS);
@@ -106,7 +106,7 @@ resp(Prop) when is_list(Prop) ->
 resp(JObj) ->
     resp(wh_json:to_proplist(JObj)).
 
--spec resp_v/1 :: (api_terms()) -> boolean().
+-spec resp_v(api_terms()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AUTHN_RESP_HEADERS, ?AUTHN_RESP_VALUES, ?AUTHN_RESP_TYPES);
 resp_v(JObj) ->
@@ -117,62 +117,57 @@ resp_v(JObj) ->
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec error/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec error(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
-        true -> wh_api:build_message(Prop, ?AUTHN_ERR_HEADERS, ?OPTIONAL_AUTHN_ERR_HEADERS);
-        false -> {error, "Proplist failed validation for authn_error"}
+        'true' -> wh_api:build_message(Prop, ?AUTHN_ERR_HEADERS, ?OPTIONAL_AUTHN_ERR_HEADERS);
+        'false' -> {'error', "Proplist failed validation for authn_error"}
     end;
-error(JObj) ->
-    error(wh_json:to_proplist(JObj)).
+error(JObj) -> error(wh_json:to_proplist(JObj)).
 
--spec error_v/1 :: (api_terms()) -> boolean().
+-spec error_v(api_terms()) -> boolean().
 error_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AUTHN_ERR_HEADERS, ?AUTHN_ERR_VALUES, ?AUTHN_ERR_TYPES);
-error_v(JObj) ->
-    error_v(wh_json:to_proplist(JObj)).
+error_v(JObj) -> error_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Setup and tear down bindings for authn gen_listeners
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Q, Props) ->
-    Realm = props:get_value(realm, Props, <<"*">>),
+    Realm = props:get_value('realm', Props, <<"*">>),
 
     amqp_util:callmgr_exchange(),
     amqp_util:bind_q_to_callmgr(Q, get_authn_req_routing(Realm)).
 
--spec unbind_q/1 :: (ne_binary()) -> 'ok'.
--spec unbind_q/2:: (ne_binary(), proplist()) -> 'ok'.
-unbind_q(Q) ->
-    unbind_q(Q, []).
+-spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
-    Realm = props:get_value(realm, Props, <<"*">>),
+    Realm = props:get_value('realm', Props, <<"*">>),
     amqp_util:unbind_q_from_callmgr(Q, get_authn_req_routing(Realm)).
 
 %%--------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_req/1 :: (api_terms()) -> 'ok'.
--spec publish_req/2 :: (api_terms(), binary()) -> 'ok'.
+-spec publish_req(api_terms()) -> 'ok'.
+-spec publish_req(api_terms(), binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?AUTHN_REQ_VALUES, fun ?MODULE:req/1),
     amqp_util:callmgr_publish(Payload, ContentType, get_authn_req_routing(Req)).
 
--spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_resp/3 :: (ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
 publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(Queue, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?AUTHN_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
--spec publish_error/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_error/3 :: (ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_error(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_error(ne_binary(), api_terms(), binary()) -> 'ok'.
 publish_error(Queue, JObj) ->
     publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(Queue, Resp, ContentType) ->
@@ -185,7 +180,7 @@ publish_error(Queue, Resp, ContentType) ->
 %% creating the routing key for either binding queues or publishing messages
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_authn_req_routing/1 :: (ne_binary() | api_terms()) -> ne_binary().
+-spec get_authn_req_routing(ne_binary() | api_terms()) -> ne_binary().
 get_authn_req_routing(Realm) when is_binary(Realm) ->
     list_to_binary([?KEY_AUTHN_REQ, ".", amqp_util:encode(Realm)]);
 get_authn_req_routing(Req) ->
@@ -197,9 +192,8 @@ get_authn_req_routing(Req) ->
 %% extract the auth user from the API request
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_user/1  :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
-get_auth_user(ApiJObj) ->
-    wh_json:get_value(<<"Auth-User">>, ApiJObj).
+-spec get_auth_user(wh_json:object()) -> api_binary().
+get_auth_user(ApiJObj) -> wh_json:get_value(<<"Auth-User">>, ApiJObj).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -208,17 +202,15 @@ get_auth_user(ApiJObj) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_realm/1  :: (wh_json:json_object() | proplist()) -> ne_binary().
+-spec get_auth_realm(wh_json:object() | wh_proplist()) -> ne_binary().
 get_auth_realm(ApiProp) when is_list(ApiProp) ->
     AuthRealm = props:get_value(<<"Auth-Realm">>, ApiProp, <<"missing.realm">>),
     case wh_network_utils:is_ipv4(AuthRealm) 
         orelse wh_network_utils:is_ipv6(AuthRealm) 
     of
-        true ->
+        'false' -> AuthRealm;
+        'true' ->
             [_ToUser, ToDomain] = binary:split(props:get_value(<<"To">>, ApiProp), <<"@">>),
-            ToDomain;
-        false ->
-            AuthRealm
+            ToDomain
     end;
-get_auth_realm(ApiJObj) ->
-    get_auth_realm(wh_json:to_proplist(ApiJObj)).
+get_auth_realm(ApiJObj) -> get_auth_realm(wh_json:to_proplist(ApiJObj)).

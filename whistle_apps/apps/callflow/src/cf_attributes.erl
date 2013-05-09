@@ -39,7 +39,7 @@ temporal_rules(Call) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec groups(whapps_call:call()) -> wh_json:json_objects().
+-spec groups(whapps_call:call()) -> wh_json:objects().
 groups(Call) ->
     AccountDb = whapps_call:account_db(Call),
     ViewOptions = [],
