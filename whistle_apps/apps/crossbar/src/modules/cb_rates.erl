@@ -208,7 +208,7 @@ check_uploaded_file(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -218,7 +218,7 @@ normalize_view_results(JObj, Acc) ->
 %% Convert the file, based on content-type, to rate documents
 %% @end
 %%--------------------------------------------------------------------
--spec process_upload_file(#cb_context{}) -> {'ok', {non_neg_integer(), wh_json:json_objects()}}.
+-spec process_upload_file(#cb_context{}) -> {'ok', {non_neg_integer(), wh_json:objects()}}.
 process_upload_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
     lager:debug("converting file ~s", [_Name]),
     convert_file(wh_json:get_binary_value([<<"headers">>, <<"content_type">>], File)
@@ -226,7 +226,7 @@ process_upload_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
                  ,Context
                 ).
 
--spec convert_file(ne_binary(), ne_binary(), #cb_context{}) -> {'ok', {non_neg_integer(), wh_json:json_objects()}}.
+-spec convert_file(ne_binary(), ne_binary(), #cb_context{}) -> {'ok', {non_neg_integer(), wh_json:objects()}}.
 convert_file(<<"text/csv">>, FileContents, Context) ->
     csv_to_rates(FileContents, Context);
 convert_file(<<"text/comma-separated-values">>, FileContents, Context) ->
@@ -235,7 +235,7 @@ convert_file(ContentType, _, _) ->
     lager:debug("unknown content type: ~s", [ContentType]),
     throw({unknown_content_type, ContentType}).
 
--spec csv_to_rates(ne_binary(), #cb_context{}) -> {'ok', {integer(), wh_json:json_objects()}}.
+-spec csv_to_rates(ne_binary(), #cb_context{}) -> {'ok', {integer(), wh_json:objects()}}.
 csv_to_rates(CSV, Context) ->
     BulkInsert = couch_util:max_bulk_insert(),
     ecsv:process_csv_binary_with(CSV
@@ -245,7 +245,7 @@ csv_to_rates(CSV, Context) ->
                                  ,{0, []}
                                 ).
 
--spec process_row([string(),...], {integer(), wh_json:json_objects()}) -> {integer(), wh_json:json_objects()}.
+-spec process_row([string(),...], {integer(), wh_json:objects()}) -> {integer(), wh_json:objects()}.
 process_row([Prefix, ISO, Desc, Rate], Acc) ->
     process_row([Prefix, ISO, Desc, Rate, Rate], Acc);
 process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
@@ -313,7 +313,7 @@ save_processed_rates(Context, Cnt) ->
                   lager:debug("saved up to ~b docs (took ~b ms)", [Cnt, wh_util:elapsed_ms(Now)])
           end).
 
--spec process_row(#cb_context{}, [string(),...], integer(), wh_json:json_objects(), integer()) -> {integer(), wh_json:json_objects()}.
+-spec process_row(#cb_context{}, [string(),...], integer(), wh_json:objects(), integer()) -> {integer(), wh_json:objects()}.
 process_row(Context, Row, Cnt, RateDocs, BulkInsert) ->
     RateDocs1 = case Cnt > 1 andalso (Cnt rem BulkInsert) =:= 0 of
                     false -> RateDocs;

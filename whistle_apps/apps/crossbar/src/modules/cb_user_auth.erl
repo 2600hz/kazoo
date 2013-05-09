@@ -187,7 +187,7 @@ maybe_authenticate_user(Context, Credentials, <<"md5">>, Account) ->
             cb_context:add_system_error('invalid_credentials', Context)
     end;
 maybe_authenticate_user(Context, Credentials, <<"sha">>, Account) ->
-    AccountDb = wh_util:format_account_id(Account, encoded),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case crossbar_doc:load_view(?ACCT_SHA1_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=AccountDb}) of
         #cb_context{resp_status='success'
                     ,doc=[JObj|_]

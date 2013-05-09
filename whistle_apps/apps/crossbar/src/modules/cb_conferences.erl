@@ -179,12 +179,12 @@ on_successful_validation(DocId, #cb_context{}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
--spec normalize_users_results(wh_json:json_object(), wh_json:json_objects(), ne_binary()) ->
-                                          ['undefined' | wh_json:json_object(),...] | [].
+-spec normalize_users_results(wh_json:object(), wh_json:objects(), ne_binary()) ->
+                                          ['undefined' | wh_json:object(),...] | [].
 normalize_users_results(JObj, Acc, UserId) ->
     case wh_json:get_value([<<"value">>, <<"owner_id">>], JObj) of
         undefined -> normalize_view_results(JObj, Acc);

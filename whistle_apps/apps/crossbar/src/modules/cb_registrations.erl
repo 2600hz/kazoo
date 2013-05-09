@@ -52,7 +52,7 @@ validate(#cb_context{req_verb = <<"get">>, db_name=DbName, account_id=AccountId}
     AccountRealm = wh_util:get_account_realm(DbName, AccountId),
     crossbar_util:response(lookup_regs(AccountRealm), Context).
 
--spec lookup_regs(ne_binary()) -> wh_json:json_objects().
+-spec lookup_regs(ne_binary()) -> wh_json:objects().
 lookup_regs(AccountRealm) ->
     Req = [{<<"Realm">>, AccountRealm}
            ,{<<"Fields">>, []}

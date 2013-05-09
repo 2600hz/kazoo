@@ -232,7 +232,7 @@ load_vmbox(DocId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -261,7 +261,7 @@ load_message_summary(DocId, Context) ->
 %% Get message by its media ID and its context
 %% @end
 %%--------------------------------------------------------------------
--spec load_message(ne_binary(), ne_binary(), 'undefined' | wh_json:json_object(), #cb_context{}) ->
+-spec load_message(ne_binary(), ne_binary(), 'undefined' | wh_json:object(), #cb_context{}) ->
                                 {boolean(), #cb_context{}}.
 load_message(DocId, MediaId, undefined, Context) ->
     load_message(DocId, MediaId, wh_json:new(), Context);
@@ -339,7 +339,7 @@ load_message_binary(DocId, MediaId, #cb_context{db_name=Db, resp_headers=RespHea
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_message_index(ne_binary(), wh_json:json_objects()) -> 'false' | pos_integer().
+-spec get_message_index(ne_binary(), wh_json:objects()) -> 'false' | pos_integer().
 get_message_index(MediaId, Messages) ->
     case lists:takewhile(fun(Message) ->
                                  wh_json:get_value(<<"media_id">>, Message) =/= MediaId

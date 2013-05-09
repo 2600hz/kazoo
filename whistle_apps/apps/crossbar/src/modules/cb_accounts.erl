@@ -46,12 +46,12 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.accounts">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.accounts">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.accounts">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.accounts">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.accounts">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.accounts">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.accounts">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.accounts">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.accounts">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.accounts">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.accounts">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.accounts">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -71,8 +71,8 @@ allowed_methods(_) ->
     ['GET', 'PUT', 'POST', 'DELETE'].
 allowed_methods(_, Path) ->
     case lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]) of
-        true -> ['GET'];
-        false -> []
+        'true' -> ['GET'];
+        'false' -> []
     end.
 
 %%--------------------------------------------------------------------
@@ -86,8 +86,8 @@ allowed_methods(_, Path) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), ne_binary()) -> boolean().
-resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 resource_exists(_, Path) ->
     lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]).
 
@@ -388,7 +388,7 @@ load_siblings(AccountId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -579,7 +579,7 @@ load_initial_views(#cb_context{db_name=AccountDb})->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec replicate_account_definition(wh_json:json_object()) -> {'ok', wh_json:json_object()} | {'error', _}.
+-spec replicate_account_definition(wh_json:object()) -> {'ok', wh_json:object()} | {'error', _}.
 replicate_account_definition(JObj) ->
     AccountId = wh_json:get_value(<<"_id">>, JObj),
     case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of

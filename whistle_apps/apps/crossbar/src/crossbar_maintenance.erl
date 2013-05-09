@@ -363,9 +363,9 @@ create_account(AccountName, Realm, Username, Password) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_account(wh_json:json_object(), cb_context:context()) ->
+-spec validate_account(wh_json:object(), cb_context:context()) ->
                                     {'ok', cb_context:context()} |
-                                    {'error', wh_json:json_object()}.
+                                    {'error', wh_json:object()}.
 validate_account(JObj, Context) ->
     Payload = [Context#cb_context{req_data=JObj
                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]
@@ -386,9 +386,9 @@ validate_account(JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_user(wh_json:json_object(), cb_context:context()) ->
+-spec validate_user(wh_json:object(), cb_context:context()) ->
                                  {'ok', cb_context:context()} |
-                                 {'error', wh_json:json_object()}.
+                                 {'error', wh_json:object()}.
 validate_user(JObj, Context) ->
     Payload = [Context#cb_context{req_data=JObj
                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]
