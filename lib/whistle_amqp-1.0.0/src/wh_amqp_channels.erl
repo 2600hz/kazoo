@@ -53,20 +53,20 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 -spec new() -> wh_amqp_channel().
-new() -> gen_server:call(?MODULE, {new, #wh_amqp_channel{}}).
+new() -> gen_server:call(?MODULE, {'new', #wh_amqp_channel{}}).
 
 -spec remove(wh_amqp_channel()) -> 'ok'.
-remove(#wh_amqp_channel{consumer=Pid}) -> gen_server:cast(?MODULE, {remove, Pid}).
+remove(#wh_amqp_channel{consumer=Pid}) -> gen_server:cast(?MODULE, {'remove', Pid}).
 
 -spec command(wh_amqp_channel(), wh_amqp_command()) -> wh_amqp_channel().
-command(#wh_amqp_channel{reconnecting=true}, _) -> ok;
+command(#wh_amqp_channel{reconnecting='true'}, _) -> 'ok';
 command(#wh_amqp_channel{uri=URI}, #'exchange.declare'{}=Command) ->
     wh_amqp_connection:exchange_declared(URI, Command);
 command(#wh_amqp_channel{consumer=Pid}=Channel, Command) ->
-    gen_server:cast(?MODULE, {command, Pid, Command}),
+    gen_server:cast(?MODULE, {'command', Pid, Command}),
     Channel.
 
 -spec is_exchange_declared(wh_amqp_channel(), #'exchange.declare'{}) -> boolean().
@@ -83,7 +83,7 @@ find(Pid) ->
         [#wh_amqp_channel{}=Channel] -> Channel
     end.
 
--spec get_channel() -> wh_amqp_channel() | {'error', _}.
+-spec get_channel() -> wh_amqp_channel() | {'error', 'no_channel'}.
 get_channel() ->
     case find() of
         #wh_amqp_channel{channel='undefined'}=Channel -> wh_amqp_channel:new(Channel);
@@ -93,52 +93,52 @@ get_channel() ->
 
 -spec lost_connection(wh_amqp_connection()) -> 'ok'.
 lost_connection(#wh_amqp_connection{uri=URI}) ->
-    gen_server:call(?MODULE, {lost_connection, URI});
+    gen_server:call(?MODULE, {'lost_connection', URI});
 lost_connection(URI) ->
-    gen_server:call(?MODULE, {lost_connection, wh_util:to_binary(URI)}).
+    gen_server:call(?MODULE, {'lost_connection', wh_util:to_binary(URI)}).
 
 -spec reconnect() -> pid() | {'error', _}.
 reconnect() ->
     case wh_amqp_connections:current() of
-        {error, _}=E -> E;
-        {ok, Connection} ->
+        {'error', _}=E -> E;
+        {'ok', Connection} ->
             reconnect(Connection)
     end.
 
--spec reconnect(wh_amqp_connection()) -> pid().
+-spec reconnect(wh_amqp_connection()) -> 'ok'.
 reconnect(#wh_amqp_connection{}=Connection) ->
-    gen_server:cast(?MODULE, {reconnect, Connection}).
+    gen_server:cast(?MODULE, {'reconnect', Connection}).
 
 -spec force_reconnect() -> pid() | {'error', _}.
 force_reconnect() ->
     case wh_amqp_connections:current() of
-        {error, _}=E -> E;
-        {ok, Connection} ->
+        {'error', _}=E -> E;
+        {'ok', Connection} ->
             force_reconnect(Connection)
     end.
 
--spec force_reconnect(wh_amqp_connection()) -> pid().
+-spec force_reconnect(wh_amqp_connection()) -> 'ok'.
 force_reconnect(#wh_amqp_connection{}=Connection) ->
-    gen_server:cast(?MODULE, {force_reconnect, Connection}).
+    gen_server:cast(?MODULE, {'force_reconnect', Connection}).
 
 -spec monitor_channel(wh_amqp_channel()) -> wh_amqp_channel().
 monitor_channel(#wh_amqp_channel{channel=Pid}=Channel) when is_pid(Pid) ->
-    gen_server:call(?MODULE, {monitor_channel, Channel});
+    gen_server:call(?MODULE, {'monitor_channel', Channel});
 monitor_channel(Channel) -> Channel.
 
 -spec monitor_consumer(wh_amqp_channel()) -> wh_amqp_channel().
 monitor_consumer(#wh_amqp_channel{consumer=Pid}=Channel) when is_pid(Pid) ->
-    gen_server:call(?MODULE, {monitor_consumer, Channel});
+    gen_server:call(?MODULE, {'monitor_consumer', Channel});
 monitor_consumer(Channel) -> Channel.
 
 -spec demonitor_channel(wh_amqp_channel()) -> wh_amqp_channel().
 demonitor_channel(#wh_amqp_channel{channel_ref=Ref}=Channel) when is_reference(Ref) ->
-    gen_server:call(?MODULE, {demonitor_channel, Channel});
+    gen_server:call(?MODULE, {'demonitor_channel', Channel});
 demonitor_channel(Channel) -> Channel.
 
 -spec demonitor_consumer(wh_amqp_channel()) -> wh_amqp_channel().
 demonitor_consumer(#wh_amqp_channel{consumer_ref=Ref}=Channel) when is_reference(Ref) ->
-    gen_server:call(?MODULE, {demonitor_consumer, Channel});
+    gen_server:call(?MODULE, {'demonitor_consumer', Channel});
 demonitor_consumer(Channel) -> Channel.
 
 %%%===================================================================
@@ -158,8 +158,8 @@ demonitor_consumer(Channel) -> Channel.
 %%--------------------------------------------------------------------
 init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
-    _ = ets:new(?TAB, [named_table, {keypos, #wh_amqp_channel.consumer}]),
-    {ok, ok}.
+    _ = ets:new(?TAB, ['named_table', {'keypos', #wh_amqp_channel.consumer}]),
+    {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -175,26 +175,26 @@ init([]) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({new, #wh_amqp_channel{consumer=Pid}=Channel}, _, State) ->
+handle_call({'new', #wh_amqp_channel{consumer=Pid}=Channel}, _, State) ->
     case ets:insert_new(?TAB, Channel) of
-        true -> {'reply', Channel, State};
-        false -> {'reply', find(Pid), State}
+        'true' -> {'reply', Channel, State};
+        'false' -> {'reply', find(Pid), State}
     end;
-handle_call({monitor_channel, Channel}, _, State) ->
+handle_call({'monitor_channel', Channel}, _, State) ->
     {'reply', maybe_monitor_channel(Channel), State};
-handle_call({monitor_consumer, Channel}, _, State) ->
+handle_call({'monitor_consumer', Channel}, _, State) ->
     {'reply', maybe_monitor_consumer(Channel), State};
-handle_call({demonitor_channel, Channel}, _, State) ->
+handle_call({'demonitor_channel', Channel}, _, State) ->
     {'reply', maybe_demonitor_channel(Channel), State};
-handle_call({demonitor_consumer, Channel}, _, State) ->
+handle_call({'demonitor_consumer', Channel}, _, State) ->
     {'reply', maybe_demonitor_consumer(Channel), State};
-handle_call({lost_connection, URI}, _, State) ->
+handle_call({'lost_connection', URI}, _, State) ->
     _ = demonitor_all_connection_channels(URI),
-    {'reply', ok, State};
-handle_call(stop, _, State) ->
-    {'stop', normal, ok, State};
+    {'reply', 'ok', State};
+handle_call('stop', _, State) ->
+    {'stop', 'normal', 'ok', State};
 handle_call(_Msg, _From, State) ->
-    {'reply', {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -206,7 +206,7 @@ handle_call(_Msg, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({reconnect, #wh_amqp_connection{uri=URI}=Connection}, State) ->
+handle_cast({'reconnect', #wh_amqp_connection{uri=URI}=Connection}, State) ->
     spawn(fun() ->
                   Disconnected = #wh_amqp_channel{channel='undefined', _='_'},
                   case ets:match_object(?TAB, Disconnected, 1) of
@@ -217,10 +217,10 @@ handle_cast({reconnect, #wh_amqp_connection{uri=URI}=Connection}, State) ->
                   end
           end),
     {'noreply', State};
-handle_cast({force_reconnect, #wh_amqp_connection{uri=URI}=Connection}, State) ->
+handle_cast({'force_reconnect', #wh_amqp_connection{uri=URI}=Connection}, State) ->
     spawn(fun() ->
                   MatchSpec = [{#wh_amqp_channel{uri = '$2', _ = '_'}
-                                ,[{'=/=', '$2', {const, URI}}]
+                                ,[{'=/=', '$2', {'const', URI}}]
                                 ,['$_']
                                }],
                   case ets:select(?TAB, MatchSpec, 1) of
@@ -233,26 +233,26 @@ handle_cast({force_reconnect, #wh_amqp_connection{uri=URI}=Connection}, State) -
     {'noreply', State};
 handle_cast({command, Pid, #'basic.qos'{}=Command}, State) ->
     _ = case ets:match(?TAB, #wh_amqp_channel{consumer=Pid, commands='$1', _='_'}) of
-            [] -> ok;
+            [] -> 'ok';
             [[Commands]] ->
                 C = [Command
-                     |lists:filter(fun(#'basic.qos'{}) ->
-                                           false;
-                                      (_) -> true
+                     |lists:filter(fun(#'basic.qos'{}) -> 'false';
+                                      (_) -> 'true'
                                    end, Commands)
                     ],
                 ets:update_element(?TAB, Pid, {#wh_amqp_channel.commands, C})
         end,
     {'noreply', State};
 handle_cast({command, Pid, #'queue.delete'{queue=Queue}}, State) ->
-    Filter = fun(#'queue.declare'{queue=Q}) when Q =:= Queue ->
-                     false;
-                (_) -> true
+    Filter = fun(#'queue.declare'{queue=Q}) when Q =:= Queue -> 'false';
+                (_) -> 'true'
              end,
     _ = filter_commands(Pid, Filter),
     {'noreply', State};
-handle_cast({command, Pid, #'queue.unbind'{queue=Queue, exchange=Exchange
-                                          ,routing_key=RoutingKey}}, State) ->
+handle_cast({command, Pid, #'queue.unbind'{queue=Queue
+                                           ,exchange=Exchange
+                                           ,routing_key=RoutingKey
+                                          }}, State) ->
     Filter = fun(#'queue.bind'{queue=Q, exchange=E, routing_key=R})
                    when Q =:= Queue, E =:= Exchange, R =:= RoutingKey ->
                      'false';
@@ -297,6 +297,7 @@ handle_info({'DOWN', Ref, 'process', _Pid, Reason}, State) ->
     handle_down_msg(find_reference(Ref), Reason),
     {'noreply', State, 'hibernate'};
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -322,23 +323,23 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 -spec reconnect({wh_amqp_channels(), _} | '$end_of_table', wh_amqp_connection()) -> 'ok'.
-reconnect('$end_of_table', _) -> ok;
+reconnect('$end_of_table', _) -> 'ok';
 reconnect({[Channel], Continuation}, Connection) ->
-    catch wh_amqp_channel:open(Channel#wh_amqp_channel{reconnecting=true}
+    catch wh_amqp_channel:open(Channel#wh_amqp_channel{reconnecting='true'}
                                ,Connection),
     reconnect(ets:match(Continuation), Connection).
 
 -spec force_reconnect({wh_amqp_channels(), _} | '$end_of_table', wh_amqp_connection()) -> 'ok'.
-force_reconnect('$end_of_table', _) -> ok;
+force_reconnect('$end_of_table', _) -> 'ok';
 force_reconnect({[Channel], Continuation}, Connection) ->
     catch wh_amqp_channel:close(Channel),
-    catch wh_amqp_channel:open(Channel#wh_amqp_channel{reconnecting=true}
+    catch wh_amqp_channel:open(Channel#wh_amqp_channel{reconnecting='true'}
                                ,Connection),
     force_reconnect(ets:select(Continuation), Connection).
 
@@ -358,21 +359,21 @@ filter_commands(Pid, Filter) ->
 handle_down_msg([], _) -> 'ok';
 handle_down_msg([_|_]=Matches, Reason) ->
     _ = [handle_down_match(Match, Reason) || Match <- Matches],
-    ok.
+    'ok'.
 
 -spec handle_down_match(down_match(), _) -> any().
-handle_down_match({channel, #wh_amqp_channel{uri=URI}}
-                  ,{shutdown,{connection_closing, Reason}}) ->
+handle_down_match({'channel', #wh_amqp_channel{uri=URI}}
+                  ,{'shutdown',{'connection_closing', Reason}}) ->
     lager:critical("channel died when connection to '~s' was lost: ~p", [URI, Reason]),
     demonitor_all_connection_channels(URI);
-handle_down_match({channel, #wh_amqp_channel{uri=URI}}
-                  ,shutdown) ->
+handle_down_match({'channel', #wh_amqp_channel{uri=URI}}
+                  ,'shutdown') ->
     lager:critical("channel died when connection to '~s' was lost: shutdown", [URI]),
     demonitor_all_connection_channels(URI);
-handle_down_match({channel, #wh_amqp_channel{uri=URI}=Channel}, Reason) ->
+handle_down_match({'channel', #wh_amqp_channel{uri=URI}=Channel}, Reason) ->
     lager:notice("channel went down while still connected to '~s': ~p", [URI, Reason]),
     spawn(fun() -> attempt_rebuild_channel(Channel) end);
-handle_down_match({consumer, Channel}, Reason) ->
+handle_down_match({'consumer', Channel}, Reason) ->
     _ = log_short_lived(Channel),
     lager:notice("consumer went down without closing channel: ~p", [Reason]),
     spawn(fun() -> wh_amqp_channel:remove(Channel) end).
@@ -381,34 +382,33 @@ handle_down_match({consumer, Channel}, Reason) ->
 log_short_lived(#wh_amqp_channel{started=Started}=Channel) ->
     Duration = wh_util:elapsed_s(Started),
     case Duration < 5 of
-        false -> ok;
-        true ->
-            lager:info("short lived channel (~ps): ~p", [Duration, Channel])
+        'false' -> 'ok';
+        'true' -> lager:info("short lived channel (~ps): ~p", [Duration, Channel])
     end.
 
 -spec find_reference(reference()) -> down_matches().
 find_reference(Ref) ->
     MatchSpec = [{#wh_amqp_channel{channel_ref = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {const, Ref}}]
-                  ,[{{channel, '$_'}}]
+                  ,[{'=:=', '$1', {'const', Ref}}]
+                  ,[{{'channel', '$_'}}]
                  }
                  ,{#wh_amqp_channel{consumer_ref = '$1', _ = '_'}
-                   ,[{'=:=', '$1', {const, Ref}}]
-                   ,[{{consumer, '$_'}}]
+                   ,[{'=:=', '$1', {'const', Ref}}]
+                   ,[{{'consumer', '$_'}}]
                   }],
     ets:select(?TAB, MatchSpec).
 
--spec demonitor_all_connection_channels(ne_binary() | wh_amqp_channels()) -> 'ok'.
+-spec demonitor_all_connection_channels(ne_binary() | wh_amqp_channels() | '$end_of_table') -> 'ok'.
 demonitor_all_connection_channels(URI) when is_binary(URI) ->
     MatchSpec = [{#wh_amqp_channel{channel = '$1', uri = '$2', _ = '_'}
-                  ,[{is_pid,'$1'}
-                    ,{'=:=', '$2', {const, URI}}
+                  ,[{'is_pid','$1'}
+                    ,{'=:=', '$2', {'const', URI}}
                   ]
                   ,['$_']
                  }],
     lager:notice("removing channels belonging to lost connection '~s'", [URI]),
     demonitor_all_connection_channels(ets:select(?TAB, MatchSpec, 1));
-demonitor_all_connection_channels('$end_of_table') -> ok;
+demonitor_all_connection_channels('$end_of_table') -> 'ok';
 demonitor_all_connection_channels({[Channel], Continuation}) ->
     _ = maybe_demonitor_channel(Channel),
     demonitor_all_connection_channels(ets:match(Continuation)).
@@ -416,21 +416,23 @@ demonitor_all_connection_channels({[Channel], Continuation}) ->
 -spec attempt_rebuild_channel(wh_amqp_channel()) -> wh_amqp_channel().
 attempt_rebuild_channel(Channel) ->
     _ = log_short_lived(Channel),
-    C1 = wh_amqp_channel:close(Channel#wh_amqp_channel{reconnecting=true}),
+    C1 = wh_amqp_channel:close(Channel#wh_amqp_channel{reconnecting='true'}),
     C2 = wh_amqp_channel:new(C1),
-    C2#wh_amqp_channel{reconnecting=false}.
+    C2#wh_amqp_channel{reconnecting='false'}.
 
 -spec maybe_monitor_consumer(wh_amqp_channel()) -> wh_amqp_channel().
 maybe_monitor_consumer(#wh_amqp_channel{consumer=Consumer}=Channel) when is_pid(Consumer) ->
-    Ref = erlang:monitor(process, Consumer),
+    Ref = erlang:monitor('process', Consumer),
     ets:update_element(?TAB, Consumer, [{#wh_amqp_channel.consumer_ref, Ref}]),
     Channel#wh_amqp_channel{consumer_ref=Ref};
 maybe_monitor_consumer(Channel) ->
     Channel.
 
 -spec maybe_monitor_channel(wh_amqp_channel()) -> wh_amqp_channel().
-maybe_monitor_channel(#wh_amqp_channel{consumer=Consumer, channel=Pid
-                                       ,uri=URI}=Channel) when is_pid(Pid) ->
+maybe_monitor_channel(#wh_amqp_channel{consumer=Consumer
+                                       ,channel=Pid
+                                       ,uri=URI
+                                      }=Channel) when is_pid(Pid) ->
     Ref = erlang:monitor(process, Pid),
     ets:update_element(?TAB, Consumer, [{#wh_amqp_channel.channel_ref, Ref}
                                         ,{#wh_amqp_channel.channel, Pid}
@@ -441,20 +443,24 @@ maybe_monitor_channel(Channel) ->
     Channel.
 
 -spec maybe_demonitor_channel(wh_amqp_channel()) -> wh_amqp_channel().
-maybe_demonitor_channel(#wh_amqp_channel{consumer=Consumer, channel_ref=Ref}=Channel) when is_reference(Ref) ->
-    erlang:demonitor(Ref, [flush]),
-    ets:update_element(?TAB, Consumer, [{#wh_amqp_channel.channel_ref, undefined}
-                                        ,{#wh_amqp_channel.channel, undefined}
-                                        ,{#wh_amqp_channel.uri, undefined}
+maybe_demonitor_channel(#wh_amqp_channel{consumer=Consumer
+                                         ,channel_ref=Ref
+                                        }=Channel) when is_reference(Ref) ->
+    erlang:demonitor(Ref, ['flush']),
+    ets:update_element(?TAB, Consumer, [{#wh_amqp_channel.channel_ref, 'undefined'}
+                                        ,{#wh_amqp_channel.channel, 'undefined'}
+                                        ,{#wh_amqp_channel.uri, 'undefined'}
                                        ]),
     Channel#wh_amqp_channel{channel_ref='undefined', channel='undefined'};
 maybe_demonitor_channel(#wh_amqp_channel{}=Channel) ->
     Channel.
 
 -spec maybe_demonitor_consumer(wh_amqp_channel()) -> wh_amqp_channel().
-maybe_demonitor_consumer(#wh_amqp_channel{consumer=Consumer, consumer_ref=Ref}=Channel) when is_reference(Ref) ->
-    erlang:demonitor(Ref, [flush]),
-    ets:update_element(?TAB, Consumer, [{#wh_amqp_channel.consumer_ref, undefined}]),
+maybe_demonitor_consumer(#wh_amqp_channel{consumer=Consumer
+                                          ,consumer_ref=Ref
+                                         }=Channel) when is_reference(Ref) ->
+    erlang:demonitor(Ref, ['flush']),
+    ets:update_element(?TAB, Consumer, [{#wh_amqp_channel.consumer_ref, 'undefined'}]),
     Channel#wh_amqp_channel{consumer_ref='undefined'};
 maybe_demonitor_consumer(#wh_amqp_channel{}=Channel) ->
     Channel.

@@ -112,6 +112,9 @@
                      (C >= $0 andalso C =< $9) orelse
                      (C =:= $- orelse C =:= $~ orelse C =:= $_))).
 
+-define(P_GET(K, Prop), props:get_value(K, Prop)).
+-define(P_GET(K, Prop, D), props:get_value(K, Prop, D)).
+
 -type amqp_payload() :: iolist() | ne_binary().
 
 %%------------------------------------------------------------------------------
@@ -132,7 +135,7 @@ targeted_publish(?NE_BINARY = Queue, Payload, ContentType) ->
 nodes_publish(Payload) ->
     nodes_publish(Payload, ?DEFAULT_CONTENT_TYPE).
 nodes_publish(Payload, ContentType) ->
-    basic_publish(?EXCHANGE_NODES, <<>>, Payload, ContentType, [maybe_publish]).
+    basic_publish(?EXCHANGE_NODES, <<>>, Payload, ContentType, ['maybe_publish']).
 
 -spec whapps_publish(ne_binary(), amqp_payload()) -> 'ok'.
 -spec whapps_publish(ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
@@ -278,7 +281,7 @@ offnet_resource_publish(Payload, ContentType) ->
 monitor_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_MONITOR, RoutingKey, Payload, ContentType).
 
--type conf_routing_type() :: 'discovery' | 'event' | 'command'.
+-type conf_routing_type() :: 'discovery' | 'event' | 'command' | 'config'.
 -spec conference_publish(amqp_payload(), conf_routing_type()) -> 'ok'.
 -spec conference_publish(amqp_payload(), conf_routing_type(), api_binary()) -> 'ok'.
 -spec conference_publish(amqp_payload(), conf_routing_type(), api_binary(), wh_proplist()) -> 'ok'.
@@ -323,9 +326,9 @@ conference_publish(Payload, 'command', ConfId, Options, ContentType) ->
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
 
--spec basic_publish(ne_binary(), ne_binary(), amqp_payload()) -> 'ok'.
--spec basic_publish(ne_binary(), ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
--spec basic_publish(ne_binary(), ne_binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
+-spec basic_publish(ne_binary(), binary(), amqp_payload()) -> 'ok'.
+-spec basic_publish(ne_binary(), binary(), amqp_payload(), ne_binary()) -> 'ok'.
+-spec basic_publish(ne_binary(), binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
 basic_publish(Exchange, RoutingKey, Payload) ->
     basic_publish(Exchange, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 
@@ -334,44 +337,46 @@ basic_publish(Exchange, RoutingKey, Payload, ContentType) ->
 
 basic_publish(Exchange, RoutingKey, Payload, ContentType, Prop) when is_list(Payload) ->
     basic_publish(Exchange, RoutingKey, iolist_to_binary(Payload), ContentType, Prop);
-basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props) when is_binary(Exchange),
-                                                                                   is_binary(ContentType),
-                                                                                   is_list(Props) ->
+basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
+  when is_binary(Exchange),
+       is_binary(ContentType),
+       is_list(Props) ->
     BP = #'basic.publish'{
             exchange = Exchange
             ,routing_key = RoutingKey
-            ,mandatory = props:get_value(mandatory, Props, 'false')
-            ,immediate = props:get_value(immediate, Props, 'false')
+            ,mandatory = ?P_GET('mandatory', Props, 'false')
+            ,immediate = ?P_GET('immediate', Props, 'false')
            },
 
     %% Add the message to the publish, converting to binary
     %% See http://www.rabbitmq.com/amqp-0-9-1-reference.html#class.basic
-    MsgProps = #'P_basic'{
-                  content_type = ContentType % MIME content type
-                  ,content_encoding = props:get_value(content_encoding, Props) % MIME encoding
-                  ,headers = props:get_value(headers, Props) % message headers
-                  ,delivery_mode = props:get_value(delivery_mode, Props) % non-persistent(1) or persistent(2)
-                  ,priority = props:get_value(priority, Props) % message priority, 0-9
-                  ,correlation_id = props:get_value(correlation_id, Props) % correlation identifier
-                  ,reply_to = props:get_value(reply_to, Props) % address to reply to
+    MsgProps =
+        #'P_basic'{
+           content_type = ContentType % MIME content type
+           ,content_encoding = ?P_GET('content_encoding', Props) % MIME encoding
+           ,headers = ?P_GET('headers', Props) % message headers
+           ,delivery_mode = ?P_GET('delivery_mode', Props) % persistent(2) or not(1)
+           ,priority = ?P_GET('priority', Props) % message priority, 0-9
+           ,correlation_id = ?P_GET('correlation_id', Props) % correlation identifier
+           ,reply_to = ?P_GET('reply_to', Props) % address to reply to
 
-                  %% TODO:: new rabbit wants an integer...
-                  ,expiration = props:get_value(expiration, Props) % expires time
+           %% TODO:: new rabbit wants an integer...
+           ,expiration = ?P_GET('expiration', Props) % expires time
 
-                  ,message_id = props:get_value(message_id, Props) % app message id
-                  ,timestamp = props:get_value(timestamp, Props) % message timestamp
-                  ,type = props:get_value(type, Props) % message type
-                  ,user_id = props:get_value(user_id, Props) % creating user
-                  ,app_id = props:get_value(app_id, Props) % creating app
-                  ,cluster_id = props:get_value(cluster_id, Props) % cluster
-                 },
+           ,message_id = ?P_GET('message_id', Props) % app message id
+           ,timestamp = ?P_GET('timestamp', Props) % message timestamp
+           ,type = ?P_GET('type', Props) % message type
+           ,user_id = ?P_GET('user_id', Props) % creating user
+           ,app_id = ?P_GET('app_id', Props) % creating app
+           ,cluster_id = ?P_GET('cluster_id', Props) % cluster
+          },
 
     AM = #'amqp_msg'{
             payload = Payload
             ,props = MsgProps
            },
 
-    case props:get_value(maybe_publish, Props, 'false') of
+    case ?P_GET('maybe_publish', Props, 'false') of
         'true' -> wh_amqp_channel:maybe_publish(BP, AM);
         'false' -> wh_amqp_channel:publish(BP, AM)
     end.
@@ -439,12 +444,12 @@ new_exchange(Exchange, Type, Options) ->
     ED = #'exchange.declare'{
       exchange = Exchange
       ,type = Type
-      ,passive = props:get_value('passive', Options, 'false')
-      ,durable = props:get_value('durable', Options, 'false')
-      ,auto_delete = props:get_value('auto_delete', Options, 'false')
-      ,internal = props:get_value('internal', Options, 'false')
-      ,nowait = props:get_value('nowait', Options, 'false')
-      ,arguments = props:get_value('arguments', Options, [])
+      ,passive = ?P_GET('passive', Options, 'false')
+      ,durable = ?P_GET('durable', Options, 'false')
+      ,auto_delete = ?P_GET('auto_delete', Options, 'false')
+      ,internal = ?P_GET('internal', Options, 'false')
+      ,nowait = ?P_GET('nowait', Options, 'false')
+      ,arguments = ?P_GET('arguments', Options, [])
      },
     wh_amqp_channel:command(ED).
 
@@ -558,16 +563,16 @@ new_queue(<<>>, Options) ->
 new_queue(Queue, Options) when is_binary(Queue) ->
     QD = #'queue.declare'{
       queue = Queue
-      ,passive = props:get_value('passive', Options, 'false')
-      ,durable = props:get_value('durable', Options, 'false')
-      ,exclusive = props:get_value('exclusive', Options, 'false')
-      ,auto_delete = props:get_value('auto_delete', Options, 'true')
-      ,nowait = props:get_value('nowait', Options, 'false')
-      ,arguments = props:get_value('arguments', Options, [])
+      ,passive = ?P_GET('passive', Options, 'false')
+      ,durable = ?P_GET('durable', Options, 'false')
+      ,exclusive = ?P_GET('exclusive', Options, 'false')
+      ,auto_delete = ?P_GET('auto_delete', Options, 'true')
+      ,nowait = ?P_GET('nowait', Options, 'false')
+      ,arguments = ?P_GET('arguments', Options, [])
      },
 
     %% can be queue | message_count | consumer_count | all
-    Return = props:get_value('return_field', Options, 'queue'),
+    Return = ?P_GET('return_field', Options, 'queue'),
 
     case catch wh_amqp_channel:command(QD) of
         {ok, #'queue.declare_ok'{queue=Q}} when Return =:= 'queue' -> Q;
@@ -612,13 +617,14 @@ delete_callctl_queue(CallID, Prop) ->
     queue_delete(list_to_binary([?EXCHANGE_CALLCTL, ".", encode(CallID)]), Prop).
 
 queue_delete(Queue) -> queue_delete(Queue, []).
-queue_delete(Queue, _Prop) when not is_binary(Queue) -> {'error', 'invalid_queue_name'};
+queue_delete(Queue, _Prop) when not is_binary(Queue) ->
+    {'error', 'invalid_queue_name'};
 queue_delete(Queue, Prop) ->
     QD = #'queue.delete'{
             queue=Queue
-            ,if_unused=props:get_value('if_unused', Prop, 'false')
-            ,if_empty = props:get_value('if_empty', Prop, 'false')
-            ,nowait = props:get_value('nowait', Prop, 'true')
+            ,if_unused = ?P_GET('if_unused', Prop, 'false')
+            ,if_empty = ?P_GET('if_empty', Prop, 'false')
+            ,nowait = ?P_GET('nowait', Prop, 'true')
            },
     wh_amqp_channel:command(QD).
 
@@ -669,9 +675,9 @@ bind_q_to_callctl(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLCTL).
 
 %% to receive all call events or cdrs, regardless of callid, pass <<"*">> for CallID
+-type callevt_type() :: 'events' | 'status_req' | 'cdr' | 'publisher_usurp' | 'other'.
 -spec bind_q_to_callevt(ne_binary(), ne_binary() | 'media_req') -> 'ok'.
--spec bind_q_to_callevt(ne_binary(), ne_binary(), Type) -> 'ok' when
-      Type :: 'events' | 'status_req' | 'cdr' | 'publisher_usurp' | 'other'.
+-spec bind_q_to_callevt(ne_binary(), ne_binary(), callevt_type()) -> 'ok'.
 bind_q_to_callevt(Queue, 'media_req') ->
     bind_q_to_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
 bind_q_to_callevt(Queue, CallID) ->
@@ -737,7 +743,7 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
             queue = Queue %% what queue does the binding attach to?
             ,exchange = Exchange %% what exchange does the binding attach to?
             ,routing_key = Routing %% how does an exchange know a message should go to a bound queue?
-            ,nowait = props:get_value('nowait', Options, 'false')
+            ,nowait = ?P_GET('nowait', Options, 'false')
             ,arguments = []
            },
     wh_amqp_channel:command(QB).
@@ -749,8 +755,8 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec unbind_q_from_callevt(ne_binary(), ne_binary() | 'media_req') -> 'ok' | {'error', _}.
--spec unbind_q_from_callevt(ne_binary(), ne_binary(), Type) -> 'ok' | {'error', _} when
-      Type :: 'events' | 'status_req' | 'cdr' | 'publisher_usurp' | 'other'.
+-spec unbind_q_from_callevt(ne_binary(), ne_binary(), callevt_type()) ->
+                                   'ok' | {'error', _}.
 unbind_q_from_callevt(Queue, 'media_req') ->
     unbind_q_from_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
 unbind_q_from_callevt(Queue, CallID) ->
@@ -841,10 +847,10 @@ basic_consume(Queue, Options) ->
     BC = #'basic.consume'{
             queue = Queue
             ,consumer_tag = <<>>
-            ,no_local = props:get_value('no_local', Options, 'false')
-            ,no_ack = props:get_value('no_ack', Options, 'true')
-            ,exclusive = props:get_value('exclusive', Options, 'true')
-            ,nowait = props:get_value('nowait', Options, 'false')
+            ,no_local = ?P_GET('no_local', Options, 'false')
+            ,no_ack = ?P_GET('no_ack', Options, 'true')
+            ,exclusive = ?P_GET('exclusive', Options, 'true')
+            ,nowait = ?P_GET('nowait', Options, 'false')
            },
     wh_amqp_channel:command(BC).
 
@@ -869,12 +875,12 @@ basic_cancel() -> wh_amqp_channel:command(#'basic.cancel'{}).
 access_request() -> access_request([]).
 access_request(Options) ->
     #'access.request'{
-      realm = props:get_value('realm', Options, <<"/data">>)
-      ,exclusive = props:get_value('exclusive', Options, 'false')
-      ,passive = props:get_value('passive', Options, 'true')
-      ,active = props:get_value('active', Options, 'true')
-      ,write = props:get_value('write', Options, 'true')
-      ,read = props:get_value('read', Options, 'true')
+      realm = ?P_GET('realm', Options, <<"/data">>)
+      ,exclusive = ?P_GET('exclusive', Options, 'false')
+      ,passive = ?P_GET('passive', Options, 'true')
+      ,active = ?P_GET('active', Options, 'true')
+      ,write = ?P_GET('write', Options, 'true')
+      ,read = ?P_GET('read', Options, 'true')
      }.
 
 %%------------------------------------------------------------------------------

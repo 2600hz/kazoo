@@ -21,6 +21,7 @@
 %% API
 -export([start_link/2, start_link/3
          ,consume/2
+         ,tokens/1
         ]).
 
 %% gen_server callbacks

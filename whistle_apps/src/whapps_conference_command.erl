@@ -59,6 +59,10 @@ search(Conference) ->
             lager:warning("timeout while searching for conference ~s", [ConferenceId]),
             timer:sleep(500),
             search(Conference);
+        {'error', 'timeout'} ->
+            lager:warning("timeout while searching for conference ~s", [ConferenceId]),
+            timer:sleep(500),
+            search(Conference);
         {'error', _R}=E ->
             lager:info("recieved error while searching for ~s: ~-800p", [ConferenceId, _R]),
             E

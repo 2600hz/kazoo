@@ -642,7 +642,7 @@ conference_specific(Prop) ->
             end
     end.
 
--spec silence_terminated('undefined' | integer() | wh_proplist() | boolean()) -> 'undefined' | boolean().
+-spec silence_terminated(api_integer() | wh_proplist() | boolean()) -> api_boolean().
 silence_terminated('undefined') -> 'undefined';
 silence_terminated(B) when is_boolean(B) -> B;
 silence_terminated(Hits) when is_integer(Hits) -> Hits =:= 0;

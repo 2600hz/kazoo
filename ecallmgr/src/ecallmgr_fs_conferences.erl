@@ -210,7 +210,7 @@ participants_list(ConfId) ->
             ]
     end.
 
--spec participants_uuids(ne_binary()) -> wh_json:objects().
+-spec participants_uuids(ne_binary()) -> [[ne_binary() | atom(),...],...] | [].
 participants_uuids(ConfId) ->
     ets:match(?CONFERENCES_TBL, #participant{conference_name=ConfId
                                              ,uuid='$1'
@@ -666,7 +666,9 @@ update_conference(Node, Props) ->
                              }).
 
 relay_event(Props) ->
-    [relay_event(UUID, Node, Props) || [UUID, Node] <- participants_uuids(props:get_value(<<"Conference-Name">>, Props))].
+    [relay_event(UUID, Node, Props)
+     || [UUID, Node] <- participants_uuids(props:get_value(<<"Conference-Name">>, Props))
+    ].
 relay_event(UUID, Node, Props) ->
     EventName = props:get_value(<<"Event-Name">>, Props),
     Payload = {'event', [UUID, {<<"Caller-Unique-ID">>, UUID} | Props]},
@@ -752,15 +754,15 @@ show_conferences(Node) ->
         'timeout' -> []
     end.
 
--spec xml_to_conference(xml_el() | xml_attribs(), atom()) -> ecallmgr_fs_conferences:conference().
+-spec xml_to_conference(xml_el(), atom()) -> ecallmgr_fs_conferences:conference().
 xml_to_conference(#xmlElement{name='conference'
                               ,attributes=Attrs
                              }, Node) ->
-    xml_attrs_to_record(Attrs, Node);
-xml_to_conference([#xmlAttribute{}|_]=Attrs, Node) -> xml_attrs_to_record(Attrs, Node).
+    xml_attrs_to_record(Attrs, Node).
 
 -spec xml_attrs_to_record(xml_attribs(), atom()) -> conference().
-xml_attrs_to_record(Attrs, Node) -> update_conference_with_xml_attrs(Attrs, #conference{node=Node}).
+xml_attrs_to_record(Attrs, Node) ->
+    update_conference_with_xml_attrs(Attrs, #conference{node=Node}).
 
 -spec update_conference_with_xml_attrs(xml_attribs(), conference()) -> conference().
 update_conference_with_xml_attrs([], Conf) -> Conf;

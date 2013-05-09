@@ -59,7 +59,8 @@
                ,last_heartbeat = wh_util:now_ms(now())
               }).
 
--type(wh_node() :: #node{}).
+-type wh_node() :: #node{}.
+-type nodes_state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -96,7 +97,7 @@ whapp_count(Whapp) when is_binary(Whapp) ->
 whapp_count(Whapp) ->
     whapp_count(wh_util:to_binary(Whapp)).
 
--spec status() -> 'ok'.
+-spec status() -> 'no_return'.
 status() ->
     _ = [begin
              io:format("Node: ~s~n", [Node#node.node]),
@@ -146,7 +147,7 @@ notify_expire() ->
 notify_expire(Pid) ->
     gen_server:cast(?MODULE, {'notify_expire', Pid}).
 
--spec handle_advertise(wh_json:object(), proplist()) -> 'ok'.
+-spec handle_advertise(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_advertise(JObj, Props) ->
     'true' = wapi_nodes:advertise_v(JObj),
     Srv = props:get_value('server', Props),
@@ -200,10 +201,10 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'notify_new', Pid}, #state{notify_new=Set}=State) ->
-    _ = erlang:monitor(process, Pid),
+    _ = erlang:monitor('process', Pid),
     {'noreply', State#state{notify_new=sets:add_element(Pid, Set)}};
 handle_cast({'notify_expire', Pid}, #state{notify_expire=Set}=State) ->
-    _ = erlang:monitor(process, Pid),
+    _ = erlang:monitor('process', Pid),
     {'noreply', State#state{notify_expire=sets:add_element(Pid, Set)}};
 handle_cast({'advertise', JObj}, #state{tab=Tab}=State) ->
     Node = from_json(JObj),
@@ -256,6 +257,7 @@ handle_info({'DOWN', Ref, 'process', Pid, _}, #state{notify_new=NewSet
     {'noreply', State#state{notify_new=sets:del_element(Pid, NewSet)
                           ,notify_expire=sets:del_element(Pid, ExpireSet)}};
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -292,7 +294,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -321,8 +323,7 @@ add_whapps_data(Node) ->
 maybe_add_ecallmgr_data(Node) ->
     case is_ecallmgr_present() of
         'false' -> Node;
-        'true' ->
-            add_ecallmgr_data(Node)
+        'true' -> add_ecallmgr_data(Node)
     end.
 
 -spec add_ecallmgr_data(wh_node()) -> wh_node().
@@ -331,7 +332,8 @@ add_ecallmgr_data(#node{whapps=Whapps}=Node) ->
                || Server <- ecallmgr_fs_nodes:connected()
               ],
     Node#node{media_servers=Servers
-              ,whapps=[<<"ecallmgr">>|Whapps]}.
+              ,whapps=[<<"ecallmgr">>|Whapps]
+             }.
 
 -spec is_whapps_present() -> boolean().
 is_whapps_present() ->
@@ -354,13 +356,13 @@ advertise_payload(Node) ->
 -spec from_json(wh_json:object()) -> wh_node().
 from_json(JObj) ->
     Node = wh_json:get_value(<<"Node">>, JObj),
-    #node{node=wh_util:to_atom(Node, true)
+    #node{node=wh_util:to_atom(Node, 'true')
           ,expires=wh_json:get_integer_value(<<"Expires">>, JObj, ?HEARTBEAT) * ?FUDGE_FACTOR
           ,whapps=wh_json:get_value(<<"WhApps">>, JObj, [])
           ,media_servers=wh_json:get_value(<<"Media-Servers">>, JObj, [])
          }.
 
--spec notify_expire([atom(),...] | [], #state{} | [pid(),...] | []) -> 'ok'.
+-spec notify_expire(atoms(), nodes_state() | pids()) -> 'ok'.
 notify_expire([], _) -> 'ok';
 notify_expire(_, []) -> 'ok';
 notify_expire(Nodes, #state{notify_expire=Set}) ->
@@ -372,7 +374,7 @@ notify_expire([Node|Nodes], Pids) ->
         ],
     notify_expire(Nodes, Pids).
 
--spec notify_new(atom(), #state{} | [pid(),...] | []) -> 'ok'.
+-spec notify_new(atom(), nodes_state() | pids()) -> 'ok'.
 notify_new(Node, #state{notify_new=Set}) ->
     notify_new(Node, sets:to_list(Set));
 notify_new(Node, Pids) ->

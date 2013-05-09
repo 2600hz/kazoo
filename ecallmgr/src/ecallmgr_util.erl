@@ -77,7 +77,7 @@ send_cmd(Node, UUID, App, Args) when not is_list(Args) ->
     send_cmd(Node, UUID, App, wh_util:to_list(Args));
 send_cmd(Node, UUID, "record_call", Args) ->
     lager:debug("execute on node ~s: uuid_record(~s)", [Node, Args]),
-    case freeswitch:api(Node, uuid_record, Args) of
+    case freeswitch:api(Node, 'uuid_record', Args) of
         {'ok', _Msg}=Ret ->
             lager:debug("executing uuid_record returned: ~s", [_Msg]),
             Ret;
@@ -168,7 +168,7 @@ get_expires(Props) ->
     round(Expiry * 1.25).
 
 -spec get_interface_properties(atom()) -> wh_proplist().
--spec get_interface_properties(atom(), string() | ne_binary()) -> wh_proplist().
+-spec get_interface_properties(atom(), text()) -> wh_proplist().
 
 get_interface_properties(Node) ->
     get_interface_properties(Node, ?DEFAULT_FS_PROFILE).
@@ -176,12 +176,12 @@ get_interface_properties(Node) ->
 get_interface_properties(Node, Interface) ->
     case freeswitch:api(Node, 'sofia', wh_util:to_list(list_to_binary(["status profile ", Interface]))) of
         {'ok', Response} ->
-            R = binary:replace(Response, <<" ">>, <<>>, [global]),
-            [KV || Line <- binary:split(R, <<"\n">>, [global]),
+            R = binary:replace(Response, <<" ">>, <<>>, ['global']),
+            [KV || Line <- binary:split(R, <<"\n">>, ['global']),
                    (KV = case binary:split(Line, <<"\t">>) of
                              [K, V] -> {K, V};
-                             _ -> false
-                         end) =/= false
+                             _ -> 'false'
+                         end) =/= 'false'
             ];
         _Else -> []
     end.
@@ -232,7 +232,7 @@ custom_channel_vars(Prop) ->
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
--spec eventstr_to_proplist(ne_binary() | nonempty_string()) -> wh_proplist().
+-spec eventstr_to_proplist(text()) -> wh_proplist().
 eventstr_to_proplist(EvtStr) ->
     [to_kv(X, ": ") || X <- string:tokens(wh_util:to_list(EvtStr), "\n")].
 
@@ -258,8 +258,8 @@ unserialize_fs_array(_) -> [].
 varstr_to_proplist(VarStr) ->
     [to_kv(X, "=") || X <- string:tokens(wh_util:to_list(VarStr), ",")].
 
--spec get_setting(wh_json:json_string()) -> {'ok', term()}.
--spec get_setting(wh_json:json_string(), Default) -> {'ok', term() | Default}.
+-spec get_setting(wh_json:key()) -> {'ok', term()}.
+-spec get_setting(wh_json:key(), Default) -> {'ok', term() | Default}.
 get_setting(Setting) -> {'ok', ecallmgr_config:get(Setting)}.
 get_setting(Setting, Default) -> {'ok', ecallmgr_config:get(Setting, Default)}.
 
@@ -314,8 +314,9 @@ maybe_sanitize_fs_value(_, Val) -> Val.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set(atom(), ne_binary(), wh_proplist() | ne_binary()) -> ecallmgr_util:send_cmd_ret().
-set(_, _, []) -> ok;
+-spec set(atom(), ne_binary(), wh_proplist() | ne_binary()) ->
+                 ecallmgr_util:send_cmd_ret().
+set(_, _, []) -> 'ok';
 set(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V}]) ->
     _ = send_cmd(Node, UUID, "set", "alert_info=intercom"),
     send_cmd(Node, UUID, "set", get_fs_kv(K, V, UUID));
@@ -338,8 +339,9 @@ set(Node, UUID, Arg) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec export(atom(), ne_binary(), binary()) -> ecallmgr_util:send_cmd_ret().
-export(_, _, []) -> ok;
+-spec export(atom(), ne_binary(), wh_proplist() | binary()) ->
+                    ecallmgr_util:send_cmd_ret().
+export(_, _, []) -> 'ok';
 export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V}|Props]) ->
     _ = send_cmd(Node, UUID, "export", "alert_info=intercom"),
     _ = send_cmd(Node, UUID, "export", get_fs_kv(K, V, UUID)),
@@ -363,6 +365,7 @@ export(Node, UUID, Arg) ->
 -type bridge_channel() :: ne_binary().
 -type bridge_channels() :: [] | [bridge_channel(),...].
 -type build_return() :: bridge_channel() | {'worker', pid()}.
+-type build_returns() :: [build_return(),...] | [].
 -type bridge_endpoints() :: [bridge_endpoint(),...] | [].
 
 -spec build_bridge_string(wh_json:objects()) -> ne_binary().
@@ -381,7 +384,7 @@ build_bridge_string(Endpoints, Seperator) ->
 -spec endpoint_jobjs_to_records(wh_json:objects(), boolean()) -> bridge_endpoints().
 
 endpoint_jobjs_to_records(Endpoints) ->
-    endpoint_jobjs_to_records(Endpoints, true).
+    endpoint_jobjs_to_records(Endpoints, 'true').
 
 endpoint_jobjs_to_records(Endpoints, IncludeVars) ->
     [BridgeEndpoints
@@ -415,7 +418,7 @@ endpoint_key(Endpoint) ->
 
 -spec endpoint_jobj_to_record(wh_json:object()) -> bridge_endpoint().
 endpoint_jobj_to_record(Endpoint) ->
-    endpoint_jobj_to_record(Endpoint, true).
+    endpoint_jobj_to_record(Endpoint, 'true').
 
 -spec endpoint_jobj_to_record(wh_json:object(), boolean()) -> bridge_endpoint().
 endpoint_jobj_to_record(Endpoint, IncludeVars) ->
@@ -467,7 +470,7 @@ build_bridge_channels(Endpoints) ->
     EPs = endpoint_jobjs_to_records(Endpoints),
     build_bridge_channels(EPs, []).
 
--spec build_bridge_channels(bridge_endpoints(), [build_return(),...] | []) -> bridge_channels().
+-spec build_bridge_channels(bridge_endpoints(), build_returns()) -> bridge_channels().
 %% If the Invite-Format is "route" then we have been handed a sip route, do that now
 build_bridge_channels([#bridge_endpoint{invite_format = <<"route">>}=Endpoint|Endpoints], Channels) ->
     case build_channel(Endpoint) of
@@ -540,8 +543,8 @@ build_freetdm_channel(#bridge_endpoint{number=Number
     {'ok', <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", Number/binary>>}.
 
 -spec build_skype_channel(bridge_endpoint()) ->
-                                       {'ok', bridge_channel()} |
-                                       {'error', 'number_not_provided'}.
+                                 {'ok', bridge_channel()} |
+                                 {'error', 'number_not_provided'}.
 build_skype_channel(#bridge_endpoint{user='undefined'}) ->
     {'error', 'number_not_provided'};
 build_skype_channel(#bridge_endpoint{user=User, interface=IFace}) ->
@@ -688,7 +691,7 @@ create_masquerade_event(Application, EventName, Boolean) ->
 -spec media_path(ne_binary(), ne_binary(), wh_json:object()) -> ne_binary().
 media_path(MediaName, UUID, JObj) -> media_path(MediaName, 'new', UUID, JObj).
 
--spec media_path(ne_binary(), 'extant' | 'new', ne_binary(), wh_json:object()) -> ne_binary().
+-spec media_path(ne_binary(), media_types(), ne_binary(), wh_json:object()) -> ne_binary().
 media_path('undefined', _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
     media_path(wh_util:to_binary(MediaName), Type, UUID, JObj);
