@@ -964,7 +964,7 @@ activate_phone_number(0, #number{number=Number}=N) ->
     lager:debug("no activation charge for ~s", [Number]),
     N;
 activate_phone_number(Units, #number{current_balance=undefined, billing_id=Account}=N) ->
-    activate_phone_number(Units, N#number{current_balance=wh_util:current_account_balance(Account)});
+    activate_phone_number(Units, N#number{current_balance=wht_util:current_balance(Account)});
 activate_phone_number(Units, #number{current_balance=Balance}=N) when Balance - Units < 0 ->
     Reason = io_lib:format("not enough credit to activate number for $~p", [wht_util:units_to_dollars(Units)]),
     lager:debug("~s", [Reason]),
@@ -1022,7 +1022,7 @@ append_phone_number_debit(Units, #number{billing_id=Ledger, assigned_to=AccountI
                                 wh_transaction:set_reason(<<"number_activation">>, T);
                             'true' ->
                                 T1 = wh_transaction:set_sub_account_id(AccountId, T),
-                                wh_transaction:set_reason(<<"sub_account_feature_activation">>, T1)
+                                wh_transaction:set_reason(<<"sub_account_number_activation">>, T1)
                         end
                 end
                 ,fun(T) -> wh_transaction:set_number(Number, T) end
