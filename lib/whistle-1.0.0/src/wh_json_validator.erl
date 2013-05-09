@@ -32,8 +32,11 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
--define(SIMPLE_TYPES, [<<"string">>,<<"number">>,<<"integer">>,<<"boolean">>,<<"object">>
-                           ,<<"array">>,<<"null">>,<<"any">>]).
+-define(SIMPLE_TYPES, [<<"string">>,<<"array">>
+                       ,<<"number">>,<<"integer">>
+                       ,<<"boolean">>,<<"object">>
+                       ,<<"null">>,<<"any">>
+                      ]).
 
 %% Simplistic regex to match ISO-8601 string (in UTC, so TZ is Z for zulu)
 %% Matches YYYY-MM-DDThh:mm:ssZ explicitly
@@ -44,22 +47,21 @@
 -define(EMAIL_REGEX, <<"^[[\:alnum\:].+_]{1,}[@][[\:alnum\:]-.]{1,}([.]([[\:alnum\:]_-]{1,}))$">>).
 -define(HOSTNAME_REGEX, <<"^[[\:alnum\:]-.]{1,}([.]([[\:alnum\:]_-]{1,}))$">>).
 
--type error_key() :: ne_binary() | [ne_binary(),...].
+-type error_key() :: ne_binary() | ne_binaries().
 -type error_tuple() :: {error_key(), ne_binary()}.
 -type error_proplist() :: [error_tuple(),...] | [].
 
-
 -type failure() :: {'fail', {wh_json:key(), ne_binary()}}.
--type pass() :: {'pass', wh_json:json_object()}.
+-type pass() :: {'pass', wh_json:object()}.
 -type fail() :: {'fail', {error_key(), ne_binary()}
                  | error_proplist()
                 }.
 
--type error_acc() :: [] | [{[ne_binary(),...], ne_binary()},...].
+-type error_acc() :: [] | [{ne_binaries(), ne_binary()},...].
 -type jkey_acc() :: wh_json:json_key().
 
 %% Return true or [{JObjKey, ErrorMsg},...]
--spec is_valid/2 :: (wh_json:object(), ne_binary() | wh_json:object()) ->
+-spec is_valid(wh_json:object(), ne_binary() | wh_json:object()) ->
                             pass() | fail().
 is_valid(JObj, Schema) when is_binary(Schema) ->
     %% TODO: cache the schema?
@@ -89,11 +91,11 @@ is_valid(JObj, Schema) ->
 %%   },
 %%   ...
 %% }
--spec are_valid_properties/2 :: (wh_json:object(), wh_json:object()) ->
+-spec are_valid_properties(wh_json:object(), wh_json:object()) ->
                                         pass() | fail().
--spec are_valid_properties/3 :: (wh_json:object(), wh_json:key() | [], wh_json:object()) ->
+-spec are_valid_properties(wh_json:object(), wh_json:key() | [], wh_json:object()) ->
                                         pass() | fail().
--spec are_valid_properties/4 :: (wh_json:object(), jkey_acc(), error_acc(), wh_json:json_proplist()) ->
+-spec are_valid_properties(wh_json:object(), jkey_acc(), error_acc(), wh_json:json_proplist()) ->
                                         pass() | fail().
 
 are_valid_properties(JObj, Schema) ->
@@ -144,9 +146,9 @@ are_valid_properties(JObj, Path, Errors, [{Property, AttributesJObj}|T]) ->
 %% JObj = {..., "name":"Mal Reynolds",...}
 %% Key = "name"
 %% AttributesJObj = {"type":"string"}
--spec are_valid_attributes/3 :: (wh_json:object(), jkey_acc(), wh_json:object()) ->
+-spec are_valid_attributes(wh_json:object(), jkey_acc(), wh_json:object()) ->
                                         pass() | fail().
--spec are_valid_attributes/5 :: (wh_json:object(), jkey_acc(), wh_json:object(), error_acc(), wh_proplist()) ->
+-spec are_valid_attributes(wh_json:object(), jkey_acc(), wh_json:object(), error_acc(), wh_proplist()) ->
                                         pass() | fail().
 
 are_valid_attributes(JObj, Key, AttributesJObj) ->
@@ -180,7 +182,7 @@ are_valid_attributes(JObj, Key, AttributesJObj, Errors, [{AttributeKey, Attribut
 %%          The last two (any and user-defined) are automatically considered valid
 %%
 %% {'pass', wh_json:object()} | {'fail', {jkey_acc(), ne_binary()}}
--spec is_valid_attribute/3 :: ({wh_json:json_string(), wh_json:json_term(), wh_json:object()}, wh_json:object(), jkey_acc()) ->
+-spec is_valid_attribute({wh_json:json_string(), wh_json:json_term(), wh_json:object()}, wh_json:object(), jkey_acc()) ->
                                       pass() | failure().
 
 %% 5.1
@@ -445,8 +447,8 @@ is_valid_attribute(_, JObj, _) ->
 %%
 %%% Helper functions
 %%
--spec are_unique_items/1 :: (list()) -> 'true' | ne_binary().
--spec are_unique_items/2 :: (list(), 'undefined' | ne_binary()) -> 'true' | ne_binary().
+-spec are_unique_items(list()) -> 'true' | ne_binary().
+-spec are_unique_items(list(), 'undefined' | ne_binary()) -> 'true' | ne_binary().
 
 are_unique_items(Instance) ->
     try lists:usort(fun are_same_items/2, Instance) of
@@ -467,7 +469,7 @@ are_unique_items(Instance, TryUnique) ->
     end.
 
 %% will throw an exception if A and B are identical
--spec are_same_items/2 :: (term(), term()) -> 'false'.
+-spec are_same_items(term(), term()) -> 'false'.
 %% are_same_items(A, A) -> throw({duplicate_found, A});
 are_same_items(A, B) ->
     Funs = [ fun are_null/2
@@ -539,8 +541,8 @@ are_objects(_, _) ->
 
 %% If we are testing a value to be of a type, ShouldBe is true; meaning we expect the value to be of the type.
 %% If ShouldBe is false (as when calling is_disallowed_type/3), then we expect the value to not be of the type.
--spec check_valid_type/2 :: (binary() | list() | number(), ne_binary()) -> boolean().
--spec check_valid_type/3 :: (binary() | list() | number(), ne_binary(), boolean()) -> boolean().
+-spec check_valid_type(binary() | list() | number(), ne_binary()) -> boolean().
+-spec check_valid_type(binary() | list() | number(), ne_binary(), boolean()) -> boolean().
 
 check_valid_type(Instance, Type) ->
     check_valid_type(Instance, Type, true).
@@ -597,7 +599,7 @@ check_valid_type(Instance, <<"null">>, ShouldBe) ->
 check_valid_type(_, _, ShouldBe) ->
     ShouldBe.
 
--spec is_valid_pattern/2 :: (ne_binary(), ne_binary()) -> 'true' | ne_binary().
+-spec is_valid_pattern(ne_binary(), ne_binary()) -> 'true' | ne_binary().
 is_valid_pattern(Instance, Pattern) when is_binary(Instance) ->
     case re:compile(Pattern) of
         {error, {ErrString, Position}} ->
@@ -616,7 +618,7 @@ is_valid_pattern(Instance, Pattern) when is_binary(Instance) ->
 is_valid_pattern(_, _) ->
     true.
 
--spec is_valid_format/2 :: (ne_binary(), ne_binary() | number()) -> 'true' | ne_binary().
+-spec is_valid_format(ne_binary(), ne_binary() | number()) -> 'true' | ne_binary().
 is_valid_format(<<"date-time">>, Instance) ->
     %% ISO 8601 (YYYY-MM-DDThh:mm:ssZ) in UTC
     case re:run(Instance, ?ISO_8601_REGEX) of
@@ -695,7 +697,7 @@ is_valid_format(_,_) ->
 %% Items: [ json_term(),...]
 %% SchemaItemsJObj: {"type":"some_type", properties:{"prop1":{"attr1key":"attr1val",...},...},...}
 %%  or could be a list of schemas
-%% -spec are_valid_items/2 :: (list(), wh_json:object() | wh_json:objects()) -> 'true'. %attribute_results().
+%% -spec are_valid_items(list(), wh_json:object() | wh_json:objects()) -> 'true'. %attribute_results().
 %% are_valid_items(_Items, _SchemaItemsJObj) ->
 %%     _ItemType = wh_json:get_value(<<"type">>, _SchemaItemsJObj, <<"any">>),
 %%     _ItemSchemaJObj = wh_json:get_value(<<"items">>, _SchemaItemsJObj, wh_json:new()),

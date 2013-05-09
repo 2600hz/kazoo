@@ -56,6 +56,8 @@
 
 -export([flatten/3]).
 
+-include_lib("whistle/include/wh_log.hrl").
+
 -ifdef(TEST).
 -include_lib("proper/include/proper.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -74,7 +76,7 @@
 -spec new() -> object().
 new() -> ?JSON_WRAPPER([]).
 
--spec encode(json_term()) -> iolist() | ne_binary().
+-spec encode(json_term()) -> text().
 encode(JObj) -> ejson:encode(JObj).
 
 -spec decode(iolist() | ne_binary()) -> object().
@@ -83,7 +85,29 @@ encode(JObj) -> ejson:encode(JObj).
 decode(Thing) when is_list(Thing) orelse is_binary(Thing) ->
     decode(Thing, ?DEFAULT_CONTENT_TYPE).
 
-decode(JSON, <<"application/json">>) -> ejson:decode(JSON).
+decode(JSON, <<"application/json">>) ->
+    try ejson:decode(JSON) of
+        JObj -> JObj
+    catch
+        'throw':{'error',{_Loc, 'invalid_string'}}=E ->
+            lager:debug("invalid string(near char ~p) in input, checking for unicode", [_Loc]),
+            try_converting(JSON, E);
+        'throw':{'invalid_json',{{'error',{_Loc, Err}}, _Text}} ->
+            lager:debug("~s near char ~b: ~s", [Err, _Loc, _Text]),
+            try_converting(JSON, {'error', Err});
+        'throw':E ->
+            lager:debug("thrown decoder error: ~p", [E]),
+            throw(E)
+    end.
+try_converting(JSON, E) ->
+    case unicode:bom_to_encoding(JSON) of
+        {'latin1', 0} ->
+            lager:debug("json is latin1, trying as unicode"),
+            decode(unicode:characters_to_binary(JSON, 'latin1', 'utf8'));
+        _Enc ->
+            lager:debug("unknown encoding: ~p", [_Enc]),
+            throw(E)
+    end.
 
 -spec is_empty(term()) -> boolean().
 is_empty(MaybeJObj) ->
