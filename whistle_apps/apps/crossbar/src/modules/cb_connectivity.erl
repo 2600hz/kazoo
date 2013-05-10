@@ -20,7 +20,7 @@
          ,delete/2
         ]).
 
--include("src/crossbar.hrl").
+-include("../crossbar.hrl").
 
 -define(CB_LIST, <<"trunkstore/crossbar_listing">>).
 

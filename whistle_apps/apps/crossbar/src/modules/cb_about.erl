@@ -16,7 +16,7 @@
          ,validate/1
         ]).
 
--include("src/crossbar.hrl").
+-include("../crossbar.hrl").
 
 %%%===================================================================
 %%% API

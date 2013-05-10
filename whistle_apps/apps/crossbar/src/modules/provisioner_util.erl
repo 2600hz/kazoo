@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(provisioner_util).
 
--include("src/crossbar.hrl").
+-include("../crossbar.hrl").
 
 -export([get_mac_address/1]).
 -export([get_old_mac_address/1]).
