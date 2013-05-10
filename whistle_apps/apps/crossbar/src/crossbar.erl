@@ -205,7 +205,7 @@ on_request(Req0) ->
 on_response(Status, _Headers, _Body, Req0) ->
     {Method, Req1} = cowboy_req:method(Req0),
     case Method of
-        <<"OPTIONS">> -> Req1;
+        ?HTTP_OPTIONS -> Req1;
         'OPTIONS' -> Req1;
         _ ->
             wh_counter:inc(<<"crossbar.responses.", (wh_util:to_binary(Status))/binary>>),

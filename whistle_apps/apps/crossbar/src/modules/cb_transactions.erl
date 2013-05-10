@@ -52,9 +52,9 @@ init() ->
 -spec allowed_methods/0 :: () -> http_methods() | [].
 -spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
 allowed_methods() ->
-    ['GET'].
+    [?HTTP_GET].
 allowed_methods(_) -> 
-    ['GET'].
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -82,7 +82,7 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>,  query_json=Query}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET,  query_json=Query}=Context) ->
     From = wh_json:get_integer_value(<<"created_from">>, Query, 0),
     To = wh_json:get_integer_value(<<"created_to">>, Query, 0),
     Reason = wh_json:get_value(<<"reason">>, Query, 'undefined'),
@@ -94,15 +94,15 @@ validate(#cb_context{req_verb = <<"get">>,  query_json=Query}=Context) ->
             fetch(From, To, Context)    
     end.
 
-validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"current_balance">>) ->
+validate(#cb_context{req_verb = ?HTTP_GET, account_id=AccountId}=Context, <<"current_balance">>) ->
     Balance = wht_util:units_to_dollars(wht_util:current_balance(AccountId)),
     JObj = wh_json:from_list([{<<"balance">>, Balance}]),
     Context#cb_context{resp_status=success, resp_data=JObj};
-validate(#cb_context{req_verb = <<"get">>, query_json=Query}=Context, <<"monthly_recurring">>) ->
+validate(#cb_context{req_verb = ?HTTP_GET, query_json=Query}=Context, <<"monthly_recurring">>) ->
     From = wh_json:get_integer_value(<<"created_from">>, Query, 0),
     To = wh_json:get_integer_value(<<"created_to">>, Query, 0),
     fetch_braintree_transactions(From, To, Context);
-validate(#cb_context{req_verb = <<"get">>}=Context, <<"subscriptions">>) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, <<"subscriptions">>) ->
     fetch_braintree_subscriptions(Context);
 validate(Context, _) ->
     cb_context:add_system_error('bad_identifier',  Context).
@@ -405,9 +405,9 @@ calculate_prorated(BTransaction) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec calculate_addon(wh_json:object()) -> float().
+-spec calculate_addon(wh_json:object()) -> number().
 calculate_addon(BTransaction) ->
-    Addons = wh_json:get_value(<<"add_ons">>, BTransaction),
+    Addons = wh_json:get_value(<<"add_ons">>, BTransaction, []),
     calculate(Addons, 0).
 
 %%--------------------------------------------------------------------
@@ -416,9 +416,9 @@ calculate_addon(BTransaction) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec calculate_discount(wh_json:object()) -> float().
+-spec calculate_discount(wh_json:object()) -> number().
 calculate_discount(BTransaction) ->
-    Addons = wh_json:get_value(<<"discounts">>, BTransaction),
+    Addons = wh_json:get_value(<<"discounts">>, BTransaction, []),
     calculate(Addons, 0).
 
 %%--------------------------------------------------------------------
@@ -427,7 +427,7 @@ calculate_discount(BTransaction) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec calculate([wh_json:object(), ...], float()) -> float().
+-spec calculate(wh_json:objects(), number()) -> number().
 calculate([], Acc) ->
     Acc;
 calculate([Addon|Addons], Acc) ->

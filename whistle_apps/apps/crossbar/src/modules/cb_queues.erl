@@ -109,18 +109,18 @@ init() ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
-    ['GET', 'PUT'].
+    [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(?STATS_PATH_TOKEN) ->
-    ['GET'];
+    [?HTTP_GET];
 allowed_methods(?EAVESDROP_PATH_TOKEN) ->
-    ['PUT'];
+    [?HTTP_PUT];
 allowed_methods(_QID) ->
-    ['GET', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(_QID, ?ROSTER_PATH_TOKEN) ->
-    ['GET', 'POST', 'DELETE'];
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
 allowed_methods(_QID, ?EAVESDROP_PATH_TOKEN) ->
-    ['PUT'].
+    [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -176,29 +176,29 @@ content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context);
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     validate_request(undefined, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, ?STATS_PATH_TOKEN) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?STATS_PATH_TOKEN) ->
     fetch_all_queue_stats(Context);
-validate(#cb_context{req_verb = <<"put">>}=Context, ?EAVESDROP_PATH_TOKEN) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, ?EAVESDROP_PATH_TOKEN) ->
     validate_eavesdrop_on_call(Context);
-validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
     read(Id, Context);
-validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
     validate_request(Id, Context);
-validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
     read(Id, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?ROSTER_PATH_TOKEN) ->
     load_agent_roster(Id, Context);
-validate(#cb_context{req_verb = <<"post">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id, ?ROSTER_PATH_TOKEN) ->
     add_queue_to_agents(Id, Context);
-validate(#cb_context{req_verb = <<"delete">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id, ?ROSTER_PATH_TOKEN) ->
     rm_queue_from_agents(Id, Context);
-validate(#cb_context{req_verb = <<"put">>}=Context, Id, ?EAVESDROP_PATH_TOKEN) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?EAVESDROP_PATH_TOKEN) ->
     validate_eavesdrop_on_queue(Context, Id).
 
 validate_eavesdrop_on_call(#cb_context{req_data=Data}=Context) ->

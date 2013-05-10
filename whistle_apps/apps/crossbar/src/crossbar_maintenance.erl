@@ -337,24 +337,24 @@ create_account(AccountName, Realm, Username, Password) ->
                               ,{<<"priv_level">>, <<"admin">>}
                              ]),
     try
-        {ok, C1} = validate_account(Account, #cb_context{}),
-        {ok, C2} = validate_user(User, C1),
-        {ok, #cb_context{db_name=Db, account_id=AccountId}} = create_account(C1),
-        {ok, _} = create_user(C2#cb_context{db_name=Db, account_id=AccountId}),
+        {'ok', C1} = validate_account(Account, #cb_context{}),
+        {'ok', C2} = validate_user(User, C1),
+        {'ok', #cb_context{db_name=Db, account_id=AccountId}} = create_account(C1),
+        {'ok', _} = create_user(C2#cb_context{db_name=Db, account_id=AccountId}),
         case whapps_util:get_all_accounts() of
             [Db] ->
                 _ = promote_account(AccountId),
                 _ = allow_account_number_additions(AccountId),
-                ok;
-            _Else -> ok
+                'ok';
+            _Else -> 'ok'
         end,
-        ok
+        'ok'
     catch
         _E:_R ->
             lager:debug("crashed creating account: ~s: ~p", [_E, _R]),
             ST = erlang:get_stacktrace(),
             _ = [lager:debug("st: ~p", [S]) || S <- ST],
-            failed
+            'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -364,20 +364,20 @@ create_account(AccountName, Realm, Username, Password) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_account(wh_json:object(), cb_context:context()) ->
-                                    {'ok', cb_context:context()} |
-                                    {'error', wh_json:object()}.
+                              {'ok', cb_context:context()} |
+                              {'error', wh_json:object()}.
 validate_account(JObj, Context) ->
     Payload = [Context#cb_context{req_data=JObj
                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]
-                                  ,req_verb = <<"put">>
+                                  ,req_verb = ?HTTP_PUT
                                   ,resp_status = 'fatal'
                                  }
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.accounts">>, Payload) of
-        #cb_context{resp_status=success}=Context1 -> {ok, Context1};
+        #cb_context{resp_status='success'}=Context1 -> {'ok', Context1};
         #cb_context{resp_status=_S, resp_data=Errors} ->
             io:format("failed to validate account properties(~p): '~s'~n", [_S, wh_json:encode(Errors)]),
-            {error, Errors}
+            {'error', Errors}
     end.
 
 %%--------------------------------------------------------------------
@@ -387,20 +387,20 @@ validate_account(JObj, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_user(wh_json:object(), cb_context:context()) ->
-                                 {'ok', cb_context:context()} |
-                                 {'error', wh_json:object()}.
+                           {'ok', cb_context:context()} |
+                           {'error', wh_json:object()}.
 validate_user(JObj, Context) ->
     Payload = [Context#cb_context{req_data=JObj
                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]
-                                  ,req_verb = <<"put">>
+                                  ,req_verb = ?HTTP_PUT
                                   ,resp_status = 'fatal'
                                  }
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.users">>, Payload) of
-        #cb_context{resp_status=success}=Context1 -> {ok, Context1};
+        #cb_context{resp_status='success'}=Context1 -> {'ok', Context1};
         #cb_context{resp_data=Errors} ->
             io:format("failed to validate user properties: '~s'~n", [wh_json:encode(Errors)]),
-            {error, Errors}
+            {'error', Errors}
     end.
 
 %%--------------------------------------------------------------------
@@ -410,18 +410,18 @@ validate_user(JObj, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_account(cb_context:context()) ->
-                                  {'ok', cb_context:context()} |
-                                  {'error', wh_json:object()}.
+                            {'ok', cb_context:context()} |
+                            {'error', wh_json:object()}.
 create_account(Context) ->
     case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, [Context]) of
-        #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId}=Context1 ->
+        #cb_context{resp_status='success', db_name=AccountDb, account_id=AccountId}=Context1 ->
             io:format("created new account '~s' in db '~s'~n", [AccountId, AccountDb]),
-            {ok, Context1};
+            {'ok', Context1};
         #cb_context{resp_data=Errors} ->
             io:format("failed to create account: '~s'~n", [list_to_binary(wh_json:encode(Errors))]),
-            AccountId = wh_json:get_value(<<"_id">>, Context#cb_context.req_data),
-            couch_mgr:db_delete(wh_util:format_account_id(AccountId, encoded)),
-            {error, Errors}
+            AccountId = wh_json:get_value(<<"_id">>, cb_context:req_data(Context)),
+            couch_mgr:db_delete(wh_util:format_account_id(AccountId, 'encoded')),
+            {'error', Errors}
     end.
 
 %%--------------------------------------------------------------------
@@ -431,16 +431,16 @@ create_account(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_user(cb_context:context()) ->
-                               {'ok', cb_context:context()} |
-                               {'error', wh_json:object()}.
+                         {'ok', cb_context:context()} |
+                         {'error', wh_json:object()}.
 create_user(Context) ->
     case crossbar_bindings:fold(<<"v1_resource.execute.put.users">>, [Context]) of
-        #cb_context{resp_status=success, doc=JObj}=Context1 ->
+        #cb_context{resp_status='success', doc=JObj}=Context1 ->
             io:format("created new account admin user '~s'~n", [wh_json:get_value(<<"_id">>, JObj)]),
-            {ok, Context1};
+            {'ok', Context1};
         #cb_context{resp_data=Errors} ->
             io:format("failed to create account admin user: '~s'~n", [list_to_binary(wh_json:encode(Errors))]),
-            {error, Errors}
+            {'error', Errors}
     end.
 
 %%--------------------------------------------------------------------
@@ -455,17 +455,17 @@ create_user(Context) ->
 update_account(AccountId, Key, Value) when not is_binary(AccountId) ->
     update_account(wh_util:to_binary(AccountId), Key, Value);
 update_account(AccountId, Key, Value) ->
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
-    Updaters = [fun({error, _}=E) -> E;
-                   ({ok, J}) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    Updaters = [fun({'error', _}=E) -> E;
+                   ({'ok', J}) ->
                         couch_mgr:save_doc(AccountDb, wh_json:set_value(Key, Value, J))
                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
+                ,fun({'error', _}=E) -> E;
+                    ({'ok', J}) ->
                          case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
-                             {ok, Rev} ->
+                             {'ok', Rev} ->
                                  couch_mgr:save_doc(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, Rev, J));
-                             {error, not_found} ->
+                             {'error', 'not_found'} ->
                                  couch_mgr:save_doc(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, J))
                          end
                  end
@@ -473,17 +473,17 @@ update_account(AccountId, Key, Value) ->
     lists:foldl(fun(F, J) -> F(J) end, couch_mgr:open_doc(AccountDb, AccountId), Updaters).
 
 print_account_info(AccountDb) ->
-    AccountId = wh_util:format_account_id(AccountDb, raw),
+    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
     print_account_info(AccountDb, AccountId).
 print_account_info(AccountDb, AccountId) ->
     case couch_mgr:open_doc(AccountDb, AccountId) of
-        {ok, JObj} ->
+        {'ok', JObj} ->
             io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb]),
             io:format("  Name: ~s~n", [wh_json:get_value(<<"name">>, JObj)]),
             io:format("  Realm: ~s~n", [wh_json:get_value(<<"realm">>, JObj)]),
             io:format("  Enabled: ~s~n", [not wh_json:is_false(<<"pvt_enabled">>, JObj)]),
             io:format("  System Admin: ~s~n", [wh_json:is_true(<<"pvt_superduper_admin">>, JObj)]);
-        {error, _} ->
+        {'error', _} ->
             io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb])
     end,
-    {ok, AccountId}.
+    {'ok', AccountId}.

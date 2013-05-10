@@ -95,24 +95,24 @@ populate_phone_numbers(#cb_context{db_name=AccountDb, account_id=AccountId}) ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
-    ['GET'].
+    [?HTTP_GET].
 
 allowed_methods(?CLASSIFIERS) ->
-    ['GET'];
+    [?HTTP_GET];
 allowed_methods(_) ->
-    ['GET', 'PUT', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(_, ?ACTIVATE) ->
-    ['PUT'];
+    [?HTTP_PUT];
 allowed_methods(_, ?RESERVE) ->
-    ['PUT'];
+    [?HTTP_PUT];
 allowed_methods(_, ?PORT) ->
-    ['PUT'];
+    [?HTTP_PUT];
 allowed_methods(_, ?PORT_DOCS) ->
-    ['GET'].
+    [?HTTP_GET].
 
 allowed_methods(_, ?PORT_DOCS, _) ->
-    ['PUT', 'POST', 'DELETE'].
+    [?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -146,9 +146,9 @@ resource_exists(_, _, _) -> false.
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-content_types_accepted(#cb_context{req_verb = <<"put">>}=Context, _Number, ?PORT_DOCS, _Name) ->
+content_types_accepted(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?PORT_DOCS, _Name) ->
     Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]};
-content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _Number, ?PORT_DOCS, _Name) ->
+content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, _Number, ?PORT_DOCS, _Name) ->
     Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]}.
 
 %%--------------------------------------------------------------------
@@ -159,7 +159,7 @@ content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _Number, ?POR
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> 'true'.
-authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>}) -> true.
+authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = ?HTTP_GET}) -> true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -169,7 +169,7 @@ authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> 'true'.
-authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>}) -> true.
+authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = ?HTTP_GET}) -> true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -185,33 +185,33 @@ authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
-validate(#cb_context{req_verb = <<"get">>, account_id=undefined}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET, account_id=undefined}=Context) ->
     find_numbers(Context);
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, ?CLASSIFIERS) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?CLASSIFIERS) ->
     Context#cb_context{resp_status=success
                        ,resp_data=wnm_util:available_classifiers()};
-validate(#cb_context{req_verb = <<"get">>}=Context, Number) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number) ->
     read(Number, Context);
-validate(#cb_context{req_verb = <<"put">>}=Context, _Number) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number) ->
     validate_request(Context);
-validate(#cb_context{req_verb = <<"post">>}=Context, _Number) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, _Number) ->
     validate_request(Context);
-validate(#cb_context{req_verb = <<"delete">>}=Context, _Number) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, _Number) ->
     validate_delete(Context).
 
-validate(#cb_context{req_verb = <<"put">>}=Context, _Number, ?ACTIVATE) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?ACTIVATE) ->
     validate_request(Context);
-validate(#cb_context{req_verb = <<"put">>}=Context, _Number, ?RESERVE) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?RESERVE) ->
     validate_request(Context);
-validate(#cb_context{req_verb = <<"put">>}=Context, _Number, ?PORT) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?PORT) ->
     validate_request(Context);
-validate(#cb_context{req_verb = <<"get">>}=Context, Number, ?PORT_DOCS) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number, ?PORT_DOCS) ->
     list_attachments(Number, Context).
 
-validate(#cb_context{req_verb = <<"delete">>}=Context, Number, ?PORT_DOCS, _) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Number, ?PORT_DOCS, _) ->
     read(Number, Context);
 validate(#cb_context{req_files=[]}=Context, _, ?PORT_DOCS, _) ->
     lager:debug("No files in request to save attachment"),

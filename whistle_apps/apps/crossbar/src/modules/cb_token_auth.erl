@@ -104,7 +104,6 @@ prepare_token_for_deletion(Token) ->
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> 'false' | {'true', cb_context:context()}.
 authenticate(#cb_context{auth_token = <<>>}) -> 'false';
-authenticate(#cb_context{auth_token='undefined'}) -> 'false';
 authenticate(#cb_context{auth_token=AuthToken}=Context) ->
     _ = cb_context:put_reqid(Context),
 

@@ -65,20 +65,20 @@ init() ->
 -spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods() | [].
 
 allowed_methods() ->
-    ['PUT'].
+    [?HTTP_PUT].
 
 allowed_methods(?INCOMING) ->
-    ['GET'];
+    [?HTTP_GET];
 allowed_methods(?OUTGOING) ->
-    ['GET', 'PUT'].
+    [?HTTP_GET, ?HTTP_PUT].
 
 allowed_methods(?INCOMING, _Id) ->
-    ['GET'];
+    [?HTTP_GET];
 allowed_methods(?OUTGOING, _Id) ->
-    ['GET', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(?INCOMING, _Id, ?ATTACHMENT) ->
-    ['GET'].
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -109,7 +109,7 @@ resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> true.
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
-content_types_provided(#cb_context{req_verb = <<"get">>}=Context, ?INCOMING, FaxId, ?ATTACHMENT) ->
+content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, ?INCOMING, FaxId, ?ATTACHMENT) ->
     case load_fax_meta(FaxId, Context) of
         #cb_context{resp_status=success, doc=JObj} ->
             case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj)) of
@@ -138,26 +138,26 @@ content_types_provided(Context, _, _, _) ->
 -spec validate(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     create(Context#cb_context{db_name=?WH_FAXES}).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, ?OUTGOING) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?OUTGOING) ->
     outgoing_summary(Context#cb_context{db_name=?WH_FAXES});
-validate(#cb_context{req_verb = <<"put">>}=Context, ?OUTGOING) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, ?OUTGOING) ->
     create(Context#cb_context{db_name=?WH_FAXES});
-validate(#cb_context{req_verb = <<"get">>}=Context, ?INCOMING) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?INCOMING) ->
     incoming_summary(Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, ?INCOMING, Id) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?INCOMING, Id) ->
     read(Id, Context);
-validate(#cb_context{req_verb = <<"get">>}=Context, ?OUTGOING, Id) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?OUTGOING, Id) ->
     read(Id, Context#cb_context{db_name=?WH_FAXES});
-validate(#cb_context{req_verb = <<"post">>}=Context, ?OUTGOING, Id) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, ?OUTGOING, Id) ->
     update(Id, Context#cb_context{db_name=?WH_FAXES});
-validate(#cb_context{req_verb = <<"delete">>}=Context, ?OUTGOING, Id) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, ?OUTGOING, Id) ->
     read(Id, Context#cb_context{db_name=?WH_FAXES}).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, ?INCOMING, Id, ?ATTACHMENT) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?INCOMING, Id, ?ATTACHMENT) ->
     load_fax_binary(Id, Context).
 
 %%--------------------------------------------------------------------

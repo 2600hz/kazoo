@@ -53,10 +53,10 @@ init() ->
 -spec allowed_methods() -> http_methods() | [].
 -spec allowed_methods(path_token()) -> http_methods() | [].
 allowed_methods() ->
-    ['GET'].
+    [?HTTP_GET].
 allowed_methods(_) -> 
     %% <<"current">>, PLAN_ID
-    ['GET', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -84,36 +84,36 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 -spec validate(#cb_context{}) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET, account_id=AccountId}=Context) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, encoded),
     crossbar_doc:load_view(?CB_LIST, [], Context#cb_context{db_name=ResellerDb}, fun normalize_view_results/2).
 
-validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"current">>) ->
+validate(#cb_context{req_verb = ?HTTP_GET, account_id=AccountId}=Context, <<"current">>) ->
     Context#cb_context{resp_status=success, resp_data=wh_services:public_json(AccountId)};
 validate(#cb_context{}=Context, <<"current">>) ->
     cb_context:add_system_error(bad_identifier, Context);
-validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, PlanId) ->
+validate(#cb_context{req_verb = ?HTTP_GET, account_id=AccountId}=Context, PlanId) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, encoded),
     crossbar_doc:load(PlanId, Context#cb_context{db_name=ResellerDb});
-validate(#cb_context{req_verb = <<"post">>}=Context, <<"synchronization">>) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, <<"synchronization">>) ->
     case is_reseler(Context) of
         {ok, _} ->
             Context;
         false ->
             cb_context:add_system_error(forbidden, Context)
     end;
-validate(#cb_context{req_verb = <<"post">>}=Context, <<"reconciliation">>) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, <<"reconciliation">>) ->
     case is_reseler(Context) of
         {ok, _} ->
             Context;
         false ->
             cb_context:add_system_error(forbidden, Context)
     end;
-validate(#cb_context{req_verb = <<"post">>}=Context, PlanId) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, PlanId) ->
     maybe_allow_change(Context, PlanId);
-validate(#cb_context{req_verb = <<"delete">>}=Context, PlanId) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, PlanId) ->
     maybe_allow_change(Context, PlanId).
 
 %% [PlanId || PlanId <- wh_json:get_keys(Plans), wh_json:get_value([PlanId, <<"account_id">>], Plans) =:= <<"reseller_id_1">>].

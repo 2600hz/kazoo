@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -28,7 +28,7 @@ handle(Req, State) ->
     try cowboy_req:chunked_reply(200, Headers, Req) of
         {'ok', Req1} ->
             Path = code:priv_dir('crossbar') ++ "/kazoo.txt",
-            {'ok', Fd} = file:open(Path, 'read'),
+            {'ok', Fd} = file:open(Path, ['read']),
             _ = readme_lines(Fd, Req1),
             {'ok', Req1, State}
     catch
