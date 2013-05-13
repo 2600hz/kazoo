@@ -48,7 +48,7 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods/0 :: () -> http_methods() | [].
-allowed_methods() -> ['GET', 'POST', 'DELETE'].
+allowed_methods() -> [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -158,8 +158,8 @@ revalidate_doc(Id, JObj, Context) ->
                                                          ,#cb_context{}),
             import_results(Id, InterimContext, Context);
         Binding ->
-            Payload = [#cb_context{req_verb = <<"post">>
-                                   ,method = 'POST'
+            Payload = [#cb_context{req_verb = ?HTTP_POST
+                                   ,method = ?HTTP_POST
                                    ,auth_token = Context#cb_context.auth_token
                                    ,auth_account_id = Context#cb_context.auth_account_id
                                    ,auth_doc = Context#cb_context.auth_doc
@@ -210,8 +210,8 @@ maybe_save_doc(Id, JObj, Context) ->
                                                          ,#cb_context{}),
             import_results(Id, InterimContext, Context);
         Binding ->
-            Payload = [#cb_context{req_verb = <<"post">>
-                                   ,method = 'POST'
+            Payload = [#cb_context{req_verb = ?HTTP_POST
+                                   ,method = ?HTTP_POST
                                    ,auth_token = Context#cb_context.auth_token
                                    ,auth_account_id = Context#cb_context.auth_account_id
                                    ,auth_doc = Context#cb_context.auth_doc
@@ -256,8 +256,8 @@ maybe_delete_doc(Id, JObj, Context) ->
                                                          ,#cb_context{}),
             import_results(Id, InterimContext, Context);
         Binding ->
-            Payload = [#cb_context{req_verb = <<"delete">>
-                                   ,method = 'DELETE'
+            Payload = [#cb_context{req_verb = ?HTTP_DELETE
+                                   ,method = ?HTTP_DELETE
                                    ,auth_token = Context#cb_context.auth_token
                                    ,auth_account_id = Context#cb_context.auth_account_id
                                    ,auth_doc = Context#cb_context.auth_doc

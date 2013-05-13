@@ -52,7 +52,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods(path_token()) -> http_methods() | [].
 allowed_methods(_) ->
-    ['GET', 'PUT', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -79,13 +79,13 @@ resource_exists(_) -> true.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>}=Context, Config) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Config) ->
     read(Config, Context);
-validate(#cb_context{req_verb = <<"put">>}=Context, Config) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Config) ->
     create(Config, Context);
-validate(#cb_context{req_verb = <<"post">>}=Context, Config) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, Config) ->
     update(Config, Context);
-validate(#cb_context{req_verb = <<"delete">>}=Context, Config) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Config) ->
     read(Config, Context).
 
 %%--------------------------------------------------------------------

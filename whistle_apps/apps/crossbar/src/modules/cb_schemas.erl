@@ -53,11 +53,11 @@ authenticate(#cb_context{req_nouns=[{<<"schemas">>,_}]}) ->
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
-    ['GET'].
+    [?HTTP_GET].
 allowed_methods(_) ->
-    ['GET'].
+    [?HTTP_GET].
 allowed_methods(_, ?VALIDATION_PATH_TOKEN) ->
-    ['PUT'].
+    [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -89,11 +89,11 @@ resource_exists(_, ?VALIDATION_PATH_TOKEN) ->
 -spec validate(#cb_context{}) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     lager:debug("load summary of schemas from ~s", [?WH_SCHEMA_DB]),
     summary(Context#cb_context{db_name = ?WH_SCHEMA_DB}).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
     read(Id, Context#cb_context{db_name = ?WH_SCHEMA_DB}).
 
 validate(#cb_context{}=Context, Id, ?VALIDATION_PATH_TOKEN) ->

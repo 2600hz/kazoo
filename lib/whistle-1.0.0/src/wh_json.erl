@@ -92,6 +92,9 @@ decode(JSON, <<"application/json">>) ->
         'throw':{'error',{_Loc, 'invalid_string'}}=E ->
             lager:debug("invalid string(near char ~p) in input, checking for unicode", [_Loc]),
             try_converting(JSON, E);
+        'throw':{'invalid_json',{{'error',{1, Err}}, _Text}} ->
+            lager:debug("~s: ~s", [Err, _Text]),
+            throw({'error', Err});
         'throw':{'invalid_json',{{'error',{_Loc, Err}}, _Text}} ->
             lager:debug("~s near char ~b: ~s", [Err, _Loc, _Text]),
             try_converting(JSON, {'error', Err});
@@ -102,8 +105,15 @@ decode(JSON, <<"application/json">>) ->
 try_converting(JSON, E) ->
     case unicode:bom_to_encoding(JSON) of
         {'latin1', 0} ->
-            lager:debug("json is latin1, trying as unicode"),
-            decode(unicode:characters_to_binary(JSON, 'latin1', 'utf8'));
+            lager:debug("json is latin1, trying as utf8"),
+            case unicode:characters_to_binary(JSON, 'latin1', 'utf8') of
+                Converted when is_binary(Converted) ->
+                    case unicode:bom_to_encoding(Converted) of
+                        {'latin1', 0} -> throw(E);
+                        _ -> decode(Converted)
+                    end;
+                _O -> lager:debug("failed to char_to_bin: ~p", [_O]), throw(E)
+            end;
         _Enc ->
             lager:debug("unknown encoding: ~p", [_Enc]),
             throw(E)
