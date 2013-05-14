@@ -23,7 +23,7 @@
 
 -define(SERVER, ?MODULE).
 -define(MAX_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"max_bucket_tokens">>, 100)).
--define(FILL_RATE, whapps_config:get_integer(?CONFIG_CAT, <<"max_bucket_tokens">>, 10)).
+-define(FILL_RATE, whapps_config:get_integer(?CONFIG_CAT, <<"tokens_fill_rate">>, 10)).
 
 %%%===================================================================
 %%% API functions
