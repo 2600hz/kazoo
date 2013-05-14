@@ -114,11 +114,11 @@ store(Key, Data, #cb_context{storage=Storage}=Context) ->
 -spec fetch(term(), context(), term()) -> term().
 
 fetch(Key, #cb_context{}=Context) ->
-    fetch(Key, Context, undefined).
+    fetch(Key, Context, 'undefined').
 
 fetch(Key, #cb_context{storage=Storage}, Default) ->
     case props:get_value(Key, Storage) of
-        undefined -> Default;
+        'undefined' -> Default;
         Else -> Else
     end.
 
@@ -131,7 +131,7 @@ fetch(Key, #cb_context{storage=Storage}, Default) ->
 %%--------------------------------------------------------------------
 -spec put_reqid(context()) -> api_binary().
 put_reqid(#cb_context{req_id=ReqId}) ->
-    put(callid, ReqId).
+    put('callid', ReqId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -139,9 +139,9 @@ put_reqid(#cb_context{req_id=ReqId}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-has_errors(#cb_context{validation_errors=JObj, resp_status=success}) ->
+has_errors(#cb_context{validation_errors=JObj, resp_status='success'}) ->
     (not wh_util:is_empty(JObj));
-has_errors(_) -> true.
+has_errors(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -151,32 +151,38 @@ has_errors(_) -> true.
 %%--------------------------------------------------------------------
 import_errors(#cb_context{}=Context) ->
     case response(Context) of
-        {ok, _} -> Context;
-        {error, {ErrorCode, ErrorMsg, Errors}} ->
+        {'ok', _} -> Context;
+        {'error', {ErrorCode, ErrorMsg, Errors}} ->
             Context#cb_context{resp_error_code=ErrorCode
                                ,resp_error_msg=ErrorMsg
                                ,resp_data=Errors
-                               ,resp_status=error}
+                               ,resp_status='error'
+                              }
     end.
 
-response(#cb_context{resp_status=success, resp_data=JObj}) ->
-    {ok, JObj};
-response(#cb_context{resp_error_code=Code, resp_error_msg=Msg, resp_data=DataJObj
-                     ,validation_errors=ValidationJObj}=Context) ->
-    ErrorCode = try wh_util:to_integer(Context#cb_context.resp_error_code) of
-                    Code -> Code
+response(#cb_context{resp_status='success'
+                     ,resp_data=JObj
+                    }) ->
+    {'ok', JObj};
+response(#cb_context{resp_error_code=Code
+                     ,resp_error_msg=Msg
+                     ,resp_data=DataJObj
+                     ,validation_errors=ValidationJObj
+                    }) ->
+    ErrorCode = try wh_util:to_integer(Code) of
+                    C -> C
                 catch
                     _:_ -> 500
                 end,
     ErrorMsg = case wh_util:is_empty(Msg) of
-                   false -> wh_util:to_binary(Msg);
-                   true -> <<"generic_error">>
+                   'false' -> wh_util:to_binary(Msg);
+                   'true' -> <<"generic_error">>
                end,
     ErrorData = case {wh_util:is_empty(ValidationJObj), wh_util:is_empty(DataJObj)} of
-                    {false, _} -> ValidationJObj;
+                    {'false', _} -> ValidationJObj;
                     {_, _} -> DataJObj
                 end,
-    {error, {ErrorCode, ErrorMsg, ErrorData}}.
+    {'error', {ErrorCode, ErrorMsg, ErrorData}}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -184,33 +190,40 @@ response(#cb_context{resp_error_code=Code, resp_error_msg=Msg, resp_data=DataJOb
 %% Add a validation error to the list of request errors
 %% @end
 %%--------------------------------------------------------------------
-validate_request_data(Schema, #cb_context{req_data=Data}=Context) ->
+validate_request_data(Schema, #cb_context{req_data=Data
+                                          ,resp_status=RespStatus
+                                         }=Context) ->
     case wh_json_validator:is_valid(wh_json:public_fields(Data), Schema) of
-        {fail, Errors} ->
+        {'fail', Errors} ->
             lager:debug("request data did not validate against ~s: ~p", [Schema, Errors]),
             lists:foldl(fun({Property, Error}, C) ->
                                 [Code, Message] = binary:split(Error, <<":">>),
                                 add_validation_error(Property, Code, Message, C)
-                        end, Context#cb_context{resp_status=error}, Errors);
-        {pass, JObj} ->
-            Status = case Context#cb_context.resp_status =:= error of
-                         true -> error;
-                         false -> success
+                        end, Context#cb_context{resp_status='error'}, Errors);
+        {'pass', JObj} ->
+            Status = case RespStatus =:= 'error' of
+                         'true' -> 'error';
+                         'false' -> 'success'
                      end,
             %% Allow onboarding to set the document ID
             case wh_json:get_ne_value(<<"_id">>, Data) of
-                undefined -> Context#cb_context{resp_status=Status, doc=JObj};
-                Id -> Context#cb_context{resp_status=Status
-                                         ,doc=wh_json:set_value(<<"_id">>, Id, JObj)}
+                'undefined' ->
+                    Context#cb_context{resp_status=Status
+                                       ,doc=JObj
+                                      };
+                Id ->
+                    Context#cb_context{resp_status=Status
+                                       ,doc=wh_json:set_value(<<"_id">>, Id, JObj)
+                                      }
             end
     end.
 
 validate_request_data(Schema, Context, OnSuccess) ->
-    validate_request_data(Schema, Context, OnSuccess, undefined).
+    validate_request_data(Schema, Context, OnSuccess, 'undefined').
 
 validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
     case validate_request_data(Schema, Context) of
-        #cb_context{resp_status=success}=C1 when is_function(OnSuccess) ->
+        #cb_context{resp_status='success'}=C1 when is_function(OnSuccess) ->
             OnSuccess(C1);
         #cb_context{}=C2 when is_function(OnFailure) ->
             OnFailure(C2);
@@ -227,53 +240,53 @@ add_system_error('too_many_requests', Context) ->
     crossbar_util:response('fatal', <<"too many requests">>, 429, Context);
 add_system_error('unspecified_fault', Context) ->
     crossbar_util:response('fatal', <<"unspecified fault">>, Context);
-add_system_error(account_cant_create_tree, Context) ->
+add_system_error('account_cant_create_tree', Context) ->
     crossbar_util:response('fatal', <<"account creation fault">>, Context);
-add_system_error(account_has_descendants, Context) ->
+add_system_error('account_has_descendants', Context) ->
     crossbar_util:response('fatal', <<"account has descendants">>, Context);
-add_system_error(faulty_request, Context) ->
+add_system_error('faulty_request', Context) ->
     crossbar_util:response_faulty_request(Context);
 
-add_system_error(bad_identifier, Context) ->
+add_system_error('bad_identifier', Context) ->
     crossbar_util:response_bad_identifier(<<"unknown">>, Context);
 
-add_system_error(forbidden, Context) ->
+add_system_error('forbidden', Context) ->
     crossbar_util:response('error', <<"forbidden">>, 403, Context);
-add_system_error(invalid_credentials, Context) ->
+add_system_error('invalid_credentials', Context) ->
     crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
 
-add_system_error(datastore_missing, Context) ->
+add_system_error('datastore_missing', Context) ->
     crossbar_util:response_db_missing(Context);
-add_system_error(datastore_missing_view, Context) ->
+add_system_error('datastore_missing_view', Context) ->
     crossbar_util:response_missing_view(Context);
-add_system_error(datastore_conflict, Context) ->
+add_system_error('datastore_conflict', Context) ->
     crossbar_util:response_conflicting_docs(Context);
-add_system_error(datastore_unreachable, Context) ->
+add_system_error('datastore_unreachable', Context) ->
     crossbar_util:response_datastore_timeout(Context);
-add_system_error(datastore_fault, Context) ->
+add_system_error('datastore_fault', Context) ->
     crossbar_util:response_db_fatal(Context);
-add_system_error(empty_tree_accounts_exist, Context) ->
+add_system_error('empty_tree_accounts_exist', Context) ->
     crossbar_util:response('error', <<"unable to create account tree">>, 400, Context);
 
-add_system_error(parse_error, Context) ->
+add_system_error('parse_error', Context) ->
     crossbar_util:response('error', <<"failed to parse request body">>, 400, Context);
-add_system_error(invalid_method, Context) ->
+add_system_error('invalid_method', Context) ->
     crossbar_util:response('error', <<"method not allowed">>, 405, Context);
-add_system_error(not_found, Context) ->
+add_system_error('not_found', Context) ->
     crossbar_util:response('error', <<"not found">>, 404, Context).
 
-add_system_error(bad_identifier, Props, Context) ->
-    Identifier = props:get_value(details, Props),
+add_system_error('bad_identifier', Props, Context) ->
+    Identifier = props:get_value('details', Props),
     crossbar_util:response_bad_identifier(Identifier, Context);
-add_system_error(invalid_bulk_type, Props, Context) ->
-    Type = props:get_value(type, Props),
+add_system_error('invalid_bulk_type', Props, Context) ->
+    Type = props:get_value('type', Props),
     Reason = <<"bulk operations do not support documents of type ", (wh_util:to_binary(Type))/binary>>,
-    crossbar_util:response(error, <<"invalid bulk type">>, 400, Reason, Context);
-add_system_error(forbidden, Props, Context) ->
-    Reason = props:get_value(details, Props),
-    crossbar_util:response(error, <<"forbidden">>, 403, Reason, Context);
-add_system_error(timeout, Props, Context) ->
-    crossbar_util:response(error, <<"timeout">>, 500, props:get_value(details, Props), Context);
+    crossbar_util:response('error', <<"invalid bulk type">>, 400, Reason, Context);
+add_system_error('forbidden', Props, Context) ->
+    Reason = props:get_value('details', Props),
+    crossbar_util:response('error', <<"forbidden">>, 403, Reason, Context);
+add_system_error('timeout', Props, Context) ->
+    crossbar_util:response('error', <<"timeout">>, 500, props:get_value('details', Props), Context);
 add_system_error(Error, _, Context) ->
     add_system_error(Error, Context).
 
@@ -327,7 +340,7 @@ add_validation_error(Property, <<"not_found">> = C, Message, Context) ->
 
 add_validation_error(Property, Code, Message, Context) ->
     lager:debug("UNKNOWN ERROR CODE: ~p", [Code]),
-    _ = file:write_file("/tmp/kazoo_unknown_error_codes.log", io_lib:format("~p~n", [Code]), [append]),
+    _ = file:write_file("/tmp/kazoo_unknown_error_codes.log", io_lib:format("~p~n", [Code]), ['append']),
     add_depreciated_validation_error(Property, Code, Message, Context).
 
 add_depreciated_validation_error(Property, Code, Message, Context) when is_binary(Property) ->
@@ -337,7 +350,7 @@ add_depreciated_validation_error(Property, Code, Message, #cb_context{validation
     %% convert to something that makes sense....
     Key = wh_util:join_binary(Property, <<".">>),
     Context#cb_context{validation_errors=wh_json:set_value([Key, Code], Message, JObj)
-                       ,resp_status=error
+                       ,resp_status='error'
                        ,resp_error_code=400
                        ,resp_data=wh_json:new()
                        ,resp_error_msg = <<"invalid data">>
