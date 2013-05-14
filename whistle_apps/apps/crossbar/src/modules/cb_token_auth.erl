@@ -51,7 +51,7 @@ init() ->
 
 stop() ->
     'ok' = supervisor:terminate_child('crossbar_sup', ?MODULE),
-    'ok' = supervisor:terminate_child('crossbar_sup', 'cb_buckets_sup'),
+    'ok' = supervisor:terminate_child('crossbar_module_sup', 'cb_buckets_sup'),
     'ok' = supervisor:delete_child('crossbar_sup', ?MODULE).
 
 init(Parent) ->
@@ -63,7 +63,8 @@ init(Parent) ->
 
 -spec finish_request(cb_context:context()) -> any().
 finish_request(#cb_context{auth_doc='undefined'}) -> 'ok';
-finish_request(#cb_context{auth_doc=AuthDoc}) ->
+finish_request(#cb_context{auth_doc=AuthDoc}=Context) ->
+    cb_context:put_reqid(Context),
     couch_mgr:suppress_change_notice(),
     lager:debug("updating auth doc: ~s:~s", [wh_json:get_value(<<"_id">>, AuthDoc)
                                              ,wh_json:get_value(<<"_rev">>, AuthDoc)
