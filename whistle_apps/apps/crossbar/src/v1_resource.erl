@@ -358,7 +358,7 @@ languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                             {ReqAcc1, ContextAcc1}
                     end, {Req0, Context0}, Nouns),
     case cowboy_req:parse_header(<<"accept-language">>, Req1) of
-        {'undefined', 'undefined', Req2} -> {LangsProvided, Req2, Context1};
+        {'ok', 'undefined', Req2} -> {LangsProvided, Req2, Context1};
         {'ok', [{A,_}|_]=_Accepted, Req2} ->
             lager:debug("adding first accept-lang header language: ~s", [A]),
             {LangsProvided ++ [A], Req2, Context1}
