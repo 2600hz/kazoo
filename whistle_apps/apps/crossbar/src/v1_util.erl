@@ -497,7 +497,10 @@ is_authentic(Req0, Context0) ->
             {'true', Req1, Context1};
         [{'true', Context2}|_] ->
             lager:debug("is_authentic: true"),
-            {'true', Req1, Context2}
+            {'true', Req1, Context2};
+        [{'halt', Context2}|_] ->
+            lager:debug("is_authentic: halt"),
+            ?MODULE:halt(Req1, Context2)
     end.
 
 -spec get_auth_token(cowboy_req:req(), cb_context:context()) -> {cowboy_req:req(), cb_context:context()}.
@@ -547,11 +550,14 @@ is_permitted(Req0, Context0) ->
             lager:debug("no on authz the request"),
             ?MODULE:halt(Req0, cb_context:add_system_error('forbidden', Context0));
         ['true'|_] ->
-            lager:debug("request was authz"),
+            lager:debug("is_permitted: true"),
             {'true', Req0, Context0};
         [{'true', Context1}|_] ->
-            lager:debug("request was authz"),
-            {'true', Req0, Context1}
+            lager:debug("is_permitted: true"),
+            {'true', Req0, Context1};
+        [{'halt', Context1}|_] ->
+            lager:debug("is_permitted: halt"),
+            ?MODULE:halt(Req0, Context1)
     end.
 
 -spec is_known_content_type(cowboy_req:req(), cb_context:context()) ->
