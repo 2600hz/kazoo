@@ -26,7 +26,6 @@
          ,succeeded/1
          ,execute_request/2
          ,finish_request/2
-         ,request_terminated/2
          ,create_push_response/2
          ,set_resp_headers/2
          ,create_resp_content/2
@@ -401,33 +400,31 @@ get_http_verb(Method, #cb_context{req_json=ReqJObj
 -type cb_mods_with_tokens() :: [cb_mod_with_tokens(),...] | [].
 -spec parse_path_tokens(path_tokens()) -> cb_mods_with_tokens().
 parse_path_tokens(Tokens) ->
-    Ebin = code:lib_dir('crossbar', 'ebin'),
-    parse_path_tokens(Tokens, Ebin, []).
+    parse_path_tokens(Tokens, []).
 
--spec parse_path_tokens(wh_json:json_strings(), nonempty_string(), cb_mods_with_tokens()) ->
+-spec parse_path_tokens(wh_json:json_strings(), cb_mods_with_tokens()) ->
                                cb_mods_with_tokens().
-parse_path_tokens([], _Ebin, Events) ->
+parse_path_tokens([], Events) ->
     Events;
-parse_path_tokens([<<"schemas">>=Mod|T], _, Events) ->
+parse_path_tokens([<<"schemas">>=Mod|T], Events) ->
     [{Mod, T} | Events];
-parse_path_tokens([<<"braintree">>=Mod|T], _, Events) ->
+parse_path_tokens([<<"braintree">>=Mod|T], Events) ->
     [{Mod, T} | Events];
-parse_path_tokens([Mod|T], Ebin, Events) ->
-    case is_cb_module(Mod, Ebin) of
-        'false' ->
-            lager:debug("failed to find ~s in loaded cb modules", [Mod]),
-            [];
+parse_path_tokens([Mod|T], Events) ->
+    case is_cb_module(Mod) of
+        'false' -> [];
         'true' ->
-            {Params, List2} = lists:splitwith(fun(Elem) -> not is_cb_module(Elem, Ebin) end, T),
-            Params1 = [ wh_util:to_binary(P) || P <- Params ],
-            parse_path_tokens(List2, Ebin, [{Mod, Params1} | Events])
+            {Params, List2} = lists:splitwith(fun(Elem) -> not is_cb_module(Elem) end, T),
+            parse_path_tokens(List2, [{Mod, Params} | Events])
     end.
 
--spec is_cb_module(ne_binary(), nonempty_string()) -> boolean().
-is_cb_module(Elem, Ebin) ->
-    case code:where_is_file(lists:flatten(["cb_", wh_util:to_list(Elem), ".beam"])) of
-        'non_existing' -> 'false';
-        BeamPath -> lists:prefix(Ebin, BeamPath) =:= 'true'
+-spec is_cb_module(ne_binary()) -> boolean().
+is_cb_module(Elem) ->
+    try (wh_util:to_atom(<<"cb_", Elem/binary>>)):module_info('imports') of
+        _ -> 'true'
+    catch
+        'error':'badarg' -> 'false'; %% atom didn't exist already
+        _E:_R -> 'false'
     end.
 
 %%--------------------------------------------------------------------
@@ -734,25 +731,10 @@ execute_request_results(Req, #cb_context{req_nouns=[{Mod, Params}|_]
 %% of all requests
 %% @end
 %%--------------------------------------------------------------------
--spec request_terminated(cowboy_req:req(), cb_context:context()) -> 'ok'.
-request_terminated(_Req, #cb_context{req_nouns=[{Mod, _}|_]
-                                     ,req_verb=Verb
-                                    }=Context) ->
-    Event = <<"v1_resource.request_terminated.", Verb/binary, ".", Mod/binary>>,
-    _ = crossbar_bindings:map(Event, Context),
-    'ok'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function runs the request terminated bindings at the conclusion
-%% of all requests
-%% @end
-%%--------------------------------------------------------------------
 -spec finish_request(cowboy_req:req(), cb_context:context()) -> 'ok'.
 finish_request(_Req, #cb_context{req_nouns=[{Mod, _}|_], req_verb=Verb}=Context) ->
     Event = <<"v1_resource.finish_request.", Verb/binary, ".", Mod/binary>>,
-    _ = crossbar_bindings:map(Event, Context),
+    _ = spawn('crossbar_bindings', 'map', [Event, Context]),
     'ok'.
 
 %%--------------------------------------------------------------------
