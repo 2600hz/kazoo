@@ -149,25 +149,14 @@ handle(Data, Call) ->
 directory_start(Call, State, CurrUsers) ->
     _ = whapps_call_command:flush_dtmf(Call),
     {'ok', DTMF} = play_directory_instructions(Call, sort_by(State)),
-    collect_min_digits(Call, add_dtmf(clear_dtmf(State), DTMF), CurrUsers, min_dtmf(State) - byte_size(DTMF)).
-
-collect_min_digits(Call, State, CurrUsers, Min) when Min =< 0 ->
-    case whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
+    case whapps_call_command:collect_digits(100, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, Call) of
+        {'error', _E} ->
+            lager:error("failed to collect digits: ~p", [_E]),
+            cf_exe:stop(Call);
         {'ok', <<>>} ->
-            lager:info("waited enough, trying to match"),
-            maybe_match(Call, State, CurrUsers);
-        {'ok', DTMF} ->
-            lager:info("caller still entering DTMF, keep letting them"),
-            collect_more_digits(Call, add_dtmf(State, DTMF), CurrUsers)
-    end;
-collect_min_digits(Call, State, CurrUsers, Min) ->
-    case whapps_call_command:wait_for_dtmf(?TIMEOUT_MIN_DTMF) of
-        {'ok', <<>>} ->
-            lager:info("timeout waiting for a dtmf"),
-            {ok, DTMF} = play_min_digits_needed(Call, min_dtmf(State)),
-            collect_min_digits(Call, add_dtmf(clear_dtmf(State), DTMF), CurrUsers, Min - byte_size(DTMF));
-        {'ok', DTMF} ->
-            collect_min_digits(Call, add_dtmf(State, DTMF), CurrUsers, Min-1)
+            directory_start(Call, State, CurrUsers);
+        {'ok', DTMFS} ->
+            maybe_match(Call, add_dtmf(add_dtmf(State, DTMF), DTMFS), CurrUsers)
     end.
 
 collect_more_digits(Call, State, CurrUsers) ->
@@ -175,9 +164,9 @@ collect_more_digits(Call, State, CurrUsers) ->
         {'ok', <<>>} ->
             lager:info("failed to collect more digits, maybe_match"),
             maybe_match(Call, State, CurrUsers);
-        {'ok', DTMF} ->
-            lager:info("recv more dtmf: ~s", [DTMF]),
-            collect_more_digits(Call, add_dtmf(State, DTMF), CurrUsers)
+        {'ok', DTMFS} ->
+            lager:info("recv more dtmf: ~s", [DTMFS]),
+            collect_more_digits(Call, add_dtmf(State, DTMFS), CurrUsers)
     end.
 
 maybe_match(Call, State, CurrUsers) ->
