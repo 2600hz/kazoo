@@ -63,14 +63,15 @@ has_tokens(Context) ->
 has_tokens(AccountId, ClientIp) ->
     lager:debug("looking for token bucket for ~s/~s", [AccountId, ClientIp]),
     case ets:lookup(?MODULE, key(AccountId, ClientIp)) of
-        [] -> start_bucket(AccountId, ClientIp), 'false';
+        [] -> start_bucket(AccountId, ClientIp), 'true';
         [#bucket{srv=Srv}] -> kz_token_bucket:consume(Srv, 1)
     end.
 
 tokens() ->
     lager:info("~60.s | ~20.s | ~10.s |", [<<"Key">>, <<"Pid">>, <<"Tokens">>]),
     tokens_traverse(ets:first(?MODULE)).
-tokens_traverse('$end_of_table') -> 'ok';
+tokens_traverse('$end_of_table') ->
+    lager:debug("~90.s", [<<"No more token servers">>]);
 tokens_traverse(Key) ->
     [#bucket{key=K, srv=P}] = ets:lookup(?MODULE, Key),
     lager:info("~60.60s | ~20.20p | ~10.10p |", [K, P, kz_token_bucket:tokens(P)]),
