@@ -84,10 +84,13 @@
 %% is the payload, possibly modified
 %% @end
 %%--------------------------------------------------------------------
--type map_results() :: [boolean() | http_methods() | {boolean(), cb_context:context()},...] | [].
+-type map_results() :: [boolean() |
+                        http_methods() |
+                        {boolean() | 'halt', cb_context:context()}
+                        ,...] | [].
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
-    map_processor(Routing, Payload, gen_server:call(?MODULE, current_bindings)).
+    map_processor(Routing, Payload, gen_server:call(?MODULE, 'current_bindings')).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -99,7 +102,7 @@ map(Routing, Payload) ->
 -type fold_results() :: payload().
 -spec fold(ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
-    fold_processor(Routing, Payload, gen_server:call(?MODULE, current_bindings)).
+    fold_processor(Routing, Payload, gen_server:call(?MODULE, 'current_bindings')).
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -126,30 +129,25 @@ succeeded(Res) when is_list(Res) -> [R || R <- Res, filter_out_failed(R)].
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
-stop() ->
-    gen_server:cast(?SERVER, stop).
+stop() -> gen_server:cast(?SERVER, 'stop').
 
 -spec bind(ne_binary(), atom(), atom()) -> 'ok' | {'error', 'exists'}.
 bind(Binding, Module, Fun) ->
-    gen_server:call(?MODULE, {bind, Binding, Module, Fun}, infinity).
+    gen_server:call(?MODULE, {'bind', Binding, Module, Fun}, 'infinity').
 
 -spec flush() -> 'ok'.
-flush() ->
-    gen_server:cast(?MODULE, flush).
+flush() -> gen_server:cast(?MODULE, 'flush').
 
 -spec flush(ne_binary()) -> 'ok'.
-flush(Binding) ->
-    gen_server:cast(?MODULE, {flush, Binding}).
+flush(Binding) -> gen_server:cast(?MODULE, {'flush', Binding}).
 
 -spec flush_mod(atom()) -> 'ok'.
-flush_mod(CBMod) ->
-    gen_server:cast(?MODULE, {flush_mod, CBMod}).
+flush_mod(CBMod) -> gen_server:cast(?MODULE, {'flush_mod', CBMod}).
 
--spec modules_loaded() -> [atom(),...] | [].
-modules_loaded() ->
-    gen_server:call(?MODULE, modules_loaded).
+-spec modules_loaded() -> atoms().
+modules_loaded() -> gen_server:call(?MODULE, 'modules_loaded').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -167,29 +165,29 @@ modules_loaded() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    process_flag(trap_exit, true),
-    put(callid, ?LOG_SYSTEM_ID),
+    process_flag('trap_exit', 'true'),
+    put('callid', ?LOG_SYSTEM_ID),
 
     lager:debug("starting bindings server"),
 
     spawn(fun() ->
-                  put(callid, ?LOG_SYSTEM_ID),
+                  put('callid', ?LOG_SYSTEM_ID),
                   [ maybe_init_mod(Mod)
                     || Mod <- whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, [])
                   ]
           end),
 
-    {ok, #state{}}.
+    {'ok', #state{}}.
 
 maybe_init_mod(ModBin) ->
     try wh_util:to_atom(ModBin) of
         Mod -> lager:debug("init: ~s: ~p", [ModBin, catch Mod:init()])
     catch
-        error:badarg ->
+        'error':'badarg' ->
             case code:where_is_file(wh_util:to_list(<<ModBin/binary, ".beam">>)) of
-                non_existing -> lager:debug("module ~s doesn't exist", [ModBin]);
+                'non_existing' -> lager:debug("module ~s doesn't exist", [ModBin]);
                 _Path ->
-                    wh_util:to_atom(ModBin, true),
+                    wh_util:to_atom(ModBin, 'true'),
                     maybe_init_mod(ModBin)
             end;
         _T:_R ->
@@ -210,42 +208,44 @@ maybe_init_mod(ModBin) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(modules_loaded, _, #state{bindings=Bs}=State) ->
+handle_call('modules_loaded', _, #state{bindings=Bs}=State) ->
     Mods = lists:foldl(fun({_, _, MFs}, Acc) ->
                                [ K || {K, _} <- props:unique(queue:to_list(MFs))] ++ Acc
                        end, [], Bs),
-    {reply, lists:usort(Mods), State};
+    {'reply', lists:usort(Mods), State};
 
-handle_call(current_bindings, _, #state{bindings=Bs}=State) ->
-    {reply, Bs, State};
+handle_call('current_bindings', _, #state{bindings=Bs}=State) ->
+    {'reply', Bs, State};
 
-handle_call({map, Routing, Payload, ReqId}, From, State) when not is_list(Payload) ->
-    handle_call({map, Routing, [Payload], ReqId}, From, State);
-handle_call({map, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) ->
-    spawn(?MODULE, map_processor, [Routing, Payload, ReqId, From, Bs]),
-    {noreply, State};
+handle_call({'map', Routing, Payload, ReqId}, From, State) when not is_list(Payload) ->
+    handle_call({'map', Routing, [Payload], ReqId}, From, State);
+handle_call({'map', Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) ->
+    spawn(?MODULE, 'map_processor', [Routing, Payload, ReqId, From, Bs]),
+    {'noreply', State};
 
-handle_call({fold, Routing, Payload, ReqId}, From, State) when not is_list(Payload) ->
-    handle_call({fold, Routing, [Payload], ReqId}, From, State);
-handle_call({fold, Routing, Payload, ReqId}, From, #state{bindings=Bs}=State) ->
-    spawn(?MODULE, fold_processor, [Routing, Payload, ReqId, From, Bs]),
-    {noreply, State};
+handle_call({'fold', Routing, Payload, ReqId}, From, State) when not is_list(Payload) ->
+    handle_call({'fold', Routing, [Payload], ReqId}, From, State);
+handle_call({'fold', Routing, Payload, ReqId}, From, #state{bindings=Bs}=State) ->
+    spawn(?MODULE, 'fold_processor', [Routing, Payload, ReqId, From, Bs]),
+    {'noreply', State};
 
-handle_call({bind, Binding, Mod, Fun}, _, #state{bindings=[]}=State) ->
-    BParts = lists:reverse(binary:split(Binding, <<".">>, [global])),
-    {reply, ok, State#state{bindings=[{Binding, BParts, queue:in({Mod, Fun}, queue:new())}]}, hibernate};
-handle_call({bind, Binding, Mod, Fun}, _, #state{bindings=Bs}=State) ->
+handle_call({'bind', Binding, Mod, Fun}, _, #state{bindings=[]}=State) ->
+    BParts = lists:reverse(binary:split(Binding, <<".">>, ['global'])),
+    {'reply', 'ok', State#state{bindings=[{Binding, BParts, queue:in({Mod, Fun}, queue:new())}]}, 'hibernate'};
+handle_call({'bind', Binding, Mod, Fun}, _, #state{bindings=Bs}=State) ->
     MF = {Mod, Fun},
     case lists:keyfind(Binding, 1, Bs) of
-        false ->
-            BParts = lists:reverse(binary:split(Binding, <<".">>, [global])),
-            {reply, ok, State#state{bindings=[{Binding, BParts, queue:in(MF, queue:new())} | Bs]}, hibernate};
+        'false' ->
+            BParts = lists:reverse(binary:split(Binding, <<".">>, ['global'])),
+            {'reply', 'ok', State#state{bindings=[{Binding, BParts, queue:in(MF, queue:new())} | Bs]}, 'hibernate'};
         {_, _, Subscribers} ->
             case queue:member(MF, Subscribers) of
-                true -> {reply, {error, exists}, State};
-                false ->
-                    BParts = lists:reverse(binary:split(Binding, <<".">>, [global])),
-                    {reply, ok, State#state{bindings=[{Binding, BParts, queue:in(MF, Subscribers)} | lists:keydelete(Binding, 1, Bs)]}, hibernate}
+                'true' -> {'reply', {'error', 'exists'}, State};
+                'false' ->
+                    BParts = lists:reverse(binary:split(Binding, <<".">>, ['global'])),
+                    {'reply', 'ok', State#state{bindings=[{Binding, BParts, queue:in(MF, Subscribers)}
+                                                          | lists:keydelete(Binding, 1, Bs)
+                                                         ]}, 'hibernate'}
             end
     end.
 
@@ -259,23 +259,23 @@ handle_call({bind, Binding, Mod, Fun}, _, #state{bindings=Bs}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(flush, #state{}=State) ->
-    {noreply, State#state{bindings=[]}, hibernate};
+handle_cast('flush', #state{}=State) ->
+    {'noreply', State#state{bindings=[]}, 'hibernate'};
 handle_cast({flush, Binding}, #state{bindings=Bs}=State) ->
     case lists:keyfind(Binding, 1, Bs) of
-        false -> {noreply, State};
+        'false' -> {'noreply', State};
         {_, _, _} ->
-            {noreply, State#state{bindings=lists:keydelete(Binding, 1, Bs)}, hibernate}
+            {'noreply', State#state{bindings=lists:keydelete(Binding, 1, Bs)}, 'hibernate'}
     end;
-handle_cast({flush_mod, CBMod}, #state{bindings=Bs}=State) ->
+handle_cast({'flush_mod', CBMod}, #state{bindings=Bs}=State) ->
     lager:debug("trying to flush ~s", [CBMod]),
     Bs1 = [ {Binding, BParts, MFs1}
             || {Binding, BParts, MFs} <- Bs,
                not queue:is_empty(MFs1 = queue:filter(fun({Mod, _}) -> Mod =/= CBMod end, MFs))
           ],
-    {noreply, State#state{bindings=Bs1}};
-handle_cast(stop, State) ->
-    {stop, normal, State}.
+    {'noreply', State#state{bindings=Bs1}};
+handle_cast('stop', State) ->
+    {'stop', 'normal', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -289,7 +289,7 @@ handle_cast(stop, State) ->
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -303,7 +303,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _) ->
-    lager:debug("terminating: ~p", [_Reason]).
+    lager:debug("bindings server terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -314,7 +314,7 @@ terminate(_Reason, _) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -328,23 +328,23 @@ code_change(_OldVsn, State, _Extra) ->
 %% <<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>
 %%
 %%--------------------------------------------------------------------
--spec matches([ne_binary(),...] | [], [ne_binary(),...] | []) -> boolean().
+-spec matches(ne_binaries(), ne_binaries()) -> boolean().
 
 %% if both are empty, we made it!
-matches([], []) -> true;
-matches([<<"#">>], []) -> true;
+matches([], []) -> 'true';
+matches([<<"#">>], []) -> 'true';
 
-matches([<<"#">>, <<"*">>], []) -> false;
-matches([<<"#">>, <<"*">>], [<<>>]) -> false;
-matches([<<"#">>, <<"*">>], [_]) -> true; % match one item:  #.* matches foo
+matches([<<"#">>, <<"*">>], []) -> 'false';
+matches([<<"#">>, <<"*">>], [<<>>]) -> 'false';
+matches([<<"#">>, <<"*">>], [_]) -> 'true'; % match one item:  #.* matches foo
 
 matches([<<"#">> | Bs], []) -> % sadly, #.# would match foo, foo.bar, foo.bar.baz, etc
     matches(Bs, []);           % so keep checking by stipping of the first #
 
 %% if one runs out without a wildcard, no matchy
-matches([], [_|_]) -> false; % foo.*   foo
-matches([_|_], []) -> false;
-matches([_|_], [<<>>]) -> false;
+matches([], [_|_]) -> 'false'; % foo.*   foo
+matches([_|_], []) -> 'false';
+matches([_|_], [<<>>]) -> 'false';
 
 %% * matches one segment only
 matches([<<"*">> | Bs], [_|Rs]) ->
@@ -357,9 +357,9 @@ matches([<<"#">>, B | Bs], [B | Rs]) ->
     %% see binding_matches(<<"#.A.*">>,<<"A.a.A.a">>)
 
     case lists:member(B, Rs) of
-        true ->
+        'true' ->
             matches(Bs, Rs) orelse matches([<<"#">> | Bs], Rs);
-        false ->
+        'false' ->
             matches(Bs, Rs)
     end;
 
@@ -373,7 +373,7 @@ matches([<<"#">> | _]=Bs, [_ | Rs]) ->
 matches([B | Bs], [B | Rs]) ->
     matches(Bs, Rs);
 %% otherwise no match
-matches(_, _) -> false.
+matches(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -384,7 +384,7 @@ matches(_, _) -> false.
 %% @end
 %%--------------------------------------------------------------------
 -spec fold_bind_results(queue() | [{atom(), atom()},...] | [], term(), ne_binary()) -> term().
-fold_bind_results(_, {error, _}=E, _) -> [E];
+fold_bind_results(_, {'error', _}=E, _) -> [E];
 fold_bind_results(MFs, Payload, Route) when is_list(MFs) ->
     fold_bind_results(MFs, Payload, Route, length(MFs), []);
 fold_bind_results(MFs, Payload, Route) ->
@@ -393,8 +393,8 @@ fold_bind_results(MFs, Payload, Route) ->
 -spec fold_bind_results([{atom(), atom()},...] | [], term(), ne_binary(), non_neg_integer(), [{atom(), atom()},...] | []) -> term().
 fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
     case catch apply(M, F, Payload) of
-        eoq -> lager:debug("putting ~s to eoq", [M]), fold_bind_results(MFs, Payload, Route, MFsLen, [{M,F}|ReRunQ]);
-        {error, _E}=E -> lager:debug("error, E"), E;
+        'eoq' -> lager:debug("putting ~s to eoq", [M]), fold_bind_results(MFs, Payload, Route, MFsLen, [{M,F}|ReRunQ]);
+        {'error', _E}=E -> lager:debug("error, E"), E;
         {'EXIT', _E} -> lager:debug("excepted: ~p", [_E]), fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         Pay1 ->
             fold_bind_results(MFs, [Pay1|Tokens], Route, MFsLen, ReRunQ)
@@ -417,21 +417,22 @@ fold_bind_results([], Payload, Route, MFsLen, ReRunQ) ->
 %% @end
 %%-------------------------------------------------------------------------
 -spec check_bool({boolean(), term()} | boolean()) -> boolean().
-check_bool({true, _}) -> true;
-check_bool(true) -> true;
-check_bool(_) -> false.
+check_bool({'true', _}) -> 'true';
+check_bool('true') -> 'true';
+check_bool(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_failed({boolean(), _} | boolean() | term()) -> boolean().
-filter_out_failed({true, _}) -> true;
-filter_out_failed(true) -> true;
-filter_out_failed({false, _}) -> false;
-filter_out_failed(false) -> false;
-filter_out_failed({'EXIT', _}) -> false;
+-spec filter_out_failed({boolean() | 'halt', _} | boolean() | term()) -> boolean().
+filter_out_failed({'true', _}) -> 'true';
+filter_out_failed('true') -> 'true';
+filter_out_failed({'halt', _}) -> 'true';
+filter_out_failed({'false', _}) -> 'false';
+filter_out_failed('false') -> 'false';
+filter_out_failed({'EXIT', _}) -> 'false';
 filter_out_failed(Term) -> not wh_util:is_empty(Term).
 
 %%--------------------------------------------------------------------
@@ -439,25 +440,26 @@ filter_out_failed(Term) -> not wh_util:is_empty(Term).
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_succeeded({boolean(), _} | boolean() | term()) -> boolean().
-filter_out_succeeded({true, _}) -> false;
-filter_out_succeeded(true) -> false;
-filter_out_succeeded({false, _}) -> true;
-filter_out_succeeded(false) -> true;
-filter_out_succeeded({'EXIT', _}) -> true;
+-spec filter_out_succeeded({boolean() | 'halt', _} | boolean() | term()) -> boolean().
+filter_out_succeeded({'true', _}) -> 'false';
+filter_out_succeeded('true') -> 'false';
+filter_out_succeeded({'halt', _}) -> 'true';
+filter_out_succeeded({'false', _}) -> 'true';
+filter_out_succeeded('false') -> 'true';
+filter_out_succeeded({'EXIT', _}) -> 'true';
 filter_out_succeeded(Term) -> wh_util:is_empty(Term).
 
 -spec map_processor(ne_binary(), payload(), wh_json:json_strings()) -> any().
 -spec map_processor(ne_binary(), payload(), ne_binary(), call_from(), wh_json:json_strings()) -> map_results().
 map_processor(Routing, Payload, ReqId, From, Bs) ->
-    put(callid, ReqId),
+    put('callid', ReqId),
     Reply = map_processor(Routing, Payload, Bs),
     gen_server:reply(From, Reply).
 
 map_processor(Routing, Payload, Bs) when not is_list(Payload) ->
     map_processor(Routing, [Payload], Bs);
 map_processor(Routing, Payload, Bs) ->
-    RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
+    RoutingParts = lists:reverse(binary:split(Routing, <<".">>, ['global'])),
     Map = fun({Mod, Fun}) when is_atom(Mod) ->
                   apply(Mod, Fun, Payload)
           end,
@@ -466,32 +468,32 @@ map_processor(Routing, Payload, Bs) ->
                         [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
                    ({_, BParts, MFs}, Acc) ->
                         case matches(BParts, RoutingParts) of
-                            true ->
+                            'true' ->
                                 lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
                                 [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
-                            false -> Acc
+                            'false' -> Acc
                         end
                 end, [], Bs).
 
 -spec fold_processor(ne_binary(), payload(), wh_json:json_strings()) -> fold_results().
 -spec fold_processor(ne_binary(), payload(), ne_binary(), call_from(), wh_json:json_strings()) -> 'ok'.
 fold_processor(Routing, Payload, ReqId, From, Bs) ->
-    put(callid, ReqId),
+    put('callid', ReqId),
     Reply = fold_processor(Routing, Payload, Bs),
     gen_server:reply(From, Reply).
 
 fold_processor(Routing, Payload, Bs) when not is_list(Payload) ->
     fold_processor(Routing, [Payload], Bs);
 fold_processor(Routing, Payload, Bs) ->
-    RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
+    RoutingParts = lists:reverse(binary:split(Routing, <<".">>, ['global'])),
 
     [Reply|_] = lists:foldl(
                   fun({B, BParts, MFs}, Acc) ->
                           case B =:= Routing orelse matches(BParts, RoutingParts) of
-                              true ->
+                              'true' ->
                                   lager:debug("routing ~s matches ~s", [Routing, B]),
                                   fold_bind_results(MFs, Acc, Routing);
-                              false -> Acc
+                              'false' -> Acc
                           end
                   end, Payload, Bs),
     Reply.
