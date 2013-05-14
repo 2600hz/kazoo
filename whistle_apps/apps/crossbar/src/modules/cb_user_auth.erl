@@ -139,7 +139,8 @@ normalize_account_name(AccountName) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
--spec maybe_authenticate_user(cb_context:context(), ne_binary(), ne_binary(), ne_binaries() | ne_binary()) -> cb_context:context().
+-spec maybe_authenticate_user(cb_context:context(), ne_binary(), ne_binary(), wh_json:key()) ->
+                                     cb_context:context().
 
 maybe_authenticate_user(#cb_context{doc=JObj}=Context) ->
     Credentials = wh_json:get_value(<<"credentials">>, JObj),
@@ -347,6 +348,13 @@ find_account('undefined', 'undefined', 'undefined', Context) ->
     {'error', Context};
 find_account('undefined', 'undefined', AccountName, Context) ->
     case whapps_util:get_accounts_by_name(AccountName) of
+        {'ok', 'undefined'} ->
+            lager:debug("failed to find account ~s by name", [AccountName]),
+            C = cb_context:add_validation_error(<<"account_name">>
+                                                ,<<"not_found">>
+                                                ,<<"The provided account name could not be found">>
+                                                ,Context),
+            find_account('undefined', 'undefined', 'undefined', C);
         {'ok', AccountDb} ->
             lager:debug("found account by name '~s': ~s", [AccountName, AccountDb]),
             {'ok', AccountDb};
@@ -362,6 +370,13 @@ find_account('undefined', 'undefined', AccountName, Context) ->
     end;
 find_account('undefined', AccountRealm, AccountName, Context) ->
     case whapps_util:get_account_by_realm(AccountRealm) of
+        {'ok', 'undefined'} ->
+            lager:debug("failed to find account ~s by name", [AccountName]),
+            C = cb_context:add_validation_error(<<"account_name">>
+                                                ,<<"not_found">>
+                                                ,<<"The provided account name could not be found">>
+                                                ,Context),
+            find_account('undefined', 'undefined', 'undefined', C);
         {'ok', AccountDb} ->
             lager:debug("found account by realm '~s': ~s", [AccountRealm, AccountDb]),
             {'ok', AccountDb};
