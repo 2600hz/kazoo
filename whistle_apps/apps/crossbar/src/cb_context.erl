@@ -28,6 +28,7 @@
          ,req_data/1, set_req_data/2
          ,req_id/1, set_req_id/2
          ,query_string/1, set_query_string/2
+         ,client_ip/1
          ,doc/1, set_doc/2
          ,resp_data/1, set_resp_data/2
          ,resp_status/1, set_resp_status/2
@@ -53,6 +54,7 @@ auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
 req_data(#cb_context{req_data=ReqData}) -> ReqData.
 query_string(#cb_context{query_json=Q}) -> Q.
+client_ip(#cb_context{client_ip=IP}) -> IP.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
 doc(#cb_context{doc=Doc}) -> Doc.
 resp_data(#cb_context{resp_data=RespData}) -> RespData.
@@ -221,12 +223,14 @@ validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-add_system_error(unspecified_fault, Context) ->
-    crossbar_util:response(fatal, <<"unspecified fault">>, Context);
+add_system_error('too_many_requests', Context) ->
+    crossbar_util:response('fatal', <<"too many requests">>, 429, Context);
+add_system_error('unspecified_fault', Context) ->
+    crossbar_util:response('fatal', <<"unspecified fault">>, Context);
 add_system_error(account_cant_create_tree, Context) ->
-    crossbar_util:response(fatal, <<"account creation fault">>, Context);
+    crossbar_util:response('fatal', <<"account creation fault">>, Context);
 add_system_error(account_has_descendants, Context) ->
-    crossbar_util:response(fatal, <<"account has descendants">>, Context);
+    crossbar_util:response('fatal', <<"account has descendants">>, Context);
 add_system_error(faulty_request, Context) ->
     crossbar_util:response_faulty_request(Context);
 
@@ -234,9 +238,9 @@ add_system_error(bad_identifier, Context) ->
     crossbar_util:response_bad_identifier(<<"unknown">>, Context);
 
 add_system_error(forbidden, Context) ->
-    crossbar_util:response(error, <<"forbidden">>, 403, Context);
+    crossbar_util:response('error', <<"forbidden">>, 403, Context);
 add_system_error(invalid_credentials, Context) ->
-    crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
+    crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
 
 add_system_error(datastore_missing, Context) ->
     crossbar_util:response_db_missing(Context);
@@ -249,14 +253,14 @@ add_system_error(datastore_unreachable, Context) ->
 add_system_error(datastore_fault, Context) ->
     crossbar_util:response_db_fatal(Context);
 add_system_error(empty_tree_accounts_exist, Context) ->
-    crossbar_util:response(error, <<"unable to create account tree">>, 400, Context);
+    crossbar_util:response('error', <<"unable to create account tree">>, 400, Context);
 
 add_system_error(parse_error, Context) ->
-    crossbar_util:response(error, <<"failed to parse request body">>, 400, Context);
+    crossbar_util:response('error', <<"failed to parse request body">>, 400, Context);
 add_system_error(invalid_method, Context) ->
-    crossbar_util:response(error, <<"method not allowed">>, 405, Context);
+    crossbar_util:response('error', <<"method not allowed">>, 405, Context);
 add_system_error(not_found, Context) ->
-    crossbar_util:response(error, <<"not found">>, 404, Context).
+    crossbar_util:response('error', <<"not found">>, 404, Context).
 
 add_system_error(bad_identifier, Props, Context) ->
     Identifier = props:get_value(details, Props),
