@@ -59,8 +59,8 @@
 -spec start_link(pos_integer(), pos_integer()) -> startlink_ret().
 -spec start_link(pos_integer(), pos_integer(), boolean()) -> startlink_ret().
 start_link(Max, FillRate) -> start_link(Max, FillRate, 'true').
-start_link(Max, FillRate, FillBlock) when FillRate > 0,
-                                          Max > 0,
+start_link(Max, FillRate, FillBlock) when is_integer(FillRate), FillRate > 0,
+                                          is_integer(Max), Max > 0,
                                           is_boolean(FillBlock) ->
     gen_server:start_link(?MODULE, [Max, FillRate, FillBlock], []).
 
