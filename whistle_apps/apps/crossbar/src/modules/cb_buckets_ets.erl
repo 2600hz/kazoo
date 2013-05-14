@@ -15,6 +15,7 @@
          ,has_tokens/1
          ,key_pos/0
          ,table_id/0
+         ,tokens/0
         ]).
 
 %% gen_server callbacks
@@ -58,11 +59,22 @@ has_tokens(Context) ->
                     Id -> Id
                 end,
     ClientIp = cb_context:client_ip(Context),
+    has_tokens(AccountId, ClientIp).
+has_tokens(AccountId, ClientIp) ->
     lager:debug("looking for token bucket for ~s/~s", [AccountId, ClientIp]),
     case ets:lookup(?MODULE, key(AccountId, ClientIp)) of
         [] -> start_bucket(AccountId, ClientIp), 'false';
         [#bucket{srv=Srv}] -> kz_token_bucket:consume(Srv, 1)
     end.
+
+tokens() ->
+    lager:info("~60.s | ~20.s | ~10.s |", [<<"Key">>, <<"Pid">>, <<"Tokens">>]),
+    tokens_traverse(ets:first(?MODULE)).
+tokens_traverse('$end_of_table') -> 'ok';
+tokens_traverse(Key) ->
+    [#bucket{key=K, srv=P}] = ets:lookup(?MODULE, Key),
+    lager:info("~60.60s | ~20.20p | ~10.10p |", [K, P, kz_token_bucket:tokens(P)]),
+    tokens_traverse(ets:next(?MODULE, Key)).
 
 key_pos() -> #bucket.key.
 table_id() -> ?MODULE.
