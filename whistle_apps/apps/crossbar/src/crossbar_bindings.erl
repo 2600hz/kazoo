@@ -90,7 +90,7 @@
                         ,...] | [].
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
-    map_processor(Routing, Payload, gen_server:call(?MODULE, 'current_bindings')).
+    map_processor(Routing, Payload, ets:match(?MODULE, '$1')).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -102,7 +102,7 @@ map(Routing, Payload) ->
 -type fold_results() :: payload().
 -spec fold(ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
-    fold_processor(Routing, Payload, gen_server:call(?MODULE, 'current_bindings')).
+    fold_processor(Routing, Payload, ets:match(?MODULE, '$1')).
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -168,6 +168,8 @@ init([]) ->
     process_flag('trap_exit', 'true'),
     put('callid', ?LOG_SYSTEM_ID),
 
+    ets:new(?MODULE, ['named_table', 'protected']),
+
     lager:debug("starting bindings server"),
 
     spawn(fun() ->
@@ -229,23 +231,25 @@ handle_call({'fold', Routing, Payload, ReqId}, From, #state{bindings=Bs}=State) 
     spawn(?MODULE, 'fold_processor', [Routing, Payload, ReqId, From, Bs]),
     {'noreply', State};
 
-handle_call({'bind', Binding, Mod, Fun}, _, #state{bindings=[]}=State) ->
-    BParts = lists:reverse(binary:split(Binding, <<".">>, ['global'])),
-    {'reply', 'ok', State#state{bindings=[{Binding, BParts, queue:in({Mod, Fun}, queue:new())}]}, 'hibernate'};
-handle_call({'bind', Binding, Mod, Fun}, _, #state{bindings=Bs}=State) ->
+handle_call({'bind', Binding, Mod, Fun}, _, #state{}=State) ->
     MF = {Mod, Fun},
-    case lists:keyfind(Binding, 1, Bs) of
-        'false' ->
+
+    case ets:lookup(?MODULE, Binding) of
+        [] ->
             BParts = lists:reverse(binary:split(Binding, <<".">>, ['global'])),
-            {'reply', 'ok', State#state{bindings=[{Binding, BParts, queue:in(MF, queue:new())} | Bs]}, 'hibernate'};
-        {_, _, Subscribers} ->
+            Bind = {Binding, BParts, queue:in(MF, queue:new())},
+
+            ets:insert_new(?MODULE, Bind),
+            {'reply', 'ok', State};
+        [{_, _, Subscribers}] ->
             case queue:member(MF, Subscribers) of
                 'true' -> {'reply', {'error', 'exists'}, State};
                 'false' ->
                     BParts = lists:reverse(binary:split(Binding, <<".">>, ['global'])),
-                    {'reply', 'ok', State#state{bindings=[{Binding, BParts, queue:in(MF, Subscribers)}
-                                                          | lists:keydelete(Binding, 1, Bs)
-                                                         ]}, 'hibernate'}
+                    Bind = {Binding, BParts, queue:in(MF, Subscribers)},
+
+                    ets:insert(?MODULE, Bind),
+                    {'reply', 'ok', State}
             end
     end.
 
@@ -260,13 +264,11 @@ handle_call({'bind', Binding, Mod, Fun}, _, #state{bindings=Bs}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('flush', #state{}=State) ->
-    {'noreply', State#state{bindings=[]}, 'hibernate'};
-handle_cast({flush, Binding}, #state{bindings=Bs}=State) ->
-    case lists:keyfind(Binding, 1, Bs) of
-        'false' -> {'noreply', State};
-        {_, _, _} ->
-            {'noreply', State#state{bindings=lists:keydelete(Binding, 1, Bs)}, 'hibernate'}
-    end;
+    ets:delete_all_objects(?MODULE),
+    {'noreply', State, 'hibernate'};
+handle_cast({'flush', Binding}, #state{}=State) ->
+    ets:delete(?MODULE, Binding),
+    {'noreply', State};
 handle_cast({'flush_mod', CBMod}, #state{bindings=Bs}=State) ->
     lager:debug("trying to flush ~s", [CBMod]),
     Bs1 = [ {Binding, BParts, MFs1}
@@ -472,6 +474,16 @@ map_processor(Routing, Payload, Bs) ->
                                 lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
                                 [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
                             'false' -> Acc
+                        end;
+                   ([{B, _, MFs}], Acc) when B =:= Routing ->
+                        lager:debug("exact match ~p to ~p", [B, Routing]),
+                        [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
+                   ([{_, BParts, MFs}], Acc) ->
+                        case matches(BParts, RoutingParts) of
+                            'true' ->
+                                lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
+                                [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
+                            'false' -> Acc
                         end
                 end, [], Bs).
 
@@ -489,6 +501,13 @@ fold_processor(Routing, Payload, Bs) ->
 
     [Reply|_] = lists:foldl(
                   fun({B, BParts, MFs}, Acc) ->
+                          case B =:= Routing orelse matches(BParts, RoutingParts) of
+                              'true' ->
+                                  lager:debug("routing ~s matches ~s", [Routing, B]),
+                                  fold_bind_results(MFs, Acc, Routing);
+                              'false' -> Acc
+                          end;
+                     ([{B, BParts, MFs}], Acc) ->
                           case B =:= Routing orelse matches(BParts, RoutingParts) of
                               'true' ->
                                   lager:debug("routing ~s matches ~s", [Routing, B]),
