@@ -856,8 +856,8 @@ get_results(DbName, DesignDoc, Options) when ?VALID_DBNAME ->
     couch_util:get_results(wh_couch_connections:get_server(), DbName, DesignDoc, Options);
 get_results(DbName, DesignDoc, Options) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> get_results(Db, DesignDoc, Options);
-        {error, _}=E -> E
+        {'ok', Db} -> get_results(Db, DesignDoc, Options);
+        {'error', _}=E -> E
     end.
 
 get_results_count(DbName, DesignDoc, Options) ->

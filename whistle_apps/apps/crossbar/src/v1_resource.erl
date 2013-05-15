@@ -91,28 +91,27 @@ rest_init(Req0, Opts) ->
     {Context1, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {Context0, Opts}),
     {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req6), Context1}.
 
-terminate(Req, Context) ->
-    _ = v1_util:request_terminated(Req, Context),
+terminate(_Req, _Context) ->
     lager:debug("session finished").
 
 rest_terminate(Req, #cb_context{start=T1
                                 ,method = ?HTTP_OPTIONS
                                }=Context) ->
-    _ = v1_util:finish_request(Req, Context),
-    lager:info("OPTIONS request fulfilled in ~p ms", [wh_util:elapsed_ms(T1)]);
+    lager:info("OPTIONS request fulfilled in ~p ms", [wh_util:elapsed_ms(T1)]),
+    _ = v1_util:finish_request(Req, Context);
 rest_terminate(Req, #cb_context{start=T1
                                 ,resp_status=Status
                                 ,auth_account_id=AcctId
                                 ,req_verb=Verb
                                }=Context) ->
+    lager:info("~s request fulfilled in ~p ms", [Verb, wh_util:elapsed_ms(T1)]),
     case Status of
         'success' -> wh_counter:inc(<<"crossbar.requests.successes">>);
         _ -> wh_counter:inc(<<"crossbar.requests.failures">>)
     end,
 
     wh_counter:inc(<<"crossbar.requests.accounts.", (wh_util:to_binary(AcctId))/binary>>),
-    _ = v1_util:finish_request(Req, Context),
-    lager:info("~s request fulfilled in ~p ms", [Verb, wh_util:elapsed_ms(T1)]).
+    _ = v1_util:finish_request(Req, Context).
 
 %%%===================================================================
 %%% CowboyHTTPRest API Callbacks
@@ -136,8 +135,10 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
             %% HTTP method with the tunneled version
             case v1_util:get_req_data(Context, Req1) of
                 {'halt', Context1, Req2} ->
+                    lager:debug("halting here"),
                     v1_util:halt(Req2, cb_context:add_system_error('parse_error', Context1));
                 {Context1, Req2} ->
+                    lager:debug("determining the http verb"),
                     determine_http_verb(Req2, Context1#cb_context{req_nouns=Nouns})
             end;
         [] ->
@@ -155,6 +156,7 @@ find_allowed_methods(Req0, #cb_context{allowed_methods=Methods
                                        ,req_verb=Verb
                                        ,req_nouns=[{Mod, Params}|_]
                                       }=Context) ->
+    lager:debug("finding allowed methods"),
     Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
     {Method, Req1} = cowboy_req:method(Req0),
     AllowMethods = v1_util:allow_methods(Responses, Methods, Verb, wh_util:to_binary(Method)),
@@ -166,6 +168,7 @@ find_allowed_methods(Req0, #cb_context{allowed_methods=Methods
 maybe_add_cors_headers(Req0, Context) ->
     case v1_util:is_cors_request(Req0) of
         {'true', Req1} ->
+            lager:debug("adding cors headers"),
             Req2 = v1_util:add_cors_headers(Req1, Context),
             check_preflight(Req2, Context);
         {'false', Req1} ->
@@ -358,7 +361,7 @@ languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                             {ReqAcc1, ContextAcc1}
                     end, {Req0, Context0}, Nouns),
     case cowboy_req:parse_header(<<"accept-language">>, Req1) of
-        {'undefined', 'undefined', Req2} -> {LangsProvided, Req2, Context1};
+        {'ok', 'undefined', Req2} -> {LangsProvided, Req2, Context1};
         {'ok', [{A,_}|_]=_Accepted, Req2} ->
             lager:debug("adding first accept-lang header language: ~s", [A]),
             {LangsProvided ++ [A], Req2, Context1}

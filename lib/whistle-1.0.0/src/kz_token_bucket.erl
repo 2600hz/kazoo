@@ -59,8 +59,8 @@
 -spec start_link(pos_integer(), pos_integer()) -> startlink_ret().
 -spec start_link(pos_integer(), pos_integer(), boolean()) -> startlink_ret().
 start_link(Max, FillRate) -> start_link(Max, FillRate, 'true').
-start_link(Max, FillRate, FillBlock) when FillRate > 0,
-                                          Max > 0,
+start_link(Max, FillRate, FillBlock) when is_integer(FillRate), FillRate > 0,
+                                          is_integer(Max), Max > 0,
                                           is_boolean(FillBlock) ->
     gen_server:start_link(?MODULE, [Max, FillRate, FillBlock], []).
 
@@ -87,12 +87,13 @@ tokens(Srv) -> gen_server:call(Srv, {'tokens'}).
 %% @end
 %%--------------------------------------------------------------------
 init([Max, FillRate, FillBlock]) ->
+    lager:debug("starting token bucket with ~b max, filling at ~b/s, in a block: ~s", [Max, FillRate, FillBlock]),
     {'ok', #state{max_tokens=Max
                   ,fill_rate=FillRate
                   ,fill_ref=start_fill_timer(FillRate, FillBlock)
                   ,fill_as_block=FillBlock
                   ,tokens=Max
-             }}.
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -192,8 +193,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%   Maxes out at 1ms
 
 start_fill_timer(_FillRate, 'true') -> start_fill_timer(1000);
-start_fill_timer(FillRate, 'false') ->
-    start_fill_timer(fill_timeout(FillRate)).
+start_fill_timer(FillRate, 'false') -> start_fill_timer(fill_timeout(FillRate)).
 
 fill_timeout(FillRate) ->
     case 1000 div FillRate of
