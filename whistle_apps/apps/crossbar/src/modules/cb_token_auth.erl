@@ -21,11 +21,16 @@
         ]).
 
 %% cleanup proc
--export([start_link/0, init/1]).
+-export([start_link/0
+         ,init/1
+         ,cleanup_loop/1
+        ]).
 
 -include("src/crossbar.hrl").
 
--define(CHILDSPEC, {?MODULE, {?MODULE, 'start_link', []}, 'permanent', 5000, 'worker', [?MODULE]}).
+-define(CHILDSPEC, {?MODULE, {?MODULE, 'start_link', []}
+                    ,'permanent', 5000, 'worker', [?MODULE]
+                   }).
 
 %%%===================================================================
 %%% API
@@ -35,6 +40,8 @@ start_link() ->
 
 init() ->
     couch_mgr:db_create(?TOKEN_DB),
+    crossbar_module_sup:start_child('cb_buckets_sup', 'supervisor'),
+
     _ = couch_mgr:revise_doc_from_file(?TOKEN_DB, 'crossbar', "views/token_auth.json"),
 
     _ = supervisor:start_child('crossbar_sup', ?CHILDSPEC),
@@ -44,18 +51,20 @@ init() ->
 
 stop() ->
     'ok' = supervisor:terminate_child('crossbar_sup', ?MODULE),
+    'ok' = supervisor:terminate_child('crossbar_module_sup', 'cb_buckets_sup'),
     'ok' = supervisor:delete_child('crossbar_sup', ?MODULE).
 
 init(Parent) ->
     proc_lib:init_ack(Parent, {'ok', self()}),
-    put(callid, ?LOG_SYSTEM_ID),
+    put('callid', ?LOG_SYSTEM_ID),
     Expiry = whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_DAY),
 
-    cleanup_loop(Expiry).
+    ?MODULE:cleanup_loop(Expiry).
 
 -spec finish_request(cb_context:context()) -> any().
 finish_request(#cb_context{auth_doc='undefined'}) -> 'ok';
-finish_request(#cb_context{auth_doc=AuthDoc}) ->
+finish_request(#cb_context{auth_doc=AuthDoc}=Context) ->
+    cb_context:put_reqid(Context),
     couch_mgr:suppress_change_notice(),
     lager:debug("updating auth doc: ~s:~s", [wh_json:get_value(<<"_id">>, AuthDoc)
                                              ,wh_json:get_value(<<"_rev">>, AuthDoc)
@@ -69,8 +78,8 @@ cleanup_loop(Expiry) ->
     receive
     after
         Timeout ->
-            clean_expired(Expiry),
-            cleanup_loop(whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_DAY))
+            ?MODULE:clean_expired(Expiry),
+            ?MODULE:cleanup_loop(whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_DAY))
     end.
 
 clean_expired(Expiry) ->
@@ -102,11 +111,21 @@ prepare_token_for_deletion(Token) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate(cb_context:context()) -> 'false' | {'true', cb_context:context()}.
-authenticate(#cb_context{auth_token = <<>>}) -> 'false';
-authenticate(#cb_context{auth_token=AuthToken}=Context) ->
+-spec authenticate(cb_context:context()) ->
+                          'false' |
+                          {'true' | 'halt', cb_context:context()}.
+authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
+    case cb_buckets_ets:has_tokens(Context) of
+        'true' -> check_auth_token(Context);
+        'false' ->
+            lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
+            {'halt', cb_context:add_system_error('too_many_requests', Context)}
+    end.
 
+check_auth_token(#cb_context{auth_token = <<>>}) -> 'false';
+check_auth_token(#cb_context{auth_token='undefined'}) -> 'false';
+check_auth_token(#cb_context{auth_token=AuthToken}=Context) ->
     lager:debug("checking auth token: ~s", [AuthToken]),
     case couch_mgr:open_cache_doc(?TOKEN_DB, AuthToken) of
         {'ok', JObj} ->

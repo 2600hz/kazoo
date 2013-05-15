@@ -87,6 +87,7 @@ upgrade() ->
 -spec init([]) -> sup_init_ret().
 init([]) ->
     {'ok', {{'one_for_one', 10, 10}, [?CACHE()
+                                      ,?CHILD('crossbar_module_sup', 'supervisor')
                                       ,?CHILD('crossbar_bindings', 'worker')
                                       ,?CHILD('crossbar_cleanup', 'worker')
                                      ]}}.
