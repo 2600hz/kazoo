@@ -43,7 +43,7 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods/0 :: () -> http_methods() | [].
-allowed_methods() -> ['GET'].
+allowed_methods() -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -68,6 +68,6 @@ resource_exists() -> true.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>, db_name=AccountDb}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET, db_name=AccountDb}=Context) ->
     ContactList = provisioner_contact_list:build(AccountDb),
     Context#cb_context{resp_status=success, resp_data=ContactList}.

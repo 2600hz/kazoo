@@ -54,7 +54,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?TOKEN_CALL) ->
-    ['PUT', 'POST'].
+    [?HTTP_PUT, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -80,9 +80,9 @@ resource_exists(?TOKEN_CALL) -> true.
 %%--------------------------------------------------------------------
 
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"put">>}=Context, ?TOKEN_CALL) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, ?TOKEN_CALL) ->
     setup_call(Context);
-validate(#cb_context{req_verb = <<"post">>}=Context, ?TOKEN_CALL) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, ?TOKEN_CALL) ->
     setup_call(Context).
 
 %%--------------------------------------------------------------------

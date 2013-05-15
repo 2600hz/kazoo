@@ -39,13 +39,13 @@ init() ->
 
 
 authorize(#cb_context{req_nouns=[{<<"onboard">>,[]}]
-                      ,req_verb = <<"put">>}) ->
+                      ,req_verb = ?HTTP_PUT}) ->
     'true';
 authorize(_) ->
     'false'.
 
 authenticate(#cb_context{req_nouns=[{<<"onboard">>,[]}]
-                         ,req_verb = <<"put">>}) ->
+                         ,req_verb = ?HTTP_PUT}) ->
     'true';
 authenticate(_) ->
     'false'.
@@ -61,7 +61,7 @@ authenticate(_) ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    ['PUT'].
+    [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -85,7 +85,7 @@ resource_exists() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(#cb_context{}) -> #cb_context{}.
-validate(#cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_data=JObj, req_verb = ?HTTP_PUT}=Context) ->
     Generators = [fun(R) -> create_extensions(JObj, Context, R) end
                   ,fun(R) -> create_phone_numbers(JObj, Context, R) end
                   ,fun(R) -> create_braintree_cards(JObj, Context, R) end
@@ -218,7 +218,7 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
                          ],
             Payload = [Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Customer, Generators)
                                           ,account_id=AccountId
-                                          ,req_verb = <<"post">>}
+                                          ,req_verb = ?HTTP_POST}
                        ,<<"customer">>
                       ],
             Context1 = crossbar_bindings:fold(<<"v1_resource.validate.braintree">>, Payload),
@@ -501,7 +501,7 @@ populate_new_account([{<<"braintree">>, Context}|Props], AccountDb, Results) ->
     Payload = [Context#cb_context{resp_status='error'
                                   ,db_name=AccountDb
                                   ,account_id=AccountId
-                                  ,req_verb = <<"post">>}
+                                  ,req_verb = ?HTTP_POST}
                ,<<"customer">>
               ],
     Context1 = crossbar_bindings:fold(<<"v1_resource.execute.post.braintree">>, Payload),

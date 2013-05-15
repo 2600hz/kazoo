@@ -79,11 +79,11 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
-    ['GET', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(<<"available">>) ->
-    ['GET'];
+    [?HTTP_GET];
 allowed_methods(<<"subscription">>) ->
-    ['GET', 'PUT', 'DELETE'].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -114,7 +114,7 @@ resource_exists(<<"subscription">>) ->
 
 -spec validate(#cb_context{}) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
         {ok, Pid} when is_pid(Pid) ->
@@ -122,7 +122,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=
         _Other ->
             cb_context:add_system_error(faulty_request, Context)
     end;
-validate(#cb_context{req_verb = <<"post">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_POST, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
         {ok, Pid} when is_pid(Pid) ->
@@ -130,7 +130,7 @@ validate(#cb_context{req_verb = <<"post">>, account_id=AcctId, auth_doc=AuthDoc}
         _ ->
             cb_context:add_system_error(faulty_request, Context)
     end;
-validate(#cb_context{req_verb = <<"delete">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
         {ok, Pid} when is_pid(Pid) ->
@@ -139,10 +139,10 @@ validate(#cb_context{req_verb = <<"delete">>, account_id=AcctId, auth_doc=AuthDo
             cb_context:add_system_error(faulty_request, Context)
     end.
 
-validate(#cb_context{req_verb = <<"get">>}=Context, <<"available">>) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, <<"available">>) ->
     load_available_bindings(Context);
 
-validate(#cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=Context, <<"subscription">>) ->
+validate(#cb_context{req_verb = ?HTTP_GET, account_id=AcctId, auth_doc=AuthDoc}=Context, <<"subscription">>) ->
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
         {ok, Pid} when is_pid(Pid) ->
@@ -151,7 +151,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=
             cb_context:add_system_error(faulty_request, Context)
     end;
 
-validate(#cb_context{req_verb = <<"put">>, auth_doc=AuthDoc, account_id=AcctId, req_data=ReqData}=Context, <<"subscription">>) ->
+validate(#cb_context{req_verb = ?HTTP_PUT, auth_doc=AuthDoc, account_id=AcctId, req_data=ReqData}=Context, <<"subscription">>) ->
     lager:debug("reqd: ~p", [ReqData]),
     Subscriptions = wh_json:get_value(<<"subscriptions">>, ReqData, []),
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
@@ -162,7 +162,7 @@ validate(#cb_context{req_verb = <<"put">>, auth_doc=AuthDoc, account_id=AcctId, 
             cb_context:add_system_error(faulty_request, Context)
     end;
 
-validate(#cb_context{req_verb = <<"delete">>, auth_doc=AuthDoc, account_id=AcctId, req_data=ReqData}=Context, <<"subscription">>) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE, auth_doc=AuthDoc, account_id=AcctId, req_data=ReqData}=Context, <<"subscription">>) ->
     lager:debug("reqd: ~p", [ReqData]),
     Subscriptions = wh_json:get_value(<<"subscriptions">>, ReqData, []),
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
@@ -225,7 +225,7 @@ load_current_subscriptions(Context, Srv) ->
 add_subscriptions(#cb_context{req_data=ReqJObj}=Context, Srv, Subs, User) ->
     lager:debug("Adding ~p", [Subs]),
     RespJObj = wh_json:from_list([{Sub
-                                   ,format_sub_result(cb_events_srv:subscribe(Srv, Sub, wh_json:get_value(<<"options">>, ReqJObj, [])))
+                                   ,format_sub_result(cb_events_srv:subscribe(Srv, Sub, wh_json:get_value(?HTTP_OPTIONS, ReqJObj, [])))
                          } || Sub <- Subs]),
     Context1 = save_latest(Context, Srv, User),
     crossbar_util:response(RespJObj, Context1).

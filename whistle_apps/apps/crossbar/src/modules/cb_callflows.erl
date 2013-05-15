@@ -51,9 +51,9 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
-    ['GET', 'PUT'].
+    [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_MediaID) ->
-    ['GET', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -79,16 +79,16 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 -spec validate(#cb_context{}) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     load_callflow_summary(Context);
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     validate_request(undefined, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, DocId) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId) ->
     load_callflow(DocId, Context);
-validate(#cb_context{req_verb = <<"post">>}=Context, DocId) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, DocId) ->
     validate_request(DocId, Context);
-validate(#cb_context{req_verb = <<"delete">>}=Context, DocId) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DocId) ->
     load_callflow(DocId, Context).
 
 -spec post(#cb_context{}, path_token()) -> #cb_context{}.

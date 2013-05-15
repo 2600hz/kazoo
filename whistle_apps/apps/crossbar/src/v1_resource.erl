@@ -50,7 +50,7 @@
 %%% Startup and shutdown of request
 %%%===================================================================
 -spec init({'tcp' | 'ssl', 'http'}, cowboy_req:req(), wh_proplist()) ->
-                  {'upgrade', 'protocol', 'cowboy_http_rest'}.
+                  {'upgrade', 'protocol', 'cowboy_rest'}.
 init({'tcp', 'http'}, _Req, _Opts) ->
     {'upgrade', 'protocol', 'cowboy_rest'};
 init({'ssl', 'http'}, _Req, _Opts) ->
@@ -96,7 +96,7 @@ terminate(Req, Context) ->
     lager:debug("session finished").
 
 rest_terminate(Req, #cb_context{start=T1
-                                ,method='OPTIONS'
+                                ,method = ?HTTP_OPTIONS
                                }=Context) ->
     _ = v1_util:finish_request(Req, Context),
     lager:info("OPTIONS request fulfilled in ~p ms", [wh_util:elapsed_ms(T1)]);
@@ -175,9 +175,9 @@ maybe_add_cors_headers(Req0, Context) ->
 
 -spec check_preflight(cowboy_req:req(), cb_context:context()) ->
                              {http_methods(), cowboy_req:req(), cb_context:context()}.
-check_preflight(Req0, #cb_context{req_verb = <<"options">>}=Context) ->
+check_preflight(Req0, #cb_context{req_verb = ?HTTP_OPTIONS}=Context) ->
     lager:debug("allowing OPTIONS request for CORS preflight"),
-    {[<<"OPTIONS">>], Req0, Context};
+    {[?HTTP_OPTIONS], Req0, Context};
 check_preflight(Req0, Context) ->
     maybe_allow_method(Req0, Context).
 
@@ -187,9 +187,8 @@ maybe_allow_method(Req0, #cb_context{allow_methods=[]}=Context) ->
 maybe_allow_method(Req0, #cb_context{allow_methods=Methods
                                      ,req_verb=Verb
                                     }=Context) ->
-    VerbBig = wh_util:to_upper_binary(Verb),
-    lager:debug("is ~p in ~p", [VerbBig, Methods]),
-    case lists:member(VerbBig, Methods) of
+    lager:debug("is ~p in ~p", [Verb, Methods]),
+    case lists:member(Verb, Methods) of
         'true' ->
             {Methods, Req0, Context};
         'false' ->
@@ -199,7 +198,7 @@ maybe_allow_method(Req0, #cb_context{allow_methods=Methods
 malformed_request(Req, #cb_context{req_json={'malformed', _}}=Context) ->
     lager:debug("request is malformed"),
     {'true', Req, Context};
-malformed_request(Req, #cb_context{req_verb = <<"options">>}=Context) ->
+malformed_request(Req, #cb_context{req_verb = ?HTTP_OPTIONS}=Context) ->
     {'false', Req, Context};
 malformed_request(Req, #cb_context{req_nouns=Nouns}=Context) ->
     case props:get_value(<<"accounts">>, Nouns) of
@@ -235,18 +234,18 @@ valid_content_headers(Req, Context) ->
 
 -spec known_content_type(cowboy_req:req(), cb_context:context()) ->
                                 {boolean(), cowboy_req:req(), cb_context:context()}.
-known_content_type(Req, #cb_context{req_verb = <<"options">>}=Context) ->
+known_content_type(Req, #cb_context{req_verb = ?HTTP_OPTIONS}=Context) ->
     {'true', Req, Context};
-known_content_type(Req, #cb_context{req_verb = <<"get">>}=Context) ->
+known_content_type(Req, #cb_context{req_verb = ?HTTP_GET}=Context) ->
     {'true', Req, Context};
-known_content_type(Req, #cb_context{req_verb = <<"delete">>}=Context) ->
+known_content_type(Req, #cb_context{req_verb = ?HTTP_DELETE}=Context) ->
     {'true', Req, Context};
 known_content_type(Req, Context) ->
     Req2 = case cowboy_req:header(<<"content-type">>, Req) of
                {'undefined', Req1} ->
                    cowboy_req:set_resp_header(<<"X-RFC2616">>
-                                                  ,<<"Section 14.17 (Try it, you'll like it)">>
-                                                  ,Req1);
+                                              ,<<"Section 14.17 (Try it, you'll like it)">>
+                                              ,Req1);
                {_, Req1} -> Req1
            end,
     v1_util:is_known_content_type(Req2, Context).
@@ -404,7 +403,7 @@ resource_exists(Req0, Context0) ->
             lager:debug("requested resource exists, validating it"),
             #cb_context{req_verb=Verb}=Context1 = v1_util:validate(Context0),
             case v1_util:succeeded(Context1) of
-                'true' when Verb =/= <<"put">> ->
+                'true' when Verb =/= ?HTTP_PUT ->
                     lager:debug("requested resource update validated"),
                     {'true', Req0, Context1};
                 'true' ->
@@ -445,7 +444,7 @@ previously_existed(Req, State) ->
 allow_missing_post(Req0, #cb_context{req_verb=_Verb}=Context) ->
     lager:debug("run: allow_missing_post when req_verb = ~s", [_Verb]),
     {Method, Req1} = cowboy_req:method(Req0),
-    {Method =:= 'POST', Req1, Context}.
+    {Method =:= ?HTTP_POST, Req1, Context}.
 
 -spec delete_resource(cowboy_req:req(), cb_context:context()) ->
                              {boolean() | 'halt', cowboy_req:req(), cb_context:context()}.
@@ -463,7 +462,7 @@ delete_completed(Req, Context) ->
 %% POST is a create
 -spec post_is_create(cowboy_req:req(), cb_context:context()) ->
                             {boolean(), cowboy_req:req(), cb_context:context()}.
-post_is_create(Req, #cb_context{req_verb = <<"put">>}=Context) ->
+post_is_create(Req, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
     lager:debug("treating post request as a create"),
     {'true', Req, Context};
 post_is_create(Req, Context) ->

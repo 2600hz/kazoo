@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -61,7 +61,7 @@ current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 
 load(DocId, #cb_context{}=Context) -> load(DocId, Context, []).
 
-load(_, #cb_context{resp_status=error}=Context, _) ->
+load(_, #cb_context{resp_status='error'}=Context, _) ->
     Context;
 load(?NE_BINARY = DocId, #cb_context{db_name=Db}=Context, Opts) ->
     case couch_mgr:open_doc(Db, DocId, Opts) of
@@ -449,7 +449,7 @@ handle_thing_success(Thing, Context) ->
                        ,resp_etag='undefined'
                       }.
 
-handle_json_success([_|_]=JObjs, #cb_context{req_verb = <<"put">>, resp_headers=Headers}=Context) ->
+handle_json_success([_|_]=JObjs, #cb_context{req_verb = ?HTTP_PUT, resp_headers=Headers}=Context) ->
     Context#cb_context{doc=JObjs
                        ,resp_status='success'
                        ,resp_data=[wh_json:public_fields(JObj) 
@@ -471,7 +471,7 @@ handle_json_success([_|_]=JObjs, Context) ->
                                   ]
                        ,resp_etag=rev_to_etag(JObjs)
                       };
-handle_json_success(JObj, #cb_context{req_verb = <<"put">>, resp_headers=Headers}=Context) ->
+handle_json_success(JObj, #cb_context{req_verb = ?HTTP_PUT, resp_headers=Headers}=Context) ->
     Context#cb_context{doc=JObj
                        ,resp_status='success'
                        ,resp_data=wh_json:public_fields(JObj)

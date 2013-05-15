@@ -66,12 +66,12 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), ne_binary()) -> http_methods().
 allowed_methods() ->
-    ['PUT'].
+    [?HTTP_PUT].
 allowed_methods(_) ->
-    ['GET', 'PUT', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_, Path) ->
     case lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]) of
-        'true' -> ['GET'];
+        'true' -> [?HTTP_GET];
         'false' -> []
     end.
 
@@ -104,24 +104,24 @@ resource_exists(_, Path) ->
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
 
-validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = ?HTTP_PUT}=Context) ->
     validate_request(undefined, prepare_context(undefined, Context)).
 
-validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = <<"get">>}=Context, AccountId) ->
+validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = ?HTTP_GET}=Context, AccountId) ->
     load_account(AccountId, prepare_context(AccountId, Context));
-validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = <<"put">>}=Context, _) ->
+validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = ?HTTP_PUT}=Context, _) ->
     validate_request(undefined, prepare_context(undefined, Context));
-validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = <<"post">>}=Context, AccountId) ->
+validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = ?HTTP_POST}=Context, AccountId) ->
     validate_request(AccountId, prepare_context(AccountId, Context));
-validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = <<"delete">>}=Context, AccountId) ->
+validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = ?HTTP_DELETE}=Context, AccountId) ->
     validate_delete_request(AccountId, prepare_context(AccountId, Context));
 validate(#cb_context{}=Context, AccountId) -> load_account_db(AccountId, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"children">>) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, AccountId, <<"children">>) ->
     load_children(AccountId, prepare_context(undefined, Context));
-validate(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"descendants">>) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, AccountId, <<"descendants">>) ->
     load_descendants(AccountId, prepare_context(undefined, Context));
-validate(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"siblings">>) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, AccountId, <<"siblings">>) ->
     load_siblings(AccountId, prepare_context(undefined, Context)).
 
 %%--------------------------------------------------------------------
@@ -133,7 +133,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"siblings">>) -
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, AccountId) ->
     case crossbar_doc:save(Context) of
-        #cb_context{resp_status=success, doc=JObj}=Context1 ->
+        #cb_context{resp_status='success', doc=JObj}=Context1 ->
             _ = replicate_account_definition(JObj),
             support_depreciated_billing_id(wh_json:get_value(<<"billing_id">>, JObj)
                                            ,AccountId
@@ -155,10 +155,10 @@ put(#cb_context{doc=JObj}=Context) ->
     try create_new_account_db(prepare_context(AccountId, Context)) of
         C -> leak_pvt_fields(C)
     catch
-        throw:#cb_context{}=C -> 
+        'throw':#cb_context{}=C ->
             delete(C, AccountId);
-        _:_ -> 
-            C = cb_context:add_system_error(unspecified_fault, Context),
+        _:_ ->
+            C = cb_context:add_system_error('unspecified_fault', Context),
             delete(C, AccountId)
     end.
 
@@ -173,11 +173,11 @@ put(Context, _) ->
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Account) ->
-    AccountDb = wh_util:format_account_id(Account, encoded),
-    AccountId = wh_util:format_account_id(Account, raw),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
     case whapps_util:is_account_db(AccountDb) of
-        false -> cb_context:add_system_error(bad_identifier, [{details, AccountId}],  Context);
-        true -> delete_remove_services(Context#cb_context{db_name=AccountDb, account_id=AccountId})
+        'false' -> cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context);
+        'true' -> delete_remove_services(Context#cb_context{db_name=AccountDb, account_id=AccountId})
     end.
 
 %%--------------------------------------------------------------------
@@ -190,8 +190,8 @@ delete(Context, Account) ->
 prepare_context(undefined, Context) ->
     Context#cb_context{db_name=?WH_ACCOUNTS_DB};
 prepare_context(Account, Context) ->
-    AccountId = wh_util:format_account_id(Account, raw),
-    AccountDb = wh_util:format_account_id(Account, encoded),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Context#cb_context{db_name=AccountDb, account_id=AccountId}.
 
 %%--------------------------------------------------------------------
@@ -207,7 +207,7 @@ validate_request(AccountId, Context) ->
 -spec ensure_account_has_realm(api_binary(), cb_context:context()) -> cb_context:context().
 ensure_account_has_realm(AccountId, #cb_context{req_data=JObj}=Context) ->
     case wh_json:get_ne_value(<<"realm">>, JObj) of
-        undefined ->
+        'undefined' ->
             RealmSuffix = whapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>),
             Strength = whapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3),
             J = wh_json:set_value(<<"realm">>, list_to_binary([wh_util:rand_hex_binary(Strength), ".", RealmSuffix]), JObj),
@@ -227,12 +227,12 @@ cleanup_leaky_keys(AccountId, #cb_context{req_data=JObj}=Context) ->
 validate_realm_is_unique(AccountId, #cb_context{req_data=JObj}=Context) ->
     Realm = wh_json:get_ne_value(<<"realm">>, JObj),
     case is_unique_realm(AccountId, Realm) of
-        true -> validate_account_schema(AccountId, Context);
-        false ->
+        'true' -> validate_account_schema(AccountId, Context);
+        'false' ->
             C = cb_context:add_validation_error([<<"realm">>]
                                                 ,<<"unique">>
-                                                    ,<<"Account realm already in use">>
-                                                    ,Context),
+                                                ,<<"Account realm already in use">>
+                                                ,Context),
             validate_account_schema(AccountId, C)
     end.
 
@@ -258,7 +258,7 @@ maybe_import_enabled(#cb_context{auth_account_id=AuthId
             Context#cb_context{doc=wh_json:delete_key(<<"enabled">>, JObj)};
         true ->
             case wh_json:get_value(<<"enabled">>, JObj) of
-                undefined -> 
+                undefined ->
                     Context;
                 Enabled ->
                     Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, wh_util:is_true(Enabled)
@@ -423,9 +423,9 @@ add_pvt_enabled(#cb_context{doc=JObj}=Context) ->
         [ParentId | _] ->
             ParentDb = wh_util:format_account_id(ParentId, encoded),
             case (not wh_util:is_empty(ParentId))
-                andalso couch_mgr:open_doc(ParentDb, ParentId) 
+                andalso couch_mgr:open_doc(ParentDb, ParentId)
             of
-                {ok, Parent} -> 
+                {ok, Parent} ->
                     case wh_json:is_true(<<"pvt_enabled">>, Parent, true) of
                         true ->
                             Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, true, JObj)};
@@ -464,7 +464,7 @@ add_pvt_tree(#cb_context{doc=JObj}=Context) ->
     end.
 
 -spec create_new_tree(cb_context:context() | api_binary()) -> [ne_binary(),...] | [] | 'error'.
-create_new_tree(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, [Parent]}], req_verb = <<"put">>}) ->
+create_new_tree(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, [Parent]}], req_verb = ?HTTP_PUT}) ->
     create_new_tree(Parent);
 create_new_tree(#cb_context{auth_doc=JObj}) ->
     case wh_json:is_json_object(JObj) of
@@ -525,7 +525,7 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
 create_new_account_db(#cb_context{db_name=AccountDb}=Context) ->
     _ = ensure_accounts_db_exists(),
     case whapps_util:is_account_db(AccountDb)
-        andalso couch_mgr:db_create(AccountDb) 
+        andalso couch_mgr:db_create(AccountDb)
     of
         false ->
             lager:debug("failed to create database: ~s", [AccountDb]),

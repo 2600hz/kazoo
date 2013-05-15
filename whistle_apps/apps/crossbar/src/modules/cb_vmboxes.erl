@@ -59,15 +59,15 @@ init() ->
 -spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
-    ['GET', 'PUT'].
+    [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_VMBoxID) ->
-    ['GET', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE) ->
-    ['GET'].
+    [?HTTP_GET].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID) ->
-    ['GET', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
-    ['GET'].
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -94,7 +94,7 @@ resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> true.
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(#cb_context{}, path_token(), path_token(), path_token(), path_token()) -> #cb_context{}.
-content_types_provided(#cb_context{req_verb = <<"get">>}=Context
+content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context
                        ,_VMBox, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
     CTP = [{to_binary, ?MEDIA_MIME_TYPES}],
     Context#cb_context{content_types_provided=CTP}.
@@ -114,35 +114,35 @@ content_types_provided(#cb_context{req_verb = <<"get">>}=Context
 -spec validate(#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token(), path_token(), path_token(), path_token()) -> #cb_context{}.
 
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     load_vmbox_summary(Context);
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     validate_request(undefined, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, DocId) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId) ->
     load_vmbox(DocId, Context);
-validate(#cb_context{req_verb = <<"post">>}=Context, DocId) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, DocId) ->
     validate_request(DocId, Context);
-validate(#cb_context{req_verb = <<"delete">>}=Context, DocId) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DocId) ->
     load_vmbox(DocId, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, DocId, ?MESSAGES_RESOURCE) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId, ?MESSAGES_RESOURCE) ->
     load_message_summary(DocId, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
     case load_message(DocId, MediaId, undefined, Context) of
         {true, #cb_context{resp_data=Data}=C1} ->
             C2 = crossbar_doc:save(C1),
             update_mwi(C2#cb_context{resp_data=Data});
         {_, C} -> C
     end;
-validate(#cb_context{req_verb = <<"post">>}=Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
     load_message(DocId, MediaId, undefined, Context);
-validate(#cb_context{req_verb = <<"delete">>}=Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
     Update = wh_json:from_list([{<<"folder">>, <<"deleted">>}]),
     load_message(DocId, MediaId, Update, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
     case load_message_binary(DocId, MediaId, Context) of
         {true, #cb_context{resp_data=Data}=C1} ->
             C2 = crossbar_doc:save(C1),
