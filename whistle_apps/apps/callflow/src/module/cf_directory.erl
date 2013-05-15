@@ -62,26 +62,14 @@
 -define(PROMPT_ENTER_PERSON, <<"system_media/dir-enter_person">>). %% Please enter the first few letters of the person's
 -define(PROMPT_FIRSTNAME, <<"system_media/dir-first_name">>). %% first name
 -define(PROMPT_LASTNAME, <<"system_media/dir-last_name">>). %% last name
--define(PROMPT_AT_EXTENSION, <<"system_media/dir-at_extension">>). %% at extension
 -define(PROMPT_SPECIFY_MINIMUM, <<"system_media/dir-specify_minimum">>). %% you need to specify a minimum of
 -define(PROMPT_LETTERS_OF_NAME, <<"system_media/dir-letters_of_person_name">>). %% letters of the person's name
--define(PROMPT_NO_MATCHING_RESULTS, <<"system_media/dir-no_matching_results">>). %% There were no matching results
--define(PROMPT_PLEASE_TRY_AGAIN, <<"system_media/dir-please_try_again">>). %% Please try again
 -define(PROMPT_RESULT_NUMBER, <<"system_media/dir-result_number">>). %% Result number
--define(PROMPT_START_NEW_SEARCH, <<"system_media/dir-start_new_search">>). %% To start a new search
--define(PROMPT_TO_SEARCH_BY, <<"system_media/dir-to_search_by">>). %% To search by
--define(PROMPT_FOR_NEXT, <<"system_media/dir-for_next">>). %% for the previous entry
 -define(PROMPT_NO_MORE_RESULTS, <<"system_media/dir-no_more_results">>). %% no more results
--define(PROMPT_RESULT_MATCH, <<"system_media/dir-result_match">>). %% result matched your search
--define(PROMPT_TOO_MANY_RESULTS, <<"system_media/dir-too_many_result">>). %% your search returned too many results
--define(PROMPT_TO_SELECT_ENTRY, <<"system_media/dir-to_select_entry">>). %% to select this entry
 -define(PROMPT_CONFIRM_MENU, <<"system_media/dir-confirm_menu">>). %% press 1 to connect. press 9 to start over.
 -define(PROMPT_FOUND, <<"system_media/dir-found">>). %% found
--define(PROMPT_PLEASE_CONTINUE, <<"system_media/dir-please_continue">>). %% please continue entering letters
 -define(PROMPT_INVALID_KEY, <<"system_media/dir-invalid_key">>). %% invalid key pressed
 -define(PROMPT_RESULT_MENU, <<"system_media/dir-result_menu">>). %% press one to connect. press two for the next result. press three to continue searching. press four to start over.
--define(PROMPT_NO_RESULTS_MENU, <<"system_media/dir-no_results_menu">>). %% press one to continue searching. press two to start over.
--define(PROMPT_ASR_INSTRUCTIONS, <<"system_media/dir-asr_instructions">>). %% Please say the name of the party you would like to call
 
 %%------------------------------------------------------------------------------
 %% Records
