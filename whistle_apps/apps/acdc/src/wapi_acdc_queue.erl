@@ -70,8 +70,8 @@
 -define(MEMBER_CALL_TYPES, [{<<"Queue-ID">>, fun erlang:is_binary/1}]).
 
 -spec member_call(api_terms()) ->
-                               {'ok', iolist()} |
-                               {'error', string()}.
+                         {'ok', iolist()} |
+                         {'error', string()}.
 member_call(Props) when is_list(Props) ->
     case member_call_v(Props) of
         'true' -> wh_api:build_message(Props, ?MEMBER_CALL_HEADERS, ?OPTIONAL_MEMBER_CALL_HEADERS);
@@ -87,8 +87,8 @@ member_call_v(JObj) ->
     member_call_v(wh_json:to_proplist(JObj)).
 
 -spec member_call_routing_key(wh_json:object() |
-                                    wh_proplist()
-                                   ) -> ne_binary().
+                              wh_proplist()
+                             ) -> ne_binary().
 -spec member_call_routing_key(ne_binary(), ne_binary()) -> ne_binary().
 member_call_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
