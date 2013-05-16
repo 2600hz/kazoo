@@ -45,12 +45,12 @@
 
 -define(FIELDS, [<<"last_name">>, <<"first_name">>]). %% what fields to convert/keep for searching
 -define(DTMF_ACCEPT_MATCH, <<"1">>).
--define(DTMF_REJECT_MATCH, <<"9">>).
+-define(DTMF_REJECT_MATCH, <<"3">>).
 
 -define(DTMF_RESULT_CONNECT, <<"1">>).
 -define(DTMF_RESULT_NEXT, <<"2">>).
--define(DTMF_RESULT_CONTINUE, <<"3">>).
--define(DTMF_RESULT_START, <<"4">>).
+-define(DTMF_RESULT_START, <<"3">>).
+-define(DTMF_RESULT_CONTINUE, <<"4">>).
 
 -define(DTMF_NO_RESULT_CONTINUE, <<"1">>).
 -define(DTMF_NO_RESULT_START, <<"2">>).
@@ -59,17 +59,18 @@
 -define(TIMEOUT_DTMF, 2000).
 -define(TIMEOUT_ENDPOINT, ?DEFAULT_TIMEOUT).
 
--define(PROMPT_ENTER_PERSON, <<"system_media/dir-enter_person">>). %% Please enter the first few letters of the person's
+-define(PROMPT_ENTER_PERSON_LASTNAME, <<"system_media/dir-enter_person_lastname">>). %% Please enter the first few letters of the person's lastname
+-define(PROMPT_ENTER_PERSON_FIRSTNAME, <<"system_media/dir-enter_person_firstname">>). %% Please enter the first few letters of the person's firstname
 -define(PROMPT_FIRSTNAME, <<"system_media/dir-first_name">>). %% first name
 -define(PROMPT_LASTNAME, <<"system_media/dir-last_name">>). %% last name
 -define(PROMPT_SPECIFY_MINIMUM, <<"system_media/dir-specify_minimum">>). %% you need to specify a minimum of
 -define(PROMPT_LETTERS_OF_NAME, <<"system_media/dir-letters_of_person_name">>). %% letters of the person's name
--define(PROMPT_RESULT_NUMBER, <<"system_media/dir-result_number">>). %% Result number
 -define(PROMPT_NO_MORE_RESULTS, <<"system_media/dir-no_more_results">>). %% no more results
--define(PROMPT_CONFIRM_MENU, <<"system_media/dir-confirm_menu">>). %% press 1 to connect. press 9 to start over.
--define(PROMPT_FOUND, <<"system_media/dir-found">>). %% found
+-define(PROMPT_CONFIRM_MENU, <<"system_media/dir-confirm_menu">>). %% press 1. to start over press 3
+-define(PROMPT_FOUND, <<"system_media/dir-found">>). %% One match found. To connect to
 -define(PROMPT_INVALID_KEY, <<"system_media/dir-invalid_key">>). %% invalid key pressed
--define(PROMPT_RESULT_MENU, <<"system_media/dir-result_menu">>). %% press one to connect. press two for the next result. press three to continue searching. press four to start over.
+-define(PROMPT_RESULT_NUMBER, <<"system_media/dir-result_number">>). %% For
+-define(PROMPT_RESULT_MENU, <<"system_media/ ">>). %% press one. For the next result press two. To start over press three
 
 %%------------------------------------------------------------------------------
 %% Records
@@ -286,13 +287,9 @@ play_min_digits_needed(Call, MinDTMF) ->
 
 -spec play_directory_instructions(whapps_call:call(), 'first' | 'last' | ne_binary()) -> {'ok', binary()}.
 play_directory_instructions(Call, 'first') ->
-    play_directory_instructions(Call, ?PROMPT_FIRSTNAME);
+    play_and_collect(Call, [{'play', ?PROMPT_ENTER_PERSON_FIRSTNAME}]);
 play_directory_instructions(Call, 'last') ->
-    play_directory_instructions(Call, ?PROMPT_LASTNAME);
-play_directory_instructions(Call, NamePrompt) ->
-    play_and_collect(Call, [{'play', ?PROMPT_ENTER_PERSON}
-                            ,{'play', NamePrompt}
-                           ]).
+    play_and_collect(Call, [{'play', ?PROMPT_ENTER_PERSON_LASTNAME}]).
 
 -spec play_no_users(whapps_call:call()) -> ne_binary(). % noop id
 play_no_users(Call) ->
