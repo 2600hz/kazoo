@@ -48,7 +48,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    ['PUT'].
+    [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -106,7 +106,7 @@ authorize(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(#cb_context{}) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     cb_context:validate_request_data(<<"ip_auth">>, Context, fun on_successful_validation/1).
 
 %%--------------------------------------------------------------------

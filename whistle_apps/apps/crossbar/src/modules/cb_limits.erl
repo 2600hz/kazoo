@@ -45,7 +45,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    ['GET', 'POST'].
+    [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -65,7 +65,7 @@ resource_exists() ->
 %% Ensure we will be able to bill for devices
 %% @end
 %%--------------------------------------------------------------------
-billing(#cb_context{req_nouns=[{<<"limits">>, _}|_], req_verb = <<"get">>}=Context) ->
+billing(#cb_context{req_nouns=[{<<"limits">>, _}|_], req_verb = ?HTTP_GET}=Context) ->
     Context;
 billing(#cb_context{req_nouns=[{<<"limits">>, _}|_]
                     ,account_id=AccountId, auth_account_id=AuthAccountId}=Context) ->
@@ -104,7 +104,7 @@ authd_account_allowed_updates(AccountId, AuthAccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile_services(#cb_context{}) -> #cb_context{}.
-reconcile_services(#cb_context{req_verb = <<"get">>}=Context) ->
+reconcile_services(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     Context;
 reconcile_services(#cb_context{account_id=AccountId}=Context) ->
     _ = wh_services:reconcile(AccountId, <<"limits">>),
@@ -120,9 +120,9 @@ reconcile_services(#cb_context{account_id=AccountId}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(#cb_context{}) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     load_limit(Context);
-validate(#cb_context{req_verb = <<"post">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context) ->
     update_limits(Context).
 
 -spec post(#cb_context{}) -> #cb_context{}.

@@ -66,13 +66,13 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
-    ['GET', 'PUT', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(?LOGO_REQ) ->
-    ['GET', 'POST'];
+    [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_) ->
-    ['GET'].
+    [?HTTP_GET].
 allowed_methods(_, ?LOGO_REQ) ->
-    ['GET'].
+    [?HTTP_GET].
 
 
 %%--------------------------------------------------------------------
@@ -97,9 +97,9 @@ resource_exists(_, ?LOGO_REQ) -> true.
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(#cb_context{}) -> boolean().
-authorize(#cb_context{req_nouns=[{<<"whitelabel">>, [_]}], req_verb= <<"get">>}) ->
+authorize(#cb_context{req_nouns=[{<<"whitelabel">>, [_]}], req_verb= ?HTTP_GET}) ->
     true;
-authorize(#cb_context{req_nouns=[{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], req_verb= <<"get">>}) ->
+authorize(#cb_context{req_nouns=[{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], req_verb= ?HTTP_GET}) ->
     true;
 authorize(_) ->
     false.
@@ -110,9 +110,9 @@ authorize(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(#cb_context{}) -> boolean().
-authenticate(#cb_context{req_nouns=[{<<"whitelabel">>, [_]}], req_verb= <<"get">>}) ->
+authenticate(#cb_context{req_nouns=[{<<"whitelabel">>, [_]}], req_verb= ?HTTP_GET}) ->
     true;
-authenticate(#cb_context{req_nouns=[{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], req_verb= <<"get">>}) ->
+authenticate(#cb_context{req_nouns=[{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], req_verb= ?HTTP_GET}) ->
     true;
 authenticate(_) ->
     false.
@@ -125,7 +125,7 @@ authenticate(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(#cb_context{}, path_token()) -> #cb_context{}.
-content_types_provided(#cb_context{req_verb = <<"get">>}=Context, ?LOGO_REQ) ->
+content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, ?LOGO_REQ) ->
     case find_whitelabel(?WHITELABEL_ID, Context, meta) of
         #cb_context{resp_status=success, doc=JObj} ->
             case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj, wh_json:new())) of
@@ -140,7 +140,7 @@ content_types_provided(Context, _) ->
     Context.
 
 -spec content_types_provided(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
-content_types_provided(#cb_context{req_verb = <<"get">>}=Context, Domain, ?LOGO_REQ) ->
+content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Domain, ?LOGO_REQ) ->
     case find_whitelabel(Domain, Context, meta) of
         #cb_context{resp_status=success, doc=JObj} ->
             case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj)) of
@@ -153,7 +153,7 @@ content_types_provided(#cb_context{req_verb = <<"get">>}=Context, Domain, ?LOGO_
     end.
 
 -spec content_types_accepted(#cb_context{}, path_token()) -> #cb_context{}.
-content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, ?LOGO_REQ) ->
+content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, ?LOGO_REQ) ->
     CTA = [{from_binary, ?WHITELABEL_MIME_TYPES}],
     Context#cb_context{content_types_accepted=CTA};
 content_types_accepted(Context, _) ->
@@ -171,21 +171,21 @@ content_types_accepted(Context, _) ->
 -spec validate(#cb_context{}) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     load_whitelabel_meta(?WHITELABEL_ID, Context);
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     validate_request(undefined, Context);
-validate(#cb_context{req_verb = <<"post">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context) ->
     validate_request(?WHITELABEL_ID, Context);
-validate(#cb_context{req_verb = <<"delete">>, req_data=_Data}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE, req_data=_Data}=Context) ->
     load_whitelabel_meta(?WHITELABEL_ID, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, ?LOGO_REQ) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?LOGO_REQ) ->
     load_whitelabel_binary(?WHITELABEL_ID, Context);
-validate(#cb_context{req_verb = <<"post">>, req_files=[]}=Context, ?LOGO_REQ) ->
+validate(#cb_context{req_verb = ?HTTP_POST, req_files=[]}=Context, ?LOGO_REQ) ->
     Message = <<"please provide an image file">>,
     cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
-validate(#cb_context{req_verb = <<"post">>, req_files=[{_Filename, FileObj}]}=Context, ?LOGO_REQ) ->
+validate(#cb_context{req_verb = ?HTTP_POST, req_files=[{_Filename, FileObj}]}=Context, ?LOGO_REQ) ->
     case load_whitelabel_meta(?WHITELABEL_ID, Context) of
         #cb_context{resp_status=success, doc=JObj}=C ->
             CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj, <<"application/octet-stream">>),
@@ -198,13 +198,13 @@ validate(#cb_context{req_verb = <<"post">>, req_files=[{_Filename, FileObj}]}=Co
             validate_request(?WHITELABEL_ID, C#cb_context{req_data=wh_json:set_values(Props, JObj)});
         Else -> Else
     end;
-validate(#cb_context{req_verb = <<"post">>}=Context, ?LOGO_REQ) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, ?LOGO_REQ) ->
     Message = <<"please provide a single image file">>,
     cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context);
-validate(#cb_context{req_verb = <<"get">>, account_id=undefined}=Context, Domain) ->
+validate(#cb_context{req_verb = ?HTTP_GET, account_id=undefined}=Context, Domain) ->
     find_whitelabel(Domain, Context, meta).
 
-validate(#cb_context{req_verb = <<"get">>, account_id=undefined}=Context, Domain, ?LOGO_REQ) ->
+validate(#cb_context{req_verb = ?HTTP_GET, account_id=undefined}=Context, Domain, ?LOGO_REQ) ->
     find_whitelabel(Domain, Context, binary).
 
 

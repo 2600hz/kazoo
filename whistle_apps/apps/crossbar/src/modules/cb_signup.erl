@@ -38,7 +38,7 @@
 -define(VIEW_ACTIVATION_REALM, <<"signups/listing_by_realm">>).
 -define(VIEW_ACTIVATION_CREATED, <<"signups/listing_by_created">>).
 
--define(SIGNUP_CONF, [code:lib_dir(crossbar, priv), "/signup/signup.conf"]).
+-define(SIGNUP_CONF, [code:lib_dir('crossbar', 'priv'), "/signup/signup.conf"]).
 
 -record(state, {cleanup_interval = 18000 :: integer() %% once every 5 hours (in seconds)
                 ,signup_lifespan = ?SECONDS_IN_DAY :: integer() %% 24 hours (in seconds)
@@ -52,44 +52,42 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-init() ->    
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.signup">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.signup">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.signup">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.signup">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.signup">>, ?MODULE, put),
+init() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.signup">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.signup">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.signup">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.signup">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.signup">>, ?MODULE, 'put'),
 
     _ = couch_mgr:db_create(?SIGNUP_DB),
 
-    _ = case couch_mgr:update_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE) of
-            {error, _} -> couch_mgr:load_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE);
-            {ok, _} -> ok
+    _ = case couch_mgr:update_doc_from_file(?SIGNUP_DB, 'crossbar', ?VIEW_FILE) of
+            {'error', _} -> couch_mgr:load_doc_from_file(?SIGNUP_DB, 'crossbar', ?VIEW_FILE);
+            {'ok', _} -> 'ok'
         end,
 
-    supervisor:start_child(crossbar_sup, crossbar_sup:child_spec(?MODULE)).
-
-
+    supervisor:start_child('crossbar_sup', crossbar_sup:child_spec(?MODULE)).
 
 start_link() ->
-    {ok, proc_lib:spawn_link(?MODULE, init_it, [])}.
+    {ok, proc_lib:spawn_link(?MODULE, 'init_it', [])}.
 
 init_it() ->
-    put(callid, ?LOG_SYSTEM_ID),
+    put('callid', ?LOG_SYSTEM_ID),
     State = init_state(),
     cleanup_loop(State).
 
 cleanup_loop(#state{cleanup_interval=CleanupInterval}=State) ->
     Wait = CleanupInterval * 1000,
     receive
-        {send_activation_email, Context} ->
+        {'send_activation_email', Context} ->
             _ = send_activation_email(Context, State),
             cleanup_loop(State);
-        {register, Context} ->
+        {'register', Context} ->
             _ = exec_register_command(Context, State),
             cleanup_loop(State);
-        _ -> 
+        _ ->
             cleanup_loop(State)
     after
         Wait ->
@@ -108,10 +106,8 @@ cleanup_loop(#state{cleanup_interval=CleanupInterval}=State) ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
-allowed_methods() ->
-    ['PUT'].
-allowed_methods(_) ->
-    ['POST'].
+allowed_methods() -> [?HTTP_PUT].
+allowed_methods(_) -> [?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -123,8 +119,8 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -137,48 +133,44 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     validate_new_signup(Context#cb_context{db_name=?SIGNUP_DB}).
 
-validate(#cb_context{req_verb = <<"post">>}=Context, ActivationKey) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, ActivationKey) ->
     check_activation_key(ActivationKey, Context#cb_context{db_name=?SIGNUP_DB}).
 
 -spec authorize(cb_context:context()) -> 'true'.
-authorize(#cb_context{req_nouns=[{<<"signup">>,[]}]}) ->
-    true;
-authorize(#cb_context{req_nouns=[{<<"signup">>,[_]}]}) ->
-    true.
+authorize(#cb_context{req_nouns=[{<<"signup">>,[]}]}) -> 'true';
+authorize(#cb_context{req_nouns=[{<<"signup">>,[_]}]}) -> 'true'.
 
 -spec authenticate(cb_context:context()) -> 'true'.
-authenticate(#cb_context{req_nouns=[{<<"signup">>,[]}]}) ->
-    true;
-authenticate(#cb_context{req_nouns=[{<<"signup">>,[_]}]}) ->
-    true.
+authenticate(#cb_context{req_nouns=[{<<"signup">>,[]}]}) -> 'true';
+authenticate(#cb_context{req_nouns=[{<<"signup">>,[_]}]}) -> 'true'.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(#cb_context{doc=JObj}=Context, _) ->
     case activate_signup(JObj) of
-        {ok, Account, User} ->
+        {'ok', Account, User} ->
             _ = couch_mgr:del_doc(?SIGNUP_DB, JObj),
-            Context#cb_context{resp_status=success
+            Context#cb_context{resp_status='success'
                                ,resp_data=wh_json:from_list([{<<"account">>, Account}
                                                              ,{<<"user">>, User}
                                                             ])
                               };
         _Else ->
-            cb_context:add_system_error(datastore_fault, Context)
+            cb_context:add_system_error('datastore_fault', Context)
     end.
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     case crossbar_doc:save(Context#cb_context{db_name=?SIGNUP_DB}) of
-        #cb_context{resp_status=success}=Context1 ->
+        #cb_context{resp_status='success'}=Context1 ->
             P = crossbar_sup:find_proc(?MODULE),
-            P ! {send_activation_email, Context1},
-            P ! {register, Context},
+            P ! {'send_activation_email', Context1},
+            P ! {'register', Context},
             Context1#cb_context{resp_data=[]};
         _ ->
-                cb_context:add_system_error(datastore_fault, Context)
+                cb_context:add_system_error('datastore_fault', Context)
     end.
 
 %%%===================================================================
@@ -200,7 +192,8 @@ validate_new_signup(#cb_context{req_data=JObj}=Context) ->
                                                       ,{<<"pvt_account">>, Account}
                                                       ,{<<"pvt_activation_key">>, create_activation_key()}
                                                      ])
-                               ,resp_status=success};
+                               ,resp_status='success'
+                              };
         _Else ->
             crossbar_util:response_invalid_data(wh_json:from_list([{<<"account">>, AccountErrors}
                                                                    ,{<<"user">>, UserErrors}
@@ -213,24 +206,21 @@ validate_new_signup(#cb_context{req_data=JObj}=Context) ->
 %% Determines if the account realm is unique and if the account is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_account(wh_json:object() | 'undefined', cb_context:context()) ->
-                                    {path_tokens(), wh_json:object() | 'undefined'}.
-validate_account(undefined, _) ->
+-spec validate_account(api_object(), cb_context:context()) ->
+                              {path_tokens(), api_object()}.
+validate_account('undefined', _) ->
     lager:debug("signup did not contain an account definition"),
-    {[<<"account">>], undefined};
+    {[<<"account">>], 'undefined'};
 validate_account(Account, Context) ->
     case is_unique_realm(wh_json:get_value(<<"realm">>, Account))
         andalso crossbar_maintenance:create_account(Context#cb_context{req_data=Account}) of
-        false ->
-            {[<<"duplicate realm">>], undefined};
-        {ok, #cb_context{resp_status=success, doc=Acct}} ->
+        'false' ->
+            {[<<"duplicate realm">>], 'undefined'};
+        {'ok', #cb_context{resp_status='success', doc=Acct}} ->
             lager:debug("signup account is valid"),
             {[], Acct};
-        {ok, #cb_context{resp_data=Errors}} ->
-            lager:debug("signup account definition is not valid"),
-            {Errors, undefined};
-        {error, Errors} ->
-            {Errors, undefined}
+        {'error', Errors} ->
+            {Errors, 'undefined'}
     end.
 
 %%--------------------------------------------------------------------
@@ -239,19 +229,19 @@ validate_account(Account, Context) ->
 %% Determines if the user object is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_user(wh_json:object() | 'undefined', cb_context:context()) ->
-                                 {path_tokens(), 'undefined' | wh_json:object()}.
-validate_user(undefined, _) ->
+-spec validate_user(api_object(), cb_context:context()) ->
+                           {path_tokens(), api_object()}.
+validate_user('undefined', _) ->
     lager:debug("signup did not contain an user definition"),
-    {[<<"user">>], undefined};
+    {[<<"user">>], 'undefined'};
 validate_user(User, Context) ->
     case cb_users:create_user(Context#cb_context{req_data=User}) of
-        #cb_context{resp_status=success, doc=Usr} ->
+        #cb_context{resp_status='success', doc=Usr} ->
             lager:debug("signup user is valid"),
             {[], Usr};
         #cb_context{resp_data=Errors} ->
             lager:debug("signup user definition is not valid"),
-            {Errors, undefined}
+            {Errors, 'undefined'}
     end.
 
 %%--------------------------------------------------------------------

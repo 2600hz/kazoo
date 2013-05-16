@@ -35,10 +35,10 @@ authorize(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB,[]}]
                      }=Context) ->
     case cb_modules_util:is_superduper_admin(Context) of
         'true' -> 'true';
-        'false' -> Verb =:= <<"put">>
+        'false' -> Verb =:= ?HTTP_PUT
     end;
 authorize(#cb_context{req_nouns=[{<<"global_provisioner_templates">>,_}|_]
-                      ,req_verb = <<"get">>
+                      ,req_verb = ?HTTP_GET
                      }) ->
     'true';
 authorize(#cb_context{auth_account_id=AuthAccountId}=Context) ->

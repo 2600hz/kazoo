@@ -20,13 +20,19 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
-    Dispatch = [{'_', [{[<<"fax">>, '...'], fax_file_proxy, []}]}],
+
+    Dispatch = cowboy_router:compile([
+                                      %% {HostMatch, list({PathMatch, Handler, Opts})}
+                                      {'_', [{<<"/fax/[...]">>, 'fax_file_proxy', []}]}
+                                     ]),
+
     Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 30950),
+    Workers = whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 50),
     %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
-    cowboy:start_listener(fax_file, 50
-                          ,cowboy_tcp_transport, [{port, Port}]
-                          ,cowboy_http_protocol, [{dispatch, Dispatch}]
-                         ),
+    cowboy:start_http('fax_file', Workers
+                      ,[{'port', Port}]
+                      ,[{'env', [{'dispatch', Dispatch}]}]
+                     ),
     fax_sup:start_link().
 
 %%--------------------------------------------------------------------

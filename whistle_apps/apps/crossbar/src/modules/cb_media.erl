@@ -68,11 +68,11 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
-    ['GET', 'PUT'].
+    [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_MediaID) ->
-    ['GET', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_MediaID, ?BIN_DATA) ->
-    ['GET', 'POST'].
+    [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -98,7 +98,7 @@ resource_exists(_, ?BIN_DATA) -> 'true'.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_provided(#cb_context{req_verb = <<"get">>}=Context, MediaId, ?BIN_DATA) ->
+content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, MediaId, ?BIN_DATA) ->
     case load_media_meta(MediaId, Context) of
         #cb_context{resp_status='success', doc=JObj} ->
             case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj, [])) of
@@ -113,7 +113,7 @@ content_types_provided(Context, _, _) -> Context.
 
 -spec content_types_accepted(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _MediaID, ?BIN_DATA) ->
+content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, _MediaID, ?BIN_DATA) ->
     CTA = [{'from_binary', ?MEDIA_MIME_TYPES}],
     Context#cb_context{content_types_accepted=CTA};
 content_types_accepted(Context, _, _) ->
@@ -131,24 +131,24 @@ content_types_accepted(Context, _, _) ->
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     load_media_summary(Context);
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     validate_request('undefined', Context).
-validate(#cb_context{req_verb = <<"get">>}=Context, MediaId) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, MediaId) ->
     load_media_meta(MediaId, Context);
-validate(#cb_context{req_verb = <<"post">>}=Context, MediaId) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, MediaId) ->
     validate_request(MediaId, Context);
-validate(#cb_context{req_verb = <<"delete">>, req_data=_Data}=Context, MediaID) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE, req_data=_Data}=Context, MediaID) ->
     load_media_meta(MediaID, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, MediaId, ?BIN_DATA) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, MediaId, ?BIN_DATA) ->
     lager:debug("fetch media contents"),
     load_media_binary(MediaId, Context);
-validate(#cb_context{req_verb = <<"post">>, req_files=[]}=Context, _MediaID, ?BIN_DATA) ->
+validate(#cb_context{req_verb = ?HTTP_POST, req_files=[]}=Context, _MediaID, ?BIN_DATA) ->
     Message = <<"please provide an media file">>,
     cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
-validate(#cb_context{req_verb = <<"post">>, req_files=[{_Filename, FileObj}]}=Context, MediaId, ?BIN_DATA) ->
+validate(#cb_context{req_verb = ?HTTP_POST, req_files=[{_Filename, FileObj}]}=Context, MediaId, ?BIN_DATA) ->
     case load_media_meta(MediaId, Context) of
         #cb_context{resp_status='success', doc=JObj}=C ->
             CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj, <<"application/octet-stream">>),
@@ -163,7 +163,7 @@ validate(#cb_context{req_verb = <<"post">>, req_files=[{_Filename, FileObj}]}=Co
             validate_request(MediaId, C#cb_context{req_data=wh_json:set_values(Props, JObj)});
         Else -> Else
     end;
-validate(#cb_context{req_verb = <<"post">>}=Context, _, ?BIN_DATA) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, _, ?BIN_DATA) ->
     Message = <<"please provide a single media file">>,
     cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
 

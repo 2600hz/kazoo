@@ -88,10 +88,10 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods() -> ['GET'].
-allowed_methods(_) -> ['GET'].
-allowed_methods(?STATUS_PATH_TOKEN, _) -> ['GET'];
-allowed_methods(_, ?STATUS_PATH_TOKEN) -> ['GET'].
+allowed_methods() -> [?HTTP_GET].
+allowed_methods(_) -> [?HTTP_GET].
+allowed_methods(?STATUS_PATH_TOKEN, _) -> [?HTTP_GET];
+allowed_methods(_, ?STATUS_PATH_TOKEN) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -149,19 +149,19 @@ content_types_provided(#cb_context{}=Context, _, ?STATUS_PATH_TOKEN) -> Context.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, ?STATUS_PATH_TOKEN) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?STATUS_PATH_TOKEN) ->
     fetch_all_agent_statuses(Context);
-validate(#cb_context{req_verb = <<"get">>}=Context, ?STATS_PATH_TOKEN) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?STATS_PATH_TOKEN) ->
     fetch_all_agent_stats(Context);
-validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
     read(Id, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, AgentId, ?STATUS_PATH_TOKEN) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, AgentId, ?STATUS_PATH_TOKEN) ->
     fetch_agent_status(AgentId, Context);
-validate(#cb_context{req_verb = <<"get">>}=Context, ?STATUS_PATH_TOKEN, AgentId) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?STATUS_PATH_TOKEN, AgentId) ->
     fetch_agent_status(AgentId, Context).
 
 %%--------------------------------------------------------------------
@@ -457,7 +457,7 @@ maybe_add_current_status(Compressed, Stat, Status, AID, TStamp) ->
     case wh_json:get_integer_value([AID, <<"current">>, <<"status_timestamp">>], Compressed) of
         T when T =:= 'undefined' orelse T < TStamp ->
             case complex_agent_status(Stat, Status, AID) of
-                'undefined' -> Compressed;
+                [] -> Compressed;
                 [_|_]=StatusData -> wh_json:set_values(StatusData
                                                        ,wh_json:delete_key([AID, <<"current">>], Compressed)
                                                       )
@@ -501,7 +501,7 @@ complex_agent_status(Stat, ?STAT_AGENTS_MISSED, AID) ->
 complex_agent_status(Stat, ?QUEUE_STATUS_HANDLING, AID) ->
     complex_agent_status(Stat, ?AGENT_STATUS_HANDLING, AID);
 complex_agent_status(_Stat, ?QUEUE_STATUS_PROCESSED, _AID) ->
-    'undefined';
+    [];
 complex_agent_status(_Stat, Status, AID) ->
     [{[AID, <<"current">>, <<"status">>], Status}].
 

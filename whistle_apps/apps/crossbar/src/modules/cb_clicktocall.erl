@@ -61,13 +61,13 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
-    ['GET', 'PUT'].
+    [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    ['GET', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_, ?CONNECT_CALL) ->
-    ['POST'];
+    [?HTTP_POST];
 allowed_methods(_, ?HISTORY) ->
-    ['GET'].
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -90,12 +90,12 @@ resource_exists(_, ?HISTORY) ->
     true.
 
 -spec authenticate(#cb_context{}) -> 'true'.
-authenticate(#cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = <<"post">>}) ->
+authenticate(#cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = ?HTTP_POST}) ->
     lager:debug("authenticating request"),
     true.
 
 -spec authorize(#cb_context{}) -> 'true'.
-authorize(#cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = <<"post">>}) ->
+authorize(#cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = ?HTTP_POST}) ->
     lager:debug("authorizing request"),
     true.
 
@@ -111,21 +111,21 @@ authorize(#cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = <<"post">>}) ->
 -spec validate(#cb_context{}) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     load_c2c_summary(Context);
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     create_c2c(Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
     load_c2c(Id, Context);
-validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
     update_c2c(Id, Context);
-validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
     load_c2c(Id, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?HISTORY) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?HISTORY) ->
     load_c2c_history(Id, Context);
-validate(#cb_context{req_verb = <<"post">>}=Context, Id, ?CONNECT_CALL) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id, ?CONNECT_CALL) ->
     establish_c2c(Id, Context).
 
 -spec post(#cb_context{}, path_token()) -> #cb_context{}.

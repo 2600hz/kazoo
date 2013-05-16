@@ -11,18 +11,28 @@
 %%%-------------------------------------------------------------------
 -module(v1_util).
 
--export([is_cors_preflight/1, is_cors_request/1, add_cors_headers/2
-         ,allow_methods/4, parse_path_tokens/1
-         ,get_req_data/2, get_http_verb/2
-         ,is_authentic/2, is_permitted/2
+-export([is_cors_preflight/1
+         ,is_cors_request/1
+         ,add_cors_headers/2
+         ,allow_methods/4
+         ,parse_path_tokens/1
+         ,get_req_data/2
+         ,get_http_verb/2
+         ,is_authentic/2
+         ,is_permitted/2
          ,is_known_content_type/2
-         ,does_resource_exist/1, validate/1
+         ,does_resource_exist/1
+         ,validate/1
          ,succeeded/1
          ,execute_request/2
-         ,finish_request/2, request_terminated/2
-         ,create_push_response/2, set_resp_headers/2
-         ,create_resp_content/2, create_pull_response/2
-         ,halt/2, content_type_matches/2, ensure_content_type/1
+         ,finish_request/2
+         ,create_push_response/2
+         ,set_resp_headers/2
+         ,create_resp_content/2
+         ,create_pull_response/2
+         ,halt/2
+         ,content_type_matches/2
+         ,ensure_content_type/1
         ]).
 
 -include("crossbar.hrl").
@@ -46,7 +56,7 @@ is_cors_preflight(Req0) ->
     case is_cors_request(Req0) of
         {'true', Req1} ->
             case cowboy_req:method(Req1) of
-                {'OPTIONS', Req2} -> {'true', Req2};
+                {?HTTP_OPTIONS, Req2} -> {'true', Req2};
                 {_M, Req2} -> {'false', Req2}
             end;
         Nope -> Nope
@@ -83,7 +93,7 @@ is_cors_request(Req, [ReqHdr|ReqHdrs]) ->
 add_cors_headers(Req0, #cb_context{allow_methods=Ms}=Context) ->
     {ReqMethod, Req1} = cowboy_req:header(<<"access-control-request-method">>, Req0),
 
-    Methods = [<<"OPTIONS">> | Ms],
+    Methods = [?HTTP_OPTIONS | Ms],
     Allow = case wh_util:is_empty(ReqMethod)
                 orelse lists:member(ReqMethod, Methods)
             of
@@ -136,7 +146,7 @@ get_req_data(Context, {<<"multipart/form-data">>, Req}, QS) ->
     maybe_extract_multipart(Context#cb_context{query_json=QS}, Req, QS);
 
 %% cURL defaults to this content-type, so check it for JSON if parsing fails
-get_req_data(Context, {{<<"application/x-www-form-urlencoded">>, _}, Req1}, QS) ->
+get_req_data(Context, {<<"application/x-www-form-urlencoded">>, Req1}, QS) ->
     lager:debug("application/x-www-form-urlencoded content type when getting req data"),
     maybe_extract_multipart(Context#cb_context{query_json=QS}, Req1, QS);
 
@@ -173,21 +183,39 @@ maybe_extract_multipart(Context, Req0, QS) ->
     case catch extract_multipart(Context, Req0) of
         {'EXIT', _} ->
             lager:debug("failed to extract multipart"),
-            try get_json_body(Req0) of
-                {JSON, Req1} ->
-                    lager:debug("was able to parse as JSON"),
-                    lager:debug("was the payload valid: ~s", [wh_json:is_json_object(JSON)]),
-                    {Context#cb_context{req_json=JSON
-                                        ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
+            {ReqBody, Req1} = get_request_body(Req0),
+
+            try get_url_encoded_body(ReqBody) of
+                JObj ->
+                    lager:debug("was able to parse request body as url-encoded: ~p", [JObj]),
+                    {Context#cb_context{req_json=JObj
+                                        ,req_data=wh_json:get_value(<<"data">>, JObj, wh_json:new())
                                         ,query_json=QS
                                        }, Req1}
             catch
                 _:_ ->
-                    lager:debug("failed to get JSON too"),
-                    {'halt', Context, Req0}
+                    lager:debug("failed to extract url-encoded request body"),
+                    try get_json_body(ReqBody, Req1) of
+                        {JObj, Req2} ->
+                            lager:debug("was able to parse as JSON"),
+                            {Context#cb_context{req_json=JObj
+                                                ,req_data=wh_json:get_value(<<"data">>, JObj, wh_json:new())
+                                                ,query_json=QS
+                                               }, Req2}
+                    catch
+                        'throw':_R ->
+                            lager:debug("failed to get JSON too: ~p", [_R]),
+                            {'halt', Context, Req0};
+                        _:_ ->
+                            {'halt', Context, Req0}
+                    end
             end;
         Resp -> Resp
     end.
+
+-spec get_url_encoded_body(ne_binary()) -> wh_json:object().
+get_url_encoded_body(ReqBody) ->
+    wh_json:from_list(cowboy_http:x_www_form_urlencoded(ReqBody)).
 
 -spec extract_multipart(cb_context:context(), cowboy_req:req()) ->
                                {cb_context:context(), cowboy_req:req()}.
@@ -286,24 +314,32 @@ corrected_base64_decode(Base64) when byte_size(Base64) rem 4 == 2 ->
 corrected_base64_decode(Base64) ->
     base64:mime_decode(Base64).
 
+-spec get_request_body(cowboy_req:req()) -> {binary(), cowboy_req:req()}.
+get_request_body(Req0) ->
+    case cowboy_req:body(Req0) of
+        {'error', _E} ->
+            lager:debug("request body had no payload: ~p", [_E]),
+            {<<>>, Req0};
+        {'ok', <<>>, Req1} ->
+            lager:debug("request body was empty"),
+            {<<>>, Req1};
+        {'ok', ReqBody, Req1} ->
+            {ReqBody, Req1}
+    end.
+
 -type get_json_return() :: {wh_json:object(), cowboy_req:req()} |
                            {{'malformed', ne_binary()}, cowboy_req:req()}.
 -spec get_json_body(cowboy_req:req()) -> get_json_return().
--spec get_json_body(cowboy_req:req(), ne_binary()) -> get_json_return().
+-spec decode_json_body(ne_binary(), cowboy_req:req()) -> get_json_return().
 
 get_json_body(Req0) ->
-    case cowboy_req:body(Req0) of
-        {'error', _E} ->
-            lager:debug("request had no payload: ~s", [_E]),
-            {wh_json:new(), Req0};
-        {'ok', <<>>, Req1} ->
-            lager:debug("request had no payload"),
-            {wh_json:new(), Req1};
-        {'ok', ReqBody, Req1} ->
-            get_json_body(Req1, ReqBody)
-    end.
+    {Body, Req1} = get_request_body(Req0),
+    get_json_body(Body, Req1).
 
-get_json_body(Req, ReqBody) ->
+get_json_body(<<>>, Req) -> {wh_json:new(), Req};
+get_json_body(ReqBody, Req) -> decode_json_body(ReqBody, Req).
+
+decode_json_body(ReqBody, Req) ->
     lager:debug("request has a json payload: ~s", [ReqBody]),
     try wh_json:decode(ReqBody) of
         JObj ->
@@ -340,14 +376,14 @@ get_http_verb(Method, #cb_context{req_json=ReqJObj
             case wh_json:get_value(<<"verb">>, ReqQs) of
                 'undefined' ->
                     lager:debug("sticking with method ~s", [Method]),
-                    wh_util:to_lower_binary(Method);
+                    wh_util:to_upper_binary(Method);
                 Verb ->
                     lager:debug("found verb ~s on query string, using instead of ~s", [Verb, Method]),
-                    wh_util:to_lower_binary(Verb)
+                    wh_util:to_upper_binary(Verb)
             end;
         Verb ->
             lager:debug("found verb ~s in req data, using instead of ~s", [Verb, Method]),
-            wh_util:to_lower_binary(Verb)
+            wh_util:to_upper_binary(Verb)
     end.
 
 %%--------------------------------------------------------------------
@@ -361,36 +397,34 @@ get_http_verb(Method, #cb_context{req_json=ReqJObj
 %%--------------------------------------------------------------------
 
 -type cb_mod_with_tokens() :: {ne_binary(), path_tokens()}.
--spec parse_path_tokens(path_tokens()) -> [cb_mod_with_tokens(),...] | [].
+-type cb_mods_with_tokens() :: [cb_mod_with_tokens(),...] | [].
+-spec parse_path_tokens(path_tokens()) -> cb_mods_with_tokens().
 parse_path_tokens(Tokens) ->
-    Ebin = code:lib_dir('crossbar', 'ebin'),
+    parse_path_tokens(Tokens, []).
 
-    parse_path_tokens(Tokens, Ebin, []).
-
--spec parse_path_tokens(wh_json:json_strings(), nonempty_string(), [cb_mod_with_tokens(),...] | []) ->
-                               [cb_mod_with_tokens(),...] | [].
-parse_path_tokens([], _Ebin, Events) ->
+-spec parse_path_tokens(wh_json:json_strings(), cb_mods_with_tokens()) ->
+                               cb_mods_with_tokens().
+parse_path_tokens([], Events) ->
     Events;
-parse_path_tokens([<<"schemas">>=Mod|T], _, Events) ->
+parse_path_tokens([<<"schemas">>=Mod|T], Events) ->
     [{Mod, T} | Events];
-parse_path_tokens([<<"braintree">>=Mod|T], _, Events) ->
+parse_path_tokens([<<"braintree">>=Mod|T], Events) ->
     [{Mod, T} | Events];
-parse_path_tokens([Mod|T], Ebin, Events) ->
-    case is_cb_module(Mod, Ebin) of
-        'false' ->
-            lager:debug("failed to find ~s in loaded cb modules", [Mod]),
-            [];
+parse_path_tokens([Mod|T], Events) ->
+    case is_cb_module(Mod) of
+        'false' -> [];
         'true' ->
-            {Params, List2} = lists:splitwith(fun(Elem) -> not is_cb_module(Elem, Ebin) end, T),
-            Params1 = [ wh_util:to_binary(P) || P <- Params ],
-            parse_path_tokens(List2, Ebin, [{Mod, Params1} | Events])
+            {Params, List2} = lists:splitwith(fun(Elem) -> not is_cb_module(Elem) end, T),
+            parse_path_tokens(List2, [{Mod, Params} | Events])
     end.
 
--spec is_cb_module(ne_binary(), nonempty_string()) -> boolean().
-is_cb_module(Elem, Ebin) ->
-    case code:where_is_file(lists:flatten(["cb_", wh_util:to_list(Elem), ".beam"])) of
-        'non_existing' -> 'false';
-        BeamPath -> lists:prefix(Ebin, BeamPath) =:= 'true'
+-spec is_cb_module(ne_binary()) -> boolean().
+is_cb_module(Elem) ->
+    try (wh_util:to_atom(<<"cb_", Elem/binary>>)):module_info('imports') of
+        _ -> 'true'
+    catch
+        'error':'badarg' -> 'false'; %% atom didn't exist already
+        _E:_R -> 'false'
     end.
 
 %%--------------------------------------------------------------------
@@ -401,12 +435,12 @@ is_cb_module(Elem, Ebin) ->
 %% methods, they can not add.
 %%
 %% If a client passes a ?verb=(PUT|DELETE) on a POST request, ReqVerb will
-%% be <<"put">> or <<"delete">>, while HttpVerb is 'POST'. If the allowed
+%% be ?HTTP_PUT or ?HTTP_DELETE, while HttpVerb is 'POST'. If the allowed
 %% methods do not include 'POST', we need to add it if allowed methods include
 %% the verb in ReqVerb.
-%% So, POSTing a <<"put">>, and the allowed methods include 'PUT', insert POST
+%% So, POSTing a ?HTTP_PUT, and the allowed methods include 'PUT', insert POST
 %% as well.
-%% POSTing a <<"delete">>, and 'DELETE' is NOT in the allowed methods, remove
+%% POSTing a ?HTTP_DELETE, and 'DELETE' is NOT in the allowed methods, remove
 %% 'POST' from the allowed methods.
 %% @end
 %%--------------------------------------------------------------------
@@ -416,18 +450,22 @@ allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
         [] -> [];
         Succeeded ->
             AllowedSet = lists:foldr(fun(Response, Acc) ->
-                                             sets:intersection(Acc, sets:from_list([wh_util:to_binary(R) || R <- Response]))
+                                             sets:intersection(Acc, sets:from_list(uppercase_all(Response)))
                                      end, sets:from_list(Available), Succeeded),
             maybe_add_post_method(ReqVerb, HttpVerb, sets:to_list(AllowedSet))
     end.
 
+uppercase_all(L) when is_list(L) ->
+    [wh_util:to_upper_binary(wh_util:to_binary(I)) || I <- L].
+
+
 %% insert 'POST' if Verb is in Allowed; otherwise remove 'POST'.
 -spec maybe_add_post_method(ne_binary(), http_method(), http_methods()) -> http_methods().
-maybe_add_post_method(Verb, 'POST', Allowed) ->
-    VerbAtom = wh_util:to_atom(wh_util:to_upper_binary(Verb)),
-    case lists:member(VerbAtom, Allowed) of
-        'true' -> ['POST' | Allowed];
-        'false' -> lists:delete('POST', Allowed)
+maybe_add_post_method(Verb, ?HTTP_POST, Allowed) ->
+    BigVerb = wh_util:to_upper_binary(Verb),
+    case lists:member(BigVerb, Allowed) of
+        'true' -> [?HTTP_POST | Allowed];
+        'false' -> lists:delete(?HTTP_POST, Allowed)
     end;
 maybe_add_post_method(_, _, Allowed) ->
     Allowed.
@@ -441,7 +479,7 @@ maybe_add_post_method(_, _, Allowed) ->
 %%--------------------------------------------------------------------
 -spec is_authentic(cowboy_req:req(), cb_context:context()) ->
                           {{'false', <<>>} | 'true', cowboy_req:req(), cb_context:context()}.
-is_authentic(Req, #cb_context{req_verb = <<"options">>}=Context) ->
+is_authentic(Req, #cb_context{req_verb = ?HTTP_OPTIONS}=Context) ->
     %% all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {'true', Req, Context};
 is_authentic(Req0, Context0) ->
@@ -453,10 +491,13 @@ is_authentic(Req0, Context0) ->
             ?MODULE:halt(Req0, cb_context:add_system_error('invalid_credentials', Context0));
         ['true'|_] ->
             lager:debug("is_authentic: true"),
-            {true, Req1, Context1};
+            {'true', Req1, Context1};
         [{'true', Context2}|_] ->
             lager:debug("is_authentic: true"),
-            {'true', Req1, Context2}
+            {'true', Req1, Context2};
+        [{'halt', Context2}|_] ->
+            lager:debug("is_authentic: halt"),
+            ?MODULE:halt(Req1, Context2)
     end.
 
 -spec get_auth_token(cowboy_req:req(), cb_context:context()) -> {cowboy_req:req(), cb_context:context()}.
@@ -493,7 +534,7 @@ get_auth_token(Req0, #cb_context{req_json=ReqJObj
 %%--------------------------------------------------------------------
 -spec is_permitted(cowboy_req:req(), cb_context:context()) ->
                           {'true' | 'halt', cowboy_req:req(), cb_context:context()}.
-is_permitted(Req, #cb_context{req_verb = <<"options">>}=Context) ->
+is_permitted(Req, #cb_context{req_verb = ?HTTP_OPTIONS}=Context) ->
     lager:debug("options requests are permitted by default"),
     %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {'true', Req, Context};
@@ -506,22 +547,25 @@ is_permitted(Req0, Context0) ->
             lager:debug("no on authz the request"),
             ?MODULE:halt(Req0, cb_context:add_system_error('forbidden', Context0));
         ['true'|_] ->
-            lager:debug("request was authz"),
+            lager:debug("is_permitted: true"),
             {'true', Req0, Context0};
         [{'true', Context1}|_] ->
-            lager:debug("request was authz"),
-            {'true', Req0, Context1}
+            lager:debug("is_permitted: true"),
+            {'true', Req0, Context1};
+        [{'halt', Context1}|_] ->
+            lager:debug("is_permitted: halt"),
+            ?MODULE:halt(Req0, Context1)
     end.
 
 -spec is_known_content_type(cowboy_req:req(), cb_context:context()) ->
                                    {boolean(), cowboy_req:req(), cb_context:context()}.
-is_known_content_type(Req, #cb_context{req_verb = <<"options">>}=Context) ->
+is_known_content_type(Req, #cb_context{req_verb = ?HTTP_OPTIONS}=Context) ->
     lager:debug("ignore content type for options"),
     {'true', Req, Context};
-is_known_content_type(Req, #cb_context{req_verb = <<"get">>}=Context) ->
+is_known_content_type(Req, #cb_context{req_verb = ?HTTP_GET}=Context) ->
     lager:debug("ignore content type for get"),
     {'true', Req, Context};
-is_known_content_type(Req, #cb_context{req_verb = <<"delete">>}=Context) ->
+is_known_content_type(Req, #cb_context{req_verb = ?HTTP_DELETE}=Context) ->
     lager:debug("ignore content type for delete"),
     {'true', Req, Context};
 is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
@@ -649,7 +693,7 @@ succeeded(_) -> 'false'.
 execute_request(Req, #cb_context{req_nouns=[{Mod, Params}|_]
                                  ,req_verb=Verb
                                 }=Context) ->
-    Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
+    Event = <<"v1_resource.execute.", (wh_util:to_lower_binary(Verb))/binary, ".", Mod/binary>>,
     Payload = [Context | Params],
     case crossbar_bindings:fold(Event, Payload) of
         #cb_context{resp_status='success'}=Context1 ->
@@ -687,25 +731,10 @@ execute_request_results(Req, #cb_context{req_nouns=[{Mod, Params}|_]
 %% of all requests
 %% @end
 %%--------------------------------------------------------------------
--spec request_terminated(cowboy_req:req(), cb_context:context()) -> 'ok'.
-request_terminated(_Req, #cb_context{req_nouns=[{Mod, _}|_]
-                                     ,req_verb=Verb
-                                    }=Context) ->
-    Event = <<"v1_resource.request_terminated.", Verb/binary, ".", Mod/binary>>,
-    _ = crossbar_bindings:map(Event, Context),
-    'ok'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function runs the request terminated bindings at the conclusion
-%% of all requests
-%% @end
-%%--------------------------------------------------------------------
 -spec finish_request(cowboy_req:req(), cb_context:context()) -> 'ok'.
 finish_request(_Req, #cb_context{req_nouns=[{Mod, _}|_], req_verb=Verb}=Context) ->
     Event = <<"v1_resource.finish_request.", Verb/binary, ".", Mod/binary>>,
-    _ = crossbar_bindings:map(Event, Context),
+    _ = spawn('crossbar_bindings', 'map', [Event, Context]),
     'ok'.
 
 %%--------------------------------------------------------------------

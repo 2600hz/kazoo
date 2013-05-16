@@ -50,13 +50,13 @@ init() ->
 authorize(#cb_context{req_nouns=[{<<"servers">>, [_,<<"deployment">>]}
                                  ,{?WH_ACCOUNTS_DB,[_]}
                                 ]
-                      ,req_verb = <<"post">>}) ->
+                      ,req_verb = ?HTTP_POST}) ->
     true.
 
 authenticate(#cb_context{req_nouns=[{<<"servers">>, [_,<<"deployment">>]}
                                     ,{?WH_ACCOUNTS_DB,[_]}
                                    ]
-                         ,req_verb = <<"post">>}) ->
+                         ,req_verb = ?HTTP_POST}) ->
     true.
 
 %%--------------------------------------------------------------------
@@ -72,13 +72,13 @@ authenticate(#cb_context{req_nouns=[{<<"servers">>, [_,<<"deployment">>]}
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
-    ['GET', 'PUT'].
+    [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    ['GET', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_, <<"deployment">>) ->
-    ['GET', 'POST', 'PUT'];
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PUT];
 allowed_methods(_, <<"log">>) ->
-    ['GET'].
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -124,19 +124,19 @@ content_types_provided(Context, _, <<"log">>) ->
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     load_server_summary(Context);
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     create_server(Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, ServerId) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ServerId) ->
     load_server(ServerId, Context);
-validate(#cb_context{req_verb = <<"post">>}=Context, ServerId) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, ServerId) ->
     update_server(ServerId, Context);
-validate(#cb_context{req_verb = <<"delete">>}=Context, ServerId) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, ServerId) ->
     load_server(ServerId, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, ServerId, <<"deployment">>) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ServerId, <<"deployment">>) ->
     case load_server(ServerId, Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
             RespData = wh_json:from_list([{<<"status">>, wh_json:get_value(<<"pvt_deploy_status">>, JObj)}
@@ -146,14 +146,14 @@ validate(#cb_context{req_verb = <<"get">>}=Context, ServerId, <<"deployment">>) 
             Context1#cb_context{resp_data=RespData};
         Else -> Else
     end;
-validate(#cb_context{req_verb = <<"post">>}=Context, ServerId, <<"deployment">>) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, ServerId, <<"deployment">>) ->
     case load_server(ServerId, Context) of
         #cb_context{resp_status=success, doc=JObj, req_data=Data}=Context1 ->
             DeployLog = [Data | wh_json:get_value(<<"pvt_deploy_log">>, JObj, [])],
             Context1#cb_context{doc=wh_json:set_value(<<"pvt_deploy_log">>, DeployLog, JObj)};
         Else -> Else
     end;
-validate(#cb_context{req_verb = <<"put">>}=Context, ServerId, <<"deployment">>) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, ServerId, <<"deployment">>) ->
     case load_server(ServerId, Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
             case wh_json:get_value(<<"pvt_deploy_status">>, JObj) of
@@ -165,7 +165,7 @@ validate(#cb_context{req_verb = <<"put">>}=Context, ServerId, <<"deployment">>) 
         Else ->
             Else
     end;
-validate(#cb_context{req_verb = <<"get">>}=Context, ServerId, <<"log">>) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ServerId, <<"log">>) ->
     crossbar_doc:load_attachment(ServerId, <<"deployment.log">>, Context).
 
 -spec post(#cb_context{}, path_token()) -> #cb_context{}.

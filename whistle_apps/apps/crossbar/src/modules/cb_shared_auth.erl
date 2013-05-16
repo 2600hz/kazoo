@@ -59,7 +59,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    ['PUT', 'GET'].
+    [?HTTP_PUT, ?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -89,7 +89,7 @@ authorize(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(#cb_context{}) -> boolean().
-authenticate(#cb_context{req_nouns=[{<<"shared_auth">>, []}], req_verb = <<"put">>}) ->
+authenticate(#cb_context{req_nouns=[{<<"shared_auth">>, []}], req_verb = ?HTTP_PUT}) ->
     true;
 authenticate(_) ->
     false.
@@ -120,7 +120,7 @@ authenticate(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(#cb_context{}) -> #cb_context{}.
-validate(#cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_data=JObj, req_verb = ?HTTP_PUT}=Context) ->
     _ = cb_context:put_reqid(Context),
     XBarUrl = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
     SharedToken = wh_json:get_value(<<"shared_token">>, JObj),
@@ -141,11 +141,11 @@ validate(#cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
             lager:debug("authoritive shared auth request error: ~p", [E]),
             cb_context:add_system_error(datastore_unreachable, Context)
     end;
-validate(#cb_context{auth_doc=undefined, req_verb = <<"get">>}=Context) ->
+validate(#cb_context{auth_doc=undefined, req_verb = ?HTTP_GET}=Context) ->
     _ = cb_context:put_reqid(Context),
     lager:debug("valid shared auth request received but there is no authorizing doc (noauth running?)"),
     cb_context:add_system_error(invalid_credentials, Context);
-validate(#cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context) ->
+validate(#cb_context{auth_doc=JObj, req_verb = ?HTTP_GET}=Context) ->
     _ = cb_context:put_reqid(Context),
     lager:debug("valid shared auth request received, creating response"),
     AccountId = wh_json:get_value(<<"account_id">>, JObj),

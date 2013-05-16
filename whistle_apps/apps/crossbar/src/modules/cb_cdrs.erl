@@ -52,9 +52,9 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
-    ['GET'].
+    [?HTTP_GET].
 allowed_methods(_) ->
-    ['GET'].
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -94,9 +94,9 @@ content_types_provided(#cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     load_cdr_summary(Context).
-validate(#cb_context{req_verb = <<"get">>}=Context, CDRId) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, CDRId) ->
     load_cdr(CDRId, Context).
 
 %%--------------------------------------------------------------------

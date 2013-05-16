@@ -45,7 +45,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    ['GET'].
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -69,7 +69,7 @@ resource_exists() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
-validate(#cb_context{req_verb = <<"get">>, doc=Doc}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET, doc=Doc}=Context) ->
     Type = wh_json:get_value(<<"pvt_type">>, Doc, <<"undefined">>),
     route_by_type(Type, Context).
 

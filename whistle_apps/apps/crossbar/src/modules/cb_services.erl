@@ -55,10 +55,10 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods() | [].
 
 allowed_methods() ->
-    ['GET', 'POST'].
+    [?HTTP_GET, ?HTTP_POST].
 
 allowed_methods(<<"plan">>) ->
-    ['GET'];
+    [?HTTP_GET];
 allowed_methods(_) ->
     [].
 
@@ -91,9 +91,9 @@ resource_exists(_) -> false.
 -spec validate(#cb_context{}) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
 
-validate(#cb_context{account_id=AccountId, req_verb = <<"get">>}=Context) ->
+validate(#cb_context{account_id=AccountId, req_verb = ?HTTP_GET}=Context) ->
     crossbar_util:response(wh_services:public_json(AccountId), Context);
-validate(#cb_context{req_data=JObj, account_id=AccountId, req_verb = <<"post">>}=Context) ->
+validate(#cb_context{req_data=JObj, account_id=AccountId, req_verb = ?HTTP_POST}=Context) ->
     BillingId = wh_json:get_value(<<"billing_id">>, JObj),
     try wh_services:set_billing_id(BillingId, AccountId) of
         undefined -> Context#cb_context{doc=undefined, resp_status=success};

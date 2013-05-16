@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%%
 %%% ACLs from 7 to 77
@@ -7,7 +7,7 @@
 %%% @end
 %%% Contributors: Karl Anderson
 %%%               James Aimonetti
-%%%               Edouard Swiac 
+%%%               Edouard Swiac
 %%%-------------------------------------------------------------------
 -module(cb_acls).
 
@@ -33,10 +33,9 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.acls">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.acls">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.acls">>, ?MODULE, validate),
-    ok.
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.acls">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.acls">>, ?MODULE, 'resource_exists'),
+    crossbar_bindings:bind(<<"v1_resource.validate.acls">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -45,8 +44,8 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods() | [].
-allowed_methods() -> ['GET'].
+-spec allowed_methods() -> http_methods().
+allowed_methods() -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -58,7 +57,7 @@ allowed_methods() -> ['GET'].
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
-resource_exists() -> true.
+resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -70,8 +69,8 @@ resource_exists() -> true.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+-spec validate(cb_context:context()) -> cb_context:context().
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context).
 
 %%--------------------------------------------------------------------
@@ -81,7 +80,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary(#cb_context{}) -> #cb_context{}.
+-spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     Req = [{<<"Category">>, ?ECALLMGR}
            ,{<<"Key">>, ?ECALLMGR_ACLS}
@@ -97,10 +96,10 @@ summary(Context) ->
                                             ,2000
                                            ),
     case ReqResp of
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("unable to get acls from sysconf: ~p", [_R]),
-            cb_context:add_system_error(datastore_fault, Context);
-        {ok, JObj} ->
+            cb_context:add_system_error('datastore_fault', Context);
+        {'ok', JObj} ->
             ACLs = wh_json:get_value(<<"Value">>, JObj, wh_json:new()),
-            Context#cb_context{resp_data=ACLs, resp_status=success}
+            Context#cb_context{resp_data=ACLs, resp_status='success'}
     end.

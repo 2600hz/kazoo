@@ -47,9 +47,9 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
-    ['GET'].
+    [?HTTP_GET].
 allowed_methods(_) ->
-    ['PUT', 'DELETE'].
+    [?HTTP_PUT, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -75,17 +75,17 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 -spec validate(#cb_context{}) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = ?HTTP_GET}=Context) ->
     summary(Context).
 
-validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = <<"put">>}=Context, TemplateName) ->
+validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = ?HTTP_PUT}=Context, TemplateName) ->
     case load_template_db(TemplateName, Context) of
         #cb_context{resp_status=success} ->
             cb_context:add_system_error(datastore_conflict, Context);
         _Else ->
             crossbar_util:response(wh_json:new(), Context)
     end;
-validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = <<"delete">>}=Context, TemplateName) ->
+validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = ?HTTP_DELETE}=Context, TemplateName) ->
     load_template_db(TemplateName, Context);
 validate(Context, TemplateName) ->
     load_template_db(TemplateName, Context).

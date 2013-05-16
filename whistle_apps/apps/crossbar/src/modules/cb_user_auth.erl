@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP, INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%% User auth module
 %%% @end
@@ -47,8 +47,8 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
-allowed_methods() -> ['PUT'].
-allowed_methods(<<"recovery">>) -> ['PUT'].
+allowed_methods() -> [?HTTP_PUT].
+allowed_methods(<<"recovery">>) -> [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -93,10 +93,10 @@ authenticate(_) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     cb_context:validate_request_data(<<"user_auth">>, Context, fun maybe_authenticate_user/1).
 
-validate(#cb_context{req_verb = <<"put">>}=Context, <<"recovery">>) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, <<"recovery">>) ->
     cb_context:validate_request_data(<<"user_auth_recovery">>, Context, fun maybe_recover_user_password/1).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -139,7 +139,8 @@ normalize_account_name(AccountName) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
--spec maybe_authenticate_user(cb_context:context(), ne_binary(), ne_binary(), ne_binaries() | ne_binary()) -> cb_context:context().
+-spec maybe_authenticate_user(cb_context:context(), ne_binary(), ne_binary(), wh_json:key()) ->
+                                     cb_context:context().
 
 maybe_authenticate_user(#cb_context{doc=JObj}=Context) ->
     Credentials = wh_json:get_value(<<"credentials">>, JObj),
@@ -317,7 +318,7 @@ reset_users_password(#cb_context{doc=JObj, req_data=Data}=Context) ->
                                 ,{<<"require_password_update">>, 'true'}
                                ], JObj),
 
-    case crossbar_doc:save(Context#cb_context{doc=JObj1, req_verb = <<"post">>}) of
+    case crossbar_doc:save(Context#cb_context{doc=JObj1, req_verb = ?HTTP_POST}) of
         #cb_context{resp_status='success'} -> 
             Notify = [{<<"Email">>, Email}
                       ,{<<"First-Name">>, wh_json:get_value(<<"first_name">>, JObj)}
@@ -347,6 +348,13 @@ find_account('undefined', 'undefined', 'undefined', Context) ->
     {'error', Context};
 find_account('undefined', 'undefined', AccountName, Context) ->
     case whapps_util:get_accounts_by_name(AccountName) of
+        {'ok', 'undefined'} ->
+            lager:debug("failed to find account ~s by name", [AccountName]),
+            C = cb_context:add_validation_error(<<"account_name">>
+                                                ,<<"not_found">>
+                                                ,<<"The provided account name could not be found">>
+                                                ,Context),
+            find_account('undefined', 'undefined', 'undefined', C);
         {'ok', AccountDb} ->
             lager:debug("found account by name '~s': ~s", [AccountName, AccountDb]),
             {'ok', AccountDb};
@@ -362,6 +370,13 @@ find_account('undefined', 'undefined', AccountName, Context) ->
     end;
 find_account('undefined', AccountRealm, AccountName, Context) ->
     case whapps_util:get_account_by_realm(AccountRealm) of
+        {'ok', 'undefined'} ->
+            lager:debug("failed to find account ~s by name", [AccountName]),
+            C = cb_context:add_validation_error(<<"account_name">>
+                                                ,<<"not_found">>
+                                                ,<<"The provided account name could not be found">>
+                                                ,Context),
+            find_account('undefined', 'undefined', 'undefined', C);
         {'ok', AccountDb} ->
             lager:debug("found account by realm '~s': ~s", [AccountRealm, AccountDb]),
             {'ok', AccountDb};

@@ -32,7 +32,7 @@ init() ->
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    ['GET'].
+    [?HTTP_GET].
 
 -spec resource_exists() -> 'true'.
 resource_exists() ->
@@ -48,7 +48,7 @@ resource_exists() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
-validate(#cb_context{req_verb = <<"get">>, db_name=DbName, account_id=AccountId}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET, db_name=DbName, account_id=AccountId}=Context) ->
     AccountRealm = wh_util:get_account_realm(DbName, AccountId),
     crossbar_util:response(lookup_regs(AccountRealm), Context).
 

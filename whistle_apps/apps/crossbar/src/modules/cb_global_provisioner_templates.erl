@@ -66,7 +66,7 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(#cb_context{}, path_token(), path_token()) -> crossbar_content_handlers().
-content_types_provided(#cb_context{req_verb = <<"get">>}=Context, DocId, ?IMAGE_REQ) ->
+content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, DocId, ?IMAGE_REQ) ->
     case couch_mgr:open_doc(?WH_PROVISIONER_DB, DocId) of
         {error, _} -> Context;
         {ok, JObj} ->
@@ -87,9 +87,9 @@ content_types_provided(Context, _, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_accepted(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
-content_types_accepted(#cb_context{req_verb = <<"put">>}=Context, _, ?IMAGE_REQ) ->
+content_types_accepted(#cb_context{req_verb = ?HTTP_PUT}=Context, _, ?IMAGE_REQ) ->
     Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]};
-content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _, ?IMAGE_REQ) ->
+content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, _, ?IMAGE_REQ) ->
     Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]};
 content_types_accepted(Context, _, _) ->
     Context.
@@ -107,11 +107,11 @@ content_types_accepted(Context, _, _) ->
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
-    ['GET', 'PUT'].
+    [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    ['GET', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_, ?IMAGE_REQ) ->
-    ['GET', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -142,25 +142,25 @@ resource_exists(_, ?IMAGE_REQ) ->
 %%--------------------------------------------------------------------
 -spec validate(#cb_context{}) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     load_provisioner_template_summary(Context#cb_context{db_name=?WH_PROVISIONER_DB});
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     create_provisioner_template(Context#cb_context{db_name=?WH_PROVISIONER_DB}).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, DocId) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId) ->
     load_provisioner_template(DocId, Context#cb_context{db_name=?WH_PROVISIONER_DB});
-validate(#cb_context{req_verb = <<"post">>}=Context, DocId) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, DocId) ->
     update_provisioner_template(DocId, Context#cb_context{db_name=?WH_PROVISIONER_DB});
-validate(#cb_context{req_verb = <<"delete">>}=Context, DocId) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DocId) ->
     load_provisioner_template(DocId, Context#cb_context{db_name=?WH_PROVISIONER_DB}).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, DocId, ?IMAGE_REQ) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId, ?IMAGE_REQ) ->
     load_template_image(DocId, Context#cb_context{db_name=?WH_PROVISIONER_DB});
-validate(#cb_context{req_verb = <<"put">>}=Context, DocId, ?IMAGE_REQ) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, DocId, ?IMAGE_REQ) ->
     upload_template_image(DocId, Context#cb_context{db_name=?WH_PROVISIONER_DB});
-validate(#cb_context{req_verb = <<"post">>}=Context, DocId, ?IMAGE_REQ) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, DocId, ?IMAGE_REQ) ->
     upload_template_image(DocId, Context#cb_context{db_name=?WH_PROVISIONER_DB});
-validate(#cb_context{req_verb = <<"delete">>}=Context, DocId, ?IMAGE_REQ) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DocId, ?IMAGE_REQ) ->
     load_template_image(DocId, Context#cb_context{db_name=?WH_PROVISIONER_DB}).
 
 -spec post(#cb_context{}, path_token()) -> #cb_context{}.

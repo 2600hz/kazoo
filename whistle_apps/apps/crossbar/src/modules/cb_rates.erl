@@ -58,9 +58,9 @@ init_db() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
-    ['GET', 'PUT', 'POST'].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 allowed_methods(_) ->
-    ['GET', 'POST', 'DELETE'].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -76,7 +76,7 @@ resource_exists() -> true.
 resource_exists(_) -> true.
 
 -spec content_types_accepted(#cb_context{}) -> #cb_context{}.
-content_types_accepted(#cb_context{req_verb = <<"post">>}=Context) ->
+content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context) ->
     Context#cb_context{content_types_accepted = [{from_binary, ?UPLOAD_MIME_TYPES}]}.
 
 %%--------------------------------------------------------------------
@@ -90,18 +90,18 @@ content_types_accepted(#cb_context{req_verb = <<"post">>}=Context) ->
 %%--------------------------------------------------------------------
 -spec validate(#cb_context{}) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context#cb_context{db_name=?WH_RATES_DB});
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     create(Context#cb_context{db_name=?WH_RATES_DB});
-validate(#cb_context{req_verb = <<"post">>}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context) ->
     check_uploaded_file(Context#cb_context{db_name=?WH_RATES_DB}).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
     read(Id, Context#cb_context{db_name=?WH_RATES_DB});
-validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
     update(Id, Context#cb_context{db_name=?WH_RATES_DB});
-validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
     read(Id, Context#cb_context{db_name=?WH_RATES_DB}).
 
 -spec post(#cb_context{}) -> #cb_context{}.
@@ -274,7 +274,7 @@ process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
                                         ,{<<"rate_surcharge">>, 0}
                                         ,{<<"pvt_rate_cost">>, wh_util:to_float(InternalCost1)}
                                         ,{<<"weight">>, constrain_weight(byte_size(Prefix1) * 10 - CostF)}
-                                        ,{<<"options">>, []}
+                                        ,{?HTTP_OPTIONS, []}
                                         ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix1))/binary, "(\\d*)$">>]}
                                         ,{<<"pvt_carrier">>, <<"default">>}
                                         ,{<<"pvt_type">>, <<"rate">>}

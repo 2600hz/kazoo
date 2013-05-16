@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%% Display various informations
 %%%
@@ -22,9 +22,9 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.about">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.about">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.about">>, ?MODULE, validate).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.about">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.about">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.about">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -36,7 +36,7 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
-allowed_methods() -> ['GET'].
+allowed_methods() -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -58,8 +58,8 @@ resource_exists() -> 'true'.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
+-spec validate(cb_context:context()) -> cb_context:context().
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     display_version(Context).
 
 %%%===================================================================
@@ -72,7 +72,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context) ->
 %% Display the current version of whistle
 %% @end
 %%--------------------------------------------------------------------
--spec display_version(#cb_context{}) -> #cb_context{}.
+-spec display_version(cb_context:context()) -> cb_context:context().
 display_version(Context) ->
     WhVsn = wh_json:set_value(<<"whistle_version">>, wh_util:whistle_version(), wh_json:new()),
     crossbar_util:response(WhVsn, Context).
