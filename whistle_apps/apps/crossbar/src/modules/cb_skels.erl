@@ -32,7 +32,7 @@
          ,finish_request/1
         ]).
 
--include("src/crossbar.hrl").
+-include("../crossbar.hrl").
 
 -define(CB_LIST, <<"skels/crossbar_listing">>).
 
