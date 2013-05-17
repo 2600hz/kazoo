@@ -19,8 +19,6 @@
 -include_lib("whistle/include/wh_types.hrl").
 
 -define(SERVER, ?MODULE).
--define(WORKER(I), {I, {I, 'start_link', []}, 'permanent', 5000, 'worker', [I]}).
--define(SUPER(I), {I, {I, 'start_link', []}, 'permanent', 'infinity', 'supervisor', [I]}).
 
 %%%===================================================================
 %%% API functions
