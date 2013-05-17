@@ -528,12 +528,6 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                     lager:debug("can't take the call, skip me: ~p", [_E]),
                     acdc_agent:member_connect_retry(Srv, JObj),
                     {'next_state', 'ready', State#state{connect_failures=CF+1}};
-                {'ok', []} ->
-                    lager:info("agent ~s has no endpoints assigned; logging agent out", [AgentId]),
-                    acdc_agent:logout_agent(Srv),
-                    acdc_stats:agent_inactive(AcctId, AgentId),
-                    acdc_agent:member_connect_retry(Srv, JObj),
-                    {'next_state', 'paused', State};
                 {'ok', UpdatedEPs} ->
                     acdc_agent:bridge_to_member(Srv, Call, JObj, UpdatedEPs, CDRUrl, RecordingUrl),
 
@@ -711,7 +705,7 @@ ringing({'channel_bridged', CallId}, #state{member_call_id=CallId
                                            ,connect_failures=0
                                           }};
 
-ringing({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
+ringing({'channel_hungup', CallId, Cause}, #state{agent_proc=Srv
                                                    ,agent_call_id=CallId
                                                    ,acct_id=AcctId
                                                    ,agent_id=AgentId
@@ -720,12 +714,12 @@ ringing({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
                                                    ,connect_failures=Fails
                                                    ,max_connect_failures=MaxFails
                                                   }=State) ->
-    lager:debug("ringing agent failed: timeout on ~s ~s", [CallId, _Cause]),
+    lager:debug("ringing agent failed: timeout on ~s ~s", [CallId, Cause]),
 
     acdc_agent:member_connect_retry(Srv, MCallId),
     acdc_agent:channel_hungup(Srv, MCallId),
 
-    acdc_stats:call_missed(AcctId, QueueId, AgentId, MCallId),
+    acdc_stats:call_missed(AcctId, QueueId, AgentId, MCallId, Cause),
 
     acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
 
@@ -833,11 +827,11 @@ answered({'dialplan_error', _App}, #state{agent_proc=Srv
                                           ,member_call_id=CallId
                                           ,agent_call_id=ACallId
                                          }=State) ->
-    lager:debug("connecting agent to caller failed, clearing call"),
+    lager:debug("connecting agent to caller failed(~p), clearing call", [_App]),
     acdc_agent:channel_hungup(Srv, ACallId),
     acdc_agent:member_connect_retry(Srv, CallId),
 
-    acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
+    acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId, <<"dialplan_error">>),
     acdc_stats:agent_ready(AcctId, AgentId),
 
     acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
@@ -1489,16 +1483,15 @@ hangup_call(#state{wrapup_timeout=WrapupTimeout
                    ,agent_proc=Srv
                    ,member_call_id=CallId
                    ,member_call_queue_id=QueueId
-                   ,member_call_start=Started
+                   ,member_call_start=_Started
                    ,acct_id=AcctId
                    ,agent_id=AgentId
                    ,call_status_ref=CRef
                   }) ->
+    lager:debug("call lasted ~b s", [elapsed(_Started)]),
     lager:debug("going into a wrapup period ~p: ~s", [WrapupTimeout, CallId]),
 
-    acdc_stats:call_processed(AcctId, QueueId, AgentId
-                              ,CallId, elapsed(Started)
-                             ),
+    acdc_stats:call_processed(AcctId, QueueId, AgentId, CallId),
 
     _ = maybe_stop_timer(CRef),
 
