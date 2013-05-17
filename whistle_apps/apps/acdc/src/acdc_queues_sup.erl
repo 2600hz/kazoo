@@ -25,10 +25,6 @@
 %% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Restart, Shutdown, Type),
-        {Name, {Name, start_link, []}, Restart, Shutdown, Type, [Name]}).
-
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -42,7 +38,7 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 new(AcctId, QueueId) ->
     case find_queue_supervisor(AcctId, QueueId) of
@@ -50,11 +46,11 @@ new(AcctId, QueueId) ->
         'undefined' -> supervisor:start_child(?MODULE, [AcctId, QueueId])
     end.
 
--spec workers() -> [pid(),...] | [].
+-spec workers() -> pids().
 workers() ->
     [Pid || {_, Pid, 'supervisor', _} <- supervisor:which_children(?MODULE), is_pid(Pid)].
 
--spec find_acct_supervisors(ne_binary()) -> [pid(),...] | [].
+-spec find_acct_supervisors(ne_binary()) -> pids().
 find_acct_supervisors(AcctId) ->
     [Super || Super <- workers(), is_queue_in_acct(Super, AcctId)].
 
@@ -66,8 +62,8 @@ is_queue_in_acct(Super, AcctId) ->
         _ -> 'false'
     end.
 
--spec find_queue_supervisor(ne_binary(), ne_binary()) -> pid() | 'undefined'.
--spec find_queue_supervisor(ne_binary(), ne_binary(), [pid(),...] | []) -> pid() | 'undefined'.
+-spec find_queue_supervisor(ne_binary(), ne_binary()) -> api_pid().
+-spec find_queue_supervisor(ne_binary(), ne_binary(), pids()) -> api_pid().
 find_queue_supervisor(AcctId, QueueId) ->
     find_queue_supervisor(AcctId, QueueId, workers()).
 
@@ -106,13 +102,13 @@ queues_running() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    RestartStrategy = simple_one_for_one,
+    RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 1,
     MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_queue_sup, transient, infinity, supervisor)]}}.
+    {'ok', {SupFlags, [?SUPER('acdc_queue_sup', 'transient')]}}.
 
 %%%===================================================================
 %%% Internal functions
