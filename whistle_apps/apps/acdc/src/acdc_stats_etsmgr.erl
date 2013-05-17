@@ -22,6 +22,8 @@
          ,code_change/3
         ]).
 
+-include("acdc.hrl").
+
 -define(SERVER, ?MODULE). 
 
 -record(state, {table_id :: ets:tid()
@@ -61,6 +63,9 @@ init([]) ->
     process_flag('trap_exit', 'true'),
     put('callid', ?MODULE),
     gen_server:cast(self(), 'begin'),
+
+    lager:debug("started etsmgr for stats"),
+
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -91,7 +96,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('begin', State) ->
-    Etssrv = find_ets_srv(),
+    EtsSrv = find_ets_srv(),
     Tbl = ets:new(acdc_stats:table_id()
                   ,['protected', 'named_table'
                     ,{'keypos', acdc_stats:key_pos()}
@@ -99,10 +104,11 @@ handle_cast('begin', State) ->
                  ),
 
     ets:setopts(Tbl, {'heir', self(), 'ok'}),
-    ets:give_away(Tbl, Etssrv, 'ok'),
+    ets:give_away(Tbl, EtsSrv, 'ok'),
 
+    lager:debug("gave away ETS table ~p to ~p", [Tbl, EtsSrv]),
     {'noreply', State#state{table_id=Tbl
-                            ,etssrv=Etssrv
+                            ,etssrv=EtsSrv
                            }};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -141,11 +147,11 @@ handle_info(_Info, State) ->
     {'noreply', State}.
 
 find_ets_srv() ->
-    case whereis('acdc_stats') of
-        'undefined' ->
+    case acdc_stats_sup:stats_srv() of
+        {'error', 'not_found'} ->
             timer:sleep(5),
             find_ets_srv();
-        P when is_pid(P) ->
+        {'ok', P} when is_pid(P) ->
             link(P),
             P
     end.

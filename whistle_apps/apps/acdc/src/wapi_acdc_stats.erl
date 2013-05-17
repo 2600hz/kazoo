@@ -159,31 +159,31 @@ publish_call_waiting(JObj) ->
     publish_call_waiting(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_waiting(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?WAITING_VALUES, fun call_waiting/1),
-    amqp_util:whapps_publish(Payload, ContentType, stat_routing_key(API)).
+    amqp_util:whapps_publish(stat_routing_key(API), Payload, ContentType).
 
 publish_call_missed(JObj) ->
     publish_call_missed(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_missed(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?MISS_VALUES, fun call_missed/1),
-    amqp_util:whapps_publish(Payload, ContentType, stat_routing_key(API)).
+    amqp_util:whapps_publish(stat_routing_key(API), Payload, ContentType).
 
 publish_call_abandoned(JObj) ->
     publish_call_abandoned(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_abandoned(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?ABANDON_VALUES, fun call_abandoned/1),
-    amqp_util:whapps_publish(Payload, ContentType, stat_routing_key(API)).
+    amqp_util:whapps_publish(stat_routing_key(API), Payload, ContentType).
 
 publish_call_handled(JObj) ->
     publish_call_handled(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_handled(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?HANDLED_VALUES, fun call_handled/1),
-    amqp_util:whapps_publish(Payload, ContentType, stat_routing_key(API)).
+    amqp_util:whapps_publish(stat_routing_key(API), Payload, ContentType).
 
 publish_call_processed(JObj) ->
     publish_call_processed(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_processed(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?PROCESS_VALUES, fun call_processed/1),
-    amqp_util:whapps_publish(Payload, ContentType, stat_routing_key(API)).
+    amqp_util:whapps_publish(stat_routing_key(API), Payload, ContentType).
 
 stat_routing_key(Prop) when is_list(Prop) ->
     stat_routing_key(props:get_value(<<"Account-ID">>, Prop)
