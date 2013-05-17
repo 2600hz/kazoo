@@ -974,6 +974,7 @@ get_node_connections(N, Cookie) ->
     get_node_connections(Host, Port, User, Pass, AdminPort).
 
 get_node_connections(Host, Port, User, Pass, AdminPort) ->
+    lager:debug("getting connection information for ~s, ~p and ~p", [Host, Port, AdminPort]),
     {couch_util:get_new_connection(Host, Port, User, Pass),
      couch_util:get_new_connection(Host, AdminPort, User, Pass)
     }.
