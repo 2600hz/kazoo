@@ -21,6 +21,7 @@
          ,handle_config_change/2
          ,should_ignore_member_call/3
          ,config/1
+         ,status/1
          ,current_agents/1
          ,refresh/2
         ]).
@@ -225,6 +226,7 @@ should_ignore_member_call(Srv, Call, CallJObj) ->
 
 config(Srv) -> gen_listener:call(Srv, 'config').
 current_agents(Srv) -> gen_listener:call(Srv, 'current_agents').
+status(Srv) -> gen_listener:call(Srv, 'status').
 
 refresh(Mgr, QueueJObj) -> gen_listener:cast(Mgr, {'refresh', QueueJObj}).
 
@@ -312,6 +314,10 @@ handle_call('config', _, #state{acct_id=AcctId
                                 ,queue_id=QueueId
                                }=State) ->
     {'reply', {AcctId, QueueId}, State};
+
+handle_call('status', _, #state{known_agents=As}=State) ->
+    Known = [A || {A, N} <- dict:to_list(As), N > 0],
+    {'reply', Known, State};
 
 handle_call('strategy', _, #state{strategy=Strategy}=State) ->
     {'reply', Strategy, State, 'hibernate'};
