@@ -50,7 +50,6 @@
 -define(DTMF_RESULT_CONNECT, <<"1">>).
 -define(DTMF_RESULT_NEXT, <<"2">>).
 -define(DTMF_RESULT_START, <<"3">>).
--define(DTMF_RESULT_CONTINUE, <<"4">>).
 
 -define(DTMF_NO_RESULT_CONTINUE, <<"1">>).
 -define(DTMF_NO_RESULT_START, <<"2">>).
@@ -201,9 +200,6 @@ maybe_match_users(Call, State, [U|Us], MatchNum) ->
         'next' ->
             lager:info("moving to next user"),
             maybe_match_users(Call, State, Us, MatchNum+1);
-        'continue' ->
-            lager:info("caller wants to enter more DMTF"),
-            collect_more_digits(Call, clear_current_users(State), get_current_users(State));
         'start_over' ->
             lager:info("starting over"),
             directory_start(Call, clear_dtmf(State), users(State));
@@ -236,7 +232,6 @@ maybe_match_user(Call, U, MatchNum) ->
 interpret_user_match_dtmf(?DTMF_RESULT_CONNECT) -> 'route';
 interpret_user_match_dtmf(?DTMF_RESULT_NEXT) -> 'next';
 interpret_user_match_dtmf(?DTMF_RESULT_START) -> 'start_over';
-interpret_user_match_dtmf(?DTMF_RESULT_CONTINUE) -> 'continue';
 interpret_user_match_dtmf(_) -> 'invalid'.
 
 -spec maybe_confirm_match(whapps_call:call(), directory_user(), boolean()) -> boolean().
