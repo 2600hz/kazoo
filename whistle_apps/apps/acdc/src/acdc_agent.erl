@@ -1019,12 +1019,12 @@ save_recording(Call, MediaName, Format, Url) ->
             StoreUrl = wapi_dialplan:local_store_url(Call, MediaJObj),
             lager:debug("store url: ~s", [StoreUrl]),
 
-            whapps_call_command:store_recording(MediaName, StoreUrl, Call);
+            whapps_call_command:store(MediaName, StoreUrl, Call);
         'false' when is_binary(Url) ->
             StoreUrl = wapi_dialplan:offsite_store_url(Url, MediaName),
             lager:debug("using ~s to maybe store recording", [StoreUrl]),
 
-            whapps_call_command:store_recording(MediaName, StoreUrl, Call);
+            whapps_call_command:store(MediaName, StoreUrl, Call);
         'false' ->
             lager:debug("no external url to use, not saving recording")
     end.
