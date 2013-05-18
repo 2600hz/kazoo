@@ -36,7 +36,9 @@
         ]).
 
 %% AMQP Callbacks
--export([handle_stat/2]).
+-export([handle_stat/2
+         ,handle_query/2
+        ]).
 
 %% gen_listener functions
 -export([start_link/0
@@ -164,7 +166,13 @@ key_pos() -> #call_stat.id.
 -define(BINDINGS, [{'self', []}
                    ,{'acdc_stats', []}
                   ]).
--define(RESPONDERS, [{{?MODULE, 'handle_stat'}, [{<<"acdc_stat">>, <<"*">>}]}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_stat'}
+                      ,[{<<"acdc_stat">>, <<"*">>}]
+                     }
+                     ,{{?MODULE, 'handle_query'}
+                       ,[{<<"acdc_stat">>, <<"current_call_req">>}]
+                      }
+                    ]).
 -define(QUEUE_NAME, <<>>).
 
 start_link() ->
@@ -175,6 +183,7 @@ start_link() ->
                              ],
                             []).
 
+-spec handle_stat(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_stat(JObj, Props) ->
     case wh_json:get_value(<<"Event-Name">>, JObj) of
         <<"waiting">> -> handle_waiting_stat(JObj, Props);
@@ -184,6 +193,16 @@ handle_stat(JObj, Props) ->
         <<"processed">> -> handle_processed_stat(JObj, Props);
         _Name ->
             lager:debug("recv unknown stat type ~s: ~p", [_Name, JObj])
+    end.
+
+-spec handle_query(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_query(JObj, _Prop) ->
+    'true' = wapi_acdc_stats:current_calls_req_v(JObj),
+    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+    case wh_json:get_value(<<"Queue-ID">>, JObj) of
+        'undefined' -> query_account_calls(RespQ, AcctId);
+        QueueId -> query_queue_calls(RespQ, AcctId, QueueId)
     end.
 
 -record(state, {
@@ -242,6 +261,44 @@ terminate(_Reason, _) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
+query_account_calls(RespQ, AcctId) ->
+    lager:debug("querying for calls for account ~s", [AcctId]),
+
+    Match = [{#call_stat{acct_id='$1', _='_'}
+              ,[{'=:=', '$1', {'const', AcctId}}]
+              ,['$_']
+             }],
+    query_calls(RespQ, Match).
+query_queue_calls(RespQ, AcctId, QueueId) ->
+    lager:debug("querying for calls for queue ~s in ~s", [QueueId, AcctId]),
+    Match = [{#call_stat{acct_id='$1', queue_id='$2', _='_'}
+              ,[{'=:=', '$1', {'const', AcctId}}
+                ,{'=:=', '$2', {'const', QueueId}}
+               ]
+              ,['$_']
+             }],
+    query_calls(RespQ, Match).
+
+query_calls(RespQ, Match) ->
+    case ets:select(table_id(), Match) of
+        [] -> lager:debug("no stats found, ignoring req from ~s", [RespQ]);
+        Stats ->
+            Dict = dict:from_list([{<<"waiting">>, []}
+                                   ,{<<"handled">>, []}
+                                   ,{<<"abandoned">>, []}
+                                   ,{<<"processed">>, []}
+                                  ]),
+
+            QueryResult = lists:foldl(fun query_fold/2, Dict, Stats),
+            Resp = [{<<"Waiting">>, dict:fetch(<<"waiting">>, QueryResult)}
+                    ,{<<"Handled">>, dict:fetch(<<"handled">>, QueryResult)}
+                    ,{<<"Abandoned">>, dict:fetch(<<"abandoned">>, QueryResult)}
+                    ,{<<"Processed">>, dict:fetch(<<"processed">>, QueryResult)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_acdc_stats:publish_current_calls_resp(RespQ, Resp)
+    end.
+
 archive_data(Srv) ->
     put('callid', <<"acdc_stats.archiver">>),
 
@@ -263,6 +320,10 @@ archive_data(Srv) ->
             lager:debug("saving ~p", [dict:to_list(ToSave)]),
             [couch_mgr:save_docs(db_name(Acct), Docs) || {Acct, Docs} <- dict:to_list(ToSave)]
     end.
+
+query_fold(#call_stat{status=Status}=Stat, Acc) ->
+    Doc = stat_to_doc(Stat),
+    dict:update(Status, fun(L) -> [Doc | L] end, [Doc], Acc).
 
 archive_fold(#call_stat{acct_id=AcctId}=Stat, Acc) ->
     Doc = stat_to_doc(Stat),
@@ -368,7 +429,6 @@ create_miss(JObj) ->
        ,miss_reason = wh_json:get_value(<<"Miss-Reason">>, JObj)
        ,miss_timestamp = wh_json:get_value(<<"Miss-Timestamp">>, JObj)
       }.
-
 
 handle_abandoned_stat(JObj, Props) ->
     'true' = wapi_acdc_stats:call_abandoned_v(JObj),
