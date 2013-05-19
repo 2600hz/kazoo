@@ -126,6 +126,9 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', Etssrv, 'killed'}, #state{etssrv=Etssrv}=State) ->
     lager:debug("ets mgr ~p killed", [Etssrv]),
     {'noreply', State#state{etssrv='undefined'}};
+handle_info({'EXIT', _OldSrv, _Reason}, State) ->
+    lager:debug("old ets srv ~p died: ~p", [_OldSrv, _Reason]),
+    {'noreply', State};
 handle_info({'ETS-TRANSFER', Tbl, Etssrv, Data}, #state{table_id=Tbl
                                                         ,etssrv=Etssrv
                                                        }=State) ->
