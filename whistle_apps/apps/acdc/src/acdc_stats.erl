@@ -61,6 +61,8 @@
 
 -define(ARCHIVE_MSG, 'time_to_archive').
 
+-define(VALID_STATUSES, [<<"waiting">>, <<"handled">>, <<"abandoned">>, <<"processed">>]).
+
 -record(agent_miss, {
           agent_id :: api_binary()
           ,miss_reason :: api_binary()
@@ -75,9 +77,9 @@
           ,acct_id :: api_binary() | '$1' | '_'
           ,queue_id :: api_binary() | '$2' | '_'
 
-          ,agent_id :: api_binary() | '_' % the handling agent
+          ,agent_id :: api_binary() | '$3' | '_' % the handling agent
 
-          ,entered_timestamp = wh_util:current_tstamp() :: pos_integer() | '$1' | '_'
+          ,entered_timestamp = wh_util:current_tstamp() :: pos_integer() | '$1' | '$5' | '_'
           ,abandoned_timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
           ,handled_timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
           ,processed_timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
@@ -86,7 +88,7 @@
 
           ,misses = [] :: agent_misses() | '_'
 
-          ,status :: api_binary() | '$2' | '_'
+          ,status :: api_binary() | '$2' | '$4' | '_'
           ,caller_id_name :: api_binary() | '_'
           ,caller_id_number :: api_binary() | '_'
          }).
@@ -203,13 +205,12 @@ handle_stat(JObj, Props) ->
 -spec handle_query(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_query(JObj, _Prop) ->
     'true' = wapi_acdc_stats:current_calls_req_v(JObj),
-    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
 
-    case wh_json:get_value(<<"Queue-ID">>, JObj) of
-        'undefined' -> query_account_calls(RespQ, MsgId, AcctId);
-        QueueId -> query_queue_calls(RespQ, MsgId, AcctId, QueueId)
+    case build_match_spec(JObj) of
+        {'ok', Match} -> query_calls(RespQ, MsgId, Match);
+        {'error', Errors} -> publish_query_errors(RespQ, MsgId, Errors)
     end.
 
 -record(state, {
@@ -273,23 +274,109 @@ terminate(_Reason, _) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-query_account_calls(RespQ, MsgId, AcctId) ->
-    lager:debug("querying for calls for account ~s", [AcctId]),
+publish_query_errors(RespQ, MsgId, Errors) ->
+    API = [{<<"Error-Reason">>, Errors}
+           ,{<<"Msg-ID">>, MsgId}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    lager:debug("responding with errors to req ~s: ~p", [MsgId, Errors]),
+    wapi_acdc_stats:publish_current_calls_err(RespQ, API).
 
-    Match = [{#call_stat{acct_id='$1', _='_'}
-              ,[{'=:=', '$1', {'const', AcctId}}]
-              ,['$_']
-             }],
-    query_calls(RespQ, MsgId, Match).
-query_queue_calls(RespQ, MsgId, AcctId, QueueId) ->
-    lager:debug("querying for calls for queue ~s in ~s", [QueueId, AcctId]),
-    Match = [{#call_stat{acct_id='$1', queue_id='$2', _='_'}
-              ,[{'=:=', '$1', {'const', AcctId}}
-                ,{'=:=', '$2', {'const', QueueId}}
-               ]
-              ,['$_']
-             }],
-    query_calls(RespQ, MsgId, Match).
+build_match_spec(JObj) ->
+    case wh_json:get_value(<<"Account-ID">>, JObj) of
+        'undefined' ->
+            {'error', wh_json:from_list([{<<"Account-ID">>, <<"missing but required">>}])};
+        AccountId ->
+            AcctMatch = {#call_stat{acct_id='$1', _='_'}
+                         ,[{'=:=', '$1', {'const', AccountId}}]
+                        },
+            build_match_spec(JObj, AcctMatch)
+    end.
+
+-spec build_match_spec(wh_json:object(), {call_stat(), list()}) ->
+                              {'ok', ets:match_spec()} |
+                              {'error', wh_json:object()}.
+build_match_spec(JObj, AcctMatch) ->
+    case wh_json:foldl(fun match_builder_fold/3, AcctMatch, JObj) of
+        {'error', _Errs}=Errors -> Errors;
+        {CallStat, Constraints} ->
+            lager:debug("const: ~p", [Constraints]),
+            {'ok', [{CallStat, Constraints, ['$_']}]}
+    end.
+
+match_builder_fold(_, _, {'error', _Err}=E) -> E;
+match_builder_fold(<<"Queue-ID">>, QueueId, {CallStat, Contstraints}) ->
+    {CallStat#call_stat{queue_id='$2'}
+     ,[{'=:=', '$2', {'const', QueueId}} | Contstraints]
+    };
+match_builder_fold(<<"Agent-ID">>, AgentId, {CallStat, Contstraints}) ->
+    {CallStat#call_stat{agent_id='$3'}
+     ,[{'=:=', '$3', {'const', AgentId}} | Contstraints]
+    };
+match_builder_fold(<<"Status">>, Status, {CallStat, Contstraints}) ->
+    case is_valid_status(Status) of
+        {'true', Normalized} ->
+            {CallStat#call_stat{status='$4'}
+             ,[{'=:=', '$4', {'const', Normalized}} | Contstraints]
+            };
+        'false' ->
+            {'error', wh_json:from_list([{<<"Status">>, <<"unknown status supplied">>}])}
+    end;
+match_builder_fold(<<"Start-Range">>, Start, {CallStat, Contstraints}) ->
+    Now = wh_util:current_tstamp(),
+    Past = Now - ?ARCHIVE_WINDOW,
+
+    try wh_util:to_integer(Start) of
+        N when N < Past ->
+            {'error', wh_json:from_list([{<<"Start-Range">>, <<"supplied value is too far in the past">>}
+                                         ,{<<"Window-Size">>, ?ARCHIVE_WINDOW}
+                                         ,{<<"Current-Timestamp">>, Now}
+                                         ,{<<"Past-Timestamp">>, Past}
+                                        ])};
+        N when N > Now ->
+            {'error', wh_json:from_list([{<<"Start-Range">>, <<"supplied value is in the future">>}
+                                         ,{<<"Current-Timestamp">>, Now}
+                                        ])};
+        N ->
+            {CallStat#call_stat{entered_timestamp='$5'}
+             ,[{'>=', '$5', N} | Contstraints]
+            }
+    catch
+        _:_ ->
+            {'error', wh_json:from_list([{<<"Start-Range">>, <<"supplied value is not an integer">>}
+                                        ])}
+    end;
+match_builder_fold(<<"End-Range">>, End, {CallStat, Contstraints}) ->
+    Now = wh_util:current_tstamp(),
+    Past = Now - ?ARCHIVE_WINDOW,
+
+    try wh_util:to_integer(End) of
+        N when N < Past ->
+            {'error', wh_json:from_list([{<<"End-Range">>, <<"supplied value is too far in the past">>}
+                                         ,{<<"Window-Size">>, ?ARCHIVE_WINDOW}
+                                         ,{<<"Current-Timestamp">>, Now}
+                                        ])};
+        N when N > Now ->
+            {'error', wh_json:from_list([{<<"End-Range">>, <<"supplied value is in the future">>}
+                                         ,{<<"Current-Timestamp">>, Now}
+                                        ])};
+        N ->
+            {CallStat#call_stat{entered_timestamp='$5'}
+             ,[{'=<', '$5', N} | Contstraints]
+            }
+    catch
+        _:_ ->
+            {'error', wh_json:from_list([{<<"End-Range">>, <<"supplied value is not an integer">>}
+                                        ])}
+    end;
+match_builder_fold(_, _, Acc) -> Acc.
+
+is_valid_status(S) ->
+    Status = wh_util:to_lower_binary(S),
+    case lists:member(Status, ?VALID_STATUSES) of
+        'true' -> {'true', Status};
+        'false' -> 'false'
+    end.
 
 -spec query_calls(ne_binary(), ne_binary(), ets:match_spec()) -> 'ok'.
 query_calls(RespQ, MsgId, Match) ->
@@ -318,9 +405,9 @@ query_calls(RespQ, MsgId, Match) ->
 archive_data(Srv) ->
     put('callid', <<"acdc_stats.archiver">>),
 
-    StatsBefore = wh_util:current_tstamp() - ?ARCHIVE_WINDOW,
+    Past = wh_util:current_tstamp() - ?ARCHIVE_WINDOW,
     Match = [{#call_stat{entered_timestamp='$1', status='$2', _='_'}
-              ,[{'=<', '$1', StatsBefore}
+              ,[{'=<', '$1', Past}
                 ,{'=/=', '$2', {'const', <<"waiting">>}}
                 ,{'=/=', '$2', {'const', <<"handled">>}}
                ]
