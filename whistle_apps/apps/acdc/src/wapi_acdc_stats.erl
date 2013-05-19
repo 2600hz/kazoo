@@ -16,6 +16,7 @@
          ,call_processed/1, call_processed_v/1
 
          ,current_calls_req/1, current_calls_req_v/1
+         ,current_calls_err/1, current_calls_err_v/1
          ,current_calls_resp/1, current_calls_resp_v/1
         ]).
 
@@ -30,6 +31,7 @@
          ,publish_call_processed/1, publish_call_processed/2
 
          ,publish_current_calls_req/1, publish_current_calls_req/2
+         ,publish_current_calls_err/2, publish_current_calls_err/3
          ,publish_current_calls_resp/2, publish_current_calls_resp/3
         ]).
 
@@ -148,7 +150,10 @@ call_processed_v(JObj) ->
     call_processed_v(wh_json:to_proplist(JObj)).
 
 -define(CURRENT_CALLS_REQ_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_CURRENT_CALLS_REQ_HEADERS, [<<"Queue-ID">>]).
+-define(OPTIONAL_CURRENT_CALLS_REQ_HEADERS, [<<"Queue-ID">>, <<"Agent-ID">>
+                                             ,<<"Status">>
+                                             ,<<"Start-Range">>, <<"End-Range">>
+                                            ]).
 -define(CURRENT_CALLS_REQ_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
                                    ,{<<"Event-Name">>, <<"current_calls_req">>}
                                   ]).
@@ -170,6 +175,30 @@ current_calls_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CURRENT_CALLS_REQ_HEADERS, ?CURRENT_CALLS_REQ_VALUES, ?CURRENT_CALLS_REQ_TYPES);
 current_calls_req_v(JObj) ->
     current_calls_req_v(wh_json:to_proplist(JObj)).
+
+-define(CURRENT_CALLS_ERR_HEADERS, [<<"Error-Reason">>]).
+-define(OPTIONAL_CURRENT_CALLS_ERR_HEADERS, []).
+-define(CURRENT_CALLS_ERR_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
+                                   ,{<<"Event-Name">>, <<"current_calls_err">>}
+                                  ]).
+-define(CURRENT_CALLS_ERR_TYPES, []).
+
+-spec current_calls_err(api_terms()) ->
+                               {'ok', iolist()} |
+                               {'error', string()}.
+current_calls_err(Props) when is_list(Props) ->
+    case current_calls_err_v(Props) of
+        'true' -> wh_api:build_message(Props, ?CURRENT_CALLS_ERR_HEADERS, ?OPTIONAL_CURRENT_CALLS_ERR_HEADERS);
+        'false' -> {'error', "Proplist failed validation for current_calls_err"}
+    end;
+current_calls_err(JObj) ->
+    current_calls_err(wh_json:to_proplist(JObj)).
+
+-spec current_calls_err_v(api_terms()) -> boolean().
+current_calls_err_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CURRENT_CALLS_ERR_HEADERS, ?CURRENT_CALLS_ERR_VALUES, ?CURRENT_CALLS_ERR_TYPES);
+current_calls_err_v(JObj) ->
+    current_calls_err_v(wh_json:to_proplist(JObj)).
 
 -define(CURRENT_CALLS_RESP_HEADERS, [<<"Query-Time">>]).
 -define(OPTIONAL_CURRENT_CALLS_RESP_HEADERS, [<<"Waiting">>, <<"Handled">>
@@ -270,6 +299,12 @@ publish_current_calls_req(JObj) ->
 publish_current_calls_req(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?CURRENT_CALLS_REQ_VALUES, fun current_calls_req/1),
     amqp_util:whapps_publish(query_stat_routing_key(API), Payload, ContentType).
+
+publish_current_calls_err(RespQ, JObj) ->
+    publish_current_calls_err(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_current_calls_err(RespQ, API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?CURRENT_CALLS_ERR_VALUES, fun current_calls_err/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 publish_current_calls_resp(RespQ, JObj) ->
     publish_current_calls_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
