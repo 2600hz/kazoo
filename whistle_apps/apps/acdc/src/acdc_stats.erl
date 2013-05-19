@@ -70,25 +70,25 @@
 -type agent_misses() :: [agent_miss(),...] | [].
 
 -record(call_stat, {
-          id :: api_binary() %% call_id-queue_id
-          ,call_id :: api_binary()
-          ,acct_id :: api_binary()
-          ,queue_id :: api_binary()
+          id :: api_binary() | '_' %% call_id::queue_id
+          ,call_id :: api_binary() | '_'
+          ,acct_id :: api_binary() | '$1' | '_'
+          ,queue_id :: api_binary() | '$2' | '_'
 
-          ,agent_id :: api_binary() % the handling agent
+          ,agent_id :: api_binary() | '_' % the handling agent
 
-          ,entered_timestamp = wh_util:current_tstamp() :: pos_integer()
-          ,abandoned_timestamp = wh_util:current_tstamp() :: pos_integer()
-          ,handled_timestamp = wh_util:current_tstamp() :: pos_integer()
-          ,processed_timestamp = wh_util:current_tstamp() :: pos_integer()
+          ,entered_timestamp = wh_util:current_tstamp() :: pos_integer() | '$1' | '_'
+          ,abandoned_timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
+          ,handled_timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
+          ,processed_timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
 
-          ,abandoned_reason :: abandon_reason()
+          ,abandoned_reason :: abandon_reason() | '_'
 
-          ,misses = [] :: agent_misses()
+          ,misses = [] :: agent_misses() | '_'
 
-          ,status :: api_binary()
-          ,caller_id_name :: api_binary()
-          ,caller_id_number :: api_binary()
+          ,status :: api_binary() | '$2' | '_'
+          ,caller_id_name :: api_binary() | '_'
+          ,caller_id_number :: api_binary() | '_'
          }).
 -type call_stat() :: #call_stat{}.
 
@@ -291,6 +291,7 @@ query_queue_calls(RespQ, MsgId, AcctId, QueueId) ->
              }],
     query_calls(RespQ, MsgId, Match).
 
+-spec query_calls(ne_binary(), ne_binary(), ets:match_spec()) -> 'ok'.
 query_calls(RespQ, MsgId, Match) ->
     case ets:select(table_id(), Match) of
         [] -> lager:debug("no stats found, ignoring req from ~s", [RespQ]);
@@ -330,18 +331,20 @@ archive_data(Srv) ->
         Stats ->
             gen_listener:cast(Srv, {'remove', Match}),
             ToSave = lists:foldl(fun archive_fold/2, dict:new(), Stats),
-            lager:debug("saving ~p", [dict:to_list(ToSave)]),
             [couch_mgr:save_docs(db_name(Acct), Docs) || {Acct, Docs} <- dict:to_list(ToSave)]
     end.
 
+-spec query_fold(call_stat(), dict()) -> dict().
 query_fold(#call_stat{status=Status}=Stat, Acc) ->
     Doc = stat_to_doc(Stat),
     dict:update(Status, fun(L) -> [Doc | L] end, [Doc], Acc).
 
+-spec archive_fold(call_stat(), dict()) -> dict().
 archive_fold(#call_stat{acct_id=AcctId}=Stat, Acc) ->
     Doc = stat_to_doc(Stat),
     dict:update(AcctId, fun(L) -> [Doc | L] end, [Doc], Acc).
 
+-spec stat_to_doc(call_stat()) -> wh_json:object().
 stat_to_doc(#call_stat{id=Id
                        ,call_id=CallId
                        ,acct_id=AcctId
@@ -386,6 +389,8 @@ wait_time(_, _, _) -> 'undefined'.
 talk_time(H, P) when is_integer(H), is_integer(P) -> P - H;
 talk_time(_, _) -> 'undefined'.
 
+-spec misses_to_docs(agent_misses()) -> wh_json:objects().
+-spec miss_to_doc(agent_miss()) -> wh_json:object().
 misses_to_docs(Misses) -> [miss_to_doc(Miss) || Miss <- Misses].
 miss_to_doc(#agent_miss{agent_id=AgentId
                         ,miss_reason=Reason
@@ -396,15 +401,19 @@ miss_to_doc(#agent_miss{agent_id=AgentId
                        ,{<<"timestamp">>, T}
                       ]).
 
+-spec init_db(ne_binary()) -> 'ok'.
 init_db(AcctId) ->
     DbName = db_name(AcctId),
     lager:debug("created db ~s: ~s", [DbName, couch_mgr:db_create(DbName)]),
     lager:debug("revised docs in ~s: ~p", [AcctId, couch_mgr:revise_views_from_folder(DbName, 'acdc')]).
 
+-spec db_name(ne_binary()) -> ne_binary().
 db_name(Acct) ->
     <<A:2/binary, B:2/binary, Rest/binary>> = wh_util:format_account_id(Acct, 'raw'),
     <<"acdc%2F",A/binary,"%2F",B/binary,"%2F", Rest/binary>>.
 
+-spec stat_id(wh_json:object()) -> ne_binary().
+-spec stat_id(ne_binary(), ne_binary()) -> ne_binary().
 stat_id(JObj) ->
     stat_id(wh_json:get_value(<<"Call-ID">>, JObj)
             ,wh_json:get_value(<<"Queue-ID">>, JObj)
@@ -436,6 +445,7 @@ handle_missed_stat(JObj, Props) ->
             update_stat(Id, Updates, Props)
     end.
 
+-spec create_miss(wh_json:object()) -> agent_miss().
 create_miss(JObj) ->
     #agent_miss{
        agent_id = wh_json:get_value(<<"Agent-ID">>, JObj)
@@ -476,12 +486,14 @@ handle_processed_stat(JObj, Props) ->
                 ]),
     update_stat(Id, Updates, Props).
 
+-spec find_stat(ne_binary()) -> 'undefined' | call_stat().
 find_stat(Id) ->
     case ets:lookup(table_id(), Id) of
         [] -> 'undefined';
         [Stat] -> Stat
     end.
 
+-spec create_stat(ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
 create_stat(Id, JObj, Props) ->
     gen_listener:cast(props:get_value('server', Props)
                       ,{'create', #call_stat{
@@ -497,6 +509,7 @@ create_stat(Id, JObj, Props) ->
                                     }
                        }).
 
+-spec update_stat(ne_binary(), wh_proplist(), wh_proplist()) -> 'ok'.
 update_stat(Id, Updates, Props) ->
     gen_listener:cast(props:get_value('server', Props)
                       ,{'update', Id, Updates}
