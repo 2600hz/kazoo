@@ -171,10 +171,10 @@ current_calls_req_v(Prop) when is_list(Prop) ->
 current_calls_req_v(JObj) ->
     current_calls_req_v(wh_json:to_proplist(JObj)).
 
--define(CURRENT_CALLS_RESP_HEADERS, [<<"Waiting">>, <<"Handled">>
-                                     ,<<"Abandoned">>, <<"Processed">>
-                                    ]).
--define(OPTIONAL_CURRENT_CALLS_RESP_HEADERS, []).
+-define(CURRENT_CALLS_RESP_HEADERS, [<<"Query-Time">>]).
+-define(OPTIONAL_CURRENT_CALLS_RESP_HEADERS, [<<"Waiting">>, <<"Handled">>
+                                              ,<<"Abandoned">>, <<"Processed">>
+                                             ]).
 -define(CURRENT_CALLS_RESP_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
                                     ,{<<"Event-Name">>, <<"current_calls_resp">>}
                                    ]).
@@ -296,5 +296,8 @@ query_stat_routing_key(JObj) ->
     query_stat_routing_key(wh_json:get_value(<<"Account-ID">>, JObj)
                            ,wh_json:get_value(<<"Queue-ID">>, JObj)
                           ).
+
+query_stat_routing_key(AcctId, 'undefined') ->
+    <<"acdc_stats.query.", AcctId/binary, ".all">>;
 query_stat_routing_key(AcctId, QID) ->
     <<"acdc_stats.query.", AcctId/binary, ".", QID/binary>>.
