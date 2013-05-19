@@ -8,16 +8,11 @@
 %%%-------------------------------------------------------------------
 -module(acdc_maintenance).
 
--export([current_calls/0, current_calls/1, current_calls/2]).
+-export([current_calls/1, current_calls/2]).
 
 -include("acdc.hrl").
 
 -define(KEYS, [<<"Waiting">>, <<"Handled">>, <<"Processed">>, <<"Abandoned">>]).
-
-current_calls() ->
-    Accts = whapps_util:get_all_accounts('raw'),
-    _ = [?MODULE:current_calls(Acct) || Acct <- Accts],
-    'ok'.
 
 current_calls(AcctId) ->
     Req = [{<<"Account-ID">>, AcctId}
@@ -25,12 +20,17 @@ current_calls(AcctId) ->
           ],
     get_and_show(AcctId, <<"all">>, Req).
 
-current_calls(AcctId, QueueId) ->
+current_calls(AcctId, QueueId) when is_binary(QueueId) ->
     Req = [{<<"Account-ID">>, AcctId}
            ,{<<"Queue-ID">>, QueueId}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    get_and_show(AcctId, QueueId, Req).
+    get_and_show(AcctId, QueueId, Req);
+current_calls(AcctId, Props) ->
+    Req = [{<<"Account-ID">>, AcctId}
+           | Props ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    get_and_show(AcctId, <<"custom">>, Req).
 
 get_and_show(AcctId, QueueId, Req) ->
     put('callid', <<"acdc_maint.", AcctId/binary, ".", QueueId/binary>>),
@@ -64,5 +64,7 @@ show_call_stat_cat([K|Ks], Resp) ->
 
 show_stats([]) -> 'ok';
 show_stats([S|Ss]) ->
-    _ = [lager:info("~s: ~p", [K, V]) || {K, V} <- wh_json:to_proplist(S)],
+    _ = [lager:info("~s: ~p", [K, V])
+         || {K, V} <- wh_json:to_proplist(wh_doc:public_fields(S))
+        ],
     show_stats(Ss).
