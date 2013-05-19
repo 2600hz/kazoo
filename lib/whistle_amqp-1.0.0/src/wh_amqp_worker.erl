@@ -55,14 +55,14 @@
 
 -type publish_fun() :: fun((api_terms()) -> _).
 -type validate_fun() :: fun((api_terms()) -> boolean()).
--type collect_util_fun() :: fun((wh_json:objects()) -> boolean()).
+-type collect_until_fun() :: fun((wh_json:objects()) -> boolean()).
 
--type collect_util() :: collect_util_fun() | text() | {text(), validate_fun()}.
--type timeout_or_until() :: wh_timeout() | collect_util().
+-type collect_until() :: collect_until_fun() | text() | {text(), validate_fun()}.
+-type timeout_or_until() :: wh_timeout() | collect_until().
 
 -export_type([publish_fun/0
               ,validate_fun/0
-              ,collect_util/0
+              ,collect_until/0
               ,timeout_or_until/0
              ]).
 
@@ -71,7 +71,7 @@
                 ,client_ref :: reference()
                 ,client_from :: {pid(), reference()}
                 ,client_vfun :: validate_fun()
-                ,client_cfun = collect_until_timeout() :: collect_util_fun()
+                ,client_cfun = collect_until_timeout() :: collect_until_fun()
                 ,responses :: wh_json:objects()
                 ,neg_resp :: wh_json:object()
                 ,neg_resp_count = 0 :: non_neg_integer()
@@ -151,7 +151,7 @@ call_collect(Srv, Req, PubFun, {_, _}=Until) ->
 call_collect(Srv, Req, PubFun, Timeout) ->
     call_collect(Srv, Req, PubFun, collect_until_timeout(), Timeout).
 
--spec call_collect(server_ref(), api_terms(), publish_fun(), collect_util(), wh_timeout()) -> 
+-spec call_collect(server_ref(), api_terms(), publish_fun(), collect_until(), wh_timeout()) -> 
                           {'ok', wh_json:objects()} |
                           {'timeout', wh_json:objects()} |
                           {'error', _}.
@@ -193,16 +193,16 @@ cast(Srv, Req, PubFun) ->
 -spec any_resp(any()) -> 'true'.
 any_resp(_) -> 'true'.
 
--spec collect_until_timeout() -> collect_util_fun().
+-spec collect_until_timeout() -> collect_until_fun().
 collect_until_timeout() -> fun(_) -> 'false' end.
 
--spec collect_from_whapp(text()) -> collect_util_fun().
+-spec collect_from_whapp(text()) -> collect_until_fun().
 collect_from_whapp(Whapp) ->
     Count = wh_nodes:whapp_count(Whapp),
     lager:debug("attempting to collect ~p responses from ~s", [Count, Whapp]),
     fun(Responses) -> length(Responses) >= Count end.
 
--spec collect_from_whapp_or_validate(text(), validate_fun()) -> collect_util_fun().
+-spec collect_from_whapp_or_validate(text(), validate_fun()) -> collect_until_fun().
 collect_from_whapp_or_validate(Whapp, VFun) ->
     Count = wh_nodes:whapp_count(Whapp),
     lager:debug("attempting to collect ~p responses from ~s or the first valid", [Count, Whapp]),
@@ -216,7 +216,8 @@ handle_resp(JObj, Props) ->
     gen_listener:cast(props:get_value('server', Props)
                       ,{'event', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
 
--spec send_request(ne_binary(), ne_binary(), publish_fun(), wh_proplist()) -> 'ok' | {'EXIT', _}.
+-spec send_request(ne_binary(), ne_binary(), publish_fun(), wh_proplist()) ->
+                          'ok' | {'EXIT', _}.
 send_request(CallID, Self, PublishFun, ReqProp) when is_function(PublishFun, 1) ->
     put('callid', CallID),
     Prop = [{<<"Server-ID">>, Self}
