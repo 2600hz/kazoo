@@ -167,10 +167,15 @@ key_pos() -> #call_stat.id.
                    ,{'acdc_stats', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_stat'}
-                      ,[{<<"acdc_stat">>, <<"*">>}]
+                      ,[{<<"acdc_stat">>, <<"waiting">>}
+                        ,{<<"acdc_stat">>, <<"missed">>}
+                        ,{<<"acdc_stat">>, <<"abandoned">>}
+                        ,{<<"acdc_stat">>, <<"handled">>}
+                        ,{<<"acdc_stat">>, <<"processed">>}
+                       ]
                      }
                      ,{{?MODULE, 'handle_query'}
-                       ,[{<<"acdc_stat">>, <<"current_call_req">>}]
+                       ,[{<<"acdc_stat">>, <<"current_calls_req">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -200,9 +205,11 @@ handle_query(JObj, _Prop) ->
     'true' = wapi_acdc_stats:current_calls_req_v(JObj),
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+
     case wh_json:get_value(<<"Queue-ID">>, JObj) of
-        'undefined' -> query_account_calls(RespQ, AcctId);
-        QueueId -> query_queue_calls(RespQ, AcctId, QueueId)
+        'undefined' -> query_account_calls(RespQ, MsgId, AcctId);
+        QueueId -> query_queue_calls(RespQ, MsgId, AcctId, QueueId)
     end.
 
 -record(state, {
@@ -236,15 +243,20 @@ handle_cast({'remove', [{M, P, _}]}, State) ->
     N = ets:select_delete(table_id(), Match),
     lager:debug("removed (or not): ~p", [N]),
     {'noreply', State};
+handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'created_queue',_Q}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Req, State) ->
-    lager:debug("unhandling cast: ~p", [_Req]),
+    lager:debug("unhandled cast: ~p", [_Req]),
     {'noreply', State}.
 
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     lager:debug("ETS control transferred to me for writing"),
     {'noreply', State};
 handle_info(?ARCHIVE_MSG, State) ->
-    lager:debug("time to archive stats older than ~bs", [?ARCHIVE_WINDOW]),
     Self = self(),
     _ = spawn(?MODULE, 'archive_data', [Self]),
     {'noreply', State#state{archive_ref=start_archive_timer()}};
@@ -261,15 +273,15 @@ terminate(_Reason, _) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-query_account_calls(RespQ, AcctId) ->
+query_account_calls(RespQ, MsgId, AcctId) ->
     lager:debug("querying for calls for account ~s", [AcctId]),
 
     Match = [{#call_stat{acct_id='$1', _='_'}
               ,[{'=:=', '$1', {'const', AcctId}}]
               ,['$_']
              }],
-    query_calls(RespQ, Match).
-query_queue_calls(RespQ, AcctId, QueueId) ->
+    query_calls(RespQ, MsgId, Match).
+query_queue_calls(RespQ, MsgId, AcctId, QueueId) ->
     lager:debug("querying for calls for queue ~s in ~s", [QueueId, AcctId]),
     Match = [{#call_stat{acct_id='$1', queue_id='$2', _='_'}
               ,[{'=:=', '$1', {'const', AcctId}}
@@ -277,9 +289,9 @@ query_queue_calls(RespQ, AcctId, QueueId) ->
                ]
               ,['$_']
              }],
-    query_calls(RespQ, Match).
+    query_calls(RespQ, MsgId, Match).
 
-query_calls(RespQ, Match) ->
+query_calls(RespQ, MsgId, Match) ->
     case ets:select(table_id(), Match) of
         [] -> lager:debug("no stats found, ignoring req from ~s", [RespQ]);
         Stats ->
@@ -294,8 +306,11 @@ query_calls(RespQ, Match) ->
                     ,{<<"Handled">>, dict:fetch(<<"handled">>, QueryResult)}
                     ,{<<"Abandoned">>, dict:fetch(<<"abandoned">>, QueryResult)}
                     ,{<<"Processed">>, dict:fetch(<<"processed">>, QueryResult)}
+                    ,{<<"Query-Time">>, wh_util:current_tstamp()}
+                    ,{<<"Msg-ID">>, MsgId}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
+
             wapi_acdc_stats:publish_current_calls_resp(RespQ, Resp)
     end.
 
@@ -303,8 +318,6 @@ archive_data(Srv) ->
     put('callid', <<"acdc_stats.archiver">>),
 
     StatsBefore = wh_util:current_tstamp() - ?ARCHIVE_WINDOW,
-    lager:debug("archiving stats prior to ~b", [StatsBefore]),
-
     Match = [{#call_stat{entered_timestamp='$1', status='$2', _='_'}
               ,[{'=<', '$1', StatsBefore}
                 ,{'=/=', '$2', {'const', <<"waiting">>}}
@@ -313,7 +326,7 @@ archive_data(Srv) ->
               ,['$_']
              }],
     case ets:select(table_id(), Match) of
-        [] -> lager:debug("no stats to be archived at this time");
+        [] -> 'ok';
         Stats ->
             gen_listener:cast(Srv, {'remove', Match}),
             ToSave = lists:foldl(fun archive_fold/2, dict:new(), Stats),
