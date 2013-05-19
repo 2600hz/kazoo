@@ -80,11 +80,11 @@
           ,agent_id :: api_binary() | '$3' | '_' % the handling agent
 
           ,entered_timestamp = wh_util:current_tstamp() :: pos_integer() | '$1' | '$5' | '_'
-          ,abandoned_timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
-          ,handled_timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
-          ,processed_timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
+          ,abandoned_timestamp :: api_integer() | '_'
+          ,handled_timestamp :: api_integer() | '_'
+          ,processed_timestamp :: api_integer() | '_'
 
-          ,abandoned_reason :: abandon_reason() | '_'
+          ,abandoned_reason :: api_binary() | '_'
 
           ,misses = [] :: agent_misses() | '_'
 
