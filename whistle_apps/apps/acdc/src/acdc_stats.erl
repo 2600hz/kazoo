@@ -343,8 +343,7 @@ match_builder_fold(<<"Start-Range">>, Start, {CallStat, Contstraints}) ->
             }
     catch
         _:_ ->
-            {'error', wh_json:from_list([{<<"Start-Range">>, <<"supplied value is not an integer">>}
-                                        ])}
+            {'error', wh_json:from_list([{<<"Start-Range">>, <<"supplied value is not an integer">>}])}
     end;
 match_builder_fold(<<"End-Range">>, End, {CallStat, Contstraints}) ->
     Now = wh_util:current_tstamp(),
@@ -366,8 +365,7 @@ match_builder_fold(<<"End-Range">>, End, {CallStat, Contstraints}) ->
             }
     catch
         _:_ ->
-            {'error', wh_json:from_list([{<<"End-Range">>, <<"supplied value is not an integer">>}
-                                        ])}
+            {'error', wh_json:from_list([{<<"End-Range">>, <<"supplied value is not an integer">>}])}
     end;
 match_builder_fold(_, _, Acc) -> Acc.
 
@@ -381,7 +379,13 @@ is_valid_status(S) ->
 -spec query_calls(ne_binary(), ne_binary(), ets:match_spec()) -> 'ok'.
 query_calls(RespQ, MsgId, Match) ->
     case ets:select(table_id(), Match) of
-        [] -> lager:debug("no stats found, ignoring req from ~s", [RespQ]);
+        [] ->
+            lager:debug("no stats found, sorry ~s", [RespQ]),
+            Resp = [{<<"Query-Time">>, wh_util:current_tstamp()}
+                    ,{<<"Msg-ID">>, MsgId}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_acdc_stats:publish_current_calls_resp(RespQ, Resp);
         Stats ->
             Dict = dict:from_list([{<<"waiting">>, []}
                                    ,{<<"handled">>, []}
