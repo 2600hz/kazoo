@@ -33,6 +33,7 @@
                           ,?HTTP_DELETE
                           ,?HTTP_HEAD
                           ,?HTTP_PATCH
+                          ,?HTTP_OPTIONS
                          ]).
 
 -define(CROSSBAR_CACHE, 'crossbar_cache').
