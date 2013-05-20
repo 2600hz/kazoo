@@ -179,7 +179,7 @@ content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    validate_request(undefined, Context).
+    validate_request('undefined', Context).
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?STATS_PATH_TOKEN) ->
     fetch_all_queue_stats(Context);
@@ -207,8 +207,8 @@ validate_eavesdrop_on_call(#cb_context{req_data=Data}=Context) ->
           ,{fun is_valid_mode/2, [Context, Data]}
          ],
     case all_true(Fs) of
-        true -> Context#cb_context{resp_status=success};
-        {false, Context1} -> Context1
+        'true' -> Context#cb_context{resp_status='success'};
+        {'false', Context1} -> Context1
     end.
 
 validate_eavesdrop_on_queue(#cb_context{req_data=Data}=Context, QueueId) ->
@@ -217,34 +217,34 @@ validate_eavesdrop_on_queue(#cb_context{req_data=Data}=Context, QueueId) ->
           ,{fun is_valid_mode/2, [Context, Data]}
          ],
     case all_true(Fs) of
-        true ->
-            Context#cb_context{resp_status=success};
-        {false, Context1} -> Context1
+        'true' ->
+            Context#cb_context{resp_status='success'};
+        {'false', Context1} -> Context1
     end.
 
 -spec all_true([{fun(), list()},...]) ->
                             'true' |
                             {'false', cb_context:context()}.
 all_true(Fs) ->
-    lists:foldl(fun({F, Args}, true) -> apply(F, Args);
+    lists:foldl(fun({F, Args}, 'true') -> apply(F, Args);
                    (_, Acc) -> Acc
-                end, true, Fs).
+                end, 'true', Fs).
 
 is_valid_mode(Context, Data) ->
     case wapi_resource:is_valid_mode(wh_json:get_value(<<"mode">>, Data, <<"listen">>)) of
-        true -> true;
-        false -> {false
-                  ,cb_context:add_validation_error(<<"mode">>, <<"enum">>
-                                                   ,<<"enum:Value not found in enumerated list of values">>
-                                                   ,Context
-                                                  )
-                 }
+        'true' -> 'true';
+        'false' -> {'false'
+                    ,cb_context:add_validation_error(<<"mode">>, <<"enum">>
+                                                     ,<<"enum:Value not found in enumerated list of values">>
+                                                     ,Context
+                                                    )
+                   }
     end.
 
 is_valid_call(Context, Data) ->
     case wh_json:get_binary_value(<<"call_id">>, Data) of
-        undefined ->
-            {false
+        'undefined' ->
+            {'false'
              ,cb_context:add_validation_error(<<"call_id">>, <<"required">>
                                               ,<<"required:Field is required but missing">>
                                               ,Context
@@ -252,24 +252,24 @@ is_valid_call(Context, Data) ->
             };
         CallId ->
             case whapps_call_command:b_call_status(CallId) of
-                {error, _E} ->
+                {'error', _E} ->
                     lager:debug("is not valid call: ~p", [_E]),
-                    {false
+                    {'false'
                      ,cb_context:add_validation_error(<<"call_id">>, <<"not_found">>
                                                       ,<<"not_found:Call was not found">>
                                                       ,Context
                                                      )
                     };
-                {ok, _} -> true
+                {'ok', _} -> 'true'
             end
     end.
 
 is_valid_queue(Context, ?NE_BINARY = QueueId) ->
     AcctDb = cb_context:account_db(Context),
     case couch_mgr:open_cache_doc(AcctDb, QueueId) of
-        {ok, QueueJObj} -> is_valid_queue(Context, QueueJObj);
-        {error, _} ->
-            {false
+        {'ok', QueueJObj} -> is_valid_queue(Context, QueueJObj);
+        {'error', _} ->
+            {'false'
              ,cb_context:add_validation_error(<<"queue_id">>, <<"not_found">>
                                               ,<<"not_found:Queue was not found">>
                                               ,Context
@@ -278,11 +278,11 @@ is_valid_queue(Context, ?NE_BINARY = QueueId) ->
     end;
 is_valid_queue(Context, QueueJObj) ->
     case wh_json:get_value(<<"pvt_type">>, QueueJObj) of
-        <<"queue">> -> true;
+        <<"queue">> -> 'true';
         _ ->
-            {false
+            {'false'
              ,cb_context:add_validation_error(<<"queue_id">>, <<"type">>
-                                                  ,<<"type:Id did not represent a queue">>
+                                              ,<<"type:Id did not represent a queue">>
                                               ,Context
                                              )
             }
@@ -293,9 +293,9 @@ is_valid_endpoint(Context, DataJObj) ->
     Id = wh_json:get_value(<<"id">>, DataJObj),
 
     case couch_mgr:open_cache_doc(AcctDb, Id) of
-        {ok, CallMeJObj} -> is_valid_endpoint_type(Context, CallMeJObj);
-        {error, _} ->
-            {false
+        {'ok', CallMeJObj} -> is_valid_endpoint_type(Context, CallMeJObj);
+        {'error', _} ->
+            {'false'
              ,cb_context:add_validation_error(<<"id">>, <<"not_found">>
                                               ,<<"not_found:Id was not found">>
                                               ,Context
@@ -304,10 +304,10 @@ is_valid_endpoint(Context, DataJObj) ->
     end.
 is_valid_endpoint_type(Context, CallMeJObj) ->
     case wh_json:get_value(<<"pvt_type">>, CallMeJObj) of
-        <<"device">> -> true;
+        <<"device">> -> 'true';
         %%<<"user">> -> true;
         _ ->
-            {false
+            {'false'
              ,cb_context:add_validation_error(<<"id">>, <<"type">>
                                               ,<<"type:Id did not represent a valid endpoint">>
                                               ,Context
@@ -358,13 +358,13 @@ eavesdrop_req(Context, Prop) ->
                                        ,2000
                                       )
     of
-        {ok, Resp} -> crossbar_util:response(filter_response_fields(Resp), Context);
-        {error, timeout} ->
-            cb_context:add_system_error(timeout
-                                        ,[{details, <<"eavesdrop failed to start">>}]
+        {'ok', Resp} -> crossbar_util:response(filter_response_fields(Resp), Context);
+        {'error', 'timeout'} ->
+            cb_context:add_system_error('timeout'
+                                        ,[{'details', <<"eavesdrop failed to start">>}]
                                         ,Context
                                        );
-        {error, E} -> crossbar_util:response(error, <<"error">>, 500, E, Context)
+        {'error', E} -> crossbar_util:response('error', <<"error">>, 500, E, Context)
     end.
 
 -define(REMOVE_FIELDS, [<<"Server-ID">>
@@ -420,7 +420,7 @@ delete(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     case crossbar_doc:load(Id, Context) of
-        #cb_context{resp_status=success}=Context1 ->
+        #cb_context{resp_status='success'}=Context1 ->
             load_queue_agents(Id, Context1);
         Context1 -> Context1
     end.
@@ -439,7 +439,7 @@ check_queue_schema(QueueId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(QueueId, C) end,
     cb_context:validate_request_data(<<"queues">>, Context, OnSuccess).
 
-on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
+on_successful_validation('undefined', #cb_context{doc=Doc}=Context) ->
     Props = [{<<"pvt_type">>, <<"queue">>}],
     Context#cb_context{doc=wh_json:set_values(Props, Doc)};
 on_successful_validation(QueueId, #cb_context{}=Context) -> 
@@ -453,13 +453,13 @@ on_successful_validation(QueueId, #cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 load_queue_agents(Id, #cb_context{resp_data=Queue}=Context) ->
     case load_agent_roster(Id, Context) of
-        #cb_context{resp_status=success, resp_data=Agents, doc=_D} ->
+        #cb_context{resp_status='success', resp_data=Agents, doc=_D} ->
             Context#cb_context{resp_data=wh_json:set_value(<<"agents">>, Agents, Queue)};
         _ -> Context
     end.
 
 load_agent_roster(Id, Context) ->
-    crossbar_doc:load_view(?CB_AGENTS_LIST, [{key, Id}]
+    crossbar_doc:load_view(?CB_AGENTS_LIST, [{'key', Id}]
                            ,Context
                            ,fun normalize_agents_results/2
                           ).
@@ -485,10 +485,10 @@ add_queue_to_agents(Id, #cb_context{req_data=[_|_]=AgentIds}=Context) ->
     add_queue_to_agents(Id, Context, AddAgentIds).
 
 add_queue_to_agents(_Id, Context, []) ->
-    Context#cb_context{resp_status=success, doc=[]};
+    Context#cb_context{resp_status='success', doc=[]};
 add_queue_to_agents(Id, Context, AgentIds) ->
     case crossbar_doc:load(AgentIds, Context) of
-        #cb_context{resp_status=success
+        #cb_context{resp_status='success'
                     ,doc=Agents
                    }=Context1 ->
             lager:debug("fetched agents: ~p", [Agents]),
@@ -500,8 +500,8 @@ maybe_add_queue_to_agent(Id, A) ->
     Qs = case wh_json:get_value(<<"queues">>, A) of
              L when is_list(L) ->
                  case lists:member(Id, L) of
-                     true -> L;
-                     false -> [Id | L]
+                     'true' -> L;
+                     'false' -> [Id | L]
                  end;
              _ -> [Id]
          end,
@@ -511,7 +511,7 @@ maybe_add_queue_to_agent(Id, A) ->
 -spec maybe_rm_agents(ne_binary(), cb_context:context(), wh_json:json_strings()) -> cb_context:context().
 maybe_rm_agents(_Id, Context, []) ->
     lager:debug("no agents to remove from the queue ~s", [_Id]),
-    Context#cb_context{resp_status=success};
+    Context#cb_context{resp_status='success'};
 maybe_rm_agents(Id, Context, AgentIds) ->
     #cb_context{}=RMContext = rm_queue_from_agents(Id, Context#cb_context{req_data=AgentIds}),
     #cb_context{resp_status=_S1}=RMContext1 = crossbar_doc:save(RMContext),
@@ -523,7 +523,7 @@ rm_queue_from_agents(_Id, #cb_context{req_data=[]}=Context) ->
 rm_queue_from_agents(Id, #cb_context{req_data=[_|_]=AgentIds}=Context) ->
     lager:debug("remove agents: ~p", [AgentIds]),
     case crossbar_doc:load(AgentIds, Context) of
-        #cb_context{resp_status=success
+        #cb_context{resp_status='success'
                     ,doc=Agents
                    }=Context1 ->
             lager:debug("removed agents successfully"),
@@ -551,28 +551,21 @@ fetch_all_queue_stats(Context) ->
     end.
 
 fetch_all_current_queue_stats(Context) ->
-    AcctId = cb_context:account_id(Context),
+    lager:debug("querying for all recent stats"),
     Req = props:filter_undefined(
-            [{<<"Account-ID">>, AcctId}
+            [{<<"Account-ID">>, cb_context:account_id(Context)}
              ,{<<"Status">>, cb_context:req_value(Context, <<"status">>)}
              ,{<<"Agent-ID">>, cb_context:req_value(Context, <<"agent_id">>)}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
-    case whapps_util:amqp_pool_request(Req
-                                       ,fun wapi_acdc_stats:publish_current_calls_req/1
-                                       ,fun wapi_acdc_stats:current_calls_resp_v/1
-                                      )
-    of
-        {'error', _} ->
-            cb_context:add_system_error('datastore_unreachable', Context);
-        {'ok', Resp} -> format_stats(Context, Resp)
-    end.
+    fetch_from_amqp(Context, Req).
 
 format_stats(Context, Resp) ->
-    Stats = wh_json:get_value(<<"Processed">>, Resp, []) ++
+    Stats =
         wh_json:get_value(<<"Handled">>, Resp, []) ++
+        wh_json:get_value(<<"Abandoned">>, Resp, []) ++
         wh_json:get_value(<<"Waiting">>, Resp, []) ++
-        wh_json:get_value(<<"Abandoned">>, Resp, []),
+        wh_json:get_value(<<"Processed">>, Resp, []),
     cb_context:set_resp_status(
       cb_context:set_resp_data(Context, wh_doc:public_fields(Stats))
       ,'success'
@@ -587,21 +580,48 @@ fetch_ranged_queue_stats(Context, StartRange) ->
     To = wh_util:to_integer(cb_context:req_value(Context, <<"end_range">>, Now)),
     MaxFrom = To - MaxRange,
 
-    From = case wh_util:to_integer(StartRange) of
-               F when F > To -> MaxFrom; % created_from comes after created_to
-               F when F < MaxFrom -> MaxFrom; % range is too large
-               F when F < Past, To > Past -> Past; % range overlaps archived/real data, use real
-               F -> F
-           end,
+    case wh_util:to_integer(StartRange) of
+        F when F > To ->
+            %% start_range is larger than end_range
+            cb_context:add_validation_error(<<"end_range">>, <<"maximum">>
+                                            ,<<"value is greater than start_range">>, Context
+                                           );
+        F when F < MaxFrom ->
+            %% Range is too big
+            fetch_ranged_queue_stats(Context, MaxFrom, To, MaxFrom >= Past);
+        F when F < Past, To > Past ->
+            %% range overlaps archived/real data, use real
+            fetch_ranged_queue_stats(Context, Past, To, Past >= Past);
+        F ->
+            fetch_ranged_queue_stats(Context, F, To, F >= Past)
+    end.
 
-    lager:debug("ranged query ~b to ~b", [From, To]),
-    fetch_ranged_queue_stats(Context, From, To, From >= Past).
 fetch_ranged_queue_stats(Context, From, To, 'true') ->
-    lager:debug("ranged query from ~b to ~b of current stats", [From, To]),
-    Context;
+    lager:debug("ranged query from ~b to ~b(~b) of current stats (now ~b)", [From, To, To-From, wh_util:current_tstamp()]),
+    Req = props:filter_undefined(
+            [{<<"Account-ID">>, cb_context:account_id(Context)}
+             ,{<<"Status">>, cb_context:req_value(Context, <<"status">>)}
+             ,{<<"Agent-ID">>, cb_context:req_value(Context, <<"agent_id">>)}
+             ,{<<"Start-Range">>, From}
+             ,{<<"End-Range">>, To}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ]),
+    fetch_from_amqp(Context, Req);
 fetch_ranged_queue_stats(Context, From, To, 'false') ->
     lager:debug("ranged query from ~b to ~b of archived stats", [From, To]),
     Context.
+
+fetch_from_amqp(Context, Req) ->
+    case whapps_util:amqp_pool_request(Req
+                                       ,fun wapi_acdc_stats:publish_current_calls_req/1
+                                       ,fun wapi_acdc_stats:current_calls_resp_v/1
+                                      )
+    of
+        {'error', _E} ->
+            lager:debug("failed to recv resp from AMQP: ~p", [_E]),
+            cb_context:add_system_error('datastore_unreachable', Context);
+        {'ok', Resp} -> format_stats(Context, Resp)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
