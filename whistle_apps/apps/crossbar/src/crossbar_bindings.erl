@@ -59,7 +59,7 @@
 
 %% {FullBinding, BindingPieces, QueueOfMods}
 %% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue()}
--type binding() :: {ne_binary(), ne_binaries(), queue()}. %% queue(Module::atom() | pid())
+-type binding() :: {ne_binary(), ne_binaries(), queue(), ne_binary()}. %% queue(Module::atom() | pid())
 -type bindings() :: [binding(),...] | [].
 
 -type payload() :: path_tokens() | % mapping over path tokens in URI
@@ -90,7 +90,16 @@
                         ,...] | [].
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
-    map_processor(Routing, Payload, ets:match(?MODULE, '$1')).
+    map_processor(Routing, Payload, get_bindings(Routing)).
+
+get_bindings(Routing) ->
+    [Vsn, Action | _] = binary:split(Routing, <<".">>, ['global']),
+
+    ets:select(?MODULE, [{ {'_', '_', '_', '$1'}
+                           ,[{'=:=', '$1', <<Vsn/binary, ".", Action/binary>>}]
+                           ,['$_']
+                         }]).
+%% ets:match(?MODULE, ['$_']).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -102,7 +111,7 @@ map(Routing, Payload) ->
 -type fold_results() :: payload().
 -spec fold(ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
-    fold_processor(Routing, Payload, ets:match(?MODULE, '$1')).
+    fold_processor(Routing, Payload, get_bindings(Routing)).
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -236,17 +245,19 @@ handle_call({'bind', Binding, Mod, Fun}, _, #state{}=State) ->
 
     case ets:lookup(?MODULE, Binding) of
         [] ->
-            BParts = lists:reverse(binary:split(Binding, <<".">>, ['global'])),
-            Bind = {Binding, BParts, queue:in(MF, queue:new())},
+            [Vsn, Action | _] = Pieces = binary:split(Binding, <<".">>, ['global']),
+            Prefix = <<Vsn/binary, ".", Action/binary>>,
+
+            Bind = {Binding, lists:reverse(Pieces), queue:in(MF, queue:new()), Prefix},
 
             ets:insert_new(?MODULE, Bind),
             {'reply', 'ok', State};
-        [{_, _, Subscribers}] ->
+        [{_, _, Subscribers, Prefix}] ->
             case queue:member(MF, Subscribers) of
                 'true' -> {'reply', {'error', 'exists'}, State};
                 'false' ->
                     BParts = lists:reverse(binary:split(Binding, <<".">>, ['global'])),
-                    Bind = {Binding, BParts, queue:in(MF, Subscribers)},
+                    Bind = {Binding, BParts, queue:in(MF, Subscribers), Prefix},
 
                     ets:insert(?MODULE, Bind),
                     {'reply', 'ok', State}
@@ -465,20 +476,20 @@ map_processor(Routing, Payload, Bs) ->
     Map = fun({Mod, Fun}) when is_atom(Mod) ->
                   apply(Mod, Fun, Payload)
           end,
-    lists:foldl(fun({B, _, MFs}, Acc) when B =:= Routing ->
+    lists:foldl(fun({B, _, MFs, _Pre}, Acc) when B =:= Routing ->
                         lager:debug("exact match ~p to ~p", [B, Routing]),
                         [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
-                   ({_, BParts, MFs}, Acc) ->
+                   ({_B, BParts, MFs, _Pre}, Acc) ->
                         case matches(BParts, RoutingParts) of
                             'true' ->
                                 lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
                                 [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
                             'false' -> Acc
                         end;
-                   ([{B, _, MFs}], Acc) when B =:= Routing ->
+                   ([{B, _, MFs, _Pre}], Acc) when B =:= Routing ->
                         lager:debug("exact match ~p to ~p", [B, Routing]),
                         [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
-                   ([{_, BParts, MFs}], Acc) ->
+                   ([{_B, BParts, MFs, _Pre}], Acc) ->
                         case matches(BParts, RoutingParts) of
                             'true' ->
                                 lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
@@ -500,14 +511,14 @@ fold_processor(Routing, Payload, Bs) ->
     RoutingParts = lists:reverse(binary:split(Routing, <<".">>, ['global'])),
 
     [Reply|_] = lists:foldl(
-                  fun({B, BParts, MFs}, Acc) ->
+                  fun({B, BParts, MFs, _Pre}, Acc) ->
                           case B =:= Routing orelse matches(BParts, RoutingParts) of
                               'true' ->
                                   lager:debug("routing ~s matches ~s", [Routing, B]),
                                   fold_bind_results(MFs, Acc, Routing);
                               'false' -> Acc
                           end;
-                     ([{B, BParts, MFs}], Acc) ->
+                     ([{B, BParts, MFs, _Pre}], Acc) ->
                           case B =:= Routing orelse matches(BParts, RoutingParts) of
                               'true' ->
                                   lager:debug("routing ~s matches ~s", [Routing, B]),
@@ -521,8 +532,8 @@ fold_processor(Routing, Payload, Bs) ->
 -ifdef(TEST).
 -spec binding_matches(ne_binary(), ne_binary()) -> boolean().
 binding_matches(B, R) when erlang:byte_size(B) > 0 andalso erlang:byte_size(R) > 0 ->
-    matches(lists:reverse(binary:split(B, <<".">>, [global]))
-            ,lists:reverse(binary:split(R, <<".">>, [global]))).
+    matches(lists:reverse(binary:split(B, <<".">>, ['global']))
+            ,lists:reverse(binary:split(R, <<".">>, ['global']))).
 
 
 %% PropEr needs to be included before eunit. Both modules create a ?LET macro,
