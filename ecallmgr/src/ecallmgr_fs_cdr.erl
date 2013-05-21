@@ -153,6 +153,9 @@ handle_info({event, [UUID | Props]}, State) ->
     AMQPConsumer = wh_amqp_channel:consumer_pid(),
     spawn(?MODULE, publish, [UUID, Props, AMQPConsumer]),
     {noreply, State};
+handle_info({'tcp', _, Data}, State) ->
+    Event = binary_to_term(Data),
+   handle_info(Event, State);
 handle_info(_Info, State) ->
     {noreply, State}.
 

@@ -337,6 +337,9 @@ handle_info({'event', [_ | Props]}, #state{uuid=OldUUID}=State) ->
             end;
         _ -> {'noreply', State}
     end;
+handle_info({'tcp', _, Data}, State) ->
+    Event = binary_to_term(Data),
+   handle_info(Event, State);
 handle_info({'abandon_originate'}, #state{tref='undefined'}=State) ->
     %% Cancelling a timer does not guarantee that the message has not
     %% already been delivered to the message queue.

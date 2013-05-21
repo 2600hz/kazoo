@@ -115,7 +115,7 @@ handle_cast(_Msg, State) ->
 handle_info({'fetch', _Section, _Something, _Key, _Value, ID, ['undefined' | _Data]}, #state{node=Node}=State) ->
     lager:debug("fetch unknown section from ~s: ~p So: ~p, K: ~p V: ~p ID: ~s", [Node, _Section, _Something, _Key, _Value, ID]),
     {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
-    _ = freeswitch:fetch_reply(Node, ID, Resp),
+    _ = freeswitch:fetch_reply(Node, ID, 'dialplan', Resp),
     {'noreply', State};
 handle_info({'fetch', 'dialplan', _Tag, _Key, _Value, FSID, [CallID | FSData]}, #state{node=Node}=State) ->
     case {props:get_value(<<"Event-Name">>, FSData), props:get_value(<<"Caller-Context">>, FSData)} of
@@ -126,7 +126,7 @@ handle_info({'fetch', 'dialplan', _Tag, _Key, _Value, FSID, [CallID | FSData]}, 
         {_Other, _Context} ->
             lager:debug("ignoring event ~s in context ~s from ~s", [_Other, _Context, Node]),
             {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
-            _ = freeswitch:fetch_reply(Node, FSID, Resp),
+            _ = freeswitch:fetch_reply(Node, FSID, 'dialplan', Resp),
             {'noreply', State, 'hibernate'}
     end;
 handle_info(_Other, State) ->
@@ -200,7 +200,7 @@ reply_forbidden(Node, FSID) ->
                                                 ,{<<"Route-Error-Message">>, <<"Payment Required">>}
                                                ]),
     lager:info("sending forbidden XML to ~s: ~s", [Node, XML]),
-    case freeswitch:fetch_reply(Node, FSID, iolist_to_binary(XML)) of
+    case freeswitch:fetch_reply(Node, FSID, 'dialplan', iolist_to_binary(XML), 3000) of
         'ok' -> lager:debug("node ~s accepted our route unauthz", [Node]);
         {'error', _Reason} -> lager:debug("node ~s rejected our route unauthz, ~p", [Node, _Reason]);
         'timeout' -> lager:error("received no reply from node ~s, timeout", [Node])
@@ -211,7 +211,7 @@ reply_affirmative(Node, FSID, CallId, RespJObj, Props) ->
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(RespJObj),
     ServerQ = wh_json:get_value(<<"Server-ID">>, RespJObj),
     lager:info("sending affirmative XML to ~s: ~s", [Node, XML]),
-    case freeswitch:fetch_reply(Node, FSID, iolist_to_binary(XML)) of
+    case freeswitch:fetch_reply(Node, FSID, 'dialplan', iolist_to_binary(XML), 3000) of
         'ok' ->
             lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),
             CCVs = update_custom_channel_vars(Node, CallId, RespJObj, Props),

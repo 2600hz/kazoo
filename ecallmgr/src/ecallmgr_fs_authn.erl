@@ -147,6 +147,9 @@ handle_cast(_Msg, State) ->
 handle_info({'event', [_ | Props]}, #state{node=Node}=State) ->
     spawn(?MODULE, 'handle_sucessful_registration', [Props, Node]),
     {'noreply', State};
+handle_info({'tcp', _, Data}, State) ->
+    Event = binary_to_term(Data),
+   handle_info(Event, State);
 handle_info({'fetch', 'directory', <<"domain">>, <<"name">>, _Value, Id, ['undefined' | Props]}
             ,#state{node=Node}=State) ->
     spawn(?MODULE, 'handle_directory_lookup', [Id, Props, Node]),
@@ -155,7 +158,7 @@ handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Pr
     spawn(fun() ->
                   lager:debug("sending empyt reply for request (~s) for ~s ~s from ~s", [Id, _Section, _Something, Node]),
                   {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
-                  freeswitch:fetch_reply(Node, Id, Resp)
+                  freeswitch:fetch_reply(Node, Id, 'directory', Resp)
           end),
     {'noreply', State};
 
@@ -179,7 +182,7 @@ handle_directory_lookup(Id, Props, Node) ->
             lookup_user(Node, Id, <<"reverse-lookup">>, Props);
         _Other ->
             {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
-            _ = freeswitch:fetch_reply(Node, Id, Resp),
+            _ = freeswitch:fetch_reply(Node, Id, 'directory', Resp),
             lager:debug("ignoring request from ~s for ~p", [Node, _Other])
     end.
 
@@ -218,7 +221,7 @@ lookup_user(Node, Id, Method,  Props) ->
     ReqResp = maybe_query_registrar(Realm, Username, Node, Id, Method, Props),
     {'ok', Xml} = handle_lookup_resp(Method, Realm, Username, ReqResp),
     lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
-    freeswitch:fetch_reply(Node, Id, iolist_to_binary(Xml)).
+    freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
 
 -spec handle_lookup_resp(ne_binary(), ne_binary(), ne_binary()
                          ,{'ok', wh_json:object()} | {'error', _}) ->
