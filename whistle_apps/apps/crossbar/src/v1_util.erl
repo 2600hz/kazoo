@@ -131,7 +131,20 @@ get_req_data(Context, Req0) ->
 
     lager:debug("query string: ~p", [QS]),
 
-    get_req_data(Context, cowboy_req:header(<<"content-type">>, Req1), QS).
+    get_req_data(Context, get_content_type(Req1), QS).
+
+-spec get_content_type(cowboy_req:req()) ->
+                              {api_binary(), cowboy_req:req()}.
+get_content_type(Req) ->
+    get_parsed_content_type(cowboy_req:parse_header(<<"content-type">>, Req)).
+
+-spec get_parsed_content_type({'ok', content_type() | 'undefined', cowboy_req:req()}) ->
+                                     {api_binary(), cowboy_req:req()}.
+get_parsed_content_type({'ok', 'undefined', Req}) ->
+    {'undefined', Req};
+get_parsed_content_type({'ok', {Main, Sub, _Opts}, Req}) ->
+    lager:debug("content-type: ~s/~s ~p", [Main, Sub, _Opts]),
+    {<<Main/binary, "/", Sub/binary>>, Req}.
 
 get_req_data(Context, {'undefined', Req0}, QS) ->
     lager:debug("undefined content type when getting req data, assuming application/json"),
@@ -576,7 +589,7 @@ is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                             crossbar_bindings:fold(Event, Payload)
                     end, Context0, Nouns),
 
-    {CT, Req1} = cowboy_req:header(<<"content-type">>, Req0),
+    {CT, Req1} = get_content_type(Req0),
 
     is_known_content_type(Req1, Context1, ensure_content_type(CT)).
 
