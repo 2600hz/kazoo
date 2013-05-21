@@ -89,13 +89,13 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.queues">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.queues">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.queues">>, ?MODULE, content_types_provided),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.queues">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.queues">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.queues">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.queues">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.queues">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.queues">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.queues">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.queues">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.queues">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.queues">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.queues">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -134,12 +134,12 @@ allowed_methods(_QID, ?EAVESDROP_PATH_TOKEN) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists() -> true.
+resource_exists() -> 'true'.
 
-resource_exists(_) -> true.
+resource_exists(_) -> 'true'.
 
-resource_exists(_, ?ROSTER_PATH_TOKEN) -> true;
-resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> true.
+resource_exists(_, ?ROSTER_PATH_TOKEN) -> 'true';
+resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,16 +152,10 @@ resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> true.
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
 content_types_provided(#cb_context{}=Context) -> Context.
 content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
-    case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
-        ?FORMAT_VERBOSE ->
-            CTPs = [{to_json, [{<<"application">>, <<"json">>}]}
-                    ,{to_csv, [{<<"application">>, <<"octet-stream">>}]}
-                   ],
-            cb_context:add_content_types_provided(Context, CTPs);
-        ?FORMAT_COMPRESSED ->
-            CTPs = [{to_json, [{<<"application">>, <<"json">>}]}],
-            cb_context:add_content_types_provided(Context, CTPs)
-    end.
+    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
+            ,{'to_csv', ?CSV_CONTENT_TYPES}
+           ],
+    cb_context:add_content_types_provided(Context, CTPs).
 
 %%--------------------------------------------------------------------
 %% @public

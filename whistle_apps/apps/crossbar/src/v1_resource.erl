@@ -296,7 +296,9 @@ content_types_provided(Req, Context, CTPs) ->
                             lists:foldr(fun({Type, SubType}, Acc1) ->
                                                 [{{Type, SubType, []}, Fun} | Acc1];
                                            ({_,_,_}=EncType, Acc1) ->
-                                                [ {EncType, Fun} | Acc1 ]
+                                                [ {EncType, Fun} | Acc1 ];
+                                           (CT, Acc1) when is_binary(CT) ->
+                                                [{CT, Fun} | Acc1]
                                         end, Acc, L)
                     end, [], CTPs),
     {CTP, Req, Context}.

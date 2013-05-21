@@ -37,5 +37,15 @@
 -define(HTTP_HEAD, <<"HEAD">>).
 -define(HTTP_PATCH, <<"PATCH">>).
 
+-define(CSV_CONTENT_TYPES, [<<"application/octet-stream">>
+                            ,<<"text/csv">>
+                            ,<<"text/comma-separated-values">>
+                           ]).
+-define(JSON_CONTENT_TYPES, [<<"application/json">>
+                             ,<<"application/x-json">>
+                            ]).
+
+-define(JSONP_CONTENT_TYPE, <<"application/javascript">>).
+
 -define(CROSSBAR_TYPES_INCLUDED, 'true').
 -endif.

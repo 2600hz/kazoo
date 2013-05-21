@@ -745,14 +745,16 @@ finish_request(_Req, #cb_context{req_nouns=[{Mod, _}|_], req_verb=Verb}=Context)
 %%--------------------------------------------------------------------
 -spec create_resp_content(cowboy_req:req(), cb_context:context()) ->
                                  {ne_binary() | iolist(), cowboy_req:req()}.
-create_resp_content(Req0, #cb_context{req_json=ReqJson}=Context) ->
+create_resp_content(Req0, Context) ->
     try wh_json:encode(wh_json:from_list(create_resp_envelope(Context))) of
         JSON ->
-            case wh_json:get_value(<<"jsonp">>, ReqJson) of
+            case cb_context:req_value(Context, <<"jsonp">>) of
                 'undefined' -> {JSON, Req0};
                 JsonFun when is_binary(JsonFun) ->
                     lager:debug("jsonp wrapping in ~s: ~p", [JsonFun, JSON]),
-                    {[JsonFun, <<"(">>, JSON, <<");">>], Req0}
+                    {[JsonFun, <<"(">>, JSON, <<");">>]
+                     ,cowboy_req:set_resp_header(<<"content-type">>, ?JSONP_CONTENT_TYPE, Req0)
+                    }
             end
     catch
         _E:_R ->
