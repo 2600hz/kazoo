@@ -299,9 +299,7 @@ build_match_spec(JObj) ->
 build_match_spec(JObj, AcctMatch) ->
     case wh_json:foldl(fun match_builder_fold/3, AcctMatch, JObj) of
         {'error', _Errs}=Errors -> Errors;
-        {CallStat, Constraints} ->
-            lager:debug("const: ~p", [Constraints]),
-            {'ok', [{CallStat, Constraints, ['$_']}]}
+        {CallStat, Constraints} -> {'ok', [{CallStat, Constraints, ['$_']}]}
     end.
 
 match_builder_fold(_, _, {'error', _Err}=E) -> E;
@@ -469,9 +467,11 @@ stat_to_doc(#call_stat{id=Id
            ,{<<"caller_id_number">>, CallerIdNumber}
            ,{<<"wait_time">>, wait_time(EnteredT, AbandonedT, HandledT)}
            ,{<<"talk_time">>, talk_time(HandledT, ProcessedT)}
-          ])), db_name(AcctId), [{'account_id', AcctId}
-                                 ,{'type', <<"acdc_call">>}
-                                ]).
+          ]))
+      ,db_name(AcctId)
+      ,[{'account_id', AcctId}
+        ,{'type', <<"acdc_call">>}
+       ]).
 
 wait_time(E, _, H) when is_integer(E), is_integer(H) -> H - E;
 wait_time(E, A, _) when is_integer(E), is_integer(A) -> A - E;
