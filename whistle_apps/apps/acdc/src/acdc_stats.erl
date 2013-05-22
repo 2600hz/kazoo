@@ -94,6 +94,18 @@
          }).
 -type call_stat() :: #call_stat{}.
 
+-record(agent_stat, {id :: api_binary()
+                     ,agent_id :: api_binary()
+                     ,acct_id :: api_binary()
+                     ,status :: api_binary()
+                     ,timestamp :: api_pos_integer()
+
+                     ,wait_time :: api_integer()
+                     ,pause_time :: api_integer()
+                     ,agent_callid :: api_binary()
+                    }).
+-type agent_stat() :: #agent_stat{}.
+
 %% Public API
 call_waiting(AcctId, QueueId, CallId, CallerIdName, CallerIdNumber) ->
     Prop = props:filter_undefined(
