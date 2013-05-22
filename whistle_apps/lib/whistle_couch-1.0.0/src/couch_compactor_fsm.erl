@@ -50,7 +50,10 @@
         ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_compaction">>, 60000)
        ).
 -define(SLEEP_BETWEEN_POLL
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_poll">>, 1000)
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_poll">>, 3000)
+       ).
+-define(SLEEP_BETWEEN_VIEWS
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_views">>, 2000)
        ).
 -define(MAX_COMPACTING_SHARDS
         ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_shards">>, 10)
@@ -58,11 +61,11 @@
 -define(MAX_COMPACTING_VIEWS
         ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 5)
        ).
--define(SLEEP_BETWEEN_VIEWS
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 2000)
-       ).
--define(MAX_WAIT_FOR_COMPACTION_PID
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 360000)
+-define(MAX_WAIT_FOR_COMPACTION_PIDS
+        ,case whapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pids">>, 360000) of
+             <<"infinity">> -> 'infinity';
+             N -> wh_util:to_integer(N)
+         end
        ). % five minutes
 
 -define(AUTOCOMPACTION_CHECK_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"autocompaction_check">>, 60000)).
@@ -475,7 +478,7 @@ compact({'compact', N, D}, #state{conn=Conn
     of
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
-            gen_fsm:send_event(self(), 'compact'),
+            gen_fsm:send_event_after(?SLEEP_BETWEEN_POLL, 'compact'),
             {'next_state', 'compact', State#state{current_db='undefined'}};
         'true' ->
             lager:debug("compacting ~s on ~s", [D, N]),
@@ -498,7 +501,7 @@ compact({'compact', N, D}, #state{conn=Conn
     of
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
-            gen_fsm:send_event(self(), {'compact', N, Db}),
+            gen_fsm:send_event_after(?SLEEP_BETWEEN_POLL, {'compact', N, Db}),
             {'next_state', 'compact', State#state{dbs=Dbs
                                                   ,current_db=Db
                                                   ,current_node=N
@@ -527,7 +530,7 @@ compact({'compact_db', N, D}, #state{conn=Conn
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
             maybe_send_update(P, Ref, 'job_finished'),
-            gen_fsm:send_event(self(), 'next_job'),
+            gen_fsm:send_event_after(?SLEEP_BETWEEN_POLL, 'next_job'),
             {'next_state', 'ready', State#state{conn='undefined'
                                                 ,admin_conn='undefined'
                                                 ,current_node='undefined'
@@ -555,7 +558,7 @@ compact({'compact_db', N, D}, #state{conn=Conn
     of
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
-            gen_fsm:send_event(self(), {'compact_db', Node, D}),
+            gen_fsm:send_event_after(?SLEEP_BETWEEN_POLL, {'compact_db', Node, D}),
             {'next_state', 'compact', State#state{nodes=Ns
                                                   ,current_node=Node
                                                   ,current_db=D
@@ -911,8 +914,7 @@ db_design_docs(Conn, D) ->
 compact_shards(AdminConn, Ss, DDs) ->
     PR = spawn_monitor(fun() ->
                                Ps = [spawn_monitor(?MODULE, 'compact_shard', [AdminConn, Shard, DDs]) || Shard <- Ss],
-                               MaxWait = max_wait_for_compaction(),
-                               wait_for_pids(MaxWait, Ps)
+                               wait_for_pids(?MAX_WAIT_FOR_COMPACTION_PIDS, Ps)
                        end),
     lager:debug("compacting shards in ~p", [PR]),
     PR.
@@ -974,7 +976,7 @@ get_node_connections(N, Cookie) ->
     get_node_connections(Host, Port, User, Pass, AdminPort).
 
 get_node_connections(Host, Port, User, Pass, AdminPort) ->
-    lager:debug("getting connection information for ~s, ~p and ~p", [Host, Port, AdminPort]),
+    lager:info("getting connection information for ~s, ~p and ~p", [Host, Port, AdminPort]),
     {couch_util:get_new_connection(Host, Port, User, Pass),
      couch_util:get_new_connection(Host, AdminPort, User, Pass)
     }.
@@ -1027,13 +1029,6 @@ queued_jobs_status(Jobs) ->
     case queue:to_list(Jobs) of
         [] -> 'none';
         Js -> [[{'job', J}, {'requested_by', P}] || {J, P, _} <- Js]
-    end.
-
-max_wait_for_compaction() ->
-    try whapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pid">>, ?MAX_WAIT_FOR_COMPACTION_PID) of
-        Time -> wh_util:to_integer(Time)
-    catch
-        _:_ -> ?MAX_WAIT_FOR_COMPACTION_PID
     end.
 
 sleep_between_poll() ->
