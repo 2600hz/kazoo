@@ -24,6 +24,12 @@
          ,stop_auto_compaction/0
          ,compact_automatically/0
          ,compact_automatically/1
+         %% Inspection
+         ,nodes_left/0
+         ,dbs_left/0
+         ,current_node/0
+         ,current_db/0
+         ,current/0
         ]).
 
 %% Internal
@@ -203,6 +209,16 @@ stop_auto_compaction() ->
 -spec is_compactor_running() -> boolean().
 is_compactor_running() ->
     is_pid(whistle_couch_sup:compactor_pid()).
+
+nodes_left() -> gen_fsm:sync_send_all_state_event(?SERVER, 'nodes_left').
+dbs_left() -> gen_fsm:sync_send_all_state_event(?SERVER, 'dbs_left').
+current_node() ->
+    {N,_} = gen_fsm:sync_send_all_state_event(?SERVER, 'current'),
+    N.
+current_db() ->
+    {_,D} = gen_fsm:sync_send_all_state_event(?SERVER, 'current'),
+    D.
+current() -> gen_fsm:sync_send_all_state_event(?SERVER, 'current').
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -803,6 +819,14 @@ handle_event(_Event, StateName, State) ->
 %%                   {stop, Reason, Reply, NewState}
 %% @end
 %%--------------------------------------------------------------------
+handle_sync_event('nodes_left', _, StateName, #state{nodes=Ns}=State) ->
+    {'reply', Ns, StateName, State};
+handle_sync_event('dbs_left', _, StateName, #state{dbs=DBs}=State) ->
+    {'reply', DBs, StateName, State};
+handle_sync_event('current', _, StateName, #state{current_node=CN
+                                                  ,current_db=CDB
+                                                 }=State) ->
+    {'reply', {CN, CDB}, StateName, State};
 handle_sync_event(_Event, _From, StateName, State) ->
     lager:debug("unhandled evt for ~s: ~p", [StateName, _Event]),
     {'reply', {'error', 'invalid_sync_event'}, StateName, State}.
@@ -1070,16 +1094,14 @@ should_compact_ratio(Info) ->
     Data = wh_json:get_integer_value([<<"other">>, <<"data_size">>], Info),
     min_data_met(Data, ?MIN_DATA) andalso min_ratio_met(Data, Disk, ?MIN_RATIO).
 
-min_data_met(Data, Min) when Data > Min ->
-    'true';
+min_data_met(Data, Min) when Data > Min -> 'true';
 min_data_met(_Data, _Min) ->
     lager:debug("data size ~b is under min_data_size threshold ~b", [_Data, _Min]),
     'false'.
 
 min_ratio_met(Data, Disk, MinRatio) ->
     case Data / Disk of
-        R when R > MinRatio ->
-            'true';
+        R when R > MinRatio -> 'true';
         _R ->
             lager:debug("ratio ~p is under min threshold ~p", [_R, MinRatio]),
             'false'
