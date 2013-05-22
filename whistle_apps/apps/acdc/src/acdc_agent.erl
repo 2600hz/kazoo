@@ -152,7 +152,7 @@
 %%--------------------------------------------------------------------
 start_link(Supervisor, AgentJObj) ->
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
-    AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
+    AcctId = account_id(AgentJObj),
 
     Queues = case wh_json:get_value(<<"queues">>, AgentJObj) of
                  'undefined' -> [];
@@ -1075,7 +1075,7 @@ agent_id(Agent) ->
 -spec account_id(agent()) -> api_binary().
 account_id(Agent) ->
     case wh_json:is_json_object(Agent) of
-        'true' -> wh_json:get_value(<<"pvt_account_id">>, Agent);
+        'true' -> find_account_id(Agent);
         'false' -> whapps_call:account_id(Agent)
     end.
 
@@ -1108,3 +1108,9 @@ stop_agent_leg(MyQ, ACallId, ACtrlQ) ->
                | wh_api:default_headers(MyQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     wapi_dialplan:publish_command(ACtrlQ, Command).
+
+find_account_id(JObj) ->
+    case wh_json:get_value(<<"pvt_account_id">>, JObj) of
+        'undefined' -> wh_util:format_account_id(wh_json:get_value(<<"pvt_account_db">>, JObj), 'raw');
+        AcctId -> AcctId
+    end.
