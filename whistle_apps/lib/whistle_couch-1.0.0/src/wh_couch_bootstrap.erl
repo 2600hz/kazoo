@@ -148,8 +148,8 @@ code_change(_OldVsn, State, _Extra) ->
 get_config() ->
     [IP|_] = wh_config:get('bigcouch', 'ip', ["localhost"]),
     [Port|_] = wh_config:get_integer('bigcouch', 'port', [5984]),
-    [Username|_]= wh_config:get_string('bigcouch', 'username', [""]),
-    [Pwd|_] = wh_config:get_string('bigcouch', 'password', [""]),
+    [Username|_]= wh_config:get_raw_string('bigcouch', 'username', [""]),
+    [Pwd|_] = wh_config:get_raw_string('bigcouch', 'password', [""]),
     [AdminPort|_] = wh_config:get_integer('bigcouch', 'admin_port', [5986]),
     [{'default_couch_host', {IP, Port, Username, Pwd, AdminPort}}].
 
