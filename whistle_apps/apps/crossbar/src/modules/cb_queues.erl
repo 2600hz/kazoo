@@ -471,11 +471,7 @@ add_queue_to_agents(Id, #cb_context{req_data=[_|_]=AgentIds}=Context) ->
     {InQueueAgents, RmAgentIds} = lists:partition(fun(A) -> lists:member(A, AgentIds) end, CurrAgentIds),
     AddAgentIds = [A || A <- AgentIds, (not lists:member(A, InQueueAgents))],
 
-    _P = spawn(fun() ->
-                       _ = cb_context:put_reqid(Context),
-                       maybe_rm_agents(Id, Context, RmAgentIds)
-               end),
-
+    _ = maybe_rm_agents(Id, Context, RmAgentIds),
     add_queue_to_agents(Id, Context, AddAgentIds).
 
 add_queue_to_agents(_Id, Context, []) ->
@@ -485,7 +481,6 @@ add_queue_to_agents(Id, Context, AgentIds) ->
         #cb_context{resp_status='success'
                     ,doc=Agents
                    }=Context1 ->
-            lager:debug("fetched agents: ~p", [Agents]),
             Context1#cb_context{doc=[maybe_add_queue_to_agent(Id, A) || A <- Agents]};
         Context1 -> Context1
     end.
