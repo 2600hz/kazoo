@@ -76,8 +76,8 @@
 
 -define(AUTOCOMPACTION_CHECK_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"autocompaction_check">>, 60000)).
 
--define(MIN_RATIO, whapps_config:get_float(?CONFIG_CAT, <<"min_ratio">>, 1.5)).
--define(MIN_DATA, whapps_config:get_integer(?CONFIG_CAT, <<"min_data_size">>, 1048576)).
+-define(MIN_RATIO, whapps_config:get_float(?CONFIG_CAT, <<"min_ratio">>, 1.2)).
+-define(MIN_DATA, whapps_config:get_integer(?CONFIG_CAT, <<"min_data_size">>, 131072)). % 128Kb
 
 -define(SERVER, ?MODULE).
 
