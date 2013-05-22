@@ -1100,7 +1100,7 @@ min_data_met(_Data, _Min) ->
     'false'.
 
 min_ratio_met(Data, Disk, MinRatio) ->
-    case Data / Disk of
+    case Disk / Data of
         R when R > MinRatio -> 'true';
         _R ->
             lager:debug("ratio ~p is under min threshold ~p", [_R, MinRatio]),
