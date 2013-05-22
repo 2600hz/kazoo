@@ -125,8 +125,8 @@ content_types_provided(#cb_context{}=Context, ?STATUS_PATH_TOKEN) -> Context;
 content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
     case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
         ?FORMAT_VERBOSE ->
-            CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}
-                    ,{'to_csv', [{<<"application">>, <<"octet-stream">>}]}
+            CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
+                    ,{'to_csv', ?CSV_CONTENT_TYPES}
                    ],
             cb_context:add_content_types_provided(Context, CTPs);
         ?FORMAT_COMPRESSED ->
