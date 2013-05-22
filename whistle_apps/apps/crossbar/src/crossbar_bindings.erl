@@ -408,7 +408,7 @@ fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
     case catch apply(M, F, Payload) of
         'eoq' -> lager:debug("putting ~s to eoq", [M]), fold_bind_results(MFs, Payload, Route, MFsLen, [{M,F}|ReRunQ]);
         {'error', _E}=E -> lager:debug("error, E"), E;
-        {'EXIT', _E} -> lager:debug("excepted: ~p", [_E]), fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
+        {'EXIT', _E} -> lager:debug("excepted: ignoring"), fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         Pay1 ->
             fold_bind_results(MFs, [Pay1|Tokens], Route, MFsLen, ReRunQ)
     end;
