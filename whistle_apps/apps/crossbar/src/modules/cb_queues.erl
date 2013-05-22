@@ -555,13 +555,17 @@ fetch_all_current_queue_stats(Context) ->
     fetch_from_amqp(Context, Req).
 
 format_stats(Context, Resp) ->
-    Stats =
-        wh_json:get_value(<<"Handled">>, Resp, []) ++
-        wh_json:get_value(<<"Abandoned">>, Resp, []) ++
-        wh_json:get_value(<<"Waiting">>, Resp, []) ++
-        wh_json:get_value(<<"Processed">>, Resp, []),
+    Stats = wh_json:from_list([{<<"current_timestamp">>, wh_util:current_tstamp()}
+                               ,{<<"stats">>, 
+                                 wh_doc:public_fields(
+                                   wh_json:get_value(<<"Handled">>, Resp, []) ++
+                                       wh_json:get_value(<<"Abandoned">>, Resp, []) ++
+                                       wh_json:get_value(<<"Waiting">>, Resp, []) ++
+                                       wh_json:get_value(<<"Processed">>, Resp, [])
+                                  )}
+                              ]),
     cb_context:set_resp_status(
-      cb_context:set_resp_data(Context, wh_doc:public_fields(Stats))
+      cb_context:set_resp_data(Context, Stats)
       ,'success'
      ).
 
