@@ -99,8 +99,11 @@ allowed_methods() ->
 
 allowed_methods(?CLASSIFIERS) ->
     [?HTTP_GET];
+allowed_methods(<<"collection">>) ->
+    [?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
+
 
 allowed_methods(_, ?ACTIVATE) ->
     [?HTTP_PUT];
@@ -190,6 +193,13 @@ validate(#cb_context{req_verb = ?HTTP_GET, account_id=undefined}=Context) ->
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context).
 
+
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, <<"collection">>) ->
+    validate_request(Context);
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, <<"collection">>) ->
+    validate_request(Context);
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, <<"collection">>) ->
+    validate_delete(Context);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?CLASSIFIERS) ->
     Context#cb_context{resp_status=success
                        ,resp_data=wnm_util:available_classifiers()};
@@ -227,6 +237,9 @@ validate(Context, _, ?PORT_DOCS, _) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+post(Context, <<"collection">>) ->
+    Results = collection_process(Context),
+    set_response(Results, <<"">>, Context);
 post(#cb_context{doc=JObj, auth_account_id=AuthBy}=Context, Number) ->
     Result = wh_number_manager:set_public_fields(Number, JObj, AuthBy),
     set_response(Result, Number, Context).
@@ -237,6 +250,10 @@ post(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+
+put(Context, <<"collection">>) ->
+    Results = collection_process(Context),
+    set_response(Results, <<"">>, Context);
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number) ->
     Result = wh_number_manager:create_number(Number, AssignTo, AuthBy, JObj),
     set_response(Result, Number, Context).
@@ -259,6 +276,9 @@ put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
+delete(Context, <<"collection">>) ->
+    Results = collection_process(Context),
+    set_response(Results, <<"">>, Context);
 delete(#cb_context{auth_account_id=AuthBy}=Context, Number) ->
     Result = wh_number_manager:release_number(Number, AuthBy),
     set_response(Result, Number, Context).
@@ -417,3 +437,31 @@ set_response({Error, Reason}, _, Context) ->
 set_response(_Else, _, Context) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error(unspecified_fault, Context).
+
+collection_process(#cb_context{req_data=Data}=Context) ->
+    Numbers = wh_json:get_value(<<"numbers">>, Data, []),
+    Result = collection_process(Context, Numbers),
+    {'ok', Result}.
+
+collection_process(Context, Numbers) ->
+    Temp = wh_json:set_values([{<<"success">>, wh_json:new()}, {<<"error">>, wh_json:new()}], wh_json:new()),
+    lists:foldl(
+        fun(Number, Acc) ->
+            case collection_action(Context, Number) of
+                {'ok', JObj} ->
+                    wh_json:set_value([<<"success">>, Number], JObj, Acc);
+                {State, _} ->
+                    JObj = wh_json:set_value(<<"reason">>, State, wh_json:new()),
+                    wh_json:set_value([<<"error">>, Number], JObj, Acc)
+            end
+        end
+        ,Temp
+        ,Numbers
+    ).
+
+collection_action(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj, req_verb= ?HTTP_PUT}, Number) ->
+    wh_number_manager:create_number(Number, AssignTo, AuthBy, wh_json:delete_key(<<"numbers">>, JObj));
+collection_action(#cb_context{auth_account_id=AuthBy, doc=JObj, req_verb= ?HTTP_POST}, Number) ->
+    wh_number_manager:set_public_fields(Number, wh_json:delete_key(<<"numbers">>, JObj), AuthBy);
+collection_action(#cb_context{auth_account_id=AuthBy, req_verb= ?HTTP_DELETE}, Number) ->
+    wh_number_manager:release_number(Number, AuthBy).
