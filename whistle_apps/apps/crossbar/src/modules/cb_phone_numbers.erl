@@ -438,6 +438,8 @@ set_response(_Else, _, Context) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error(unspecified_fault, Context).
 
+-spec collection_process(cb_context:context()) -> operation_return().
+-spec collection_process(cb_context:context(), [ne_binary(), ...]) -> operation_return().
 collection_process(#cb_context{req_data=Data}=Context) ->
     Numbers = wh_json:get_value(<<"numbers">>, Data, []),
     Result = collection_process(Context, Numbers),
@@ -459,9 +461,17 @@ collection_process(Context, Numbers) ->
         ,Numbers
     ).
 
+-spec collection_action(cb_context:context(), ne_binary()) -> operation_return().
 collection_action(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj, req_verb= ?HTTP_PUT}, Number) ->
     wh_number_manager:create_number(Number, AssignTo, AuthBy, wh_json:delete_key(<<"numbers">>, JObj));
-collection_action(#cb_context{auth_account_id=AuthBy, doc=JObj, req_verb= ?HTTP_POST}, Number) ->
-    wh_number_manager:set_public_fields(Number, wh_json:delete_key(<<"numbers">>, JObj), AuthBy);
+collection_action(#cb_context{auth_account_id=AuthBy, doc=Doc, req_verb= ?HTTP_POST}, Number) ->
+    case wh_number_manager:get_public_fields(Number, AuthBy) of
+        {'ok', JObj} ->
+            Doc1 = wh_json:delete_key(<<"numbers">>, Doc),
+            wh_number_manager:set_public_fields(Number, wh_json:merge_jobjs(JObj, Doc1), AuthBy);
+        {State, Error} ->
+            lager:error("error while fetching number ~p : ~p", [Number, Error]),
+            {State, Error}
+    end;
 collection_action(#cb_context{auth_account_id=AuthBy, req_verb= ?HTTP_DELETE}, Number) ->
     wh_number_manager:release_number(Number, AuthBy).
