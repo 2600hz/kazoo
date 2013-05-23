@@ -77,17 +77,9 @@ running_apps() ->
     catch
         _:_ ->
             "whapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses"
-    end. 
+    end.
 
 initialize_whapps() ->
-    CurrentCookie = erlang:get_cookie(),
-    case whapps_config:get(?MODULE, <<"cookie">>, CurrentCookie) of
-        'undefined' -> 'ok';
-        CurrentCookie -> 'ok';
-        Cookie ->
-            lager:debug("changing the erlang cookie to ~s", [Cookie]),
-            erlang:set_cookie(node(), wh_util:to_atom(Cookie, 'true'))
-    end,
     case couch_mgr:db_exists(?WH_ACCOUNTS_DB) of
         'false' -> whapps_maintenance:refresh();
         'true' -> 'ok'
