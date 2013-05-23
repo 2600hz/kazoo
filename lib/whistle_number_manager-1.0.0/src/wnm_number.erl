@@ -859,11 +859,13 @@ get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_number_summary/2 :: (ne_binary(), wnm_number()) -> wh_json:json_object().
-create_number_summary(Account, #number{state=State, features=Features, assigned_to=AssignedTo}) ->
+create_number_summary(_Account, #number{state=State, features=Features, assigned_to=AssignedTo, number_doc=Doc}) ->
     wh_json:from_list([{<<"state">>, State}
                        ,{<<"features">>, [wh_util:to_binary(F) || F <- sets:to_list(Features)]}
-                       ,{<<"on_subaccount">>, Account =/= AssignedTo}
-                       ,{<<"assigned_to">>, AssignedTo}
+                       ,{<<"account_id">>, AssignedTo}
+                       ,{<<"assigned_to">>, <<"">>}
+                       ,{<<"created">>, wh_json:get_value(<<"pvt_created">>, Doc, 0)}
+                       ,{<<"updated">>, wh_json:get_value(<<"pvt_modified">>, Doc, 0)}
                       ]).
 
 %%--------------------------------------------------------------------
