@@ -22,7 +22,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?WORKER('acdc_stats_etsmgr')
+-define(CHILDREN, [?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_call', [acdc_stats:call_table_id(), acdc_stats:call_table_opts()])
+                   ,?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_status', [acdc_stats:status_table_id(), acdc_stats:status_table_opts()])
                    ,?WORKER('acdc_stats')
                   ]).
 
