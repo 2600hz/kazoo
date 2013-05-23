@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/2]).
 
 %% gen_server callbacks
 -export([init/1
@@ -41,8 +41,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
+start_link(TableId, TableOptions) ->
+    gen_server:start_link(?MODULE, [TableId, TableOptions], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -59,12 +59,12 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
+init([TableId, TableOptions]) ->
     process_flag('trap_exit', 'true'),
     put('callid', ?MODULE),
-    gen_server:cast(self(), 'begin'),
+    gen_server:cast(self(), {'begin', TableId, TableOptions}),
 
-    lager:debug("started etsmgr for stats"),
+    lager:debug("started etsmgr for stats for ~s", [TableId]),
 
     {'ok', #state{}}.
 
@@ -95,13 +95,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast('begin', State) ->
+handle_cast({'begin', TableId, TableOptions}, State) ->
     EtsSrv = find_ets_srv(),
-    Tbl = ets:new(acdc_stats:table_id()
-                  ,['protected', 'named_table'
-                    ,{'keypos', acdc_stats:key_pos()}
-                   ]
-                 ),
+    Tbl = ets:new(TableId, TableOptions),
 
     ets:setopts(Tbl, {'heir', self(), 'ok'}),
     ets:give_away(Tbl, EtsSrv, 'ok'),
