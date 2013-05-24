@@ -134,8 +134,8 @@ agent_status(?NE_BINARY = AcctId, ?NE_BINARY = AgentId) ->
     of
         {'ok', Resp} ->
             Stats = wh_json:get_value([<<"Agents">>, AgentId], Resp),
-            {_, Status} = wh_json:foldl(fun find_most_recent_fold/3, {0, <<"logged_out">>}, Stats),
-            Status;
+            {_, StatusJObj} = wh_json:foldl(fun find_most_recent_fold/3, {0, wh_json:new()}, Stats),
+            wh_json:get_value(<<"status">>, StatusJObj);
         {'error', E} ->
             case wh_json:is_json_object(E) of
                 'false' ->
@@ -195,8 +195,8 @@ most_recent(Stats) ->
     wh_json:map(fun most_recent_map/2, Stats).
 
 most_recent_map(AgentId, Statuses) ->
-    {_, Status} = wh_json:foldl(fun find_most_recent_fold/3, {0, <<"logged_out">>}, Statuses),
-    {AgentId, Status}.
+    {_Timestamp, Doc} = wh_json:foldl(fun find_most_recent_fold/3, {0, wh_json:new()}, Statuses),
+    {AgentId, Doc}.
 
 merge_stats(Stats, DBStats) ->
     lists:foldl(fun({A, T, S}, StatsAcc) ->
@@ -206,7 +206,7 @@ merge_stats(Stats, DBStats) ->
 agent_statuses_from_db(P, AcctId) ->
     case couch_mgr:get_results(acdc_stats:db_name(AcctId)
                                ,<<"agent_stats/most_recent">>
-                               ,['reduce', 'group']
+                               ,['reduce', 'group', 'include_docs']
                               )
     of
         {'ok', Stats} ->
@@ -218,15 +218,14 @@ agent_statuses_from_db(P, AcctId) ->
 
 cleanup_db_statuses(Stats) ->
     [{wh_json:get_value(<<"key">>, S)
-      ,wh_json:get_value([<<"value">>, <<"timestamp">>], S)
-      ,wh_json:get_value([<<"value">>, <<"status">>], S)
+      ,wh_json:get_value(<<"doc">>, S)
      }
      || S <- Stats
     ].
 
 find_most_recent_fold(K, V, {T, _}=Acc) ->
     try wh_util:to_integer(K) of
-        N when N > T -> {N, wh_json:get_value(<<"status">>, V)};
+        N when N > T -> {N, wh_doc:public_fields(V)};
         _ -> Acc
     catch
         _E:_R ->
