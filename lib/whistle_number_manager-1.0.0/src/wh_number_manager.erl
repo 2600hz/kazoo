@@ -584,6 +584,8 @@ set_public_fields(Number, PublicFields, AuthBy) ->
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, wnm_number:get(Number, PublicFields), Routines).
 
+-spec track_assignment([ne_binary(), ...]) -> 'ok'.
+-spec track_assignment([ne_binary(), ...], binary()) -> 'ok'.
 track_assignment(Numbers) ->
     track_assignment(Numbers, <<"">>).
 
