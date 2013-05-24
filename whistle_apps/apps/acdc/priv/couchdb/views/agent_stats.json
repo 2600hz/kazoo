@@ -2,10 +2,7 @@
   ,"language":"javascript"
   ,"views":{
     "status_log": {
-      "map":"function(doc) {        if ( doc.pvt_type != 'agent_partial' || typeof doc.pvt_account_id == 'undefined' | typeof doc.agent_id == 'undefined' ) return;        emit([doc.agent_id, doc.timestamp || doc.pvt_created], doc.status);      }"
-    },
-    "call_log": {
-      "map":"function(doc) {        if ( (doc.pvt_type != 'call_partial' && doc.pvt_type != 'agent_partial') || typeof doc.pvt_account_id == 'undefined' | typeof doc.agent_id == 'undefined' ) return;        emit([doc.timestamp, doc.agent_id], doc.status);      }"
+      "map":"function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.agent_id, doc.timestamp], doc.status); }"
     }
   }
 }
