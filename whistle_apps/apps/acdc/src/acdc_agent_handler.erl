@@ -78,7 +78,7 @@ update_agent('undefined', QueueId, _F, AcctId, AgentId) ->
                                                  ,AgentId
                                                 ),
     lager:debug("agent loaded"),
-    acdc_stats:agent_active(AcctId, AgentId),
+    acdc_stats:agent_ready(AcctId, AgentId),
     acdc_agents_sup:new(AcctId, AgentId, AgentJObj, [QueueId]);
 update_agent(Super, Q, F, _, _) when is_pid(Super) ->
     lager:debug("agent super ~p", [Super]),
@@ -95,7 +95,7 @@ maybe_start_agent(AcctId, AgentId) ->
             case couch_mgr:open_doc(wh_util:format_account_id(AcctId, 'encoded'), AgentId) of
                 {'ok', AgentJObj} ->
                     {'ok', _APid} = acdc_agents_sup:new(AgentJObj),
-                    acdc_stats:agent_active(AcctId, AgentId),
+                    acdc_stats:agent_ready(AcctId, AgentId),
                     lager:debug("started agent at ~p", [_APid]);
                 {'error', _E} ->
                     lager:debug("error opening agent doc: ~p", [_E])
@@ -111,7 +111,7 @@ maybe_stop_agent(AcctId, AgentId) ->
             lager:debug("agent ~s(~s) not found, nothing to do", [AgentId, AcctId]);
         P when is_pid(P) ->
             lager:debug("agent ~s(~s) is logging out, stopping ~p", [AgentId, AgentId, P]),
-            acdc_stats:agent_inactive(AcctId, AgentId),
+            acdc_stats:agent_logged_out(AcctId, AgentId),
 
             case catch acdc_agent_sup:agent(P) of
                 APid when is_pid(APid) -> acdc_agent:logout_agent(APid);
@@ -317,7 +317,7 @@ handle_agent_change(_, AccountId, AgentId, <<"doc_deleted">>) ->
         P when is_pid(P) ->
             lager:debug("agent ~s(~s) has been deleted, stopping ~p", [AccountId, AgentId, P]),
             _ = acdc_agent_sup:stop(P),
-            acdc_stats:agent_inactive(AccountId, AgentId)
+            acdc_stats:agent_logged_out(AccountId, AgentId)
     end.
 
 handle_presence_probe(JObj, _Props) ->
