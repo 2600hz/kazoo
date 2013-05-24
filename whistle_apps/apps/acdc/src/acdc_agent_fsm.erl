@@ -530,7 +530,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                     {'next_state', 'ready', State#state{connect_failures=CF+1}};
                 {'ok', UpdatedEPs} ->
                     acdc_agent:bridge_to_member(Srv, Call, JObj, UpdatedEPs, CDRUrl, RecordingUrl),
-
+                    acdc_stats:agent_connecting(AcctId, AgentId, CallId),
                     {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
                                                           ,member_call=Call
                                                           ,member_call_id=CallId
@@ -641,7 +641,7 @@ ringing({'originate_started', ACallId}, #state{agent_proc=Srv
     lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
     acdc_agent:member_connect_accepted(Srv),
 
-    acdc_stats:agent_connecting(AcctId, AgentId, MCallId),
+    acdc_stats:agent_connected(AcctId, AgentId, MCallId),
 
     {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
                                            ,call_status_failures=0
@@ -771,7 +771,7 @@ ringing({'channel_answered', ACallId}, #state{agent_call_id=ACallId
                                              }=State) ->
     lager:debug("agent answered phone on ~s", [ACallId]),
 
-    acdc_stats:agent_connecting(AcctId, AgentId, MCallId),
+    acdc_stats:agent_connected(AcctId, AgentId, MCallId),
 
     {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
                                            ,call_status_failures=0
