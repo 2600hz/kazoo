@@ -567,6 +567,7 @@ json_to_record(JObj, IsNew, #number{number=Num, number_db=Db}=Number) ->
       ,current_features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
       ,number_doc=JObj
       ,current_number_doc=case IsNew of true -> wh_json:new(); false -> JObj end
+      ,used_by=wh_json:get_value(<<"used_by">>, JObj, <<"">>)
      }.
 
 %%--------------------------------------------------------------------
@@ -588,6 +589,7 @@ record_to_json(#number{number_doc=JObj}=N) ->
                ,{<<"pvt_db_name">>, N#number.number_db}
                ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                ,{<<"pvt_created">>, wh_json:get_value(<<"pvt_created">>, JObj, wh_util:current_tstamp())}
+               ,{<<"used_by">>, N#number.used_by}
               ],
     lists:foldl(fun({K, undefined}, J) -> wh_json:delete_key(K, J);
                    ({K, V}, J) -> wh_json:set_value(K, V, J)
@@ -859,11 +861,11 @@ get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_number_summary/2 :: (ne_binary(), wnm_number()) -> wh_json:json_object().
-create_number_summary(_Account, #number{state=State, features=Features, assigned_to=AssignedTo, number_doc=Doc}) ->
+create_number_summary(_Account, #number{state=State, features=Features, assigned_to=AssignedTo, number_doc=Doc, used_by=UsedBy}) ->
     wh_json:from_list([{<<"state">>, State}
                        ,{<<"features">>, [wh_util:to_binary(F) || F <- sets:to_list(Features)]}
-                       ,{<<"account_id">>, AssignedTo}
-                       ,{<<"assigned_to">>, <<"">>}
+                       ,{<<"assigned_to">>, AssignedTo}
+                       ,{<<"used_by">>, UsedBy}
                        ,{<<"created">>, wh_json:get_value(<<"pvt_created">>, Doc, 0)}
                        ,{<<"updated">>, wh_json:get_value(<<"pvt_modified">>, Doc, 0)}
                       ]).

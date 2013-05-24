@@ -25,6 +25,7 @@
 -export([put_attachment/5]).
 -export([delete_attachment/3]).
 -export([get_public_fields/2, set_public_fields/3]).
+-export ([track_assignment/1, track_assignment/2]).
 
 -include("wnm.hrl").
 
@@ -113,7 +114,7 @@ find_transfer_ringback(#number{number_doc=JObj}) ->
 -spec ported/1 :: (ne_binary()) -> operation_return().
 ported(Number) ->
     Routines = [fun({_, #number{}}=E) -> E;
-                   (#number{state = <<"port_in">>, assigned_to=AssignedTo}=N) -> 
+                   (#number{state = <<"port_in">>, assigned_to=AssignedTo}=N) ->
                         lager:debug("attempting to move port_in number ~s to in_service for account ~s", [Number, AssignedTo]),
                         N#number{auth_by=AssignedTo};
                    (#number{}=N) ->
@@ -125,14 +126,14 @@ ported(Number) ->
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({E, #number{error_jobj=Reason}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
-                    (#number{number_doc=JObj}) -> 
+                    (#number{number_doc=JObj}) ->
                          lager:debug("reserve successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
                  end
-               ], 
+               ],
     lists:foldl(fun(F, J) -> catch F(J) end, catch wnm_number:get(Number), Routines).
 
 %%--------------------------------------------------------------------
@@ -148,9 +149,9 @@ create_number(Number, AssignTo, AuthBy) ->
     create_number(Number, AssignTo, AuthBy, wh_json:new()).
 
 create_number(Number, AssignTo, AuthBy, PublicFields) ->
-    lager:debug("attempting to create number ~s for account ~s", [Number, AssignTo]),    
+    lager:debug("attempting to create number ~s for account ~s", [Number, AssignTo]),
     Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
-                ,fun({not_found, #number{}=N}) -> 
+                ,fun({not_found, #number{}=N}) ->
                          AccountId = wh_util:format_account_id(AuthBy, raw),
                          AccountDb = wh_util:format_account_id(AuthBy, encoded),
                          try
@@ -183,14 +184,14 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({E, #number{error_jobj=Reason}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
-                    (#number{number_doc=JObj}) -> 
+                    (#number{number_doc=JObj}) ->
                          lager:debug("create number successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
                  end
-               ], 
+               ],
     lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
@@ -206,7 +207,7 @@ port_in(Number, AssignTo, AuthBy) ->
     port_in(Number, AssignTo, AuthBy, wh_json:new()).
 
 port_in(Number, AssignTo, AuthBy, PublicFields) ->
-    lager:debug("attempting to port_in number ~s for account ~s", [Number, AssignTo]),    
+    lager:debug("attempting to port_in number ~s for account ~s", [Number, AssignTo]),
     Routines = [fun({not_found, #number{}=N}) ->
                         NewNumber = N#number{number=Number
                                              ,assign_to=AssignTo
@@ -220,14 +221,14 @@ port_in(Number, AssignTo, AuthBy, PublicFields) ->
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({E, #number{error_jobj=Reason}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
-                    (#number{number_doc=JObj}) -> 
+                    (#number{number_doc=JObj}) ->
                          lager:debug("port in number successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
                  end
-               ], 
+               ],
     lists:foldl(fun(F, J) -> catch F(J) end, catch wnm_number:get(Number, PublicFields), Routines).
 
 %%--------------------------------------------------------------------
@@ -254,9 +255,9 @@ reconcile_number(Number, AssignTo, AuthBy) ->
                         N#number{assign_to=AssignedTo}
                 end
                 ,fun({_, #number{}}=E) -> E;
-                    (#number{}=N) when is_binary(AuthBy) -> 
+                    (#number{}=N) when is_binary(AuthBy) ->
                          N#number{auth_by=AuthBy};
-                    (#number{assign_to=ATo}=N) -> 
+                    (#number{assign_to=ATo}=N) ->
                          N#number{auth_by=ATo}
                  end
                 ,fun({_, #number{}}=E) -> E;
@@ -273,14 +274,14 @@ reconcile_number(Number, AssignTo, AuthBy) ->
                     ({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({E, #number{error_jobj=Reason}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
-                    (#number{number_doc=JObj}) -> 
+                    (#number{number_doc=JObj}) ->
                          lager:debug("reconcile number successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
                  end
-               ], 
+               ],
     lists:foldl(fun(F, J) -> catch F(J) end, catch wnm_number:get(Number), Routines).
 
 %%--------------------------------------------------------------------
@@ -300,7 +301,7 @@ free_numbers(AccountId) ->
                         ,wnm_util:is_reconcilable(Key)
                 ],
             ok;
-        {_R, _} -> 
+        {_R, _} ->
             lager:debug("failed to open account ~s ~s document: ~p", [AccountId, ?WNM_PHONE_NUMBER_DOC, _R]),
             ok
     end.
@@ -319,21 +320,21 @@ reserve_number(Number, AssignTo, AuthBy) ->
     reserve_number(Number, AssignTo, AuthBy, undefined).
 
 reserve_number(Number, AssignTo, AuthBy, PublicFields) ->
-    lager:debug("attempting to reserve ~s for account ~s", [Number, AssignTo]),    
+    lager:debug("attempting to reserve ~s for account ~s", [Number, AssignTo]),
     Routines = [fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:reserved(N#number{assign_to=AssignTo, auth_by=AuthBy})
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({E, #number{error_jobj=Reason}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
-                    (#number{number_doc=JObj}) -> 
+                    (#number{number_doc=JObj}) ->
                          lager:debug("reserve successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
                  end
-               ], 
+               ],
     lists:foldl(fun(F, J) -> catch F(J) end, catch wnm_number:get(Number, PublicFields), Routines).
 
 %%--------------------------------------------------------------------
@@ -359,10 +360,10 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields) ->
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({E, #number{error_jobj=Reason}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
-                    (#number{number_doc=JObj}) -> 
+                    (#number{number_doc=JObj}) ->
                          lager:debug("assign number to account successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
                  end
@@ -377,7 +378,7 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec release_number/2 :: (ne_binary(), ne_binary()) -> operation_return().
-release_number(Number, AuthBy) ->    
+release_number(Number, AuthBy) ->
     lager:debug("attempting to release ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
                 ,fun({_, #number{}}=E) -> E;
@@ -389,10 +390,10 @@ release_number(Number, AuthBy) ->
                     (#number{hard_delete=false}=N) -> wnm_number:save(N);
                     (#number{hard_delete=true}=N) -> wnm_number:delete(N)
                  end
-                ,fun({E, #number{error_jobj=Reason}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
-                    (#number{number_doc=JObj}) -> 
+                    (#number{number_doc=JObj}) ->
                          lager:debug("release successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
                  end
@@ -409,7 +410,7 @@ release_number(Number, AuthBy) ->
 list_attachments(Number, AuthBy) ->
     lager:debug("attempting to list attachements on ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
-                ,fun({_, #number{}}=E) -> E; 
+                ,fun({_, #number{}}=E) -> E;
                     (#number{state = <<"port_in">>}=N) -> N;
                     (#number{}=N) -> wnm_number:error_unauthorized(N)
                  end
@@ -420,14 +421,14 @@ list_attachments(Number, AuthBy) ->
                             true -> N
                         end
                  end
-                ,fun({E, #number{error_jobj=Reason}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
-                    (#number{number_doc=JObj}) -> 
+                    (#number{number_doc=JObj}) ->
                          lager:debug("list attachements successfully completed", []),
                          {ok, wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())}
                  end
-               ], 
+               ],
     lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
@@ -440,7 +441,7 @@ list_attachments(Number, AuthBy) ->
 fetch_attachment(Number, Name, AuthBy) ->
     lager:debug("fetch attachement on ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
-                ,fun({_, #number{}}=E) -> E; 
+                ,fun({_, #number{}}=E) -> E;
                     (#number{state = <<"port_in">>}=N) -> N;
                     (#number{}=N) -> wnm_number:error_unauthorized(N)
                  end
@@ -451,10 +452,10 @@ fetch_attachment(Number, Name, AuthBy) ->
                             true -> N
                         end
                  end
-                ,fun({E, #number{error_jobj=Reason}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
-                    (#number{number=Num}) -> 
+                    (#number{number=Num}) ->
                          Db = wnm_util:number_to_db_name(Num),
                          lager:debug("attempting to fetch attachement ~s", [Name]),
                          couch_mgr:fetch_attachment(Db, Num, Name)
@@ -472,7 +473,7 @@ fetch_attachment(Number, Name, AuthBy) ->
 put_attachment(Number, Name, Content, Options, AuthBy) ->
     lager:debug("add attachement to ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
-                ,fun({_, #number{}}=E) -> E; 
+                ,fun({_, #number{}}=E) -> E;
                     (#number{state = <<"port_in">>}=N) -> N;
                     (#number{}=N) -> wnm_number:error_unauthorized(N)
                  end
@@ -483,10 +484,10 @@ put_attachment(Number, Name, Content, Options, AuthBy) ->
                             true -> N
                         end
                  end
-                ,fun({E, #number{error_jobj=JObj}}) -> 
+                ,fun({E, #number{error_jobj=JObj}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, JObj};
-                    (#number{number=Num, number_doc=JObj}) -> 
+                    (#number{number=Num, number_doc=JObj}) ->
                          lager:debug("attempting to put attachement ~s", [Name]),
                          Db = wnm_util:number_to_db_name(Num),
                          Rev = wh_json:get_value(<<"_rev">>, JObj),
@@ -505,7 +506,7 @@ put_attachment(Number, Name, Content, Options, AuthBy) ->
 delete_attachment(Number, Name, AuthBy) ->
     lager:debug("delete attachement from ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
-                ,fun({_, #number{}}=E) -> E; 
+                ,fun({_, #number{}}=E) -> E;
                     (#number{state = <<"port_in">>}=N) -> N;
                     (#number{}=N) -> wnm_number:error_unauthorized(N)
                  end
@@ -516,10 +517,10 @@ delete_attachment(Number, Name, AuthBy) ->
                             true -> N
                         end
                  end
-                ,fun({E, #number{error_jobj=Reason}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
-                    (#number{number=Num}) -> 
+                    (#number{number=Num}) ->
                          lager:debug("attempting to delete attachement ~s", [Name]),
                          Db = wnm_util:number_to_db_name(Num),
                          couch_mgr:delete_attachment(Db, Num, Name)
@@ -545,14 +546,14 @@ get_public_fields(Number, AuthBy) ->
                              true -> N
                          end
                  end
-                ,fun({E, #number{error_jobj=Reason}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
-                    (#number{number_doc=JObj}) -> 
+                    (#number{number_doc=JObj}) ->
                          lager:debug("fetch public fields successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
                  end
-               ], 
+               ],
     lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
@@ -573,15 +574,42 @@ set_public_fields(Number, PublicFields, AuthBy) ->
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({E, #number{error_jobj=Reason}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
-                    (#number{number_doc=JObj}) -> 
+                    (#number{number_doc=JObj}) ->
                          lager:debug("set public fields successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
                  end
-               ], 
+               ],
     lists:foldl(fun(F, J) -> catch F(J) end, wnm_number:get(Number, PublicFields), Routines).
+
+track_assignment(Numbers) ->
+    track_assignment(Numbers, <<"">>).
+
+track_assignment([], _) ->
+    'ok';
+track_assignment(Numbers, Assignment) ->
+    Routines = [fun(Nums) ->
+                    lists:foldl(
+                        fun(Num, Acc) ->
+                            case wnm_util:is_reconcilable(Num) of
+                                'true' -> [Num|Acc];
+                                'false' -> Acc
+                            end
+                        end, [], Nums
+                    )
+                end
+                ,fun(Nums)->
+                    lists:foreach(
+                        fun(Num) ->
+                            NumRecord = wnm_number:get(Num),
+                            wnm_number:save_phone_number_docs(NumRecord#number{used_by=Assignment})
+                        end, Nums
+                    )
+                end
+               ],
+    lists:foldl(fun(F, J) -> catch F(J) end, Numbers, Routines).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -627,7 +655,7 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
                                  ,module_data=wh_json:get_value(Number, ModuleResults)
                                 },
             case catch wnm_number:save(wnm_number:create_discovery(NewNumber)) of
-                #number{} -> 
+                #number{} ->
                     prepare_find_results(Numbers, ModuleName, ModuleResults, [Number|Found]);
                 {_R, #number{}} ->
                     lager:debug("failed to store discovery ~s: ~p", [Number, _R]),
@@ -635,5 +663,5 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
             end;
         {_R, #number{}} ->
             lager:debug("failed to determine state of discovery ~s: ~p", [Number, _R]),
-            prepare_find_results(Numbers, ModuleName, ModuleResults, Found)    
+            prepare_find_results(Numbers, ModuleName, ModuleResults, Found)
     end.

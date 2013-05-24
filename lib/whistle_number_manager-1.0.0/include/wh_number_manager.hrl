@@ -25,6 +25,7 @@
                  ,services :: wh_services:services()
                  ,current_balance :: float() | integer()
                  ,billing_id :: api_binary()
+                 ,used_by = <<"">> :: binary()
                 }).
 
 -type wnm_number() :: #number{}.
