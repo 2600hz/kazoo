@@ -3,6 +3,10 @@
   ,"views":{
     "status_log": {
       "map":"function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.agent_id, doc.timestamp], doc.status); }"
+    },
+    "most_recent": {
+      "map":"function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit(doc.agent_id, {'timestamp':doc.timestamp, 'status':doc.status}); }",
+      "reduce": "function(ks, vs, re) {var r = {'timestamp':0, 'status':'logged_out'}; for(i=0; i<vs.length; i++){if(vs[i].timestamp > r.timestamp){r=vs[i];}}  return r;}"
     }
   }
 }
