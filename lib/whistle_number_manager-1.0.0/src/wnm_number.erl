@@ -861,9 +861,15 @@ get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_number_summary/2 :: (ne_binary(), wnm_number()) -> wh_json:json_object().
-create_number_summary(_Account, #number{state=State, features=Features, assigned_to=AssignedTo, number_doc=Doc, used_by=UsedBy}) ->
+create_number_summary(_Account, #number{state=State, features=Features, module_name=ModuleName
+                                ,assigned_to=AssignedTo, number_doc=Doc, used_by=UsedBy}) ->
+    MaybeOwned = case (ModuleName == 'wnm_local') of
+        'true' -> ['owned'];
+        'false' -> []
+    end,
+    NFeatures =  lists:merge([wh_util:to_binary(F) || F <- sets:to_list(Features)], MaybeOwned),
     wh_json:from_list([{<<"state">>, State}
-                       ,{<<"features">>, [wh_util:to_binary(F) || F <- sets:to_list(Features)]}
+                       ,{<<"features">>, NFeatures}
                        ,{<<"assigned_to">>, AssignedTo}
                        ,{<<"used_by">>, UsedBy}
                        ,{<<"created">>, wh_json:get_value(<<"pvt_created">>, Doc, 0)}
