@@ -315,7 +315,7 @@ init([AcctId, AgentId, Supervisor, Props, IsThief]) ->
     put('callid', FSMCallId),
     lager:debug("started acdc agent fsm"),
 
-    acdc_stats:agent_active(AcctId, AgentId),
+    acdc_stats:agent_ready(AcctId, AgentId),
 
     Self = self(),
     _P = spawn(?MODULE, 'wait_for_listener', [Supervisor, Self, Props, IsThief]),
@@ -521,7 +521,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                 {'error', 'no_endpoints'} ->
                     lager:info("agent ~s has no endpoints assigned; logging agent out", [AgentId]),
                     acdc_agent:logout_agent(Srv),
-                    acdc_stats:agent_inactive(AcctId, AgentId),
+                    acdc_stats:agent_logged_out(AcctId, AgentId),
                     acdc_agent:member_connect_retry(Srv, JObj),
                     {'next_state', 'paused', State};
                 {'error', _E} ->
@@ -564,7 +564,7 @@ ready({'member_connect_req', _}, #state{max_connect_failures=Max
                                        }=State) when Fails >= Max ->
     lager:info("agent has failed to connect ~b times, logging out", [Fails]),
     acdc_agent:logout_agent(Srv),
-    acdc_stats:agent_inactive(AcctId, AgentId),
+    acdc_stats:agent_logged_out(AcctId, AgentId),
     {'next_state', 'paused', State};
 
 ready({'member_connect_req', JObj}, #state{agent_proc=Srv}=State) ->
@@ -641,7 +641,7 @@ ringing({'originate_started', ACallId}, #state{agent_proc=Srv
     lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
     acdc_agent:member_connect_accepted(Srv),
 
-    acdc_stats:agent_handling(AcctId, AgentId, MCallId),
+    acdc_stats:agent_connecting(AcctId, AgentId, MCallId),
 
     {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
                                            ,call_status_failures=0
@@ -698,7 +698,7 @@ ringing({'channel_bridged', CallId}, #state{member_call_id=CallId
     lager:debug("agent phone has been connected to caller"),
     acdc_agent:member_connect_accepted(Srv),
 
-    acdc_stats:agent_handling(AcctId, AgentId, CallId),
+    acdc_stats:agent_connected(AcctId, AgentId, CallId),
 
     {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
                                            ,call_status_failures=0
@@ -771,7 +771,7 @@ ringing({'channel_answered', ACallId}, #state{agent_call_id=ACallId
                                              }=State) ->
     lager:debug("agent answered phone on ~s", [ACallId]),
 
-    acdc_stats:agent_handling(AcctId, AgentId, MCallId),
+    acdc_stats:agent_connecting(AcctId, AgentId, MCallId),
 
     {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
                                            ,call_status_failures=0
@@ -1417,7 +1417,7 @@ update_agent_status_to_resume(AcctId, AgentId) ->
     Extra = [{<<"node">>, wh_util:to_binary(node())}
              ,{<<"pid">>, wh_util:to_binary(pid_to_list(self()))}
             ],
-    {'ok', _} = acdc_util:update_agent_status(AcctId, AgentId, <<"resume">>, Extra).
+    'ok' = acdc_util:update_agent_status(AcctId, AgentId, <<"resume">>, Extra).
 
 %% returns time left in seconds
 time_left(Ref) when is_reference(Ref) ->
@@ -1434,7 +1434,7 @@ clear_call(#state{connect_failures=Fails
                   ,agent_proc=Srv
                  }=State, 'failed') when (Max - Fails) =< 1 ->
     acdc_agent:logout_agent(Srv),
-    acdc_stats:agent_inactive(AcctId, AgentId),
+    acdc_stats:agent_logged_out(AcctId, AgentId),
     lager:debug("agent has failed to connect ~b times, logging out", [Fails+1]),
     clear_call(State#state{connect_failures=Fails+1}, 'paused');
 clear_call(#state{connect_failures=Fails}=State, 'failed') ->
@@ -1523,7 +1523,7 @@ start_outbound_call_handling(CallId, #state{agent_proc=Srv
     _ = put('callid', CallId),
     lager:debug("agent making outbound call, not receiving calls"),
     acdc_agent:outbound_call(Srv, CallId),
-    acdc_stats:agent_oncall(AcctId, AgentId, CallId),
+    acdc_stats:agent_outbound(AcctId, AgentId, CallId),
 
     State#state{outbound_call_id=CallId
                 ,call_status_ref=start_call_status_timer()
