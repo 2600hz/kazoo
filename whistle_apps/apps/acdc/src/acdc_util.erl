@@ -13,7 +13,7 @@
          ,unbind_from_call_events/1, unbind_from_call_events/2
          ,unbind_from_cdr/1
          ,agents_in_queue/2
-         ,agent_status/2, agent_status/3
+         ,agent_status/2
          ,update_agent_status/3, update_agent_status/4
          ,agent_devices/2
          ,proc_id/0, proc_id/1, proc_id/2
@@ -122,43 +122,50 @@ unbind(CallId, Restrict) ->
                                             ]).
 
 -spec agent_status(ne_binary(), ne_binary()) -> ne_binary().
--spec agent_status(ne_binary(), ne_binary(), boolean()) -> ne_binary() | wh_json:object().
 agent_status(?NE_BINARY = AcctId, AgentId) ->
-    agent_status(AcctId, AgentId, 'false').
-agent_status(?NE_BINARY = AcctId, AgentId, ReturnDoc) ->
-    Opts = [{'endkey', [AgentId, 0]}
-            ,{'startkey', [AgentId, wh_json:new()]}
-            ,{'limit', 1}
-            ,{'r', 2}
-            ,'descending'
-            | case ReturnDoc of 'true' -> ['include_docs']; 'false' -> [] end
-           ],
+    API = [{<<"Account-ID">>, AcctId}
+           ,{<<"Agent-ID">>, AgentId}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case whapps_util:amqp_pool_request(API
+                                       ,fun wapi_acdc_stats:publish_status_req/1
+                                       ,fun wapi_acdc_stats:status_resp_v/1
+                                      )
+    of
+        {'ok', Resp} ->
+            Stats = wh_json:get_value([<<"Agents">>, AgentId], Resp),
+            {_, Status} = wh_json:foldl(fun find_most_recent_fold/3, {0, <<"logged_out">>}, Stats),
+            Status;
+        {'error', E} ->
+            case wh_json:is_json_object(E) of
+                'false' ->
+                    lager:debug("failed to query for status: ~p", [E]);
+                'true' ->
+                    lager:debug("failed to query for status: ~s", [wh_json:get_value(<<"Error-Reason">>, E)])
+            end,
+            <<"logged_out">>
+    end.
 
-    Key = case ReturnDoc of 'true' -> <<"doc">>; 'false' -> <<"value">> end,
-
-    case couch_mgr:get_results(acdc_stats:db_name(AcctId), <<"agent_stats/status_log">>, Opts) of
-        {'ok', []} -> <<"logout">>;
-        {'error', _E} -> <<"logout">>;
-        {'ok', [StatusJObj|_]} -> wh_json:get_value(Key, StatusJObj)
+find_most_recent_fold(K, V, {T, _}=Acc) ->
+    try wh_util:to_integer(K) of
+        N when N > T -> {N, wh_json:get_value(<<"status">>, V)};
+        _ -> Acc
+    catch
+        _E:_R ->
+            lager:debug("key ~p not an int", [K]),
+            Acc
     end.
 
 update_agent_status(AcctId, AgentId, Status) ->
     update_agent_status(AcctId, AgentId, Status, []).
 update_agent_status(?NE_BINARY = AcctId, AgentId, Status, Options) ->
-    Doc =
-        wh_doc:update_pvt_parameters(
-          wh_json:from_list(
-            props:filter_undefined(
-              [{<<"agent_id">>, AgentId}
-               ,{<<"status">>, Status}
-               ,{<<"pvt_type">>, <<"agent_partial">>}
-               ,{<<"timestamp">>, wh_util:current_tstamp()}
-               | Options
-              ]))
-          ,AcctId, [{'account_id', AcctId}
-                    ,{'account_db', acdc_stats:db_name(AcctId)}
-                   ]),
-    couch_mgr:save_doc(acdc_stats:db_name(AcctId), Doc).
+    API = [{<<"Account-ID">>, AcctId}
+           ,{<<"Agent-ID">>, AgentId}
+           ,{<<"Status">>, Status}
+           ,{<<"Timestamp">>, wh_util:current_tstamp()}
+           | Options ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wapi_acdc_stats:publish_status_update(API).
 
 -spec proc_id() -> ne_binary().
 -spec proc_id(pid()) -> ne_binary().
