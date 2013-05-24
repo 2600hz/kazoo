@@ -107,16 +107,17 @@
                           ,<<"connected">>, <<"wrapup">>, <<"paused">>
                           ,<<"outbound">>
                          ]).
--record(status_stat, {id :: api_binary()
-                      ,agent_id :: api_binary()
-                      ,acct_id :: api_binary()
-                      ,status :: api_binary()
-                      ,timestamp :: api_pos_integer()
+-record(status_stat, {
+          id :: api_binary() | '_'
+          ,agent_id :: api_binary() | '$2' | '_'
+          ,acct_id :: api_binary() | '$1' | '_'
+          ,status :: api_binary() | '_'
+          ,timestamp :: api_pos_integer() | '$1' | '$5' | '_'
 
-                      ,wait_time :: api_integer()
-                      ,pause_time :: api_integer()
-                      ,callid :: api_binary()
-                    }).
+          ,wait_time :: api_integer() | '_'
+          ,pause_time :: api_integer() | '_'
+          ,callid :: api_binary() | '_'
+         }).
 -type status_stat() :: #status_stat{}.
 
 %% Public API
@@ -583,7 +584,7 @@ status_build_match_spec(JObj) ->
             status_build_match_spec(JObj, AcctMatch)
     end.
 
--spec status_build_match_spec(wh_json:object(), {call_stat(), list()}) ->
+-spec status_build_match_spec(wh_json:object(), {status_stat(), list()}) ->
                                      {'ok', ets:match_spec()} |
                                      {'error', wh_json:object()}.
 status_build_match_spec(JObj, AcctMatch) ->
@@ -693,7 +694,7 @@ query_call_fold(#call_stat{status=Status}=Stat, Acc) ->
     Doc = call_stat_to_doc(Stat),
     dict:update(Status, fun(L) -> [Doc | L] end, [Doc], Acc).
 
--spec query_status_fold(call_stat(), wh_json:object()) -> wh_json:object().
+-spec query_status_fold(status_stat(), wh_json:object()) -> wh_json:object().
 query_status_fold(#status_stat{agent_id=AgentId
                                ,timestamp=T
                               }=Stat, Acc) ->
@@ -760,7 +761,7 @@ archive_status_data(Srv) ->
             [couch_mgr:save_docs(db_name(Acct), Docs) || {Acct, Docs} <- dict:to_list(ToSave)]
     end.
 
--spec archive_status_fold(call_stat(), dict()) -> dict().
+-spec archive_status_fold(status_stat(), dict()) -> dict().
 archive_status_fold(#status_stat{acct_id=AcctId}=Stat, Acc) ->
     Doc = status_stat_to_doc(Stat),
     dict:update(AcctId, fun(L) -> [Doc | L] end, [Doc], Acc).

@@ -1005,7 +1005,7 @@ paused({'timeout', Ref, ?PAUSE_MESSAGE}, #state{sync_ref=Ref
                                                }=State) when is_reference(Ref) ->
     lager:debug("pause timer expired, putting agent back into action"),
 
-    _ = update_agent_status_to_resume(AcctId, AgentId),
+    update_agent_status_to_resume(AcctId, AgentId),
 
     acdc_agent:send_status_resume(Srv),
 
@@ -1021,7 +1021,7 @@ paused({'resume'}, #state{acct_id=AcctId
     lager:debug("resume received, putting agent back into action"),
     maybe_stop_timer(Ref),
 
-    _ = update_agent_status_to_resume(AcctId, AgentId),
+    update_agent_status_to_resume(AcctId, AgentId),
 
     acdc_agent:send_status_resume(Srv),
     acdc_stats:agent_ready(AcctId, AgentId),
@@ -1411,13 +1411,9 @@ hangup_cause(JObj) ->
         Cause -> Cause
     end.
 
--spec update_agent_status_to_resume(ne_binary(), ne_binary()) ->
-                                           {'ok', wh_json:object()}.
+-spec update_agent_status_to_resume(ne_binary(), ne_binary()) -> 'ok'.
 update_agent_status_to_resume(AcctId, AgentId) ->
-    Extra = [{<<"node">>, wh_util:to_binary(node())}
-             ,{<<"pid">>, wh_util:to_binary(pid_to_list(self()))}
-            ],
-    'ok' = acdc_util:update_agent_status(AcctId, AgentId, <<"resume">>, Extra).
+    'ok' = acdc_util:update_agent_status(AcctId, AgentId, <<"resume">>).
 
 %% returns time left in seconds
 time_left(Ref) when is_reference(Ref) ->
