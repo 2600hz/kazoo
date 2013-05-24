@@ -19,6 +19,10 @@
          ,current_calls_err/1, current_calls_err_v/1
          ,current_calls_resp/1, current_calls_resp_v/1
 
+         ,status_req/1, status_req_v/1
+         ,status_err/1, status_err_v/1
+         ,status_resp/1, status_resp_v/1
+
          ,status_ready/1, status_ready_v/1
          ,status_logged_out/1, status_logged_out_v/1
          ,status_connecting/1, status_connecting_v/1
@@ -26,6 +30,7 @@
          ,status_wrapup/1, status_wrapup_v/1
          ,status_paused/1, status_paused_v/1
          ,status_outbound/1, status_outbound_v/1
+         ,status_update/1, status_update_v/1
         ]).
 
 -export([bind_q/2
@@ -42,6 +47,10 @@
          ,publish_current_calls_err/2, publish_current_calls_err/3
          ,publish_current_calls_resp/2, publish_current_calls_resp/3
 
+         ,publish_status_req/1, publish_status_req/2
+         ,publish_status_err/2, publish_status_err/3
+         ,publish_status_resp/2, publish_status_resp/3
+
          ,publish_status_ready/1, publish_status_ready/2
          ,publish_status_logged_out/1, publish_status_logged_out/2
          ,publish_status_connecting/1, publish_status_connecting/2
@@ -49,6 +58,7 @@
          ,publish_status_wrapup/1, publish_status_wrapup/2
          ,publish_status_paused/1, publish_status_paused/2
          ,publish_status_outbound/1, publish_status_outbound/2
+         ,publish_status_update/1, publish_status_update/2
         ]).
 
 -include("acdc.hrl").
@@ -242,12 +252,102 @@ current_calls_resp_v(Prop) when is_list(Prop) ->
 current_calls_resp_v(JObj) ->
     current_calls_resp_v(wh_json:to_proplist(JObj)).
 
+-define(STATUS_REQ_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_STATUS_REQ_HEADERS, [<<"Agent-ID">>, <<"Start-Range">>, <<"End-Range">>]).
+-define(STATUS_REQ_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
+                            ,{<<"Event-Name">>, <<"status_req">>}
+                           ]).
+-define(STATUS_REQ_TYPES, []).
+
+-spec status_req(api_terms()) ->
+                        {'ok', iolist()} |
+                        {'error', string()}.
+status_req(Props) when is_list(Props) ->
+    case status_req_v(Props) of
+        'true' -> wh_api:build_message(Props, ?STATUS_REQ_HEADERS, ?OPTIONAL_STATUS_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for status_req"}
+    end;
+status_req(JObj) ->
+    status_req(wh_json:to_proplist(JObj)).
+
+-spec status_req_v(api_terms()) -> boolean().
+status_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?STATUS_REQ_HEADERS, ?STATUS_REQ_VALUES, ?STATUS_REQ_TYPES);
+status_req_v(JObj) ->
+    status_req_v(wh_json:to_proplist(JObj)).
+
+-define(STATUS_ERR_HEADERS, [<<"Error-Reason">>]).
+-define(OPTIONAL_STATUS_ERR_HEADERS, []).
+-define(STATUS_ERR_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
+                            ,{<<"Event-Name">>, <<"status_err">>}
+                           ]).
+-define(STATUS_ERR_TYPES, []).
+
+-spec status_err(api_terms()) ->
+                        {'ok', iolist()} |
+                        {'error', string()}.
+status_err(Props) when is_list(Props) ->
+    case status_err_v(Props) of
+        'true' -> wh_api:build_message(Props, ?STATUS_ERR_HEADERS, ?OPTIONAL_STATUS_ERR_HEADERS);
+        'false' -> {'error', "Proplist failed validation for status_err"}
+    end;
+status_err(JObj) ->
+    status_err(wh_json:to_proplist(JObj)).
+
+-spec status_err_v(api_terms()) -> boolean().
+status_err_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?STATUS_ERR_HEADERS, ?STATUS_ERR_VALUES, ?STATUS_ERR_TYPES);
+status_err_v(JObj) ->
+    status_err_v(wh_json:to_proplist(JObj)).
+
+-define(STATUS_RESP_HEADERS, [<<"Agents">>]).
+-define(OPTIONAL_STATUS_RESP_HEADERS, []).
+-define(STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
+                             ,{<<"Event-Name">>, <<"status_resp">>}
+                            ]).
+-define(STATUS_RESP_TYPES, []).
+
+-spec status_resp(api_terms()) ->
+                         {'ok', iolist()} |
+                         {'error', string()}.
+status_resp(Props) when is_list(Props) ->
+    case status_resp_v(Props) of
+        'true' -> wh_api:build_message(Props, ?STATUS_RESP_HEADERS, ?OPTIONAL_STATUS_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for status_resp"}
+    end;
+status_resp(JObj) ->
+    status_resp(wh_json:to_proplist(JObj)).
+
+-spec status_resp_v(api_terms()) -> boolean().
+status_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?STATUS_RESP_HEADERS, ?STATUS_RESP_VALUES, ?STATUS_RESP_TYPES);
+status_resp_v(JObj) ->
+    status_resp_v(wh_json:to_proplist(JObj)).
+
 -define(STATUS_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Timestamp">>]).
 -define(STATUS_OPTIONAL_HEADERS, [<<"Wait-Time">>, <<"Pause-Time">>, <<"Call-ID">>]).
 -define(STATUS_VALUES(Name), [{<<"Event-Category">>, <<"acdc_status_stat">>}
                               ,{<<"Event-Name">>, Name}
                              ]).
 -define(STATUS_TYPES, []).
+
+-spec status_update(api_terms()) ->
+                          {'ok', iolist()} |
+                          {'error', string()}.
+status_update(Props) when is_list(Props) ->
+    case status_update_v(Props) of
+        'true' -> wh_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for status_update"}
+    end;
+status_update(JObj) ->
+    status_update(wh_json:to_proplist(JObj)).
+
+-spec status_update_v(api_terms()) -> boolean().
+status_update_v(Prop) when is_list(Prop) ->
+    EvtName = props:get_value(<<"Status">>, Prop),
+    wh_api:validate(Prop, ?STATUS_HEADERS, ?STATUS_VALUES(EvtName), ?STATUS_TYPES);
+status_update_v(JObj) ->
+    status_update_v(wh_json:to_proplist(JObj)).
 
 -spec status_ready(api_terms()) ->
                           {'ok', iolist()} |
@@ -380,15 +480,19 @@ bind_q(Q, Props) ->
 bind_q(Q, AcctId, QID, AID, 'undefined') ->
     amqp_util:bind_q_to_whapps(Q, call_stat_routing_key(AcctId, QID)),
     amqp_util:bind_q_to_whapps(Q, status_stat_routing_key(AcctId, AID)),
-    amqp_util:bind_q_to_whapps(Q, query_stat_routing_key(AcctId, QID));
+    amqp_util:bind_q_to_whapps(Q, query_call_stat_routing_key(AcctId, QID)),
+    amqp_util:bind_q_to_whapps(Q, query_status_stat_routing_key(AcctId, AID));
 bind_q(Q, AcctId, QID, AID, ['call_stat'|L]) ->
     amqp_util:bind_q_to_whapps(Q, call_stat_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, AID, L);
 bind_q(Q, AcctId, QID, AID, ['status_stat'|L]) ->
     amqp_util:bind_q_to_whapps(Q, status_stat_routing_key(AcctId, AID)),
     bind_q(Q, AcctId, QID, AID, L);
-bind_q(Q, AcctId, QID, AID, ['query_stat'|L]) ->
-    amqp_util:bind_q_to_whapps(Q, query_stat_routing_key(AcctId, QID)),
+bind_q(Q, AcctId, QID, AID, ['query_call_stat'|L]) ->
+    amqp_util:bind_q_to_whapps(Q, query_call_stat_routing_key(AcctId, QID)),
+    bind_q(Q, AcctId, QID, AID, L);
+bind_q(Q, AcctId, QID, AID, ['query_status_stat'|L]) ->
+    amqp_util:bind_q_to_whapps(Q, query_status_stat_routing_key(AcctId, AID)),
     bind_q(Q, AcctId, QID, AID, L);
 bind_q(Q, AcctId, QID, AID, [_|L]) ->
     bind_q(Q, AcctId, QID, AID, L).
@@ -403,15 +507,19 @@ unbind_q(Q, Props) ->
 unbind_q(Q, AcctId, QID, AID, 'undefined') ->
     amqp_util:unbind_q_from_whapps(Q, call_stat_routing_key(AcctId, QID)),
     amqp_util:unbind_q_from_whapps(Q, status_stat_routing_key(AcctId, AID)),
-    amqp_util:unbind_q_from_whapps(Q, query_stat_routing_key(AcctId, QID));
+    amqp_util:unbind_q_from_whapps(Q, query_call_stat_routing_key(AcctId, QID)),
+    amqp_util:unbind_q_from_whapps(Q, query_status_stat_routing_key(AcctId, AID));
 unbind_q(Q, AcctId, QID, AID, ['call_stat'|L]) ->
     amqp_util:unbind_q_from_whapps(Q, call_stat_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, AID, L);
 unbind_q(Q, AcctId, QID, AID, ['status_stat'|L]) ->
     amqp_util:unbind_q_from_whapps(Q, status_stat_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, AID, L);
-unbind_q(Q, AcctId, QID, AID, ['query_stat'|L]) ->
-    amqp_util:unbind_q_from_whapps(Q, query_stat_routing_key(AcctId, QID)),
+unbind_q(Q, AcctId, QID, AID, ['query_call_stat'|L]) ->
+    amqp_util:unbind_q_from_whapps(Q, query_call_stat_routing_key(AcctId, QID)),
+    unbind_q(Q, AcctId, QID, AID, L);
+unbind_q(Q, AcctId, QID, AID, ['query_status_stat'|L]) ->
+    amqp_util:unbind_q_from_whapps(Q, query_status_stat_routing_key(AcctId, AID)),
     unbind_q(Q, AcctId, QID, AID, L);
 unbind_q(Q, AcctId, QID, AID, [_|L]) ->
     unbind_q(Q, AcctId, QID, AID, L).
@@ -445,6 +553,13 @@ publish_call_processed(JObj) ->
 publish_call_processed(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?PROCESS_VALUES, fun call_processed/1),
     amqp_util:whapps_publish(call_stat_routing_key(API), Payload, ContentType).
+
+publish_status_update(JObj) ->
+    publish_status_update(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_status_update(API, ContentType) ->
+    EvtName = status_value(API),
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?STATUS_VALUES(EvtName), fun status_update/1),
+    amqp_util:whapps_publish(status_stat_routing_key(API), Payload, ContentType).
 
 publish_status_ready(JObj) ->
     publish_status_ready(JObj, ?DEFAULT_CONTENT_TYPE).
@@ -492,7 +607,7 @@ publish_current_calls_req(JObj) ->
     publish_current_calls_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_current_calls_req(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?CURRENT_CALLS_REQ_VALUES, fun current_calls_req/1),
-    amqp_util:whapps_publish(query_stat_routing_key(API), Payload, ContentType).
+    amqp_util:whapps_publish(query_call_stat_routing_key(API), Payload, ContentType).
 
 publish_current_calls_err(RespQ, JObj) ->
     publish_current_calls_err(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
@@ -504,6 +619,24 @@ publish_current_calls_resp(RespQ, JObj) ->
     publish_current_calls_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_current_calls_resp(RespQ, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?CURRENT_CALLS_RESP_VALUES, fun current_calls_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+publish_status_req(JObj) ->
+    publish_status_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_status_req(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?STATUS_REQ_VALUES, fun status_req/1),
+    amqp_util:whapps_publish(query_status_stat_routing_key(API), Payload, ContentType).
+
+publish_status_err(RespQ, JObj) ->
+    publish_status_err(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_status_err(RespQ, API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?STATUS_ERR_VALUES, fun status_err/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+publish_status_resp(RespQ, JObj) ->
+    publish_status_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_status_resp(RespQ, API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?STATUS_RESP_VALUES, fun status_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 call_stat_routing_key(Prop) when is_list(Prop) ->
@@ -528,16 +661,34 @@ status_stat_routing_key(JObj) ->
 status_stat_routing_key(AcctId, AID) ->
     <<"acdc_stats.status.", AcctId/binary, ".", AID/binary>>.
 
-query_stat_routing_key(Prop) when is_list(Prop) ->
-    query_stat_routing_key(props:get_value(<<"Account-ID">>, Prop)
-                           ,props:get_value(<<"Queue-ID">>, Prop)
-                          );
-query_stat_routing_key(JObj) ->
-    query_stat_routing_key(wh_json:get_value(<<"Account-ID">>, JObj)
-                           ,wh_json:get_value(<<"Queue-ID">>, JObj)
-                          ).
+query_call_stat_routing_key(Prop) when is_list(Prop) ->
+    query_call_stat_routing_key(props:get_value(<<"Account-ID">>, Prop)
+                                ,props:get_value(<<"Queue-ID">>, Prop)
+                               );
+query_call_stat_routing_key(JObj) ->
+    query_call_stat_routing_key(wh_json:get_value(<<"Account-ID">>, JObj)
+                                ,wh_json:get_value(<<"Queue-ID">>, JObj)
+                               ).
 
-query_stat_routing_key(AcctId, 'undefined') ->
-    <<"acdc_stats.query.", AcctId/binary, ".all">>;
-query_stat_routing_key(AcctId, QID) ->
-    <<"acdc_stats.query.", AcctId/binary, ".", QID/binary>>.
+query_call_stat_routing_key(AcctId, 'undefined') ->
+    <<"acdc_stats.query_call.", AcctId/binary, ".all">>;
+query_call_stat_routing_key(AcctId, QID) ->
+    <<"acdc_stats.query_call.", AcctId/binary, ".", QID/binary>>.
+
+query_status_stat_routing_key(Prop) when is_list(Prop) ->
+    query_status_stat_routing_key(props:get_value(<<"Account-ID">>, Prop)
+                                  ,props:get_value(<<"Agent-ID">>, Prop)
+                                 );
+query_status_stat_routing_key(JObj) ->
+    query_status_stat_routing_key(wh_json:get_value(<<"Account-ID">>, JObj)
+                                  ,wh_json:get_value(<<"AgentId-ID">>, JObj)
+                                 ).
+
+query_status_stat_routing_key(AcctId, 'undefined') ->
+    <<"acdc_stats.query_status.", AcctId/binary, ".all">>;
+query_status_stat_routing_key(AcctId, QID) ->
+    <<"acdc_stats.query_status.", AcctId/binary, ".", QID/binary>>.
+
+
+status_value(API) when is_list(API) -> props:get_value(<<"Status">>, API);
+status_value(API) -> wh_json:get_value(<<"Status">>, API).
