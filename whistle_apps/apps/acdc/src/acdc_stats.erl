@@ -38,12 +38,15 @@
          ,init_db/1
          ,db_name/1
          ,archive_call_data/1
+         ,archive_status_data/1
         ]).
 
 %% AMQP Callbacks
 -export([handle_call_stat/2
+         ,handle_call_query/2
+
          ,handle_status_stat/2
-         ,handle_query/2
+         ,handle_status_query/2
         ]).
 
 %% gen_listener functions
@@ -275,10 +278,21 @@ status_table_opts() ->
                         ,{<<"acdc_call_stat">>, <<"processed">>}
                        ]
                      }
-                     ,{{?MODULE, 'handle_query'}
-                       ,[{<<"acdc_stat">>, <<"current_calls_req">>}
-                         ,{<<"acdc_stat">>, <<"current_statuses_req">>}
+                     ,{{?MODULE, 'handle_status_stat'}
+                       ,[{<<"acdc_status_stat">>, <<"ready">>}
+                         ,{<<"acdc_status_stat">>, <<"logged_out">>}
+                         ,{<<"acdc_status_stat">>, <<"connecting">>}
+                         ,{<<"acdc_status_stat">>, <<"connected">>}
+                         ,{<<"acdc_status_stat">>, <<"wrapup">>}
+                         ,{<<"acdc_status_stat">>, <<"paused">>}
+                         ,{<<"acdc_status_stat">>, <<"outbound">>}
                         ]
+                      }
+                     ,{{?MODULE, 'handle_call_query'}
+                       ,[{<<"acdc_stat">>, <<"current_calls_req">>}]
+                      }
+                     ,{{?MODULE, 'handle_status_query'}
+                       ,[{<<"acdc_stat">>, <<"status_req">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -319,7 +333,7 @@ handle_status_stat(JObj, Props) ->
              end,
 
     AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
-    Timestamp = wh_json:get_integer(<<"Timestamp">>, JObj),
+    Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
 
     gen_listener:cast(props:get_value('server', Props)
                       ,{'create_status', #status_stat{id=status_stat_id(AgentId, Timestamp)
@@ -328,18 +342,29 @@ handle_status_stat(JObj, Props) ->
                                                       ,status=EventName
                                                       ,timestamp=Timestamp
                                                       ,callid=wh_json:get_value(<<"Call-ID">>, JObj)
-                                                      ,wait_time=wh_json:get_integer(<<"Wait-Time">>, JObj)
-                                                      ,pause_time=wh_json:get_integer(<<"Pause-Time">>, JObj)
+                                                      ,wait_time=wh_json:get_integer_value(<<"Wait-Time">>, JObj)
+                                                      ,pause_time=wh_json:get_integer_value(<<"Pause-Time">>, JObj)
                                                      }}).
 
--spec handle_query(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_query(JObj, _Prop) ->
+-spec handle_call_query(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_call_query(JObj, _Prop) ->
     'true' = wapi_acdc_stats:current_calls_req_v(JObj),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
 
     case call_build_match_spec(JObj) of
         {'ok', Match} -> query_calls(RespQ, MsgId, Match);
+        {'error', Errors} -> publish_query_errors(RespQ, MsgId, Errors)
+    end.
+
+-spec handle_status_query(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_status_query(JObj, _Prop) ->
+    'true' = wapi_acdc_stats:status_req_v(JObj),
+    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+
+    case status_build_match_spec(JObj) of
+        {'ok', Match} -> query_statuses(RespQ, MsgId, Match);
         {'error', Errors} -> publish_query_errors(RespQ, MsgId, Errors)
     end.
 
@@ -366,8 +391,8 @@ handle_cast({'create_call', #call_stat{id=_Id}=Stat}, State) ->
     lager:debug("creating new call stat ~s", [_Id]),
     ets:insert_new(call_table_id(), Stat),
     {'noreply', State};
-handle_cast({'create_status', #status_stat{id=_Id}=Stat}, State) ->
-    lager:debug("creating new status stat ~s", [_Id]),
+handle_cast({'create_status', #status_stat{id=_Id, status=_Status}=Stat}, State) ->
+    lager:debug("creating new status stat ~s: ~s", [_Id, _Status]),
     ets:insert_new(status_table_id(), Stat),
     {'noreply', State};
 handle_cast({'update_call', Id, Updates}, State) ->
@@ -376,10 +401,18 @@ handle_cast({'update_call', Id, Updates}, State) ->
     {'noreply', State};
 handle_cast({'remove_call', [{M, P, _}]}, State) ->
     Match = [{M, P, ['true']}],
-    lager:debug("removing stats from table"),
+    lager:debug("removing call stats from table"),
     N = ets:select_delete(call_table_id(), Match),
-    lager:debug("removed (or not): ~p", [N]),
+    lager:debug("removed calls (or not): ~p", [N]),
     {'noreply', State};
+
+handle_cast({'remove_status', [{M, P, _}]}, State) ->
+    Match = [{M, P, ['true']}],
+    lager:debug("removing status stats from table"),
+    N = ets:select_delete(status_table_id(), Match),
+    lager:debug("removed statuses (or not): ~p", [N]),
+    {'noreply', State};
+
 handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_Q}}, State) ->
@@ -394,8 +427,7 @@ handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     lager:debug("ETS control for ~p transferred to me for writing", [_TblId]),
     {'noreply', State};
 handle_info(?ARCHIVE_MSG, State) ->
-    Self = self(),
-    _ = spawn(?MODULE, 'archive_call_data', [Self]),
+    _ = archive_data(self()),
     {'noreply', State#state{archive_ref=start_archive_timer()}};
 handle_info(_Msg, State) ->
     lager:debug("unhandling message: ~p", [_Msg]),
@@ -540,6 +572,103 @@ query_calls(RespQ, MsgId, Match) ->
             wapi_acdc_stats:publish_current_calls_resp(RespQ, Resp)
     end.
 
+status_build_match_spec(JObj) ->
+    case wh_json:get_value(<<"Account-ID">>, JObj) of
+        'undefined' ->
+            {'error', wh_json:from_list([{<<"Account-ID">>, <<"missing but required">>}])};
+        AccountId ->
+            AcctMatch = {#status_stat{acct_id='$1', _='_'}
+                         ,[{'=:=', '$1', {'const', AccountId}}]
+                        },
+            status_build_match_spec(JObj, AcctMatch)
+    end.
+
+-spec status_build_match_spec(wh_json:object(), {call_stat(), list()}) ->
+                                     {'ok', ets:match_spec()} |
+                                     {'error', wh_json:object()}.
+status_build_match_spec(JObj, AcctMatch) ->
+    case wh_json:foldl(fun status_match_builder_fold/3, AcctMatch, JObj) of
+        {'error', _Errs}=Errors -> Errors;
+        {StatusStat, Constraints} -> {'ok', [{StatusStat, Constraints, ['$_']}]}
+    end.
+
+status_match_builder_fold(_, _, {'error', _Err}=E) -> E;
+status_match_builder_fold(<<"Agent-ID">>, AgentId, {StatusStat, Contstraints}) ->
+    {StatusStat#status_stat{agent_id='$2'}
+     ,[{'=:=', '$2', {'const', AgentId}} | Contstraints]
+    };
+status_match_builder_fold(<<"Start-Range">>, Start, {StatusStat, Contstraints}) ->
+    Now = wh_util:current_tstamp(),
+    Past = Now - ?ARCHIVE_WINDOW,
+
+    try wh_util:to_integer(Start) of
+        N when N < Past ->
+            {'error', wh_json:from_list([{<<"Start-Range">>, <<"supplied value is too far in the past">>}
+                                         ,{<<"Window-Size">>, ?ARCHIVE_WINDOW}
+                                         ,{<<"Current-Timestamp">>, Now}
+                                         ,{<<"Past-Timestamp">>, Past}
+                                        ])};
+        N when N > Now ->
+            {'error', wh_json:from_list([{<<"Start-Range">>, <<"supplied value is in the future">>}
+                                         ,{<<"Current-Timestamp">>, Now}
+                                        ])};
+        N ->
+            {StatusStat#status_stat{timestamp='$5'}
+             ,[{'>=', '$5', N} | Contstraints]
+            }
+    catch
+        _:_ ->
+            {'error', wh_json:from_list([{<<"Start-Range">>, <<"supplied value is not an integer">>}])}
+    end;
+status_match_builder_fold(<<"End-Range">>, End, {StatusStat, Contstraints}) ->
+    Now = wh_util:current_tstamp(),
+    Past = Now - ?ARCHIVE_WINDOW,
+
+    try wh_util:to_integer(End) of
+        N when N < Past ->
+            {'error', wh_json:from_list([{<<"End-Range">>, <<"supplied value is too far in the past">>}
+                                         ,{<<"Window-Size">>, ?ARCHIVE_WINDOW}
+                                         ,{<<"Current-Timestamp">>, Now}
+                                        ])};
+        N when N > Now ->
+            {'error', wh_json:from_list([{<<"End-Range">>, <<"supplied value is in the future">>}
+                                         ,{<<"Current-Timestamp">>, Now}
+                                        ])};
+        N ->
+            {StatusStat#status_stat{timestamp='$5'}
+             ,[{'=<', '$5', N} | Contstraints]
+            }
+    catch
+        _:_ ->
+            {'error', wh_json:from_list([{<<"End-Range">>, <<"supplied value is not an integer">>}])}
+    end;
+status_match_builder_fold(_, _, Acc) -> Acc.
+
+-spec query_statuses(ne_binary(), ne_binary(), ets:match_spec()) -> 'ok'.
+query_statuses(RespQ, MsgId, Match) ->
+    case ets:select(status_table_id(), Match) of
+        [] ->
+            lager:debug("no stats found, sorry ~s", [RespQ]),
+            Resp = [{<<"Error-Reason">>, <<"No agents found">>}
+                    ,{<<"Msg-ID">>, MsgId}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_acdc_stats:publish_status_err(RespQ, Resp);
+        Stats ->
+            QueryResult = lists:foldl(fun query_status_fold/2, wh_json:new(), Stats),
+            Resp = [{<<"Agents">>, QueryResult}
+                    ,{<<"Msg-ID">>, MsgId}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_acdc_stats:publish_status_resp(RespQ, Resp)
+    end.
+
+-spec archive_data(pid()) -> 'ok'.
+archive_data(Srv) ->
+    _ = spawn(?MODULE, 'archive_call_data', [Srv]),
+    _ = spawn(?MODULE, 'archive_status_data', [Srv]),
+    'ok'.
+
 archive_call_data(Srv) ->
     put('callid', <<"acdc_stats.call_archiver">>),
 
@@ -563,6 +692,12 @@ archive_call_data(Srv) ->
 query_call_fold(#call_stat{status=Status}=Stat, Acc) ->
     Doc = call_stat_to_doc(Stat),
     dict:update(Status, fun(L) -> [Doc | L] end, [Doc], Acc).
+
+-spec query_status_fold(call_stat(), wh_json:object()) -> wh_json:object().
+query_status_fold(#status_stat{agent_id=AgentId
+                               ,timestamp=T
+                              }=Stat, Acc) ->
+    wh_json:set_value([AgentId, wh_util:to_binary(T)], status_stat_to_doc(Stat), Acc).
 
 -spec archive_call_fold(call_stat(), dict()) -> dict().
 archive_call_fold(#call_stat{acct_id=AcctId}=Stat, Acc) ->
@@ -608,6 +743,27 @@ call_stat_to_doc(#call_stat{id=Id
       ,[{'account_id', AcctId}
         ,{'type', <<"call_stat">>}
        ]).
+
+archive_status_data(Srv) ->
+    put('callid', <<"acdc_stats.status_archiver">>),
+
+    Past = wh_util:current_tstamp() - ?ARCHIVE_WINDOW,
+    Match = [{#status_stat{timestamp='$1', _='_'}
+              ,[{'=<', '$1', Past}]
+              ,['$_']
+             }],
+    case ets:select(status_table_id(), Match) of
+        [] -> 'ok';
+        Stats ->
+            gen_listener:cast(Srv, {'remove_status', Match}),
+            ToSave = lists:foldl(fun archive_status_fold/2, dict:new(), Stats),
+            [couch_mgr:save_docs(db_name(Acct), Docs) || {Acct, Docs} <- dict:to_list(ToSave)]
+    end.
+
+-spec archive_status_fold(call_stat(), dict()) -> dict().
+archive_status_fold(#status_stat{acct_id=AcctId}=Stat, Acc) ->
+    Doc = status_stat_to_doc(Stat),
+    dict:update(AcctId, fun(L) -> [Doc | L] end, [Doc], Acc).
 
 -spec status_stat_to_doc(status_stat()) -> wh_json:object().
 status_stat_to_doc(#status_stat{id=Id
