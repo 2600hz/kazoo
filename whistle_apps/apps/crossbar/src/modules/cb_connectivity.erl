@@ -91,6 +91,7 @@ validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
 
 -spec post(#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _) ->
+    track_assignment(Context),
     crossbar_doc:save(Context).
 
 -spec put(#cb_context{}) -> #cb_context{}.
@@ -104,6 +105,61 @@ delete(Context, _) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec  track_assignment(cb_context:context()) ->cb_context:context().
+track_assignment(#cb_context{doc=JObj, storage=Storage}=Context) ->
+    OldNums = get_numbers(props:get_value('db_doc', Storage)),
+    NewNums = get_numbers(JObj),
+    Unassigned = lists:foldl(
+        fun(Num, Acc) ->
+            case lists:member(Num, NewNums) of
+                'true' -> Acc;
+                'false' -> [Num|Acc]
+            end
+        end, [], OldNums
+    ),
+    wh_number_manager:track_assignment(Unassigned),
+    wh_number_manager:track_assignment(NewNums, <<"trunkstore">>),
+    Context.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec  get_numbers(wh_json:object()) -> [ne_binary(), ...].
+get_numbers(JObj) ->
+    Servers = wh_json:get_value(<<"servers">>, JObj, []),
+    Numbers = lists:foldl(
+        fun(Server, Acc) ->
+            Dids = wh_json:get_value(<<"DIDs">>, Server),
+            [extract_dids(Dids)|Acc]
+        end, [], Servers
+    ),
+    lists:flatten(Numbers).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec  extract_dids(wh_json:object()) -> [[ne_binary(), ...], ...].
+extract_dids(DidsJObj) ->
+    Dids = wh_json:to_proplist(DidsJObj),
+    lists:foldl(
+        fun({Did, _}, Acc) ->
+            [Did|Acc]
+        end, [], Dids
+    ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -141,7 +197,7 @@ update(Id, #cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
