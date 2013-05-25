@@ -264,6 +264,9 @@ handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
             _ -> ok
         end,
     {noreply, State, hibernate};
+handle_info({'tcp', _, Data}, State) ->
+    Event = binary_to_term(Data),
+   handle_info(Event, State);
 handle_info({'EXIT', _, _}, State) ->
     {noreply, State};
 handle_info(_Info, State) ->

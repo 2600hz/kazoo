@@ -191,6 +191,9 @@ handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
             _ -> 'ok'
         end,
     {'noreply', State};
+handle_info({'tcp', _, Data}, State) ->
+    Event = binary_to_term(Data),
+   handle_info(Event, State);
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
