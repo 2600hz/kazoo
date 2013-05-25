@@ -229,6 +229,9 @@ handle_cast(_Req, State) ->
 handle_info({'event', [UUID | Data]}, #state{node=Node}=State) ->
     _ = spawn(?MODULE, 'process_event', [UUID, Data, Node]),
     {'noreply', State};
+handle_info({'tcp', _, Data}, State) ->
+    Event = binary_to_term(Data),
+   handle_info(Event, State);
 handle_info({'bgok', _Job, _Result}, State) ->
     lager:debug("job ~s finished successfully: ~p", [_Job, _Result]),
     {'noreply', State};
