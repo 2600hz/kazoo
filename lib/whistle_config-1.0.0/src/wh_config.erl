@@ -9,18 +9,11 @@
 
 -module(wh_config).
 
--export([get/1
-         ,get/2
-         ,get/3
-        ]).
--export([get_atom/2
-         ,get_atom/3
-        ]).
--export([get_integer/2
-         ,get_integer/3
-        ]).
--export([get_string/2
-         ,get_string/3
+-export([get/1, get/2, get/3
+         ,get_atom/2, get_atom/3
+         ,get_integer/2, get_integer/3
+         ,get_string/2, get_string/3
+         ,get_raw_string/2, get_raw_string/3
         ]).
 
 -include_lib("whistle/include/wh_types.hrl").
@@ -128,6 +121,19 @@ get_string(Section, Key, Default) ->
         [_|_]=Values -> [wh_util:to_lower_string(Value) || Value <- Values];
         V -> [wh_util:to_lower_string(V)]
     end.
+
+-spec get_raw_string(section(), string()) -> [string(),...] | ?DEFAULT_DEFAULTS.
+get_raw_string(Section, Key) ->
+    get_raw_string(Section, Key, ?DEFAULT_DEFAULTS).
+
+-spec get_raw_string(section(), string(), Default) -> [string(),...] | Default.
+get_raw_string(Section, Key, Default) ->
+    case ?MODULE:get(Section, Key, Default) of
+        Default -> Default;
+        [_|_]=Values -> Values;
+        V -> V
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private

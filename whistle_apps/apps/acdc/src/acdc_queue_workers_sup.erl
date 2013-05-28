@@ -22,10 +22,6 @@
 %% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Restart, Shutdown, Type),
-        {Name, {Name, start_link, []}, Restart, Shutdown, Type, [Name]}).
-
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -45,14 +41,14 @@ new_worker(WorkersSup, AcctId, QueueId) ->
     new_workers(WorkersSup, AcctId, QueueId, 1).
 
 -spec new_workers(pid(), ne_binary(), ne_binary(), integer()) -> 'ok'.
-new_workers(_, _,_,N) when N =< 0 -> ok;
+new_workers(_, _,_,N) when N =< 0 -> 'ok';
 new_workers(WorkersSup, AcctId, QueueId, N) when is_integer(N) ->
     _ = supervisor:start_child(WorkersSup, [self(), AcctId, QueueId]),
     new_workers(WorkersSup, AcctId, QueueId, N-1).
 
--spec workers(pid()) -> [pid(),...] | [].
+-spec workers(pid()) -> pids().
 workers(Super) ->
-    [Pid || {_, Pid, supervisor, [_]} <- supervisor:which_children(Super), is_pid(Pid)].
+    [Pid || {_, Pid, 'supervisor', [_]} <- supervisor:which_children(Super), is_pid(Pid)].
 
 -spec worker_count(pid()) -> non_neg_integer().
 worker_count(Super) -> length(supervisor:which_children(Super)).
@@ -79,13 +75,13 @@ status(Super) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    RestartStrategy = simple_one_for_one,
+    RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 1,
     MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_queue_worker_sup, transient, infinity, supervisor)]}}.
+    {'ok', {SupFlags, [?SUPER('acdc_queue_worker_sup', 'transient')]}}.
 
 %%%===================================================================
 %%% Internal functions

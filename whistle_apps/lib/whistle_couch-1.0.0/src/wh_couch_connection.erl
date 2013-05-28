@@ -225,7 +225,7 @@ terminate(_Reason, _Connection) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, Connection, _Extra) ->
-    {ok, Connection}.
+    {'ok', Connection}.
 
 %%%===================================================================
 %%% Internal functions
@@ -233,26 +233,32 @@ code_change(_OldVsn, Connection, _Extra) ->
 -spec maybe_reconnect(couch_connection()) ->
                              {'ok', couch_connection()} |
                              {'error', _}.
-maybe_reconnect(#wh_couch_connection{host = Host, port = Port
-                                     ,username = User, password = Pass}=Connection) ->
+maybe_reconnect(#wh_couch_connection{host=Host
+                                     ,port=Port
+                                     ,username=User
+                                     ,password=Pass
+                                    }=Connection) ->
     try couch_util:get_new_connection(Host, Port, User, Pass) of
         #server{}=Server ->
-            {ok, Connection#wh_couch_connection{server = Server}}
+            {'ok', Connection#wh_couch_connection{server = Server}}
     catch
-        error:{badmatch,{error,{conn_failed,{error,econnrefused}}}} ->
+        'error':{'badmatch',{'error',{'cponn_failed',{'error','econnrefused'}}}} ->
             lager:info("connection to BigCouch at ~s:~p refused. Is BigCouch/HAProxy running at these host:port combos?", [Host, Port]),
-            {error, conn_failed};
-        error:{badmatch,{error,{conn_failed,{error,timeout}}}} ->
+            {'error', 'conn_failed'};
+        'error':{'badmatch',{'error',{'conn_failed',{'error','timeout'}}}} ->
             lager:info("network error connecting to BigCouch at ~s:~p. Is BigCouch/HAProxy running at these host:port combos?", [Host, Port]),
-            {error, conn_failed};
-        error:{badmatch,{error,{ok,Status,_,_}}} ->
+            {'error', 'conn_failed'};
+        'error':{'badmatch',{'error',{'ok',"401",_,_}}} ->
+            lager:info("401 unauthorized using username ~s to authenticate to ~s: ~p", [User, Host, Connection]),
+            {'error', 'bad_status'};
+        'error':{'badmatch',{'error',{'ok',Status,_,_}}} ->
             lager:info("received HTTP error ~p from BigCouch/HAProxy at ~s:~p.", [Status, Host, Port]),
-            {error, bad_status};
+            {'error', 'bad_status'};
         _:Reason ->
             ST = erlang:get_stacktrace(),
             lager:info("failed to connect to BigCouch/HAProxy at ~s:~p: ~p", [Host, Port, Reason]),
             _ = [lager:debug("st: ~p", [S]) || S <- ST],
-            {error, Reason}
+            {'error', Reason}
     end.
 
 -spec split_user_info(string()) -> {string(), string()}.

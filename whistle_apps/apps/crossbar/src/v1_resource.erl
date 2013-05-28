@@ -73,8 +73,6 @@ rest_init(Req0, Opts) ->
     {{Peer, _PeerPort}, Req6} = cowboy_req:peer(Req5),
     ClientIP = wh_network_utils:iptuple_to_binary(Peer),
 
-    lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
-
     Context0 = #cb_context{
                   req_id = wh_util:to_binary(ReqId)
                   ,raw_host = wh_util:to_binary(Host)
@@ -89,6 +87,9 @@ rest_init(Req0, Opts) ->
                  },
 
     {Context1, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {Context0, Opts}),
+
+    lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
+
     {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req6), Context1}.
 
 terminate(_Req, _Context) ->
@@ -126,7 +127,6 @@ known_methods(Req, Context) ->
 -spec allowed_methods(cowboy_req:req(), cb_context:context()) ->
                              {http_methods() | 'halt', cowboy_req:req(), cb_context:context()}.
 allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
-    lager:debug("req: allowed_methods"),
     {Tokens, Req1} = cowboy_req:path_info(Req0),
     case v1_util:parse_path_tokens(Tokens) of
         [_|_] = Nouns ->
@@ -135,10 +135,8 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
             %% HTTP method with the tunneled version
             case v1_util:get_req_data(Context, Req1) of
                 {'halt', Context1, Req2} ->
-                    lager:debug("halting here"),
                     v1_util:halt(Req2, cb_context:add_system_error('parse_error', Context1));
                 {Context1, Req2} ->
-                    lager:debug("determining the http verb"),
                     determine_http_verb(Req2, Context1#cb_context{req_nouns=Nouns})
             end;
         [] ->
@@ -156,9 +154,9 @@ find_allowed_methods(Req0, #cb_context{allowed_methods=Methods
                                        ,req_verb=Verb
                                        ,req_nouns=[{Mod, Params}|_]
                                       }=Context) ->
-    lager:debug("finding allowed methods"),
     Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
     {Method, Req1} = cowboy_req:method(Req0),
+
     AllowMethods = v1_util:allow_methods(Responses, Methods, Verb, wh_util:to_binary(Method)),
 
     maybe_add_cors_headers(Req1, Context#cb_context{allow_methods=AllowMethods}).
@@ -169,10 +167,8 @@ maybe_add_cors_headers(Req0, Context) ->
     case v1_util:is_cors_request(Req0) of
         {'true', Req1} ->
             lager:debug("adding cors headers"),
-            Req2 = v1_util:add_cors_headers(Req1, Context),
-            check_preflight(Req2, Context);
+            check_preflight(v1_util:add_cors_headers(Req1, Context), Context);
         {'false', Req1} ->
-            lager:debug("not cors request"),
             maybe_allow_method(Req1, Context)
     end.
 
@@ -187,13 +183,15 @@ check_preflight(Req0, Context) ->
 maybe_allow_method(Req0, #cb_context{allow_methods=[]}=Context) ->
     lager:debug("no allow methods"),
     v1_util:halt(Req0, cb_context:add_system_error('not_found', Context));
+maybe_allow_method(Req0, #cb_context{allow_methods=[Verb]=Methods
+                                     ,req_verb=Verb
+                                    }=Context) ->
+    {Methods, Req0, Context};
 maybe_allow_method(Req0, #cb_context{allow_methods=Methods
                                      ,req_verb=Verb
                                     }=Context) ->
-    lager:debug("is ~p in ~p", [Verb, Methods]),
     case lists:member(Verb, Methods) of
-        'true' ->
-            {Methods, Req0, Context};
+        'true' -> {Methods, Req0, Context};
         'false' ->
             v1_util:halt(Req0, cb_context:add_system_error('invalid_method', Context))
     end.
@@ -296,7 +294,9 @@ content_types_provided(Req, Context, CTPs) ->
                             lists:foldr(fun({Type, SubType}, Acc1) ->
                                                 [{{Type, SubType, []}, Fun} | Acc1];
                                            ({_,_,_}=EncType, Acc1) ->
-                                                [ {EncType, Fun} | Acc1 ]
+                                                [ {EncType, Fun} | Acc1 ];
+                                           (CT, Acc1) when is_binary(CT) ->
+                                                [{CT, Fun} | Acc1]
                                         end, Acc, L)
                     end, [], CTPs),
     {CTP, Req, Context}.
@@ -667,7 +667,6 @@ correct_proplist(T) -> T.
 -spec multiple_choices(cowboy_req:req(), cb_context:context()) ->
                               {'false', cowboy_req:req(), cb_context:context()}.
 multiple_choices(Req, Context) ->
-    lager:debug("has resp_body: ~s", [cowboy_req:has_resp_body(Req)]),
     {'false', Req, Context}.
 
 -spec generate_etag(cowboy_req:req(), cb_context:context()) ->
@@ -679,13 +678,10 @@ generate_etag(Req0, Context0) ->
         'automatic' ->
             {Content, _} = v1_util:create_resp_content(Req1, Context1),
             Tag = wh_util:to_hex_binary(crypto:md5(Content)),
-            lager:debug("using automatic etag ~s", [Tag]),
             {list_to_binary([$", Tag, $"]), Req1, Context1#cb_context{resp_etag=Tag}};
         'undefined' ->
-            lager:debug("no etag provided, skipping", []),
             {'undefined', Req1, Context1#cb_context{resp_etag='undefined'}};
         Tag ->
-            lager:debug("using etag ~s", [Tag]),
             {list_to_binary([$", Tag, $"]), Req1, Context1#cb_context{resp_etag=Tag}}
     end.
 

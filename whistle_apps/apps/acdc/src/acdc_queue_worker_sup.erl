@@ -24,10 +24,6 @@
 %% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Args),
-        {Name, {Name, start_link, Args}, transient, 5000, worker, [Name]}).
-
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -45,23 +41,23 @@ start_link(MgrPid, AcctId, QueueId) -> supervisor:start_link(?MODULE, [MgrPid, A
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(WorkerSup) -> supervisor:terminate_child('acdc_queues_sup', WorkerSup).
 
--spec listener(pid()) -> pid() | 'undefined'.
+-spec listener(pid()) -> api_pid().
 listener(WorkerSup) ->
     case child_of_type(WorkerSup, 'acdc_queue_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec shared_queue(pid()) -> pid() | 'undefined'.
+-spec shared_queue(pid()) -> api_pid().
 shared_queue(WorkerSup) ->
     case child_of_type(WorkerSup, 'acdc_queue_shared') of
-        [] -> undefined;
+        [] -> 'undefined';
         [P] -> P
     end.
 
 -spec start_shared_queue(pid(), pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
 start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId) ->
-    supervisor:start_child(WorkerSup, ?CHILD('acdc_queue_shared', [FSMPid, AcctId, QueueId])).
+    supervisor:start_child(WorkerSup, ?WORKER_ARGS('acdc_queue_shared', [FSMPid, AcctId, QueueId])).
 
 -spec fsm(pid()) -> pid() | 'undefined'.
 fsm(WorkerSup) ->
@@ -73,7 +69,7 @@ fsm(WorkerSup) ->
 -spec start_fsm(pid(), pid(), wh_json:object()) -> sup_startchild_ret().
 start_fsm(WorkerSup, MgrPid, QueueJObj) ->
     ListenerPid = self(),
-    supervisor:start_child(WorkerSup, ?CHILD('acdc_queue_fsm', [MgrPid, ListenerPid, QueueJObj])).
+    supervisor:start_child(WorkerSup, ?WORKER_ARGS('acdc_queue_fsm', [MgrPid, ListenerPid, QueueJObj])).
 
 -spec child_of_type(pid(), atom()) -> list(pid()).
 child_of_type(WSup, T) ->
@@ -127,7 +123,7 @@ init(Args) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?CHILD('acdc_queue_listener', [self() | Args])]}}.
+    {'ok', {SupFlags, [?WORKER_ARGS('acdc_queue_listener', [self() | Args])]}}.
 
 %%%===================================================================
 %%% Internal functions

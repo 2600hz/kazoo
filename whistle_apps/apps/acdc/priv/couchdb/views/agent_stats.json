@@ -2,10 +2,11 @@
   ,"language":"javascript"
   ,"views":{
     "status_log": {
-      "map":"function(doc) {        if ( doc.pvt_type != 'agent_partial' || typeof doc.pvt_account_id == 'undefined' | typeof doc.agent_id == 'undefined' ) return;        emit([doc.agent_id, doc.timestamp || doc.pvt_created], doc.status);      }"
+      "map":"function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.agent_id, doc.timestamp], doc.status); }"
     },
-    "call_log": {
-      "map":"function(doc) {        if ( (doc.pvt_type != 'call_partial' && doc.pvt_type != 'agent_partial') || typeof doc.pvt_account_id == 'undefined' | typeof doc.agent_id == 'undefined' ) return;        emit([doc.timestamp, doc.agent_id], doc.status);      }"
+    "most_recent": {
+      "map":"function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit(doc.agent_id, {'timestamp':doc.timestamp, 'status':doc.status}); }",
+      "reduce": "function(ks, vs, re) {var r = {'timestamp':0, 'status':'logged_out'}; for(i=0; i<vs.length; i++){if(vs[i].timestamp > r.timestamp){r=vs[i];}}  return r;}"
     }
   }
 }

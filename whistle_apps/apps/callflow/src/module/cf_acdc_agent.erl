@@ -55,10 +55,12 @@ find_agent_status(?NE_BINARY = AcctId, AgentId) ->
 find_agent_status(Call, AgentId) ->
     find_agent_status(whapps_call:account_id(Call), AgentId).
 
-fix_agent_status(<<"resume">>) -> <<"login">>;
-fix_agent_status(<<"ready">>) -> <<"login">>;
-fix_agent_status(<<"wrapup">>) -> <<"login">>;
-fix_agent_status(<<"busy">>) -> <<"login">>;
+fix_agent_status(<<"resume">>) -> <<"ready">>;
+fix_agent_status(<<"wrapup">>) -> <<"ready">>;
+fix_agent_status(<<"busy">>) -> <<"ready">>;
+fix_agent_status(<<"logout">>) -> <<"logged_out">>;
+fix_agent_status(<<"login">>) -> <<"ready">>;
+fix_agent_status(<<"outbound">>) -> <<"ready">>;
 fix_agent_status(Status) -> Status.
 
 fix_data_status(<<"pause">>) -> <<"paused">>;
@@ -68,26 +70,35 @@ maybe_update_status(Call, AgentId, _Curr, <<"logout">>, _Data) ->
     lager:info("agent ~s wants to log out (currently: ~s)", [AgentId, _Curr]),
     logout_agent(Call, AgentId),
     play_agent_logged_out(Call);
-maybe_update_status(Call, AgentId, <<"logout">>, <<"resume">>, _Data) ->
+maybe_update_status(Call, AgentId, <<"logged_out">>, <<"resume">>, _Data) ->
     lager:debug("agent ~s is logged out, resuming doesn't make sense", [AgentId]),
     play_agent_invalid(Call);
-maybe_update_status(Call, AgentId, <<"logout">>, <<"login">>, _Data) ->
+maybe_update_status(Call, AgentId, <<"logged_out">>, <<"login">>, _Data) ->
     lager:debug("agent ~s wants to log in", [AgentId]),
     login_agent(Call, AgentId),
     play_agent_logged_in(Call);
 
-maybe_update_status(Call, AgentId, <<"login">>, <<"login">>, _Data) ->
+maybe_update_status(Call, AgentId, <<"ready">>, <<"login">>, _Data) ->
     lager:info("agent ~s is already logged in", [AgentId]),
     _ = play_agent_logged_in_already(Call),
     send_new_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1, 'undefined');
 
 maybe_update_status(Call, AgentId, FromStatus, <<"paused">>, Data) ->
     maybe_pause_agent(Call, AgentId, FromStatus, Data);
+
+maybe_update_status(Call, AgentId, <<"paused">>, <<"ready">>, _Data) ->
+    lager:info("agent ~s is coming back from pause", [AgentId]),
+    resume_agent(Call, AgentId),
+    play_agent_resume(Call);
 maybe_update_status(Call, AgentId, <<"paused">>, <<"resume">>, _Data) ->
     lager:info("agent ~s is coming back from pause", [AgentId]),
     resume_agent(Call, AgentId),
     play_agent_resume(Call);
-maybe_update_status(Call, AgentId, <<"paused">>, <<"login">>, _Data) ->
+maybe_update_status(Call, AgentId, <<"outbound">>, <<"resume">>, _Data) ->
+    lager:info("agent ~s is coming back from pause", [AgentId]),
+    resume_agent(Call, AgentId),
+    play_agent_resume(Call);
+maybe_update_status(Call, AgentId, <<"ready">>, <<"resume">>, _Data) ->
     lager:info("agent ~s is coming back from pause", [AgentId]),
     resume_agent(Call, AgentId),
     play_agent_resume(Call);
@@ -96,17 +107,17 @@ maybe_update_status(Call, _AgentId, _Status, _NewStatus, _Data) ->
     lager:info("agent ~s: invalid status change from ~s to ~s", [_AgentId, _Status, _NewStatus]),
     play_agent_invalid(Call).
 
-maybe_pause_agent(Call, AgentId, <<"login">>, Data) ->
+maybe_pause_agent(Call, AgentId, <<"ready">>, Data) ->
     pause_agent(Call, AgentId, Data);
 maybe_pause_agent(Call, _AgentId, FromStatus, _Data) ->
     lager:info("unable to go from ~s to paused", [FromStatus]),
     play_agent_invalid(Call).
 
 login_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, <<"login">>, fun wapi_acdc_agent:publish_login/1).
+    update_agent_status(Call, AgentId, <<"ready">>, fun wapi_acdc_agent:publish_login/1).
 
 logout_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1).
+    update_agent_status(Call, AgentId, <<"logged_out">>, fun wapi_acdc_agent:publish_logout/1).
 
 pause_agent(Call, AgentId, Timeout) when is_integer(Timeout) ->
     _ = play_agent_pause(Call),
@@ -120,23 +131,20 @@ pause_agent(Call, AgentId, Data) ->
     pause_agent(Call, AgentId, Timeout).
 
 resume_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, <<"resume">>, fun wapi_acdc_agent:publish_resume/1).
+    update_agent_status(Call, AgentId, <<"ready">>, fun wapi_acdc_agent:publish_resume/1).
 
 update_agent_status(Call, AgentId, Status, PubFun) ->
     update_agent_status(Call, AgentId, Status, PubFun, 'undefined').
 update_agent_status(Call, AgentId, Status, PubFun, Timeout) ->
     AcctId = whapps_call:account_id(Call),
 
-    Extra = [{<<"call_id">>, whapps_call:call_id(Call)}
-             ,{<<"method">>, <<"callflow">>}
-             ,{<<"wait_time">>, Timeout}
+    Extra = [{<<"Call-ID">>, whapps_call:call_id(Call)}
+             ,{<<"Wait-Time">>, Timeout}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
 
-    {'ok', _D} = acdc_util:update_agent_status(AcctId, AgentId, Status, Extra),
+    'ok' = acdc_util:update_agent_status(AcctId, AgentId, Status, Extra),
 
-    NewStatus = acdc_util:agent_status(AcctId, AgentId),
-
-    lager:debug("updated agent status to ~s from ~s, publishing update", [Status, NewStatus]),
     send_new_status(Call, AgentId, PubFun, Timeout).
 
 -spec send_new_status(whapps_call:call(), ne_binary(), wh_amqp_worker:publish_fun(), integer() | 'undefined') -> 'ok'.

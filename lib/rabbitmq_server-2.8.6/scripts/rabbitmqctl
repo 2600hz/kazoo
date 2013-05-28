@@ -31,7 +31,7 @@ exec erl \
     -noinput \
     -hidden \
     ${RABBITMQ_CTL_ERL_ARGS} \
-    -sname rabbitmqctl$$ \
+    -name rabbitmqctl$$ \
     -s rabbit_control_main \
     -nodename $RABBITMQ_NODENAME \
     -extra "$@"
