@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%% Moved util functions out of v1_resource so only REST-related calls
 %%% are in there.
@@ -126,12 +126,30 @@ get_cors_headers(#cb_context{allow_methods=Allow}) ->
                           {cb_context:context(), cowboy_req:req()} |
                           {'halt', cb_context:context(), cowboy_req:req()}.
 get_req_data(Context, Req0) ->
-    {QS0, Req1} = cowboy_req:qs_vals(Req0),
+    {QS, Req1} = get_query_string_data(Req0),
+    get_req_data(Context, get_content_type(Req1), QS).
+
+get_query_string_data(Req0) ->
+    {QS0, Req1} = cowboy_req:qs_vals(Req0),    
+    get_query_string_data(QS0, Req1).
+get_query_string_data([], Req) ->
+    {wh_json:new(), Req};
+get_query_string_data(QS0, Req) ->
     QS = wh_json:from_list(QS0),
+    lager:debug("query string: ~p", [wh_json:encode(QS)]),
+    {QS, Req}.
 
-    lager:debug("query string: ~p", [QS]),
+-spec get_content_type(cowboy_req:req()) ->
+                              {api_binary(), cowboy_req:req()}.
+get_content_type(Req) ->
+    get_parsed_content_type(cowboy_req:parse_header(<<"content-type">>, Req)).
 
-    get_req_data(Context, cowboy_req:header(<<"content-type">>, Req1), QS).
+-spec get_parsed_content_type({'ok', content_type() | 'undefined', cowboy_req:req()}) ->
+                                     {api_binary(), cowboy_req:req()}.
+get_parsed_content_type({'ok', 'undefined', Req}) ->
+    {'undefined', Req};
+get_parsed_content_type({'ok', {Main, Sub, _Opts}, Req}) ->
+    {<<Main/binary, "/", Sub/binary>>, Req}.
 
 get_req_data(Context, {'undefined', Req0}, QS) ->
     lager:debug("undefined content type when getting req data, assuming application/json"),
@@ -374,9 +392,7 @@ get_http_verb(Method, #cb_context{req_json=ReqJObj
     case wh_json:get_value(<<"verb">>, ReqJObj) of
         'undefined' ->
             case wh_json:get_value(<<"verb">>, ReqQs) of
-                'undefined' ->
-                    lager:debug("sticking with method ~s", [Method]),
-                    wh_util:to_upper_binary(Method);
+                'undefined' -> Method;
                 Verb ->
                     lager:debug("found verb ~s on query string, using instead of ~s", [Verb, Method]),
                     wh_util:to_upper_binary(Verb)
@@ -404,8 +420,7 @@ parse_path_tokens(Tokens) ->
 
 -spec parse_path_tokens(wh_json:json_strings(), cb_mods_with_tokens()) ->
                                cb_mods_with_tokens().
-parse_path_tokens([], Events) ->
-    Events;
+parse_path_tokens([], Events) -> Events;
 parse_path_tokens([<<"schemas">>=Mod|T], Events) ->
     [{Mod, T} | Events];
 parse_path_tokens([<<"braintree">>=Mod|T], Events) ->
@@ -458,7 +473,6 @@ allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
 uppercase_all(L) when is_list(L) ->
     [wh_util:to_upper_binary(wh_util:to_binary(I)) || I <- L].
 
-
 %% insert 'POST' if Verb is in Allowed; otherwise remove 'POST'.
 -spec maybe_add_post_method(ne_binary(), http_method(), http_methods()) -> http_methods().
 maybe_add_post_method(Verb, ?HTTP_POST, Allowed) ->
@@ -490,17 +504,16 @@ is_authentic(Req0, Context0) ->
             lager:debug("failed to authenticate"),
             ?MODULE:halt(Req0, cb_context:add_system_error('invalid_credentials', Context0));
         ['true'|_] ->
-            lager:debug("is_authentic: true"),
             {'true', Req1, Context1};
         [{'true', Context2}|_] ->
-            lager:debug("is_authentic: true"),
             {'true', Req1, Context2};
         [{'halt', Context2}|_] ->
             lager:debug("is_authentic: halt"),
             ?MODULE:halt(Req1, Context2)
     end.
 
--spec get_auth_token(cowboy_req:req(), cb_context:context()) -> {cowboy_req:req(), cb_context:context()}.
+-spec get_auth_token(cowboy_req:req(), cb_context:context()) ->
+                            {cowboy_req:req(), cb_context:context()}.
 get_auth_token(Req0, #cb_context{req_json=ReqJObj
                                  ,query_json=QSJObj
                                 }=Context0) ->
@@ -547,10 +560,8 @@ is_permitted(Req0, Context0) ->
             lager:debug("no on authz the request"),
             ?MODULE:halt(Req0, cb_context:add_system_error('forbidden', Context0));
         ['true'|_] ->
-            lager:debug("is_permitted: true"),
             {'true', Req0, Context0};
         [{'true', Context1}|_] ->
-            lager:debug("is_permitted: true"),
             {'true', Req0, Context1};
         [{'halt', Context1}|_] ->
             lager:debug("is_permitted: halt"),
@@ -576,14 +587,13 @@ is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                             crossbar_bindings:fold(Event, Payload)
                     end, Context0, Nouns),
 
-    {CT, Req1} = cowboy_req:header(<<"content-type">>, Req0),
+    {CT, Req1} = get_content_type(Req0),
 
     is_known_content_type(Req1, Context1, ensure_content_type(CT)).
 
 -spec is_known_content_type(cowboy_req:req(), cb_context:context(), content_type()) ->
                                    {boolean(), cowboy_req:req(), cb_context:context()}.
 is_known_content_type(Req, #cb_context{content_types_accepted=[]}=Context, CT) ->
-    lager:debug("no ctas, using defaults"),
     is_known_content_type(Req, Context#cb_context{content_types_accepted=?CONTENT_ACCEPTED}, CT);
 
 is_known_content_type(Req, #cb_context{content_types_accepted=CTAs}=Context, CT) ->
@@ -617,6 +627,8 @@ content_type_matches({Type, SubType, Opts}, {Type, SubType, ModOpts}) ->
               end, ModOpts);
 content_type_matches(CTA, {CT, SubCT, _}) when is_binary(CTA) ->
     CTA =:= <<CT/binary, "/", SubCT/binary>>;
+content_type_matches(CTA, CT) when is_binary(CTA), is_binary(CT) ->
+    CTA =:= CT;
 content_type_matches(_CTA, _CTAs) ->
     lager:debug("cta: ~p, ctas: ~p", [_CTA, _CTAs]),
     'false'.
@@ -651,7 +663,6 @@ does_resource_exist(_Context) ->
 validate(#cb_context{req_nouns=Nouns}=Context0) ->
     Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->
                                    Event = <<"v1_resource.validate.", Mod/binary>>,
-                                   lager:debug("validating against params ~p", [Params]),
                                    Payload = [ContextAcc#cb_context{resp_status='fatal'} | Params],
                                    crossbar_bindings:fold(Event, Payload)
                            end
@@ -697,7 +708,6 @@ execute_request(Req, #cb_context{req_nouns=[{Mod, Params}|_]
     Payload = [Context | Params],
     case crossbar_bindings:fold(Event, Payload) of
         #cb_context{resp_status='success'}=Context1 ->
-            lager:debug("execution finished"),
             execute_request_results(Req, Context1);
         #cb_context{}=Context1 ->
             ?MODULE:halt(Req, Context1);
@@ -709,19 +719,14 @@ execute_request(Req, #cb_context{req_nouns=[{Mod, Params}|_]
             {'false', Req, Context}
     end;
 execute_request(Req, Context) ->
-    lager:debug("execute request false end"),
     {'false', Req, Context}.
 
 -spec execute_request_results(cowboy_req:req(), cb_context:context()) ->
                                      {'true' | 'halt', cowboy_req:req(), cb_context:context()}.
-execute_request_results(Req, #cb_context{req_nouns=[{Mod, Params}|_]
-                                         ,req_verb=Verb
-                                        }=Context) ->
+execute_request_results(Req, Context) ->
     case succeeded(Context) of
         'false' -> ?MODULE:halt(Req, Context);
-        'true' ->
-            lager:debug("executed ~s request for ~s: ~p", [Verb, Mod, Params]),
-            {'true', Req, Context}
+        'true' -> {'true', Req, Context}
     end.
 
 %%--------------------------------------------------------------------
@@ -745,14 +750,16 @@ finish_request(_Req, #cb_context{req_nouns=[{Mod, _}|_], req_verb=Verb}=Context)
 %%--------------------------------------------------------------------
 -spec create_resp_content(cowboy_req:req(), cb_context:context()) ->
                                  {ne_binary() | iolist(), cowboy_req:req()}.
-create_resp_content(Req0, #cb_context{req_json=ReqJson}=Context) ->
+create_resp_content(Req0, Context) ->
     try wh_json:encode(wh_json:from_list(create_resp_envelope(Context))) of
         JSON ->
-            case wh_json:get_value(<<"jsonp">>, ReqJson) of
+            case cb_context:req_value(Context, <<"jsonp">>) of
                 'undefined' -> {JSON, Req0};
                 JsonFun when is_binary(JsonFun) ->
                     lager:debug("jsonp wrapping in ~s: ~p", [JsonFun, JSON]),
-                    {[JsonFun, <<"(">>, JSON, <<");">>], Req0}
+                    {[JsonFun, <<"(">>, JSON, <<");">>]
+                     ,cowboy_req:set_resp_header(<<"content-type">>, ?JSONP_CONTENT_TYPE, Req0)
+                    }
             end
     catch
         _E:_R ->
@@ -770,14 +777,10 @@ create_resp_content(Req0, #cb_context{req_json=ReqJson}=Context) ->
 -spec create_push_response(cowboy_req:req(), cb_context:context()) ->
                                   {boolean(), cowboy_req:req(), cb_context:context()}.
 create_push_response(Req0, Context) ->
-    lager:debug("create push response"),
     {Content, Req1} = create_resp_content(Req0, Context),
     Req2 = set_resp_headers(Req1, Context),
-    lager:debug("content: ~s", [wh_util:to_binary(Content)]),
-    Req3 = cowboy_req:set_resp_body(Content, Req2),
-    Succeeded = succeeded(Context),
-    lager:debug("is successful response: ~p", [Succeeded]),
-    {Succeeded, Req3, Context}.
+    lager:debug("push response content: ~s", [wh_util:to_binary(Content)]),
+    {succeeded(Context), cowboy_req:set_resp_body(Content, Req2), Context}.
 
 %%--------------------------------------------------------------------
 %% @private

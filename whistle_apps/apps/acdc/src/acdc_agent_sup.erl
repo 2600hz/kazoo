@@ -14,18 +14,15 @@
 
 %% API
 -export([start_link/1, start_link/2, start_link/4
+         ,restart/1
          ,agent/1
-         ,fsm/1, start_fsm/3, start_fsm/4
+         ,fsm/1
          ,stop/1
          ,status/1
         ]).
 
 %% Supervisor callbacks
 -export([init/1]).
-
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Args),
-        {Name, {Name, 'start_link', Args}, 'transient', 5000, 'worker', [Name]}).
 
 %%%===================================================================
 %%% API functions
@@ -46,7 +43,12 @@ start_link(AcctId, AgentId, AgentJObj, Queues) ->
     supervisor:start_link(?MODULE, [AcctId, AgentId, AgentJObj, Queues]).
 
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
-stop(Supervisor) -> supervisor:terminate_child('acdc_agents_sup', Supervisor).
+stop(Supervisor) ->
+    supervisor:terminate_child('acdc_agents_sup', Supervisor).
+
+restart(Supervisor) ->
+    stop(Supervisor),
+    supervisor:restart_child('acdc_agents_sup', Supervisor).
 
 -spec status(pid()) -> 'ok'.
 status(Supervisor) ->
@@ -82,32 +84,21 @@ print_status([{K, V}|T]) ->
     lager:info("  ~s: ~p", [K, V]),
     print_status(T).
 
--spec agent(pid()) -> pid() | 'undefined'.
+-spec agent(pid()) -> api_pid().
 agent(Super) ->
     case child_of_type(Super, 'acdc_agent') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec fsm(pid()) -> pid() | 'undefined'.
+-spec fsm(pid()) -> api_pid().
 fsm(Super) ->
     case child_of_type(Super, 'acdc_agent_fsm') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec start_fsm(pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
--spec start_fsm(pid(), ne_binary(), ne_binary(), wh_proplist()) -> sup_startchild_ret().
-start_fsm(Super, AcctId, AgentId) -> start_fsm(Super, AcctId, AgentId, []).
-start_fsm(Super, AcctId, AgentId, Props) ->
-    case fsm(Super) of
-        'undefined' ->
-            Parent = self(),
-            supervisor:start_child(Super, ?CHILD('acdc_agent_fsm', [AcctId, AgentId, Parent, Props]));
-        P when is_pid(P) -> {'ok', P}
-    end.
-
--spec child_of_type(pid(), atom()) -> list(pid()).
+-spec child_of_type(pid(), atom()) -> pids().
 child_of_type(S, T) -> [P || {Ty, P, 'worker', _} <- supervisor:which_children(S), T =:= Ty].
 
 %%%===================================================================
@@ -135,8 +126,8 @@ init(Args) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?CHILD('acdc_agent', [self() | Args])
-                       ,?CHILD('acdc_agent_fsm', [self() | Args])
+    {'ok', {SupFlags, [?WORKER_ARGS('acdc_agent', [self() | Args])
+                       ,?WORKER_ARGS('acdc_agent_fsm', [self() | Args])
                       ]}}.
 
 %%%===================================================================

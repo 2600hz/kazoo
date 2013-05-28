@@ -80,17 +80,17 @@ new(AcctId, AgentId, AgentJObj, Queues) ->
 -spec new_thief(whapps_call:call(), ne_binary()) -> sup_startchild_ret().
 new_thief(Call, QueueId) -> supervisor:start_child(?MODULE, [Call, QueueId]).
 
--spec workers() -> [pid(),...] | [].
+-spec workers() -> pids().
 workers() -> [Pid || {_, Pid, 'supervisor', [_]} <- supervisor:which_children(?MODULE)].
 
-restart_acct(AcctId) -> [acdc_agent_sup:restart(AcctId, S) || S <- workers(), is_agent_in_acct(S, AcctId)].
+restart_acct(AcctId) -> [acdc_agent_sup:restart(S) || S <- workers(), is_agent_in_acct(S, AcctId)].
 restart_agent(AcctId, AgentId) ->
     case find_agent_supervisor(AcctId, AgentId) of
         'undefined' -> lager:info("no supervisor for agent ~s(~s) to restart", [AgentId, AcctId]);
         S -> acdc_agent_sup:restart(S)
     end.
 
--spec find_acct_supervisors(ne_binary()) -> [pid(),...] | [].
+-spec find_acct_supervisors(ne_binary()) -> pids().
 find_acct_supervisors(AcctId) -> [S || S <- workers(), is_agent_in_acct(S, AcctId)].
 
 -spec is_agent_in_acct(pid(), ne_binary()) -> boolean().
@@ -101,8 +101,8 @@ is_agent_in_acct(Super, AcctId) ->
         _ -> 'false'
     end.
 
--spec find_agent_supervisor(api_binary(), api_binary()) -> pid() | 'undefined'.
--spec find_agent_supervisor(api_binary(), api_binary(), [pid(),...] | []) -> pid() | 'undefined'.
+-spec find_agent_supervisor(api_binary(), api_binary()) -> api_pid().
+-spec find_agent_supervisor(api_binary(), api_binary(), pids()) -> api_pid().
 find_agent_supervisor(AcctId, AgentId) -> find_agent_supervisor(AcctId, AgentId, workers()).
 
 find_agent_supervisor(_AcctId, _AgentId, []) -> 'undefined';
@@ -141,7 +141,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?CHILD('acdc_agent_sup', 'transient', 'infinity', 'supervisor')]}}.
+    {'ok', {SupFlags, [?SUPER('acdc_agent_sup', 'transient')]}}.
 
 %%%===================================================================
 %%% Internal functions

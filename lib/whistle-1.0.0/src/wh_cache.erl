@@ -52,10 +52,10 @@
 -define(EXPIRE_PERIOD, 10000).
 -define(DEFAULT_WAIT_TIMEOUT, 5).
 
--define(NOTIFY_KEY(Key), {monitor_key, Key}).
+-define(NOTIFY_KEY(Key), {'monitor_key', Key}).
 
 -define(BINDINGS, [{self, []}]).
--define(RESPONDERS, [{{?MODULE, handle_document_change}
+-define(RESPONDERS, [{{?MODULE, 'handle_document_change'}
                       ,[{<<"configuration">>, <<"*">>}]
                      }]).
 -define(QUEUE_NAME, <<>>).

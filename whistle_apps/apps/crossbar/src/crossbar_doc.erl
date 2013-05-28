@@ -67,7 +67,7 @@ load(?NE_BINARY = DocId, #cb_context{db_name=Db}=Context, Opts) ->
     case couch_mgr:open_cache_doc(Db, DocId, Opts) of
         {'error', Error} -> handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
-            lager:debug("loaded doc ~s from ~s", [DocId, Db]),
+            lager:debug("loaded doc ~s(~s) from ~s", [DocId, wh_json:get_value(<<"_rev">>, JObj),  Db]),
             case wh_util:is_true(wh_json:get_value(<<"pvt_deleted">>, JObj)) of
                 'true' -> cb_context:add_system_error('bad_identifier', [{'details', DocId}],  Context);
                 'false' -> cb_context:store('db_doc', JObj, handle_couch_mgr_success(JObj, Context))
@@ -114,7 +114,7 @@ load_merge(DocId, DataJObj, #cb_context{db_name=DbName
                                        }=Context) ->
     case load(DocId, Context) of
         #cb_context{resp_status='success', doc=JObj}=Context1 ->
-            lager:debug("loaded doc ~s from ~s, merging", [DocId, DbName]),
+            lager:debug("loaded doc ~s(~s) from ~s, merging", [DocId, wh_json:get_value(<<"_rev">>, JObj), DbName]),
             merge(DataJObj, JObj, Context1);
         Else -> Else
     end;

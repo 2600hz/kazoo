@@ -28,8 +28,6 @@
 
 -behaviour(gen_server).
 
--export([behaviour_info/1]).
-
 -export([start_link/3
          ,start_link/4
         ]).
@@ -80,9 +78,9 @@
 
 -export([handle_event/4]).
 
--include("../include/wh_amqp.hrl").
--include("../include/wh_types.hrl").
--include("../include/wh_log.hrl").
+-include_lib("whistle/include/wh_amqp.hrl").
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(TIMEOUT_RETRY_CONN, 5000).
 -define(CALLBACK_TIMEOUT_MSG, 'callback_timeout').
@@ -95,6 +93,7 @@
 -define(INITIALIZE_MSG, {'$initialize_gen_listener', ?START_TIMEOUT}).
 -define(INITIALIZE_MSG(T), {'$initialize_gen_listener', next_timeout(T)}).
 
+-type module_state() :: term().
 -record(state, {
           queue :: api_binary()
          ,is_consuming = 'false' :: boolean()
@@ -102,7 +101,7 @@
          ,bindings = [] :: bindings() %% {authentication, [{key, value},...]}
          ,params = [] :: wh_proplist()
          ,module :: atom()
-         ,module_state :: term()
+         ,module_state :: module_state()
          ,module_timeout_ref :: reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
          ,other_queues = [] :: [{ne_binary(), {wh_proplist(), wh_proplist()}},...] | [] %% {QueueName, {proplist(), wh_proplist()}}
          ,self = self()
@@ -134,16 +133,37 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-behaviour_info('callbacks') ->
-    [{'init', 1}
-     ,{'handle_event', 2} %% Module passes back {'reply', Proplist}, passed as 2nd param to Responder:handle_req/2
-     ,{'handle_call', 3}
-     ,{'handle_cast', 2}
-     ,{'handle_info', 2}
-     ,{'terminate', 2}
-    ];
-behaviour_info(_) ->
-    'undefined'.
+-callback init(term()) ->
+    {'ok', module_state()} |
+    {'ok', module_state(), timeout() | 'hibernate'} |
+    {'stop', term()} |
+    'ignore'.
+
+-callback handle_call(term(), {pid(), term()}, module_state()) ->
+    {'reply', term(), module_state()} |
+    {'reply', term(), module_state(), timeout() | 'hibernate'} |
+    {'noreply', module_state()} |
+    {'noreply', module_state(), timeout() | 'hibernate'} |
+    {'stop', term(), term(), module_state()} |
+    {'stop', term(), module_state()}.
+
+-callback handle_cast(term(), module_state()) ->
+    {'noreply', module_state()} |
+    {'noreply', module_state(), timeout() | 'hibernate'} |
+    {'stop', term(), module_state()}.
+
+-callback handle_info(timeout() | term(), module_state()) ->
+    {'noreply', module_state()} |
+    {'noreply', module_state(), timeout() | 'hibernate'} |
+    {'stop', term(), module_state()}.
+
+-callback handle_event(wh_json:object(), module_state()) ->
+    handle_event_return().
+
+-callback terminate('normal' | 'shutdown' | {'shutdown', term()} | term(), module_state()) ->
+    term().
+-callback code_change(term() | {'down', term()}, module_state(), term()) ->
+    {'ok', state()} | {'error', term()}.
 
   -spec start_link(atom(), start_params(), list()) -> startlink_ret().
 start_link(Module, Params, InitArgs) ->
@@ -254,20 +274,25 @@ rm_binding(Srv, Binding, Props) ->
 %%                     {'stop', Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | wh_proplist(),...]) -> {'ok', state()}.
+-spec init([atom() | wh_proplist(),...]) ->
+                  {'ok', state()} |
+                  {'stop', term()} |
+                  'ignore'.
 init([Module, Params, InitArgs]) ->
     process_flag('trap_exit', 'true'),
     put('callid', Module),
     lager:debug("starting new gen_listener proc"),
-    {ModState, TimeoutRef} =
-        case erlang:function_exported(Module, 'init', 1)
-            andalso Module:init(InitArgs)
-        of
-            {'ok', MS} -> {MS, 'undefined'};
-            {'ok', MS, 'hibernate'} -> {MS, 'undefined'};
-            {'ok', MS, Timeout} -> {MS, start_timer(Timeout)};
-            Err -> throw(Err)
-        end,
+    case erlang:function_exported(Module, 'init', 1)
+        andalso Module:init(InitArgs)
+    of
+        {'ok', MS} -> init(Module, Params, MS, 'undefined');
+        {'ok', MS, 'hibernate'} -> init(Module, Params, MS, 'undefined');
+        {'ok', MS, Timeout} -> init(Module, Params, MS, start_timer(Timeout));
+        {'stop', _R} = STOP -> STOP;
+        'ignore' -> 'ignore'
+    end.
+
+init(Module, Params, ModState, TimeoutRef) ->
     Responders = props:get_value('responders', Params, []),
     _ = [add_responder(self(), Mod, Events)
          || {Mod, Events} <- Responders

@@ -424,7 +424,8 @@ rm_aggregate_device(Db, DeviceId) when is_binary(DeviceId) ->
 rm_aggregate_device(Db, Device) ->
     rm_aggregate_device(Db, wh_json:get_value(<<"_id">>, Device)).
 
--spec amqp_pool_send(api_terms(), wh_amqp_worker:publish_fun()) -> 'ok' | {'error', any()}.
+-spec amqp_pool_send(api_terms(), wh_amqp_worker:publish_fun()) ->
+                            'ok' | {'error', any()}.
 amqp_pool_send(Api, PubFun) when is_function(PubFun, 1) ->
     wh_amqp_worker:cast(?WHAPPS_AMQP_POOL, Api, PubFun).
 
@@ -434,12 +435,15 @@ amqp_pool_send(Api, PubFun) when is_function(PubFun, 1) ->
 -spec amqp_pool_request(api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), wh_timeout()) ->
                                {'ok', wh_json:object()} |
                                {'error', any()}.
-amqp_pool_request(Api, PubFun, ValidateFun) when is_function(PubFun, 1), is_function(ValidateFun, 1) ->
+amqp_pool_request(Api, PubFun, ValidateFun)
+  when is_function(PubFun, 1),
+       is_function(ValidateFun, 1) ->
     amqp_pool_request(Api, PubFun, ValidateFun, wh_amqp_worker:default_timeout()).
-amqp_pool_request(Api, PubFun, ValidateFun, Timeout) when is_function(PubFun, 1),
-                                                          is_function(ValidateFun, 1),
-                                                          ((is_integer(Timeout) andalso Timeout >= 0)
-                                                           orelse Timeout =:= 'infinity') ->
+amqp_pool_request(Api, PubFun, ValidateFun, Timeout)
+  when is_function(PubFun, 1),
+       is_function(ValidateFun, 1),
+       ((is_integer(Timeout) andalso Timeout >= 0)
+        orelse Timeout =:= 'infinity') ->
     wh_amqp_worker:call(?WHAPPS_AMQP_POOL, Api, PubFun, ValidateFun, Timeout).
 
 -spec amqp_pool_collect(api_terms(), wh_amqp_worker:publish_fun()) ->

@@ -13,7 +13,7 @@
          ,unbind_from_call_events/1, unbind_from_call_events/2
          ,unbind_from_cdr/1
          ,agents_in_queue/2
-         ,agent_status/2, agent_status/3
+         ,agent_status/2, agent_statuses/1
          ,update_agent_status/3, update_agent_status/4
          ,agent_devices/2
          ,proc_id/0, proc_id/1, proc_id/2
@@ -122,43 +122,127 @@ unbind(CallId, Restrict) ->
                                             ]).
 
 -spec agent_status(ne_binary(), ne_binary()) -> ne_binary().
--spec agent_status(ne_binary(), ne_binary(), boolean()) -> ne_binary() | wh_json:object().
-agent_status(?NE_BINARY = AcctId, AgentId) ->
-    agent_status(AcctId, AgentId, 'false').
-agent_status(?NE_BINARY = AcctId, AgentId, ReturnDoc) ->
-    Opts = [{'endkey', [AgentId, 0]}
-            ,{'startkey', [AgentId, wh_json:new()]}
+agent_status(?NE_BINARY = AcctId, ?NE_BINARY = AgentId) ->
+    API = [{<<"Account-ID">>, AcctId}
+           ,{<<"Agent-ID">>, AgentId}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case whapps_util:amqp_pool_request(API
+                                       ,fun wapi_acdc_stats:publish_status_req/1
+                                       ,fun wapi_acdc_stats:status_resp_v/1
+                                      )
+    of
+        {'ok', Resp} ->
+            Stats = wh_json:get_value([<<"Agents">>, AgentId], Resp),
+            {_, StatusJObj} = wh_json:foldl(fun find_most_recent_fold/3, {0, wh_json:new()}, Stats),
+            wh_json:get_value(<<"status">>, StatusJObj);
+        {'error', E} ->
+            case wh_json:is_json_object(E) of
+                'false' ->
+                    lager:debug("failed to query for status: ~p", [E]);
+                'true' ->
+                    lager:debug("failed to query for status: ~s", [wh_json:get_value(<<"Error-Reason">>, E)])
+            end,
+            agent_status_in_db(AcctId, AgentId)
+    end.
+
+agent_status_in_db(AcctId, AgentId) ->
+    Opts = [{'startkey', [AgentId, wh_util:current_tstamp()]}
             ,{'limit', 1}
-            ,{'r', 2}
             ,'descending'
-            | case ReturnDoc of 'true' -> ['include_docs']; 'false' -> [] end
            ],
-
-    Key = case ReturnDoc of 'true' -> <<"doc">>; 'false' -> <<"value">> end,
-
     case couch_mgr:get_results(acdc_stats:db_name(AcctId), <<"agent_stats/status_log">>, Opts) of
-        {'ok', []} -> <<"logout">>;
-        {'error', _E} -> <<"logout">>;
-        {'ok', [StatusJObj|_]} -> wh_json:get_value(Key, StatusJObj)
+        {'ok', [StatusJObj]} -> wh_json:get_value(<<"value">>, StatusJObj);
+        {'ok', []} -> <<"unknown">>;
+        {'error', _E} ->
+            lager:debug("error querying view: ~p", [_E]),
+            <<"unknown">>
+    end.
+
+%% [{AgentId, Status}]
+-spec agent_statuses(ne_binary()) -> wh_proplist().
+agent_statuses(?NE_BINARY = AcctId) ->
+    Self = self(),
+    P = spawn(fun() -> agent_statuses_from_db(Self, AcctId) end),
+
+    API = [{<<"Account-ID">>, AcctId}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case whapps_util:amqp_pool_request(API
+                                       ,fun wapi_acdc_stats:publish_status_req/1
+                                       ,fun wapi_acdc_stats:status_resp_v/1
+                                      )
+    of
+        {'ok', Resp} ->
+            Stats = wh_json:get_value([<<"Agents">>], Resp),
+            receive
+                {'db_stats', P, DBStats} ->
+                    most_recent(merge_stats(Stats, DBStats))
+            after 5000 ->
+                    lager:debug("timed out waiting for db stats"),
+                    most_recent(Stats)
+            end;
+        {'error', E} ->
+            case wh_json:is_json_object(E) of
+                'false' ->
+                    lager:debug("failed to query for status: ~p", [E]);
+                'true' ->
+                    lager:debug("failed to query for status: ~s", [wh_json:get_value(<<"Error-Reason">>, E)])
+            end
+    end.
+
+most_recent(Stats) ->
+    wh_json:map(fun most_recent_map/2, Stats).
+
+most_recent_map(AgentId, Statuses) ->
+    {_Timestamp, Doc} = wh_json:foldl(fun find_most_recent_fold/3, {0, wh_json:new()}, Statuses),
+    {AgentId, Doc}.
+
+merge_stats(Stats, DBStats) ->
+    lists:foldl(fun({A, T, S}, StatsAcc) ->
+                        wh_json:set_value([A, T], wh_json:from_list([{<<"status">>, S}]), StatsAcc)
+                end, Stats, DBStats).
+
+agent_statuses_from_db(P, AcctId) ->
+    case couch_mgr:get_results(acdc_stats:db_name(AcctId)
+                               ,<<"agent_stats/most_recent">>
+                               ,['reduce', 'group', 'include_docs']
+                              )
+    of
+        {'ok', Stats} ->
+            P ! {'db_stats', self(), cleanup_db_statuses(Stats)};
+        {'error', _E} ->
+            lager:debug("failed to get most recent stats: ~p", [_E]),
+            P ! {'db_stats', self(), []}
+    end.
+
+cleanup_db_statuses(Stats) ->
+    [{wh_json:get_value(<<"key">>, S)
+      ,wh_json:get_value(<<"doc">>, S)
+     }
+     || S <- Stats
+    ].
+
+find_most_recent_fold(K, V, {T, _}=Acc) ->
+    try wh_util:to_integer(K) of
+        N when N > T -> {N, wh_doc:public_fields(V)};
+        _ -> Acc
+    catch
+        _E:_R ->
+            lager:debug("key ~p not an int", [K]),
+            Acc
     end.
 
 update_agent_status(AcctId, AgentId, Status) ->
     update_agent_status(AcctId, AgentId, Status, []).
 update_agent_status(?NE_BINARY = AcctId, AgentId, Status, Options) ->
-    Doc =
-        wh_doc:update_pvt_parameters(
-          wh_json:from_list(
-            props:filter_undefined(
-              [{<<"agent_id">>, AgentId}
-               ,{<<"status">>, Status}
-               ,{<<"pvt_type">>, <<"agent_partial">>}
-               ,{<<"timestamp">>, wh_util:current_tstamp()}
-               | Options
-              ]))
-          ,AcctId, [{'account_id', AcctId}
-                    ,{'account_db', acdc_stats:db_name(AcctId)}
-                   ]),
-    couch_mgr:save_doc(acdc_stats:db_name(AcctId), Doc).
+    API = [{<<"Account-ID">>, AcctId}
+           ,{<<"Agent-ID">>, AgentId}
+           ,{<<"Status">>, Status}
+           ,{<<"Timestamp">>, wh_util:current_tstamp()}
+           | Options ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wapi_acdc_stats:publish_status_update(API).
 
 -spec proc_id() -> ne_binary().
 -spec proc_id(pid()) -> ne_binary().

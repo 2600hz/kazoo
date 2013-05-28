@@ -97,6 +97,12 @@
 -type sup_startchild_ret() :: {'ok', sup_child_id()} | {'ok', sup_child_id(), term()}
                             | {'error', sup_startchild_err()}.
 
+%% Helper macro for declaring children of supervisor
+-define(WORKER(I), {I, {I, 'start_link', []}, 'permanent', 5000, 'worker', [I]}).
+-define(WORKER_ARGS(I, Args), {I, {I, 'start_link', Args}, 'permanent', 5000, 'worker', [I]}).
+-define(WORKER_NAME_ARGS(I, N, Args), {N, {I, 'start_link', Args}, 'permanent', 5000, 'worker', [I]}).
+-define(SUPER(I), {I, {I, 'start_link', []}, 'permanent', 'infinity', 'supervisor', [I]}).
+-define(SUPER(I, Type), {I, {I, 'start_link', []}, Type, 'infinity', 'supervisor', [I]}).
 
 %% Recreate the non-exported types defined in the erlang gen_server source
 -type startlink_err() :: {'already_started', pid()} | 'shutdown' | term().

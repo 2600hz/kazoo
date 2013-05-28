@@ -152,7 +152,7 @@
 %%--------------------------------------------------------------------
 start_link(Supervisor, AgentJObj) ->
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
-    AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
+    AcctId = account_id(AgentJObj),
 
     Queues = case wh_json:get_value(<<"queues">>, AgentJObj) of
                  'undefined' -> [];
@@ -161,7 +161,7 @@ start_link(Supervisor, AgentJObj) ->
     start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues).
 start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues) ->
     case acdc_util:agent_status(AcctId, AgentId) of
-        <<"logout">> ->
+        <<"logged_out">> ->
             lager:debug("agent ~s in ~s is logged out, ignoring", [AgentId, AcctId]),
             {'error', 'logged_out'};
         _S ->
@@ -1019,12 +1019,12 @@ save_recording(Call, MediaName, Format, Url) ->
             StoreUrl = wapi_dialplan:local_store_url(Call, MediaJObj),
             lager:debug("store url: ~s", [StoreUrl]),
 
-            whapps_call_command:store_recording(MediaName, StoreUrl, Call);
+            whapps_call_command:store(MediaName, StoreUrl, Call);
         'false' when is_binary(Url) ->
             StoreUrl = wapi_dialplan:offsite_store_url(Url, MediaName),
             lager:debug("using ~s to maybe store recording", [StoreUrl]),
 
-            whapps_call_command:store_recording(MediaName, StoreUrl, Call);
+            whapps_call_command:store(MediaName, StoreUrl, Call);
         'false' ->
             lager:debug("no external url to use, not saving recording")
     end.
@@ -1075,7 +1075,7 @@ agent_id(Agent) ->
 -spec account_id(agent()) -> api_binary().
 account_id(Agent) ->
     case wh_json:is_json_object(Agent) of
-        'true' -> wh_json:get_value(<<"pvt_account_id">>, Agent);
+        'true' -> find_account_id(Agent);
         'false' -> whapps_call:account_id(Agent)
     end.
 
@@ -1108,3 +1108,9 @@ stop_agent_leg(MyQ, ACallId, ACtrlQ) ->
                | wh_api:default_headers(MyQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     wapi_dialplan:publish_command(ACtrlQ, Command).
+
+find_account_id(JObj) ->
+    case wh_json:get_value(<<"pvt_account_id">>, JObj) of
+        'undefined' -> wh_util:format_account_id(wh_json:get_value(<<"pvt_account_db">>, JObj), 'raw');
+        AcctId -> AcctId
+    end.
