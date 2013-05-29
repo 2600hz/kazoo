@@ -122,12 +122,16 @@ event(Node, Events) ->
 event(Node, [_|_]=Events, Timeout) ->
     PortOpen = get('port_open'),
     case gen_server:call({'mod_kazoo', Node}, {'event', Events}, Timeout) of
-        {'ok', {'port', Port}} when PortOpen =:= 'undefined' ->
+        {'ok', {IP, Port}} when PortOpen =:= 'undefined' ->
             put('port_open', 'true'),
-            {'ok', Socket} = gen_tcp:connect({192, 168, 1, 46}, Port, [{'mode', 'binary'}, {'packet', 2}]),
+            {'ok', IPAddress} = inet_parse:address(IP),
+
+            io:format("connect to ~p(~p): ~p", [IPAddress, Port, IP]),
+
+            {'ok', Socket} = gen_tcp:connect(IPAddress, Port, [{'mode', 'binary'}, {'packet', 2}]),
             io:format("Opened event socket ~p to port ~p~n", [Socket, Port]),
             'ok';
-        {'ok', {'port', _}} -> 'ok';
+        {'ok', _} -> 'ok';
         Else ->
             Else
     end;
