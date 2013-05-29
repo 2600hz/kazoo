@@ -764,7 +764,9 @@ gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
 unix_seconds_to_gregorian_seconds(UnixSeconds) ->
     to_integer(UnixSeconds) + ?UNIX_EPOCH_AS_GREG_SECONDS.
 
--spec pretty_print_datetime(wh_datetime()) -> ne_binary().
+-spec pretty_print_datetime(wh_datetime() | wh_now()) -> ne_binary().
+pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
+    pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
                                    [Y, Mo, D, H, Mi, S])).
