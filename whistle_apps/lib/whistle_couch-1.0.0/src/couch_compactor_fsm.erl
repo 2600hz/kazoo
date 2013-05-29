@@ -92,14 +92,16 @@
 -type not_compacting() :: {'error', 'compactor_down'}.
 -type compactor_heuristic() :: ?HEUR_NONE | ?HEUR_RATIO.
 
+-type node_with_options() :: {ne_binary(), wh_proplist()}.
+-type nodes_with_options() :: [node_with_options(),...] | [].
 -record(state, {
-          nodes :: ne_binaries()
+          nodes :: ne_binaries() | nodes_with_options()
           ,dbs :: ne_binaries()
           ,wait_ref :: reference()
           ,shards_pid_ref :: {pid(), reference()}  %% proc/monitor for pid of shard compactor
           ,next_compaction_msg :: tuple() | atom() %% what to send once shards_pid_ref is done
 
-          ,current_node :: ne_binary()
+          ,current_node :: ne_binary() | node_with_options()
           ,current_db :: ne_binary()
           ,conn :: #server{}
           ,admin_conn :: #server{}
@@ -877,7 +879,7 @@ handle_info({'DOWN', Ref, 'process', P, _Reason}, 'compact', #state{shards_pid_r
                                        ,next_compaction_msg='undefined'
                                        ,shards_pid_ref='undefined'
                                       }};
-handle_info(_Info, StateName, State) ->
+handle_info(_Info, StateName, #state{}=State) ->
     lager:debug("unhandled msg for ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
 
@@ -960,6 +962,7 @@ db_design_docs(Conn, D) ->
 compact_shards(AdminConn, Ss, DDs) ->
     PR = spawn_monitor(fun() ->
                                Ps = [spawn_monitor(?MODULE, 'compact_shard', [AdminConn, Shard, DDs]) || Shard <- Ss],
+                               lager:debug("shard compaction pids: ~p", [Ps]),
                                wait_for_pids(?MAX_WAIT_FOR_COMPACTION_PIDS, Ps)
                        end),
     lager:debug("compacting shards in ~p", [PR]),
@@ -989,11 +992,13 @@ compact_shard(AdminConn, S, DDs) ->
 compact_design_docs(AdminConn, S, DDs) ->
     try lists:split(?MAX_COMPACTING_VIEWS, DDs) of
         {Compact, Remaining} ->
+            lager:debug("compacting chunk of views: ~p", [Compact]),
             _ = [couch_util:design_compact(AdminConn, S, DD) || DD <- Compact],
             wait_for_compaction(AdminConn, S),
             compact_design_docs(AdminConn, S, Remaining)
     catch
         'error':'badarg' ->
+            lager:debug("compacting last chunk of views: ~p", [DDs]),
             _ = [couch_util:design_compact(AdminConn, S, DD) || DD <- DDs],
             wait_for_compaction(AdminConn, S)
     end.
@@ -1003,13 +1008,13 @@ wait_for_compaction(AdminConn, S) ->
 
 wait_for_compaction(_AdminConn, _S, {'error', 'db_not_found'}) -> 'ok';
 wait_for_compaction(AdminConn, S, {'error', _E}) ->
-    'ok' = timer:sleep(sleep_between_poll()),
+    'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
     wait_for_compaction(AdminConn, S);
 wait_for_compaction(AdminConn, S, {'ok', ShardData}) ->
     case wh_json:is_true(<<"compact_running">>, ShardData, 'false') of
         'false' -> 'ok';
         'true' ->
-            'ok' = timer:sleep(sleep_between_poll()),
+            'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
             wait_for_compaction(AdminConn, S)
     end.
 
@@ -1090,13 +1095,6 @@ queued_jobs_status(Jobs) ->
         Js -> [[{'job', J}, {'requested_by', P}] || {J, P, _} <- Js]
     end.
 
-sleep_between_poll() ->
-    try whapps_config:get(?CONFIG_CAT, <<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL) of
-        Time -> wh_util:to_integer(Time)
-    catch
-        _:_ -> ?SLEEP_BETWEEN_POLL
-    end.
-
 compact_automatically() ->
     Default = case wh_cache:fetch_local(?WH_COUCH_CACHE, <<"compact_automatically">>) of
                   {'ok', V} -> wh_util:is_true(V);
@@ -1119,7 +1117,7 @@ should_compact(_Conn, _Encoded, ?HEUR_NONE) -> 'true';
 should_compact(Conn, Encoded, ?HEUR_RATIO) ->
     case get_db_disk_and_data(Conn, Encoded) of
         {Disk, Data} -> should_compact_ratio(Data, Disk);
-        'undefined' -> 'true' % be pessimistic and compact the db
+        'undefined' -> 'false'
     end.
 
 -spec get_db_disk_and_data(server(), ne_binary()) ->
@@ -1128,7 +1126,7 @@ should_compact(Conn, Encoded, ?HEUR_RATIO) ->
 get_db_disk_and_data(Conn, Encoded) ->
     get_db_disk_and_data(Conn, Encoded, 1).
 get_db_disk_and_data(_Conn, _Encoded, N) when N >= 3 ->
-    lager:debug("getting db info for ~s failed ~b times", [_Encoded, N]),
+    lager:warning("getting db info for ~s failed ~b times", [_Encoded, N]),
     'undefined';
 get_db_disk_and_data(Conn, Encoded, N) ->
     case couch_util:db_info(Conn, Encoded) of
