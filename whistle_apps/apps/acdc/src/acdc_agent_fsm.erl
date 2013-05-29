@@ -22,7 +22,6 @@
          ,originate_ready/2
          ,originate_resp/2, originate_started/2, originate_uuid/2
          ,originate_failed/2
-         ,route_req/2
          ,sync_req/2, sync_resp/2
          ,pause/2
          ,resume/1
@@ -211,8 +210,6 @@ originate_uuid(FSM, JObj) ->
 %%--------------------------------------------------------------------
 originate_failed(FSM, JObj) -> gen_fsm:send_event(FSM, {'originate_failed', JObj}).
 
-route_req(FSM, Call) -> gen_fsm:send_event(FSM, {'route_req', Call}).
-
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
@@ -365,8 +362,6 @@ wait({'listener', AgentProc, NextState, SyncRef}, State) ->
 wait('send_sync_event', State) ->
     gen_fsm:send_event(self(), 'send_sync_event'),
     {'next_state', 'wait', State};
-wait({'route_req', Call}, State) ->
-    {'next_state', 'outbound', start_outbound_call_handling(Call, State), 'hibernate'};
 wait(_Msg, State) ->
     lager:debug("unhandled event in wait: ~p", [_Msg]),
     {'next_state', 'wait', State}.
@@ -455,8 +450,6 @@ sync({'pause', Timeout}, #state{acct_id=AcctId
     acdc_agent:presence_update(Srv, ?PRESENCE_RED_FLASH),
     {'next_state', 'paused', State#state{sync_ref=Ref}};
 
-sync({'route_req', Call}, State) ->
-    {'next_state', 'outbound', start_outbound_call_handling(Call, State), 'hibernate'};
 sync({'call_from', CallId}, State) ->
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 sync({'call_to', CallId}, State) ->
@@ -591,8 +584,6 @@ ready({'dtmf_pressed', _}, State) ->
 ready({'originate_failed', _E}, State) ->
     {'next_state', 'ready', State};
 
-ready({'route_req', Call}, State) ->
-    {'next_state', 'outbound', start_outbound_call_handling(Call, State), 'hibernate'};
 ready({'call_from', CallId}, State) ->
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 ready({'call_to', CallId}, State) ->
@@ -968,8 +959,6 @@ wrapup({'leg_destroyed', CallId}, #state{agent_proc=Srv}=State) ->
     acdc_agent:channel_hungup(Srv, CallId),
     {'next_state', 'wrapup', State};
 
-wrapup({'route_req', Call}, State) ->
-    {'next_state', 'outbound', start_outbound_call_handling(Call, State), 'hibernate'};
 wrapup({'call_from', CallId}, State) ->
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 wrapup({'call_to', CallId}, State) ->
@@ -1044,8 +1033,6 @@ paused({'member_connect_win', JObj}, #state{agent_proc=Srv}=State) ->
 
     {'next_state', 'paused', State};
 
-paused({'route_req', Call}, State) ->
-    {'next_state', 'paused', start_outbound_call_handling(Call, State), 'hibernate'};
 paused({'call_from', CallId}, State) ->
     {'next_state', 'paused', start_outbound_call_handling(CallId, State), 'hibernate'};
 paused({'call_to', CallId}, State) ->
@@ -1187,6 +1174,22 @@ outbound({'channel_bridged', _}, State) ->
     {'next_state', 'outbound', State};
 outbound({'channel_unbridged', _}, State) ->
     {'next_state', 'outbound', State};
+
+outbound({'resume'}, #state{acct_id=AcctId
+                          ,agent_id=AgentId
+                          ,agent_proc=Srv
+                          ,sync_ref=Ref
+                         }=State) ->
+    lager:debug("resume received, putting agent back into action"),
+    maybe_stop_timer(Ref),
+
+    update_agent_status_to_resume(AcctId, AgentId),
+
+    acdc_agent:send_status_resume(Srv),
+    acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_agent:presence_update(Srv, ?PRESENCE_GREEN),
+
+    {'next_state', 'ready', clear_call(State, 'ready')};
 
 outbound(_Msg, State) ->
     lager:debug("ignoring msg in outbound: ~p", [_Msg]),
@@ -1517,7 +1520,7 @@ start_outbound_call_handling(CallId, #state{agent_proc=Srv
                                             ,agent_id=AgentId
                                            }=State) when is_binary(CallId) ->
     _ = put('callid', CallId),
-    lager:debug("agent making outbound call, not receiving calls"),
+    lager:debug("agent making outbound call, not receiving ACDc calls"),
     acdc_agent:outbound_call(Srv, CallId),
     acdc_stats:agent_outbound(AcctId, AgentId, CallId),
 

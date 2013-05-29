@@ -134,8 +134,8 @@
                      ,{{'acdc_agent_handler', 'handle_agent_message'}
                        ,[{<<"agent">>, <<"*">>}]
                       }
-                     ,{{'acdc_agent_handler', 'handle_route_req'}
-                       ,[{<<"dialplan">>, <<"route_req">>}]
+                     ,{{'acdc_agent_handler', 'handle_destroy'}
+                       ,[{<<"channel">>, <<"destroy">>}]
                       }
                     ]).
 
