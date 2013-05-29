@@ -289,6 +289,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec process_event(api_binary(), wh_proplist(), atom()) -> 'ok'.
 process_event(UUID, Props, Node) ->
+    wh_util:put_callid(UUID),
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
     process_event(EventName, UUID, Props, Node).
 
@@ -300,6 +301,7 @@ process_event(<<"CHANNEL_CREATE">> = EventName, UUID, Props, Node) ->
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
     _ = ecallmgr_fs_channel:destroy(Props, Node),
+    _ = publish_destroy_channel_event(Props),
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(<<"CHANNEL_ANSWER">> = EventName, UUID, Props, Node) ->
     _ = ecallmgr_fs_channel:set_answered(UUID, 'true'),
@@ -364,6 +366,11 @@ publish_new_channel_event(Props) ->
     wapi_call:publish_new_channel(wh_api:default_headers(<<"channel">>, <<"new">>, ?APP_NAME, ?APP_VERSION) ++
                                       ecallmgr_call_events:create_event_props(<<"CHANNEL_CREATE">>, 'undefined', Props)
                                  ).
+-spec publish_destroy_channel_event(wh_proplist()) -> 'ok'.
+publish_destroy_channel_event(Props) ->
+    wapi_call:publish_destroy_channel(wh_api:default_headers(<<"channel">>, <<"destroy">>, ?APP_NAME, ?APP_VERSION) ++
+                                          ecallmgr_call_events:create_event_props(<<"CHANNEL_DESTROY">>, 'undefined', Props)
+                                     ).
 
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
                       {'error', {atom(), nonempty_string()}, ne_binary()} |
