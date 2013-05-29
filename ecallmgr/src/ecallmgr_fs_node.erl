@@ -148,16 +148,22 @@ init([Node, Options]) ->
     put('callid', Node),
     process_flag('priority', 'high'), %% Living dangerously!
     lager:info("starting new fs node listener for ~s", [Node]),
-    case bind_to_events(props:get_value('client_version', Options), Node) of
+    try bind_to_events(props:get_value('client_version', Options), Node) of
         {'error', Reason} ->
             lager:critical("unable to establish node bindings: ~p", [Reason]),
             {'stop', Reason};
-        ok ->
+        'ok' ->
             gproc:reg({'p', 'l', 'fs_node'}),
             lager:debug("bound to switch events on node ~s", [Node]),
             sync_channels(self()),
             run_start_cmds(Node),
             {'ok', #state{node=Node, options=Options}}
+    catch
+        _E:R ->
+            ST = erlang:get_stacktrace(),
+            lager:critical("failed to start fs_node for ~s: ~s: ~p", [Node, _E, R]),
+            wh_util:log_stacktrace(ST),
+            exit(R)
     end.
 
 bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
