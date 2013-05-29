@@ -394,8 +394,13 @@ handle_cast({'create_call', #call_stat{id=_Id}=Stat}, State) ->
     {'noreply', State};
 handle_cast({'create_status', #status_stat{id=_Id, status=_Status}=Stat}, State) ->
     lager:debug("creating new status stat ~s: ~s", [_Id, _Status]),
-    ets:insert_new(status_table_id(), Stat),
-    {'noreply', State};
+    case ets:insert_new(status_table_id(), Stat) of
+        'true' -> {'noreply', State};
+        'false' ->
+            lager:debug("stat ~s already exists, updating", [_Id]),
+            ets:insert(status_table_id(), Stat),
+            {'noreply', State}
+    end;
 handle_cast({'update_call', Id, Updates}, State) ->
     lager:debug("updating stat ~s", [Id]),
     ets:update_element(call_table_id(), Id, Updates),
