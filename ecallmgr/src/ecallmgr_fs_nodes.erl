@@ -226,8 +226,14 @@ handle_call('connected_nodes', _From, #state{nodes=Nodes}=State) ->
     {'reply', Resp, State};
 handle_call({'add_fs_node', NodeName, Cookie, Options}, From, State) ->
     spawn(fun() ->
-                  Reply = maybe_add_node(NodeName, Cookie, Options, State),
-                  gen_server:reply(From, Reply)
+                  try maybe_add_node(NodeName, Cookie, Options, State) of
+                      Reply ->
+                          gen_server:reply(From, Reply)
+                  catch
+                      _E:R ->
+                          lager:debug("failed to add fs node ~s(~s): ~s: ~p", [NodeName, Cookie, _E, R]),
+                          gen_server:reply(From, R)
+                  end
           end),
     {'noreply', State};
 handle_call('nodes', _From, #state{nodes=Nodes}=State) ->
@@ -386,7 +392,8 @@ maybe_handle_nodedown(NodeName, #state{nodes=Nodes}=State) ->
         _Else -> 'ok'
     end.
 
--spec maybe_add_node(text(), text(), wh_proplist(), state()) -> 'ok' | {'error', _}.
+-spec maybe_add_node(text(), text(), wh_proplist(), state()) ->
+                            'ok' | {'error', _}.
 maybe_add_node(NodeName, Cookie, Options, #state{self=Srv, nodes=Nodes}) ->
     case dict:find(NodeName, Nodes) of
         {'ok', #node{}} -> {'error', 'node_exists'};
@@ -452,7 +459,9 @@ maybe_connect_to_node(#node{node=NodeName}=Node) ->
     end.
 
 -spec maybe_ping_node(fs_node()) -> 'ok' | {'error', _}.
-maybe_ping_node(#node{node=NodeName, cookie=Cookie}=Node) ->
+maybe_ping_node(#node{node=NodeName
+                      ,cookie=Cookie
+                     }=Node) ->
     erlang:set_cookie(NodeName, Cookie),
     case net_adm:ping(NodeName) of
         'pong' ->
@@ -541,12 +550,16 @@ get_fs_cookie(Cookie, _) when is_atom(Cookie) ->
 get_fs_client_version(#node{node=NodeName}=Node) ->
     Node#node{client_version=get_fs_client_version(NodeName)};
 get_fs_client_version(NodeName) ->
-    case freeswitch:version(NodeName) of
+    try freeswitch:version(NodeName) of
         {'ok', Version} ->
             lager:debug("got freeswitch erlang client version: ~s", [Version]),
             Version;
         _Else ->
             lager:debug("unable to get freeswitch client version: ~p", [_Else]),
+            'undefined'
+    catch
+        _E:_R ->
+            lager:debug("unable to contact freeswitch ~s: ~p", [NodeName, _R]),
             'undefined'
     end.
 
@@ -576,6 +589,11 @@ start_preconfigured_servers() ->
         Nodes when is_list(Nodes) ->
             lager:info("successfully retrieved FreeSWITCH nodes to connect with, doing so..."),
             [spawn(fun() -> start_node_from_config(N) end) || N <- Nodes];
+        'undefined' ->
+            lager:debug("failed to receive a response for node configs"),
+            timer:sleep(5000),
+            _ = ecallmgr_config:flush(<<"fs_nodes">>),
+            start_preconfigured_servers();
         _E ->
             lager:debug("recieved a non-list for fs_nodes: ~p", [_E]),
             timer:sleep(5000),
@@ -588,7 +606,11 @@ start_node_from_config(MaybeJObj) ->
         'false' -> ?MODULE:add(wh_util:to_atom(MaybeJObj, 'true'));
         'true' ->
             {[Cookie], [Node]} = wh_json:get_values(MaybeJObj),
-            ?MODULE:add(wh_util:to_atom(Node, 'true'), wh_util:to_atom(Cookie, 'true'))
+            try ?MODULE:add(wh_util:to_atom(Node, 'true'), wh_util:to_atom(Cookie, 'true')) of
+                _OK -> lager:debug("added ~s(~s) successfully: ~p", [Node, Cookie, _OK])
+            catch
+                _E:_R -> lager:debug("failed to add ~s(~s): ~s: ~p", [Node, Cookie, _E, _R])
+            end
     end.
 
 -spec build_channel_record(atom(), ne_binary()) ->
