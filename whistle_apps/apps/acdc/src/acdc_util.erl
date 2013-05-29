@@ -101,7 +101,7 @@ bind_to_call_events(Call, Url) -> bind_to_call_events(whapps_call:call_id(Call),
 
 bind(CallId, Restrict) ->
     gen_listener:add_binding(self(), 'call', [{'callid', CallId}
-                                              ,{'restrict_to', Restrict}
+                                              ,{'restrict_to', ['destroy_channel' | Restrict]}
                                              ]).
 
 unbind_from_call_events('undefined') -> 'ok';
@@ -118,7 +118,7 @@ unbind_from_cdr(CallId) -> unbind(CallId, ['cdr']).
 
 unbind(CallId, Restrict) ->
     gen_listener:rm_binding(self(), 'call', [{'callid', CallId}
-                                             ,{'restrict_to', Restrict}
+                                             ,{'restrict_to', ['destroy_channel' | Restrict]}
                                             ]).
 
 -spec agent_status(ne_binary(), ne_binary()) -> ne_binary().
@@ -160,7 +160,7 @@ agent_status_in_db(AcctId, AgentId) ->
     end.
 
 %% [{AgentId, Status}]
--spec agent_statuses(ne_binary()) -> wh_proplist().
+-spec agent_statuses(ne_binary()) -> wh_json:object().
 agent_statuses(?NE_BINARY = AcctId) ->
     Self = self(),
     P = spawn(fun() -> agent_statuses_from_db(Self, AcctId) end),
@@ -185,9 +185,11 @@ agent_statuses(?NE_BINARY = AcctId) ->
         {'error', E} ->
             case wh_json:is_json_object(E) of
                 'false' ->
-                    lager:debug("failed to query for status: ~p", [E]);
+                    lager:debug("failed to query for status: ~p", [E]),
+                    wh_json:new();
                 'true' ->
-                    lager:debug("failed to query for status: ~s", [wh_json:get_value(<<"Error-Reason">>, E)])
+                    lager:debug("failed to query for status: ~s", [wh_json:get_value(<<"Error-Reason">>, E)]),
+                    wh_json:new()
             end
     end.
 
@@ -200,13 +202,16 @@ most_recent_map(AgentId, Statuses) ->
 
 merge_stats(Stats, DBStats) ->
     lists:foldl(fun({A, T, S}, StatsAcc) ->
-                        wh_json:set_value([A, T], wh_json:from_list([{<<"status">>, S}]), StatsAcc)
+                        wh_json:set_value([A, T], wh_json:from_list([{<<"status">>, S}
+                                                                     ,{<<"agent_id">>, A}
+                                                                     ,{<<"timestamp">>, T}
+                                                                    ]), StatsAcc)
                 end, Stats, DBStats).
 
 agent_statuses_from_db(P, AcctId) ->
     case couch_mgr:get_results(acdc_stats:db_name(AcctId)
                                ,<<"agent_stats/most_recent">>
-                               ,['reduce', 'group', 'include_docs']
+                               ,['reduce', 'group']
                               )
     of
         {'ok', Stats} ->
@@ -217,9 +222,13 @@ agent_statuses_from_db(P, AcctId) ->
     end.
 
 cleanup_db_statuses(Stats) ->
-    [{wh_json:get_value(<<"key">>, S)
-      ,wh_json:get_value(<<"doc">>, S)
-     }
+    [begin
+         Data = wh_json:get_value(<<"value">>, S),
+         {wh_json:get_value(<<"key">>, S)
+          ,wh_json:get_value(<<"timestamp">>, Data)
+          ,wh_json:get_value(<<"status">>, Data)
+         }
+     end
      || S <- Stats
     ].
 
