@@ -13,7 +13,7 @@
          ,req_params/1
         ]).
 
--include("./src/kzt.hrl").
+-include("../kzt.hrl").
 
 -spec exec(whapps_call:call(), wh_json:object()) -> usurp_return().
 exec(Call, FlowJObj) ->
