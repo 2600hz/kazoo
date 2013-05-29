@@ -56,7 +56,7 @@
                             ]).
 -define(NEW_CHANNEL_TYPES, []).
 
--define(DESTROY_CHANNEL_ROUTING_KEY(CALLID), <<"call.destroy_channel.", CALLID/binary>>).
+-define(DESTROY_CHANNEL_ROUTING_KEY(CALLID), <<"call.destroy_channel.", (amqp_util:encode(CALLID))/binary>>).
 -define(DESTROY_CHANNEL_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_DESTROY_CHANNEL_HEADERS, [<<"To">>, <<"From">>, <<"Request">>
                                            | ?OPTIONAL_CALL_EVENT_HEADERS

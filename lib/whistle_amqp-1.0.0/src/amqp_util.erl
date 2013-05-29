@@ -970,4 +970,3 @@ encode_key_test() ->
     ?assertEqual(<<"test%26%2E192%2E+168%2E+5%2E+5%23">>, encode(<<"test&.192. 168. 5. 5#">>)),
     ok.
 -endif.
-
