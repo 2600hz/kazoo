@@ -174,7 +174,7 @@ agent_statuses(?NE_BINARY = AcctId) ->
                                       )
     of
         {'ok', Resp} ->
-            Stats = wh_json:get_value([<<"Agents">>], Resp),
+            Stats = wh_json:get_value([<<"Agents">>], Resp, wh_json:new()),
             receive
                 {'db_stats', P, DBStats} ->
                     most_recent(merge_stats(Stats, DBStats))
@@ -201,11 +201,9 @@ most_recent_map(AgentId, Statuses) ->
     {AgentId, Doc}.
 
 merge_stats(Stats, DBStats) ->
-    lists:foldl(fun({A, T, S}, StatsAcc) ->
-                        wh_json:set_value([A, T], wh_json:from_list([{<<"status">>, S}
-                                                                     ,{<<"agent_id">>, A}
-                                                                     ,{<<"timestamp">>, T}
-                                                                    ]), StatsAcc)
+    lists:foldl(fun({A, Data}, StatsAcc) ->
+                        T = wh_json:get_value(<<"timestamp">>, Data),
+                        wh_json:set_value([A, T], Data, StatsAcc)
                 end, Stats, DBStats).
 
 agent_statuses_from_db(P, AcctId) ->
@@ -224,17 +222,16 @@ agent_statuses_from_db(P, AcctId) ->
 cleanup_db_statuses(Stats) ->
     [begin
          Data = wh_json:get_value(<<"value">>, S),
-         {wh_json:get_value(<<"key">>, S)
-          ,wh_json:get_value(<<"timestamp">>, Data)
-          ,wh_json:get_value(<<"status">>, Data)
-         }
+         AgentId = wh_json:get_value(<<"key">>, S),
+         {AgentId, wh_json:set_value(<<"agent_id">>, AgentId, Data)}
      end
      || S <- Stats
     ].
 
-find_most_recent_fold(K, V, {T, _}=Acc) ->
+find_most_recent_fold(K, V, {T, _V}=Acc) ->
     try wh_util:to_integer(K) of
-        N when N > T -> {N, wh_doc:public_fields(V)};
+        N when N > T ->
+            {N, wh_doc:public_fields(V)};
         _ -> Acc
     catch
         _E:_R ->
