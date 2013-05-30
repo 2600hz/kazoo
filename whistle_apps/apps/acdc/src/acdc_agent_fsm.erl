@@ -84,6 +84,10 @@
 
 -define(MAX_FAILURES, whapps_config:get_integer(?CONFIG_CAT, <<"max_connect_failures">>, 3)).
 
+-define(NOTIFY_PICKUP, <<"pickup">>).
+-define(NOTIFY_HANGUP, <<"hangup">>).
+-define(NOTIFY_CDR, <<"cdr">>).
+
 -record(state, {
           acct_id :: ne_binary()
          ,acct_db :: ne_binary()
@@ -644,9 +648,12 @@ ringing({'originate_started', ACallId}, #state{agent_proc=Srv
                                                ,member_call_id=MCallId
                                                ,acct_id=AcctId
                                                ,agent_id=AgentId
+                                               ,queue_notifications=Ns
                                               }=State) ->
     lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
     acdc_agent:member_connect_accepted(Srv),
+
+    maybe_notify(Ns, ?NOTIFY_PICKUP),
 
     acdc_stats:agent_connected(AcctId, AgentId, MCallId),
 
@@ -701,9 +708,12 @@ ringing({'channel_bridged', CallId}, #state{member_call_id=CallId
                                             ,agent_proc=Srv
                                             ,acct_id=AcctId
                                             ,agent_id=AgentId
+                                            ,queue_notifications=Ns
                                            }=State) ->
     lager:debug("agent phone has been connected to caller"),
     acdc_agent:member_connect_accepted(Srv),
+
+    maybe_notify(Ns, ?NOTIFY_PICKUP),
 
     acdc_stats:agent_connected(AcctId, AgentId, CallId),
 
@@ -846,16 +856,20 @@ answered({'dialplan_error', _App}, #state{agent_proc=Srv
 
 answered({'channel_bridged', CallId}, #state{member_call_id=CallId
                                              ,agent_proc=Srv
+                                             ,queue_notifications=Ns
                                             }=State) ->
     lager:debug("agent has connected to member"),
     acdc_agent:member_connect_accepted(Srv),
+    maybe_notify(Ns, ?NOTIFY_PICKUP),
     {'next_state', 'answered', State};
 
 answered({'channel_bridged', CallId}, #state{agent_call_id=CallId
                                              ,agent_proc=Srv
+                                             ,queue_notifications=Ns
                                             }=State) ->
     lager:debug("agent has connected (~s) to caller", [CallId]),
     acdc_agent:member_connect_accepted(Srv),
+    maybe_notify(Ns, ?NOTIFY_PICKUP),
     {'next_state', 'answered', State};
 
 answered({'channel_hungup', CallId, _Cause}, #state{member_call_id=CallId}=State) ->
@@ -1653,6 +1667,14 @@ changed_endpoints(OrigEPs, [EP|EPs], Add) ->
     of
         {[], _} -> changed_endpoints(OrigEPs, EPs, [EP|Add]);
         {_, RestOrigEPs} -> changed_endpoints(RestOrigEPs, EPs, Add)
+    end.
+
+maybe_notify('undefined', _) -> 'ok';
+maybe_notify(Ns, Key) ->
+    case wh_json:get_value(Key, Ns) of
+        'undefined' -> 'ok';
+        Url ->
+            lager:debug("send update for ~s to ~s", [Key, Url])
     end.
 
 -ifdef(TEST).
