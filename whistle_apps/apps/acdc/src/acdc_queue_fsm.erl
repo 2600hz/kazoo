@@ -778,6 +778,7 @@ update_properties(QueueJObj, State) ->
       ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, 'false')
       ,recording_url = wh_json:get_ne_value(<<"recording_url">>, QueueJObj)
       ,cdr_url = wh_json:get_ne_value(<<"cdr_url">>, QueueJObj)
+      ,notifications = wh_json:get_value(<<"notifications">>, QueueJObj)
 
       %% Changing queue strategy currently isn't feasible; definitely a TODO
       %%,strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj))
