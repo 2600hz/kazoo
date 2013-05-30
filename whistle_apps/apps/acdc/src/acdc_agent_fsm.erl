@@ -545,6 +545,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                                                           ,caller_exit_key=CallerExitKey
                                                           ,agent_call_id=AgentCallId
                                                           ,endpoints=UpdatedEPs
+                                                          ,queue_notifications=wh_json:get_value(<<"Notifications">>, JObj)
                                                          }}
             end;
         _OtherId ->
