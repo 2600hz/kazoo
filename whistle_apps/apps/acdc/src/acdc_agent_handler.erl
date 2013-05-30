@@ -92,6 +92,7 @@ maybe_start_agent(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AcctId]),
+            acdc_stats:agent_ready(AcctId, AgentId),
             case couch_mgr:open_doc(wh_util:format_account_id(AcctId, 'encoded'), AgentId) of
                 {'ok', AgentJObj} ->
                     {'ok', _APid} = acdc_agents_sup:new(AgentJObj),
