@@ -1693,12 +1693,13 @@ notify(Url, Key, #state{acct_id=AcctId
              props:filter_undefined(
                [{<<"account_id">>, AcctId}
                 ,{<<"agent_id">>, AgentId}
-                ,{<<"queue_id">>, QueueId}
-                ,{<<"call_id">>, whapps_call:call_id(MCall)}
                 ,{<<"agent_call_id">>, ACallId}
+                ,{<<"queue_id">>, QueueId}
+                ,{<<"member_call_id">>, whapps_call:call_id(MCall)}
                 ,{<<"caller_id_name">>, whapps_call:caller_id_name(MCall)}
                 ,{<<"caller_id_number">>, whapps_call:caller_id_number(MCall)}
                 ,{<<"call_state">>, Key}
+                ,{<<"now">>, wh_util:current_tstamp()}
                ])),
     {'ok', _Status, _ResponseHeaders, _ResponseBody} =
         ibrowse:send_req(wh_util:to_list(Url), 'get'
