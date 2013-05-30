@@ -87,6 +87,8 @@
 -define(NOTIFY_PICKUP, <<"pickup">>).
 -define(NOTIFY_HANGUP, <<"hangup">>).
 -define(NOTIFY_CDR, <<"cdr">>).
+-define(NOTIFY_RECORDING, <<"recording">>).
+-define(NOTIFY_ALL, <<"cdr">>).
 
 -record(state, {
           acct_id :: ne_binary()
@@ -520,8 +522,8 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
 
     AgentCallId = acdc_agent:outbound_call_id(CallId, AgentId),
 
-    CDRUrl = wh_json:get_ne_value(<<"CDR-Url">>, JObj),
-    RecordingUrl = wh_json:get_ne_value(<<"Recording-URL">>, JObj),
+    CDRUrl = cdr_url(JObj),
+    RecordingUrl = recording_url(JObj),
 
     case wh_json:get_value(<<"Agent-Process-ID">>, JObj) of
         MyId ->
@@ -541,6 +543,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                 {'ok', UpdatedEPs} ->
                     acdc_agent:bridge_to_member(Srv, Call, JObj, UpdatedEPs, CDRUrl, RecordingUrl),
                     acdc_stats:agent_connecting(AcctId, AgentId, CallId),
+                    lager:info("trying to ring agent: ~p", [wh_json:get_value(<<"Notifications">>, JObj)]),
                     {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
                                                           ,member_call=Call
                                                           ,member_call_id=CallId
@@ -1675,19 +1678,35 @@ changed_endpoints(OrigEPs, [EP|EPs], Add) ->
 maybe_notify('undefined', _, _) -> 'ok';
 maybe_notify(Ns, Key, State) ->
     case wh_json:get_value(Key, Ns) of
-        'undefined' -> 'ok';
+        'undefined' ->
+            case wh_json:get_value(?NOTIFY_ALL, Ns) of
+                'undefined' -> 'ok';
+                Url ->
+                    lager:debug("send update for ~s to ~s", [?NOTIFY_ALL, Url]),
+                    _P = spawn(fun() -> notify(Url, get_method(Ns), Key, State) end),
+                    'ok'
+            end;
         Url ->
             lager:debug("send update for ~s to ~s", [Key, Url]),
-            spawn(fun() -> notify(Url, Key, State) end),
+            _P = spawn(fun() -> notify(Url, get_method(Ns), Key, State) end),
             'ok'
     end.
 
-notify(Url, Key, #state{acct_id=AcctId
-                        ,agent_id=AgentId
-                        ,member_call=MCall
-                        ,agent_call_id=ACallId
-                        ,member_call_queue_id=QueueId
-                       }) ->
+get_method(Ns) ->
+    case wh_json:get_value(<<"method">>, Ns) of
+        'undefined' -> 'get';
+        M -> standardize_method(wh_util:to_lower_binary(M))
+    end.
+standardize_method(<<"get">>) -> 'get';
+standardize_method(<<"post">>) -> 'post';
+standardize_method(_) -> 'get'.
+
+notify(Url, Method, Key, #state{acct_id=AcctId
+                                ,agent_id=AgentId
+                                ,member_call=MCall
+                                ,agent_call_id=ACallId
+                                ,member_call_queue_id=QueueId
+                               }) ->
     put('callid', whapps_call:call_id(MCall)),
     Data = wh_json:from_list(
              props:filter_undefined(
@@ -1702,13 +1721,28 @@ notify(Url, Key, #state{acct_id=AcctId
                 ,{<<"now">>, wh_util:current_tstamp()}
                ])),
     {'ok', _Status, _ResponseHeaders, _ResponseBody} =
-        ibrowse:send_req(wh_util:to_list(Url), 'get'
-                         ,[{<<"Content-Type">>, <<"application/json">>}]
+        ibrowse:send_req(wh_util:to_list(Url)
+                         ,[]
+                         ,Method
                          ,wh_json:encode(Data)
-                         ,[{'connect_timeout', 200}] % wait up to 200ms for connection
+                         ,[{'connect_timeout', 200} % wait up to 200ms for connection
+                           ,{'content_type', "application/json"}
+                          ]
                          ,1000 % wait up to 1 sec for response
                         ),
-    lager:debug("req to ~s(~s): ~s: ~s", [Url, Key, _Status, _ResponseBody]).
+    lager:debug("~s req to ~s(~s): ~s: ~s", [Method, Url, Key, _Status, _ResponseBody]).
+
+cdr_url(JObj) ->
+    case wh_json:get_value([<<"Notifications">>, ?NOTIFY_CDR], JObj) of
+        'undefined' -> wh_json:get_ne_value(<<"CDR-Url">>, JObj);
+        Url -> Url
+    end.
+
+recording_url(JObj) ->
+    case wh_json:get_value([<<"Notifications">>, ?NOTIFY_RECORDING], JObj) of
+        'undefined' -> wh_json:get_ne_value(<<"Recording-URL">>, JObj);
+        Url -> Url
+    end.
 
 -ifdef(TEST).
 
