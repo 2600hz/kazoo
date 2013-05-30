@@ -13,6 +13,9 @@
 %%% /agents/AID
 %%%   GET: agent details
 %%%
+%%% /agents/AID/status
+%%%   GET: last 10 status updates
+%%%
 %%% @end
 %%% @contributors:
 %%%   Karl Anderson
@@ -178,10 +181,11 @@ fetch_all_agent_statuses(Context) ->
     crossbar_util:response(acdc_util:agent_statuses(cb_context:account_id(Context)), Context).
 
 fetch_agent_status(AgentId, Context) ->
-    crossbar_util:response(
-      acdc_util:agent_status(cb_context:account_id(Context), AgentId)
-      ,Context
-     ).
+    S = case wh_util:is_true(cb_context:req_value(Context, <<"recent">>)) of
+            'false' -> acdc_util:agent_status(cb_context:account_id(Context), AgentId);
+            'true' -> acdc_util:agent_statuses(cb_context:account_id(Context), AgentId)
+        end,
+    crossbar_util:response(S, Context).
 
 -spec fetch_all_agent_stats(cb_context:context()) -> cb_context:context().
 fetch_all_agent_stats(Context) ->
