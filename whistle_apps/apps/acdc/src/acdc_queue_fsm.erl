@@ -109,35 +109,40 @@
 start_link(MgrPid, ListenerPid, QueueJObj) ->
     gen_fsm:start_link(?MODULE, [MgrPid, ListenerPid, QueueJObj], []).
 
-refresh(FSM, QueueJObj) -> gen_fsm:send_all_state_event(FSM, {'refresh', QueueJObj}).
+refresh(FSM, QueueJObj) ->
+    gen_fsm:send_all_state_event(FSM, {'refresh', QueueJObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec member_call(pid(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
-member_call(FSM, CallJObj, Delivery) -> gen_fsm:send_event(FSM, {'member_call', CallJObj, Delivery}).
+member_call(FSM, CallJObj, Delivery) ->
+    gen_fsm:send_event(FSM, {'member_call', CallJObj, Delivery}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec member_connect_resp(pid(), wh_json:object()) -> 'ok'.
-member_connect_resp(FSM, Resp) -> gen_fsm:send_event(FSM, {'agent_resp', Resp}).
+member_connect_resp(FSM, Resp) ->
+    gen_fsm:send_event(FSM, {'agent_resp', Resp}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec member_accepted(pid(), wh_json:object()) -> 'ok'.
-member_accepted(FSM, AcceptJObj) -> gen_fsm:send_event(FSM, {'accepted', AcceptJObj}).
+member_accepted(FSM, AcceptJObj) ->
+    gen_fsm:send_event(FSM, {'accepted', AcceptJObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec member_connect_retry(pid(), wh_json:object()) -> 'ok'.
-member_connect_retry(FSM, RetryJObj) -> gen_fsm:send_event(FSM, {'retry', RetryJObj}).
+member_connect_retry(FSM, RetryJObj) ->
+    gen_fsm:send_event(FSM, {'retry', RetryJObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
