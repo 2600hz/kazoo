@@ -653,7 +653,7 @@ ringing({'originate_started', ACallId}, #state{agent_proc=Srv
     lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
     acdc_agent:member_connect_accepted(Srv),
 
-    maybe_notify(Ns, ?NOTIFY_PICKUP),
+    maybe_notify(Ns, ?NOTIFY_PICKUP, State),
 
     acdc_stats:agent_connected(AcctId, AgentId, MCallId),
 
@@ -713,7 +713,7 @@ ringing({'channel_bridged', CallId}, #state{member_call_id=CallId
     lager:debug("agent phone has been connected to caller"),
     acdc_agent:member_connect_accepted(Srv),
 
-    maybe_notify(Ns, ?NOTIFY_PICKUP),
+    maybe_notify(Ns, ?NOTIFY_PICKUP, State),
 
     acdc_stats:agent_connected(AcctId, AgentId, CallId),
 
@@ -860,7 +860,7 @@ answered({'channel_bridged', CallId}, #state{member_call_id=CallId
                                             }=State) ->
     lager:debug("agent has connected to member"),
     acdc_agent:member_connect_accepted(Srv),
-    maybe_notify(Ns, ?NOTIFY_PICKUP),
+    maybe_notify(Ns, ?NOTIFY_PICKUP, State),
     {'next_state', 'answered', State};
 
 answered({'channel_bridged', CallId}, #state{agent_call_id=CallId
@@ -869,7 +869,7 @@ answered({'channel_bridged', CallId}, #state{agent_call_id=CallId
                                             }=State) ->
     lager:debug("agent has connected (~s) to caller", [CallId]),
     acdc_agent:member_connect_accepted(Srv),
-    maybe_notify(Ns, ?NOTIFY_PICKUP),
+    maybe_notify(Ns, ?NOTIFY_PICKUP, State),
     {'next_state', 'answered', State};
 
 answered({'channel_hungup', CallId, _Cause}, #state{member_call_id=CallId}=State) ->
@@ -1501,7 +1501,8 @@ hangup_call(#state{wrapup_timeout=WrapupTimeout
                    ,acct_id=AcctId
                    ,agent_id=AgentId
                    ,call_status_ref=CRef
-                  }) ->
+                   ,queue_notifications=Ns
+                  }=State) ->
     lager:debug("call lasted ~b s", [elapsed(_Started)]),
     lager:debug("going into a wrapup period ~p: ~s", [WrapupTimeout, CallId]),
 
@@ -1510,6 +1511,8 @@ hangup_call(#state{wrapup_timeout=WrapupTimeout
     _ = maybe_stop_timer(CRef),
 
     acdc_agent:channel_hungup(Srv, CallId),
+
+    maybe_notify(Ns, ?NOTIFY_HANGUP, State),
 
     acdc_stats:agent_wrapup(AcctId, AgentId, WrapupTimeout),
     start_wrapup_timer(WrapupTimeout).
@@ -1669,13 +1672,42 @@ changed_endpoints(OrigEPs, [EP|EPs], Add) ->
         {_, RestOrigEPs} -> changed_endpoints(RestOrigEPs, EPs, Add)
     end.
 
-maybe_notify('undefined', _) -> 'ok';
-maybe_notify(Ns, Key) ->
+maybe_notify('undefined', _, _) -> 'ok';
+maybe_notify(Ns, Key, State) ->
     case wh_json:get_value(Key, Ns) of
         'undefined' -> 'ok';
         Url ->
-            lager:debug("send update for ~s to ~s", [Key, Url])
+            lager:debug("send update for ~s to ~s", [Key, Url]),
+            spawn(fun() -> notify(Url, Key, State) end),
+            'ok'
     end.
+
+notify(Url, Key, #state{acct_id=AcctId
+                        ,agent_id=AgentId
+                        ,member_call=MCall
+                        ,agent_call_id=ACallId
+                        ,member_call_queue_id=QueueId
+                       }) ->
+    put('callid', whapps_call:call_id(MCall)),
+    Data = wh_json:from_list(
+             props:filter_undefined(
+               [{<<"account_id">>, AcctId}
+                ,{<<"agent_id">>, AgentId}
+                ,{<<"queue_id">>, QueueId}
+                ,{<<"call_id">>, whapps_call:call_id(MCall)}
+                ,{<<"agent_call_id">>, ACallId}
+                ,{<<"caller_id_name">>, whapps_call:caller_id_name(MCall)}
+                ,{<<"caller_id_number">>, whapps_call:caller_id_number(MCall)}
+                ,{<<"call_state">>, Key}
+               ])),
+    {'ok', _Status, _ResponseHeaders, _ResponseBody} =
+        ibrowse:send_req(wh_util:to_list(Url), 'get'
+                         ,[{<<"Content-Type">>, <<"application/json">>}]
+                         ,wh_json:encode(Data)
+                         ,[{'connect_timeout', 200}] % wait up to 200ms for connection
+                         ,1000 % wait up to 1 sec for response
+                        ),
+    lager:debug("req to ~s(~s): ~s: ~s", [Url, Key, _Status, _ResponseBody]).
 
 -ifdef(TEST).
 
