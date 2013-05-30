@@ -89,6 +89,8 @@
          ,record_caller = 'false' :: boolean() % record the caller
          ,recording_url :: api_binary() %% URL of where to POST recordings
          ,cdr_url :: api_binary() % optional URL to request for extra CDR data
+
+         ,notifications :: api_object()
          }).
 -type queue_fsm_state() :: #state{}.
 
@@ -215,6 +217,8 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
              ,recording_url = wh_json:get_ne_value(<<"recording_url">>, QueueJObj)
              ,cdr_url = wh_json:get_ne_value(<<"cdr_url">>, QueueJObj)
              ,member_call = 'undefined'
+
+             ,notifications = wh_json:get_value(<<"notifications">>, QueueJObj)
             }}.
 
 %%--------------------------------------------------------------------
@@ -323,6 +327,7 @@ connect_req({'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                             ,cdr_url=CDRUrl
                                                             ,record_caller=ShouldRecord
                                                             ,recording_url=RecordUrl
+                                                            ,notifications=Notifications
                                                            }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
 
@@ -334,6 +339,7 @@ connect_req({'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                          ,{<<"CDR-Url">>, CDRUrl}
                          ,{<<"Record-Caller">>, ShouldRecord}
                          ,{<<"Recording-URL">>, RecordUrl}
+                         ,{<<"Notifications">>, Notifications}
                         ],
 
             _ = [begin
