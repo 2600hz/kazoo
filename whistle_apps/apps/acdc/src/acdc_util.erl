@@ -13,7 +13,8 @@
          ,unbind_from_call_events/1, unbind_from_call_events/2
          ,unbind_from_cdr/1
          ,agents_in_queue/2
-         ,agent_status/2, agent_statuses/1
+         ,agent_status/2
+         ,agent_statuses/1, agent_statuses/2
          ,update_agent_status/3, update_agent_status/4
          ,agent_devices/2
          ,proc_id/0, proc_id/1, proc_id/2
@@ -162,10 +163,17 @@ agent_status_in_db(AcctId, AgentId) ->
 %% [{AgentId, Status}]
 -spec agent_statuses(ne_binary()) -> wh_json:object().
 agent_statuses(?NE_BINARY = AcctId) ->
+    agent_statuses(AcctId, 'undefined', 'true').
+agent_statuses(?NE_BINARY = AcctId, ?NE_BINARY = AgentId) ->
+    {Merged, _} = wh_json:get_values(wh_json:get_value(AgentId, agent_statuses(AcctId, AgentId, 'false'), wh_json:new())),
+    wh_json:public_fields(Merged).
+
+agent_statuses(AcctId, AgentId, OnlyMostRecent) ->
     Self = self(),
-    P = spawn(fun() -> agent_statuses_from_db(Self, AcctId) end),
+    {P, Ref} = spawn_monitor(fun() -> agent_statuses_from_db(Self, AcctId, OnlyMostRecent) end),
 
     API = [{<<"Account-ID">>, AcctId}
+           ,{<<"Agent-ID">>, AgentId}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case whapps_util:amqp_pool_request(API
@@ -175,22 +183,33 @@ agent_statuses(?NE_BINARY = AcctId) ->
     of
         {'ok', Resp} ->
             Stats = wh_json:get_value([<<"Agents">>], Resp, wh_json:new()),
-            receive
-                {'db_stats', P, DBStats} ->
-                    most_recent(merge_stats(Stats, DBStats))
-            after 5000 ->
-                    lager:debug("timed out waiting for db stats"),
-                    most_recent(Stats)
+            DbStats = get_db_stats(P, Ref),
+            Merged = merge_stats(Stats, DbStats),
+            case OnlyMostRecent of
+                'true' -> most_recent(Merged);
+                'false' -> Merged
             end;
-        {'error', E} ->
-            case wh_json:is_json_object(E) of
-                'false' ->
-                    lager:debug("failed to query for status: ~p", [E]),
-                    wh_json:new();
-                'true' ->
-                    lager:debug("failed to query for status: ~s", [wh_json:get_value(<<"Error-Reason">>, E)]),
-                    wh_json:new()
+        {'error', _E} ->
+            lager:debug("failed to query for stats: ~p", [_E]),
+            DbStats = get_db_stats(P, Ref),
+            Merged = merge_stats(wh_json:new(), DbStats),
+            case OnlyMostRecent of
+                'true' -> most_recent(Merged);
+                'false' -> Merged
             end
+    end.
+
+get_db_stats(P, Ref) ->
+    receive
+        {'db_stats', P, DBStats} ->
+            DBStats;
+        {'DOWN', Ref, 'process', P, _Reason} ->
+            lager:debug("db lookup ~p down: ~p", [P, _Reason]),
+            wh_json:new()
+    after
+        5000 ->
+            lager:debug("timed out waiting for db stats"),
+            wh_json:new()
     end.
 
 most_recent(Stats) ->
@@ -206,25 +225,34 @@ merge_stats(Stats, DBStats) ->
                         wh_json:set_value([A, T], Data, StatsAcc)
                 end, Stats, DBStats).
 
-agent_statuses_from_db(P, AcctId) ->
+agent_statuses_from_db(P, AcctId, 'false'=OnlyMostRecent) ->
+    agent_statuses_from_db(P, AcctId, OnlyMostRecent, ['include_docs', {'limit', 10}]);
+agent_statuses_from_db(P, AcctId, 'true'=OnlyMostRecent) ->
+    agent_statuses_from_db(P, AcctId, OnlyMostRecent, ['reduce', 'group']).
+
+agent_statuses_from_db(P, AcctId, OnlyMostRecent, Opts) when is_list(Opts) ->
     case couch_mgr:get_results(acdc_stats:db_name(AcctId)
                                ,<<"agent_stats/most_recent">>
-                               ,['reduce', 'group']
+                               ,Opts
                               )
     of
         {'ok', Stats} ->
-            P ! {'db_stats', self(), cleanup_db_statuses(Stats)};
+            P ! {'db_stats', self(), cleanup_db_statuses(Stats, OnlyMostRecent)};
         {'error', _E} ->
             lager:debug("failed to get most recent stats: ~p", [_E]),
             P ! {'db_stats', self(), []}
     end.
 
-cleanup_db_statuses(Stats) ->
+cleanup_db_statuses(Stats, 'true') ->
     [begin
          Data = wh_json:get_value(<<"value">>, S),
          AgentId = wh_json:get_value(<<"key">>, S),
          {AgentId, wh_json:set_value(<<"agent_id">>, AgentId, Data)}
      end
+     || S <- Stats
+    ];
+cleanup_db_statuses(Stats, 'false') ->
+    [{wh_json:get_value(<<"key">>, S), wh_json:get_value(<<"doc">>, S)}
      || S <- Stats
     ].
 
