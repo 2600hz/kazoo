@@ -91,10 +91,13 @@
          ,agent_proc :: pid()
          ,agent_proc_id :: ne_binary()
          ,agent_name :: api_binary()
+
          ,wrapup_timeout = 0 :: integer() % optionally set on win
          ,wrapup_ref :: reference()
+
          ,sync_ref :: reference()
          ,pause_ref :: reference()
+
          ,call_status_ref :: reference()
          ,call_status_failures = 0 :: integer()
 
@@ -103,6 +106,7 @@
          ,member_call_queue_id :: api_binary()
          ,member_call_start :: wh_now()
          ,caller_exit_key = <<"#">> :: ne_binary()
+         ,queue_notifications :: api_object()
 
          ,agent_call_id :: api_binary()
          ,next_status :: api_binary()
@@ -125,7 +129,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec member_connect_req(pid(), wh_json:object()) -> 'ok'.
-member_connect_req(FSM, JObj) -> gen_fsm:send_event(FSM, {'member_connect_req', JObj}).
+member_connect_req(FSM, JObj) ->
+    gen_fsm:send_event(FSM, {'member_connect_req', JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -135,10 +140,12 @@ member_connect_req(FSM, JObj) -> gen_fsm:send_event(FSM, {'member_connect_req', 
 %% @end
 %%--------------------------------------------------------------------
 -spec member_connect_win(pid(), wh_json:object()) -> 'ok'.
-member_connect_win(FSM, JObj) -> gen_fsm:send_event(FSM, {'member_connect_win', JObj}).
+member_connect_win(FSM, JObj) ->
+    gen_fsm:send_event(FSM, {'member_connect_win', JObj}).
 
 -spec agent_timeout(pid(), wh_json:object()) -> 'ok'.
-agent_timeout(FSM, JObj) -> gen_fsm:send_event(FSM, {'agent_timeout', JObj}).
+agent_timeout(FSM, JObj) ->
+    gen_fsm:send_event(FSM, {'agent_timeout', JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -195,7 +202,8 @@ maybe_send_execute_complete(_, _, _) -> 'ok'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-originate_ready(FSM, JObj) -> gen_fsm:send_event(FSM, {'originate_ready', JObj}).
+originate_ready(FSM, JObj) ->
+    gen_fsm:send_event(FSM, {'originate_ready', JObj}).
 
 originate_resp(FSM, JObj) ->
     gen_fsm:send_event(FSM, {'originate_resp', wh_json:get_value(<<"Call-ID">>, JObj)}).
