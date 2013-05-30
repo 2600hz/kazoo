@@ -231,6 +231,8 @@ agent_wrapup(AcctId, AgentId, WaitTime) ->
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_wrapup/1).
 
+agent_paused(AcctId, AgentId, 'undefined') ->
+    lager:debug("undefined pause time for ~s(~s)", [AgentId, AcctId]);
 agent_paused(AcctId, AgentId, PauseTime) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
@@ -337,15 +339,27 @@ handle_status_stat(JObj, Props) ->
     Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
 
     gen_listener:cast(props:get_value('server', Props)
-                      ,{'create_status', #status_stat{id=status_stat_id(AgentId, Timestamp)
+                      ,{'create_status', #status_stat{id=status_stat_id(AgentId, Timestamp, EventName)
                                                       ,agent_id=AgentId
                                                       ,acct_id=wh_json:get_value(<<"Account-ID">>, JObj)
                                                       ,status=EventName
                                                       ,timestamp=Timestamp
                                                       ,callid=wh_json:get_value(<<"Call-ID">>, JObj)
-                                                      ,wait_time=wh_json:get_integer_value(<<"Wait-Time">>, JObj)
-                                                      ,pause_time=wh_json:get_integer_value(<<"Pause-Time">>, JObj)
+                                                      ,wait_time=wait_time(EventName, JObj)
+                                                      ,pause_time=pause_time(EventName, JObj)
                                                      }}).
+
+-spec wait_time(ne_binary(), wh_json:object()) -> api_integer().
+wait_time(<<"paused">>, _) -> 'undefined';
+wait_time(_, JObj) -> wh_json:get_integer_value(<<"Wait-Time">>, JObj).
+    
+-spec pause_time(ne_binary(), wh_json:object()) -> api_integer().
+pause_time(<<"paused">>, JObj) ->
+    case wh_json:get_integer_value(<<"Pause-Time">>, JObj) of
+        'undefined' -> wh_json:get_integer_value(<<"Wait-Time">>, JObj);
+        PT -> PT
+    end;
+pause_time(_, _JObj) -> 'undefined'.
 
 -spec handle_call_query(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_query(JObj, _Prop) ->
@@ -652,15 +666,22 @@ status_match_builder_fold(_, _, Acc) -> Acc.
 
 -spec query_statuses(ne_binary(), ne_binary(), ets:match_spec()) -> 'ok'.
 query_statuses(RespQ, MsgId, Match) ->
-    case ets:select(status_table_id(), Match) of
-        [] ->
+    case ets:select(status_table_id(), Match, 10) of
+        '$end_of_table' ->
             lager:debug("no stats found, sorry ~s", [RespQ]),
             Resp = [{<<"Error-Reason">>, <<"No agents found">>}
                     ,{<<"Msg-ID">>, MsgId}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_acdc_stats:publish_status_err(RespQ, Resp);
-        Stats ->
+        {[], _} ->
+            lager:debug("no stats found, sorry ~s", [RespQ]),
+            Resp = [{<<"Error-Reason">>, <<"No agents found">>}
+                    ,{<<"Msg-ID">>, MsgId}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_acdc_stats:publish_status_err(RespQ, Resp);
+        {Stats, _} ->
             QueryResult = lists:foldl(fun query_status_fold/2, wh_json:new(), Stats),
             Resp = [{<<"Agents">>, QueryResult}
                     ,{<<"Msg-ID">>, MsgId}
@@ -703,7 +724,8 @@ query_call_fold(#call_stat{status=Status}=Stat, Acc) ->
 query_status_fold(#status_stat{agent_id=AgentId
                                ,timestamp=T
                               }=Stat, Acc) ->
-    wh_json:set_value([AgentId, wh_util:to_binary(T)], status_stat_to_doc(Stat), Acc).
+    Doc = status_stat_to_doc(Stat),
+    wh_json:set_value([AgentId, wh_util:to_binary(T)], Doc, Acc).
 
 -spec archive_call_fold(call_stat(), dict()) -> dict().
 archive_call_fold(#call_stat{acct_id=AcctId}=Stat, Acc) ->
@@ -781,17 +803,16 @@ status_stat_to_doc(#status_stat{id=Id
                                 ,pause_time=PT
                                 ,callid=CallId
                                }) ->
+    Prop = [{<<"_id">>, Id}
+            ,{<<"call_id">>, CallId}
+            ,{<<"agent_id">>, AgentId}
+            ,{<<"timestamp">>, Timestamp}
+            ,{<<"status">>, Status}
+            ,{<<"wait_time">>, WT}
+            ,{<<"pause_time">>, PT}
+           ],
     wh_doc:update_pvt_parameters(
-      wh_json:from_list(
-        props:filter_undefined(
-          [{<<"_id">>, Id}
-           ,{<<"call_id">>, CallId}
-           ,{<<"agent_id">>, AgentId}
-           ,{<<"timestamp">>, Timestamp}
-           ,{<<"status">>, Status}
-           ,{<<"wait_time">>, WT}
-           ,{<<"pause_time">>, PT}
-          ]))
+      wh_json:from_list(props:filter_undefined(Prop))
       ,db_name(AcctId)
       ,[{'account_id', AcctId}
         ,{'type', <<"status_stat">>}
@@ -835,8 +856,8 @@ call_stat_id(JObj) ->
            ).
 call_stat_id(CallId, QueueId) -> <<CallId/binary, "::", QueueId/binary>>.
 
-status_stat_id(AgentId, Timestamp) ->
-    <<AgentId/binary, "::", (wh_util:to_binary(Timestamp))/binary>>.
+status_stat_id(AgentId, Timestamp, EventName) ->
+    <<AgentId/binary, "::", (wh_util:to_binary(Timestamp))/binary, "::", EventName/binary>>.
 
 handle_waiting_stat(JObj, Props) ->
     'true' = wapi_acdc_stats:call_waiting_v(JObj),
