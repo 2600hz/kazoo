@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -17,6 +17,7 @@
 -define(SIP_ENDPOINT_ID_KEY(Db, User), {?MODULE, 'sip_endpoint_id', Db, User}).
 -define(PARKING_PRESENCE_KEY(Db, Request), {?MODULE, 'parking_callflow', Db, Request}).
 -define(MANUAL_PRESENCE_KEY(Db), {?MODULE, 'manual_presence', Db}).
+-define(OPERATOR_KEY, whapps_config:get(?CF_CONFIG_CAT, <<"operator_key">>, <<"0">>)).
 
 -export([presence_probe/2]).
 -export([presence_mwi_query/2]).
@@ -88,7 +89,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-            AccountId = wh_util:format_account_id(AccountDb, raw),
+            AccountId = wh_util:format_account_id(AccountDb, 'raw'),
             lists:foreach(
               fun(JObj) ->
                       J = wh_json:get_value(<<"doc">>, JObj),
@@ -130,7 +131,7 @@ unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
     end.
 
 maybe_send_endpoint_mwi_update(JObj, AccountDb) ->
-    AccountId = wh_util:format_account_id(AccountDb, raw),
+    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
     Username = wh_json:get_value([<<"sip">>, <<"username">>], JObj),
     Realm = get_sip_realm(JObj, AccountId),
     OwnerId = get_endpoint_owner(JObj),
@@ -290,13 +291,13 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
 %%-----------------------------------------------------------------------------
 -spec get_operator_callflow(ne_binary()) -> wh_jobj_return().
 get_operator_callflow(Account) ->
-    AccountDb = wh_util:format_account_id(Account, encoded),
-    Options = [{key, <<"0">>}, include_docs],
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    Options = [{'key', ?OPERATOR_KEY}, 'include_docs'],
     case couch_mgr:get_results(AccountDb, ?LIST_BY_NUMBER, Options) of
-        {ok, []} -> {error, not_found};
-        {ok, [JObj|_]} ->
-            {ok, wh_json:get_value([<<"doc">>, <<"flow">>], JObj, wh_json:new())};
-        {error, _R}=E ->
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', [JObj|_]} ->
+            {'ok', wh_json:get_value([<<"doc">>, <<"flow">>], JObj, wh_json:new())};
+        {'error', _R}=E ->
             lager:warning("unable to find operator callflow in ~s: ~p", [Account, _R]),
             E
     end.
@@ -392,21 +393,21 @@ lookup_callflow(Call) ->
 -spec lookup_callflow(ne_binary(), ne_binary()) -> lookup_callflow_ret().
 lookup_callflow(Number, AccountId) ->
     case wh_util:is_empty(Number) of
-        true -> {error, invalid_number};
-        false ->
-            Db = wh_util:format_account_id(AccountId, encoded),
+        'true' -> {'error', 'invalid_number'};
+        'false' ->
+            Db = wh_util:format_account_id(AccountId, 'encoded'),
             do_lookup_callflow(wh_util:to_binary(Number), Db)
     end.
 
 do_lookup_callflow(Number, Db) ->
     lager:info("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
-    Options = [{key, Number}, include_docs],
+    Options = [{'key', Number}, 'include_docs'],
     case couch_mgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
-        {ok, []} when Number =/= ?NO_MATCH_CF ->
+        {'error', _}=E -> E;
+        {'ok', []} when Number =/= ?NO_MATCH_CF ->
             case lookup_callflow_patterns(Number, Db) of
-                {error, _} ->
-                    maybe_use_nomatch(Number, Db);
-                {ok, {Flow, Capture}} ->
+                {'error', _} -> maybe_use_nomatch(Number, Db);
+                {'ok', {Flow, Capture}} ->
                     F = wh_json:set_value(<<"capture_group">>, Capture, Flow),
                     wh_cache:store_local(?CALLFLOW_CACHE, ?CF_FLOW_CACHE_KEY(Number, Db), F),
                     {'ok', F, 'false'}
@@ -420,9 +421,7 @@ do_lookup_callflow(Number, Db) ->
             lager:info("lookup resulted in more than one result, using the first"),
             Flow = wh_json:get_value(<<"doc">>, JObj),
             wh_cache:store_local(?CALLFLOW_CACHE, ?CF_FLOW_CACHE_KEY(Number, Db), Flow),
-            {'ok', Flow, Number =:= ?NO_MATCH_CF};
-        {'error', _}=E ->
-            E
+            {'ok', Flow, Number =:= ?NO_MATCH_CF}
     end.
 
 %% only route to nomatch when Number is all digits and/or +
@@ -591,7 +590,7 @@ fetch_manual_presence_doc(AccountDb, ToUser, ToRealm, Event) ->
 manual_presence_resp(JObj, ToUser, ToRealm, Event) ->
     PresenceId = <<ToUser/binary, "@", ToRealm/binary>>,
     case wh_json:get_value(PresenceId, JObj) of
-        undefined -> ok;
+        'undefined' -> 'ok';
         State ->
             PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
                               ,{<<"State">>, State}
