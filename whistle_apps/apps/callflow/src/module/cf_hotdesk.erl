@@ -33,13 +33,21 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
-    case get_hotdesk_profile(wh_json:get_value(<<"id">>, Data), Call) of
-        #hotdesk{}=Hotdesk ->
-            Action = wh_json:get_value(<<"action">>, Data),
-            handle_action(Action, Hotdesk, Call);
-        {'error', _} ->
-            cf_exe:continue(Call)
+    Action = wh_json:get_value(<<"action">>, Data),
+
+    case get_hotdesk_profile(hotdesk_id(Data, Action, Call), Call) of
+        #hotdesk{}=Hotdesk -> handle_action(Action, Hotdesk, Call);
+        {'error', _} -> cf_exe:continue(Call)
     end.
+
+hotdesk_id(Data, <<"logout">>, Call) ->
+    case cf_attributes:owner_ids(whapps_call:authorizing_id(Call), Call) of
+        [] -> wh_json:get_value(<<"id">>, Data);
+        [Id] -> wh_json:get_value(<<"id">>, Data, Id);
+        [_|_] -> wh_json:get_value(<<"id">>, Data)
+    end;
+hotdesk_id(Data, _, _) ->
+    wh_json:get_value(<<"id">>, Data).
 
 -spec handle_action(ne_binary(), hotdesk(), whapps_call:call()) -> 'ok'.
 handle_action(<<"bridge">>, #hotdesk{enabled='false'}, Call) ->
@@ -230,7 +238,7 @@ logged_out(_, Call) ->
 get_hotdesk_profile('undefined', Call) -> find_hotdesk_profile(Call, 1);
 get_hotdesk_profile(OwnerId, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_doc(AccountDb, OwnerId) of
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', JObj} -> from_json(JObj, Call);
         {'error', R}=E ->
             lager:info("failed to load hotdesking profile for user ~s: ~p", [OwnerId, R]),
