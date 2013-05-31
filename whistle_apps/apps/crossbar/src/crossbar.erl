@@ -71,12 +71,16 @@ maybe_start_plaintext(Dispatch) ->
 maybe_start_ssl(Dispatch) ->
     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_ssl">>, 'false') of
         'false' -> lager:info("ssl api support not enabled");
-        'true' ->
+        'true' -> start_ssl(Dispatch)
+    end.
+
+start_ssl(Dispatch) ->
+    try ssl_opts(code:lib_dir('crossbar')) of
+        SSLOpts ->
             lager:debug("trying to start SSL API server"),
             ssl:start(),
             ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
             Workers = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_workers">>, 100),
-            SSLOpts = ssl_opts(code:lib_dir('crossbar')),
 
             try cowboy:start_https('v1_resource_ssl', Workers
                                    ,SSLOpts
@@ -98,6 +102,9 @@ maybe_start_ssl(Dispatch) ->
                 _E:_R ->
                     lager:info("crashed starting SSL API server: ~s: ~p", [_E, _R])
             end
+    catch
+        'throw':_E ->
+            lager:debug("failed to start SSL API server: ~p", [_E])
     end.
 
 ssl_opts(RootDir) ->
