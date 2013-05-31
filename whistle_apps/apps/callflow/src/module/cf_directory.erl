@@ -45,43 +45,29 @@
 
 -define(FIELDS, [<<"last_name">>, <<"first_name">>]). %% what fields to convert/keep for searching
 -define(DTMF_ACCEPT_MATCH, <<"1">>).
--define(DTMF_REJECT_MATCH, <<"9">>).
+-define(DTMF_REJECT_MATCH, <<"3">>).
 
 -define(DTMF_RESULT_CONNECT, <<"1">>).
 -define(DTMF_RESULT_NEXT, <<"2">>).
--define(DTMF_RESULT_CONTINUE, <<"3">>).
--define(DTMF_RESULT_START, <<"4">>).
-
--define(DTMF_NO_RESULT_CONTINUE, <<"1">>).
--define(DTMF_NO_RESULT_START, <<"2">>).
+-define(DTMF_RESULT_START, <<"3">>).
 
 -define(TIMEOUT_MIN_DTMF, 5000).
 -define(TIMEOUT_DTMF, 2000).
 -define(TIMEOUT_ENDPOINT, ?DEFAULT_TIMEOUT).
 
--define(PROMPT_ENTER_PERSON, <<"system_media/dir-enter_person">>). %% Please enter the first few letters of the person's
+-define(PROMPT_ENTER_PERSON_LASTNAME, <<"system_media/dir-enter_person_lastname">>). %% Please enter the first few letters of the person's lastname
+-define(PROMPT_ENTER_PERSON_FIRSTNAME, <<"system_media/dir-enter_person_firstname">>). %% Please enter the first few letters of the person's firstname
 -define(PROMPT_FIRSTNAME, <<"system_media/dir-first_name">>). %% first name
 -define(PROMPT_LASTNAME, <<"system_media/dir-last_name">>). %% last name
--define(PROMPT_AT_EXTENSION, <<"system_media/dir-at_extension">>). %% at extension
--define(PROMPT_SPECIFY_MINIMUM, <<"system_media/dir-specify_minimum">>). %% you need to specify a minimum of
+-define(PROMPT_SPECIFY_MINIMUM, <<"system_media/dir-specify_minimum">>). %% You need to specify a minimum of two digits
 -define(PROMPT_LETTERS_OF_NAME, <<"system_media/dir-letters_of_person_name">>). %% letters of the person's name
--define(PROMPT_NO_MATCHING_RESULTS, <<"system_media/dir-no_matching_results">>). %% There were no matching results
--define(PROMPT_PLEASE_TRY_AGAIN, <<"system_media/dir-please_try_again">>). %% Please try again
--define(PROMPT_RESULT_NUMBER, <<"system_media/dir-result_number">>). %% Result number
--define(PROMPT_START_NEW_SEARCH, <<"system_media/dir-start_new_search">>). %% To start a new search
--define(PROMPT_TO_SEARCH_BY, <<"system_media/dir-to_search_by">>). %% To search by
--define(PROMPT_FOR_NEXT, <<"system_media/dir-for_next">>). %% for the previous entry
+-define(PROMPT_NO_RESULTS_FOUND, <<"system_media/dir-no_results_found">>). %% No match found
 -define(PROMPT_NO_MORE_RESULTS, <<"system_media/dir-no_more_results">>). %% no more results
--define(PROMPT_RESULT_MATCH, <<"system_media/dir-result_match">>). %% result matched your search
--define(PROMPT_TOO_MANY_RESULTS, <<"system_media/dir-too_many_result">>). %% your search returned too many results
--define(PROMPT_TO_SELECT_ENTRY, <<"system_media/dir-to_select_entry">>). %% to select this entry
--define(PROMPT_CONFIRM_MENU, <<"system_media/dir-confirm_menu">>). %% press 1 to connect. press 9 to start over.
--define(PROMPT_FOUND, <<"system_media/dir-found">>). %% found
--define(PROMPT_PLEASE_CONTINUE, <<"system_media/dir-please_continue">>). %% please continue entering letters
+-define(PROMPT_CONFIRM_MENU, <<"system_media/dir-confirm_menu">>). %% press 1. to start over press 3
+-define(PROMPT_FOUND, <<"system_media/dir-found">>). %% One match found. To connect to
 -define(PROMPT_INVALID_KEY, <<"system_media/dir-invalid_key">>). %% invalid key pressed
--define(PROMPT_RESULT_MENU, <<"system_media/dir-result_menu">>). %% press one to connect. press two for the next result. press three to continue searching. press four to start over.
--define(PROMPT_NO_RESULTS_MENU, <<"system_media/dir-no_results_menu">>). %% press one to continue searching. press two to start over.
--define(PROMPT_ASR_INSTRUCTIONS, <<"system_media/dir-asr_instructions">>). %% Please say the name of the party you would like to call
+-define(PROMPT_RESULT_NUMBER, <<"system_media/dir-result_number">>). %% To call
+-define(PROMPT_RESULT_MENU, <<"system_media/dir-result_menu">>). %% press one. For the next result press two. To start over press three
 
 %%------------------------------------------------------------------------------
 %% Records
@@ -137,11 +123,11 @@ handle(Data, Call) ->
             _ = log(Users),
             directory_start(Call, State, Users);
         {'error', 'no_users_in_directory'} ->
-            _ = play_no_users(Call),
+            _ = play_no_users_found(Call),
             cf_exe:continue(Call);
         {'error', _E} ->
             lager:debug("error getting directory listing: ~p", [_E]),
-            _ = play_error(Call),
+            _ = play_no_users_found(Call),
             cf_exe:continue(Call)
     end.
 
@@ -149,42 +135,22 @@ handle(Data, Call) ->
 directory_start(Call, State, CurrUsers) ->
     _ = whapps_call_command:flush_dtmf(Call),
     {'ok', DTMF} = play_directory_instructions(Call, sort_by(State)),
-    collect_min_digits(Call, add_dtmf(clear_dtmf(State), DTMF), CurrUsers, min_dtmf(State) - byte_size(DTMF)).
-
-collect_min_digits(Call, State, CurrUsers, Min) when Min =< 0 ->
-    case whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
+    case whapps_call_command:collect_digits(100, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, Call) of
+        {'error', _E} ->
+            lager:error("failed to collect digits: ~p", [_E]),
+            cf_exe:stop(Call);
         {'ok', <<>>} ->
-            lager:info("waited enough, trying to match"),
-            maybe_match(Call, State, CurrUsers);
-        {'ok', DTMF} ->
-            lager:info("caller still entering DTMF, keep letting them"),
-            collect_more_digits(Call, add_dtmf(State, DTMF), CurrUsers)
-    end;
-collect_min_digits(Call, State, CurrUsers, Min) ->
-    case whapps_call_command:wait_for_dtmf(?TIMEOUT_MIN_DTMF) of
-        {'ok', <<>>} ->
-            lager:info("timeout waiting for a dtmf"),
-            {ok, DTMF} = play_min_digits_needed(Call, min_dtmf(State)),
-            collect_min_digits(Call, add_dtmf(clear_dtmf(State), DTMF), CurrUsers, Min - byte_size(DTMF));
-        {'ok', DTMF} ->
-            collect_min_digits(Call, add_dtmf(State, DTMF), CurrUsers, Min-1)
-    end.
-
-collect_more_digits(Call, State, CurrUsers) ->
-    case whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
-        {'ok', <<>>} ->
-            lager:info("failed to collect more digits, maybe_match"),
-            maybe_match(Call, State, CurrUsers);
-        {'ok', DTMF} ->
-            lager:info("recv more dtmf: ~s", [DTMF]),
-            collect_more_digits(Call, add_dtmf(State, DTMF), CurrUsers)
+            whapps_call_command:audio_macro([{'play', ?PROMPT_SPECIFY_MINIMUM}], Call),
+            directory_start(Call, State, CurrUsers);
+        {'ok', DTMFS} ->
+            maybe_match(Call, add_dtmf(add_dtmf(State, DTMF), DTMFS), CurrUsers)
     end.
 
 maybe_match(Call, State, CurrUsers) ->
     case filter_users(CurrUsers, dtmf_collected(State)) of
         [] ->
             lager:info("no users left matching DTMF string"),
-            _ = play_no_users(Call),
+            _ = play_no_users_found(Call),
             directory_start(Call, clear_dtmf(State), users(State));
         [User] ->
             lager:info("one user found: ~s", [full_name(User)]),
@@ -212,20 +178,10 @@ maybe_match_users(Call, State, [], _) ->
 maybe_match_users(Call, State, [U|Us], MatchNum) ->
     case maybe_match_user(Call, U, MatchNum) of
         'route' ->
-            case maybe_confirm_match(Call, U, confirm_match(State)) of
-                'true' ->
-                    lager:info("match confirmed, routing"),
-                    route_to_match(Call, callflow(Call, U));
-                'false' ->
-                    lager:info("match denied, continuing"),
-                    maybe_match_users(Call, State, Us, MatchNum+1)
-            end;
+            route_to_match(Call, callflow(Call, U));
         'next' ->
             lager:info("moving to next user"),
             maybe_match_users(Call, State, Us, MatchNum+1);
-        'continue' ->
-            lager:info("caller wants to enter more DMTF"),
-            collect_more_digits(Call, clear_current_users(State), get_current_users(State));
         'start_over' ->
             lager:info("starting over"),
             directory_start(Call, clear_dtmf(State), users(State));
@@ -258,7 +214,6 @@ maybe_match_user(Call, U, MatchNum) ->
 interpret_user_match_dtmf(?DTMF_RESULT_CONNECT) -> 'route';
 interpret_user_match_dtmf(?DTMF_RESULT_NEXT) -> 'next';
 interpret_user_match_dtmf(?DTMF_RESULT_START) -> 'start_over';
-interpret_user_match_dtmf(?DTMF_RESULT_CONTINUE) -> 'continue';
 interpret_user_match_dtmf(_) -> 'invalid'.
 
 -spec maybe_confirm_match(whapps_call:call(), directory_user(), boolean()) -> boolean().
@@ -277,9 +232,8 @@ route_to_match(Call, Callflow) ->
 %%------------------------------------------------------------------------------
 %% Audio Prompts
 %%------------------------------------------------------------------------------
-play_user(Call, UsernameTuple, MatchNum) ->
+play_user(Call, UsernameTuple, _MatchNum) ->
     play_and_collect(Call, [{'play', ?PROMPT_RESULT_NUMBER}
-                            ,{'say', wh_util:to_binary(MatchNum), <<"number">>}
                             ,UsernameTuple
                             ,{'play', ?PROMPT_RESULT_MENU}
                            ]).
@@ -300,30 +254,19 @@ play_confirm_match(Call, User) ->
                             ,{'play', ?PROMPT_CONFIRM_MENU, ?ANY_DIGIT}
                            ]).
 
--spec play_min_digits_needed(whapps_call:call(), pos_integer()) -> {'ok', binary()}.
-play_min_digits_needed(Call, MinDTMF) ->
-    play_and_collect(Call, [{'play', ?PROMPT_SPECIFY_MINIMUM, ?ANY_DIGIT}
-                            ,{'say', wh_util:to_binary(MinDTMF), <<"number">>}
-                            ,{'play', ?PROMPT_LETTERS_OF_NAME, ?ANY_DIGIT}
-                           ]).
-
 -spec play_directory_instructions(whapps_call:call(), 'first' | 'last' | ne_binary()) -> {'ok', binary()}.
 play_directory_instructions(Call, 'first') ->
-    play_directory_instructions(Call, ?PROMPT_FIRSTNAME);
+    play_and_collect(Call, [{'play', ?PROMPT_ENTER_PERSON_FIRSTNAME}]);
 play_directory_instructions(Call, 'last') ->
-    play_directory_instructions(Call, ?PROMPT_LASTNAME);
-play_directory_instructions(Call, NamePrompt) ->
-    play_and_collect(Call, [{'play', ?PROMPT_ENTER_PERSON}
-                            ,{'play', NamePrompt}
-                           ]).
+    play_and_collect(Call, [{'play', ?PROMPT_ENTER_PERSON_LASTNAME}]).
 
 -spec play_no_users(whapps_call:call()) -> ne_binary(). % noop id
 play_no_users(Call) ->
     whapps_call_command:audio_macro([{'play', ?PROMPT_NO_MORE_RESULTS}], Call).
 
--spec play_error(whapps_call:call()) -> ne_binary(). % noop id
-play_error(Call) ->
-    whapps_call_command:audio_macro([{'play', ?PROMPT_NO_MORE_RESULTS}], Call).
+-spec play_no_users_found(whapps_call:call()) -> ne_binary(). % noop id
+play_no_users_found(Call) ->
+    whapps_call_command:audio_macro([{'play', ?PROMPT_NO_RESULTS_FOUND}], Call).
 
 -spec play_and_collect(whapps_call:call(), whapps_call_command:audio_macro_prompts()) ->
                               {'ok', binary()}.
@@ -340,7 +283,6 @@ play_and_collect(Call, AudioMacro, NumDigits) ->
 %% Directory State Functions
 %%------------------------------------------------------------------------------
 sort_by(#directory{sort_by=SB}) -> SB.
-min_dtmf(#directory{min_dtmf=Min}) -> Min.
 dtmf_collected(#directory{digits_collected=Collected}) -> Collected.
 confirm_match(#directory{confirm_match=CM}) -> CM.
 users(#directory{users=Us}) -> Us.
@@ -353,8 +295,6 @@ add_dtmf(#directory{digits_collected=Collected}=State, NewDTMFs) ->
 clear_dtmf(#directory{}=State) -> State#directory{digits_collected = <<>>}.
 
 save_current_users(#directory{}=State, Users) -> State#directory{curr_users=Users}.
-get_current_users(#directory{curr_users=Us}) -> Us.
-clear_current_users(#directory{}=State) -> State#directory{curr_users=[]}.
 
 %%------------------------------------------------------------------------------
 %% Directory User Functions

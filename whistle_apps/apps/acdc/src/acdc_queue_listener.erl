@@ -533,7 +533,7 @@ send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts) ->
             ]),
     publish(Q, Win, fun wapi_acdc_queue:publish_member_connect_win/2).
 
--spec send_agent_timeout(wh_json:json_object(), whapps_call:call(), ne_binary()) -> 'ok'.
+-spec send_agent_timeout(wh_json:object(), whapps_call:call(), ne_binary()) -> 'ok'.
 send_agent_timeout(RespJObj, Call, QueueId) ->
     Prop = [{<<"Queue-ID">>, QueueId}
             ,{<<"Call-ID">>, whapps_call:call_id(Call)}

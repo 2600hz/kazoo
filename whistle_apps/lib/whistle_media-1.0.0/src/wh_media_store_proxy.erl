@@ -9,7 +9,7 @@
 -module(wh_media_store_proxy).
 
 -export([init/3
-         ,terminate/2
+         ,terminate/3
          ,handle/2
         ]).
 
@@ -239,5 +239,7 @@ failure(Reason, Req0) ->
     {'ok', Req2} = cowboy_req:reply(500, Req1),
     Req2.
 
--spec terminate(cowboy_req:req(), _) -> 'ok'.
-terminate(_Req, _State) -> 'ok'.
+-spec terminate(_, cowboy_req:req(), _) -> cowboy_req:req().
+terminate(_Reason, Req, _State) ->
+    lager:debug("terminating store proxy: ~p", [_Reason]),
+    Req.

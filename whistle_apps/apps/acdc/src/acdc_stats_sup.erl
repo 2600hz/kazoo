@@ -6,19 +6,26 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cb_buckets_sup).
+-module(acdc_stats_sup).
 
 -behaviour(supervisor).
 
 %% API
--export([start_link/0]).
+-export([start_link/0
+         ,stats_srv/0
+        ]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("acdc.hrl").
 
 -define(SERVER, ?MODULE).
+
+-define(CHILDREN, [?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_call', [acdc_stats:call_table_id(), acdc_stats:call_table_opts()])
+                   ,?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_status', [acdc_stats:status_table_id(), acdc_stats:status_table_opts()])
+                   ,?WORKER('acdc_stats')
+                  ]).
 
 %%%===================================================================
 %%% API functions
@@ -33,6 +40,13 @@
 %%--------------------------------------------------------------------
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
+
+-spec stats_srv() -> {'ok', pid()} | {'error', 'not_found'}.
+stats_srv() ->
+    case [P || {'acdc_stats', P, _, _} <- supervisor:which_children(?MODULE)] of
+        [P] when is_pid(P) -> {'ok', P};
+        _ -> {'error', 'not_found'}
+    end.
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -58,10 +72,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?SUPER('cb_kz_buckets_sup')
-                       ,?WORKER('cb_buckets_mgr')
-                       ,?WORKER('cb_buckets_ets')
-                      ]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

@@ -105,12 +105,12 @@ resource_exists(_, Path) ->
 -spec validate(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
 
 validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = ?HTTP_PUT}=Context) ->
-    validate_request(undefined, prepare_context(undefined, Context)).
+    validate_request('undefined', prepare_context('undefined', Context)).
 
 validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = ?HTTP_GET}=Context, AccountId) ->
     load_account(AccountId, prepare_context(AccountId, Context));
 validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = ?HTTP_PUT}=Context, _) ->
-    validate_request(undefined, prepare_context(undefined, Context));
+    validate_request('undefined', prepare_context('undefined', Context));
 validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = ?HTTP_POST}=Context, AccountId) ->
     validate_request(AccountId, prepare_context(AccountId, Context));
 validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = ?HTTP_DELETE}=Context, AccountId) ->
@@ -118,11 +118,11 @@ validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = ?HTTP_DELETE}=
 validate(#cb_context{}=Context, AccountId) -> load_account_db(AccountId, Context).
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, AccountId, <<"children">>) ->
-    load_children(AccountId, prepare_context(undefined, Context));
+    load_children(AccountId, prepare_context('undefined', Context));
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, AccountId, <<"descendants">>) ->
-    load_descendants(AccountId, prepare_context(undefined, Context));
+    load_descendants(AccountId, prepare_context('undefined', Context));
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, AccountId, <<"siblings">>) ->
-    load_siblings(AccountId, prepare_context(undefined, Context)).
+    load_siblings(AccountId, prepare_context('undefined', Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -497,21 +497,22 @@ create_new_tree(Parent) ->
 %% for this account
 %% @end
 %%--------------------------------------------------------------------
--spec load_account_db(ne_binary() | [ne_binary(),...], cb_context:context()) -> cb_context:context().
+-spec load_account_db(ne_binary() | ne_binaries(), cb_context:context()) ->
+                             cb_context:context().
 load_account_db([AccountId|_], Context) ->
     load_account_db(AccountId, Context);
 load_account_db(AccountId, Context) when is_binary(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {ok, _} ->
+        {'ok', _} ->
             lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
-            Context#cb_context{resp_status = success
-                               ,db_name = AccountDb
-                               ,account_id = AccountId
+            Context#cb_context{resp_status='success'
+                               ,db_name=AccountDb
+                               ,account_id=AccountId
                               };
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("unable to open account definition ~s/~s: ~p", [AccountDb, AccountId, _R]),
-            cb_context:add_system_error(bad_identifier, [{details, AccountId}],  Context)
+            cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context)
     end.
 
 %%--------------------------------------------------------------------

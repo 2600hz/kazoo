@@ -13,7 +13,7 @@
 %% API
 -export([start_link/0
          ,compact/0
-         ,compact_node/1
+         ,compact_node/1, compact_node/2
          ,compact_db/1
          ,compact_db/2
          ,status/0
@@ -24,6 +24,12 @@
          ,stop_auto_compaction/0
          ,compact_automatically/0
          ,compact_automatically/1
+         %% Inspection
+         ,nodes_left/0
+         ,dbs_left/0
+         ,current_node/0
+         ,current_db/0
+         ,current/0
         ]).
 
 %% Internal
@@ -50,7 +56,10 @@
         ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_compaction">>, 60000)
        ).
 -define(SLEEP_BETWEEN_POLL
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_poll">>, 1000)
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_poll">>, 3000)
+       ).
+-define(SLEEP_BETWEEN_VIEWS
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_views">>, 2000)
        ).
 -define(MAX_COMPACTING_SHARDS
         ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_shards">>, 10)
@@ -58,17 +67,17 @@
 -define(MAX_COMPACTING_VIEWS
         ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 5)
        ).
--define(SLEEP_BETWEEN_VIEWS
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 2000)
-       ).
--define(MAX_WAIT_FOR_COMPACTION_PID
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 360000)
+-define(MAX_WAIT_FOR_COMPACTION_PIDS
+        ,case whapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pids">>, 360000) of
+             <<"infinity">> -> 'infinity';
+             N -> wh_util:to_integer(N)
+         end
        ). % five minutes
 
 -define(AUTOCOMPACTION_CHECK_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"autocompaction_check">>, 60000)).
 
--define(MIN_RATIO, whapps_config:get_float(?CONFIG_CAT, <<"min_ratio">>, 1.5)).
--define(MIN_DATA, whapps_config:get_integer(?CONFIG_CAT, <<"min_data_size">>, 1048576)).
+-define(MIN_RATIO, whapps_config:get_float(?CONFIG_CAT, <<"min_ratio">>, 1.2)).
+-define(MIN_DATA, whapps_config:get_integer(?CONFIG_CAT, <<"min_data_size">>, 131072)). % 128Kb
 
 -define(SERVER, ?MODULE).
 
@@ -76,21 +85,23 @@
 -define(HEUR_RATIO, 'ratio').
 
 -type req_job() :: 'req_compact' |
-                   {'req_compact_node', ne_binary()} |
+                   {'req_compact_node', ne_binary(), wh_proplist()} |
                    {'req_compact_db', ne_binary()} |
                    {'req_compact_db', ne_binary(), ne_binary()}.
 
 -type not_compacting() :: {'error', 'compactor_down'}.
 -type compactor_heuristic() :: ?HEUR_NONE | ?HEUR_RATIO.
 
+-type node_with_options() :: {ne_binary(), wh_proplist()}.
+-type nodes_with_options() :: [node_with_options(),...] | [].
 -record(state, {
-          nodes :: ne_binaries()
+          nodes :: ne_binaries() | nodes_with_options()
           ,dbs :: ne_binaries()
           ,wait_ref :: reference()
           ,shards_pid_ref :: {pid(), reference()}  %% proc/monitor for pid of shard compactor
           ,next_compaction_msg :: tuple() | atom() %% what to send once shards_pid_ref is done
 
-          ,current_node :: ne_binary()
+          ,current_node :: ne_binary() | node_with_options()
           ,current_db :: ne_binary()
           ,conn :: #server{}
           ,admin_conn :: #server{}
@@ -124,10 +135,17 @@ compact() ->
         'false' -> {'error', 'compactor_down'}
     end.
 
--spec compact_node(ne_binary()) -> {'queued', reference()} | not_compacting().
+-spec compact_node(ne_binary()) ->
+                          {'queued', reference()} |
+                          not_compacting().
+-spec compact_node(ne_binary(), wh_proplist()) ->
+                          {'queued', reference()} |
+                          not_compacting().
 compact_node(Node) ->
+    compact_node(Node, []).
+compact_node(Node, Opts) ->
     case is_compactor_running() of
-        'true' -> gen_fsm:sync_send_event(?SERVER, {'req_compact_node', Node});
+        'true' -> gen_fsm:sync_send_event(?SERVER, {'req_compact_node', Node, Opts});
         'false' -> {'error', 'compactor_down'}
     end.
 
@@ -201,6 +219,16 @@ stop_auto_compaction() ->
 is_compactor_running() ->
     is_pid(whistle_couch_sup:compactor_pid()).
 
+nodes_left() -> gen_fsm:sync_send_all_state_event(?SERVER, 'nodes_left').
+dbs_left() -> gen_fsm:sync_send_all_state_event(?SERVER, 'dbs_left').
+current_node() ->
+    {N,_} = gen_fsm:sync_send_all_state_event(?SERVER, 'current'),
+    N.
+current_db() ->
+    {_,D} = gen_fsm:sync_send_all_state_event(?SERVER, 'current'),
+    D.
+current() -> gen_fsm:sync_send_all_state_event(?SERVER, 'current').
+
 %%%===================================================================
 %%% gen_fsm callbacks
 %%%===================================================================
@@ -236,12 +264,12 @@ ready('compact', State) ->
                                           ,current_db='undefined'
                                           ,current_job_heuristic=?HEUR_RATIO
                                          }};
-ready({'compact_node', N}, State) ->
+ready({'compact_node', N, Opts}, State) ->
     gen_fsm:send_event(self(), 'compact'),
-    {'next_state', 'compact', State#state{nodes=[N]
+    {'next_state', 'compact', State#state{nodes=[{N, Opts}]
                                           ,conn='undefined'
                                           ,admin_conn='undefined'
-                                          ,current_node=N
+                                          ,current_node={N, Opts}
                                           ,current_db='undefined'
                                           ,current_job_heuristic=?HEUR_RATIO
                                          }};
@@ -324,9 +352,9 @@ ready(Msg, {NewP, _}, #state{queued_jobs=Jobs}=State) ->
 queue_job('req_compact', P, Jobs) ->
     Ref = erlang:make_ref(),
     {Ref, queue:in({'compact', P, Ref}, Jobs)};
-queue_job({'req_compact_node', Node}, P, Jobs) ->
+queue_job({'req_compact_node', Node, Opts}, P, Jobs) ->
     Ref = erlang:make_ref(),
-    {Ref, queue:in({{'compact_node', Node}, P, Ref}, Jobs)};
+    {Ref, queue:in({{'compact_node', Node, Opts}, P, Ref}, Jobs)};
 queue_job({'req_compact_db', Db}, P, Jobs) ->
     Ref = erlang:make_ref(),
     {Ref, queue:in({{'compact_db', Db}, P, Ref}, Jobs)};
@@ -448,11 +476,26 @@ compact('compact', #state{nodes=[]
                                         ,current_job_pid='undefined'
                                         ,current_job_ref='undefined'
                                        }};
+
+compact('compact', #state{nodes=[{N, _}=Node|Ns]}=State) ->
+    lager:debug("compact node ~s", [N]),
+    gen_fsm:send_event(self(), {'compact', Node}),
+    {'next_state', 'compact', State#state{nodes=Ns}};
 compact('compact', #state{nodes=[N|Ns]}=State) ->
     lager:debug("compact node ~s", [N]),
     gen_fsm:send_event(self(), {'compact', N}),
     {'next_state', 'compact', State#state{nodes=Ns}};
 
+compact({'compact', {N, _}}, #state{admin_conn=AdminConn}=State) ->
+    lager:debug("compacting node ~s", [N]),
+
+    {'ok', DBs} = node_dbs(AdminConn),
+    [D|Ds] = shuffle(DBs),
+    gen_fsm:send_event(self(), {'compact', N, D}),
+    {'next_state', 'compact', State#state{dbs=Ds
+                                          ,current_db=D
+                                          ,current_node=N
+                                         }};
 compact({'compact', N}, #state{admin_conn=AdminConn}=State) ->
     lager:debug("compacting node ~s", [N]),
 
@@ -475,7 +518,7 @@ compact({'compact', N, D}, #state{conn=Conn
     of
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
-            gen_fsm:send_event(self(), 'compact'),
+            gen_fsm:send_event_after(?SLEEP_BETWEEN_POLL, 'compact'),
             {'next_state', 'compact', State#state{current_db='undefined'}};
         'true' ->
             lager:debug("compacting ~s on ~s", [D, N]),
@@ -498,7 +541,7 @@ compact({'compact', N, D}, #state{conn=Conn
     of
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
-            gen_fsm:send_event(self(), {'compact', N, Db}),
+            gen_fsm:send_event_after(?SLEEP_BETWEEN_POLL, {'compact', N, Db}),
             {'next_state', 'compact', State#state{dbs=Dbs
                                                   ,current_db=Db
                                                   ,current_node=N
@@ -527,7 +570,7 @@ compact({'compact_db', N, D}, #state{conn=Conn
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
             maybe_send_update(P, Ref, 'job_finished'),
-            gen_fsm:send_event(self(), 'next_job'),
+            gen_fsm:send_event_after(?SLEEP_BETWEEN_POLL, 'next_job'),
             {'next_state', 'ready', State#state{conn='undefined'
                                                 ,admin_conn='undefined'
                                                 ,current_node='undefined'
@@ -555,7 +598,7 @@ compact({'compact_db', N, D}, #state{conn=Conn
     of
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
-            gen_fsm:send_event(self(), {'compact_db', Node, D}),
+            gen_fsm:send_event_after(?SLEEP_BETWEEN_POLL, {'compact_db', Node, D}),
             {'next_state', 'compact', State#state{nodes=Ns
                                                   ,current_node=Node
                                                   ,current_db=D
@@ -800,6 +843,14 @@ handle_event(_Event, StateName, State) ->
 %%                   {stop, Reason, Reply, NewState}
 %% @end
 %%--------------------------------------------------------------------
+handle_sync_event('nodes_left', _, StateName, #state{nodes=Ns}=State) ->
+    {'reply', Ns, StateName, State};
+handle_sync_event('dbs_left', _, StateName, #state{dbs=DBs}=State) ->
+    {'reply', DBs, StateName, State};
+handle_sync_event('current', _, StateName, #state{current_node=CN
+                                                  ,current_db=CDB
+                                                 }=State) ->
+    {'reply', {CN, CDB}, StateName, State};
 handle_sync_event(_Event, _From, StateName, State) ->
     lager:debug("unhandled evt for ~s: ~p", [StateName, _Event]),
     {'reply', {'error', 'invalid_sync_event'}, StateName, State}.
@@ -828,7 +879,7 @@ handle_info({'DOWN', Ref, 'process', P, _Reason}, 'compact', #state{shards_pid_r
                                        ,next_compaction_msg='undefined'
                                        ,shards_pid_ref='undefined'
                                       }};
-handle_info(_Info, StateName, State) ->
+handle_info(_Info, StateName, #state{}=State) ->
     lager:debug("unhandled msg for ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
 
@@ -911,8 +962,8 @@ db_design_docs(Conn, D) ->
 compact_shards(AdminConn, Ss, DDs) ->
     PR = spawn_monitor(fun() ->
                                Ps = [spawn_monitor(?MODULE, 'compact_shard', [AdminConn, Shard, DDs]) || Shard <- Ss],
-                               MaxWait = max_wait_for_compaction(),
-                               wait_for_pids(MaxWait, Ps)
+                               lager:debug("shard compaction pids: ~p", [Ps]),
+                               wait_for_pids(?MAX_WAIT_FOR_COMPACTION_PIDS, Ps)
                        end),
     lager:debug("compacting shards in ~p", [PR]),
     PR.
@@ -941,11 +992,13 @@ compact_shard(AdminConn, S, DDs) ->
 compact_design_docs(AdminConn, S, DDs) ->
     try lists:split(?MAX_COMPACTING_VIEWS, DDs) of
         {Compact, Remaining} ->
+            lager:debug("compacting chunk of views: ~p", [Compact]),
             _ = [couch_util:design_compact(AdminConn, S, DD) || DD <- Compact],
             wait_for_compaction(AdminConn, S),
             compact_design_docs(AdminConn, S, Remaining)
     catch
         'error':'badarg' ->
+            lager:debug("compacting last chunk of views: ~p", [DDs]),
             _ = [couch_util:design_compact(AdminConn, S, DD) || DD <- DDs],
             wait_for_compaction(AdminConn, S)
     end.
@@ -955,16 +1008,29 @@ wait_for_compaction(AdminConn, S) ->
 
 wait_for_compaction(_AdminConn, _S, {'error', 'db_not_found'}) -> 'ok';
 wait_for_compaction(AdminConn, S, {'error', _E}) ->
-    'ok' = timer:sleep(sleep_between_poll()),
+    'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
     wait_for_compaction(AdminConn, S);
 wait_for_compaction(AdminConn, S, {'ok', ShardData}) ->
     case wh_json:is_true(<<"compact_running">>, ShardData, 'false') of
         'false' -> 'ok';
         'true' ->
-            'ok' = timer:sleep(sleep_between_poll()),
+            'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
             wait_for_compaction(AdminConn, S)
     end.
 
+get_node_connections({N, Opts}, Cookie) ->
+    [_, Host] = binary:split(N, <<"@">>),
+
+    {ConfigUser, ConfigPass} = wh_couch_connections:get_creds(),
+    {User, Pass} = {props:get_value('username', Opts, ConfigUser)
+                    ,props:get_value('password', Opts, ConfigPass)
+                   },
+
+    {ConfigPort, ConfigAdminPort} = get_ports(wh_util:to_atom(N, 'true'), Cookie),
+    {Port, AdminPort} = {props:get_value('port', Opts, ConfigPort)
+                         ,props:get_value('admin_port', Opts, ConfigAdminPort)
+                        },
+    get_node_connections(Host, Port, User, Pass, AdminPort);
 get_node_connections(N, Cookie) ->
     [_, Host] = binary:split(N, <<"@">>),
 
@@ -974,6 +1040,7 @@ get_node_connections(N, Cookie) ->
     get_node_connections(Host, Port, User, Pass, AdminPort).
 
 get_node_connections(Host, Port, User, Pass, AdminPort) ->
+    lager:info("getting connection information for ~s, ~p and ~p", [Host, Port, AdminPort]),
     {couch_util:get_new_connection(Host, Port, User, Pass),
      couch_util:get_new_connection(Host, AdminPort, User, Pass)
     }.
@@ -1028,20 +1095,6 @@ queued_jobs_status(Jobs) ->
         Js -> [[{'job', J}, {'requested_by', P}] || {J, P, _} <- Js]
     end.
 
-max_wait_for_compaction() ->
-    try whapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pid">>, ?MAX_WAIT_FOR_COMPACTION_PID) of
-        Time -> wh_util:to_integer(Time)
-    catch
-        _:_ -> ?MAX_WAIT_FOR_COMPACTION_PID
-    end.
-
-sleep_between_poll() ->
-    try whapps_config:get(?CONFIG_CAT, <<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL) of
-        Time -> wh_util:to_integer(Time)
-    catch
-        _:_ -> ?SLEEP_BETWEEN_POLL
-    end.
-
 compact_automatically() ->
     Default = case wh_cache:fetch_local(?WH_COUCH_CACHE, <<"compact_automatically">>) of
                   {'ok', V} -> wh_util:is_true(V);
@@ -1062,29 +1115,50 @@ compact_automatically(Boolean) ->
 
 should_compact(_Conn, _Encoded, ?HEUR_NONE) -> 'true';
 should_compact(Conn, Encoded, ?HEUR_RATIO) ->
-    case couch_util:db_info(Conn, Encoded) of
-        {'ok', Info} -> should_compact_ratio(Info);
-        {'error', _E} ->
-            lager:debug("failed to lookup info: ~p", [_E]),
-            'true' % be pessimistic and compact the db
+    case get_db_disk_and_data(Conn, Encoded) of
+        {Disk, Data} -> should_compact_ratio(Data, Disk);
+        'undefined' -> 'false'
     end.
 
-should_compact_ratio(Info) ->
-    Disk = wh_json:get_integer_value(<<"disk_size">>, Info),
-    Data = wh_json:get_integer_value([<<"other">>, <<"data_size">>], Info),
+-spec get_db_disk_and_data(server(), ne_binary()) ->
+                                  {pos_integer(), pos_integer()} |
+                                  'undefined'.
+get_db_disk_and_data(Conn, Encoded) ->
+    get_db_disk_and_data(Conn, Encoded, 1).
+get_db_disk_and_data(_Conn, _Encoded, N) when N >= 3 ->
+    lager:warning("getting db info for ~s failed ~b times", [_Encoded, N]),
+    'undefined';
+get_db_disk_and_data(Conn, Encoded, N) ->
+    case couch_util:db_info(Conn, Encoded) of
+        {'ok', Info} -> 
+            {wh_json:get_integer_value(<<"disk_size">>, Info)
+             ,wh_json:get_integer_value([<<"other">>, <<"data_size">>], Info)
+            };
+        {'error', {'conn_failed',{'error','timeout'}}} ->
+            lager:debug("timed out asking for info, waiting and trying again"),
+            timer:sleep(100),
+            get_db_disk_and_data(Conn, Encoded, N+1);
+        {'error', _E} ->
+            lager:debug("failed to lookup info: ~p", [_E]),
+            'undefined'
+    end.
+
+should_compact_ratio(Data, Disk) ->
     min_data_met(Data, ?MIN_DATA) andalso min_ratio_met(Data, Disk, ?MIN_RATIO).
 
 min_data_met(Data, Min) when Data > Min ->
+    lager:debug("data size ~b is larger than minimum ~b", [Data, Min]),
     'true';
 min_data_met(_Data, _Min) ->
     lager:debug("data size ~b is under min_data_size threshold ~b", [_Data, _Min]),
     'false'.
 
 min_ratio_met(Data, Disk, MinRatio) ->
-    case Data / Disk of
+    case Disk / Data of
         R when R > MinRatio ->
+            lager:debug("ratio ~p is greater than min ratio: ~p", [R, MinRatio]),
             'true';
         _R ->
-            lager:debug("ratio ~p is under min threshold ~p", [_R, MinRatio]),
+            lager:debug("ratio ~p (~p/~p) is under min threshold ~p", [_R, Disk, Data, MinRatio]),
             'false'
     end.

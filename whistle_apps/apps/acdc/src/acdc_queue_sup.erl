@@ -23,10 +23,6 @@
 %% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Args, Shutdown, Type),
-        {Name, {Name, 'start_link', Args}, 'permanent', Shutdown, Type, [Name]}).
-
 %%%===================================================================
 %%% api functions
 %%%===================================================================
@@ -44,15 +40,15 @@ start_link(AcctId, QueueId) ->
 
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Super) ->
-    supervisor:terminate_child(acdc_queues_sup, Super).
+    supervisor:terminate_child('acdc_queues_sup', Super).
 
--spec manager(pid()) -> pid() | 'undefined'.
+-spec manager(pid()) -> api_pid().
 manager(Super) ->
-    hd([P || {_, P, worker, _} <- supervisor:which_children(Super)]).
+    hd([P || {_, P, 'worker', _} <- supervisor:which_children(Super)]).
 
--spec workers_sup(pid()) -> pid() | 'undefined'.
+-spec workers_sup(pid()) -> api_pid().
 workers_sup(Super) ->
-    hd([P || {_, P, supervisor, _} <- supervisor:which_children(Super)]).
+    hd([P || {_, P, 'supervisor', _} <- supervisor:which_children(Super)]).
 
 -spec status(pid()) -> 'ok'.
 status(Supervisor) ->
@@ -93,17 +89,17 @@ status(Supervisor) ->
 %%--------------------------------------------------------------------
 -spec init(list()) -> sup_init_ret().
 init(Args) ->
-    RestartStrategy = one_for_all,
+    RestartStrategy = 'one_for_all',
     MaxRestarts = 2,
     MaxSecondsBetweenRestarts = 2,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [
-                     ?CHILD(acdc_queue_workers_sup, [], infinity, supervisor)
-                     ,?CHILD(acdc_queue_manager, [self() | Args], 5000, worker)
-                    ]
-         }
+    {'ok', {SupFlags, [
+                       ?SUPER('acdc_queue_workers_sup')
+                       ,?WORKER_ARGS('acdc_queue_manager', [self() | Args])
+                      ]
+           }
     }.
 
 %%%===================================================================

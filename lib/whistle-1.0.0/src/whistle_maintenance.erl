@@ -47,7 +47,7 @@ gc_all() ->
     gc_pids(processes()).
 gc_pids(Ps) ->
     _ = [begin erlang:garbage_collect(P), timer:sleep(500) end || P <- Ps],
-    ok.
+    'ok'.
 
 gc_top_mem_consumers() ->
     gc_top_mem_consumers(10).

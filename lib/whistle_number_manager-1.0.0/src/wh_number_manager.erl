@@ -169,7 +169,13 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
                                  wnm_number:error_unauthorized(N)
                          end;
                     ({_, #number{}}=E) -> E;
-                    (#number{}=N) -> wnm_number:error_number_exists(N)
+                    (#number{}=N) -> 
+                        case N#number.current_state of
+                            <<"available">> ->
+                                N;
+                            _ ->
+                                wnm_number:error_number_exists(N)
+                        end
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:reserved(N#number{assign_to=AssignTo, auth_by=AuthBy})

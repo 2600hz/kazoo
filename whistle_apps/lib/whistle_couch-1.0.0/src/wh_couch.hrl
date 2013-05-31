@@ -23,13 +23,14 @@
 -type couchbeam_errors() :: 'not_found' | 'conflict' | 'failed' |
                             'precondition_failed' | 'db_not_reachable' |
                             'db_not_found' | 'worker_is_dead' | 'invalid_db_name' |
-                            'unknown_req_id' |
+                            'unknown_req_id' | 'retry_later' |
                             'req_timedout' | 'sel_conn_closed' |
                             'invalid_view_name' |
                             {integer(), term()} | % {error_code, body}
                             integer() |
                             {'EXIT', term()} |
                             {'url_parsing_failed', term()} |
+                            {'conn_failed', term()} |
                             {'ok', string(), _, _}.
 -type couchbeam_error() :: {'error', couchbeam_errors()}.
 

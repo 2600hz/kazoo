@@ -20,7 +20,7 @@
          ,handle_agent_message/2
          ,handle_config_change/2
          ,handle_presence_probe/2
-         ,handle_route_req/2
+         ,handle_destroy/2
         ]).
 
 -include("acdc.hrl").
@@ -78,7 +78,7 @@ update_agent('undefined', QueueId, _F, AcctId, AgentId) ->
                                                  ,AgentId
                                                 ),
     lager:debug("agent loaded"),
-    acdc_stats:agent_active(AcctId, AgentId),
+    acdc_stats:agent_ready(AcctId, AgentId),
     acdc_agents_sup:new(AcctId, AgentId, AgentJObj, [QueueId]);
 update_agent(Super, Q, F, _, _) when is_pid(Super) ->
     lager:debug("agent super ~p", [Super]),
@@ -92,10 +92,11 @@ maybe_start_agent(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AcctId]),
+            acdc_stats:agent_ready(AcctId, AgentId),
             case couch_mgr:open_doc(wh_util:format_account_id(AcctId, 'encoded'), AgentId) of
                 {'ok', AgentJObj} ->
                     {'ok', _APid} = acdc_agents_sup:new(AgentJObj),
-                    acdc_stats:agent_active(AcctId, AgentId),
+                    acdc_stats:agent_ready(AcctId, AgentId),
                     lager:debug("started agent at ~p", [_APid]);
                 {'error', _E} ->
                     lager:debug("error opening agent doc: ~p", [_E])
@@ -111,7 +112,7 @@ maybe_stop_agent(AcctId, AgentId) ->
             lager:debug("agent ~s(~s) not found, nothing to do", [AgentId, AcctId]);
         P when is_pid(P) ->
             lager:debug("agent ~s(~s) is logging out, stopping ~p", [AgentId, AgentId, P]),
-            acdc_stats:agent_inactive(AcctId, AgentId),
+            acdc_stats:agent_logged_out(AcctId, AgentId),
 
             case catch acdc_agent_sup:agent(P) of
                 APid when is_pid(APid) -> acdc_agent:logout_agent(APid);
@@ -317,7 +318,7 @@ handle_agent_change(_, AccountId, AgentId, <<"doc_deleted">>) ->
         P when is_pid(P) ->
             lager:debug("agent ~s(~s) has been deleted, stopping ~p", [AccountId, AgentId, P]),
             _ = acdc_agent_sup:stop(P),
-            acdc_stats:agent_inactive(AccountId, AgentId)
+            acdc_stats:agent_logged_out(AccountId, AgentId)
     end.
 
 handle_presence_probe(JObj, _Props) ->
@@ -352,14 +353,7 @@ send_probe(JObj, State) ->
         ],
     wapi_notifications:publish_presence_update(PresenceUpdate).
 
-handle_route_req(JObj, Props) ->
-    _ = wh_util:put_callid(JObj),
-    Call = whapps_call:from_route_req(JObj),
-
-    Owner = whapps_call:owner_id(Call),
-    Agent = props:get_value('agent_id', Props),
-
-    case Owner =:= Agent of
-        'true' -> acdc_agent_fsm:route_req(props:get_value('fsm_pid', Props), Call);
-        'false' -> 'ok'
-    end.
+handle_destroy(JObj, Props) ->
+    'true' = wapi_call:destroy_channel_v(JObj),
+    FSM = props:get_value('fsm_pid', Props),
+    acdc_agent_fsm:call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj).
