@@ -26,10 +26,15 @@ reg_success(Props, Node) ->
     Realm = props:get_value(<<"realm">>, Props),
     CacheProps = [{'expires', ecallmgr_util:get_expires(Props)}],
     wh_cache:store_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username), Node, CacheProps),
-    [User, AfterAt] = binary:split(props:get_value(<<"contact">>, Props), <<"@">>),
-    AfterUnquoted = wh_util:to_binary(mochiweb_util:unquote(AfterAt)),
-    Contact = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, ['global']),
-    wh_cache:store_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username), Contact, CacheProps).
+
+    case props:get_value(<<"contact">>, Props) of
+        'undefined' -> 'ok';
+        RawContact ->
+            [User, AfterAt] = binary:split(RawContact, <<"@">>),
+            AfterUnquoted = wh_util:to_binary(mochiweb_util:unquote(AfterAt)),
+            Contact = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, ['global']),
+            wh_cache:store_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username), Contact, CacheProps)
+    end.
 
 -spec lookup_contact(ne_binary(), ne_binary()) ->
                             {'ok', ne_binary()} |
