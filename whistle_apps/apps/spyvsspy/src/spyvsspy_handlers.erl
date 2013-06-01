@@ -78,19 +78,26 @@ send_eavesdrop(JObj, EPs, AcctId) ->
 
     lager:debug("sending eavesdrop request for ~s:~s", [CallerIdName, CallerIdNumber]),
 
-    case whapps_util:amqp_pool_request(Prop
+    case whapps_util:amqp_pool_collect(Prop
                                        ,fun wapi_resource:publish_originate_req/1
-                                       ,fun wapi_dialplan:originate_ready_v/1
+                                       ,fun until_callback/1
                                        ,5000
                                       ) of
-        {'ok', OrigJObj} ->
+        {'ok', [OrigJObj|_]} ->
             lager:debug("originate is ready to execute"),
             send_originate_execute(OrigJObj, wh_json:get_value(<<"Server-ID">>, OrigJObj)),
             respond_success(JObj, OrigJObj);
         {'error', E} ->
             lager:debug("error originating: ~p", [E]),
-            respond_error(JObj, E)
+            respond_error(JObj, E);
+        {'timeout', _} ->
+            lager:debug("error originating: timeout"),
+            respond_error(JObj, 'timeout')
     end.
+
+-spec until_callback(wh_json:objects()) -> boolean().
+until_callback([JObj | _]) ->
+    wapi_dialplan:originate_ready_v(JObj).
 
 respond_success(JObj, OrigJObj) ->
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),

@@ -33,6 +33,8 @@ init_acct(Acct) ->
 
     lager:debug("init acdc account: ~s", [AcctId]),
 
+    acdc_stats:init_db(AcctId),
+
     init_queues(AcctId
                 ,couch_mgr:get_results(AcctDb, <<"queues/crossbar_listing">>, [])
                ),

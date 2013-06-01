@@ -20,7 +20,7 @@
          ,handle_agent_message/2
          ,handle_config_change/2
          ,handle_presence_probe/2
-         ,handle_route_req/2
+         ,handle_destroy/2
         ]).
 
 -include("acdc.hrl").
@@ -92,6 +92,7 @@ maybe_start_agent(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AcctId]),
+            acdc_stats:agent_ready(AcctId, AgentId),
             case couch_mgr:open_doc(wh_util:format_account_id(AcctId, 'encoded'), AgentId) of
                 {'ok', AgentJObj} ->
                     {'ok', _APid} = acdc_agents_sup:new(AgentJObj),
@@ -352,14 +353,7 @@ send_probe(JObj, State) ->
         ],
     wapi_notifications:publish_presence_update(PresenceUpdate).
 
-handle_route_req(JObj, Props) ->
-    _ = wh_util:put_callid(JObj),
-    Call = whapps_call:from_route_req(JObj),
-
-    Owner = whapps_call:owner_id(Call),
-    Agent = props:get_value('agent_id', Props),
-
-    case Owner =:= Agent of
-        'true' -> acdc_agent_fsm:route_req(props:get_value('fsm_pid', Props), Call);
-        'false' -> 'ok'
-    end.
+handle_destroy(JObj, Props) ->
+    'true' = wapi_call:destroy_channel_v(JObj),
+    FSM = props:get_value('fsm_pid', Props),
+    acdc_agent_fsm:call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj).

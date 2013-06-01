@@ -114,14 +114,14 @@ maybe_pause_agent(Call, _AgentId, FromStatus, _Data) ->
     play_agent_invalid(Call).
 
 login_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, <<"ready">>, fun wapi_acdc_agent:publish_login/1).
+    update_agent_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1).
 
 logout_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, <<"logged_out">>, fun wapi_acdc_agent:publish_logout/1).
+    update_agent_status(Call, AgentId, fun wapi_acdc_agent:publish_logout/1).
 
 pause_agent(Call, AgentId, Timeout) when is_integer(Timeout) ->
     _ = play_agent_pause(Call),
-    update_agent_status(Call, AgentId, <<"paused">>, fun wapi_acdc_agent:publish_pause/1, Timeout);
+    update_agent_status(Call, AgentId, fun wapi_acdc_agent:publish_pause/1, Timeout);
 pause_agent(Call, AgentId, Data) ->
     Timeout = wh_json:get_integer_value(<<"timeout">>
                                         ,Data
@@ -131,20 +131,11 @@ pause_agent(Call, AgentId, Data) ->
     pause_agent(Call, AgentId, Timeout).
 
 resume_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, <<"ready">>, fun wapi_acdc_agent:publish_resume/1).
+    update_agent_status(Call, AgentId, fun wapi_acdc_agent:publish_resume/1).
 
-update_agent_status(Call, AgentId, Status, PubFun) ->
-    update_agent_status(Call, AgentId, Status, PubFun, 'undefined').
-update_agent_status(Call, AgentId, Status, PubFun, Timeout) ->
-    AcctId = whapps_call:account_id(Call),
-
-    Extra = [{<<"Call-ID">>, whapps_call:call_id(Call)}
-             ,{<<"Wait-Time">>, Timeout}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-
-    'ok' = acdc_util:update_agent_status(AcctId, AgentId, Status, Extra),
-
+update_agent_status(Call, AgentId, PubFun) ->
+    update_agent_status(Call, AgentId, PubFun, 'undefined').
+update_agent_status(Call, AgentId, PubFun, Timeout) ->
     send_new_status(Call, AgentId, PubFun, Timeout).
 
 -spec send_new_status(whapps_call:call(), ne_binary(), wh_amqp_worker:publish_fun(), integer() | 'undefined') -> 'ok'.

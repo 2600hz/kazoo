@@ -12,6 +12,7 @@
 -export([optional_call_event_headers/0]).
 
 -export([new_channel/1, new_channel_v/1]).
+-export([destroy_channel/1, destroy_channel_v/1]).
 -export([event/1, event_v/1]).
 -export([channel_status_req/1, channel_status_req_v/1]).
 -export([channel_status_resp/1, channel_status_resp_v/1]).
@@ -26,6 +27,7 @@
 -export([bind_q/2, unbind_q/2]).
 
 -export([publish_new_channel/1, publish_new_channel/2]).
+-export([publish_destroy_channel/1, publish_destroy_channel/2]).
 -export([publish_event/2, publish_event/3]).
 -export([publish_channel_status_req/1 ,publish_channel_status_req/2, publish_channel_status_req/3]).
 -export([publish_channel_status_resp/2, publish_channel_status_resp/3]).
@@ -53,6 +55,16 @@
                              ,{<<"Event-Name">>, <<"new">>}
                             ]).
 -define(NEW_CHANNEL_TYPES, []).
+
+-define(DESTROY_CHANNEL_ROUTING_KEY(CALLID), <<"call.destroy_channel.", (amqp_util:encode(CALLID))/binary>>).
+-define(DESTROY_CHANNEL_HEADERS, [<<"Call-ID">>]).
+-define(OPTIONAL_DESTROY_CHANNEL_HEADERS, [<<"To">>, <<"From">>, <<"Request">>
+                                           | ?OPTIONAL_CALL_EVENT_HEADERS
+                                          ]).
+-define(DESTROY_CHANNEL_VALUES, [{<<"Event-Category">>, <<"channel">>}
+                                 ,{<<"Event-Name">>, <<"destroy">>}
+                                ]).
+-define(DESTROY_CHANNEL_TYPES, []).
 
 %% Call Events
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).
@@ -210,6 +222,24 @@ new_channel(JObj) -> new_channel(wh_json:to_proplist(JObj)).
 new_channel_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?NEW_CHANNEL_HEADERS, ?NEW_CHANNEL_VALUES, ?NEW_CHANNEL_TYPES);
 new_channel_v(JObj) -> new_channel_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Format a call event from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec destroy_channel(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+destroy_channel(Prop) when is_list(Prop) ->
+    case destroy_channel_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?DESTROY_CHANNEL_HEADERS, ?OPTIONAL_DESTROY_CHANNEL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for destroy_channel"}
+    end;
+destroy_channel(JObj) -> destroy_channel(wh_json:to_proplist(JObj)).
+
+-spec destroy_channel_v(api_terms()) -> boolean().
+destroy_channel_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?DESTROY_CHANNEL_HEADERS, ?DESTROY_CHANNEL_VALUES, ?DESTROY_CHANNEL_TYPES);
+destroy_channel_v(JObj) -> destroy_channel_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Inquire into the status of a channel
@@ -375,70 +405,78 @@ usurp_publisher_v(JObj) -> usurp_publisher_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
-    CallID = props:get_value('callid', Props, <<"*">>),
+    CallId = props:get_value('callid', Props, <<"*">>),
     amqp_util:callevt_exchange(),
     amqp_util:callmgr_exchange(),
-    bind_q(Queue, props:get_value('restrict_to', Props), CallID).
+    bind_q(Queue, props:get_value('restrict_to', Props), CallId).
 
-bind_q(Q, 'undefined', CallID) ->
-    'ok' = amqp_util:bind_q_to_callevt(Q, CallID),
-    'ok' = amqp_util:bind_q_to_callevt(Q, CallID, 'cdr'),
+bind_q(Q, 'undefined', CallId) ->
+    'ok' = amqp_util:bind_q_to_callevt(Q, CallId),
+    'ok' = amqp_util:bind_q_to_callevt(Q, CallId, 'cdr'),
     'ok' = amqp_util:bind_q_to_callmgr(Q, ?NEW_CHANNEL_ROUTING_KEY),
-    'ok' = amqp_util:bind_q_to_callevt(Q, CallID, 'publisher_usurp');
+    'ok' = amqp_util:bind_q_to_callmgr(Q, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)),
+    'ok' = amqp_util:bind_q_to_callevt(Q, CallId, 'publisher_usurp');
 
-bind_q(Q, ['events'|T], CallID) ->
-    _ = amqp_util:bind_q_to_callevt(Q, CallID),
-    bind_q(Q, T, CallID);
-bind_q(Q, ['cdr'|T], CallID) ->
-    _ = amqp_util:bind_q_to_callevt(Q, CallID, 'cdr'),
-    bind_q(Q, T, CallID);
-bind_q(Q, ['status_req'|T], CallID) ->
-    'ok' = amqp_util:bind_q_to_callevt(Q, CallID, 'status_req'),
-    bind_q(Q, T, CallID);
+bind_q(Q, ['events'|T], CallId) ->
+    _ = amqp_util:bind_q_to_callevt(Q, CallId),
+    bind_q(Q, T, CallId);
+bind_q(Q, ['cdr'|T], CallId) ->
+    _ = amqp_util:bind_q_to_callevt(Q, CallId, 'cdr'),
+    bind_q(Q, T, CallId);
+bind_q(Q, ['status_req'|T], CallId) ->
+    'ok' = amqp_util:bind_q_to_callevt(Q, CallId, 'status_req'),
+    bind_q(Q, T, CallId);
 bind_q(Q, ['new_channel'|T], CallId) ->
     'ok' = amqp_util:bind_q_to_callmgr(Q, ?NEW_CHANNEL_ROUTING_KEY),
     bind_q(Q, T, CallId);
-bind_q(Q, ['publisher_usurp'|T], CallID) ->
-    'ok' = amqp_util:bind_q_to_callevt(Q, CallID, 'publisher_usurp'),
-    bind_q(Q, T, CallID);
-bind_q(Q, [_|T], CallID) -> bind_q(Q, T, CallID);
-bind_q(_Q, [], _CallID) -> 'ok'.
+bind_q(Q, ['destroy_channel'|T], CallId) ->
+    'ok' = amqp_util:bind_q_to_callmgr(Q, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)),
+    bind_q(Q, T, CallId);
+bind_q(Q, ['publisher_usurp'|T], CallId) ->
+    'ok' = amqp_util:bind_q_to_callevt(Q, CallId, 'publisher_usurp'),
+    bind_q(Q, T, CallId);
+bind_q(Q, [_|T], CallId) -> bind_q(Q, T, CallId);
+bind_q(_Q, [], _CallId) -> 'ok'.
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
-    CallID = props:get_value('callid', Props, <<"*">>),
-    unbind_q(Queue, props:get_value('restrict_to', Props), CallID).
+    CallId = props:get_value('callid', Props, <<"*">>),
+    unbind_q(Queue, props:get_value('restrict_to', Props), CallId).
 
-unbind_q(Q, 'undefined', CallID) ->
-    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID),
-    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID, 'cdr'),
+unbind_q(Q, 'undefined', CallId) ->
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallId),
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallId, 'cdr'),
     'ok' = amqp_util:unbind_q_from_callmgr(Q, ?NEW_CHANNEL_ROUTING_KEY),
-    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID, 'publisher_usurp');
+    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)),
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallId, 'publisher_usurp');
 
-unbind_q(Q, ['events'|T], CallID) ->
-    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID),
-    unbind_q(Q, T, CallID);
-unbind_q(Q, ['cdr'|T], CallID) ->
-    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID, 'cdr'),
-    unbind_q(Q, T, CallID);
-unbind_q(Q, ['status_req'|T], CallID) ->
-    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID, 'status_req'),
-    unbind_q(Q, T, CallID);
+unbind_q(Q, ['events'|T], CallId) ->
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallId),
+    unbind_q(Q, T, CallId);
+unbind_q(Q, ['cdr'|T], CallId) ->
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallId, 'cdr'),
+    unbind_q(Q, T, CallId);
+unbind_q(Q, ['status_req'|T], CallId) ->
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallId, 'status_req'),
+    unbind_q(Q, T, CallId);
 unbind_q(Q, ['new_channel'|T], CallId) ->
     'ok' = amqp_util:unbind_q_from_callmgr(Q, ?NEW_CHANNEL_ROUTING_KEY),
     unbind_q(Q, T, CallId);
-unbind_q(Q, ['publisher_usurp'|T], CallID) ->
-    'ok' = amqp_util:unbind_q_from_callevt(Q, CallID, 'publisher_usurp'),
-    unbind_q(Q, T, CallID);
-unbind_q(Q, [_|T], CallID) -> unbind_q(Q, T, CallID);
-unbind_q(_Q, [], _CallID) -> 'ok'.
+unbind_q(Q, ['destroy_channel'|T], CallId) ->
+    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)),
+    unbind_q(Q, T, CallId);
+unbind_q(Q, ['publisher_usurp'|T], CallId) ->
+    'ok' = amqp_util:unbind_q_from_callevt(Q, CallId, 'publisher_usurp'),
+    unbind_q(Q, T, CallId);
+unbind_q(Q, [_|T], CallId) -> unbind_q(Q, T, CallId);
+unbind_q(_Q, [], _CallId) -> 'ok'.
 
 -spec publish_event(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_event(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_event(CallID, JObj) -> publish_event(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_event(CallID, Event, ContentType) ->
+publish_event(CallId, JObj) -> publish_event(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_event(CallId, Event, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Event, ?CALL_EVENT_VALUES, fun ?MODULE:event/1),
-    amqp_util:callevt_publish(CallID, Payload, 'event', ContentType).
+    amqp_util:callevt_publish(CallId, Payload, 'event', ContentType).
 
 -spec publish_new_channel(api_terms()) -> 'ok'.
 -spec publish_new_channel(api_terms(), ne_binary()) -> 'ok'.
@@ -446,6 +484,26 @@ publish_new_channel(JObj) -> publish_new_channel(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_new_channel(Event, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Event, ?NEW_CHANNEL_VALUES, fun ?MODULE:new_channel/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?NEW_CHANNEL_ROUTING_KEY).
+
+-spec publish_destroy_channel(api_terms()) -> 'ok'.
+-spec publish_destroy_channel(api_terms(), ne_binary()) -> 'ok'.
+publish_destroy_channel(JObj) -> publish_destroy_channel(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_destroy_channel(Event, ContentType) ->
+    CallId = callid(Event),
+    {'ok', Payload} = wh_api:prepare_api_payload(Event, ?DESTROY_CHANNEL_VALUES, fun ?MODULE:destroy_channel/1),
+    amqp_util:callmgr_publish(Payload, ContentType, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)).
+
+-spec callid(api_terms()) -> api_binary().
+callid(Props) when is_list(Props) ->
+    case props:get_value(<<"Call-ID">>, Props) of
+        'undefined' -> props:get_value(<<"Unique-ID">>, Props);
+        CallId -> CallId
+    end;
+callid(JObj) ->
+    case wh_json:get_value(<<"Call-ID">>, JObj) of
+        'undefined' -> wh_json:get_value(<<"Unique-ID">>, JObj);
+        CallId -> CallId
+    end.
 
 -spec publish_channel_status_req(api_terms()) -> 'ok'.
 -spec publish_channel_status_req(ne_binary(), api_terms()) -> 'ok'.
@@ -455,11 +513,11 @@ publish_channel_status_req(API) ->
         'true' -> publish_channel_status_req(props:get_value(<<"Call-ID">>, API), API);
         'false' -> publish_channel_status_req(wh_json:get_value(<<"Call-ID">>, API), API)
     end.
-publish_channel_status_req(CallID, JObj) ->
-    publish_channel_status_req(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_channel_status_req(CallID, Req, ContentType) ->
+publish_channel_status_req(CallId, JObj) ->
+    publish_channel_status_req(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_channel_status_req(CallId, Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CHANNEL_STATUS_REQ_VALUES, fun ?MODULE:channel_status_req/1),
-    amqp_util:callevt_publish(CallID, Payload, 'status_req', ContentType).
+    amqp_util:callevt_publish(CallId, Payload, 'status_req', ContentType).
 
 -spec publish_channel_status_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_channel_status_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -477,11 +535,11 @@ publish_call_status_req(API) ->
         'true' -> publish_call_status_req(props:get_value(<<"Call-ID">>, API), API);
         'false' -> publish_call_status_req(wh_json:get_value(<<"Call-ID">>, API), API)
     end.
-publish_call_status_req(CallID, JObj) ->
-    publish_call_status_req(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_call_status_req(CallID, Req, ContentType) ->
+publish_call_status_req(CallId, JObj) ->
+    publish_call_status_req(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_call_status_req(CallId, Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CALL_STATUS_REQ_VALUES, fun ?MODULE:call_status_req/1),
-    amqp_util:callevt_publish(CallID, Payload, 'status_req', ContentType).
+    amqp_util:callevt_publish(CallId, Payload, 'status_req', ContentType).
 
 -spec publish_call_status_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_call_status_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -515,27 +573,27 @@ publish_query_auth_id_resp(RespQ, Resp, ContentType) ->
 
 -spec publish_cdr(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_cdr(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_cdr(CallID, JObj) ->
-    publish_cdr(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_cdr(CallID, CDR, ContentType) ->
+publish_cdr(CallId, JObj) ->
+    publish_cdr(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_cdr(CallId, CDR, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(CDR, ?CALL_CDR_VALUES, fun ?MODULE:cdr/1),
-    amqp_util:callevt_publish(CallID, Payload, 'cdr', ContentType).
+    amqp_util:callevt_publish(CallId, Payload, 'cdr', ContentType).
 
 -spec publish_usurp_control(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_usurp_control(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_usurp_control(CallID, JObj) ->
-    publish_usurp_control(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_usurp_control(CallID, JObj, ContentType) ->
+publish_usurp_control(CallId, JObj) ->
+    publish_usurp_control(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_usurp_control(CallId, JObj, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(JObj, ?CALL_USURP_CONTROL_VALUES, fun ?MODULE:usurp_control/1),
-    amqp_util:callevt_publish(CallID, Payload, 'event', ContentType).
+    amqp_util:callevt_publish(CallId, Payload, 'event', ContentType).
 
 -spec publish_usurp_publisher(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_usurp_publisher(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_usurp_publisher(CallID, JObj) ->
-    publish_usurp_publisher(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_usurp_publisher(CallID, JObj, ContentType) ->
+publish_usurp_publisher(CallId, JObj) ->
+    publish_usurp_publisher(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_usurp_publisher(CallId, JObj, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(JObj, ?PUBLISHER_USURP_CONTROL_VALUES, fun ?MODULE:usurp_publisher/1),
-    amqp_util:callevt_publish(CallID, Payload, 'publisher_usurp', ContentType).
+    amqp_util:callevt_publish(CallId, Payload, 'publisher_usurp', ContentType).
 
 -spec get_status(api_terms()) -> ne_binary().
 get_status(API) when is_list(API) -> props:get_value(<<"Status">>, API);
