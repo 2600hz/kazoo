@@ -201,7 +201,6 @@ handle_config_req(Node, ID, <<"conference.conf">>, Data) ->
                   {'ok', Resp} ->
                       FixedTTS = maybe_fix_conference_tts(Resp),
                       {'ok', Xml} = ecallmgr_fs_xml:conference_resp_xml(FixedTTS),
-                      lager:debug("conference profile xml for ~s: ~s", [Profile, Xml]),
                       Xml;
                   {'error', 'timeout'} ->
                       lager:debug("timed out waiting for conference profile for ~s", [Profile]),
@@ -212,6 +211,7 @@ handle_config_req(Node, ID, <<"conference.conf">>, Data) ->
                       {'ok', Resp} = ecallmgr_fs_xml:not_found(),
                       Resp
               end,
+    lager:debug("replying to ~s with profile ~s: ~s", [ID, Profile, XmlResp]),
     freeswitch:fetch_reply(Node, ID, 'configuration', iolist_to_binary(XmlResp));
 
 handle_config_req(Node, ID, _Conf, _) ->
