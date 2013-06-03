@@ -130,7 +130,7 @@ handle_cast({'gen_listener', {'created_queue', <<"ecallmgr_fs_conference">>}}, #
           end),
     {'noreply', State};
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -144,7 +144,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -156,7 +156,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -181,7 +181,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -202,7 +202,7 @@ exec(Focus, ConferenceId, JObj) ->
             lager:debug("command ~s failed: ~s", [App, _Msg]),
             send_response(App, E, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {'noop', Conference} ->
-            send_response(App, {noop, Conference}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
+            send_response(App, {'noop', Conference}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {<<"play">>, AppData} ->
             Result =
                 case wh_json:get_value(<<"Call-ID">>, JObj) of
