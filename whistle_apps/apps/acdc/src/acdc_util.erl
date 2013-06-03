@@ -238,6 +238,8 @@ agent_statuses_from_db(P, AcctId, OnlyMostRecent, Opts) when is_list(Opts) ->
     of
         {'ok', Stats} ->
             P ! {'db_stats', self(), cleanup_db_statuses(Stats, OnlyMostRecent)};
+        {'error', 'not_found'} ->
+            P ! {'db_stats', self(), []};
         {'error', _E} ->
             lager:debug("failed to get most recent stats: ~p", [_E]),
             P ! {'db_stats', self(), []}

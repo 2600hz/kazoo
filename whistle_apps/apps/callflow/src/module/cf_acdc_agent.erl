@@ -138,7 +138,7 @@ update_agent_status(Call, AgentId, PubFun) ->
 update_agent_status(Call, AgentId, PubFun, Timeout) ->
     send_new_status(Call, AgentId, PubFun, Timeout).
 
--spec send_new_status(whapps_call:call(), ne_binary(), wh_amqp_worker:publish_fun(), integer() | 'undefined') -> 'ok'.
+-spec send_new_status(whapps_call:call(), ne_binary(), wh_amqp_worker:publish_fun(), api_integer()) -> 'ok'.
 send_new_status(Call, AgentId, PubFun, Timeout) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, whapps_call:account_id(Call)}
