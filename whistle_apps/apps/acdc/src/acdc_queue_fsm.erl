@@ -214,7 +214,7 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
              ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
              ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
              ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, 'false')
-             ,recording_url = wh_json:get_ne_value(<<"recording_url">>, QueueJObj)
+             ,recording_url = wh_json:get_ne_value(<<"call_recording_url">>, QueueJObj)
              ,cdr_url = wh_json:get_ne_value(<<"cdr_url">>, QueueJObj)
              ,member_call = 'undefined'
 
@@ -776,7 +776,7 @@ update_properties(QueueJObj, State) ->
       ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
       ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
       ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, 'false')
-      ,recording_url = wh_json:get_ne_value(<<"recording_url">>, QueueJObj)
+      ,recording_url = wh_json:get_ne_value(<<"call_recording_url">>, QueueJObj)
       ,cdr_url = wh_json:get_ne_value(<<"cdr_url">>, QueueJObj)
       ,notifications = wh_json:get_value(<<"notifications">>, QueueJObj)
 
