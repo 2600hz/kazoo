@@ -925,7 +925,8 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId) ->
     wapi_resource:publish_originate_req(Prop).
 
 outbound_call_id(CallId, AgentId) when is_binary(CallId) ->
-    <<(wh_util:to_hex_binary(erlang:md5(CallId)))/binary, "-", AgentId/binary>>;
+    Rnd = wh_util:rand_hex_binary(4),
+    <<(wh_util:to_hex_binary(erlang:md5(CallId)))/binary, "-", AgentId/binary, "-", Rnd/binary>>;
 outbound_call_id(Call, AgentId) -> outbound_call_id(whapps_call:call_id(Call), AgentId).
 
 -spec login_to_queue(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
