@@ -1450,7 +1450,11 @@ clear_call(#state{connect_failures=Fails
     acdc_stats:agent_logged_out(AcctId, AgentId),
     lager:debug("agent has failed to connect ~b times, logging out", [Fails+1]),
     clear_call(State#state{connect_failures=Fails+1}, 'paused');
-clear_call(#state{connect_failures=Fails}=State, 'failed') ->
+clear_call(#state{connect_failures=Fails
+                  ,acct_id=AcctId
+                  ,agent_id=AgentId
+                 }=State, 'failed') ->
+    acdc_stats:agent_ready(AcctId, AgentId),
     clear_call(State#state{connect_failures=Fails+1}, 'ready');
 clear_call(#state{fsm_call_id=FSMCallId
                   ,call_status_ref=CSRef
