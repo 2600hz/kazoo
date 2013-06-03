@@ -683,28 +683,41 @@ status_match_builder_fold(_, _, Acc) -> Acc.
 
 -spec query_statuses(ne_binary(), ne_binary(), ets:match_spec()) -> 'ok'.
 query_statuses(RespQ, MsgId, Match) ->
-    case ets:select(status_table_id(), Match, 10) of
-        '$end_of_table' ->
+    case ets:select(status_table_id(), Match) of
+        [] ->
             lager:debug("no stats found, sorry ~s", [RespQ]),
             Resp = [{<<"Error-Reason">>, <<"No agents found">>}
                     ,{<<"Msg-ID">>, MsgId}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_acdc_stats:publish_status_err(RespQ, Resp);
-        {[], _} ->
-            lager:debug("no stats found, sorry ~s", [RespQ]),
-            Resp = [{<<"Error-Reason">>, <<"No agents found">>}
-                    ,{<<"Msg-ID">>, MsgId}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            wapi_acdc_stats:publish_status_err(RespQ, Resp);
-        {Stats, _} ->
-            QueryResult = lists:foldl(fun query_status_fold/2, wh_json:new(), Stats),
-            Resp = [{<<"Agents">>, QueryResult}
+        Stats ->
+            QueryResults = lists:foldl(fun query_status_fold/2, wh_json:new(), Stats),
+            TrimmedResults = wh_json:map(fun trim_query_statuses/2, QueryResults),
+
+            Resp = [{<<"Agents">>, TrimmedResults}
                     ,{<<"Msg-ID">>, MsgId}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_acdc_stats:publish_status_resp(RespQ, Resp)
+    end.
+
+trim_query_statuses(A, Statuses) ->
+    {_, Trimmed} = wh_json:foldl(fun trim_query_statuses_fold/3
+                                 ,{lists:duplicate(5, 0)
+                                   ,wh_json:new()
+                                  }, Statuses),
+    {A, Trimmed}.
+
+trim_query_statuses_fold(TBin, Datum, {Ks, Data}=Acc) ->
+    T = wh_util:to_integer(TBin),
+    case lists:min(Ks) of
+        N when N < T ->
+            {[T | lists:delete(N, Ks)]
+             ,wh_json:set_value(TBin, Datum,
+                                wh_json:delete_key(N, Data)
+                               )};
+        _ -> Acc
     end.
 
 -spec archive_data() -> 'ok'.
@@ -715,11 +728,14 @@ archive_data() ->
 
 cleanup_data(Srv) ->
     Past = wh_util:current_tstamp() - ?CLEANUP_WINDOW,
+    PastConstraint = {'=<', '$1', Past},
+
+    TypeConstraints = [{'=/=', '$2', {'const', <<"waiting">>}}
+                       ,{'=/=', '$2', {'const', <<"handled">>}}
+                      ],
+
     CallMatch = [{#call_stat{entered_timestamp='$1', status='$2', _='_'}
-                  ,[{'=<', '$1', Past}
-                    ,{'=/=', '$2', {'const', <<"waiting">>}}
-                    ,{'=/=', '$2', {'const', <<"handled">>}}
-                   ]
+                  ,[PastConstraint | TypeConstraints]
                   ,['$_']
                  }],
     gen_listener:cast(Srv, {'remove_call', CallMatch}),
@@ -728,7 +744,22 @@ cleanup_data(Srv) ->
                     ,[{'=<', '$1', Past}]
                     ,['$_']
                    }],
-    gen_listener:cast(Srv, {'remove_status', StatusMatch}).
+    gen_listener:cast(Srv, {'remove_status', StatusMatch}),
+
+    UnfinishedConstraints = [{'=:=', '$2', {'const', <<"waiting">>}}
+                             ,{'=:=', '$2', {'const', <<"handled">>}}
+                            ],
+
+    case ets:select([{#call_stat{entered_timestamp='$1', _='_'}
+                      ,[PastConstraint | UnfinishedConstraints]
+                      ,['$_']
+                     }]) of
+        [] -> 'ok';
+        Unfinished -> cleanup_unfinished(Unfinished)
+    end.
+
+cleanup_unfinished(Unfinished) ->
+    lager:debug("unfinished stats: ~p", [Unfinished]).
 
 archive_call_data() ->
     put('callid', <<"acdc_stats.call_archiver">>),
@@ -888,8 +919,8 @@ call_stat_id(JObj) ->
            ).
 call_stat_id(CallId, QueueId) -> <<CallId/binary, "::", QueueId/binary>>.
 
-status_stat_id(AgentId, Timestamp, EventName) ->
-    <<AgentId/binary, "::", (wh_util:to_binary(Timestamp))/binary, "::", EventName/binary>>.
+status_stat_id(AgentId, Timestamp, _EventName) ->
+    <<AgentId/binary, "::", (wh_util:to_binary(Timestamp))/binary>>.
 
 handle_waiting_stat(JObj, Props) ->
     'true' = wapi_acdc_stats:call_waiting_v(JObj),
