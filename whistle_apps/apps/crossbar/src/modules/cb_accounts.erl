@@ -322,12 +322,18 @@ leak_pvt_superduper_admin(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
 leak_pvt_enabled(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
     case wh_json:get_value(<<"pvt_enabled">>, JObj) of
         true ->
-            leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"enabled">>, true, RespJObj)});
+            leak_pvt_created(Context#cb_context{resp_data=wh_json:set_value(<<"enabled">>, true, RespJObj)});
         false ->
-            leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"enabled">>, false, RespJObj)});
+            leak_pvt_created(Context#cb_context{resp_data=wh_json:set_value(<<"enabled">>, false, RespJObj)});
         _ ->
-            leak_billing_mode(Context)
+            leak_pvt_created(Context)
     end.
+
+-spec leak_pvt_created(#cb_context{}) -> #cb_context{}.
+leak_pvt_created(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
+    Created = wh_json:get_value(<<"pvt_created">>, JObj, 0),
+    leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"created">>, Created, RespJObj)}).
+
 
 -spec leak_billing_mode(cb_context:context()) -> cb_context:context().
 leak_billing_mode(#cb_context{auth_account_id=AuthAccountId, account_id=AccountId, resp_data=RespJObj}=Context) ->
