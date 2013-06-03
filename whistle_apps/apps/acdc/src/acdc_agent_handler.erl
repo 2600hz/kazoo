@@ -299,17 +299,12 @@ handle_device_change(AccountDb, AccountId, DeviceId, Rev, <<"doc_deleted">>, Cnt
         _ -> lager:debug("ignoring the fact that device ~s was edited", [DeviceId])
     end.
 
-handle_agent_change(AccountDb, AccountId, AgentId, <<"doc_created">>) ->
-    case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
-        'undefined' ->
-            {'ok', JObj} = couch_mgr:open_doc(AccountDb, AgentId),
-            acdc_agents_sup:new(JObj);
-        P when is_pid(P) -> 'ok'
-    end;
+handle_agent_change(_AccountDb, AccountId, AgentId, <<"doc_created">>) ->
+    lager:debug("new agent ~s(~s) created, hope they log in soon!", [AgentId, AccountId]);
 handle_agent_change(AccountDb, AccountId, AgentId, <<"doc_edited">>) ->
     {'ok', JObj} = couch_mgr:open_doc(AccountDb, AgentId),
     case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
-        'undefined' -> acdc_agents_sup:new(JObj);
+        'undefined' -> 'ok';
         P when is_pid(P) -> acdc_agent_fsm:refresh(acdc_agent_sup:fsm(P), JObj)
     end;
 handle_agent_change(_, AccountId, AgentId, <<"doc_deleted">>) ->
