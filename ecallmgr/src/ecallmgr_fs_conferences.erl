@@ -628,7 +628,6 @@ fix_props(Props, A) when A =:= <<"play-file">>; A =:= <<"play-file-member">> ->
      | props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)
     ];
 fix_props(Props, A) when A =:= <<"play-file-done">>; A =:= <<"play-file-member-done">> ->
-    lager:debug("~s: ~p", [A, Props]),
     [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
      ,{<<"whistle_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
      ,{<<"Application">>, A}
@@ -715,7 +714,8 @@ conference_fields(Props) -> fields(Props, ?FS_CONF_FIELDS).
                                 ,{<<"Current-Energy">>, #participant.current_energy, fun props:get_integer_value/2}
                                 ,{<<"Video">>, #participant.video, fun props:get_is_true/2}
                                ]).
-participant_fields(Props) -> fields(Props, ?FS_PARTICIPANT_FIELDS).
+participant_fields(Props) ->
+    fields(Props, ?FS_PARTICIPANT_FIELDS).
 
 fields(Props, Fields) ->
     lists:foldl(fun(K, Acc) -> maybe_include_key(K, Acc, Props) end, [], Fields).
