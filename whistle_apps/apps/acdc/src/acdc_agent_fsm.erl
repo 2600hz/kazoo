@@ -1724,17 +1724,31 @@ notify(Url, Method, Key, #state{acct_id=AcctId
                 ,{<<"call_state">>, Key}
                 ,{<<"now">>, wh_util:current_tstamp()}
                ])),
+    notify(Url, Method, Data).
+
+notify(Url, 'post', Data) ->
     {'ok', _Status, _ResponseHeaders, _ResponseBody} =
         ibrowse:send_req(wh_util:to_list(Url)
                          ,[]
-                         ,Method
+                         ,'post'
                          ,wh_json:encode(Data)
                          ,[{'connect_timeout', 200} % wait up to 200ms for connection
                            ,{'content_type', "application/json"}
                           ]
                          ,1000 % wait up to 1 sec for response
                         ),
-    lager:debug("~s req to ~s(~s): ~s: ~s", [Method, Url, Key, _Status, _ResponseBody]).
+    lager:debug("POST req to ~s: ~s", [Url, _Status]);
+notify(Url, 'get', Data) ->
+    Uri = uri(Url, wh_json:to_querystring(Data)),
+    {'ok', _Status, _ResponseHeaders, _ResponseBody} =
+        ibrowse:send_req(wh_util:to_list(Uri)
+                         ,[]
+                         ,'get'
+                         ,wh_json:encode(Data)
+                         ,[{'connect_timeout', 200}] % wait up to 200ms for connection
+                         ,1000 % wait up to 1 sec for response
+                        ),
+    lager:debug("GET req to ~s: ~s", [Uri, _Status]).
 
 cdr_url(JObj) ->
     case wh_json:get_value([<<"Notifications">>, ?NOTIFY_CDR], JObj) of
@@ -1746,6 +1760,15 @@ recording_url(JObj) ->
     case wh_json:get_value([<<"Notifications">>, ?NOTIFY_RECORDING], JObj) of
         'undefined' -> wh_json:get_ne_value(<<"Recording-URL">>, JObj);
         Url -> Url
+    end.
+
+-spec uri(ne_binary(), iolist()) -> iolist().
+uri(URI, QueryString) ->
+    case mochiweb_util:urlsplit(wh_util:to_list(URI)) of
+        {Scheme, Host, Path, [], Fragment} ->
+            mochiweb_util:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
+        {Scheme, Host, Path, QS, Fragment} ->
+            mochiweb_util:urlunsplit({Scheme, Host, Path, [QS, "&", QueryString], Fragment})
     end.
 
 -ifdef(TEST).
