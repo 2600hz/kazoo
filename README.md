@@ -67,7 +67,7 @@ telecommunications to everyone.
 Our goal is to provide the world with a free, open telecommunications software
 platform. Released under the OSI-approved MPL 1.1 open source software
 license, we're building upon strong FOSS components like Linux, Erlang,
-FreeSWITCH, CouchDB (specifically BIgCouch), and RabbitMQ. Our project is a
+FreeSWITCH, CouchDB (specifically BigCouch), and RabbitMQ. Our project is a
 great example of the wonderful things that can happen when software is open.
 
 ### What is Kazoo?
