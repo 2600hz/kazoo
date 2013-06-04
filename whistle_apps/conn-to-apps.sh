@@ -24,7 +24,5 @@ fi
 
 ERL_COOKIE=`../utils/sup/sup erlang get_cookie`
 
-echo $ERL_COOKIE
-
 exec erl -setcookie $ERL_COOKIE -name ${SHELL_NAME} -remsh ${REMOTE_SHELL}
 
