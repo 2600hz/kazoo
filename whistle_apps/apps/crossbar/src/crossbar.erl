@@ -48,35 +48,28 @@ start_link() ->
                          ),
 
     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_ssl">>, 'false') of
-        'false' -> 'ok';
-        true ->
-            RootDir = code:lib_dir('crossbar'),
+        'false' -> lager:info("ssl api support not enabled");
+        'true' ->
+            lager:debug("trying to start SSL API server"),
+            ssl:start(),
+            ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
+            Workers = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_workers">>, 100),
+            SSLOpts = ssl_opts(code:lib_dir('crossbar')),
 
-            try
-                SSLCert = whapps_config:get_string(?CONFIG_CAT
-                                                   ,<<"ssl_cert">>
-                                                   ,filename:join([RootDir, <<"priv/ssl/crossbar.crt">>])
-                                                  ),
-                SSLKey = whapps_config:get_string(?CONFIG_CAT
-                                                  ,<<"ssl_key">>
-                                                  ,filename:join([RootDir, <<"priv/ssl/crossbar.key">>])
-                                                 ),
-
-                SSLPort = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 8443),
-                SSLPassword = whapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, <<>>),
-
-                cowboy:start_listener('v1_resource_ssl', 100
-                                      ,'cowboy_ssl_transport', [
-                                                                {'port', SSLPort}
-                                                                ,{'certfile', find_file(SSLCert, RootDir)}
-                                                                ,{'keyfile', find_file(SSLKey, RootDir)}
-                                                                ,{'password', SSLPassword}
-                                                               ]
-                                      ,'cowboy_http_protocol', [{'dispatch', Dispatch}
-                                                                ,{'onrequest', fun on_request/1}
-                                                                ,{'onresponse', fun on_response/3}
-                                                               ]
-                                     )
+            try cowboy:start_https('v1_resource_ssl', Workers
+                                   ,SSLOpts
+                                   ,[{'env', [{'dispatch', Dispatch}
+                                              ,{'timeout', ReqTimeout}
+                                             ]}
+                                     ,{'onrequest', fun on_request/1}
+                                     ,{'onresponse', fun on_response/4}
+                                    ]
+                                  )
+            of
+                {'ok', _} ->
+                    lager:info("started SSL API server on port ~b", [props:get_value('port', SSLOpts)]);
+                _Err ->
+                    lager:info("unexpected result when starting SSL API server: ~p", [_Err])
             catch
                 'throw':{'invalid_file', _File} ->
                     lager:info("SSL disabled: failed to find ~s (tried prepending ~s too)", [_File, RootDir])
