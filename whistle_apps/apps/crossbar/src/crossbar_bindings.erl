@@ -192,7 +192,9 @@ init([]) ->
 
 maybe_init_mod(ModBin) ->
     try wh_util:to_atom(ModBin) of
-        Mod -> lager:debug("init: ~s: ~p", [ModBin, catch Mod:init()])
+        Mod -> 
+            Result = (catch Mod:init()),
+            lager:debug("init: ~s: ~p", [ModBin, Result])
     catch
         'error':'badarg' ->
             case code:where_is_file(wh_util:to_list(<<ModBin/binary, ".beam">>)) of
