@@ -47,5 +47,9 @@ ecallmgr/*crash.dump
 ecallmgr/test
 utils/*/ebin/*.beam
 utils/*/ebin/*.app
-/utils/sup/deps/getopt/
-/lib/rabbitmq_server-2.8.6/deps.mk
+utils/sup/deps/getopt/
+lib/rabbitmq_server-2.8.6/deps.mk
+lib/rabbitmq_server-2.8.6/src/rabbit_framing_amqp_0_8.erl
+lib/rabbitmq_server-2.8.6/src/rabbit_framing_amqp_0_9_1.erl
+lib/zucchini-1.0.0/src/zucchini_lexer.erl
+lib/zucchini-1.0.0/src/zucchini_parser.erl
