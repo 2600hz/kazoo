@@ -9,7 +9,7 @@
 
 -define(CONFIG_CAT, <<"registrar">>).
 
--define(REGISTRAR_CACHE, registrar_cache).
+-define(REGISTRAR_CACHE, 'registrar_cache').
 
 -record(auth_user, {realm
                     ,username
@@ -23,5 +23,5 @@
                     ,suppress_unregister_notifications
                    }).
 
--define(REG_HRL, true).
+-define(REG_HRL, 'true').
 -endif.

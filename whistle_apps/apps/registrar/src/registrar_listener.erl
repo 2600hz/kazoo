@@ -22,11 +22,11 @@
 
 -include("reg.hrl").
 
--define(RESPONDERS, [{{reg_query, req_query_req}, [{<<"directory">>, <<"reg_query">>}]}
-                     ,{reg_success, [{<<"directory">>, <<"reg_success">>}]}
+-define(RESPONDERS, [{{'reg_query', 'req_query_req'}, [{<<"directory">>, <<"reg_query">>}]}
+                     ,{'reg_success', [{<<"directory">>, <<"reg_success">>}]}
                     ]).
--define(BINDINGS, [{registration, [{retrict_to, [reg_success, reg_query]}]}
-                   ,{self, []}
+-define(BINDINGS, [{'registration', [{'retrict_to', ['reg_success', 'reg_query']}]}
+                   ,{'self', []}
                   ]).
 
 -define(SERVER, ?MODULE).
@@ -46,12 +46,12 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link({local, ?SERVER}, ?MODULE, [{responders, ?RESPONDERS}
-                                                        ,{bindings, ?BINDINGS}
-                                                        ,{queue_name, ?REG_QUEUE_NAME}
-                                                        ,{queue_options, ?REG_QUEUE_OPTIONS}
-                                                        ,{consume_options, ?REG_CONSUME_OPTIONS}
-                                                       ], []).
+    gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'responders', ?RESPONDERS}
+                                                          ,{'bindings', ?BINDINGS}
+                                                          ,{'queue_name', ?REG_QUEUE_NAME}
+                                                          ,{'queue_options', ?REG_QUEUE_OPTIONS}
+                                                          ,{'consume_options', ?REG_CONSUME_OPTIONS}
+                                                         ], []).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -69,9 +69,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    process_flag(trap_exit, true),
+    process_flag('trap_exit', 'true'),
     lager:debug("starting new registrar listener"),
-    {ok, []}.
+    {'ok', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -88,7 +88,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Msg, _From, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -101,7 +101,7 @@ handle_call(_Msg, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -115,7 +115,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -126,7 +126,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,7 +152,7 @@ terminate(_Reason, _) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
