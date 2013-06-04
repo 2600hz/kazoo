@@ -53,7 +53,7 @@ init() ->
 -spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
 allowed_methods() ->
     [?HTTP_GET].
-allowed_methods(_) -> 
+allowed_methods(_) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -91,7 +91,7 @@ validate(#cb_context{req_verb = ?HTTP_GET,  query_json=Query}=Context) ->
             Reasons = wht_util:reasons(2000),
             fetch(From, To, Context, Reasons);
         _ ->
-            fetch(From, To, Context)    
+            fetch(From, To, Context)
     end.
 
 validate(#cb_context{req_verb = ?HTTP_GET, account_id=AccountId}=Context, <<"current_balance">>) ->
@@ -110,7 +110,7 @@ validate(Context, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch/3 :: (integer(), integer(), #cb_context{}) -> #cb_context{}.
@@ -141,13 +141,13 @@ fetch(From, To, Context, Reason) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_braintree_transactions(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 fetch_braintree_transactions(Min, Max, Context) ->
-    case validate_date(Min, Max) of 
-        {'true', From, To} ->            
+    case validate_date(Min, Max) of
+        {'true', From, To} ->
             filter_braintree_transactions(
               timestamp_to_braintree(From)
               ,timestamp_to_braintree(To)
@@ -164,17 +164,17 @@ fetch_braintree_transactions(Min, Max, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_braintree_subscriptions(cb_context:context()) -> cb_context:context().
 fetch_braintree_subscriptions(Context) ->
     filter_braintree_subscriptions(Context).
-        
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec filter/3 :: (integer(), integer(), cb_context:context()) -> cb_context:context().
@@ -204,7 +204,7 @@ filter(From, To, #cb_context{account_id=AccountId}=Context, Reason) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_braintree_transactions(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
@@ -215,14 +215,19 @@ filter_braintree_transactions(From, To, #cb_context{account_id=AccountId}=Contex
         'unknow_error' ->
             send_resp({'error', <<"unknow  braintree error">>}, Context);
         BTransactions ->
-            JObjs = [filter_braintree_transaction(BTr) || BTr <- BTransactions],
+            JObjs = lists:foldl(fun(BTr, Acc) ->
+                        case is_prorated_braintree_transaction(BTr) of
+                            'false' -> Acc;
+                            _Id -> [filter_braintree_transaction(BTr)|Acc]
+                        end
+                    end, [], BTransactions),
             send_resp({'ok', JObjs}, Context)
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_braintree_subscriptions(cb_context:context()) -> cb_context:context().
@@ -237,25 +242,25 @@ filter_braintree_subscriptions(#cb_context{account_id=AccountId}=Context) ->
             send_resp({'ok', JObjs}, Context)
     end.
 
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_braintree_transaction(wh_json:object()) -> wh_json:object().
 filter_braintree_transaction(BTransaction) ->
     Routines = [fun(BTr) -> clean_braintree_transaction(BTr) end
-                ,fun(BTr) -> is_prorated_braintree_transaction(BTr) end
                 ,fun(BTr) -> correct_date_braintree_transaction(BTr) end
+                ,fun(BTr) -> prorated_braintree_transaction(BTr) end
                ],
     lists:foldl(fun(F, BTr) -> F(BTr) end, BTransaction, Routines).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_braintree_subscirption(wh_json:object()) -> wh_json:object().
@@ -265,10 +270,21 @@ filter_braintree_subscirption(BSubscription) ->
                ],
     lists:foldl(fun(F, BSub) -> F(BSub) end, BSubscription, Routines).
 
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec is_prorated_braintree_transaction(wh_json:object()) -> wh_json:object().
+is_prorated_braintree_transaction(BTransaction) ->
+    wh_json:get_value(<<"subscription_id">>, BTransaction, 'false').
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec clean_braintree_transaction(wh_json:object()) -> wh_json:object().
@@ -294,7 +310,7 @@ clean_braintree_transaction(BTransaction) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec clean_braintree_subscription(wh_json:object()) -> wh_json:object().
@@ -318,14 +334,14 @@ clean_braintree_subscription(BSubscription) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec is_prorated_braintree_transaction(wh_json:object()) -> wh_json:object().
-is_prorated_braintree_transaction(BTransaction) ->
+-spec prorated_braintree_transaction(wh_json:object()) -> wh_json:object().
+prorated_braintree_transaction(BTransaction) ->
     case wh_json:get_value(<<"subscription_id">>, BTransaction, 'false') of
         'false' ->
-            wh_json:set_value(<<"prorated">>, 'false', BTransaction);
+            wh_json:new();
         _Id ->
             calculate_prorated(BTransaction)
     end.
@@ -333,7 +349,7 @@ is_prorated_braintree_transaction(BTransaction) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec correct_date_braintree_transaction(wh_json:object()) -> wh_json:object().
@@ -357,7 +373,7 @@ correct_date_braintree_transaction(BTransaction) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec correct_date_braintree_subscription(wh_json:object()) -> wh_json:object().
@@ -380,11 +396,11 @@ correct_date_braintree_subscription(BSubscription) ->
                       wh_json:set_value(Key, Timestamp, BSub)
                   end
       end, BSubscription, Keys).
-        
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec calculate_prorated(wh_json:object()) -> wh_json:object().
@@ -402,7 +418,7 @@ calculate_prorated(BTransaction) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec calculate_addon(wh_json:object()) -> number().
@@ -413,7 +429,7 @@ calculate_addon(BTransaction) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec calculate_discount(wh_json:object()) -> number().
@@ -424,7 +440,7 @@ calculate_discount(BTransaction) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec calculate(wh_json:objects(), number()) -> number().
@@ -437,13 +453,13 @@ calculate([Addon|Addons], Acc) ->
 
 
 %%--------------------------------------------------------------------
-%% @private 
+%% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 send_resp(Resp, Context) ->
-    case Resp of 
+    case Resp of
         {'ok', JObj} ->
             Context#cb_context{resp_status=success, resp_data=JObj};
         {'error', Details} ->
@@ -451,9 +467,9 @@ send_resp(Resp, Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private 
+%% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 timestamp_to_braintree(Timestamp) ->
@@ -464,7 +480,7 @@ timestamp_to_braintree(Timestamp) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_date/2 :: (any(), any()) -> {true, integer(), integer()} | {false, ne_binary()}.
@@ -480,7 +496,7 @@ validate_date(From, To) when is_integer(From) andalso is_integer(To) ->
     case {Diff < 0, Diff > Max} of
         {'true', _} ->
             {'false', <<"created_from is gretter than created_to">>};
-        {_, 'true'} ->                    
+        {_, 'true'} ->
             {'false', <<"Max range is a year">>};
         {'false', 'false'} ->
             {'true', From, To}
@@ -490,7 +506,7 @@ validate_date(From, To) ->
         {From1, To1} ->
             validate_date(From1, To1)
     catch
-        _:_ ->            
+        _:_ ->
             {'false', <<"created_from or created_to filter is not a timestamp">>}
     end.
 
