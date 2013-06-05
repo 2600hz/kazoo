@@ -205,30 +205,39 @@ maybe_extract_multipart(Context, Req0, QS) ->
 
             try get_url_encoded_body(ReqBody) of
                 JObj ->
-                    lager:debug("was able to parse request body as url-encoded: ~p", [JObj]),
-                    {Context#cb_context{req_json=JObj
-                                        ,req_data=wh_json:get_value(<<"data">>, JObj, wh_json:new())
-                                        ,query_json=QS
-                                       }, Req1}
-            catch
-                _:_ ->
-                    lager:debug("failed to extract url-encoded request body"),
-                    try get_json_body(ReqBody, Req1) of
-                        {JObj, Req2} ->
-                            lager:debug("was able to parse as JSON"),
+                    case wh_json:values(JObj) of
+                        {['true'], [JSON]} ->
+                            lager:debug("failed to parse url-encoded request body, but we'll give json a go on ~p", [JSON]),
+                            try_json(JSON, QS, Context, Req1);
+                        _ ->
+                            lager:debug("was able to parse request body as url-encoded: ~p", [JObj]),
                             {Context#cb_context{req_json=JObj
                                                 ,req_data=wh_json:get_value(<<"data">>, JObj, wh_json:new())
                                                 ,query_json=QS
-                                               }, Req2}
-                    catch
-                        'throw':_R ->
-                            lager:debug("failed to get JSON too: ~p", [_R]),
-                            {'halt', Context, Req0};
-                        _:_ ->
-                            {'halt', Context, Req0}
+                                               }, Req1}
                     end
+            catch
+                _:_ ->
+                    lager:debug("failed to extract url-encoded request body"),
+                    try_json(ReqBody, QS, Context, Req1)
             end;
         Resp -> Resp
+    end.
+
+try_json(ReqBody, QS, Context, Req) ->
+    try get_json_body(ReqBody, Req) of
+        {JObj, Req1} ->
+            lager:debug("was able to parse as JSON"),
+            {Context#cb_context{req_json=JObj
+                                ,req_data=wh_json:get_value(<<"data">>, JObj, wh_json:new())
+                                ,query_json=QS
+                               }, Req1}
+    catch
+        'throw':_R ->
+            lager:debug("failed to get JSON too: ~p", [_R]),
+            {'halt', Context, Req};
+        _:_ ->
+            {'halt', Context, Req}
     end.
 
 -spec get_url_encoded_body(ne_binary()) -> wh_json:object().
