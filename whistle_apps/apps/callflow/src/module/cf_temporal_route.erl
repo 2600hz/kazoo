@@ -491,34 +491,20 @@ next_rule_date(#rule{cycle = <<"monthly">>, interval=I0, ordinal=Ordinal
             find_ordinal_weekday(Y0, M0 + Offset + I0, Weekday, Ordinal)
     end;
 
-%% WARNING: This function does not ensure the provided day actually
-%%   exists in the month provided.  For temporal routes that isnt
-%%   an issue because we will 'pass' the invalid date and compute
-%%   the next
-next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, month=Month
-                 ,days=[_|_]=Days, start_date={Y0, _, _}}, {Y1, M1, D1}) ->
-    Distance = Y1 - Y0,
+next_rule_date(#rule{cycle = <<"monthly">>, interval=I0
+                     ,days=Days, start_date={Y0, M0, _}}, {Y1, M1, D1}) ->
+    Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
     Offset = trunc( Distance / I0 ) * I0,
-    case Distance =:= Offset of
-        %% If this is not an 'active' year it will be the first specified 
-        %% day (of days) next interval year(s)
-        'false' ->  {Y0 + Offset + I0, Month, hd(Days)};
-        %% If this an 'active' year but the month has not occured yet
-        %% it will be on the first day (of days) that month
-        'true' when M1 < Month -> {Y1, Month, hd(Days)};
-        %% If this an 'active' year but the month has not occured yet
-        %% it will be on the first day (of days) next interval year(s)
-        'true' when M1 > Month -> {Y0 + Offset + I0, Month, hd(Days)};
-        'true' ->
-            case lists:dropwhile(fun(D) -> D1 >= D end, Days) of
-                %% if this is the month but the all the days have passed
-                %% it will be on the first day (of days) next interval year(s)
-                [] -> {Y0 + Offset + I0, Month, hd(Days)};
-                %% if not all the days have passed is is the next day after the
-                %% ones that have passed
-                [Day|_] ->
-                    {Y1, Month, Day}
-            end
+    case [D || D <- Days, D > D1] of
+        %% The day hasn't happend on an 'active' month
+        [Day|_] when Distance =:= Offset ->
+            normalize_date({Y0, M0 + Offset, Day});
+        %% Empty List:
+        %%   All of the days in the list have already happened
+        %% Non Empty List that failed the guard:
+        %%   The day hasn't happend on an 'inactive' month
+        _ ->
+            normalize_date({Y0, M0 + Offset + I0, hd( Days )})
     end;
 
 next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, ordinal = <<"every">>
@@ -576,6 +562,36 @@ next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, ordinal=Ordinal
         %%   occurance determine the next iteration
         _ ->
             find_ordinal_weekday(Y0 + Offset + I0, Month, Weekday, Ordinal)
+    end;
+
+%% WARNING: This function does not ensure the provided day actually
+%%   exists in the month provided.  For temporal routes that isnt
+%%   an issue because we will 'pass' the invalid date and compute
+%%   the next
+next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, month=Month
+                 ,days=[_|_]=Days, start_date={Y0, _, _}}, {Y1, M1, D1}) ->
+    Distance = Y1 - Y0,
+    Offset = trunc( Distance / I0 ) * I0,
+    case Distance =:= Offset of
+        %% If this is not an 'active' year it will be the first specified 
+        %% day (of days) next interval year(s)
+        'false' ->  {Y0 + Offset + I0, Month, hd(Days)};
+        %% If this an 'active' year but the month has not occured yet
+        %% it will be on the first day (of days) that month
+        'true' when M1 < Month -> {Y1, Month, hd(Days)};
+        %% If this an 'active' year but the month has not occured yet
+        %% it will be on the first day (of days) next interval year(s)
+        'true' when M1 > Month -> {Y0 + Offset + I0, Month, hd(Days)};
+        'true' ->
+            case lists:dropwhile(fun(D) -> D1 >= D end, Days) of
+                %% if this is the month but the all the days have passed
+                %% it will be on the first day (of days) next interval year(s)
+                [] -> {Y0 + Offset + I0, Month, hd(Days)};
+                %% if not all the days have passed is is the next day after the
+                %% ones that have passed
+                [Day|_] ->
+                    {Y1, Month, Day}
+            end
     end.
 
 %%--------------------------------------------------------------------
