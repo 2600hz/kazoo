@@ -491,32 +491,6 @@ next_rule_date(#rule{cycle = <<"monthly">>, interval=I0
             normalize_date({Y0, M0 + Offset + I0, hd( Days )})
     end;
 
-%% WARNING: This function does not ensure the provided day actually
-%%   exists in the month provided.  For temporal routes that isnt
-%%   an issue because we will 'pass' the invalid date and compute
-%%   the next
-next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, month=Month
-                 ,days=[Day], start_date={Y0, _, _}}, {Y1, M1, D1}) ->
-    Distance = Y1 - Y0,
-    Offset = trunc( Distance / I0 ) * I0,
-    %% If it is currently an 'active' year before the requested
-    %%   month or on the requested month but before the day
-    %%   then just provide the occurance.  Otherwise work out
-    %%   the next occurance.
-    case M1 =< Month andalso D1 < Day of
-        %% It is before the requested month or
-        %%   on the requested month but before the day
-        %%   but only on an 'active' year
-        true when Distance =:= Offset -> {Y1, Month, Day};
-        %% true:
-        %%   The guard failed, so this is an 'inactive'
-        %%   month.
-        %% false:
-        %%   The requested month or day in that month has
-        %%   already passed
-        _ -> {Y0 + Offset + I0, Month, Day}
-    end;
-
 next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, ordinal = <<"every">>
                      ,month=Month, wdays=[Weekday], start_date={Y0, _, _}}, {Y1, M1, D1}) ->
     Distance = Y1 - Y0,
@@ -572,6 +546,36 @@ next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, ordinal=Ordinal
         %%   occurance determine the next iteration
         _ ->
             find_ordinal_weekday(Y0 + Offset + I0, Month, Weekday, Ordinal)
+    end;
+
+%% WARNING: This function does not ensure the provided day actually
+%%   exists in the month provided.  For temporal routes that isnt
+%%   an issue because we will 'pass' the invalid date and compute
+%%   the next
+next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, month=Month
+                 ,days=[_|_]=Days, start_date={Y0, _, _}}, {Y1, M1, D1}) ->
+    Distance = Y1 - Y0,
+    Offset = trunc( Distance / I0 ) * I0,
+    case Distance =:= Offset of
+        %% If this is not an 'active' year it will be the first specified 
+        %% day (of days) next interval year(s)
+        'false' ->  {Y0 + Offset + I0, Month, hd(Days)};
+        %% If this an 'active' year but the month has not occured yet
+        %% it will be on the first day (of days) that month
+        'true' when M1 < Month -> {Y1, Month, hd(Days)};
+        %% If this an 'active' year but the month has not occured yet
+        %% it will be on the first day (of days) next interval year(s)
+        'true' when M1 > Month -> {Y0 + Offset + I0, Month, hd(Days)};
+        'true' ->
+            case lists:dropwhile(fun(D) -> D1 >= D end, Days) of
+                %% if this is the month but the all the days have passed
+                %% it will be on the first day (of days) next interval year(s)
+                [] -> {Y0 + Offset + I0, Month, hd(Days)};
+                %% if not all the days have passed is is the next day after the
+                %% ones that have passed
+                [Day|_] ->
+                    {Y1, Month, Day}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -1549,7 +1553,14 @@ yearly_date_recurrence_test() ->
     ?assertEqual({2014,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=5, month=4, days=[11], start_date={2009,11,11}}, {2011,1,1})),
     ?assertEqual({2015,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=5, month=4, days=[11], start_date={2010,12,11}}, {2011,1,1})),
     %% long span
-    ?assertEqual({2013,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=5, month=4, days=[11], start_date={1983,4,11}}, {2011,1,1})).
+    ?assertEqual({2013,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=5, month=4, days=[11], start_date={1983,4,11}}, {2011,1,1})),
+    %% multiple days
+    ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, month=4, days=[11,12,13], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,12}, next_rule_date(#rule{cycle = <<"yearly">>, month=4, days=[11,12,13], start_date={2011,1,1}}, {2011,4,11})),
+    ?assertEqual({2011,4,13}, next_rule_date(#rule{cycle = <<"yearly">>, month=4, days=[11,12,13], start_date={2011,1,1}}, {2011,4,12})),
+    ?assertEqual({2012,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, month=4, days=[11,12,13], start_date={2011,1,1}}, {2011,4,13})),
+    ?assertEqual({2013,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, month=4, days=[11,12,13], start_date={2011,1,1}}, {2011,4,13})),
+    ok.
 
 yearly_every_recurrence_test() ->
     ok.
