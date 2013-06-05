@@ -332,8 +332,12 @@ leak_pvt_enabled(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
 -spec leak_pvt_created(#cb_context{}) -> #cb_context{}.
 leak_pvt_created(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
     Created = wh_json:get_value(<<"pvt_created">>, JObj, 0),
-    leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"created">>, Created, RespJObj)}).
+    leak_pvt_reseller(Context#cb_context{resp_data=wh_json:set_value(<<"created">>, Created, RespJObj)}).
 
+-spec leak_pvt_reseller(#cb_context{}) -> #cb_context{}.
+leak_pvt_reseller(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
+    Reseller = wh_json:get_value(<<"pvt_reseller">>, JObj, <<"false">>),
+    leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"reseller">>, Reseller, RespJObj)}).
 
 -spec leak_billing_mode(cb_context:context()) -> cb_context:context().
 leak_billing_mode(#cb_context{auth_account_id=AuthAccountId, account_id=AccountId, resp_data=RespJObj}=Context) ->
