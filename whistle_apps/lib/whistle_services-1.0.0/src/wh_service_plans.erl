@@ -7,8 +7,6 @@
 %%%-------------------------------------------------------------------
 -module(wh_service_plans).
 
--include_lib("whistle_services/src/whistle_services.hrl").
-
 -export([empty/0]).
 -export([public_json/1]).
 -export([add_service_plan/3]).
