@@ -21,7 +21,9 @@
         ]).
 -export([public_json_items/1]).
 
--record(wh_service_plans, {vendor_id = undefined
+-include("whistle_services.hrl").
+
+-record(wh_service_plans, {vendor_id = 'undefined'
                            ,plans = []
                           }).
 
@@ -137,9 +139,9 @@ activation_charges(Category, Item, ServicePlans) ->
 create_items(ServiceJObj) ->
     Services = wh_services:from_service_json(ServiceJObj),
     case from_service_json(ServiceJObj) of
-        [] -> {error, no_plans};
+        [] -> {'error', 'no_plans'};
         ServicePlans ->
-            {ok, create_items(Services, ServicePlans)}
+            {'ok', create_items(Services, ServicePlans)}
     end.
 
 create_items(Services, ServicePlans) ->
@@ -161,9 +163,9 @@ create_items(Services, ServicePlans) ->
 -spec public_json_items/1 :: (wh_json:json_object()) -> wh_json:json_object().
 public_json_items(ServiceJObj) ->
     case create_items(ServiceJObj) of
-        {ok, Items} ->
+        {'ok', Items} ->
             wh_service_items:public_json(Items);
-        {error, _} -> 
+        {'error', _} -> 
             wh_json:new()
     end.
     
@@ -186,7 +188,7 @@ get_plans([PlanId|PlanIds], ResellerId, Services, ServicePlans) ->
     VendorId = wh_json:get_value([<<"plans">>, PlanId, <<"account_id">>], Services, ResellerId),
     Overrides = wh_json:get_value([<<"plans">>, PlanId, <<"overrides">>], Services, wh_json:new()),
     case maybe_fetch_vendor_plan(PlanId, VendorId, ResellerId, Overrides) of
-        undefined -> get_plans(PlanIds, ResellerId, Services, ServicePlans);
+        'undefined' -> get_plans(PlanIds, ResellerId, Services, ServicePlans);
         Plan -> get_plans(PlanIds, ResellerId, Services, append_vendor_plan(Plan, VendorId, ServicePlans))
     end.
 
@@ -202,7 +204,7 @@ maybe_fetch_vendor_plan(PlanId, VendorId, VendorId, Overrides) ->
     wh_service_plan:fetch(PlanId, VendorId, Overrides);
 maybe_fetch_vendor_plan(PlanId, _, ResellerId, _) ->
     lager:debug("service plan ~s doesnt belong to reseller ~s", [PlanId, ResellerId]),
-    undefined.
+    'undefined'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -214,7 +216,7 @@ maybe_fetch_vendor_plan(PlanId, _, ResellerId, _) ->
 -spec append_vendor_plan/3 :: (wh_service_plan:plan(), ne_binary(), plans()) -> plans().
 append_vendor_plan(Plan, VendorId, ServicePlans) ->
     case lists:keyfind(VendorId, #wh_service_plans.vendor_id, ServicePlans) of
-        false ->
+        'false' ->
             ServicePlan = #wh_service_plans{vendor_id=VendorId
                                             ,plans=[Plan]},
             [ServicePlan|ServicePlans];

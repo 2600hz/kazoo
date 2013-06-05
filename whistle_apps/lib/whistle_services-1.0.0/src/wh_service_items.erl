@@ -92,7 +92,7 @@ update(ServiceItem, ServiceItems) ->
 %% Nasty conditional logging (but functional).... bleh...
 %% @end
 %%--------------------------------------------------------------------
--spec log_update/1 :: (wh_service_item:item()) -> no_return.
+-spec log_update/1 :: (wh_service_item:item()) -> 'no_return'.
 log_update(ServiceItem) ->
     Category = wh_service_item:category(ServiceItem),
     Item = wh_service_item:item(ServiceItem),
@@ -103,7 +103,7 @@ log_update(ServiceItem) ->
 -spec log_update_rate/3 :: (ne_binary(), ne_binary(), wh_service_item:item()) -> 'ok'.
 log_update_rate(Category, Item, ServiceItem) ->
     case wh_service_item:rate(ServiceItem) of
-        undefined ->
+        'undefined' ->
             lager:debug("set '~s/~s' with quantity ~p @ default rate"
                         ,[Category, Item, wh_service_item:quantity(ServiceItem)]);
         Rate ->
@@ -117,8 +117,8 @@ log_update_cumulative_discount(Category, Item, ServiceItem) ->
     case wh_util:is_empty(CumulativeDiscount)
         orelse wh_service_item:cumulative_discount_rate(ServiceItem)
     of
-        true -> ok;
-        undefined ->
+        'true' -> 'ok';
+        'undefined' ->
             lager:debug("set '~s/~s' cumulative discount with quantity ~p @ default rate"
                         ,[Category, Item, CumulativeDiscount]);
         CumulativeRate ->
@@ -131,8 +131,8 @@ log_update_single_discount(Category, Item, ServiceItem) ->
     case wh_service_item:single_discount(ServiceItem)
         andalso wh_service_item:single_discount_rate(ServiceItem)
     of
-        false -> ok;
-            undefined ->
+        'false' -> 'ok';
+            'undefined' ->
             lager:debug("set '~s/~s' single discount at default rate"
                         ,[Category, Item]);
         SingleRate ->

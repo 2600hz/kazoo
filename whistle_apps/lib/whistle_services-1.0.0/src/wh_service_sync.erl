@@ -42,11 +42,11 @@ sync(Account) ->
     immediate_sync(Account).
 
 clean(Account) ->
-    AccountId = wh_util:format_account_id(Account, raw),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
-        {error, _}=E -> E;
-        {ok, ServiceJObj} -> 
-            immediate_sync(AccountId, wh_json:set_value(<<"pvt_deleted">>, true, ServiceJObj))
+        {'error', _}=E -> E;
+        {'ok', ServiceJObj} -> 
+            immediate_sync(AccountId, wh_json:set_value(<<"pvt_deleted">>, 'true', ServiceJObj))
     end.
 
 %%%===================================================================
@@ -65,12 +65,12 @@ clean(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    case whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"sync_services">>, false) of
-        false -> {ok, #state{}};
-        true ->
+    case whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"sync_services">>, 'false') of
+        'false' -> {'ok', #state{}};
+        'true' ->
             ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20000),
-            _TRef = erlang:send_after(ScanRate, self(), {try_sync_service}),
-            {ok, #state{}}
+            _TRef = erlang:send_after(ScanRate, self(), {'try_sync_service'}),
+            {'ok', #state{}}
     end.
 
 %%--------------------------------------------------------------------
@@ -88,7 +88,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -101,7 +101,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -113,13 +113,13 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({try_sync_service}, State) ->
+handle_info({'try_sync_service'}, State) ->
     _ = maybe_sync_service(),
     ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20000),
-    _TRef = erlang:send_after(ScanRate, self(), {try_sync_service}),
-    {noreply, State};
+    _TRef = erlang:send_after(ScanRate, self(), {'try_sync_service'}),
+    {'noreply', State};
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -144,7 +144,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -152,14 +152,14 @@ code_change(_OldVsn, State, _Extra) ->
 -spec maybe_sync_service/0 :: () -> wh_json:json_objects().
 maybe_sync_service() ->
     SyncBufferPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_buffer_period">>, 600),
-    ViewOptions = [{limit, 1}
-                   ,include_docs
-                   ,{endkey, wh_util:current_tstamp() - SyncBufferPeriod}
+    ViewOptions = [{'limit', 1}
+                   ,'include_docs'
+                   ,{'endkey', wh_util:current_tstamp() - SyncBufferPeriod}
                   ],
     case couch_mgr:get_results(?WH_SERVICES_DB, <<"services/dirty">>, ViewOptions) of
-        {error, _}=E -> E;
-        {ok, [JObj]} -> bump_modified(wh_json:get_value(<<"doc">>, JObj));
-        {ok, _} -> {error, no_dirty_services}
+        {'error', _}=E -> E;
+        {'ok', [JObj]} -> bump_modified(wh_json:get_value(<<"doc">>, JObj));
+        {'ok', _} -> {'error', 'no_dirty_services'}
     end.
 
 -spec bump_modified/1 :: (wh_json:json_object()) -> _.
@@ -167,16 +167,16 @@ bump_modified(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     UpdatedJObj = wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), JObj),
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
-        {error, _}=E ->
+        {'error', _}=E ->
             %% If we conflict or cant save the doc with a new modified timestamp
             %% then another process is probably handling it, move on
             E;
-        {ok, NewJObj} ->
+        {'ok', NewJObj} ->
             %% If we can change the timestamp then (since the view requires the
             %% modified time to be x mins in the past) we have gain exclusive
             %% control for x mins.... good luck!
             [RevNum, _] = binary:split(wh_json:get_value(<<"_rev">>, NewJObj), <<"-">>),
-            put(callid, <<AccountId/binary, "-", RevNum/binary>>),
+            put('callid', <<AccountId/binary, "-", RevNum/binary>>),
             lager:debug("start synchronization of services with bookkeepers", []),
             maybe_follow_billing_id(AccountId, NewJObj)
     end.
@@ -191,12 +191,12 @@ maybe_follow_billing_id(AccountId, ServiceJObj) ->
 -spec follow_billing_id/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> wh_std_return().
 follow_billing_id(BillingId, AccountId, ServiceJObj) ->
     case mark_dirty(BillingId) of
-        {ok, _} -> 
+        {'ok', _} -> 
             lager:debug("following billing id ~s", [BillingId]),
             mark_clean(ServiceJObj);
-        {error, not_found} -> 
+        {'error', 'not_found'} -> 
             maybe_update_billing_id(BillingId, AccountId, ServiceJObj);
-        {error, _R}=E -> 
+        {'error', _R}=E -> 
             lager:debug("unable to mark billing services ~s dirty: ~p", [BillingId, _R]),
             E
     end.
@@ -204,11 +204,11 @@ follow_billing_id(BillingId, AccountId, ServiceJObj) ->
 -spec sync_services/2 :: (ne_binary(), wh_json:json_object()) -> wh_std_return().
 sync_services(AccountId, ServiceJObj) ->
     case wh_service_plans:create_items(ServiceJObj) of
-        {error, no_plans} -> 
+        {'error', 'no_plans'} -> 
             lager:debug("no services plans found", []),
             _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
             maybe_sync_reseller(AccountId, ServiceJObj);
-        {ok, ServiceItems} ->
+        {'ok', ServiceItems} ->
             %% TODO: support other bookkeepers...
             try wh_bookkeeper_braintree:sync(ServiceItems, AccountId) of
                 _ -> 
@@ -216,7 +216,7 @@ sync_services(AccountId, ServiceJObj) ->
                     lager:debug("synchronization with bookkeeper complete", []),
                     maybe_sync_reseller(AccountId, ServiceJObj)
             catch
-                throw:{Reason, _}=_R ->
+                'throw':{Reason, _}=_R ->
                     lager:debug("bookkeeper error: ~p", [_R]),
                     _ = mark_clean_and_status(wh_util:to_binary(Reason), ServiceJObj),
                     maybe_sync_reseller(AccountId, ServiceJObj);
@@ -224,14 +224,14 @@ sync_services(AccountId, ServiceJObj) ->
                     %% TODO: certain errors (such as no CC or expired, ect) should
                     %% move the account of good standing...
                     lager:debug("unable to sync services(~p): ~p", [_E, R]),
-                    {error, R}
+                    {'error', R}
             end
     end.
 
 -spec maybe_sync_reseller/2 :: (ne_binary(), wh_json:json_object()) -> wh_std_return().
 maybe_sync_reseller(AccountId, ServiceJObj) ->
     case wh_json:get_ne_value(<<"pvt_reseller_id">>, ServiceJObj, AccountId) of
-        AccountId -> {ok, ServiceJObj};
+        AccountId -> {'ok', ServiceJObj};
         ResellerId ->
             lager:debug("marking reseller ~s as dirty", [ResellerId]),
             mark_dirty(ResellerId)
@@ -240,26 +240,26 @@ maybe_sync_reseller(AccountId, ServiceJObj) ->
 -spec get_billing_id/2 :: (ne_binary(), wh_json:json_object()) -> ne_binary().
 get_billing_id(AccountId, JObj) ->
     case wh_json:is_true(<<"pvt_reseller">>, JObj) of
-        true -> AccountId;
-        false -> wh_json:get_ne_value(<<"billing_id">>, JObj, AccountId)
+        'true' -> AccountId;
+        'false' -> wh_json:get_ne_value(<<"billing_id">>, JObj, AccountId)
     end.
 
 -spec mark_dirty/1 :: (ne_binary() | wh_json:json_object()) -> wh_std_return().
 mark_dirty(AccountId) when is_binary(AccountId) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
-        {error, _}=E -> E;
-        {ok, JObj} -> mark_dirty(JObj)
+        {'error', _}=E -> E;
+        {'ok', JObj} -> mark_dirty(JObj)
     end;
 mark_dirty(JObj) ->
-    couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_values([{<<"pvt_dirty">>, true}
+    couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_values([{<<"pvt_dirty">>, 'true'}
                                                             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                                            ], JObj)).
 
 -spec mark_clean/1 :: (ne_binary() | wh_json:json_object()) -> wh_std_return().
 mark_clean(AccountId) when is_binary(AccountId) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
-        {error, _}=E -> E;
-        {ok, JObj} -> mark_clean(JObj)
+        {'error', _}=E -> E;
+        {'ok', JObj} -> mark_clean(JObj)
     end;
 mark_clean(JObj) ->
     couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"pvt_dirty">>, false, JObj)).
@@ -268,25 +268,25 @@ mark_clean(JObj) ->
 -spec mark_clean_and_status/2 :: (ne_binary(), ne_binary() | wh_json:json_object()) -> wh_std_return().
 mark_clean_and_status(Status, AccountId) when is_binary(AccountId) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
-        {error, _}=E -> E;
-        {ok, JObj} -> mark_clean_and_status(Status, JObj)
+        {'error', _}=E -> E;
+        {'ok', JObj} -> mark_clean_and_status(Status, JObj)
     end;
 mark_clean_and_status(Status, JObj) ->
     lager:debug("marking services clean with status ~s", [Status]),
-    couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_values([{<<"pvt_dirty">>, false}
+    couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_values([{<<"pvt_dirty">>, 'false'}
                                                             ,{<<"pvt_status">>, Status}
                                                            ], JObj)).
 
 -spec maybe_update_billing_id/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> wh_std_return().
 maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, BillingId) of
-        {error, _} ->
+        {'error', _} ->
             lager:debug("billing id ~s on ~s does not exist anymore, updating to bill self", [BillingId, AccountId]),
             couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"billing_id">>, AccountId, ServiceJObj));
-        {ok, JObj} ->
+        {'ok', JObj} ->
             case wh_json:is_true(<<"pvt_deleted">>, JObj) of
-                false -> wh_services:reconcile(BillingId);
-                true ->
+                'false' -> wh_services:reconcile(BillingId);
+                'true' ->
                     lager:debug("billing id ~s on ~s was deleted, updating to bill self", [BillingId, AccountId]),
                     couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"billing_id">>, AccountId, ServiceJObj))
             end
@@ -296,22 +296,22 @@ maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
 -spec immediate_sync/2 :: (ne_binary(), wh_json:json_object()) -> wh_std_return().
 
 immediate_sync(Account) ->
-    AccountId = wh_util:format_account_id(Account, raw),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
-        {error, _}=E -> E;
-        {ok, ServiceJObj} -> 
+        {'error', _}=E -> E;
+        {'ok', ServiceJObj} -> 
             immediate_sync(AccountId, ServiceJObj)
     end.
     
 immediate_sync(AccountId, ServiceJObj) ->
     case wh_service_plans:create_items(ServiceJObj) of
-        {error, no_plans}=E -> E;
-        {ok, ServiceItems} ->
+        {'error', 'no_plans'}=E -> E;
+        {'ok', ServiceItems} ->
             %% TODO: support other bookkeepers...
             try wh_bookkeeper_braintree:sync(ServiceItems, AccountId) of    
-                _ -> {ok, ServiceJObj}
+                _ -> {'ok', ServiceJObj}
             catch
-                throw:{_, R} -> {error, R};
-                _E:R -> {error, R}
+                'throw':{_, R} -> {'error', R};
+                _E:R -> {'error', R}
             end
     end.
