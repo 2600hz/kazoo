@@ -35,7 +35,7 @@ feature_activation_charge(Feature, Services) ->
 -spec phone_number_activation_charge/2 :: (ne_binary(), wh_services:services()) -> integer().
 phone_number_activation_charge(Number, Services) ->
     case wnm_util:classify_number(Number) of
-        undefined -> 0;
+        'undefined' -> 0;
         Classification ->
             Charge = wh_services:activation_charges(<<"phone_numbers">>, Classification, Services),
             wht_util:dollars_to_units(Charge)
@@ -50,12 +50,12 @@ phone_number_activation_charge(Number, Services) ->
 -spec reconcile/1 :: (wh_services:services()) -> wh_services:services().
 reconcile(Services) ->
     AccountId = wh_services:account_id(Services),
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, <<"phone_numbers">>) of
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("unable to get current phone_numbers in service: ~p", [_R]),
             Services;
-        {ok, JObj} ->
+        {'ok', JObj} ->
             S1 = wh_services:reset_category(<<"phone_numbers">>, Services),
             S2 = wh_services:reset_category(<<"number_services">>, S1),
             update_numbers(wh_json:get_keys(wh_json:public_fields(JObj)), JObj, S2)
@@ -72,8 +72,8 @@ update_numbers([], _, Services) ->
     Services;
 update_numbers([Number|Numbers], JObj, Services) ->
     case wnm_util:is_reconcilable(Number) of
-        false -> Services;
-        true ->
+        'false' -> Services;
+        'true' ->
             Routines = [fun(S) -> update_number_quantities(Number, S) end
                         ,fun(S) ->
                                  Features = wh_json:get_value([Number, <<"features">>], JObj, []),
@@ -93,7 +93,7 @@ update_numbers([Number|Numbers], JObj, Services) ->
 -spec update_number_quantities/2 :: (ne_binary(), wh_services:services()) -> wh_services:services().
 update_number_quantities(Number, Services) ->
     case wnm_util:classify_number(Number) of
-        undefined -> Services;
+        'undefined' -> Services;
         Classification ->
             Quantity = wh_services:update_quantity(<<"phone_numbers">>, Classification, Services),
             wh_services:update(<<"phone_numbers">>, Classification, Quantity + 1, Services)
