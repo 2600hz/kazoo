@@ -75,8 +75,10 @@ maybe_update_status(Call, AgentId, <<"logged_out">>, <<"resume">>, _Data) ->
     play_agent_invalid(Call);
 maybe_update_status(Call, AgentId, <<"logged_out">>, <<"login">>, _Data) ->
     lager:debug("agent ~s wants to log in", [AgentId]),
-    login_agent(Call, AgentId),
-    play_agent_logged_in(Call);
+    case login_agent(Call, AgentId) of
+        <<"success">> -> play_agent_logged_in(Call);
+        <<"failed">> -> play_agent_invalid(Call)
+    end;
 
 maybe_update_status(Call, AgentId, <<"ready">>, <<"login">>, _Data) ->
     lager:info("agent ~s is already logged in", [AgentId]),
@@ -114,7 +116,21 @@ maybe_pause_agent(Call, _AgentId, FromStatus, _Data) ->
     play_agent_invalid(Call).
 
 login_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1).
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, whapps_call:account_id(Call)}
+                ,{<<"Agent-ID">>, AgentId}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    case whapps_util:amqp_pool_request(Update
+                                       ,fun wapi_acdc_agent:publish_login/1
+                                       ,fun wapi_acdc_agent:login_resp_v/1
+                                      )
+    of
+        {'ok', RespJObj} ->
+            wh_json:get_value(<<"Status">>, RespJObj);
+        {'error', _} ->
+            <<"failed">>
+    end.
 
 logout_agent(Call, AgentId) ->
     update_agent_status(Call, AgentId, fun wapi_acdc_agent:publish_logout/1).
