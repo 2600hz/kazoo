@@ -341,7 +341,9 @@ send_req(Call, Uri, 'post', BaseParams) when is_list(BaseParams) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = wh_json:set_values(BaseParams, UserParams),
 
-    send(Call, Uri, 'post', [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params)).
+    send(Call, Uri, 'post', [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params));
+send_req(Call, Uri, 'post', BaseParams) ->
+    send_req(Call, Uri, 'post', wh_json:to_proplist(BaseParams)).
 
 -spec send(whapps_call:call(), iolist(), atom(), wh_proplist(), iolist()) -> 
                         'ok' |

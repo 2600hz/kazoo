@@ -135,6 +135,7 @@ handle_cast(_Req, #state{table_id='undefined'}=State) ->
     lager:debug("ignoring req: ~p", [_Req]),
     {'noreply', State};
 handle_cast({'start', AccountId, ClientIp}, #state{table_id=Tbl}=State) ->
+    lager:debug("starting token bucket for ~s/~s", [AccountId, ClientIp]),
     case cb_kz_buckets_sup:start_child() of
         {'ok', Pid} when is_pid(Pid) ->
             case ets:insert_new(Tbl, new_bucket(Pid, AccountId, ClientIp)) of

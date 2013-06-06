@@ -103,6 +103,8 @@
 -define(WORKER_NAME_ARGS(I, N, Args), {N, {I, 'start_link', Args}, 'permanent', 5000, 'worker', [I]}).
 -define(SUPER(I), {I, {I, 'start_link', []}, 'permanent', 'infinity', 'supervisor', [I]}).
 -define(SUPER(I, Type), {I, {I, 'start_link', []}, Type, 'infinity', 'supervisor', [I]}).
+-define(CACHE(N), {N, {'wh_cache', 'start_link', [N]}, 'permanent', 5000, 'worker', ['wh_cache']}).
+-define(CACHE_ARGS(N, Arg), {N, {'wh_cache', 'start_link', [N, Arg]}, 'permanent', 5000, 'worker', ['wh_cache']}).
 
 %% Recreate the non-exported types defined in the erlang gen_server source
 -type startlink_err() :: {'already_started', pid()} | 'shutdown' | term().
@@ -120,7 +122,7 @@
 -type handle_info_ret() :: {'noreply', term()} | {'noreply', term(), gen_server_timeout()} |
                            {'stop', term(), term()}.
 
--type server_ref() :: atom() | {atom(), atom()} | {global, term()} | {via, atom(), term()} | pid().
+-type server_ref() :: atom() | {atom(), atom()} | {'global', term()} | {'via', atom(), term()} | pid().
 
 %% Ibrowse-related types
 -type ibrowse_ret() :: {'ok', string(), wh_proplist(), string() | binary()} |
@@ -140,5 +142,5 @@
 -type xml_text() :: #xmlText{}.
 -type xml_texts() :: [xml_text(),...] | [].
 
--define(WHISTLE_TYPES_INCLUDED, true).
+-define(WHISTLE_TYPES_INCLUDED, 'true').
 -endif.

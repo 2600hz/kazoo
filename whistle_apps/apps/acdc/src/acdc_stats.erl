@@ -746,14 +746,17 @@ cleanup_data(Srv) ->
                    }],
     gen_listener:cast(Srv, {'remove_status', StatusMatch}),
 
-    UnfinishedConstraints = [{'=:=', '$2', {'const', <<"waiting">>}}
-                             ,{'=:=', '$2', {'const', <<"handled">>}}
-                            ],
-
-    case ets:select([{#call_stat{entered_timestamp='$1', _='_'}
-                      ,[PastConstraint | UnfinishedConstraints]
-                      ,['$_']
-                     }]) of
+    case ets:select(?MODULE:call_table_id()
+                    ,[{#call_stat{entered_timestamp='$1', status= <<"waiting">>, _='_'}
+                       ,[PastConstraint]
+                       ,['$_']
+                      }
+                      ,{#call_stat{entered_timestamp='$1', status= <<"handled">>, _='_'}
+                        ,[PastConstraint]
+                        ,['$_']
+                       }
+                     ])
+    of
         [] -> 'ok';
         Unfinished -> cleanup_unfinished(Unfinished)
     end.
