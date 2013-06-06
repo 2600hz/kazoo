@@ -191,20 +191,11 @@ init([]) ->
     {'ok', #state{}}.
 
 maybe_init_mod(ModBin) ->
-    try wh_util:to_atom(ModBin) of
-        Mod -> 
-            Result = (catch Mod:init()),
-            lager:debug("init: ~s: ~p", [ModBin, Result])
+    try (wh_util:to_atom(ModBin, 'true')):init() of
+        _ -> 'ok'
     catch
-        'error':'badarg' ->
-            case code:where_is_file(wh_util:to_list(<<ModBin/binary, ".beam">>)) of
-                'non_existing' -> lager:debug("module ~s doesn't exist", [ModBin]);
-                _Path ->
-                    wh_util:to_atom(ModBin, 'true'),
-                    maybe_init_mod(ModBin)
-            end;
-        _T:_R ->
-            lager:debug("failed to load ~s as an atom: ~p, ~p", [ModBin, _T, _R])
+        _E:_R ->
+            lager:warning("failed to initialize ~s: ~p, ~p", [ModBin, _E, _R])
     end.
 
 %%--------------------------------------------------------------------
