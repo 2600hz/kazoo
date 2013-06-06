@@ -95,8 +95,10 @@ decode(JSON, <<"application/json">>) ->
         'throw':{'invalid_json',{{'error',{1, Err}}, _Text}} ->
             lager:debug("~s: ~s", [Err, _Text]),
             throw({'error', Err});
-        'throw':{'invalid_json',{{'error',{_Loc, Err}}, _Text}} ->
-            lager:debug("~s near char ~b: ~s", [Err, _Loc, _Text]),
+        'throw':{'invalid_json',{{'error',{Loc, Err}}, Text}} ->
+            Size = erlang:byte_size(Text),
+            Part = binary:part(Text, Loc, Size-Loc),
+            lager:debug("~s near char # ~b of ~b ('~s'): ~s", [Err, Loc, Size, Part, Text]),
             try_converting(JSON, {'error', Err});
         'throw':E ->
             lager:debug("thrown decoder error: ~p", [E]),
