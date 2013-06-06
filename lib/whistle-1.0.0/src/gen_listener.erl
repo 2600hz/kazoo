@@ -669,20 +669,11 @@ start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 -spec remove_binding(ne_binary(), wh_proplist(), ne_binary()) -> any().
 remove_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
-    try
-        ApiMod = wh_util:to_atom(Wapi),
-        ApiMod:unbind_q(Q, Props)
+    try (wh_util:to_atom(Wapi, 'true')):unbind_q(Q, Props) of
+        Return -> Return
     catch
-        'error':'badarg' ->
-            case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
-                'non_existing' ->
-                    erlang:error({'api_module_undefined', Wapi});
-                _Path ->
-                    wh_util:to_atom(Wapi, 'true'), %% put atom into atom table
-                    remove_binding(Binding, Props, Q)
-            end;
         'error':'undef' ->
-            erlang:error({'api_call_undefined', Wapi})
+            erlang:error({'api_module_undefined', Wapi})
     end.
 
 -spec create_binding(ne_binary(), wh_proplist(), ne_binary()) -> any().
@@ -690,20 +681,11 @@ create_binding(Binding, Props, Q) when not is_binary(Binding) ->
     create_binding(wh_util:to_binary(Binding), Props, Q);
 create_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
-    try
-        ApiMod = wh_util:to_atom(Wapi),
-        ApiMod:bind_q(Q, Props)
+    try (wh_util:to_atom(Wapi, 'true')):bind_q(Q, Props) of
+        Return -> Return
     catch
-        'error':'badarg' ->
-            case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
-                'non_existing' ->
-                    erlang:error({'api_module_undefined', Wapi});
-                _Path ->
-                    wh_util:to_atom(Wapi, 'true'), %% put atom into atom table
-                    create_binding(Binding, Props, Q)
-            end;
         'error':'undef' ->
-            erlang:error({'api_call_undefined', Wapi})
+            erlang:error({'api_module_undefined', Wapi})
     end.
 
 -spec next_timeout(pos_integer()) -> ?START_TIMEOUT..?MAX_TIMEOUT.

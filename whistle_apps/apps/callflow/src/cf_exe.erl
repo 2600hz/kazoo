@@ -516,20 +516,14 @@ launch_cf_module(#state{call=Call, flow=Flow}=State) ->
 -spec maybe_start_cf_module(ne_binary(), wh_proplist(), whapps_call:call()) ->
                                          {pid() | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
-    try wh_util:to_atom(ModuleBin) of
-        CFModule ->
+    CFModule = wh_util:to_atom(ModuleBin, 'true'),
+    try CFModule:module_info('imports') of
+        _ ->
             lager:info("moving to action ~s", [CFModule]),
             spawn_cf_module(CFModule, Data, Call)
     catch
-        'error':'undef' -> cf_module_not_found(Call);
-        'error':'badarg' ->
-            %% module not in the atom table yet
-            case code:where_is_file(wh_util:to_list(<<ModuleBin/binary, ".beam">>)) of
-                'non_existing' -> cf_module_not_found(Call);
-                _Path ->
-                    wh_util:to_atom(ModuleBin, 'true'), %% put atom into atom table
-                    maybe_start_cf_module(ModuleBin, Data, Call)
-            end
+        'error':'undef' ->
+            cf_module_not_found(Call)
     end.
 
 -spec cf_module_not_found(whapps_call:call()) ->
