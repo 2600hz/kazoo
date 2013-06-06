@@ -38,7 +38,7 @@ handle_status_update(JObj, _Props) ->
     case wh_json:get_value(<<"Event-Name">>, JObj) of
         <<"login">> ->
             'true' = wapi_acdc_agent:login_v(JObj),
-            maybe_start_agent(AcctId, AgentId);
+            maybe_start_agent(AcctId, AgentId, JObj);
         <<"logout">> ->
             'true' = wapi_acdc_agent:logout_v(JObj),
             maybe_stop_agent(AcctId, AgentId);
@@ -88,6 +88,40 @@ update_agent('undefined', _QueueId, _F) -> lager:debug("agent's supervisor not a
 update_agent(Super, Q, F) when is_pid(Super) ->
     F(acdc_agent_sup:agent(Super), Q).
 
+maybe_start_agent(AcctId, AgentId, JObj) ->
+    try maybe_start_agent(AcctId, AgentId) of
+        {'ok', Sup} ->
+            timer:sleep(100),
+            case erlang:is_process_alive(Sup) of
+                'true' -> login_success(JObj);
+                'false' ->
+                    acdc_stats:agent_logged_out(AcctId, AgentId),
+                    login_fail(JObj)
+            end;
+        {'error', _E} ->
+            acdc_stats:agent_logged_out(AcctId, AgentId),
+            login_fail(JObj)
+    catch
+        _E:_R ->
+            acdc_stats:agent_logged_out(AcctId, AgentId),
+            login_fail(JObj)
+    end.
+
+login_fail(JObj) ->
+    login_resp(JObj, <<"failed">>).
+login_success(JObj) ->
+    login_resp(JObj, <<"success">>).
+
+login_resp(JObj, Status) ->
+    Prop = [{<<"Status">>, Status}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_acdc_agent:publish_login_resp(wh_json:get_value(<<"Server-ID">>, JObj), Prop).
+
+-spec maybe_start_agent(api_binary(), api_binary()) ->
+                               {'ok', pid()} |
+                               {'error', _}.
 maybe_start_agent(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' ->
@@ -95,21 +129,25 @@ maybe_start_agent(AcctId, AgentId) ->
             acdc_stats:agent_ready(AcctId, AgentId),
             case couch_mgr:open_doc(wh_util:format_account_id(AcctId, 'encoded'), AgentId) of
                 {'ok', AgentJObj} ->
-                    {'ok', _APid} = acdc_agents_sup:new(AgentJObj),
+                    {'ok', APid} = acdc_agents_sup:new(AgentJObj),
                     acdc_stats:agent_ready(AcctId, AgentId),
-                    lager:debug("started agent at ~p", [_APid]);
-                {'error', _E} ->
-                    lager:debug("error opening agent doc: ~p", [_E])
+                    lager:debug("started agent at ~p", [APid]),
+                    {'ok', APid};
+                {'error', _E}=E ->
+                    lager:debug("error opening agent doc: ~p", [_E]),
+                    E
             end;
         P when is_pid(P) ->
-            lager:debug("agent ~s (~s) already running: supervisor ~p", [AgentId, AcctId, P])
+            lager:debug("agent ~s (~s) already running: supervisor ~p", [AgentId, AcctId, P]),
+            {'ok', P}
     end.
 
 maybe_stop_agent(AcctId, AgentId) ->
     catch acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID),
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' ->
-            lager:debug("agent ~s(~s) not found, nothing to do", [AgentId, AcctId]);
+            lager:debug("agent ~s(~s) not found, nothing to do", [AgentId, AcctId]),
+            acdc_stats:agent_logged_out(AcctId, AgentId);
         P when is_pid(P) ->
             lager:debug("agent ~s(~s) is logging out, stopping ~p", [AgentId, AgentId, P]),
             acdc_stats:agent_logged_out(AcctId, AgentId),
@@ -309,7 +347,7 @@ handle_agent_change(AccountDb, AccountId, AgentId, <<"doc_edited">>) ->
     end;
 handle_agent_change(_, AccountId, AgentId, <<"doc_deleted">>) ->
     case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
-        'undefined' -> 'ok';
+        'undefined' -> lager:debug("user ~s has left us, but wasn't started", [AgentId]);
         P when is_pid(P) ->
             lager:debug("agent ~s(~s) has been deleted, stopping ~p", [AccountId, AgentId, P]),
             _ = acdc_agent_sup:stop(P),
