@@ -75,11 +75,14 @@ bgapi(Node, Cmd, Args) ->
     Self = self(),
     spawn(fun() ->
                   case gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
-                      {'ok', JobId}=Ok ->
-                          Self ! {'api', Ok},
+                      {'ok', JobId}=JobOk ->
+                          Self ! {'api', JobOk},
+
                           receive
-                              {'bgok', JobId, _}=Ok -> Ok;
-                              {'bgerror', JobId, _}=Error -> Error
+                              {'bgok', JobId, _}=BgOk -> Self ! BgOk;
+                              {'bgerror', JobId, _}=BgError -> Self ! BgError
+                          after 360000 ->
+                                  Self ! {'bgerror', JobId, 'timeout'}
                           end;
                       {'error', Reason} ->
                           Self ! {'api', {'error', Reason}};
