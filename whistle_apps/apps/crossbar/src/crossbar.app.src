@@ -5,12 +5,10 @@
   ,{modules, []}
   ,{registered, []}
   ,{applications, [
-		   kernel
-		   ,stdlib
-		   ,crypto
-		   ,mochiweb
-		   ,webmachine
-		  ]}
+                   kernel
+                   ,stdlib
+                   ,crypto
+                  ]}
   ,{mod, { crossbar_app, []} }
   ,{env, []}
  ]}.

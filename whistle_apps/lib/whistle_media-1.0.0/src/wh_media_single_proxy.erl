@@ -29,22 +29,32 @@ init({_Transport, _Proto}, Req0, _Opts) ->
 
 init_from_tts(Id, Req) ->
     lager:debug("fetching tts/~s", [Id]),
-    case wh_media_cache_sup:find_tts_server(Id) of
+    try wh_media_cache_sup:find_tts_server(Id) of
         {'ok', Pid} ->
             {'ok', Req, wh_media_file_cache:single(Pid)};
         {'error', _E} ->
             lager:debug("missing tts server for ~s: ~p", [Id, _E]),
             {'ok', Req1} = cowboy_req:reply(404, Req),
             {'shutdown', Req1, 'ok'}
+    catch
+        _E:_R ->
+            lager:debug("exception thrown: ~s: ~p", [_E, _R]),
+            {'ok', Req1} = cowboy_req:reply(404, Req),
+            {'shutdown', Req1, 'ok'}
     end.
 
 init_from_doc(Db, Id, Attachment, Req) ->
     lager:debug("fetching ~s/~s/~s", [Db, Id, Attachment]),
-    case wh_media_cache_sup:find_file_server(Db, Id, Attachment) of
+    try wh_media_cache_sup:find_file_server(Db, Id, Attachment) of
         {'ok', Pid} ->
             {'ok', Req, wh_media_file_cache:single(Pid)};
         {'error', _} ->
             lager:debug("missing file server: 404"),
+            {'ok', Req1} = cowboy_req:reply(404, Req),
+            {'shutdown', Req1, 'ok'}
+    catch
+        _E:_R ->
+            lager:debug("exception thrown: ~s: ~p", [_E, _R]),
             {'ok', Req1} = cowboy_req:reply(404, Req),
             {'shutdown', Req1, 'ok'}
     end.

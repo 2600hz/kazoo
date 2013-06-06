@@ -10,7 +10,12 @@
 -module(whapps_controller).
 
 %% API
--export([start_link/0, start_app/1, stop_app/1, restart_app/1, running_apps/0]).
+-export([start_link/0
+         ,start_app/1
+         ,stop_app/1
+         ,restart_app/1
+         ,running_apps/0, running_apps/1
+        ]).
 
 -include("whistle_apps.hrl").
 
@@ -29,24 +34,20 @@ start_link() ->
     spawn(fun() -> put('callid', ?LOG_SYSTEM_ID), initialize_whapps() end),
     'ignore'.
 
--spec start_app/1 :: (atom() | nonempty_string() | ne_binary()) ->
-                             'ok' | 'error' | 'exists'.
+-spec start_app(atom() | nonempty_string() | ne_binary()) ->
+                       'ok' | 'error' | 'exists'.
 start_app(App) when not is_atom(App) ->
     start_app(wh_util:to_atom(App, 'true'));
-start_app(App) when is_atom(App) ->
-    lager:debug("attempting to start whapp ~s", [App]),
-    case lists:keyfind(App, 1, supervisor:which_children('whapps_sup')) of
-        {App, _, _, _} ->
-            lager:notice("the ~s whapp is already running", [App]),
+start_app(App) ->
+    case lists:keyfind(App, 1, application:which_applications()) of
+        {App, _, _} ->
+            lager:info("Kazoo app ~s already running", [App]),
             'exists';
         'false' ->
-            try
-                {'ok', _} = whapps_sup:start_app(App),
-                lager:notice("started successfully started whapp ~s", [App]),
-                'ok'
-            catch
-                E:R ->
-                    lager:critical("failed to start whapp ~s: ~p:~p", [App, E, R]),
+            case application:start(App) of
+                'ok' -> lager:info("Kazoo app ~s is now running", [App]);
+                {'error', _R} ->
+                    lager:error("Kazoo app ~s failed to start: ~p", [App, _R]),
                     'error'
             end
     end.
@@ -56,8 +57,8 @@ start_app(App) when is_atom(App) ->
 stop_app(App) when not is_atom(App) ->
     stop_app(wh_util:to_atom(App));
 stop_app(App) ->
-    lager:notice("stopping whistle application ~s", [App]),
-    whapps_sup:stop_app(App).
+    _ = application:stop(App),
+    lager:info("stopped kazoo application ~s", [App]).
 
 -spec restart_app(atom() | nonempty_string() | ne_binary()) ->
                          {'ok', pid() | 'undefined'} |
@@ -67,16 +68,43 @@ restart_app(App) when not is_atom(App) ->
     restart_app(wh_util:to_atom(App));
 restart_app(App) when is_atom(App) ->
     lager:info("restarting whistle application ~s", [App]),
-    whapps_sup:restart_app(App).
+    application:stop(App),
+    application:start(App).
 
--spec running_apps() -> [atom(),...] | [].
+-define(HIDDEN_APPS, ['kernel', 'stdlib', 'ibrowse', 'cowboy', 'ranch', 'crypto'
+                      ,'inets', 'ssl', 'public_key', 'whistle_apps', 'whistle_amqp'
+                      ,'whistle_stats', 'sasl', 'lager', 'gproc', 'amqp_client'
+                      ,'syslog'
+                     ]).
+-spec running_apps() -> atoms() | string().
+-spec running_apps(boolean()) -> atoms() | string().
 running_apps() ->
-    try supervisor:which_children(whapps_sup) of
-        Apps ->
-            [ App || {App, _, _, _} <- Apps ]
-    catch
-        _:_ ->
-            "whapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses"
+    running_apps('false').
+
+running_apps(Verbose) ->
+    case wh_util:is_true(Verbose) of
+        'true' -> running_apps_verbose();
+        'false' -> running_apps_list()
+    end.
+
+running_apps_verbose() ->
+    case [wh_util:to_binary(io_lib:format("~s(~s): ~s~n", [App, Vsn, Desc]))
+          || {App, Desc, Vsn} <- application:which_applications(),
+             not lists:member(App, ?HIDDEN_APPS)
+         ]
+    of
+        [] -> "whapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses";
+        Resp -> Resp
+    end.
+
+running_apps_list() ->
+    case [App
+          || {App, _, _} <- application:which_applications(),
+             not lists:member(App, ?HIDDEN_APPS)
+         ]
+    of
+        [] -> "whapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses";
+        Resp -> Resp
     end.
 
 initialize_whapps() ->
@@ -85,8 +113,9 @@ initialize_whapps() ->
         'true' -> 'ok'
     end,
     WhApps = whapps_config:get(?MODULE, <<"whapps">>, []),
-    StartWhApps = [wh_util:to_atom(WhApp, true) || WhApp <- WhApps],
-    _ = whistle_apps_sup:initialize_whapps(StartWhApps),
+    StartWhApps = [wh_util:to_atom(WhApp, 'true') || WhApp <- WhApps],
+    %_ = whistle_apps_sup:initialize_whapps([]),
+    [?MODULE:start_app(A) || A <- StartWhApps],
     lager:notice("auto-started whapps ~p", [StartWhApps]).
 
 %%%===================================================================

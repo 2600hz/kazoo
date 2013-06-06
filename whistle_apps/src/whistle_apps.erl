@@ -21,22 +21,22 @@ start_link() ->
 %% @doc Start the whistle_apps server.
 start() ->
     _ = start_deps(),
-    application:start(whistle_apps, permanent).
+    application:start('whistle_apps', 'permanent').
 
--spec start_deps/0 :: () -> list().
+-spec start_deps() -> list().
 start_deps() ->
     whistle_apps_deps:ensure(),
 
     lager:start(),
 
-    case application:get_env(reloader) of
-        {ok, true} -> reloader:start();
-        _ -> ok
+    case application:get_env('reloader') of
+        {'ok', 'true'} -> reloader:start();
+        _ -> 'ok'
     end,
 
-    [wh_util:ensure_started(A) || A <- [sasl, crypto, gproc, whistle_amqp, whistle_stats]].
+    [wh_util:ensure_started(A) || A <- ['sasl', 'crypto', 'gproc', 'whistle_amqp', 'whistle_stats']].
 
 %% @spec stop() -> ok
 %% @doc Stop the whistle_apps server.
 stop() ->
-    application:stop(whistle_apps).
+    application:stop('whistle_apps').

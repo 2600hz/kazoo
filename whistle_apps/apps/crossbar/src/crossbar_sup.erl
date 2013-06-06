@@ -19,10 +19,6 @@
 
 -include("crossbar.hrl").
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, 'start_link', []}, 'permanent', 5000, Type, [I]}).
--define(CHILD(I, Type, Args), {I, {I, 'start', [Args]}, 'permanent', 5000, Type, 'dynamic'}).
-
 -define(CACHE(), {?CROSSBAR_CACHE, {'wh_cache', 'start_link', [?CROSSBAR_CACHE]}, 'permanent', 5000, 'worker', ['wh_cache']}).
 
 -define(DISPATCH_FILE, [code:lib_dir('crossbar', 'priv'), "/dispatch.conf"]).
@@ -42,9 +38,8 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec child_spec(atom()) -> ?CHILD(atom(), 'worker').
-child_spec(Mod) ->
-    ?CHILD(Mod, 'worker').
+-spec child_spec(atom()) -> ?WORKER(atom()).
+child_spec(Mod) -> ?WORKER(Mod).
 
 -spec find_proc(atom()) -> pid().
 find_proc(Mod) ->
@@ -86,8 +81,8 @@ upgrade() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    {'ok', {{'one_for_one', 10, 10}, [?CACHE()
-                                      ,?CHILD('crossbar_module_sup', 'supervisor')
-                                      ,?CHILD('crossbar_bindings', 'worker')
-                                      ,?CHILD('crossbar_cleanup', 'worker')
+    {'ok', {{'one_for_one', 10, 10}, [?CACHE(?CROSSBAR_CACHE)
+                                      ,?SUPER('crossbar_module_sup')
+                                      ,?WORKER('crossbar_bindings')
+                                      ,?WORKER('crossbar_cleanup')
                                      ]}}.

@@ -15,22 +15,19 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, 'cache') -> {N, {'wh_cache', 'start_link', [N]}, 'permanent', 5000, 'worker', ['wh_cache']};
-                              (N, 'pool') -> {N, {'poolboy', 'start_link', [[{'worker_module', 'stepswitch_cnam'}
-                                                                             ,{'name', {'local', N}}
-                                                                             ,{'size', 10}
-                                                                             ,{'max_overflow', 50}
-                                                                             ,{'neg_resp_threshold', 1}
-                                                                            ]
-                                                                           ]}
-                                            ,'permanent', 5000, 'worker', ['poolboy']
-                                             };
-                              (N, 'supervisor'=T) ->{N, {N, 'start_link', []}, 'permanent', 'infinity', T, [N]};
-                              (N, T) -> {N, {N, 'start_link', []}, 'permanent', 5000, T, [N]} end(Name, Type)).
+-define(POOL(N), {N, {'poolboy', 'start_link', [[{'worker_module', 'stepswitch_cnam'}
+                                                 ,{'name', {'local', N}}
+                                                 ,{'size', 10}
+                                                 ,{'max_overflow', 50}
+                                                 ,{'neg_resp_threshold', 1}
+                                                ]
+                                               ]}
+                  ,'permanent', 5000, 'worker', ['poolboy']
+                 }).
 
--define(CHILDREN, [{?STEPSWITCH_CACHE, 'cache'}
-                   ,{?STEPSWITCH_CNAM_POOL, 'pool'}
-                   ,{'stepswitch_listener', 'worker'}
+-define(CHILDREN, [?CACHE(?STEPSWITCH_CACHE)
+                   ,?POOL(?STEPSWITCH_CNAM_POOL)
+                   ,?WORKER('stepswitch_listener')
                   ]).
 
 %% ===================================================================
@@ -66,6 +63,5 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {'ok', {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
