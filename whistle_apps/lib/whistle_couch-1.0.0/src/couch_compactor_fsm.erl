@@ -985,7 +985,6 @@ compact_shard(AdminConn, S, DDs) ->
     wait_for_compaction(AdminConn, S),
 
     compact_design_docs(AdminConn, S, DDs),
-    wait_for_compaction(AdminConn, S),
 
     lager:debug("finished compacting").
 
@@ -994,13 +993,29 @@ compact_design_docs(AdminConn, S, DDs) ->
         {Compact, Remaining} ->
             lager:debug("compacting chunk of views: ~p", [Compact]),
             _ = [couch_util:design_compact(AdminConn, S, DD) || DD <- Compact],
-            wait_for_compaction(AdminConn, S),
+            wait_for_design_compaction(AdminConn, S, Compact),
             compact_design_docs(AdminConn, S, Remaining)
     catch
         'error':'badarg' ->
             lager:debug("compacting last chunk of views: ~p", [DDs]),
             _ = [couch_util:design_compact(AdminConn, S, DD) || DD <- DDs],
-            wait_for_compaction(AdminConn, S)
+            wait_for_design_compaction(AdminConn, S, DDs)
+    end.
+
+wait_for_design_compaction(_, _, []) -> 'ok';
+wait_for_design_compaction(AdminConn, Shard, [DD|DDs]) ->
+    wait_for_design_compaction(AdminConn, Shard, DDs, DD, couch_util:design_info(AdminConn, Shard, DD)).
+
+wait_for_design_compaction(AdminConn, Shard, DDs, _DD, {'error', _E}) ->
+    lager:debug("failed design status for ~s(~s): ~p", [Shard, _DD, _E]),
+    'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
+    wait_for_design_compaction(AdminConn, Shard, DDs);
+wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'ok', DesignInfo}) ->
+    case wh_json:is_true(<<"compact_running">>, DesignInfo, 'false') of
+        'false' -> wait_for_design_compaction(AdminConn, Shard, DDs);
+        'true' ->
+            'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
+            wait_for_design_compaction(AdminConn, Shard, DDs, DD, couch_util:design_info(AdminConn, Shard, DD))
     end.
 
 wait_for_compaction(AdminConn, S) ->
