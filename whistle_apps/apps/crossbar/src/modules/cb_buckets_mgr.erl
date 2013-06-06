@@ -22,10 +22,13 @@
          ,code_change/3
         ]).
 
+-include("./src/crossbar.hrl").
+
 -define(SERVER, ?MODULE). 
 
 -record(state, {table_id :: ets:tid()
                 ,etsmgr :: pid()
+                ,give_away_ref :: reference()
                }).
 
 %%%===================================================================
@@ -78,8 +81,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -92,7 +94,6 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('begin', State) ->
-    EtsMgr = find_ets_mgr(),
     Tbl = ets:new(cb_buckets_ets:table_id()
                   ,['protected', 'named_table'
                     ,{'keypos', cb_buckets_ets:key_pos()}
@@ -100,12 +101,23 @@ handle_cast('begin', State) ->
                  ),
 
     ets:setopts(Tbl, {'heir', self(), 'ok'}),
-    ets:give_away(Tbl, EtsMgr, 'ok'),
 
-    {'noreply', State#state{table_id=Tbl
-                            ,etsmgr=EtsMgr
-                           }};
+    case find_ets_mgr(Tbl, 'ok') of
+        P when is_pid(P) ->
+            lager:debug("handing tbl ~p to ~p and then to ~p", [Tbl, self(), P]),
+            {'noreply', State#state{table_id=Tbl
+                                    ,etsmgr=P
+                                    ,give_away_ref='undefined'
+                                   }};
+        Ref when is_reference(Ref) ->
+            lager:debug("waiting for ets mgr to start with ~p", [Ref]),
+            {'noreply', State#state{table_id=Tbl
+                                    ,etsmgr='undefined'
+                                    ,give_away_ref=Ref
+                                   }}
+    end;
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -118,36 +130,77 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'EXIT', EtsMgr, 'killed'}, #state{etsmgr=EtsMgr}=State) ->
+handle_info({'EXIT', EtsMgr, 'killed'}, #state{etsmgr=EtsMgr
+                                               ,give_away_ref='undefined'
+                                              }=State) ->
     lager:debug("ets mgr ~p killed", [EtsMgr]),
-    {'noreply', State#state{etsmgr='undefined'}};
+    {'noreply', State#state{etsmgr='undefined'
+                            ,give_away_ref='undefined'
+                           }};
+handle_info({'EXIT', EtsMgr, 'shutdown'}, #state{etsmgr=EtsMgr
+                                                 ,give_away_ref='undefined'
+                                                }=State) ->
+    lager:debug("ets mgr ~p shutdown", [EtsMgr]),
+    {'noreply', State#state{etsmgr='undefined'
+                            ,give_away_ref='undefined'
+                           }};
 handle_info({'ETS-TRANSFER', Tbl, EtsMgr, Data}, #state{table_id=Tbl
                                                         ,etsmgr=EtsMgr
+                                                        ,give_away_ref='undefined'
                                                        }=State) ->
-    NewEtsMgr = find_ets_mgr(),
-    lager:debug("ets mgr ~p dying, handing tbl ~p back to ~p and then to ~p", [EtsMgr, Tbl, self(), NewEtsMgr]),
-    ets:give_away(Tbl, NewEtsMgr, Data),
-    {'noreply', State#state{etsmgr=NewEtsMgr}};
-
+    case find_ets_mgr(Tbl, Data) of
+        P when is_pid(P) ->
+            lager:debug("ets mgr ~p dying, handing tbl ~p back to ~p and then to ~p", [EtsMgr, Tbl, self(), P]),
+            {'noreply', State#state{etsmgr=P}};
+        Ref when is_reference(Ref) ->
+            lager:debug("ets mgr ~p died, hasn't resumed life yet; waiting", [EtsMgr]),
+            {'noreply', State#state{etsmgr='undefined'
+                                    ,give_away_ref=Ref
+                                   }}
+    end;
 handle_info({'ETS-TRANSFER', Tbl, _P, Data}, #state{table_id=Tbl
-                                                        ,etsmgr='undefined'
-                                                       }=State) ->
-    NewEtsMgr = find_ets_mgr(),
-    lager:debug("ets mgr ~p dying, handing tbl ~p back to ~p and then to ~p", [_P, Tbl, self(), NewEtsMgr]),
-    ets:give_away(Tbl, NewEtsMgr, Data),
-    {'noreply', State#state{etsmgr=NewEtsMgr}};
+                                                    ,etsmgr='undefined'
+                                                    ,give_away_ref='undefined'
+                                                   }=State) ->
+    case find_ets_mgr(Tbl, Data) of
+        P when is_pid(P) ->
+            lager:debug("ets mgr ~p dying, handing tbl ~p back to ~p and then to ~p", [_P, Tbl, self(), P]),
+            {'noreply', State#state{etsmgr=P}};
+        Ref when is_reference(Ref) ->
+            lager:debug("ets mgr died already, hasn't resumed life yet; waiting"),
+            {'noreply', State#state{etsmgr='undefined'
+                                    ,give_away_ref=Ref
+                                   }}
+    end;
+
+handle_info({'give_away', Tbl, Data}, #state{table_id=Tbl
+                                             ,etsmgr='undefined'
+                                             ,give_away_ref=Ref
+                                            }=State) when is_reference(Ref) ->
+    case find_ets_mgr(Tbl, Data) of
+        P when is_pid(P) ->
+            lager:debug("handing tbl ~p back to ~p and then to ~p", [Tbl, self(), P]),
+            {'noreply', State#state{etsmgr=P
+                                    ,give_away_ref='undefined'
+                                   }};
+        Ref when is_reference(Ref) ->
+            lager:debug("ets mgr died already, hasn't resumed life yet; waiting"),
+            {'noreply', State#state{etsmgr='undefined'
+                                    ,give_away_ref=Ref
+                                   }}
+    end;
 
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
-find_ets_mgr() ->
+find_ets_mgr(Tbl, Data) ->
     case whereis('cb_buckets_ets') of
         'undefined' ->
-            timer:sleep(5),
-            find_ets_mgr();
+            erlang:send_after(10, self(), {'give_away', Tbl, Data});
         P when is_pid(P) ->
             link(P),
+            ets:give_away(Tbl, P, Data),
             P
     end.
 
