@@ -37,6 +37,11 @@ parse_cmds(JSON) ->
 
 -spec req_params(whapps_call:call()) -> wh_proplist().
 req_params(Call) ->
+    Owners = case cf_attributes:owner_ids(whapps_call:authorizing_id(Call), Call) of
+                 [] -> 'undefined';
+                 [OwnerId] -> OwnerId;
+                 [_|_]=IDs -> IDs
+             end,
     props:filter_undefined(
       [{<<"Call-ID">>, whapps_call:call_id(Call)}
        ,{<<"Account-ID">>, whapps_call:account_id(Call)}
@@ -46,6 +51,7 @@ req_params(Call) ->
        ,{<<"ApiVersion">>, <<"2013-05-01">>}
        ,{<<"Direction">>, <<"inbound">>}
        ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+       ,{<<"User-ID">>, Owners}
        ,{<<"Recording-Url">>, kzt_util:get_recording_url(Call)}
        ,{<<"Recording-Duration">>, kzt_util:get_recording_duration(Call)}
        ,{<<"Recording-ID">>, kzt_util:get_recording_sid(Call)}
