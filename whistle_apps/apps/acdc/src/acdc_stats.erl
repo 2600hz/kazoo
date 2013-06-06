@@ -650,8 +650,8 @@ status_match_builder_fold(<<"Start-Range">>, Start, {StatusStat, Contstraints}) 
                                          ,{<<"Current-Timestamp">>, Now}
                                         ])};
         N ->
-            {StatusStat#status_stat{timestamp='$5'}
-             ,[{'>=', '$5', N} | Contstraints]
+            {StatusStat#status_stat{timestamp='$3'}
+             ,[{'>=', '$3', N} | Contstraints]
             }
     catch
         _:_ ->
@@ -672,13 +672,17 @@ status_match_builder_fold(<<"End-Range">>, End, {StatusStat, Contstraints}) ->
                                          ,{<<"Current-Timestamp">>, Now}
                                         ])};
         N ->
-            {StatusStat#status_stat{timestamp='$5'}
-             ,[{'=<', '$5', N} | Contstraints]
+            {StatusStat#status_stat{timestamp='$3'}
+             ,[{'=<', '$3', N} | Contstraints]
             }
     catch
         _:_ ->
             {'error', wh_json:from_list([{<<"End-Range">>, <<"supplied value is not an integer">>}])}
     end;
+status_match_builder_fold(<<"Status">>, Status, {StatusStat, Contstraints}) ->
+    {StatusStat#status_stat{status='$4'}
+     ,[{'=:=', '$4', {'const', Status}} | Contstraints]
+    };
 status_match_builder_fold(_, _, Acc) -> Acc.
 
 -spec query_statuses(ne_binary(), ne_binary(), ets:match_spec()) -> 'ok'.
