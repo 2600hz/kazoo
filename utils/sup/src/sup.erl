@@ -10,6 +10,7 @@
 -module(sup).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle_config/src/wh_config.erl").
 
 -export([main/1]).
 
@@ -85,16 +86,33 @@ get_target(Options, Verbose) ->
 -spec get_cookie/2 :: (proplist(), string()) -> 'ok'.
 get_cookie(Options, Node) ->
     Cookie = case {Node, proplists:get_value(cookie, Options, "")} of
-                 {"whistle_apps", ""} -> get_cookie_from_vmargs(?WHAPPS_VM_ARGS);
-                 {"ecallmgr", ""} -> get_cookie_from_vmargs(?ECALL_VM_ARGS);
+                 {"whistle_apps", ""} -> maybe_get_cookie('whistle_apps');
+                 {"ecallmgr", ""} -> maybe_get_cookie('ecallmgr');
                  {_, ""} -> print_no_setcookie();
                  {_, C} -> C
              end,
-    erlang:set_cookie(node(), list_to_atom(Cookie)),
+    erlang:set_cookie(node(), Cookie),
     Cookie.
 
+maybe_get_cookie('whistle_apps') ->
+    case wh_config:get_atom('whistle_apps', 'cookie') of
+        [] ->
+            list_to_atom(get_cookie_from_vmargs(?WHAPPS_VM_ARGS));
+        [Cookie|_] ->
+            Cookie
+    end;
+maybe_get_cookie('ecallmgr') ->
+    case wh_config:get_atom('ecallmgr', 'cookie') of
+        [] ->
+            list_to_atom(get_cookie_from_vmargs(?ECALL_VM_ARGS));
+        [Cookie|_] ->
+            Cookie
+    end;
+maybe_get_cookie(_) ->
+    print_no_setcookie().
+
 -spec get_cookie_from_vmargs/1 :: ([string(),...]) -> string().
-get_cookie_from_vmargs([]) -> 
+get_cookie_from_vmargs([]) ->
     print_no_setcookie();
 get_cookie_from_vmargs([File|Files]) ->
     case file:read_file(File) of
@@ -141,9 +159,9 @@ print_no_setcookie() ->
     io:format(standard_io, "Unable to automatically determine cookie~n", []),
     io:format(standard_io, "Please provide the cookie of the node you are connecting to~n", []),
     io:format(standard_io, "\"./sup -c <cookie>\"~n", []),
-    halt(1). 
+    halt(1).
 
--spec print_ping_failed/2 :: (string(), string()) -> no_return(). 
+-spec print_ping_failed/2 :: (string(), string()) -> no_return().
 print_ping_failed(Target, Cookie) ->
     io:format(standard_io, "Failed to connect to service '~s' with cookie '~s'~n", [Target, Cookie]),
     io:format(standard_io, "  Possible fixes:~n", []),
@@ -152,7 +170,7 @@ print_ping_failed(Target, Cookie) ->
     io:format(standard_io, "    * Verify that the hostname being used is a whistle node~n", []),
     halt(1).
 
--spec print_unresolvable_host/1 :: (string()) -> no_return(). 
+-spec print_unresolvable_host/1 :: (string()) -> no_return().
 print_unresolvable_host(Host) ->
     io:format(standard_io, "If you can not run \"ping ~s\" then this program will not be able to connect.~n", [Host]),
     io:format(standard_io, "  Possible fixes:~n", []),
