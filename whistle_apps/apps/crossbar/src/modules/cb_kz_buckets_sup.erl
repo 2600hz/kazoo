@@ -69,14 +69,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    Restart = 'temporary',
-    Shutdown = 2000,
-    Type = 'worker',
-
-    AChild = {'kz_token_bucket', {'kz_token_bucket', 'start_link', []},
-              Restart, Shutdown, Type, ['kz_token_bucket']},
-
-    {'ok', {SupFlags, [AChild]}}.
+    {'ok', {SupFlags, [?WORKER('kz_token_bucket')]}}.
 
 %%%===================================================================
 %%% Internal functions
