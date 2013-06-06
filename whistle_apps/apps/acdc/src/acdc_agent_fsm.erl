@@ -297,6 +297,14 @@ start_link(AcctId, AgentId, Supervisor, Props) ->
 start_link(Supervisor, _AgentJObj, AcctId, AgentId, _Queues) ->
     pvt_start_link(AcctId, AgentId, Supervisor, [], 'false').
 
+pvt_start_link('undefined', _AgentId, Supervisor, _, _) ->
+    lager:debug("agent ~s trying to start with no account id", [_AgentId]),
+    spawn('acdc_agent_sup', 'stop', [Supervisor]),
+    'ignore';
+pvt_start_link(_AcctId, 'undefined', Supervisor, _, _) ->
+    lager:debug("undefined agent id trying to start in account ~s", [_AcctId]),
+    spawn('acdc_agent_sup', 'stop', [Supervisor]),
+    'ignore';
 pvt_start_link(AcctId, AgentId, Supervisor, Props, IsThief) ->
     gen_fsm:start_link(?MODULE, [AcctId, AgentId, Supervisor, Props, IsThief], []).
 

@@ -159,11 +159,16 @@ start_link(Supervisor, AgentJObj) ->
                  Qs -> Qs
              end,
     start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues).
+start_link(Supervisor, _, _AcctId, _AgentId, []) ->
+    lager:debug("agent ~s has no queues, not starting", [_AgentId]),
+    spawn('acdc_agent_sup', 'stop', [Supervisor]),
+    'ignore';
 start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues) ->
     case acdc_util:agent_status(AcctId, AgentId) of
         <<"logged_out">> ->
-            lager:debug("agent ~s in ~s is logged out, ignoring", [AgentId, AcctId]),
-            {'error', 'logged_out'};
+            lager:debug("agent ~s in ~s is logged out, not starting", [AgentId, AcctId]),
+            spawn('acdc_agent_sup', 'stop', [Supervisor]),
+            'ignore';
         _S ->
             lager:debug("start bindings for ~s(~s) in ~s", [AcctId, AgentId, _S]),
             gen_listener:start_link(?MODULE
