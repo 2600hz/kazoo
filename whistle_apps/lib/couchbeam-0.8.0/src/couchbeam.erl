@@ -328,7 +328,7 @@ db_info(#db{server=Server, name=DbName, options=IbrowseOpts}) ->
     end.
 
 design_info(#db{server=Server, options=IbrowseOpts}=Db, DesignDoc) ->
-    Url = make_url(Server, [db_url(Db), "/_design/", DesignDoc, "/_bulk_docs"], []),
+    Url = make_url(Server, [db_url(Db), "/_design/", DesignDoc, "/_info"], []),
     case couchbeam_httpc:request(get, Url, ["200"], IbrowseOpts) of
         {ok, _Status, _Headers, Body} ->
             {ok, ejson:decode(Body)}; 
