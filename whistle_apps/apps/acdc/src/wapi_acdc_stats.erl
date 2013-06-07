@@ -24,6 +24,7 @@
          ,status_resp/1, status_resp_v/1
 
          ,status_ready/1, status_ready_v/1
+         ,status_logged_in/1, status_logged_in_v/1
          ,status_logged_out/1, status_logged_out_v/1
          ,status_connecting/1, status_connecting_v/1
          ,status_connected/1, status_connected_v/1
@@ -52,6 +53,7 @@
          ,publish_status_resp/2, publish_status_resp/3
 
          ,publish_status_ready/1, publish_status_ready/2
+         ,publish_status_logged_in/1, publish_status_logged_in/2
          ,publish_status_logged_out/1, publish_status_logged_out/2
          ,publish_status_connecting/1, publish_status_connecting/2
          ,publish_status_connected/1, publish_status_connected/2
@@ -253,7 +255,9 @@ current_calls_resp_v(JObj) ->
     current_calls_resp_v(wh_json:to_proplist(JObj)).
 
 -define(STATUS_REQ_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_STATUS_REQ_HEADERS, [<<"Agent-ID">>, <<"Start-Range">>, <<"End-Range">>]).
+-define(OPTIONAL_STATUS_REQ_HEADERS, [<<"Agent-ID">>, <<"Start-Range">>, <<"End-Range">>
+                                      ,<<"Status">>
+                                     ]).
 -define(STATUS_REQ_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
                             ,{<<"Event-Name">>, <<"status_req">>}
                            ]).
@@ -365,6 +369,23 @@ status_ready_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?STATUS_HEADERS, ?STATUS_VALUES(<<"ready">>), ?STATUS_TYPES);
 status_ready_v(JObj) ->
     status_ready_v(wh_json:to_proplist(JObj)).
+
+-spec status_logged_in(api_terms()) ->
+                              {'ok', iolist()} |
+                              {'error', string()}.
+status_logged_in(Props) when is_list(Props) ->
+    case status_logged_in_v(Props) of
+        'true' -> wh_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for status_logged_in"}
+    end;
+status_logged_in(JObj) ->
+    status_logged_in(wh_json:to_proplist(JObj)).
+
+-spec status_logged_in_v(api_terms()) -> boolean().
+status_logged_in_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?STATUS_HEADERS, ?STATUS_VALUES(<<"logged_in">>), ?STATUS_TYPES);
+status_logged_in_v(JObj) ->
+    status_logged_in_v(wh_json:to_proplist(JObj)).
 
 -spec status_logged_out(api_terms()) ->
                                {'ok', iolist()} |
@@ -565,6 +586,12 @@ publish_status_ready(JObj) ->
     publish_status_ready(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_ready(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?STATUS_VALUES(<<"ready">>), fun status_ready/1),
+    amqp_util:whapps_publish(status_stat_routing_key(API), Payload, ContentType).
+
+publish_status_logged_in(JObj) ->
+    publish_status_logged_in(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_status_logged_in(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?STATUS_VALUES(<<"logged_in">>), fun status_logged_in/1),
     amqp_util:whapps_publish(status_stat_routing_key(API), Payload, ContentType).
 
 publish_status_logged_out(JObj) ->
