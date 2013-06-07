@@ -23,16 +23,21 @@ current_statuses(AcctId) ->
             lager:debug("No agent statuses found for ~s", [AcctId]);
         {As, _} ->
             lager:debug("Agent Statuses for ~s", [AcctId]),
-            lager:debug("~35s | ~12s | ~20s |", [<<"Agent-ID">>, <<"Status">>, <<"Timestamp">>]),
-            [log_current_status(A) || A <- As],
+            lager:debug("~4s | ~35s | ~12s | ~20s |", [<<>>, <<"Agent-ID">>, <<"Status">>, <<"Timestamp">>]),
+            log_current_statuses(As, 1),
             'ok'
     end.
 
-log_current_status(A) ->
-    lager:debug("~35s | ~12s | ~20s |", [wh_json:get_value(<<"agent_id">>, A)
-                                         ,wh_json:get_value(<<"status">>, A)
-                                         ,wh_util:pretty_print_datetime(wh_json:get_integer_value(<<"timestamp">>, A))
-                                        ]).
+log_current_statuses([], _) -> 'ok';
+log_current_statuses([A|As], N) ->
+    log_current_status(A, N),
+    log_current_statuses(As, N+1).
+
+log_current_status(A, N) ->
+    lager:debug("~4b | ~35s | ~12s | ~20s |", [N, wh_json:get_value(<<"agent_id">>, A)
+                                               ,wh_json:get_value(<<"status">>, A)
+                                               ,wh_util:pretty_print_datetime(wh_json:get_integer_value(<<"timestamp">>, A))
+                                              ]).
 
 current_calls(AcctId) ->
     Req = [{<<"Account-ID">>, AcctId}
