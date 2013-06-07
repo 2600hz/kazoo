@@ -18,6 +18,7 @@
          ,call_processed/4
 
          ,agent_ready/2
+         ,agent_logged_in/2
          ,agent_logged_out/2
          ,agent_connecting/3
          ,agent_connected/3
@@ -72,12 +73,14 @@
 -define(ARCHIVE_WINDOW, whapps_config:get_integer(?CONFIG_CAT, <<"archive_window_s">>, 60)).
 
 %% Remove data from ETS
--define(CLEANUP_WINDOW, whapps_config:get_integer(?CONFIG_CAT, <<"cleanup_window_s">>, 3600)).
+-define(CLEANUP_WINDOW, whapps_config:get_integer(?CONFIG_CAT, <<"cleanup_window_s">>, ?SECONDS_IN_DAY)).
 
 -define(ARCHIVE_MSG, 'time_to_archive').
 -define(CLEANUP_MSG, 'time_to_cleanup').
 
 -define(VALID_STATUSES, [<<"waiting">>, <<"handled">>, <<"abandoned">>, <<"processed">>]).
+
+-define(MAX_RESULT_SET, whapps_config:get_integer(?CONFIG_CAT, <<"max_result_set">>, 25)).
 
 -record(agent_miss, {
           agent_id :: api_binary()
@@ -110,9 +113,9 @@
          }).
 -type call_stat() :: #call_stat{}.
 
--define(STATUS_STATUSES, [<<"logged_out">>, <<"ready">>, <<"connecting">>
-                          ,<<"connected">>, <<"wrapup">>, <<"paused">>
-                          ,<<"outbound">>
+-define(STATUS_STATUSES, [<<"logged_in">>, <<"logged_out">>, <<"ready">>
+                          ,<<"connecting">>, <<"connected">>
+                          ,<<"wrapup">>, <<"paused">>, <<"outbound">>
                          ]).
 -record(status_stat, {
           id :: api_binary() | '_'
@@ -194,6 +197,16 @@ agent_ready(AcctId, AgentId) ->
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_ready/1).
+
+agent_logged_in(AcctId, AgentId) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"logged_in">>}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_logged_in/1).
 
 agent_logged_out(AcctId, AgentId) ->
     Prop = props:filter_undefined(
@@ -290,6 +303,7 @@ status_table_opts() ->
                      }
                      ,{{?MODULE, 'handle_status_stat'}
                        ,[{<<"acdc_status_stat">>, <<"ready">>}
+                         ,{<<"acdc_status_stat">>, <<"logged_in">>}
                          ,{<<"acdc_status_stat">>, <<"logged_out">>}
                          ,{<<"acdc_status_stat">>, <<"connecting">>}
                          ,{<<"acdc_status_stat">>, <<"connected">>}
@@ -331,6 +345,7 @@ handle_call_stat(JObj, Props) ->
 handle_status_stat(JObj, Props) ->
     'true' = case (EventName = wh_json:get_value(<<"Event-Name">>, JObj)) of
                  <<"ready">> -> wapi_acdc_stats:status_ready_v(JObj);
+                 <<"logged_in">> -> wapi_acdc_stats:status_logged_in_v(JObj);
                  <<"logged_out">> -> wapi_acdc_stats:status_logged_out_v(JObj);
                  <<"connecting">> -> wapi_acdc_stats:status_connecting_v(JObj);
                  <<"connected">> -> wapi_acdc_stats:status_connected_v(JObj);
@@ -373,9 +388,10 @@ handle_call_query(JObj, _Prop) ->
     'true' = wapi_acdc_stats:current_calls_req_v(JObj),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+    Limit = get_query_limit(JObj),
 
     case call_build_match_spec(JObj) of
-        {'ok', Match} -> query_calls(RespQ, MsgId, Match);
+        {'ok', Match} -> query_calls(RespQ, MsgId, Match, Limit);
         {'error', Errors} -> publish_query_errors(RespQ, MsgId, Errors)
     end.
 
@@ -384,10 +400,20 @@ handle_status_query(JObj, _Prop) ->
     'true' = wapi_acdc_stats:status_req_v(JObj),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+    Limit = get_query_limit(JObj),
 
     case status_build_match_spec(JObj) of
-        {'ok', Match} -> query_statuses(RespQ, MsgId, Match);
+        {'ok', Match} -> query_statuses(RespQ, MsgId, Match, Limit);
         {'error', Errors} -> publish_query_errors(RespQ, MsgId, Errors)
+    end.
+
+get_query_limit(JObj) ->
+    Max = ?MAX_RESULT_SET,
+    case wh_json:get_integer_value(<<"Limit">>, JObj) of
+        'undefined' -> Max;
+        N when N > Max -> Max;
+        N when N < 1 -> 1;
+        N -> N
     end.
 
 -record(state, {
@@ -421,7 +447,7 @@ handle_cast({'create_call', #call_stat{id=_Id}=Stat}, State) ->
     ets:insert_new(call_table_id(), Stat),
     {'noreply', State};
 handle_cast({'create_status', #status_stat{id=_Id, status=_Status}=Stat}, State) ->
-    lager:debug("creating new status stat ~s", [_Id]),
+    lager:debug("creating new status stat ~s: ~s", [_Id, _Status]),
     case ets:insert_new(status_table_id(), Stat) of
         'true' -> {'noreply', State};
         'false' ->
@@ -579,8 +605,8 @@ is_valid_call_status(S) ->
         'false' -> 'false'
     end.
 
--spec query_calls(ne_binary(), ne_binary(), ets:match_spec()) -> 'ok'.
-query_calls(RespQ, MsgId, Match) ->
+-spec query_calls(ne_binary(), ne_binary(), ets:match_spec(), pos_integer()) -> 'ok'.
+query_calls(RespQ, MsgId, Match, _Limit) ->
     case ets:select(call_table_id(), Match) of
         [] ->
             lager:debug("no stats found, sorry ~s", [RespQ]),
@@ -624,6 +650,7 @@ status_build_match_spec(JObj) ->
                                      {'ok', ets:match_spec()} |
                                      {'error', wh_json:object()}.
 status_build_match_spec(JObj, AcctMatch) ->
+    lager:debug("req: ~p", [JObj]),
     case wh_json:foldl(fun status_match_builder_fold/3, AcctMatch, JObj) of
         {'error', _Errs}=Errors -> Errors;
         {StatusStat, Constraints} -> {'ok', [{StatusStat, Constraints, ['$_']}]}
@@ -644,6 +671,7 @@ status_match_builder_fold(<<"Start-Range">>, Start, {StatusStat, Contstraints}) 
                                          ,{<<"Window-Size">>, ?CLEANUP_WINDOW}
                                          ,{<<"Current-Timestamp">>, Now}
                                          ,{<<"Past-Timestamp">>, Past}
+                                         ,{<<"Start-Range">>, N}
                                         ])};
         N when N > Now ->
             {'error', wh_json:from_list([{<<"Start-Range">>, <<"supplied value is in the future">>}
@@ -685,8 +713,9 @@ status_match_builder_fold(<<"Status">>, Status, {StatusStat, Contstraints}) ->
     };
 status_match_builder_fold(_, _, Acc) -> Acc.
 
--spec query_statuses(ne_binary(), ne_binary(), ets:match_spec()) -> 'ok'.
-query_statuses(RespQ, MsgId, Match) ->
+-spec query_statuses(ne_binary(), ne_binary(), ets:match_spec(), pos_integer()) -> 'ok'.
+query_statuses(RespQ, MsgId, Match, Limit) ->
+    lager:debug("match: ~p", [Match]),
     case ets:select(status_table_id(), Match) of
         [] ->
             lager:debug("no stats found, sorry ~s", [RespQ]),
@@ -697,7 +726,10 @@ query_statuses(RespQ, MsgId, Match) ->
             wapi_acdc_stats:publish_status_err(RespQ, Resp);
         Stats ->
             QueryResults = lists:foldl(fun query_status_fold/2, wh_json:new(), Stats),
-            TrimmedResults = wh_json:map(fun trim_query_statuses/2, QueryResults),
+            LimitList = lists:duplicate(Limit, 0),
+            TrimmedResults = wh_json:map(fun(A, B) ->
+                                                 trim_query_statuses(A, B, LimitList)
+                                         end, QueryResults),
 
             Resp = [{<<"Agents">>, TrimmedResults}
                     ,{<<"Msg-ID">>, MsgId}
@@ -706,9 +738,9 @@ query_statuses(RespQ, MsgId, Match) ->
             wapi_acdc_stats:publish_status_resp(RespQ, Resp)
     end.
 
-trim_query_statuses(A, Statuses) ->
+trim_query_statuses(A, Statuses, Limit) ->
     {_, Trimmed} = wh_json:foldl(fun trim_query_statuses_fold/3
-                                 ,{lists:duplicate(5, 0)
+                                 ,{Limit
                                    ,wh_json:new()
                                   }, Statuses),
     {A, Trimmed}.
