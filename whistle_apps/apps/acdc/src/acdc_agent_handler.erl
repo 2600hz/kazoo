@@ -93,7 +93,10 @@ maybe_start_agent(AcctId, AgentId, JObj) ->
         {'ok', Sup} ->
             timer:sleep(100),
             case erlang:is_process_alive(Sup) of
-                'true' -> login_success(JObj);
+                'true' ->
+                    lager:debug("agent logged in stat"),
+                    acdc_stats:agent_logged_in(AcctId, AgentId),
+                    login_success(JObj);
                 'false' ->
                     acdc_stats:agent_logged_out(AcctId, AgentId),
                     login_fail(JObj)
@@ -128,11 +131,7 @@ maybe_start_agent(AcctId, AgentId) ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AcctId]),
             acdc_stats:agent_ready(AcctId, AgentId),
             case couch_mgr:open_doc(wh_util:format_account_id(AcctId, 'encoded'), AgentId) of
-                {'ok', AgentJObj} ->
-                    {'ok', APid} = acdc_agents_sup:new(AgentJObj),
-                    acdc_stats:agent_ready(AcctId, AgentId),
-                    lager:debug("started agent at ~p", [APid]),
-                    {'ok', APid};
+                {'ok', AgentJObj} -> acdc_agents_sup:new(AgentJObj);
                 {'error', _E}=E ->
                     lager:debug("error opening agent doc: ~p", [_E]),
                     E

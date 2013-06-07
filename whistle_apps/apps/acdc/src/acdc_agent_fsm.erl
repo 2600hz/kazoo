@@ -337,8 +337,6 @@ init([AcctId, AgentId, Supervisor, Props, IsThief]) ->
     put('callid', FSMCallId),
     lager:debug("started acdc agent fsm"),
 
-    acdc_stats:agent_ready(AcctId, AgentId),
-
     Self = self(),
     _P = spawn(?MODULE, 'wait_for_listener', [Supervisor, Self, Props, IsThief]),
     lager:debug("waiting for listener in ~p", [_P]),
@@ -384,9 +382,12 @@ wait_for_listener(Supervisor, FSM, Props, IsThief) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-wait({'listener', AgentProc, NextState, SyncRef}, State) ->
+wait({'listener', AgentProc, NextState, SyncRef}, #state{acct_id=AcctId
+                                                         ,agent_id=AgentId
+                                                        }=State) ->
     lager:debug("setting agent proc to ~p", [AgentProc]),
     acdc_agent:fsm_started(AgentProc, self()),
+    acdc_stats:agent_ready(AcctId, AgentId),
     {'next_state', NextState, State#state{
                                 agent_proc=AgentProc
                                 ,sync_ref=SyncRef
