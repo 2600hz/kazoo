@@ -34,31 +34,8 @@
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".queues">>).
 
--define(STAT_TIMESTAMP_PROCESSED, <<"finished_with_agent">>).
--define(STAT_TIMESTAMP_HANDLING, <<"connected_with_agent">>).
--define(STAT_TIMESTAMP_ABANDONED, <<"caller_abandoned_queue">>).
--define(STAT_TIMESTAMP_WAITING, <<"caller_entered_queue">>).
--define(STAT_AGENTS_MISSED, <<"missed">>).
-
 -define(FORMAT_COMPRESSED, <<"compressed">>).
 -define(FORMAT_VERBOSE, <<"verbose">>).
-
--define(STAT_TIMESTAMP_KEYS, [?STAT_TIMESTAMP_PROCESSED
-                              ,?STAT_TIMESTAMP_HANDLING
-                              ,?STAT_TIMESTAMP_ABANDONED
-                              ,?STAT_TIMESTAMP_WAITING
-                             ]).
-
--define(QUEUE_STATUS_HANDLING, <<"handling">>).
--define(QUEUE_STATUS_PROCESSED, <<"processed">>).
-
--define(AGENT_STATUS_READY, <<"ready">>).
--define(AGENT_STATUS_BUSY, <<"busy">>).
--define(AGENT_STATUS_HANDLING, <<"handling">>).
--define(AGENT_STATUS_WRAPUP, <<"wrapup">>).
--define(AGENT_STATUS_PAUSED, <<"paused">>).
--define(AGENT_STATUS_LOGIN, <<"login">>).
--define(AGENT_STATUS_LOGOUT, <<"logout">>).
 
 -define(CB_LIST, <<"agents/crossbar_listing">>).
 -define(STATS_PATH_TOKEN, <<"stats">>).
@@ -178,14 +155,23 @@ read(Id, Context) -> crossbar_doc:load(Id, Context).
 
 -define(CB_AGENTS_LIST, <<"users/crossbar_listing">>).
 fetch_all_agent_statuses(Context) ->
-    crossbar_util:response(acdc_util:agent_statuses(cb_context:account_id(Context)), Context).
+    fetch_all_current_statuses(Context
+                               ,'undefined'
+                               ,cb_context:req_value(Context, <<"status">>)
+                              ).
 
 fetch_agent_status(AgentId, Context) ->
-    S = case wh_util:is_true(cb_context:req_value(Context, <<"recent">>)) of
-            'false' -> acdc_util:agent_status(cb_context:account_id(Context), AgentId);
-            'true' -> acdc_util:agent_statuses(cb_context:account_id(Context), AgentId)
-        end,
-    crossbar_util:response(S, Context).
+    case wh_util:is_true(cb_context:req_value(Context, <<"recent">>)) of
+        'false' ->
+            crossbar_util:response(acdc_util:agent_status(cb_context:account_id(Context), AgentId)
+                                   ,Context
+                                  );
+        'true' ->
+            fetch_all_current_statuses(Context
+                                       ,AgentId
+                                       ,cb_context:req_value(Context, <<"status">>)
+                                      )
+    end.
 
 -spec fetch_all_agent_stats(cb_context:context()) -> cb_context:context().
 fetch_all_agent_stats(Context) ->
@@ -195,14 +181,36 @@ fetch_all_agent_stats(Context) ->
     end.
 
 fetch_all_current_agent_stats(Context) ->
-    lager:debug("querying for all recent stats"),
+    fetch_all_current_stats(Context
+                            ,cb_context:req_value(Context, <<"agent_id">>)
+                           ).
+
+fetch_all_current_stats(Context, AgentId) ->
+    Now = wh_util:current_tstamp(),
+    Yday = Now - ?SECONDS_IN_DAY,
+
     Req = props:filter_undefined(
             [{<<"Account-ID">>, cb_context:account_id(Context)}
-             ,{<<"Status">>, cb_context:req_value(Context, <<"status">>)}
-             ,{<<"Agent-ID">>, cb_context:req_value(Context, <<"agent_id">>)}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Start-Range">>, Yday}
+             ,{<<"End-Range">>, Now}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
-    fetch_from_amqp(Context, Req).
+    fetch_stats_from_amqp(Context, Req).
+
+fetch_all_current_statuses(Context, AgentId, Status) ->
+    Now = wh_util:current_tstamp(),
+    Yday = Now - ?SECONDS_IN_DAY,
+
+    Req = props:filter_undefined(
+            [{<<"Account-ID">>, cb_context:account_id(Context)}
+             ,{<<"Status">>, Status}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Start-Range">>, Yday}
+             ,{<<"End-Range">>, Now}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ]),
+    fetch_statuses_from_amqp(Context, Req).
 
 fetch_ranged_agent_stats(Context, StartRange) ->
     MaxRange = whapps_config:get_integer(<<"acdc">>, <<"archive_window_s">>, 3600),
@@ -239,29 +247,63 @@ fetch_ranged_agent_stats(Context, From, To, 'true') ->
              ,{<<"End-Range">>, To}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
-    fetch_from_amqp(Context, Req);
+    fetch_stats_from_amqp(Context, Req);
 fetch_ranged_agent_stats(Context, From, To, 'false') ->
     lager:debug("ranged query from ~b to ~b of archived stats", [From, To]),
     Context.
 
-fetch_from_amqp(Context, Req) ->
+-spec fetch_statuses_from_amqp(cb_context:context(), wh_proplist()) ->
+                                      cb_context:context().
+fetch_statuses_from_amqp(Context, Req) ->
+    case whapps_util:amqp_pool_request(Req
+                                       ,fun wapi_acdc_stats:publish_status_req/1
+                                       ,fun wapi_acdc_stats:status_resp_v/1
+                                      )
+    of
+        {'error', E} ->
+            crossbar_util:response('error', <<"status request had errors">>, 400
+                                   ,wh_json:get_value(<<"Error-Reason">>, E)
+                                   ,Context
+                                  );
+        {'ok', Resp} -> format_statuses(Context, Resp)
+    end.
+
+fetch_stats_from_amqp(Context, Req) ->
     case whapps_util:amqp_pool_request(Req
                                        ,fun wapi_acdc_stats:publish_current_calls_req/1
                                        ,fun wapi_acdc_stats:current_calls_resp_v/1
                                       )
     of
-        {'error', _E} ->
-            lager:debug("failed to recv resp from AMQP: ~p", [_E]),
-            cb_context:add_system_error('datastore_unreachable', Context);
+        {'error', E} ->
+            crossbar_util:response('error', <<"stat request had errors">>, 400
+                                   ,wh_json:get_value(<<"Error-Reason">>, E)
+                                   ,Context
+                                  );
         {'ok', Resp} -> format_stats(Context, Resp)
     end.
 
+format_statuses(Context, Resp) ->
+    As = wh_json:get_value(<<"Agents">>, Resp, wh_json:new()),
+    crossbar_util:response(
+      wh_json:foldl(fun format_statuses_fold/3, wh_json:new(), As)
+      ,Context
+     ).
+
+format_statuses_fold(AgentId, Statuses, Acc) ->
+    wh_json:set_value(AgentId
+                      ,wh_json:map(fun format_status_fold_map/2, Statuses)
+                      ,Acc
+                     ).
+
+format_status_fold_map(Time, Status) ->
+    {Time, wh_doc:public_fields(Status)}.
+
+-spec format_stats(cb_context:context(), wh_json:object()) -> cb_context:context().
 format_stats(Context, Resp) ->
     Stats = wh_json:get_value(<<"Handled">>, Resp, []) ++
         wh_json:get_value(<<"Abandoned">>, Resp, []) ++
         wh_json:get_value(<<"Waiting">>, Resp, []) ++
         wh_json:get_value(<<"Processed">>, Resp, []),
-
 
     crossbar_util:response(lists:foldl(fun format_stats_fold/2, wh_json:new(), Stats), Context).
 

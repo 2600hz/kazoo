@@ -297,6 +297,14 @@ start_link(AcctId, AgentId, Supervisor, Props) ->
 start_link(Supervisor, _AgentJObj, AcctId, AgentId, _Queues) ->
     pvt_start_link(AcctId, AgentId, Supervisor, [], 'false').
 
+pvt_start_link('undefined', _AgentId, Supervisor, _, _) ->
+    lager:debug("agent ~s trying to start with no account id", [_AgentId]),
+    spawn('acdc_agent_sup', 'stop', [Supervisor]),
+    'ignore';
+pvt_start_link(_AcctId, 'undefined', Supervisor, _, _) ->
+    lager:debug("undefined agent id trying to start in account ~s", [_AcctId]),
+    spawn('acdc_agent_sup', 'stop', [Supervisor]),
+    'ignore';
 pvt_start_link(AcctId, AgentId, Supervisor, Props, IsThief) ->
     gen_fsm:start_link(?MODULE, [AcctId, AgentId, Supervisor, Props, IsThief], []).
 
@@ -329,18 +337,24 @@ init([AcctId, AgentId, Supervisor, Props, IsThief]) ->
     put('callid', FSMCallId),
     lager:debug("started acdc agent fsm"),
 
-    acdc_stats:agent_ready(AcctId, AgentId),
-
     Self = self(),
     _P = spawn(?MODULE, 'wait_for_listener', [Supervisor, Self, Props, IsThief]),
     lager:debug("waiting for listener in ~p", [_P]),
+    AcctDb = wh_util:format_account_id(AcctId, 'encoded'),
 
     {'ok', 'wait', #state{acct_id=AcctId
-                          ,acct_db=wh_util:format_account_id(AcctId, 'encoded')
+                          ,acct_db=AcctDb
                           ,agent_id=AgentId
                           ,fsm_call_id=FSMCallId
-                          ,max_connect_failures=?MAX_FAILURES
+                          ,max_connect_failures=max_failures(AcctDb, AcctId)
                          }}.
+
+max_failures(AcctDb, AcctId) ->
+    case couch_mgr:open_cache_doc(AcctDb, AcctId) of
+        {'ok', AcctJObj} ->
+            wh_json:get_value(<<"max_connect_failures">>, AcctJObj, ?MAX_FAILURES);
+        {'error', _} -> ?MAX_FAILURES
+    end.
 
 wait_for_listener(Supervisor, FSM, Props, IsThief) ->
     case acdc_agent_sup:agent(Supervisor) of
@@ -368,9 +382,12 @@ wait_for_listener(Supervisor, FSM, Props, IsThief) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-wait({'listener', AgentProc, NextState, SyncRef}, State) ->
+wait({'listener', AgentProc, NextState, SyncRef}, #state{acct_id=AcctId
+                                                         ,agent_id=AgentId
+                                                        }=State) ->
     lager:debug("setting agent proc to ~p", [AgentProc]),
     acdc_agent:fsm_started(AgentProc, self()),
+    acdc_stats:agent_ready(AcctId, AgentId),
     {'next_state', NextState, State#state{
                                 agent_proc=AgentProc
                                 ,sync_ref=SyncRef
@@ -1727,28 +1744,32 @@ notify(Url, Method, Key, #state{acct_id=AcctId
     notify(Url, Method, Data).
 
 notify(Url, 'post', Data) ->
-    {'ok', _Status, _ResponseHeaders, _ResponseBody} =
-        ibrowse:send_req(wh_util:to_list(Url)
-                         ,[]
-                         ,'post'
-                         ,wh_json:encode(Data)
-                         ,[{'connect_timeout', 200} % wait up to 200ms for connection
-                           ,{'content_type', "application/json"}
-                          ]
-                         ,1000 % wait up to 1 sec for response
-                        ),
-    lager:debug("POST req to ~s: ~s", [Url, _Status]);
+    notify(Url, [], 'post', wh_json:encode(Data)
+           ,[{'content_type', "application/json"}]
+          );
 notify(Url, 'get', Data) ->
-    Uri = uri(Url, wh_json:to_querystring(Data)),
-    {'ok', _Status, _ResponseHeaders, _ResponseBody} =
-        ibrowse:send_req(wh_util:to_list(Uri)
-                         ,[]
-                         ,'get'
-                         ,wh_json:encode(Data)
-                         ,[{'connect_timeout', 200}] % wait up to 200ms for connection
-                         ,1000 % wait up to 1 sec for response
-                        ),
-    lager:debug("GET req to ~s: ~s", [Uri, _Status]).
+    notify(uri(Url, wh_json:to_querystring(Data))
+           ,[], 'get', <<>>, []
+          ).
+
+notify(Uri, Headers, Method, Body, Opts) ->
+    case ibrowse:send_req(wh_util:to_list(Uri)
+                          ,Headers
+                          ,Method
+                          ,Body
+                          ,[{'connect_timeout', 200} % wait up to 200ms for connection
+                            | Opts
+                           ]
+                          ,1000
+                         )
+    of
+        {'ok', _Status, _ResponseHeaders, _ResponseBody} ->
+            lager:debug("!s req to ~s: ~s", [Method, Uri, _Status]);
+        {'error', {'url_parsing_failed',_}} ->
+            lager:debug("failed to parse the URL ~s", [Uri]);
+        {'error', _E} ->
+            lager:debug("failed to send request to ~s: ~p", [Uri, _E])
+    end.
 
 cdr_url(JObj) ->
     case wh_json:get_value([<<"Notifications">>, ?NOTIFY_CDR], JObj) of
