@@ -19,6 +19,7 @@
          ,deregister/1, deregister_v/1
          ,presence_probe/1, presence_probe_v/1
          ,presence_update/1, presence_update_v/1
+         ,presence_states/0
          ,pwd_recovery/1, pwd_recovery_v/1
          ,new_account/1, new_account_v/1
          ,port_request/1, port_request_v/1
@@ -91,13 +92,13 @@
 
 %% Notify New Fax
 -define(FAX_HEADERS, [<<"From-User">>, <<"From-Realm">>
-                          ,<<"To-User">>, <<"To-Realm">>
-                          ,<<"Account-DB">>, <<"Fax-ID">>
+                      ,<<"To-User">>, <<"To-Realm">>
+                      ,<<"Account-DB">>, <<"Fax-ID">>
                      ]).
 -define(OPTIONAL_FAX_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Call-ID">>
-                                   ,<<"Fax-Total-Pages">>, <<"Fax-Transferred-Pages">>
-                                   ,<<"Fax-Transfer-Rate">>, <<"Fax-Result-Text">>, <<"ECM-Used">>
-                                   ,<<"Owner-ID">>, <<"Fax-Timestamp">>
+                               ,<<"Fax-Total-Pages">>, <<"Fax-Transferred-Pages">>
+                               ,<<"Fax-Transfer-Rate">>, <<"Fax-Result-Text">>, <<"ECM-Used">>
+                               ,<<"Owner-ID">>, <<"Fax-Timestamp">>
                               ]).
 -define(FAX_VALUES, [{<<"Event-Category">>, <<"notification">>}
                      ,{<<"Event-Name">>, <<"new_fax">>}
@@ -107,8 +108,8 @@
 %% Notify updated MWI
 -define(MWI_REQ_HEADERS, [<<"Notify-User">>, <<"Notify-Realm">>, <<"Messages-New">>, <<"Messages-Saved">>]).
 -define(OPTIONAL_MWI_REQ_HEADERS, [<<"Messages-Urgent">>, <<"Messages-Urgent-Saved">>
-                                       ,<<"Call-ID">>, <<"Subscription-Call-ID">>
-                                       ,<<"Switch-Nodename">>, <<"Message-Account">>
+                                   ,<<"Call-ID">>, <<"Subscription-Call-ID">>
+                                   ,<<"Switch-Nodename">>, <<"Message-Account">>
                                   ]).
 -define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"notification">>}
                          ,{<<"Event-Name">>, <<"mwi">>}
@@ -122,7 +123,7 @@
 %% Notify updated MWI
 -define(MWI_QUERY_HEADERS, [<<"Username">>, <<"Realm">>]).
 -define(OPTIONAL_MWI_QUERY_HEADERS, [<<"Call-ID">>, <<"Subscription-Call-ID">>
-                                         ,<<"Switch-Nodename">>, <<"Message-Account">>
+                                     ,<<"Switch-Nodename">>, <<"Message-Account">>
                                     ]).
 -define(MWI_QUERY_VALUES, [{<<"Event-Category">>, <<"notification">>}
                            ,{<<"Event-Name">>, <<"mwi_query">>}
@@ -132,8 +133,8 @@
 %% Notify Presence_Probe
 -define(PRESENCE_PROBE_HEADERS, [<<"From">>, <<"To">>, <<"Switch-Nodename">>]).
 -define(OPTIONAL_PRESENCE_PROBE_HEADERS, [<<"From-User">>, <<"From-Realm">>, <<"To-User">>, <<"To-Realm">>
-                                              ,<<"Expires">>, <<"Subscription-Call-ID">>, <<"Subscription-Type">>
-                                              ,<<"Subscription">>, <<"Dialog-State">>
+                                          ,<<"Expires">>, <<"Subscription-Call-ID">>, <<"Subscription-Type">>
+                                          ,<<"Subscription">>, <<"Dialog-State">>
                                          ]).
 -define(PRESENCE_PROBE_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                 ,{<<"Event-Name">>, <<"presence_probe">>}
@@ -141,23 +142,26 @@
 -define(PRESENCE_PROBE_TYPES, []).
 
 %% Notify Presence Update
+-define(PRESENCE_UPDATE_STATES, [<<"early">>, <<"confirmed">>, <<"terminated">>]).
+
 -define(PRESENCE_UPDATE_HEADERS, [<<"Presence-ID">>]).
 -define(OPTIONAL_PRESENCE_UPDATE_HEADERS, [<<"To">>, <<"From">>, <<"State">>
-                                               ,<<"Call-ID">>, <<"Subscription-Call-ID">>
-                                               ,<<"Switch-Nodename">>, <<"Dialog-State">>
+                                           ,<<"Call-ID">>, <<"Subscription-Call-ID">>
+                                           ,<<"Switch-Nodename">>, <<"Dialog-State">>
                                           ]).
 -define(PRESENCE_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                  ,{<<"Event-Name">>, <<"presence_update">>}
+                                 ,{<<"State">>, ?PRESENCE_UPDATE_STATES}
                                 ]).
 -define(PRESENCE_UPDATE_TYPES, []).
 
 %% Notify Deregister
 -define(DEREGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
 -define(OPTIONAL_DEREGISTER_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
-                                          ,<<"From-User">>, <<"From-Host">>, <<"FreeSWITCH-Hostname">>, <<"RPid">>
-                                          ,<<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
-                                          ,<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>, <<"Account-DB">>
-                                          ,<<"Authorizing-ID">>, <<"Suppress-Unregister-Notify">>
+                                      ,<<"From-User">>, <<"From-Host">>, <<"FreeSWITCH-Hostname">>, <<"RPid">>
+                                      ,<<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
+                                      ,<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>, <<"Account-DB">>
+                                      ,<<"Authorizing-ID">>, <<"Suppress-Unregister-Notify">>
                                      ]).
 -define(DEREGISTER_VALUES, [{<<"Event-Category">>, <<"notification">>}
                             ,{<<"Event-Name">>, <<"deregister">>}
@@ -391,6 +395,9 @@ presence_probe_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec presence_states() -> ne_binaries().
+presence_states() -> ?PRESENCE_UPDATE_STATES.
+
 presence_update(Prop) when is_list(Prop) ->
     case presence_update_v(Prop) of
         true -> wh_api:build_message(Prop, ?PRESENCE_UPDATE_HEADERS, ?OPTIONAL_PRESENCE_UPDATE_HEADERS);

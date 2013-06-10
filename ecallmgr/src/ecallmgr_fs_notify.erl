@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%% Notify-type requests, like MWI updates, received and processed here
 %%% @end
@@ -33,17 +33,17 @@
 -define(SERVER, ?MODULE).
 -define(MWI_BODY, "~b/~b (~b/~b)").
 
--define(BINDINGS, [{notifications, [{restrict_to, [mwi_update]}]}]).
--define(RESPONDERS, [{{?MODULE, mwi_update}
+-define(BINDINGS, [{'notifications', [{'restrict_to', ['mwi_update']}]}]).
+-define(RESPONDERS, [{{?MODULE, 'mwi_update'}
                       ,[{<<"notification">>, <<"mwi">>}]
                      }
-                     ,{{?MODULE, presence_update}
+                     ,{{?MODULE, 'presence_update'}
                        ,[{<<"notification">>, <<"presence_update">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<"ecallmgr_fs_notify">>).
--define(QUEUE_OPTIONS, [{exclusive, false}]).
--define(CONSUME_OPTIONS, [{exclusive, false}]).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -include_lib("ecallmgr.hrl").
 
@@ -64,11 +64,11 @@ start_link(Node) ->
 
 start_link(Node, Options) ->
     gen_listener:start_link(?MODULE
-                            ,[{responders, ?RESPONDERS}
-                              ,{bindings, ?BINDINGS}
-                              ,{queue_name, ?QUEUE_NAME}
-                              ,{queue_options, ?QUEUE_OPTIONS}
-                              ,{consume_options, ?CONSUME_OPTIONS}
+                            ,[{'responders', ?RESPONDERS}
+                              ,{'bindings', ?BINDINGS}
+                              ,{'queue_name', ?QUEUE_NAME}
+                              ,{'queue_options', ?QUEUE_OPTIONS}
+                              ,{'consume_options', ?CONSUME_OPTIONS}
                              ]
                             ,[Node, Options]).
 
@@ -77,7 +77,7 @@ presence_update(JObj, _Props) ->
     do_presence_update(wh_json:get_value(<<"State">>, JObj), JObj).
 
 -spec do_presence_update(api_binary(), wh_json:object()) -> any().
-do_presence_update(undefined, JObj) ->
+do_presence_update('undefined', JObj) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
     Switch = wh_json:get_value(<<"Switch-Nodename">>, JObj),
     case ecallmgr_fs_channel:match_presence(PresenceId) of
