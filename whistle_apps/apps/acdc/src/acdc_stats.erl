@@ -38,8 +38,8 @@
 
          ,init_db/1
          ,db_name/1
-         ,archive_call_data/0
-         ,archive_status_data/0
+         ,archive_call_data/1
+         ,archive_status_data/1
         ]).
 
 %% AMQP Callbacks
@@ -500,6 +500,7 @@ handle_event(_JObj, _State) ->
     {'reply', []}.
 
 terminate(_Reason, _) ->
+    force_archive_data(),
     lager:debug("acdc stats terminating: ~p", [_Reason]).
 
 code_change(_OldVsn, State, _Extra) ->
@@ -650,7 +651,6 @@ status_build_match_spec(JObj) ->
                                      {'ok', ets:match_spec()} |
                                      {'error', wh_json:object()}.
 status_build_match_spec(JObj, AcctMatch) ->
-    lager:debug("req: ~p", [JObj]),
     case wh_json:foldl(fun status_match_builder_fold/3, AcctMatch, JObj) of
         {'error', _Errs}=Errors -> Errors;
         {StatusStat, Constraints} -> {'ok', [{StatusStat, Constraints, ['$_']}]}
@@ -715,7 +715,6 @@ status_match_builder_fold(_, _, Acc) -> Acc.
 
 -spec query_statuses(ne_binary(), ne_binary(), ets:match_spec(), pos_integer()) -> 'ok'.
 query_statuses(RespQ, MsgId, Match, Limit) ->
-    lager:debug("match: ~p", [Match]),
     case ets:select(status_table_id(), Match) of
         [] ->
             lager:debug("no stats found, sorry ~s", [RespQ]),
@@ -758,8 +757,13 @@ trim_query_statuses_fold(TBin, Datum, {Ks, Data}=Acc) ->
 
 -spec archive_data() -> 'ok'.
 archive_data() ->
-    _ = spawn(?MODULE, 'archive_call_data', []),
-    _ = spawn(?MODULE, 'archive_status_data', []),
+    _ = spawn(?MODULE, 'archive_call_data', ['false']),
+    _ = spawn(?MODULE, 'archive_status_data', ['false']),
+    'ok'.
+
+force_archive_data() ->
+    _ = spawn(?MODULE, 'archive_call_data', ['true']),
+    _ = spawn(?MODULE, 'archive_status_data', ['true']),
     'ok'.
 
 cleanup_data(Srv) ->
@@ -800,7 +804,17 @@ cleanup_data(Srv) ->
 cleanup_unfinished(Unfinished) ->
     lager:debug("unfinished stats: ~p", [Unfinished]).
 
-archive_call_data() ->
+archive_call_data('true') ->
+    put('callid', <<"acdc_stats.force_call_archiver">>),
+
+    Match = [{#call_stat{status='$1', _='_'}
+              ,[{'=/=', '$1', {'const', <<"waiting">>}}
+                ,{'=/=', '$1', {'const', <<"handled">>}}
+               ]
+              ,['$_']
+             }],
+    maybe_archive_call_data(Match);
+archive_call_data('false') ->
     put('callid', <<"acdc_stats.call_archiver">>),
 
     Past = wh_util:current_tstamp() - ?ARCHIVE_WINDOW,
@@ -811,6 +825,9 @@ archive_call_data() ->
                ]
               ,['$_']
              }],
+    maybe_archive_call_data(Match).
+
+maybe_archive_call_data(Match) ->
     case ets:select(call_table_id(), Match) of
         [] -> 'ok';
         Stats ->
@@ -875,7 +892,15 @@ call_stat_to_doc(#call_stat{id=Id
         ,{'type', <<"call_stat">>}
        ]).
 
-archive_status_data() ->
+archive_status_data('true') ->
+    put('callid', <<"acdc_stats.force_status_archiver">>),
+
+    Match = [{#status_stat{_='_'}
+              ,[]
+              ,['$_']
+             }],
+    maybe_archive_status_data(Match);
+archive_status_data('false') ->
     put('callid', <<"acdc_stats.status_archiver">>),
 
     Past = wh_util:current_tstamp() - ?ARCHIVE_WINDOW,
@@ -883,6 +908,9 @@ archive_status_data() ->
               ,[{'=<', '$1', Past}]
               ,['$_']
              }],
+    maybe_archive_status_data(Match).
+
+maybe_archive_status_data(Match) ->
     case ets:select(status_table_id(), Match) of
         [] -> 'ok';
         Stats ->
