@@ -383,6 +383,14 @@ handle_cast({'queue_login', QJObj}, State) ->
     lager:debug("queue jobj: ~p", [QJObj]),
     handle_cast({'queue_login', wh_json:get_value(<<"_id">>, QJObj)}, State);
 
+handle_cast({'queue_logout', Q}, #state{agent_queues=[Q]
+                                        ,acct_id=AcctId
+                                        ,agent_id=AgentId
+                                       }=State) ->
+    lager:debug("agent logged out of last known queue ~s, logging out", [Q]),
+    logout_from_queue(AcctId, AgentId, Q),
+    acdc_agent:logout_agent(self()),
+    {'noreply', State#state{agent_queues=[]}};
 handle_cast({'queue_logout', Q}, #state{agent_queues=Qs
                                         ,acct_id=AcctId
                                         ,agent_id=AgentId
