@@ -99,11 +99,8 @@ maybe_start_agent(AcctId, AgentId, JObj) ->
             timer:sleep(100),
             case erlang:is_process_alive(Sup) of
                 'true' ->
-                    lager:debug("agent logged in stat: ~p", [JObj]),
                     acdc_stats:agent_logged_in(AcctId, AgentId),
-
                     maybe_update_presence(Sup, JObj),
-
                     login_success(JObj);
                 'false' ->
                     acdc_stats:agent_logged_out(AcctId, AgentId),

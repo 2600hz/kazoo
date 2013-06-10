@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%% Manages queue processes:
 %%%   starting when a queue is created
@@ -570,6 +570,7 @@ start_agent_and_worker(WorkersSup, AcctId, QueueId, AgentJObj) ->
 
     case acdc_util:agent_status(AcctId, AgentId) of
         <<"logout">> -> 'ok';
+        <<"logged_out">> -> 'ok';
         _Status ->
             lager:debug("maybe starting agent ~s(~s) for queue ~s", [AgentId, _Status, QueueId]),
 
