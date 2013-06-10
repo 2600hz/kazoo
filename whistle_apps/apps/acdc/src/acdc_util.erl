@@ -39,10 +39,10 @@ agent_presence_update(AcctId, AgentId) ->
         P when is_pid(P) -> presence_update(AcctId, AgentId, ?PRESENCE_GREEN)
     end.
 
-presence_update(AcctId, QueueId, State) ->
+presence_update(AcctId, PresenceId, State) ->
     AcctDb = wh_util:format_account_id(AcctId, 'encoded'),
     {'ok', AcctDoc} = couch_mgr:open_cache_doc(AcctDb, AcctId),
-    To = <<QueueId/binary, "@", (wh_json:get_value(<<"realm">>, AcctDoc))/binary>>,
+    To = <<PresenceId/binary, "@", (wh_json:get_value(<<"realm">>, AcctDoc))/binary>>,
 
     lager:debug("sending presence update '~s' to '~s'", [State, To]),
     whapps_call_command:presence(State, To).
