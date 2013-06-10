@@ -197,10 +197,10 @@ add_internal_cost(Acc, V, Cdr, RateId) ->
     end.
 
 calc_internal_cost(RateDoc, Cdr) ->
-    Rate = wh_util:to_integer(wh_json:get_float_value(<<"pvt_rate_cost">>, RateDoc, 0.0)),
+    Rate = wh_json:get_float_value(<<"pvt_rate_cost">>, RateDoc, 0.0),
     RateIncr = wh_json:get_integer_value(<<"rate_increment">>, RateDoc, 60),
     RateMin = wh_json:get_integer_value(<<"rate_minimum">>, RateDoc, 60),
-    Surcharge = wh_util:to_integer(wh_json:get_float_value(<<"rate_surcharge">>, RateDoc, 0.0)),
+    Surcharge = wh_json:get_float_value(<<"rate_surcharge">>, RateDoc, 0.0),
     BillingSecs = wh_json:get_integer_value(<<"billing_seconds">>, Cdr, 0),
     case wh_json:get_value(<<"pvt_vsn">>, Cdr) of 
         1 -> 
