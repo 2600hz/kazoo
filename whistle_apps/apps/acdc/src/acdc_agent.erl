@@ -36,6 +36,8 @@
          ,unbind_from_cdr/2
          ,logout_agent/1
          ,agent_info/2
+         ,maybe_update_presence_id/2
+         ,maybe_update_presence_state/2
          ,presence_update/2
         ]).
 
@@ -74,6 +76,7 @@
          ,agent_call_id :: api_binary()
          ,agent_call_queue :: api_binary()
          ,cdr_urls = dict:new() :: dict() %% {CallId, Url}
+         ,agent_presence_id :: api_binary()
          }).
 
 -type agent() :: whapps_call:call() | wh_json:object().
@@ -271,6 +274,14 @@ unbind_from_cdr(Srv, CallId) -> gen_listener:cast(Srv, {'unbind_from_cdr', CallI
 
 logout_agent(Srv) -> gen_listener:cast(Srv, 'logout_agent').
 
+maybe_update_presence_id(_Srv, 'undefined') -> 'ok';
+maybe_update_presence_id(Srv, Id) ->
+    gen_listener:cast(Srv, {'presence_id', Id}).
+
+maybe_update_presence_state(_Srv, 'undefined') -> 'ok';
+maybe_update_presence_state(Srv, State) ->
+    presence_update(Srv, State).
+
 presence_update(Srv, PresenceState) ->
     gen_listener:cast(Srv, {'presence_update', PresenceState}).
 
@@ -326,7 +337,7 @@ handle_call('config', _From, #state{acct_id=AcctId
                                     ,my_q=Q
                                    }=State) ->
     {'reply', {AcctId, AgentId, Q}, State};
-handle_call(_Request, _From, State) ->
+handle_call(_Request, _From, #state{}=State) ->
     lager:debug("unhandled call from ~p: ~p", [_From, _Request]),
     {'reply', {'error', 'unhandled_call'}, State}.
 
@@ -372,6 +383,14 @@ handle_cast({'queue_login', QJObj}, State) ->
     lager:debug("queue jobj: ~p", [QJObj]),
     handle_cast({'queue_login', wh_json:get_value(<<"_id">>, QJObj)}, State);
 
+handle_cast({'queue_logout', Q}, #state{agent_queues=[Q]
+                                        ,acct_id=AcctId
+                                        ,agent_id=AgentId
+                                       }=State) ->
+    lager:debug("agent logged out of last known queue ~s, logging out", [Q]),
+    logout_from_queue(AcctId, AgentId, Q),
+    acdc_agent:logout_agent(self()),
+    {'noreply', State#state{agent_queues=[]}};
 handle_cast({'queue_logout', Q}, #state{agent_queues=Qs
                                         ,acct_id=AcctId
                                         ,agent_id=AgentId
@@ -692,10 +711,22 @@ handle_cast('logout_agent', #state{acct_id=AcctId
     lager:debug("published agent logout message"),
     {'noreply', State};
 
+handle_cast({'presence_id', _Id}, #state{agent_presence_id=_Id}=State) ->
+    {'noreply', State};
+handle_cast({'presence_id', PresenceId}, #state{agent_presence_id=_Id}=State) ->
+    lager:debug("updating presence id from ~s to ~s", [_Id, PresenceId]),
+    {'noreply', State#state{agent_presence_id=PresenceId}};
+
 handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
+                                                       ,agent_presence_id='undefined'
                                                        ,agent_id=AgentId
                                                       }=State) ->
     acdc_util:presence_update(AcctId, AgentId, PresenceState),
+    {'noreply', State};
+handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
+                                                       ,agent_presence_id=PresenceId
+                                                      }=State) ->
+    acdc_util:presence_update(AcctId, PresenceId, PresenceState),
     {'noreply', State};
 
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->

@@ -41,38 +41,40 @@ handle_status_update(JObj, _Props) ->
             maybe_start_agent(AcctId, AgentId, JObj);
         <<"logout">> ->
             'true' = wapi_acdc_agent:logout_v(JObj),
-            maybe_stop_agent(AcctId, AgentId);
+            maybe_stop_agent(AcctId, AgentId, JObj);
         <<"pause">> ->
             'true' = wapi_acdc_agent:pause_v(JObj),
 
             Timeout = wh_json:get_integer_value(<<"Time-Limit">>, JObj, ?DEFAULT_PAUSE),
 
-            maybe_pause_agent(AcctId, AgentId, Timeout);
+            maybe_pause_agent(AcctId, AgentId, Timeout, JObj);
         <<"resume">> ->
             'true' = wapi_acdc_agent:resume_v(JObj),
-            maybe_resume_agent(AcctId, AgentId);
+            maybe_resume_agent(AcctId, AgentId, JObj);
         Event -> maybe_agent_queue_change(AcctId, AgentId, Event
                                           ,wh_json:get_value(<<"Queue-ID">>, JObj)
+                                          ,JObj
                                          )
     end.
 
-maybe_agent_queue_change(AcctId, AgentId, <<"login_queue">>, QueueId) ->
+maybe_agent_queue_change(AcctId, AgentId, <<"login_queue">>, QueueId, JObj) ->
     lager:debug("queue login for agent ~s into ~s", [AgentId, QueueId]),
     update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)
                  ,QueueId
                  ,fun acdc_agent:add_acdc_queue/2
-                 ,AcctId, AgentId
+                 ,AcctId, AgentId, JObj
                 );
-maybe_agent_queue_change(AcctId, AgentId, <<"logout_queue">>, QueueId) ->
+maybe_agent_queue_change(AcctId, AgentId, <<"logout_queue">>, QueueId, JObj) ->
     lager:debug("queue logout for agent ~s into ~s", [AgentId, QueueId]),
     update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)
                  ,QueueId
                  ,fun acdc_agent:rm_acdc_queue/2
+                 ,JObj
                 );
-maybe_agent_queue_change(_AcctId, _AgentId, _Evt, _QueueId) ->
+maybe_agent_queue_change(_AcctId, _AgentId, _Evt, _QueueId, _JObj) ->
     lager:debug("unhandled evt: ~s for ~s", [_Evt, _QueueId]).
 
-update_agent('undefined', QueueId, _F, AcctId, AgentId) ->
+update_agent('undefined', QueueId, _F, AcctId, AgentId, _JObj) ->
     lager:debug("new agent process needs starting"),
     {'ok', AgentJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AcctId, 'encoded')
                                                  ,AgentId
@@ -80,13 +82,16 @@ update_agent('undefined', QueueId, _F, AcctId, AgentId) ->
     lager:debug("agent loaded"),
     acdc_stats:agent_ready(AcctId, AgentId),
     acdc_agents_sup:new(AcctId, AgentId, AgentJObj, [QueueId]);
-update_agent(Super, Q, F, _, _) when is_pid(Super) ->
-    lager:debug("agent super ~p", [Super]),
-    F(acdc_agent_sup:agent(Super), Q).
+update_agent(Sup, Q, F, _, _, _) when is_pid(Sup) ->
+    lager:debug("agent super ~p", [Sup]),
+    F(acdc_agent_sup:agent(Sup), Q).
 
-update_agent('undefined', _QueueId, _F) -> lager:debug("agent's supervisor not around, ignoring for queue ~s", [_QueueId]);
-update_agent(Super, Q, F) when is_pid(Super) ->
-    F(acdc_agent_sup:agent(Super), Q).
+update_agent('undefined', _QueueId, _F, _JObj) ->
+    lager:debug("agent's supervisor not around, ignoring for queue ~s", [_QueueId]);
+update_agent(Sup, Q, F, JObj) when is_pid(Sup) ->
+    APid = acdc_agent_sup:agent(Sup),
+    maybe_update_presence(Sup, JObj),
+    F(APid, Q).
 
 maybe_start_agent(AcctId, AgentId, JObj) ->
     try maybe_start_agent(AcctId, AgentId) of
@@ -94,8 +99,8 @@ maybe_start_agent(AcctId, AgentId, JObj) ->
             timer:sleep(100),
             case erlang:is_process_alive(Sup) of
                 'true' ->
-                    lager:debug("agent logged in stat"),
                     acdc_stats:agent_logged_in(AcctId, AgentId),
+                    maybe_update_presence(Sup, JObj),
                     login_success(JObj);
                 'false' ->
                     acdc_stats:agent_logged_out(AcctId, AgentId),
@@ -116,11 +121,15 @@ login_success(JObj) ->
     login_resp(JObj, <<"success">>).
 
 login_resp(JObj, Status) ->
-    Prop = [{<<"Status">>, Status}
-            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
-    wapi_acdc_agent:publish_login_resp(wh_json:get_value(<<"Server-ID">>, JObj), Prop).
+    case wh_json:get_value(<<"Msg-ID">>, JObj) of
+        'undefined' -> lager:debug("not publishing a login resp: no msg_id");
+        MsgId ->
+            Prop = [{<<"Status">>, Status}
+                    ,{<<"Msg-ID">>, MsgId}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_acdc_agent:publish_login_resp(wh_json:get_value(<<"Server-ID">>, JObj), Prop)
+    end.
 
 -spec maybe_start_agent(api_binary(), api_binary()) ->
                                {'ok', pid()} |
@@ -136,44 +145,48 @@ maybe_start_agent(AcctId, AgentId) ->
                     lager:debug("error opening agent doc: ~p", [_E]),
                     E
             end;
-        P when is_pid(P) ->
-            lager:debug("agent ~s (~s) already running: supervisor ~p", [AgentId, AcctId, P]),
-            {'ok', P}
+        Sup when is_pid(Sup) ->
+            lager:debug("agent ~s (~s) already running: supervisor ~p", [AgentId, AcctId, Sup]),
+            {'ok', Sup}
     end.
 
-maybe_stop_agent(AcctId, AgentId) ->
-    catch acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID),
+maybe_stop_agent(AcctId, AgentId, JObj) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' ->
             lager:debug("agent ~s(~s) not found, nothing to do", [AgentId, AcctId]),
+            catch acdc_util:presence_update(AcctId, presence_id(JObj, AgentId), ?PRESENCE_RED_SOLID),
             acdc_stats:agent_logged_out(AcctId, AgentId);
-        P when is_pid(P) ->
-            lager:debug("agent ~s(~s) is logging out, stopping ~p", [AgentId, AgentId, P]),
+        Sup when is_pid(Sup) ->
+            lager:debug("agent ~s(~s) is logging out, stopping ~p", [AgentId, AgentId, Sup]),
             acdc_stats:agent_logged_out(AcctId, AgentId),
 
-            case catch acdc_agent_sup:agent(P) of
-                APid when is_pid(APid) -> acdc_agent:logout_agent(APid);
+            case catch acdc_agent_sup:agent(Sup) of
+                APid when is_pid(APid) ->
+                    maybe_update_presence(Sup, JObj),
+                    acdc_agent:logout_agent(APid);
                 _P -> lager:debug("failed to find agent listener for ~s: ~p", [AgentId, _P])
             end,
 
-            _Stop = acdc_agent_sup:stop(P),
-            lager:debug("supervisor ~p stopping agent: ~p", [P, _Stop])
+            _Stop = acdc_agent_sup:stop(Sup),
+            lager:debug("supervisor ~p stopping agent: ~p", [Sup, _Stop])
     end.
 
-maybe_pause_agent(AcctId, AgentId, Timeout) ->
+maybe_pause_agent(AcctId, AgentId, Timeout, JObj) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' -> lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
-        P when is_pid(P) ->
+        Sup when is_pid(Sup) ->
             lager:debug("agent ~s(~s) is pausing for ~p", [AcctId, AgentId, Timeout]),
-            acdc_agent_fsm:pause(acdc_agent_sup:fsm(P), Timeout)
+            maybe_update_presence(Sup, JObj),
+            acdc_agent_fsm:pause(acdc_agent_sup:fsm(Sup), Timeout)
     end.
 
-maybe_resume_agent(AcctId, AgentId) ->
+maybe_resume_agent(AcctId, AgentId, JObj) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' -> lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
-        P when is_pid(P) ->
-            lager:debug("agent ~s(~s) is resuming: ~p", [AcctId, AgentId, P]),
-            acdc_agent_fsm:resume(acdc_agent_sup:fsm(P))
+        Sup when is_pid(Sup) ->
+            lager:debug("agent ~s(~s) is resuming: ~p", [AcctId, AgentId, Sup]),
+            maybe_update_presence(Sup, JObj),
+            acdc_agent_fsm:resume(acdc_agent_sup:fsm(Sup))
     end.
 
 -spec handle_sync_req(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -389,3 +402,18 @@ handle_destroy(JObj, Props) ->
     'true' = wapi_call:destroy_channel_v(JObj),
     FSM = props:get_value('fsm_pid', Props),
     acdc_agent_fsm:call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj).
+
+presence_id(JObj) ->
+    presence_id(JObj, 'undefined').
+presence_id(JObj, AgentId) ->
+    wh_json:get_value(<<"Presence-ID">>, JObj, AgentId).
+
+presence_state(JObj) ->
+    presence_state(JObj, 'undefined').
+presence_state(JObj, State) ->
+    wh_json:get_value(<<"Presence-State">>, JObj, State).
+
+maybe_update_presence(Sup, JObj) ->
+    APid = acdc_agent_sup:agent(Sup),
+    acdc_agent:maybe_update_presence_id(APid, presence_id(JObj)),
+    acdc_agent:maybe_update_presence_state(APid, presence_state(JObj)).

@@ -212,8 +212,12 @@ stats_resp_v(JObj) ->
 -define(AGENT_KEY, "acdc.agent.action."). % append queue ID
 
 -define(AGENT_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>]).
--define(OPTIONAL_AGENT_HEADERS, [<<"Time-Limit">>, <<"Queue-ID">>]).
--define(AGENT_VALUES, [{<<"Event-Category">>, <<"agent">>}]).
+-define(OPTIONAL_AGENT_HEADERS, [<<"Time-Limit">>, <<"Queue-ID">>
+                                 ,<<"Presence-ID">>, <<"Presence-State">>
+                                ]).
+-define(AGENT_VALUES, [{<<"Event-Category">>, <<"agent">>}
+                       ,{<<"Presence-State">>, wapi_notifications:presence_states()}
+                      ]).
 -define(AGENT_TYPES, []).
 
 -define(LOGIN_VALUES, [{<<"Event-Name">>, <<"login">>} | ?AGENT_VALUES]).
