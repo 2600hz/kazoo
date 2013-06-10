@@ -996,6 +996,7 @@ compact_design_docs(AdminConn, S, DDs) ->
             wait_for_design_compaction(AdminConn, S, Compact),
             compact_design_docs(AdminConn, S, Remaining)
     catch
+        'error':'badarg' when DDs =:= [] -> 'ok';
         'error':'badarg' ->
             lager:debug("compacting last chunk of views: ~p", [DDs]),
             _ = [couch_util:design_compact(AdminConn, S, DD) || DD <- DDs],
@@ -1006,8 +1007,12 @@ wait_for_design_compaction(_, _, []) -> 'ok';
 wait_for_design_compaction(AdminConn, Shard, [DD|DDs]) ->
     wait_for_design_compaction(AdminConn, Shard, DDs, DD, couch_util:design_info(AdminConn, Shard, DD)).
 
+wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'error', {'conn_failed', {'error', 'timeout'}}}) ->
+    lager:debug("connecting to BigCouch timed out, waiting then retrying"),
+    timer:sleep(?SLEEP_BETWEEN_POLL),
+    wait_for_design_compaction(AdminConn, Shard, DDs, DD, couch_util:design_info(AdminConn, Shard, DD));
 wait_for_design_compaction(AdminConn, Shard, DDs, _DD, {'error', _E}) ->
-    lager:debug("failed design status for ~s(~s): ~p", [Shard, _DD, _E]),
+    lager:debug("failed design status for ~s: ~p", [_DD, _E]),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
     wait_for_design_compaction(AdminConn, Shard, DDs);
 wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'ok', DesignInfo}) ->
