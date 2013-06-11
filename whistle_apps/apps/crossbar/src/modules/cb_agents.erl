@@ -163,9 +163,10 @@ fetch_all_agent_statuses(Context) ->
 fetch_agent_status(AgentId, Context) ->
     case wh_util:is_true(cb_context:req_value(Context, <<"recent">>)) of
         'false' ->
-            crossbar_util:response(acdc_util:agent_status(cb_context:account_id(Context), AgentId)
-                                   ,Context
-                                  );
+            crossbar_util:response(
+              acdc_util:agent_status(cb_context:account_id(Context), AgentId)
+              ,Context
+             );
         'true' ->
             fetch_all_current_statuses(Context
                                        ,AgentId
@@ -202,11 +203,14 @@ fetch_all_current_statuses(Context, AgentId, Status) ->
     Now = wh_util:current_tstamp(),
     Yday = Now - ?SECONDS_IN_DAY,
 
+    Recent = cb_context:req_value(Context, <<"recent">>, 'false'),
+
     Opts = props:filter_undefined(
              [{<<"Status">>, Status}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Start-Range">>, Yday}
               ,{<<"End-Range">>, Now}
+              ,{<<"Most-Recent">>, wh_util:is_false(Recent)}
              ]),
 
     crossbar_util:response(
