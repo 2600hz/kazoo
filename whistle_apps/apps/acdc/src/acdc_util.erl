@@ -160,7 +160,6 @@ agent_status_in_db(AcctId, AgentId) ->
             <<"unknown">>
     end.
 
-%% [{AgentId, Status}]
 -spec agent_statuses(ne_binary()) -> wh_json:object().
 agent_statuses(?NE_BINARY = AcctId) ->
     agent_statuses(AcctId, 'undefined', 'true', []).
@@ -168,17 +167,22 @@ agent_statuses(?NE_BINARY = AcctId) ->
 agent_statuses(?NE_BINARY = AcctId, ?NE_BINARY = AgentId) ->
     {Merged, _} = wh_json:get_values(
                     wh_json:get_value(AgentId
-                                      ,agent_statuses(AcctId, AgentId, 'false', [])
+                                      ,agent_statuses(AcctId, AgentId, 'false', [{<<"Agent-ID">>, AgentId}])
                                       ,wh_json:new()
                                      )
                    ),
     wh_json:public_fields(Merged);
 agent_statuses(?NE_BINARY = AcctId, Options) when is_list(Options) ->
-    agent_statuses(AcctId, 'undefined', 'true', Options).
+    agent_statuses(AcctId, 'undefined'
+                   ,props:get_value(<<"Most-Recent">>, Options, 'false')
+                   ,Options
+                  ).
 
 agent_statuses(AcctId, AgentId, OnlyMostRecent, Options) ->
     Self = self(),
-    {P, Ref} = spawn_monitor(fun() -> agent_statuses_from_db(Self, AcctId, OnlyMostRecent, Options) end),
+    {P, Ref} = spawn_monitor(fun() ->
+                                     agent_statuses_from_db(Self, AcctId, OnlyMostRecent, Options)
+                             end),
 
     API = [{<<"Account-ID">>, AcctId}
            ,{<<"Agent-ID">>, AgentId}
@@ -210,10 +214,14 @@ agent_statuses(AcctId, AgentId, OnlyMostRecent, Options) ->
 get_db_stats(P, Ref) ->
     receive
         {'db_stats', P, DBStats} ->
+            erlang:demonitor(Ref, ['flush']),
             DBStats;
         {'DOWN', Ref, 'process', P, _Reason} ->
             lager:debug("db lookup ~p down: ~p", [P, _Reason]),
-            wh_json:new()
+            wh_json:new();
+        _Msg ->
+            lager:debug("unexpected msg: ~p", [_Msg]),
+            get_db_stats(P, Ref)
     after
         5000 ->
             lager:debug("timed out waiting for db stats"),
@@ -229,63 +237,82 @@ most_recent_map(AgentId, Statuses) ->
 
 merge_stats(Stats, DBStats) ->
     lists:foldl(fun({A, Data}, StatsAcc) ->
-                        T = wh_json:get_value(<<"timestamp">>, Data),
-                        wh_json:set_value([A, T], Data, StatsAcc)
+                        K = [A, wh_json:get_binary_value(<<"timestamp">>, Data)],
+                        case wh_json:get_value(K, Data) of
+                            'undefined' -> wh_json:set_value(K, Data, StatsAcc);
+                            _ -> StatsAcc
+                        end
                 end, Stats, DBStats).
 
+build_view_options(Options) ->
+    case props:get_value(<<"Agent-ID">>, Options) of
+        'undefined' -> build_timestamp_view_options(Options, [{'reduce', 'false'}]);
+        AgentId -> build_agent_view_options(Options, AgentId, [{'reduce', 'false'}])
+    end.
 
-%% Filter this by start and end time instead of limiting to 10 arbitrary results
-agent_statuses_from_db(P, AcctId, 'false'=OnlyMostRecent, Options) ->
-    agent_statuses_from_db(P, AcctId, OnlyMostRecent, ['include_docs', {'limit', 10}], Options);
-agent_statuses_from_db(P, AcctId, 'true'=OnlyMostRecent, Options) ->
-    agent_statuses_from_db(P, AcctId, OnlyMostRecent, ['reduce', 'group'], Options).
+build_timestamp_view_options([{<<"Start-Range">>, T}|Options], Acc) ->
+    build_timestamp_view_options(Options, [{'startkey', [T, 0]}|Acc]);
+build_timestamp_view_options([{<<"End-Range">>, T}|Options], Acc) ->
+    build_timestamp_view_options(Options, [{'endkey', [T, wh_json:new()]}|Acc]);
+build_timestamp_view_options([_|Options], Acc) ->
+    build_timestamp_view_options(Options, Acc);
+build_timestamp_view_options([], Acc) -> Acc.
 
-agent_statuses_from_db(P, AcctId, OnlyMostRecent, Opts, ReqOpts) when is_list(Opts) ->
+build_agent_view_options([{<<"Start-Range">>, T}|Options], AgentId, Acc) ->
+    build_agent_view_options(Options, AgentId, [{'startkey', [AgentId, T]}|Acc]);
+build_agent_view_options([{<<"End-Range">>, T}|Options], AgentId, Acc) ->
+    build_agent_view_options(Options, AgentId, [{'endkey', [AgentId, T]}|Acc]);
+build_agent_view_options([_|Options], AgentId, Acc) ->
+    build_agent_view_options(Options, AgentId, Acc);
+build_agent_view_options([], _, Acc) -> Acc.
+
+agent_statuses_from_db(P, AcctId, 'false', Options) ->
+    agent_statuses_from_db(P, AcctId, build_view_options(Options), Options);
+agent_statuses_from_db(P, AcctId, 'true', Options) ->
+    agent_statuses_from_db(P, AcctId, build_timestamp_view_options(Options, ['reduce', 'group']), Options);
+agent_statuses_from_db(P, AcctId, ViewOptions, ReqOpts) when is_list(ViewOptions) ->
     case couch_mgr:get_results(acdc_stats:db_name(AcctId)
                                ,<<"agent_stats/most_recent">>
-                               ,Opts
+                               ,ViewOptions
                               )
     of
         {'ok', Stats} ->
-            P ! {'db_stats', self(), cleanup_db_statuses(Stats, OnlyMostRecent, ReqOpts)};
+            P ! {'db_stats', self(), cleanup_db_statuses(Stats, ReqOpts)};
         {'error', 'not_found'} ->
             P ! {'db_stats', self(), []};
         {'error', _E} ->
-            lager:debug("failed to get most recent stats: ~p", [_E]),
+            lager:debug("failed to get most recent stats: ~p: ~p", [_E, ViewOptions]),
             P ! {'db_stats', self(), []}
     end.
 
 always_true(_) -> 'true'.
 
-cleanup_db_statuses(Stats, 'true', ReqOpts) ->
+cleanup_db_statuses(Stats, ReqOpts) ->
     Filters = [case props:get_value(<<"Status">>, ReqOpts) of
-                   'undefined' -> fun always_true/1;
+                   'undefined' -> fun(_) -> 'true' end;
                    S -> fun(Stat) -> wh_json:get_value([<<"value">>, <<"status">>], Stat) =:= S end
                end
                ,case props:get_value(<<"Agent-ID">>, ReqOpts) of
                     'undefined' -> fun always_true/1;
                     A -> fun(Stat) -> wh_json:get_value([<<"value">>, <<"agent_id">>], Stat) =:= A end
                 end
-              ],
-    [begin
-         Data = wh_json:get_value(<<"value">>, S),
-         AgentId = wh_json:get_value(<<"key">>, S),
-         {AgentId, wh_json:set_value(<<"agent_id">>, AgentId, Data)}
-     end
-     || S <- Stats, lists:all(fun(Filter) -> Filter(S) end, Filters)
-    ];
-cleanup_db_statuses(Stats, 'false', ReqOpts) ->
-    Filters = [case props:get_value(<<"Status">>, ReqOpts) of
-                   'undefined' -> fun(_) -> 'true' end;
-                   S -> fun(Stat) -> wh_json:get_value([<<"doc">>, <<"status">>], Stat) =:= S end
-               end
-               ,case props:get_value(<<"Agent-ID">>, ReqOpts) of
+               ,case props:get_value(<<"Start-Range">>, ReqOpts) of
                     'undefined' -> fun always_true/1;
-                    A -> fun(Stat) -> wh_json:get_value([<<"doc">>, <<"agent_id">>], Stat) =:= A end
+                    T -> fun(Stat) ->
+                                 wh_json:get_integer_value([<<"value">>, <<"timestamp">>], Stat) >= T
+                         end
+                end
+               ,case props:get_value(<<"End-Range">>, ReqOpts) of
+                    'undefined' -> fun always_true/1;
+                    T -> fun(Stat) ->
+                                 wh_json:get_integer_value([<<"value">>, <<"timestamp">>], Stat) =< T
+                         end
                 end
               ],
 
-    [{wh_json:get_value(<<"key">>, S), wh_json:get_value(<<"doc">>, S)}
+    [{wh_json:get_value([<<"value">>, <<"agent_id">>], S)
+      ,wh_json:get_value(<<"value">>, S)
+     }
      || S <- Stats, lists:all(fun(Filter) -> Filter(S) end, Filters)
     ].
 
