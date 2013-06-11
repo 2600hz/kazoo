@@ -233,6 +233,8 @@ merge_stats(Stats, DBStats) ->
                         wh_json:set_value([A, T], Data, StatsAcc)
                 end, Stats, DBStats).
 
+
+%% Filter this by start and end time instead of limiting to 10 arbitrary results
 agent_statuses_from_db(P, AcctId, 'false'=OnlyMostRecent, Options) ->
     agent_statuses_from_db(P, AcctId, OnlyMostRecent, ['include_docs', {'limit', 10}], Options);
 agent_statuses_from_db(P, AcctId, 'true'=OnlyMostRecent, Options) ->
@@ -253,26 +255,38 @@ agent_statuses_from_db(P, AcctId, OnlyMostRecent, Opts, ReqOpts) when is_list(Op
             P ! {'db_stats', self(), []}
     end.
 
+always_true(_) -> 'true'.
+
 cleanup_db_statuses(Stats, 'true', ReqOpts) ->
-    Filter = case props:get_value(<<"Status">>, ReqOpts) of
-                 'undefined' -> fun(_) -> 'true' end;
-                 S -> fun(Stat) -> wh_json:get_value([<<"value">>, <<"status">>], Stat) =:= S end
-             end,
+    Filters = [case props:get_value(<<"Status">>, ReqOpts) of
+                   'undefined' -> fun always_true/1;
+                   S -> fun(Stat) -> wh_json:get_value([<<"value">>, <<"status">>], Stat) =:= S end
+               end
+               ,case props:get_value(<<"Agent-ID">>, ReqOpts) of
+                    'undefined' -> fun always_true/1;
+                    A -> fun(Stat) -> wh_json:get_value([<<"value">>, <<"agent_id">>], Stat) =:= A end
+                end
+              ],
     [begin
          Data = wh_json:get_value(<<"value">>, S),
          AgentId = wh_json:get_value(<<"key">>, S),
          {AgentId, wh_json:set_value(<<"agent_id">>, AgentId, Data)}
      end
-     || S <- Stats, Filter(S)
+     || S <- Stats, lists:all(fun(Filter) -> Filter(S) end, Filters)
     ];
 cleanup_db_statuses(Stats, 'false', ReqOpts) ->
-    Filter = case props:get_value(<<"Status">>, ReqOpts) of
-                 'undefined' -> fun(_) -> 'true' end;
-                 S -> fun(Stat) -> wh_json:get_value([<<"doc">>, <<"status">>], Stat) =:= S end
-             end,
+    Filters = [case props:get_value(<<"Status">>, ReqOpts) of
+                   'undefined' -> fun(_) -> 'true' end;
+                   S -> fun(Stat) -> wh_json:get_value([<<"doc">>, <<"status">>], Stat) =:= S end
+               end
+               ,case props:get_value(<<"Agent-ID">>, ReqOpts) of
+                    'undefined' -> fun always_true/1;
+                    A -> fun(Stat) -> wh_json:get_value([<<"doc">>, <<"agent_id">>], Stat) =:= A end
+                end
+              ],
 
     [{wh_json:get_value(<<"key">>, S), wh_json:get_value(<<"doc">>, S)}
-     || S <- Stats, Filter(S)
+     || S <- Stats, lists:all(fun(Filter) -> Filter(S) end, Filters)
     ].
 
 find_most_recent_fold(K, V, {T, _V}=Acc) ->
