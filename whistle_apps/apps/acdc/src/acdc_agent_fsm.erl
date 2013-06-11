@@ -1046,7 +1046,7 @@ paused({'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref
                                                }=State) when is_reference(Ref) ->
     lager:debug("pause timer expired, putting agent back into action"),
 
-    update_agent_status_to_resume(AcctId, AgentId),
+    acdc_agent:update_agent_status(Srv, <<"resume">>),
 
     acdc_agent:send_status_resume(Srv),
 
@@ -1062,7 +1062,7 @@ paused({'resume'}, #state{acct_id=AcctId
     lager:debug("resume received, putting agent back into action"),
     maybe_stop_timer(Ref),
 
-    update_agent_status_to_resume(AcctId, AgentId),
+    acdc_agent:update_agent_status(Srv, <<"resume">>),
 
     acdc_agent:send_status_resume(Srv),
     acdc_stats:agent_ready(AcctId, AgentId),
@@ -1144,6 +1144,9 @@ outbound({'pause', Timeout}, #state{acct_id=AcctId
     acdc_agent:presence_update(Srv, ?PRESENCE_RED_FLASH),
     {'next_state', 'paused', clear_call(State#state{pause_ref=Ref}, 'paused')};
 
+outbound({'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref}=State) ->
+    lager:debug("pause timer expired while outbound"),
+    {'next_state', 'outbound', State#state{pause_ref='undefined'}};
 outbound({'timeout', CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                          ,call_status_failures=Failures
                                                          ,acct_id=AcctId
@@ -1216,7 +1219,7 @@ outbound({'resume'}, #state{acct_id=AcctId
     lager:debug("resume received, putting agent back into action"),
     maybe_stop_timer(Ref),
 
-    update_agent_status_to_resume(AcctId, AgentId),
+    acdc_agent:update_agent_status(Srv, <<"resume">>),
 
     acdc_agent:send_status_resume(Srv),
     acdc_stats:agent_ready(AcctId, AgentId),
@@ -1446,10 +1449,6 @@ hangup_cause(JObj) ->
         'undefined' -> <<"unknown">>;
         Cause -> Cause
     end.
-
--spec update_agent_status_to_resume(ne_binary(), ne_binary()) -> 'ok'.
-update_agent_status_to_resume(AcctId, AgentId) ->
-    'ok' = acdc_util:update_agent_status(AcctId, AgentId, <<"resume">>).
 
 %% returns time left in seconds
 time_left(Ref) when is_reference(Ref) ->

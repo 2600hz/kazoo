@@ -39,6 +39,7 @@
          ,maybe_update_presence_id/2
          ,maybe_update_presence_state/2
          ,presence_update/2
+         ,update_agent_status/2
         ]).
 
 %% gen_server callbacks
@@ -284,6 +285,10 @@ maybe_update_presence_state(Srv, State) ->
 
 presence_update(Srv, PresenceState) ->
     gen_listener:cast(Srv, {'presence_update', PresenceState}).
+
+-spec update_agent_status(pid(), ne_binary()) -> 'ok'.
+update_agent_status(Srv, Status) ->
+    gen_listener:cast(Srv, {'update_status', Status}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -727,6 +732,12 @@ handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
                                                        ,agent_presence_id=PresenceId
                                                       }=State) ->
     acdc_util:presence_update(AcctId, PresenceId, PresenceState),
+    {'noreply', State};
+
+handle_cast({'update_status', Status}, #state{agent_id=AgentId
+                                              ,acct_id=AcctId
+                                             }=State) ->
+    catch acdc_util:update_agent_status(AcctId, AgentId, Status),
     {'noreply', State};
 
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
