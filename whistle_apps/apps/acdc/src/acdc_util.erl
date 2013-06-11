@@ -163,18 +163,26 @@ agent_status_in_db(AcctId, AgentId) ->
 %% [{AgentId, Status}]
 -spec agent_statuses(ne_binary()) -> wh_json:object().
 agent_statuses(?NE_BINARY = AcctId) ->
-    agent_statuses(AcctId, 'undefined', 'true').
-agent_statuses(?NE_BINARY = AcctId, ?NE_BINARY = AgentId) ->
-    {Merged, _} = wh_json:get_values(wh_json:get_value(AgentId, agent_statuses(AcctId, AgentId, 'false'), wh_json:new())),
-    wh_json:public_fields(Merged).
+    agent_statuses(AcctId, 'undefined', 'true', []).
 
-agent_statuses(AcctId, AgentId, OnlyMostRecent) ->
+agent_statuses(?NE_BINARY = AcctId, ?NE_BINARY = AgentId) ->
+    {Merged, _} = wh_json:get_values(
+                    wh_json:get_value(AgentId
+                                      ,agent_statuses(AcctId, AgentId, 'false', [])
+                                      ,wh_json:new()
+                                     )
+                   ),
+    wh_json:public_fields(Merged);
+agent_statuses(?NE_BINARY = AcctId, Options) when is_list(Options) ->
+    agent_statuses(AcctId, 'undefined', 'true', Options).
+
+agent_statuses(AcctId, AgentId, OnlyMostRecent, Options) ->
     Self = self(),
-    {P, Ref} = spawn_monitor(fun() -> agent_statuses_from_db(Self, AcctId, OnlyMostRecent) end),
+    {P, Ref} = spawn_monitor(fun() -> agent_statuses_from_db(Self, AcctId, OnlyMostRecent, Options) end),
 
     API = [{<<"Account-ID">>, AcctId}
            ,{<<"Agent-ID">>, AgentId}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION) ++ Options
           ],
     case whapps_util:amqp_pool_request(API
                                        ,fun wapi_acdc_stats:publish_status_req/1
@@ -225,19 +233,19 @@ merge_stats(Stats, DBStats) ->
                         wh_json:set_value([A, T], Data, StatsAcc)
                 end, Stats, DBStats).
 
-agent_statuses_from_db(P, AcctId, 'false'=OnlyMostRecent) ->
-    agent_statuses_from_db(P, AcctId, OnlyMostRecent, ['include_docs', {'limit', 10}]);
-agent_statuses_from_db(P, AcctId, 'true'=OnlyMostRecent) ->
-    agent_statuses_from_db(P, AcctId, OnlyMostRecent, ['reduce', 'group']).
+agent_statuses_from_db(P, AcctId, 'false'=OnlyMostRecent, Options) ->
+    agent_statuses_from_db(P, AcctId, OnlyMostRecent, ['include_docs', {'limit', 10}], Options);
+agent_statuses_from_db(P, AcctId, 'true'=OnlyMostRecent, Options) ->
+    agent_statuses_from_db(P, AcctId, OnlyMostRecent, ['reduce', 'group'], Options).
 
-agent_statuses_from_db(P, AcctId, OnlyMostRecent, Opts) when is_list(Opts) ->
+agent_statuses_from_db(P, AcctId, OnlyMostRecent, Opts, ReqOpts) when is_list(Opts) ->
     case couch_mgr:get_results(acdc_stats:db_name(AcctId)
                                ,<<"agent_stats/most_recent">>
                                ,Opts
                               )
     of
         {'ok', Stats} ->
-            P ! {'db_stats', self(), cleanup_db_statuses(Stats, OnlyMostRecent)};
+            P ! {'db_stats', self(), cleanup_db_statuses(Stats, OnlyMostRecent, ReqOpts)};
         {'error', 'not_found'} ->
             P ! {'db_stats', self(), []};
         {'error', _E} ->
@@ -245,17 +253,26 @@ agent_statuses_from_db(P, AcctId, OnlyMostRecent, Opts) when is_list(Opts) ->
             P ! {'db_stats', self(), []}
     end.
 
-cleanup_db_statuses(Stats, 'true') ->
+cleanup_db_statuses(Stats, 'true', ReqOpts) ->
+    Filter = case props:get_value(<<"Status">>, ReqOpts) of
+                 'undefined' -> fun(_) -> 'true' end;
+                 S -> fun(Stat) -> wh_json:get_value([<<"value">>, <<"status">>], Stat) =:= S end
+             end,
     [begin
          Data = wh_json:get_value(<<"value">>, S),
          AgentId = wh_json:get_value(<<"key">>, S),
          {AgentId, wh_json:set_value(<<"agent_id">>, AgentId, Data)}
      end
-     || S <- Stats
+     || S <- Stats, Filter(S)
     ];
-cleanup_db_statuses(Stats, 'false') ->
+cleanup_db_statuses(Stats, 'false', ReqOpts) ->
+    Filter = case props:get_value(<<"Status">>, ReqOpts) of
+                 'undefined' -> fun(_) -> 'true' end;
+                 S -> fun(Stat) -> wh_json:get_value([<<"doc">>, <<"status">>], Stat) =:= S end
+             end,
+
     [{wh_json:get_value(<<"key">>, S), wh_json:get_value(<<"doc">>, S)}
-     || S <- Stats
+     || S <- Stats, Filter(S)
     ].
 
 find_most_recent_fold(K, V, {T, _V}=Acc) ->

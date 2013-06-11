@@ -202,15 +202,17 @@ fetch_all_current_statuses(Context, AgentId, Status) ->
     Now = wh_util:current_tstamp(),
     Yday = Now - ?SECONDS_IN_DAY,
 
-    Req = props:filter_undefined(
-            [{<<"Account-ID">>, cb_context:account_id(Context)}
-             ,{<<"Status">>, Status}
-             ,{<<"Agent-ID">>, AgentId}
-             ,{<<"Start-Range">>, Yday}
-             ,{<<"End-Range">>, Now}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ]),
-    fetch_statuses_from_amqp(Context, Req).
+    Opts = props:filter_undefined(
+             [{<<"Status">>, Status}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Start-Range">>, Yday}
+              ,{<<"End-Range">>, Now}
+             ]),
+
+    crossbar_util:response(
+      acdc_util:agent_statuses(cb_context:account_id(Context), Opts)
+      ,Context
+     ).
 
 fetch_ranged_agent_stats(Context, StartRange) ->
     MaxRange = whapps_config:get_integer(<<"acdc">>, <<"archive_window_s">>, 3600),
