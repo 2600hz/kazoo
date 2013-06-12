@@ -106,6 +106,9 @@ maybe_start_agent(AcctId, AgentId, JObj) ->
                     acdc_stats:agent_logged_out(AcctId, AgentId),
                     login_fail(JObj)
             end;
+        {'exists', Sup} ->
+            maybe_update_presence(Sup, JObj),
+            login_success(JObj);
         {'error', _E} ->
             acdc_stats:agent_logged_out(AcctId, AgentId),
             login_fail(JObj)
@@ -133,6 +136,7 @@ login_resp(JObj, Status) ->
 
 -spec maybe_start_agent(api_binary(), api_binary()) ->
                                {'ok', pid()} |
+                               {'exists', pid()} |
                                {'error', _}.
 maybe_start_agent(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
@@ -147,7 +151,7 @@ maybe_start_agent(AcctId, AgentId) ->
             end;
         Sup when is_pid(Sup) ->
             lager:debug("agent ~s (~s) already running: supervisor ~p", [AgentId, AcctId, Sup]),
-            {'ok', Sup}
+            {'exists', Sup}
     end.
 
 maybe_stop_agent(AcctId, AgentId, JObj) ->

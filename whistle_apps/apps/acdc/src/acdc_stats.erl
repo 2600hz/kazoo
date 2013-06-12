@@ -749,8 +749,9 @@ trim_query_statuses_fold(TBin, Datum, {Ks, Data}=Acc) ->
     case lists:min(Ks) of
         N when N < T ->
             {[T | lists:delete(N, Ks)]
-             ,wh_json:set_value(TBin, Datum,
-                                wh_json:delete_key(N, Data)
+             ,wh_json:set_value(TBin
+                                ,wh_doc:public_fields(Datum)
+                                ,wh_json:delete_key(N, Data)
                                )};
         _ -> Acc
     end.

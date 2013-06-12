@@ -20,33 +20,37 @@
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_number(ne_binary()) -> {'ok', ne_binary(), proplist()} | {'error', term()}.
+-spec lookup_number(ne_binary()) ->
+                           {'ok', ne_binary(), wh_proplist()} |
+                           {'error', term()}.
 lookup_number(Number) ->
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key_number(Num)) of
-        {ok, {AccountId, Props}} -> {ok, AccountId, Props};
-        {error, not_found} -> fetch_number(Num)
+        {'ok', {AccountId, Props}} -> {'ok', AccountId, Props};
+        {'error', 'not_found'} -> fetch_number(Num)
     end.
 
--spec fetch_number(ne_binary()) -> {'ok', ne_binary(), proplist()} | {'error', term()}.
+-spec fetch_number(ne_binary()) ->
+                          {'ok', ne_binary(), wh_proplist()} |
+                          {'error', term()}.
 fetch_number(Num) ->
     case wh_number_manager:lookup_account_by_number(Num) of
-        {ok, AccountId, Props} ->
+        {'ok', AccountId, Props} ->
             _ = maybe_transition_port_in(Num, Props),
-            CacheProps = [{origin, {db, wnm_util:number_to_db_name(Num), Num}}],
+            CacheProps = [{'origin', {'db', wnm_util:number_to_db_name(Num), Num}}],
             wh_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Num), {AccountId, Props}, CacheProps),
             lager:debug("~s is associated with account ~s", [Num, AccountId]),
-            {ok, AccountId, Props};
-        {error, Reason}=E ->
+            {'ok', AccountId, Props};
+        {'error', Reason}=E ->
             lager:debug("~s is not associated with any account, ~p", [Num, Reason]),
             E
     end.
 
--spec maybe_transition_port_in(ne_binary(), proplist()) -> false|pid().
+-spec maybe_transition_port_in(ne_binary(), proplist()) -> 'false' | pid().
 maybe_transition_port_in(Num, Props) ->
-    case props:get_value(pending_port, Props) of
-        false -> false;
-        true -> spawn(fun() -> wh_number_manager:ported(Num) end)
+    case props:get_value('pending_port', Props) of
+        'false' -> 'false';
+        'true' -> spawn('wh_number_manager', 'ported', [Num])
     end.
 
 %%--------------------------------------------------------------------
@@ -56,10 +60,10 @@ maybe_transition_port_in(Num, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_gateway_by_address(ne_binary(), #resrc{}|[#gateway{},...]|[]) -> 'undefined' | #gateway{}.
-maybe_gateway_by_address(_, []) -> undefined;
+maybe_gateway_by_address(_, []) -> 'undefined';
 maybe_gateway_by_address(Address, [#resrc{gateways=Gateways}|Resources]) ->
     case maybe_gateway_by_address(Address, Gateways) of
-        undefined -> maybe_gateway_by_address(Address, Resources);
+        'undefined' -> maybe_gateway_by_address(Address, Resources);
         Gateway -> Gateway
     end;
 maybe_gateway_by_address(Address, [#gateway{server=Address}=Gateway|_]) ->
@@ -103,7 +107,11 @@ evaluate_flags(F1, Resrcs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_dialstring(#gateway{}, ne_binary()) -> ne_binary().
-get_dialstring(#gateway{route = undefined, prefix=Prefix, suffix=Suffix, server=Server}, Number) ->
+get_dialstring(#gateway{route='undefined'
+                        ,prefix=Prefix
+                        ,suffix=Suffix
+                        ,server=Server
+                       }, Number) ->
     list_to_binary(["sip:"
                     ,wh_util:to_binary(Prefix)
                     ,Number
@@ -135,7 +143,7 @@ sort_endpoints(Endpoints) ->
 -spec get_endpoints(ne_binary(), [#resrc{}]) -> endpoints().
 get_endpoints(Number, Resrcs) ->
     EPs = [get_endpoint(Number, R) || R <- Resrcs],
-    [Endpoint || Endpoint <- EPs, Endpoint =/= no_match].
+    [Endpoint || Endpoint <- EPs, Endpoint =/= 'no_match'].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -144,13 +152,15 @@ get_endpoints(Number, Resrcs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_endpoint(ne_binary(), #resrc{}) -> endpoint() | 'no_match'.
-get_endpoint(Number, #resrc{weight_cost=WC, gateways=Gtws, rules=Rules
-                            ,grace_period=GP, is_emergency=IsEmergency}) ->
+get_endpoint(Number, #resrc{weight_cost=WC
+                            ,gateways=Gtws
+                            ,rules=Rules
+                            ,grace_period=GP
+                            ,is_emergency=IsEmergency
+                           }) ->
     case evaluate_rules(Rules, Number) of
-        {ok, DestNum} ->
-            {WC, GP, DestNum, Gtws, IsEmergency};
-        {error, no_match} ->
-            no_match
+        {'ok', DestNum} -> {WC, GP, DestNum, Gtws, IsEmergency};
+        {'error', 'no_match'} -> 'no_match'
     end.
 
 %%--------------------------------------------------------------------
@@ -162,19 +172,19 @@ get_endpoint(Number, #resrc{weight_cost=WC, gateways=Gtws, rules=Rules
 %% number.  In the event that no rules match then return an error.
 %% @end
 %%--------------------------------------------------------------------
--spec evaluate_rules(re:mp(), ne_binary()) -> {'ok', ne_binary()} |
-                                                    {'error', 'no_match'}.
-evaluate_rules([], _) ->
-    {error, no_match};
+-spec evaluate_rules(re:mp(), ne_binary()) ->
+                            {'ok', ne_binary()} |
+                            {'error', 'no_match'}.
+evaluate_rules([], _) -> {'error', 'no_match'};
 evaluate_rules([Regex|T], Number) ->
     case re:run(Number, Regex) of
-        {match, [{Start,End}]} ->
-            {ok, binary:part(Number, Start, End)};
-        {match, CaptureGroups} ->
+        {'match', [{Start,End}]} ->
+            {'ok', binary:part(Number, Start, End)};
+        {'match', CaptureGroups} ->
             %% find the largest matching group if present by sorting the position of the
             %% matching groups by list, reverse so head is largest, then take the head of the list
             {Start, End} = hd(lists:reverse(lists:keysort(2, tl(CaptureGroups)))),
-            {ok, binary:part(Number, Start, End)};
+            {'ok', binary:part(Number, Start, End)};
         _ ->
             evaluate_rules(T, Number)
     end.
@@ -187,4 +197,4 @@ evaluate_rules([Regex|T], Number) ->
 %%--------------------------------------------------------------------
 -spec cache_key_number(ne_binary()) -> {'stepswitch_number', ne_binary()}.
 cache_key_number(Number) ->
-    {stepswitch_number, Number}.
+    {'stepswitch_number', Number}.

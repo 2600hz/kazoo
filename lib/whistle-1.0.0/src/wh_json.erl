@@ -416,7 +416,7 @@ find(Key, Docs) -> find(Key, Docs, 'undefined').
 
 find(_, [], Default) -> Default;
 find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
-    case get_ne_value(Key, JObj) of
+    case get_value(Key, JObj) of
         'undefined' -> find(Key, JObjs, Default);
         V -> V
     end.
