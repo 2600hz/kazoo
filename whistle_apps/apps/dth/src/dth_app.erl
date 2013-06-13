@@ -1,9 +1,11 @@
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010 VoIP INC
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
-%%% Created :  Tue, 15 Mar 2011 13:42:17 GMT: James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
 -module(dth_app).
 
 -behaviour(application).
@@ -15,13 +17,14 @@
 %% Application callbacks
 %% ===================================================================
 
--spec(start(StartType :: term(), StartArgs :: term()) -> tuple(ok, pid()) | tuple(error, term())).
+-spec start(term(), term()) ->
+                   {'ok', pid()} |
+                   {'error', term()}.
 start(_StartType, _StartArgs) ->
     case dth:start_link() of
-	{ok, P} -> {ok, P};
-	{error, {already_started, P} } -> {ok, P};
-	{error, _}=E -> E
+        {'ok', P} -> {'ok', P};
+        {'error', {'already_started', P} } -> {'ok', P};
+        {'error', _}=E -> E
     end.
 
-stop(_State) ->
-    ok.
+stop(_State) -> dth:stop().
