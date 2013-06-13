@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
 %%% Listen for CDR events and record them to the database
 %%% @end
@@ -30,8 +30,10 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{{?MODULE, handle_cdr}, [{<<"call_detail">>, <<"cdr">>}]}]).
--define(BINDINGS, [{call, [{restrict_to, [cdr]}, {callid, <<"*">>}]}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_cdr'}, [{<<"call_detail">>, <<"cdr">>}]}]).
+-define(BINDINGS, [{'call', [{'restrict_to', ['cdr']}
+                             ,{'callid', <<"*">>}
+                            ]}]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -48,11 +50,11 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                      ,{bindings, ?BINDINGS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
+    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+                                      ,{'bindings', ?BINDINGS}
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 -spec handle_cdr(wh_json:object(), wh_proplist()) -> any().
@@ -79,8 +81,7 @@ handle_cdr(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-%%    whapps_maintenance:refresh(?WH_ANONYMOUS_CDR_DB),
-    {ok, ok}.
+    {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -97,8 +98,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -111,7 +111,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
