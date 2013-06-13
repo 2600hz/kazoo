@@ -20,8 +20,8 @@
          ,agent_ready/2
          ,agent_logged_in/2
          ,agent_logged_out/2
-         ,agent_connecting/3
-         ,agent_connected/3
+         ,agent_connecting/3, agent_connecting/5
+         ,agent_connected/3, agent_connected/5
          ,agent_wrapup/3
          ,agent_paused/3
          ,agent_outbound/3
@@ -127,6 +127,8 @@
           ,wait_time :: api_integer() | '_'
           ,pause_time :: api_integer() | '_'
           ,callid :: api_binary() | '_'
+          ,caller_id_name :: api_binary() | '_'
+          ,caller_id_number :: api_binary() | '_'
          }).
 -type status_stat() :: #status_stat{}.
 
@@ -219,23 +221,31 @@ agent_logged_out(AcctId, AgentId) ->
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_logged_out/1).
 
 agent_connecting(AcctId, AgentId, CallId) ->
+    agent_connecting(AcctId, AgentId, CallId, 'undefined', 'undefined').
+agent_connecting(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Timestamp">>, wh_util:current_tstamp()}
               ,{<<"Status">>, <<"connecting">>}
               ,{<<"Call-ID">>, CallId}
+              ,{<<"Caller-ID-Name">>, CallerIDName}
+              ,{<<"Caller-ID-Number">>, CallerIDNumber}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_connecting/1).
 
 agent_connected(AcctId, AgentId, CallId) ->
+    agent_connected(AcctId, AgentId, CallId, 'undefined', 'undefined').
+agent_connected(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Timestamp">>, wh_util:current_tstamp()}
               ,{<<"Status">>, <<"connected">>}
               ,{<<"Call-ID">>, CallId}
+              ,{<<"Caller-ID-Name">>, CallerIDName}
+              ,{<<"Caller-ID-Number">>, CallerIDNumber}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_connected/1).
@@ -369,6 +379,8 @@ handle_status_stat(JObj, Props) ->
                                                       ,callid=wh_json:get_value(<<"Call-ID">>, JObj)
                                                       ,wait_time=wait_time(EventName, JObj)
                                                       ,pause_time=pause_time(EventName, JObj)
+                                                      ,caller_id_name=caller_id_name(EventName, JObj)
+                                                      ,caller_id_number=caller_id_number(EventName, JObj)
                                                      }}).
 
 -spec wait_time(ne_binary(), wh_json:object()) -> api_integer().
@@ -382,6 +394,11 @@ pause_time(<<"paused">>, JObj) ->
         PT -> PT
     end;
 pause_time(_, _JObj) -> 'undefined'.
+
+caller_id_name(_, JObj) ->
+    wh_json:get_value(<<"Caller-ID-Name">>, JObj).
+caller_id_number(_, JObj) ->
+    wh_json:get_value(<<"Caller-ID-Number">>, JObj).
 
 -spec handle_call_query(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_query(JObj, _Prop) ->
@@ -933,6 +950,8 @@ status_stat_to_doc(#status_stat{id=Id
                                 ,wait_time=WT
                                 ,pause_time=PT
                                 ,callid=CallId
+                                ,caller_id_name=CIDName
+                                ,caller_id_number=CIDNum
                                }) ->
     Prop = [{<<"_id">>, Id}
             ,{<<"call_id">>, CallId}
@@ -941,6 +960,8 @@ status_stat_to_doc(#status_stat{id=Id
             ,{<<"status">>, Status}
             ,{<<"wait_time">>, WT}
             ,{<<"pause_time">>, PT}
+            ,{<<"caller_id_name">>, CIDName}
+            ,{<<"caller_id_number">>, CIDNum}
            ],
     wh_doc:update_pvt_parameters(
       wh_json:from_list(props:filter_undefined(Prop))
