@@ -135,7 +135,7 @@ track_assignment(#cb_context{doc=JObj, storage=Storage}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  get_numbers(wh_json:object()) -> [ne_binary(), ...].
+-spec  get_numbers(wh_json:object()) -> ne_binaries().
 get_numbers(JObj) ->
     Servers = wh_json:get_value(<<"servers">>, JObj, []),
     Numbers = lists:foldl(
@@ -152,7 +152,7 @@ get_numbers(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  extract_dids(wh_json:object()) -> [[ne_binary(), ...], ...].
+-spec  extract_dids(wh_json:object()) -> [ne_binaries(), ...].
 extract_dids(DidsJObj) ->
     Dids = wh_json:to_proplist(DidsJObj),
     lists:foldl(

@@ -567,7 +567,7 @@ json_to_record(JObj, IsNew, #number{number=Num, number_db=Db}=Number) ->
       ,current_features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
       ,number_doc=JObj
       ,current_number_doc=case IsNew of true -> wh_json:new(); false -> JObj end
-      ,used_by=wh_json:get_value(<<"used_by">>, JObj, <<"">>)
+      ,used_by=wh_json:get_value(<<"used_by">>, JObj, <<>>)
      }.
 
 %%--------------------------------------------------------------------
