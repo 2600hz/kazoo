@@ -95,8 +95,10 @@ decode(JSON, <<"application/json">>) ->
         'throw':{'invalid_json',{{'error',{1, Err}}, _Text}} ->
             lager:debug("~s: ~s", [Err, _Text]),
             throw({'error', Err});
-        'throw':{'invalid_json',{{'error',{_Loc, Err}}, _Text}} ->
-            lager:debug("~s near char ~b: ~s", [Err, _Loc, _Text]),
+        'throw':{'invalid_json',{{'error',{Loc, Err}}, Text}} ->
+            Size = erlang:byte_size(Text),
+            Part = binary:part(Text, Loc, Size-Loc),
+            lager:debug("~s near char # ~b of ~b ('~s'): ~s", [Err, Loc, Size, Part, Text]),
             try_converting(JSON, {'error', Err});
         'throw':E ->
             lager:debug("thrown decoder error: ~p", [E]),
@@ -414,7 +416,7 @@ find(Key, Docs) -> find(Key, Docs, 'undefined').
 
 find(_, [], Default) -> Default;
 find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
-    case get_ne_value(Key, JObj) of
+    case get_value(Key, JObj) of
         'undefined' -> find(Key, JObjs, Default);
         V -> V
     end.

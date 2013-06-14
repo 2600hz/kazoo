@@ -13,6 +13,9 @@
 %%% /agents/AID
 %%%   GET: agent details
 %%%
+%%% /agents/AID/status
+%%%   GET: last 10 status updates
+%%%
 %%% @end
 %%% @contributors:
 %%%   Karl Anderson
@@ -25,37 +28,15 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,content_types_provided/1, content_types_provided/2, content_types_provided/3
          ,validate/1, validate/2, validate/3
+         ,post/3
         ]).
 
 -include("src/crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".queues">>).
 
--define(STAT_TIMESTAMP_PROCESSED, <<"finished_with_agent">>).
--define(STAT_TIMESTAMP_HANDLING, <<"connected_with_agent">>).
--define(STAT_TIMESTAMP_ABANDONED, <<"caller_abandoned_queue">>).
--define(STAT_TIMESTAMP_WAITING, <<"caller_entered_queue">>).
--define(STAT_AGENTS_MISSED, <<"missed">>).
-
 -define(FORMAT_COMPRESSED, <<"compressed">>).
 -define(FORMAT_VERBOSE, <<"verbose">>).
-
--define(STAT_TIMESTAMP_KEYS, [?STAT_TIMESTAMP_PROCESSED
-                              ,?STAT_TIMESTAMP_HANDLING
-                              ,?STAT_TIMESTAMP_ABANDONED
-                              ,?STAT_TIMESTAMP_WAITING
-                             ]).
-
--define(QUEUE_STATUS_HANDLING, <<"handling">>).
--define(QUEUE_STATUS_PROCESSED, <<"processed">>).
-
--define(AGENT_STATUS_READY, <<"ready">>).
--define(AGENT_STATUS_BUSY, <<"busy">>).
--define(AGENT_STATUS_HANDLING, <<"handling">>).
--define(AGENT_STATUS_WRAPUP, <<"wrapup">>).
--define(AGENT_STATUS_PAUSED, <<"paused">>).
--define(AGENT_STATUS_LOGIN, <<"login">>).
--define(AGENT_STATUS_LOGOUT, <<"logout">>).
 
 -define(CB_LIST, <<"agents/crossbar_listing">>).
 -define(STATS_PATH_TOKEN, <<"stats">>).
@@ -76,6 +57,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.agents">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.agents">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.agents">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.agents">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.agents">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
@@ -89,9 +71,13 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_GET].
+
+allowed_methods(?STATUS_PATH_TOKEN) -> [?HTTP_GET];
+allowed_methods(?STATS_PATH_TOKEN) -> [?HTTP_GET];
 allowed_methods(_) -> [?HTTP_GET].
-allowed_methods(?STATUS_PATH_TOKEN, _) -> [?HTTP_GET];
-allowed_methods(_, ?STATUS_PATH_TOKEN) -> [?HTTP_GET].
+
+allowed_methods(?STATUS_PATH_TOKEN, _) -> [?HTTP_GET, ?HTTP_POST];
+allowed_methods(_, ?STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -159,10 +145,33 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?STATS_PATH_TOKEN) ->
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
     read(Id, Context).
 
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, AgentId, ?STATUS_PATH_TOKEN) ->
+    validate_status_change(read(AgentId, Context));
+
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, AgentId, ?STATUS_PATH_TOKEN) ->
     fetch_agent_status(AgentId, Context);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?STATUS_PATH_TOKEN, AgentId) ->
     fetch_agent_status(AgentId, Context).
+
+post(Context, AgentId, ?STATUS_PATH_TOKEN) ->
+    case cb_context:req_value(Context, <<"status">>) of
+        <<"login">> -> publish_update(Context, AgentId, fun wapi_acdc_agent:publish_login/1);
+        <<"logout">> -> publish_update(Context, AgentId, fun wapi_acdc_agent:publish_logout/1);
+        <<"pause">> -> publish_update(Context, AgentId, fun wapi_acdc_agent:publish_pause/1);
+        <<"resume">> -> publish_update(Context, AgentId, fun wapi_acdc_agent:publish_resume/1)
+    end,
+    crossbar_util:response(<<"status update sent">>, Context).
+
+publish_update(Context, AgentId, PubFun) ->
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, cb_context:account_id(Context)}
+                ,{<<"Agent-ID">>, AgentId}
+                ,{<<"Time-Limit">>, cb_context:req_value(Context, <<"timeout">>)}
+                ,{<<"Presence-ID">>, cb_context:req_value(Context, <<"presence_id">>)}
+                ,{<<"Presence-State">>, cb_context:req_value(Context, <<"presence_state">>)}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    PubFun(Update).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -175,13 +184,24 @@ read(Id, Context) -> crossbar_doc:load(Id, Context).
 
 -define(CB_AGENTS_LIST, <<"users/crossbar_listing">>).
 fetch_all_agent_statuses(Context) ->
-    crossbar_util:response(acdc_util:agent_statuses(cb_context:account_id(Context)), Context).
+    fetch_all_current_statuses(Context
+                               ,'undefined'
+                               ,cb_context:req_value(Context, <<"status">>)
+                              ).
 
 fetch_agent_status(AgentId, Context) ->
-    crossbar_util:response(
-      acdc_util:agent_status(cb_context:account_id(Context), AgentId)
-      ,Context
-     ).
+    case wh_util:is_true(cb_context:req_value(Context, <<"recent">>)) of
+        'false' ->
+            crossbar_util:response(
+              acdc_util:agent_status(cb_context:account_id(Context), AgentId)
+              ,Context
+             );
+        'true' ->
+            fetch_all_current_statuses(Context
+                                       ,AgentId
+                                       ,cb_context:req_value(Context, <<"status">>)
+                                      )
+    end.
 
 -spec fetch_all_agent_stats(cb_context:context()) -> cb_context:context().
 fetch_all_agent_stats(Context) ->
@@ -191,14 +211,41 @@ fetch_all_agent_stats(Context) ->
     end.
 
 fetch_all_current_agent_stats(Context) ->
-    lager:debug("querying for all recent stats"),
+    fetch_all_current_stats(Context
+                            ,cb_context:req_value(Context, <<"agent_id">>)
+                           ).
+
+fetch_all_current_stats(Context, AgentId) ->
+    Now = wh_util:current_tstamp(),
+    Yday = Now - ?SECONDS_IN_DAY,
+
     Req = props:filter_undefined(
             [{<<"Account-ID">>, cb_context:account_id(Context)}
-             ,{<<"Status">>, cb_context:req_value(Context, <<"status">>)}
-             ,{<<"Agent-ID">>, cb_context:req_value(Context, <<"agent_id">>)}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Start-Range">>, Yday}
+             ,{<<"End-Range">>, Now}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
-    fetch_from_amqp(Context, Req).
+    fetch_stats_from_amqp(Context, Req).
+
+fetch_all_current_statuses(Context, AgentId, Status) ->
+    Now = wh_util:current_tstamp(),
+    Yday = Now - ?SECONDS_IN_DAY,
+
+    Recent = cb_context:req_value(Context, <<"recent">>, 'false'),
+
+    Opts = props:filter_undefined(
+             [{<<"Status">>, Status}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Start-Range">>, Yday}
+              ,{<<"End-Range">>, Now}
+              ,{<<"Most-Recent">>, wh_util:is_false(Recent)}
+             ]),
+
+    crossbar_util:response(
+      acdc_util:agent_statuses(cb_context:account_id(Context), Opts)
+      ,Context
+     ).
 
 fetch_ranged_agent_stats(Context, StartRange) ->
     MaxRange = whapps_config:get_integer(<<"acdc">>, <<"archive_window_s">>, 3600),
@@ -235,29 +282,32 @@ fetch_ranged_agent_stats(Context, From, To, 'true') ->
              ,{<<"End-Range">>, To}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
-    fetch_from_amqp(Context, Req);
+    fetch_stats_from_amqp(Context, Req);
 fetch_ranged_agent_stats(Context, From, To, 'false') ->
     lager:debug("ranged query from ~b to ~b of archived stats", [From, To]),
     Context.
 
-fetch_from_amqp(Context, Req) ->
+
+fetch_stats_from_amqp(Context, Req) ->
     case whapps_util:amqp_pool_request(Req
                                        ,fun wapi_acdc_stats:publish_current_calls_req/1
                                        ,fun wapi_acdc_stats:current_calls_resp_v/1
                                       )
     of
-        {'error', _E} ->
-            lager:debug("failed to recv resp from AMQP: ~p", [_E]),
-            cb_context:add_system_error('datastore_unreachable', Context);
+        {'error', E} ->
+            crossbar_util:response('error', <<"stat request had errors">>, 400
+                                   ,wh_json:get_value(<<"Error-Reason">>, E)
+                                   ,Context
+                                  );
         {'ok', Resp} -> format_stats(Context, Resp)
     end.
 
+-spec format_stats(cb_context:context(), wh_json:object()) -> cb_context:context().
 format_stats(Context, Resp) ->
     Stats = wh_json:get_value(<<"Handled">>, Resp, []) ++
         wh_json:get_value(<<"Abandoned">>, Resp, []) ++
         wh_json:get_value(<<"Waiting">>, Resp, []) ++
         wh_json:get_value(<<"Processed">>, Resp, []),
-
 
     crossbar_util:response(lists:foldl(fun format_stats_fold/2, wh_json:new(), Stats), Context).
 
@@ -326,3 +376,45 @@ normalize_view_results(JObj, Acc) ->
                       )
      | Acc
     ].
+
+validate_status_change(Context) -> 
+    case cb_context:resp_status(Context) of
+        'success' ->
+            lager:debug("read agent doc"),
+            validate_status_change(Context, cb_context:req_value(Context, <<"status">>));
+        _ -> 
+            lager:debug("failed to read agent doc"),
+            check_for_status_error(Context, cb_context:req_value(Context, <<"status">>))
+    end.
+
+-define(STATUS_CHANGES, [<<"login">>, <<"logout">>, <<"pause">>, <<"resume">>]).
+validate_status_change(Context, S) ->
+    case lists:member(S, ?STATUS_CHANGES) of
+        'true' -> validate_status_change_params(Context, S);
+        'false' ->
+            lager:debug("status ~s not valid", [S]),
+            cb_context:add_validation_error(<<"status">>, <<"enum">>, <<"value is not a valid status">>, Context)
+    end.
+
+check_for_status_error(Context, S) ->
+    case lists:member(S, ?STATUS_CHANGES) of
+        'true' -> Context;
+        'false' ->
+            lager:debug("status ~s not found", [S]),
+            cb_context:add_validation_error(<<"status">>, <<"enum">>, <<"value is not a valid status">>, Context)
+    end.
+
+validate_status_change_params(Context, <<"pause">>) ->
+    try wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>)) of
+        N when N >= 0 -> cb_context:set_resp_status(Context, 'success');
+        _N ->
+            lager:debug("bad int for pause: ~p", [_N]),
+            cb_context:add_validation_error(<<"timeout">>, <<"minimum">>, <<"value must be at least greater than or equal to 0">>, Context)
+    catch
+        _:_ ->
+            lager:debug("bad int for pause"),
+            cb_context:add_validation_error(<<"timeout">>, <<"type">>, <<"value must be an integer greater than or equal to 0">>, Context)
+    end;
+validate_status_change_params(Context, _S) ->
+    lager:debug("great success for ~s", [_S]),
+    cb_context:set_resp_status(Context, 'success').

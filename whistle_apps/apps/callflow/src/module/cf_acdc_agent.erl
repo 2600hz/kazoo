@@ -1,11 +1,15 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%% Handles changing an agent's status
 %%%
 %%% "data":{
 %%%   "action":["login","logout","paused","resume"] // one of these
 %%%   ,"timeout":600 // in seconds, for "paused" status
+%%%   ,"presence_id":"abc123" // id of the button
+%%%   ,"presence_state":["early", "confirmed","terminated"
+%%%                      ,"red_flash", "red_solid", "green"
+%%%                     ]
 %%% }
 %%% @end
 %%% @contributors
@@ -66,41 +70,43 @@ fix_agent_status(Status) -> Status.
 fix_data_status(<<"pause">>) -> <<"paused">>;
 fix_data_status(Status) -> Status.
 
-maybe_update_status(Call, AgentId, _Curr, <<"logout">>, _Data) ->
+maybe_update_status(Call, AgentId, _Curr, <<"logout">>, Data) ->
     lager:info("agent ~s wants to log out (currently: ~s)", [AgentId, _Curr]),
-    logout_agent(Call, AgentId),
+    logout_agent(Call, AgentId, Data),
     play_agent_logged_out(Call);
 maybe_update_status(Call, AgentId, <<"logged_out">>, <<"resume">>, _Data) ->
     lager:debug("agent ~s is logged out, resuming doesn't make sense", [AgentId]),
     play_agent_invalid(Call);
-maybe_update_status(Call, AgentId, <<"logged_out">>, <<"login">>, _Data) ->
+maybe_update_status(Call, AgentId, <<"logged_out">>, <<"login">>, Data) ->
     lager:debug("agent ~s wants to log in", [AgentId]),
-    login_agent(Call, AgentId),
-    play_agent_logged_in(Call);
+    case login_agent(Call, AgentId, Data) of
+        <<"success">> -> play_agent_logged_in(Call);
+        <<"failed">> -> play_agent_invalid(Call)
+    end;
 
-maybe_update_status(Call, AgentId, <<"ready">>, <<"login">>, _Data) ->
+maybe_update_status(Call, AgentId, <<"ready">>, <<"login">>, Data) ->
     lager:info("agent ~s is already logged in", [AgentId]),
     _ = play_agent_logged_in_already(Call),
-    send_new_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1, 'undefined');
+    send_new_status(Call, AgentId, Data, fun wapi_acdc_agent:publish_login/1, 'undefined');
 
 maybe_update_status(Call, AgentId, FromStatus, <<"paused">>, Data) ->
     maybe_pause_agent(Call, AgentId, FromStatus, Data);
 
-maybe_update_status(Call, AgentId, <<"paused">>, <<"ready">>, _Data) ->
+maybe_update_status(Call, AgentId, <<"paused">>, <<"ready">>, Data) ->
     lager:info("agent ~s is coming back from pause", [AgentId]),
-    resume_agent(Call, AgentId),
+    resume_agent(Call, AgentId, Data),
     play_agent_resume(Call);
-maybe_update_status(Call, AgentId, <<"paused">>, <<"resume">>, _Data) ->
+maybe_update_status(Call, AgentId, <<"paused">>, <<"resume">>, Data) ->
     lager:info("agent ~s is coming back from pause", [AgentId]),
-    resume_agent(Call, AgentId),
+    resume_agent(Call, AgentId, Data),
     play_agent_resume(Call);
-maybe_update_status(Call, AgentId, <<"outbound">>, <<"resume">>, _Data) ->
+maybe_update_status(Call, AgentId, <<"outbound">>, <<"resume">>, Data) ->
     lager:info("agent ~s is coming back from pause", [AgentId]),
-    resume_agent(Call, AgentId),
+    resume_agent(Call, AgentId, Data),
     play_agent_resume(Call);
-maybe_update_status(Call, AgentId, <<"ready">>, <<"resume">>, _Data) ->
+maybe_update_status(Call, AgentId, <<"ready">>, <<"resume">>, Data) ->
     lager:info("agent ~s is coming back from pause", [AgentId]),
-    resume_agent(Call, AgentId),
+    resume_agent(Call, AgentId, Data),
     play_agent_resume(Call);
 
 maybe_update_status(Call, _AgentId, _Status, _NewStatus, _Data) ->
@@ -114,48 +120,73 @@ maybe_pause_agent(Call, _AgentId, FromStatus, _Data) ->
     play_agent_invalid(Call).
 
 login_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, <<"ready">>, fun wapi_acdc_agent:publish_login/1).
+    login_agent(Call, AgentId, wh_json:new()).
+login_agent(Call, AgentId, Data) ->
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, whapps_call:account_id(Call)}
+                ,{<<"Agent-ID">>, AgentId}
+                ,{<<"Presence-ID">>, presence_id(Data)}
+                ,{<<"Presence-State">>, presence_state(Data)}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    case whapps_util:amqp_pool_request(Update
+                                       ,fun wapi_acdc_agent:publish_login/1
+                                       ,fun wapi_acdc_agent:login_resp_v/1
+                                      )
+    of
+        {'ok', RespJObj} ->
+            wh_json:get_value(<<"Status">>, RespJObj);
+        {'error', _} ->
+            <<"failed">>
+    end.
 
 logout_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, <<"logged_out">>, fun wapi_acdc_agent:publish_logout/1).
+    logout_agent(Call, AgentId, wh_json:new()).
+logout_agent(Call, AgentId, Data) ->
+    update_agent_status(Call, AgentId, Data, fun wapi_acdc_agent:publish_logout/1).
 
-pause_agent(Call, AgentId, Timeout) when is_integer(Timeout) ->
+pause_agent(Call, AgentId, Data, Timeout) when is_integer(Timeout) ->
     _ = play_agent_pause(Call),
-    update_agent_status(Call, AgentId, <<"paused">>, fun wapi_acdc_agent:publish_pause/1, Timeout);
+    update_agent_status(Call, AgentId, Data, fun wapi_acdc_agent:publish_pause/1, Timeout).
 pause_agent(Call, AgentId, Data) ->
     Timeout = wh_json:get_integer_value(<<"timeout">>
                                         ,Data
                                         ,whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
                                        ),
     lager:info("agent ~s is pausing work for ~b s", [AgentId, Timeout]),
-    pause_agent(Call, AgentId, Timeout).
+    pause_agent(Call, AgentId, Data, Timeout).
 
-resume_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, <<"ready">>, fun wapi_acdc_agent:publish_resume/1).
+resume_agent(Call, AgentId, Data) ->
+    update_agent_status(Call, AgentId, Data, fun wapi_acdc_agent:publish_resume/1).
 
-update_agent_status(Call, AgentId, Status, PubFun) ->
-    update_agent_status(Call, AgentId, Status, PubFun, 'undefined').
-update_agent_status(Call, AgentId, Status, PubFun, Timeout) ->
-    AcctId = whapps_call:account_id(Call),
+update_agent_status(Call, AgentId, Data, PubFun) ->
+    update_agent_status(Call, AgentId, Data, PubFun, 'undefined').
+update_agent_status(Call, AgentId, Data, PubFun, Timeout) ->
+    send_new_status(Call, AgentId, Data, PubFun, Timeout).
 
-    Extra = [{<<"Call-ID">>, whapps_call:call_id(Call)}
-             ,{<<"Wait-Time">>, Timeout}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-
-    'ok' = acdc_util:update_agent_status(AcctId, AgentId, Status, Extra),
-
-    send_new_status(Call, AgentId, PubFun, Timeout).
-
--spec send_new_status(whapps_call:call(), ne_binary(), wh_amqp_worker:publish_fun(), integer() | 'undefined') -> 'ok'.
-send_new_status(Call, AgentId, PubFun, Timeout) ->
+-spec send_new_status(whapps_call:call(), ne_binary(), wh_json:object(), wh_amqp_worker:publish_fun(), api_integer()) -> 'ok'.
+send_new_status(Call, AgentId, Data, PubFun, Timeout) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, whapps_call:account_id(Call)}
                 ,{<<"Agent-ID">>, AgentId}
                 ,{<<"Time-Limit">>, Timeout}
+                ,{<<"Presence-ID">>, presence_id(Data)}
+                ,{<<"Presence-State">>, presence_state(Data)}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     PubFun(Update).
+
+presence_id(JObj) -> wh_json:get_value(<<"presence_id">>, JObj).
+presence_state(JObj) ->
+    format_presence_state(wh_json:get_value(<<"presence_state">>, JObj)).
+
+format_presence_state(<<"green">>) -> <<"terminated">>;
+format_presence_state(<<"terminated">> = T) -> T;
+format_presence_state(<<"red_flash">>) -> <<"early">>;
+format_presence_state(<<"early">> = E) -> E;
+format_presence_state(<<"red_solid">>) -> <<"confirmed">>;
+format_presence_state(<<"confirmed">> = C) -> C;
+format_presence_state(_) -> 'undefined'.
 
 -type find_agent_error() :: 'unknown_endpoint' | 'multiple_owners'.
 -spec find_agent(whapps_call:call()) ->

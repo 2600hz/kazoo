@@ -48,11 +48,13 @@ find_candidate_rates(DID, _) ->
 
 %% Given a list of rates, return the list of rates whose routes regexes match the given E164
 %% Optionally include direction of the call and options from the client to match against the rate
--spec matching_rates(wh_json:json_objects(), ne_binary()) -> wh_json:json_objects().
--spec matching_rates(wh_json:json_objects(), ne_binary(), 'undefined' | ne_binary(), trunking_options()) -> wh_json:json_objects().
+-spec matching_rates(wh_json:objects(), ne_binary()) ->
+                            wh_json:objects().
+-spec matching_rates(wh_json:objects(), ne_binary(), api_binary(), trunking_options()) ->
+                            wh_json:objects().
 
 matching_rates(Rates, DID) ->
-    matching_rates(Rates, DID, undefined, []).
+    matching_rates(Rates, DID, 'undefined', []).
 
 matching_rates(Rates, DID, Direction, RouteOptions) ->
     E164 = wnm_util:to_e164(DID),
@@ -71,9 +73,11 @@ sort_rates(Rates) ->
 %% needs to have available
 -spec matching_rate(wh_json:json_object(), ne_binary(), 'undefined' | ne_binary(), trunking_options()) -> boolean().
 matching_rate(Rate, E164, Direction, RouteOptions) ->
-    (Direction =:= undefined orelse lists:member(Direction, wh_json:get_value([<<"direction">>], Rate, ?BOTH_DIRECTIONS)))
+    (Direction =:= 'undefined' orelse lists:member(Direction, wh_json:get_value([<<"direction">>], Rate, ?BOTH_DIRECTIONS)))
         andalso options_match(RouteOptions, wh_json:get_value([<<"options">>], Rate, []))
-        andalso lists:any(fun(Regex) -> re:run(E164, Regex) =/= nomatch end, wh_json:get_value([<<"routes">>], Rate, [])).
+        andalso lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
+                          ,wh_json:get_value([<<"routes">>], Rate, [])
+                         ).
 
 %% Return true if RateA has lower weight than RateB
 -spec sort_rate(wh_json:json_object(), wh_json:json_object()) -> boolean().
@@ -85,10 +89,10 @@ sort_rate(RateA, RateB) ->
 %% All Route options must exist in a carrier's options to keep the carrier
 %% in the list of carriers capable of handling the call
 -spec options_match(trunking_options(), trunking_options()) -> boolean().
-options_match([], []) -> true;
-options_match([], _) -> true;
+options_match([], []) -> 'true';
+options_match([], _) -> 'true';
 options_match(RouteOptions, RateOptions) ->
-    lists:all(fun(RouteOpt) -> props:get_value(RouteOpt, RateOptions, false) =/= false end, RouteOptions).
+    lists:all(fun(RouteOpt) -> props:get_value(RouteOpt, RateOptions, 'false') =/= 'false' end, RouteOptions).
 
 -spec get_prefix(pos_integer(), ne_binary()) -> ne_binary().
 get_prefix(MinLen, <<"+", Bin/binary>>) -> get_prefix(MinLen, Bin);

@@ -246,8 +246,12 @@ handle_info('expire_nodes', #state{tab=Tab}=State) ->
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
     {'noreply', State};
 handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref}=State) ->
-    Node = create_node(),
-    wapi_nodes:publish_advertise(advertise_payload(Node)),
+    try create_node() of
+        Node -> wapi_nodes:publish_advertise(advertise_payload(Node))
+    catch
+        _:_ -> 'ok'
+    end,
+
     Reference = erlang:make_ref(),
     _ = erlang:send_after(?HEARTBEAT, self(), {'heartbeat', Reference}),
     {'noreply', State#state{heartbeat_ref=Reference}};

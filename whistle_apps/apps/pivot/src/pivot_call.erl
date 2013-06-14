@@ -341,7 +341,9 @@ send_req(Call, Uri, 'post', BaseParams) when is_list(BaseParams) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = wh_json:set_values(BaseParams, UserParams),
 
-    send(Call, Uri, 'post', [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params)).
+    send(Call, Uri, 'post', [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params));
+send_req(Call, Uri, 'post', BaseParams) ->
+    send_req(Call, Uri, 'post', wh_json:to_proplist(BaseParams)).
 
 -spec send(whapps_call:call(), iolist(), atom(), wh_proplist(), iolist()) -> 
                         'ok' |
@@ -437,18 +439,11 @@ uri(URI, QueryString) ->
 
 -spec req_params(ne_binary(), whapps_call:call()) -> wh_proplist().
 req_params(Format, Call) ->
-    FmtBin = <<"kzt_", Format/binary>>,
-    try
-        FmtAtom = wh_util:to_atom(FmtBin),
-        lager:debug("get req params from ~s", [FmtBin]),
-        FmtAtom:req_params(Call)
+    FmtAtom = wh_util:to_atom(<<"kzt_", Format/binary>>, 'true'),
+    try FmtAtom:req_params(Call) of
+        Result ->
+            lager:debug("get req params from ~s", [FmtAtom]),
+            Result
     catch
-        'error':'badarg' ->
-            case code:where_is_file(wh_util:to_list(<<FmtBin/binary, ".beam">>)) of
-                'non_existing' -> [];
-                _Path ->
-                    wh_util:to_atom(FmtBin, 'true'),
-                    req_params(Format, Call)
-            end;
         'error':'undef' -> []
     end.

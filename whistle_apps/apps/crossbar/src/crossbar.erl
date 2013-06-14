@@ -73,6 +73,7 @@ maybe_start_ssl(Dispatch) ->
         'false' -> lager:info("ssl api support not enabled");
         'true' ->
             lager:debug("trying to start SSL API server"),
+            ssl:start(),
             ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
             Workers = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_workers">>, 100),
             SSLOpts = ssl_opts(code:lib_dir('crossbar')),

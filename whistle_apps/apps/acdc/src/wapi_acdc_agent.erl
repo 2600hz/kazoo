@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% Bindings and JSON APIs for dealing with agents, as part of ACDc
@@ -20,6 +20,8 @@
          ,resume/1, resume_v/1
          ,login_queue/1, login_queue_v/1
          ,logout_queue/1, logout_queue_v/1
+
+         ,login_resp/1, login_resp_v/1
         ]).
 
 -export([bind_q/2
@@ -36,6 +38,8 @@
          ,publish_resume/1, publish_resume/2
          ,publish_login_queue/1, publish_login_queue/2
          ,publish_logout_queue/1, publish_logout_queue/2
+
+         ,publish_login_resp/2, publish_login_resp/3
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
@@ -60,8 +64,8 @@
 -spec sync_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 sync_req(Props) when is_list(Props) ->
     case sync_req_v(Props) of
-        true -> wh_api:build_message(Props, ?SYNC_REQ_HEADERS, ?OPTIONAL_SYNC_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for sync_req"}
+        'true' -> wh_api:build_message(Props, ?SYNC_REQ_HEADERS, ?OPTIONAL_SYNC_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for sync_req"}
     end;
 sync_req(JObj) ->
     sync_req(wh_json:to_proplist(JObj)).
@@ -107,8 +111,8 @@ sync_req_routing_key(AcctId, Id) ->
                                       {'error', string()}.
 sync_resp(Props) when is_list(Props) ->
     case sync_resp_v(Props) of
-        true -> wh_api:build_message(Props, ?SYNC_RESP_HEADERS, ?OPTIONAL_SYNC_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for sync_resp"}
+        'true' -> wh_api:build_message(Props, ?SYNC_RESP_HEADERS, ?OPTIONAL_SYNC_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for sync_resp"}
     end;
 sync_resp(JObj) ->
     sync_resp(wh_json:to_proplist(JObj)).
@@ -139,8 +143,8 @@ sync_resp_v(JObj) ->
                                       {'error', string()}.
 stats_req(Props) when is_list(Props) ->
     case stats_req_v(Props) of
-        true -> wh_api:build_message(Props, ?STATS_REQ_HEADERS, ?OPTIONAL_STATS_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for stats_req"}
+        'true' -> wh_api:build_message(Props, ?STATS_REQ_HEADERS, ?OPTIONAL_STATS_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for stats_req"}
     end;
 stats_req(JObj) ->
     stats_req(wh_json:to_proplist(JObj)).
@@ -190,8 +194,8 @@ stats_req_routing_key(Id, AgentId) ->
 -spec stats_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 stats_resp(Props) when is_list(Props) ->
     case stats_resp_v(Props) of
-        true -> wh_api:build_message(Props, ?STATS_RESP_HEADERS, ?OPTIONAL_STATS_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for stats_resp"}
+        'true' -> wh_api:build_message(Props, ?STATS_RESP_HEADERS, ?OPTIONAL_STATS_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for stats_resp"}
     end;
 stats_resp(JObj) ->
     stats_resp(wh_json:to_proplist(JObj)).
@@ -208,8 +212,12 @@ stats_resp_v(JObj) ->
 -define(AGENT_KEY, "acdc.agent.action."). % append queue ID
 
 -define(AGENT_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>]).
--define(OPTIONAL_AGENT_HEADERS, [<<"Time-Limit">>, <<"Queue-ID">>]).
--define(AGENT_VALUES, [{<<"Event-Category">>, <<"agent">>}]).
+-define(OPTIONAL_AGENT_HEADERS, [<<"Time-Limit">>, <<"Queue-ID">>
+                                 ,<<"Presence-ID">>, <<"Presence-State">>
+                                ]).
+-define(AGENT_VALUES, [{<<"Event-Category">>, <<"agent">>}
+                       ,{<<"Presence-State">>, wapi_notifications:presence_states()}
+                      ]).
 -define(AGENT_TYPES, []).
 
 -define(LOGIN_VALUES, [{<<"Event-Name">>, <<"login">>} | ?AGENT_VALUES]).
@@ -224,8 +232,8 @@ stats_resp_v(JObj) ->
                          {'error', string()}.
 login(Props) when is_list(Props) ->
     case login_v(Props) of
-        true -> wh_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
-        false -> {error, "Proplist failed validation for agent_login"}
+        'true' -> wh_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
+        'false' -> {'error', "Proplist failed validation for agent_login"}
     end;
 login(JObj) ->
     login(wh_json:to_proplist(JObj)).
@@ -241,8 +249,8 @@ login_v(JObj) ->
                                {'error', string()}.
 login_queue(Props) when is_list(Props) ->
     case login_queue_v(Props) of
-        true -> wh_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
-        false -> {error, "Proplist failed validation for agent_login_queue"}
+        'true' -> wh_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
+        'false' -> {'error', "Proplist failed validation for agent_login_queue"}
     end;
 login_queue(JObj) ->
     login_queue(wh_json:to_proplist(JObj)).
@@ -259,8 +267,8 @@ login_queue_v(JObj) ->
                          {'error', string()}.
 logout(Props) when is_list(Props) ->
     case logout_v(Props) of
-        true -> wh_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
-        false -> {error, "Proplist failed validation for agent_logout"}
+        'true' -> wh_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
+        'false' -> {'error', "Proplist failed validation for agent_logout"}
     end;
 logout(JObj) ->
     logout(wh_json:to_proplist(JObj)).
@@ -276,8 +284,8 @@ logout_v(JObj) ->
                                 {'error', string()}.
 logout_queue(Props) when is_list(Props) ->
     case logout_queue_v(Props) of
-        true -> wh_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
-        false -> {error, "Proplist failed validation for agent_logout_queue"}
+        'true' -> wh_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
+        'false' -> {'error', "Proplist failed validation for agent_logout_queue"}
     end;
 logout_queue(JObj) ->
     logout_queue(wh_json:to_proplist(JObj)).
@@ -293,8 +301,8 @@ logout_queue_v(JObj) ->
                          {'error', string()}.
 pause(Props) when is_list(Props) ->
     case pause_v(Props) of
-        true -> wh_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
-        false -> {error, "Proplist failed validation for agent_pause"}
+        'true' -> wh_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
+        'false' -> {'error', "Proplist failed validation for agent_pause"}
     end;
 pause(JObj) ->
     pause(wh_json:to_proplist(JObj)).
@@ -330,6 +338,31 @@ agent_status_routing_key(Props) when is_list(Props) ->
 
 agent_status_routing_key(AcctId, AgentId, Status) ->
     <<?AGENT_KEY, Status/binary, ".", AcctId/binary, ".", AgentId/binary>>.
+
+-define(LOGIN_RESP_HEADERS, [<<"Status">>]).
+-define(OPTIONAL_LOGIN_RESP_HEADERS, []).
+-define(LOGIN_RESP_VALUES, [{<<"Event-Category">>, <<"agent">>}
+                            ,{<<"Event-Name">>, <<"login_resp">>}
+                            ,{<<"Status">>, [<<"success">>, <<"failed">>]}
+                           ]).
+-define(LOGIN_RESP_TYPES, []).
+
+-spec login_resp(api_terms()) ->
+                        {'ok', iolist()} |
+                        {'error', string()}.
+login_resp(Props) when is_list(Props) ->
+    case login_resp_v(Props) of
+        'true' -> wh_api:build_message(Props, ?LOGIN_RESP_HEADERS, ?OPTIONAL_LOGIN_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for login_resp"}
+    end;
+login_resp(JObj) ->
+    login_resp(wh_json:to_proplist(JObj)).
+
+-spec login_resp_v(api_terms()) -> boolean().
+login_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?LOGIN_RESP_HEADERS, ?LOGIN_RESP_VALUES, ?LOGIN_RESP_TYPES);
+login_resp_v(JObj) ->
+    login_resp_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% Bind/Unbind the queue as appropriate
@@ -477,3 +510,11 @@ publish_resume(JObj) ->
 publish_resume(API, ContentType) ->
     {'ok', Payload} = resume((API1 = wh_api:prepare_api_payload(API, ?RESUME_VALUES))),
     amqp_util:whapps_publish(agent_status_routing_key(API1), Payload, ContentType).
+
+-spec publish_login_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_login_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_login_resp(RespQ, JObj) ->
+    publish_login_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_login_resp(RespQ, API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?LOGIN_RESP_VALUES, fun login_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).

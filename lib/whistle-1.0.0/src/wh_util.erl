@@ -303,24 +303,16 @@ get_account_realm(Db, AccountId) ->
 %%--------------------------------------------------------------------
 -spec try_load_module(string() | binary()) -> atom() | 'false'.
 try_load_module(Name) ->
-    try to_atom(Name) of
-        'undefined' -> 'false';
-        Module ->
+    Module = wh_util:to_atom(Name, 'true'),
+    try Module:module_info('imports') of
+        _ when Module =:= 'undefined' -> 'false';
+        _ -> 
             {'module', Module} = code:ensure_loaded(Module),
             Module
     catch
-        'error':'badarg' ->
+        'error':'undef' ->
             lager:debug("module ~s not found", [Name]),
-            case code:where_is_file(to_list(<<(to_binary(Name))/binary, ".beam">>)) of
-                'non_existing' ->
-                    lager:debug("beam file not found for ~s", [Name]),
-                    'false';
-                _Path ->
-                    lager:debug("beam file found: ~s", [_Path]),
-                    to_atom(Name, 'true'), %% put atom into atom table
-                    try_load_module(Name)
-            end;
-        _:_ -> 'false'
+            'false'
     end.
 
 %%--------------------------------------------------------------------
@@ -764,7 +756,9 @@ gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
 unix_seconds_to_gregorian_seconds(UnixSeconds) ->
     to_integer(UnixSeconds) + ?UNIX_EPOCH_AS_GREG_SECONDS.
 
--spec pretty_print_datetime(wh_datetime()) -> ne_binary().
+-spec pretty_print_datetime(wh_datetime() | wh_now()) -> ne_binary().
+pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
+    pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
                                    [Y, Mo, D, H, Mi, S])).

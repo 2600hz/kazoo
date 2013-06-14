@@ -696,8 +696,7 @@ process_billing(Context0)->
 %% @end
 %%--------------------------------------------------------------------
 -spec succeeded(cb_context:context()) -> boolean().
-succeeded(#cb_context{resp_status='success'}) -> 'true';
-succeeded(_) -> 'false'.
+succeeded(Context) -> cb_context:resp_status(Context) =:='success'.
 
 -spec execute_request(cowboy_req:req(), cb_context:context()) ->
                              {boolean() | 'halt', cowboy_req:req(), cb_context:context()}.
@@ -762,9 +761,12 @@ create_resp_content(Req0, Context) ->
                     }
             end
     catch
+        'throw':{'json_encode', {'bad_term', _Term}} ->
+            lager:debug("json encoding failed on ~p", [_Term]),
+            {<<"encoding response failed: bad term">>, Req0};
         _E:_R ->
             lager:debug("failed to encode response: ~s: ~p", [_E, _R]),
-            {[], Req0}
+            {<<"failure in request, contact support">>, Req0}
     end.
 
 %%--------------------------------------------------------------------

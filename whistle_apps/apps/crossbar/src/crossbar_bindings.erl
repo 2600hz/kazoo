@@ -58,7 +58,7 @@
 -define(SERVER, ?MODULE).
 
 %% {FullBinding, BindingPieces, QueueOfMods}
-%% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue()}
+%% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue(), <<"foo.bar">>}
 -type binding() :: {ne_binary(), ne_binaries(), queue(), ne_binary()}. %% queue(Module::atom() | pid())
 -type bindings() :: [binding(),...] | [].
 
@@ -191,18 +191,11 @@ init([]) ->
     {'ok', #state{}}.
 
 maybe_init_mod(ModBin) ->
-    try wh_util:to_atom(ModBin) of
-        Mod -> lager:debug("init: ~s: ~p", [ModBin, catch Mod:init()])
+    try (wh_util:to_atom(ModBin, 'true')):init() of
+        _ -> 'ok'
     catch
-        'error':'badarg' ->
-            case code:where_is_file(wh_util:to_list(<<ModBin/binary, ".beam">>)) of
-                'non_existing' -> lager:debug("module ~s doesn't exist", [ModBin]);
-                _Path ->
-                    wh_util:to_atom(ModBin, 'true'),
-                    maybe_init_mod(ModBin)
-            end;
-        _T:_R ->
-            lager:debug("failed to load ~s as an atom: ~p, ~p", [ModBin, _T, _R])
+        _E:_R ->
+            lager:warning("failed to initialize ~s: ~p, ~p", [ModBin, _E, _R])
     end.
 
 %%--------------------------------------------------------------------
@@ -280,15 +273,22 @@ handle_cast('flush', #state{}=State) ->
 handle_cast({'flush', Binding}, #state{}=State) ->
     ets:delete(?MODULE, Binding),
     {'noreply', State};
-handle_cast({'flush_mod', CBMod}, #state{bindings=Bs}=State) ->
+handle_cast({'flush_mod', CBMod}, State) ->
     lager:debug("trying to flush ~s", [CBMod]),
-    Bs1 = [ {Binding, BParts, MFs1}
-            || {Binding, BParts, MFs} <- Bs,
-               not queue:is_empty(MFs1 = queue:filter(fun({Mod, _}) -> Mod =/= CBMod end, MFs))
-          ],
-    {'noreply', State#state{bindings=Bs1}};
+    ets:foldl(fun(El, _) -> flush_mod(CBMod, El) end, 'ok', ?MODULE),
+    {'noreply', State};
 handle_cast('stop', State) ->
     {'stop', 'normal', State}.
+
+flush_mod(CBMod, {Binding, _BParts, MFs, _Prefix}) ->
+    Filtered = queue:filter(fun({Mod, _}) -> Mod =/= CBMod end, MFs),
+    case queue:len(Filtered) =:= queue:len(MFs) of
+        'true' -> 'ok'; %% nothing to update
+        'false' ->
+            lager:debug("removing mod ~s from ~s", [CBMod, Binding]),
+            ets:update_element(?MODULE, Binding, {3, Filtered})
+    end.
+            
 
 %%--------------------------------------------------------------------
 %% @private
