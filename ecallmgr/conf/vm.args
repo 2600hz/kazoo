@@ -1,6 +1,6 @@
 # Each node in the system must have a unique name. We recommend running with
 # -name and a fqdn
--name ecallmgr
+-name ecallmgr@183.38.3.41
 
 # Inter-node communication requires each node to have the same cookie
 # Comment this line out if you use ~/.erlang.cookie to manage your cookie
@@ -23,3 +23,4 @@
 
 # Limit the size of error reports
 -riak_err term_max_size 8192 fmt_max_bytes 9000
+-config conf/app.config
