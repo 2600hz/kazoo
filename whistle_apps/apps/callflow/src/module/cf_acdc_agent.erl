@@ -55,17 +55,17 @@ handle(Data, Call) ->
 
 -spec find_agent_status(whapps_call:call() | ne_binary(), ne_binary()) -> ne_binary().
 find_agent_status(?NE_BINARY = AcctId, AgentId) ->
-    fix_agent_status(acdc_util:agent_status(AcctId, AgentId));
+    fix_agent_status(acdc_agent_util:most_recent_status(AcctId, AgentId));
 find_agent_status(Call, AgentId) ->
     find_agent_status(whapps_call:account_id(Call), AgentId).
 
-fix_agent_status(<<"resume">>) -> <<"ready">>;
-fix_agent_status(<<"wrapup">>) -> <<"ready">>;
-fix_agent_status(<<"busy">>) -> <<"ready">>;
-fix_agent_status(<<"logout">>) -> <<"logged_out">>;
-fix_agent_status(<<"login">>) -> <<"ready">>;
-fix_agent_status(<<"outbound">>) -> <<"ready">>;
-fix_agent_status(Status) -> Status.
+fix_agent_status({'ok', <<"resume">>}) -> <<"ready">>;
+fix_agent_status({'ok', <<"wrapup">>}) -> <<"ready">>;
+fix_agent_status({'ok', <<"busy">>}) -> <<"ready">>;
+fix_agent_status({'ok', <<"logout">>}) -> <<"logged_out">>;
+fix_agent_status({'ok', <<"login">>}) -> <<"ready">>;
+fix_agent_status({'ok', <<"outbound">>}) -> <<"ready">>;
+fix_agent_status({'ok', Status}) -> Status.
 
 fix_data_status(<<"pause">>) -> <<"paused">>;
 fix_data_status(Status) -> Status.

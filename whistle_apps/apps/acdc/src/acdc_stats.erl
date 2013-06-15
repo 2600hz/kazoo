@@ -63,18 +63,6 @@
 
 -include("acdc.hrl").
 
-%% Archive every 60 seconds
--define(ARCHIVE_PERIOD, whapps_config:get_integer(?CONFIG_CAT, <<"archive_period_ms">>, 60000)).
-
-%% Check for cleanup every 5 minutes
--define(CLEANUP_PERIOD, whapps_config:get_integer(?CONFIG_CAT, <<"cleanup_period_ms">>, 360000)).
-
-%% Save data to the DB
--define(ARCHIVE_WINDOW, whapps_config:get_integer(?CONFIG_CAT, <<"archive_window_s">>, 60)).
-
-%% Remove data from ETS
--define(CLEANUP_WINDOW, whapps_config:get_integer(?CONFIG_CAT, <<"cleanup_window_s">>, ?SECONDS_IN_DAY)).
-
 -define(ARCHIVE_MSG, 'time_to_archive').
 -define(CLEANUP_MSG, 'time_to_cleanup').
 
@@ -121,8 +109,8 @@
           id :: api_binary() | '_'
           ,agent_id :: api_binary() | '$2' | '_'
           ,acct_id :: api_binary() | '$1' | '_'
-          ,status :: api_binary() | '_'
-          ,timestamp :: api_pos_integer() | '$1' | '$5' | '_'
+          ,status :: api_binary() | '$4' | '_'
+          ,timestamp :: api_pos_integer() | '$1' | '$3' | '$5' | '_'
 
           ,wait_time :: api_integer() | '_'
           ,pause_time :: api_integer() | '_'
