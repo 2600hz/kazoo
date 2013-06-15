@@ -149,7 +149,9 @@ toke(DF, <<>>) ->
     done ->
         none;
     {Data, DF2} ->
-        toke(DF2, Data)
+            toke(DF2, Data);
+        {error, _Ref, connection_closed}  ->
+            throw({error, connection_closed})
     end;
 toke(DF, <<C,Rest/binary>>) when ?IS_WS(C)->
     toke(DF, Rest);
