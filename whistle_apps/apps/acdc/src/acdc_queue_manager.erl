@@ -478,8 +478,8 @@ handle_cast({'reject_member_call', Call, JObj}, #state{acct_id=AcctId
     {'noreply', State};
 
 handle_cast({'sync_with_agent', A}, #state{acct_id=AcctId}=State) ->
-    case acdc_util:agent_status(AcctId, A) of
-        <<"logout">> -> gen_listener:cast(self(), {'agent_unavailable', A});
+    case acdc_agent_util:most_recent_status(AcctId, A) of
+        {'ok', <<"logout">>} -> gen_listener:cast(self(), {'agent_unavailable', A});
         _ -> gen_listener:cast(self(), {'agent_available', A})
     end,
     {'noreply', State};
@@ -568,10 +568,10 @@ start_agent_and_worker(WorkersSup, AcctId, QueueId, AgentJObj) ->
 
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
 
-    case acdc_util:agent_status(AcctId, AgentId) of
-        <<"logout">> -> 'ok';
-        <<"logged_out">> -> 'ok';
-        _Status ->
+    case acdc_agent_util:most_recent_status(AcctId, AgentId) of
+        {'ok', <<"logout">>} -> 'ok';
+        {'ok', <<"logged_out">>} -> 'ok';
+        {'ok', _Status} ->
             lager:debug("maybe starting agent ~s(~s) for queue ~s", [AgentId, _Status, QueueId]),
 
             case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
