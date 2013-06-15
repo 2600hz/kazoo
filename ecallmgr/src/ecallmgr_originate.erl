@@ -225,33 +225,33 @@ handle_cast({'build_originate_args'}, #state{uuid='undefined'}=State) ->
     gen_listener:cast(self(), {'build_originate_args'}),
     {'noreply', State};
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
-                                             ,uuid=UUID
                                              ,action = ?ORIGINATE_PARK
                                              ,billing_id=BillingId
+                                             ,node=Node
                                             }=State) ->
     gen_listener:cast(self(), {'originate_ready'}),
-    Endpoints = [wh_json:set_value(<<"origination_uuid">>, UUID, Endpoint)
+    Endpoints = [wh_json:set_value(<<"origination_uuid">>, create_uuid(Endpoint, Node), Endpoint)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
     {'noreply', State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, Endpoints, JObj, BillingId)}};
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
-                                             ,uuid=UUID
                                              ,action = Action
                                              ,app = ?ORIGINATE_EAVESDROP
                                              ,billing_id=BillingId
+                                             ,node=Node
                                             }=State) ->
     gen_listener:cast(self(), {'originate_ready'}),
-    Endpoints = [wh_json:set_value(<<"origination_uuid">>, UUID, Endpoint)
+    Endpoints = [wh_json:set_value(<<"origination_uuid">>, create_uuid(Endpoint, Node), Endpoint)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
     {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, BillingId)}};
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,action=Action
-                                             ,uuid=UUID
                                              ,billing_id=BillingId
+                                             ,node=Node
                                             }=State) ->
     gen_listener:cast(self(), {'originate_execute'}),
-    Endpoints = [wh_json:set_value(<<"origination_uuid">>, UUID, Endpoint)
+    Endpoints = [wh_json:set_value(<<"origination_uuid">>, create_uuid(Endpoint, Node), Endpoint)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
     {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, BillingId)}};
@@ -311,6 +311,10 @@ handle_cast({'channel_destroy', JObj}, #state{server_id=ServerId}=State) ->
     lager:debug("received channel destroy event, sending originate response"),
     _ = publish_originate_resp(ServerId, JObj),
     {'stop', 'normal', State};
+handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, 'hibernate'}.
