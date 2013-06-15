@@ -3,10 +3,14 @@
   ,"views":{
     "status_log": {
       "map":"function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.agent_id, doc.timestamp], doc.status); }"
-    },
-    "most_recent": {
-      "map":"function(doc) { if ( doc.pvt_type != 'status_stat' ) return; var res = {'timestamp':doc.timestamp, 'status':doc.status, 'agent_id':doc.agent_id}; if ( doc.wait_time ) res.wait_time = doc.wait_time; if ( doc.pause_time ) res.pause_time = doc.pause_time; if ( doc.call_id ) res.call_id = doc.call_id; if ( doc.caller_id_name ) res.caller_id_name = doc.caller_id_name; if ( doc.caller_id_number ) res.caller_id_number = doc.caller_id_number; emit([doc.agent_id, doc.timestamp], res); emit([doc.timestamp, doc.agent_id], res); }",
-      "reduce": "function(ks, vs, re) {var r = {'timestamp':0, 'status':'logged_out'}; for(i=0; i<vs.length; i++){if(vs[i].timestamp > r.timestamp){r=vs[i];}}  return r;}"
+    }
+    ,"most_recent_by_agent": {
+      "map":"function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.agent_id, doc.timestamp], null); }"
+
+    }
+
+    ,"most_recent_by_timestamp": {
+      "map":"function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.timestamp, doc.agent_id], null); }"
     }
   }
 }
