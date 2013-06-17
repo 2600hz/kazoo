@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
-%%% Created :  7 Jul 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(hotornot_app).
 
@@ -17,13 +17,10 @@
 %% Application callbacks
 %% ===================================================================
 
--spec start(StartType :: term(), StartArgs :: term()) -> {ok, pid()} | {error, term()}.
+-spec start(term(), term()) ->
+                   {'ok', pid()} |
+                   {'error', term()}.
 start(_StartType, _StartArgs) ->
-    case hotornot:start_link() of
-	{ok, P} -> {ok, P};
-	{error, {already_started, P} } -> {ok, P};
-	{error, _}=E -> E
-    end.
+    hotornot:start_link().
 
-stop(_State) ->
-    ok.
+stop(_State) -> hotornot:stop().
