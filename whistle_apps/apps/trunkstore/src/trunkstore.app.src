@@ -6,11 +6,9 @@
     ,{vsn, "0.3.5"}
     ,{registered, []}
     ,{applications, [
-		     kernel
-		     ,stdlib
-		     ,whistle_amqp
-		     ,whistle_couch
-		    ]
+                     kernel
+                     ,stdlib
+                    ]
      }
     ,{mod, { trunkstore_app, []}}
     ,{env, []}

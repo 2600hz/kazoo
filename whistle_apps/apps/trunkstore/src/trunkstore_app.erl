@@ -1,3 +1,11 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2012-2013, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
 -module(trunkstore_app).
 
 -behaviour(application).
@@ -11,14 +19,9 @@
 %% Application callbacks
 %% ===================================================================
 
--spec start(term(), term()) -> {'ok', pid()} | {'error', term()}.
-start(_StartType, _StartArgs) ->
-    case trunkstore:start_link() of
-        {ok, P} -> {ok, P};
-        {error,{already_started, P}} -> {ok, P};
-        {error, _}=E -> E;
-        ignore -> {error, failed_to_start}
-    end.
+-spec start(term(), term()) ->
+                   {'ok', pid()} |
+                   {'error', term()}.
+start(_StartType, _StartArgs) -> trunkstore:start_link().
 
-stop(_State) ->
-    ok.
+stop(_State) -> trunkstore:stop().

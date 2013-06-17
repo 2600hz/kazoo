@@ -23,7 +23,7 @@
 
 -define(TS_VIEW_CARRIERIP, <<"LookUpCarrierIP/LookUpCarrierIP">>).
 
--define(EOD, end_of_day).
+-define(EOD, 'end_of_day').
 -define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
 
 %% couch params for the routing table and its views
@@ -57,8 +57,8 @@
           ,to_domain = <<>> :: binary()
           ,from_user = <<>> :: binary()
           ,from_domain = <<>> :: binary()
-          ,auth_user = <<>> :: binary() | undefined      % what username did we authenticate with
-          ,auth_realm = <<>> :: binary() | undefined     % what realm did we auth with
+          ,auth_user = <<>> :: api_binary()      % what username did we authenticate with
+          ,auth_realm = <<>> :: api_binary()     % what realm did we auth with
           ,direction = <<>> :: binary()                  % what direction is the call (relative to client)
           ,server_id = <<>> :: binary()                  % Server of the DID
           ,failover = {} :: tuple()                      % Failover information {type, value}. Type=(sip|e164), Value=("sip:user@domain"|"+1234567890")
@@ -87,5 +87,5 @@
 -define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookupuserauth.json", "lookupmonitor.json", "lookupipauth.json", "lookupdid.json", "lookupuser.json", "ts_cdr.json"]).
 -define(TS_COUCH_BASE_DOCS, ["carriers.json"]).
 
--define(TS_HRL, true).
+-define(TS_HRL, 'true').
 -endif.
