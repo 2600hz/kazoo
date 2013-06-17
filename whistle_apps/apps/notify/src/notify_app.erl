@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010 James Aimonetti
+%%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
-%%% Created :  3 May 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(notify_app).
 
@@ -21,15 +21,10 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(StartType, StartArgs) -> tuple(ok, pid()) | tuple(error, startlink_err()) when
-      StartType :: term(),
-      StartArgs :: term().
-start(_StartType, _StartArgs) ->
-    case notify:start_link() of
-	{ok, P} -> {ok, P};
-	{error, {already_started, P} } -> {ok, P};
-	{error, _}=E -> E
-    end.
+-spec start(term(), term()) ->
+                   {'ok', pid()} |
+                   {'error', term()}.
+start(_StartType, _StartArgs) -> notify:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -37,7 +32,5 @@ start(_StartType, _StartArgs) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(State) -> ok when
-      State :: term().
-stop(_State) ->
-    ok.
+-spec stop(term()) -> 'ok'.
+stop(_State) -> notify:stop().
