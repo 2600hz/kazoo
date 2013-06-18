@@ -9,6 +9,7 @@
 
 -export([current_billing_period/2]).
 -export([current_billing_period/3]).
+-export([reconcile/1]).
 
 -include("../whistle_services.hrl").
 
@@ -25,3 +26,13 @@ current_billing_period(AccountId, 'subscriptions') ->
 -spec current_billing_period(ne_binary(), atom(), tuple()) -> [wh_json:object(), ...] | atom().
 current_billing_period(AccountId, 'transactions', {Min, Max}) ->
     wh_bookkeeper_braintree:transactions(AccountId, Min, Max).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile/1 :: (wh_services:services()) -> wh_services:services().
+reconcile(Services) ->
+    Services.
