@@ -26,7 +26,7 @@
          ,cleanup_loop/1
         ]).
 
--include("src/crossbar.hrl").
+-include("../crossbar.hrl").
 
 -define(CHILDSPEC, {?MODULE, {?MODULE, 'start_link', []}
                     ,'permanent', 5000, 'worker', [?MODULE]

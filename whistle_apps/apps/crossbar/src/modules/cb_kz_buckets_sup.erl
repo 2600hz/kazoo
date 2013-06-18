@@ -19,7 +19,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("./src/crossbar.hrl").
+-include("../crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 -define(MAX_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"max_bucket_tokens">>, 100)).
