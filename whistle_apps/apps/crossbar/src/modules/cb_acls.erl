@@ -17,7 +17,7 @@
          ,validate/1
         ]).
 
--include("src/crossbar.hrl").
+-include("../crossbar.hrl").
 -define(ECALLMGR, <<"ecallmgr">>).
 -define(ECALLMGR_ACLS, <<"acls">>).
 

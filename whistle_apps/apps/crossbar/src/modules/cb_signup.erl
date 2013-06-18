@@ -29,7 +29,7 @@
 %% cleanup process
 -export([start_link/0, init_it/0]).
 
--include("src/crossbar.hrl").
+-include("../crossbar.hrl").
 
 -define(SIGNUP_DB, <<"signups">>).
 

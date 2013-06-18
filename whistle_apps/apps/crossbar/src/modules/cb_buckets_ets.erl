@@ -27,7 +27,7 @@
          ,code_change/3
         ]).
 
--include("./src/crossbar.hrl").
+-include("../crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 -define(TABLE_ID, 'cb_buckets_mgr').
