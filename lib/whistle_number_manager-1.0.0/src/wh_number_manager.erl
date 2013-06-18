@@ -587,7 +587,7 @@ set_public_fields(Number, PublicFields, AuthBy) ->
 -spec track_assignment(ne_binaries()) -> 'ok'.
 -spec track_assignment(ne_binaries(), binary()) -> 'ok'.
 track_assignment(Numbers) ->
-    track_assignment(Numbers, <<"">>).
+    track_assignment(Numbers, <<>>).
 
 track_assignment([], _) ->
     'ok';

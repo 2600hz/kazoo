@@ -239,7 +239,7 @@ validate(Context, _, ?PORT_DOCS, _) ->
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, <<"collection">>) ->
     Results = collection_process(Context),
-    set_response(Results, <<"">>, Context);
+    set_response(Results, <<>>, Context);
 post(#cb_context{doc=JObj, auth_account_id=AuthBy}=Context, Number) ->
     Result = wh_number_manager:set_public_fields(Number, JObj, AuthBy),
     set_response(Result, Number, Context).
@@ -253,7 +253,7 @@ post(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
 
 put(Context, <<"collection">>) ->
     Results = collection_process(Context),
-    set_response(Results, <<"">>, Context);
+    set_response(Results, <<>>, Context);
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number) ->
     Result = wh_number_manager:create_number(Number, AssignTo, AuthBy, JObj),
     set_response(Result, Number, Context).
@@ -278,7 +278,7 @@ put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
 
 delete(Context, <<"collection">>) ->
     Results = collection_process(Context),
-    set_response(Results, <<"">>, Context);
+    set_response(Results, <<>>, Context);
 delete(#cb_context{auth_account_id=AuthBy}=Context, Number) ->
     Result = wh_number_manager:release_number(Number, AuthBy),
     set_response(Result, Number, Context).

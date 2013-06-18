@@ -864,7 +864,7 @@ get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
 create_number_summary(_Account, #number{state=State, features=Features, module_name=ModuleName
                                 ,assigned_to=AssignedTo, number_doc=Doc, used_by=UsedBy}) ->
     MaybeOwned = case (ModuleName == 'wnm_local') of
-        'true' -> ['owned'];
+        'true' -> ['local'];
         'false' -> []
     end,
     NFeatures =  lists:merge([wh_util:to_binary(F) || F <- sets:to_list(Features)], MaybeOwned),
