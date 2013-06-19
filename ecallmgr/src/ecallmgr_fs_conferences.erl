@@ -135,6 +135,17 @@ sync_conferences(Node) -> gen_server:cast(?MODULE, {'sync_conferences', Node}).
 new(Node, Props) ->
     gen_server:call(?MODULE, {'new_conference', props_to_record(Props, Node)}).
 
+props_to_record(Props, Node) ->
+    #conference{node=Node
+                ,uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
+                ,name=props:get_value(<<"Conference-Name">>, Props)
+                ,participants=props:get_integer_value(<<"Conference-Size">>, Props, 0)
+                ,profile_name=props:get_value(<<"Conference-Profile-Name">>, Props)
+                ,switch_hostname=props:get_value(<<"FreeSWITCH-Hostname">>, Props)
+                ,switch_url=props:get_value(<<"URL">>, Props)
+                ,switch_external_ip=props:get_value(<<"Ext-SIP-IP">>, Props)
+               }.
+
 -spec node(ne_binary()) ->
                   {'ok', atom()} |
                   {'error', 'not_found'} |
@@ -572,17 +583,6 @@ record_to_json(#conference{uuid=UUID
 
 add_participants_to_conference_json(ConfId, ConfJObj) ->
     {'ok', wh_json:set_value(<<"Participants">>, participants_list(ConfId), ConfJObj)}.
-
-props_to_record(Props, Node) ->
-    #conference{node=Node
-                ,uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
-                ,name=props:get_value(<<"Conference-Name">>, Props)
-                ,participants=props:get_integer_value(<<"Conference-Size">>, Props, 0)
-                ,profile_name=props:get_value(<<"Conference-Profile-Name">>, Props)
-                ,switch_hostname=props:get_value(<<"FreeSWITCH-Hostname">>, Props)
-                ,switch_url=props:get_value(<<"URL">>, Props)
-                ,switch_external_ip=props:get_value(<<"Ext-SIP-IP">>, Props)
-               }.
 
 event(Node, 'undefined', Props) ->
     case props:get_value(<<"Action">>, Props) of
