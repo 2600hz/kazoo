@@ -211,7 +211,7 @@ participants_list(ConfId) ->
             ]
     end.
 
--spec participants_uuids(ne_binary()) -> [[ne_binary() | atom(),...],...] | [].
+-spec participants_uuids(ne_binary()) -> [ne_binaries() | atoms(),...] | [].
 participants_uuids(ConfId) ->
     ets:match(?CONFERENCES_TBL, #participant{conference_name=ConfId
                                              ,uuid='$1'
@@ -233,11 +233,13 @@ participant_record_to_json(#participant{uuid=UUID
                                         ,current_energy=CurrentEnergy
                                         ,video=Video
                                         ,is_moderator=IsMod
+                                        ,node=Node
                                        }) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"Call-ID">>, UUID}
          ,{<<"Conference-Name">>, ConfName}
+         ,{<<"Switch-Hostname">>, Node}
          ,{<<"Floor">>, Floor}
          ,{<<"Hear">>, Hear}
          ,{<<"Speak">>, Speak}
