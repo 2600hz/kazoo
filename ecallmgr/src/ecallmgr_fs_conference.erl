@@ -261,15 +261,6 @@ get_conf_command(<<"kick">>, _Focus, _ConferenceId, JObj) ->
         'true' ->
             {<<"hup">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
     end;
-
-get_conf_command(<<"hup">>, _Focus, _ConferenceId, JObj) ->
-    case wapi_conference:hup_v(JObj) of
-        'false' ->
-            {'error', <<"conference hup failed to execute as JObj did not validate.">>};
-        'true' ->
-            {<<"hup">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"all">>)}
-    end;
-
 get_conf_command(<<"participants">>, 'undefined', ConferenceId, _) ->
     {'error', <<"Non-Existant ID ", ConferenceId/binary>>};
 
