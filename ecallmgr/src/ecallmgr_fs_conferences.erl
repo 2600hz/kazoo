@@ -523,6 +523,13 @@ xml_members_to_records([#xmlElement{name='members'
     ];
 xml_members_to_records([_El|Els], Node) -> xml_members_to_records(Els, Node).
 
+record_to_json(#conference{switch_hostname='undefined'
+                           ,node=Node
+                           ,name=_Name
+                           }=Conf) ->
+    lager:info("conference ~s doesn't have the switch hostname defined, using node ~s", [_Name, Node]),
+    [_, SH] = binary:split(wh_util:to_binary(Node), <<"@">>),
+    record_to_json(Conf#conference{switch_hostname=SH});
 record_to_json(#conference{uuid=UUID
                            ,name=Name
                            ,participants=Participants
@@ -678,7 +685,7 @@ relay_event(UUID, Node, Props) ->
                          ,{<<"Conference-Profile-Name">>, #conference.profile_name}
                          ,{<<"New-ID">>, #conference.with_floor, fun safe_integer_get/3, 0}
                          ,{<<"Old-ID">>, #conference.lost_floor, fun safe_integer_get/3, 0}
-                         ,{<<"Switch-Hostname">>, #conference.switch_hostname, fun props:get_value/2}
+                         ,{<<"FreeSWITCH-Hostname">>, #conference.switch_hostname, fun props:get_value/2}
                         ]).
 conference_fields(Props) -> fields(Props, ?FS_CONF_FIELDS).
 
