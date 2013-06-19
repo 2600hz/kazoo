@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2011-2013, VoIP, INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(dth_sup).
 
@@ -16,9 +17,9 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
-                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{?DTH_CACHE, cache}, {dth_listener, worker}]).
+-define(CHILDREN, [?CACHE(?DTH_CACHE)
+                   ,?WORKER('dth_listener')
+                  ]).
 
 %% ===================================================================
 %% API functions
@@ -32,7 +33,7 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -49,11 +50,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
-%%% Created :  8 Nov 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(hangups_sup).
 
@@ -18,8 +19,7 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(Name, Type), {Name, {Name, 'start_link', []}, 'permanent', 5000, Type, [Name]}).
--define(CHILDREN, [{'hangups_listener', 'worker'}]).
+-define(CHILDREN, [?WORKER('hangups_listener')]).
 
 %% ===================================================================
 %% API functions
@@ -55,6 +55,5 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {'ok', {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

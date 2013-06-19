@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
-%%% Created :  8 Nov 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(hangups_app).
 
@@ -20,12 +21,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start(term(), term()) -> {'ok', pid()} | {'error', startlink_err()}.
-start(_, _) ->
-    case hangups:start_link() of
-        {'ok', P} -> {'ok', P};
-        {'error', {'already_started', P}} -> {'ok', P};
-        {'error', _}=E -> E
-    end.
+start(_, _) -> hangups:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -33,6 +29,5 @@ start(_, _) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(term()) -> ok.
-stop(_) ->
-    'ok'.
+-spec stop(term()) -> 'ok'.
+stop(_) -> hangups:stop().

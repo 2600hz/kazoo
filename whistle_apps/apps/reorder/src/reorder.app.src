@@ -1,7 +1,7 @@
 {application, reorder,
  [
-  {description, "Skel - A reordereton application useful for quickly creating services"},
-  {vsn, "1"},
+  {description, "Reorder - "},
+  {vsn, "1.0.0"},
   {registered, []},
   {applications, [
                   kernel,

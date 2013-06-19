@@ -8,7 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(wh_media_proxy).
 
--export([start_link/0]).
+-export([start_link/0
+         ,stop/0
+        ]).
 
 -include("whistle_media.hrl").
 
@@ -30,6 +32,12 @@ start_link() ->
     maybe_start_ssl(Dispatch),
 
     'ignore'.
+
+-spec stop() -> 'ok'.
+stop() ->
+    _ = cowboy:stop_listener('wh_media_proxy'),
+    _ = cowboy:stop_listener('media_mgr_ssl'),
+    lager:debug("stopped wh_media_proxy listeners").
 
 maybe_start_plaintext(Dispatch) ->
     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_plaintext">>, 'true') of

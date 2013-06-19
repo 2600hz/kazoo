@@ -143,8 +143,7 @@ find_file(File, Root) ->
 -spec stop() -> 'ok'.
 stop() ->
     cowboy:stop_listener('v1_resource'),
-    cowboy:stop_listener('v1_resource_ssl'),
-    'ok' = application:stop('crossbar').
+    cowboy:stop_listener('v1_resource_ssl').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -181,9 +180,9 @@ stop_mod(CBMod) ->
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [ wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'inets'
-                                                 ,'ranch' ,'cowboy', 'whistle_amqp'
-                                                ]],
+    _ = [wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'inets'
+                                                ,'ranch' ,'cowboy', 'whistle_amqp'
+                                               ]],
     'ok'.
 
 %%--------------------------------------------------------------------

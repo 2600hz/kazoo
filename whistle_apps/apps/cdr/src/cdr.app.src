@@ -1,7 +1,7 @@
 {application, cdr,
  [
-  {description, "Listen and record CDR events into Couch"},
-  {vsn, "0.3.0"},
+  {description, "Listen and record CDR events into CouchDB"},
+  {vsn, "0.4.1"},
   {registered, []},
   {applications, [
                   kernel,

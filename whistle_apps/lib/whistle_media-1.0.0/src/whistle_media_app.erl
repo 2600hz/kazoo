@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -19,12 +19,14 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) -> {'ok', pid()} | {'error', startlink_err()}.
+-spec start(term(), term()) ->
+                   {'ok', pid()} |
+                   {'error', startlink_err()}.
 start(_Type, _Args) ->
     case whistle_media_sup:start_link() of
-        {ok, P} -> {ok, P};
-        {error, {already_started, P} } -> {ok, P};
-        {error, _}=E -> E
+        {'ok', P} -> {'ok', P};
+        {'error', {'already_started', P} } -> {'ok', P};
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -33,6 +35,7 @@ start(_Type, _Args) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
+-spec stop(any()) -> 'ok'.
 stop(_State) ->
-    ok.
+    wh_media_proxy:stop(),
+    'ok'.

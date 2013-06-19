@@ -17,8 +17,6 @@
 -export([stop_app/1]).
 -export([init/1]).
 
--define(CHILD(N, T), {N, {N, start_link, []}, permanent, 5000, T, [N]}).
-
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -29,15 +27,21 @@
 %% Starts the supervisor
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/1 :: ([atom(),...] | []) -> startlink_ret().
+-spec start_link(atoms()) -> startlink_ret().
 start_link(Whapps) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [Whapps]).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, [Whapps]).
 
--spec start_app/1 :: (atom()) -> {'ok', pid() | 'undefined'} | {'ok', pid() | 'undefined', term()} | {'error', term()}.
+-spec start_app(atom()) ->
+                       {'ok', pid() | 'undefined'} |
+                       {'ok', pid() | 'undefined', term()} |
+                       {'error', term()}.
 start_app(App) ->
-    supervisor:start_child(?MODULE, ?CHILD(App, supervisor)).
+    supervisor:start_child(?MODULE, ?SUPER(App)).
 
--spec restart_app/1 :: (atom()) -> {'ok', pid() | 'undefined'} | {'ok', pid() | 'undefined', term()} | {'error', term()}.
+-spec restart_app(atom()) ->
+                         {'ok', pid() | 'undefined'} |
+                         {'ok', pid() | 'undefined', term()} |
+                         {'error', term()}.
 restart_app(App) ->
     _ = supervisor:terminate_child(?MODULE, App),
     supervisor:restart_child(?MODULE, App).
@@ -59,13 +63,13 @@ stop_app(App) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([[atom(),...] | []]) -> sup_init_ret().
+-spec init([atoms()]) -> sup_init_ret().
 init([Whapps]) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Whapp, supervisor) || Whapp <- Whapps],
+    Children = [?SUPER(Whapp) || Whapp <- Whapps],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, Children}}.

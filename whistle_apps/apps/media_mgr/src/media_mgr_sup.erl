@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010 VoIP INC
+%%% @copyright (C) 2010-2013 2600Hz
 %%% @doc
 %%% 
 %%% @end
@@ -15,9 +15,8 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{whistle_media_sup, supervisor}
-                   ,{media_listener, worker}
+-define(CHILDREN, [?SUPER('whistle_media_sup')
+                   ,?WORKER('media_listener')
                   ]).
 
 %% ===================================================================
@@ -32,7 +31,7 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -49,11 +48,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

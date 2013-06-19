@@ -1,15 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% @author Edouard Swiac <edouard@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
+%%% @contributors
 %%%-------------------------------------------------------------------
 -module(sysconf_sup).
 
 -behaviour(supervisor).
-
--include_lib("whistle/include/wh_types.hrl").
 
 %% API
 -export([start_link/0]).
@@ -17,9 +15,10 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-include("sysconf.hrl").
+
 %% Helper macro for declaring children of supervisor
--define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
--define(CHILDREN, [{sysconf_listener, worker}]). %% amqp listener
+-define(CHILDREN, [?WORKER('sysconf_listener')]).
 
 %% ===================================================================
 %% API functions
@@ -33,7 +32,7 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -48,14 +47,12 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(Args) -> sup_init_ret() when
-      Args :: [].
+-spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

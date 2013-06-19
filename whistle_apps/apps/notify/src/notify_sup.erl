@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -21,9 +21,8 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
--define(CHILDREN, [{notify_listener, worker}
-                   ,{notify_account_crawler, worker}
+-define(CHILDREN, [?WORKER('notify_listener')
+                   ,?WORKER('notify_account_crawler')
                   ]).
 
 %% ===================================================================
@@ -38,13 +37,13 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 -spec listener_proc() -> {'ok', pid()}.
 listener_proc() ->
     [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= notify_listener],
-    {ok, P}.
+                Mod =:= 'notify_listener'],
+    {'ok', P}.
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -61,11 +60,10 @@ listener_proc() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

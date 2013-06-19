@@ -1,9 +1,11 @@
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011 James Aimonetti
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
-%%% Created :  Thu, 13 Jan 2011 22:12:40 GMT: James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
 -module(registrar_app).
 
 -behaviour(application).
@@ -15,13 +17,9 @@
 %% Application callbacks
 %% ===================================================================
 
--spec(start(StartType :: term(), StartArgs :: term()) -> tuple(ok, pid()) | tuple(error, term())).
-start(_StartType, _StartArgs) ->
-    case registrar:start_link() of
-	{ok, P} -> {ok, P};
-	{error, {already_started, P} } -> {ok, P};
-	{error, _}=E -> E
-    end.
+-spec start(term(), term()) ->
+                   {'ok', pid()} |
+                   {'error', term()}.
+start(_StartType, _StartArgs) -> registrar:start_link().
 
-stop(_State) ->
-    ok.
+stop(_State) -> registrar:stop().

@@ -1,4 +1,4 @@
-PROJECT = handoff
+PROJECT = reorder
 
 ROOT = ../../..
 DIALYZER = dialyzer

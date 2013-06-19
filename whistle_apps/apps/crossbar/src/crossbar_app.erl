@@ -15,6 +15,8 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 
+-include("crossbar.hrl").
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -26,9 +28,9 @@
                    {'error', startlink_err()}.
 start(_StartType, _StartArgs) ->
     case crossbar:start_link() of
-        {'ok', P} -> {'ok', P};
-        {'error', {'already_started', P} } -> {'ok', P};
-        {'error', _}=E -> E
+        {'ok', P} -> lager:debug("crossbar_sup at ~p", [P]), {'ok', P};
+        {'error', {'already_started', P} } -> lager:debug("crossbar_sup already at ~p", [P]), {'ok', P};
+        {'error', _}=E -> lager:debug("crossbar_sup error: ~p", [E]), E
     end.
 
 %%--------------------------------------------------------------------

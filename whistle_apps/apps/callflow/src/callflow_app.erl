@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
-%%% Created : 27 June 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(callflow_app).
 
@@ -20,14 +20,13 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(StartType, StartArgs) -> tuple(ok, pid()) | tuple(error, startlink_err()) when
-      StartType :: term(),
-      StartArgs :: term().
+-spec start(term(), term()) -> {'ok', pid()} |
+                               {'error', startlink_err()}.
 start(_, _) ->
     case callflow:start_link() of
-	{ok, P} -> {ok, P};
-	{error, {already_started, P} } -> {ok, P};
-	{error, _}=E -> E
+        {'ok', P} -> {'ok', P};
+        {'error', {'already_started', P} } -> {'ok', P};
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -36,7 +35,5 @@ start(_, _) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(State) -> ok when
-      State :: term().
-stop(_) ->
-    ok.
+-spec stop(any()) -> 'ok'.
+stop(_) -> callflow:stop().

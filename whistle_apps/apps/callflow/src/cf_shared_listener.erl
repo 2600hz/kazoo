@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%% Listener for route requests that can be fulfilled by callflows
 %%% @end
@@ -24,15 +24,19 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{{cf_util, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
-                     ,{{cf_util, presence_mwi_query}, [{<<"notification">>, <<"mwi_query">>}]}
+-define(RESPONDERS, [{{'cf_util', 'presence_probe'}
+                      ,[{<<"notification">>, <<"presence_probe">>}]
+                     }
+                     ,{{'cf_util', 'presence_mwi_query'}
+                       ,[{<<"notification">>, <<"mwi_query">>}]
+                      }
                     ]).
--define(BINDINGS, [{notifications, [{restrict_to, [presence_probe, mwi_query]}]}
-                   ,{self, []}
+-define(BINDINGS, [{'notifications', [{'restrict_to', ['presence_probe', 'mwi_query']}]}
+                   ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"callflow_listener">>).
--define(QUEUE_OPTIONS, [{exclusive, false}]).
--define(CONSUME_OPTIONS, [{exclusive, false}]).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -46,11 +50,11 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                      ,{bindings, ?BINDINGS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
+    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+                                      ,{'bindings', ?BINDINGS}
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================
@@ -69,9 +73,8 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    process_flag(trap_exit, true),
     lager:debug("starting new callflow shared queue server"),
-    {ok, []}.
+    {'ok', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -88,7 +91,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Msg, _From, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -101,7 +104,7 @@ handle_call(_Msg, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -115,7 +118,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -126,7 +129,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,7 +155,7 @@ terminate(_Reason, _) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
