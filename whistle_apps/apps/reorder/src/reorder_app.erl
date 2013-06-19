@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -19,13 +19,10 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start/2 :: (term(), term()) -> {'ok', pid()} | {'error', startlink_err()}.
-start(_Type, _Args) ->
-    case reorder_sup:start_link() of
-        {ok, P} -> {ok, P};
-        {error, {already_started, P} } -> {ok, P};
-        {error, _}=E -> E
-    end.
+-spec start(term(), term()) ->
+                   {'ok', pid()} |
+                   {'error', _}.
+start(_Type, _Args) -> reorder:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -33,6 +30,5 @@ start(_Type, _Args) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop/1 :: (term()) -> 'ok'.
-stop(_State) ->
-    ok.
+-spec stop(term()) -> 'ok'.
+stop(_State) -> reorder:stop().

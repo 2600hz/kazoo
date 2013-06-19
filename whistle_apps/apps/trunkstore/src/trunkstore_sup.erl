@@ -16,8 +16,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+-include("ts.hrl").
 
 %% ===================================================================
 %% API functions
@@ -25,16 +24,16 @@
 -spec start_link() -> {'ok', pid()} | 'ignore' | {'error', term()}.
 start_link() ->
     _ = trunkstore:start_deps(),
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}
-           , [
-              ?CHILD(ts_onnet_sup, supervisor) %% handles calls originating on-net (customer)
-              ,?CHILD(ts_offnet_sup, supervisor) %% handles calls originating off-net (carrier)
-              ,?CHILD(ts_responder, worker)
-             ]} }.
+    {'ok', { {'one_for_one', 5, 10}
+             ,[?SUPER('ts_onnet_sup') %% handles calls originating on-net (customer)
+               ,?WORKER('ts_offnet_sup') %% handles calls originating off-net (carrier)
+               ,?WORKER('ts_responder')
+              ]}
+    }.

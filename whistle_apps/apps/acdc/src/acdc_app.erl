@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -19,13 +19,13 @@
 %% Application callbacks
 %% ===================================================================
 -spec start(term(), term()) ->
-                         {'ok', pid()} |
-                         {'error', startlink_err()}.
+                   {'ok', pid()} |
+                   {'error', startlink_err()}.
 start(_StartType, _StartArgs) ->
     case acdc_sup:start_link() of
-        {ok, P} -> {ok, P};
-        {error, {already_started, P} } -> {ok, P};
-        {error, _}=E -> E
+        {'ok', P} -> {'ok', P};
+        {'error', {'already_started', P} } -> {'ok', P};
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -35,5 +35,4 @@ start(_StartType, _StartArgs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop(term()) -> 'ok'.
-stop(_State) ->
-    ok.
+stop(_State) -> acdc:stop().

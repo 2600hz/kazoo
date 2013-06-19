@@ -6,7 +6,7 @@
 -include_lib("whistle/include/wh_log.hrl").
 
 -define(APP_NAME, <<"cdr">>).
--define(APP_VERSION, <<"0.4.0">>).
+-define(APP_VERSION, <<"0.4.1">>).
 
--define(CDR_HRL, true).
+-define(CDR_HRL, 'true').
 -endif.

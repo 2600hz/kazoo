@@ -9,8 +9,7 @@
 -module(trunkstore).
 
 -author('James Aimonetti <james@2600hz.org>').
--export([start/0
-         ,start_link/0
+-export([start_link/0
          ,stop/0
          ,start_deps/0
         ]).
@@ -24,16 +23,10 @@ start_link() ->
     _ = start_deps(),
     trunkstore_sup:start_link().
 
-%% @spec start() -> ok
-%% @doc Start the callmgr server.
-start() ->
-    application:start(trunkstore).
-
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE),
-    [wh_util:ensure_started(A) || A <- [sasl, crypto, whistle_amqp, ibrowse]].
+    [wh_util:ensure_started(A) || A <- ['sasl', 'crypto', 'whistle_amqp']].
 
 %% @spec stop() -> ok
 %% @doc Stop the callmgr server.
-stop() ->
-    application:stop(trunkstore).
+stop() -> 'ok'.

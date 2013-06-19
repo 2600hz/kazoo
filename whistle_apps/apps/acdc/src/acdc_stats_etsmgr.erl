@@ -28,6 +28,7 @@
 
 -record(state, {table_id :: ets:tid()
                 ,etssrv :: pid()
+                ,give_away_ref :: reference()
                }).
 
 %%%===================================================================
@@ -83,6 +84,7 @@ init([TableId, TableOptions]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
+    lager:debug("unhandled call: ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
@@ -96,17 +98,14 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'begin', TableId, TableOptions}, State) ->
-    EtsSrv = find_ets_srv(),
     Tbl = ets:new(TableId, TableOptions),
 
     ets:setopts(Tbl, {'heir', self(), 'ok'}),
-    ets:give_away(Tbl, EtsSrv, 'ok'),
-
-    lager:debug("gave away ETS table ~p to ~p", [Tbl, EtsSrv]),
     {'noreply', State#state{table_id=Tbl
-                            ,etssrv=EtsSrv
+                            ,give_away_ref=send_give_away_retry(Tbl, 'ok', 0)
                            }};
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -122,38 +121,51 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', Etssrv, 'killed'}, #state{etssrv=Etssrv}=State) ->
     lager:debug("ets mgr ~p killed", [Etssrv]),
     {'noreply', State#state{etssrv='undefined'}};
-handle_info({'EXIT', _OldSrv, _Reason}, State) ->
-    lager:debug("old ets srv ~p died: ~p", [_OldSrv, _Reason]),
-    {'noreply', State};
+handle_info({'EXIT', EtsMgr, 'shutdown'}, #state{etssrv=EtsMgr}=State) ->
+    lager:debug("ets mgr ~p shutdown", [EtsMgr]),
+    {'noreply', State#state{etssrv='undefined'}};
 handle_info({'ETS-TRANSFER', Tbl, Etssrv, Data}, #state{table_id=Tbl
                                                         ,etssrv=Etssrv
+                                                        ,give_away_ref='undefined'
                                                        }=State) ->
-    NewEtsSrv = find_ets_srv(),
-    lager:debug("ets srv ~p dying, handing tbl ~p back to ~p and then to ~p", [Etssrv, Tbl, self(), NewEtsSrv]),
-    ets:give_away(Tbl, NewEtsSrv, Data),
-    {'noreply', State#state{etssrv=NewEtsSrv}};
-
-handle_info({'ETS-TRANSFER', Tbl, _P, Data}, #state{table_id=Tbl
-                                                        ,etssrv='undefined'
-                                                       }=State) ->
-    NewEtsSrv = find_ets_srv(),
-    lager:debug("ets mgr ~p dying, handing tbl ~p back to ~p and then to ~p", [_P, Tbl, self(), NewEtsSrv]),
-    ets:give_away(Tbl, NewEtsSrv, Data),
-    {'noreply', State#state{etssrv=NewEtsSrv}};
-
+    lager:debug("ets table ~p transfered back to ourselves", [Tbl]),
+    {'noreply', State#state{etssrv='undefined'
+                            ,give_away_ref=send_give_away_retry(Tbl, Data, 0)
+                           }};
+handle_info({'give_away', Tbl, Data}, #state{table_id=Tbl
+                                             ,etssrv='undefined'
+                                             ,give_away_ref=Ref
+                                            }=State) when is_reference(Ref) ->
+    lager:debug("give away ~p: ~p", [Tbl, Data]),
+    case find_ets_mgr(Tbl, Data) of
+        P when is_pid(P) ->
+            lager:debug("handing tbl ~p back to ~p and then to ~p", [Tbl, self(), P]),
+            {'noreply', State#state{etssrv=P
+                                    ,give_away_ref='undefined'
+                                   }};
+        Ref when is_reference(Ref) ->
+            lager:debug("ets mgr died already, hasn't resumed life yet; waiting"),
+            {'noreply', State#state{etssrv='undefined'
+                                    ,give_away_ref=Ref
+                                   }}
+    end;
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
-find_ets_srv() ->
+find_ets_mgr(Tbl, Data) ->
     case acdc_stats_sup:stats_srv() of
-        {'error', 'not_found'} ->
-            timer:sleep(5),
-            find_ets_srv();
+        {'error', 'not_found'} -> send_give_away_retry(Tbl, Data);
         {'ok', P} when is_pid(P) ->
             link(P),
+            ets:give_away(Tbl, P, Data),
             P
     end.
+
+send_give_away_retry(Tbl, Data) ->
+    send_give_away_retry(Tbl, Data, 10).
+send_give_away_retry(Tbl, Data, Timeout) ->
+    erlang:send_after(Timeout, self(), {'give_away', Tbl, Data}).
 
 %%--------------------------------------------------------------------
 %% @private
