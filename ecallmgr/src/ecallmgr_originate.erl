@@ -230,7 +230,7 @@ handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,node=Node
                                             }=State) ->
     gen_listener:cast(self(), {'originate_ready'}),
-    Endpoints = [wh_json:set_value(<<"origination_uuid">>, create_uuid(Endpoint, Node), Endpoint)
+    Endpoints = [wh_json:set_value(<<"origination_uuid">>, create_uuid(Endpoint, JObj, Node), Endpoint)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
     {'noreply', State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, Endpoints, JObj, BillingId)}};
@@ -241,7 +241,7 @@ handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,node=Node
                                             }=State) ->
     gen_listener:cast(self(), {'originate_ready'}),
-    Endpoints = [wh_json:set_value(<<"origination_uuid">>, create_uuid(Endpoint, Node), Endpoint)
+    Endpoints = [wh_json:set_value(<<"origination_uuid">>, create_uuid(Endpoint, JObj, Node), Endpoint)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
     {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, BillingId)}};
@@ -251,7 +251,7 @@ handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,node=Node
                                             }=State) ->
     gen_listener:cast(self(), {'originate_execute'}),
-    Endpoints = [wh_json:set_value(<<"origination_uuid">>, create_uuid(Endpoint, Node), Endpoint)
+    Endpoints = [wh_json:set_value(<<"origination_uuid">>, create_uuid(Endpoint, JObj, Node), Endpoint)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
     {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, BillingId)}};
@@ -287,8 +287,8 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
                                           ,control_pid=CtrlPid
                                          }=State) ->
     case originate_execute(Node, Dialstrings) of
-        {'ok', _} when is_pid(CtrlPid) ->
-            lager:debug("originate completed"),
+        {'ok', _WinningUUID} when is_pid(CtrlPid) ->
+            lager:debug("originate completed: winning uuid: ~s", [_WinningUUID]),
             {'stop', 'normal', State#state{control_pid='undefined'}};
         {'ok', CallId} ->
             put('callid', CallId),
@@ -489,8 +489,8 @@ build_originate_args(Action, Endpoints, JObj, BillingId) ->
     list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).
 
 -spec originate_execute(atom(), ne_binary()) ->
-                                     {'ok', ne_binary()} |
-                                     {'error', ne_binary()}.
+                               {'ok', ne_binary()} |
+                               {'error', ne_binary()}.
 originate_execute(Node, Dialstrings) ->
     lager:debug("executing on ~s: ~s", [Node, Dialstrings]),
     {'ok', BGApiID} = freeswitch:bgapi(Node, 'originate', wh_util:to_list(Dialstrings)),
@@ -532,6 +532,7 @@ update_uuid(OldUUID, NewUUID) ->
 
 -spec create_uuid(atom()) -> ne_binary().
 -spec create_uuid(wh_json:object(), atom()) -> ne_binary().
+-spec create_uuid(wh_json:object(), wh_json:object(), atom()) -> ne_binary().
 
 create_uuid(Node) ->
     case freeswitch:api(Node, 'create_uuid', " ") of
@@ -550,6 +551,12 @@ create_uuid(Node) ->
 create_uuid(JObj, Node) ->
     case wh_json:get_binary_value(<<"Outbound-Call-ID">>, JObj) of
         'undefined' -> create_uuid(Node);
+        CallId -> CallId
+    end.
+
+create_uuid(Endpoint, JObj, Node) ->
+    case wh_json:get_binary_value(<<"Outbound-Call-ID">>, Endpoint) of
+        'undefined' -> create_uuid(JObj, Node);
         CallId -> CallId
     end.
 
