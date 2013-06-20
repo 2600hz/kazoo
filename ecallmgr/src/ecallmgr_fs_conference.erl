@@ -130,7 +130,7 @@ handle_cast({'gen_listener', {'created_queue', <<"ecallmgr_fs_conference">>}}, #
           end),
     {'noreply', State};
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -144,7 +144,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -156,7 +156,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -181,7 +181,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -202,7 +202,7 @@ exec(Focus, ConferenceId, JObj) ->
             lager:debug("command ~s failed: ~s", [App, _Msg]),
             send_response(App, E, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {'noop', Conference} ->
-            send_response(App, {noop, Conference}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
+            send_response(App, {'noop', Conference}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {<<"play">>, AppData} ->
             Result =
                 case wh_json:get_value(<<"Call-ID">>, JObj) of
@@ -237,17 +237,17 @@ exec(Focus, ConferenceId, JObj) ->
                               {'noop', wh_json:object()}.
 get_conf_command(<<"deaf_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:deaf_participant_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference deaf_participant failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             {<<"deaf">>, wh_json:get_binary_value(<<"Participant">>, JObj)}
     end;
 
 get_conf_command(<<"participant_energy">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:participant_energy_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference participant_energy failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             Args = list_to_binary([wh_json:get_binary_value(<<"Participant">>, JObj)
                                    ," ", wh_json:get_binary_value(<<"Energy-Level">>, JObj, <<"20">>)
                                   ]),
@@ -261,7 +261,6 @@ get_conf_command(<<"kick">>, _Focus, _ConferenceId, JObj) ->
         'true' ->
             {<<"hup">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
     end;
-
 get_conf_command(<<"participants">>, 'undefined', ConferenceId, _) ->
     {'error', <<"Non-Existant ID ", ConferenceId/binary>>};
 
@@ -279,25 +278,25 @@ get_conf_command(<<"participants">>, _Focus, ConferenceId, JObj) ->
 
 get_conf_command(<<"lock">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:lock_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference lock failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             {<<"lock">>, <<>>}
     end;
 
 get_conf_command(<<"mute_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:mute_participant_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference mute_participant failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             {<<"mute">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
     end;
 
 get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
     case wapi_conference:play_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference play failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             UUID = wh_json:get_ne_value(<<"Call-ID">>, JObj, ConferenceId),
             Media = list_to_binary(["'", ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID, JObj), "'"]),
             Args = case wh_json:get_binary_value(<<"Participant">>, JObj) of
@@ -309,9 +308,9 @@ get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
 
 get_conf_command(<<"record">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:record_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference record failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
             RecordingName = ecallmgr_util:recording_filename(MediaName),
             {<<"recording">>, [<<"start ">>, RecordingName]}
@@ -339,9 +338,9 @@ get_conf_command(<<"relate_participants">>, _Focus, _ConferenceId, JObj) ->
 
 get_conf_command(<<"set">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:set_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference set failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             Args = list_to_binary([wh_json:get_binary_value(<<"Parameter">>, JObj)
                                    ," ", wh_json:get_binary_value(<<"Value">>, JObj)
                                   ]),
@@ -350,9 +349,9 @@ get_conf_command(<<"set">>, _Focus, _ConferenceId, JObj) ->
 
 get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:stop_play_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference stop_play failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             Affects = wh_json:get_binary_value(<<"Affects">>, JObj, <<"all">>),
             Args = case wh_json:get_binary_value(<<"Participant">>, JObj) of
                        undefined -> Affects;
@@ -363,33 +362,33 @@ get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
 
 get_conf_command(<<"undeaf_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:undeaf_participant_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference undeaf_participant failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             {<<"undeaf">>, wh_json:get_binary_value(<<"Participant">>, JObj)}
     end;
 
 get_conf_command(<<"unlock">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:unlock_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference unlock failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             {<<"unlock">>, <<>>}
     end;
 
 get_conf_command(<<"unmute_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:unmute_participant_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference unmute failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             {<<"unmute">>, wh_json:get_binary_value(<<"Participant">>, JObj)}
     end;
 
 get_conf_command(<<"participant_volume_in">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:participant_volume_in_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference participant_volume_in failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             Args = list_to_binary([wh_json:get_binary_value(<<"Participant">>, JObj)
                                    ," ", wh_json:get_binary_value(<<"Volume-In-Level">>, JObj, <<"0">>)
                                   ]),
@@ -398,9 +397,9 @@ get_conf_command(<<"participant_volume_in">>, _Focus, _ConferenceId, JObj) ->
 
 get_conf_command(<<"participant_volume_out">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:participant_volume_out_v(JObj) of
-        false ->
+        'false' ->
             {'error', <<"conference participant_volume_out failed to execute as JObj did not validate.">>};
-        true ->
+        'true' ->
             Args = list_to_binary([wh_json:get_binary_value(<<"Participant">>, JObj)
                                    ," ", wh_json:get_binary_value(<<"Volume-Out-Level">>, JObj, <<"0">>)
                                   ]),
@@ -447,7 +446,18 @@ get_conf_command(Cmd, _Focus, _ConferenceId, _JObj) ->
     lager:debug("unknown conference command ~s", [Cmd]),
     {error, list_to_binary([<<"unknown conference command: ">>, Cmd])}.
 
--spec send_response(ne_binary(), tuple(), api_binary(), wh_json:object()) -> ok.
+-spec send_response(ne_binary(), tuple(), api_binary(), wh_json:object()) -> 'ok'.
+send_response(<<"stop_play">>, {'ok', Res}, _Queue, Command) ->
+    Evt = [{<<"Conference-Name">>, wh_json:get_value(<<"Conference-ID">>, Command)}
+           ,{<<"Event-Date-Timestamp">>, wh_util:current_tstamp()}
+           ,{<<"Action">>,<<"play-file-done">>}
+           ,{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+           ,{<<"whistle_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+           ,{<<"Application">>, <<"play-file-done">>}
+           ,{<<"whistle_application_name">>, <<"play-file-done">>}
+           ,{<<"Application-Data">>, Res}
+          ],
+    ecallmgr_fs_conferences:relay_event(Evt);
 send_response(_, _, 'undefined', _) -> lager:debug("no server-id to respond");
 send_response(_, {'ok', <<"Non-Existant ID", _/binary>> = Msg}, RespQ, Command) ->
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}

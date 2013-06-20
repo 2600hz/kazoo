@@ -22,20 +22,20 @@
 
 -include("reg.hrl").
 
--define(RESPONDERS, [{reg_authn_req, [{<<"directory">>, <<"authn_req">>}]}
-                     ,{{reg_query, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
-                     ,{{reg_route_req, handle_route_req}, [{<<"dialplan">>, <<"route_req">>}]}
+-define(RESPONDERS, [{'reg_authn_req', [{<<"directory">>, <<"authn_req">>}]}
+                     ,{{'reg_query', 'presence_probe'}, [{<<"notification">>, <<"presence_probe">>}]}
+                     ,{{'reg_route_req', 'handle_route_req'}, [{<<"dialplan">>, <<"route_req">>}]}
                     ]).
--define(BINDINGS, [{authn, []}
-                   ,{notifications, [{restrict_to, [presence_probe]}]}
-                   ,{route, []}
-                   ,{self, []}
+-define(BINDINGS, [{'authn', []}
+                   ,{'notifications', [{'restrict_to', ['presence_probe']}]}
+                   ,{'route', []}
+                   ,{'self', []}
                   ]).
 
 -define(SERVER, ?MODULE).
 -define(REG_QUEUE_NAME, <<"registrar_shared_listener">>).
--define(REG_QUEUE_OPTIONS, [{exclusive, false}]).
--define(REG_CONSUME_OPTIONS, [{exclusive, false}]).
+-define(REG_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(REG_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -49,12 +49,12 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link({local, ?SERVER}, ?MODULE, [{responders, ?RESPONDERS}
-                                                        ,{bindings, ?BINDINGS}
-                                                        ,{queue_name, ?REG_QUEUE_NAME}
-                                                        ,{queue_options, ?REG_QUEUE_OPTIONS}
-                                                        ,{consume_options, ?REG_CONSUME_OPTIONS}
-                                                       ], []).
+    gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'responders', ?RESPONDERS}
+                                                          ,{'bindings', ?BINDINGS}
+                                                          ,{'queue_name', ?REG_QUEUE_NAME}
+                                                          ,{'queue_options', ?REG_QUEUE_OPTIONS}
+                                                          ,{'consume_options', ?REG_CONSUME_OPTIONS}
+                                                         ], []).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -72,9 +72,8 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    process_flag(trap_exit, true),
     lager:debug("starting new registrar shared queue server"),
-    {ok, []}.
+    {'ok', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -91,7 +90,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Msg, _From, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -104,7 +103,7 @@ handle_call(_Msg, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -117,7 +116,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -128,7 +127,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -154,7 +153,7 @@ terminate(_Reason, _) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions

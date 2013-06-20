@@ -159,6 +159,8 @@
                                ,{<<"park_after_bridge">>, <<"park_after_bridge">>}
                                ,{<<"continue_on_fail">>, <<"continue_on_fail">>}
                                ,{<<"continue_on_cancel">>, <<"continue_on_cancel">>}
+                               ,{<<"conference_member_nospeak_relational">>, <<"conference_member_nospeak_relational">>}
+                               ,{<<"conference_member_nospeak_check">>, <<"conference_member_nospeak_check">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
