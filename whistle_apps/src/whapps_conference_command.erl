@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -14,7 +14,6 @@
 -export([deaf_participant/2]).
 -export([participant_energy/3]).
 -export([kick/1, kick/2]).
--export([hup/1, hup/2]).
 -export([participants/1]).
 -export([lock/1]).
 -export([mute_participant/2]).
@@ -92,27 +91,6 @@ kick(Conference) ->
 kick(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"kick">>}
                ,{<<"Participant">>, ParticipantId}
-              ],
-    send_command(Command, Conference).
-
--spec hup(whapps_conference:conference()) -> 'ok'.
--spec hup(ne_binary() | integer(), whapps_conference:conference()) -> 'ok'.
-hup(Conference) ->
-    hup(<<"all">>, Conference).
-hup(<<"all">> = Who, Conference) ->
-    hup_conf(Who, Conference);
-hup(<<"last">> = Who, Conference) ->
-    hup_conf(Who, Conference);
-hup(<<"non_moderator">> = Who, Conference) ->
-    hup_conf(Who, Conference);
-hup(ParticipantId, Conference) when is_integer(ParticipantId) ->
-    hup_conf(ParticipantId, Conference);
-hup(Who, Conference) ->
-    hup(wh_util:to_integer(Who), Conference).
-
-hup_conf(Who, Conference) ->
-    Command = [{<<"Application-Name">>, <<"hup">>}
-               ,{<<"Participant">>, Who}
               ],
     send_command(Command, Conference).
 
