@@ -19,7 +19,7 @@
 %%
 %% Include files
 %%
--include("lager.hrl").
+-include_lib("lager/include/lager.hrl").
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
