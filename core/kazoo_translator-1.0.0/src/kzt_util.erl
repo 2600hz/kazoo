@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(kzt_util).
 
+-include_lib("eunit/include/eunit.hrl").
+
 -export([http_method/1
          ,resolve_uri/2
          ,offnet_req/2
@@ -70,9 +72,12 @@ http_method(Method) ->
     end.
 
 -spec resolve_uri(nonempty_string() | ne_binary(), nonempty_string() | api_binary()) -> ne_binary().
-resolve_uri(Raw, 'undefined') -> wh_util:to_binary(Raw);
-resolve_uri(_Raw, [$h,$t,$t,$p|_]=Abs) -> wh_util:to_binary(Abs);
-resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
+resolve_uri(Raw, 'undefined') ->
+    wh_util:to_binary(Raw);
+resolve_uri(_Raw, [$h,$t,$t,$p|_]=Abs) ->
+    wh_util:to_binary(Abs);
+resolve_uri(_Raw, <<"http", _/binary>> = Abs) ->
+    Abs;
 resolve_uri(RawPath, Relative) ->
     lager:debug("taking url ~s and applying path ~s", [RawPath, Relative]),
     PathTokensRev = lists:reverse(binary:split(wh_util:to_binary(RawPath), <<"/">>, ['global'])),
@@ -84,6 +89,8 @@ resolve_uri(RawPath, Relative) ->
                        (<<"..">>, [_ | PathTokens]) -> PathTokens;
                        (<<".">>, PathTokens) -> PathTokens;
                        (<<>>, PathTokens) -> PathTokens;
+                       (Segment, [<<>>|DirTokens]) ->
+                            [Segment|DirTokens];
                        (Segment, [LastToken|DirTokens]=PathTokens) ->
                             case filename:extension(LastToken) of
                                 <<>> ->
@@ -271,7 +278,6 @@ xml_text_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->
 xml_elements(Els) -> [El || #xmlElement{}=El <- Els].
 
 -ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
 
 get_path_test() ->
     RawPath = <<"http://pivot/script.php">>,
@@ -281,4 +287,5 @@ get_path_test() ->
     ?assertEqual(RawPath1, resolve_uri(RawPath, Relative)),
     ?assertEqual(RawPath1, resolve_uri(RawPath, RawPath1)),
     ?assertEqual(RawPath1, resolve_uri(RawPath, <<"/", Relative/binary>>)).
+
 -endif.
