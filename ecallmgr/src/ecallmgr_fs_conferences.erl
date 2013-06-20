@@ -23,6 +23,7 @@
          ,fetch/1, fetch_full/1
          ,flush_node/1
          ,sync_conferences/1
+         ,relay_event/1
         ]).
 %% Participant-specific
 -export([participants_list/1
@@ -134,6 +135,17 @@ sync_conferences(Node) -> gen_server:cast(?MODULE, {'sync_conferences', Node}).
 new(Node, Props) ->
     gen_server:call(?MODULE, {'new_conference', props_to_record(Props, Node)}).
 
+props_to_record(Props, Node) ->
+    #conference{node=Node
+                ,uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
+                ,name=props:get_value(<<"Conference-Name">>, Props)
+                ,participants=props:get_integer_value(<<"Conference-Size">>, Props, 0)
+                ,profile_name=props:get_value(<<"Conference-Profile-Name">>, Props)
+                ,switch_hostname=props:get_value(<<"FreeSWITCH-Hostname">>, Props)
+                ,switch_url=props:get_value(<<"URL">>, Props)
+                ,switch_external_ip=props:get_value(<<"Ext-SIP-IP">>, Props)
+               }.
+
 -spec node(ne_binary()) ->
                   {'ok', atom()} |
                   {'error', 'not_found'} |
@@ -210,7 +222,7 @@ participants_list(ConfId) ->
             ]
     end.
 
--spec participants_uuids(ne_binary()) -> [[ne_binary() | atom(),...],...] | [].
+-spec participants_uuids(ne_binary()) -> [ne_binaries() | atoms(),...] | [].
 participants_uuids(ConfId) ->
     ets:match(?CONFERENCES_TBL, #participant{conference_name=ConfId
                                              ,uuid='$1'
@@ -232,11 +244,13 @@ participant_record_to_json(#participant{uuid=UUID
                                         ,current_energy=CurrentEnergy
                                         ,video=Video
                                         ,is_moderator=IsMod
+                                        ,node=Node
                                        }) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"Call-ID">>, UUID}
          ,{<<"Conference-Name">>, ConfName}
+         ,{<<"Switch-Hostname">>, Node}
          ,{<<"Floor">>, Floor}
          ,{<<"Hear">>, Hear}
          ,{<<"Speak">>, Speak}
@@ -429,8 +443,14 @@ handle_cast({'flush_node_conferences', Node}, TID) ->
                  ],
     _ = ets:select_delete(TID, MatchSpecP),
     {'noreply', TID};
-handle_cast({'gen_listener',{'is_consuming',_IsComsuming}}, State) ->
+
+handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
     {'noreply', State};
+handle_cast({'gen_listener',{'created_queue',_QueueName}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+    {'noreply', State};
+
 handle_cast(_Req, TID) ->
     lager:debug("unhandled cast: ~p", [_Req]),
     {'noreply', TID}.
@@ -564,17 +584,6 @@ record_to_json(#conference{uuid=UUID
 add_participants_to_conference_json(ConfId, ConfJObj) ->
     {'ok', wh_json:set_value(<<"Participants">>, participants_list(ConfId), ConfJObj)}.
 
-props_to_record(Props, Node) ->
-    #conference{node=Node
-                ,uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
-                ,name=props:get_value(<<"Conference-Name">>, Props)
-                ,participants=props:get_integer_value(<<"Conference-Size">>, Props, 0)
-                ,profile_name=props:get_value(<<"Conference-Profile-Name">>, Props)
-                ,switch_hostname=props:get_value(<<"FreeSWITCH-Hostname">>, Props)
-                ,switch_url=props:get_value(<<"URL">>, Props)
-                ,switch_external_ip=props:get_value(<<"Ext-SIP-IP">>, Props)
-               }.
-
 event(Node, 'undefined', Props) ->
     case props:get_value(<<"Action">>, Props) of
         <<"conference-create">> -> new(Node, Props);
@@ -678,6 +687,7 @@ relay_event(Props) ->
     ].
 relay_event(UUID, Node, Props) ->
     EventName = props:get_value(<<"Event-Name">>, Props),
+    lager:debug("relaying conf event ~s(~s) to ~s", [EventName, props:get_value(<<"Application">>, Props), UUID]),
     Payload = {'event', [UUID, {<<"Caller-Unique-ID">>, UUID} | Props]},
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, Payload),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)}, Payload).
@@ -706,7 +716,8 @@ conference_fields(Props) -> fields(Props, ?FS_CONF_FIELDS).
                                 ,{<<"Current-Energy">>, #participant.current_energy, fun props:get_integer_value/2}
                                 ,{<<"Video">>, #participant.video, fun props:get_is_true/2}
                                ]).
-participant_fields(Props) -> fields(Props, ?FS_PARTICIPANT_FIELDS).
+participant_fields(Props) ->
+    fields(Props, ?FS_PARTICIPANT_FIELDS).
 
 fields(Props, Fields) ->
     lists:foldl(fun(K, Acc) -> maybe_include_key(K, Acc, Props) end, [], Fields).

@@ -978,6 +978,13 @@ compact_shard(AdminConn, S, DDs) ->
     put('callid', S),
 
     wait_for_compaction(AdminConn, S),
+
+    case get_db_disk_and_data(AdminConn, S) of
+        'undefined' -> lager:debug("beginning compacting shard");
+        {BeforeDisk, BeforeData} ->
+            lager:debug("beginning compacting shard: ~p disk/~p data", [BeforeDisk, BeforeData])
+    end,
+
     couch_util:db_compact(AdminConn, S),
     wait_for_compaction(AdminConn, S),
 
@@ -986,7 +993,11 @@ compact_shard(AdminConn, S, DDs) ->
 
     compact_design_docs(AdminConn, S, DDs),
 
-    lager:debug("finished compacting").
+    case get_db_disk_and_data(AdminConn, S) of
+        'undefined' -> lager:debug("finished compacting shard");
+        {AfterDisk, AfterData} ->
+            lager:debug("finished compacting shard: ~p disk/~p data", [AfterDisk, AfterData])
+    end.
 
 compact_design_docs(AdminConn, S, DDs) ->
     try lists:split(?MAX_COMPACTING_VIEWS, DDs) of
@@ -1136,7 +1147,7 @@ compact_automatically(Boolean) ->
 should_compact(_Conn, _Encoded, ?HEUR_NONE) -> 'true';
 should_compact(Conn, Encoded, ?HEUR_RATIO) ->
     case get_db_disk_and_data(Conn, Encoded) of
-        {Disk, Data} -> should_compact_ratio(Data, Disk);
+        {Disk, Data} -> should_compact_ratio(Disk, Data);
         'undefined' -> 'false'
     end.
 
@@ -1163,8 +1174,8 @@ get_db_disk_and_data(Conn, Encoded, N) ->
             'undefined'
     end.
 
-should_compact_ratio(Data, Disk) ->
-    min_data_met(Data, ?MIN_DATA) andalso min_ratio_met(Data, Disk, ?MIN_RATIO).
+should_compact_ratio(Disk, Data) ->
+    min_data_met(Data, ?MIN_DATA) andalso min_ratio_met(Disk, Data, ?MIN_RATIO).
 
 min_data_met(Data, Min) when Data > Min ->
     lager:debug("data size ~b is larger than minimum ~b", [Data, Min]),
@@ -1173,7 +1184,7 @@ min_data_met(_Data, _Min) ->
     lager:debug("data size ~b is under min_data_size threshold ~b", [_Data, _Min]),
     'false'.
 
-min_ratio_met(Data, Disk, MinRatio) ->
+min_ratio_met(Disk, Data, MinRatio) ->
     case Disk / Data of
         R when R > MinRatio ->
             lager:debug("ratio ~p is greater than min ratio: ~p", [R, MinRatio]),

@@ -378,7 +378,7 @@ handle_cast({'dialplan', JObj}, #state{callid=CallId
               end,
     case INU andalso (not queue:is_empty(NewCmdQ)) andalso CurrApp =:= 'undefined' of
         'true' ->
-            {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
+            {{'value', Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
             AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
             _ = case CallUp orelse is_post_hangup_command(AppName) of
                     'true' -> execute_control_request(Cmd, State);
@@ -533,6 +533,11 @@ handle_info('sanity_check', #state{callid=CallId
             gen_listener:cast(self(), {'channel_destroyed', wh_json:new()}),
             {'noreply', State}
     end;
+
+handle_info(?CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, _Evt), State) ->
+    lager:debug("channel move complete recv for node ~s:~s", [Node, UUID]),
+    {'noreply', State};
+
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.

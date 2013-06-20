@@ -12,8 +12,7 @@
 
 -include("reg.hrl").
 
-init() ->
-    ok.
+init() -> 'ok'.
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
@@ -44,14 +43,14 @@ send_new_register(JObj) ->
 fix_contact(JObj, _, _) ->
     [User, AfterAt] = binary:split(wh_json:get_value(<<"Contact">>, JObj), <<"@">>), % only one @ allowed
     AfterUnquoted = wh_util:to_binary(mochiweb_util:unquote(AfterAt)),
-    Contact = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
+    Contact = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, ['global']),
     lager:debug("new registration contact: ~s", [Contact]),
     wh_json:set_value(<<"Contact">>, Contact, JObj).
 
 maybe_update_jobj(JObj, Username, Realm) ->
     case reg_util:lookup_auth_user(Username, Realm) of
-        {error, _} -> JObj;
-        {ok, #auth_user{}=AuthUser} ->
+        {'error', _} -> JObj;
+        {'ok', #auth_user{}=AuthUser} ->
             update_jobj(JObj, AuthUser)
     end.
 
@@ -66,14 +65,14 @@ update_jobj(JObj, AuthUser) ->
 
 maybe_send_new_notice(JObj, Username, Realm) ->
     case wh_cache:peek_local(?REGISTRAR_CACHE, reg_util:cache_user_to_reg_key(Realm, Username)) of
-        {ok, _} -> JObj;
-        {error, not_found} ->
+        {'ok', _} -> JObj;
+        {'error', 'not_found'} ->
             catch send_new_register(JObj)
     end.
 
 store_reg_success(JObj, Username, Realm) ->
-    CacheProps = [{expires, reg_util:get_expires(JObj)}
-                  ,{callback, fun reg_util:reg_removed_from_cache/3}
+    CacheProps = [{'expires', reg_util:get_expires(JObj)}
+                  ,{'callback', fun reg_util:reg_removed_from_cache/3}
                  ],
     wh_cache:store_local(?REGISTRAR_CACHE
                          ,reg_util:cache_user_to_reg_key(Realm, Username)

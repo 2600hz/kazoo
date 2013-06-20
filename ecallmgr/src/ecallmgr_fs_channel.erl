@@ -158,7 +158,7 @@ move(UUID, ONode, NNode) ->
 -spec resume(ne_binary(), atom()) -> boolean().
 -spec resume(ne_binary(), atom(), wh_proplist()) -> boolean().
 resume(UUID, NewNode) ->
-    catch gproc:reg({p, l, ?CHANNEL_MOVE_REG(NewNode, UUID)}),
+    catch gproc:reg({'p', 'l', ?CHANNEL_MOVE_REG(NewNode, UUID)}),
     lager:debug("waiting for message with metadata for channel ~s so we can move it to ~s", [UUID, NewNode]),
     receive
         ?CHANNEL_MOVE_RELEASED_MSG(_Node, UUID, Evt) ->
