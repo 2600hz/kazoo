@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%% Handle offnet requests, including rating them
 %%% @end
@@ -30,8 +30,7 @@
                           {'ready', wh_json:object()} |
                           {'fail', wh_json:object()}.
 
-init() ->
-    'ok'.
+init() -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -45,7 +44,7 @@ init() ->
 handle_req(JObj, Props) ->
     _ = whapps_util:put_callid(JObj),
     _ = wh_amqp_channel:remove_consumer_pid(),
-    true = wapi_offnet_resource:req_v(JObj),
+    'true' = wapi_offnet_resource:req_v(JObj),
     lager:debug("received outbound request"),
     handle_req(wh_json:get_value(<<"Resource-Type">>, JObj), JObj, Props).
 
@@ -443,9 +442,9 @@ create_queue() ->
 %%--------------------------------------------------------------------
 -spec get_event_type(wh_json:object()) -> {binary(), binary(), binary()}.
 get_event_type(JObj) ->
-    { wh_json:get_value(<<"Event-Category">>, JObj, <<>>)
-      ,wh_json:get_value(<<"Event-Name">>, JObj, <<>>)
-      ,wh_json:get_value(<<"Application-Name">>, JObj, <<>>)
+    {wh_json:get_value(<<"Event-Category">>, JObj, <<>>)
+     ,wh_json:get_value(<<"Event-Name">>, JObj, <<>>)
+     ,wh_json:get_value(<<"Application-Name">>, JObj, <<>>)
     }.
 
 %%--------------------------------------------------------------------
