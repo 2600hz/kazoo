@@ -16,10 +16,10 @@ handle_req(JObj, _Props) ->
 
             case Action of
                 'tone' ->
-                    lager:info("milliwatt execute action tone", []),
+                    lager:info("milliwatt will execute action tone", []),
                     milliwatt_tone:exec(Call);
                 'echo' ->
-                    lager:info("milliwatt execute action echo", []),
+                    lager:info("milliwatt will execute action echo", []),
                     milliwatt_echo:exec(Call);
                 _ ->
                     lager:warning("milliwatt doesnt know action: ~p", [Action]),
