@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(milliwatt_listener).
+-module(milliwatt_shared_listener).
 
 -behaviour(gen_listener).
 
@@ -23,21 +23,15 @@
 
 -record(state, {}).
 
-%% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{route, []}
                    ,{self, []}
                   ]).
--define(RESPONDERS, [
-                     %% Received because of our route binding
-                     {{milliwatt_handlers, handle_route_req}, [{<<"dialplan">>, <<"route_req">>}]}
-
-                     %% Received because of our self binding (route_wins are sent to the route_resp's Server-ID
-                     %% which is usually populated with the listener's queue name
-                     ,{{milliwatt_handlers, handle_route_win}, [{<<"dialplan">>, <<"route_win">>}]}
+-define(RESPONDERS, [{milliwatt_route_req, [{<<"dialplan">>, <<"route_req">>}]}
+                     ,{milliwatt_route_win, [{<<"dialplan">>, <<"route_win">>}]}
                     ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_NAME, <<"milliwatt_listener">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -51,13 +45,11 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [
-                                      {bindings, ?BINDINGS}
+    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
                                       ,{responders, ?RESPONDERS}
                                       ,{queue_name, ?QUEUE_NAME}       % optional to include
                                       ,{queue_options, ?QUEUE_OPTIONS} % optional to include
                                       ,{consume_options, ?CONSUME_OPTIONS} % optional to include
-                                      %%,{basic_qos, 1}                % only needed if prefetch controls
                                      ], []).
 
 %%%===================================================================
