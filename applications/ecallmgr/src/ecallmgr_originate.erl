@@ -195,8 +195,10 @@ handle_cast({'create_uuid'}, #state{node=Node
     put('callid', UUID),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}, 'true'),
     ServerId = wh_json:get_ne_value(<<"Server-ID">>, JObj),
+
     {'ok', Pid} = ecallmgr_call_sup:start_control_process(Node, UUID, BillingId),
     lager:debug("started control proc ~p uuid ~s", [Pid, UUID]),
+
     ControlQueue = ecallmgr_call_control:queue_name(Pid),
     lager:debug("ctrl queue ~s", [ControlQueue]),
     _ = publish_originate_uuid(ServerId, UUID, JObj, ControlQueue),
@@ -267,9 +269,11 @@ handle_cast({'originate_ready'}, #state{originate_req=JObj
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
             _ = publish_originate_ready(CtrlQ, UUID, JObj, Q, ServerId),
+
             {'noreply', State#state{control_pid=CtrlPid
-                                    ,tref=erlang:send_after(?REPLY_TIMEOUT, self(), {abandon_originate})
-                                   }, 'hibernate'};
+                                    ,tref=erlang:send_after(?REPLY_TIMEOUT, self(), {'abandon_originate'})
+                                   }
+             ,'hibernate'};
         _Else ->
             lager:debug("failed to start cc process: ~p", [_Else]),
             Error = <<"failed to preemptively start a call control process">>,
