@@ -286,7 +286,7 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
                                           ,server_id=ServerId
                                           ,control_pid=CtrlPid
                                          }=State) ->
-    case originate_execute(Node, Dialstrings) of
+    case originate_execute(Node, Dialstrings, find_originate_timeout(JObj)) of
         {'ok', _WinningUUID} when is_pid(CtrlPid) ->
             lager:debug("originate completed: winning uuid: ~s", [_WinningUUID]),
             {'stop', 'normal', State#state{control_pid='undefined'}};
@@ -488,25 +488,27 @@ build_originate_args(Action, Endpoints, JObj, BillingId) ->
                            ], JObj),
     list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).
 
--spec originate_execute(atom(), ne_binary()) ->
+-spec originate_execute(atom(), ne_binary(), pos_integer()) ->
                                {'ok', ne_binary()} |
-                               {'error', ne_binary()}.
-originate_execute(Node, Dialstrings) ->
+                               {'error', ne_binary() | 'timeout' | 'crash'}.
+originate_execute(Node, Dialstrings, Timeout) ->
     lager:debug("executing on ~s: ~s", [Node, Dialstrings]),
-    {'ok', BGApiID} = freeswitch:bgapi(Node, 'originate', wh_util:to_list(Dialstrings)),
-
-    receive
-        {'bgok', BGApiID, <<"+OK ", UUID/binary>>} ->
+    try freeswitch:api(Node, 'originate', wh_util:to_list(Dialstrings), Timeout*1000) of
+        {'ok', <<"+OK ", UUID/binary>>} ->
             {'ok', wh_util:strip_binary(binary:replace(UUID, <<"\n">>, <<>>))};
-        {'bgok', BGApiID, Error} ->
-            lager:debug("something other than +OK from FS: ~s", [Error]),
-            {'error', Error};
-        {'bgerror', BGApiID, Error} ->
-            lager:debug("received an originate error: ~s", [Error]),
-            {'error', Error}
-    after 120000 ->
-            lager:debug("originate timed out on ~s", [Node]),
-            {'error', <<"Originate timed out waiting for the switch to reply">>}
+        {'ok', Other} ->
+            lager:debug("recv other 'ok': ~s", [Other]),
+            {'error', Other};
+        {'error', _E}=Error ->
+            lager:debug("error originating: ~s", [_E]),
+            Error;
+        'timeout' ->
+            lager:debug("timed out trying to originate"),
+            {'error', 'timeout'}
+    catch
+        _E:_R ->
+            lager:debug("crashed during originate: ~s: ~p", [_E, _R]),
+            {'error', 'crash'}
     end.
 
 -spec bind_to_call_events(ne_binary()) -> 'ok'.
@@ -639,3 +641,23 @@ publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     wapi_resource:publish_originate_uuid(ServerId, Resp).
+
+-spec find_originate_timeout(wh_json:object()) -> pos_integer().
+-spec find_max_endpoint_timeout(wh_json:objects(), pos_integer()) -> pos_integer().
+find_originate_timeout(JObj) ->
+    OTimeout = case wh_json:get_integer_value(<<"Timeout">>, JObj) of
+                   'undefined' -> 10;
+                   LT -> LT
+               end,
+    find_max_endpoint_timeout(
+      wh_json:get_value(<<"Endpoints">>, JObj, [])
+      ,OTimeout
+     ).
+
+find_max_endpoint_timeout([], T) -> T;
+find_max_endpoint_timeout([EP|EPs], T) ->
+    case wh_json:get_integer_value(<<"Endpoint-Timeout">>, EP) of
+        'undefined' -> find_max_endpoint_timeout(EPs, T);
+        Timeout when Timeout > T -> find_max_endpoint_timeout(EPs, Timeout);
+        _ -> find_max_endpoint_timeout(EPs, T)
+    end.
