@@ -37,6 +37,7 @@ send_route_response(ControllerQ, JObj) ->
     whapps_util:amqp_pool_send(Resp, Publisher),
     lager:info("milliwatt knows how to route the call! sent park response").
 
+-spec tone_or_echo(whapps_call:call()) -> atom().
 tone_or_echo(Call) ->
     CallJObj = whapps_call:to_json(Call),
     From = wh_json:get_binary_value(<<"Caller-ID-Number">>, CallJObj, <<>>),
@@ -53,19 +54,21 @@ tone_or_echo(Call) ->
             maybe_echo_maybe_tone(Echo, Tone, To, From)
     end.
 
-
+-spec maybe_echo(wh_json:json(), ne_binary(), ne_binary()) -> 'undefined' | 'echo'.
 maybe_echo(Echo, To, From) ->
     case rule_exist(Echo, To, From) of
         'true' -> 'echo';
         'false' -> 'undefined'
     end.
 
+-spec maybe_tone(wh_json:json(), ne_binary(), ne_binary()) -> 'undefined' | 'tone'.
 maybe_tone(Tone, To, From) ->
     case rule_exist(Tone, To, From) of
         'true' -> 'tone';
         'false' -> 'undefined'
     end.
 
+-spec maybe_echo_maybe_tone(wh_json:json(), wh_json:json(), ne_binary(), ne_binary()) -> 'undefined' | 'tone' | 'echo'.
 maybe_echo_maybe_tone(Echo, Tone, To, From) ->
     case {rule_exist(Echo, To, From)
          ,rule_exist(Tone, To, From)} of
@@ -77,6 +80,7 @@ maybe_echo_maybe_tone(Echo, Tone, To, From) ->
         _ -> 'undefined'
     end.
 
+-spec rule_exist(wh_json:json(), ne_binary(), ne_binary()) -> boolean().
 rule_exist(JObj, To, From) ->
     CallerIds = wh_json:get_ne_value(<<"caller_id">>, JObj, []),
     Numbers = wh_json:get_ne_value(<<"number">>, JObj, []),
