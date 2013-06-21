@@ -214,10 +214,13 @@ fix_metadata(Meta) ->
 wait_for_completion(UUID, NewNode) ->
     lager:debug("waiting for confirmation from ~s of move", [NewNode]),
     receive
-        ?CHANNEL_MOVE_COMPLETE_MSG(_Node, UUID, _Evt) ->
+        ?CHANNEL_MOVE_COMPLETE_MSG(NewNode, UUID, _Evt) ->
             lager:debug("confirmation of move received for ~s, success!", [_Node]),
             _ = ecallmgr_call_sup:start_event_process(NewNode, UUID),
-            'true'
+            'true';
+        ?CHANNEL_MOVE_COMPLETE_MSG(_Node, _UUID, _Evt) ->
+            lager:debug("recv move_complete from unexpected node ~s: ~s", [_Node, _UUID]),
+            wait_for_completion(UUID, NewNode)
     after 5000 ->
             lager:debug("timed out waiting for move to complete"),
             'false'
