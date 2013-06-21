@@ -145,52 +145,43 @@ move(UUID, ONode, NNode) ->
 
     lager:debug("updated ~s to point to ~s", [UUID, NewNode]),
 
-    case teardown_sbd(UUID, OriginalNode) of
-        'true' ->
-            lager:debug("sbd teardown of ~s on ~s", [UUID, OriginalNode]),
-            resume(UUID, NewNode);
-        'false' ->
-            lager:debug("failed to teardown ~s on ~s", [UUID, OriginalNode]),
-            'false'
+    _ = teardown_sbd(UUID, OriginalNode),
+    case wait_for_teardown(UUID, OriginalNode) of
+        {'ok', Evt} -> rebuild_channel(UUID, NewNode, Evt);
+        {'error', _} -> 'false'
     end.
 
 %% listens for the event from FS with the XML
--spec resume(ne_binary(), atom()) -> boolean().
--spec resume(ne_binary(), atom(), wh_proplist()) -> boolean().
-resume(UUID, NewNode) ->
-    catch gproc:reg({'p', 'l', ?CHANNEL_MOVE_REG(NewNode, UUID)}),
-    lager:debug("waiting for message with metadata for channel ~s so we can move it to ~s", [UUID, NewNode]),
+wait_for_teardown(UUID, OriginalNode) ->
     receive
-        ?CHANNEL_MOVE_RELEASED_MSG(_Node, UUID, Evt) ->
-            lager:debug("channel has been released from former node: ~s", [_Node]),
-            case resume(UUID, NewNode, Evt) of
-                'true' -> wait_for_completion(UUID, NewNode);
-                'false' -> 'false'
-            end
+        ?CHANNEL_MOVE_RELEASED_MSG(OriginalNode, UUID, Evt) ->
+            lager:debug("channel has been released from former node: ~s", [OriginalNode]),
+            {'ok', Evt};
+        ?CHANNEL_MOVE_RELEASED_MSG(_Node, UUID, _Evt) ->
+            lager:debug("recv move_released for node ~s, expecting ~s", [_Node, OriginalNode]),
+            wait_for_teardown(UUID, OriginalNode)
     after 5000 ->
-            lager:debug("timed out waiting for channel to be released"),
-            'false'
+            {'error', 'timeout'}
     end.
 
+-spec rebuild_channel(ne_binary(), atom(), wh_proplist()) -> boolean().
+rebuild_channel(UUID, NewNode, Evt) ->
+    catch gproc:reg({'p', 'l', ?CHANNEL_MOVE_REG(NewNode, UUID)}),
+    lager:debug("waiting for message with metadata for channel ~s so we can move it to ~s", [UUID, NewNode]),
+    resume(UUID, NewNode, Evt),
+    wait_for_completion(UUID, NewNode).
+
+-spec resume(ne_binary(), atom(), wh_proplist()) -> 'ok'.
 resume(UUID, NewNode, Evt) ->
     Meta = fix_metadata(props:get_value(<<"metadata">>, Evt)),
 
-    case freeswitch:sendevent_custom(NewNode, ?CHANNEL_MOVE_REQUEST_EVENT
-                                     ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
-                                       ,{"channel_id", wh_util:to_list(UUID)}
-                                       ,{"metadata", wh_util:to_list(Meta)}
-                                       ,{"technology", wh_util:to_list(props:get_value(<<"technology">>, Evt, <<"sofia">>))}
-                                      ]) of
-        'ok' ->
-            lager:debug("sent channel_move::move_request with metadata to ~s for ~s", [NewNode, UUID]),
-            'true';
-        {'error', _E} ->
-            lager:debug("failed to send custom event channel_move::move_request: ~p", [_E]),
-            'false';
-        'timeout' ->
-            lager:debug("timed out sending custom event channel_move::move_request"),
-            'false'
-    end.
+    freeswitch:sendevent_custom(NewNode, ?CHANNEL_MOVE_REQUEST_EVENT
+                                ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
+                                  ,{"channel_id", wh_util:to_list(UUID)}
+                                  ,{"metadata", wh_util:to_list(Meta)}
+                                  ,{"technology", wh_util:to_list(props:get_value(<<"technology">>, Evt, <<"sofia">>))}
+                                 ]),
+    lager:debug("sent channel_move::move_request with metadata to ~s for ~s", [NewNode, UUID]).
 
 %% We receive un-escaped < and > in the SIP URIs in this data
 %% which causes the XML to not be parsable, either in Erlang or
@@ -215,7 +206,7 @@ wait_for_completion(UUID, NewNode) ->
     lager:debug("waiting for confirmation from ~s of move", [NewNode]),
     receive
         ?CHANNEL_MOVE_COMPLETE_MSG(NewNode, UUID, _Evt) ->
-            lager:debug("confirmation of move received for ~s, success!", [_Node]),
+            lager:debug("confirmation of move received for ~s, success!", [NewNode]),
             _ = ecallmgr_call_sup:start_event_process(NewNode, UUID),
             'true';
         ?CHANNEL_MOVE_COMPLETE_MSG(_Node, _UUID, _Evt) ->
@@ -226,25 +217,16 @@ wait_for_completion(UUID, NewNode) ->
             'false'
     end.
 
+-spec teardown_sbd(ne_binary(), atom()) -> 'ok'.
 teardown_sbd(UUID, OriginalNode) ->
     catch gproc:reg({'p', 'l', ?CHANNEL_MOVE_REG(OriginalNode, UUID)}),
 
-    case freeswitch:sendevent_custom(OriginalNode, ?CHANNEL_MOVE_REQUEST_EVENT
-                                     ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
-                                       ,{"channel_id", wh_util:to_list(UUID)}
-                                       ,{"technology", ?DEFAULT_FS_TECHNOLOGY}
-                                      ])
-    of
-        'ok' ->
-            lager:debug("sent channel_move::move_request to ~s for ~s", [OriginalNode, UUID]),
-            'true';
-        {'error', _E} ->
-            lager:debug("failed to send custom event channel_move::move_request: ~p", [_E]),
-            'false';
-        'timeout' ->
-            lager:debug("timed out sending custom event channel_move::move_request"),
-            'false'
-    end.
+    freeswitch:sendevent_custom(OriginalNode, ?CHANNEL_MOVE_REQUEST_EVENT
+                                ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
+                                  ,{"channel_id", wh_util:to_list(UUID)}
+                                  ,{"technology", ?DEFAULT_FS_TECHNOLOGY}
+                                 ]),
+    lager:debug("sent channel_move::move_request to ~s for ~s", [OriginalNode, UUID]).
 
 -spec set_account_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_account_id(UUID, Value) when is_binary(Value) ->
