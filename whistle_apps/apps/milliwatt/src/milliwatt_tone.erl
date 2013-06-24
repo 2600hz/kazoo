@@ -14,12 +14,12 @@ exec(Call) ->
 	whapps_call_command:tones([Tone], Call),
 	whapps_call_command:queued_hangup(Call).
 
--spec get_tone() -> wh_json:json();
+-spec get_tone() -> wh_json:json().
 get_tone() ->
 	JObj = whapps_config:get_non_empty(<<"milliwatt">>, <<"tone">>),
 	Hz = wh_json:get_value(<<"frequencies">>, JObj, ?FREQUENCIES),
 	Duration = wh_json:get_value(<<"duration">>, JObj, ?DURATION),
 	wh_json:from_list([{<<"Frequencies">>, Hz}
-                      ,{<<"Duration-ON">>, Duration}
-                      ,{<<"Duration-OFF">>, <<"100">>}
+                      ,{<<"Duration-ON">>, <<"1000">>}
+                      ,{<<"Duration-OFF">>, <<"1000">>}
                       ]).
