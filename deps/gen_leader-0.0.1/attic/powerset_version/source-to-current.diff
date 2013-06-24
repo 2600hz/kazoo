@@ -1,0 +1,360 @@
+--- original_version/gen_leader.erl	2009-05-19 15:16:57.000000000 -0400
++++ powerset_version/gen_leader.erl	2009-05-19 14:05:38.000000000 -0400
+@@ -19,6 +19,7 @@
+ %% @author Hans Svensson <hanssv@cs.chalmers.se>
+ %% @author Thomas Arts <thomas.arts@ituniv.se>
+ %% @author Ulf Wiger <ulf.wiger@ericsson.com>
++%% @author Dave Fayram <dfayram@gmail.com> 
+ %% 
+ %% @doc Leader election behavior.
+ %% <p>This application implements a leader election behavior modeled after
+@@ -51,6 +52,9 @@
+ %%   See gen_server.
+ %% @type callerRef() = {pid(), reference()}. See gen_server.
+ %%
++
++%% This version has been modified and debugged by Dave Fayram for
++%%    Powerset/Microsoft.
+ -module(gen_leader).
+ 
+ % Time between rounds of query from the leader
+@@ -61,7 +65,7 @@
+ 
+ -export([start/6,
+ 	 start_link/6,
+-	 leader_call/2, leader_call/3, leader_cast/2,
++	 leader_call/2, leader_call/3, leader_cast/2, worker_announce/2,
+ 	 call/2, call/3, cast/2,
+ 	 reply/2]).
+ 
+@@ -200,6 +204,11 @@
+ workers(#election{worker_nodes = Workers}) ->
+     Workers.
+ 
++%% Used by dynamically added workers.
++%% @hidden
++worker_announce(Name, Pid) ->
++  Name ! {add_worker, Pid}.
++
+ %
+ % Make a call to a generic server.
+ % If the server is located at another node, that node will
+@@ -320,10 +329,9 @@
+     init_it(Starter, self(), Name, Mod, 
+ 	    {CandidateNodes, Workers, Arg}, Options);
+ init_it(Starter,Parent,Name,Mod,{CandidateNodes,Workers,Arg},Options) ->
+-    
+     %% The following row is needed in case of trace analysis,
+     %% starting tracing is too slow otherwise!
+-    %receive after 100 -> ok end,
++    receive after 100 -> ok end,
+     
+     Debug = debug_options(Name, Options),
+ 
+@@ -352,6 +360,11 @@
+ 		      candidate, NewE,{init});
+ 	{{ok, State}, false} ->
+ 	    proc_lib:init_ack(Starter, {ok, self()}), 	  
++        case lists:member(self(), Workers) of 
++          false ->
++            rpc:multicall(CandidateNodes, gen_leader, worker_announce, [Name, node(self())]);
++          _ -> nop
++        end,
+ 	    safe_loop(#server{parent = Parent,mod = Mod,state = State,debug = Debug}, 
+ 		      waiting_worker, Election,{init});
+ 	Else ->
+@@ -369,7 +382,7 @@
+ 
+ 
+ safe_loop(#server{mod = Mod, state = State} = Server, Role,
+-	  #election{name = Name} = E, PrevMsg) ->
++	  #election{name = Name} = E, _PrevMsg) ->
+     % Event for QuickCheck
+     % ?EVENT({Role,E}),
+     receive
+@@ -379,6 +392,9 @@
+ 				  [safe, Server, Role, E]);
+ 	{'EXIT', _, Reason} = Msg ->
+ 	    terminate(Reason, Msg, Server, Role, E);
++  {report_leader, From} = Msg ->
++        From ! {election_leader, self(), E#election.leader},
++        safe_loop(Server, Role, E, Msg);
+ 	{halt,T,From} = Msg ->
+ 	    NewE = halting(E,T,From),
+ 	    From ! {ackLeader,T,self()},
+@@ -421,13 +437,14 @@
+ 		    NewE = E
+ 	    end,
+ 	    hasBecomeLeader(NewE,Server,Msg);
+-	{ldr,Synch,T,From} = Msg ->
++	{ldr,Synch,T,From, LeaderE} = Msg ->
+ 	    case ( (E#election.status == wait) and (E#election.elid == T) ) of
+ 		true ->
+ 		    NewE1 = mon_node(E,From),
+ 		    NewE = NewE1#election{leader = From,
+ 					  leadernode = node(From),
+-					  status = norm},
++					  status = norm,
++            worker_nodes = LeaderE#election.worker_nodes},
+ 		    {ok,NewState} = Mod:surrendered(State,Synch,NewE),
+ 		    loop(Server#server{state = NewState},surrendered,NewE,Msg);
+ 		false ->
+@@ -464,11 +481,11 @@
+ 	    % This process is no longer the leader!
+ 	    % The sender will notice this via a DOWN message
+ 	    safe_loop(Server,Role,E,Msg);
+-	{activateWorker,T,Synch,From} = Msg ->
++	{activateWorker,T,Synch,From,OldE} = Msg ->
+ 	    case ( (T == E#election.elid) and (node(From) == E#election.leadernode)) of
+ 		true ->
+ 		    NewE = E#election{ leader = From,
+-				       status = worker },
++				       status = worker, worker_nodes = OldE#election.worker_nodes },
+ 		    {ok,NewState} = Mod:surrendered(State,Synch,NewE),
+ 		    loop(Server#server{state = NewState},worker,NewE,Msg);
+ 		false ->
+@@ -480,7 +497,7 @@
+ 	
+ 	{tau_timeout} = Msg ->
+ 	    safe_loop(Server,Role,E,Msg);
+-	{'DOWN',Ref,process,From,Reason} = Msg when Role == waiting_worker ->
++	{'DOWN',_Ref,process,From,_Reason} = Msg when Role == waiting_worker ->
+ 	    % We are only monitoring one proc, the leader!
+ 	    Node = case From of
+ 		       {Name,_Node} -> _Node;
+@@ -495,7 +512,7 @@
+ 		    NewE = E
+ 	    end,  
+ 	    safe_loop(Server, Role, NewE,Msg);
+-	{'DOWN',Ref,process,From,Reason} = Msg ->
++	{'DOWN',Ref,process,From,_Reason} = Msg ->
+ 	    Node = case From of
+ 		       {Name,_Node} -> _Node;
+ 		       _ when pid(From) -> node(From)
+@@ -543,7 +560,7 @@
+ loop(#server{parent = Parent,
+ 	     mod = Mod,
+ 	     state = State,
+-	     debug = Debug} = Server, Role, #election{name = Name} = E, PrevMsg) ->
++             debug = Debug} = Server, Role, #election{name = Name} = E, _PrevMsg) ->
+     % Event for QuickCheck
+     % ?EVENT({Role,E}),
+     receive
+@@ -567,7 +584,7 @@
+ 			    NewE = mon_node(E#election{down = E#election.down -- [node(From)]},
+ 						 From),
+ 			    {ok,Synch,NewState} = Mod:elected(State,NewE),
+-			    From ! {ldr,Synch,E#election.elid,self()}, 
++              From ! {ldr,Synch,E#election.elid,self(), NewE}, 
+ 			    loop(Server#server{state = NewState},Role,NewE,Msg);	
+ 			false ->
+ 			    From ! {notLeader,T,self()},
+@@ -579,7 +596,7 @@
+ 		    loop(Server,Role,E,Msg);
+ 		{ack,_,_} ->
+ 		    loop(Server,Role,E,Msg);
+-		{ldr,_,_,_} ->
++        {ldr,_,_,_,_} ->
+ 		    loop(Server,Role,E,Msg);
+ 		{normQ,_,_} ->
+ 		    loop(Server,Role,E,Msg);
+@@ -589,7 +606,7 @@
+ 			    NewE = mon_node(E#election{down = E#election.down -- [node(From)]},
+ 						 From),
+ 			    {ok,Synch,NewState} = Mod:elected(State,NewE),
+-			    From ! {ldr,Synch,E#election.elid,self()},
++              From ! {ldr,Synch,E#election.elid,self(), NewE},
+ 			    loop(Server#server{state = NewState},Role,NewE,Msg);	
+ 			false ->
+ 			    loop(Server,Role,E,Msg)
+@@ -611,9 +628,9 @@
+  			    NewE = mon_node(
+  				     E#election{work_down = E#election.work_down -- [node(From)]},
+  				     From),
+-%			    NewE = E#election{work_down = E#election.work_down -- [node(From)]},
++                                                %			    NewE = E#election{work_down = E#election.work_down -- [node(From)]},
+ 			    {ok,Synch,NewState} = Mod:elected(State,NewE),
+-			    From ! {activateWorker,T,Synch,self()},
++              From ! {activateWorker,T,Synch,self(), NewE},
+ 			    loop(Server#server{state = NewState},Role,NewE,Msg);		
+ 			false ->
+ 		            loop(Server,Role,E,Msg)
+@@ -636,7 +653,7 @@
+ 			    ok
+ 		    end,
+ 		    loop(Server,Role,E,Msg);
+-		{'DOWN',Ref,process,From,Reason} when Role == worker ->
++        {'DOWN',_Ref,process,From,_Reason} when Role == worker ->
+ 		    % We are only monitoring one proc, the leader!
+ 		    Node = case From of
+ 			       {Name,_Node} -> _Node;
+@@ -651,7 +668,7 @@
+ 			false ->
+ 			    loop(Server, Role, E,Msg)
+ 		    end;		    
+-		{'DOWN',Ref,process,From,Reason} ->
++        {'DOWN',Ref,process,From,_Reason} ->
+ 		    Node = case From of
+ 			       {Name,_Node} -> _Node;
+ 			       _ when pid(From) -> node(From)
+@@ -676,6 +693,19 @@
+ 					   },
+ 			    loop(Server, Role, E1,Msg)
+ 		    end;
++        {add_worker, WorkerNode} ->
++          case {node(self()) =:= node(self()), 
++                lists:member(WorkerNode, E#election.worker_nodes)} of
++            {false, _} ->
++              loop(Server, Role, E, Msg);
++            {true, false} ->
++              {WNodes, DNodes} = {E#election.worker_nodes, E#election.work_down},
++              loop(Server, Role, E#election{worker_nodes=[WorkerNode|WNodes],
++                                            work_down=[WorkerNode|DNodes]},
++                   Msg);
++            {true, true} -> % Redundancy, meet the mirror
++              loop(Server, Role, E, Msg)
++          end;
+ 		_Msg when Debug == [] ->
+ 		    handle_msg(Msg, Server, Role, E);
+ 		_Msg ->
+@@ -689,13 +719,13 @@
+ %% Callback functions for system messages handling.
+ %%-----------------------------------------------------------------
+ %% @hidden 
+-system_continue(Parent, Debug, [safe, Server, Role, E]) ->
++system_continue(_Parent, _Debug, [safe, Server, Role, E]) ->
+     safe_loop(Server, Role, E,{});
+-system_continue(Parent, Debug, [normal, Server, Role, E]) ->
++system_continue(_Parent, _Debug, [normal, Server, Role, E]) ->
+     loop(Server, Role, E,{}).
+ 
+ %% @hidden 
+-system_terminate(Reason, _Parent, Debug, [Mode, Server, Role, E]) ->
++system_terminate(Reason, _Parent, _Debug, [_Mode, Server, Role, E]) ->
+     terminate(Reason, [], Server, Role, E).
+ 
+ %% @hidden 
+@@ -741,7 +771,6 @@
+ print_event(Dev, Event, Name) ->
+     io:format(Dev, "*DBG* ~p dbg  ~p~n", [Name, Event]).
+ 
+-
+ handle_msg({'$leader_call', From, Request} = Msg, 
+ 	   #server{mod = Mod, state = State} = Server, elected = Role, E) ->
+     case catch Mod:handle_leader_call(Request, From, State, E) of
+@@ -769,16 +798,40 @@
+ 	Other ->
+ 	    handle_common_reply(Other, Msg, Server, Role, E)
+     end;
+-handle_msg({from_leader, Cmd} = Msg, 
+-	   #server{mod = Mod, state = State} = Server, Role, E) ->
+-    handle_common_reply(catch Mod:from_leader(Cmd, State, E), 
+-			Msg, Server, Role, E);
+-handle_msg({'$leader_call', From, Request} = Msg, Server, Role,
++handle_msg({'$leader_call', From, Request} = Msg, 
++           Server, Role,
+ 	   #election{buffered = Buffered, leader = Leader} = E) ->
+     Ref = make_ref(),
+     Leader ! {'$leader_call', {self(),Ref}, Request},
+     NewBuffered = [{Ref,From}|Buffered],
+     loop(Server, Role, E#election{buffered = NewBuffered},Msg);
++handle_msg({'$leader_cast', Request} = Msg, 
++           #server{mod = Mod, state = State} = Server, 
++           elected = Role, 
++           E) ->
++  case catch Mod:handle_leader_cast(Request, State, E) of
++    {noreply, NState} ->
++      loop(Server#server{state = NState}, Role, E, Msg);
++    {noreply, Broadcast, NState} ->
++      NewE = broadcast({from_leader, Broadcast}, E),
++      loop(Server#server{state = NState}, Role, NewE, Msg);
++    {stop, Reason, NState} ->
++      {'EXIT', R} = 
++        (catch terminate(Reason, Msg, Server#server{state = NState}, Role, E)),
++      exit(R);
++    Other ->
++      handle_common_reply(Other, Msg, Server, Role, E)
++  end;
++handle_msg({'$leader_cast', _} = Msg, 
++           Server, 
++           Role, 
++           #election{buffered=_Buffered, leader = Leader} = E) ->
++  Leader ! Msg,
++  loop(Server, Role, E, Msg);
++handle_msg({from_leader, Cmd} = Msg, 
++	   #server{mod = Mod, state = State} = Server, Role, E) ->
++    handle_common_reply(catch Mod:from_leader(Cmd, State, E), 
++			Msg, Server, Role, E);
+ handle_msg({Ref, {leader,reply,Reply}} = Msg, Server, Role,
+ 	   #election{buffered = Buffered} = E) ->
+     {value, {_,From}} = keysearch(Ref,1,Buffered),
+@@ -817,6 +870,10 @@
+ 
+ handle_common_reply(Reply, Msg, Server, Role, E) ->
+     case Reply of
++    {noreply, NState} ->
++      NewServer = handle_debug(Server#server{state = NState},
++                               Role, E, Reply),
++      loop(NewServer, Role, E, Msg);
+ 	{ok, NState} ->
+ 	    NewServer = handle_debug(Server#server{state = NState},
+ 				     Role, E, Reply),
+@@ -835,9 +892,9 @@
+     handle_debug(Server, Role, E, {out, Reply, To, State}).
+ 
+ 
+-handle_debug(#server{debug = []} = Server, _Role, _E, Event) ->
++handle_debug(#server{debug = []} = Server, _Role, _E, _Event) ->
+     Server;
+-handle_debug(#server{debug = Debug} = Server, Role, E, Event) ->
++handle_debug(#server{debug = Debug} = Server, _Role, E, Event) ->
+     Debug1 = sys:handle_debug(Debug, {?MODULE, print_event}, 
+ 			      E#election.name, Event),
+     Server#server{debug = Debug1}.
+@@ -848,8 +905,8 @@
+ 
+ terminate(Reason, Msg, #server{mod = Mod, 
+ 			       state = State,
+-			       debug = Debug} = Server, Role,
+-	  #election{name = Name} = E) ->
++			       debug = Debug} = _Server, _Role,
++	  #election{name = Name} = _E) ->
+     case catch Mod:terminate(Reason, State) of
+ 	{'EXIT', R} ->
+ 	    error_info(R, Name, Msg, State, Debug),
+@@ -920,7 +977,7 @@
+ %%-----------------------------------------------------------------
+ %% @hidden 
+ format_status(Opt, StatusData) ->
+-    [PDict, SysState, Parent, Debug, [Mode, Server, Role, E]] = StatusData,
++    [PDict, SysState, Parent, Debug, [_Mode, Server, _Role, E]] = StatusData,
+     Header = lists:concat(["Status for generic server ", E#election.name]),
+     Log = sys:get_debug(log, Debug, []),
+     #server{mod = Mod, state = State} = Server,
+@@ -1001,7 +1058,7 @@
+ %% Star monitoring one Process
+ mon_node(E,Proc) ->
+     Node = case Proc of
+-	       {Name,Node_} -> 
++	       {_Name,Node_} -> 
+ 		   Node_;
+ 	       Pid when pid(Pid) -> 
+ 		   node(Pid)
+@@ -1030,7 +1087,7 @@
+ 	    lists:foreach(
+ 	      fun(Node) ->
+ 		      {E#election.name,Node} ! 
+-			  {ldr, Synch, E#election.elid, self()}
++			  {ldr, Synch, E#election.elid, self(), E}
+ 	      end,E#election.acks),
+ 
+ 	    % Make sure we will try to contact all workers!
+@@ -1060,7 +1117,7 @@
+ %
+ incarnation(Node) ->
+     case file:read_file_info(Node) of
+-	{error,Reason} ->
++	{error,_Reason} ->
+ 	    ok = file:write_file(Node,term_to_binary(1)),
+ 	    0;
+ 	{ok,_} ->

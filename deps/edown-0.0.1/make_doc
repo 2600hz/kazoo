@@ -1,0 +1,33 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+
+%% edown is designed to work well with rebar, but in order to use edown
+%% to document itself, we need to explicitly set the path to ebin/, so
+%% that we pick up the newly built edown doclet. I haven't found a way
+%% to do this with 'rebar doc'.
+%%
+main([]) ->
+    code:add_patha("ebin"),
+    Default = "esl",
+    U = case os:getenv("TGT") of
+	    [] -> Default;
+	    false -> Default;
+	    Str   -> Str
+	end,
+    TopURL = "http://github.com/" ++ U ++ "/edown",
+    io:fwrite("Making edown docs for [~s]...~n", [TopURL]),
+    R = edoc:application(edown, ".",
+			 [{doclet, edown_doclet},
+			  {source_path, ["src"]},
+			  {app_default,"http://www.erlang.org/doc/man"},
+			  {stylesheet, ""},  % don't copy stylesheet.css
+			  {image, ""},       % don't copy erlang.png
+			  {top_level_readme,
+			   {"./README.md", TopURL}}]),
+    case R of
+	ok ->
+	    halt();
+	Err ->
+	    io:fwrite("~p~n", [Err]),
+	    halt(1)
+    end.
