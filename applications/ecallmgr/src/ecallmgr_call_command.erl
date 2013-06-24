@@ -615,6 +615,7 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
             case wait_for_conference(ConfName) of
                 {'ok', ChanNode} ->
                     lager:debug("conference has started on ~s", [ChanNode]),
+                    maybe_set_nospeak_flags(ChanNode, UUID, JObj),
                     {<<"conference">>, 'noop'};
                 {'ok', OtherNode} ->
                     lager:debug("conference has started on other node ~s, lets move", [OtherNode]),
@@ -625,17 +626,32 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
             end;
         {'ok', ChanNode} ->
             lager:debug("channel is on same node as conference"),
+            maybe_set_nospeak_flags(ChanNode, UUID, JObj),
             {<<"conference">>, Cmd};
         {'ok', ConfNode} ->
             lager:debug("channel is on node ~s, conference is on ~s, moving channel", [ChanNode, ConfNode]),
             'true' = ecallmgr_fs_channel:move(UUID, ChanNode, ConfNode),
             lager:debug("channel has moved to ~s", [ConfNode]),
+            maybe_set_nospeak_flags(ConfNode, UUID, JObj),
             {<<"conference">>, Cmd, ConfNode}
     end;
-get_conference_app(_ChanNode, _UUID, JObj, 'false') ->
+get_conference_app(ChanNode, UUID, JObj, 'false') ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
     ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
+    maybe_set_nospeak_flags(ChanNode, UUID, JObj),
     {<<"conference">>, list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)])}.
+
+maybe_set_nospeak_flags(Node, UUID, JObj) ->
+    case wh_json:is_true(<<"Member-Nospeak">>, JObj) of
+        'false' -> 'ok';
+        'true' ->
+            ecallmgr_util:set(Node, UUID, [{<<"conference_member_nospeak_relational">>, <<"rue">>}])
+    end,
+    case wh_json:is_true(<<"Nospeak-Check">>, JObj) of
+        'false' -> 'ok';
+        'true' ->
+            ecallmgr_util:set(Node, UUID, [{<<"conference_member_nospeak_check">>, <<"rue">>}])
+    end.
 
 %% [{FreeSWITCH-Flag-Name, Kazoo-Flag-Name}]
 %% Conference-related entry flags
