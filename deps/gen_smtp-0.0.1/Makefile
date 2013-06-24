@@ -1,4 +1,4 @@
-PROJECT = cdr
+PROJECT = gen_smtp
 ROOT = ../..
 REBAR = $(ROOT)/utils/rebar/rebar
 DIALYZER = dialyzer
