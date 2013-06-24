@@ -645,12 +645,12 @@ maybe_set_nospeak_flags(Node, UUID, JObj) ->
     case wh_json:is_true(<<"Member-Nospeak">>, JObj) of
         'false' -> 'ok';
         'true' ->
-            ecallmgr_util:set(Node, UUID, [{<<"conference_member_nospeak_relational">>, <<"rue">>}])
+            ecallmgr_util:set(Node, UUID, [{<<"conference_member_nospeak_relational">>, <<"true">>}])
     end,
     case wh_json:is_true(<<"Nospeak-Check">>, JObj) of
         'false' -> 'ok';
         'true' ->
-            ecallmgr_util:set(Node, UUID, [{<<"conference_member_nospeak_check">>, <<"rue">>}])
+            ecallmgr_util:set(Node, UUID, [{<<"conference_member_nospeak_check">>, <<"true">>}])
     end.
 
 %% [{FreeSWITCH-Flag-Name, Kazoo-Flag-Name}]
