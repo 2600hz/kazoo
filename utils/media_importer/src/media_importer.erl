@@ -18,10 +18,10 @@
 -spec main/1 :: (string()) -> none().
 main(Args) ->
     ensure_started(sasl),
+    ensure_started(asn1),
     ensure_started(crypto),
     ensure_started(public_key),
     ensure_started(ssl),
-%%    ensure_started(riak_err),
     ensure_started(ibrowse),
     ensure_started(couchbeam),
 
