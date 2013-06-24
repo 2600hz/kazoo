@@ -1,0 +1,12 @@
+{application, whistle_stats,
+ [
+  {description, "Whistle Stats - An application for statistics tracking and analytics"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                ]},
+  {mod, { whistle_stats_app, []}},
+  {env, []}
+ ]}.
