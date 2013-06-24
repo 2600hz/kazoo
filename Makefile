@@ -1,18 +1,14 @@
 ROOT = .
 DIALYZER = dialyzer
-REBAR = $(ROOT)/bin/rebar
+REBAR = $(ROOT)/utils/rebar/rebar
 
-MAKEDIRS = lib/rabbitmq_server-2.8.6/Makefile \
-	   lib/rabbitmq_client-2.8.6/Makefile \
-	   lib/lager-2.0.0rc1/Makefile \
-	   lib/*/Makefile \
-	   ecallmgr/Makefile \
-	   whistle_apps/Makefile
+MAKEDIRS = deps/Makefile \
+	   core/Makefile \
+	   applications/Makefile
 
-DIRS = $(ROOT)/lib/whistle-1.0.0 \
-	   $(ROOT)/lib/whistle_amqp-1.0.0 \
-       $(ROOT)/ecallmgr \
-	   $(ROOT)/whistle_apps
+DIRS = $(ROOT)/core/whistle-1.0.0 \
+	   $(ROOT)/core/whistle_amqp-1.0.0 \
+	   $(ROOT)/core/whistle_apps-1.0.0
 
 .PHONY: $(MAKEDIRS)
 
