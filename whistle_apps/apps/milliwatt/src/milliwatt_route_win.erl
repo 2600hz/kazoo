@@ -13,7 +13,6 @@ handle_req(JObj, _Props) ->
             Call = whapps_call:from_route_win(JObj, C),
             Action = whapps_call:kvs_fetch(<<"milliwatt_action">>, Call),
             lager:info("milliwatt wins the routing", []),
-
             case Action of
                 'tone' ->
                     lager:info("milliwatt will execute action tone", []),
