@@ -439,7 +439,22 @@ in_service(#number{state = <<"reserved">>}=Number) ->
 in_service(#number{state = <<"in_service">>, assigned_to=AssignedTo, assign_to=AssignedTo}=Number) ->
     error_no_change_required(<<"in_service">>, Number);
 in_service(#number{state = <<"in_service">>}=Number) ->
-    error_unauthorized(Number);
+    Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy}=N) ->
+                    case (wh_util:is_in_account_hierarchy(AssignTo, AuthBy, true)
+                        orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo))
+                    of
+                        false -> error_unauthorized(N);
+                        true -> N
+                    end
+                end
+                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) ->
+                         N#number{state = <<"in_service">>, assigned_to=AssignTo};
+                    (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) ->
+                         N#number{state = <<"in_service">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
+                 end
+                ,fun(#number{}=N) -> activate_phone_number(N) end
+               ],
+    lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(Number) ->
     error_invalid_state_transition(<<"in_service">>, Number).
 
