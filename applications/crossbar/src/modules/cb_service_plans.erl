@@ -84,8 +84,11 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(#cb_context{}) -> #cb_context{}.
 -spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = ?HTTP_GET, account_id=AccountId}=Context) ->
-    ResellerId = wh_services:find_reseller_id(AccountId),
+validate(#cb_context{req_verb = ?HTTP_GET, account_id=AccountId, auth_account_id=AuthId}=Context) ->
+    ResellerId = case wh_services:is_reseller(AccountId) andalso AccountId =:= AuthId of
+                     'true' -> AccountId;
+                     'false' -> wh_services:find_reseller_id(AccountId)
+                 end,
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
     crossbar_doc:load_view(?CB_LIST, [], Context#cb_context{db_name=ResellerDb}, fun normalize_view_results/2).
 
