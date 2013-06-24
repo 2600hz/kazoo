@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%% Tracks the agent's state, responds to messages from the corresponding
 %%% acdc_agent gen_listener process.
@@ -537,14 +537,12 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
     CallerExitKey = wh_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
-    AgentCallId = acdc_agent:outbound_call_id(CallId, AgentId),
-
     CDRUrl = cdr_url(JObj),
     RecordingUrl = recording_url(JObj),
 
     case wh_json:get_value(<<"Agent-Process-ID">>, JObj) of
         MyId ->
-            lager:debug("trying to ring agent ~s on ~s to connect to caller in queue ~s", [AgentId, AgentCallId, QueueId]),
+            lager:debug("trying to ring agent ~s to connect to caller in queue ~s", [AgentId, QueueId]),
 
             case get_endpoints(OrigEPs, Srv, Call, AgentId) of
                 {'error', 'no_endpoints'} ->
@@ -559,21 +557,24 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                     {'next_state', 'ready', State#state{connect_failures=CF+1}};
                 {'ok', UpdatedEPs} ->
                     acdc_agent:bridge_to_member(Srv, Call, JObj, UpdatedEPs, CDRUrl, RecordingUrl),
-                    acdc_stats:agent_connecting(AcctId, AgentId, CallId),
-                    lager:info("trying to ring agent: ~p", [wh_json:get_value(<<"Notifications">>, JObj)]),
+
+                    CIDName = whapps_call:caller_id_name(Call),
+                    CIDNum = whapps_call:caller_id_number(Call),
+
+                    acdc_stats:agent_connecting(AcctId, AgentId, CallId, CIDName, CIDNum),
+                    lager:info("trying to ring agent endpoints(~p)", [length(UpdatedEPs)]),
                     {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
                                                           ,member_call=Call
                                                           ,member_call_id=CallId
                                                           ,member_call_start=erlang:now()
                                                           ,member_call_queue_id=QueueId
                                                           ,caller_exit_key=CallerExitKey
-                                                          ,agent_call_id=AgentCallId
                                                           ,endpoints=UpdatedEPs
                                                           ,queue_notifications=wh_json:get_value(<<"Notifications">>, JObj)
                                                          }}
             end;
         _OtherId ->
-            lager:debug("monitoring agent ~s on ~s to connect to caller in queue ~s", [AgentId, AgentCallId, QueueId]),
+            lager:debug("monitoring agent ~s to connect to caller in queue ~s", [AgentId, QueueId]),
 
             acdc_agent:monitor_call(Srv, Call, CDRUrl, RecordingUrl),
 
@@ -583,7 +584,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                                         ,member_call_start=erlang:now()
                                         ,member_call_queue_id=QueueId
                                         ,caller_exit_key=CallerExitKey
-                                        ,agent_call_id=AgentCallId
+                                        ,agent_call_id='undefined'
                                        }}
     end;
 
@@ -657,25 +658,28 @@ ringing({'originate_ready', JObj}, #state{agent_proc=Srv}=State) ->
 
     lager:debug("ringing agent's phone with call-id ~s", [CallId]),
     acdc_agent:originate_execute(Srv, JObj),
-    {'next_state', 'ringing', State#state{agent_call_id=CallId}};
+    {'next_state', 'ringing', State};
 
-ringing({'originate_uuid', ACallId, ACtrlQ}, #state{agent_proc=Srv}=State) ->
-    lager:debug("recv agent call ~s(~s)", [ACallId, ACtrlQ]),
-    acdc_agent:agent_call_id(Srv, ACallId, ACtrlQ),
-    {'next_state', 'ringing', State#state{agent_call_id=ACallId}};
+ringing({'originate_uuid', ACallId, ACtrlQ}, State) ->
+    lager:debug("recv originate_uuid for agent call ~s(~s)", [ACallId, ACtrlQ]),
+    {'next_state', 'ringing', State};
 
 ringing({'originate_started', ACallId}, #state{agent_proc=Srv
                                                ,member_call_id=MCallId
+                                               ,member_call=MCall
                                                ,acct_id=AcctId
                                                ,agent_id=AgentId
                                                ,queue_notifications=Ns
                                               }=State) ->
     lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
-    acdc_agent:member_connect_accepted(Srv),
+    acdc_agent:member_connect_accepted(Srv, ACallId),
 
     maybe_notify(Ns, ?NOTIFY_PICKUP, State),
 
-    acdc_stats:agent_connected(AcctId, AgentId, MCallId),
+    CIDName = whapps_call:caller_id_name(MCall),
+    CIDNum = whapps_call:caller_id_number(MCall),
+
+    acdc_stats:agent_connected(AcctId, AgentId, MCallId, CIDName, CIDNum),
 
     {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
                                            ,call_status_failures=0
@@ -724,18 +728,22 @@ ringing({'agent_timeout', _JObj}, #state{agent_proc=Srv
      ,clear_call(State, 'failed')
     };
 
-ringing({'channel_bridged', CallId}, #state{member_call_id=CallId
-                                            ,agent_proc=Srv
-                                            ,acct_id=AcctId
-                                            ,agent_id=AgentId
-                                            ,queue_notifications=Ns
-                                           }=State) ->
+ringing({'channel_bridged', MCallId}, #state{member_call_id=MCallId
+                                             ,member_call=MCall
+                                             ,agent_proc=Srv
+                                             ,acct_id=AcctId
+                                             ,agent_id=AgentId
+                                             ,queue_notifications=Ns
+                                            }=State) ->
     lager:debug("agent phone has been connected to caller"),
     acdc_agent:member_connect_accepted(Srv),
 
     maybe_notify(Ns, ?NOTIFY_PICKUP, State),
 
-    acdc_stats:agent_connected(AcctId, AgentId, CallId),
+    CIDName = whapps_call:caller_id_name(MCall),
+    CIDNum = whapps_call:caller_id_number(MCall),
+
+    acdc_stats:agent_connected(AcctId, AgentId, MCallId, CIDName, CIDNum),
 
     {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
                                            ,call_status_failures=0
@@ -803,13 +811,18 @@ ringing({'dtmf_pressed', DTMF}, #state{caller_exit_key=_ExitKey}=State) ->
 
 ringing({'channel_answered', ACallId}, #state{agent_call_id=ACallId
                                               ,member_call_id=MCallId
+                                              ,member_call=MCall
                                               ,acct_id=AcctId
                                               ,agent_id=AgentId
                                               ,agent_proc=Srv
                                              }=State) ->
     lager:debug("agent answered phone on ~s", [ACallId]),
 
-    acdc_stats:agent_connected(AcctId, AgentId, MCallId),
+    CIDName = whapps_call:caller_id_name(MCall),
+    CIDNum = whapps_call:caller_id_number(MCall),
+
+    acdc_stats:agent_connected(AcctId, AgentId, MCallId, CIDName, CIDNum),
+
     acdc_agent:presence_update(Srv, ?PRESENCE_RED_SOLID),
 
     {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
@@ -890,7 +903,7 @@ answered({'channel_bridged', CallId}, #state{agent_call_id=CallId
                                              ,queue_notifications=Ns
                                             }=State) ->
     lager:debug("agent has connected (~s) to caller", [CallId]),
-    acdc_agent:member_connect_accepted(Srv),
+    acdc_agent:member_connect_accepted(Srv, CallId),
     maybe_notify(Ns, ?NOTIFY_PICKUP, State),
     {'next_state', 'answered', State};
 

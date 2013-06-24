@@ -35,5 +35,18 @@
 -type abandon_reason() :: ?ABANDON_TIMEOUT | ?ABANDON_EXIT |
                           ?ABANDON_HANGUP.
 
+%% Check for cleanup every 5 minutes
+-define(CLEANUP_PERIOD, whapps_config:get_integer(?CONFIG_CAT, <<"cleanup_period_ms">>, 360000)).
+
+%% Remove data from ETS
+-define(CLEANUP_WINDOW, whapps_config:get_integer(?CONFIG_CAT, <<"cleanup_window_s">>, ?SECONDS_IN_DAY)).
+
+%% Archive every 60 seconds
+-define(ARCHIVE_PERIOD, whapps_config:get_integer(?CONFIG_CAT, <<"archive_period_ms">>, 60000)).
+
+%% Save data to the DB
+-define(ARCHIVE_WINDOW, whapps_config:get_integer(?CONFIG_CAT, <<"archive_window_s">>, 60)).
+
+
 -define(ACDC_HRL, 'true').
 -endif.

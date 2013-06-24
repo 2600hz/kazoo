@@ -94,10 +94,10 @@ update_acdc_actor(Call, QueueId, <<"queue">>) ->
 update_acdc_actor(Call, AgentId, <<"user">>) ->
     AcctId = whapps_call:account_id(Call),
 
-    case acdc_util:agent_status(AcctId, AgentId) of
-        <<"logout">> -> update_acdc_agent(Call, AcctId, AgentId, <<"login">>, fun wapi_acdc_agent:publish_login/1);
-        <<"pause">> -> update_acdc_agent(Call, AcctId, AgentId, <<"resume">>, fun wapi_acdc_agent:publish_resume/1);
-        _S -> update_acdc_agent(Call, AcctId, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1)
+    case acdc_agent_util:most_recent_status(AcctId, AgentId) of
+        {'ok', <<"logout">>} -> update_acdc_agent(Call, AcctId, AgentId, <<"login">>, fun wapi_acdc_agent:publish_login/1);
+        {'ok', <<"pause">>} -> update_acdc_agent(Call, AcctId, AgentId, <<"resume">>, fun wapi_acdc_agent:publish_resume/1);
+        {'ok', _S} -> update_acdc_agent(Call, AcctId, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1)
     end.
 
 update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
@@ -106,7 +106,7 @@ update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
     try update_agent_device(Call, AgentId, Status) of
         {'ok', _D} ->
             lager:debug("updated device with new owner"),
-            {'ok', _} = save_status(Call, AgentId, Status),
+            'ok' = save_status(Call, AgentId, Status),
             send_new_status(AcctId, AgentId, PubFun),
             play_status_prompt(Call, Status);
         {'error', 'not_owner'} -> play_failed_update(Call)
@@ -116,8 +116,9 @@ update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
             play_failed_update(Call)
     end.
 
+-spec save_status(whapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
 save_status(Call, AgentId, Status) ->
-    acdc_util:update_agent_status(whapps_call:account_id(Call)
+    acdc_agent_util:update_status(whapps_call:account_id(Call)
                                   ,AgentId
                                   ,Status
                                   ,[{<<"call_id">>, whapps_call:call_id(Call)}

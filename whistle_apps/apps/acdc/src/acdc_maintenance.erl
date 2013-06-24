@@ -17,16 +17,16 @@
 -define(KEYS, [<<"Waiting">>, <<"Handled">>, <<"Processed">>, <<"Abandoned">>]).
 
 current_statuses(AcctId) ->
-    Agents = acdc_util:agent_statuses(AcctId),
+    {'ok', Agents} = acdc_agent_util:most_recent_statuses(AcctId),
     case wh_json:get_values(Agents) of
         {[], []} ->
             lager:debug("No agent statuses found for ~s", [AcctId]);
         {As, _} ->
             lager:debug("Agent Statuses for ~s", [AcctId]),
             lager:debug("~4s | ~35s | ~12s | ~20s |", [<<>>, <<"Agent-ID">>, <<"Status">>, <<"Timestamp">>]),
-            log_current_statuses(As, 1),
-            'ok'
-    end.
+            log_current_statuses(As, 1)
+    end,
+    'ok'.
 
 log_current_statuses([], _) -> 'ok';
 log_current_statuses([A|As], N) ->

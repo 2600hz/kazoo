@@ -329,7 +329,9 @@ status_resp_v(JObj) ->
     status_resp_v(wh_json:to_proplist(JObj)).
 
 -define(STATUS_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Timestamp">>]).
--define(STATUS_OPTIONAL_HEADERS, [<<"Wait-Time">>, <<"Pause-Time">>, <<"Call-ID">>]).
+-define(STATUS_OPTIONAL_HEADERS, [<<"Wait-Time">>, <<"Pause-Time">>, <<"Call-ID">>
+                                  ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                 ]).
 -define(STATUS_VALUES(Name), [{<<"Event-Category">>, <<"acdc_status_stat">>}
                               ,{<<"Event-Name">>, Name}
                              ]).
