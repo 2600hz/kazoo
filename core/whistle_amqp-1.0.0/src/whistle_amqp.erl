@@ -46,5 +46,5 @@ stop() ->
 %%--------------------------------------------------------------------
 -spec start_deps/0 :: () -> 'ok'.
 start_deps() ->
-    _ = [wh_util:ensure_started(App) || App <- [sasl, riak_error, amqp_client]],
+    _ = [wh_util:ensure_started(App) || App <- [sasl, amqp_client]],
     ok.

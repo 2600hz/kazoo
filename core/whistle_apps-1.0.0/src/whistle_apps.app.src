@@ -21,7 +21,6 @@
                              sasl
                             ,crypto
                             ,ibrowse
-                            ,riak_err
                             ,whistle_amqp
                             ,whistle_couch
                            ]}
