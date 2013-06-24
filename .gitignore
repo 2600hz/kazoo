@@ -32,6 +32,9 @@ deps/rabbitmq_client-2.8.6/dist/rabbit_common-0.0.0/include/gm_specs.hrl
 deps/rabbitmq_client-2.8.6/dist/rabbit_common-0.0.0/include/rabbit.hrl
 deps/rabbitmq_client-2.8.6/dist/rabbit_common-0.0.0/include/rabbit_framing.hrl
 deps/rabbitmq_client-2.8.6/dist/rabbit_common-0.0.0/include/rabbit_msg_store.hrl
+deps/rabbitmq_server-2.8.6/deps.mk
+deps/rabbitmq_server-2.8.6/src/rabbit_framing_amqp_0_8.erl
+deps/rabbitmq_server-2.8.6/src/rabbit_framing_amqp_0_9_1.erl
 deps/rabbitmq_server-2.8.6/include/rabbit_framing.hrl
 deps/rabbitmq_server-2.8.6/src/rabbit_ctl_usage.erl
 deps/rabbitmq_server-2.8.6/src/rabbit_plugins_usage.erl
