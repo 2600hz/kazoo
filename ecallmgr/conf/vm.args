@@ -1,6 +1,6 @@
 # Each node in the system must have a unique name. We recommend running with
 # -name and a fqdn
--name ecallmgr@183.38.3.41
+-name ecallmgr
 
 # Inter-node communication requires each node to have the same cookie
 # Comment this line out if you use ~/.erlang.cookie to manage your cookie
