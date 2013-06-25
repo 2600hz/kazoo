@@ -215,6 +215,16 @@
                            ]).
 -define(ANSWER_REQ_TYPES, []).
 
+%% Echo
+-define(ECHO_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_ECHO_REQ_HEADERS, [<<"Insert-At">>]).
+-define(ECHO_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                            ,{<<"Event-Name">>, <<"command">>}
+                            ,{<<"Application-Name">>, <<"echo">>}
+                            ,?INSERT_AT_TUPLE
+                           ]).
+-define(ECHO_REQ_TYPES, []).
+
 %% Privacy
 -define(PRIVACY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_PRIVACY_REQ_HEADERS, [<<"Insert-At">>, <<"Privacy-Mode">>]).
