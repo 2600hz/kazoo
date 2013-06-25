@@ -117,6 +117,14 @@ delete(Context, _) ->
 track_assignment(#cb_context{doc=JObj, storage=Storage}=Context) ->
     OldNums = get_numbers(props:get_value('db_doc', Storage)),
     NewNums = get_numbers(JObj),
+    Assigned = lists:foldl(
+        fun(Num, Acc) ->
+            case lists:member(Num, OldNums) of
+                'true' -> Acc;
+                'false' -> [Num|Acc]
+            end
+        end, [], NewNums
+    ),
     Unassigned = lists:foldl(
         fun(Num, Acc) ->
             case lists:member(Num, NewNums) of
@@ -126,7 +134,7 @@ track_assignment(#cb_context{doc=JObj, storage=Storage}=Context) ->
         end, [], OldNums
     ),
     wh_number_manager:track_assignment(Unassigned),
-    wh_number_manager:track_assignment(NewNums, <<"trunkstore">>),
+    wh_number_manager:track_assignment(Assigned, <<"trunkstore">>),
     Context.
 
 %%--------------------------------------------------------------------
