@@ -107,7 +107,7 @@ ensure 2600hz is always leading the way in cloud telecom.
 
 ### Build Dependencies
 
-* erlang R14+
+* erlang R15+
 * python-simplejson
 * libxslt
 * zip
