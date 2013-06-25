@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2013, VoIP, INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
+%%% Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(milliwatt_shared_listener).
 

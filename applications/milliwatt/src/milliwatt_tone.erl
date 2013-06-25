@@ -1,3 +1,11 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2013, VoIP, INC
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%% Peter Defebvre
+%%%-------------------------------------------------------------------
 -module(milliwatt_tone).
 
 -export([exec/1]).
@@ -5,7 +13,7 @@
 -include("milliwatt.hrl").
 
 -define(FREQUENCIES, [<<"2600">>]).
--define(DURATION, [<<"5000">>]).
+-define(DURATION, [<<"10000">>]).
 
 exec(Call) ->
 	Tone = get_tone(),
@@ -20,6 +28,6 @@ get_tone() ->
 	Hz = wh_json:get_value(<<"frequencies">>, JObj, ?FREQUENCIES),
 	Duration = wh_json:get_value(<<"duration">>, JObj, ?DURATION),
 	wh_json:from_list([{<<"Frequencies">>, Hz}
-                      ,{<<"Duration-ON">>, <<"1000">>}
+                      ,{<<"Duration-ON">>, Duration}
                       ,{<<"Duration-OFF">>, <<"1000">>}
                       ]).

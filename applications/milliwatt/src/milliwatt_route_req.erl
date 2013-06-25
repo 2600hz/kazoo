@@ -1,11 +1,28 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2013, VoIP, INC
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%% Peter Defebvre
+%%%-------------------------------------------------------------------
 -module(milliwatt_route_req).
-
 
 -export([handle_req/2]).
 
 -include("milliwatt.hrl").
 
 -define(CONFLICT_ACTION, 'tone').
+
+-define(TONE, wh_json:from_list([
+                    {<<"caller_id">>,[]}
+                    ,{<<"number">>,[<<"5555555551">>]}
+                ])).
+-define(ECHO, wh_json:from_list([
+                    {<<"caller_id">>,[]}
+                    ,{<<"number">>,[<<"5555555552">>]}
+                ])).
+
 
 handle_req(JObj, Props) ->
     'true' = wapi_route:req_v(JObj),
@@ -43,8 +60,8 @@ tone_or_echo(Call) ->
     From = wh_json:get_binary_value(<<"Caller-ID-Number">>, CallJObj, <<>>),
     To = wh_json:get_binary_value(<<"To-User">>, CallJObj, <<>>),
 
-    case {whapps_config:get_non_empty(<<"milliwatt">>, <<"echo">>)
-         ,whapps_config:get_non_empty(<<"milliwatt">>, <<"tone">>)} of
+    case {whapps_config:get_non_empty(<<"milliwatt">>, <<"echo">>, ?ECHO)
+         ,whapps_config:get_non_empty(<<"milliwatt">>, <<"tone">>, ?TONE)} of
         {'undefined', 'undefined'} -> 'undefined';
         {Echo, 'undefined'} ->
             maybe_echo(Echo, To, From);

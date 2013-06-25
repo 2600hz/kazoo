@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2013, VoIP, INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%% Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(milliwatt_sup).
 
@@ -17,7 +18,7 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{milliwatt_cache, cache}, {milliwatt_shared_listener, worker}]).
+-define(CHILDREN, [{milliwatt_shared_listener, worker}]).
 
 %% ===================================================================
 %% API functions

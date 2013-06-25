@@ -1,3 +1,11 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2013, VoIP, INC
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%% Peter Defebvre
+%%%-------------------------------------------------------------------
 -ifndef(MILLIWATT_HRL).
 
 %% Typical includes needed
