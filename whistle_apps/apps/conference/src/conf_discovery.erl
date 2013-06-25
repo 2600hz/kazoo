@@ -293,8 +293,8 @@ handle_search_error(Conference, Call, Srv) ->
 
 -spec handle_search_resp(wh_json:object(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 handle_search_resp(JObj, Conference, Call, Srv) ->
-    lager:debug("participant switch nodename ~p", [whapps_call:switch_nodename(Call)]),
-    [_, SwitchHostname] = binary:split(whapps_call:switch_nodename(Call), <<"@">>),
+    lager:debug("participant switch nodename ~p", [whapps_call:switch_hostname(Call)]),
+    SwitchHostname = whapps_call:switch_hostname(Call),
     case wh_json:get_value(<<"Switch-Hostname">>, JObj) of
         SwitchHostname ->
             lager:debug("running conference is on the same switch, joining on ~s", [SwitchHostname]),
