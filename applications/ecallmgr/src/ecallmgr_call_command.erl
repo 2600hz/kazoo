@@ -297,7 +297,7 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
             Ringback ->
                 Stream = ecallmgr_util:media_path(Ringback, 'extant', UUID, JObj),
                 lager:debug("custom ringback: ~s", [Stream]),
-                _ = ecallmgr_util:send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
+                _ = ecallmgr_util:set(Node, UUID, [{<<"ringback">>, Stream}])
         end,
     {<<"ring_ready">>, <<>>};
 
@@ -312,16 +312,15 @@ get_fs_app(Node, UUID, _JObj, <<"receive_fax">>) ->
      ,{<<"rxfax">>, ecallmgr_util:fax_filename(UUID)}
     ];
 
-get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
-    case wh_json:get_value(<<"Hold-Media">>, JObj) of
-        'undefined' -> {<<"endless_playback">>, <<"${hold_music}">>};
-        Media ->
-            Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
-            lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
-            [{<<"set">>, <<"hold_music=", Stream/binary>>}
-             ,{<<"endless_playback">>, <<"${hold_music}">>}
-            ]
-    end;
+get_fs_app(Node, UUID, JObj, <<"hold">>) ->
+    _ = case wh_json:get_value(<<"Hold-Media">>, JObj) of
+            'undefined' -> 'ok';
+            Media ->
+                Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
+                lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
+                ecallmgr_util:set(Node, UUID, [{<<"hold_music">>, Stream}])
+        end,
+    {<<"endless_playback">>, <<"${hold_music}">>};
 
 get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
@@ -544,7 +543,7 @@ get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
         'true' ->
             _ = case wh_json:get_value(<<"Redirect-Server">>, JObj) of
                     'undefined' -> 'ok';
-                    Server -> ecallmgr_util:set(Node, UUID, <<"sip_rh_X-Redirect-Server=", Server/binary>>)
+                    Server -> ecallmgr_util:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, Server}])
                 end,
             {<<"redirect">>, wh_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
     end;
@@ -576,23 +575,23 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
                                  {ne_binary(), ne_binary()}.
 get_call_pickup_app(Node, UUID, JObj, Target) ->
     _ = case wh_json:is_true(<<"Park-After-Pickup">>, JObj, 'false') of
-            'false' -> ecallmgr_util:export(Node, UUID, <<"park_after_bridge=false">>);
+            'false' -> ecallmgr_util:export(Node, UUID, [{<<"park_after_bridge">>, <<"false">>}]);
             'true' ->
-                _ = ecallmgr_util:set(Node, Target, <<"park_after_bridge=true">>),
-                ecallmgr_util:set(Node, UUID, <<"park_after_bridge=true">>)
+                _ = ecallmgr_util:set(Node, Target, [{<<"park_after_bridge">>, <<"true">>}]),
+                ecallmgr_util:set(Node, UUID, [{<<"park_after_bridge">>, <<"true">>}])
         end,
 
     _ = case wh_json:is_true(<<"Continue-On-Fail">>, JObj, 'true') of
-            'false' -> ecallmgr_util:export(Node, UUID, <<"continue_on_fail=false">>);
-            'true' -> ecallmgr_util:export(Node, UUID, <<"continue_on_fail=true">>)
+            'false' -> ecallmgr_util:export(Node, UUID, [{<<"continue_on_fail">>, <<"false">>}]);
+            'true' -> ecallmgr_util:export(Node, UUID, [{<<"continue_on_fail">>, <<"true">>}])
         end,
 
     _ = case wh_json:is_true(<<"Continue-On-Cancel">>, JObj, 'true') of
-            'false' -> ecallmgr_util:export(Node, UUID, <<"continue_on_cancel=false">>);
-            'true' -> ecallmgr_util:export(Node, UUID, <<"continue_on_cancel=true">>)
+            'false' -> ecallmgr_util:export(Node, UUID, [{<<"continue_on_cancel">>, <<"false">>}]);
+            'true' -> ecallmgr_util:export(Node, UUID, [{<<"continue_on_cancel">>, <<"true">>}])
         end,
 
-    _ = ecallmgr_util:export(Node, UUID, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
+    _ = ecallmgr_util:export(Node, UUID, [{<<"failure_causes">>, <<"NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>}]),
 
     {<<"call_pickup">>, <<UUID/binary, " ", Target/binary>>}.
 
@@ -707,12 +706,12 @@ bridge_handle_ringback(Node, UUID, JObj) ->
                 Media ->
                     Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
                     lager:debug("bridge has custom ringback in channel vars: ~s", [Stream]),
-                    ecallmgr_util:send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
+                    ecallmgr_util:set(Node, UUID, [{<<"ringback">>, Stream}])
             end;
         Media ->
             Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
             lager:debug("bridge has custom ringback: ~s", [Stream]),
-            ecallmgr_util:send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
+            ecallmgr_util:set(Node, UUID, [{<<"ringback">>, Stream}])
     end.
 
 bridge_maybe_early_media(Node, UUID, JObj) ->
@@ -1119,7 +1118,7 @@ get_terminators(JObj) -> get_terminators(wh_json:get_ne_value(<<"Terminators">>,
 set_terminators(Node, UUID, Ts) ->
     case get_terminators(Ts) of
         'undefined' -> 'ok';
-        {K, V} -> ecallmgr_util:set(Node, UUID, <<K/binary, "=", V/binary>>)
+        {K, V} -> ecallmgr_util:set(Node, UUID, [{K, V}])
     end.
 
 -ifdef(TEST).

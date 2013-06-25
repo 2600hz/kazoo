@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
 %%% Various utilities specific to ecallmgr. More general utilities go
 %%% in whistle_util.erl
@@ -116,12 +116,6 @@ send_cmd(Node, _UUID, "call_pickup", Args) ->
 send_cmd(Node, UUID, "hangup", _) ->
     lager:debug("terminate call on node ~s", [Node]),
     freeswitch:api(Node, 'uuid_kill', wh_util:to_list(UUID));
-send_cmd(Node, UUID, "set", "ecallmgr_Account-ID=" ++ _ = Args) ->
-    _ = maybe_update_channel_cache(Args, UUID),
-    send_cmd(Node, UUID, "export", Args);
-send_cmd(Node, UUID, "set", "ecallmgr_Precedence=" ++ _ = Args) ->
-    _ = maybe_update_channel_cache(Args, UUID),
-    send_cmd(Node, UUID, "export", Args);
 send_cmd(Node, UUID, "conference", Args) ->
     Args1 = iolist_to_binary([UUID, " conference:", Args, ",park inline"]),
     lager:debug("starting conference on ~s: ~s", [Node, Args1]),
@@ -160,6 +154,31 @@ maybe_update_channel_cache("ecallmgr_Precedence=" ++ Value, UUID) ->
     ecallmgr_fs_channel:set_precedence(UUID, Value);
 maybe_update_channel_cache(_, _) ->
     'ok'.
+
+-spec maybe_update_channel_cache(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+maybe_update_channel_cache(<<"Account-ID">>, Value, UUID) ->
+    ecallmgr_fs_channel:set_account_id(UUID, Value);
+maybe_update_channel_cache(<<"Billing-ID">>, Value, UUID) ->
+    ecallmgr_fs_channel:set_billing_id(UUID, Value);
+maybe_update_channel_cache(<<"Account-Billing">>, Value, UUID) ->
+    ecallmgr_fs_channel:set_account_billing(UUID, Value);
+maybe_update_channel_cache(<<"Reseller-ID">>, Value, UUID) ->
+    ecallmgr_fs_channel:set_reseller_id(UUID, Value);
+maybe_update_channel_cache(<<"Reseller-Billing">>, Value, UUID) ->
+    ecallmgr_fs_channel:set_reseller_billing(UUID, Value);
+maybe_update_channel_cache(<<"Authorizing-ID">>, Value, UUID) ->
+    ecallmgr_fs_channel:set_authorizing_id(UUID, Value);
+maybe_update_channel_cache(<<"Resource-ID">>, Value, UUID) ->
+    ecallmgr_fs_channel:set_resource_id(UUID, Value);
+maybe_update_channel_cache(<<"Authorizing-Type">>, Value, UUID) ->
+    ecallmgr_fs_channel:set_authorizing_type(UUID, Value);
+maybe_update_channel_cache(<<"Owner-ID">>, Value, UUID) ->
+    ecallmgr_fs_channel:set_owner_id(UUID, Value);
+maybe_update_channel_cache(<<"Presence-ID">>, Value, UUID) ->
+    ecallmgr_fs_channel:set_presence_id(UUID, Value);
+maybe_update_channel_cache(<<"Precedence">>, Value, UUID) ->
+    ecallmgr_fs_channel:set_precedence(UUID, Value);
+maybe_update_channel_cache(_, _, _) -> 'ok'.
 
 -spec get_expires(wh_proplist()) -> integer().
 get_expires(Props) ->
@@ -289,6 +308,19 @@ get_fs_kv(Key, Val, _) ->
             V = maybe_sanitize_fs_value(Key, Val),
             list_to_binary([Prefix, "=", wh_util:to_list(V), ""])
     end.
+
+-spec get_fs_key_and_value(ne_binary(), ne_binary(), ne_binary()) -> {ne_binary(), binary()}.
+get_fs_key_and_value(<<"Hold-Media">>, Media, UUID) ->
+    {<<"hold_music">>, media_path(Media, 'extant', UUID, wh_json:new())};
+get_fs_key_and_value(Key, Val, UUID) ->
+    case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
+        'false' ->
+            maybe_update_channel_cache(Key, Val, UUID),
+            {list_to_binary([?CHANNEL_VAR_PREFIX, Key]), Val};
+        {_, Prefix} ->
+            {Prefix, maybe_sanitize_fs_value(Key, Val)}
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -296,13 +328,13 @@ get_fs_kv(Key, Val, _) ->
 %%--------------------------------------------------------------------
 -spec maybe_sanitize_fs_value(text(), text()) -> binary().
 maybe_sanitize_fs_value(<<"Outbound-Caller-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<"">>, [global, {return, binary}]);
+    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<>>, ['global', {'return', 'binary'}]);
 maybe_sanitize_fs_value(<<"Outbound-Callee-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<"">>, [global, {return, binary}]);
+    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<>>, ['global', {'return', 'binary'}]);
 maybe_sanitize_fs_value(<<"Caller-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<"">>, [global, {return, binary}]);
+    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<>>, ['global', {'return', 'binary'}]);
 maybe_sanitize_fs_value(<<"Callee-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<"">>, [global, {return, binary}]);
+    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<>>, ['global', {'return', 'binary'}]);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Key) ->
     maybe_sanitize_fs_value(wh_util:to_binary(Key), Val);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Val) ->
@@ -314,43 +346,41 @@ maybe_sanitize_fs_value(_, Val) -> Val.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set(atom(), ne_binary(), wh_proplist() | ne_binary()) ->
+-spec set(atom(), ne_binary(), wh_proplist()) ->
                  ecallmgr_util:send_cmd_ret().
 set(_, _, []) -> 'ok';
 set(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V}]) ->
-    _ = send_cmd(Node, UUID, "set", "alert_info=intercom"),
-    send_cmd(Node, UUID, "set", get_fs_kv(K, V, UUID));
+    ecallmgr_fs_command:set(Node, UUID, [{<<"alert_info">>, <<"intercom">>}, get_fs_key_and_value(K, V, UUID)]);
 set(Node, UUID, [{K, V}]) ->
-    set(Node, UUID, get_fs_kv(K, V, UUID));
+    ecallmgr_fs_command:set(Node, UUID, [get_fs_key_and_value(K, V, UUID)]);
 set(Node, UUID, [{_, _}|_]=Props) ->
     Multiset = lists:foldl(fun({<<"Auto-Answer", _/binary>> = K, V}, Acc) ->
-                                   <<"|alert_info=intercom|"
-                                     ,(get_fs_kv(K, V, UUID))/binary
-                                     ,Acc/binary>>;
+                                   [{<<"alert_info">>, <<"intercom">>}
+                                    ,get_fs_key_and_value(K, V, UUID)
+                                    | Acc
+                                   ];
                               ({K, V}, Acc) ->
-                                   <<"|", (get_fs_kv(K, V, UUID))/binary, Acc/binary>>
-                           end, <<>>, Props),
-    send_cmd(Node, UUID, "multiset", <<"^^", Multiset/binary>>);
-set(Node, UUID, Arg) ->
-    send_cmd(Node, UUID, "set", Arg).
+                                   [get_fs_key_and_value(K, V, UUID) | Acc]
+                           end, [], Props),
+    ecallmgr_fs_command:set(Node, UUID, Multiset).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec export(atom(), ne_binary(), wh_proplist() | binary()) ->
+-spec export(atom(), ne_binary(), wh_proplist()) ->
                     ecallmgr_util:send_cmd_ret().
 export(_, _, []) -> 'ok';
-export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V}|Props]) ->
-    _ = send_cmd(Node, UUID, "export", "alert_info=intercom"),
-    _ = send_cmd(Node, UUID, "export", get_fs_kv(K, V, UUID)),
-    export(Node, UUID, Props);
-export(Node, UUID, [{K, V}|Props]) ->
-    _ = send_cmd(Node, UUID, "export", get_fs_kv(K, V, UUID)),
-    export(Node, UUID, Props);
-export(Node, UUID, Arg) ->
-    send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).
+export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V} | Props]) ->
+    Exports = [get_fs_key_and_value(Key, Val, UUID) || {Key, Val} <- Props],
+    ecallmgr_fs_command:export(Node, UUID, [{<<"alert_info">>, <<"intercom">>}
+                                            ,get_fs_key_and_value(K, V, UUID)
+                                            | Exports
+                                           ]);
+export(Node, UUID, Props) ->
+    Exports = [get_fs_key_and_value(Key, Val, UUID) || {Key, Val} <- Props],
+    ecallmgr_fs_command:export(Node, UUID, Exports).
 
 %%--------------------------------------------------------------------
 %% @public
