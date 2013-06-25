@@ -17,6 +17,7 @@ deps/erlydtl-0.7.0/src/erlydtl_parser.erl
 deps/zucchini-1.0.0/src/zucchini_lexer.erl
 deps/zucchini-1.0.0/src/zucchini_parser.erl
 utils/sup/deps/getopt/
+!deps/rabbitmq_client-2.8.6/test
 deps/rabbitmq_client-2.8.6/deps.mk
 deps/rabbitmq_client-2.8.6/deps/rabbit_common-0.0.0/include/gm_specs.hrl
 deps/rabbitmq_client-2.8.6/deps/rabbit_common-0.0.0/include/rabbit.hrl
