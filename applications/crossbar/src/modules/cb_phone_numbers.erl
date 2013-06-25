@@ -104,7 +104,6 @@ allowed_methods(<<"collection">>) ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
-
 allowed_methods(_, ?ACTIVATE) ->
     [?HTTP_PUT];
 allowed_methods(_, ?RESERVE) ->
@@ -112,10 +111,13 @@ allowed_methods(_, ?RESERVE) ->
 allowed_methods(_, ?PORT) ->
     [?HTTP_PUT];
 allowed_methods(_, ?PORT_DOCS) ->
-    [?HTTP_GET].
+    [?HTTP_GET];
+allowed_methods(<<"collection">>, ?ACTIVATE) ->
+    [?HTTP_PUT].
 
 allowed_methods(_, ?PORT_DOCS, _) ->
     [?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -212,6 +214,8 @@ validate(#cb_context{req_verb = ?HTTP_POST}=Context, _Number) ->
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, _Number) ->
     validate_delete(Context).
 
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, <<"collection">>, ?ACTIVATE) ->
+    validate_request(Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?ACTIVATE) ->
     validate_request(Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?RESERVE) ->
@@ -258,6 +262,9 @@ put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, 
     Result = wh_number_manager:create_number(Number, AssignTo, AuthBy, JObj),
     set_response(Result, Number, Context).
 
+put(Context, <<"collection">>, ?ACTIVATE) ->
+    Results = collection_process(Context, ?ACTIVATE),
+    set_response(Results, <<>>, Context);
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?PORT) ->
     Result = wh_number_manager:port_in(Number, AssignTo, AuthBy, JObj),
     set_response(Result, Number, Context);
@@ -269,6 +276,7 @@ put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, 
     set_response(Result, Number, Context);
 put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS) ->
     put_attachments(Number, Context, Files).
+
 
 put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
     put_attachments(Number, Context, Files).
@@ -445,6 +453,10 @@ collection_process(#cb_context{req_data=Data}=Context) ->
     Result = collection_process(Context, Numbers),
     {'ok', Result}.
 
+collection_process(#cb_context{req_data=Data}=Context, ?ACTIVATE) ->
+    Numbers = wh_json:get_value(<<"numbers">>, Data, []),
+    Result = collection_process(Context, Numbers, ?ACTIVATE),
+    {'ok', Result};
 collection_process(Context, Numbers) ->
     Temp = wh_json:set_values([{<<"success">>, wh_json:new()}, {<<"error">>, wh_json:new()}], wh_json:new()),
     lists:foldl(
@@ -461,7 +473,24 @@ collection_process(Context, Numbers) ->
         ,Numbers
     ).
 
+collection_process(Context, Numbers, Action) ->
+    Temp = wh_json:set_values([{<<"success">>, wh_json:new()}, {<<"error">>, wh_json:new()}], wh_json:new()),
+    lists:foldl(
+        fun(Number, Acc) ->
+            case collection_action(Context, Number, Action) of
+                {'ok', JObj} ->
+                    wh_json:set_value([<<"success">>, Number], JObj, Acc);
+                {State, _} ->
+                    JObj = wh_json:set_value(<<"reason">>, State, wh_json:new()),
+                    wh_json:set_value([<<"error">>, Number], JObj, Acc)
+            end
+        end
+        ,Temp
+        ,Numbers
+    ).
+
 -spec collection_action(cb_context:context(), ne_binary()) -> operation_return().
+-spec collection_action(cb_context:context(), ne_binary(), ne_binary()) -> operation_return().
 collection_action(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj, req_verb= ?HTTP_PUT}, Number) ->
     wh_number_manager:create_number(Number, AssignTo, AuthBy, wh_json:delete_key(<<"numbers">>, JObj));
 collection_action(#cb_context{auth_account_id=AuthBy, doc=Doc, req_verb= ?HTTP_POST}, Number) ->
@@ -475,3 +504,10 @@ collection_action(#cb_context{auth_account_id=AuthBy, doc=Doc, req_verb= ?HTTP_P
     end;
 collection_action(#cb_context{auth_account_id=AuthBy, req_verb= ?HTTP_DELETE}, Number) ->
     wh_number_manager:release_number(Number, AuthBy).
+
+collection_action(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj, req_verb= ?HTTP_PUT}, Number, ?ACTIVATE) ->
+    case wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj) of
+        {'ok', RJObj} ->
+            {'ok', wh_json:delete_key(<<"numbers">>, RJObj)};
+        Else -> Else
+    end.
