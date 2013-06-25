@@ -1,7 +1,8 @@
 {application, skel,
  [
   {description, "Skel - A skeleton application useful for quickly creating services"},
-  {vsn, "1"},
+  {vsn, "0.0.1"},
+  {modules, []},
   {registered, []},
   {applications, [
                   kernel,
