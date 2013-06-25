@@ -53,6 +53,12 @@ bind(Node, Type) ->
 bind(Node, Type, Timeout) ->
     gen_server:call({'mod_kazoo', Node}, {'bind', Type}, Timeout).
 
+-spec fetch_reply(atom(), binary(), binary(), binary() | string()) ->
+                         'ok' |
+                         {'error', 'baduuid'}.
+-spec fetch_reply(atom(), binary(), binary(), binary() | string(), pos_integer() | 'infinity') ->
+                         'ok' |
+                         {'error', 'baduuid'}.
 fetch_reply(Node, FetchID, Section, Reply) ->
     gen_server:cast({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}).
 
