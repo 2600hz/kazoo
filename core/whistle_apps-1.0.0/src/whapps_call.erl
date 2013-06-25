@@ -221,7 +221,6 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
 
     Call#whapps_call{call_id=CallId
                      ,control_q=wh_json:get_value(<<"Control-Queue">>, RouteWin)
-                     ,switch_hostname = wh_json:get_value(<<"Media-Server">>, RouteWin)
                      ,inception=Inception
                      ,account_id=AccountId
                      ,account_db=AccountDb
