@@ -39,6 +39,7 @@
          ,record/1, record_v/1
          ,record_call/1, record_call_v/1
          ,answer/1, answer_v/1
+         ,echo/1, echo_v/1
          ,privacy/1, privacy_v/1
          ,hold/1, hold_v/1
          ,park/1, park_v/1
@@ -444,6 +445,24 @@ answer(JObj) -> answer(wh_json:to_proplist(JObj)).
 answer_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ANSWER_REQ_HEADERS, ?ANSWER_REQ_VALUES, ?ANSWER_REQ_TYPES);
 answer_v(JObj) -> answer_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Echo a session - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec echo(api_terms()) -> api_formatter_return().
+echo(Prop) when is_list(Prop) ->
+    case echo_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?ECHO_REQ_HEADERS, ?OPTIONAL_ECHO_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for echo"}
+    end;
+echo(JObj) -> echo(wh_json:to_proplist(JObj)).
+
+-spec echo_v(api_terms()) -> boolean().
+echo_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?ECHO_REQ_HEADERS, ?ECHO_REQ_VALUES, ?ECHO_REQ_TYPES);
+echo_v(JObj) -> echo_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Privacy

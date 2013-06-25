@@ -370,8 +370,17 @@ get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
             {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Routines)}
     end;
 
-get_fs_app(_Node, _UUID, _JObj, <<"park">>) ->
-    {<<"park">>, <<>>};
+get_fs_app(_Node, _UUID, JObj, <<"park">>) ->
+    case wapi_dialplan:park_v(JObj) of
+        'false' -> {'error', <<"park failed to execute as JObj did not validate">>};
+        'true' -> {<<"park">>, <<>>}
+    end;
+
+get_fs_app(_Node, _UUID, JObj, <<"echo">>) ->
+    case wapi_dialplan:echo_v(JObj) of
+        'false' -> {'error', <<"echo failed to execute as JObj did not validate">>};
+        'true' -> {<<"echo">>, <<>>}
+    end;
 
 get_fs_app(_Node, _UUID, JObj, <<"sleep">>) ->
     case wapi_dialplan:sleep_v(JObj) of

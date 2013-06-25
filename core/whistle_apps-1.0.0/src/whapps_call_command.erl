@@ -33,6 +33,7 @@
          ,set/3, set_terminators/2
          ,fetch/1, fetch/2
         ]).
+-export([echo/1]).
 -export([ring/1]).
 -export([receive_fax/1
          ,b_receive_fax/1
@@ -78,6 +79,7 @@
         ]).
 
 -export([b_answer/1, b_hangup/1, b_hangup/2, b_fetch/1, b_fetch/2]).
+-export([b_echo/1]).
 -export([b_ring/1]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
 -export([b_page/2, b_page/3, b_page/4, b_page/5, b_page/6]).
@@ -519,6 +521,22 @@ answer_now(Call) -> send_command([{<<"Application-Name">>, <<"answer">>}
 b_answer(Call) ->
     answer(Call),
     wait_for_message(<<"answer">>).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level wh_api request to echo the channel
+%% @end
+%%--------------------------------------------------------------------
+-spec echo(whapps_call:call()) -> 'ok'.
+-spec b_echo(whapps_call:call()) ->
+                      whapps_api_error() |
+                      {'ok', wh_json:object()}.
+echo(Call) -> send_command([{<<"Application-Name">>, <<"echo">>}], Call).
+
+b_echo(Call) ->
+    echo(Call),
+    wait_for_message(<<"echo">>).
 
 %%--------------------------------------------------------------------
 %% @public
