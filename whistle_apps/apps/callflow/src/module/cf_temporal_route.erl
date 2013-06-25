@@ -162,32 +162,43 @@ process_rules(_, [], _) ->
 %%--------------------------------------------------------------------
 -spec get_temporal_rules(#temporal{}, whapps_call:call()) -> [#rule{},...].
 get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}, Call) ->
-    [#rule{id = ID
-           ,enabled =
-               wh_json:get_binary_boolean([<<"doc">>, <<"enabled">>], R)
-           ,name =
-               wh_json:get_value([<<"doc">>, <<"name">>], R, ?RULE_DEFAULT_NAME)
-           ,cycle =
-               wh_json:get_value([<<"doc">>, <<"cycle">>], R, ?RULE_DEFAULT_CYCLE)
-           ,interval =
-               wh_json:get_integer_value([<<"doc">>, <<"interval">>], R, ?RULE_DEFAULT_INTERVAL)
-           ,days =
-               wh_json:get_value([<<"doc">>, <<"days">>], R, ?RULE_DEFAULT_DAYS)
-           ,wdays =
-               wh_json:get_value([<<"doc">>, <<"wdays">>], R, ?RULE_DEFAULT_WDAYS)
-           ,ordinal =
-               wh_json:get_value([<<"doc">>, <<"ordinal">>], R, ?RULE_DEFAULT_ORDINAL)
-           ,month =
-               wh_json:get_value([<<"doc">>, <<"month">>], R, ?RULE_DEFAULT_MONTH)
-           ,start_date =
-               get_date(wh_json:get_integer_value([<<"doc">>, <<"start_date">>], R, LSec))
-           ,wtime_start =
-               wh_json:get_integer_value([<<"doc">>, <<"time_window_start">>], R, ?RULE_DEFAULT_WTIME_START)
-           ,wtime_stop =
-               wh_json:get_integer_value([<<"doc">>, <<"time_window_stop">>], R, ?RULE_DEFAULT_WTIME_STOP)
-          }
-     || R <- cf_attributes:temporal_rules(Call),
-        lists:member(ID = wh_json:get_value(<<"id">>, R), Routes)].
+    get_temporal_rules(Routes, LSec, whapps_call:account_db(Call), []).
+
+-spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), [#rule{},...]|[]) -> [#rule{},...]|[].
+get_temporal_rules([], _, _, Rules) ->
+    lists:reverse(Rules);
+get_temporal_rules([Route|Routes], LSec, AccountDb, Rules) ->
+    case couch_mgr:open_cache_doc(AccountDb, Route) of
+       {'error', _R} ->
+           lager:info("unable to find temporal rule ~s in ~s", [Route, AccountDb]),
+           get_temporal_rules(Routes, LSec, AccountDb, Rules);
+       {'ok', JObj} ->
+           Rule = #rule{id = Route
+                        ,enabled =
+                            wh_json:get_binary_boolean(<<"enabled">>, JObj)
+                        ,name =
+                            wh_json:get_value(<<"name">>, JObj, ?RULE_DEFAULT_NAME)
+                        ,cycle =
+                            wh_json:get_value(<<"cycle">>, JObj, ?RULE_DEFAULT_CYCLE)
+                        ,interval =
+                            wh_json:get_integer_value(<<"interval">>, JObj, ?RULE_DEFAULT_INTERVAL)
+                        ,days =
+                            wh_json:get_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS)
+                        ,wdays =
+                            wh_json:get_value(<<"wdays">>, JObj, ?RULE_DEFAULT_WDAYS)
+                        ,ordinal =
+                            wh_json:get_value(<<"ordinal">>, JObj, ?RULE_DEFAULT_ORDINAL)
+                        ,month =
+                            wh_json:get_value(<<"month">>, JObj, ?RULE_DEFAULT_MONTH)
+                        ,start_date =
+                            get_date(wh_json:get_integer_value(<<"start_date">>, JObj, LSec))
+                        ,wtime_start =
+                            wh_json:get_integer_value(<<"time_window_start">>, JObj, ?RULE_DEFAULT_WTIME_START)
+                        ,wtime_stop =
+                             wh_json:get_integer_value(<<"time_window_stop">>, JObj, ?RULE_DEFAULT_WTIME_STOP)
+                       },
+             get_temporal_rules(Routes, LSec, AccountDb, [Rule | Rules])
+ end.
 
 %%--------------------------------------------------------------------
 %% @private
