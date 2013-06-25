@@ -9,10 +9,10 @@
 %%%------------------------------------------------------------------
 -module(sup).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle_config/src/wh_config.erl").
-
 -export([main/1]).
+
+-include_lib("whistle/include/wh_types.hrl").
+
 
 -define(WHAPPS_VM_ARGS, ["/opt/kazoo/whistle_apps/conf/vm.args"
                          ,"/opt/whistle/whistle/whistle_apps/conf/vm.args"

@@ -1,0 +1,13 @@
+{application, cdr,
+ [
+  {description, "Listen and record CDR events into CouchDB"}
+  ,{vsn, "0.4.1"}
+  ,{modules, []}
+  ,{registered, []}
+  ,{applications, [
+                   kernel,
+                   stdlib
+                  ]}
+  ,{mod, { cdr_app, []}}
+  ,{env, []}
+ ]}.
