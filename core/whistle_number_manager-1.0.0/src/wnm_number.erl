@@ -452,7 +452,6 @@ in_service(#number{state = <<"in_service">>}=Number) ->
                     (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
                  end
-                ,fun(#number{}=N) -> activate_phone_number(N) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(Number) ->
