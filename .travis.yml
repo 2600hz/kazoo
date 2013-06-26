@@ -12,6 +12,5 @@ otp_release:
   - R15B02
   - R15B01
   - R15B
-before_script: "export ERL_LIBS=/home/travis/builds/2600hz/kazoo/lib"
 script: "make compile"
 after script: "make eunit"
