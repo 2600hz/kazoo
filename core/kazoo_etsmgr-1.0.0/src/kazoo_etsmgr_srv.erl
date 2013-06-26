@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/3]).
+-export([start_link/1]).
 
 %% gen_server callbacks
 -export([init/1
@@ -22,6 +22,7 @@
          ,code_change/3
         ]).
 
+%% Internal
 -export([find_me/2]).
 
 -include_lib("whistle/include/wh_types.hrl").
@@ -30,13 +31,23 @@
 -define(SERVER, ?MODULE).
 -define(TABLE_DATA, 0).
 
--type find_me_fun() :: fun(() -> pid()).
--export_type([find_me_fun/0]).
+-type start_args() :: [{'table_id', atom()} |
+                       {'table_options', list()} |
+                       {'gift_data', term()} |
+                       {'find_me_function', find_me_fun()}
+                       ,...
+                      ].
 
--record(state, {table_id :: ets:tid()
+-type find_me_fun() :: fun(() -> pid()).
+-export_type([start_args/0
+              ,find_me_fun/0
+             ]).
+
+-record(state, {table_id :: atom()
                 ,give_away_pid :: pid()
                 ,find_me_fun :: find_me_fun()
                 ,find_me_pid_ref :: {pid(), reference()}
+                ,gift_data :: any()
                }).
 
 %%%===================================================================
@@ -50,9 +61,15 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(ets:tid(), list(), find_me_fun()) -> startlink_ret().
-start_link(TableId, TableOptions, FindMeFun) when is_function(FindMeFun, 0) ->
-    gen_server:start_link(?MODULE, [TableId, TableOptions, FindMeFun], []).
+-spec start_link(start_args()) -> startlink_ret().
+start_link(Opts) ->
+    'true' = valid_options(Opts),
+    gen_server:start_link(?MODULE, [Opts], []).
+
+valid_options(Opts) ->
+    (TID = props:get_value('table_id', Opts)) =/= 'undefined'
+        andalso is_atom(TID)
+        andalso is_function(props:get_value('find_me_function', Opts), 0).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -69,16 +86,33 @@ start_link(TableId, TableOptions, FindMeFun) when is_function(FindMeFun, 0) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([TableId, TableOptions, FindMeFun]) ->
+init([Opts]) ->
     process_flag('trap_exit', 'true'),
+
+    TableId = opt_table_id(Opts),
+    TableOptions = opt_table_options(Opts),
+
     put('callid', <<"etssrv_", (wh_util:to_binary(TableId))/binary>>),
     gen_server:cast(self(), {'begin', TableId, TableOptions}),
 
     lager:debug("started etsmgr for stats for ~s", [TableId]),
 
     {'ok', #state{table_id=TableId
-                  ,find_me_fun=FindMeFun
+                  ,find_me_fun=opt_find_me_fun(Opts)
+                  ,gift_data=opt_gift_data(Opts)
                  }}.
+
+-define(DEFAULT_TABLE_OPTIONS, ['set', 'protected', {'keypos', 2}]).
+
+opt_table_id(Opts) -> props:get_value('table_id', Opts).
+opt_table_options(Opts) ->
+    case props:get_value('table_options', Opts) of
+        'undefined' -> ?DEFAULT_TABLE_OPTIONS;
+        TblOpts when is_list(TblOpts) -> TblOpts
+    end.
+
+opt_find_me_fun(Opts) -> props:get_value('find_me_function', Opts).
+opt_gift_data(Opts) -> props:get_value('gift_data', Opts, 'ok').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -108,12 +142,12 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'begin', TableId, TableOptions}, #state{}=State) ->
-    Tbl = ets:new(TableId, TableOptions),
+handle_cast({'begin', TableId, TableOptions}, #state{gift_data=GiftData}=State) ->
+    TID = ets:new(TableId, TableOptions),
 
-    ets:setopts(Tbl, {'heir', self(), 'ok'}),
-    send_give_away_retry(Tbl),
-    {'noreply', State#state{table_id=Tbl}};
+    ets:setopts(TID, {'heir', self(), GiftData}),
+    send_give_away_retry(TID),
+    {'noreply', State#state{table_id=TID}};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -140,20 +174,23 @@ handle_info({'ETS-TRANSFER', Tbl, Pid, _Data}, #state{table_id=Tbl
     lager:debug("ets table ~p transfered back to ourselves", [Tbl]),
     send_give_away_retry(Tbl),
     {'noreply', State#state{give_away_pid='undefined'}};
-handle_info({'give_away', Tbl, Data}, #state{table_id=Tbl
+handle_info({'give_away', Tbl}, #state{table_id=Tbl
                                              ,give_away_pid='undefined'
                                              ,find_me_fun=F
                                             }=State) ->
-    lager:debug("give away ~p: ~p", [Tbl, Data]),
+    lager:debug("give away ~p", [Tbl]),
     {_P, _R}=FindMe = spawn_monitor(?MODULE, 'find_me', [F, self()]),
     lager:debug("finding the successor in ~p", [FindMe]),
     {'noreply', State#state{find_me_pid_ref=FindMe}};
 handle_info({'found_me', Pid}, #state{table_id=Tbl
                                       ,give_away_pid='undefined'
+                                      ,find_me_pid_ref={_FindMePid, FindMeRef}
+                                      ,gift_data=GiftData
                                      }=State) ->
     lager:debug("found our new writer pid: ~p", [Pid]),
+    erlang:demonitor(FindMeRef, ['flush']),
     link(Pid),
-    ets:give_away(Tbl, Pid, ?TABLE_DATA),
+    ets:give_away(Tbl, Pid, GiftData),
     {'noreply', State#state{give_away_pid=Pid
                             ,find_me_pid_ref='undefined'
                            }, 'hibernate'};
@@ -170,12 +207,18 @@ handle_info(_Info, State) ->
     {'noreply', State}.
 
 send_give_away_retry(Tbl) ->
-    erlang:send(self(), {'give_away', Tbl, ?TABLE_DATA}).
+    erlang:send(self(), {'give_away', Tbl}).
 
 find_me(Fun, Srv) ->
+    lager:debug("trying to find successor for ~p", [Srv]),
     P = Fun(),
-    'true' = is_pid(P),
-    Srv ! {'found_me', P}.
+    case is_pid(P) of
+        'true' ->
+            Srv ! {'found_me', P},
+            lager:debug("successor ~p found", [P]);
+        'false' ->
+            lager:debug("successor not found: ~p", [P])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
