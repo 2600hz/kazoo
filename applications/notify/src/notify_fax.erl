@@ -80,7 +80,8 @@ handle_req(JObj, _Props) ->
             catch
                 C:R ->
                     lager:debug("failed: ~s:~p", [C, R]),
-                    lager:log_stacktrace()
+                    ST = erlang:get_stacktrace(),
+                    wh_util:log_stacktrace(ST)
             end
     end.
 
