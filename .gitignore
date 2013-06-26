@@ -18,6 +18,7 @@ deps/zucchini-1.0.0/src/zucchini_lexer.erl
 deps/zucchini-1.0.0/src/zucchini_parser.erl
 utils/sup/deps/getopt/
 !deps/rabbitmq_client-3.2.1/test
+!deps/rabbit_common-3.2.1/ebin/*
 deps/rabbitmq_client-3.2.1/deps.mk
 deps/rabbitmq_client-3.2.1/deps/rabbit_common-0.0.0/include/gm_specs.hrl
 deps/rabbitmq_client-3.2.1/deps/rabbit_common-0.0.0/include/rabbit.hrl
@@ -39,4 +40,4 @@ deps/rabbitmq_server-3.2.1/src/rabbit_framing_amqp_0_9_1.erl
 deps/rabbitmq_server-3.2.1/include/rabbit_framing.hrl
 deps/rabbitmq_server-3.2.1/src/rabbit_ctl_usage.erl
 deps/rabbitmq_server-3.2.1/src/rabbit_plugins_usage.erl
-
+deps/rabbitmq-codegen/amqp_codegen.pyc
