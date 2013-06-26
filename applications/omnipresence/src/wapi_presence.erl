@@ -80,7 +80,7 @@ update_v(JObj) -> update_v(wh_json:to_proplist(JObj)).
 
 bind_q(Queue, _Props) ->
     amqp_util:new_exchange(?SUBSCRIPTIONS_EXCHANGE, <<"fanout">>),
-    amqp_util:new_exchange(?UPDATES_EXCHANGE, <<"targeted">>),
+    amqp_util:new_exchange(?UPDATES_EXCHANGE, <<"direct">>),
 
     amqp_util:bind_q_to_exchange(Queue, <<"presence.subscriptions.*">>, ?SUBSCRIPTIONS_EXCHANGE).
 
