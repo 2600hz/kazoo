@@ -1,0 +1,46 @@
+rfc4627-erlang (1.1.1) unstable; urgency=low
+
+  * Fix \u escaping for surrogate pairs.
+
+ -- Tony Garnock-Jones <tonyg@shortstop.lshift.net>  Thu, 01 May 2008 12:10:41 +0100
+
+rfc4627-erlang (1.1.0-1) unstable; urgency=low
+
+  * Unicode support per RFC.
+
+ -- Tony Garnock-Jones <tonyg@shortstop.lshift.net>  Wed, 03 Oct 2007 15:58:39 +0100
+
+rfc4627-erlang (1.0.4-1) unstable; urgency=low
+
+  * Support X-JSON-RPC-Timeout header (value in milliseconds).
+
+ -- Tony Garnock-Jones <tonyg@shortstop.lshift.net>  Thu, 21 Jun 2007 15:00:46 +0100
+
+rfc4627-erlang (1.0.3-1) unstable; urgency=low
+
+  * Add start_link for use in supervision hierarchies.
+
+ -- Tony Garnock-Jones <tonyg@shortstop.lshift.net>  Wed, 20 Jun 2007 14:04:42 +0100
+
+rfc4627-erlang (1.0.2-1) unstable; urgency=low
+
+  * Documentation for release
+  * Minor API improvements
+  * MIT licensing
+
+ -- Tony Garnock-Jones <tonyg@lshift.net>  Sat, 17 Feb 2007 14:44:57 +0000
+
+rfc4627-erlang (1.0.1-1) unstable; urgency=low
+
+  * JSON-RPC transport is factored out on the client
+  * Header file path correction
+  * No longer take any action synchronously in the JS client
+
+ -- Tony Garnock-Jones <tonyg@shortstop.lshift.net>  Mon, 29 Jan 2007 15:28:06 +0000
+
+rfc4627-erlang (1.0-1) unstable; urgency=low
+
+  * Initial release
+
+ -- Tony Garnock-Jones <tonyg@lshift.net>  Fri, 26 Jan 2007 14:17:16 +0000
+

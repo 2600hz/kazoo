@@ -1,0 +1,62 @@
+<h1>Connections</h1>
+<%= filter_ui(connections) %>
+<div class="updatable">
+<% if (connections.length > 0) { %>
+<table class="list">
+ <thead>
+  <tr>
+   <th colspan="<% if (nodes_interesting) { %>7<% } else { %>6<% } %>">Network</th>
+   <th colspan="<% if (vhosts_interesting) { %>5<% } else { %>4<% } %>">Overview</th>
+  </tr>
+  <tr>
+    <th><%= fmt_sort('Name',         'name') %></th>
+    <th><%= fmt_sort('Protocol',     'protocol') %></th>
+    <th><%= fmt_sort('Client',       'properties') %></th>
+<% if (nodes_interesting) { %>
+    <th><%= fmt_sort('Node',         'node') %></th>
+<% } %>
+    <th><%= fmt_sort('From client',  'recv_oct_details.rate') %></th>
+    <th><%= fmt_sort('To client',    'send_oct_details.rate') %></th>
+    <th><%= fmt_sort('Timeout',      'timeout') %></th>
+    <th><%= fmt_sort('Channels',     'channels') %></th>
+<% if (vhosts_interesting) { %>
+    <th><%= fmt_sort('Virtual host', 'vhost') %></th>
+<% } %>
+    <th><%= fmt_sort('User name',    'user') %></th>
+    <th><%= fmt_sort('State',        'state') %></th>
+  </tr>
+ </thead>
+ <tbody>
+<%
+ for (var i = 0; i < connections.length; i++) {
+    var connection = connections[i];
+%>
+  <tr<%= alt_rows(i)%>>
+    <td><%= link_conn(connection.name) %></td>
+    <td>
+      <%= connection.protocol %>
+      <% if (connection.ssl) { %>
+        <sub>SSL</sub>
+      <% } %>
+    </td>
+    <td><%= fmt_client_name(connection.client_properties) %></td>
+<% if (nodes_interesting) { %>
+    <td><%= fmt_node(connection.node) %></td>
+<% } %>
+    <td><%= fmt_rate_bytes(connection, 'recv_oct') %></td>
+    <td><%= fmt_rate_bytes(connection, 'send_oct') %></td>
+    <td><%= fmt_time(connection.timeout, 's') %></td>
+    <td><%= connection.channels %></td>
+<% if (vhosts_interesting) { %>
+    <td><%= fmt_string(connection.vhost) %></td>
+<% } %>
+    <td><%= fmt_string(connection.user) %></td>
+    <td><%= fmt_connection_state(connection) %></td>
+  </tr>
+  <% } %>
+ </tbody>
+</table>
+<% } else { %>
+  <p>... no connections ...</p>
+<% } %>
+</div>

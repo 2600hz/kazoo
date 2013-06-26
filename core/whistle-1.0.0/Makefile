@@ -9,6 +9,8 @@ PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
          # +bin_opt_info
 
+ERL_LIBS = $(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
+
 DIRS = . \
 	$(ROOT)/core/whistle_amqp-1.0.0
 
@@ -27,7 +29,7 @@ compile: ebin/$(PROJECT).app
 
 ebin/$(PROJECT).app: src/*.erl src/api/*.erl
 	@mkdir -p ebin/
-	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $(PA) $?
+	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $(PA) $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
@@ -37,7 +39,7 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl src/api/*.erl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $(PA) $?
+	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $(PA) $?
 
 clean:
 	rm -f ebin/*

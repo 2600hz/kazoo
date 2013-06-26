@@ -1,7 +1,6 @@
 ROOT = ..
 
-MAKEDIRS = rabbitmq_server-3.2.1/Makefile \
-       rabbitmq_client-3.2.1/Makefile \
+MAKEDIRS = rabbitmq_server-3.1.3/Makefile \
        lager-2.0.0rc1/Makefile \
        ibrowse-4.0.1/Makefile \
        */Makefile

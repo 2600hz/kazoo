@@ -9,7 +9,7 @@ PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
      # +bin_opt_info
 
-ERL_LIBS = $(ROOT)/deps/rabbitmq_client-3.2.1/deps
+ERL_LIBS = $(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
 
 DIRS =  . \
     $(ROOT)/core/whistle-1.0.0 \
