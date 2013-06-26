@@ -9,13 +9,21 @@
 
 -behaviour(supervisor).
 
--export([start_link/0]).
+-export([start_link/0
+         ,subscriptions_srv/0
+        ]).
 -export([init/1]).
 
 -include("omnipresence.hrl").
 
+-define(ETS_OPTS, [omnip_subscriptions:table_id()
+                   ,omnip_subscriptions:table_config()
+                   ,fun ?MODULE:subscriptions_srv/0
+                  ]).
+
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE('omnipresence_cache')
+-define(CHILDREN, [?WORKER('omnip_subscriptions')
+                   ,?WORKER_ARGS('kazoo_etsmgr_srv', ?ETS_OPTS)
                    ,?WORKER('omnipresence_listener')
                   ]).
 
@@ -32,6 +40,13 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+
+-spec subscriptions_srv() -> pid() | 'undefined'.
+subscriptions_srv() ->
+    case [P || {_, P, 'worker', ['omnip_subscriptions']} <- supervisor:which_children(?MODULE)] of
+        [] -> 'undefined';
+        [Pid] -> Pid
+    end.
 
 %% ===================================================================
 %% Supervisor callbacks
