@@ -24,9 +24,17 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{self, []}
+-define(BINDINGS, [{'self', []}
+                   ,{'notifications', [{'restrict_to', ['presence_update', 'presence_probe'
+                                                        ,'presence_in', 'presence_out'
+                                                       ]}
+                                      ]}
+                   ,{'presence', []} % new Kamailio presence APIs
                   ]).
--define(RESPONDERS, []).
+-define(RESPONDERS, [{{'omnipresence_handlers', 'handle_subscribe'}
+                     ,[{<<"presence">>, <<"subscription">>}]
+                     }
+                    ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
