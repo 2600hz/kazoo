@@ -180,7 +180,7 @@ save_cdr(CDRDb, Doc) ->
   save_cdr(CDRDb, Doc, 0).
 
 -spec save_cdr(api_binary(), wh_json:object(), 0..?MAX_RETRIES) -> {'error', 'max_retries'};
--spec save_cdr(api_binary(), wh_json:object(), integer()) -> 'ok'. 
+	      (api_binary(), wh_json:object(), integer()) -> 'ok'. 
 save_cdr(_, _, ?MAX_RETRIES) -> {'error', 'max_retries'};
 
 save_cdr(CDRDb, Doc, Retries) ->
