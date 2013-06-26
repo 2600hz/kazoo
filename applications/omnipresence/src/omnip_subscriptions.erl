@@ -24,6 +24,7 @@
         ]).
 
 -include("omnipresence.hrl").
+-include_lib("kazoo_etsmgr/include/kazoo_etsmgr.hrl").
 
 -define(EXPIRE_SUBSCRIPTIONS, whapps_config:get_integer(?CONFIG_CAT, <<"expire_check_ms">>, 1000)).
 -define(EXPIRE_MESSAGE, 'clear_expired').
@@ -112,6 +113,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -124,6 +126,11 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}, #state{expire_ref=Ref}=State) ->
+    {'noreply', State#state{expire_ref=start_expire_ref()}};
+handle_info(?TABLE_READY(_Tbl), State) ->
+    lager:debug("recv table_ready for ~p", [_Tbl]),
+    {'noreply', State, 'hibernate'};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.

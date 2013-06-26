@@ -16,14 +16,14 @@
 
 -include("omnipresence.hrl").
 
--define(ETS_OPTS, [omnip_subscriptions:table_id()
-                   ,omnip_subscriptions:table_config()
-                   ,fun ?MODULE:subscriptions_srv/0
+-define(ETS_OPTS, [{'table_id', omnip_subscriptions:table_id()}
+                   ,{'table_options', omnip_subscriptions:table_config()}
+                   ,{'find_me_function', fun ?MODULE:subscriptions_srv/0}
                   ]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('omnip_subscriptions')
-                   ,?WORKER_ARGS('kazoo_etsmgr_srv', ?ETS_OPTS)
+-define(CHILDREN, [?WORKER_ARGS('kazoo_etsmgr_srv', [?ETS_OPTS])
+                   ,?WORKER('omnip_subscriptions')
                    ,?WORKER('omnipresence_listener')
                   ]).
 
