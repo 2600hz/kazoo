@@ -17,8 +17,8 @@
 
 %-spec format_account_id(binary(), integer(), integer()) -> 'ok'.
 
-format_account_id(AccountId, CdrYear, CdrMonth) ->
-    wh_util:format_account_id(list_to_binary([AccountId, <<"-">>, wh_util:to_binary(CdrYear), wh_util:to_binary(CdrMonth)]), 'encoded').
+format_account_id(AccountId, CDRYear, CDRMonth) ->
+    <<(wh_util:format_account_id(AccountId, 'encoded'))/binary,"-",(wh_util:to_binary(CDRYear))/binary,(wh_util:to_binary(CDRMonth))/binary>>.
 
 %%--------------------------------------------------------------------
 %% @doc

@@ -164,35 +164,33 @@ maybe_save_in_account('undefined', _, JObj) ->
     save_in_anonymous_cdrs(JObj);
 maybe_save_in_account(AccountId, Timestamp, JObj) ->
     DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
-    {{CdrYear, CdrMonth, _}, {_, _, _}} = DateTime,
-    CdrDb = cdr_util:format_account_id(AccountId, CdrYear, CdrMonth),
+    {{CDRYear, CDRMonth, _}, {_, _, _}} = DateTime,
+    CDRDb = cdr_util:format_account_id(AccountId, CDRYear, CDRMonth),
     Props = [{'type', 'cdr'}
              ,{'crossbar_doc_vsn', 2}
             ],
-    J = wh_doc:update_pvt_parameters(JObj, CdrDb, Props),
-    io:format("DB Name ~p~n", [CdrDb]),
-    case save_cdr(CdrDb, J) of
+    J = wh_doc:update_pvt_parameters(JObj, CDRDb, Props),
+    case save_cdr(CDRDb, J) of
         {'error', 'max_retries'} -> save_in_anonymous_cdrs(JObj);
-        {'error', _} -> 'ok';
-        {'ok', _} -> 'ok'
+        'ok' -> 'ok'
     end.
 
 -spec save_cdr(api_binary(), wh_json:object()) -> 'ok'.
-save_cdr(CdrDb, Doc) ->
-  save_cdr(CdrDb, Doc, 0).
+save_cdr(CDRDb, Doc) ->
+  save_cdr(CDRDb, Doc, 0).
 
+-spec save_cdr(api_binary(), wh_json:object(), 0..?MAX_RETRIES) -> {'error', 'max_retries'};
 -spec save_cdr(api_binary(), wh_json:object(), integer()) -> 'ok'. 
 save_cdr(_, _, ?MAX_RETRIES) -> {'error', 'max_retries'};
 
-save_cdr(CdrDb, Doc, Retries) ->
-  case couch_mgr:save_doc(CdrDb, Doc) of
-    {error, not_found} ->
-	  couch_mgr:db_create(CdrDb),
-	  save_cdr(CdrDb, Doc, Retries);
-    {ok, _} -> ok;
-    {error, _} -> save_cdr(CdrDb, Doc, Retries+1)
+save_cdr(CDRDb, Doc, Retries) ->
+  case couch_mgr:save_doc(CDRDb, Doc) of
+    {'error', 'not_found'} ->
+	  couch_mgr:db_create(CDRDb),
+	  save_cdr(CDRDb, Doc, Retries);
+    {'ok', _} -> 'ok';
+    {'error', _} -> save_cdr(CDRDb, Doc, Retries+1)
   end.
-
 
 -spec save_in_anonymous_cdrs(wh_json:object()) -> 'ok'.
 save_in_anonymous_cdrs(JObj) ->
@@ -216,23 +214,4 @@ create_anonymous_cdr_db() ->
     couch_mgr:db_create(?WH_ANONYMOUS_CDR_DB),
     couch_mgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>).
 
--spec determine_account_cdr_db(ne_binary()) -> ne_binary().
-determine_account_cdr_db(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case should_store_in_seperate_db(AccountDb, AccountId) of
-        'false' -> AccountDb;
-        'true' -> seperate_cdr_db(AccountId)
-    end.
 
--spec should_store_in_seperate_db(ne_binary(), ne_binary()) -> boolean().
-should_store_in_seperate_db(AccountDb, AccountId) ->
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'error', _} -> 'false';
-        {'ok', JObj} ->
-            wh_json:is_true(<<"pvt_seperate_cdr">>, JObj)
-    end.
-
--spec seperate_cdr_db(ne_binary()) -> ne_binary().
-seperate_cdr_db(AccountId) ->
-    <<"cdrs%2F", AccountId/binary>>.
