@@ -63,7 +63,8 @@ handle_cdr(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj, couch_mgr:get_uuid()),
     AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj),
-    maybe_save_in_account(AccountId, wh_json:set_value(<<"_id">>, CallId, wh_json:normalize_jobj(JObj))).
+    Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
+    maybe_save_in_account(AccountId, Timestamp, wh_json:set_value(<<"_id">>, CallId, wh_json:normalize_jobj(JObj))).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -158,20 +159,40 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_save_in_account(api_binary(), wh_json:object()) -> 'ok'.
-maybe_save_in_account('undefined', JObj) ->
+-spec maybe_save_in_account(api_binary(), api_binary(), wh_json:object()) -> 'ok'.
+maybe_save_in_account('undefined', _, JObj) ->
     save_in_anonymous_cdrs(JObj);
-maybe_save_in_account(AccountId, JObj) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+maybe_save_in_account(AccountId, Timestamp, JObj) ->
+    DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
+    {{CdrYear, CdrMonth, _}, {_, _, _}} = DateTime,
+    CdrDb = cdr_util:format_account_id(AccountId, CdrYear, CdrMonth),
     Props = [{'type', 'cdr'}
              ,{'crossbar_doc_vsn', 2}
             ],
-    J = wh_doc:update_pvt_parameters(JObj, AccountDb, Props),
-    case couch_mgr:save_doc(AccountDb, J) of
-        {'error', 'not_found'} -> save_in_anonymous_cdrs(JObj);
+    J = wh_doc:update_pvt_parameters(JObj, CdrDb, Props),
+    io:format("DB Name ~p~n", [CdrDb]),
+    case save_cdr(CdrDb, J) of
+        {'error', 'max_retries'} -> save_in_anonymous_cdrs(JObj);
         {'error', _} -> 'ok';
         {'ok', _} -> 'ok'
     end.
+
+-spec save_cdr(api_binary(), wh_json:object()) -> 'ok'.
+save_cdr(CdrDb, Doc) ->
+  save_cdr(CdrDb, Doc, 0).
+
+-spec save_cdr(api_binary(), wh_json:object(), integer()) -> 'ok'. 
+save_cdr(_, _, ?MAX_RETRIES) -> {'error', 'max_retries'};
+
+save_cdr(CdrDb, Doc, Retries) ->
+  case couch_mgr:save_doc(CdrDb, Doc) of
+    {error, not_found} ->
+	  couch_mgr:db_create(CdrDb),
+	  save_cdr(CdrDb, Doc, Retries);
+    {ok, _} -> ok;
+    {error, _} -> save_cdr(CdrDb, Doc, Retries+1)
+  end.
+
 
 -spec save_in_anonymous_cdrs(wh_json:object()) -> 'ok'.
 save_in_anonymous_cdrs(JObj) ->
