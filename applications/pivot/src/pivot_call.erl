@@ -173,7 +173,7 @@ handle_cast({'request', Uri, Method}, #state{call=Call
 handle_cast({'request', Uri, Method, Params}, #state{call=Call}=State) ->
     Call1 = kzt_util:set_voice_uri(Uri, Call),
 
-    {'ok', ReqId} = send_req(Call1, Uri, Method, Params),
+    {'ok', ReqId, Call2} = send_req(Call1, Uri, Method, Params),
     lager:debug("sent request ~p to '~s' via '~s'", [ReqId, Uri, Method]),
     {'noreply', State#state{request_id=ReqId
                             ,request_params=Params
@@ -181,7 +181,7 @@ handle_cast({'request', Uri, Method, Params}, #state{call=Call}=State) ->
                             ,response_body = <<>>
                             ,method=Method
                             ,voice_uri=Uri
-                            ,call=Call1
+                            ,call=Call2
                            }};
 
 handle_cast({'updated_call', Call}, State) ->
@@ -334,18 +334,19 @@ code_change(_OldVsn, State, _Extra) ->
 send_req(Call, Uri, 'get', BaseParams) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = wh_json:set_values(wh_json:to_proplist(BaseParams), UserParams),
-
-    send(Call, uri(Uri, wh_json:to_querystring(Params)), 'get', [], []);
+    UpdatedCall = whapps_call:kvs_erase(<<"digits_collected">>, Call),
+    send(UpdatedCall, uri(Uri, wh_json:to_querystring(Params)), 'get', [], []);
 
 send_req(Call, Uri, 'post', BaseParams) when is_list(BaseParams) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = wh_json:set_values(BaseParams, UserParams),
+    UpdatedCall = whapps_call:kvs_erase(<<"digits_collected">>, Call),
+    send(UpdatedCall, Uri, 'post', [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params));
 
-    send(Call, Uri, 'post', [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params));
 send_req(Call, Uri, 'post', BaseParams) ->
     send_req(Call, Uri, 'post', wh_json:to_proplist(BaseParams)).
 
--spec send(whapps_call:call(), iolist(), atom(), wh_proplist(), iolist()) -> 
+-spec send(whapps_call:call(), iolist(), atom(), wh_proplist(), iolist()) ->
                         'ok' |
                         {'ok', ibrowse_req_id()} |
                         {'stop', whapps_call:call()}.
@@ -359,7 +360,7 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
     case ibrowse:send_req(wh_util:to_list(Uri), ReqHdrs, Method, ReqBody, Opts) of
         {'ibrowse_req_id', ReqId} ->
             lager:debug("response coming in asynchronosly to ~p", [ReqId]),
-            {'ok', ReqId};
+            {'ok', ReqId, Call};
         {'ok', "200", RespHdrs, RespBody} ->
             lager:debug("recv 200: ~s", [RespBody]),
             handle_resp(Call, RespHdrs, RespBody);
