@@ -596,6 +596,16 @@ event_specific(<<"CHANNEL_CREATE">>, _, Prop) ->
      ,{<<"From">>, ecallmgr_util:get_sip_from(Prop)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(Prop)}
     ];
+event_specific(<<"CHANNEL_ANSWER">>, _, Prop) ->
+    [{<<"To">>, ecallmgr_util:get_sip_to(Prop)}
+     ,{<<"From">>, ecallmgr_util:get_sip_from(Prop)}
+     ,{<<"Request">>, ecallmgr_util:get_sip_request(Prop)}
+    ];
+event_specific(<<"CHANNEL_DESTROY">>, _, Prop) ->
+    [{<<"To">>, ecallmgr_util:get_sip_to(Prop)}
+     ,{<<"From">>, ecallmgr_util:get_sip_from(Prop)}
+     ,{<<"Request">>, ecallmgr_util:get_sip_request(Prop)}
+    ];
 
 event_specific(<<"RECORD_STOP">>, _, Prop) ->
     [{<<"Application-Name">>, <<"record">>}
