@@ -25,12 +25,12 @@
 -define(SUBSCRIPTIONS_EXCHANGE, <<"dialoginfo_subs">>).
 -define(UPDATES_EXCHANGE, <<"dialoginfo">>).
 
--define(SUBSCRIBE_HEADERS, [<<"User">>, <<"Exipres">>, <<"Queue">>]).
+-define(SUBSCRIBE_HEADERS, [<<"User">>, <<"Expires">>, <<"Queue">>]).
 -define(OPTIONAL_SUBSCRIBE_HEADERS, []).
 -define(SUBSCRIBE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                            ,{<<"Event-Name">>, <<"subscription">>}
                           ]).
--define(SUBSCRIBE_TYPES, []).
+-define(SUBSCRIBE_TYPES, [{<<"Expires">>, fun(V) -> is_integer(wh_util:to_integer(V)) end}]).
 
 -define(UPDATE_HEADERS, [<<"To">>, <<"From">>, <<"State">>, <<"Call-ID">>]).
 -define(OPTIONAL_UPDATE_HEADERS, [<<"From-Tag">>, <<"To-Tag">>]).
@@ -51,7 +51,7 @@
 subscribe(Prop) when is_list(Prop) ->
     case subscribe_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?SUBSCRIBE_HEADERS, ?OPTIONAL_SUBSCRIBE_HEADERS);
-        'false' -> {'error', "Proplist failed validation for mwi query"}
+        'false' -> {'error', "Proplist failed validation for subscription"}
     end;
 subscribe(JObj) -> subscribe(wh_json:to_proplist(JObj)).
 
@@ -78,14 +78,17 @@ update_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?UPDATE_HEADERS, ?UPDATE_VALUES, ?UPDATE_TYPES);
 update_v(JObj) -> update_v(wh_json:to_proplist(JObj)).
 
-bind_q(Queue, _Props) ->
+bind_q(Queue, Props) ->
     amqp_util:new_exchange(?SUBSCRIPTIONS_EXCHANGE, <<"fanout">>),
     amqp_util:new_exchange(?UPDATES_EXCHANGE, <<"direct">>),
 
-    amqp_util:bind_q_to_exchange(Queue, <<"presence.subscriptions.*">>, ?SUBSCRIPTIONS_EXCHANGE).
+    Realm = props:get_value('realm', Props, <<"*">>),
 
-unbind_q(Queue, _Props) ->
-    amqp_util:unbind_q_from_exchange(Queue, <<"presence.subscriptions.*">>, ?SUBSCRIPTIONS_EXCHANGE).
+    amqp_util:bind_q_to_exchange(Queue, Queue, ?SUBSCRIPTIONS_EXCHANGE).
+
+unbind_q(Queue, Props) ->
+    Realm = props:get_value('realm', Props, <<"*">>),
+    amqp_util:unbind_q_from_exchange(Queue, subscribe_routing_key(Realm), ?SUBSCRIPTIONS_EXCHANGE).
 
 publish_subscribe(JObj) ->
     publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
@@ -102,7 +105,10 @@ publish_update(Q, API, ContentType) ->
 subscribe_routing_key(Prop) when is_list(Prop) ->
     subscribe_routing_key(props:get_value(<<"User">>, Prop));
 subscribe_routing_key(User) when is_binary(User) ->
-    [_To, Realm] = binary:split(User, <<"@">>),
-    <<"presence.subscriptions.", Realm/binary>>;
+    R = case binary:split(User, <<"@">>) of
+            [_To, Realm] -> amqp_util:encode(Realm);
+            [Realm] -> amqp_util:encode(Realm)
+        end,
+    <<"presence.subscriptions.", R/binary>>;
 subscribe_routing_key(JObj) ->
     subscribe_routing_key(wh_json:get_value(<<"User">>, JObj)).
