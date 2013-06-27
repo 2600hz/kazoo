@@ -15,6 +15,7 @@
          ,handle_presence_update/2
          ,handle_new_channel/2
          ,handle_destroy_channel/2
+         ,handle_answered_channel/2
          ,handle_query_req/2
 
          ,table_id/0
@@ -31,6 +32,10 @@
 
 -include("omnipresence.hrl").
 -include_lib("kazoo_etsmgr/include/kazoo_etsmgr.hrl").
+
+-define(PRESENCE_HANGUP, <<"terminated">>).
+-define(PRESENCE_RINGING, <<"early">>).
+-define(PRESENCE_ANSWERED, <<"confirmed">>).
 
 -define(EXPIRE_SUBSCRIPTIONS, whapps_config:get_integer(?CONFIG_CAT, <<"expire_check_ms">>, 1000)).
 -define(EXPIRE_MESSAGE, 'clear_expired').
@@ -72,18 +77,57 @@ handle_subscribe(JObj, Props) ->
                       ,{'subscribe', subscribe_to_record(JObj)}
                      ).
 
-handle_presence_update(JObj, Props) ->
+handle_presence_update(JObj, _Props) ->
     'true' = wapi_notifications:presence_update_v(JObj),
-
     lager:debug("presence update recv: ~p", [JObj]).
 
-handle_new_channel(JObj, Props) ->
+handle_new_channel(JObj, _Props) ->
     'true' = wapi_call:new_channel_v(JObj),
-    lager:debug("new channel: ~p", [JObj]).
 
-handle_destroy_channel(JObj, Props) ->
+    To = wh_json:get_value(<<"To">>, JObj),
+    From = wh_json:get_value(<<"From">>, JObj),
+
+    maybe_send_update(To, JObj, ?PRESENCE_RINGING),
+    maybe_send_update(From, JObj, ?PRESENCE_RINGING).
+
+handle_answered_channel(JObj, _Props) ->
+    'true' = wapi_call:answered_channel_v(JObj),
+
+    To = wh_json:get_value(<<"To">>, JObj),
+    From = wh_json:get_value(<<"From">>, JObj),
+
+    maybe_send_update(To, JObj, ?PRESENCE_ANSWERED),
+    maybe_send_update(From, JObj, ?PRESENCE_ANSWERED).
+
+
+maybe_send_update(User, JObj, Update) ->
+    case find_subscriptions(User) of
+        {'ok', Subs} ->
+            [send_update(Update, JObj, S) || S <- Subs];
+        {'error', 'not_found'} ->
+            lager:debug("no subs for ~s(~s)", [User, Update])
+    end.
+send_update(Update, JObj, #omnip_subscription{user=U
+                                              ,stalker=S
+                                             }) ->
+    lager:debug("sending update ~s to ~s(~s)", [Update, U, S]),
+
+    Prop = [{<<"To">>, U}
+            ,{<<"From">>, U}
+            ,{<<"State">>, Update}
+            ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    whapps_util:amqp_pool_send(Prop, fun(API) -> wapi_presence:publish_update(S, API) end).
+
+handle_destroy_channel(JObj, _Props) ->
     'true' = wapi_call:destroy_channel_v(JObj),
-    lager:debug("destroy channel: ~p", [JObj]).
+
+    To = wh_json:get_value(<<"To">>, JObj),
+    From = wh_json:get_value(<<"From">>, JObj),
+
+    maybe_send_update(To, JObj, ?PRESENCE_HANGUP),
+    maybe_send_update(From, JObj, ?PRESENCE_HANGUP).
 
 subscribe_to_record(JObj) ->
     U = wh_json:get_value(<<"User">>, JObj),
@@ -216,7 +260,7 @@ find_subscription(#omnip_subscription{user=U
             {'ok', Sub}
     end.
 
--spec find_subscriptions(subscription()) ->
+-spec find_subscriptions(subscription() | ne_binary()) ->
                                 {'ok', subscriptions()} |
                                 {'error', 'not_found'}.
 find_subscriptions(#omnip_subscription{user=U}) ->
@@ -226,7 +270,9 @@ find_subscriptions(#omnip_subscription{user=U}) ->
     of
         [] -> {'error', 'not_found'};
         Subs -> {'ok', Subs}
-    end.
+    end;
+find_subscriptions(User) when is_binary(User) ->
+    find_subscriptions(#omnip_subscription{user=User}).
 
 expire_old_subscriptions() ->
     Now = wh_util:current_tstamp(),
