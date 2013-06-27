@@ -243,6 +243,98 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec process_event(api_binary(), wh_proplist(), atom()) -> 'ok'.
+process_event(UUID, Props, Node) ->
+    wh_util:put_callid(UUID),
+    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
+    process_event(EventName, UUID, Props, Node).
+
+-spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+process_event(<<"CHANNEL_CREATE">> = EventName, UUID, Props, Node) ->
+    _ = ecallmgr_fs_channel:new(Props, Node),
+    _ = maybe_start_event_listener(Node, UUID),
+    _ = publish_new_channel_event(Props),
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
+    _ = ecallmgr_fs_channel:destroy(Props, Node),
+    _ = publish_destroy_channel_event(Props),
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"CHANNEL_ANSWER">> = EventName, UUID, Props, Node) ->
+    _ = ecallmgr_fs_channel:set_answered(UUID, 'true'),
+    _ = publish_answered_channel_event(Props),
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"CHANNEL_BRIDGE">> = EventName, UUID, Props, Node) ->
+    OtherLeg = get_other_leg(UUID, Props),
+    _ = ecallmgr_fs_channel:set_bridge(UUID, OtherLeg),
+    _ = ecallmgr_fs_channel:set_bridge(OtherLeg, UUID),
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"CHANNEL_UNBRIDGE">> = EventName, UUID, Props, Node) ->
+    OtherLeg = get_other_leg(UUID, Props),
+    _ = ecallmgr_fs_channel:set_bridge(UUID, 'undefined'),
+    _ = ecallmgr_fs_channel:set_bridge(OtherLeg, 'undefined'),
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"CHANNEL_EXECUTE_COMPLETE">> = EventName, UUID, Props, Node) ->
+    Data = props:get_value(<<"Application-Data">>, Props),
+    _ = case props:get_value(<<"Application">>, Props) of
+            <<"set">> -> process_channel_update(UUID, Data);
+            <<"export">> -> process_channel_update(UUID, Data);
+            <<"multiset">> -> process_channel_multiset(UUID, Data);
+            _Else -> 'ok'
+        end,
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"conference::maintenance">> = EventName, UUID, Props, Node) ->
+    _ = ecallmgr_fs_conferences:event(Node, UUID, Props),
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"sofia::transferor">> = EventName, UUID, Props, Node) ->
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"sofia::transferee">> = EventName, UUID, Props, Node) ->
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"sofia::replaced">> = EventName, UUID, Props, Node) ->
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
+    UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
+    gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
+               ,?CHANNEL_MOVE_RELEASED_MSG(Node, UUID, Props)
+              );
+process_event(?CHANNEL_MOVE_COMPLETE_EVENT_BIN, _, Props, Node) ->
+    UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
+    gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
+               ,?CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Props)
+              );
+process_event(EventName, UUID, Props, Node) ->
+    maybe_send_event(EventName, UUID, Props, Node).
+
+-spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+maybe_send_event(EventName, UUID, Props, Node) ->
+    case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
+        'true' -> 'ok';
+        'false' ->
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
+            maybe_send_call_event(UUID, Props, Node)
+    end.
+
+-spec maybe_send_call_event(api_binary(), wh_proplist(), atom()) -> any().
+maybe_send_call_event('undefined', _, _) -> 'ok';
+maybe_send_call_event(CallId, Props, Node) ->
+    gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}, {'event', [CallId | Props]}).
+
+-spec publish_new_channel_event(wh_proplist()) -> 'ok'.
+publish_new_channel_event(Props) ->
+    Req = wh_api:default_headers(<<"channel">>, <<"new">>, ?APP_NAME, ?APP_VERSION) ++
+        ecallmgr_call_events:create_event_props(<<"CHANNEL_CREATE">>, 'undefined', Props),
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_new_channel/1).
+
+-spec publish_answered_channel_event(wh_proplist()) -> 'ok'.
+publish_answered_channel_event(Props) ->
+    wapi_call:publish_answered_channel(wh_api:default_headers(<<"channel">>, <<"answered">>, ?APP_NAME, ?APP_VERSION) ++
+                                           ecallmgr_call_events:create_event_props(<<"CHANNEL_ANSWER">>, 'undefined', Props)
+                                      ).
+-spec publish_destroy_channel_event(wh_proplist()) -> 'ok'.
+publish_destroy_channel_event(Props) ->
+    Req = wh_api:default_headers(<<"channel">>, <<"destroy">>, ?APP_NAME, ?APP_VERSION) ++
+                                          ecallmgr_call_events:create_event_props(<<"CHANNEL_DESTROY">>, 'undefined', Props),
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_destroy_channel/1).
+
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
                       {'error', {atom(), nonempty_string()}, ne_binary()} |
                       {'timeout', {atom(), ne_binary()}}.
