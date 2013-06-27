@@ -29,13 +29,16 @@
 -define(BINDINGS, [{'self', []}
                    %% new Kamailio presence APIs
                    ,{'notifications', [{'restrict_to', ['presence_update', 'presence_probe']}]}
-                   ,{'call', [{'restrict_to', ['new_channel', 'destroy_channel']}]}
+                   ,{'call', [{'restrict_to', ['new_channel', 'answered_channel', 'destroy_channel']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_presence_update'}
                        ,[{<<"notification">>, <<"presence_update">>}]
                       }
                      ,{{'omnip_subscriptions', 'handle_new_channel'}
                        ,[{<<"channel">>, <<"new">>}]
+                      }
+                     ,{{'omnip_subscriptions', 'handle_answered_channel'}
+                       ,[{<<"channel">>, <<"answered">>}]
                       }
                      ,{{'omnip_subscriptions', 'handle_destroy_channel'}
                        ,[{<<"channel">>, <<"destroy">>}]
