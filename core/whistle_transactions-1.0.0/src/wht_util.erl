@@ -107,7 +107,7 @@ current_balance(AccountId) ->
         {'ok', [ViewRes|_]} ->
             wh_json:get_integer_value(<<"value">>, ViewRes, 0);
         {'error', _R} ->
-            lager:warning("unable to get current balance for ~s: ~p", [AccountId, _R]),
+            lager:debug("unable to get current balance for ~s: ~p", [AccountId, _R]),
             0
     end.
 
