@@ -69,25 +69,25 @@
 %% Call Events
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>
-                                          ,<<"Custom-Channel-Vars">>, <<"Timestamp">>, <<"Channel-State">>
-                                          ,<<"Call-Direction">>, <<"Transfer-History">>
-                                          ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>
-                                          ,<<"Other-Leg-Caller-ID-Number">>, <<"Other-Leg-Destination-Number">>
-                                          ,<<"Other-Leg-Unique-ID">> %% BRIDGE
-                                          ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
-                                          ,<<"Terminator">>, <<"Disposition">>
-                                          ,<<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
-                                          ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>
-                                          ,<<"Length">>, <<"Silence-Terminated">> %% Record-related
-                                          ,<<"Channel-Call-State">>
-                                          ,<<"Fax-Success">>, <<"Fax-Result-Code">>
-                                          ,<<"Fax-Result-Text">>, <<"Fax-ECM-Used">>
-                                          ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>
-                                          ,<<"Fax-Bad-Rows">>, <<"Fax-Transfer-Rate">>
-                                          ,<<"Switch-Hostname">>, <<"Group-ID">>
-                                          ,<<"Control-Queue">>, <<"Channel-Moving">>
-                                          ,<<"Conference-Name">>, <<"Conference-Config">>
-                                          ,<<"Replaced-By">>
+                                      ,<<"Custom-Channel-Vars">>, <<"Timestamp">>, <<"Channel-State">>
+                                      ,<<"Call-Direction">>, <<"Transfer-History">>
+                                      ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>
+                                      ,<<"Other-Leg-Caller-ID-Number">>, <<"Other-Leg-Destination-Number">>
+                                      ,<<"Other-Leg-Unique-ID">> %% BRIDGE
+                                      ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
+                                      ,<<"Terminator">>, <<"Disposition">>
+                                      ,<<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
+                                      ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>
+                                      ,<<"Length">>, <<"Silence-Terminated">> %% Record-related
+                                      ,<<"Channel-Call-State">>
+                                      ,<<"Fax-Success">>, <<"Fax-Result-Code">>
+                                      ,<<"Fax-Result-Text">>, <<"Fax-ECM-Used">>
+                                      ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>
+                                      ,<<"Fax-Bad-Rows">>, <<"Fax-Transfer-Rate">>
+                                      ,<<"Switch-Hostname">>, <<"Group-ID">>
+                                      ,<<"Control-Queue">>, <<"Channel-Moving">>
+                                      ,<<"Conference-Name">>, <<"Conference-Config">>
+                                      ,<<"Replaced-By">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
