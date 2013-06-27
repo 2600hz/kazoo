@@ -606,7 +606,7 @@ track_assignment(Numbers, Assignment) ->
                     lists:foreach(
                         fun(Num) ->
                             NumRecord = wnm_number:get(Num),
-                            wnm_number:save_phone_number_docs(NumRecord#number{used_by=Assignment})
+                            wnm_number:save(NumRecord#number{used_by=Assignment})
                         end, Nums
                     )
                 end
