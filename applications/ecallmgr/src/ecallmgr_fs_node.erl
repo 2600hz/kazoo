@@ -305,6 +305,7 @@ process_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(<<"CHANNEL_ANSWER">> = EventName, UUID, Props, Node) ->
     _ = ecallmgr_fs_channel:set_answered(UUID, 'true'),
+    _ = publish_answered_channel_event(Props),
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(<<"CHANNEL_BRIDGE">> = EventName, UUID, Props, Node) ->
     OtherLeg = get_other_leg(UUID, Props),
@@ -366,6 +367,11 @@ publish_new_channel_event(Props) ->
     wapi_call:publish_new_channel(wh_api:default_headers(<<"channel">>, <<"new">>, ?APP_NAME, ?APP_VERSION) ++
                                       ecallmgr_call_events:create_event_props(<<"CHANNEL_CREATE">>, 'undefined', Props)
                                  ).
+-spec publish_answered_channel_event(wh_proplist()) -> 'ok'.
+publish_answered_channel_event(Props) ->
+    wapi_call:publish_answered_channel(wh_api:default_headers(<<"channel">>, <<"answered">>, ?APP_NAME, ?APP_VERSION) ++
+                                           ecallmgr_call_events:create_event_props(<<"CHANNEL_ANSWER">>, 'undefined', Props)
+                                      ).
 -spec publish_destroy_channel_event(wh_proplist()) -> 'ok'.
 publish_destroy_channel_event(Props) ->
     wapi_call:publish_destroy_channel(wh_api:default_headers(<<"channel">>, <<"destroy">>, ?APP_NAME, ?APP_VERSION) ++
