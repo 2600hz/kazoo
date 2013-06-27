@@ -13,6 +13,7 @@
 
 -export([new_channel/1, new_channel_v/1]).
 -export([destroy_channel/1, destroy_channel_v/1]).
+-export([answered_channel/1, answered_channel_v/1]).
 -export([event/1, event_v/1]).
 -export([channel_status_req/1, channel_status_req_v/1]).
 -export([channel_status_resp/1, channel_status_resp_v/1]).
@@ -28,6 +29,7 @@
 
 -export([publish_new_channel/1, publish_new_channel/2]).
 -export([publish_destroy_channel/1, publish_destroy_channel/2]).
+-export([publish_answered_channel/1, publish_answered_channel/2]).
 -export([publish_event/2, publish_event/3]).
 -export([publish_channel_status_req/1 ,publish_channel_status_req/2, publish_channel_status_req/3]).
 -export([publish_channel_status_resp/2, publish_channel_status_resp/3]).
@@ -65,6 +67,16 @@
                                  ,{<<"Event-Name">>, <<"destroy">>}
                                 ]).
 -define(DESTROY_CHANNEL_TYPES, []).
+
+-define(ANSWERED_CHANNEL_ROUTING_KEY(CALLID), <<"call.answered_channel.", (amqp_util:encode(CALLID))/binary>>).
+-define(ANSWERED_CHANNEL_HEADERS, [<<"Call-ID">>]).
+-define(OPTIONAL_ANSWERED_CHANNEL_HEADERS, [<<"To">>, <<"From">>, <<"Request">>
+                                                | ?OPTIONAL_CALL_EVENT_HEADERS
+                                           ]).
+-define(ANSWERED_CHANNEL_VALUES, [{<<"Event-Category">>, <<"channel">>}
+                                  ,{<<"Event-Name">>, <<"answered">>}
+                                 ]).
+-define(ANSWERED_CHANNEL_TYPES, []).
 
 %% Call Events
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).
@@ -242,6 +254,24 @@ destroy_channel_v(Prop) when is_list(Prop) ->
 destroy_channel_v(JObj) -> destroy_channel_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc Format a call event from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec answered_channel(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+answered_channel(Prop) when is_list(Prop) ->
+    case answered_channel_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?ANSWERED_CHANNEL_HEADERS, ?OPTIONAL_ANSWERED_CHANNEL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for answered_channel"}
+    end;
+answered_channel(JObj) -> answered_channel(wh_json:to_proplist(JObj)).
+
+-spec answered_channel_v(api_terms()) -> boolean().
+answered_channel_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?ANSWERED_CHANNEL_HEADERS, ?ANSWERED_CHANNEL_VALUES, ?ANSWERED_CHANNEL_TYPES);
+answered_channel_v(JObj) -> answered_channel_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Inquire into the status of a channel
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -415,6 +445,7 @@ bind_q(Q, 'undefined', CallId) ->
     'ok' = amqp_util:bind_q_to_callevt(Q, CallId, 'cdr'),
     'ok' = amqp_util:bind_q_to_callmgr(Q, ?NEW_CHANNEL_ROUTING_KEY),
     'ok' = amqp_util:bind_q_to_callmgr(Q, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)),
+    'ok' = amqp_util:bind_q_to_callmgr(Q, ?ANSWERED_CHANNEL_ROUTING_KEY(CallId)),
     'ok' = amqp_util:bind_q_to_callevt(Q, CallId, 'publisher_usurp');
 
 bind_q(Q, ['events'|T], CallId) ->
@@ -432,6 +463,9 @@ bind_q(Q, ['new_channel'|T], CallId) ->
 bind_q(Q, ['destroy_channel'|T], CallId) ->
     'ok' = amqp_util:bind_q_to_callmgr(Q, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)),
     bind_q(Q, T, CallId);
+bind_q(Q, ['answered_channel'|T], CallId) ->
+    'ok' = amqp_util:bind_q_to_callmgr(Q, ?ANSWERED_CHANNEL_ROUTING_KEY(CallId)),
+    bind_q(Q, T, CallId);
 bind_q(Q, ['publisher_usurp'|T], CallId) ->
     'ok' = amqp_util:bind_q_to_callevt(Q, CallId, 'publisher_usurp'),
     bind_q(Q, T, CallId);
@@ -448,6 +482,7 @@ unbind_q(Q, 'undefined', CallId) ->
     'ok' = amqp_util:unbind_q_from_callevt(Q, CallId, 'cdr'),
     'ok' = amqp_util:unbind_q_from_callmgr(Q, ?NEW_CHANNEL_ROUTING_KEY),
     'ok' = amqp_util:unbind_q_from_callmgr(Q, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)),
+    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?ANSWERED_CHANNEL_ROUTING_KEY(CallId)),
     'ok' = amqp_util:unbind_q_from_callevt(Q, CallId, 'publisher_usurp');
 
 unbind_q(Q, ['events'|T], CallId) ->
@@ -464,6 +499,9 @@ unbind_q(Q, ['new_channel'|T], CallId) ->
     unbind_q(Q, T, CallId);
 unbind_q(Q, ['destroy_channel'|T], CallId) ->
     'ok' = amqp_util:unbind_q_from_callmgr(Q, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)),
+    unbind_q(Q, T, CallId);
+unbind_q(Q, ['answered_channel'|T], CallId) ->
+    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?ANSWERED_CHANNEL_ROUTING_KEY(CallId)),
     unbind_q(Q, T, CallId);
 unbind_q(Q, ['publisher_usurp'|T], CallId) ->
     'ok' = amqp_util:unbind_q_from_callevt(Q, CallId, 'publisher_usurp'),
@@ -492,6 +530,14 @@ publish_destroy_channel(Event, ContentType) ->
     CallId = callid(Event),
     {'ok', Payload} = wh_api:prepare_api_payload(Event, ?DESTROY_CHANNEL_VALUES, fun ?MODULE:destroy_channel/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)).
+
+-spec publish_answered_channel(api_terms()) -> 'ok'.
+-spec publish_answered_channel(api_terms(), ne_binary()) -> 'ok'.
+publish_answered_channel(JObj) -> publish_answered_channel(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_answered_channel(Event, ContentType) ->
+    CallId = callid(Event),
+    {'ok', Payload} = wh_api:prepare_api_payload(Event, ?ANSWERED_CHANNEL_VALUES, fun ?MODULE:answered_channel/1),
+    amqp_util:callmgr_publish(Payload, ContentType, ?ANSWERED_CHANNEL_ROUTING_KEY(CallId)).
 
 -spec callid(api_terms()) -> api_binary().
 callid(Props) when is_list(Props) ->
