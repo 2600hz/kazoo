@@ -15,7 +15,7 @@
             "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc.pvt_account_id); emit([t.slice(-2,-1)[0], t], {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm}); }"
         }
         ,"listing_by_descendants": {
-            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc.pvt_account_id); for (var i in t) { emit([t[i], t], {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm}); } }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc.pvt_account_id); for (var i in t) { emit([t[i], t], {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm, 'tree': doc.pvt_tree}); } }"
         },
         "listing_by_api": {
             "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.pvt_api_key, {'account_id': doc.pvt_account_id}); }"
