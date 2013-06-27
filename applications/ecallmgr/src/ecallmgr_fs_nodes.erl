@@ -262,7 +262,11 @@ handle_cast({'remove_node', #node{node=NodeName}}, #state{nodes=Nodes}=State) ->
     erlang:monitor_node(NodeName, 'false'),
     {'noreply', State#state{nodes=dict:erase(NodeName, Nodes)}};
 handle_cast({'rm_fs_node', NodeName}, State) ->
-    spawn(fun() -> maybe_rm_fs_node(NodeName, State) end),
+    LogId = get('callid'),
+    spawn(fun() ->
+                  put('callid', LogId),
+                  maybe_rm_fs_node(NodeName, State)
+          end),
     {'noreply', State};
 handle_cast({'new_channel', Channel}, State) ->
     ets:insert(?CHANNELS_TBL, Channel),
@@ -413,7 +417,7 @@ maybe_add_node(NodeName, Cookie, Options, #state{self=Srv, nodes=Nodes}) ->
 -spec maybe_rm_fs_node(atom(), state()) -> 'ok'.
 maybe_rm_fs_node(NodeName, #state{nodes=Nodes}=State) ->
     case dict:find(NodeName, Nodes) of
-        'error' -> 'ok';
+        'error' -> close_node(#node{node=NodeName});
         {'ok', #node{}=Node} ->
             rm_fs_node(Node, State)
     end.
