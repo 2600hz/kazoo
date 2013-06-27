@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(omnipresence_listener).
+-module(omnip_shared_listener).
 
 -behaviour(gen_listener).
 
@@ -28,19 +28,22 @@
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
                    %% new Kamailio presence APIs
-                   ,{'presence', [{'restrict_to', ['subscribe', 'update']}]}
                    ,{'notifications', [{'restrict_to', ['presence_update', 'presence_probe']}]}
+                   ,{'call', [{'restrict_to', ['new_channel', 'destroy_channel']}]}
                   ]).
--define(RESPONDERS, [{{'omnip_subscriptions', 'handle_subscribe'}
-                      ,[{<<"presence">>, <<"subscription">>}]
-                     }
-                     ,{{'omnip_subscriptions', 'handle_presence_update'}
+-define(RESPONDERS, [{{'omnip_subscriptions', 'handle_presence_update'}
                        ,[{<<"notification">>, <<"presence_update">>}]
                       }
+                     ,{{'omnip_subscriptions', 'handle_new_channel'}
+                       ,[{<<"channel">>, <<"new">>}]
+                      }
+                     ,{{'omnip_subscriptions', 'handle_destroy_channel'}
+                       ,[{<<"channel">>, <<"destroy">>}]
+                      }
                     ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_NAME, <<"omnip_shared_listener">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API

@@ -25,6 +25,7 @@
 -define(CHILDREN, [?WORKER_ARGS('kazoo_etsmgr_srv', [?ETS_OPTS])
                    ,?WORKER('omnip_subscriptions')
                    ,?WORKER('omnipresence_listener')
+                   ,?WORKER('omnip_shared_listener')
                   ]).
 
 %% ===================================================================
