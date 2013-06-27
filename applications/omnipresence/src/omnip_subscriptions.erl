@@ -10,7 +10,10 @@
 -behaviour(gen_server).
 
 -export([start_link/0
+
+         ,handle_subscribe/2
          ,handle_query_req/2
+
          ,table_id/0
          ,table_config/0
         ]).
@@ -34,11 +37,13 @@
          }).
 
 -record(omnip_subscription, {
-          user :: api_binary()
-          ,stalker :: ne_binary() % amqp queue to publish updates to
-          ,expires = 0 :: non_neg_integer()
-          ,protocol = <<"sip">> :: ne_binary() % protocol
+          user :: ne_binary() | '_'
+          ,stalker :: ne_binary() | '_' % amqp queue to publish updates to
+          ,expires = 0 :: non_neg_integer() | '_' | '$2'
+          ,timestamp = wh_util:current_tstamp() :: wh_now() | '_' | '$1'
+          ,protocol = <<"sip">> :: ne_binary() | '_' % protocol
          }).
+-type subscription() :: #omnip_subscription{}.
 
 %%%===================================================================
 %%% API
@@ -57,9 +62,32 @@ start_link() ->
 handle_query_req(_JObj, _Props) ->
     'ok'.
 
+handle_subscribe(JObj, Props) ->
+    'true' = wapi_presence:subscribe_v(JObj),
+    gen_listener:cast(props:get_value(?MODULE, Props)
+                      ,{'subscribe', subscribe_to_record(JObj)}
+                     ).
+
+subscribe_to_record(JObj) ->
+    U = wh_json:get_value(<<"User">>, JObj),
+    S = wh_json:get_value(<<"Queue">>, JObj),
+    E = expires(JObj),
+    P = protocol(U),
+    #omnip_subscription{user=U
+                        ,stalker=S
+                        ,expires=E
+                        ,protocol=P
+                       }.
+
+expires(I) when is_integer(I) -> I;
+expires(JObj) -> expires(wh_json:get_integer_value(<<"Expires">>, JObj)).
+
+protocol(<<"sip:", _/binary>>) -> <<"sip">>;
+protocol(_U) -> <<"sip">>.
+
 table_id() -> 'omnipresence_subscriptions'.
 table_config() ->
-    ['protected', 'named_table'
+    ['protected', 'named_table', 'bag'
      ,{'keypos', #omnip_subscription.user}
     ].
 
@@ -112,9 +140,73 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'subscribe', #omnip_subscription{expires=E
+                                              ,user=_U
+                                              ,stalker=_S
+                                             }=S}, State) when E =< 0 ->
+    lager:debug("maybe remove subscription for ~s(~s)", [_U, _S]),
+    case find_subscription(S) of
+        {'ok', #omnip_subscription{timestamp=_T
+                                   ,expires=_E
+                                   }=O} ->
+            lager:debug("found subscription, removing (had ~p s left)", [_E - wh_util:elapsed_s(_T)]),
+            ets:delete_object(table_id(), O);
+        {'error', 'not_found'} ->
+            lager:debug("subscription not found, ignoring")
+    end,
+    {'noreply', State};
+handle_cast({'subscribe', #omnip_subscription{user=_U
+                                              ,stalker=_S
+                                             }=S}, State) ->
+    lager:debug("updating (or creating) subscription for ~s(~s)", [_U, _S]),
+    case find_subscription(S) of
+        {'ok', #omnip_subscription{timestamp=_T
+                                   ,expires=_E
+                                  }=O} ->
+            lager:debug("found subscription, removing old subscription (had ~p s left)", [_E - wh_util:elapsed_s(_T)]),
+            ets:delete_object(table_id(), O);
+        {'error', 'not_found'} -> 'ok'
+    end,
+    lager:debug("creating subscription"),
+    ets:insert(table_id(), S),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
+
+-spec find_subscription(subscription()) ->
+                               {'ok', subscription()} |
+                               {'error', 'not_found'}.
+find_subscription(#omnip_subscription{user=U
+                                      ,stalker=S
+                                     }) ->
+    case ets:match_object(table_id(), #omnip_subscription{user=U
+                                                          ,stalker=S
+                                                          ,_='_'
+                                                         })
+    of
+        [] -> {'error', 'not_found'};
+        [#omnip_subscription{}=Sub] -> {'ok', Sub};
+        Subs ->
+            {#omnip_subscription{}=Sub, _} =
+                lists:foldl(fun(#omnip_subscription{timestamp=T}=SubT, {_, Tc}=Acc) ->
+                                    case T > Tc of
+                                        'true' -> {SubT, T};
+                                        'false' -> Acc
+                                    end
+                            end, {'ok', 0}, Subs),
+            {'ok', Sub}
+    end.
+
+expire_old_subscriptions() ->
+    Now = wh_util:current_tstamp(),
+    ets:select_delete(table_id(), [{#omnip_subscription{timestamp='$1'
+                                                        ,expires='$2'
+                                                        ,_='_'
+                                                       }
+                                    ,[{'>', {'const', Now}, {'+', '$1', '$2'}}]
+                                    ,['true']
+                                   }]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -126,8 +218,13 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}, #state{expire_ref=Ref}=State) ->
+handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref}=State) ->
+    case expire_old_subscriptions() of
+        0 -> 'ok';
+        _N -> lager:debug("expired ~p subscriptions", [_N])
+    end,
     {'noreply', State#state{expire_ref=start_expire_ref()}};
+
 handle_info(?TABLE_READY(_Tbl), State) ->
     lager:debug("recv table_ready for ~p", [_Tbl]),
     {'noreply', State, 'hibernate'};
