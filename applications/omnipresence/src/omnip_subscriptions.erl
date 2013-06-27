@@ -107,6 +107,7 @@ table_config() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    put('callid', ?MODULE),
     {'ok', #state{expire_ref=start_expire_ref()}}.
 
 -spec start_expire_ref() -> reference().
