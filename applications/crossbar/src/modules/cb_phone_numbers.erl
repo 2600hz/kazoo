@@ -33,6 +33,7 @@
 -define(ACTIVATE, <<"activate">>).
 -define(RESERVE, <<"reserve">>).
 -define(CLASSIFIERS, <<"classifiers">>).
+-define(IDENTIFY, <<"identify">>).
 
 -define(FIND_NUMBER_SCHEMA, "{\"$schema\": \"http://json-schema.org/draft-03/schema#\", \"id\": \"http://json-schema.org/draft-03/schema#\", \"properties\": {\"prefix\": {\"required\": \"true\", \"type\": \"string\", \"minLength\": 3, \"maxLength\": 8}, \"quantity\": {\"default\": 1, \"type\": \"integer\", \"minimum\": 1}}}").
 
@@ -112,6 +113,8 @@ allowed_methods(_, ?PORT) ->
     [?HTTP_PUT];
 allowed_methods(_, ?PORT_DOCS) ->
     [?HTTP_GET];
+allowed_methods(_, ?IDENTIFY) ->
+    [?HTTP_GET];
 allowed_methods(<<"collection">>, ?ACTIVATE) ->
     [?HTTP_PUT].
 
@@ -139,6 +142,7 @@ resource_exists(_, ?ACTIVATE) -> true;
 resource_exists(_, ?RESERVE) -> true;
 resource_exists(_, ?PORT) -> true;
 resource_exists(_, ?PORT_DOCS) -> true;
+resource_exists(_, ?IDENTIFY) -> true;
 resource_exists(_, _) -> false.
 
 resource_exists(_, ?PORT_DOCS, _) -> true;
@@ -223,7 +227,9 @@ validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?RESERVE) ->
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?PORT) ->
     validate_request(Context);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number, ?PORT_DOCS) ->
-    list_attachments(Number, Context).
+    list_attachments(Number, Context);
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number, ?IDENTIFY) ->
+    identify(Context, Number).
 
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Number, ?PORT_DOCS, _) ->
     read(Number, Context);
@@ -331,6 +337,25 @@ summary(Context) ->
         #cb_context{resp_error_code=404}=C ->
             crossbar_util:response(wh_json:new(), C);
         Else -> Else
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to load a summarized listing of all instances of this
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec identify(cb_context:context(), ne_binary()) -> cb_context:context().
+identify(Context, Number) ->
+    case wh_number_manager:lookup_account_by_number(Number) of
+        {'error', 'not_reconcilable'} ->
+            crossbar_util:response('error', <<"not_reconcilable">>, 404, <<>>, Context);
+        {'error', E} ->
+            set_response({wh_util:to_binary(E), <<>>}, Number, Context);
+        {'ok', AccountId, _} ->
+            JObj = wh_json:set_value(<<"account_id">>, AccountId, wh_json:new()),
+            set_response({'ok', JObj}, Number, Context)
     end.
 
 %%--------------------------------------------------------------------
