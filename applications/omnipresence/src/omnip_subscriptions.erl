@@ -12,6 +12,9 @@
 -export([start_link/0
 
          ,handle_subscribe/2
+         ,handle_presence_update/2
+         ,handle_new_channel/2
+         ,handle_destroy_channel/2
          ,handle_query_req/2
 
          ,table_id/0
@@ -44,6 +47,7 @@
           ,protocol = <<"sip">> :: ne_binary() | '_' % protocol
          }).
 -type subscription() :: #omnip_subscription{}.
+-type subscriptions() :: [subscription(),...] | [].
 
 %%%===================================================================
 %%% API
@@ -67,6 +71,19 @@ handle_subscribe(JObj, Props) ->
     gen_listener:cast(props:get_value(?MODULE, Props)
                       ,{'subscribe', subscribe_to_record(JObj)}
                      ).
+
+handle_presence_update(JObj, Props) ->
+    'true' = wapi_notifications:presence_update_v(JObj),
+
+    lager:debug("presence update recv: ~p", [JObj]).
+
+handle_new_channel(JObj, Props) ->
+    'true' = wapi_call:new_channel_v(JObj),
+    lager:debug("new channel: ~p", [JObj]).
+
+handle_destroy_channel(JObj, Props) ->
+    'true' = wapi_call:destroy_channel_v(JObj),
+    lager:debug("destroy channel: ~p", [JObj]).
 
 subscribe_to_record(JObj) ->
     U = wh_json:get_value(<<"User">>, JObj),
@@ -197,6 +214,18 @@ find_subscription(#omnip_subscription{user=U
                                     end
                             end, {'ok', 0}, Subs),
             {'ok', Sub}
+    end.
+
+-spec find_subscriptions(subscription()) ->
+                                {'ok', subscriptions()} |
+                                {'error', 'not_found'}.
+find_subscriptions(#omnip_subscription{user=U}) ->
+    case ets:match_object(table_id(), #omnip_subscription{user=U
+                                                          ,_='_'
+                                                         })
+    of
+        [] -> {'error', 'not_found'};
+        Subs -> {'ok', Subs}
     end.
 
 expire_old_subscriptions() ->

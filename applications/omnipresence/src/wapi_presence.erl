@@ -84,11 +84,41 @@ bind_q(Queue, Props) ->
 
     Realm = props:get_value('realm', Props, <<"*">>),
 
-    amqp_util:bind_q_to_exchange(Queue, Queue, ?SUBSCRIPTIONS_EXCHANGE).
+    bind_q(Queue, Realm, props:get_value('restrict_to', Props)).
+
+bind_q(Queue, Realm, 'undefined') ->
+    amqp_util:bind_q_to_exchange(Queue
+                                 ,subscribe_routing_key(Realm)
+                                 ,?SUBSCRIPTIONS_EXCHANGE
+                                );
+bind_q(Queue, Realm, ['subscribe'|Restrict]) ->
+    amqp_util:bind_q_to_exchange(Queue
+                                 ,subscribe_routing_key(Realm)
+                                 ,?SUBSCRIPTIONS_EXCHANGE
+                                ),
+    bind_q(Queue, Realm, Restrict);
+bind_q(Queue, Realm, [_|Restrict]) ->
+    bind_q(Queue, Realm, Restrict);
+bind_q(_, _, []) -> 'ok'.
 
 unbind_q(Queue, Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
-    amqp_util:unbind_q_from_exchange(Queue, subscribe_routing_key(Realm), ?SUBSCRIPTIONS_EXCHANGE).
+    unbind_q(Queue, Realm, props:get_value('restrict_to', Props)).
+
+unbind_q(Queue, Realm, 'undefined') ->
+    amqp_util:unbind_q_from_exchange(Queue
+                                     ,subscribe_routing_key(Realm)
+                                     ,?SUBSCRIPTIONS_EXCHANGE
+                                    );
+unbind_q(Queue, Realm, ['subscribe'|Restrict]) ->
+    amqp_util:unbind_q_from_exchange(Queue
+                                     ,subscribe_routing_key(Realm)
+                                     ,?SUBSCRIPTIONS_EXCHANGE
+                                    ),
+    unbind_q(Queue, Realm, Restrict);
+unbind_q(Queue, Realm, [_|Restrict]) ->
+    unbind_q(Queue, Realm, Restrict);
+unbind_q(_, _, []) -> 'ok'.
 
 publish_subscribe(JObj) ->
     publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
