@@ -350,7 +350,7 @@ summary(Context) ->
 identify(Context, Number) ->
     case wh_number_manager:lookup_account_by_number(Number) of
         {'error', 'not_reconcilable'} ->
-            cb_context:add_system_error('bad_identifier', [{'details', <<"not_reconcilable">>}], Context);
+            cb_context:add_system_error('bad_identifier', [{'details', Number}], Context);
         {'error', E} ->
             set_response({wh_util:to_binary(E), <<>>}, Number, Context);
         {'ok', AccountId, _} ->
