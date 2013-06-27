@@ -336,8 +336,26 @@ summary(Context) ->
     case crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context) of
         #cb_context{resp_error_code=404}=C ->
             crossbar_util:response(wh_json:new(), C);
-        Else -> Else
+        Else ->
+            Else#cb_context{resp_data=clean_summary(Else)}
     end.
+
+-spec clean_summary(cb_context:context()) -> wh_json:json().
+clean_summary(#cb_context{resp_data=JObj, account_id=AccountId}) ->
+    Routines = [fun(J) ->
+                    wh_json:delete_key(<<"id">>, J)
+                end
+                ,fun(J) ->
+                    wh_json:set_value(<<"numbers">>, J, wh_json:new())
+                end
+                ,fun(J) ->
+                    Service =  wh_services:fetch(AccountId),
+                    Quantity = wh_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
+                    wh_json:set_value(<<"casquade_quantity">>, Quantity, J)
+                end
+                ],
+    lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
+
 
 %%--------------------------------------------------------------------
 %% @private
