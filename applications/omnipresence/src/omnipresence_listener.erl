@@ -27,17 +27,11 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
-                   %% new Kamailio presence APIs
-                   ,{'presence', [{'restrict_to', ['subscribe', 'update']}]}
-                   ,{'notifications', [{'restrict_to', ['presence_update', 'presence_probe']}]}
+                   ,{'omnipresence', []}
                   ]).
--define(RESPONDERS, [{{'omnip_subscriptions', 'handle_subscribe'}
+-define(RESPONDERS, [{{'omnip_subscriptions', 'handle_subscribe_only'}
                       ,[{<<"presence">>, <<"subscription">>}]
-                     }
-                     ,{{'omnip_subscriptions', 'handle_presence_update'}
-                       ,[{<<"notification">>, <<"presence_update">>}]
-                      }
-                    ]).
+                     }]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -54,8 +48,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [
-                                      {'bindings', ?BINDINGS}
+    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include

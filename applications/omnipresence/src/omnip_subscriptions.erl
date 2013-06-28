@@ -11,7 +11,7 @@
 
 -export([start_link/0
 
-         ,handle_subscribe/2
+         ,handle_subscribe/2, handle_subscribe_only/2
          ,handle_presence_update/2
          ,handle_new_channel/2
          ,handle_destroy_channel/2
@@ -71,8 +71,29 @@ start_link() ->
 handle_query_req(_JObj, _Props) ->
     'ok'.
 
-handle_subscribe(JObj, Props) ->
+%% Subscribes work like this:
+%%   Subscribe comes into shared queue, gets round-robined to next omni whapps
+%%   Handling whapp then publishes an internal whapp msg to all other omni whapps
+%%   Handling whapp then publishes a status update to the subscribe Queue
+handle_subscribe(JObj, _Props) ->
     JObj1 = maybe_patch_msg_id(JObj),
+    'true' = wapi_presence:subscribe_v(JObj1),
+
+    %% sending update to whapps
+    send_subscribe_to_whapps(JObj1),
+    send_update_to_listeners(JObj1).
+
+send_update_to_listeners(JObj) ->
+    #omnip_subscription{user=U}=Sub = subscribe_to_record(JObj),
+    lager:debug("find presence for ~s", [U]).
+
+send_subscribe_to_whapps(JObj) ->
+    JObj1 = wh_json:set_values(wh_api:default_headers(?APP_NAME, ?APP_VERSION), JObj),
+    wapi_omnipresence:publish_subscribe(JObj1).
+
+handle_subscribe_only(JObj, Props) ->
+    JObj1 = maybe_patch_msg_id(JObj),
+    lager:debug("sub only: ~p", [JObj1]),
     'true' = wapi_presence:subscribe_v(JObj1),
     gen_listener:cast(props:get_value(?MODULE, Props)
                       ,{'subscribe', subscribe_to_record(JObj1)}
@@ -95,8 +116,8 @@ handle_new_channel(JObj, _Props) ->
     From = wh_json:get_value(<<"From">>, JObj),
     Req = wh_json:get_value(<<"Request">>, JObj),
 
-    maybe_send_update(From, JObj, ?PRESENCE_RINGING),
-    maybe_send_update(Req, JObj, ?PRESENCE_RINGING).
+    maybe_send_update(From, Req, JObj, ?PRESENCE_RINGING),
+    maybe_send_update(Req, From, JObj, ?PRESENCE_RINGING).
 
 handle_answered_channel(JObj, _Props) ->
     'true' = wapi_call:answered_channel_v(JObj),
@@ -104,8 +125,8 @@ handle_answered_channel(JObj, _Props) ->
     From = wh_json:get_value(<<"From">>, JObj),
     Req = wh_json:get_value(<<"Request">>, JObj),
 
-    maybe_send_update(From, JObj, ?PRESENCE_ANSWERED),
-    maybe_send_update(Req, JObj, ?PRESENCE_ANSWERED).
+    maybe_send_update(From, Req, JObj, ?PRESENCE_ANSWERED),
+    maybe_send_update(Req, From, JObj, ?PRESENCE_ANSWERED).
 
 handle_destroy_channel(JObj, _Props) ->
     'true' = wapi_call:destroy_channel_v(JObj),
@@ -113,23 +134,27 @@ handle_destroy_channel(JObj, _Props) ->
     From = wh_json:get_value(<<"From">>, JObj),
     Req = wh_json:get_value(<<"Request">>, JObj),
 
-    maybe_send_update(From, JObj, ?PRESENCE_HANGUP),
-    maybe_send_update(Req, JObj, ?PRESENCE_HANGUP).
+    maybe_send_update(From, Req, JObj, ?PRESENCE_HANGUP),
+    maybe_send_update(Req, From, JObj, ?PRESENCE_HANGUP).
 
-maybe_send_update(User, JObj, Update) ->
+maybe_send_update(User, From, JObj, Update) ->
     case find_subscriptions(User) of
         {'ok', Subs} ->
-            [send_update(Update, JObj, S) || S <- Subs];
+            [send_update(Update, From, JObj, S) || S <- Subs];
         {'error', 'not_found'} ->
             lager:debug("no subs for ~s(~s): ~p", [User, Update, JObj])
     end.
-send_update(Update, JObj, #omnip_subscription{user=U
-                                              ,stalker=S
-                                             }) ->
-    lager:debug("sending update ~s to ~s(~s)", [Update, U, S]),
+send_update(Update, From, JObj, #omnip_subscription{user=U
+                                                    ,stalker=S
+                                                    ,protocol=P
+                                                   }) ->
+    UpdateTo = <<P/binary, ":", U/binary>>,
+    UpdateFrom = <<P/binary, ":", From/binary>>,
 
-    Prop = [{<<"To">>, U}
-            ,{<<"From">>, U}
+    lager:debug("sending update '~s' to ~s from ~s", [Update, UpdateTo, UpdateFrom]),
+
+    Prop = [{<<"To">>, UpdateTo}
+            ,{<<"From">>, UpdateFrom}
             ,{<<"State">>, Update}
             ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
