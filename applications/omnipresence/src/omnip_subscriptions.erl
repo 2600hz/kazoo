@@ -72,10 +72,18 @@ handle_query_req(_JObj, _Props) ->
     'ok'.
 
 handle_subscribe(JObj, Props) ->
-    'true' = wapi_presence:subscribe_v(JObj),
+    JObj1 = maybe_patch_msg_id(JObj),
+    'true' = wapi_presence:subscribe_v(JObj1),
     gen_listener:cast(props:get_value(?MODULE, Props)
-                      ,{'subscribe', subscribe_to_record(JObj)}
+                      ,{'subscribe', subscribe_to_record(JObj1)}
                      ).
+
+%% needed until Kamailio is patched
+maybe_patch_msg_id(JObj) ->
+    case wh_json:get_value(<<"Msg-ID">>, JObj) of
+        'undefined' -> wh_json:set_value(<<"Msg-ID">>, <<"foo">>, JObj);
+        _ -> JObj
+    end.
 
 handle_presence_update(JObj, _Props) ->
     'true' = wapi_notifications:presence_update_v(JObj),
@@ -130,10 +138,13 @@ handle_destroy_channel(JObj, _Props) ->
     maybe_send_update(From, JObj, ?PRESENCE_HANGUP).
 
 subscribe_to_record(JObj) ->
-    U = wh_json:get_value(<<"User">>, JObj),
+    {P, U} = case wh_json:get_value(<<"User">>, JObj) of
+                 <<"sip:", User/binary>> -> {<<"sip">>, User};
+                 User -> {<<"sip">>, User}
+             end,
     S = wh_json:get_value(<<"Queue">>, JObj),
     E = expires(JObj),
-    P = protocol(U),
+
     #omnip_subscription{user=U
                         ,stalker=S
                         ,expires=E
@@ -142,9 +153,6 @@ subscribe_to_record(JObj) ->
 
 expires(I) when is_integer(I) -> I;
 expires(JObj) -> expires(wh_json:get_integer_value(<<"Expires">>, JObj)).
-
-protocol(<<"sip:", _/binary>>) -> <<"sip">>;
-protocol(_U) -> <<"sip">>.
 
 table_id() -> 'omnipresence_subscriptions'.
 table_config() ->
