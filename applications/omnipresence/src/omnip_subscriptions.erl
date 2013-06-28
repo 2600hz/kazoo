@@ -92,28 +92,36 @@ handle_presence_update(JObj, _Props) ->
 handle_new_channel(JObj, _Props) ->
     'true' = wapi_call:new_channel_v(JObj),
 
-    To = wh_json:get_value(<<"To">>, JObj),
     From = wh_json:get_value(<<"From">>, JObj),
+    Req = wh_json:get_value(<<"Request">>, JObj),
 
-    maybe_send_update(To, JObj, ?PRESENCE_RINGING),
-    maybe_send_update(From, JObj, ?PRESENCE_RINGING).
+    maybe_send_update(From, JObj, ?PRESENCE_RINGING),
+    maybe_send_update(Req, JObj, ?PRESENCE_RINGING).
 
 handle_answered_channel(JObj, _Props) ->
     'true' = wapi_call:answered_channel_v(JObj),
 
-    To = wh_json:get_value(<<"To">>, JObj),
     From = wh_json:get_value(<<"From">>, JObj),
+    Req = wh_json:get_value(<<"Request">>, JObj),
 
-    maybe_send_update(To, JObj, ?PRESENCE_ANSWERED),
-    maybe_send_update(From, JObj, ?PRESENCE_ANSWERED).
+    maybe_send_update(From, JObj, ?PRESENCE_ANSWERED),
+    maybe_send_update(Req, JObj, ?PRESENCE_ANSWERED).
 
+handle_destroy_channel(JObj, _Props) ->
+    'true' = wapi_call:destroy_channel_v(JObj),
+
+    From = wh_json:get_value(<<"From">>, JObj),
+    Req = wh_json:get_value(<<"Request">>, JObj),
+
+    maybe_send_update(From, JObj, ?PRESENCE_HANGUP),
+    maybe_send_update(Req, JObj, ?PRESENCE_HANGUP).
 
 maybe_send_update(User, JObj, Update) ->
     case find_subscriptions(User) of
         {'ok', Subs} ->
             [send_update(Update, JObj, S) || S <- Subs];
         {'error', 'not_found'} ->
-            lager:debug("no subs for ~s(~s)", [User, Update])
+            lager:debug("no subs for ~s(~s): ~p", [User, Update, JObj])
     end.
 send_update(Update, JObj, #omnip_subscription{user=U
                                               ,stalker=S
@@ -127,15 +135,6 @@ send_update(Update, JObj, #omnip_subscription{user=U
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     whapps_util:amqp_pool_send(Prop, fun(API) -> wapi_presence:publish_update(S, API) end).
-
-handle_destroy_channel(JObj, _Props) ->
-    'true' = wapi_call:destroy_channel_v(JObj),
-
-    To = wh_json:get_value(<<"To">>, JObj),
-    From = wh_json:get_value(<<"From">>, JObj),
-
-    maybe_send_update(To, JObj, ?PRESENCE_HANGUP),
-    maybe_send_update(From, JObj, ?PRESENCE_HANGUP).
 
 subscribe_to_record(JObj) ->
     {P, U} = case wh_json:get_value(<<"User">>, JObj) of
