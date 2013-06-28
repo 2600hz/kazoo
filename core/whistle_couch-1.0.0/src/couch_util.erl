@@ -86,7 +86,9 @@ max_bulk_insert() -> ?MAX_BULK_INSERT.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_new_connection(nonempty_string() | ne_binary(), pos_integer(), string(), string()) -> server().
+-spec get_new_connection(nonempty_string() | ne_binary(), pos_integer(), string(), string()) ->
+                                server() |
+                                {'error', 'timeout'}.
 get_new_connection(Host, Port, "", "") ->
     get_new_conn(Host, Port, ?IBROWSE_OPTS);
 get_new_connection(Host, Port, User, Pass) ->
@@ -96,13 +98,18 @@ get_new_connection(Host, Port, User, Pass) ->
 get_new_conn(Host, Port, Opts) ->
     Conn = couchbeam:server_connection(wh_util:to_list(Host), Port, "", Opts),
     lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
-    {'ok', ConnData} = server_info(Conn),
-    CouchVersion = wh_json:get_value(<<"version">>, ConnData),
-    BigCouchVersion = wh_json:get_value(<<"bigcouch">>, ConnData),
-    lager:info("connected successfully to ~s:~b", [Host, Port]),
-    lager:debug("responding CouchDB version: ~p", [CouchVersion]),
-    lager:debug("responding BigCouch version: ~p", [BigCouchVersion]),
-    Conn.
+    case server_info(Conn) of
+        {'ok', ConnData} ->
+            CouchVersion = wh_json:get_value(<<"version">>, ConnData),
+            BigCouchVersion = wh_json:get_value(<<"bigcouch">>, ConnData),
+            lager:info("connected successfully to ~s:~b", [Host, Port]),
+            lager:debug("responding CouchDB version: ~p", [CouchVersion]),
+            lager:debug("responding BigCouch version: ~p", [BigCouchVersion]),
+            Conn;
+        {'error', {'conn_failed', {'error', 'timeout'}}} ->
+            lager:warning("connection timed out for ~s:~p", [Host, Port]),
+            {'error', 'timeout'}
+    end.
 
 server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 

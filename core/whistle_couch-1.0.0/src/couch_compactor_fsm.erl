@@ -371,6 +371,17 @@ compact({'compact', N}, #state{conn='undefined'
                               }=State) ->
     Cookie = wh_couch_connections:get_node_cookie(),
     try get_node_connections(N, Cookie) of
+        {'error', _} ->
+            lager:debug("failed to connect to node ~s: timed out", [N]),
+            maybe_send_update(P, Ref, 'job_finished'),
+            gen_fsm:send_event(self(), 'next_job'),
+            {'next_state', 'ready', State#state{conn='undefined'
+                                                ,admin_conn='undefined'
+                                                ,current_node='undefined'
+                                                ,current_db='undefined'
+                                                ,current_job_pid='undefined'
+                                                ,current_job_ref='undefined'
+                                               }};
         {Conn, AdminConn} ->
             gen_fsm:send_event(self(), {'compact', N}),
             {'next_state', 'compact', State#state{conn=Conn
@@ -395,6 +406,12 @@ compact({'compact', N}=Msg, #state{conn='undefined'
                                   }=State) ->
     Cookie = wh_couch_connections:get_node_cookie(),
     try get_node_connections(N, Cookie) of
+        {'error', _E} ->
+            lager:debug("failed to connect to node ~s: ~p", [N, _E]),
+            gen_fsm:send_event(self(), {'compact', Node}),
+            {'next_state', 'compact', State#state{nodes=Ns
+                                                  ,current_node='undefined'
+                                                 }};
         {Conn, AdminConn} ->
             gen_fsm:send_event(self(), Msg),
             {'next_state', 'compact', State#state{conn=Conn
@@ -418,6 +435,17 @@ compact({'compact_db', N, D}=Msg, #state{conn='undefined'
                                         }=State) ->
     Cookie = wh_couch_connections:get_node_cookie(),
     try get_node_connections(N, Cookie) of
+        {'error', _} ->
+            lager:debug("failed to connect to node ~s: timed out", [N]),
+            maybe_send_update(P, Ref, 'job_finished'),
+            gen_fsm:send_event(self(), 'next_job'),
+            {'next_state', 'ready', State#state{conn='undefined'
+                                                ,admin_conn='undefined'
+                                                ,current_node='undefined'
+                                                ,current_db='undefined'
+                                                ,current_job_pid='undefined'
+                                                ,current_job_ref='undefined'
+                                               }};
         {Conn, AdminConn} ->
             gen_fsm:send_event(self(), Msg),
             {'next_state', 'compact', State#state{conn=Conn
@@ -445,6 +473,13 @@ compact({'compact_db', N, D}=Msg, #state{conn='undefined'
                                         }=State) ->
     Cookie = wh_couch_connections:get_node_cookie(),
     try get_node_connections(N, Cookie) of
+        {'error', _E} ->
+            lager:debug("failed to connect to node ~s: ~p", [N, _E]),
+            gen_fsm:send_event(self(), {'compact_db', Node, D}),
+            {'next_state', 'compact', State#state{nodes=Ns
+                                                  ,current_node=Node
+                                                  ,current_db=D
+                                                 }};
         {Conn, AdminConn} ->
             gen_fsm:send_event(self(), Msg),
             {'next_state', 'compact', State#state{conn=Conn
@@ -1074,10 +1109,25 @@ get_node_connections(N, Cookie) ->
     get_node_connections(Host, Port, User, Pass, AdminPort).
 
 get_node_connections(Host, Port, User, Pass, AdminPort) ->
+    get_node_connections(Host, Port, User, Pass, AdminPort, 0).
+get_node_connections(_Host, _Port, _User, _Pass, _AdminPort, Retries) when Retries > 2 ->
+    lager:warning("failed to get connections for ~s on ~p and ~p", [_Host, _Port, _AdminPort]),
+    {'error', 'no_connection'};
+get_node_connections(Host, Port, User, Pass, AdminPort, Retries) ->
     lager:info("getting connection information for ~s, ~p and ~p", [Host, Port, AdminPort]),
-    {couch_util:get_new_connection(Host, Port, User, Pass),
-     couch_util:get_new_connection(Host, AdminPort, User, Pass)
-    }.
+    try {couch_util:get_new_connection(Host, Port, User, Pass),
+         couch_util:get_new_connection(Host, AdminPort, User, Pass)
+        }
+    of
+        {'error', 'timeout'} ->
+            lager:debug("timed out getting connection for ~s, try again", [Host]),
+            get_node_connections(Host, Port, User, Pass, AdminPort, Retries+1);
+        {_Conn, _AdminConn}=Conns -> Conns
+    catch
+        _E:_R ->
+            lager:warning("failed to connect to ~s: ~s: ~p", [Host, _E, _R]),
+            get_node_connections(Host, Port, User, Pass, AdminPort, Retries+1)
+    end.
 
 get_ports(Node, Cookie) ->
     erlang:set_cookie(Node, Cookie),
