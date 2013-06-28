@@ -15,12 +15,19 @@
 -export([destroy_channel/1, destroy_channel_v/1]).
 -export([answered_channel/1, answered_channel_v/1]).
 -export([event/1, event_v/1]).
+
 -export([channel_status_req/1, channel_status_req_v/1]).
 -export([channel_status_resp/1, channel_status_resp_v/1]).
+
 -export([call_status_req/1, call_status_req_v/1]).
 -export([call_status_resp/1, call_status_resp_v/1]).
+
 -export([query_auth_id_req/1, query_auth_id_req_v/1]).
 -export([query_auth_id_resp/1, query_auth_id_resp_v/1]).
+
+-export([query_user_channels_req/1, query_user_channels_req_v/1]).
+-export([query_user_channels_resp/1, query_user_channels_resp_v/1]).
+
 -export([cdr/1, cdr_v/1]).
 -export([usurp_control/1, usurp_control_v/1]).
 -export([usurp_publisher/1, usurp_publisher_v/1]).
@@ -31,12 +38,19 @@
 -export([publish_destroy_channel/1, publish_destroy_channel/2]).
 -export([publish_answered_channel/1, publish_answered_channel/2]).
 -export([publish_event/2, publish_event/3]).
+
 -export([publish_channel_status_req/1 ,publish_channel_status_req/2, publish_channel_status_req/3]).
 -export([publish_channel_status_resp/2, publish_channel_status_resp/3]).
+
 -export([publish_call_status_req/1 ,publish_call_status_req/2, publish_call_status_req/3]).
 -export([publish_call_status_resp/2, publish_call_status_resp/3]).
+
 -export([publish_query_auth_id_req/1 ,publish_query_auth_id_req/2, publish_query_auth_id_req/3]).
 -export([publish_query_auth_id_resp/2, publish_query_auth_id_resp/3]).
+
+-export([publish_query_user_channels_req/1 ,publish_query_user_channels_req/4]).
+-export([publish_query_user_channels_resp/2 ,publish_query_user_channels_resp/3]).
+
 -export([publish_cdr/2, publish_cdr/3]).
 -export([publish_usurp_control/2, publish_usurp_control/3]).
 -export([publish_usurp_publisher/2, publish_usurp_publisher/3]).
@@ -160,6 +174,22 @@
                                     ,{<<"Event-Name">>, <<"query_auth_id_resp">>}
                                    ]).
 -define(QUERY_AUTH_ID_RESP_TYPES, []).
+
+%% Query User Channels Req
+-define(QUERY_USER_CHANNELS_REQ_HEADERS, [<<"Username">>, <<"Realm">>]).
+-define(OPTIONAL_QUERY_USER_CHANNELS_REQ_HEADERS, []).
+-define(QUERY_USER_CHANNELS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                   ,{<<"Event-Name">>, <<"query_user_channels_req">>}
+                                  ]).
+-define(QUERY_USER_CHANNELS_REQ_TYPES, []).
+
+%% Query User Channels Resp
+-define(QUERY_USER_CHANNELS_RESP_HEADERS, []).
+-define(OPTIONAL_QUERY_USER_CHANNELS_RESP_HEADERS, [<<"Channels">>]).
+-define(QUERY_USER_CHANNELS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                          ,{<<"Event-Name">>, <<"query_user_channels_resp">>}
+                                         ]).
+-define(QUERY_USER_CHANNELS_RESP_TYPES, []).
 
 %% Call CDR
 -define(CALL_CDR_HEADERS, [ <<"Call-ID">>]).
@@ -360,6 +390,49 @@ query_auth_id_resp(JObj) -> query_auth_id_resp(wh_json:to_proplist(JObj)).
 query_auth_id_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?QUERY_AUTH_ID_RESP_HEADERS, ?QUERY_AUTH_ID_RESP_VALUES, ?QUERY_AUTH_ID_RESP_TYPES);
 query_auth_id_resp_v(JObj) -> query_auth_id_resp_v(wh_json:to_proplist(JObj)).
+
+
+
+
+
+
+
+
+%%--------------------------------------------------------------------
+%% @doc Inquire into the status of a call
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec query_user_channels_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+query_user_channels_req(Prop) when is_list(Prop) ->
+    case query_user_channels_req_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?QUERY_USER_CHANNELS_REQ_HEADERS, ?OPTIONAL_QUERY_USER_CHANNELS_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for auth id query req"}
+    end;
+query_user_channels_req(JObj) -> query_user_channels_req(wh_json:to_proplist(JObj)).
+
+-spec query_user_channels_req_v(api_terms()) -> boolean().
+query_user_channels_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?QUERY_USER_CHANNELS_REQ_HEADERS, ?QUERY_USER_CHANNELS_REQ_VALUES, ?QUERY_USER_CHANNELS_REQ_TYPES);
+query_user_channels_req_v(JObj) -> query_user_channels_req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Inquire into the status of a call
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec query_user_channels_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+query_user_channels_resp(Prop) when is_list(Prop) ->
+    case query_user_channels_resp_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?QUERY_USER_CHANNELS_RESP_HEADERS, ?OPTIONAL_QUERY_USER_CHANNELS_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for auth id query resp"}
+    end;
+query_user_channels_resp(JObj) -> query_user_channels_resp(wh_json:to_proplist(JObj)).
+
+-spec query_user_channels_resp_v(api_terms()) -> boolean().
+query_user_channels_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?QUERY_USER_CHANNELS_RESP_HEADERS, ?QUERY_USER_CHANNELS_RESP_VALUES, ?QUERY_USER_CHANNELS_RESP_TYPES);
+query_user_channels_resp_v(JObj) -> query_user_channels_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Respond with status of a call, either active or non-existant
@@ -616,6 +689,41 @@ publish_query_auth_id_resp(RespQ, JObj) ->
 publish_query_auth_id_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?QUERY_AUTH_ID_RESP_VALUES, fun ?MODULE:query_auth_id_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+
+
+
+
+
+
+
+
+publish_query_user_channels_req(Props) when is_list(Props) ->
+    publish_query_user_channels_req(Props
+                                    ,props:get_value(<<"Username">>, Props)
+                                    ,props:get_value(<<"Realm">>, Props)
+                                    ,?DEFAULT_CONTENT_TYPE
+                                   );
+publish_query_user_channels_req(JObj) ->
+    publish_query_user_channels_req(JObj
+                                    ,wh_json:get_value(<<"Username">>, JObj)
+                                    ,wh_json:get_value(<<"Realm">>, JObj)
+                                    ,?DEFAULT_CONTENT_TYPE
+                                   ).
+publish_query_user_channels_req(Req, Username, Realm, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?QUERY_USER_CHANNELS_REQ_VALUES, fun ?MODULE:query_user_channels_req/1),
+    amqp_util:callevt_publish(<<Username/binary, ":", Realm/binary>>, Payload, 'status_req', ContentType).
+
+-spec publish_query_user_channels_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_query_user_channels_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_query_user_channels_resp(RespQ, JObj) ->
+    publish_query_user_channels_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_query_user_channels_resp(RespQ, Resp, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?QUERY_USER_CHANNELS_RESP_VALUES, fun ?MODULE:query_user_channels_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+
+
 
 -spec publish_cdr(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_cdr(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
