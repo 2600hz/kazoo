@@ -537,6 +537,7 @@ create_new_account_db(#cb_context{db_name=AccountDb}=Context) ->
             _ = load_initial_views(C),
             _ = crossbar_bindings:map(<<"account.created">>, C),
             _ = notfy_new_account(C),
+            _ = wh_services:reconcile(AccountDb),
             C
     end.
 

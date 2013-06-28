@@ -371,8 +371,10 @@ identify(Context, Number) ->
             cb_context:add_system_error('bad_identifier', [{'details', Number}], Context);
         {'error', E} ->
             set_response({wh_util:to_binary(E), <<>>}, Number, Context);
-        {'ok', AccountId, _} ->
-            JObj = wh_json:set_value(<<"account_id">>, AccountId, wh_json:new()),
+        {'ok', AccountId, Options} ->
+            JObj = wh_json:set_values([{<<"account_id">>, AccountId}
+                                        ,{<<"number">>, proplists:get_value(number, Options)}]
+                                    ,wh_json:new()),
             set_response({'ok', JObj}, Number, Context)
     end.
 

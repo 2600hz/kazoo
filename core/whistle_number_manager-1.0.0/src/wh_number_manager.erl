@@ -84,13 +84,14 @@ lookup_account_by_number(Number) ->
             {error, Error}
     end.
 
-number_options(#number{state=State, features=Features, module_name=Module}=Number) ->
-    [{force_outbound, should_force_outbound(Number)}
-     ,{pending_port, State =:= <<"port_in">>}
-     ,{local, Module =:= wnm_local}
-     ,{inbound_cnam, sets:is_element(<<"inbound_cnam">>, Features)}
-     ,{ringback_media, find_early_ringback(Number)}
-     ,{transfer_media, find_transfer_ringback(Number)}
+number_options(#number{state=State, features=Features, module_name=Module, number=Num}=Number) ->
+    [{'force_outbound', should_force_outbound(Number)}
+     ,{'pending_port', State =:= <<"port_in">>}
+     ,{'local', Module =:= 'wnm_local'}
+     ,{'inbound_cnam', sets:is_element(<<"inbound_cnam">>, Features)}
+     ,{'ringback_media', find_early_ringback(Number)}
+     ,{'transfer_media', find_transfer_ringback(Number)}
+     ,{'number', Num }
     ].
 
 should_force_outbound(#number{module_name=wnm_local}) -> true;
