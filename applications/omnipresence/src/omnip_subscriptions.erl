@@ -84,8 +84,25 @@ handle_subscribe(JObj, _Props) ->
     send_update_to_listeners(JObj1).
 
 send_update_to_listeners(JObj) ->
-    #omnip_subscription{user=U}=Sub = subscribe_to_record(JObj),
-    lager:debug("find presence for ~s", [U]).
+    #omnip_subscription{user=U} = subscribe_to_record(JObj),
+
+    [User, Realm] = binary:split(U, <<"@">>),
+
+    lager:debug("find presence for ~s:~s", [User, Realm]),
+
+    Req = [{<<"Username">>, User}
+           ,{<<"Realm">>, Realm}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+
+    case whapps_util:amqp_pool_request(Req, fun wapi_call:query_user_channels/1) of
+        {'ok', JObj} ->
+            lager:debug("calls in progress: ~p", [JObj]),
+            maybe_send_update(U, U, JObj, ?PRESENCE_ANSWERED);
+        {'error', _E} ->
+            lager:debug("Failed to lookup user channels: ~p", [_E]),
+            maybe_send_update(U, U, JObj, ?PRESENCE_HANGUP)
+    end.
 
 send_subscribe_to_whapps(JObj) ->
     JObj1 = wh_json:set_values(wh_api:default_headers(?APP_NAME, ?APP_VERSION), JObj),
