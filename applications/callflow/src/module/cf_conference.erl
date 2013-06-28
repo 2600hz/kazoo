@@ -27,4 +27,5 @@ handle(Data, Call) ->
                ,{<<"Moderator">>, wh_json:get_binary_boolean(<<"moderator">>, Data)}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    wapi_conference:publish_discovery_req(Command).
+    wapi_conference:publish_discovery_req(Command),
+    cf_exe:control_usurped(Call).
