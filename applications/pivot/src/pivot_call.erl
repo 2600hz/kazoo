@@ -74,6 +74,7 @@ start_link(Call, JObj) ->
                                                         ,[{<<"conference">>, <<"config_req">>}
                                                           ,{<<"call_event">>, <<"*">>}
                                                           ,{<<"resource">>, <<"offnet_resp">>}
+                                                          ,{<<"call_detail">>, <<"cdr">>}
                                                          ]
                                                        }
                                                       ]}
@@ -99,6 +100,15 @@ usurp_executor(Srv) -> gen_listener:cast(Srv, 'usurp').
 maybe_relay_event(JObj, Props) ->
     case props:get_value('pid', Props) of
         P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
+        _ -> 'ok'
+    end,
+    relay_cdr_event(JObj, Props).
+
+relay_cdr_event(JObj, Props) ->
+    case wh_util:get_event_type(JObj) of
+        {<<"call_detail">>, <<"cdr">>} ->
+            Pid = proplists:get_value('server', Props),
+            gen_listener:cast(Pid, {'cdr', JObj});
         _ -> 'ok'
     end.
 
@@ -173,7 +183,7 @@ handle_cast({'request', Uri, Method}, #state{call=Call
 handle_cast({'request', Uri, Method, Params}, #state{call=Call}=State) ->
     Call1 = kzt_util:set_voice_uri(Uri, Call),
 
-    {'ok', ReqId, Call2} = send_req(Call1, Uri, Method, Params),
+    {'ok', ReqId} = send_req(Call1, Uri, Method, Params),
     lager:debug("sent request ~p to '~s' via '~s'", [ReqId, Uri, Method]),
     {'noreply', State#state{request_id=ReqId
                             ,request_params=Params
@@ -181,7 +191,7 @@ handle_cast({'request', Uri, Method, Params}, #state{call=Call}=State) ->
                             ,response_body = <<>>
                             ,method=Method
                             ,voice_uri=Uri
-                            ,call=Call2
+                            ,call=Call1
                            }};
 
 handle_cast({'updated_call', Call}, State) ->
@@ -194,6 +204,14 @@ handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
 handle_cast({'stop', Call}, #state{cdr_uri='undefined'}=State) ->
     lager:debug("no cdr callback, server going down"),
     _ = whapps_call_command:hangup(Call),
+    {'stop', 'normal', State};
+
+handle_cast({'cdr', JObj}, #state{cdr_uri=Url}=State) when Url =/= 'undefined'->
+    JObj1 = wh_json:delete_key(<<"Custom-Channel-Vars">>, JObj),
+    Body =  wh_json:to_querystring(wh_api:remove_defaults(JObj1)),
+    Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
+    T = ibrowse:send_req(wh_util:to_list(Url), Headers, 'post', Body),
+    io:format("~p~n", [T]),
     {'stop', 'normal', State};
 
 handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
@@ -334,19 +352,18 @@ code_change(_OldVsn, State, _Extra) ->
 send_req(Call, Uri, 'get', BaseParams) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = wh_json:set_values(wh_json:to_proplist(BaseParams), UserParams),
-    UpdatedCall = whapps_call:kvs_erase(<<"digits_collected">>, Call),
-    send(UpdatedCall, uri(Uri, wh_json:to_querystring(Params)), 'get', [], []);
+
+    send(Call, uri(Uri, wh_json:to_querystring(Params)), 'get', [], []);
 
 send_req(Call, Uri, 'post', BaseParams) when is_list(BaseParams) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = wh_json:set_values(BaseParams, UserParams),
-    UpdatedCall = whapps_call:kvs_erase(<<"digits_collected">>, Call),
-    send(UpdatedCall, Uri, 'post', [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params));
 
+    send(Call, Uri, 'post', [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params));
 send_req(Call, Uri, 'post', BaseParams) ->
     send_req(Call, Uri, 'post', wh_json:to_proplist(BaseParams)).
 
--spec send(whapps_call:call(), iolist(), atom(), wh_proplist(), iolist()) ->
+-spec send(whapps_call:call(), iolist(), atom(), wh_proplist(), iolist()) -> 
                         'ok' |
                         {'ok', ibrowse_req_id()} |
                         {'stop', whapps_call:call()}.
@@ -360,7 +377,7 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
     case ibrowse:send_req(wh_util:to_list(Uri), ReqHdrs, Method, ReqBody, Opts) of
         {'ibrowse_req_id', ReqId} ->
             lager:debug("response coming in asynchronosly to ~p", [ReqId]),
-            {'ok', ReqId, Call};
+            {'ok', ReqId};
         {'ok', "200", RespHdrs, RespBody} ->
             lager:debug("recv 200: ~s", [RespBody]),
             handle_resp(Call, RespHdrs, RespBody);
