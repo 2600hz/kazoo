@@ -28,6 +28,7 @@
 -export([account_summary/1]).
 -export([get_call_precedence/1]).
 -export([channels_by_auth_id/1]).
+-export([channels_by_user_realm/2]).
 -export([flush_node_channels/1]).
 %%
 
@@ -158,6 +159,23 @@ get_call_precedence(UUID) ->
 channels_by_auth_id(AuthorizingId) ->
     MatchSpec = [{#channel{authorizing_id = '$1', _ = '_'}
                   ,[{'=:=', '$1', {'const', AuthorizingId}}]
+                  ,['$_']}
+                ],
+    case ets:select(?CHANNELS_TBL, MatchSpec) of
+        [] -> {'error', 'not_found'};
+        Channels -> {'ok', [ecallmgr_fs_channel:record_to_json(Channel)
+                            || Channel <- Channels
+                           ]}
+    end.
+
+-spec channels_by_user_realm(ne_binary(), ne_binary()) ->
+                                    {'ok', wh_json:objects()} |
+                                    {'error', 'not_found'}.
+channels_by_user_realm(Username, Realm) ->
+    MatchSpec = [{#channel{username = '$1', realm='$2', _ = '_'}
+                  ,[{'=:=', '$1', {'const', Username}}
+                    ,{'=:=', '$2', {'const', Realm}}
+                   ]
                   ,['$_']}
                 ],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
