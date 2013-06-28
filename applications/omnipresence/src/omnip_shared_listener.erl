@@ -29,6 +29,7 @@
 -define(BINDINGS, [{'self', []}
                    %% new Kamailio presence APIs
                    ,{'notifications', [{'restrict_to', ['presence_update', 'presence_probe']}]}
+                   ,{'presence', [{'restrict_to', ['subscribe', 'update']}]}
                    ,{'call', [{'restrict_to', ['new_channel', 'answered_channel', 'destroy_channel']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_presence_update'}
@@ -42,6 +43,12 @@
                       }
                      ,{{'omnip_subscriptions', 'handle_destroy_channel'}
                        ,[{<<"channel">>, <<"destroy">>}]
+                      }
+                     ,{{'omnip_subscriptions', 'handle_subscribe'}
+                       ,[{<<"presence">>, <<"subscription">>}]
+                      }
+                     ,{{'omnip_subscriptions', 'handle_presence_update'}
+                       ,[{<<"notification">>, <<"presence_update">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<"omnip_shared_listener">>).
