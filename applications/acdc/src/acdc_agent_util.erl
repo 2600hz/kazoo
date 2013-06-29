@@ -18,6 +18,8 @@
 
          ,most_recent_ets_statuses/1, most_recent_ets_statuses/2, most_recent_ets_statuses/3
          ,most_recent_db_statuses/1, most_recent_db_statuses/2, most_recent_db_statuses/3
+
+         ,changed/2
         ]).
 
 -export([async_most_recent_ets_statuses/4
@@ -337,3 +339,17 @@ cleanup_db_statuses(Stats, ReqOpts) ->
                ).
 
 always_true(_) -> 'true'.
+
+changed([], To) -> {To, []};
+changed(From, []) -> {[], From};
+changed(From, To) -> changed(From, To, [], []).
+
+changed([], To, Add, Rm) -> {To ++ Add, Rm};
+changed(From, [], Add, Rm) -> {Add, From ++ Rm};
+changed([F|From], To, Add, Rm) ->
+    case lists:member(F, To) of
+        'true' -> changed(From, lists:delete(F, To), Add, Rm);
+        'false' -> changed(From, To, Add, [F|Rm])
+    end.
+            
+    

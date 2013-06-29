@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%% Manages agent processes:
 %%%   starting when an agent logs in
@@ -30,11 +30,11 @@
 
 -define(SERVER, ?MODULE).
 
--define(BINDINGS, [{'conf', [{'type', <<"user">>}]}
-                   ,{'conf', [{'type', <<"device">>}]}
-                   ,{'acdc_agent', [{'restrict_to', ['status', 'stats_req']}]}
+-define(BINDINGS, [{'acdc_agent', [{'restrict_to', ['status', 'stats_req']}]}
                    ,{'notifications', [{'restrict_to', ['presence_probe']}]}
                    ,{'call', [{'restrict_to', ['new_channel']}]}
+                   ,{'conf', [{'type', <<"user">>}]}
+                   ,{'conf', [{'type', <<"device">>}]}
                   ]).
 -define(RESPONDERS, [{{'acdc_agent_handler', 'handle_status_update'} 
                       ,[{<<"agent">>, <<"login">>}
@@ -51,11 +51,11 @@
                      ,{{'acdc_agent_handler', 'handle_stats_req'}
                        ,[{<<"agent">>, <<"stats_req">>}]
                       }
-                     ,{{'acdc_agent_handler', 'handle_config_change'}
-                       ,[{<<"configuration">>, <<"*">>}]
-                       }
                      ,{{'acdc_agent_handler', 'handle_presence_probe'}
                        ,[{<<"notification">>, <<"presence_probe">>}]
+                      }
+                     ,{{'acdc_agent_handler', 'handle_config_change'}
+                       ,[{<<"configuration">>, <<"*">>}]
                       }
                     ]).
 

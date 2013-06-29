@@ -23,7 +23,7 @@
          ,outbound_call/2
          ,send_sync_req/1
          ,send_sync_resp/3, send_sync_resp/4
-         ,config/1
+         ,config/1, refresh_config/2
          ,send_status_resume/1
          ,add_acdc_queue/2
          ,rm_acdc_queue/2
@@ -109,6 +109,10 @@
                                                      ,{'agent_id', AgentId}
                                                      ,{'restrict_to', ['sync', 'stats_req']}
                                                     ]}
+                                    ,{'conf', [{'action', <<"*">>}
+                                               ,{'db', wh_util:format_account_id(AcctId, 'encoded')}
+                                               ,{'id', AgentId}
+                                              ]}
                                    ]).
 
 -define(RESPONDERS, [{{'acdc_agent_handler', 'handle_sync_req'}
@@ -140,6 +144,9 @@
                       }
                      ,{{'acdc_agent_handler', 'handle_destroy'}
                        ,[{<<"channel">>, <<"destroy">>}]
+                      }
+                     ,{{'acdc_agent_handler', 'handle_config_change'}
+                       ,[{<<"configuration">>, <<"*">>}]
                       }
                     ]).
 
@@ -239,6 +246,9 @@ send_sync_resp(Srv, Status, ReqJObj, Options) ->
 
 -spec config(pid()) -> {ne_binary(), ne_binary(), ne_binary()}.
 config(Srv) -> gen_listener:call(Srv, 'config').
+
+refresh_config(_, 'undefined') -> 'ok';
+refresh_config(Srv, Qs) -> gen_listener:cast(Srv, {'refresh_config', Qs}).
 
 -spec agent_info(pid(), wh_json:key()) -> wh_json:json_term() | 'undefined'.
 agent_info(Srv, Field) -> gen_listener:call(Srv, {'agent_info', Field}).
@@ -359,6 +369,14 @@ handle_call(_Request, _From, #state{}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'refresh_config', Qs}, #state{agent_queues=Queues}=State) ->
+    {Add, Rm} = acdc_agent_util:changed(Queues, Qs),
+
+    Self = self(),
+    [gen_listener:cast(Self, {'queue_login', A}) || A <- Add],
+    [gen_listener:cast(Self, {'queue_logout', R}) || R <- Rm],
+
+    {'noreply', State};
 handle_cast({'stop_agent', Req}, #state{supervisor=Supervisor}=State) ->
     lager:debug("stop agent requested by ~p", [Req]),
     _ = spawn('acdc_agent_sup', 'stop', [Supervisor]),

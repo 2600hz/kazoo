@@ -654,22 +654,50 @@ publish_docs(Action, Db, Docs) ->
                      'ok' |
                      {'error', 'pool_full' | 'poolboy_fault'}.
 publish(Action, Db, Doc) ->
-    case wh_json:get_ne_value(<<"_id">>, Doc) of
+    case doc_id(Doc) of
         'undefined' -> 'ok';
-        <<"_design/", _/binary>> -> 'ok';
-        Id ->
-            Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
-            Props =
-                [{<<"ID">>, Id}
-                 ,{<<"Type">>, Type}
-                 ,{<<"Database">>, Db}
-                 ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
-                 ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
-                 ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
-                 ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
-                 | wh_api:default_headers(<<"configuration">>, <<"doc_", (wh_util:to_binary(Action))/binary>>
-                                              ,<<"whistle_couch">>, <<"1.0.0">>)
-                ],
-            Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
-            whapps_util:amqp_pool_send(Props, Fun)
+        <<"_design/", _/binary>> = _D -> 'ok';
+        Id -> publish(Action, Db, Doc, Id)
+    end.
+
+publish(Action, Db, Doc, Id) ->
+    Type = doc_type(Db, Doc),
+    Props =
+        [{<<"ID">>, Id}
+         ,{<<"Type">>, Type}
+         ,{<<"Database">>, Db}
+         ,{<<"Rev">>, doc_rev(Doc)}
+         ,{<<"Account-ID">>, doc_acct_id(Db, Doc)}
+         ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
+         ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
+         | wh_api:default_headers(<<"configuration">>, <<"doc_", (wh_util:to_binary(Action))/binary>>
+                                      ,<<"whistle_couch">>, <<"1.0.0">>)
+        ],
+    Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
+    whapps_util:amqp_pool_send(Props, Fun).
+
+doc_rev(Doc) ->
+    case wh_json:get_value(<<"_rev">>, Doc) of
+        'undefined' -> wh_json:get_value(<<"rev">>, Doc);
+        Rev -> Rev
+    end.
+
+doc_id(Doc) ->
+    case wh_json:get_ne_value(<<"_id">>, Doc) of
+        'undefined' -> wh_json:get_value(<<"id">>, Doc);
+        Id -> Id
+    end.
+
+doc_type(Db, Doc) ->
+    case wh_json:get_value(<<"pvt_type">>, Doc) of
+        'undefined' ->
+            {'ok', D} = couch_mgr:open_cache_doc(Db, doc_id(Doc)),
+            wh_json:get_binary_value(<<"pvt_type">>, D, <<"undefined">>);
+        T -> wh_util:to_binary(T)
+    end.
+
+doc_acct_id(Db, Doc) ->
+    case wh_json:get_value(<<"pvt_account_id">>, Doc) of
+        'undefined' -> wh_util:format_account_id(Db, 'raw');
+        Id -> Id
     end.

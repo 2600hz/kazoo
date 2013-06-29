@@ -105,15 +105,16 @@ is_agent_in_acct(Super, AcctId) ->
 -spec find_agent_supervisor(api_binary(), api_binary(), pids()) -> api_pid().
 find_agent_supervisor(AcctId, AgentId) -> find_agent_supervisor(AcctId, AgentId, workers()).
 
-find_agent_supervisor(_AcctId, _AgentId, []) -> 'undefined';
+find_agent_supervisor(_AcctId, _AgentId, []) -> lager:debug("ran out of supers"), 'undefined';
 find_agent_supervisor(AcctId, AgentId, _) when AcctId =:= 'undefined' orelse
                                                AgentId =:= 'undefined' ->
+    lager:debug("failed to get good data: ~s ~s", [AcctId, AgentId]),
     'undefined';
 find_agent_supervisor(AcctId, AgentId, [Super|Rest]) ->
     case catch acdc_agent:config(acdc_agent_sup:agent(Super)) of
-        {'EXIT', _} -> find_agent_supervisor(AcctId, AgentId, Rest);
+        {'EXIT', _E} -> find_agent_supervisor(AcctId, AgentId, Rest);
         {AcctId, AgentId, _} -> Super;
-        _ -> find_agent_supervisor(AcctId, AgentId, Rest)
+        _E -> find_agent_supervisor(AcctId, AgentId, Rest)
     end.
 
 %%%===================================================================

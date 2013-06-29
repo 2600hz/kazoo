@@ -1268,8 +1268,8 @@ outbound('current_call', _, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
-handle_event({'refresh', AgentJObj}, StateName, State) ->
-    lager:debug("refresh agent config: ~p", [AgentJObj]),
+handle_event({'refresh', AgentJObj}, StateName, #state{agent_proc=Srv}=State) ->
+    acdc_agent:refresh_config(Srv, wh_json:get_value(<<"queues">>, AgentJObj)),
     {'next_state', StateName, State};
 
 handle_event('load_endpoints', StateName, #state{agent_proc='undefined'}=State) ->

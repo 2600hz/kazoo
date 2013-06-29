@@ -357,8 +357,9 @@ handle_agent_change(_AccountDb, AccountId, AgentId, <<"doc_created">>) ->
     lager:debug("new agent ~s(~s) created, hope they log in soon!", [AgentId, AccountId]);
 handle_agent_change(AccountDb, AccountId, AgentId, <<"doc_edited">>) ->
     {'ok', JObj} = couch_mgr:open_doc(AccountDb, AgentId),
+    lager:debug("agent ~s edited", [AgentId]),
     case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
-        'undefined' -> 'ok';
+        'undefined' -> lager:debug("failed to find agent ~s", [AgentId]);
         P when is_pid(P) -> acdc_agent_fsm:refresh(acdc_agent_sup:fsm(P), JObj)
     end;
 handle_agent_change(_, AccountId, AgentId, <<"doc_deleted">>) ->
