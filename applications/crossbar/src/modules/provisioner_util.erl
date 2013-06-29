@@ -341,7 +341,7 @@ send_to_full_provisioner(JObj, PartialURL) ->
                          ,{"User-Agent", wh_util:to_list(erlang:node())}
                          ,{"Content-Type", "application/json"}
                         ]),
-            FullUrl = wh_util:to_lower_string(<<Url/binary, "/", PartialURL/binary>>),
+            FullUrl = wh_util:to_list(<<Url/binary, "/", PartialURL/binary>>),
             {'ok', _, _, RawJObj} = ibrowse:send_req(FullUrl, Headers, 'get', "", [{'inactivity_timeout', 10000}]),
             {Verb, Body} =
                 case wh_json:get_integer_value([<<"error">>, <<"code">>], wh_json:decode(RawJObj)) of
