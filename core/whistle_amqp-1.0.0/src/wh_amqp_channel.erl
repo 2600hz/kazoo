@@ -76,7 +76,7 @@ close(#wh_amqp_channel{channel=Pid, uri=URI}=Channel) when is_pid(Pid) ->
 close(Channel) ->
     Channel.
 
--spec cancel_consumers(wh_amqp_channel()) -> wh_amqp_channel().
+-spec cancel_consumers(wh_amqp_channel()) -> 'ok'.
 cancel_consumers(#wh_amqp_channel{commands=[]}) -> 'ok';
 cancel_consumers(#wh_amqp_channel{channel=Pid
                                   ,commands=[#'basic.consume'{consumer_tag=CTag}
@@ -89,7 +89,7 @@ cancel_consumers(#wh_amqp_channel{channel=Pid
 cancel_consumers(#wh_amqp_channel{commands=[_|Commands]}=Channel) ->
     cancel_consumers(Channel#wh_amqp_channel{commands=Commands}).
 
--spec cancel_queues(wh_amqp_channel()) -> wh_amqp_channel().
+-spec cancel_queues(wh_amqp_channel()) -> 'ok'.
 cancel_queues(#wh_amqp_channel{commands=[]}) -> 'ok';
 cancel_queues(#wh_amqp_channel{channel=Pid
                                ,commands=[#'queue.declare'{queue=Queue}
@@ -164,10 +164,8 @@ retry_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, Am
 
 -spec command(wh_amqp_command()) -> command_ret().
 command(Command) ->
-    case wh_amqp_channels:get_channel() of
-        {'error', _}=E -> E;
-        #wh_amqp_channel{}=Channel -> command(Channel, Command)
-    end.
+    #wh_amqp_channel{}=Channel = wh_amqp_channels:get_channel(),
+    command(Channel, Command).
 
 -spec command(wh_amqp_channel(), wh_amqp_command()) -> command_ret().
 command(#wh_amqp_channel{channel=Pid}, #'basic.ack'{}=BasicAck) ->

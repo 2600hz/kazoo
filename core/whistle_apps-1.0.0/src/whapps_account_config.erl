@@ -146,7 +146,7 @@ account_id_from_jobj(_Obj, 'false') ->
     throw({'error', 'unknown_object'}).
 
 account_db(Account) when is_binary(Account) ->
-    wh_util:format_account_db(Account, 'encoded');
+    wh_util:format_account_id(Account, 'encoded');
 account_db(Obj) ->
     account_db_from_call(Obj, whapps_call:is_call(Obj)).
 account_db_from_call(Call, 'true') ->
