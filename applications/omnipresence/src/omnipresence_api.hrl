@@ -10,8 +10,8 @@
                           ]).
 -define(SUBSCRIBE_TYPES, [{<<"Expires">>, fun(V) -> is_integer(wh_util:to_integer(V)) end}]).
 
--define(UPDATE_HEADERS, [<<"To">>, <<"From">>, <<"State">>, <<"Call-ID">>]).
--define(OPTIONAL_UPDATE_HEADERS, [<<"From-Tag">>, <<"To-Tag">>]).
+-define(UPDATE_HEADERS, [<<"To">>, <<"From">>, <<"State">>]).
+-define(OPTIONAL_UPDATE_HEADERS, [<<"From-Tag">>, <<"To-Tag">>, <<"Call-ID">>]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                         ,{<<"Event-Name">>, <<"update">>}
                         ,{<<"State">>, [<<"trying">>, <<"early">>
