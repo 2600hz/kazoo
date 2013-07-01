@@ -13,6 +13,8 @@
          ,update/1, update_v/1
         ]).
 
+-export([is_valid_state/1]).
+
 -export([bind_q/2
          ,unbind_q/2
         ]).
@@ -59,6 +61,15 @@ update(JObj) -> update(wh_json:to_proplist(JObj)).
 update_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?UPDATE_HEADERS, ?UPDATE_VALUES, ?UPDATE_TYPES);
 update_v(JObj) -> update_v(wh_json:to_proplist(JObj)).
+
+%% API Helpers
+-spec is_valid_state(api_binary() | api_terms()) -> boolean().
+is_valid_state(State) when is_binary(State) ->
+    lists:member(State, ?PRESENCE_STATES);
+is_valid_state(Prop) when is_list(Prop) ->
+    is_valid_state(props:get_value(<<"State">>, Prop));
+is_valid_state(JObj) ->
+    is_valid_state(wh_json:get_value(<<"State">>, JObj)).
 
 bind_q(Queue, Props) ->
     amqp_util:new_exchange(?SUBSCRIPTIONS_EXCHANGE, <<"fanout">>),
