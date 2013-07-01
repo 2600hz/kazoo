@@ -95,7 +95,11 @@ send_update_to_listeners(JObj) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    case whapps_util:amqp_pool_request(Req, fun wapi_call:query_user_channels/1) of
+    case whapps_util:amqp_pool_request(Req
+                                       ,fun wapi_call:publish_query_user_channels_req/1
+                                       ,fun wapi_call:query_user_channels_resp_v/1
+                                      )
+    of
         {'ok', JObj} ->
             lager:debug("calls in progress: ~p", [JObj]),
             maybe_send_update(U, U, JObj, ?PRESENCE_ANSWERED);
@@ -110,7 +114,7 @@ send_subscribe_to_whapps(JObj) ->
 
 handle_subscribe_only(JObj, Props) ->
     JObj1 = maybe_patch_msg_id(JObj),
-    lager:debug("sub only: ~p", [JObj1]),
+
     'true' = wapi_presence:subscribe_v(JObj1),
     gen_listener:cast(props:get_value(?MODULE, Props)
                       ,{'subscribe', subscribe_to_record(JObj1)}
