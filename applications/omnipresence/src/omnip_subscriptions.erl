@@ -46,6 +46,7 @@
 
 -record(omnip_subscription, {
           user :: ne_binary() | '_'
+          ,from :: api_binary() | '_'
           ,stalker :: ne_binary() | '_' % amqp queue to publish updates to
           ,expires = 0 :: non_neg_integer() | '_' | '$2'
           ,timestamp = wh_util:current_tstamp() :: wh_now() | '_' | '$1'
@@ -53,6 +54,14 @@
          }).
 -type subscription() :: #omnip_subscription{}.
 -type subscriptions() :: [subscription(),...] | [].
+
+-record(omnip_presence_state, {
+          user :: ne_binary() % who was updated
+          ,state :: api_binary() % to what state
+          ,timestamp = wh_util:current_tstamp() :: wh_now() % and when
+         }).
+-type presence_state() :: #omnip_presence_state{}.
+-type presence_states() :: [presence_state(),...] | [].
 
 %%%===================================================================
 %%% API
