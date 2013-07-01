@@ -37,9 +37,6 @@
 -define(RESPONDERS, [{{?MODULE, 'mwi_update'}
                       ,[{<<"notification">>, <<"mwi">>}]
                      }
-                     ,{{?MODULE, 'presence_update'}
-                       ,[{<<"notification">>, <<"presence_update">>}]
-                      }
                     ]).
 -define(QUEUE_NAME, <<"ecallmgr_fs_notify">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
