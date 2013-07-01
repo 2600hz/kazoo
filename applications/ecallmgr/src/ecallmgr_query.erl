@@ -40,7 +40,7 @@
                        ,[{<<"call_event">>, <<"query_auth_id_req">>}]
                       }
                      ,{{?MODULE, 'handle_query_user_channels'}
-                       ,[{<<"call_event">>, <<"query_user_channels">>}]
+                       ,[{<<"call_event">>, <<"query_user_channels_req">>}]
                       }
                     ]).
 -define(BINDINGS, [{'call', [{'restrict_to', ['status_req']}]}]).
@@ -84,6 +84,7 @@ handle_query_user_channels(JObj, _Props) ->
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+            lager:debug("sending back channel data for ~s@~s to ~s", [Username, Realm, ServerId]),
             wapi_call:publish_query_user_channels_resp(ServerId, Resp)
     end.
 
