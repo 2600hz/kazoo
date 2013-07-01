@@ -51,6 +51,8 @@
           ,expires = 0 :: non_neg_integer() | '_' | '$2'
           ,timestamp = wh_util:current_tstamp() :: wh_now() | '_' | '$1'
           ,protocol = <<"sip">> :: ne_binary() | '_' % protocol
+          ,username :: api_binary()
+          ,realm :: api_binary()
          }).
 -type subscription() :: #omnip_subscription{}.
 -type subscriptions() :: [subscription(),...] | [].
@@ -199,10 +201,14 @@ subscribe_to_record(JObj) ->
     S = wh_json:get_value(<<"Queue">>, JObj),
     E = expires(JObj),
 
+    [Username, Realm] = binary:split(U, <<"@">>),
+
     #omnip_subscription{user=U
                         ,stalker=S
                         ,expires=E
                         ,protocol=P
+                        ,username=Username
+                        ,realm=Realm
                        }.
 
 expires(I) when is_integer(I) -> I;
