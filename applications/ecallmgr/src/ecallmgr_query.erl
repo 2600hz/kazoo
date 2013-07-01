@@ -72,7 +72,7 @@ start_link() ->
                              ], []).
 
 handle_query_user_channels(JObj, _Props) ->
-    'true' = wapi_call:query_user_channels_v(JObj),
+    'true' = wapi_call:query_user_channels_req_v(JObj),
     Username = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
 
