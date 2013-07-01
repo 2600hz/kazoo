@@ -192,13 +192,11 @@ db_exists(#server{}=Conn, DbName) ->
 
 -spec do_db_compact(db()) -> boolean().
 do_db_compact(#db{}=Db) ->
-    Resp = ?RETRY_504(couchbeam:compact(Db)),
-    Resp =:= 'ok'.
+    'ok' =:= ?RETRY_504(couchbeam:compact(Db)).
 
 -spec do_db_view_cleanup(db()) -> boolean().
 do_db_view_cleanup(#db{}=Db) ->
-    Resp = ?RETRY_504(couchbeam:view_cleanup(Db)),
-    Resp =:= 'ok'.
+    'ok' =:= ?RETRY_504(couchbeam:view_cleanup(Db)).
 
 %%% View-related functions -----------------------------------------------------
 -spec design_compact(server(), ne_binary(), ne_binary()) -> boolean().
