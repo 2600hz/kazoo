@@ -179,8 +179,8 @@
 -define(QUERY_USER_CHANNELS_REQ_HEADERS, [<<"Username">>, <<"Realm">>]).
 -define(OPTIONAL_QUERY_USER_CHANNELS_REQ_HEADERS, []).
 -define(QUERY_USER_CHANNELS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                                   ,{<<"Event-Name">>, <<"query_user_channels_req">>}
-                                  ]).
+                                         ,{<<"Event-Name">>, <<"query_user_channels_req">>}
+                                        ]).
 -define(QUERY_USER_CHANNELS_REQ_TYPES, []).
 
 %% Query User Channels Resp
@@ -391,13 +391,6 @@ query_auth_id_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?QUERY_AUTH_ID_RESP_HEADERS, ?QUERY_AUTH_ID_RESP_VALUES, ?QUERY_AUTH_ID_RESP_TYPES);
 query_auth_id_resp_v(JObj) -> query_auth_id_resp_v(wh_json:to_proplist(JObj)).
 
-
-
-
-
-
-
-
 %%--------------------------------------------------------------------
 %% @doc Inquire into the status of a call
 %% Takes proplist, creates JSON string or error
@@ -407,7 +400,7 @@ query_auth_id_resp_v(JObj) -> query_auth_id_resp_v(wh_json:to_proplist(JObj)).
 query_user_channels_req(Prop) when is_list(Prop) ->
     case query_user_channels_req_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?QUERY_USER_CHANNELS_REQ_HEADERS, ?OPTIONAL_QUERY_USER_CHANNELS_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for auth id query req"}
+        'false' -> {'error', "Proplist failed validation for users channels query req"}
     end;
 query_user_channels_req(JObj) -> query_user_channels_req(wh_json:to_proplist(JObj)).
 
@@ -425,7 +418,7 @@ query_user_channels_req_v(JObj) -> query_user_channels_req_v(wh_json:to_proplist
 query_user_channels_resp(Prop) when is_list(Prop) ->
     case query_user_channels_resp_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?QUERY_USER_CHANNELS_RESP_HEADERS, ?OPTIONAL_QUERY_USER_CHANNELS_RESP_HEADERS);
-        'false' -> {'error', "Proplist failed validation for auth id query resp"}
+        'false' -> {'error', "Proplist failed validation for users channels query resp"}
     end;
 query_user_channels_resp(JObj) -> query_user_channels_resp(wh_json:to_proplist(JObj)).
 
@@ -690,14 +683,6 @@ publish_query_auth_id_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?QUERY_AUTH_ID_RESP_VALUES, fun ?MODULE:query_auth_id_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
-
-
-
-
-
-
-
-
 publish_query_user_channels_req(Props) when is_list(Props) ->
     publish_query_user_channels_req(Props
                                     ,props:get_value(<<"Username">>, Props)
@@ -721,9 +706,6 @@ publish_query_user_channels_resp(RespQ, JObj) ->
 publish_query_user_channels_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?QUERY_USER_CHANNELS_RESP_VALUES, fun ?MODULE:query_user_channels_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
-
-
-
 
 -spec publish_cdr(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_cdr(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
