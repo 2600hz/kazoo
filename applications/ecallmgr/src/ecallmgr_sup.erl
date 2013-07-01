@@ -18,13 +18,13 @@
 -define(OVERFLOW_POOL_SIZE, 100).
 
 -define(CHILD(Name, Type), fun(N, 'pool') -> {N, {'poolboy', 'start_link', [[{'worker_module', 'wh_amqp_worker'}
-                                                                       ,{'name', {'local', N}}
-                                                                       ,{'size', ?POOL_SIZE}
-                                                                       ,{'max_overflow', ?OVERFLOW_POOL_SIZE}
-                                                                      ]
-                                                                     ]}
+                                                                             ,{'name', {'local', N}}
+                                                                             ,{'size', ?POOL_SIZE}
+                                                                             ,{'max_overflow', ?OVERFLOW_POOL_SIZE}
+                                                                            ]
+                                                                           ]}
                                               ,'permanent', 5000, 'worker', ['poolboy']
-                                           };
+                                             };
                               (N, 'worker'=T) -> {N, {N, 'start_link', []}, 'permanent', 5000, T, [N]};
                               (N, 'supervisor'=T) -> {N, {N, 'start_link', []}, 'permanent', 'infinity', T, [N]}
                            end(Name, Type)).
