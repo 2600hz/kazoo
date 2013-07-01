@@ -14,8 +14,7 @@
 -export([start_link/0
          ,compact/0
          ,compact_node/1, compact_node/2
-         ,compact_db/1
-         ,compact_db/2
+         ,compact_db/1, compact_db/2, compact_db/3
          ,status/0
          ,is_compactor_running/0
          ,cancel_current_job/0
@@ -159,7 +158,13 @@ compact_db(Db) ->
 -spec compact_db(ne_binary(), ne_binary()) -> {'queued', reference()} | not_compacting().
 compact_db(Node, Db) ->
     case is_compactor_running() of
-        'true' -> gen_fsm:sync_send_event(?SERVER, {'req_compact_db', Node, Db});
+        'true' -> gen_fsm:sync_send_event(?SERVER, {'req_compact_db', Node, Db, []});
+        'false' -> {'error', 'compactor_down'}
+    end.
+
+compact_db(Node, Db, Opts) ->
+    case is_compactor_running() of
+        'true' -> gen_fsm:sync_send_event(?SERVER, {'req_compact_db', Node, Db, Opts});
         'false' -> {'error', 'compactor_down'}
     end.
 
@@ -284,8 +289,8 @@ ready({'compact_db', D}, State) ->
                                           ,current_db=D
                                           ,current_job_heuristic=?HEUR_NONE
                                          }};
-ready({'compact_db', N, D}, State) ->
-    gen_fsm:send_event(self(), {'compact_db', N, D}),
+ready({'compact_db', N, D, Opts}, State) ->
+    gen_fsm:send_event(self(), {'compact_db', {N, Opts}, D}),
     {'next_state', 'compact', State#state{nodes=[]
                                           ,dbs=[]
                                           ,conn='undefined'
@@ -358,9 +363,9 @@ queue_job({'req_compact_node', Node, Opts}, P, Jobs) ->
 queue_job({'req_compact_db', Db}, P, Jobs) ->
     Ref = erlang:make_ref(),
     {Ref, queue:in({{'compact_db', Db}, P, Ref}, Jobs)};
-queue_job({'req_compact_db', Node, Db}, P, Jobs) ->
+queue_job({'req_compact_db', Node, Db, Opts}, P, Jobs) ->
     Ref = erlang:make_ref(),
-    {Ref, queue:in({{'compact_db', Node, Db}, P, Ref}, Jobs)}.
+    {Ref, queue:in({{'compact_db', Node, Db, Opts}, P, Ref}, Jobs)}.
 
 %%--------------------------------------------------------------------
 compact({'compact', N}, #state{conn='undefined'
@@ -371,8 +376,8 @@ compact({'compact', N}, #state{conn='undefined'
                               }=State) ->
     Cookie = wh_couch_connections:get_node_cookie(),
     try get_node_connections(N, Cookie) of
-        {'error', _} ->
-            lager:debug("failed to connect to node ~s: timed out", [N]),
+        {'error', _E} ->
+            lager:debug("failed to connect to node ~s: ~p", [N, _E]),
             maybe_send_update(P, Ref, 'job_finished'),
             gen_fsm:send_event(self(), 'next_job'),
             {'next_state', 'ready', State#state{conn='undefined'
@@ -428,11 +433,11 @@ compact({'compact', N}=Msg, #state{conn='undefined'
     end;
 
 compact({'compact_db', N, D}=Msg, #state{conn='undefined'
-                                         ,admin_conn='undefined'
-                                         ,nodes=[]
-                                         ,current_job_pid=P
-                                         ,current_job_ref=Ref
-                                        }=State) ->
+                                               ,admin_conn='undefined'
+                                               ,nodes=[]
+                                               ,current_job_pid=P
+                                               ,current_job_ref=Ref
+                                              }=State) ->
     Cookie = wh_couch_connections:get_node_cookie(),
     try get_node_connections(N, Cookie) of
         {'error', _} ->
@@ -542,6 +547,9 @@ compact({'compact', N}, #state{admin_conn=AdminConn}=State) ->
                                           ,current_node=N
                                          }};
 
+compact({'compact', {N, _}, D}, State) ->
+    gen_fsm:send_event(self(), {'compact', N, D}),
+    {'next_state', 'compact', State};
 compact({'compact', N, D}, #state{conn=Conn
                                   ,admin_conn=AdminConn
                                   ,dbs=[]
@@ -591,6 +599,9 @@ compact({'compact', N, D}, #state{conn=Conn
                                                  }}
     end;
 
+compact({'compact_db', {N, _}, D}, State) ->
+    gen_fsm:send_event(self(), {'compact_db', N, D}),
+    {'next_state', 'compact', State};
 compact({'compact_db', N, D}, #state{conn=Conn
                                      ,admin_conn=AdminConn
                                      ,nodes=[]
@@ -1023,7 +1034,7 @@ compact_shard(AdminConn, S, DDs) ->
             lager:debug("beginning compacting shard: ~p disk/~p data", [BeforeDisk, BeforeData])
     end,
 
-    couch_util:db_compact(AdminConn, S),
+    'true' = couch_util:db_compact(AdminConn, S),
     wait_for_compaction(AdminConn, S),
 
     couch_util:db_view_cleanup(AdminConn, S),
@@ -1075,8 +1086,10 @@ wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'ok', DesignInfo}) ->
 wait_for_compaction(AdminConn, S) ->
     wait_for_compaction(AdminConn, S, couch_util:db_info(AdminConn, S)).
 
-wait_for_compaction(_AdminConn, _S, {'error', 'db_not_found'}) -> 'ok';
+wait_for_compaction(_AdminConn, _S, {'error', 'db_not_found'}) ->
+    lager:debug("db ~s wasn't found", [_S]);
 wait_for_compaction(AdminConn, S, {'error', _E}) ->
+    lager:debug("failed to query db status: ~p", [_E]),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
     wait_for_compaction(AdminConn, S);
 wait_for_compaction(AdminConn, S, {'ok', ShardData}) ->
@@ -1088,6 +1101,7 @@ wait_for_compaction(AdminConn, S, {'ok', ShardData}) ->
     end.
 
 get_node_connections({N, Opts}, Cookie) ->
+    lager:debug("getting connections from opts: ~p", [Opts]),
     [_, Host] = binary:split(N, <<"@">>),
 
     {ConfigUser, ConfigPass} = wh_couch_connections:get_creds(),
@@ -1101,6 +1115,7 @@ get_node_connections({N, Opts}, Cookie) ->
                         },
     get_node_connections(Host, Port, User, Pass, AdminPort);
 get_node_connections(N, Cookie) ->
+    lager:debug("getting connections from known connection"),
     [_, Host] = binary:split(N, <<"@">>),
 
     {User,Pass} = wh_couch_connections:get_creds(),
