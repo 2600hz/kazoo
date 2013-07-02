@@ -22,5 +22,21 @@
                        ]).
 -define(UPDATE_TYPES, []).
 
+-define(KEY_SEARCH_REQ, <<"search.req">>).
+
+-define(SEARCH_REQ_HEADERS, [<<"Realm">>]).
+-define(OPTIONAL_SEARCH_REQ_HEADERS, [<<"Username">>]).
+-define(SEARCH_REQ_VALUES, [{<<"Event-Category">>, <<"presence">>}
+                           ,{<<"Event-Name">>, <<"search_req">>}
+                          ]).
+-define(SEARCH_REQ_TYPES, []).
+
+-define(SEARCH_RESP_HEADERS, [<<"Subscriptions">>]).
+-define(OPTIONAL_SEARCH_RESP_HEADERS, []).
+-define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"presence">>}
+                             ,{<<"Event-Name">>, <<"search_resp">>}]).
+-define(SEARCH_RESP_TYPES, []).
+
+
 -define(OMNIPRESENCE_API_HRL, 'true').
 -endif.

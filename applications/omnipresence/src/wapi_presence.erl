@@ -8,6 +8,10 @@
 %%%-------------------------------------------------------------------
 -module(wapi_presence).
 
+-export([search_req/1, search_req_v/1
+         ,search_resp/1, search_resp_v/1
+        ]).
+
 -export([subscribe/1, subscribe_v/1
          ,subscribe_routing_key/1
          ,update/1, update_v/1
@@ -23,8 +27,64 @@
          ,publish_update/2, publish_update/3
         ]).
 
+-export([publish_search_req/1
+		 ,publish_search_resp/2
+		]).
 -include("omnipresence.hrl").
 -include("omnipresence_api.hrl").
+
+-spec search_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+search_req(Prop) when is_list(Prop) ->
+    case search_req_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?SEARCH_REQ_HEADERS, ?OPTIONAL_SEARCH_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for search_req"}
+    end;
+search_req(JObj) ->
+    search_req(wh_json:to_proplist(JObj)).
+
+-spec search_req_v(api_terms()) -> boolean().
+search_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SEARCH_REQ_HEADERS, ?SEARCH_REQ_VALUES, ?SEARCH_REQ_TYPES);
+search_req_v(JObj) ->
+    search_req_v(wh_json:to_proplist(JObj)).
+
+-spec search_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+search_resp(Prop) when is_list(Prop) ->
+    case search_resp_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?SEARCH_RESP_HEADERS, ?OPTIONAL_SEARCH_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for search_resp"}
+    end;
+search_resp(JObj) ->
+    search_resp(wh_json:to_proplist(JObj)).
+
+-spec search_resp_v(api_terms()) -> boolean().
+search_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SEARCH_RESP_HEADERS, ?SEARCH_RESP_VALUES, ?SEARCH_RESP_TYPES);
+search_resp_v(JObj) ->
+    search_resp_v(wh_json:to_proplist(JObj)).
+
+-spec publish_search_req(api_terms()) -> 'ok'.
+-spec publish_search_req(api_terms(), binary()) -> 'ok'.
+publish_search_req(JObj) ->
+    publish_search_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_search_req(Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?SEARCH_REQ_VALUES, fun ?MODULE:search_req/1),
+    amqp_util:callmgr_publish(Payload, ContentType, get_search_req_routing(Req)).
+
+-spec publish_search_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_search_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
+publish_search_resp(Queue, JObj) ->
+    publish_search_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_search_resp(Queue, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?SEARCH_RESP_VALUES, fun ?MODULE:search_reqsp/1),
+    amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+
+-spec get_search_req_routing(ne_binary() | api_terms()) -> ne_binary().
+get_search_req_routing(Realm) when is_binary(Realm) ->
+    list_to_binary([?KEY_SEARCH_REQ, ".", amqp_util:encode(Realm)]);
+get_search_req_routing(Req) ->
+    get_search_req_routing(wh_json:get_value(<<"Realm">>, Req)).
 
 %%--------------------------------------------------------------------
 %% @doc Subscribing for updates
@@ -90,6 +150,12 @@ bind_q(Queue, Realm, ['subscribe'|Restrict]) ->
                                  ,?SUBSCRIPTIONS_EXCHANGE
                                 ),
     bind_q(Queue, Realm, Restrict);
+bind_q(Queue, Realm, ['search_req'|Restrict]) ->
+    amqp_util:bind_q_to_exchange(Queue
+                                 ,subscribe_routing_key(Realm)
+                                 ,?SUBSCRIPTIONS_EXCHANGE
+                                ),
+    bind_q(Queue, Realm, Restrict);
 bind_q(Queue, Realm, [_|Restrict]) ->
     bind_q(Queue, Realm, Restrict);
 bind_q(_, _, []) -> 'ok'.
@@ -104,6 +170,12 @@ unbind_q(Queue, Realm, 'undefined') ->
                                      ,?SUBSCRIPTIONS_EXCHANGE
                                     );
 unbind_q(Queue, Realm, ['subscribe'|Restrict]) ->
+    amqp_util:unbind_q_from_exchange(Queue
+                                     ,subscribe_routing_key(Realm)
+                                     ,?SUBSCRIPTIONS_EXCHANGE
+                                    ),
+    unbind_q(Queue, Realm, Restrict);
+unbind_q(Queue, Realm, ['search_req'|Restrict]) ->
     amqp_util:unbind_q_from_exchange(Queue
                                      ,subscribe_routing_key(Realm)
                                      ,?SUBSCRIPTIONS_EXCHANGE

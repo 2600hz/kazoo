@@ -30,6 +30,7 @@
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
                    ,{'omnipresence', [{'restrict_to', ['subscribe', 'presence_update']}]}
+                   ,{'presence', [{'restrict_to', ['search_req']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_subscribe_only'}
                       ,[{<<"presence">>, <<"subscription">>}]
@@ -37,7 +38,10 @@
                      ,{{'omnip_presences', 'handle_presence_update_only'}
                        ,[{<<"presence">>, <<"update">>}]
                       }
-                    ]).
+                     ,{{'omnip_subscriptions', 'handle_search_req'}
+                      ,[{<<"presence">>, <<"search_req">>}]
+                     }]).
+
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
