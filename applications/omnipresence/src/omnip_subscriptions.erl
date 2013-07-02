@@ -73,6 +73,9 @@ handle_search_req(JObj, _Props) ->
     'true' = wapi_presence:search_req_v(JObj),
     Username = wh_json:get_value(<<"Username">>, JObj, '_'),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
+
+    lager:debug("searching for subs for ~s@~s", [Username, Realm]),
+
     case ets:match_object(table_id(), #omnip_subscription{username=Username
                                                           ,realm=Realm
                                                           ,_='_'
