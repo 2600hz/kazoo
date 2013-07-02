@@ -89,12 +89,11 @@ post(#cb_context{}=Context, _Id, ?RESET) ->
 publish_search_req('undefined', Context) ->
     crossbar_util:response('error', <<"realm could not be found">>, 500, Context);
 publish_search_req(Realm, Context) ->
-    ReqJObj = wh_json:set_values([{<<"Realm">>, Realm}
-                                ,{<<"App-Name">>, ?MODULE}
-                                ,{<<"App-Version">>, 1}
-                                ], wh_json:new()),
-    Subs = wapi_presence:publish_search_req(ReqJObj),
-    io:format("~p~n", [ReqJObj]),
+    Req = [{<<"Realm">>, Realm}
+    	   |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    Subs = wapi_presence:publish_search_req(Req),
+    io:format("~p~n", [Req]),
     JObj = wh_json:set_value(<<"subscriptions">>, Subs, wh_json:new()),
     Context#cb_context{resp_status=success, resp_data=JObj}.
 
