@@ -11,5 +11,9 @@
 
 -define(CONFIG_CAT, <<"omnipresence">>).
 
+-define(PRESENCE_HANGUP, <<"terminated">>).
+-define(PRESENCE_RINGING, <<"early">>).
+-define(PRESENCE_ANSWERED, <<"confirmed">>).
+
 -define(OMNIPRESENCE_HRL, 'true').
 -endif.
