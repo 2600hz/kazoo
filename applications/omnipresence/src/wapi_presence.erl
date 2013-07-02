@@ -153,9 +153,8 @@ bind_q(Queue, Realm, ['subscribe'|Restrict]) ->
                                 ),
     bind_q(Queue, Realm, Restrict);
 bind_q(Queue, Realm, ['search_req'|Restrict]) ->
-    amqp_util:bind_q_to_exchange(Queue
+    amqp_util:bind_q_to_callmgr(Queue
                                  ,subscribe_routing_key(Realm)
-                                 ,?SUBSCRIPTIONS_EXCHANGE
                                 ),
     bind_q(Queue, Realm, Restrict);
 bind_q(Queue, Realm, [_|Restrict]) ->
