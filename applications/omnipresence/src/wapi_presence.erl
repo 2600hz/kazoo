@@ -68,25 +68,25 @@ search_resp_v(JObj) ->
 publish_search_req(JObj) ->
     publish_search_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_search_req(Req, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Req, ?SEARCH_REQ_VALUES, fun ?MODULE:search_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, get_search_req_routing(Req)).
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?SEARCH_REQ_VALUES, fun ?MODULE:search_req/1),
+    amqp_util:callmgr_publish(Payload, ContentType, search_req_routing_key(Req)).
 
 -spec publish_search_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_search_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
 publish_search_resp(Queue, JObj) ->
     publish_search_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_search_resp(Queue, Resp, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?SEARCH_RESP_VALUES, fun ?MODULE:search_reqsp/1),
+    {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?SEARCH_RESP_VALUES, fun ?MODULE:search_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 
--spec get_search_req_routing(ne_binary() | api_terms()) -> ne_binary().
-get_search_req_routing(Req) when is_list(Req) ->
-    get_search_req_routing(props:get_value(<<"Realm">>, Req));
-get_search_req_routing(Realm) when is_binary(Realm) ->
+-spec search_req_routing_key(ne_binary() | api_terms()) -> ne_binary().
+search_req_routing_key(Req) when is_list(Req) ->
+    search_req_routing_key(props:get_value(<<"Realm">>, Req));
+search_req_routing_key(Realm) when is_binary(Realm) ->
     list_to_binary([?KEY_SEARCH_REQ, ".", amqp_util:encode(Realm)]);
-get_search_req_routing(Req) ->
-    get_search_req_routing(wh_json:get_value(<<"Realm">>, Req)).
+search_req_routing_key(Req) ->
+    search_req_routing_key(wh_json:get_value(<<"Realm">>, Req)).
 
 %%--------------------------------------------------------------------
 %% @doc Subscribing for updates
@@ -136,6 +136,7 @@ is_valid_state(JObj) ->
 bind_q(Queue, Props) ->
     amqp_util:new_exchange(?SUBSCRIPTIONS_EXCHANGE, <<"fanout">>),
     amqp_util:new_exchange(?UPDATES_EXCHANGE, <<"direct">>),
+    amqp_util:callmgr_exchange(),
 
     Realm = props:get_value('realm', Props, <<"*">>),
 
@@ -153,8 +154,9 @@ bind_q(Queue, Realm, ['subscribe'|Restrict]) ->
                                 ),
     bind_q(Queue, Realm, Restrict);
 bind_q(Queue, Realm, ['search_req'|Restrict]) ->
+    lager:debug("bind to search req for ~s(~s)", [Queue, Realm]),
     amqp_util:bind_q_to_callmgr(Queue
-                                 ,subscribe_routing_key(Realm)
+                                ,search_req_routing_key(Realm)
                                 ),
     bind_q(Queue, Realm, Restrict);
 bind_q(Queue, Realm, [_|Restrict]) ->
@@ -177,9 +179,8 @@ unbind_q(Queue, Realm, ['subscribe'|Restrict]) ->
                                     ),
     unbind_q(Queue, Realm, Restrict);
 unbind_q(Queue, Realm, ['search_req'|Restrict]) ->
-    amqp_util:unbind_q_from_exchange(Queue
-                                     ,subscribe_routing_key(Realm)
-                                     ,?SUBSCRIPTIONS_EXCHANGE
+    amqp_util:unbind_q_from_callmgr(Queue
+                                     ,search_req_routing_key(Realm)
                                     ),
     unbind_q(Queue, Realm, Restrict);
 unbind_q(Queue, Realm, [_|Restrict]) ->

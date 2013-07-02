@@ -39,8 +39,9 @@
                        ,[{<<"presence">>, <<"update">>}]
                       }
                      ,{{'omnip_subscriptions', 'handle_search_req'}
-                      ,[{<<"presence">>, <<"search_req">>}]
-                     }]).
+                       ,[{<<"presence">>, <<"search_req">>}]
+                      }
+                    ]).
 
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
