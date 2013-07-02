@@ -38,7 +38,7 @@ subscribe_v(Prop) when is_list(Prop) ->
 subscribe_v(JObj) -> subscribe_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Subscribing for updates
+%% @doc Someone's presence is updated, update tracking
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -61,7 +61,11 @@ bind_q(Queue, Props) ->
 
 bind_q(Queue, Props, 'undefined') ->
     Realm = props:get_value('realm', Props, <<"*">>),
-    amqp_util:bind_q_to_whapps(Queue, wapi_presence:subscribe_routing_key(Realm));
+    amqp_util:bind_q_to_whapps(Queue, wapi_presence:subscribe_routing_key(Realm)),
+
+    To = props:get_value('to', Props, <<"*">>),
+    State = props:get_value('presence_state', Props, <<"*">>),
+    amqp_util:bind_q_to_whapps(Queue, presence_update_routing_key(To, State));
 bind_q(Queue, Props, ['subscribe'|Ps]) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     amqp_util:bind_q_to_whapps(Queue, wapi_presence:subscribe_routing_key(Realm)),
