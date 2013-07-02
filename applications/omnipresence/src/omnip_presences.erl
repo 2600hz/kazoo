@@ -56,19 +56,20 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+-spec start_link() -> startlink_ret().
+start_link() -> gen_server:start_link(?MODULE, [], []).
 
+-spec handle_presence_update(wh_json:object(), wh_proplist()) -> any().
 handle_presence_update(JObj, _Props) ->
     'true' = wapi_notifications:presence_update_v(JObj),
     lager:debug("presence update recv: ~p", [JObj]).
 
+-spec handle_presence_update_only(wh_json:object(), wh_proplist()) -> any().
 handle_presence_update_only(JObj, Props) ->
     'true' = wapi_omnipresence:presence_update_v(JObj),
     gen_listener:cast(props:get_value(?MODULE, Props)
                       ,{'presence_state', update_to_record(JObj)}
                      ).
-
 
 -spec update_to_record(wh_json:object()) -> presence_state().
 update_to_record(JObj) ->
@@ -89,7 +90,7 @@ table_config() ->
 
 -spec update_presence_state(pid() | atom(), ne_binary(), ne_binary()) -> 'ok'.
 update_presence_state(Srv, User, Update) ->
-    PS = case omnip_presences:find_presence_state(User) of
+    PS = case ?MODULE:find_presence_state(User) of
              {'error', 'not_found'} ->
                  #omnip_presence_state{user=User
                                        ,state=Update
@@ -98,8 +99,13 @@ update_presence_state(Srv, User, Update) ->
          end,
     gen_listener:cast(Srv, {'update_presence_state', PS}).
 
+-spec current_state(presence_state()) -> api_binary().
 current_state(#omnip_presence_state{state=State}) -> State.
+
+-spec user(presence_state()) -> api_binary().
 user(#omnip_presence_state{user=User}) -> User.
+
+-spec timestamp(presence_state()) -> pos_integer().
 timestamp(#omnip_presence_state{timestamp=T}) -> T.
 
 %%%===================================================================
@@ -155,7 +161,8 @@ handle_cast({'update_presence_state', #omnip_presence_state{user=U
     case find_presence_state(U) of
         {'error', 'not_found'} ->
             lager:debug("creating state for ~s with ~s", [U, S]),
-            ets:insert_new(table_id(), PS);
+            ets:insert(table_id(), PS),
+            {'noreply', State};
         {'ok', _} ->
             lager:debug("updating state for ~s to ~s", [U, S]),
             handle_cast({'update_presence_state', U, [{#omnip_presence_state.state, S}
@@ -181,9 +188,8 @@ find_presence_state(U) ->
                                  }])
     of
         [] -> {'error', 'not_found'};
-        [#omnip_presence_state{}=State|_] -> {'ok', State}
+        [#omnip_presence_state{}=PS|_] -> {'ok', PS}
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
