@@ -83,7 +83,10 @@ handle_search_req(JObj, _Props) ->
     of
         [] -> 'ok';
         Subs ->
-            Resp = [{<<"Subscriptions">>, subscriptions_to_json(Subs)}],
+            Resp = [{<<"Subscriptions">>, subscriptions_to_json(Subs)}
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
             wapi_presence:publish_search_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
