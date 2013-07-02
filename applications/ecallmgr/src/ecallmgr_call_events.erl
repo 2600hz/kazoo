@@ -466,7 +466,7 @@ create_event_props(EventName, ApplicationName, Props) ->
     props:filter_undefined(
       [{<<"Msg-ID">>, wh_util:to_binary(FSTimestamp)}
        ,{<<"Timestamp">>, NormalizedFSTimestamp}
-       ,{<<"Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
+       ,{<<"Call-ID">>, find_fs_callid(Props)}
        ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
        ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
        ,{<<"Channel-State">>, get_channel_state(Props)}
@@ -500,6 +500,21 @@ create_event_props(EventName, ApplicationName, Props) ->
        ,{<<"Replaced-By">>, props:get_value(<<"att_xfer_replaced_by">>, Props)}
        | event_specific(EventName, ApplicationName, Props)
       ]).
+
+find_fs_callid(Props) ->
+    find_fs_callid(Props, [<<"Caller-Unique-ID">>
+                           ,<<"Unique-ID">>
+                           ,<<"variable_uuid">>
+                           ,<<"Channel-Call-UUID">>
+                           ,<<"variable_sip_call_id">>
+                          ]).
+find_fs_callid(Props, [H|T]) ->
+    case wh_json:get_value(H, Props) of
+        'undefined' -> find_fs_callid(Props, T);
+        V -> V
+    end;
+find_fs_callid(_, []) -> 'undefined'.
+
 
 -spec is_channel_moving(wh_proplist()) -> boolean().
 is_channel_moving(Props) ->
