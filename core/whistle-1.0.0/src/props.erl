@@ -19,6 +19,7 @@
          ,get_is_true/2, get_is_true/3, is_true/2, is_true/3
          ,get_is_false/2, get_is_false/3, is_false/2, is_false/3
          ,get_keys/1
+         ,get_first_defined/2
          ,get_all_values/2, get_values/2
          ,set_value/3
          ,unique/1
@@ -29,8 +30,11 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
+-type wh_proplist_keys() :: [wh_proplist_key(),...] | [].
+-type wh_proplist_values() :: [wh_proplist_value(),...] | [].
+
 -spec set_value(wh_proplist_key(), wh_proplist_value(), wh_proplist()) ->
-                             wh_proplist().
+                       wh_proplist().
 set_value(K, V, Prop) ->
     [{K, V} | [KV || {Key, _}=KV <- Prop, K =/= Key]].
 
@@ -50,18 +54,27 @@ filter_undefined(Prop) ->
 -spec get_value(wh_proplist_key(), wh_proplist()) -> term().
 -spec get_value(wh_proplist_key(), wh_proplist(), Default) -> Default | term().
 get_value(Key, Prop) ->
-    get_value(Key, Prop, undefined).
+    get_value(Key, Prop, 'undefined').
 
 get_value(_Key, [], Def) -> Def;
 get_value(Key, Prop, Default) when is_list(Prop) ->
     case lists:keyfind(Key, 1, Prop) of
-        false ->
+        'false' ->
             case lists:member(Key, Prop) of
-                true -> true;
-                false -> Default
+                'true' -> 'true';
+                'false' -> Default
             end;
         {Key, V} -> V; % only return V if a two-tuple is found
         Other when is_tuple(Other) -> Default % otherwise return the default
+    end.
+
+%% Given a list of keys, find the first one defined
+-spec get_first_defined(wh_proplist_keys(), wh_proplist()) -> term().
+get_first_defined([], _Prop) -> 'undefined';
+get_first_defined([H|T], Prop) ->
+    case get_value(H, Prop) of
+        'undefined' -> get_first_defined(T, Prop);
+        V -> V
     end.
 
 -spec get_is_true(wh_proplist_key(), wh_proplist()) -> api_boolean().
@@ -93,9 +106,9 @@ is_false(Key, Prop, Default) ->
     end.
 
 -spec get_integer_value(wh_proplist_key(), wh_proplist()) ->
-                                     api_integer().
+                               api_integer().
 -spec get_integer_value(wh_proplist_key(), wh_proplist(), Default) ->
-                                     integer() | Default.
+                               integer() | Default.
 get_integer_value(Key, Prop) ->
     get_integer_value(Key, Prop, 'undefined').
 get_integer_value(Key, Prop, Default) ->
@@ -105,9 +118,9 @@ get_integer_value(Key, Prop, Default) ->
     end.
 
 -spec get_atom_value(wh_proplist_key(), wh_proplist()) ->
-                                  atom().
+                            atom().
 -spec get_atom_value(wh_proplist_key(), wh_proplist(), Default) ->
-                                  atom() | Default.
+                            atom() | Default.
 get_atom_value(Key, Prop) ->
     get_atom_value(Key, Prop, 'undefined').
 get_atom_value(Key, Prop, Default) ->
@@ -118,7 +131,7 @@ get_atom_value(Key, Prop, Default) ->
 
 -spec get_binary_value(wh_proplist_key(), wh_proplist()) -> api_binary().
 -spec get_binary_value(wh_proplist_key(), wh_proplist(), Default) ->
-                                    ne_binary() | Default.
+                              ne_binary() | Default.
 get_binary_value(Key, Prop) ->
     get_binary_value(Key, Prop, 'undefined').
 get_binary_value(Key, Prop, Default) ->
@@ -127,10 +140,10 @@ get_binary_value(Key, Prop, Default) ->
         V -> wh_util:to_binary(V)
     end.
 
--spec get_keys(wh_proplist()) -> [wh_proplist_key(),...] | [].
-get_keys(Prop) -> [ K || {K,_} <- Prop].
+-spec get_keys(wh_proplist()) -> wh_proplist_keys().
+get_keys(Prop) -> [K || {K,_} <- Prop].
 
--spec get_all_values(wh_proplist_key(), wh_proplist()) -> [wh_proplist_value(),...] | [].
+-spec get_all_values(wh_proplist_key(), wh_proplist()) -> wh_proplist_values().
 get_all_values(Key, Prop) -> get_values(Key, Prop).
 get_values(Key, Prop) -> [V || {K, V} <- Prop, K =:= Key].
 
