@@ -23,15 +23,21 @@
 
 -record(state, {subs_pid :: pid()
                 ,subs_ref :: reference()
+                ,presences_pid :: pid()
+                ,presences_ref :: reference()
                }).
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
-                   ,{'omnipresence', []}
+                   ,{'omnipresence', [{'restrict_to', ['subscribe', 'presence_update']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_subscribe_only'}
                       ,[{<<"presence">>, <<"subscription">>}]
-                     }]).
+                     }
+                     ,{{'omnip_presences', 'handle_presence_update_only'}
+                       ,[{<<"presence">>, <<"update">>}]
+                      }
+                    ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -74,6 +80,7 @@ start_link() ->
 init([]) ->
     put('callid', ?MODULE),
     gen_listener:cast(self(), {'find_subscriptions_srv'}),
+    gen_listener:cast(self(), {'find_presences_srv'}),
     lager:debug("omnipresence_listener started"),
     {'ok', #state{}}.
 
@@ -116,6 +123,18 @@ handle_cast({'find_subscriptions_srv'}, #state{subs_pid=_Pid}=State) ->
                                     ,subs_ref=erlang:monitor('process', P)
                                    }}
     end;
+handle_cast({'find_presences_srv'}, #state{presences_pid=_Pid}=State) ->
+    case omnipresence_sup:presences_srv() of
+        'undefined' ->
+            lager:debug("no presences_pid found"),
+            gen_listener:cast(self(), {'find_presences_srv'}),
+            {'noreply', State#state{presences_pid='undefined'}};
+        P when is_pid(P) ->
+            lager:debug("new presences pid: ~p", [P]),
+            {'noreply', State#state{presences_pid=P
+                                    ,presences_ref=erlang:monitor('process', P)
+                                   }}
+    end;
 
 handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
     {'noreply', State};
@@ -145,6 +164,13 @@ handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
                             ,subs_ref='undefined'
                            }};
 
+handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{presences_pid=Pid
+                                                      ,presences_ref=Ref
+                                                     }=State) ->
+    gen_listener:cast(self(), {'find_presences_srv'}),
+    {'noreply', State#state{presences_pid='undefined'
+                            ,presences_ref='undefined'
+                           }};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -157,8 +183,12 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{subs_pid=P}) ->
-    {'reply', [{'omnip_subscriptions', P}]}.
+handle_event(_JObj, #state{subs_pid=S
+                           ,presences_pid=P
+                          }) ->
+    {'reply', [{'omnip_subscriptions', S}
+               ,{'omnip_presences', P}
+              ]}.
 
 %%--------------------------------------------------------------------
 %% @private
