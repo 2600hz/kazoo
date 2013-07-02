@@ -136,7 +136,8 @@ login_agent(Call, AgentId, Data) ->
     of
         {'ok', RespJObj} ->
             wh_json:get_value(<<"Status">>, RespJObj);
-        {'error', _} ->
+        {'error', _E} ->
+            lager:debug("failed to hear back about login: ~p", [_E]),
             <<"failed">>
     end.
 

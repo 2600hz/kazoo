@@ -660,8 +660,9 @@ ringing({'originate_ready', JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:originate_execute(Srv, JObj),
     {'next_state', 'ringing', State};
 
-ringing({'originate_uuid', ACallId, ACtrlQ}, State) ->
+ringing({'originate_uuid', ACallId, ACtrlQ}, #state{agent_proc=Srv}=State) ->
     lager:debug("recv originate_uuid for agent call ~s(~s)", [ACallId, ACtrlQ]),
+    acdc_agent:originate_uuid(Srv, ACallId, ACtrlQ),
     {'next_state', 'ringing', State};
 
 ringing({'originate_started', ACallId}, #state{agent_proc=Srv

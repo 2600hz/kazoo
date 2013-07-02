@@ -104,11 +104,13 @@ bind(CallId, Restrict) ->
 
 unbind_from_call_events('undefined') -> 'ok';
 unbind_from_call_events(?NE_BINARY = CallId) -> unbind(CallId, ['events', 'error']);
+unbind_from_call_events({CallId, _}) -> unbind_from_call_events(CallId);
 unbind_from_call_events(Call) -> unbind_from_call_events(whapps_call:call_id(Call)).
 
 unbind_from_call_events('undefined', _) -> 'ok';
 unbind_from_call_events(Call, 'undefined') -> unbind_from_call_events(Call);
 unbind_from_call_events(?NE_BINARY = CallId, _Url) -> unbind(CallId, ['events', 'error', 'cdr']);
+unbind_from_call_events({CallId, _}, Url) -> unbind_from_call_events(CallId, Url);
 unbind_from_call_events(Call, Url) -> unbind_from_call_events(whapps_call:call_id(Call), Url).
 
 unbind_from_cdr('undefined') -> 'ok';

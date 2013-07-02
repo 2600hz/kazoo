@@ -20,6 +20,7 @@
          ,monitor_call/4
          ,channel_hungup/2
          ,originate_execute/2
+         ,originate_uuid/3
          ,outbound_call/2
          ,send_sync_req/1
          ,send_sync_resp/3, send_sync_resp/4
@@ -74,7 +75,7 @@
          ,recording_url :: api_binary() %% where to send recordings after the call
          ,is_thief = 'false' :: boolean()
          ,agent :: agent()
-         ,agent_call_ids = [] :: api_binaries()
+         ,agent_call_ids = [] :: api_binaries() | wh_proplist()
          ,agent_call_queue :: api_binary()
          ,cdr_urls = dict:new() :: dict() %% {CallId, Url}
          ,agent_presence_id :: api_binary()
@@ -235,6 +236,9 @@ channel_hungup(Srv, CallId) ->
 originate_execute(Srv, JObj) ->
     gen_listener:cast(Srv, {'originate_execute', JObj}).
 
+originate_uuid(Srv, UUID, CtlQ) ->
+    gen_listener:cast(Srv, {'originate_uuid', UUID, CtlQ}).
+
 outbound_call(Srv, CallId) ->
     gen_listener:cast(Srv, {'outbound_call', CallId}).
 
@@ -295,6 +299,7 @@ maybe_update_presence_state(_Srv, 'undefined') -> 'ok';
 maybe_update_presence_state(Srv, State) ->
     presence_update(Srv, State).
 
+presence_update(_, 'undefined') -> 'ok';
 presence_update(Srv, PresenceState) ->
     gen_listener:cast(Srv, {'presence_update', PresenceState}).
 
@@ -454,7 +459,7 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
             lager:debug("member channel hungup, done with this call"),
             acdc_util:unbind_from_call_events(Call),
             [begin
-                 lager:debug("unbinding from agent call id ~s", [ACallId]),
+                 lager:debug("unbinding from agent call id ~p", [ACallId]),
                  acdc_util:unbind_from_call_events(ACallId),
                  stop_agent_leg(MyQ, ACallId, ACtrlQ)
              end
@@ -687,6 +692,15 @@ handle_cast({'originate_execute', JObj}, #state{my_q=Q}=State) ->
     send_originate_execute(JObj, Q),
     {'noreply', State, 'hibernate'};
 
+handle_cast({'originate_uuid', UUID, CtlQ}, #state{agent_call_ids=ACallIds
+                                                   ,agent_call_queue=_ACallQ
+                                                  }=State) ->
+    lager:debug("updating ~s with ~s in ~p", [UUID, CtlQ, ACallIds]),
+    lager:debug("updating call queue from ~s with ~s", [_ACallQ, CtlQ]),
+    {'noreply', State#state{agent_call_ids=[{UUID, CtlQ} | lists:delete(UUID, ACallIds)]
+                            ,agent_call_queue=CtlQ
+                           }};
+
 handle_cast({'outbound_call', CallId}, State) ->
     _ = wh_util:put_callid(CallId),
     acdc_util:bind_to_call_events(CallId),
@@ -764,11 +778,13 @@ handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
                                                        ,agent_presence_id='undefined'
                                                        ,agent_id=AgentId
                                                       }=State) ->
+    lager:debug("no custom presence id, using ~s for ~s", [AgentId, PresenceState]),
     acdc_util:presence_update(AcctId, AgentId, PresenceState),
     {'noreply', State};
 handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
                                                        ,agent_presence_id=PresenceId
                                                       }=State) ->
+    lager:debug("custom presence id, using ~s for ~s", [PresenceId, PresenceState]),
     acdc_util:presence_update(AcctId, PresenceId, PresenceState),
     {'noreply', State};
 
@@ -1196,15 +1212,18 @@ is_thief(Agent) -> not wh_json:is_json_object(Agent).
 
 handle_fsm_started(_FSMPid) -> gen_listener:cast(self(), 'bind_to_member_reqs').
 
-stop_agent_leg('undefined', _, _) -> 'ok';
-stop_agent_leg(_, 'undefined', _) -> 'ok';
-stop_agent_leg(_, _, 'undefined') -> 'ok';
+stop_agent_leg('undefined', _, _) -> lager:debug("my queue not defined");
+stop_agent_leg(_, 'undefined', _) -> lager:debug("agent call id not defined");
+stop_agent_leg(_, _, 'undefined') -> lager:debug("agent ctrl queue not defined");
+stop_agent_leg(MyQ, {ACallId, ACtrlQ}, _) ->
+    stop_agent_leg(MyQ, ACallId, ACtrlQ);
 stop_agent_leg(MyQ, ACallId, ACtrlQ) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Call-ID">>, ACallId}
                | wh_api:default_headers(MyQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
+    lager:debug("sending hangup to ~s: ~s", [ACallId, ACtrlQ]),
     wapi_dialplan:publish_command(ACtrlQ, Command).
 
 find_account_id(JObj) ->

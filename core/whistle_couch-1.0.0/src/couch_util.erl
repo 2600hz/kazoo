@@ -470,7 +470,7 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
                 {'ok', Res} ->
                     JObjs = Res++Acc,
                     _ = case couch_mgr:change_notice() of
-                            'true' -> spawn(fun() -> publish_doc_change(Db, Docs, JObjs) end);
+                            'true' -> publish_doc_change(Db, Docs, JObjs);
                             'false' -> 'ok'
                         end,
                     {'ok', JObjs};

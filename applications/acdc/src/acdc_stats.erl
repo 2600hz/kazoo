@@ -430,6 +430,7 @@ get_query_limit(JObj) ->
 
 init([]) ->
     put('callid', <<"acdc.stats">>),
+    couch_mgr:suppress_change_notice(),
     lager:debug("started new acdc stats collector"),
 
     {'ok', #state{archive_ref=start_archive_timer()

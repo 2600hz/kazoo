@@ -99,8 +99,8 @@ maybe_start_agent(AcctId, AgentId, JObj) ->
             timer:sleep(100),
             case erlang:is_process_alive(Sup) of
                 'true' ->
-                    acdc_stats:agent_logged_in(AcctId, AgentId),
                     maybe_update_presence(Sup, JObj),
+                    acdc_stats:agent_logged_in(AcctId, AgentId),
                     login_success(JObj);
                 'false' ->
                     acdc_stats:agent_logged_out(AcctId, AgentId),
@@ -124,14 +124,16 @@ login_success(JObj) ->
     login_resp(JObj, <<"success">>).
 
 login_resp(JObj, Status) ->
-    case wh_json:get_value(<<"Msg-ID">>, JObj) of
-        'undefined' -> lager:debug("not publishing a login resp: no msg_id");
-        MsgId ->
+    case {wh_json:get_value(<<"Server-ID">>, JObj), wh_json:get_value(<<"Msg-ID">>, JObj)} of
+        {'undefined', _} -> lager:debug("not publishing a login resp: no server_id");
+        {<<>>, _} -> lager:debug("not publishing a login resp: no server_id");
+        {_, 'undefined'} -> lager:debug("not publishing a login resp: no msg_id");
+        {ServerID, MsgId} ->
             Prop = [{<<"Status">>, Status}
                     ,{<<"Msg-ID">>, MsgId}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
-            wapi_acdc_agent:publish_login_resp(wh_json:get_value(<<"Server-ID">>, JObj), Prop)
+            wapi_acdc_agent:publish_login_resp(ServerID, Prop)
     end.
 
 -spec maybe_start_agent(api_binary(), api_binary()) ->
@@ -166,7 +168,7 @@ maybe_stop_agent(AcctId, AgentId, JObj) ->
 
             case catch acdc_agent_sup:agent(Sup) of
                 APid when is_pid(APid) ->
-                    maybe_update_presence(Sup, JObj),
+                    maybe_update_presence(Sup, JObj, ?PRESENCE_RED_SOLID),
                     acdc_agent:logout_agent(APid);
                 _P -> lager:debug("failed to find agent listener for ~s: ~p", [AgentId, _P])
             end,
@@ -411,6 +413,7 @@ handle_destroy(JObj, Props) ->
 presence_id(JObj) ->
     presence_id(JObj, 'undefined').
 presence_id(JObj, AgentId) ->
+    lager:debug("find presence in ~p", [JObj]),
     wh_json:get_value(<<"Presence-ID">>, JObj, AgentId).
 
 presence_state(JObj) ->
@@ -419,6 +422,8 @@ presence_state(JObj, State) ->
     wh_json:get_value(<<"Presence-State">>, JObj, State).
 
 maybe_update_presence(Sup, JObj) ->
+    maybe_update_presence(Sup, JObj, 'undefined').
+maybe_update_presence(Sup, JObj, PresenceState) ->
     APid = acdc_agent_sup:agent(Sup),
     acdc_agent:maybe_update_presence_id(APid, presence_id(JObj)),
-    acdc_agent:maybe_update_presence_state(APid, presence_state(JObj)).
+    acdc_agent:presence_update(APid, presence_state(JObj, PresenceState)).
