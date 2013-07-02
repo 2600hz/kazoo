@@ -28,8 +28,8 @@
         ]).
 
 -export([publish_search_req/1
-		 ,publish_search_resp/2
-		]).
+                 ,publish_search_resp/2
+                ]).
 -include("omnipresence.hrl").
 -include("omnipresence_api.hrl").
 
