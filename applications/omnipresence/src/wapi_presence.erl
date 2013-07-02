@@ -154,7 +154,6 @@ bind_q(Queue, Realm, ['subscribe'|Restrict]) ->
                                 ),
     bind_q(Queue, Realm, Restrict);
 bind_q(Queue, Realm, ['search_req'|Restrict]) ->
-    lager:debug("bind to search req for ~s(~s)", [Queue, Realm]),
     amqp_util:bind_q_to_callmgr(Queue
                                 ,search_req_routing_key(Realm)
                                 ),
