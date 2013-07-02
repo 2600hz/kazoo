@@ -12,7 +12,6 @@
 -export([start_link/0
 
          ,handle_subscribe/2, handle_subscribe_only/2
-         ,handle_presence_update/2
          ,handle_new_channel/2
          ,handle_destroy_channel/2
          ,handle_answered_channel/2
@@ -20,6 +19,9 @@
 
          ,table_id/0
          ,table_config/0
+
+         ,find_subscription/1
+         ,find_subscriptions/1
         ]).
 
 -export([init/1
@@ -32,10 +34,6 @@
 
 -include("omnipresence.hrl").
 -include_lib("kazoo_etsmgr/include/kazoo_etsmgr.hrl").
-
--define(PRESENCE_HANGUP, <<"terminated">>).
--define(PRESENCE_RINGING, <<"early">>).
--define(PRESENCE_ANSWERED, <<"confirmed">>).
 
 -define(EXPIRE_SUBSCRIPTIONS, whapps_config:get_integer(?CONFIG_CAT, <<"expire_check_ms">>, 1000)).
 -define(EXPIRE_MESSAGE, 'clear_expired').
@@ -51,19 +49,11 @@
           ,expires = 0 :: non_neg_integer() | '_' | '$2'
           ,timestamp = wh_util:current_tstamp() :: wh_now() | '_' | '$1'
           ,protocol = <<"sip">> :: ne_binary() | '_' % protocol
-          ,username :: api_binary()
-          ,realm :: api_binary()
+          ,username :: api_binary() | '_'
+          ,realm :: api_binary() | '_'
          }).
 -type subscription() :: #omnip_subscription{}.
 -type subscriptions() :: [subscription(),...] | [].
-
--record(omnip_presence_state, {
-          user :: ne_binary() % who was updated
-          ,state :: api_binary() % to what state
-          ,timestamp = wh_util:current_tstamp() :: wh_now() % and when
-         }).
--type presence_state() :: #omnip_presence_state{}.
--type presence_states() :: [presence_state(),...] | [].
 
 %%%===================================================================
 %%% API
@@ -86,17 +76,28 @@ handle_query_req(_JObj, _Props) ->
 %%   Subscribe comes into shared queue, gets round-robined to next omni whapps
 %%   Handling whapp then publishes an internal whapp msg to all other omni whapps
 %%   Handling whapp then publishes a status update to the subscribe Queue
-handle_subscribe(JObj, _Props) ->
+handle_subscribe(JObj, Props) ->
     JObj1 = maybe_patch_msg_id(JObj),
     'true' = wapi_presence:subscribe_v(JObj1),
 
     %% sending update to whapps
     send_subscribe_to_whapps(JObj1),
-    send_update_to_listeners(JObj1).
+    send_update_to_listeners(JObj1, Props).
 
-send_update_to_listeners(JObj) ->
+send_update_to_listeners(JObj, Props) ->
     #omnip_subscription{user=U} = subscribe_to_record(JObj),
+    Srv = props:get_value('omnip_presences', Props),
 
+    case omnip_presences:find_presence_state(U) of
+        {'error', 'not_found'} ->
+            lager:debug("failed to find presence state for ~s, searching", [U]),
+            search_for_presence_state(U, JObj, Srv);
+        {'ok', PS} ->
+            lager:debug("found presence state for ~s: ~s", [U, omnip_presences:current_state(PS)]),
+            maybe_send_update(U, U, JObj, Srv, PS)
+    end.
+
+search_for_presence_state(U, SubJObj, Srv) ->
     [User, Realm] = binary:split(U, <<"@">>),
 
     lager:debug("find presence for ~s:~s", [User, Realm]),
@@ -111,12 +112,12 @@ send_update_to_listeners(JObj) ->
                                        ,fun wapi_call:query_user_channels_resp_v/1
                                       )
     of
-        {'ok', JObj} ->
-            lager:debug("calls in progress: ~p", [JObj]),
-            maybe_send_update(U, U, JObj, ?PRESENCE_ANSWERED);
+        {'ok', SearchJObj} ->
+            lager:debug("calls in progress: ~p", [SearchJObj]),
+            maybe_send_update(U, U, SearchJObj, Srv, ?PRESENCE_ANSWERED);
         {'error', _E} ->
             lager:debug("Failed to lookup user channels: ~p", [_E]),
-            maybe_send_update(U, U, JObj, ?PRESENCE_HANGUP)
+            maybe_send_update(U, U, SubJObj, Srv, ?PRESENCE_HANGUP)
     end.
 
 send_subscribe_to_whapps(JObj) ->
@@ -138,40 +139,38 @@ maybe_patch_msg_id(JObj) ->
         _ -> JObj
     end.
 
-handle_presence_update(JObj, _Props) ->
-    'true' = wapi_notifications:presence_update_v(JObj),
-    lager:debug("presence update recv: ~p", [JObj]).
-
-handle_new_channel(JObj, _Props) ->
+handle_new_channel(JObj, Props) ->
     'true' = wapi_call:new_channel_v(JObj),
 
     From = wh_json:get_value(<<"From">>, JObj),
     Req = wh_json:get_value(<<"Request">>, JObj),
 
-    maybe_send_update(From, Req, JObj, ?PRESENCE_RINGING),
-    maybe_send_update(Req, From, JObj, ?PRESENCE_RINGING).
+    maybe_send_update(From, Req, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_RINGING),
+    maybe_send_update(Req, From, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_RINGING).
 
-handle_answered_channel(JObj, _Props) ->
+handle_answered_channel(JObj, Props) ->
     'true' = wapi_call:answered_channel_v(JObj),
 
     From = wh_json:get_value(<<"From">>, JObj),
     Req = wh_json:get_value(<<"Request">>, JObj),
 
-    maybe_send_update(From, Req, JObj, ?PRESENCE_ANSWERED),
-    maybe_send_update(Req, From, JObj, ?PRESENCE_ANSWERED).
+    maybe_send_update(From, Req, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_ANSWERED),
+    maybe_send_update(Req, From, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_ANSWERED).
 
-handle_destroy_channel(JObj, _Props) ->
+handle_destroy_channel(JObj, Props) ->
     'true' = wapi_call:destroy_channel_v(JObj),
 
     From = wh_json:get_value(<<"From">>, JObj),
     Req = wh_json:get_value(<<"Request">>, JObj),
 
-    maybe_send_update(From, Req, JObj, ?PRESENCE_HANGUP),
-    maybe_send_update(Req, From, JObj, ?PRESENCE_HANGUP).
+    maybe_send_update(From, Req, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_HANGUP),
+    maybe_send_update(Req, From, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_HANGUP).
 
-maybe_send_update(User, From, JObj, Update) ->
+maybe_send_update(User, From, JObj, Srv, Update) ->
     case find_subscriptions(User) of
         {'ok', Subs} ->
+            lager:debug("update ~s to ~s in ~p", [User, Update, Srv]),
+            omnip_presences:update_presence_state(Srv, User, Update),
             [send_update(Update, From, JObj, S) || S <- Subs];
         {'error', 'not_found'} ->
             lager:debug("no subs for ~s(~s): ~p", [User, Update, JObj])
@@ -193,6 +192,7 @@ send_update(Update, From, JObj, #omnip_subscription{user=U
            ],
     whapps_util:amqp_pool_send(Prop, fun(API) -> wapi_presence:publish_update(S, API) end).
 
+-spec subscribe_to_record(wh_json:object()) -> subscription().
 subscribe_to_record(JObj) ->
     {P, U} = case wh_json:get_value(<<"User">>, JObj) of
                  <<"sip:", User/binary>> -> {<<"sip">>, User};
