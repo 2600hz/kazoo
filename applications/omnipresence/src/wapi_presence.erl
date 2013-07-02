@@ -82,7 +82,7 @@ publish_search_resp(Queue, Resp, ContentType) ->
 
 -spec get_search_req_routing(ne_binary() | api_terms()) -> ne_binary().
 get_search_req_routing(Req) when is_list(Req) ->
-    get_search_req_routing(proplist:get_value(<<"Realm">>, Req));
+    get_search_req_routing(props:get_value(<<"Realm">>, Req));
 get_search_req_routing(Realm) when is_binary(Realm) ->
     list_to_binary([?KEY_SEARCH_REQ, ".", amqp_util:encode(Realm)]);
 get_search_req_routing(Req) ->
