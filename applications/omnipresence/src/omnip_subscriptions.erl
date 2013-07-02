@@ -81,7 +81,7 @@ handle_search_req(JObj, _Props) ->
 		[] -> 'ok';
 		Subs ->
 			Resp = [{<<"Subscriptions">>, subscriptions_to_json(Subs)}],
-        	wapi_presence:search_resp(Resp)
+			wapi_presence:publish_search_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
 %% Subscribes work like this:
