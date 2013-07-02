@@ -15,7 +15,7 @@
          ,handle_new_channel/2
          ,handle_destroy_channel/2
          ,handle_answered_channel/2
-         ,handle_query_req/2
+         ,handle_search_req/2
 
          ,table_id/0
          ,table_config/0
@@ -69,8 +69,20 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
-handle_query_req(_JObj, _Props) ->
-    'ok'.
+handle_search_req(JObj, _Props) ->
+	'true' = wapi_presence:search_req_v(JObj),
+	Username = wh_json:get_value(<<"Username">>, JObj, '_'),
+	Realm = wh_json:get_value(<<"Realm">>, JObj),
+	case ets:match_object(table_id(), #omnip_subscription{username=Username
+                                                          ,realm=Realm
+                                                          ,_='_'
+                                                         })
+    of
+		[] -> 'ok';
+		Subs ->
+			Resp = [{<<"Subscriptions">>, subscriptions_to_json(Subs)}],
+        	wapi_presence:search_resp(Resp)
+    end.
 
 %% Subscribes work like this:
 %%   Subscribe comes into shared queue, gets round-robined to next omni whapps
@@ -200,9 +212,7 @@ subscribe_to_record(JObj) ->
              end,
     S = wh_json:get_value(<<"Queue">>, JObj),
     E = expires(JObj),
-
     [Username, Realm] = binary:split(U, <<"@">>),
-
     #omnip_subscription{user=U
                         ,stalker=S
                         ,expires=E
@@ -210,6 +220,28 @@ subscribe_to_record(JObj) ->
                         ,username=Username
                         ,realm=Realm
                        }.
+
+subscriptions_to_json(Subs) ->
+	subscriptions_to_json(Subs, []).
+
+subscriptions_to_json([], Acc) ->
+	lists:reverse(Acc);
+subscriptions_to_json([Sub|Subs], Acc) ->
+	JObj = subscription_to_json(Sub),
+	subscriptions_to_json(Subs, [JObj|Acc]).
+
+subscription_to_json(Sub) ->
+	wh_json:set_values([
+			{<<"user">>, Sub#omnip_subscription.user}
+			,{<<"from">>, Sub#omnip_subscription.from}
+			,{<<"stalker">>, Sub#omnip_subscription.stalker}
+			,{<<"expires">>, Sub#omnip_subscription.expires}
+			,{<<"timestamp">>, Sub#omnip_subscription.timestamp}
+			,{<<"protocol">>, Sub#omnip_subscription.protocol}
+			,{<<"username">>, Sub#omnip_subscription.username}
+			,{<<"realm">>, Sub#omnip_subscription.realm}
+		]
+		,wh_json:new()).
 
 expires(I) when is_integer(I) -> I;
 expires(JObj) -> expires(wh_json:get_integer_value(<<"Expires">>, JObj)).
