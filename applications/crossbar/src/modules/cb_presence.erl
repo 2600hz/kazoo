@@ -92,10 +92,17 @@ publish_search_req(Realm, Context) ->
     Req = [{<<"Realm">>, Realm}
     	   |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    Subs = wapi_presence:publish_search_req(Req),
-    io:format("~p~n", [Req]),
-    JObj = wh_json:set_value(<<"subscriptions">>, Subs, wh_json:new()),
-    Context#cb_context{resp_status=success, resp_data=JObj}.
+    case whapps_util:amqp_pool_request(Req
+    								   ,fun wapi_presence:publish_search_req/1
+    								   ,fun wapi_presence:search_resp_v/1
+    								  )
+    of
+    	{'ok', Subs} ->
+	    	JObj = wh_json:set_value(<<"subscriptions">>, wh_json:get_value(<<"Subscriptions">>, Subs), wh_json:new()),
+	    	Context#cb_context{resp_status=success, resp_data=JObj};
+	    {'error', Reason} ->
+	    	crossbar_util:response('error', wh_util:to_binary(Reason), 500, Context)
+    end.
 
 
 
