@@ -95,10 +95,14 @@ handle_search_req(JObj, _Props) ->
 
 handle_reset(JObj, _Props) ->
     'true' = wapi_presence:reset_v(JObj),
-    User = wh_json:get_value(<<"User">>, JObj),
+    User = amqp_util:encode(wh_json:get_value(<<"User">>, JObj)),
+    Sip = amqp_util:encode(<<"sip:">>),
+
+    lager:debug("recv reset for ~s", [User]),
+
     Req = [{<<"Type">>, <<"id">>}
-           ,{<<"User">>, User}
-    	   |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ,{<<"User">>, <<Sip/binary, User/binary>>}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     whapps_util:amqp_pool_send(Req, fun wapi_presence:publish_reset/1).
 
@@ -341,7 +345,6 @@ handle_cast({'subscribe', #omnip_subscription{expires=E
 handle_cast({'subscribe', #omnip_subscription{user=_U
                                               ,stalker=_S
                                              }=S}, State) ->
-    lager:debug("updating (or creating) subscription for ~s(~s)", [_U, _S]),
     case find_subscription(S) of
         {'ok', #omnip_subscription{timestamp=_T
                                    ,expires=_E
@@ -350,7 +353,6 @@ handle_cast({'subscribe', #omnip_subscription{user=_U
             ets:delete_object(table_id(), O);
         {'error', 'not_found'} -> 'ok'
     end,
-    lager:debug("creating subscription"),
     ets:insert(table_id(), S),
     {'noreply', State};
 handle_cast(_Msg, State) ->
