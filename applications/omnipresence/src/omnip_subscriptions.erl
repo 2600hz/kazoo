@@ -16,6 +16,7 @@
          ,handle_destroy_channel/2
          ,handle_answered_channel/2
          ,handle_search_req/2
+         ,handle_reset/2
 
          ,table_id/0
          ,table_config/0
@@ -91,6 +92,16 @@ handle_search_req(JObj, _Props) ->
                    ],
             wapi_presence:publish_search_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
+
+handle_reset(JObj, _Props) ->
+    'true' = wapi_presence:reset_v(JObj),
+    User = amqp_util:encode(wh_json:get_value(<<"User">>, JObj)),
+    Sip = amqp_util:encode(<<"sip:">>),
+    Req = [{<<"Type">>, <<"id">>}
+    	   ,{<<"User">>, <<Sip/binary, User/binary>>}
+    	   |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    whapps_util:amqp_pool_send(Req, fun wapi_presence:publish_reset/1).
 
 %% Subscribes work like this:
 %%   Subscribe comes into shared queue, gets round-robined to next omni whapps

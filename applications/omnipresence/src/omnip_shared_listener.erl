@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -32,7 +32,7 @@
                    %% Kazoo presence updates
                    ,{'notifications', [{'restrict_to', ['presence_update', 'presence_probe']}]}
                    %% new Kamailio presence APIs
-                   ,{'presence', [{'restrict_to', ['subscribe', 'update']}]}
+                   ,{'presence', [{'restrict_to', ['subscribe', 'update', 'reset']}]}
                    %% channel events that toggle presence lights
                    ,{'call', [{'restrict_to', ['new_channel', 'answered_channel', 'destroy_channel']}]}
                   ]).
@@ -50,6 +50,9 @@
                       }
                      ,{{'omnip_subscriptions', 'handle_subscribe'}
                        ,[{<<"presence">>, <<"subscription">>}]
+                      }
+                     ,{{'omnip_subscriptions', 'handle_reset'}
+                       ,[{<<"presence">>, <<"reset">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<"omnip_shared_listener">>).
