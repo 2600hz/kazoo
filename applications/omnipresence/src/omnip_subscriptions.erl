@@ -4,6 +4,7 @@
 %%% 
 %%% @end
 %%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(omnip_subscriptions).
 
@@ -95,16 +96,26 @@ handle_search_req(JObj, _Props) ->
 
 handle_reset(JObj, _Props) ->
     'true' = wapi_presence:reset_v(JObj),
-    User = amqp_util:encode(wh_json:get_value(<<"User">>, JObj)),
-    Sip = amqp_util:encode(<<"sip:">>),
 
-    lager:debug("recv reset for ~s", [User]),
+    Username = wh_json:get_value(<<"Username">>, JObj),
+    Realm = wh_json:get_value(<<"Realm">>, JObj),
 
-    Req = [{<<"Type">>, <<"id">>}
-           ,{<<"User">>, <<Sip/binary, User/binary>>}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    whapps_util:amqp_pool_send(Req, fun wapi_presence:publish_reset/1).
+    User = <<"sip:", Username/binary, "@", Realm/binary>>,
+
+    lager:debug("recv reset for ~s@~s", [Username, Realm]),
+
+    case find_subscriptions(#omnip_subscription{username=Username, realm=Realm, user=User}) of
+        {'ok', Subs} ->
+            lager:debug("stalkers: ~p", [Subs]),
+            Req = [{<<"Type">>, <<"id">>}
+                   ,{<<"User">>, User}
+                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                  ],
+            [whapps_util:amqp_pool_send(Req, fun(API) -> wapi_presence:publish_flush(Q, API) end)
+             || #omnip_subscription{stalker=Q} <- Subs
+            ];
+        {'error', 'not_found'} -> lager:debug("no subs found")
+    end.
 
 %% Subscribes work like this:
 %%   Subscribe comes into shared queue, gets round-robined to next omni whapps
