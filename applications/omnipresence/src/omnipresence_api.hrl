@@ -22,7 +22,14 @@
                        ]).
 -define(UPDATE_TYPES, []).
 
--define(KEY_SEARCH_REQ, <<"search.req">>).
+-define(FLUSH_HEADERS, [<<"Type">>]).
+-define(OPTIONAL_FLUSH_HEADERS, [<<"User">>]).
+-define(FLUSH_VALUES, [{<<"Event-Category">>, <<"presence">>}
+                        ,{<<"Event-Name">>, <<"flush">>}
+                       ]).
+-define(FLUSH_TYPES, []).
+
+-define(KEY_SEARCH_REQ, <<"presence.search_req">>).
 
 -define(SEARCH_REQ_HEADERS, [<<"Realm">>]).
 -define(OPTIONAL_SEARCH_REQ_HEADERS, [<<"Username">>]).
@@ -36,6 +43,15 @@
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"presence">>}
                              ,{<<"Event-Name">>, <<"search_resp">>}]).
 -define(SEARCH_RESP_TYPES, []).
+
+-define(KEY_RESET, <<"presence.reset">>).
+
+-define(RESET_HEADERS, [<<"User">>]).
+-define(OPTIONAL_RESET_HEADERS, []).
+-define(RESET_VALUES, [{<<"Event-Category">>, <<"presence">>}
+                       ,{<<"Event-Name">>, <<"reset">>}
+                      ]).
+-define(RESET_TYPES, []).
 
 
 -define(OMNIPRESENCE_API_HRL, 'true').
