@@ -22,6 +22,8 @@
 
          ,find_subscription/1
          ,find_subscriptions/1
+
+         ,maybe_send_update/5
         ]).
 
 -export([init/1
@@ -194,6 +196,8 @@ maybe_send_update(User, From, JObj, Srv, Update) ->
         {'error', 'not_found'} ->
             lager:debug("no subs for ~s(~s)", [User, Update])
     end.
+
+-spec send_update(ne_binary(), ne_binary(), wh_json:object(), subscription()) -> 'ok'.
 send_update(Update, From, JObj, #omnip_subscription{user=U
                                                     ,stalker=S
                                                     ,protocol=P
