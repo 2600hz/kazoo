@@ -74,15 +74,16 @@ validate(#cb_context{req_verb = ?HTTP_GET, account_id=AccountId}=Context) ->
     Realm = wh_json:get_value(<<"realm">>, Doc),
     publish_search_req(Realm, Context).
 
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, _Id, ?RESET) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, _, ?RESET) ->
     Context#cb_context{resp_status=success}.
 
 -spec post(#cb_context{}, path_token(), ne_binary()) -> #cb_context{}.
 post(#cb_context{}=Context, User, ?RESET) ->
-    Req = [{<<"User">>, User}
+    [Username, Realm|_] = binary:split(User, <<"@">>),
+    Req = [{<<"Username">>, Username}
+            ,{<<"Realm">>, Realm}
            |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    io:format("~p~n", [Req]),
     whapps_util:amqp_pool_send(Req, fun wapi_presence:publish_reset/1),
     Context#cb_context{resp_status=success}.
 
