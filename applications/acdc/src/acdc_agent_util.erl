@@ -96,7 +96,7 @@ most_recent_statuses(AcctId) ->
 most_recent_statuses(AcctId, ?NE_BINARY = AgentId) ->
     most_recent_statuses(AcctId, AgentId, []);
 most_recent_statuses(AcctId, Options) when is_list(Options) ->
-    most_recent_statuses(AcctId, 'undefined', Options).
+    most_recent_statuses(AcctId, props:get_value(<<"Agent-ID">>, Options), Options).
 
 most_recent_statuses(AcctId, AgentId, Options) ->
     Self = self(),
@@ -207,10 +207,6 @@ most_recent_db_statuses(AcctId, AgentId, ReqOptions) ->
 
 most_recent_db_statuses_by_agent(AcctId, AgentId, ReqOptions) ->
     ViewOptions = build_agent_view_options(AgentId, ReqOptions),
-    lager:debug("couch_mgr:get_results(~p, ~p, ~p)", [acdc_stats:db_name(AcctId)
-                                                      ,<<"agent_stats/most_recent_by_agent">>
-                                                      ,ViewOptions
-                                                     ]),
     case couch_mgr:get_results(acdc_stats:db_name(AcctId)
                                ,<<"agent_stats/most_recent_by_agent">>
                                ,ViewOptions
@@ -263,15 +259,15 @@ constrain_agent_view_options(AgentId, ViewOptions) ->
              ,{'endkey', [AgentId, Past]}
              | ViewOptions
             ];
-        {Past, 'undefined'} ->
+        {'undefined', [AgentId, Past]} ->
             %% constrain how far forward we look
             Present = Past + Window,
             [{'startkey', [AgentId, Present]} | ViewOptions];
-        {'undefined', Present} ->
+        {[AgentId, Present], 'undefined'} ->
             %% constrain how far back we look
             Past = Present - Window,
             [{'endkey', [AgentId, Past]} | ViewOptions];
-        {Past, Present} ->
+        {[AgentId, Present], [AgentId, Past]} ->
             case (Present - Past) > Window of
                 'true' ->
                     %% Gap is too large, constrain against Present
@@ -330,7 +326,7 @@ cleanup_db_statuses(Stats, ReqOpts) ->
     {Key1, Key2} = {[<<"doc">>, <<"agent_id">>], [<<"doc">>, <<"timestamp">>]},
 
     lists:foldl(fun(S, Acc) ->
-                        wh_json:set_value([wh_json:get_value(Key1, S), wh_json:get_value(Key2, S)]
+                        wh_json:set_value([wh_json:get_binary_value(Key1, S), wh_json:get_binary_value(Key2, S)]
                                           ,wh_doc:public_fields(wh_json:get_value(<<"doc">>, S))
                                           ,Acc
                                          )

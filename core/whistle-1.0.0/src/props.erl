@@ -135,7 +135,11 @@ get_all_values(Key, Prop) -> get_values(Key, Prop).
 get_values(Key, Prop) -> [V || {K, V} <- Prop, K =:= Key].
 
 -spec delete(ne_binary() | atom(), wh_proplist()) -> wh_proplist().
-delete(K, Prop) -> lists:keydelete(K, 1, Prop).
+delete(K, Prop) ->
+    case lists:keyfind(K, 1, Prop) of
+        {K, _} -> lists:keydelete(K, 1, Prop);
+        'false' -> lists:delete(K, Prop)
+    end.
 
 delete_keys([_|_]=Ks, Prop) -> lists:foldl(fun ?MODULE:delete/2, Prop, Ks).
 
@@ -179,5 +183,13 @@ filter_undefined_test() ->
 unique_test() ->
     L = [{a, b}, {a, b}, {a, c}, {b,c}, {b,d}],
     ?assertEqual([{a, b}, {b, c}], unique(L)).
+
+delete_test() ->
+    L = [{a, 1}, {b, 2}, c, {d, 3}],
+    ?assertEqual(L, delete(foo, L)),
+    ?assertEqual([{a, 1}, {b, 2}, {d, 3}]
+                 ,delete(c, L)),
+    ?assertEqual([{a, 1}, c, {d, 3}]
+                 ,delete(b, L)).
 
 -endif.
