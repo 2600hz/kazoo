@@ -100,21 +100,19 @@ handle_reset(JObj, _Props) ->
     Username = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
 
-    User = <<"sip:", Username/binary, "@", Realm/binary>>,
+    User = <<Username/binary, "@", Realm/binary>>,
 
-    lager:debug("recv reset for ~s@~s", [Username, Realm]),
-
-    case find_subscriptions(#omnip_subscription{username=Username, realm=Realm, user=User}) of
+    case find_subscriptions(#omnip_subscription{user=User}) of
+        {'error', 'not_found'} -> 'ok';
         {'ok', Subs} ->
-            lager:debug("stalkers: ~p", [Subs]),
+            lager:debug("sending flushes for ~s", [User]),
             Req = [{<<"Type">>, <<"id">>}
-                   ,{<<"User">>, User}
+                   ,{<<"User">>, <<"sip:", User/binary>>}
                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ],
             [whapps_util:amqp_pool_send(Req, fun(API) -> wapi_presence:publish_flush(Q, API) end)
              || #omnip_subscription{stalker=Q} <- Subs
-            ];
-        {'error', 'not_found'} -> lager:debug("no subs found")
+            ]
     end.
 
 %% Subscribes work like this:
