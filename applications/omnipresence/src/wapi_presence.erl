@@ -114,13 +114,13 @@ publish_search_resp(Queue, Resp, ContentType) ->
 -spec reset_routing_key(ne_binary(), ne_binary()) -> ne_binary().
 reset_routing_key(Req) when is_list(Req) ->
     reset_routing_key(props:get_value(<<"Realm">>, Req)
-                      ,props:get_value(<<"User">>, Req));
+                      ,props:get_value(<<"Username">>, Req));
 reset_routing_key(Req) ->
     reset_routing_key(wh_json:get_value(<<"Realm">>, Req)
-                      ,wh_json:get_value(<<"User">>, Req)).
+                      ,wh_json:get_value(<<"Username">>, Req)).
 
-reset_routing_key(Realm, User) when is_binary(Realm) ->
-    list_to_binary([?KEY_RESET, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
+reset_routing_key(Realm, Username) when is_binary(Realm) ->
+    list_to_binary([?KEY_RESET, ".", amqp_util:encode(Realm), ".", amqp_util:encode(Username)]).
 
 -spec search_req_routing_key(ne_binary() | api_terms()) -> ne_binary().
 search_req_routing_key(Req) when is_list(Req) ->

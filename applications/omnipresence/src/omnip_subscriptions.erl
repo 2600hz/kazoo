@@ -95,10 +95,9 @@ handle_search_req(JObj, _Props) ->
 
 handle_reset(JObj, _Props) ->
     'true' = wapi_presence:reset_v(JObj),
-    User = amqp_util:encode(wh_json:get_value(<<"User">>, JObj)),
-    Sip = amqp_util:encode(<<"sip:">>),
+    User = wh_json:get_value(<<"User">>, JObj),
     Req = [{<<"Type">>, <<"id">>}
-    	   ,{<<"User">>, <<Sip/binary, User/binary>>}
+           ,{<<"User">>, User}
     	   |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     whapps_util:amqp_pool_send(Req, fun wapi_presence:publish_reset/1).
