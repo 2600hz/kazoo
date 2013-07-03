@@ -46,7 +46,7 @@
 
 -define(KEY_RESET, <<"presence.reset">>).
 
--define(RESET_HEADERS, [<<"User">>]).
+-define(RESET_HEADERS, [<<"Realm">>, <<"Username">>]).
 -define(OPTIONAL_RESET_HEADERS, []).
 -define(RESET_VALUES, [{<<"Event-Category">>, <<"presence">>}
                        ,{<<"Event-Name">>, <<"reset">>}
