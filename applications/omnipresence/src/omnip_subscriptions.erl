@@ -116,9 +116,12 @@ handle_reset(JObj, _Props) ->
     end.
 
 %% Subscribes work like this:
-%%   Subscribe comes into shared queue, gets round-robined to next omni whapps
+%%   Subscribe comes into shared queue, gets round-robined to next omni whapp
 %%   Handling whapp then publishes an internal whapp msg to all other omni whapps
 %%   Handling whapp then publishes a status update to the subscribe Queue
+%%
+%% handle_subscribe_only processes subscribes received on the whapp's dedicated
+%% queue, without the lookup of the current state
 handle_subscribe(JObj, Props) ->
     JObj1 = maybe_patch_msg_id(JObj),
     'true' = wapi_presence:subscribe_v(JObj1),
@@ -211,9 +214,9 @@ handle_destroy_channel(JObj, Props) ->
 
 -spec maybe_send_update(ne_binary(), ne_binary(), wh_json:object(), pid(), ne_binary()) -> any().
 maybe_send_update(User, From, JObj, Srv, Update) ->
-    omnip_presences:update_presence_state(Srv, User, Update),
     case find_subscriptions(User) of
         {'ok', Subs} ->
+            omnip_presences:update_presence_state(Srv, User, Update),
             lager:debug("update ~s to ~s in ~p", [User, Update, Srv]),
             [send_update(Update, From, JObj, S) || S <- Subs];
         {'error', 'not_found'} ->
