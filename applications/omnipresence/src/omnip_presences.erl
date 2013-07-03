@@ -60,20 +60,34 @@
 start_link() -> gen_server:start_link(?MODULE, [], []).
 
 -spec handle_presence_update(wh_json:object(), wh_proplist()) -> any().
-handle_presence_update(JObj, _Props) ->
+handle_presence_update(JObj, Props) ->
     'true' = wapi_notifications:presence_update_v(JObj),
-    lager:debug("presence update recv: ~p", [JObj]).
+
+    U = wh_json:get_value(<<"Presence-ID">>, JObj),
+    S = wh_json:get_value(<<"State">>, JObj),
+
+    %% Send to other omnipresence whapps
+    wapi_omnipresence:publish_presence_update(wh_json:set_values([{<<"To">>, U}
+                                                                  ,{<<"From">>, U}
+                                                                  ,{<<"State">>, S}
+                                                                  ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                                                                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                                                 ], wh_json:new())),
+
+    lager:debug("maybe sending update for ~s(~s)", [U, S]),
+    omnip_subscriptions:maybe_send_update(U, U, JObj, props:get_value('omnip_presences', Props), S).
 
 -spec handle_presence_update_only(wh_json:object(), wh_proplist()) -> any().
 handle_presence_update_only(JObj, Props) ->
     'true' = wapi_omnipresence:presence_update_v(JObj),
-    gen_listener:cast(props:get_value(?MODULE, Props)
-                      ,{'presence_state', update_to_record(JObj)}
-                     ).
+    update_presence_state(props:get_value(?MODULE, Props)
+                          ,wh_json:get_value(<<"Presence-ID">>, JObj)
+                          ,wh_json:get_value(<<"State">>, JObj)
+                         ).
 
 -spec update_to_record(wh_json:object()) -> presence_state().
 update_to_record(JObj) ->
-    U = case wh_json:get_value(<<"To">>, JObj) of
+    U = case wh_json:find_first_defined([<<"Presence-ID">>, <<"To">>], JObj) of
             <<"sip:", User/binary>> -> User;
             User -> User
         end,
