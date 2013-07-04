@@ -171,23 +171,14 @@ probe_for_presence(User, Realm, SubJObj, _Srv) ->
     lager:debug("probing for presence"),
     Req = [{<<"From">>, URI}
            ,{<<"To">>, URI}
+           ,{<<"To-User">>, User}
+           ,{<<"To-Realm">>, Realm}
+           ,{<<"From-User">>, User}
+           ,{<<"From-Realm">>, Realm}
            ,{<<"Switch-Nodename">>, wh_json:get_value(<<"Node">>, SubJObj)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case whapps_util:amqp_pool_collect(Req
-                                       ,fun wapi_notifications:publish_presence_probe/1
-                                       ,fun wapi_notifications:presence_update_v/1
-                                      )
-    of
-        {'ok', Updates} ->
-            lager:debug("probe opdates: ~p", [Updates]);
-        {'error', _E} ->
-            lager:debug("failed to probe: ~p", [_E]);
-        {'timeout', []} ->
-            lager:debug("timed out with nothing to show for it");
-        {'timeout', Recv} ->
-            lager:debug("timed out: recv ~p", [Recv])
-    end.
+    wapi_notifications:publish_presence_probe(Req).
 
 send_subscribe_to_whapps(JObj) ->
     JObj1 = wh_json:set_values(wh_api:default_headers(?APP_NAME, ?APP_VERSION), JObj),
