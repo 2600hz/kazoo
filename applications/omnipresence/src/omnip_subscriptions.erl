@@ -146,7 +146,7 @@ send_update_to_listeners(JObj, Props) ->
 search_for_presence_state(U, SubJObj, Srv) ->
     [User, Realm] = binary:split(U, <<"@">>),
 
-    lager:debug("find presence for ~s:~s", [User, Realm]),
+    lager:debug("find presence for ~s@~s", [User, Realm]),
 
     Req = [{<<"Username">>, User}
            ,{<<"Realm">>, Realm}
@@ -163,7 +163,30 @@ search_for_presence_state(U, SubJObj, Srv) ->
             maybe_send_update(U, U, SearchJObj, Srv, ?PRESENCE_ANSWERED);
         {'error', _E} ->
             lager:debug("Failed to lookup user channels: ~p", [_E]),
-            maybe_send_update(U, U, SubJObj, Srv, ?PRESENCE_HANGUP)
+            probe_for_presence(User, Realm, SubJObj, Srv)
+    end.
+
+probe_for_presence(User, Realm, SubJObj, _Srv) ->
+    URI = <<User/binary, "@", Realm/binary>>,
+    lager:debug("probing for presence"),
+    Req = [{<<"From">>, URI}
+           ,{<<"To">>, URI}
+           ,{<<"Switch-Nodename">>, wh_json:get_value(<<"Node">>, SubJObj)}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case whapps_util:amqp_pool_collect(Req
+                                       ,fun wapi_notifications:publish_presence_probe/1
+                                       ,fun wapi_notifications:presence_update_v/1
+                                      )
+    of
+        {'ok', Updates} ->
+            lager:debug("probe opdates: ~p", [Updates]);
+        {'error', _E} ->
+            lager:debug("failed to probe: ~p", [_E]);
+        {'timeout', []} ->
+            lager:debug("timed out with nothing to show for it");
+        {'timeout', Recv} ->
+            lager:debug("timed out: recv ~p", [Recv])
     end.
 
 send_subscribe_to_whapps(JObj) ->
