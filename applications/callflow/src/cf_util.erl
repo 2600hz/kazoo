@@ -41,11 +41,27 @@
 %%--------------------------------------------------------------------
 -spec presence_probe(wh_json:object(), wh_proplist()) -> any().
 presence_probe(JObj, _Props) ->
-    ToUser = wh_json:get_value(<<"To-User">>, JObj),
-    ToRealm = wh_json:get_value(<<"To-Realm">>, JObj),
-    FromUser = wh_json:get_value(<<"From-User">>, JObj),
-    FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
+    'true' = wapi_notifications:presence_probe_v(JObj),
+    {ToUser, ToRealm} =
+        case wh_json:get_value(<<"To">>, JObj) of
+            'undefined' ->
+                {wh_json:get_value(<<"To-User">>, JObj)
+                 ,wh_json:get_value(<<"To-Realm">>, JObj)
+                };
+            To -> list_to_tuple(binary:split(To, <<"@">>))
+        end,
+
+    {FromUser, FromRealm} =
+        case wh_json:get_value(<<"From">>, JObj) of
+            'undefined' ->
+                {wh_json:get_value(<<"From-User">>, JObj)
+                 ,wh_json:get_value(<<"From-Realm">>, JObj)
+                };
+            From -> list_to_tuple(binary:split(From, <<"@">>))
+        end,
+
     Subscription = wh_json:get_value(<<"Subscription">>, JObj),
+
     ProbeRepliers = [fun presence_mwi_update/4
                      ,fun presence_parking_slot/4
                      ,fun manual_presence/4
@@ -541,8 +557,7 @@ presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, JObj) ->
             lager:debug("replying to mwi presence probe"),
             presence_mwi_resp(FromUser, FromRealm, AccountDb, JObj);
         _E ->
-            lager:info("failed to find the account for realm ~s: ~p", [FromRealm, _E]),
-            'ok'
+            lager:info("failed to find the account for realm ~s: ~p", [FromRealm, _E])
     end;
 presence_mwi_update(_, _, _, _) -> 'ok'.
 
@@ -556,7 +571,7 @@ presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
     end.
 
 -spec manual_presence(ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) -> 'ok'.
-manual_presence(<<"message-summary">>, _, _, _) -> ok;
+manual_presence(<<"message-summary">>, _, _, _) -> 'ok';
 manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, Event) ->
     case whapps_util:get_account_by_realm(FromRealm) of
         {'ok', AccountDb} ->
