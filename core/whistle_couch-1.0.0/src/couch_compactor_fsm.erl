@@ -1086,7 +1086,7 @@ wait_for_compaction(AdminConn, S) ->
 wait_for_compaction(_AdminConn, _S, {'error', 'db_not_found'}) ->
     lager:debug("db ~s wasn't found", [_S]);
 wait_for_compaction(AdminConn, S, {'error', _E}) ->
-    lager:debug("failed to query db status: ~p", [_E]),
+    lager:debug("failed to query db status: ~p", [couch_util:format_error(_E)]),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
     wait_for_compaction(AdminConn, S);
 wait_for_compaction(AdminConn, S, {'ok', ShardData}) ->
