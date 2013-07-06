@@ -219,6 +219,9 @@ bind_q(Queue, Realm, ['reset'|Restrict]) ->
                                 ,reset_routing_key(Realm, <<"*">>)
                                 ),
     bind_q(Queue, Realm, Restrict);
+bind_q(Queue, Realm, ['updates'|Restrict]) ->
+    amqp_util:bind_q_to_exchange(Queue, Queue, ?UPDATES_EXCHANGE),
+    bind_q(Queue, Realm, Restrict);
 bind_q(Queue, Realm, [_|Restrict]) ->
     bind_q(Queue, Realm, Restrict);
 bind_q(_, _, []) -> 'ok'.
@@ -247,6 +250,9 @@ unbind_q(Queue, Realm, ['reset'|Restrict]) ->
     amqp_util:unbind_q_from_callmgr(Queue
                                      ,reset_routing_key(Realm, <<"*">>)
                                     ),
+    unbind_q(Queue, Realm, Restrict);
+unbind_q(Queue, Realm, ['updates'|Restrict]) ->
+    amqp_util:unbind_q_from_exchange(Queue, Queue, ?UPDATES_EXCHANGE),
     unbind_q(Queue, Realm, Restrict);
 unbind_q(Queue, Realm, [_|Restrict]) ->
     unbind_q(Queue, Realm, Restrict);
