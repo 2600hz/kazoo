@@ -20,10 +20,10 @@ init() ->
     put('callid', ?MODULE),
     case wh_config:get_atom('whistle_apps', 'cookie') of
         [] ->
-            lager:warning("failed to set whistle_apps cookie ~n", []);
+            lager:warning("failed to set whistle_apps cookie");
         [Cookie|_] ->
             erlang:set_cookie(erlang:node(), Cookie),
-            lager:info("setting whistle_apps cookie to ~p~n", [Cookie])
+            lager:info("setting whistle_apps cookie to ~p", [Cookie])
     end,
     set_loglevel().
 
