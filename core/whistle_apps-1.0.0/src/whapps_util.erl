@@ -28,6 +28,7 @@
 -export([get_prompt/2, get_prompt/3]).
 -export([amqp_pool_send/2]).
 -export([amqp_pool_request/3, amqp_pool_request/4
+         ,amqp_pool_request_custom/4, amqp_pool_request_custom/5
          ,amqp_pool_collect/2, amqp_pool_collect/3
          ,amqp_pool_collect/4
         ]).
@@ -445,6 +446,23 @@ amqp_pool_request(Api, PubFun, ValidateFun, Timeout)
        ((is_integer(Timeout) andalso Timeout >= 0)
         orelse Timeout =:= 'infinity') ->
     wh_amqp_worker:call(?WHAPPS_AMQP_POOL, Api, PubFun, ValidateFun, Timeout).
+
+-spec amqp_pool_request_custom(api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), gen_listener:binding()) ->
+                               {'ok', wh_json:object()} |
+                               {'error', any()}.
+-spec amqp_pool_request_custom(api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), wh_timeout(), gen_listener:binding()) ->
+                               {'ok', wh_json:object()} |
+                               {'error', any()}.
+amqp_pool_request_custom(Api, PubFun, ValidateFun, Bind)
+  when is_function(PubFun, 1),
+       is_function(ValidateFun, 1) ->
+    amqp_pool_request_custom(Api, PubFun, ValidateFun, wh_amqp_worker:default_timeout(), Bind).
+amqp_pool_request_custom(Api, PubFun, ValidateFun, Timeout, Bind)
+  when is_function(PubFun, 1),
+       is_function(ValidateFun, 1),
+       ((is_integer(Timeout) andalso Timeout >= 0)
+        orelse Timeout =:= 'infinity') ->
+    wh_amqp_worker:call_custom(?WHAPPS_AMQP_POOL, Api, PubFun, ValidateFun, Timeout, Bind).
 
 -spec amqp_pool_collect(api_terms(), wh_amqp_worker:publish_fun()) ->
                                {'ok', wh_json:objects()} |
