@@ -3,8 +3,8 @@
 -define(SUBSCRIPTIONS_EXCHANGE, <<"dialoginfo_subs">>).
 -define(UPDATES_EXCHANGE, <<"dialoginfo">>).
 
--define(SUBSCRIBE_HEADERS, [<<"User">>, <<"Expires">>, <<"Queue">>]).
--define(OPTIONAL_SUBSCRIBE_HEADERS, []).
+-define(SUBSCRIBE_HEADERS, [<<"User">>, <<"Expires">>]).
+-define(OPTIONAL_SUBSCRIBE_HEADERS, [<<"Queue">>]).
 -define(SUBSCRIBE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                            ,{<<"Event-Name">>, <<"subscription">>}
                           ]).
