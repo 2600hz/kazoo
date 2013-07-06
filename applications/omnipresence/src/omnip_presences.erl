@@ -16,7 +16,7 @@
          ,handle_presence_update_only/2
          ,handle_presence_update/2
 
-         ,find_presence_state/1
+         ,find_presence_state/1, find_presence_state/2
          ,update_presence_state/3
 
          %% Accessors
@@ -67,14 +67,21 @@ handle_presence_update(JObj, Props) ->
     S = wh_json:get_value(<<"State">>, JObj),
 
     %% Send to other omnipresence whapps
-    wapi_omnipresence:publish_presence_update(wh_json:set_values([{<<"To">>, U}
-                                                                  ,{<<"From">>, U}
-                                                                  ,{<<"State">>, S}
-                                                                  ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                                                                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                                                 ], wh_json:new())),
-
-    lager:debug("maybe sending update for ~s(~s)", [U, S]),
+    lager:debug("sending others update about ~s: ~s", [U, S]),
+    _E = try wapi_omnipresence:publish_presence_update(
+               wh_json:set_values([{<<"To">>, U}
+                                   ,{<<"From">>, U}
+                                   ,{<<"State">>, S}
+                                   ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                  ], wh_json:new()))
+         of
+             OK -> OK
+         catch
+             _:R -> R
+         end,
+              
+    lager:debug("maybe sending update for ~s(~s): ~p", [U, S, _E]),
     omnip_subscriptions:maybe_send_update(U, U, JObj, props:get_value('omnip_presences', Props), S).
 
 -spec handle_presence_update_only(wh_json:object(), wh_proplist()) -> any().
@@ -89,8 +96,9 @@ handle_presence_update_only(JObj, Props) ->
 update_to_record(JObj) ->
     U = case wh_json:find_first_defined([<<"Presence-ID">>, <<"To">>], JObj) of
             <<"sip:", User/binary>> -> User;
-            User -> User
+            User when is_binary(User) -> User
         end,
+
     S = wh_json:get_value(<<"State">>, JObj),
     #omnip_presence_state{user=U
                           ,state=S
@@ -102,7 +110,8 @@ table_config() ->
      ,{'keypos', #omnip_presence_state.user}
     ].
 
--spec update_presence_state(pid() | atom(), ne_binary(), ne_binary()) -> 'ok'.
+-spec update_presence_state(pid() | atom(), api_binary(), ne_binary()) -> 'ok'.
+update_presence_state(_Srv, 'undefined', _Update) -> 'ok';
 update_presence_state(Srv, User, Update) ->
     PS = case ?MODULE:find_presence_state(User) of
              {'error', 'not_found'} ->
@@ -204,6 +213,10 @@ find_presence_state(U) ->
         [] -> {'error', 'not_found'};
         [#omnip_presence_state{}=PS|_] -> {'ok', PS}
     end.
+
+find_presence_state(Realm, Username) ->
+    find_presence_state(<<Username/binary, "@", Realm/binary>>).
+
 
 %%--------------------------------------------------------------------
 %% @private
