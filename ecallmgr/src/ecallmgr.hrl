@@ -60,8 +60,7 @@
                   ,owner_id :: api_binary() | '_'
                   ,resource_id :: api_binary() | '$4' | '_'
                   ,presence_id :: api_binary() | '$2' | '_'
-                  ,billing_id :: api_binary() | '$5' | '_'
-                  ,bridge_id :: api_binary() | '$6' | '_'
+                  ,bridge_id :: api_binary() | '$5' | '_'
                   ,reseller_id :: api_binary() | '_'
                   ,reseller_billing :: api_binary() | '_'
                   ,realm :: api_binary() | '_'
@@ -75,7 +74,6 @@
                   ,profile :: api_binary() | '_'
                   ,context :: api_binary() | '_'
                   ,dialplan :: api_binary() | '_'
-                  ,precedence = 5 :: pos_integer() | '$2' | '_'
                  }).
 
 -type channel() :: #channel{}.

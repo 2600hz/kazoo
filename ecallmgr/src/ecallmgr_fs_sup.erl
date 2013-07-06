@@ -29,6 +29,8 @@
                      }).
 -define(CHILDREN, [{'ecallmgr_fs_pinger_sup', 'supervisor'}
                    ,{'ecallmgr_fs_nodes', 'worker'}
+                   ,{'ecallmgr_fs_channels', 'worker'}
+                   ,{'ecallmgr_fs_calls', 'worker'}
                    ,{'ecallmgr_fs_conferences', 'worker'}
                   ]).
 

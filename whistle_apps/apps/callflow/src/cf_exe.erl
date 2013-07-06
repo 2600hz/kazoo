@@ -413,17 +413,17 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call, queue=ControllerQ, self=
     Others = whapps_call:kvs_fetch('cf_event_pids', [], Call),
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_TRANSFEREE">>}, _} ->
-            ExeBillingId = whapps_call:custom_channel_var(<<"Billing-ID">>, Call),
-            TrasferBillingId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>], JObj),
-            _ = case ExeBillingId =:= TrasferBillingId of
+            ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+            TrasferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+            _ = case ExeFetchId =:= TrasferFetchId of
                     'false' -> 'ok';
                     'true' -> transfer(Call)
                 end,
             'ignore';
         {{<<"call_event">>, <<"CHANNEL_REPLACED">>}, _} ->
-            ExeBillingId = whapps_call:custom_channel_var(<<"Billing-ID">>, Call),
-            TrasferBillingId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>], JObj),
-            _ = case ExeBillingId =:= TrasferBillingId of
+            ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+            TrasferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+            _ = case ExeFetchId =:= TrasferFetchId of
                     'false' -> 'ok';
                     'true' ->
                         ReplacedBy = wh_json:get_value(<<"Replaced-By">>, JObj),

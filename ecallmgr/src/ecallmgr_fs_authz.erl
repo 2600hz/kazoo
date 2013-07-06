@@ -9,26 +9,12 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_authz).
 
--behaviour(gen_server).
-
--export([start_link/1, start_link/2]).
 -export([handle_channel_create/3]).
 -export([handle_session_heartbeat/2]).
 -export([rate_channel/2]).
 -export([kill_channel/2]).
--export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
-        ]).
 
 -include("ecallmgr.hrl").
-
--record(state, {node :: atom()
-                ,options = [] :: wh_proplist()
-               }).
 
 -define(RATE_VARS, [<<"Rate">>, <<"Rate-Increment">>
                         ,<<"Rate-Minimum">>, <<"Surcharge">>
@@ -41,19 +27,6 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
-start_link(Node) ->
-    start_link(Node, []).
-
-start_link(Node, Options) ->
-    gen_server:start_link(?MODULE, [Node, Options], []).
 
 -spec kill_channel(wh_proplist(), atom()) -> 'ok'.
 -spec kill_channel(ne_binary(), ne_binary(), atom()) -> 'ok'.
@@ -73,8 +46,8 @@ kill_channel(<<"outbound">>, CallId, Node) ->
     _ = freeswitch:api(Node, 'uuid_kill', wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
     'ok'.
 
--spec handle_channel_create(wh_proplist(), ne_binary(), atom()) -> 'ok'.
-handle_channel_create(Props, CallId, Node) ->
+-spec handle_channel_create(ne_binary(), wh_proplist(), atom()) -> 'ok'.
+handle_channel_create(CallId, Props, Node) ->
     put('callid', CallId),
     Authorized = maybe_authorize_channel(Props, Node),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized).
@@ -102,120 +75,6 @@ handle_session_heartbeat(Props, Node) ->
                 attempt_reauthorization('reseller', ResellerId, RType, Props, Node)
         end,
     'ok'.
-
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
-init([Node, Options]) ->
-    put('callid', Node),
-    lager:info("starting new fs authz listener for ~s", [Node]),
-    case bind_to_events(props:get_value('client_version', Options), Node) of
-        'ok' -> {'ok', #state{node=Node, options=Options}};
-        {'error', Reason} ->
-            lager:critical("unable to establish authz bindings: ~p", [Reason]),
-            {stop, Reason}
-    end.
-
-bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
-%%    case freeswitch:event(Node, ['CHANNEL_CREATE', 'SESSION_HEARTBEAT']) of
-    case freeswitch:event(Node, ['CHANNEL_CREATE']) of
-        'timeout' -> {'error', 'timeout'};
-        Else -> Else
-    end;
-bind_to_events(_, Node) ->
-    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"SESSION_HEARTBEAT">>}}) =:= 'true'
-    of
-        'true' -> 'ok';
-        _ -> {'error', 'gproc_badarg'}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    {'reply', {'error', 'not_implemented'}, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {'noreply', State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
-    _ = case props:get_value(<<"Event-Name">>, Props) of
-            <<"SESSION_HEARTBEAT">> -> spawn(?MODULE, handle_session_heartbeat, [Props, Node]);
-            <<"CHANNEL_CREATE">> -> spawn(?MODULE, handle_channel_create, [Props, CallId, Node]);
-            _ -> 'ok'
-        end,
-    {'noreply', State};
-handle_info(_Info, State) ->
-    {'noreply', State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, #state{node=Node}) ->
-    lager:info("authz listener for ~s terminating: ~p", [Node, _Reason]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -274,7 +133,7 @@ is_consuming_resource(Props, CallId, Node) ->
 set_heartbeat_on_answer(Props, CallId, Node) ->
     %% Ensure that even if the call is answered while we are authorizing it
     %% the session will hearbeat.
-    'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
+%%    'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
     ensure_account_id_exists(Props, CallId, Node).
 
 -spec ensure_account_id_exists(wh_proplist(), ne_binary(), atom()) -> boolean().
@@ -560,7 +419,7 @@ authz_req(AccountId, Props) ->
      ,{<<"Auth-Account-ID">>, AccountId}
      ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
-     ,{<<"Usage">>, ecallmgr_fs_nodes:account_summary(AccountId)}
+     ,{<<"Usage">>, ecallmgr_fs_channels:account_summary(AccountId)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 

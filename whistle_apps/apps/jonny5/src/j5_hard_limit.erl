@@ -27,14 +27,14 @@ calls_at_limit(#limits{calls=-1}, _) ->
     'false';
 calls_at_limit(#limits{calls=Resources}, JObj) ->
     ConsumedResources = wh_json:get_integer_value([<<"Usage">>, <<"Calls">>], JObj, 0),
-    Resources - ConsumedResources =< 0.
+    Resources - ConsumedResources < 0.
 
 -spec resource_consumption_at_limit(#limits{}, wh_json:json_object()) -> boolean().
 resource_consumption_at_limit(#limits{resource_consuming_calls=-1}, _) ->
     'false';
 resource_consumption_at_limit(#limits{resource_consuming_calls=Resources}, JObj) ->
     ConsumedResources = wh_json:get_integer_value([<<"Usage">>, <<"Resource-Consuming-Calls">>], JObj, 0),
-    Resources - ConsumedResources =< 0.
+    Resources - ConsumedResources < 0.
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).

@@ -114,7 +114,7 @@ handle_info(initialize_pinger, #state{node=Node, options=Props}=State) ->
     {noreply, State};
 handle_info({flush_channels, Node}, State) ->
     lager:info("node ~s has been down past the grace period, flushing channels", [Node]),
-    ecallmgr_fs_nodes:flush_node_channels(Node),
+    ecallmgr_fs_channels:flush_node(Node),
     ecallmgr_fs_conferences:flush_node(Node),
     {noreply, State};
 handle_info(check_node_status, #state{node=Node, timeout=Timeout}=State) ->

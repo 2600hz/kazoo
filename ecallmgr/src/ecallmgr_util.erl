@@ -16,17 +16,39 @@
 -export([set/3]).
 -export([export/3]).
 -export([get_expires/1]).
--export([get_interface_properties/1, get_interface_properties/2]).
--export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
--export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
--export([is_node_up/1, is_node_up/2]).
--export([build_bridge_string/1, build_bridge_string/2]).
+-export([get_interface_properties/1
+         ,get_interface_properties/2
+        ]).
+-export([get_sip_to/1
+         ,get_sip_from/1
+         ,get_sip_request/1
+         ,get_orig_ip/1
+        ]).
+-export([custom_channel_vars/1
+         ,custom_channel_vars/2
+        ]).
+-export([eventstr_to_proplist/1
+         ,varstr_to_proplist/1
+         ]).
+-export([get_setting/1
+         ,get_setting/2
+        ]).
+-export([is_node_up/1
+         ,is_node_up/2
+        ]).
+-export([build_bridge_string/1
+         ,build_bridge_string/2
+        ]).
 -export([build_channel/1]).
 -export([build_simple_channels/1]).
--export([create_masquerade_event/2, create_masquerade_event/3]).
+-export([create_masquerade_event/2
+         ,create_masquerade_event/3
+        ]).
 -export([media_path/3, media_path/4]).
 -export([unserialize_fs_array/1]).
--export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
+-export([convert_fs_evt_name/1
+         ,convert_whistle_app_name/1
+        ]).
 -export([fax_filename/1
          ,recording_filename/1
         ]).
@@ -117,49 +139,20 @@ send_cmd(Node, UUID, "hangup", _) ->
     lager:debug("terminate call on node ~s", [Node]),
     freeswitch:api(Node, 'uuid_kill', wh_util:to_list(UUID));
 send_cmd(Node, UUID, "set", "ecallmgr_Account-ID=" ++ _ = Args) ->
-    _ = maybe_update_channel_cache(Args, UUID),
     send_cmd(Node, UUID, "export", Args);
 send_cmd(Node, UUID, "set", "ecallmgr_Precedence=" ++ _ = Args) ->
-    _ = maybe_update_channel_cache(Args, UUID),
     send_cmd(Node, UUID, "export", Args);
 send_cmd(Node, UUID, "conference", Args) ->
     Args1 = iolist_to_binary([UUID, " conference:", Args, ",park inline"]),
     lager:debug("starting conference on ~s: ~s", [Node, Args1]),
     freeswitch:api(Node, 'uuid_transfer', wh_util:to_list(Args1));
 send_cmd(Node, UUID, AppName, Args) ->
-    _ = maybe_update_channel_cache(Args, UUID),
     Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                              ,{"execute-app-name", AppName}
                                              ,{"execute-app-arg", wh_util:to_list(Args)}
                                             ]),
     lager:debug("execute on node ~s ~s(~s): ~p", [Node, AppName, Args, Result]),
     Result.
-
--spec maybe_update_channel_cache(string(), ne_binary()) -> 'ok'.
-maybe_update_channel_cache("ecallmgr_Account-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_channel:set_account_id(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Billing-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_channel:set_billing_id(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Account-Billing=" ++ Value, UUID) ->
-    ecallmgr_fs_channel:set_account_billing(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Reseller-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_channel:set_reseller_id(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Reseller-Billing=" ++ Value, UUID) ->
-    ecallmgr_fs_channel:set_reseller_billing(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Authorizing-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_channel:set_authorizing_id(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Resource-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_channel:set_resource_id(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Authorizing-Type=" ++ Value, UUID) ->
-    ecallmgr_fs_channel:set_authorizing_type(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Owner-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_channel:set_owner_id(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Presence-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_channel:set_presence_id(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Precedence=" ++ Value, UUID) ->
-    ecallmgr_fs_channel:set_precedence(UUID, Value);
-maybe_update_channel_cache(_, _) ->
-    'ok'.
 
 -spec get_expires(wh_proplist()) -> integer().
 get_expires(Props) ->
@@ -222,13 +215,17 @@ get_orig_ip(Prop) ->
 
 %% Extract custom channel variables to include in the event
 -spec custom_channel_vars(wh_proplist()) -> wh_proplist().
-custom_channel_vars(Prop) ->
+-spec custom_channel_vars(wh_proplist(), wh_proplist()) -> wh_proplist().
+custom_channel_vars(Props) ->
+    custom_channel_vars(Props, []).
+
+custom_channel_vars(Props, Initial) ->
     lists:foldl(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
                    ({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
                    ({<<"variable_sip_h_Referred-By">>, V}, Acc) -> [{<<"Referred-By">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
                    ({<<"variable_sip_refer_to">>, V}, Acc) -> [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
                    (_, Acc) -> Acc
-                end, [], Prop).
+                end, Initial, Props).
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]

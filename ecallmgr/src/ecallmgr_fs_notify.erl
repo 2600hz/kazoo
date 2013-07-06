@@ -80,7 +80,7 @@ presence_update(JObj, _Props) ->
 do_presence_update(undefined, JObj) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
     Switch = wh_json:get_value(<<"Switch-Nodename">>, JObj),
-    case ecallmgr_fs_channel:match_presence(PresenceId) of
+    case ecallmgr_fs_channels:match_presence(PresenceId) of
         [] ->
             Event = empty_presence_event(PresenceId),
             relay_presence('PRESENCE_IN', PresenceId, Event, node(), Switch);

@@ -35,7 +35,7 @@
                 ,queue = <<>> :: binary()
                 ,control_pid :: 'undefined' | pid()
                 ,tref :: 'undefined' | reference()
-                ,billing_id = wh_util:rand_hex_binary(16)
+                ,fetch_id = wh_util:rand_hex_binary(16)
                }).
 
 -define(BINDINGS, [{'self', []}]).
@@ -189,13 +189,13 @@ handle_cast({'maybe_update_node', Node}, #state{node=_OldNode}=State) ->
     {'noreply', State#state{node=Node}, 'hibernate'};
 handle_cast({'create_uuid'}, #state{node=Node
                                     ,originate_req=JObj
-                                    ,billing_id=BillingId
+                                    ,fetch_id=FetchId
                                    }=State) ->
     UUID = create_uuid(JObj, Node),
     put('callid', UUID),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}, 'true'),
     ServerId = wh_json:get_ne_value(<<"Server-ID">>, JObj),
-    {'ok', Pid} = ecallmgr_call_sup:start_control_process(Node, UUID, BillingId),
+    {'ok', Pid} = ecallmgr_call_sup:start_control_process(Node, UUID, FetchId),
     lager:debug("started control proc ~p uuid ~s", [Pid, UUID]),
     ControlQueue = ecallmgr_call_control:queue_name(Pid),
     lager:debug("ctrl queue ~s", [ControlQueue]),
@@ -227,43 +227,43 @@ handle_cast({'build_originate_args'}, #state{uuid='undefined'}=State) ->
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,uuid=UUID
                                              ,action = ?ORIGINATE_PARK
-                                             ,billing_id=BillingId
+                                             ,fetch_id=FetchId
                                             }=State) ->
     gen_listener:cast(self(), {'originate_ready'}),
     Endpoints = [wh_json:set_value(<<"origination_uuid">>, UUID, Endpoint)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
-    {'noreply', State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, Endpoints, JObj, BillingId)}};
+    {'noreply', State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, Endpoints, JObj, FetchId)}};
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,uuid=UUID
                                              ,action = Action
                                              ,app = ?ORIGINATE_EAVESDROP
-                                             ,billing_id=BillingId
+                                             ,fetch_id=FetchId
                                             }=State) ->
     gen_listener:cast(self(), {'originate_ready'}),
     Endpoints = [wh_json:set_value(<<"origination_uuid">>, UUID, Endpoint)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
-    {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, BillingId)}};
+    {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, FetchId)}};
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,action=Action
                                              ,uuid=UUID
-                                             ,billing_id=BillingId
+                                             ,fetch_id=FetchId
                                             }=State) ->
     gen_listener:cast(self(), {'originate_execute'}),
     Endpoints = [wh_json:set_value(<<"origination_uuid">>, UUID, Endpoint)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
-    {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, BillingId)}};
+    {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, FetchId)}};
 handle_cast({'originate_ready'}, #state{originate_req=JObj
                                         ,node=Node
                                         ,uuid=UUID
                                         ,queue=Q
                                         ,server_id=ServerId
-                                        ,billing_id=BillingId
+                                        ,fetch_id=FetchId
                                        }=State) ->
     lager:debug("preemptively starting call control process for node ~s", [Node]),
-    case ecallmgr_call_sup:start_control_process(Node, UUID, BillingId) of
+    case ecallmgr_call_sup:start_control_process(Node, UUID, FetchId) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
             _ = publish_originate_ready(CtrlQ, UUID, JObj, Q, ServerId),
@@ -469,14 +469,14 @@ get_eavesdrop_action(JObj) ->
     end.
 
 -spec build_originate_args(ne_binary(), wh_json:objects(), wh_json:object(), ne_binary()) -> ne_binary().
-build_originate_args(Action, Endpoints, JObj, BillingId) ->
+build_originate_args(Action, Endpoints, JObj, FetchId) ->
     lager:debug("building originate command arguments"),
     DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
                         <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
                         _Else -> <<"|">>
                     end,
     DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
-    J = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Billing-ID">>], BillingId}
+    J = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
                             ,{<<"Loopback-Bowout">>, <<"true">>}
                            ], JObj),
     list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).

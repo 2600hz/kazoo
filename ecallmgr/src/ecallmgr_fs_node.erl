@@ -15,7 +15,6 @@
 -export([handle_reload_acls/2]).
 -export([handle_reload_gtws/2]).
 -export([sync_channels/1]).
--export([show_channels/1]).
 -export([fs_node/1]).
 -export([hostname/1]).
 -export([process_event/3]).
@@ -125,10 +124,6 @@ fs_node(Srv) ->
         Else -> Else
     end.
 
--spec show_channels(pid() | atom()) -> wh_json:objects().
-show_channels(Srv) when is_pid(Srv) -> show_channels(fs_node(Srv));
-show_channels(Node) -> show_channels_as_json(Node).
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -207,11 +202,10 @@ handle_call('node', _From, #state{node=Node}=State) ->
 %%--------------------------------------------------------------------
 -spec handle_cast(term(), state()) -> {'noreply', state()}.
 handle_cast({'sync_channels'}, #state{node=Node}=State) ->
-    Calls = [wh_json:get_value(<<"uuid">>, J)
-             || J <- show_channels_as_json(Node)
-            ],
-    Msg = {'sync_channels', Node, props:filter_undefined(Calls)},
-    gen_server:cast('ecallmgr_fs_nodes', Msg),
+    Channels = [wh_json:get_value(<<"uuid">>, J)
+                || J <- channels_as_json(Node)
+               ],
+    _ = ecallmgr_fs_channels:sync(Node, Channels),
     {'noreply', State};
 handle_cast(_Req, State) ->
     {'noreply', State}.
@@ -285,43 +279,11 @@ process_event(UUID, Props, Node) ->
 
 -spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 process_event(<<"CHANNEL_CREATE">> = EventName, UUID, Props, Node) ->
-    _ = ecallmgr_fs_channel:new(Props, Node),
     _ = maybe_start_event_listener(Node, UUID),
     _ = publish_new_channel_event(Props),
     maybe_send_event(EventName, UUID, Props, Node);
-process_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
-    _ = ecallmgr_fs_channel:destroy(Props, Node),
-    maybe_send_event(EventName, UUID, Props, Node);
-process_event(<<"CHANNEL_ANSWER">> = EventName, UUID, Props, Node) ->
-    _ = ecallmgr_fs_channel:set_answered(UUID, 'true'),
-    maybe_send_event(EventName, UUID, Props, Node);
-process_event(<<"CHANNEL_BRIDGE">> = EventName, UUID, Props, Node) ->
-    OtherLeg = get_other_leg(UUID, Props),
-    _ = ecallmgr_fs_channel:set_bridge(UUID, OtherLeg),
-    _ = ecallmgr_fs_channel:set_bridge(OtherLeg, UUID),
-    maybe_send_event(EventName, UUID, Props, Node);
-process_event(<<"CHANNEL_UNBRIDGE">> = EventName, UUID, Props, Node) ->
-    OtherLeg = get_other_leg(UUID, Props),
-    _ = ecallmgr_fs_channel:set_bridge(UUID, 'undefined'),
-    _ = ecallmgr_fs_channel:set_bridge(OtherLeg, 'undefined'),
-    maybe_send_event(EventName, UUID, Props, Node);
-process_event(<<"CHANNEL_EXECUTE_COMPLETE">> = EventName, UUID, Props, Node) ->
-    Data = props:get_value(<<"Application-Data">>, Props),
-    _ = case props:get_value(<<"Application">>, Props) of
-            <<"set">> -> process_channel_update(UUID, Data);
-            <<"export">> -> process_channel_update(UUID, Data);
-            <<"multiset">> -> process_channel_multiset(UUID, Data);
-            _Else -> 'ok'
-        end,
-    maybe_send_event(EventName, UUID, Props, Node);
 process_event(<<"conference::maintenance">> = EventName, UUID, Props, Node) ->
     _ = ecallmgr_fs_conferences:event(Node, UUID, Props),
-    maybe_send_event(EventName, UUID, Props, Node);
-process_event(<<"sofia::transferor">> = EventName, UUID, Props, Node) ->
-    maybe_send_event(EventName, UUID, Props, Node);
-process_event(<<"sofia::transferee">> = EventName, UUID, Props, Node) ->
-    maybe_send_event(EventName, UUID, Props, Node);
-process_event(<<"sofia::replaced">> = EventName, UUID, Props, Node) ->
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
@@ -457,8 +419,15 @@ print_api_response({'error', {Cmd, Args}, Res}) ->
 print_api_response({'timeout', {Cmd, Arg}}) ->
     lager:info("timeout: ~s(~s)", [Cmd, Arg]).
 
--spec show_channels_as_json(atom()) -> wh_json:objects().
-show_channels_as_json(Node) ->
+-spec maybe_start_event_listener(atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
+maybe_start_event_listener(Node, UUID) ->
+    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}) of
+        {'ok', 'true'} -> ecallmgr_call_sup:start_event_process(Node, UUID);
+        _E -> 'ok'
+    end.
+
+-spec channels_as_json(atom()) -> wh_json:objects().
+channels_as_json(Node) ->
     case freeswitch:api(Node, 'show', "channels as delim |||") of
         {'ok', Lines} ->
             case binary:split(Lines, <<"\n">>, ['global']) of
@@ -473,54 +442,3 @@ show_channels_as_json(Node) ->
         {'error', _} -> [];
         'timeout' -> []
     end.
-
--spec maybe_start_event_listener(atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
-maybe_start_event_listener(Node, UUID) ->
-    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}) of
-        {'ok', 'true'} -> ecallmgr_call_sup:start_event_process(Node, UUID);
-        _E -> 'ok'
-    end.
-
--spec process_channel_multiset(ne_binary(), ne_binary()) -> any().
-process_channel_multiset(UUID, Datas) ->
-    [process_channel_update(UUID, Data)
-     || Data <- binary:split(Datas, <<"|">>, ['global'])
-    ].
-
--spec process_channel_update(ne_binary(), ne_binary()) -> any().
-process_channel_update(UUID, Data) ->
-    case binary:split(Data, <<"=">>) of
-        [Var, Value] -> process_channel_update(UUID, Var, Value);
-        _Else -> 'ok'
-    end.
-
--spec process_channel_update(ne_binary(), ne_binary(), ne_binary()) -> any().
-process_channel_update(UUID, <<"ecallmgr_", Var/binary>>, Value) ->
-    Normalized = wh_util:to_lower_binary(binary:replace(Var, <<"-">>, <<"_">> , ['global'])),
-    process_channel_update(UUID, Normalized, Value);
-process_channel_update(UUID, <<"hold_music">>, _) ->
-    ecallmgr_fs_channel:set_import_moh(UUID, 'false');
-process_channel_update(UUID, Var, Value) ->
-    try wh_util:to_atom(<<"set_", Var/binary>>) of
-        Function ->
-            Exports = ecallmgr_fs_channel:module_info('exports'),
-            case lists:keysearch(Function, 1, Exports) of
-                {'value', {_, 2}} -> ecallmgr_fs_channel:Function(UUID, Value);
-                _Else -> 'ok'
-            end
-    catch
-        _:_ -> 'ok'
-    end.
-
-get_other_leg(UUID, Props) ->
-    get_other_leg(UUID, Props, props:get_value(<<"Other-Leg-Unique-ID">>, Props)).
-
-get_other_leg(UUID, Props, 'undefined') ->
-    maybe_other_bridge_leg(UUID
-                           ,props:get_value(<<"Bridge-A-Unique-ID">>, Props)
-                           ,props:get_value(<<"Bridge-B-Unique-ID">>, Props)
-                          );
-get_other_leg(_UUID, _Props, OtherLeg) -> OtherLeg.
-
-maybe_other_bridge_leg(UUID, UUID, OtherLeg) -> OtherLeg;
-maybe_other_bridge_leg(UUID, OtherLeg, UUID) -> OtherLeg.

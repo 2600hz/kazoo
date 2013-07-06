@@ -37,7 +37,6 @@
 -define(CHILDREN, [{?ECALLMGR_UTIL_CACHE, 'cache'}
                    ,{?ECALLMGR_REG_CACHE, 'cache'}
                    ,{?ECALLMGR_CALL_CACHE, 'cache'}
-                   ,{'ecallmgr_query', 'worker'}
                    ,{'ecallmgr_originate_sup', 'supervisor'}
                   ]).
 
