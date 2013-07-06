@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%%
 %%% Behaviour for setting up an AMQP listener.
@@ -227,7 +227,8 @@ rm_responder(Srv, Responder, Keys) ->
     gen_server:cast(Srv, {'rm_responder', Responder, Keys}).
 
 -spec add_binding(server_ref(), binding() | ne_binary() | atom()) -> 'ok'.
-add_binding(Srv, {Binding, Props}) ->
+add_binding(Srv, {Binding, Props}) when is_list(Props)
+                                        ,(is_atom(Binding) orelse is_binary(Binding)) ->
     gen_server:cast(Srv, {'add_binding', Binding, Props});
 add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:cast(Srv, {'add_binding', wh_util:to_binary(Binding), []}).
