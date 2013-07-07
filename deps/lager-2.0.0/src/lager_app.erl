@@ -39,6 +39,8 @@ start(_StartType, _StartArgs) ->
     case application:get_env(lager, async_threshold) of
         undefined ->
             ok;
+        {ok, undefined} ->
+            undefined;
         {ok, Threshold} when is_integer(Threshold), Threshold >= 0 ->
             _ = supervisor:start_child(lager_handler_watcher_sup, [lager_event, lager_backend_throttle, Threshold]),
             ok;
@@ -60,10 +62,14 @@ start(_StartType, _StartArgs) ->
     _ = [supervisor:start_child(lager_handler_watcher_sup, [lager_event, Module, Config]) ||
         {Module, Config} <- expand_handlers(Handlers)],
 
+    ok = add_configured_traces(),
+
     %% mask the messages we have no use for
     lager:update_loglevel_config(),
 
     HighWaterMark = case application:get_env(lager, error_logger_hwm) of
+        {ok, undefined} ->
+            undefined;
         {ok, HwmVal} when is_integer(HwmVal), HwmVal > 0 ->
             HwmVal;
         {ok, BadVal} ->
@@ -94,6 +100,8 @@ start(_StartType, _StartArgs) ->
                 end
         end,
 
+    lager_util:trace_filter(none), 
+
     {ok, Pid, SavedHandlers}.
 
 
@@ -115,6 +123,20 @@ expand_handlers([{Mod, Config}|T]) when is_atom(Mod) ->
     [maybe_make_handler_id(Mod, Config) | expand_handlers(T)];
 expand_handlers([H|T]) ->
     [H | expand_handlers(T)].
+
+add_configured_traces() ->
+    Traces = case application:get_env(lager, traces) of
+        undefined ->
+            [];
+        {ok, TraceVal} ->
+            TraceVal
+    end,
+
+    lists:foreach(fun({Handler, Filter, Level}) ->
+                {ok, _} = lager:trace(Handler, Filter, Level)
+        end,
+        Traces),
+    ok.
 
 maybe_make_handler_id(Mod, Config) ->
     %% Allow the backend to generate a gen_event handler id, if it wants to.
