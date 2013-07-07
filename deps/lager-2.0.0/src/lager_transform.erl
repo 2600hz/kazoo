@@ -87,13 +87,10 @@ transform_statement({call, Line, {remote, _Line1, {atom, _Line2, lager},
                                     {call, Line, {atom, Line, pid_to_list}, [
                                             {call, Line, {atom, Line ,self}, []}]}]},
                         {cons, Line, {tuple, Line, [
-                                                    {atom, Line, callid},
-                                                    {call, Line, {remote, Line, {atom, Line, erlang}, {atom, Line, get}}, [{atom, Line, callid}]}]},
-                         {cons, Line, {tuple, Line, [
-                                                      {atom, Line, node},
+                                    {atom, Line, node},
                                     {call, Line, {atom, Line, node}, []}]},
                         %% get the metadata with lager:md(), this will always return a list so we can use it as the tail here
-                        {call, Line, {remote, Line, {atom, Line, lager}, {atom, Line, md}}, []}}}}}}},
+                        {call, Line, {remote, Line, {atom, Line, lager}, {atom, Line, md}}, []}}}}}},
                             %{nil, Line}}}}}}},
             DefaultAttrs = case erlang:get(application) of
                 undefined ->

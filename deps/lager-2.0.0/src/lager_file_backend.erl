@@ -17,14 +17,16 @@
 %% @doc File backend for lager, with multiple file support.
 %% Multiple files are supported, each with the path and the loglevel being
 %% configurable. The configuration paramter for this backend is a list of
-%% 5-tuples of the form
-%% `{FileName, Level, RotationSize, RotationDate, RotationCount}'.
+%% key-value 2-tuples. See the init() function for the available options.
 %% This backend supports external and internal log
 %% rotation and will re-open handles to files if the inode changes. It will
 %% also rotate the files itself if the size of the file exceeds the
-%% `RotationSize' and keep `RotationCount' rotated files. `RotationDate' is
+%% `size' and keep `count' rotated files. `date' is
 %% an alternate rotation trigger, based on time. See the README for
 %% documentation.
+%% For performance, the file backend does delayed writes, although it will
+%% sync at specific log levels, configured via the `sync_on' option. By default
+%% the error level or above will trigger a sync.
 
 -module(lager_file_backend).
 
@@ -70,8 +72,14 @@
         last_check = os:timestamp()
     }).
 
-%% @private
--spec init([{string(), lager:log_level()},...]) -> {ok, #state{}}.
+-type option() :: {file, string()} | {level, lager:log_level()} |
+                  {size, non_neg_integer()} | {date, string()} |
+                  {count, non_neg_integer()} | {sync_interval, non_neg_integer()} |
+                  {sync_size, non_neg_integer()} | {sync_on, lager:log_level()} |
+                  {check_interval, non_neg_integer()} | {formatter, atom()} |
+                  {formatter_config, term()}.
+
+-spec init([option(),...]) -> {ok, #state{}} | {error, bad_config}.
 init({FileName, LogLevel}) when is_list(FileName), is_atom(LogLevel) ->
     %% backwards compatability hack
     init([{file, FileName}, {level, LogLevel}]);
@@ -91,7 +99,7 @@ init(LogFileConfig) when is_list(LogFileConfig) ->
     case validate_logfile_proplist(LogFileConfig) of
         false ->
             %% falied to validate config
-            ignore;
+            {error, {fatal, bad_config}};
         Config ->
             %% probabably a better way to do this, but whatever
             [Name, Level, Date, Size, Count, SyncInterval, SyncSize, SyncOn, CheckInterval, Formatter, FormatterConfig] =
@@ -155,7 +163,7 @@ terminate(_Reason, #state{fd=FD}) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-%% convert the config into a gen_event handler ID
+%% @private convert the config into a gen_event handler ID
 config_to_id({Name,_Severity}) when is_list(Name) ->
     {?MODULE, Name};
 config_to_id({Name,_Severity,_Size,_Rotation,_Count}) ->
@@ -175,7 +183,7 @@ config_to_id(Config) ->
 
 write(#state{name=Name, fd=FD, inode=Inode, flap=Flap, size=RotSize,
         count=Count} = State, Timestamp, Level, Msg) ->
-    LastCheck = timer:now_diff(os:timestamp(), Timestamp) div 1000,
+    LastCheck = timer:now_diff(Timestamp, State#state.last_check) div 1000,
     case LastCheck >= State#state.check_interval orelse FD == undefined of
         true ->
             %% need to check for rotation
@@ -202,7 +210,7 @@ write(#state{name=Name, fd=FD, inode=Inode, flap=Flap, size=RotSize,
 
 do_write(#state{fd=FD, name=Name, flap=Flap} = State, Level, Msg) ->
     %% delayed_write doesn't report errors
-    _ = file:write(FD, Msg),
+    _ = file:write(FD, unicode:characters_to_binary(Msg)),
     {mask, SyncLevel} = State#state.sync_on,
     case (Level band SyncLevel) /= 0 of
         true ->
@@ -355,27 +363,91 @@ get_loglevel_test() ->
         #state{name="foo", level=lager_util:config_to_mask(warning), fd=0, inode=0}),
     ?assertEqual(Level2, lager_util:config_to_mask(warning)).
 
-rotation_test() ->
-    SyncLevel = validate_loglevel(?DEFAULT_SYNC_LEVEL),
-    SyncSize = ?DEFAULT_SYNC_SIZE,
-    SyncInterval = ?DEFAULT_SYNC_INTERVAL,
-    CheckInterval = 0, %% hard to test delayed mode
-    {ok, {FD, Inode, _}} = lager_util:open_logfile("test.log", {SyncSize, SyncInterval}),
-    State0 = #state{name="test.log", level=?DEBUG, fd=FD, inode=Inode, sync_on=SyncLevel,
-        sync_size=SyncSize, sync_interval=SyncInterval, check_interval=CheckInterval},
-    ?assertMatch(#state{name="test.log", level=?DEBUG, fd=FD, inode=Inode},
-        write(State0, os:timestamp(), ?DEBUG, "hello world")),
-    file:delete("test.log"),
-    Result = write(State0, os:timestamp(), ?DEBUG, "hello world"),
-    %% assert file has changed
-    ?assert(#state{name="test.log", level=?DEBUG, fd=FD, inode=Inode} =/= Result),
-    ?assertMatch(#state{name="test.log", level=?DEBUG}, Result),
-    file:rename("test.log", "test.log.1"),
-    Result2 = write(Result, os:timestamp(), ?DEBUG, "hello world"),
-    %% assert file has changed
-    ?assert(Result =/= Result2),
-    ?assertMatch(#state{name="test.log", level=?DEBUG}, Result2),
-    ok.
+rotation_test_() ->
+    {foreach,
+     fun() ->
+             [file:delete(F)||F <- filelib:wildcard("test.log*")],
+             SyncLevel = validate_loglevel(?DEFAULT_SYNC_LEVEL),
+             SyncSize = ?DEFAULT_SYNC_SIZE,
+             SyncInterval = ?DEFAULT_SYNC_INTERVAL,
+             CheckInterval = 0, %% hard to test delayed mode
+
+             #state{name="test.log", level=?DEBUG, sync_on=SyncLevel,
+                    sync_size=SyncSize, sync_interval=SyncInterval, check_interval=CheckInterval}
+
+     end,
+     fun(_) ->
+             [file:delete(F)||F <- filelib:wildcard("test.log*")]
+     end,
+     [fun(DefaultState = #state{sync_size=SyncSize, sync_interval = SyncInterval}) ->
+          {"External rotation should work",
+           fun() ->
+                   {ok, {FD, Inode, _}} = lager_util:open_logfile("test.log", {SyncSize, SyncInterval}),
+                   State0 = DefaultState#state{fd=FD, inode=Inode},
+                   ?assertMatch(#state{name="test.log", level=?DEBUG, fd=FD, inode=Inode},
+                                write(State0, os:timestamp(), ?DEBUG, "hello world")),
+                   file:delete("test.log"),
+                   Result = write(State0, os:timestamp(), ?DEBUG, "hello world"),
+                   %% assert file has changed
+                   ?assert(#state{name="test.log", level=?DEBUG, fd=FD, inode=Inode} =/= Result),
+                   ?assertMatch(#state{name="test.log", level=?DEBUG}, Result),
+                   file:rename("test.log", "test.log.1"),
+                   Result2 = write(Result, os:timestamp(), ?DEBUG, "hello world"),
+                   %% assert file has changed
+                   ?assert(Result =/= Result2),
+                   ?assertMatch(#state{name="test.log", level=?DEBUG}, Result2),
+                   ok
+           end}
+      end,
+      fun(DefaultState = #state{sync_size=SyncSize, sync_interval = SyncInterval}) ->
+          {"Internal rotation and delayed write",
+           fun() ->
+                   CheckInterval = 3000, % 3 sec
+                   RotationSize = 15,
+                   PreviousCheck = os:timestamp(),
+
+                   {ok, {FD, Inode, _}} = lager_util:open_logfile("test.log", {SyncSize, SyncInterval}),
+                   State0 = DefaultState#state{
+                              fd=FD, inode=Inode, size=RotationSize,
+                              check_interval=CheckInterval, last_check=PreviousCheck},
+
+                   %% new message within check interval with sync_on level
+                   Msg1Timestamp = add_secs(PreviousCheck, 1),
+                   State0 = State1 = write(State0, Msg1Timestamp, ?ERROR, "big big message 1"),
+
+                   %% new message within check interval under sync_on level
+                   %% not written to disk yet
+                   Msg2Timestamp = add_secs(PreviousCheck, 2),
+                   State0 = State2 = write(State1, Msg2Timestamp, ?DEBUG, "buffered message 2"),
+
+                   %% although file size is big enough...
+                   {ok, FInfo} = file:read_file_info("test.log"),
+                   ?assert(RotationSize < FInfo#file_info.size),
+                   %% ...no rotation yet
+                   ?assertEqual(PreviousCheck, State2#state.last_check),
+                   ?assertNot(filelib:is_regular("test.log.0")),
+
+                   %% new message after check interval
+                   Msg3Timestamp = add_secs(PreviousCheck, 4),
+                   _State3 = write(State2, Msg3Timestamp, ?DEBUG, "message 3"),
+
+                   %% rotation happened
+                   ?assert(filelib:is_regular("test.log.0")),
+
+                   {ok, Bin1} = file:read_file("test.log.0"),
+                   {ok, Bin2} = file:read_file("test.log"),
+                   %% message 1-3 written to file
+                   ?assertEqual(<<"big big message 1buffered message 2">>, Bin1),
+                   %% message 4 buffered, not yet written to file
+                   ?assertEqual(<<"">>, Bin2),
+                   ok
+           end}
+      end
+     ]}.
+
+add_secs({Mega, Secs, Micro}, Add) ->
+    NewSecs = Secs + Add,
+    {Mega + NewSecs div 10000000, NewSecs rem 10000000, Micro}.
 
 filesystem_test_() ->
     {foreach,
@@ -385,6 +457,7 @@ filesystem_test_() ->
                 application:load(lager),
                 application:set_env(lager, handlers, [{lager_test_backend, info}]),
                 application:set_env(lager, error_logger_redirect, false),
+                application:set_env(lager, async_threshold, undefined),
                 application:start(lager)
         end,
         fun(_) ->
@@ -402,6 +475,26 @@ filesystem_test_() ->
                         {ok, Bin} = file:read_file("test.log"),
                         Pid = pid_to_list(self()),
                         ?assertMatch([_, _, "[error]", Pid, "Test message\n"], re:split(Bin, " ", [{return, list}, {parts, 5}]))
+                end
+            },
+            {"don't choke on unicode",
+                fun() ->
+                        gen_event:add_handler(lager_event, lager_file_backend, [{"test.log", info}, {lager_default_formatter}]),
+                        lager:log(error, self(),"~ts", [[20013,25991,27979,35797]]),
+                        {ok, Bin} = file:read_file("test.log"),
+                        Pid = pid_to_list(self()),
+                        ?assertMatch([_, _, "[error]", Pid,  [228,184,173,230,150,135,230,181,139,232,175,149, $\n]], re:split(Bin, " ", [{return, list}, {parts, 5}]))
+                end
+            },
+            {"don't choke on latin-1",
+                fun() ->
+                        %% XXX if this test fails, check that this file is encoded latin-1, not utf-8!
+                        gen_event:add_handler(lager_event, lager_file_backend, [{"test.log", info}, {lager_default_formatter}]),
+                        lager:log(error, self(),"~ts", ["LÆÝÎN-ï"]),
+                        {ok, Bin} = file:read_file("test.log"),
+                        Pid = pid_to_list(self()),
+                        Res = re:split(Bin, " ", [{return, list}, {parts, 5}]),
+                        ?assertMatch([_, _, "[error]", Pid,  [76,195,134,195,157,195,142,78,45,195,175,$\n]], Res)
                 end
             },
             {"file can't be opened on startup triggers an error message",
