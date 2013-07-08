@@ -20,12 +20,16 @@
 
 set(_, _, []) -> 'ok';
 set(Node, UUID, [{K,V}]) ->
-    freeswitch:api(Node, 'uuid_setvar', list_to_binary([UUID, " ", K, " ", V]));
+    Set = list_to_binary([UUID, " ", K, " ", V]),
+    lager:debug("~s api uuid_setvar ~s", [Node, Set]),
+    freeswitch:api(Node, 'uuid_setvar', Set);
 set(Node, UUID, [{K,V}|KVs]) ->
     Multiset = lists:foldl(fun({Key, Val}, Acc) ->
                                    [Val, "=", Key, ";" | Acc]
                            end, [V, "=", K], KVs),
-    freeswitch:api(Node, 'uuid_setvar_multi', list_to_binary([UUID, " ", lists:reverse(Multiset)])).
+    Set = list_to_binary([UUID, " ", lists:reverse(Multiset)]),
+    lager:debug("~s api uuid_setvar_mulit ~s", [Node, Set]),
+    freeswitch:api(Node, 'uuid_setvar_multi', Set).
 
 set(Node, UUID, K, V) -> set(Node, UUID, [{K, V}]).
 
@@ -34,6 +38,7 @@ set(Node, UUID, K, V) -> set(Node, UUID, [{K, V}]).
 export(_, _, []) -> 'ok';
 export(Node, UUID, [{K,V}|Exports]) ->
     Export = <<K/binary, "=", V/binary>>,
+    lager:debug("~s sendmsg ~s ~s", [Node, UUID, Export]),
     freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                     ,{"execute-app-name", "export"}
                                     ,{"execute-app-arg", wh_util:to_list(Export)}
