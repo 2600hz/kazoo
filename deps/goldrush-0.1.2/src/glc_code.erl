@@ -27,7 +27,7 @@
 
 compile(Module, ModuleData) ->
     {ok, forms, Forms} = abstract_module(Module, ModuleData),
-    {ok, Module, Binary} = compile_forms(Forms, []),
+    {ok, Module, Binary} = compile_forms(Forms, [nowarn_unused_vars]),
     {ok, loaded, Module} = load_binary(Module, Binary),
     {ok, Module}.
 
@@ -150,6 +150,10 @@ abstract_filter_({null, true}, OnMatch, _OnNomatch, State) ->
     OnMatch(State);
 abstract_filter_({null, false}, _OnMatch, OnNomatch, State) ->
     OnNomatch(State);
+abstract_filter_({Key, '*'}, OnMatch, OnNomatch, State) ->
+    abstract_getkey(Key,
+        _OnMatch=fun(#state{}=State2) -> OnMatch(State2) end,
+        _OnNomatch=fun(State2) -> OnNomatch(State2) end, State);
 abstract_filter_({Key, Op, Value}, OnMatch, OnNomatch, State)
         when Op =:= '>'; Op =:= '='; Op =:= '<' ->
     Op2 = case Op of '=' -> '=:='; Op -> Op end,
@@ -175,7 +179,6 @@ abstract_opfilter(Key, Opname, Value, OnMatch, OnNomatch, State) ->
                  ?erl:clause([?erl:atom(false)], none,
                     OnNomatch(State2))])] end,
         _OnNomatch=fun(State2) -> OnNomatch(State2) end, State).
-
 
 %% @private Generate an `all' filter.
 %% An `all' filter is evaluated by testing all conditions that must hold. If
@@ -334,8 +337,8 @@ abstract_getcount(Counter) ->
 
 %% @private Compile an abstract module.
 -spec compile_forms(term(), [term()]) -> {ok, atom(), binary()}.
-compile_forms(Forms, _Opts) ->
-    case compile:forms(Forms) of
+compile_forms(Forms, Opts) ->
+    case compile:forms(Forms, Opts) of
         {ok, Module, Binary} ->
             {ok, Module, Binary};
         {ok, Module, Binary, _Warnings} ->

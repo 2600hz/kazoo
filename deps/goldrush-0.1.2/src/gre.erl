@@ -25,7 +25,7 @@
 ]).
 
 -type event() :: {list, [{atom(), term()}]}.
--export_type([event/0]).
+-export_types([event/0]).
 
 %% @doc Construct an event term.
 -spec make(term(), [list]) -> event().

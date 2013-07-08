@@ -69,6 +69,11 @@ matches({Key, '>', Term}, Event) ->
     case gre:find(Key, Event) of
         {true, Term2} -> Term2 > Term;
         false -> false
+    end;
+matches({Key, '*'}, Event) ->
+    case gre:find(Key, Event) of
+        {true, _} -> true;
+        false -> false
     end.
 
 %% @private Repeatedly apply a function to a query.
@@ -87,6 +92,8 @@ onoutput({_, '<', _}) ->
 onoutput({_, '=', _}) ->
     output;
 onoutput({_, '>', _}) ->
+    output;
+onoutput({_, '*'}) ->
     output;
 onoutput(Query) ->
     erlang:error(badarg, [Query]).
@@ -237,6 +244,8 @@ is_valid({Field, '=', _Term}) when is_atom(Field) ->
     true;
 is_valid({Field, '>', _Term}) when is_atom(Field) ->
     true;
+is_valid({Field, '*'}) when is_atom(Field) ->
+    true;
 is_valid({null, true}) ->
     true;
 is_valid({null, false}) ->
@@ -344,7 +353,8 @@ delete_from_any_test() ->
 default_is_output_test_() ->
     [?_assertEqual(output, glc_lib:onoutput(glc:lt(a, 1))),
      ?_assertEqual(output, glc_lib:onoutput(glc:eq(a, 1))),
-     ?_assertEqual(output, glc_lib:onoutput(glc:gt(a, 1)))
+     ?_assertEqual(output, glc_lib:onoutput(glc:gt(a, 1))),
+     ?_assertEqual(output, glc_lib:onoutput(glc:wc(a)))
     ].
 
 -ifdef(PROPER).
