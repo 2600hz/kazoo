@@ -7,7 +7,7 @@
 
 -ifndef(WH_AMQP_HRL).
 
--include_lib("rabbitmq_client/include/amqp_client.hrl").
+%% -include_lib("rabbitmq_client/include/amqp_client.hrl").
 
 -define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
 

@@ -26,6 +26,7 @@
          ,delete/2
         ]).
 
+-include_lib("rabbitmq_client/include/amqp_client.hrl").
 -include("../crossbar.hrl").
 
 -define(CONNECT_CALL, <<"connect">>).

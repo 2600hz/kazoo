@@ -1,0 +1,38 @@
+<h3>Deliveries</h3>
+<% if (object && object.length > 0) { %>
+<%
+     var col_redeliver = !is_col_empty(object, 'redeliver', function(o) {return o.stats;});
+%>
+<table class="list">
+  <tr>
+<% if (mode == 'queue') { %>
+    <th>Channel</th>
+<% } else { %>
+    <th>Queue</th>
+<% } %>
+    <th>
+      deliver / get
+      <% if (col_redeliver) { %>
+        <sub>of which redelivered</sub>
+      <% } %>
+    </th>
+    <th>ack</th>
+  </tr>
+<%
+   for (var i = 0; i < object.length; i++) {
+     var del = object[i];
+%>
+     <tr<%= alt_rows(i)%>>
+<% if (mode == 'queue') { %>
+       <td><%= link_channel(del.channel_details.name) %></td>
+<% } else { %>
+       <td><%= link_queue(del.queue.vhost, del.queue.name) %></td>
+<% } %>
+       <td class="r"><%= fmt_deliver_rate(del.stats, col_redeliver) %></td>
+       <td class="r"><%= fmt_rate(del.stats, 'ack') %></td>
+     </tr>
+<% } %>
+</table>
+<% } else { %>
+<p> ... no deliveries ...</p>
+<% } %>
