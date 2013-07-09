@@ -23,8 +23,8 @@ USAGES_ERL=$(foreach XML, $(USAGES_XML), $(call usage_xml_to_erl, $(XML)))
 QC_MODULES := rabbit_backing_queue_qc
 QC_TRIALS ?= 100
 
-ifeq ($(shell python -c 'import simplejson' 2>/dev/null && echo yes),yes)
-PYTHON=python
+ifeq ($(shell python3 -c 'import simplejson' 2>/dev/null && echo yes),yes)
+PYTHON=python3
 else
 ifeq ($(shell python2.6 -c 'import simplejson' 2>/dev/null && echo yes),yes)
 PYTHON=python2.6
