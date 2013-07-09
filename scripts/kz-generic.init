@@ -1,0 +1,73 @@
+#!/bin/bash
+#
+# kazoo
+#
+# chkconfig: 345 13 87
+# description: Dubbed a "scalable, distributed, cloud-based" telephony platform
+# processname: kazoo
+#
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+KZ_DIR="/opt/kazoo"
+KZ_APP=`basename $0`
+KZ_APP=${KZ_APP#kz-}
+LOCKFILE=${LOCKFILE-/var/lock/subsys/${KZ_APP}}
+USER="kazoo"
+RETVAL=0
+
+# Check that networking is up.
+if [ "$NETWORKING" = "no" ]; then
+    exit 0
+fi
+
+start() {
+    echo -n $"Starting ${KZ_APP}: "
+
+    export HOME=${KZ_DIR}
+    export ERL_CRASH_DUMP=$(date +%s)_${KZ_APP}_erl_crash.dump
+    export ERL_LIBS=${KZ_DIR}/deps:${KZ_DIR}/core
+    daemon --user=${USER} "erl -name ${KZ_APP} -args_file /etc/kazoo/vm.args -pa ${KZ_DIR}/applications/*/ebin -pa ${KZ_DIR}/core/*/ebin -pa ${KZ_DIR}/deps/*/ebin -detached -s ${KZ_APP} >/dev/null &"
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && touch ${LOCKFILE}
+    return $RETVAL
+}
+
+stop() {
+    echo -n $"Stopping $KZ_APP: "
+    pkill -f "\-s ${KZ_APP}"
+    RETVAL=$?
+    [ $RETVAL -eq 0 ] && rm ${LOCKFILE}
+    echo
+}
+
+restart() {
+    stop
+    start
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        sup -n${KZ_APP} whistle_maintenance nodes
+        RETVAL=$?
+        ;;
+    restart|reload)
+        restart
+        ;;
+    condrestart)
+        [ ! -e ${LOCKFILE} ] && restart
+        ;;
+    *)
+        echo $"Usage: $0 (start|stop|restart|status)"
+        exit 1
+esac
+
+exit $RETVAL
