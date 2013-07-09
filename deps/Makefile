@@ -16,6 +16,7 @@ compile: $(MAKEDIRS)
 clean: ACTION = clean
 clean: $(MAKEDIRS)
 	   rm -rf rabbitmq_client-*
+	   rm -rf rabbitmq-codegen/
 
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)

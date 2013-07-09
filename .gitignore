@@ -33,3 +33,12 @@ deps/rabbitmq_server-*/src/rabbit_framing_amqp_0_8.erl
 deps/rabbitmq_server-*/src/rabbit_framing_amqp_0_9_1.erl
 deps/rabbitmq_server-*/src/rabbit_plugins_usage.erl
 deps/rabbitmq_client-*
+/deps/rabbitmq_server-3.1.3/plugins-src/eldap-wrapper/eldap-git/.gitignore
+/deps/rabbitmq_server-3.1.3/plugins-src/eldap-wrapper/eldap-git/ebin/.gitignore
+/deps/rabbitmq_server-3.1.3/plugins-src/erlang-rfc4627-wrapper/erlang-rfc4627-git/.gitignore
+/deps/rabbitmq_server-3.1.3/plugins-src/mochiweb-wrapper/mochiweb-git/.gitignore
+/deps/rabbitmq_server-3.1.3/plugins-src/mochiweb-wrapper/mochiweb-git/support/templates/.gitignore
+/deps/rabbitmq_server-3.1.3/plugins-src/webmachine-wrapper/webmachine-git/.gitignore
+/deps/rabbitmq_server-3.1.3/plugins-src/webmachine-wrapper/webmachine-git/.hgignore
+/deps/rabbitmq_server-3.1.3/plugins-src/webmachine-wrapper/webmachine-git/.hgtags
+/deps/rabbitmq_server-3.1.3/plugins-src/webmachine-wrapper/webmachine-git/ebin/.hg_empty_dir
