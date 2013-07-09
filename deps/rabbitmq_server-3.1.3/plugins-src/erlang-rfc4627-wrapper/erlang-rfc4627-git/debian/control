@@ -1,0 +1,11 @@
+Source: rfc4627-erlang
+Section: libs
+Priority: extra
+Maintainer: Tony Garnock-Jones <tonyg@lshift.net>
+Build-Depends: cdbs, debhelper (>= 5), erlang-base | erlang-base-hipe, erlang-nox, erlang-dev, make
+Standards-Version: 3.7.2
+
+Package: rfc4627-erlang
+Architecture: all
+Depends: erlang-base | erlang-base-hipe
+Description: A JSON (RFC4627) codec and JSON-RPC server for Erlang

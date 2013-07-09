@@ -1,0 +1,1278 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"[]>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+<BASE HREF="http://json-rpc.org.wstub.archive.org/wd/JSON-RPC-1-1-WD-20060807.html">
+
+    <title>JSON-RPC 1.1 Working Draft 7 August 2006</title>
+    <link rel="stylesheet" type="text/css" href="http://web.archive.org/web/20071224045515/http://json-rpc.org/wd/JSON-RPC-WD.css" />
+  </head>
+  <body>
+    <h1 id="Title">
+        JSON-RPC 1.1 Specification</h1>
+    <h2 id="SubTitle">
+        Working Draft 7 August 2006</h2>
+    <dl>
+      <dt>Previous Versions:</dt>
+      <dd>
+        <a href="http://json-rpc.org/wiki/specification">JSON-RPC 1.0</a>
+      </dd>
+      <dt>Editors:</dt>
+      <dd>
+            Atif Aziz, <a href="http://www.raboof.com/">www.raboof.com</a></dd>
+      <dd>
+            Jan-Klaas Kollhof, <a href="http://jan.kollhof.net/">jan.kollhof.net</a></dd>
+    </dl>
+    <p>
+        This document is currently a working draft published with the intent of
+        soliciting community feedback. Please send your comments and concerns to the public mailing-list
+        <a href="http://groups.yahoo.com/group/json-rpc/">JSON-RPC Yahoo! Group</a>. Make
+        sure you prefix the subject line with “1.1WD:”, as in “1.1WD: Comment on errors”.
+    </p>
+    <p>
+        This specification is designed to provide the developer with the information needed
+        to implement the protocol on the client or server end of a communication bus.</p>
+    <h2 id="TOCHead">Table of Contents</h2>
+    <ul id="TOCBody" class="toc">
+      <li>
+      </li>
+      <li>
+        <a href="#Overview">1. 
+        Overview</a>
+        <ul class="toc">
+          <li>
+            <a href="#Goals">1.1. Goals</a>
+          </li>
+          <li>
+            <a href="#NonGoals">1.2. Non-Goals</a>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <a href="#Differences">2. 
+        Differences From Version 1</a>
+      </li>
+      <li>
+        <a href="#Requirements">3. Requirements</a>
+      </li>
+      <li>
+        <a href="#Terms">4. 
+        Terminology</a>
+      </li>
+      <li>
+        <a href="#TypeSystem">5. 
+        Type System</a>
+      </li>
+      <li>
+        <a href="#ProcedureCall">6. 
+        Procedure Call (Request)</a>
+        <ul class="toc">
+          <li>
+            <a href="#RequestHeaders">6.1. HTTP Header Requirements</a>
+          </li>
+          <li>
+            <a href="#PostProcedureCall">6.2. Call Encoding Using HTTP POST</a>
+            <ul class="toc">
+              <li>
+                <a href="#NamedPositionalParameters">6.2.1. 
+        Named and Positional Parameters</a>
+              </li>
+              <li>
+                <a href="#ChoosingNamedPositionalParameters">6.2.2. 
+        Choosing Between Named and Positional Parameters</a>
+              </li>
+              <li>
+                <a href="#NullParameters">6.2.3. 
+        Null Parameters</a>
+              </li>
+              <li>
+                <a href="#MemberSequence">6.2.4. 
+        Member Sequence</a>
+              </li>
+            </ul>
+          </li>
+          <li>
+            <a href="#GetProcedureCall">6.3. 
+        Call Encoding Using HTTP GET</a>
+            <ul class="toc">
+              <li>
+                <a href="#EncodingGetParameters">6.3.1. Encoding of Call Parameter Values</a>
+              </li>
+              <li>
+                <a href="#IdempotentProcedures">6.3.2. 
+        Safe and Idempotent Procedures Only</a>
+              </li>
+            </ul>
+          </li>
+          <li>
+            <a href="#ChoosingBetweenPostGet">6.4. Choosing Between HTTP POST and GET</a>
+          </li>
+          <li>
+            <a href="#NameSensitivity">6.5.  Case-Sensitivity of Procedure and Parameter Names</a>
+          </li>
+          <li>
+            <a href="#ProcedureCallParity">6.6. 
+        Procedure Call Parity</a>
+            <ul class="toc">
+              <li>
+                <a href="#CallApproximation">6.6.1. 
+        Call Approximation</a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <a href="#ProcedureReturn">7. 
+        Procedure Return (Response)</a>
+        <ul class="toc">
+          <li>
+            <a href="#ResponseStatusCodes">7.1. 
+        HTTP Status Code Requirements</a>
+          </li>
+          <li>
+            <a href="#ResponseHeaders">7.2. HTTP Header Requirements</a>
+          </li>
+          <li>
+            <a href="#Head25">7.3. 
+        Procedure Return Object</a>
+          </li>
+          <li>
+            <a href="#ErrorObject">7.4. Error Object</a>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <a href="#Head27">8. 
+        Processing Model</a>
+      </li>
+      <li>
+        <a href="#Services">9. 
+        Services</a>
+      </li>
+      <li>
+        <a href="#ServiceDescription">10. 
+        Service Description</a>
+        <ul class="toc">
+          <li>
+            <a href="#ServiceProcedureDescription">10.1. 
+        Service Procedure Description</a>
+          </li>
+          <li>
+            <a href="#ProcedureParameterDescription">10.2. 
+        Procedure Parameter Description</a>
+            <ul class="toc">
+              <li>
+                <a href="#ParameterReturnTypeStrings">10.2.1. Parameter and Return Type Strings</a>
+              </li>
+            </ul>
+          </li>
+          <li>
+            <a href="#ServiceDescriptionExample">10.3. 
+        Service Description Example</a>
+          </li>
+          <li>
+            <a href="#DescriptionTextLanguage">10.4. 
+        Language of the Description Objects</a>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <a href="#NameCharacters">11. 
+        Service, Procedure and Parameter Names</a>
+      </li>
+      <li>
+        <a href="#ObjectExtensions">12. 
+        Object Extensions</a>
+      </li>
+      <li>
+        <a href="#OverallLimitations">13. 
+        Limitations</a>
+      </li>
+    </ul>
+    <h2 id="Overview">1. 
+        Overview</h2>
+    <p>
+        JSON-RPC is a stateless and light-weight remote procedure call (<acronym title="Remote Procedure Call">RPC</acronym>) 
+        protocol for inter-networking applications over <a href="http://www.ietf.org/rfc/rfc2616.txt"><acronym title="Hypertext Transfer Protocol">HTTP</acronym></a>.
+        It uses <a href="http://www.ietf.org/rfc/rfc4627.txt"><acronym title="JavaScript Object Notation">JSON</acronym></a>
+        as the data format for of all facets of a remote 
+        procedure call, including all application data carried in parameters.</p>
+    <p>
+        By leveraging HTTP, JSON-RPC allows implementations to immediately benefit from
+        the widely deployed World Wide Web infrastructure that is well-documented and understood
+        today. It introduces no new HTTP verbs or message header extensions. JSON-RPC relies on JSON for the format of the HTTP message
+        bodies, which allows implementations
+        to benefit from a simple and standard text format that
+        has suitable representations for the most commonly used scalar and structured data types inapplications. It is being quickly and widely adopted for web applications, and for which
+        libraries are readily available in several languages.</p>
+    <p>
+        The general mechanism for a remote procedure call using JSON-RPC consists of a client establishing
+        a connection with a service and then invoking one or more procedures provided by that
+        service. A single remote procedure call begins life as a request sent from the client
+        to the server. The call ends when the client subsequently receives a response from
+        the server over the same connection. Another call on the same connection is only made
+        once the previous call has ended.</p>
+    <h3 id="Goals">1.1. Goals</h3>
+    <p>
+        The primary goals of this specification are to define the JSON-RPC 1.1 protocol
+        in terms of:</p>
+    <ul>
+      <li>Expressing a remote procedure call and its result in JSON.</li>
+      <li>Using HTTP to transfer the request and response messages
+            that make up a remote procedure call.</li>
+      <li>Expressing error conditions in JSON and in HTTP.</li>
+      <li>Publishing and discovering a simple and machine-readable
+            specification of a JSON-RPC service.</li>
+    </ul>
+    <h3 id="NonGoals">1.2. Non-Goals</h3>
+    <p>
+        JSON-RPC does not address security, correlation, reliability, sessions
+        management, state management and many other features
+        that may be found in other RPC protocols or distributed systems. Developers are
+        instead encouraged to employ features of HTTP and related Internet technologies that 
+        can offer some of these features in an equally compelling, robust and satisfying manner. Some
+        features may be defined as extensions by other specifications.</p>
+    <h2 id="Differences">2. 
+        Differences From Version 1</h2>
+    <p>
+        The following list (non-comprehensive) summarizes the general changes that have
+        been applied to version 1.0:</p>
+    <ul>
+      <li>JSON-RPC 1.1 is bound to HTTP only. Use over other protocols are not considered
+            normative according to verson 1.1.</li>
+      <li>Renamed request to Procedure Call (capitalization significant).</li>
+      <li>Renamed response to Procedure Return (capitalization significant).</li>
+      <li>Removed notifications.</li>
+      <li>Removed the requirement to specify <strong>id</strong> for regular calls. </li>
+      <li>Formalize <code>Content-Type</code> for JSON-RPC.</li>
+      <li>Add <code>version</code> member to Procedure Call and Procedure Return objects.</li>
+      <li>Formalization of the JSON type system, i.e. Boolean, String, Number, Array, Object and
+            the Null value (capitalization significant).</li>
+      <li>Added call encoding for HTTP GET.</li>
+      <li>Added named and positional arguments. </li>
+      <li>Added Error object and formalization of error codes. </li>
+      <li>Added introspection (service description) and required system procedures.</li>
+    </ul>
+    <h2 id="Requirements">3. Requirements</h2>
+    <p>
+        The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT,
+        SHOULD, SHOULD NOT, RECOMMENDED, MAY and OPTIONAL in this
+        document are to be interpreted as described in 
+        <a href="http://www.ietf.org/rfc/rfc2119.txt">RFC 2119</a>.</p>
+    <p>
+        An implementation is not compliant if it fails to satisfy one or more
+        of the MUST requirements for the protocols it implements.  An
+        implementation that satisfies all of the MUST and all of the
+        SHOULD requirements for its features is said to be <em>unconditionally
+        compliant</em>; one that satisfies all of the 'must' requirements but not
+        all of the SHOULD requirements for its features is said to be
+        <em>conditionally compliant</em>.</p>
+    <h2 id="Terms">4. 
+        Terminology</h2>
+    <p>
+        Below is a summary of some terminology used in this documentation that can help
+        in disambiguation of commonly applied and therefore often overloaded terms:</p>
+    <dl>
+      <dt>Client</dt>
+      <dd>
+            The agent that is the initiator of the remote procedure call.</dd>
+      <dt>Server</dt>
+      <dd>
+            Software that implements JSON-RPC, which may hosts one or more JSON-RPC services
+            and which also acts as the gateway to lower-level protocols and transports.</dd>
+      <dt>Service</dt>
+      <dd>
+            Provider of one or more procedures that may be the target of remote procedure calls
+            by clients.</dd>
+      <dt>Procedure</dt>
+      <dd>
+            A named operation on a service that may be the target of a remote procedure call.
+            In this document, the terms method and procedure are used to mean the same thing.
+        </dd>
+      <dt>Method</dt>
+      <dd>
+            Same as Procedure.
+        </dd>
+      <dt>Call</dt>
+      <dd>
+            An invocation of a procedure on a service that results in a 
+            sequential request-response transaction
+            between the client and the server.</dd>
+      <dt>Request</dt>
+      <dd>
+            The message that frames a call and its parameters.</dd>
+      <dt>Response</dt>
+      <dd>
+            The message that frames the result of a successful call or the error in the case
+            of a failed call.</dd>
+      <dt>Result</dt>
+      <dd>
+            The answer for a successful call.</dd>
+      <dt>Error</dt>
+      <dd>
+            The answer for a failed call.</dd>
+      <dt>Notification</dt>
+      <dd>
+            A one-way (fire and forget) call that produces no results, including
+            any indication of error.</dd>
+    </dl>
+    <h2 id="TypeSystem">5. 
+        Type System</h2>
+    <p>
+        JSON-RPC shares the same type system as JSON to specify all value components of
+        a call. In its abstract form (grammatic and syntatic details aside), JSON can represent
+        four primitive types—String, Number, Booleans, and Null—and two structured types—Object
+        and Array—that are briefly defined here:</p>
+    <dl>
+      <dt>String</dt>
+      <dd>
+            A sequence of zero or more Unicode characters.
+        </dd>
+      <dt>Number</dt>
+      <dd>
+            An integer component optionally prefixed with a minus sign and which may be followed
+            by a fraction part and/or an exponent part.</dd>
+      <dt>Boolean</dt>
+      <dd>
+            Literally <code>true</code> or <code>false</code>.</dd>
+      <dt>Null</dt>
+      <dd>
+            Literally <code>null</code>.</dd>
+      <dt>Array</dt>
+      <dd>
+            An ordered sequence of zero or more elements, where each element hola value is a
+            String, Number, Boolean, Null, Object or another Array. The index of the first element
+            is zero and increments by one for each subequent element.</dd>
+      <dt>Object</dt>
+      <dd>
+            An unordered collection of zero or more members. Each member is a name/value
+            pair, where a name is a String, and a value is a String, Number, Boolean, Null,
+            Array or another Object.</dd>
+    </dl>
+    <p>
+        For the remainder of this document, it is expected that the reader has some 
+        familiarity with the basic syntax of JSON text. Otherwise, consult the 
+        <a href="http://www.ietf.org/rfc/rfc4627.txt">JSON specification (RFC 4627)</a>
+        for further details.</p>
+    <div class="ednote">
+      <span class="editor">Atif Aziz:</span> It may be worth mentioning here how this specification makes a distinction
+        between <em>JSON</em>, the abstract type system, and <em>JSON text</em>, the syntax
+        for serializing the values. In XML parlance, JSON is the <a href="http://www.w3.org/TR/xml-infoset/">
+            InfoSet</a> and JSON text is the equivalent of <a href="http://www.w3.org/TR/xml/">XML
+                1.0</a>.</div>
+    <p>
+        This document also uses a specific convention to refer to any JSON type. 
+        Wherever a JSON type is mentioned, the first letter is always capitalized
+        and the whole word appears in its root form (never in its 
+        plural form).</p>
+    <h2 id="ProcedureCall">6. 
+        Procedure Call (Request)</h2>
+    <p>
+        A remote procedure call is made by sending a request to a remote service
+        using either
+        <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.5">HTTP POST</a> or
+        <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.3">HTTP GET</a>.
+        How and where the call is encoded within the HTTP message depends on the HTTP 
+        method that is employed. In the case of HTTP POST, the procedure call is 
+        carried in the body of the HTTP message whereas in the case of HTTP GET, it
+        is expressed along the path and query components of the 
+        <a href="cvhttp://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1.2">HTTP Request-URI</a>.</p>
+    <p>
+        Suppose that a service exposes a procedure named <code>sum</code> that takes two Number parameters,
+        as in <code>sum(a, b)</code>, and returns their sum. 
+        The HTTP POST to call this procedure call would be as follows:</p>
+    <div class="exampleOuter">
+      <div class="exampleHeader">
+            Procedure Call Example Using HTTP POST</div>
+      <div class="exampleInner">
+        <pre>POST /myservice HTTP/1.1 
+User-Agent: Wget/1.6
+Host: www.example.com
+Content-Type: application/json
+Content-Length: 181
+Accept: application/json
+
+{
+    "version" : "1.1",
+    "method"  : "sum",
+    "params"  : [ 17, 25 ]
+}</pre>
+      </div>
+    </div>
+    <p>
+        In this example, the method being targeted is provided by a 
+        service located at <code>http://www.example.com/myservice</code>.
+        The call is expressed as a JSON Object in the body of the HTTP
+        POST message. The <code>version</code> member of this object tells 
+        the receiver the version of the JSON-RPC protocol being used by the 
+        client. The <code>method</code> member indicates the procedure
+        being invoked, which is <em>sum</em> in this example. Finally,
+        the <code>params</code> member contains a JSON Array that lists
+        the parameters (in order) to be supplied to the procedure.</p>
+    <p>
+        The same invocation is shown here using HTTP GET:</p>
+    <div class="exampleOuter">
+      <div class="exampleHeader">
+            Procedure Call Example Using HTTP GET</div>
+      <div class="exampleInner">
+        <pre>GET /myservice/sum?a=17&amp;b=25 HTTP/1.1 
+User-Agent: Wget/1.6
+Host: www.example.com
+Accept: application/json
+
+</pre>
+      </div>
+    </div>
+    <p>
+        There are two distinctions from the HTTP POST version that are
+        improtant to note. First, an HTTP GET targeting a procedure on
+        a JSON-RPC service is largely indistinguishable from a regular
+        HTTP GET transaction. For this reason, there is no mention of
+        of the JSON-RPC protocol version being used. Second, the entire
+        call is encoded in the HTTP Request-URI. The procedure to invoke 
+        is appended to the location of the service, such that it appears 
+        as the last component of the URI path component. The call 
+        parameters appear as the query component and are named after
+        the formal arguments of the target procedure.</p>
+    <h3 id="RequestHeaders">6.1. HTTP Header Requirements</h3>
+    <p>
+        Regardless of whether a remote procedure call is made using
+        HTTP GET or POST, the HTTP request message MUST specify the following headers:</p>
+    <ul>
+      <li>The <code><a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.43">User-Agent</a></code> MUST be specified.</li>
+      <li>For HTTP POST only, the <code><a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.17">Content-Type</a></code> MUST be specified and SHOULD read <code>application/json</code>.</li>
+      <li>The <code><a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.13">Content-Length</a></code> MUST be specified and correct according
+            to the guidelines and rules laid out in <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.4">Section 4.4, “Message Length”</a>,
+            of the HTTP specification.</li>
+      <li>The <code><a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1">Accept</a></code> MUST be specified and SHOULD read <code>application/json</code>.</li>
+    </ul>
+    <h3 id="PostProcedureCall">6.2. Call Encoding Using HTTP POST</h3>
+    <p>
+        When using HTTP POST, the call is expressed in the HTTP request body as a JSON Object
+        that carries the following members:</p>
+    <dl>
+      <dt>id</dt>
+      <dd>
+            OPTIOINAL. A request identifier that can be of any JSON type. This member is 
+            essentially maintained for backward compatibility with version 1.0 of the specification 
+            where it was used to correlate a response with its request. If this member is present 
+            then the server MUST repeat it verbatim on the response.</dd>
+      <dt>version</dt>
+      <dd>
+            REQUIRED. A String specifying the version of the JSON-RPC protocol to which
+            the client conforms. An implementation conforming to this specification MUST
+            use the exact String value of <code>"1.1"</code> for this member.</dd>
+      <dt>method</dt>
+      <dd>
+            REQUIRED.
+            A String containing the name of the procedure to be invoked. Procedure names
+            that begin with the word <code>system</code> followed by a period character (U+002E
+            or ASCII 46) are reserved. In other words, a procedure named <code>system.foobar</code>
+            is considered to have reserved semantics.
+            <div class="ednote"><span class="editor">Atif Aziz:</span> Ideally, this member would 
+            have been named <code>proc</code> to reflect the <em>procedure</em> in RPC, but 
+            is being left as <code>method</code> for sake of compatibility. One could permit
+            both, but that could unnecessarily increase complexity.
+            In the text of this document, however, I have tried to stick to the term procedure.
+            If anyone spots any use of the <em>word</em> method, except references to the 
+            <em>member</em><code>method</code>,
+            then please let me know.</div></dd>
+      <dt>params</dt>
+      <dd>
+            OPTIONAL. An Array or Object that holds the actual parameter values for the invocation
+            of the procedure.</dd>
+    </dl>
+    <p>
+        Unless a call is for notification purposes
+        only, bearing one-way semantics, it MUST be replied to with a response.</p>
+    <h4 id="NamedPositionalParameters">6.2.1. 
+        Named and Positional Parameters</h4>
+    <p>
+        Parameters for a procedure call can be identified by their name, position, or both. The name and position
+        of a parameter is defined by the formal argument list of the
+        target procedure. The first position is zero and increments by one for each subsequent
+        formal argument.</p>
+    <p>
+        A client can specify parameters by-name, by-position or both using a JSON Object
+        as the value for the <span style="font-family: Courier New">params</span> member. Each member
+        of this object becomes a candidate parameter for the call. If the name
+        of the object member consists
+        entirely of decimal digits (0-9) then it identifies the parameter
+        by its position in the formal argument list. In all other instances, the member name identifies the parameter
+        by its name and MUST match exactly (including in case) the name defined by the formal argument.</p>
+    <p>
+        Suppose a remote procedure called <em>sum</em> that defines three formal arguments called
+        <code>a</code>, <code>b</code> and <code>c</code>.
+        Suppose further that <code>a</code> comes first in the argument list, <code>b</code> second and <code>c</code>
+        third. The following example shows how this procedure would be called using named parameters in an HTTP POST transaction (the
+        headers have been omitted from all examples in this section for sake of brevity):</p>
+    <div class="exampleOuter">
+      <div class="exampleHeader">
+            Procedure Call With Named Parameters (1)</div>
+      <div class="exampleInner">
+        <pre>{
+    "version" : "1.1",
+    "method"  : "sum",
+    "params"  : { "a" : 12, "b" : 34, "c" : 56 }
+}</pre>
+      </div>
+    </div>
+    <p>
+        Since parameters are identified by their name, the order is insignificant. The same
+        MAY be expressed
+        with parameters appearing in a different order than which is defined by the formal argument list:</p>
+    <div class="exampleOuter">
+      <div class="exampleHeader">
+            Procedure Call With Named Parameters (2)</div>
+      <div class="exampleInner">
+        <pre>{
+    "version" : "1.1",
+    "method"  : "sum",
+    "params"  : { "b" : 34, "c" : 56, "a" : 12 }
+}</pre>
+      </div>
+    </div>
+    <p>
+        A client MAY choose to send all or some of the paramters by-position, in or out
+        of sequence. The example
+        below shows the same call being expressed with parameters
+        <code>a</code> and
+        <code>b</code> named after their positions
+        in the formal argument list:</p>
+    <div class="exampleOuter">
+      <div class="exampleHeader">
+            Procedure Call With Named and Positional Parameters</div>
+      <div class="exampleInner">
+        <pre>{
+    "version" : "1.1",
+    "method"  : "sum",
+    "params"  : { "1" : 34, "c" : 56, "0" : 12 }
+}</pre>
+      </div>
+    </div>
+    <p>
+        If a client chooses to send parameters exclusively by their position, then it MAY
+        use a JSON Array for the <code>params</code> member of the <a href="#PostProcedureCall">Procedure Call</a> object as a terser
+        method:</p>
+    <div class="exampleOuter">
+      <div class="exampleHeader">
+            Procedure Call With Positional Parameters Only (Using JSON Array)</div>
+      <div class="exampleInner">
+        <pre>{
+    "version" : "1.1",
+    "method"  : "sum",
+    "params"  : [ 12, 34, 56 ]
+}</pre>
+      </div>
+    </div>
+    <p>
+        A server MUST accept all forms of parameter expressions described in this section.
+        The last case, where parameters are sent in an array, was the only one supported
+        in JSON-RPC 1.0. Servers conforming to JSON-RPC 1.1 can therefore continue to support
+        calls from existing JSON-RPC 1.0 clients.</p>
+    <p>
+        If the value of the params member is any other type except JSON Object or Array,
+        then the server MUST reject the call with an error.</p>
+    <div class="ednote">
+      <span class="editor">Atif Aziz:</span> Need to add a comment about which
+        error should be specifically returned if the <code>params</code> member
+        is neither JSON Object or Array.
+    </div>
+    <h4 id="ChoosingNamedPositionalParameters">6.2.2. 
+        Choosing Between Named and Positional Parameters</h4>
+    <p>
+        Calls that identify all parameters exclusively by-name are RECOMMENDED over any
+        positional parameters for the following reasons:</p>
+    <ol>
+      <li>The call appears more readable and self-contained on the wire, which can aid in
+            logging and diagnosis without having to constantly consult the procudure definitions.
+        </li>
+      <li>The client gains independence from any change in the order of the formal argument
+            list.</li>
+      <li>If the formal argument list is large and mostly optional, the client can send only
+            those parameters by-name that it needs to fulfill the purpose of a particular call.</li>
+    </ol>
+    <h4 id="NullParameters">6.2.3. 
+        Null Parameters</h4>
+    <p>
+        The Null value MAY be used as the value of any parameter and MUST be taken to mean
+        that the parameter is not being supplied for the call.</p>
+    <h4 id="MemberSequence">6.2.4. 
+        Member Sequence</h4>
+    <p>
+        Client implementations SHOULD strive to order the members of the <a href="#PostProcedureCall">Procedure Call</a>
+        object such that the server is able to employ a streaming strategy to process the contents. 
+        At the very least, a client SHOULD ensure that the <code>version</code> member 
+        appears first and the <code>params</code> member last. 
+        An example how this can be an advantage is 
+        where a client tries to invoke a procedure that does not exist on the target service. The server can then skip to the end and issue an error as soon as it reads
+        the value of the <code>method</code> member and finds it to be in error.</p>
+    <div class="ednote">
+      <span class="editor">Atif Aziz:</span>
+        Allow a server to refuse a request if it does not wish to process a request
+        where the <code>params</code> member appears before <code>method</code>.</div>
+    <h3 id="GetProcedureCall">6.3. 
+        Call Encoding Using HTTP GET</h3>
+    <p>
+        When using HTTP GET, the target procedure and parameters for the call are entirely
+        expressed within the Request-URI of the HTTP message. The target procedure
+        MUST appear as the last component of the Request-URI path component. The
+        procedure's name MUST therefore be preceded by a forward-slash (U+002F or ASCII
+        47) but MUST NOT end in one.</p>
+    <p>
+        The parameters are placed in the <em>query component</em> (as defined in <a href="http://tools.ietf.org/html/3986">
+            RFC 3986</a>) of the Request-URI, which is then formatted using the same scheme as defined
+        for <a href="http://www.w3.org/TR/html4/interact/forms.html">HTML Forms</a> with
+        the <a href="http://www.w3.org/TR/html4/interact/forms.html#adef-method"><code>get</code> method</a>.
+        Each parameters consists of a name/position and value pair that is separated by
+        the equal sign (U+003D or ASCII 61) and parameters themselves are separated by an
+        ampersand (U+0026 or ASCII 38):</p>
+    <p>
+      <code>name<sub>1</sub>=value<sub>1</sub>&amp;name<sub>2</sub>=value<sub>2</sub>&amp;name<sub>3</sub>=value<sub>3</sub>…</code>
+    </p>
+    <p>
+        A client MAY send the parameters in a different order than in which the formal
+        argument list of the target procedure defines them.</p>
+    <h4 id="EncodingGetParameters">6.3.1. Encoding of Call Parameter Values</h4>
+    <p>
+        The client MUST NOT use the JSON syntax for the parameter
+        values. All values MUST be plain text and observe the escaping rules defined
+        for the query component of the URL. After decoding, the server MUST treat all values 
+        as if they were sent as JSON String values. The server MAY then perform conversions at 
+        its discretion (on a best-attempt basis) if the formal arguments of the target 
+        procedure expects other non-String values. This specification does not define any conversion rules or methods.</p>
+    <p>
+        Parameters named identically on the query string MUST be collapsed
+        into an Array of String values using the same order in which they appear in the query string and
+        identified by the repeating parameter name. For instance, the following query string specifies two parameters only,
+        namely <code>scale</code> and <code>city</code>:</p>
+    <p>
+      <code>city=london&amp;scale=farenheit&amp;city=zurich&amp;city=new+york</code>
+    </p>
+    <p>
+        The parameter <code>scale</code> has the single String value of <code>"farenheit"</code> whereas 
+        <code>city</code> is an Array of String values equivalent to the JSON text <code>[ "london", "zurich", "new york" ]</code>.</p>
+    <p>
+        It is specifically not possible to send parameters of type Object using HTTP GET.</p>
+    <h4 id="IdempotentProcedures">6.3.2. 
+        Safe and Idempotent Procedures Only</h4>
+    <p>
+        Due to semantics and therefore requirements of HTTP GET, only procedures that are
+        considered safe and idempotent MAY be invoked using HTTP GET. An explanation of what is considered safe and idempotent is provided in <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.1">
+            Section 9.1 (Safe and Idempotent Methods)</a> of HTTP 1.1 specificiation. A
+        server SHOULD provide a means (through a configuration file, for example) for a
+        service to indicate which of its procedures are safe and idempotent in order to
+        be callable using HTTP GET. In the absence of such means on the other hand, the
+        server MUST allow invocations using HTTP POST only.</p>
+    <p>
+        A server MUST respond with an error if a client attempts to invoke a procedure that
+        has not been designated by the service as safe for call using HTTP GET.</p>
+    <p>
+        A procedure callable using HTTP GET SHOULD also be callable using HTTP POST.</p>
+    <h3 id="ChoosingBetweenPostGet">6.4. Choosing Between HTTP POST and GET</h3>
+    <p>
+        The choice of the HTTP method for a remote procedure call depends on
+        the consequences of calling the procedure as well as the benefits afforded by each of the two HTTP
+        methods. In general, any remote procedure call can be made using HTTP POST, but
+        some benefits</p>
+    <p>
+        HTTP GET can be particularly useful when:</p>
+    <ul>
+      <li>The procedure is safe, idempotent and compatible with HTTP GET semantics. Therefore
+            it produces information without causing side-effects.</li>
+      <li>The procedure has only arguments that are compatible with scalar JSON types Boolean,
+            Number and String.</li>
+      <li>Performance benefits can be leveraged through client-side caching as well as caching
+            on HTTP proxy infrastructure that is widely available and deployed over intranets
+            and on the Internet.</li>
+    </ul>
+    <h3 id="NameSensitivity">6.5.  Case-Sensitivity of Procedure and Parameter Names</h3>
+    <p>
+        Conforming implementations MUST treat procedure and parameter names as being case-sensitive such the names <code>bar</code> and <code>BAR</code> would be 
+        seen as two distinct entities.</p>
+    <h3 id="ProcedureCallParity">6.6. 
+        Procedure Call Parity</h3>
+    <p>
+        The parity of a procedure call is defined by how closely it matches the target procedure's
+        formal definition and argument list. A call is on full parity with the target procedure
+        when it meets all of the following conditions:</p>
+    <ol>
+      <li>All parameters were supplied and none had the Null value.</li>
+      <li>No extra parameters were supplied.</li>
+      <li>The values for each parameter matched exactly the expected type.</li>
+    </ol>
+    <p>
+        Note that when parameters are named by-position or by-name, their sequence does
+        not change or contribute to the parity of the call. A call can have full parity
+        with its procedure even if the parameters were not sent in the sequence of the formal
+        argument list.</p>
+    <h4 id="CallApproximation">6.6.1. 
+        Call Approximation</h4>
+    <p>
+        A server SHOULD try to adapt a call such that it has the greatest chance of
+        succeeding by making the following adjustments for the actual invocation:</p>
+    <ul>
+      <li>If the call supplies fewer parameters than expected then the missing parameters
+            SHOULD assume the Null value. </li>
+      <li>If the call supplies more parameters than expected then they MAY be dropped prior
+            to invocation. A server MAY however, provide a means for a procedure to receive
+            the excess parameters if necessary (for example by allowing a variable-length argument
+            list).</li>
+      <li>Make reasonable conversions between the actual and expected type of a parameter.
+            The eventual conversion methods and policies applied to approximate a call are left
+            at the discretion of the server and service, but both SHOULD strive to avoid conversions
+            that cause any loss or precision of data.</li>
+    </ul>
+    <h2 id="ProcedureReturn">7. 
+        Procedure Return (Response)</h2>
+    <p>
+        When a remote procedure call is made, the service MUST reply with a response whether
+        the invocation was successful or not.
+    </p>
+    <h3 id="ResponseStatusCodes">7.1. 
+        HTTP Status Code Requirements</h3>
+    <p>
+        When the call is made using HTTP POST, the HTTP status code for a successful result
+        MUST be 200.</p>
+    <p>
+        When the call is made using HTTP GET, the HTTP status code for a successful result
+        SHOULD be 200. If the HTTP GET call requested cache validation as well, the response
+        MAY be <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3.5">304 (Not Modified)</a>.
+        The use of status codes generally related to redirection (e.g., <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3.3">302 “Found”</a> or
+        <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3.2">301 “Moved Permanently”</a>) of HTTP GET transactions is not strictly prohibited, but service providers are RECOMMENDED
+        instead to use public documentation and communication methods to advertise the relocation
+        of a service.</p>
+    <p>
+        Clients SHOULD be prepared to handle a status code of <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.2">
+            401 (Unauthorized)</a> resulting from an authentication challenge when a call
+        is sent anonymously.</p>
+    <p>
+        Unless noted otherwise, a status code of <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.1">
+        500 (Internal Server Error)</a> MUST be used under the following conditions:</p>
+    <ul>
+      <li>There was an error parsing the JSON text comprising the Procedure Call.</li>
+      <li>The target procedure does not exist on the server. For HTTP GET, a server SHOULD
+            use <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5">404 (Not
+                Found)</a> instead of 500.</li>
+      <li>The procedure could not be invoked due to an error resulting from <a href="#CallApproximation">
+            call approximation</a>.</li>
+      <li>The invocation took place but resulted in an error from inside the procedure. </li>
+    </ul>
+    <h3 id="ResponseHeaders">7.2. HTTP Header Requirements</h3>
+    <p>
+        Regardless of the HTTP method used to make the remote procedure call, the HTTP response message MUST specify the following headers:</p>
+    <ul>
+      <li>The <code><a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.17">Content-Type</a></code> MUST be specified and SHOULD read <code>application/json</code>.</li>
+      <li>The <code><a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.13">Content-Length</a></code> MUST be specified and correct according
+            to the guidelines and rules laid out in <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.4">Section 4.4, “Message Length”</a>,
+            of the HTTP specification.</li>
+    </ul>
+    <h3 id="Head25">7.3. 
+        Procedure Return Object</h3>
+    <p>
+        Regardless of the HTTP method used to make the remote procedure call, the response
+        body MUST be a JSON Object that carries the following properties or members:</p>
+    <dl>
+      <dt>id</dt>
+      <dd>
+            OPTIONAL. This MUST be the same value as that of the <code>id</code> member
+            of Procedure
+            Call object to which the response corresponds. This member is maintained
+            for backward compatibility with version 1.0 of the specification where it was used
+            to correlate a response with its request. If the <code>id</code> member was
+            present on the request, then the server MUST repeat it verbatim on the response.</dd>
+      <dt>version</dt>
+      <dd>
+            REQUIRED. A String specifying the version of the JSON-RPC protocol to which the
+            client conforms. An implementation conforming to this specification MUST use the
+            exact String value of <code>"1.1"</code> for this member. The absence of this member
+            can effectively be taken to mean that the remote server implement version 1.0 of
+            the JSON-RPC protocol.</dd>
+      <dt>result</dt>
+      <dd>
+            REQUIRED on success. The value that was returned by the procedure upon a successful invocation.
+            This member MUST be entirely omitted in case there
+            was an error invoking the procedure.</dd>
+      <dt>error</dt>
+      <dd>
+            REQUIRED on error. An Object containing error information about the fault that occured before,
+            during or after the call. This member MUST be entirely omitted if there
+            was no error.</dd>
+    </dl>
+    <p>
+        Only one of <code>result</code> or <code>error</code> members MUST be specified, but never both. If both are missing, then the Procedure Return should be treated
+        as if it had the value Null.</p>
+    <div class="exampleOuter">
+      <div class="exampleHeader">
+            Procedure Return Example</div>
+      <div class="exampleInner">
+        <pre>HTTP/1.1 200 OK
+Connection: close
+Content-Length: 23
+Content-Type: application/json
+Date: Sat, 08 Jul 2006 12:04:08 GMT
+Server: Microsoft-IIS/6.0
+
+{
+    "version" : "1.1",
+    "result"  : 42
+}</pre>
+      </div>
+    </div>
+    <h3 id="ErrorObject">7.4. Error Object</h3>
+    <p>
+        When a remote procedure call fails, the Procedure Return object MUST contain the <code>error</code>
+        member whose value is a JSON Object with the following properties
+        members:</p>
+    <dl>
+      <dt>name</dt>
+      <dd>REQUIRED. A String value that MUST read <code>"JSONRPCError"</code>.</dd>
+      <dt>code</dt>
+      <dd>REQUIRED. A Number value that indicates the actual error that occurred. This MUST
+            be an integer between 100 and 999.</dd>
+      <dt>message</dt>
+      <dd>REQUIRED. A String value that provides a short description of the error. The message
+            SHOULD be limited to a single sentence.</dd>
+      <dt>error</dt>
+      <dd>OPTIONAL. A JSON Null, Number, String or Object value that carries custom and application-specific
+            error information. Error objects MAY be nested using this property.</dd>
+    </dl>
+    <div class="exampleOuter">
+      <div class="exampleHeader">
+            Error Procedure Return Example</div>
+      <div class="exampleInner">
+        <pre>{
+    "version" : "1.1",
+    "error" : {
+        "name" : "JSONRPCError",
+        "code" : 123,
+        "message" : "An error occurred parsing the request object.",
+        "error" : {
+            "name" : "JSONError",
+            "message" : "Bad array",
+            "at" : 42,
+            "text" : "{\"id\":1,\"method\":\"sum\",\"params\":[1,2,3,4,5}"} 
+        }
+}</pre>
+      </div>
+    </div>
+    <p>The following table lists the errors codes defined by this specification:</p>
+    <table class="norm">
+      <tr>
+        <th>code</th>
+        <th>
+                Example Message</th>
+        <th>Meaning</th>
+      </tr>
+      <tr>
+        <td class="normitem">
+                000</td>
+        <td class="text">
+                Server error</td>
+        <td class="text">
+                A general error occurred on the server prior to procedure invocation on the service.</td>
+      </tr>
+      <tr>
+        <td class="normitem">
+                000</td>
+        <td class="text">
+                Parse error</td>
+        <td class="text">
+                An error occurred on the server while parsing the JSON text comprising the procedure
+                call.</td>
+      </tr>
+      <tr>
+        <td class="normitem">
+                000</td>
+        <td class="text">
+                Bad call</td>
+        <td class="text">
+                The procedure call is not valid.</td>
+      </tr>
+      <tr>
+        <td class="normitem">
+                000</td>
+        <td class="text">
+                Call member out of sequence</td>
+        <td class="text">
+                The server refuses to process the call because a member is not in the required sequence.
+                For example, the <code>params</code> member of the <a href="#PostProcedureCall">Procedure Call</a> object appeared before <code>version</code> or 
+                <code>method</code> members.</td>
+      </tr>
+      <tr>
+        <td class="normitem">
+                000</td>
+        <td class="text">
+                Service error</td>
+        <td class="text">
+                The call is valid, but a general error occurred during the procedure invocation.</td>
+      </tr>
+      <tr>
+        <td class="normitem">
+                000</td>
+        <td class="text">
+                Procedure not found</td>
+        <td class="text">
+                The call is valid but the procedure identified by the call could not be located on the service.</td>
+      </tr>
+    </table>
+    <div class="ednote">
+      <span class="editor">Atif Aziz:</span> Assign error codes and add a passage on
+        how they should be interpreted. Particularly, which error codes indicate that a call
+        must not be repeated verbatim without some change.</div>
+    <h2 id="Head27">8. 
+        Processing Model</h2>
+    <p>
+        The processing model for the treatment of a remote procedure call is outlined as
+        follows:</p>
+    <ul>
+      <li>Determine the HTTP method of the Procedure Call.</li>
+      <li>Decode the call using the rules laid out for HTTP PSO</li>
+      <li>Rearrange the parameter order according to the formal argument list of the procedure.</li>
+    </ul>
+    <h2 id="Services">9. 
+        Services</h2>
+    <p>
+        A JSON-RPC service MUST, at a mimum, support a procedure called <code>system.describe</code>.
+        The result of calling this procedure without any parameters MUST be a <a href="#ServiceDescription">
+            Service Description</a>
+        object as described in the next section.</p>
+    <h2 id="ServiceDescription">10. 
+        Service Description</h2>
+    <p>
+        A service description is a JSON Object with the following members or properties:</p>
+    <dl>
+      <dt>sdversion</dt>
+      <dd>
+            REQUIRED. A String value that represents the version number of this object and MUST read <code>"1.0"</code> for conforming implementations.</dd>
+      <dt>name</dt>
+      <dd>
+            REQUIRED. A String value that provides a simple name for the method.</dd>
+      <dt>id</dt>
+      <dd>
+            REQUIRED. A String value that uniquely and globally identifies the service. The
+            string MUST use the <a href="http://tools.ietf.org/html/rfc3986">URI Generic Syntax
+                (RFC 3986)</a>.
+        </dd>
+      <dt>version</dt>
+      <dd>
+            OPTIONAL. A String value that indicates version number of the service and MAY be
+            used by the applications for checking compatibility. The version number, when present,
+            MUST include a major and minor component separated by a period (U+002E or ASCII 46). The major and minor components MUST use decimal digits (0 to 9) only.
+            For example, use <code>"2.5"</code> to mean a major version of 2 and a minor version
+            of 5. The use and interpretation of the version number is left at the discretion
+            of the applications treating the Service Description.</dd>
+      <dt>summary</dt>
+      <dd>
+            OPTIONAL. A String value that summarizes the purpose of the service. This SHOULD
+            be kept to a maximum of 5 sentences and often limited a single phrase like,
+            “The News Search service allows you to search the Internet for news stories.”
+        <div class="ednote"><span class="editor">Atif Aziz:</span> Not sure if <code>summary</code> has
+            any useful purpose in a service description. There is the <code>help</code>
+            member to serve a similar purpose anyhow.
+            Also, without this member being typed as Object, it is difficult to imagine how to 
+            communicate the language of the text unless one includes a <code>language</code>
+            member (which starts to make things messy).</div></dd>
+      <dt>help</dt>
+      <dd>
+            OPTIONAL. A String value that is a URL from where human-readable documentation about
+            the service may be obtained.</dd>
+      <dt>address</dt>
+      <dd>
+            OPTIONAL. A String value that is the URL of the service end-point to which the remote
+            procedure calls can be targeted. The protocol scheme of this URL SHOULD be <code>http</code>
+            or <code>https</code>. Although this value is optional, it is highly RECOMMENDED that a service always publish its address so that a service description obtained
+            indirectly can be used nonetheless to locate the service.</dd>
+      <dt>procs</dt>
+      <dd>
+            OPTIONAL. An Array value whose element contain Service Procedure Description objects,
+            each of uniquely describes a single procedure. If the only description of each procedure
+            that a service has is its name, then it MAY instead supply an Array of String elements
+            for this member and where each element uniquely names a procedure.</dd>
+    </dl>
+    <p>
+        A service SHOULD NOT include the <code>system.describe</code> procedure in its description as it is assumed that all conforming services MUST support it.</p>
+    <h3 id="ServiceProcedureDescription">10.1. 
+        Service Procedure Description</h3>
+    <p>
+        A procedure description is a JSON Object with the following members and properties:</p>
+    <dl>
+      <dt>name</dt>
+      <dd>
+            REQUIRED. A String value that provides a simple name for the method.</dd>
+      <dt>summary</dt>
+      <dd>
+            OPTIONAL. A String value that summarizes the purpose of the service. This SHOULD
+            be kept to a maximum of 3 sentences and often limited to a single phrase like, “Lets
+            you search for hyperlinks that have been tagged by particular tags.”
+        <div class="ednote"><span class="editor">Atif Aziz:</span> Not sure if <code>summary</code> has
+            any useful purpose in a service procedure description. There is the <code>help</code>
+            member to serve a similar purpose anyhow.
+            Also, without this member being typed as Object, it is difficult to imagine how to 
+            communicate the language of the text unless one includes a <code>language</code>
+            member (which starts to make things messy).</div></dd>
+      <dt>help</dt>
+      <dd>
+            OPTIONAL. A String value that is a URL from where human-readable documentation about
+            the procedure may be obtained.</dd>
+      <dt>idempotent </dt>
+      <dd>
+            OPTIONAL. A Boolean value that indicates whether the procedure is idempotent and
+            therefore essentially safe to invoke over an HTTP GET transaction. This member MUST
+            be present and <code>true</code> for the procedure to be considered idempotent.</dd>
+      <dt>params</dt>
+      <dd>
+            OPTIONAL. An Array value whose elements are either <a href="#ProcedureParameterDescription">Procedure
+                Parameter Description</a>
+            objects or String values. If an element each of uniquely describes a single
+            parameter of the procedure. If the only description that is available of each parameter
+            is its name, then a service MAY instead supply an Array of String elements for this
+            member and where each element uniquely names a parameter and the
+            parameter is assumed to be typed as <code>"any"</code>. In either case, the elements
+            of the array MUST be ordered after the formal argument list of the procedure being
+            described. If this member is missing or the Null value then the procedure does not
+            expect any parameters.</dd>
+      <dt>return</dt>
+      <dd>
+            OPTIONAL. An Object value that is structured after the <a href="#ProcedureParameterDescription">Procedure
+                Parameter Description</a>
+            and which describes the output from the procedure. Otherwise, if it is a String value, then it defines the type of the return value.
+            If this member is missing or
+            is the Null value then the return type of the procedure is defined to be <code>"any"</code>.</dd>
+    </dl>
+    <h3 id="ProcedureParameterDescription">10.2. 
+        Procedure Parameter Description</h3>
+    <p>
+        A procedure description is a JSON Object with the following members and properties:</p>
+    <dl>
+      <dt>name</dt>
+      <dd>
+            REQUIRED. A String value that provides a simple name for parameter.</dd>
+      <dt>type</dt>
+      <dd>OPTIONAL. A String value that denotes the expected value type for the parameter. If this member is not supplied or is the Null value then the type is
+            defined <code>"any"</code>.</dd>
+    </dl>
+    <h4 id="ParameterReturnTypeStrings">10.2.1. Parameter and Return Type Strings</h4>
+    <p>
+        The <code>type</code> member of the Procedure Parameter Description MAY be one of
+        the following String values:</p>
+    <dl>
+      <dt id="bit-type">
+        <code>"bit"</code>
+      </dt>
+      <dd>Boolean</dd>
+      <dt id="num-type">
+        <code>"num"</code>
+      </dt>
+      <dd>Number</dd>
+      <dt id="str-type">
+        <code>"str"</code>
+      </dt>
+      <dd>String</dd>
+      <dt id="arr-type">
+        <code>"arr"</code>
+      </dt>
+      <dd>Array</dd>
+      <dt id="obj-type">
+        <code>"obj"</code>
+      </dt>
+      <dd>Object</dd>
+      <dt id="any-type">
+        <code>"any"</code>
+      </dt>
+      <dd>Boolean, Number, String, Array or Object</dd>
+      <dt id="nil-type">
+        <code>"nil"</code>
+      </dt>
+      <dd>None (valid only for procedure return type)</dd>
+    </dl>
+    <p>
+        If another String value is found then it must be treated the same
+        as <code>"any"</code>.</p>
+    <p>
+        The <code>"nil"</code> string MUST NOT be used to describe the type of a procedure's
+        formal argument. Rather, it is strictly reserved to denote the return type of a procedure
+        that is not expected to produce a result. In other words, the <code>result</code> member of the
+        Procedure Return object resulting from a call to such procedure is
+        not interesting because it will always be the Null value.</p>
+    <p>
+        It is valid for a call to supply the Null value for any parameter no matter how
+        it is typed in its description.</p>
+    <h3 id="ServiceDescriptionExample">10.3. 
+        Service Description Example</h3>
+    <p>
+        Below is an example of Service Description object that describes a fictious DemoService
+        service that resides at the address <code>http://www.example.com/service</code> and which publishes
+        a single procedure called <code>sum</code> with two Number parameters, namely <code>a</code> and <code>b</code>,
+        and which returns a Number result.</p>
+    <div class="exampleOuter">
+      <div class="exampleHeader">
+            Service Description Example</div>
+      <div class="exampleInner">
+        <pre>{
+    "name"    : "DemoService",
+    "id"      : "urn:uuid:41544946-415a-495a-5645-454441534646",
+    "summary" : "A simple demonstration service.",
+    "help"    : "http://www.example.com/service/index.html",
+    "address" : "http://www.example.com/service",
+    "procs" : [ 
+        {
+            "name"    : "sum",
+            "summary" : "Sums two numbers.",
+            "help"    : "http://www.example.com/service/sum.html",
+            "params"  : [ 
+                { "name" : "a", "type" : "num" }, 
+                { "name" : "b", "type" : "num" } ],
+            "return" : {
+                "type" : "num" 
+        }, 
+        {
+            "name"    : "time",
+            "summary" : "Returns the current date and time in ISO 8601 format.",
+            "help"    : "http://www.example.com/service/time.html",
+            "return" : {
+                "type" : "string" 
+        } 
+    ]
+}</pre>
+      </div>
+    </div>
+    <h3 id="DescriptionTextLanguage">10.4. 
+        Language of the Description Objects</h3>
+    <p>
+        The <code>summary</code> members of the Service Description and Procedure Description objects
+        contain human-readable text. A service MAY use the <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.4">
+            Accept-Language</a> header from the HTTP request message to deliver a localized
+        text for its String value. Likewise, the URL for the <code>help</code> members MAY 
+        also point a page that contains the localized documentation. However, the documentation
+        at the URL SHOULD also provide hyperlinks to the documentation in other languages
+        if the translations are available.</p>
+    <h2 id="NameCharacters">11. 
+        Service, Procedure and Parameter Names</h2>
+    <p>
+        In JSON-RPC, service, procedure, parameters identifiable by name. The names of all
+        these artifacts SHOULD only include:</p>
+    <ul>
+      <li>Uppercase alphabets A to Z (U+0041 to U+005A, ASCII 65 to 90)</li>
+      <li>Lowercase alphabets A to Z
+            (U+0061 to U+007A, ASCII 97 to 122)</li>
+      <li>Decimal digits 0 to 9 (U+0030 to U+0039, ASCII 48
+            to 57)</li>
+      <li>Hyphen (U+002D, ASCII 45)</li>
+    </ul>
+    <p>
+        All other characters in a name, although not technically excluded here, could severely
+        limit the reach of the service and its procedures given certain environments, scenarios
+        and especially programming languages.</p>
+    <h2 id="ObjectExtensions">12. 
+        Object Extensions</h2>
+    <p>
+        Objects defined in this specification (<a href="#PostProcedureCall">Procedure Call</a>, <a href="#ProcedureReturn">Procedure Return</a>, <a href="#ErrorObject">Error</a>)
+        MAY contain additional members not specifically
+        mentioned. Such
+        member names SHOULD be prefixed with the Dollar sign (U+0024 or ASCII 36), as in <code>$extension</code>.</p>
+    <div class="ednote">
+      <span class="editor">Atif Aziz:</span>
+        The reason for choosing the Dollar sign is related to the JavaScript heritage.
+        According to the <a href="http://www.ecma-international.org/publications/standards/Ecma-262.htm">ECMAScript 
+        Language Specification (ECMA-262)</a>, “The Dollar sign is intended for use only in
+        mechanically generated code.” Although the general convention in Internet
+        protocols is to use the letter X followed by a dash (U+002D
+        or ASCII 45), as in <code>x-extension</code>, the Dollar sign seems like a more natural
+        and appropriate fit for JSON-RPC. <em>Should we really be caring about the JavaScript/JSON
+        heritage in a communication protocol?</em> One downside of using Dollar sign is that
+        it reserved in the Query component of the 
+        <a href="http://www.ietf.org/rfc/rfc2396.txt">URI Generic Syntax (RFC 2396)</a>.
+    </div>
+    <div class="ednote">
+      <span class="editor">Atif Aziz:</span>
+        Add comment about <a href="http://en.wikipedia.org/wiki/Common_Gateway_Interface"><acronym title="Common Gateway Interface">CGI</acronym></a>
+        binding for extensions on the <a href="#PostProcedureCall">Procedure Call</a> object?</div>
+    <h2 id="OverallLimitations">13. 
+        Limitations</h2>
+    <p>
+        It is worth noting that JSON-RPC is limited by the inability to represent cyclic
+        object graphs in JSON text. Therefore implementations SHOULD take care that parent-child,
+        sibling and cross-reference relationships result in error at the client end when
+        making the remote procedure call or server end when responding with the result of
+        the call. There are two possible ways to control this:</p>
+    <ul>
+      <li>Configure
+        a maximum allowed size of the request and response messages produced for a remote
+        procedure call.</li>
+      <li>Configure a maximum depth of nesting of Array and Object values.</li>
+    </ul>
+    <p>
+        As soon as either configured limit is breached, the client or server fail the call
+        with an error.</p>
+  </body>
+
+<!-- SOME LINK HREF'S ON THIS PAGE HAVE BEEN REWRITTEN BY THE WAYBACK MACHINE
+OF THE INTERNET ARCHIVE IN ORDER TO PRESERVE THE TEMPORAL INTEGRITY OF THE SESSION. -->
+
+
+<SCRIPT language="Javascript">
+<!--
+
+// FILE ARCHIVED ON 20071224045515 AND RETRIEVED FROM THE
+// INTERNET ARCHIVE ON 20090430164443.
+// JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+// ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+// SECTION 108(a)(3)).
+
+   var sWayBackCGI = "http://web.archive.org/web/20071224045515/";
+
+   function xResolveUrl(url) {
+      var image = new Image();
+      image.src = url;
+      return image.src;
+   }
+   function xLateUrl(aCollection, sProp) {
+      var i = 0;
+      for(i = 0; i < aCollection.length; i++) {
+         var url = aCollection[i][sProp];         if (typeof(url) == "string") { 
+          if (url.indexOf("mailto:") == -1 &&
+             url.indexOf("javascript:") == -1
+             && url.length > 0) {
+            if(url.indexOf("http") != 0) {
+                url = xResolveUrl(url);
+            }
+            url = url.replace('.wstub.archive.org','');
+            aCollection[i][sProp] = sWayBackCGI + url;
+         }
+         }
+      }
+   }
+
+   xLateUrl(document.getElementsByTagName("IMG"),"src");
+   xLateUrl(document.getElementsByTagName("A"),"href");
+   xLateUrl(document.getElementsByTagName("AREA"),"href");
+   xLateUrl(document.getElementsByTagName("OBJECT"),"codebase");
+   xLateUrl(document.getElementsByTagName("OBJECT"),"data");
+   xLateUrl(document.getElementsByTagName("APPLET"),"codebase");
+   xLateUrl(document.getElementsByTagName("APPLET"),"archive");
+   xLateUrl(document.getElementsByTagName("EMBED"),"src");
+   xLateUrl(document.getElementsByTagName("BODY"),"background");
+   xLateUrl(document.getElementsByTagName("TD"),"background");
+   xLateUrl(document.getElementsByTagName("INPUT"),"src");
+   var forms = document.getElementsByTagName("FORM");
+   if (forms) {
+       var j = 0;
+       for (j = 0; j < forms.length; j++) {
+              f = forms[j];
+              if (typeof(f.action)  == "string") {
+                 if(typeof(f.method)  == "string") {
+                     if(typeof(f.method) != "post") {
+                        f.action = sWayBackCGI + f.action;
+                     }
+                  }
+              }
+        }
+    }
+
+
+//-->
+</SCRIPT>
+
+</html>

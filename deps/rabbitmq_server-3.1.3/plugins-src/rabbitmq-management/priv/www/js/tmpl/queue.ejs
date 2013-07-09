@@ -1,0 +1,216 @@
+<h1>Queue <b><%= fmt_string(queue.name) %></b></h1>
+
+<div class="section">
+  <h2>Overview</h2>
+  <div class="hider">
+    <%= queue_lengths('lengths-q', queue) %>
+<% if (statistics_level == 'fine') { %>
+    <%= message_rates('msg-rates-q', queue.message_stats) %>
+<% } %>
+
+    <div class="updatable">
+    <h3>Details</h3>
+    <table class="facts">
+      <tr>
+        <th>Parameters</th>
+        <td><%= fmt_parameters(queue) %></td>
+      </tr>
+      <tr>
+        <th>Policy</th>
+        <td><%= fmt_string(queue.policy, '') %></td>
+      </tr>
+      <tr>
+        <th>Exclusive owner</th>
+        <td>
+          <% if (queue.owner_pid_details == undefined) { %>
+            None
+          <% } else { %>
+            <%= link_conn(queue.owner_pid_details.name) %>
+          <% } %>
+        </td>
+      </tr>
+    </table>
+
+    <table class="facts">
+      <tr>
+        <th>Status</th>
+        <td><%= fmt_idle_long(queue) %></td>
+      </tr>
+      <tr>
+        <th>Consumers</th>
+        <td><%= fmt_string(queue.consumers) %></td>
+      </tr>
+      <tr>
+        <th>Memory</th>
+        <td><%= fmt_bytes(queue.memory) %></td>
+      </tr>
+    </table>
+
+    <table class="facts">
+<% if (vhosts_interesting) { %>
+      <tr>
+        <th>Virtual host</th>
+        <td><%= fmt_string(queue.vhost) %></td>
+      </tr>
+<% } %>
+<% if (nodes_interesting) { %>
+      <tr>
+        <th>Node</th>
+        <td><%= fmt_node(queue.node) %></td>
+      </tr>
+      <tr>
+        <th>Mirrors</th>
+        <td>
+          <%
+             var has_unsynced_node = false;
+             for (var i in queue.slave_nodes) {
+               var node = queue.slave_nodes[i];
+          %>
+            <%
+               if (jQuery.inArray(node, queue.synchronised_slave_nodes) == -1) {
+                 has_unsynced_node = true;
+            %>
+             <%= fmt_node(node) %> <b>(unsynchronised)</b>
+            <% } else { %>
+             <%= fmt_node(node) %>
+            <% } %>
+            <br/>
+          <% } %>
+          <% if (queue.status == 'syncing') { %>
+          <table>
+            <tr>
+              <td>
+                <%= fmt_sync_status(queue) %>
+              </td>
+              <td>
+                <form action="#/queues/actions" method="post">
+                  <input type="hidden" name="vhost" value="<%= fmt_string(queue.vhost) %>"/>
+                  <input type="hidden" name="name" value="<%= fmt_string(queue.name) %>"/>
+                  <input type="hidden" name="action" value="cancel_sync"/>
+                  <input type="submit" value="Cancel" id="action-button" />
+                </form>
+              </td>
+            </tr>
+          </table>
+          <% } else if (has_unsynced_node) { %>
+          <form action="#/queues/actions" method="post">
+            <input type="hidden" name="vhost" value="<%= fmt_string(queue.vhost) %>"/>
+            <input type="hidden" name="name" value="<%= fmt_string(queue.name) %>"/>
+            <input type="hidden" name="action" value="sync"/>
+            <input type="submit" value="Synchronise" id="action-button" />
+          </form>
+          <% } %>
+        </td>
+      </tr>
+<% } %>
+    </table>
+    </div>
+  </div>
+</div>
+
+<% if (statistics_level == 'fine') { %>
+<div class="section-hidden">
+<h2>Message rates breakdown</h2>
+<div class="hider updatable">
+<table class="two-col-layout">
+  <tr>
+    <td>
+      <%= format('msg-detail-publishes',
+                 {'mode':   'queue',
+                  'object': queue.incoming,
+                  'label':  'Incoming'}) %>
+
+    </td>
+    <td>
+      <%= format('msg-detail-deliveries',
+                 {'mode':   'queue',
+                  'object': queue.deliveries}) %>
+    </td>
+  </tr>
+</table>
+</div>
+</div>
+<% } %>
+
+<div class="section-hidden">
+  <h2>Consumers</h2>
+  <div class="hider updatable">
+<%= format('consumers', {'mode': 'queue', 'consumers': queue.consumer_details}) %>
+  </div>
+</div>
+
+<div class="section-hidden">
+  <h2>Bindings</h2>
+  <div class="hider">
+    <div class="bindings-wrapper">
+      <%= format('bindings', {'mode': 'queue', 'bindings': bindings}) %>
+      <p class="arrow">&dArr;</p>
+      <p><span class="queue">This queue</span></p>
+
+      <%= format('add-binding', {'mode': 'queue', 'parent': queue}) %>
+    </div>
+  </div>
+</div>
+
+<%= format('publish', {'mode': 'queue', 'queue': queue}) %>
+
+<div class="section-hidden">
+  <h2>Get messages</h2>
+  <div class="hider">
+    <p>
+      Warning: getting messages from a queue is a destructive action.
+      <span class="help" id="message-get-requeue"></span>
+    </p>
+    <form action="#/queues/get" method="post">
+      <input type="hidden" name="vhost" value="<%= fmt_string(queue.vhost) %>"/>
+      <input type="hidden" name="name" value="<%= fmt_string(queue.name) %>"/>
+      <input type="hidden" name="truncate" value="50000"/>
+      <table class="form">
+        <tr>
+          <th><label>Requeue:</label></th>
+          <td>
+            <select name="requeue">
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <th><label>Encoding:</label></th>
+          <td>
+            <select name="encoding">
+              <option value="auto">Auto string / base64</option>
+              <option value="base64">base64</option>
+            </select>
+            <span class="help" id="string-base64"></span>
+          </td>
+        </tr>
+        <tr>
+          <th><label>Messages:</label></th>
+          <td><input type="text" name="count" value="1"/></td>
+        </tr>
+      </table>
+      <input type="submit" value="Get Message(s)" />
+    </form>
+    <div id="msg-wrapper"></div>
+  </div>
+</div>
+
+<div class="section-hidden">
+  <h2>Delete / purge</h2>
+  <div class="hider">
+    <form action="#/queues" method="delete" class="confirm inline-form">
+      <input type="hidden" name="vhost" value="<%= fmt_string(queue.vhost) %>"/>
+      <input type="hidden" name="name" value="<%= fmt_string(queue.name) %>"/>
+      <input type="hidden" name="mode" value="delete"/>
+      <input type="submit" value="Delete" />
+    </form>
+
+    <form action="#/queues" method="delete" class="inline-form-right">
+      <input type="hidden" name="vhost" value="<%= fmt_string(queue.vhost) %>"/>
+      <input type="hidden" name="name" value="<%= fmt_string(queue.name) %>"/>
+      <input type="hidden" name="mode" value="purge"/>
+      <input type="submit" value="Purge" />
+    </form>
+  </div>
+</div>

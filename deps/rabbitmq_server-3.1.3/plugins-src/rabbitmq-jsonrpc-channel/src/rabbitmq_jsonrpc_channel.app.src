@@ -1,0 +1,10 @@
+{application, rabbitmq_jsonrpc_channel,
+ [{description, "RabbitMQ JSON-RPC Channels"},
+  {vsn, "%%VSN%%"},
+  {modules, []},
+  {registered, []},
+  {mod, {rabbit_jsonrpc_channel_app, []}},
+  {env, [
+        {default_vhost, <<"/">>}
+        ]},
+  {applications, [kernel, stdlib, rabbitmq_jsonrpc, rabbit, amqp_client]}]}.

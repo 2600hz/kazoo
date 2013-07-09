@@ -1,0 +1,26 @@
+diff --git a/src/webmachine_request.erl b/src/webmachine_request.erl
+index 517516f..ed67b15 100644
+--- a/src/webmachine_request.erl
++++ b/src/webmachine_request.erl
+@@ -17,6 +17,8 @@
+ 
+ %% @doc Webmachine HTTP Request Abstraction.
+ 
++-compile({parse_transform,pmod_pt}).
++
+ -module(webmachine_request, [ReqState]).
+ -author('Justin Sheehy <justin@basho.com>').
+ -author('Andy Gross <andy@basho.com>').
+diff --git a/src/webmachine_resource.erl b/src/webmachine_resource.erl
+index 0894151..90c685b 100644
+--- a/src/webmachine_resource.erl
++++ b/src/webmachine_resource.erl
+@@ -14,6 +14,8 @@
+ %%    See the License for the specific language governing permissions and
+ %%    limitations under the License.
+ 
++-compile({parse_transform,pmod_pt}).
++
+ -module(webmachine_resource, [R_Mod, R_ModState, R_ModExports, R_Trace]).
+ -author('Justin Sheehy <justin@basho.com>').
+ -author('Andy Gross <andy@basho.com>').

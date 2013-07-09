@@ -1,0 +1,35 @@
+diff --git a/ebin/webmachine.app b/ebin/webmachine.app
+index c7b90c5..682bf35 100644
+--- a/ebin/webmachine.app
++++ b/ebin/webmachine.app
+@@ -23,4 +23,4 @@
+   {registered, []},
+   {mod, {webmachine_app, []}},
+   {env, []},
+-  {applications, [kernel, stdlib, crypto, mochiweb]}]}.
++  {applications, [kernel, stdlib, mochiweb]}]}.
+diff --git a/src/webmachine.erl b/src/webmachine.erl
+index 0b27f6c..f6c8236 100644
+--- a/src/webmachine.erl
++++ b/src/webmachine.erl
+@@ -28,7 +28,6 @@
+ %% @doc Start the webmachine server.
+ start() ->
+     webmachine_deps:ensure(),
+-    application:start(crypto),
+     application:start(webmachine).
+ 
+ %% @spec stop() -> ok
+diff --git a/src/webmachine_request.erl b/src/webmachine_request.erl
+index be9f623..517516f 100644
+--- a/src/webmachine_request.erl
++++ b/src/webmachine_request.erl
+@@ -590,7 +590,7 @@ parts_to_body(BodyList, Size) when is_list(BodyList) ->
+             {CT, _} ->
+                 CT
+         end,
+-    Boundary = mochihex:to_hex(crypto:rand_bytes(8)),
++    Boundary = mochihex:to_hex(mochiweb_util:rand_bytes(8)),
+     HeaderList = [{"Content-Type",
+                    ["multipart/byteranges; ",
+                     "boundary=", Boundary]}],
