@@ -18,6 +18,7 @@ clean: ACTION = clean
 clean: $(MAKEDIRS)
 	   rm -rf rabbitmq_client-*
 	   rm -rf rabbitmq-codegen/
+           rm -rf lager-2.0.0rc1
 
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)
