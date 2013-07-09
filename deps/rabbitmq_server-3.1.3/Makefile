@@ -23,8 +23,8 @@ USAGES_ERL=$(foreach XML, $(USAGES_XML), $(call usage_xml_to_erl, $(XML)))
 QC_MODULES := rabbit_backing_queue_qc
 QC_TRIALS ?= 100
 
-ifeq ($(shell python3 -c 'import simplejson' 2>/dev/null && echo yes),yes)
-PYTHON=python3
+ifeq ($(shell python -c 'import simplejson' 2>/dev/null && echo yes),yes)
+PYTHON=python
 else
 ifeq ($(shell python2.6 -c 'import simplejson' 2>/dev/null && echo yes),yes)
 PYTHON=python2.6
@@ -56,7 +56,7 @@ endif
 #other args: +native +"{hipe,[o3,verbose]}" -Ddebug=true +debug_info +no_strict_record_tests
 ERLC_OPTS=-I $(INCLUDE_DIR) -o $(EBIN_DIR) -Wall -v +debug_info $(call boolean_macro,$(USE_SPECS),use_specs) $(call boolean_macro,$(USE_PROPER_QC),use_proper_qc)
 
-VERSION?=3.1.3
+VERSION?=0.0.0
 PLUGINS_SRC_DIR?=$(shell [ -d "plugins-src" ] && echo "plugins-src" || echo )
 PLUGINS_DIR=plugins
 TARBALL_NAME=rabbitmq-server-$(VERSION)
