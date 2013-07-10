@@ -34,9 +34,9 @@
 
 -record(state, {table_id :: ets:tid()}).
 
--record(bucket, {key :: api_binary()
-                 ,srv :: pid()
-                 ,ref :: reference()
+-record(bucket, {key :: api_binary() | '_'
+                 ,srv :: pid() | '$1' | '_'
+                 ,ref :: reference() | '$2' | '_'
                 }).
 
 %%%===================================================================

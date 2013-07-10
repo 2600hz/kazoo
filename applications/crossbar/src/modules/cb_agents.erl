@@ -323,13 +323,45 @@ format_stats_fold(Stat, Acc) ->
             Totals = wh_json:get_integer_value(TotalsK, Acc, 0),
             QTotals = wh_json:get_integer_value(QTotalsK, Acc, 0),
 
+            AnsweredData = maybe_add_answered(Stat, Acc),
+
             maybe_add_misses(Stat
                              ,wh_json:set_values([{TotalsK, Totals + 1}
                                                   ,{QTotalsK, QTotals + 1}
+                                                  | AnsweredData
                                                  ], Acc)
                              ,QueueId
                             )
     end.
+
+-spec maybe_add_answered(wh_json:object(), wh_json:object()) ->
+                                [{wh_json:key(), non_neg_integer()},...] | [].
+-spec maybe_add_answered(wh_json:object(), wh_json:object(), api_binary()) ->
+                                [{wh_json:key(), non_neg_integer()},...] | [].
+maybe_add_answered(Stat, Acc) ->
+    maybe_add_answered(Stat, Acc, wh_json:get_value(<<"status">>, Stat)).
+maybe_add_answered(Stat, Acc, <<"handled">>) ->
+    add_answered(Stat, Acc);
+maybe_add_answered(Stat, Acc, <<"processed">>) ->
+    add_answered(Stat, Acc);
+maybe_add_answered(_, _, _S) ->
+    lager:debug("status ~s not indicative of an answered call", [_S]),
+    [].
+
+-spec add_answered(wh_json:object(), wh_json:object()) -> [{wh_json:key(), non_neg_integer()},...].
+add_answered(Stat, Acc) ->
+    AgentId = wh_json:get_value(<<"agent_id">>, Stat),
+    QueueId = wh_json:get_value(<<"queue_id">>, Stat),
+
+    AnsweredK = [AgentId, <<"answered_calls">>],
+    QAnsweredK = [AgentId, <<"queues">>, QueueId, <<"answered_calls">>],
+
+    Answered = wh_json:get_integer_value(AnsweredK, Acc, 0),
+    QAnswered = wh_json:get_integer_value(QAnsweredK, Acc, 0),
+
+    [{AnsweredK, Answered + 1}
+     ,{QAnsweredK, QAnswered + 1}
+    ].
 
 maybe_add_misses(Stat, Acc, QueueId) ->
     case wh_json:get_value(<<"misses">>, Stat, []) of
@@ -348,8 +380,16 @@ add_miss(Miss, Acc, QueueId) ->
     Misses = wh_json:get_integer_value(MissesK, Acc, 0),
     QMisses = wh_json:get_integer_value(QMissesK, Acc, 0),
 
+    TotalsK = [AgentId, <<"total_calls">>],
+    QTotalsK = [AgentId, <<"queues">>, QueueId, <<"total_calls">>],
+
+    Totals = wh_json:get_integer_value(TotalsK, Acc, 0),
+    QTotals = wh_json:get_integer_value(QTotalsK, Acc, 0),
+
     wh_json:set_values([{MissesK, Misses + 1}
                         ,{QMissesK, QMisses + 1}
+                        ,{TotalsK, Totals + 1}
+                        ,{QTotalsK, QTotals + 1}
                        ], Acc).
 
 %%--------------------------------------------------------------------
