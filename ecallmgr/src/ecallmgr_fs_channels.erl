@@ -91,7 +91,7 @@ flush_node(Node) ->
 
 -spec new(channel()) -> 'ok'.
 new(#channel{}=Channel) ->
-    gen_server:cast(?MODULE, {'new_channel', Channel}).
+    gen_server:call(?MODULE, {'new_channel', Channel}).
 
 -spec destroy(channel()) -> 'ok'.
 destroy(#channel{uuid=UUID, node=Node}) ->
@@ -200,6 +200,9 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({'new_channel', Channel}, _, State) ->
+    ets:insert(?CHANNELS_TBL, Channel),
+    {'reply', 'ok', State};
 handle_call(_, _, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -214,9 +217,6 @@ handle_call(_, _, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(term(), state()) -> {'noreply', state()}.
-handle_cast({'new_channel', Channel}, State) ->
-    ets:insert(?CHANNELS_TBL, Channel),
-    {'noreply', State, 'hibernate'};
 handle_cast({'channel_update', UUID, Update}, State) ->
     ets:update_element(?CHANNELS_TBL, UUID, Update),
     {'noreply', State, 'hibernate'};
