@@ -391,7 +391,7 @@ get_merged_device(MACAddress, Context) ->
 -spec merge_device(string(), cb_context:context()) ->
                           {'ok', wh_json:object()}.
 merge_device(MACAddress, #cb_context{doc=JObj, account_id=AccountId}) ->
-    Routines = [fun(J) -> wh_json:set_value(<<"mac_address">>, wh_json:to_binary(MACAddress), J) end
+    Routines = [fun(J) -> wh_json:set_value(<<"mac_address">>, wh_util:to_binary(MACAddress), J) end
                 ,fun(J) ->
                         OwnerId = wh_json:get_ne_value(<<"owner_id">>, JObj),
                         Owner = get_owner(OwnerId, AccountId),
