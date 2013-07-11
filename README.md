@@ -113,6 +113,7 @@ ensure 2600hz is always leading the way in cloud telecom.
 * zip
 * unzip
 * make
+* nc
 
 ### Learn More
 
