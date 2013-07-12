@@ -28,6 +28,7 @@
 -export([account_summary/1]).
 -export([get_call_precedence/1]).
 -export([channels_by_auth_id/1]).
+-export([channels_by_user_realm/2]).
 -export([flush_node_channels/1]).
 %%
 
@@ -167,6 +168,23 @@ channels_by_auth_id(AuthorizingId) ->
                            ]}
     end.
 
+-spec channels_by_user_realm(ne_binary(), ne_binary()) ->
+                                    {'ok', wh_json:objects()} |
+                                    {'error', 'not_found'}.
+channels_by_user_realm(Username, Realm) ->
+    MatchSpec = [{#channel{username = '$1', realm='$2', _ = '_'}
+                  ,[{'=:=', '$1', {'const', Username}}
+                    ,{'=:=', '$2', {'const', Realm}}
+                   ]
+                  ,['$_']}
+                ],
+    case ets:select(?CHANNELS_TBL, MatchSpec) of
+        [] -> {'error', 'not_found'};
+        Channels -> {'ok', [ecallmgr_fs_channel:record_to_json(Channel)
+                            || Channel <- Channels
+                           ]}
+    end.
+
 -spec flush_node_channels(string() | binary() | atom()) -> 'ok'.
 flush_node_channels(Node) ->
     gen_server:cast(?MODULE, {'flush_node_channels', wh_util:to_atom(Node, 'true')}).
@@ -262,7 +280,11 @@ handle_cast({'remove_node', #node{node=NodeName}}, #state{nodes=Nodes}=State) ->
     erlang:monitor_node(NodeName, 'false'),
     {'noreply', State#state{nodes=dict:erase(NodeName, Nodes)}};
 handle_cast({'rm_fs_node', NodeName}, State) ->
-    spawn(fun() -> maybe_rm_fs_node(NodeName, State) end),
+    LogId = get('callid'),
+    spawn(fun() ->
+                  put('callid', LogId),
+                  maybe_rm_fs_node(NodeName, State)
+          end),
     {'noreply', State};
 handle_cast({'new_channel', Channel}, State) ->
     ets:insert(?CHANNELS_TBL, Channel),
@@ -413,7 +435,7 @@ maybe_add_node(NodeName, Cookie, Options, #state{self=Srv, nodes=Nodes}) ->
 -spec maybe_rm_fs_node(atom(), state()) -> 'ok'.
 maybe_rm_fs_node(NodeName, #state{nodes=Nodes}=State) ->
     case dict:find(NodeName, Nodes) of
-        'error' -> 'ok';
+        'error' -> close_node(#node{node=NodeName});
         {'ok', #node{}=Node} ->
             rm_fs_node(Node, State)
     end.

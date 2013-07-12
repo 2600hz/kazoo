@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(skel_app).
+-module(omnipresence_app).
 
 -behaviour(application).
 
@@ -22,7 +22,7 @@
 -spec start(term(), term()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_Type, _Args) -> skel:start_link().
+start(_Type, _Args) -> omnipresence:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -31,4 +31,4 @@ start(_Type, _Args) -> skel:start_link().
 %% @end
 %%--------------------------------------------------------------------
 -spec stop(term()) -> 'ok'.
-stop(_State) -> skel:stop().
+stop(_State) -> omnipresence:stop().

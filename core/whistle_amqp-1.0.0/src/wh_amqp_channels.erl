@@ -83,7 +83,7 @@ find(Pid) ->
         [#wh_amqp_channel{}=Channel] -> Channel
     end.
 
--spec get_channel() -> wh_amqp_channel() | {'error', 'no_channel'}.
+-spec get_channel() -> wh_amqp_channel().
 get_channel() ->
     case find() of
         #wh_amqp_channel{channel='undefined'}=Channel -> wh_amqp_channel:new(Channel);

@@ -13,13 +13,21 @@
 
 -export([new_channel/1, new_channel_v/1]).
 -export([destroy_channel/1, destroy_channel_v/1]).
+-export([answered_channel/1, answered_channel_v/1]).
 -export([event/1, event_v/1]).
+
 -export([channel_status_req/1, channel_status_req_v/1]).
 -export([channel_status_resp/1, channel_status_resp_v/1]).
+
 -export([call_status_req/1, call_status_req_v/1]).
 -export([call_status_resp/1, call_status_resp_v/1]).
+
 -export([query_auth_id_req/1, query_auth_id_req_v/1]).
 -export([query_auth_id_resp/1, query_auth_id_resp_v/1]).
+
+-export([query_user_channels_req/1, query_user_channels_req_v/1]).
+-export([query_user_channels_resp/1, query_user_channels_resp_v/1]).
+
 -export([cdr/1, cdr_v/1]).
 -export([usurp_control/1, usurp_control_v/1]).
 -export([usurp_publisher/1, usurp_publisher_v/1]).
@@ -28,13 +36,21 @@
 
 -export([publish_new_channel/1, publish_new_channel/2]).
 -export([publish_destroy_channel/1, publish_destroy_channel/2]).
+-export([publish_answered_channel/1, publish_answered_channel/2]).
 -export([publish_event/2, publish_event/3]).
+
 -export([publish_channel_status_req/1 ,publish_channel_status_req/2, publish_channel_status_req/3]).
 -export([publish_channel_status_resp/2, publish_channel_status_resp/3]).
+
 -export([publish_call_status_req/1 ,publish_call_status_req/2, publish_call_status_req/3]).
 -export([publish_call_status_resp/2, publish_call_status_resp/3]).
+
 -export([publish_query_auth_id_req/1 ,publish_query_auth_id_req/2, publish_query_auth_id_req/3]).
 -export([publish_query_auth_id_resp/2, publish_query_auth_id_resp/3]).
+
+-export([publish_query_user_channels_req/1 ,publish_query_user_channels_req/4]).
+-export([publish_query_user_channels_resp/2 ,publish_query_user_channels_resp/3]).
+
 -export([publish_cdr/2, publish_cdr/3]).
 -export([publish_usurp_control/2, publish_usurp_control/3]).
 -export([publish_usurp_publisher/2, publish_usurp_publisher/3]).
@@ -66,28 +82,38 @@
                                 ]).
 -define(DESTROY_CHANNEL_TYPES, []).
 
+-define(ANSWERED_CHANNEL_ROUTING_KEY(CALLID), <<"call.answered_channel.", (amqp_util:encode(CALLID))/binary>>).
+-define(ANSWERED_CHANNEL_HEADERS, [<<"Call-ID">>]).
+-define(OPTIONAL_ANSWERED_CHANNEL_HEADERS, [<<"To">>, <<"From">>, <<"Request">>
+                                                | ?OPTIONAL_CALL_EVENT_HEADERS
+                                           ]).
+-define(ANSWERED_CHANNEL_VALUES, [{<<"Event-Category">>, <<"channel">>}
+                                  ,{<<"Event-Name">>, <<"answered">>}
+                                 ]).
+-define(ANSWERED_CHANNEL_TYPES, []).
+
 %% Call Events
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>
-                                          ,<<"Custom-Channel-Vars">>, <<"Timestamp">>, <<"Channel-State">>
-                                          ,<<"Call-Direction">>, <<"Transfer-History">>
-                                          ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>
-                                          ,<<"Other-Leg-Caller-ID-Number">>, <<"Other-Leg-Destination-Number">>
-                                          ,<<"Other-Leg-Unique-ID">> %% BRIDGE
-                                          ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
-                                          ,<<"Terminator">>, <<"Disposition">>
-                                          ,<<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
-                                          ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>
-                                          ,<<"Length">>, <<"Silence-Terminated">> %% Record-related
-                                          ,<<"Channel-Call-State">>
-                                          ,<<"Fax-Success">>, <<"Fax-Result-Code">>
-                                          ,<<"Fax-Result-Text">>, <<"Fax-ECM-Used">>
-                                          ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>
-                                          ,<<"Fax-Bad-Rows">>, <<"Fax-Transfer-Rate">>
-                                          ,<<"Switch-Hostname">>, <<"Group-ID">>
-                                          ,<<"Control-Queue">>, <<"Channel-Moving">>
-                                          ,<<"Conference-Name">>, <<"Conference-Config">>
-                                          ,<<"Replaced-By">>
+                                      ,<<"Custom-Channel-Vars">>, <<"Timestamp">>, <<"Channel-State">>
+                                      ,<<"Call-Direction">>, <<"Transfer-History">>
+                                      ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>
+                                      ,<<"Other-Leg-Caller-ID-Number">>, <<"Other-Leg-Destination-Number">>
+                                      ,<<"Other-Leg-Unique-ID">> %% BRIDGE
+                                      ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
+                                      ,<<"Terminator">>, <<"Disposition">>
+                                      ,<<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
+                                      ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>
+                                      ,<<"Length">>, <<"Silence-Terminated">> %% Record-related
+                                      ,<<"Channel-Call-State">>
+                                      ,<<"Fax-Success">>, <<"Fax-Result-Code">>
+                                      ,<<"Fax-Result-Text">>, <<"Fax-ECM-Used">>
+                                      ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>
+                                      ,<<"Fax-Bad-Rows">>, <<"Fax-Transfer-Rate">>
+                                      ,<<"Switch-Hostname">>, <<"Group-ID">>
+                                      ,<<"Control-Queue">>, <<"Channel-Moving">>
+                                      ,<<"Conference-Name">>, <<"Conference-Config">>
+                                      ,<<"Replaced-By">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
@@ -148,6 +174,22 @@
                                     ,{<<"Event-Name">>, <<"query_auth_id_resp">>}
                                    ]).
 -define(QUERY_AUTH_ID_RESP_TYPES, []).
+
+%% Query User Channels Req
+-define(QUERY_USER_CHANNELS_REQ_HEADERS, [<<"Username">>, <<"Realm">>]).
+-define(OPTIONAL_QUERY_USER_CHANNELS_REQ_HEADERS, []).
+-define(QUERY_USER_CHANNELS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                         ,{<<"Event-Name">>, <<"query_user_channels_req">>}
+                                        ]).
+-define(QUERY_USER_CHANNELS_REQ_TYPES, []).
+
+%% Query User Channels Resp
+-define(QUERY_USER_CHANNELS_RESP_HEADERS, []).
+-define(OPTIONAL_QUERY_USER_CHANNELS_RESP_HEADERS, [<<"Channels">>]).
+-define(QUERY_USER_CHANNELS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                          ,{<<"Event-Name">>, <<"query_user_channels_resp">>}
+                                         ]).
+-define(QUERY_USER_CHANNELS_RESP_TYPES, []).
 
 %% Call CDR
 -define(CALL_CDR_HEADERS, [ <<"Call-ID">>]).
@@ -242,6 +284,24 @@ destroy_channel_v(Prop) when is_list(Prop) ->
 destroy_channel_v(JObj) -> destroy_channel_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc Format a call event from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec answered_channel(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+answered_channel(Prop) when is_list(Prop) ->
+    case answered_channel_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?ANSWERED_CHANNEL_HEADERS, ?OPTIONAL_ANSWERED_CHANNEL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for answered_channel"}
+    end;
+answered_channel(JObj) -> answered_channel(wh_json:to_proplist(JObj)).
+
+-spec answered_channel_v(api_terms()) -> boolean().
+answered_channel_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?ANSWERED_CHANNEL_HEADERS, ?ANSWERED_CHANNEL_VALUES, ?ANSWERED_CHANNEL_TYPES);
+answered_channel_v(JObj) -> answered_channel_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Inquire into the status of a channel
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -332,6 +392,42 @@ query_auth_id_resp_v(Prop) when is_list(Prop) ->
 query_auth_id_resp_v(JObj) -> query_auth_id_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc Inquire into the status of a call
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec query_user_channels_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+query_user_channels_req(Prop) when is_list(Prop) ->
+    case query_user_channels_req_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?QUERY_USER_CHANNELS_REQ_HEADERS, ?OPTIONAL_QUERY_USER_CHANNELS_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for users channels query req"}
+    end;
+query_user_channels_req(JObj) -> query_user_channels_req(wh_json:to_proplist(JObj)).
+
+-spec query_user_channels_req_v(api_terms()) -> boolean().
+query_user_channels_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?QUERY_USER_CHANNELS_REQ_HEADERS, ?QUERY_USER_CHANNELS_REQ_VALUES, ?QUERY_USER_CHANNELS_REQ_TYPES);
+query_user_channels_req_v(JObj) -> query_user_channels_req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Inquire into the status of a call
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec query_user_channels_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+query_user_channels_resp(Prop) when is_list(Prop) ->
+    case query_user_channels_resp_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?QUERY_USER_CHANNELS_RESP_HEADERS, ?OPTIONAL_QUERY_USER_CHANNELS_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for users channels query resp"}
+    end;
+query_user_channels_resp(JObj) -> query_user_channels_resp(wh_json:to_proplist(JObj)).
+
+-spec query_user_channels_resp_v(api_terms()) -> boolean().
+query_user_channels_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?QUERY_USER_CHANNELS_RESP_HEADERS, ?QUERY_USER_CHANNELS_RESP_VALUES, ?QUERY_USER_CHANNELS_RESP_TYPES);
+query_user_channels_resp_v(JObj) -> query_user_channels_resp_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Respond with status of a call, either active or non-existant
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -415,6 +511,7 @@ bind_q(Q, 'undefined', CallId) ->
     'ok' = amqp_util:bind_q_to_callevt(Q, CallId, 'cdr'),
     'ok' = amqp_util:bind_q_to_callmgr(Q, ?NEW_CHANNEL_ROUTING_KEY),
     'ok' = amqp_util:bind_q_to_callmgr(Q, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)),
+    'ok' = amqp_util:bind_q_to_callmgr(Q, ?ANSWERED_CHANNEL_ROUTING_KEY(CallId)),
     'ok' = amqp_util:bind_q_to_callevt(Q, CallId, 'publisher_usurp');
 
 bind_q(Q, ['events'|T], CallId) ->
@@ -432,6 +529,9 @@ bind_q(Q, ['new_channel'|T], CallId) ->
 bind_q(Q, ['destroy_channel'|T], CallId) ->
     'ok' = amqp_util:bind_q_to_callmgr(Q, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)),
     bind_q(Q, T, CallId);
+bind_q(Q, ['answered_channel'|T], CallId) ->
+    'ok' = amqp_util:bind_q_to_callmgr(Q, ?ANSWERED_CHANNEL_ROUTING_KEY(CallId)),
+    bind_q(Q, T, CallId);
 bind_q(Q, ['publisher_usurp'|T], CallId) ->
     'ok' = amqp_util:bind_q_to_callevt(Q, CallId, 'publisher_usurp'),
     bind_q(Q, T, CallId);
@@ -448,6 +548,7 @@ unbind_q(Q, 'undefined', CallId) ->
     'ok' = amqp_util:unbind_q_from_callevt(Q, CallId, 'cdr'),
     'ok' = amqp_util:unbind_q_from_callmgr(Q, ?NEW_CHANNEL_ROUTING_KEY),
     'ok' = amqp_util:unbind_q_from_callmgr(Q, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)),
+    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?ANSWERED_CHANNEL_ROUTING_KEY(CallId)),
     'ok' = amqp_util:unbind_q_from_callevt(Q, CallId, 'publisher_usurp');
 
 unbind_q(Q, ['events'|T], CallId) ->
@@ -464,6 +565,9 @@ unbind_q(Q, ['new_channel'|T], CallId) ->
     unbind_q(Q, T, CallId);
 unbind_q(Q, ['destroy_channel'|T], CallId) ->
     'ok' = amqp_util:unbind_q_from_callmgr(Q, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)),
+    unbind_q(Q, T, CallId);
+unbind_q(Q, ['answered_channel'|T], CallId) ->
+    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?ANSWERED_CHANNEL_ROUTING_KEY(CallId)),
     unbind_q(Q, T, CallId);
 unbind_q(Q, ['publisher_usurp'|T], CallId) ->
     'ok' = amqp_util:unbind_q_from_callevt(Q, CallId, 'publisher_usurp'),
@@ -492,6 +596,14 @@ publish_destroy_channel(Event, ContentType) ->
     CallId = callid(Event),
     {'ok', Payload} = wh_api:prepare_api_payload(Event, ?DESTROY_CHANNEL_VALUES, fun ?MODULE:destroy_channel/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)).
+
+-spec publish_answered_channel(api_terms()) -> 'ok'.
+-spec publish_answered_channel(api_terms(), ne_binary()) -> 'ok'.
+publish_answered_channel(JObj) -> publish_answered_channel(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_answered_channel(Event, ContentType) ->
+    CallId = callid(Event),
+    {'ok', Payload} = wh_api:prepare_api_payload(Event, ?ANSWERED_CHANNEL_VALUES, fun ?MODULE:answered_channel/1),
+    amqp_util:callmgr_publish(Payload, ContentType, ?ANSWERED_CHANNEL_ROUTING_KEY(CallId)).
 
 -spec callid(api_terms()) -> api_binary().
 callid(Props) when is_list(Props) ->
@@ -569,6 +681,30 @@ publish_query_auth_id_resp(RespQ, JObj) ->
     publish_query_auth_id_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_auth_id_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?QUERY_AUTH_ID_RESP_VALUES, fun ?MODULE:query_auth_id_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+publish_query_user_channels_req(Props) when is_list(Props) ->
+    publish_query_user_channels_req(Props
+                                    ,props:get_value(<<"Username">>, Props)
+                                    ,props:get_value(<<"Realm">>, Props)
+                                    ,?DEFAULT_CONTENT_TYPE
+                                   );
+publish_query_user_channels_req(JObj) ->
+    publish_query_user_channels_req(JObj
+                                    ,wh_json:get_value(<<"Username">>, JObj)
+                                    ,wh_json:get_value(<<"Realm">>, JObj)
+                                    ,?DEFAULT_CONTENT_TYPE
+                                   ).
+publish_query_user_channels_req(Req, Username, Realm, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?QUERY_USER_CHANNELS_REQ_VALUES, fun ?MODULE:query_user_channels_req/1),
+    amqp_util:callevt_publish(<<Username/binary, ":", Realm/binary>>, Payload, 'status_req', ContentType).
+
+-spec publish_query_user_channels_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_query_user_channels_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_query_user_channels_resp(RespQ, JObj) ->
+    publish_query_user_channels_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_query_user_channels_resp(RespQ, Resp, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?QUERY_USER_CHANNELS_RESP_VALUES, fun ?MODULE:query_user_channels_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_cdr(ne_binary(), api_terms()) -> 'ok'.

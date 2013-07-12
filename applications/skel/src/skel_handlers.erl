@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2013, 2600Hz
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -16,16 +16,16 @@
 
 -spec handle_route_req(wh_json:json_object(), wh_proplist()) -> any().
 handle_route_req(JObj, Props) ->
-    Q = props:get_value(queue, Props),
+    Q = props:get_value('queue', Props),
 
     %% sends route_resp with "park" by default
-    whapps_call:route_response(JObj, Q, park).
+    whapps_call:route_response(JObj, Q, 'park').
 
 %% receiving the route_win means we are in control of the call
 -spec handle_route_win(wh_json:json_object(), wh_proplist()) -> any().
 handle_route_win(JObj, _Props) ->
     %% Create the call data structure
-    {ok, Call} = whapps_call:answer(JObj),
+    {'ok', Call} = whapps_call:answer(JObj),
 
     %% 1) because some commands can alter a call's state, we always return the new state
     %% 2) by convention b_function is the blocking version of the function.
@@ -38,7 +38,7 @@ handle_route_win(JObj, _Props) ->
     %% {error, hungup, Call2} and do cleanup of some kind.
     %% since we don't care, we'll just match successful completion of the audio and crash
     %% otherwise (why send a hangup to a call that's hungup).
-    {ok, Call1} = whapps_call:b_play(Call, <<"local_stream://some/media.mp3">>),
+    {'ok', Call1} = whapps_call:b_play(Call, <<"local_stream://some/media.mp3">>),
 
     %% the return of this function is ignored anyway, and the call is finished, so no need
     %% to match the return here.

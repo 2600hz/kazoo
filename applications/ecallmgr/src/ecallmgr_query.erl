@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%% Listener for whapp requests to query the underlying switches
 %%% @end
@@ -15,6 +15,8 @@
 -export([handle_channel_status/2]).
 -export([handle_call_status/2]).
 -export([handle_query_auth_id/2]).
+-export([handle_query_user_channels/2]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -36,6 +38,9 @@
                       }
                      ,{{?MODULE, 'handle_query_auth_id'}
                        ,[{<<"call_event">>, <<"query_auth_id_req">>}]
+                      }
+                     ,{{?MODULE, 'handle_query_user_channels'}
+                       ,[{<<"call_event">>, <<"query_user_channels_req">>}]
                       }
                     ]).
 -define(BINDINGS, [{'call', [{'restrict_to', ['status_req']}]}]).
@@ -66,6 +71,22 @@ start_link() ->
                               ,{'consume_options', ?CONSUME_OPTIONS}
                              ], []).
 
+handle_query_user_channels(JObj, _Props) ->
+    'true' = wapi_call:query_user_channels_req_v(JObj),
+    Username = wh_json:get_value(<<"Username">>, JObj),
+    Realm = wh_json:get_value(<<"Realm">>, JObj),
+
+    case ecallmgr_fs_nodes:channels_by_user_realm(Username, Realm) of
+        {'error', _E} -> lager:debug("failed to lookup channels for ~s:~s", [Username, Realm]);
+        {'ok', Cs} ->
+            Resp = [{<<"Channels">>, Cs}
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+            lager:debug("sending back channel data for ~s@~s to ~s", [Username, Realm, ServerId]),
+            wapi_call:publish_query_user_channels_resp(ServerId, Resp)
+    end.
 
 -spec handle_query_auth_id(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_query_auth_id(JObj, _Props) ->

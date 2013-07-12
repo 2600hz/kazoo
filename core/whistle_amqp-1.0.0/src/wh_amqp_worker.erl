@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%% Worker with a dedicated targeted queue.
 %%%
@@ -21,10 +21,15 @@
 
 %% API
 -export([start_link/1
+
          ,call/4, call/5
-         ,call_collect/3, call_collect/4
-         ,call_collect/5
+         ,call_collect/3, call_collect/4, call_collect/5
+
+         ,call_custom/5, call_custom/6
+         %%,call_collect_custom/4, call_collect_custom/5, call_collect_custom/6
+
          ,cast/3
+
          ,any_resp/1
          ,default_timeout/0
          ,collect_until_timeout/0
@@ -130,6 +135,32 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
             lager:warning("poolboy error: ~p", [_Else]),
             {'error', 'poolboy_fault'}
     end.
+
+-spec call_custom(server_ref(), api_terms(), publish_fun(), validate_fun(), gen_listener:binding()) ->
+                         {'ok', wh_json:object()} |
+                         {'error', _}.
+-spec call_custom(server_ref(), api_terms(), publish_fun(), validate_fun(), wh_timeout(), gen_listener:binding()) ->
+                         {'ok', wh_json:object()} |
+                         {'error', _}.
+call_custom(Srv, Req, PubFun, VFun, Bind) ->
+    call_custom(Srv, Req, PubFun, VFun, default_timeout(), Bind).
+call_custom(Srv, Req, PubFun, VFun, Timeout, Bind) ->
+    Prop = maybe_convert_to_proplist(Req),
+    case catch poolboy:checkout(Srv, 'false', 1000) of
+        W when is_pid(W) ->
+            gen_listener:add_binding(W, Bind),
+            Reply = gen_listener:call(W, {'request', Prop, PubFun, VFun, Timeout}
+                                      ,fudge_timeout(Timeout)),
+            gen_listener:rm_binding(W, Bind),
+            poolboy:checkin(Srv, W),
+            Reply;
+        'full' ->
+            lager:critical("failed to checkout worker: full"),
+            {'error', 'pool_full'};
+        _Else ->
+            lager:warning("poolboy error: ~p", [_Else]),
+            {'error', 'poolboy_fault'}
+    end.    
 
 -spec call_collect(server_ref(), api_terms(), publish_fun()) ->
                           {'ok', wh_json:objects()} |

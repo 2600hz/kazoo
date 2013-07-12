@@ -95,6 +95,7 @@
 -export([new_monitor_queue/0, new_monitor_queue/1, delete_monitor_queue/1]).
 
 -export([bind_q_to_exchange/3, bind_q_to_exchange/4]).
+-export([unbind_q_from_exchange/3]).
 -export([new_queue/0, new_queue/1, new_queue/2]).
 -export([basic_consume/1, basic_consume/2]).
 -export([basic_publish/3, basic_publish/4]).

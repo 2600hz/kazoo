@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @Copyright (C) 2010-2012 VoIP INC
+%%% @Copyright (C) 2010-2013, 2600Hz
 %%% @doc
 %%% Whistle API Helpers
 %%%
@@ -85,7 +85,7 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
     ].
 
 default_headers_v(Prop) ->
-    props:get_value(<<"Server-ID">>, Prop) =/= undefined
+    props:get_value(<<"Server-ID">>, Prop) =/= 'undefined'
         andalso (not wh_util:is_empty(props:get_value(<<"Event-Category">>, Prop)))
         andalso (not wh_util:is_empty(props:get_value(<<"Event-Name">>, Prop)))
         andalso (not wh_util:is_empty(props:get_value(<<"App-Name">>, Prop)))

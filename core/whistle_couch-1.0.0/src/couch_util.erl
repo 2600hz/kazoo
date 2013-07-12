@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP, INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%% Util functions used by whistle_couch
 %%% @end
@@ -13,6 +13,7 @@
          ,server_url/1
          ,db_url/2
          ,server_info/1
+         ,format_error/1
         ]).
 
 %% DB operations
@@ -86,7 +87,9 @@ max_bulk_insert() -> ?MAX_BULK_INSERT.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_new_connection(nonempty_string() | ne_binary(), pos_integer(), string(), string()) -> server().
+-spec get_new_connection(nonempty_string() | ne_binary(), pos_integer(), string(), string()) ->
+                                server() |
+                                {'error', 'timeout'}.
 get_new_connection(Host, Port, "", "") ->
     get_new_conn(Host, Port, ?IBROWSE_OPTS);
 get_new_connection(Host, Port, User, Pass) ->
@@ -96,13 +99,18 @@ get_new_connection(Host, Port, User, Pass) ->
 get_new_conn(Host, Port, Opts) ->
     Conn = couchbeam:server_connection(wh_util:to_list(Host), Port, "", Opts),
     lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
-    {'ok', ConnData} = server_info(Conn),
-    CouchVersion = wh_json:get_value(<<"version">>, ConnData),
-    BigCouchVersion = wh_json:get_value(<<"bigcouch">>, ConnData),
-    lager:info("connected successfully to ~s:~b", [Host, Port]),
-    lager:debug("responding CouchDB version: ~p", [CouchVersion]),
-    lager:debug("responding BigCouch version: ~p", [BigCouchVersion]),
-    Conn.
+    case server_info(Conn) of
+        {'ok', ConnData} ->
+            CouchVersion = wh_json:get_value(<<"version">>, ConnData),
+            BigCouchVersion = wh_json:get_value(<<"bigcouch">>, ConnData),
+            lager:info("connected successfully to ~s:~b", [Host, Port]),
+            lager:debug("responding CouchDB version: ~p", [CouchVersion]),
+            lager:debug("responding BigCouch version: ~p", [BigCouchVersion]),
+            Conn;
+        {'error', {'conn_failed', {'error', 'timeout'}}} ->
+            lager:warning("connection timed out for ~s:~p", [Host, Port]),
+            {'error', 'timeout'}
+    end.
 
 server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 
@@ -185,13 +193,24 @@ db_exists(#server{}=Conn, DbName) ->
 
 -spec do_db_compact(db()) -> boolean().
 do_db_compact(#db{}=Db) ->
-    Resp = ?RETRY_504(couchbeam:compact(Db)),
-    Resp =:= 'ok'.
+    do_db_compact(Db, 0).
+do_db_compact(_Db, Retries) when Retries > 3 ->
+    lager:debug("retries exceeded"),
+    'false';
+do_db_compact(Db, Retries) ->
+    case ?RETRY_504(couchbeam:compact(Db)) of
+        'ok' -> 'true';
+        {'conn_failed', {'error', 'timeout'}} ->
+            lager:debug("connection timed out, trying again"),
+            do_db_compact(Db, Retries+1);
+        {'error', _E} ->
+            lager:debug("failed to compact: ~p", [_E]),
+            'false'
+    end.
 
 -spec do_db_view_cleanup(db()) -> boolean().
 do_db_view_cleanup(#db{}=Db) ->
-    Resp = ?RETRY_504(couchbeam:view_cleanup(Db)),
-    Resp =:= 'ok'.
+    'ok' =:= ?RETRY_504(couchbeam:view_cleanup(Db)).
 
 %%% View-related functions -----------------------------------------------------
 -spec design_compact(server(), ne_binary(), ne_binary()) -> boolean().
@@ -256,6 +275,7 @@ do_fetch_results(Db, DesignDoc, Options) ->
 format_error({'failure', 404}) -> 'not_found';
 format_error({'http_error', {'status', 504}}) -> 'gateway_timeout';
 format_error({'conn_failed', {'error', 'timeout'}}) -> 'connection_timeout';
+format_error({'conn_failed', {'error', 'enetunreach'}}) -> 'network_unreachable';
 format_error(E) ->
     lager:debug("unformatted error: ~p", [E]),
     E.

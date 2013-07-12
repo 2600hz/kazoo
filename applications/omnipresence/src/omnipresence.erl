@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(skel).
+-module(omnipresence).
 
 -include_lib("whistle/include/wh_types.hrl").
 
@@ -20,7 +20,7 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
-    skel_sup:start_link().
+    omnipresence_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
