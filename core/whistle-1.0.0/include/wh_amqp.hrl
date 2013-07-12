@@ -1,13 +1,16 @@
-%%% @copyright (C) 2010-2012, VoIP INC
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
 %%% AMQP-specific things for Whistle
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%-------------------------------------------------------------------
 
 -ifndef(WH_AMQP_HRL).
 
-%% -include_lib("rabbitmq_client/include/amqp_client.hrl").
+-include_lib("rabbitmq_server/include/rabbit.hrl").
+-include_lib("rabbitmq_server/include/rabbit_framing.hrl").
 
 -define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
 
