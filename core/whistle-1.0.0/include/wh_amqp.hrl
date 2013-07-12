@@ -9,9 +9,6 @@
 
 -ifndef(WH_AMQP_HRL).
 
--include_lib("rabbitmq_server/include/rabbit.hrl").
--include_lib("rabbitmq_server/include/rabbit_framing.hrl").
-
 -define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
 
 -define(KEY_ORGN_RESOURCE_REQ, <<"orginate.resource.req">>). %% corresponds to originate_resource_req/1 api call
@@ -46,5 +43,5 @@
 -define(AMQP_RECONNECT_INIT_TIMEOUT, 500).
 -define(AMQP_RECONNECT_MAX_TIMEOUT, 5000).
 
--define(WH_AMQP_HRL, true).
+-define(WH_AMQP_HRL, 'true').
 -endif.
