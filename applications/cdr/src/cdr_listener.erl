@@ -165,13 +165,16 @@ maybe_save_in_account('undefined', _, JObj) ->
 maybe_save_in_account(AccountId, Timestamp, JObj) ->
     DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
     {{CDRYear, CDRMonth, _}, {_, _, _}} = DateTime,
-    CDRDb = cdr_util:format_account_id(AccountId, CDRYear, CDRMonth),
+    CDRDb = wh_util:format_account_id(AccountId, CDRYear, CDRMonth),
     Props = [{'type', 'cdr'}
              ,{'crossbar_doc_vsn', 2}
             ],
+    DocId = <<(wh_util:to_binary(CDRYear))/binary, (wh_util:pad_month(CDRMonth))/binary, "-", (couch_mgr:get_uuid())/binary>>,
     J = wh_doc:update_pvt_parameters(JObj, CDRDb, Props),
-    case save_cdr(CDRDb, J) of
-        {'error', 'max_retries'} -> save_in_anonymous_cdrs(JObj);
+    J1 = wh_json:set_value(<<"_id">>, DocId, J),
+    lager:debug("JSON: ~p", [J1]),
+    case save_cdr(CDRDb, J1) of
+        {'error', 'max_retries'} -> save_in_anonymous_cdrs(J1);
         'ok' -> 'ok'
     end.
 
@@ -179,8 +182,8 @@ maybe_save_in_account(AccountId, Timestamp, JObj) ->
 save_cdr(CDRDb, Doc) ->
   save_cdr(CDRDb, Doc, 0).
 
--spec save_cdr(api_binary(), wh_json:object(), 0..?MAX_RETRIES) -> {'error', 'max_retries'};
-	      (api_binary(), wh_json:object(), integer()) -> 'ok'. 
+%-spec save_cdr(api_binary(), wh_json:object(), 0..?MAX_RETRIES) -> {'error', 'max_retries'};
+%	      (api_binary(), wh_json:object(), integer()) -> 'ok'. 
 save_cdr(_, _, ?MAX_RETRIES) -> {'error', 'max_retries'};
 
 save_cdr(CDRDb, Doc, Retries) ->

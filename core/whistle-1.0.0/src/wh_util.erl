@@ -10,7 +10,10 @@
 -module(wh_util).
 
 -export([log_stacktrace/0, log_stacktrace/1]).
--export([format_account_id/1, format_account_id/2]).
+-export([format_account_id/1
+	 ,format_account_id/2
+	 , format_account_id/3
+	]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1]).
 -export([get_account_realm/1, get_account_realm/2]).
@@ -40,6 +43,8 @@
 -export([uri_encode/1
          ,uri_decode/1
         ]).
+
+-export([pad_month/1]).
 
 -export([binary_md5/1]).
 -export([pad_binary/3, join_binary/1, join_binary/2]).
@@ -142,8 +147,9 @@ change_syslog_log_level(L) ->
 %% @end
 %%--------------------------------------------------------------------
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
--spec format_account_id(ne_binaries() | ne_binary() | wh_json:object()) -> binary().
--spec format_account_id(ne_binaries() | ne_binary() | wh_json:object(), account_format()) -> binary().
+-spec format_account_id(ne_binaries() | ne_binary() | wh_json:object()) -> ne_binary().
+-spec format_account_id(ne_binaries() | ne_binary() | wh_json:object(), account_format()) -> ne_binary().
+-spec format_account_id(ne_binaries(), pos_integer(), pos_integer()) -> ne_binary().
 
 format_account_id(Doc) -> format_account_id(Doc, 'unencoded').
 
@@ -175,12 +181,22 @@ format_account_id(Account, Encoding) when not is_binary(Account) ->
     end;
 
 format_account_id(AccountId, 'unencoded') ->
-    [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
-    wh_util:to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
+    [Id1, Id2, Id3, Id4 | IdRest] = to_list(AccountId),
+    to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
 format_account_id(AccountId, 'encoded') when is_binary(AccountId) ->
-    [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
-    wh_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
+    [Id1, Id2, Id3, Id4 | IdRest] = to_list(AccountId),
+    to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
 format_account_id(AccountId, 'raw') -> AccountId.
+
+format_account_id(AccountId, Year, Month) when is_integer(Year), is_integer(Month) ->
+    <<(format_account_id(AccountId, 'encoded'))/binary,"-",(to_binary(Year))/binary,(pad_month(Month))/binary>>.
+
+-spec pad_month(pos_integer()) -> ne_binary().
+pad_month(Month) when Month < 10 ->
+    <<"0", (to_binary(Month))/binary>>; 
+pad_month(Month) ->
+    to_binary(Month).
+
 
 %%--------------------------------------------------------------------
 %% @public
