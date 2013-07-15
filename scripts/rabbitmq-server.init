@@ -16,15 +16,14 @@
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 NAME=rabbitmq-server
-DAEMON=/opt/kazoo/deps/rabbitmq_server-3.1.3/scripts/${NAME}
-CONTROL=/opt/kazoo/deps/rabbitmq_server-3.1.3/scripts/rabbitmqctl
+DAEMON=/usr/bin/${NAME}
+CONTROL=/usr/bin/rabbitmqctl
 DESC=rabbitmq-server
 USER=rabbitmq
 ROTATE_SUFFIX=
 INIT_LOG_DIR=/var/log/rabbitmq
 PID_FILE=/var/run/rabbitmq/pid
 
-START_PROG="runuser rabbitmq --session-command"
 LOCK_FILE=/var/lock/subsys/$NAME
 
 test -x $DAEMON || exit 0
@@ -82,7 +81,7 @@ start_rabbitmq () {
         ensure_lib_dir
         ensure_cookie
         set +e
-        RABBITMQ_PID_FILE=$PID_FILE $START_PROG $DAEMON \
+        RABBITMQ_PID_FILE=$PID_FILE $DAEMON \
             > "${INIT_LOG_DIR}/startup_log" \
             2> "${INIT_LOG_DIR}/startup_err" \
             0<&- &

@@ -29,14 +29,10 @@ cd /var/lib/rabbitmq
 
 SCRIPT=`basename $0`
 
-if [ `id -u` = `id -u rabbitmq` -a "$SCRIPT" = "rabbitmq-server" ] ; then
-    /usr/lib/rabbitmq/bin/rabbitmq-server "$@" 
-elif [ `id -u` = `id -u rabbitmq` -o "$SCRIPT" = "rabbitmq-plugins" ] ; then
-    /usr/lib/rabbitmq/bin/${SCRIPT} "$@"
-elif [ `id -u` = 0 ] ; then
-    su rabbitmq -s /bin/sh -c "/usr/lib/rabbitmq/bin/${SCRIPT} ${CMDLINE}"
+if [ `id -u` = 0 ] ; then
+    su rabbitmq -s /bin/sh -c "/var/lib/rabbitmq/bin/${SCRIPT} ${CMDLINE}"
 else
-    /usr/lib/rabbitmq/bin/${SCRIPT}
+    /var/lib/rabbitmq/bin/${SCRIPT}
     echo
     echo "Only root or rabbitmq should run ${SCRIPT}"
     echo
