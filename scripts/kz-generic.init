@@ -28,7 +28,7 @@ start() {
     export HOME=${KZ_DIR}
     export ERL_CRASH_DUMP=$(date +%s)_${KZ_APP}_erl_crash.dump
     export ERL_LIBS=${KZ_DIR}/deps:${KZ_DIR}/core
-    daemon --user=${USER} "erl -name ${KZ_APP} -args_file /etc/kazoo/vm.args -pa ${KZ_DIR}/applications/*/ebin -pa ${KZ_DIR}/core/*/ebin -pa ${KZ_DIR}/deps/*/ebin -detached -s ${KZ_APP} >/dev/null &"
+    daemon --user=${USER} "erl -name ${KZ_APP} -args_file /etc/kazoo/vm.args -pa ${KZ_DIR}/applications/*/ebin -pa ${KZ_DIR}/core/*/ebin -pa ${KZ_DIR}/deps/*/ebin ${KZ_DIR}/applications/*/lib/*/ebin -detached -s ${KZ_APP} >/dev/null &"
     RETVAL=$?
     echo
     [ $RETVAL -eq 0 ] && touch ${LOCKFILE}
