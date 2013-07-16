@@ -322,16 +322,10 @@ bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
         Else -> Else
     end;
 bind_to_events(_, Node) ->
-    case freeswitch:register_event_handler(Node) of
-        'timeout' -> {'error', 'timeout'};
-        'ok' ->
-            lager:debug("event handler registered on node ~s", [Node]),
-            case freeswitch:event(Node, ?FS_BINDINGS) of
-                'timeout' -> {'error', 'timeout'};
-                Else -> Else
-            end;
-        {'error', _}=E -> E
-    end.
+    _ = [gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, Binding)})
+         || Binding <- ?FS_BINDINGS
+        ],
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
