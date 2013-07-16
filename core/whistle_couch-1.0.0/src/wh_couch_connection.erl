@@ -242,7 +242,7 @@ maybe_reconnect(#wh_couch_connection{host=Host
         #server{}=Server ->
             {'ok', Connection#wh_couch_connection{server = Server}}
     catch
-        'error':{'badmatch',{'error',{'cponn_failed',{'error','econnrefused'}}}} ->
+        'error':{'badmatch',{'error',{'conn_failed',{'error','econnrefused'}}}} ->
             lager:info("connection to BigCouch at ~s:~p refused. Is BigCouch/HAProxy running at these host:port combos?", [Host, Port]),
             {'error', 'conn_failed'};
         'error':{'badmatch',{'error',{'conn_failed',{'error','timeout'}}}} ->

@@ -959,7 +959,8 @@ b_record_call(MediaName, Action, TimeLimit, Terminators, Call) ->
 %% Produces the low level wh_api request to store the file
 %% @end
 %%--------------------------------------------------------------------
--type b_store_return() :: {'error', 'timeout' | wh_json:object()} | {'ok', wh_json:object()}.
+-type b_store_return() :: {'error', 'timeout' | wh_json:object()} |
+                          {'ok', wh_json:object()}.
 
 -spec store(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 -spec store(ne_binary(), api_binary(), api_binary(), whapps_call:call()) -> 'ok'.

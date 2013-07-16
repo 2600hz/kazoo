@@ -65,12 +65,12 @@
 
 -include("wh_json.hrl").
 
--export_type([json_object/0, json_objects/0
-              ,json_string/0, json_strings/0
+-export_type([json_string/0, json_strings/0
               ,json_term/0, json_terms/0
               ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2
               ,json_key/0
-              ,object/0, objects/0, key/0
+              ,object/0, objects/0
+              ,key/0, keys/0
              ]).
 
 -spec new() -> object().

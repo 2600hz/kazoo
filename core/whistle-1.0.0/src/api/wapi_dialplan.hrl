@@ -520,6 +520,11 @@
 -define(OPTIONAL_CONFERENCE_REQ_HEADERS, [<<"Insert-At">>
                                           ,<<"Mute">>, <<"Deaf">>, <<"Moderator">>
                                           ,<<"Reinvite">>, <<"Profile">>
+
+                                          %% sets joining member to nospeak relations
+                                          ,<<"Member-Nospeak">>
+                                          %% update relations
+                                          ,<<"Nospeak-Check">> 
                                          ]).
 -define(CONFERENCE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                 ,{<<"Event-Name">>, <<"command">>}

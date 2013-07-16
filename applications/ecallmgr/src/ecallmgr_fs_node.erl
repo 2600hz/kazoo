@@ -98,8 +98,7 @@ handle_reload_acls(_JObj, Props) ->
     Node = props:get_value('node', Props),
     case freeswitch:bgapi(Node, 'reloadacl', "") of
         {'ok', Job} -> lager:debug("reloadacl command sent to ~s: JobID: ~s", [Node, Job]);
-        {'error', _E} -> lager:debug("reloadacl failed with error: ~p", [_E]);
-        'timeout' -> lager:debug("reloadacl failed with error: timeout")
+        {'error', _E} -> lager:debug("reloadacl failed with error: ~p", [_E])
     end.
 
 -spec handle_reload_gtws(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -114,8 +113,7 @@ handle_reload_gtws(_JObj, Props) ->
     of
         'false' -> 'ok';
         {'ok', Job} -> lager:debug("sofia ~s command sent to ~s: JobID: ~s", [Args, Node, Job]);
-        {'error', _E} -> lager:debug("sofia ~s failed with error: ~p", [Args, _E]);
-        'timeout' -> lager:debug("sofia ~s failed with error: timeout", [Args])
+        {'error', _E} -> lager:debug("sofia ~s failed with error: ~p", [Args, _E])
     end.
 
 -spec fs_node(pid()) -> atom().
@@ -363,14 +361,15 @@ maybe_send_call_event(CallId, Props, Node) ->
 
 -spec publish_new_channel_event(wh_proplist()) -> 'ok'.
 publish_new_channel_event(Props) ->
-    wapi_call:publish_new_channel(wh_api:default_headers(<<"channel">>, <<"new">>, ?APP_NAME, ?APP_VERSION) ++
-                                      ecallmgr_call_events:create_event_props(<<"CHANNEL_CREATE">>, 'undefined', Props)
-                                 ).
+    Req = wh_api:default_headers(<<"channel">>, <<"new">>, ?APP_NAME, ?APP_VERSION) ++
+        ecallmgr_call_events:create_event_props(<<"CHANNEL_CREATE">>, 'undefined', Props),
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_new_channel/1).
+
 -spec publish_destroy_channel_event(wh_proplist()) -> 'ok'.
 publish_destroy_channel_event(Props) ->
-    wapi_call:publish_destroy_channel(wh_api:default_headers(<<"channel">>, <<"destroy">>, ?APP_NAME, ?APP_VERSION) ++
-                                          ecallmgr_call_events:create_event_props(<<"CHANNEL_DESTROY">>, 'undefined', Props)
-                                     ).
+    Req = wh_api:default_headers(<<"channel">>, <<"destroy">>, ?APP_NAME, ?APP_VERSION) ++
+                                          ecallmgr_call_events:create_event_props(<<"CHANNEL_DESTROY">>, 'undefined', Props),
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_destroy_channel/1).
 
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
                       {'error', {atom(), nonempty_string()}, ne_binary()} |
@@ -416,8 +415,6 @@ process_cmd(Node, ApiCmd0, ApiArg, Acc) ->
 process_cmd(Node, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     ApiCmd = wh_util:to_atom(ApiCmd0, ?FS_CMD_SAFELIST),
     case freeswitch:bgapi(Node, ApiCmd, format_args(ArgFormat, ApiArg)) of
-        {'error', 'badarg'} when ArgFormat =:= 'binary' ->
-            process_cmd(Node, ApiCmd0, ApiArg, Acc, 'list');
         {'ok', BGApiID} ->
             receive
                 {'bgok', BGApiID, FSResp} ->

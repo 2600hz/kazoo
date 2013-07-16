@@ -62,7 +62,7 @@
 
 %% Views
 -export([get_all_results/2
-         ,get_results/3
+         ,get_results/2, get_results/3
          ,get_results_count/3
          ,get_result_keys/1
         ]).
@@ -844,12 +844,16 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %%--------------------------------------------------------------------
 -type get_results_return() :: {'ok', wh_json:objects() | wh_json:json_strings()} |
                               couchbeam_error().
--spec get_all_results(text(), ne_binary()) -> get_results_return().
--spec get_results(text(), ne_binary(), wh_proplist()) -> get_results_return().
--spec get_results_count(text(), ne_binary(), wh_proplist()) ->
+-spec get_all_results(ne_binary(), ne_binary()) -> get_results_return().
+-spec get_results(ne_binary(), ne_binary()) -> get_results_return().
+-spec get_results(ne_binary(), ne_binary(), wh_proplist()) -> get_results_return().
+-spec get_results_count(ne_binary(), ne_binary(), wh_proplist()) ->
                                {'ok', integer()} |
                                couchbeam_error().
 get_all_results(DbName, DesignDoc) ->
+    get_results(DbName, DesignDoc, []).
+
+get_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
 get_results(DbName, DesignDoc, Options) when ?VALID_DBNAME ->
@@ -863,7 +867,7 @@ get_results(DbName, DesignDoc, Options) ->
 get_results_count(DbName, DesignDoc, Options) ->
     couch_util:get_results_count(wh_couch_connections:get_server(), DbName, DesignDoc, Options).
 
--spec get_result_keys(wh_json:objects()) -> [wh_json:json_string(),...] | [].
+-spec get_result_keys(wh_json:objects()) -> wh_json:keys().
 get_result_keys(JObjs) ->
     lists:map(fun get_keys/1, JObjs).
 

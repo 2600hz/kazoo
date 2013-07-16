@@ -78,10 +78,10 @@
 
 -export([handle_event/4]).
 
--include_lib("rabbitmq_client/include/amqp_client.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("rabbitmq_server/plugins-src/rabbitmq-erlang-client/include/amqp_client.hrl").
 
 -define(TIMEOUT_RETRY_CONN, 5000).
 -define(CALLBACK_TIMEOUT_MSG, 'callback_timeout').
