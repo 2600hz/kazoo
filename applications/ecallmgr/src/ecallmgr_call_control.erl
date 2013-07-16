@@ -1,5 +1,5 @@
 %%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
 %%% Created when a call hits a fetch_handler in ecallmgr_route.
 %%% A Control Queue is created by the lookup_route function in the
@@ -85,21 +85,28 @@
          ,self :: 'undefined' | pid()
          ,command_q = queue:new() :: queue()
          ,current_app :: api_binary()
-         ,current_cmd :: wh_json:object() | 'undefined'
+         ,current_cmd :: api_object()
          ,start_time = erlang:now() :: wh_now()
          ,is_call_up = 'true' :: boolean()
          ,is_node_up = 'true' :: boolean()
-         ,keep_alive_ref :: 'undefined' | reference()
+         ,keep_alive_ref :: api_reference()
          ,other_legs = [] :: ne_binaries()
          ,last_removed_leg :: api_binary()
-         ,sanity_check_tref = 'undefined' :: 'undefined' | reference()
+         ,sanity_check_tref :: api_reference()
          ,msg_id :: api_binary()
          ,billing_id :: api_binary()
          }).
 
--define(RESPONDERS, [{{?MODULE, 'handle_call_command'}, [{<<"call">>, <<"command">>}]}
-                     ,{{?MODULE, 'handle_conference_command'}, [{<<"conference">>, <<"command">>}]}
-                     ,{{?MODULE, 'handle_call_events'}, [{<<"call_event">>, <<"*">>}]}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_call_command'}
+                      ,[{<<"call">>, <<"command">>}]
+                     }
+                     ,{{?MODULE, 'handle_conference_command'}
+                       ,[{<<"conference">>, <<"command">>}]
+                      }
+                     ,{{?MODULE, 'handle_call_events'}
+                       ,[{<<"call_event">>, <<"*">>}]
+                      }
+                    ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).

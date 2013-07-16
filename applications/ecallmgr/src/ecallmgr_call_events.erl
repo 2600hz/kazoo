@@ -642,9 +642,8 @@ conference_specific(Prop) ->
             end
     end.
 
--spec silence_terminated(api_integer() | wh_proplist() | boolean()) -> api_boolean().
+-spec silence_terminated(api_integer() | wh_proplist()) -> api_boolean().
 silence_terminated('undefined') -> 'undefined';
-silence_terminated(B) when is_boolean(B) -> B;
 silence_terminated(Hits) when is_integer(Hits) -> Hits =:= 0;
 silence_terminated(Prop) when is_list(Prop) ->
     case props:get_value(<<"variable_silence_hits_exhausted">>, Prop) of

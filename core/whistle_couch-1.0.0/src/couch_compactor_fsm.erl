@@ -625,6 +625,7 @@ compact({'compact', N, D, [], _}, #state{dbs=[Db|Dbs]}=State) ->
 compact({'compact', N, D, Ss, DDs}, #state{admin_conn=AdminConn
                                            ,dbs=[]
                                           }=State) ->
+    lager:debug("compacting shards for ~s on ~s", [D, N]),
     try lists:split(?MAX_COMPACTING_SHARDS, Ss) of
         {Compact, Shards} ->
             ShardsPidRef = compact_shards(AdminConn, Compact, DDs),
@@ -641,6 +642,7 @@ compact({'compact', N, D, Ss, DDs}, #state{admin_conn=AdminConn
 compact({'compact', N, D, Ss, DDs}, #state{admin_conn=AdminConn
                                            ,dbs=[Db|Dbs]
                                           }=State) ->
+    lager:debug("compacting shards for ~s on ~s", [D, N]),
     try lists:split(?MAX_COMPACTING_SHARDS, Ss) of
         {Compact, Shards} ->
             ShardsPidRef = compact_shards(AdminConn, Compact, DDs),
@@ -675,6 +677,7 @@ compact({'compact_db', N, D, [], _}, #state{nodes=[Node|Ns]}=State) ->
     gen_fsm:send_event(self(), {'compact_db', Node, D}),
     {'next_state', 'compact', State#state{nodes=Ns}};
 compact({'compact_db', N, D, Ss, DDs}, #state{admin_conn=AdminConn}=State) ->
+    lager:debug("compacting shards for ~s on ~s", [D, N]),
     try lists:split(?MAX_COMPACTING_SHARDS, Ss) of
         {Compact, Shards} ->
             ShardsPidRef = compact_shards(AdminConn, Compact, DDs),

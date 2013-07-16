@@ -26,6 +26,7 @@
 -type json_array() :: [json_term()].
 
 -type key() :: json_string() | json_strings().
+-type keys() :: [key(),...] | [].
 -type json_key() :: key().
 
 -type json_proplist_key() :: json_key().

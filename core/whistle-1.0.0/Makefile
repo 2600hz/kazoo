@@ -27,7 +27,7 @@ compile: ebin/$(PROJECT).app
 		> ebin/$(PROJECT).app
 	-@$(MAKE) ebin/$(PROJECT).app
 
-ebin/$(PROJECT).app: src/*.erl src/api/*.erl
+ebin/$(PROJECT).app: src/kazoo_transform.erl src/*.erl src/api/*.erl
 	@mkdir -p ebin/
 	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $(PA) $?
 
@@ -37,7 +37,7 @@ compile-test: test/$(PROJECT).app
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
-test/$(PROJECT).app: src/*.erl src/api/*.erl
+test/$(PROJECT).app: src/kazoo_transform.erl src/*.erl src/api/*.erl
 	@mkdir -p test/
 	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $(PA) $?
 

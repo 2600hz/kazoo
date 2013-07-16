@@ -53,6 +53,12 @@ bind(Node, Type) ->
 bind(Node, Type, Timeout) ->
     gen_server:call({'mod_kazoo', Node}, {'bind', Type}, Timeout).
 
+-spec fetch_reply(atom(), binary(), binary(), binary() | string()) ->
+                         'ok' |
+                         {'error', 'baduuid'}.
+-spec fetch_reply(atom(), binary(), binary(), binary() | string(), pos_integer() | 'infinity') ->
+                         'ok' |
+                         {'error', 'baduuid'}.
 fetch_reply(Node, FetchID, Section, Reply) ->
     gen_server:cast({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}).
 
@@ -70,7 +76,9 @@ api(Node, Cmd, Args, Timeout) ->
 %% sent to calling process after it is received. This function
 %% returns the result of the initial bgapi call or `timeout' if FreeSWITCH fails
 %% to respond.
--spec(bgapi(Node :: atom(), Cmd :: atom(), Args :: string() | binary()) -> {'ok', string()} | {'error', any()} | 'timeout').
+-spec bgapi(atom(), atom(), string() | binary()) ->
+                   {'ok', binary()} |
+                   {'error', 'timeout' | binary()}.
 bgapi(Node, Cmd, Args) ->
     Self = self(),
     spawn(fun() ->
@@ -96,7 +104,7 @@ bgapi(Node, Cmd, Args) ->
         {'api', Result} -> Result
     end.
 
-bgapi(Node, Cmd, Args, Fun) ->
+bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
     Self = self(),
     spawn(fun() ->
                   case gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
@@ -149,6 +157,7 @@ nixevent(Node, Event) ->
 sendevent(Node, EventName, Headers) ->
     gen_server:cast({'mod_kazoo', Node}, {'sendevent', EventName, Headers}).
 
+-spec sendevent_custom(atom(), atom(), list()) -> 'ok'.
 sendevent_custom(Node, SubClassName, Headers) ->
     gen_server:cast({'mod_kazoo', Node}, {'sendevent', 'CUSTOM',  SubClassName, Headers}).
 
