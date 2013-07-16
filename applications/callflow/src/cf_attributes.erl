@@ -20,6 +20,8 @@
 -export([presence_id/1, presence_id/2]).
 -export([owned_by/2, owned_by/3]).
 -export([owner_ids/2]).
+-export([maybe_get_assigned_number/3]).
+-export([maybe_get_account_default_number/4]).
 
 %%-----------------------------------------------------------------------------
 %% @public
