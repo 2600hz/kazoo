@@ -94,7 +94,7 @@
          ,last_removed_leg :: api_binary()
          ,sanity_check_tref :: api_reference()
          ,msg_id :: api_binary()
-         ,billing_id :: api_binary()
+         ,fetch_id :: api_binary()
          }).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_call_command'}
@@ -123,7 +123,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(atom(), ne_binary(), api_binary()) -> startlink_ret().
-start_link(Node, CallId, BillingId) ->
+start_link(Node, CallId, FetchId) ->
     %% We need to become completely decoupled from ecallmgr_call_events
     %% because the call_events process might have been spun up with A->B
     %% then transfered to A->D, but the route landed in a different
@@ -142,7 +142,7 @@ start_link(Node, CallId, BillingId) ->
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ]
-                            ,[Node, CallId, BillingId]).
+                            ,[Node, CallId, FetchId]).
 
 -spec stop(pid()) -> 'ok'.
 stop(Srv) ->
@@ -224,7 +224,7 @@ handle_call_events(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Node, CallId, BillingId]) ->
+init([Node, CallId, FetchId]) ->
     put('callid', CallId),
     lager:debug("starting call control listener"),
     gen_listener:cast(self(), 'init'),
@@ -233,7 +233,7 @@ init([Node, CallId, BillingId]) ->
                   ,command_q=queue:new()
                   ,self=self()
                   ,start_time=erlang:now()
-                  ,billing_id=BillingId
+                  ,fetch_id=FetchId
                  }}.
 
 %%--------------------------------------------------------------------
@@ -424,7 +424,7 @@ handle_cast(_, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', [CallId | Props]}, #state{callid=CallId
-                                                ,billing_id=BillingId}=State) ->
+                                                ,fetch_id=FetchId}=State) ->
     JObj = ecallmgr_call_events:to_json(Props),
     Application = wh_json:get_value(<<"Application-Name">>, JObj),
     case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
@@ -441,8 +441,8 @@ handle_info({'event', [CallId | Props]}, #state{callid=CallId
             gen_listener:cast(self(), {'channel_destroyed', CallId, JObj}),
             {'noreply', State};
         <<"sofia::transferee">> ->
-            case props:get_value(?GET_CCV(<<"Billing-ID">>), Props) of
-                BillingId ->
+            case props:get_value(?GET_CCV(<<"Fetch-ID">>), Props) of
+                FetchId ->
                     lager:info("we have been transfered, terminate immediately", []),
                     {'stop', 'normal', State};
                 _Else ->
@@ -450,12 +450,12 @@ handle_info({'event', [CallId | Props]}, #state{callid=CallId
                     {'noreply', State}
             end;
         <<"sofia::replaced">> ->
-            case props:get_value(?GET_CCV(<<"Billing-ID">>), Props) of
-                BillingId ->
+            case props:get_value(?GET_CCV(<<"Fetch-ID">>), Props) of
+                FetchId ->
                     ReplacedBy = props:get_value(<<"att_xfer_replaced_by">>, Props),
                     {'noreply', handle_sofia_replaced(ReplacedBy, State)};
                 _Else ->
-                    lager:info("sofia replaced on our channel but different billing id~n"),
+                    lager:info("sofia replaced on our channel but different fetch id~n"),
                     {'noreply', State}
             end;
         <<"CHANNEL_EXECUTE">> when Application =:= <<"redirect">> ->

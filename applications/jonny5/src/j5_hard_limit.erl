@@ -25,16 +25,20 @@ is_under(Limits, JObj) ->
 -spec calls_at_limit(#limits{}, wh_json:json_object()) -> boolean().
 calls_at_limit(#limits{calls=-1}, _) ->
     'false';
+calls_at_limit(#limits{calls=0}, _) ->
+    'true';
 calls_at_limit(#limits{calls=Resources}, JObj) ->
     ConsumedResources = wh_json:get_integer_value([<<"Usage">>, <<"Calls">>], JObj, 0),
-    Resources - ConsumedResources =< 0.
+    Resources - ConsumedResources < 0.
 
 -spec resource_consumption_at_limit(#limits{}, wh_json:json_object()) -> boolean().
 resource_consumption_at_limit(#limits{resource_consuming_calls=-1}, _) ->
     'false';
+resource_consumption_at_limit(#limits{resource_consuming_calls=0}, _) ->
+    'true';
 resource_consumption_at_limit(#limits{resource_consuming_calls=Resources}, JObj) ->
     ConsumedResources = wh_json:get_integer_value([<<"Usage">>, <<"Resource-Consuming-Calls">>], JObj, 0),
-    Resources - ConsumedResources =< 0.
+    Resources - ConsumedResources < 0.
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
@@ -58,7 +62,7 @@ calls_at_limit_test() ->
     %% 1 call, none allowed
     ?assertEqual('true', calls_at_limit(limits(0, 0), authz_jobj(1, 0))),
     %% 1 call, 1 allowed
-    ?assertEqual('true', calls_at_limit(limits(1, 0), authz_jobj(1, 0))),
+    ?assertEqual('false', calls_at_limit(limits(1, 0), authz_jobj(1, 0))),
     %% 2 calls, 1 allowed
     ?assertEqual('true', calls_at_limit(limits(1, 0), authz_jobj(2, 0))),
     %% 1 calls, 2 allowed
@@ -73,7 +77,7 @@ resource_consumption_at_limit_test() ->
     %% 1 call, none allowed
     ?assertEqual('true', resource_consumption_at_limit(limits(0, 0), authz_jobj(0, 1))),
     %% 1 call, 1 allowed
-    ?assertEqual('true', resource_consumption_at_limit(limits(0, 1), authz_jobj(0, 1))),
+    ?assertEqual('false', resource_consumption_at_limit(limits(0, 1), authz_jobj(0, 1))),
     %% 2 calls, 1 allowed
     ?assertEqual('true', resource_consumption_at_limit(limits(0, 1), authz_jobj(0, 2))),
     %% 1 calls, 2 allowed

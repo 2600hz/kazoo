@@ -121,26 +121,8 @@ handle_session_heartbeat(Props, Node) ->
 init([Node, Options]) ->
     put('callid', Node),
     lager:info("starting new fs authz listener for ~s", [Node]),
-    case bind_to_events(props:get_value('client_version', Options), Node) of
-        'ok' -> {'ok', #state{node=Node, options=Options}};
-        {'error', Reason} ->
-            lager:critical("unable to establish authz bindings: ~p", [Reason]),
-            {'stop', Reason}
-    end.
-
-bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
-%%    case freeswitch:event(Node, ['CHANNEL_CREATE', 'SESSION_HEARTBEAT']) of
-    case freeswitch:event(Node, ['CHANNEL_CREATE']) of
-        'timeout' -> {'error', 'timeout'};
-        Else -> Else
-    end;
-bind_to_events(_, Node) ->
-    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"SESSION_HEARTBEAT">>}}) =:= 'true'
-    of
-        'true' -> 'ok';
-        _ -> {'error', 'gproc_badarg'}
-    end.
+    gen_server:cast(self(), 'bind_to_events'),
+    {'ok', #state{node=Node, options=Options}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -169,6 +151,13 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('bind_to_events', #state{node=Node}=State) ->
+    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}}) =:= 'true'
+        andalso gproc:reg({'p', 'l', {'event', Node, <<"SESSION_HEARTBEAT">>}}) =:= 'true'
+    of
+        'true' -> {'noreply', State};
+        _ -> {'stop', 'gproc_badarg', State}
+    end;
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -191,9 +180,6 @@ handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
             _ -> 'ok'
         end,
     {'noreply', State};
-handle_info({'tcp', _, Data}, State) ->
-    Event = binary_to_term(Data),
-   handle_info(Event, State);
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -280,7 +266,7 @@ is_consuming_resource(Props, CallId, Node) ->
 set_heartbeat_on_answer(Props, CallId, Node) ->
     %% Ensure that even if the call is answered while we are authorizing it
     %% the session will hearbeat.
-    'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
+%%     'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
     ensure_account_id_exists(Props, CallId, Node).
 
 -spec ensure_account_id_exists(wh_proplist(), ne_binary(), atom()) -> boolean().
@@ -305,6 +291,7 @@ update_account_id(Resp, Props, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Account-ID">>), Resp) of
         'undefined' -> update_reseller_id(Resp, Props, CallId, Node);
         AccountId ->
+            ecallmgr_fs_channel:set_account_id(CallId, AccountId),
             'ok' = ecallmgr_util:send_cmd(Node, CallId, "export", ?SET_CCV(<<"Account-ID">>, AccountId)),
             update_reseller_id(Resp, [{?GET_CCV(<<"Account-ID">>), AccountId}|Props], CallId, Node)
     end.
@@ -567,7 +554,7 @@ authz_req(AccountId, Props) ->
      ,{<<"Auth-Account-ID">>, AccountId}
      ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
-     ,{<<"Usage">>, ecallmgr_fs_nodes:account_summary(AccountId)}
+     ,{<<"Usage">>, ecallmgr_fs_channels:account_summary(AccountId)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 

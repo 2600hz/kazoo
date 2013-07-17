@@ -443,7 +443,7 @@ get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
                             get_call_pickup_app(Node, UUID, JObj, Target);
                         'false' ->
                             lager:debug("target ~s is on ~s, not ~s...moving", [Target, OtherNode, Node]),
-                            'true' = ecallmgr_fs_channel:move(Target, OtherNode, Node),
+                            'true' = ecallmgr_channel_move:move(Target, OtherNode, Node),
                             get_call_pickup_app(Node, UUID, JObj, Target)
                     end;
                 {'error', 'not_found'} ->
@@ -629,7 +629,7 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
             {<<"conference">>, Cmd};
         {'ok', ConfNode} ->
             lager:debug("channel is on node ~s, conference is on ~s, moving channel", [ChanNode, ConfNode]),
-            'true' = ecallmgr_fs_channel:move(UUID, ChanNode, ConfNode),
+            'true' = ecallmgr_channel_move:move(UUID, ChanNode, ConfNode),
             lager:debug("channel has moved to ~s", [ConfNode]),
             maybe_set_nospeak_flags(ConfNode, UUID, JObj),
             {<<"conference">>, Cmd, ConfNode}
@@ -823,14 +823,10 @@ try_create_bridge_string(Endpoints, JObj) ->
     end.
 
 bridge_build_channels_vars(Endpoints, JObj) ->
-    BridgeId = wh_util:rand_hex_binary(16),
     Props = case wh_json:find(<<"Force-Fax">>, Endpoints, wh_json:get_value(<<"Force-Fax">>, JObj)) of
-                'undefined' ->
-                    [{[<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], BridgeId}];
+                'undefined' -> [];
                 Direction ->
-                    [{[<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], BridgeId}
-                     ,{[<<"Custom-Channel-Vars">>, <<"Force-Fax">>], Direction}
-                    ]
+                    [{[<<"Custom-Channel-Vars">>, <<"Force-Fax">>], Direction}]
             end,
     ecallmgr_fs_xml:get_channel_vars(wh_json:set_values(Props, JObj)).
 

@@ -63,15 +63,8 @@ start_link(Node, Options) ->
 init([Node, Options]) ->
     put('callid', Node),
     lager:info("starting new fs config listener for ~s", [Node]),
-    case freeswitch:bind(Node, 'configuration') of
-        'ok' -> {'ok', #state{node=Node, options=Options}};
-        {'error', Reason} ->
-            lager:critical("unable to establish config bindings: ~p", [Reason]),
-            {'stop', Reason};
-        'timeout' ->
-            lager:critical("unable to establish config bindings: timeout waiting for ~s", [Node]),
-            {'stop', 'timeout'}
-    end.
+    gen_server:cast(self(), 'bind_to_configuration'),
+    {'ok', #state{node=Node, options=Options}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -100,6 +93,16 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('bind_to_configuration', #state{node=Node}=State) ->
+    case freeswitch:bind(Node, 'configuration') of
+        'ok' -> {'noreply', State};
+        {'error', Reason} ->
+            lager:critical("unable to establish config bindings: ~p", [Reason]),
+            {'stop', Reason, State};
+        'timeout' ->
+            lager:critical("unable to establish config bindings: timeout waiting for ~s", [Node]),
+            {'stop', 'timeout', State}
+    end;
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 

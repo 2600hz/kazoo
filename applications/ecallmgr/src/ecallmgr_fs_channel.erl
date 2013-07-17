@@ -9,60 +9,77 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_channel).
 
--export([show_all/0
-         ,new/2
-         ,node/1, set_node/2
+-behaviour(gen_server).
+
+-export([start_link/1
+         ,start_link/2
+        ]).
+-export([node/1, set_node/2
          ,former_node/1
-         ,move/3
-         ,is_bridged/1, set_bridge/2
-         ,account_summary/1
-         ,match_presence/1
+         ,is_bridged/1
          ,exists/1
          ,import_moh/1
          ,set_account_id/2
-         ,set_billing_id/2
-         ,set_account_billing/2
-         ,set_reseller_id/2
-         ,set_reseller_billing/2
-         ,set_authorizing_id/2
-         ,set_resource_id/2
-         ,set_authorizing_type/2
-         ,set_owner_id/2
-         ,set_presence_id/2
-         ,set_precedence/2
-         ,set_answered/2
-         ,set_import_moh/2
-         ,get_call_precedence/1
          ,fetch/1
-         ,destroy/2
-         ,props_to_record/2
-         ,record_to_json/1
+         ,renew/2
+         ,to_json/1
+        ]).
+-export([handle_channel_status/2]).
+-export([process_event/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
         ]).
 
 -compile([{'no_auto_import', [node/1]}]).
 
 -include("ecallmgr.hrl").
 
--define(NODES_SRV, 'ecallmgr_fs_nodes').
+-define(RESPONDERS, [{{?MODULE, 'handle_channel_status'}
+                      ,[{<<"call_event">>, <<"channel_status_req">>}]
+                     }
+                    ]).
+-define(BINDINGS, [{'call', [{'restrict_to', ['status_req']}]}]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
--spec show_all() -> wh_json:objects().
-show_all() ->
-    ets:foldl(fun(Channel, Acc) ->
-                      [record_to_json(Channel) | Acc]
-              end, [], ?CHANNELS_TBL).
+-record(state, {node = 'undefined' :: atom()
+                ,options = [] :: wh_proplist()
+               }).
 
--spec new(wh_proplist(), atom()) -> 'ok'.
-new(Props, Node) ->
-    CallId = props:get_value(<<"Unique-ID">>, Props),
-    put(callid, CallId),
-    gen_server:cast(?NODES_SRV, {'new_channel', props_to_record(Props, Node)}).
+%%%===================================================================
+%%% API
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Starts the server
+%%
+%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @end
+%%--------------------------------------------------------------------
+start_link(Node) ->
+    start_link(Node, []).
+
+start_link(Node, Options) ->
+    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
+                                      ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                     ], [Node, Options]).
 
 -spec fetch(ne_binary()) ->
                    {'ok', wh_json:object()} |
                    {'error', 'not_found'}.
 fetch(UUID) ->
     case ets:lookup(?CHANNELS_TBL, UUID) of
-        [Channel] -> {'ok', record_to_json(Channel)};
+        [Channel] -> {'ok', to_json(Channel)};
         _Else -> {'error', 'not_found'}
     end.
 
@@ -79,17 +96,18 @@ node(UUID) ->
         _ -> {'error', 'not_found'}
     end.
 
--spec is_bridged(ne_binary()) -> boolean().
-is_bridged(UUID) ->
-    MatchSpec = [{#channel{uuid = '$1', other_leg = '$2', _ = '_'}
-                  ,[{'=:=', '$1', {'const', UUID}}]
-                  ,['$2']}
-                ],
-    case ets:select(?CHANNELS_TBL, MatchSpec) of
-        ['undefined'] -> lager:debug("not bridged: undefined"), 'false';
-        [Bin] when is_binary(Bin) -> lager:debug("bridged: ~s", [Bin]), 'true';
-        _E -> lager:debug("not bridged: ~p", [_E]), 'false'
-    end.
+-spec set_node(atom(), ne_binary()) -> 'ok'.
+set_node(Node, UUID) ->
+    Updates =
+        case node(UUID) of
+            {'error', 'not_found'} -> [{#channel.node, Node}];
+            {'ok', Node} -> [];
+            {'ok', OldNode} ->
+                [{#channel.node, Node}
+                 ,{#channel.former_node, OldNode}
+                ]
+        end,
+    ecallmgr_fs_channels:updates(UUID, Updates).
 
 -spec former_node(ne_binary()) ->
                          {'ok', atom()} |
@@ -105,6 +123,18 @@ former_node(UUID) ->
         _ -> {'error', 'not_found'}
     end.
 
+-spec is_bridged(ne_binary()) -> boolean().
+is_bridged(UUID) ->
+    MatchSpec = [{#channel{uuid = '$1', other_leg = '$2', _ = '_'}
+                  ,[{'=:=', '$1', {'const', UUID}}]
+                  ,['$2']}
+                ],
+    case ets:select(?CHANNELS_TBL, MatchSpec) of
+        ['undefined'] -> lager:debug("not bridged: undefined"), 'false';
+        [Bin] when is_binary(Bin) -> lager:debug("bridged: ~s", [Bin]), 'true';
+        _E -> lager:debug("not bridged: ~p", [_E]), 'false'
+    end.
+
 -spec exists(ne_binary()) -> boolean().
 exists(UUID) -> ets:member(?CHANNELS_TBL, UUID).
 
@@ -116,225 +146,204 @@ import_moh(UUID) ->
         'error':'badarg' -> 'false'
     end.
 
--spec account_summary(ne_binary()) -> channels().
-account_summary(AccountId) ->
-    MatchSpec = [{#channel{direction = '$1', account_id = '$2', account_billing = '$7'
-                           ,authorizing_id = '$3', resource_id = '$4', billing_id = '$5'
-                           ,bridge_id = '$6',  _ = '_'
-                          }
-                  ,[{'=:=', '$2', {'const', AccountId}}]
-                  ,['$_']}
-                ],
-    ets:select(?CHANNELS_TBL, MatchSpec).
-
--spec match_presence(ne_binary()) -> wh_proplist_kv(ne_binary(), atom()).
-match_presence(PresenceId) ->
-    MatchSpec = [{#channel{uuid = '$1', presence_id = '$2', node = '$3',  _ = '_'}
-                  ,[{'=:=', '$2', {'const', PresenceId}}]
-                  ,[{{'$1', '$3'}}]}
-                ],
-    ets:select(?CHANNELS_TBL, MatchSpec).
-
-move(UUID, ONode, NNode) ->
-    OriginalNode = wh_util:to_atom(ONode),
-    NewNode = wh_util:to_atom(NNode),
-
-    set_node(NewNode, UUID),
-    ecallmgr_call_events:shutdown(OriginalNode, UUID),
-    ecallmgr_call_control:update_node(NewNode, UUID),
-
-    lager:debug("updated ~s to point to ~s", [UUID, NewNode]),
-
-    _ = teardown_sbd(UUID, OriginalNode),
-    case wait_for_teardown(UUID, OriginalNode) of
-        {'ok', Evt} -> rebuild_channel(UUID, NewNode, Evt);
-        {'error', _} -> 'false'
-    end.
-
-%% listens for the event from FS with the XML
-wait_for_teardown(UUID, OriginalNode) ->
-    receive
-        ?CHANNEL_MOVE_RELEASED_MSG(OriginalNode, UUID, Evt) ->
-            lager:debug("channel has been released from former node: ~s", [OriginalNode]),
-            {'ok', Evt};
-        ?CHANNEL_MOVE_RELEASED_MSG(_Node, UUID, _Evt) ->
-            lager:debug("recv move_released for node ~s, expecting ~s", [_Node, OriginalNode]),
-            wait_for_teardown(UUID, OriginalNode)
-    after 5000 ->
-            {'error', 'timeout'}
-    end.
-
--spec rebuild_channel(ne_binary(), atom(), wh_proplist()) -> boolean().
-rebuild_channel(UUID, NewNode, Evt) ->
-    catch gproc:reg({'p', 'l', ?CHANNEL_MOVE_REG(NewNode, UUID)}),
-    lager:debug("waiting for message with metadata for channel ~s so we can move it to ~s", [UUID, NewNode]),
-    resume(UUID, NewNode, Evt),
-    wait_for_completion(UUID, NewNode).
-
--spec resume(ne_binary(), atom(), wh_proplist()) -> 'ok'.
-resume(UUID, NewNode, Evt) ->
-    Meta = fix_metadata(props:get_value(<<"metadata">>, Evt)),
-
-    freeswitch:sendevent_custom(NewNode, ?CHANNEL_MOVE_REQUEST_EVENT
-                                ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
-                                  ,{"channel_id", wh_util:to_list(UUID)}
-                                  ,{"metadata", wh_util:to_list(Meta)}
-                                  ,{"technology", wh_util:to_list(props:get_value(<<"technology">>, Evt, <<"sofia">>))}
-                                 ]),
-    lager:debug("sent channel_move::move_request with metadata to ~s for ~s", [NewNode, UUID]).
-
-%% We receive un-escaped < and > in the SIP URIs in this data
-%% which causes the XML to not be parsable, either in Erlang or
-%% by FreeSWITCH's parser. Things like:
-%% <sip_uri><sip:user@realm:port>;tag=abc</sip_uri>
-%% So this is an awesome search/replace list to convert the '<sip:'
-%% and its corresponding '>' to %3C and %3E as they should be
-fix_metadata(Meta) ->
-    Replacements = [
-                    {<<"\<sip\:">>, <<"%3Csip:">>}
-                    ,{<<"\>\<sip">>, <<"%3E<sip">>}
-                    ,{<<"\>;">>, <<"%3E;">>} % this is especially nice :)
-                    %% until such time as FS sets these properly
-                    ,{<<"<dialplan></dialplan>">>, <<"<dialplan>XML</dialplan>">>}
-                    ,{<<"<context>default</context>">>, <<"<context>context_2</context>">>}
-                   ],
-    lists:foldl(fun({S, R}, MetaAcc) ->
-                        iolist_to_binary(re:replace(MetaAcc, S, R, ['global']))
-                end, Meta, Replacements).
-
-wait_for_completion(UUID, NewNode) ->
-    lager:debug("waiting for confirmation from ~s of move", [NewNode]),
-    receive
-        ?CHANNEL_MOVE_COMPLETE_MSG(NewNode, UUID, _Evt) ->
-            lager:debug("confirmation of move received for ~s, success!", [NewNode]),
-            _ = ecallmgr_call_sup:start_event_process(NewNode, UUID),
-            'true';
-        ?CHANNEL_MOVE_COMPLETE_MSG(_Node, _UUID, _Evt) ->
-            lager:debug("recv move_complete from unexpected node ~s: ~s", [_Node, _UUID]),
-            wait_for_completion(UUID, NewNode)
-    after 5000 ->
-            lager:debug("timed out waiting for move to complete"),
-            'false'
-    end.
-
--spec teardown_sbd(ne_binary(), atom()) -> 'ok'.
-teardown_sbd(UUID, OriginalNode) ->
-    catch gproc:reg({'p', 'l', ?CHANNEL_MOVE_REG(OriginalNode, UUID)}),
-
-    freeswitch:sendevent_custom(OriginalNode, ?CHANNEL_MOVE_REQUEST_EVENT
-                                ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
-                                  ,{"channel_id", wh_util:to_list(UUID)}
-                                  ,{"technology", ?DEFAULT_FS_TECHNOLOGY}
-                                 ]),
-    lager:debug("sent channel_move::move_request to ~s for ~s", [OriginalNode, UUID]).
-
 -spec set_account_id(ne_binary(), string() | ne_binary()) -> 'ok'.
 set_account_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.account_id, Value}});
+    ecallmgr_fs_channels:update(UUID, #channel.account_id, Value);
 set_account_id(UUID, Value) ->
     set_account_id(UUID, wh_util:to_binary(Value)).
 
--spec set_billing_id(ne_binary(), string() | ne_binary()) -> 'ok'.
-set_billing_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.billing_id, Value}});
-set_billing_id(UUID, Value) ->
-    set_billing_id(UUID, wh_util:to_binary(Value)).
+renew(Node, UUID) ->
+    {'error', 'no'}.
 
--spec set_account_billing(ne_binary(), string() | ne_binary()) -> 'ok'.
-set_account_billing(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.account_billing, Value}});
-set_account_billing(UUID, Value) ->
-    set_account_billing(UUID, wh_util:to_binary(Value)).
+-spec to_json(channel()) -> wh_json:object().
+to_json(Channel) ->
+    wh_json:from_list([{<<"uuid">>, Channel#channel.uuid}
+                       ,{<<"destination">>, Channel#channel.destination}
+                       ,{<<"direction">>, Channel#channel.direction}
+                       ,{<<"account_id">>, Channel#channel.account_id}
+                       ,{<<"account_billing">>, Channel#channel.account_billing}
+                       ,{<<"authorizing_id">>, Channel#channel.authorizing_id}
+                       ,{<<"authorizing_type">>, Channel#channel.authorizing_type}
+                       ,{<<"owner_id">>, Channel#channel.owner_id}
+                       ,{<<"resource_id">>, Channel#channel.resource_id}
+                       ,{<<"presence_id">>, Channel#channel.presence_id}
+                       ,{<<"fetch_id">>, Channel#channel.fetch_id}
+                       ,{<<"bridge_id">>, Channel#channel.bridge_id}
+                       ,{<<"precedence">>, Channel#channel.precedence}
+                       ,{<<"reseller_id">>, Channel#channel.reseller_id}
+                       ,{<<"reseller_billing">>, Channel#channel.reseller_billing}
+                       ,{<<"realm">>, Channel#channel.realm}
+                       ,{<<"username">>, Channel#channel.username}
+                       ,{<<"answered">>, Channel#channel.answered}
+                       ,{<<"node">>, Channel#channel.node}
+                       ,{<<"timestamp">>, Channel#channel.timestamp}
+                       ,{<<"profile">>, Channel#channel.profile}
+                       ,{<<"context">>, Channel#channel.context}
+                       ,{<<"dialplan">>, Channel#channel.dialplan}
+                      ]).
 
--spec set_reseller_id(ne_binary(), string() | ne_binary()) -> 'ok'.
-set_reseller_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.reseller_id, Value}});
-set_reseller_id(UUID, Value) ->
-    set_reseller_id(UUID, wh_util:to_binary(Value)).
+-spec handle_channel_status(wh_json:json_object(), proplist()) -> 'ok'.
+handle_channel_status(JObj, _Props) ->
+    'true' = wapi_call:channel_status_req_v(JObj),
+    _ = wh_util:put_callid(JObj),
 
--spec set_reseller_billing(ne_binary(), string() | ne_binary()) -> 'ok'.
-set_reseller_billing(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.reseller_billing, Value}});
-set_reseller_billing(UUID, Value) ->
-    set_reseller_billing(UUID, wh_util:to_binary(Value)).
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    lager:debug("channel status request received"),
 
--spec set_resource_id(ne_binary(), string() | ne_binary()) -> 'ok'.
-set_resource_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.resource_id, Value}});
-set_resource_id(UUID, Value) ->
-    set_resource_id(UUID, wh_util:to_binary(Value)).
-
--spec set_authorizing_id(ne_binary(), string() | ne_binary()) -> 'ok'.
-set_authorizing_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.authorizing_id, Value}});
-set_authorizing_id(UUID, Value) ->
-    set_authorizing_id(UUID, wh_util:to_binary(Value)).
-
--spec set_authorizing_type(ne_binary(), string() | ne_binary()) -> 'ok'.
-set_authorizing_type(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.authorizing_type, Value}});
-set_authorizing_type(UUID, Value) ->
-    set_authorizing_type(UUID, wh_util:to_binary(Value)).
-
--spec set_owner_id(ne_binary(), string() | ne_binary()) -> 'ok'.
-set_owner_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.owner_id, Value}});
-set_owner_id(UUID, Value) ->
-    set_owner_id(UUID, wh_util:to_binary(Value)).
-
--spec set_presence_id(ne_binary(), string() | ne_binary()) -> 'ok'.
-set_presence_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.presence_id, Value}});
-set_presence_id(UUID, Value) ->
-    set_presence_id(UUID, wh_util:to_binary(Value)).
-
--spec set_precedence(ne_binary(), string() | ne_binary() | integer()) -> 'ok'.
-set_precedence(UUID, Value) when is_integer(Value) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.precedence, Value}});
-set_precedence(UUID, Value) ->
-    set_precedence(UUID, wh_util:to_integer(Value)).
-
--spec set_answered(ne_binary(), boolean()) -> 'ok'.
-set_answered(UUID, Answered) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.answered, (not wh_util:is_empty(Answered))}}).
-
--spec set_bridge(ne_binary(), api_binary()) -> 'ok'.
-set_bridge(UUID, OtherUUID) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.other_leg, OtherUUID}}).
-
--spec set_import_moh(ne_binary(), boolean()) -> 'ok'.
-set_import_moh(UUID, Import) ->
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, {#channel.import_moh, Import}}).
-
--spec get_call_precedence(ne_binary()) -> integer().
-get_call_precedence(UUID) ->
-    MatchSpec = [{#channel{uuid = '$1', precedence = '$2', _ = '_'}
-                  ,[{'=:=', '$1', {const, UUID}}]
-                  ,['$2']}
-                ],
-    case ets:select(?CHANNELS_TBL, MatchSpec) of
-        [Presedence] -> Presedence;
-        _ -> 5
+    AllNodesConnected = ecallmgr_fs_nodes:all_nodes_connected(),
+    case fetch(CallId) of
+        {'error', 'not_found'} when AllNodesConnected ->
+            lager:debug("no node found with channel ~s", [CallId]),
+            Resp = [{<<"Call-ID">>, CallId}
+                    ,{<<"Status">>, <<"terminated">>}
+                    ,{<<"Error-Msg">>, <<"no node found with channel">>}
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+        {'error', 'not_found'} ->
+            lager:debug("no node found with channel ~s, but we are not authoritative", [CallId]);
+        {'ok', Channel} ->
+            channel_status_resp(CallId, Channel, JObj)
     end.
 
--spec set_node(atom(), ne_binary()) -> 'ok'.
-set_node(Node, UUID) ->
-    Updates =
-        case node(UUID) of
-            {'error', 'not_found'} -> [{#channel.node, Node}];
-            {'ok', Node} -> [];
-            {'ok', OldNode} ->
-                [{#channel.node, Node}
-                 ,{#channel.former_node, OldNode}
-                ]
-        end,
-    lager:debug("updaters: ~p", [Updates]),
-    gen_server:cast(?NODES_SRV, {'channel_update', UUID, Updates}).
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
 
--spec destroy(wh_proplist(), atom()) -> 'ok'.
-destroy(Props, Node) ->
-    UUID = props:get_value(<<"Unique-ID">>, Props),
-    gen_server:cast(?NODES_SRV, {'destroy_channel', UUID, Node}).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Initializes the server
+%%
+%% @spec init(Args) -> {ok, State} |
+%%                     {ok, State, Timeout} |
+%%                     ignore |
+%%                     {stop, Reason}
+%% @end
+%%--------------------------------------------------------------------
+init([Node, Options]) ->
+    put('callid', Node),
+    lager:info("starting new fs channel listener for ~s", [Node]),
+    gen_server:cast(self(), 'bind_to_events'),
+    {'ok', #state{node=Node, options=Options}}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling call messages
+%%
+%% @spec handle_call(Request, From, State) ->
+%%                                   {reply, Reply, State} |
+%%                                   {reply, Reply, State, Timeout} |
+%%                                   {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, Reply, State} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_call(_Request, _From, State) ->
+    {'reply', {'error', 'not_implemented'}, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling cast messages
+%%
+%% @spec handle_cast(Msg, State) -> {noreply, State} |
+%%                                  {noreply, State, Timeout} |
+%%                                  {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_cast('bind_to_events', #state{node=Node}=State) ->
+    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_DATA">>}}) =:= 'true' 
+        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}}) =:= 'true'
+        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_DESTROY">>}}) =:= 'true'
+        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_ANSWER">>}}) =:= 'true'
+        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_BRIDGE">>}}) =:= 'true'
+        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_UNBRIDGE">>}}) =:= 'true'
+    of
+        'true' -> {'noreply', State};
+        'false' -> {'stop', 'gproc_badarg', State}
+    end;
+handle_cast(_Msg, State) ->
+    {'noreply', State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling all non call/cast messages
+%%
+%% @spec handle_info(Info, State) -> {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
+    _ = spawn(?MODULE, 'process_event', [UUID, Props, Node]),
+    {'noreply', State};
+handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
+    {'noreply', State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
+handle_event(_JObj, #state{}) ->
+    {'reply', []}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
+%%--------------------------------------------------------------------
+terminate(_Reason, #state{node=Node}) ->
+    lager:info("channel listener for ~s terminating: ~p", [Node, _Reason]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
+%%--------------------------------------------------------------------
+code_change(_OldVsn, State, _Extra) ->
+    {'ok', State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+process_event(UUID, Props, Node) ->
+    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
+    process_event(EventName, UUID, Props, Node).
+
+-spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+process_event(<<"CHANNEL_CREATE">>, _, Props, Node) ->
+    ecallmgr_fs_channels:new(props_to_record(Props, Node));
+process_event(<<"CHANNEL_DESTROY">>, UUID, _, Node) ->
+    ecallmgr_fs_channels:destroy(UUID, Node);
+process_event(<<"CHANNEL_ANSWER">>, UUID, _, _) ->    
+    ecallmgr_fs_channels:update(UUID, #channel.answered, 'true');
+process_event(<<"CHANNEL_DATA">>, UUID, Props, _) ->
+    ecallmgr_fs_channels:updates(UUID, props_to_update(Props));
+process_event(<<"CHANNEL_BRIDGE">>, UUID, Props, _) ->
+    'ok';
+process_event(<<"CHANNEL_UNBRIDGE">>, UUID, Props, _) ->
+    'ok';
+process_event(_, _, _, _) ->
+    'ok'.
 
 -spec props_to_record(wh_proplist(), atom()) -> channel().
 props_to_record(Props, Node) ->
@@ -349,7 +358,7 @@ props_to_record(Props, Node) ->
              ,resource_id=props:get_value(?GET_CCV(<<"Resource-ID">>), Props)
              ,presence_id=props:get_value(?GET_CCV(<<"Channel-Presence-ID">>), Props
                                           ,props:get_value(<<"variable_presence_id">>, Props))
-             ,billing_id=props:get_value(?GET_CCV(<<"Billing-ID">>), Props)
+             ,fetch_id=props:get_value(?GET_CCV(<<"Fetch-ID">>), Props)
              ,bridge_id=props:get_value(?GET_CCV(<<"Bridge-ID">>), Props)
              ,reseller_id=props:get_value(?GET_CCV(<<"Reseller-ID">>), Props)
              ,reseller_billing=props:get_value(?GET_CCV(<<"Reseller-Billing">>), Props)
@@ -367,29 +376,43 @@ props_to_record(Props, Node) ->
              ,dialplan=props:get_value(<<"Caller-Dialplan">>, Props, ?DEFAULT_FS_DIALPLAN)
             }.
 
--spec record_to_json(channel()) -> wh_json:object().
-record_to_json(Channel) ->
-    wh_json:from_list([{<<"uuid">>, Channel#channel.uuid}
-                       ,{<<"destination">>, Channel#channel.destination}
-                       ,{<<"direction">>, Channel#channel.direction}
-                       ,{<<"account_id">>, Channel#channel.account_id}
-                       ,{<<"account_billing">>, Channel#channel.account_billing}
-                       ,{<<"authorizing_id">>, Channel#channel.authorizing_id}
-                       ,{<<"authorizing_type">>, Channel#channel.authorizing_type}
-                       ,{<<"owner_id">>, Channel#channel.owner_id}
-                       ,{<<"resource_id">>, Channel#channel.resource_id}
-                       ,{<<"presence_id">>, Channel#channel.presence_id}
-                       ,{<<"billing_id">>, Channel#channel.billing_id}
-                       ,{<<"bridge_id">>, Channel#channel.bridge_id}
-                       ,{<<"precedence">>, Channel#channel.precedence}
-                       ,{<<"reseller_id">>, Channel#channel.reseller_id}
-                       ,{<<"reseller_billing">>, Channel#channel.reseller_billing}
-                       ,{<<"realm">>, Channel#channel.realm}
-                       ,{<<"username">>, Channel#channel.username}
-                       ,{<<"answered">>, Channel#channel.answered}
-                       ,{<<"node">>, Channel#channel.node}
-                       ,{<<"timestamp">>, Channel#channel.timestamp}
-                       ,{<<"profile">>, Channel#channel.profile}
-                       ,{<<"context">>, Channel#channel.context}
-                       ,{<<"dialplan">>, Channel#channel.dialplan}
-                      ]).
+props_to_update(Props) ->
+    props:filter_undefined([{#channel.destination, props:get_value(<<"Caller-Destination-Number">>, Props)}
+                            ,{#channel.direction, props:get_value(<<"Call-Direction">>, Props)}
+                            ,{#channel.account_id, props:get_value(?GET_CCV(<<"Account-ID">>), Props)}
+                            ,{#channel.account_billing, props:get_value(?GET_CCV(<<"Account-Billing">>), Props)}
+                            ,{#channel.authorizing_id, props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props)}
+                            ,{#channel.authorizing_type, props:get_value(?GET_CCV(<<"Authorizing-Type">>), Props)}
+                            ,{#channel.owner_id, props:get_value(?GET_CCV(<<"Owner-ID">>), Props)}
+                            ,{#channel.resource_id, props:get_value(?GET_CCV(<<"Resource-ID">>), Props)}
+                            ,{#channel.presence_id, props:get_value(?GET_CCV(<<"Channel-Presence-ID">>), Props
+                                                                   ,props:get_value(<<"variable_presence_id">>, Props))}
+                            ,{#channel.fetch_id, props:get_value(?GET_CCV(<<"Fetch-ID">>), Props)}
+                            ,{#channel.bridge_id, props:get_value(?GET_CCV(<<"Bridge-ID">>), Props)}
+                            ,{#channel.reseller_id, props:get_value(?GET_CCV(<<"Reseller-ID">>), Props)}
+                            ,{#channel.reseller_billing, props:get_value(?GET_CCV(<<"Reseller-Billing">>), Props)}
+                            ,{#channel.precedence, wh_util:to_integer(props:get_value(?GET_CCV(<<"Precedence">>), Props, 5))}
+                            ,{#channel.realm, props:get_value(?GET_CCV(<<"Realm">>), Props
+                                                             ,props:get_value(<<"variable_domain_name">>, Props))}
+                            ,{#channel.username, props:get_value(?GET_CCV(<<"Username">>), Props
+                                                                ,props:get_value(<<"variable_user_name">>, Props))}
+                            ,{#channel.import_moh, props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'}
+                            ,{#channel.answered, props:get_value(<<"Answer-State">>, Props) =:= <<"answered">>}
+                            ,{#channel.profile, props:get_value(<<"variable_sofia_profile_name">>, Props)}
+                            ,{#channel.context, props:get_value(<<"Caller-Context">>, Props)}
+                            ,{#channel.dialplan, props:get_value(<<"Caller-Dialplan">>, Props)}
+                           ]).
+
+-spec channel_status_resp(ne_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
+channel_status_resp(CallId, Channel, JObj) ->
+    Node = wh_json:get_binary_value(<<"node">>, Channel),
+    [_, Hostname] = binary:split(Node, <<"@">>),
+    lager:debug("channel is on ~s", [Hostname]),
+    Resp = [{<<"Call-ID">>, CallId}
+            ,{<<"Status">>, <<"active">>}
+            ,{<<"Switch-Hostname">>, Hostname}
+            ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).

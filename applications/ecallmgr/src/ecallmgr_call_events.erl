@@ -509,7 +509,7 @@ find_fs_callid(Props) ->
                            ,<<"variable_sip_call_id">>
                           ]).
 find_fs_callid(Props, [H|T]) ->
-    case wh_json:get_value(H, Props) of
+    case props:get_value(H, Props) of
         'undefined' -> find_fs_callid(Props, T);
         V -> V
     end;

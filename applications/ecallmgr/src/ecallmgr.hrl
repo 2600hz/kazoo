@@ -59,7 +59,7 @@
                   ,owner_id :: api_binary() | '_'
                   ,resource_id :: api_binary() | '$4' | '_'
                   ,presence_id :: api_binary() | '$2' | '_'
-                  ,billing_id :: api_binary() | '$5' | '_'
+                  ,fetch_id :: api_binary() | '$5' | '_'
                   ,bridge_id :: api_binary() | '$6' | '_'
                   ,reseller_id :: api_binary() | '_'
                   ,reseller_billing :: api_binary() | '_'
@@ -216,16 +216,20 @@
                           ,<<"CHANNEL_REPLACED">>
                      ]).
 
--define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_ANSWER'
+-define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_DESTROY'
                     ,'CHANNEL_PARK', 'CHANNEL_ANSWER', 'CALL_UPDATE', 'DETECTED_TONE'
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
                     ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE'
-                    ,'CHANNEL_HANGUP', 'CHANNEL_HANGUP_COMPLETE', 'CHANNEL_DESTROY'
-                    ,'CUSTOM', 'whistle::noop', 'whistle::masquerade'
-                    ,'sofia::transferor', 'sofia::transferee', 'sofia::replaced'
-                    ,'conference::maintenance'
-                    ,?CHANNEL_MOVE_RELEASED_EVENT, ?CHANNEL_MOVE_COMPLETE_EVENT
+                    ,'CHANNEL_HANGUP', 'CHANNEL_HANGUP_COMPLETE', 'CHANNEL_DATA'
                    ]).
+
+-define(FS_CUSTOM_EVENTS, ['whistle::noop', 'whistle::masquerade'
+                           ,'sofia::transferor', 'sofia::transferee'
+                           ,'sofia::replaced', 'sofia::register'
+                           ,'conference::maintenance'
+                           ,?CHANNEL_MOVE_RELEASED_EVENT
+                           ,?CHANNEL_MOVE_COMPLETE_EVENT
+                          ]).
 
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>
                               ,<<"FreeSWITCH-IPv4">>, <<"FreeSWITCH-IPv6">>, <<"Event-Date-Local">>

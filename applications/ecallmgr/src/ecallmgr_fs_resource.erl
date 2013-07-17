@@ -25,19 +25,19 @@
 -include("ecallmgr.hrl").
 
 -record(state, {node :: atom()
-               ,options :: wh_proplist()
+                ,options :: wh_proplist()
                }).
 
--define(BINDINGS, [{resource, [{restrict_to, [originate]}]}
-                   ,{self, []}
+-define(BINDINGS, [{'resource', [{'restrict_to', ['originate']}]}
+                   ,{'self', []}
                   ]).
--define(RESPONDERS, [{{?MODULE, handle_originate_req}
+-define(RESPONDERS, [{{?MODULE, 'handle_originate_req'}
                       ,[{<<"resource">>, <<"originate_req">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<"ecallmgr_fs_resource">>).
--define(QUEUE_OPTIONS, [{exclusive, false}]).
--define(CONSUME_OPTIONS, [{exclusive, false}]).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -58,18 +58,18 @@ start_link(Node) ->
 
 start_link(Node, Options) ->
     gen_listener:start_link(?MODULE
-                            ,[{bindings, ?BINDINGS}
-                              ,{responders, ?RESPONDERS}
-                              ,{queue_name, ?QUEUE_NAME}
-                              ,{queue_options, ?QUEUE_OPTIONS}
-                              ,{consume_options, ?CONSUME_OPTIONS}
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}
+                              ,{'queue_options', ?QUEUE_OPTIONS}
+                              ,{'consume_options', ?CONSUME_OPTIONS}
                              ],
                             [Node, Options]).
 
 -spec handle_originate_req(wh_json:object(), wh_proplist()) -> sup_startchild_ret().
 handle_originate_req(JObj, Props) ->
     _ = wh_util:put_callid(JObj),
-    Node = props:get_value(node, Props),
+    Node = props:get_value('node', Props),
     lager:debug("received originate request for node ~s, starting originate process", [Node]),
     ecallmgr_originate_sup:start_originate_proc(Node, JObj).
 
@@ -89,9 +89,9 @@ handle_originate_req(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put(callid, Node),
+    put('callid', Node),
     lager:info("starting new fs resource listener for ~s", [Node]),    
-    {ok, #state{node=Node, options=Options}}.
+    {'ok', #state{node=Node, options=Options}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -108,7 +108,7 @@ init([Node, Options]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -121,7 +121,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -133,10 +133,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({update_options, NewOptions}, State) ->
-    {noreply, State#state{options=NewOptions}, hibernate};
+handle_info({'update_options', NewOptions}, State) ->
+    {'noreply', State#state{options=NewOptions}, 'hibernate'};
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -147,7 +147,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{node=Node}) ->
-    {reply, [{node, Node}]}.
+    {'reply', [{'node', Node}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -172,7 +172,7 @@ terminate(_Reason, #state{node=Node}) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions

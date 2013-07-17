@@ -77,7 +77,7 @@ presence_update(JObj, _Props) ->
 do_presence_update('undefined', JObj) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
     Switch = wh_json:get_value(<<"Switch-Nodename">>, JObj),
-    case ecallmgr_fs_channel:match_presence(PresenceId) of
+    case ecallmgr_fs_channels:match_presence(PresenceId) of
         [] ->
             Event = empty_presence_event(PresenceId),
             relay_presence('PRESENCE_IN', PresenceId, Event, node(), Switch);
@@ -106,22 +106,22 @@ do_presence_update(State, JObj) ->
 -spec mwi_update(wh_json:object(), wh_proplist()) -> no_return().
 mwi_update(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
-    true = wapi_notifications:mwi_update_v(JObj),
+    'true' = wapi_notifications:mwi_update_v(JObj),
     maybe_send_mwi_update(JObj).
 
 maybe_send_mwi_update(JObj) ->
     case wh_json:get_value(<<"Switch-Nodename">>, JObj) of
-        undefined ->
+        'undefined' ->
             Username = wh_json:get_value(<<"Notify-User">>, JObj),
             Realm = wh_json:get_value(<<"Notify-Realm">>, JObj),
             case ecallmgr_registrar:endpoint_node(Realm, Username) of
-                {ok, Node} ->
-                    send_mwi_update(wh_util:to_atom(Node, true), JObj);
-                {error, _R} ->
+                {'ok', Node} ->
+                    send_mwi_update(wh_util:to_atom(Node, 'true'), JObj);
+                {'error', _R} ->
                     lager:info("unable to find ~s@~s node for MWI update: ~p", [Username, Realm, _R])
             end;
         Node ->
-            send_mwi_update(wh_util:to_atom(Node, true), JObj)
+            send_mwi_update(wh_util:to_atom(Node, 'true'), JObj)
     end.
 
 send_mwi_update(Node, JObj) ->
@@ -155,62 +155,9 @@ send_mwi_update(Node, JObj) ->
 init([Node, Options]) ->
     put(callid, Node),
     lager:debug("starting new ecallmgr notify process"),
-    gproc:reg({p, l, fs_notify}),
-    try  bind_to_events(props:get_value(client_version, Options), Node) of
-         _ -> {ok, #state{node=Node, options=Options}}
-    catch
-        error:{badmatch, timeout} ->
-            lager:critical("unable to establish notify bindings: timeout", []),
-            {stop, timeout};
-        error:{badmatch, {error, Reason}} ->
-            lager:critical("unable to establish notify bindings: ~p", [Reason]),
-            {stop, Reason}
-    end.
-
-bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
-    _ = case ecallmgr_config:get(<<"distribute_presence">>, true) of
-            false -> ok;
-            true ->
-                ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
-                bind_to_notify_presence(Node)
-        end,
-    case ecallmgr_config:get(<<"distribute_message_query">>, true) of
-        false -> ok;
-        true ->
-            ok = freeswitch:event(Node, ['MESSAGE_QUERY'])
-    end;
-bind_to_events(_, Node) ->
-    _ = case ecallmgr_config:get(<<"distribute_presence">>, true) of
-            false -> ok;
-            true ->
-                ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
-                true = gproc:reg({p, l, {event, Node, <<"PRESENCE_IN">>}}),
-                true = gproc:reg({p, l, {event, Node, <<"PRESENCE_OUT">>}}),
-                true = gproc:reg({p, l, {event, Node, <<"PRESENCE_PROBE">>}}),
-                bind_to_notify_presence(Node)
-        end,
-    case ecallmgr_config:get(<<"distribute_message_query">>, true) of
-        false -> ok;
-        true ->
-            ok = freeswitch:event(Node, ['MESSAGE_QUERY']),
-            gproc:reg({p, l, {event, Node, <<"MESSAGE_QUERY">>}})
-    end.
-
--spec bind_to_notify_presence(atom()) -> pid().
-bind_to_notify_presence(Node) ->
-    Self = self(),
-    spawn(fun() ->
-                  put(callid, Node),
-                  QueueName = <<"ecallmgr_fs_notify_presence">>,
-                  Options = [{'queue_options', [{'exclusive', 'false'}]}
-                             ,{'consume_options', [{'exclusive', 'false'}]}
-                            ],
-                  Bindings= [{'notifications', [{'restrict_to', ['presence_update']}]}],
-                  case gen_listener:add_queue(Self, QueueName, Options, Bindings) of
-                      {ok, _NewQ} -> lager:debug("handling presence updates on queue ~s", [_NewQ]);
-                      {error, _E} -> lager:debug("failed to add queue ~s to ~p: ~p", [QueueName, Self, _E])
-                  end
-          end).
+    gproc:reg({'p', 'l', 'fs_notify'}),
+    gen_server:cast(self(), 'bind_to_presence_events'),
+    {'ok', #state{node=Node, options=Options}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -227,7 +174,7 @@ bind_to_notify_presence(Node) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -239,8 +186,43 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('bind_to_presence_events', #state{node=Node}=State) ->
+    _ = case wh_util:is_true(ecallmgr_config:get(<<"distribute_presence">>, <<"false">>)) of
+            'false' -> gen_server:cast(self(), 'bind_to_message_events');
+            'true' ->
+                %%                ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
+                'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"PRESENCE_IN">>)}),
+                'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"PRESENCE_OUT">>)}),
+                'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"PRESENCE_PROBE">>)}),
+                gen_server:cast(self(), 'bind_to_notify_presence')
+        end,
+    {'noreply', State};
+handle_cast('bind_to_notify_presence', #state{node=Node}=State) ->
+    Self = self(),
+    spawn(fun() ->
+                  put('callid', Node),
+                  QueueName = <<"ecallmgr_fs_notify_presence">>,
+                  Options = [{'queue_options', [{'exclusive', 'false'}]}
+                             ,{'consume_options', [{'exclusive', 'false'}]}
+                            ],
+                  Bindings= [{'notifications', [{'restrict_to', ['presence_update']}]}],
+                  case gen_listener:add_queue(Self, QueueName, Options, Bindings) of
+                      {'ok', _NewQ} -> lager:debug("handling presence updates on queue ~s", [_NewQ]);
+                      {'error', _E} -> lager:debug("failed to add queue ~s to ~p: ~p", [QueueName, Self, _E])
+                  end
+          end),
+    gen_server:cast(self(), 'bind_to_message_events'),
+    {'noreply', State};
+handle_cast('bind_to_message_events', #state{node=Node}=State) ->
+    _ = case wh_util:is_true(ecallmgr_config:get(<<"distribute_message_query">>, <<"false">>)) of
+            'false' -> 'ok';
+            'true' ->
+                %%            ok = freeswitch:event(Node, ['MESSAGE_QUERY']),
+                gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"MESSAGE_QUERY">>)})
+        end,
+    {'noreply', State};
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -252,23 +234,20 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
+handle_info({'event', [_ | Props]}, #state{node=Node}=State) ->
     _ = case props:get_value(<<"Event-Name">>, Props) of
             <<"PRESENCE_PROBE">> -> maybe_handle_presence_probe(Props, Node);
             <<"PRESENCE_IN">> -> maybe_handle_presence_in(Props, Node);
             <<"PRESENCE_OUT">> -> maybe_handle_presence_out(Props, Node);
-            <<"MESSAGE_QUERY">> -> spawn_link(?MODULE, handle_message_query, [Props, Node]);
-            _ -> ok
+            <<"MESSAGE_QUERY">> -> spawn_link(?MODULE, 'handle_message_query', [Props, Node]);
+            _ -> 'ok'
         end,
-    {noreply, State, hibernate};
-handle_info({'tcp', _, Data}, State) ->
-    Event = binary_to_term(Data),
-   handle_info(Event, State);
+    {'noreply', State, 'hibernate'};
 handle_info({'EXIT', _, _}, State) ->
-    {noreply, State};
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -279,7 +258,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{node=Node}) ->
-    {reply, [{node, Node}]}.
+    {'reply', [{'node', Node}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -304,7 +283,7 @@ terminate(_Reason, #state{node=Node}) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -312,8 +291,8 @@ code_change(_OldVsn, State, _Extra) ->
 maybe_handle_presence_probe(Props, Node) ->
     %% New logic: if it is not a presence_probe for a subscription then ignore it...
     case wh_util:is_empty(props:get_value(<<"sub-call-id">>, Props)) of
-        true -> ok;
-        false -> handle_presence_probe(Props, Node)
+        'true' -> 'ok';
+        'false' -> handle_presence_probe(Props, Node)
     end.
 
 handle_presence_probe(Props, Node) ->
@@ -322,43 +301,43 @@ handle_presence_probe(Props, Node) ->
     Key = wh_util:to_hex_binary(crypto:md5(<<To/binary, "|", From/binary>>)),
     Expires = ecallmgr_util:get_expires(Props),
     case wh_util:is_empty(Expires)  of
-        true ->
+        'true' ->
             %% If the expires was empty or 0 then delete the subscription, might need to
             %% remove the specific sub-call-id... lets see how it goes
             lager:debug("removing sip subscription from '~s' to '~s'", [From, To]),
             DeleteSpec = [{#sip_subscription{to = '$1', from = '$2', _ = '_'}
-                           ,[{'=:=', '$1', {const, To}}
-                             ,{'=:=', '$2', {const, From}}
+                           ,[{'=:=', '$1', {'const', To}}
+                             ,{'=:=', '$2', {'const', From}}
                             ]
-                           ,[true]}
+                           ,['true']}
                          ],
-            ets:select_delete(sip_subscriptions, DeleteSpec);
-        false ->
+            ets:select_delete('sip_subscriptions', DeleteSpec);
+        'false' ->
             lager:debug("sip subscription from '~s' subscribing to '~s' via node '~s' for ~ps", [From, To, Node, Expires]),
-            ets:insert(sip_subscriptions, #sip_subscription{key=Key
-                                                            ,to=To
-                                                            ,from=From
-                                                            ,node=Node
-                                                            ,expires=Expires
-                                                           }),
-            spawn_link(?MODULE, publish_presence_event, [<<"PRESENCE_PROBE">>, Props, Node])
+            ets:insert('sip_subscriptions', #sip_subscription{key=Key
+                                                              ,to=To
+                                                              ,from=From
+                                                              ,node=Node
+                                                              ,expires=Expires
+                                                             }),
+            spawn_link(?MODULE, 'publish_presence_event', [<<"PRESENCE_PROBE">>, Props, Node])
     end.
 
 maybe_handle_presence_in(Props, Node) ->
     case props:get_value(<<"Distributed-From">>, Props) of
-        undefined ->
+        'undefined' ->
             PresenceId = props:get_value(<<"Channel-Presence-ID">>, Props,
                                          props:get_value(<<"from">>, Props)),
-            spawn_link(?MODULE, relay_presence, ['PRESENCE_IN', PresenceId, Props, Node, undefined]);
-        _Else -> ok
+            spawn_link(?MODULE, 'relay_presence', ['PRESENCE_IN', PresenceId, Props, Node, 'undefined']);
+        _Else -> 'ok'
     end.
 
 maybe_handle_presence_out(Props, Node) ->
     case props:get_value(<<"Distributed-From">>, Props) of
-        undefined ->
+        'undefined' ->
             PresenceId = props:get_value(<<"to">>, Props),
-            spawn_link(?MODULE, relay_presence, ['PRESENCE_OUT', PresenceId, Props, Node, undefined]);
-        _Else -> ok
+            spawn_link(?MODULE, 'relay_presence', ['PRESENCE_OUT', PresenceId, Props, Node, 'undefined']);
+        _Else -> 'ok'
     end.
 
 -spec confirmed_presence_event(ne_binary(), wh_json:object()) -> wh_proplist().
@@ -366,7 +345,7 @@ maybe_handle_presence_out(Props, Node) ->
 
 confirmed_presence_event(PresenceId, JObj) ->
     UniqueId = case wh_json:get_ne_value(<<"Call-ID">>, JObj) of
-                   undefined  -> wh_util:to_hex_binary(crypto:md5(PresenceId));
+                   'undefined' -> wh_util:to_hex_binary(crypto:md5(PresenceId));
                    Else -> Else
                end,
     confirmed_presence_event(PresenceId, UniqueId, JObj).
@@ -395,7 +374,7 @@ confirmed_presence_event(PresenceId, UniqueId, JObj) ->
 
 early_presence_event(PresenceId, JObj) ->
     UniqueId = case wh_json:get_ne_value(<<"Call-ID">>, JObj) of
-                   undefined  -> wh_util:to_hex_binary(crypto:md5(PresenceId));
+                   'undefined' -> wh_util:to_hex_binary(crypto:md5(PresenceId));
                    Else -> Else
                end,
     early_presence_event(PresenceId, UniqueId, JObj).
@@ -424,7 +403,7 @@ early_presence_event(PresenceId, UniqueId, JObj) ->
 
 terminated_presence_event(PresenceId, JObj) ->
     UniqueId = case wh_json:get_ne_value(<<"Call-ID">>, JObj) of
-                   undefined  -> wh_util:to_hex_binary(crypto:md5(PresenceId));
+                   'undefined' -> wh_util:to_hex_binary(crypto:md5(PresenceId));
                    Else -> Else
                end,
     terminated_presence_event(PresenceId, UniqueId, JObj).
@@ -494,7 +473,7 @@ relay_presence(EventName, PresenceId, Props, Node, undefined) ->
                               ,node='$1'
                               ,_ = '_'
                              },
-    Subs = lists:concat(ets:match(sip_subscriptions, Match)),
+    Subs = lists:concat(ets:match('sip_subscriptions', Match)),
     Headers = [{"Distributed-From", wh_util:to_list(Node)}
                |[{wh_util:to_list(K), wh_util:to_list(V)}
                  || {K, V} <- lists:foldr(fun(Header, Prop) ->
@@ -526,8 +505,8 @@ relay_presence(EventName, _, Props, Node, Switch) ->
 -spec handle_message_query(wh_proplist(), atom()) -> 'ok'.
 handle_message_query(Data, Node) ->
     MessageAccount = props:get_value(<<"VM-User">>, Data, props:get_value(<<"Message-Account">>, Data)),
-    case re:run(MessageAccount, <<"(?:sip:)?(.*)@(.*)$">>, [{capture, all, binary}]) of
-        {match, [_, Username, Realm]} ->
+    case re:run(MessageAccount, <<"(?:sip:)?(.*)@(.*)$">>, [{'capture', 'all', 'binary'}]) of
+        {'match', [_, Username, Realm]} ->
             lager:debug("publishing message query for ~s@~s", [Username, Realm]),
             Query = [{<<"Username">>, Username}
                      ,{<<"Realm">>, Realm}
@@ -541,8 +520,8 @@ handle_message_query(Data, Node) ->
                                     ,Query
                                     ,fun wapi_notifications:publish_mwi_query/1
                                    ),
-            ok;
+            'ok';
         _Else ->
             lager:debug("unknown message query format: ~p", [MessageAccount]),
-            ok
+            'ok'
     end.

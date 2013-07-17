@@ -42,7 +42,7 @@ list_fs_nodes() -> ecallmgr_fs_nodes:connected().
 
 -spec show_channels() -> 'no_return'.
 show_channels() ->
-    case ecallmgr_fs_channel:show_all() of
+    case ecallmgr_fs_channels:show_all() of
         [] -> io:format("no channels~n", []);
         [Channel|_]=Channels ->
             Headers = wh_util:join_binary([K
@@ -69,7 +69,7 @@ sync_channels() ->
 -spec sync_channels(text()) -> 'ok'.
 sync_channels(Node) ->
     N = wh_util:to_atom(Node, 'true'),
-    _ = [ecallmgr_fs_node:sync_channels(Srv)
+    _ = [ecallmgr_fs_channels:sync_node(Srv)
          || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
                 ,ecallmgr_fs_node:fs_node(Srv) =:= N
         ],
@@ -90,7 +90,7 @@ sync_conferences(Node) ->
 
 -spec flush_node_channels(string() | binary() | atom()) -> 'ok'.
 flush_node_channels(Node) ->
-    ecallmgr_fs_nodes:flush_node_channels(Node).
+    ecallmgr_fs_channels:flush_node(Node).
 
 -spec flush_node_conferences(string() | binary() | atom()) -> 'ok'.
 flush_node_conferences(Node) ->

@@ -36,7 +36,7 @@
                 ,queue :: api_binary()
                 ,control_pid :: 'undefined' | pid()
                 ,tref :: 'undefined' | reference()
-                ,billing_id = wh_util:rand_hex_binary(16)
+                ,fetch_id = wh_util:rand_hex_binary(16)
                }).
 
 -define(BINDINGS, [{'self', []}]).
@@ -232,35 +232,35 @@ handle_cast({'build_originate_args'}, #state{uuid='undefined'}=State) ->
 
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,action = ?ORIGINATE_PARK
-                                             ,billing_id=BillingId
+                                             ,fetch_id=FetchId
                                              ,dialstrings='undefined'
                                             }=State) ->
     gen_listener:cast(self(), {'originate_ready'}),
     Endpoints = [update_endpoint(Endpoint, State)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
-    {'noreply', State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, Endpoints, JObj, BillingId)}};
+    {'noreply', State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, Endpoints, JObj, FetchId)}};
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,action = Action
                                              ,app = ?ORIGINATE_EAVESDROP
-                                             ,billing_id=BillingId
+                                             ,fetch_id=FetchId
                                              ,dialstrings='undefined'
                                             }=State) ->
     gen_listener:cast(self(), {'originate_ready'}),
     Endpoints = [update_endpoint(Endpoint, State)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
-    {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, BillingId)}};
+    {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, FetchId)}};
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,action=Action
-                                             ,billing_id=BillingId
+                                             ,fetch_id=FetchId
                                              ,dialstrings='undefined'
                                             }=State) ->
     gen_listener:cast(self(), {'originate_execute'}),
     Endpoints = [update_endpoint(Endpoint, State)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
-    {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, BillingId)}};
+    {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, FetchId)}};
 handle_cast({'originate_ready'}, #state{node=_Node}=State) ->
     case start_control_process(State) of
         {'ok', #state{control_pid=Pid
@@ -493,14 +493,14 @@ get_eavesdrop_action(JObj) ->
     end.
 
 -spec build_originate_args(ne_binary(), wh_json:objects(), wh_json:object(), ne_binary()) -> ne_binary().
-build_originate_args(Action, Endpoints, JObj, BillingId) ->
+build_originate_args(Action, Endpoints, JObj, FetchId) ->
     lager:debug("building originate command arguments"),
     DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
                         <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
                         _Else -> <<"|">>
                     end,
     DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
-    J = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Billing-ID">>], BillingId}
+    J = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
                             ,{<<"Loopback-Bowout">>, <<"true">>}
                            ], JObj),
     list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).
@@ -705,10 +705,10 @@ start_control_process(#state{originate_req=JObj
                              ,node=Node
                              ,uuid={_, Id}=UUID
                              ,server_id=ServerId
-                             ,billing_id=BillingId
+                             ,fetch_id=FetchId
                              ,control_pid='undefined'
                             }=State) ->
-    case ecallmgr_call_sup:start_control_process(Node, Id, BillingId) of
+    case ecallmgr_call_sup:start_control_process(Node, Id, FetchId) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
             _ = publish_originate_uuid(ServerId, UUID, JObj, CtrlQ),

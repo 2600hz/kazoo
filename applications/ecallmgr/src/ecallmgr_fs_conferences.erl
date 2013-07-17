@@ -670,13 +670,13 @@ update_participant(Node, UUID, Props) ->
     end.
 
 update_conference(Node, Props) ->
-    ProfileProps = ecallmgr_util:get_interface_properties(Node),
+%%    ProfileProps = ecallmgr_util:get_interface_properties(Node),
     gen_server:call(?MODULE, {'conference_update'
                               ,Node
                               ,props:get_value(<<"Conference-Name">>, Props)
                               ,[{#conference.node, Node}
-                                ,{#conference.switch_url, props:get_value(<<"URL">>, ProfileProps)}
-                                ,{#conference.switch_external_ip, props:get_value(<<"Ext-SIP-IP">>, ProfileProps)}
+%%                                ,{#conference.switch_url, props:get_value(<<"URL">>, ProfileProps)}
+%%                                ,{#conference.switch_external_ip, props:get_value(<<"Ext-SIP-IP">>, ProfileProps)}
                                 | conference_fields(Props)
                                ]
                              }).
