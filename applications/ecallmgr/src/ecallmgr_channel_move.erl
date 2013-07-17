@@ -13,7 +13,6 @@
 
 -include("ecallmgr.hrl").
 
-
 move(UUID, ONode, NNode) ->
     OriginalNode = wh_util:to_atom(ONode),
     NewNode = wh_util:to_atom(NNode),
