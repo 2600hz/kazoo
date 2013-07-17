@@ -121,26 +121,8 @@ handle_session_heartbeat(Props, Node) ->
 init([Node, Options]) ->
     put('callid', Node),
     lager:info("starting new fs authz listener for ~s", [Node]),
-    case bind_to_events(props:get_value('client_version', Options), Node) of
-        'ok' -> {'ok', #state{node=Node, options=Options}};
-        {'error', Reason} ->
-            lager:critical("unable to establish authz bindings: ~p", [Reason]),
-            {'stop', Reason}
-    end.
-
-bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
-%%    case freeswitch:event(Node, ['CHANNEL_CREATE', 'SESSION_HEARTBEAT']) of
-    case freeswitch:event(Node, ['CHANNEL_CREATE']) of
-        'timeout' -> {'error', 'timeout'};
-        Else -> Else
-    end;
-bind_to_events(_, Node) ->
-    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"SESSION_HEARTBEAT">>}}) =:= 'true'
-    of
-        'true' -> 'ok';
-        _ -> {'error', 'gproc_badarg'}
-    end.
+    gen_server:cast(self(), 'bind_to_events'),
+    {'ok', #state{node=Node, options=Options}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -169,6 +151,13 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('bind_to_events', #state{node=Node}=State) ->
+    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}}) =:= 'true'
+        andalso gproc:reg({'p', 'l', {'event', Node, <<"SESSION_HEARTBEAT">>}}) =:= 'true'
+    of
+        'true' -> {'noreply', State};
+        _ -> {'stop', 'gproc_badarg', State}
+    end;
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -191,9 +180,6 @@ handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
             _ -> 'ok'
         end,
     {'noreply', State};
-handle_info({'tcp', _, Data}, State) ->
-    Event = binary_to_term(Data),
-   handle_info(Event, State);
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.

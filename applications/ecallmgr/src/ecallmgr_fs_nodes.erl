@@ -23,14 +23,6 @@
 -export([nodeup/1]).
 -export([is_node_up/1]).
 -export([status/0]).
-
-%% TODO: move to ecallmgr_fs_channels
--export([account_summary/1]).
--export([get_call_precedence/1]).
--export([channels_by_auth_id/1]).
--export([flush_node_channels/1]).
-%%
-
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -51,15 +43,6 @@
                ,options = [] :: wh_proplist()
               }).
 -type fs_node() :: #node{}.
-
--record(astats, {billing_ids =          sets:new() :: set()
-                 ,outbound_flat_rate =  sets:new() :: set()
-                 ,inbound_flat_rate =   sets:new() :: set()
-                 ,outbound_per_minute = sets:new() :: set()
-                 ,inbound_per_minute =  sets:new() :: set()
-                 ,resource_consumers =  sets:new() :: set()
-                }).
--type astats() :: #astats{}.
 
 -record(state, {nodes = dict:new() :: dict() %fs_nodes()
                 ,self = self() :: pid()
@@ -137,40 +120,6 @@ status() ->
 all_nodes_connected() ->
     length(ecallmgr_config:get(<<"fs_nodes">>, [])) =:= length(connected()).
 
--spec account_summary(ne_binary()) -> wh_json:object().
-account_summary(AccountId) ->
-    summarize_account_usage(ecallmgr_fs_channel:account_summary(AccountId)).
-
--spec get_call_precedence(ne_binary()) -> integer().
-get_call_precedence(UUID) ->
-    MatchSpec = [{#channel{uuid = '$1', precedence = '$2', _ = '_'}
-                  ,[{'=:=', '$1', {'const', UUID}}]
-                  ,['$2']}
-                ],
-    case ets:select(?CHANNELS_TBL, MatchSpec) of
-        [Presedence] -> Presedence;
-        _ -> 5
-    end.
-
--spec channels_by_auth_id(ne_binary()) ->
-                                 {'ok', wh_json:objects()} |
-                                 {'error', 'not_found'}.
-channels_by_auth_id(AuthorizingId) ->
-    MatchSpec = [{#channel{authorizing_id = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {'const', AuthorizingId}}]
-                  ,['$_']}
-                ],
-    case ets:select(?CHANNELS_TBL, MatchSpec) of
-        [] -> {'error', 'not_found'};
-        Channels -> {'ok', [ecallmgr_fs_channel:record_to_json(Channel)
-                            || Channel <- Channels
-                           ]}
-    end.
-
--spec flush_node_channels(string() | binary() | atom()) -> 'ok'.
-flush_node_channels(Node) ->
-    gen_server:cast(?MODULE, {'flush_node_channels', wh_util:to_atom(Node, 'true')}).
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -192,7 +141,6 @@ init([]) ->
     lager:debug("starting new fs handler"),
     _ = spawn_link(fun() -> start_preconfigured_servers() end),
     _ = ets:new('sip_subscriptions', ['set', 'public', 'named_table', {'keypos', #sip_subscription.key}]),
-    _ = ets:new(?CHANNELS_TBL, ['set', 'protected', 'named_table', {'keypos', #channel.uuid}]),
     _ = erlang:send_after(?EXPIRE_CHECK, self(), 'expire_sip_subscriptions'),
     {'ok', #state{}}.
 
@@ -264,58 +212,6 @@ handle_cast({'remove_node', #node{node=NodeName}}, #state{nodes=Nodes}=State) ->
 handle_cast({'rm_fs_node', NodeName}, State) ->
     spawn(fun() -> maybe_rm_fs_node(NodeName, State) end),
     {'noreply', State};
-handle_cast({'new_channel', Channel}, State) ->
-    ets:insert(?CHANNELS_TBL, Channel),
-    {'noreply', State, 'hibernate'};
-handle_cast({'channel_update', UUID, Update}, State) ->
-    ets:update_element(?CHANNELS_TBL, UUID, Update),
-    {'noreply', State, 'hibernate'};
-handle_cast({'destroy_channel', UUID, Node}, State) ->
-    MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
-                  ,[{'andalso', {'=:=', '$2', {'const', Node}}
-                     ,{'=:=', '$1', UUID}}
-                   ],
-                  ['true']
-                 }],
-    N = ets:select_delete(?CHANNELS_TBL, MatchSpec),
-    lager:debug("removed ~p channel(s) with id ~s on ~s", [N, UUID, Node]),
-    {'noreply', State, 'hibernate'};
-%% TODO: move to ecallmgr_fs_channels
-handle_cast({'sync_channels', Node, Channels}, State) ->
-    lager:debug("ensuring channel cache is in sync with ~s", [Node]),
-    MatchSpec = [{#channel{uuid = '$1', node = '$2', _ = '_'}
-                  ,[{'=:=', '$2', {'const', Node}}]
-                  ,['$1']}
-                ],
-    CachedChannels = sets:from_list(ets:select(?CHANNELS_TBL, MatchSpec)),
-    SyncChannels = sets:from_list(Channels),
-    Remove = sets:subtract(CachedChannels, SyncChannels),
-    Add = sets:subtract(SyncChannels, CachedChannels),
-    _ = [begin
-             lager:debug("removed channel ~s from cache during sync with ~s", [UUID, Node]),
-             ets:delete(?CHANNELS_TBL, UUID)
-         end
-         || UUID <- sets:to_list(Remove)
-        ],
-    _ = [begin
-             lager:debug("added channel ~s to cache during sync with ~s", [UUID, Node]),
-             case build_channel_record(Node, UUID) of
-                 {'ok', C} -> ets:insert(?CHANNELS_TBL, C);
-                 {'error', _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R])
-             end
-         end
-         || UUID <- sets:to_list(Add)
-        ],
-    {'noreply', State, 'hibernate'};
-handle_cast({'flush_node_channels', Node}, State) ->
-    lager:debug("flushing all channels in cache associated to node ~s", [Node]),
-    MatchSpec = [{#channel{node = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {'const', Node}}]
-                  ,['true']}
-                ],
-    ets:select_delete(?CHANNELS_TBL, MatchSpec),
-    {'noreply', State};
-%%
 handle_cast(_Cast, State) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
     {'noreply', State, 'hibernate'}.
@@ -359,7 +255,6 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
     ets:delete('sip_subscriptions'),
-    ets:delete(?CHANNELS_TBL),
     lager:debug("fs nodes termination: ~p", [ _Reason]).
 
 %%--------------------------------------------------------------------
@@ -612,118 +507,3 @@ start_node_from_config(MaybeJObj) ->
                 _E:_R -> lager:debug("failed to add ~s(~s): ~s: ~p", [Node, Cookie, _E, _R])
             end
     end.
-
--spec build_channel_record(atom(), ne_binary()) ->
-                                  {'ok', channel()} |
-                                  {'error', 'timeout' | 'badarg'}.
-build_channel_record(Node, UUID) ->
-    case freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
-        {'ok', Dump} ->
-            Props = ecallmgr_util:eventstr_to_proplist(Dump),
-            {'ok', ecallmgr_fs_channel:props_to_record(Props, Node)};
-        {'error', _}=E -> E;
-        'timeout' -> {'error', 'timeout'}
-    end.
-
--spec summarize_account_usage(channels()) -> wh_json:object().
-summarize_account_usage(Channels) ->
-    AStats = lists:foldr(fun classify_channel/2, #astats{}, Channels),
-    wh_json:from_list(
-      [{<<"Calls">>, sets:size(AStats#astats.billing_ids)}
-       ,{<<"Channels">>,  length(Channels)}
-       ,{<<"Outbound-Flat-Rate">>, sets:size(AStats#astats.outbound_flat_rate)}
-       ,{<<"Inbound-Flat-Rate">>, sets:size(AStats#astats.inbound_flat_rate)}
-       ,{<<"Outbound-Per-Minute">>, sets:size(AStats#astats.outbound_per_minute)}
-       ,{<<"Inbound-Per-Minute">>, sets:size(AStats#astats.inbound_per_minute)}
-       ,{<<"Resource-Consuming-Calls">>, sets:size(AStats#astats.resource_consumers)}
-      ]).
-
--spec classify_channel(channel(), astats()) -> astats().
-classify_channel(#channel{billing_id='undefined', uuid=UUID}=Channel, AStats) ->
-    classify_channel(Channel#channel{billing_id=wh_util:to_hex_binary(crypto:md5(UUID))}
-                     ,AStats
-                    );
-classify_channel(#channel{bridge_id='undefined', billing_id=BillingId}=Channel, AStats) ->
-    classify_channel(Channel#channel{bridge_id=BillingId}, AStats);
-classify_channel(#channel{direction = <<"outbound">>
-                          ,account_billing = <<"flat_rate">>
-                          ,bridge_id=BridgeId
-                          ,billing_id=BillingId
-                         }
-                 ,#astats{outbound_flat_rate=OutboundFlatRates
-                          ,resource_consumers=ResourceConsumers
-                          ,billing_ids=BillingIds
-                         }=AStats) ->
-    AStats#astats{outbound_flat_rate=sets:add_element(BridgeId, OutboundFlatRates)
-                  ,resource_consumers=sets:add_element(BillingId, ResourceConsumers)
-                  ,billing_ids=sets:add_element(BillingId, BillingIds)
-                 };
-classify_channel(#channel{direction = <<"inbound">>
-                          ,account_billing = <<"flat_rate">>
-                          ,bridge_id=BridgeId
-                          ,billing_id=BillingId
-                         }
-                 ,#astats{inbound_flat_rate=InboundFlatRates
-                          ,resource_consumers=ResourceConsumers
-                          ,billing_ids=BillingIds
-                         }=AStats) ->
-    AStats#astats{inbound_flat_rate=sets:add_element(BridgeId, InboundFlatRates)
-                  ,resource_consumers=sets:add_element(BillingId, ResourceConsumers)
-                  ,billing_ids=sets:add_element(BillingId, BillingIds)
-                 };
-classify_channel(#channel{direction = <<"outbound">>
-                          ,account_billing = <<"per_minute">>
-                          ,bridge_id=BridgeId
-                          ,billing_id=BillingId
-                         }
-                 ,#astats{outbound_per_minute=OutboundPerMinute
-                          ,resource_consumers=ResourceConsumers
-                          ,billing_ids=BillingIds
-                         }=AStats) ->
-    AStats#astats{outbound_per_minute=sets:add_element(BridgeId, OutboundPerMinute)
-                  ,resource_consumers=sets:add_element(BillingId, ResourceConsumers)
-                  ,billing_ids=sets:add_element(BillingId, BillingIds)
-                 };
-classify_channel(#channel{direction = <<"inbound">>
-                          ,account_billing = <<"per_minute">>
-                          ,bridge_id=BridgeId
-                          ,billing_id=BillingId
-                         }
-                 ,#astats{inbound_per_minute=InboundPerMinute
-                          ,resource_consumers=ResourceConsumers
-                          ,billing_ids=BillingIds
-                         }=AStats) ->
-    AStats#astats{inbound_per_minute=sets:add_element(BridgeId, InboundPerMinute)
-                  ,resource_consumers=sets:add_element(BillingId, ResourceConsumers)
-                  ,billing_ids=sets:add_element(BillingId, BillingIds)
-                 };
-classify_channel(#channel{direction = <<"inbound">>
-                          ,authorizing_id='undefined'
-                          ,billing_id=BillingId
-                         }
-                 ,#astats{resource_consumers=ResourceConsumers
-                          ,billing_ids=BillingIds
-                         }=AStats) ->
-    AStats#astats{resource_consumers=sets:add_element(BillingId, ResourceConsumers)
-                  ,billing_ids=sets:add_element(BillingId, BillingIds)
-                 };
-classify_channel(#channel{direction = <<"inbound">>
-                          ,billing_id=BillingId
-                         }
-                 ,#astats{billing_ids=BillingIds}=AStats) ->
-    AStats#astats{billing_ids=sets:add_element(BillingId, BillingIds)};
-classify_channel(#channel{direction = <<"outbound">>
-                          ,resource_id='undefined'
-                          ,billing_id=BillingId
-                         }
-                 ,#astats{billing_ids=BillingIds}=AStats) ->
-    AStats#astats{billing_ids=sets:add_element(BillingId, BillingIds)};
-classify_channel(#channel{direction = <<"outbound">>
-                          ,billing_id=BillingId
-                         }
-                 ,#astats{resource_consumers=ResourceConsumers
-                          ,billing_ids=BillingIds
-                         }=AStats) ->
-    AStats#astats{resource_consumers=sets:add_element(BillingId, ResourceConsumers)
-                  ,billing_ids=sets:add_element(BillingId, BillingIds)
-                 }.

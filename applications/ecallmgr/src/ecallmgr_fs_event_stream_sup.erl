@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(ecallmgr_fs_node_sup).
+-module(ecallmgr_fs_event_stream_sup).
 
 -behaviour(supervisor).
 
@@ -13,19 +13,6 @@
 
 -export([start_link/2]).
 -export([init/1]).
-
--define(CHILD(Name, Mod, Args), fun(N, 'cache', _) ->
-                                        {N, {'wh_cache', 'start_link', [N]}, 'permanent', 5000, 'worker', ['wh_cache']};
-                                   (<<"ecallmgr_fs_event_stream_sup">>=N, M, A) ->
-                                        {N, {M, 'start_link', A}, 'permanent', 6000, 'supervisor', [N]};
-                                   (N, M, A) ->
-                                        {N, {M, 'start_link', A}, 'permanent', 6000, 'worker', [N]}
-                                end(Name, Mod, Args)).
--define(CHILDREN, [<<"_node">>, <<"_authn">>, <<"_route">>
-                       ,<<"_config">>, <<"_resource">>, <<"_notify">>
-                       ,<<"_authz">>, <<"_cdr">>, <<"_conference">>
-                       ,<<"_event_stream_sup">>
-                  ]).
 
 %% ===================================================================
 %% API functions
@@ -38,7 +25,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(atom(), wh_proplist()) -> startlink_ret().
-start_link(Node, Options) -> supervisor:start_link({'local', Node}, ?MODULE, [Node, Options]).
+start_link(Node, Options) -> supervisor:start_link(?MODULE, [Node, Options]).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -54,21 +41,28 @@ start_link(Node, Options) -> supervisor:start_link({'local', Node}, ?MODULE, [No
 %% @end
 %%--------------------------------------------------------------------
 -spec init(list()) -> sup_init_ret().
-init([Node, Options]) ->
+init([Node, Props]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 6,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-
-    NodeB = wh_util:to_binary(Node),
-    Children = [ begin
-                     Name = wh_util:to_atom(<<NodeB/binary, H/binary>>, true),
-                     Mod = wh_util:to_atom(<<"ecallmgr_fs", H/binary>>),
-                     lager:debug("starting handler ~s", [Name]),
-                     ?CHILD(Name, Mod, [Node, Options])
-                 end
-                 || H <- ?CHILDREN
-               ],
-
+    Children = create_children_spec(Node, Props),
+io:format("~p~n", [Children]),
     {'ok', {SupFlags, Children}}.
+
+create_children_spec(Node, Props) ->
+    Children = create_event_children(Node, Props, []),
+    create_custom_children(Node, Props, Children).
+
+create_event_children(Node, _Props, Children) ->
+    lists:foldr(fun(Event, Childs) ->
+                        [{Event, {'ecallmgr_fs_event_stream', 'start_link', [Node, Event, 'undefined']}
+                          ,'permanent', 6000, 'worker', [Event]}|Childs]
+                end, Children, ?FS_EVENTS).
+
+create_custom_children(Node, _Props, Children) ->
+    lists:foldr(fun(Subclass, Childs) ->
+                        [{Subclass, {'ecallmgr_fs_event_stream', 'start_link', [Node, 'CUSTOM', Subclass]}
+                          ,'permanent', 6000, 'worker', [Subclass]}|Childs]
+                end, Children, ?FS_CUSTOM_EVENTS).

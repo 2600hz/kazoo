@@ -12,9 +12,7 @@
 -export([start_link/1
          ,start_link/2
         ]).
--export([publish/2
-         ,publish/3
-        ]).
+-export([publish/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -91,23 +89,8 @@ start_link(Node, Options) ->
 init([Node, Options]) ->
     put('callid', Node),
     lager:info("starting new fs cdr listener for ~s", [Node]),
-    case bind_to_events(props:get_value('client_version', Options), Node) of
-        'ok' -> {'ok', #state{node=Node, options=Options}};
-        {'error', Reason} -> 
-            lager:critical("unable to establish cdr bindings", []),
-            {'stop', Reason}
-    end.
-
-bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
-    case freeswitch:event(Node, ['CHANNEL_HANGUP_COMPLETE']) of
-        'timeout' -> {'error', 'timeout'};
-        Else -> Else
-    end;
-bind_to_events(_, Node) ->
-    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_HANGUP_COMPLETE">>}}) =:= 'true' of
-        'true' -> 'ok';
-        'false' -> {'error', 'gproc_badarg'}
-    end.
+    gen_server:cast(self(), 'bind_to_events'),
+    {'ok', #state{node=Node, options=Options}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -136,6 +119,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('bind_to_events', #state{node=Node}=State) ->
+    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_HANGUP_COMPLETE">>}}) =:= 'true' of
+        'true' -> {'noreply', State};
+        'false' -> {'stop', 'gproc_badarg', State}
+    end;
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -150,12 +138,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', [UUID | Props]}, State) ->
-    AMQPConsumer = wh_amqp_channel:consumer_pid(),
-    spawn(?MODULE, 'publish', [UUID, Props, AMQPConsumer]),
+    spawn(?MODULE, 'publish', [UUID, Props]),
     {'noreply', State};
-handle_info({'tcp', _, Data}, State) ->
-    Event = binary_to_term(Data),
-   handle_info(Event, State);
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -188,16 +172,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec publish(ne_binary(), wh_proplist(), pid()) -> 'ok'.
+-spec publish(ne_binary(), wh_proplist()) -> 'ok'.
 publish(UUID, Props) ->
-    publish(UUID, Props, self()).
-
-publish(UUID, Props, AMQPConsumer) ->
     put('callid', UUID),
-    _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
     CDR = create_cdr(Props),
     lager:debug("publising cdr: ~p", [CDR]),
-    wapi_call:publish_cdr(UUID, CDR).
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                        ,CDR
+                        ,fun(P) -> wapi_call:publish_cdr(UUID, P) end
+                       ).
 
 -spec create_cdr(wh_proplist()) -> wh_proplist().
 create_cdr(Props) ->
