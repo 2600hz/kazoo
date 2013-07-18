@@ -152,8 +152,17 @@ set_account_id(UUID, Value) when is_binary(Value) ->
 set_account_id(UUID, Value) ->
     set_account_id(UUID, wh_util:to_binary(Value)).
 
+-spec renew(atom(), ne_binary()) ->
+                   {'ok', channel()} |
+                   {'error', 'timeout' | 'badarg'}.
 renew(Node, UUID) ->
-    {'error', 'no'}.
+    case freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
+        {'ok', Dump} ->
+            Props = ecallmgr_util:eventstr_to_proplist(Dump),
+            {'ok', props_to_record(Props, Node)};
+        {'error', _}=E -> E;
+        'timeout' -> {'error', 'timeout'}
+    end.
 
 -spec to_json(channel()) -> wh_json:object().
 to_json(Channel) ->
@@ -180,6 +189,7 @@ to_json(Channel) ->
                        ,{<<"profile">>, Channel#channel.profile}
                        ,{<<"context">>, Channel#channel.context}
                        ,{<<"dialplan">>, Channel#channel.dialplan}
+                       ,{<<"other_leg">>, Channel#channel.other_leg}
                       ]).
 
 -spec handle_channel_status(wh_json:json_object(), proplist()) -> 'ok'.
@@ -339,9 +349,13 @@ process_event(<<"CHANNEL_ANSWER">>, UUID, _, _) ->
 process_event(<<"CHANNEL_DATA">>, UUID, Props, _) ->
     ecallmgr_fs_channels:updates(UUID, props_to_update(Props));
 process_event(<<"CHANNEL_BRIDGE">>, UUID, Props, _) ->
-    'ok';
+    OtherLeg = get_other_leg(UUID, Props),
+    ecallmgr_fs_channels:update(UUID, #channel.other_leg, OtherLeg),
+    ecallmgr_fs_channels:update(OtherLeg, #channel.other_leg, UUID);    
 process_event(<<"CHANNEL_UNBRIDGE">>, UUID, Props, _) ->
-    'ok';
+    OtherLeg = get_other_leg(UUID, Props),
+    ecallmgr_fs_channels:update(UUID, #channel.other_leg, 'undefined'),
+    ecallmgr_fs_channels:update(OtherLeg, #channel.other_leg, 'undefined');
 process_event(_, _, _, _) ->
     'ok'.
 
@@ -374,6 +388,7 @@ props_to_record(Props, Node) ->
              ,profile=props:get_value(<<"variable_sofia_profile_name">>, Props, ?DEFAULT_FS_PROFILE)
              ,context=props:get_value(<<"Caller-Context">>, Props, ?WHISTLE_CONTEXT)
              ,dialplan=props:get_value(<<"Caller-Dialplan">>, Props, ?DEFAULT_FS_DIALPLAN)
+             ,other_leg=get_other_leg(props:get_value(<<"Unique-ID">>, Props), Props)
             }.
 
 props_to_update(Props) ->
@@ -416,3 +431,17 @@ channel_status_resp(CallId, Channel, JObj) ->
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+
+get_other_leg(UUID, Props) ->
+    get_other_leg(UUID, Props, props:get_value(<<"Other-Leg-Unique-ID">>, Props)).
+
+get_other_leg(UUID, Props, 'undefined') ->
+    maybe_other_bridge_leg(UUID
+                           ,props:get_value(<<"Bridge-A-Unique-ID">>, Props)
+                           ,props:get_value(<<"Bridge-B-Unique-ID">>, Props)
+                          );
+get_other_leg(_UUID, _Props, OtherLeg) -> OtherLeg.
+
+maybe_other_bridge_leg(UUID, UUID, OtherLeg) -> OtherLeg;
+maybe_other_bridge_leg(UUID, OtherLeg, UUID) -> OtherLeg;
+maybe_other_bridge_leg(_, _, _) -> 'undefined'.
