@@ -176,18 +176,46 @@ handle_config_req(Node, ID, <<"acl.conf">>) ->
             freeswitch:fetch_reply(Node, ID, 'configuration', iolist_to_binary(Resp))
     end;
 handle_config_req(Node, Id, <<"sofia.conf">>) ->
-    put('callid', Id),
-    case wh_util:is_true(ecallmgr_config:get(<<"sofia_conf">>)) of
-        'true' -> do_sofia_conf(Node, Id);
-        'false' ->
-            lager:info("sofia conf disabled"),
-            {'ok', Resp} = ecallmgr_fs_xml:not_found(),
-            freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Resp))
-    end;
+	put('callid', Id),
+	MyProfiles = ecallmgr_config:fetch(<<"fs_profiles">>, wh_json:new()),
+    try ecallmgr_fs_xml:sip_profiles_xml(MyProfiles) of
+        {'ok', ConfigXml} ->
+            lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
+            freeswitch:fetch_reply(Node, Id, 'configuration', erlang:iolist_to_binary(ConfigXml))
+    catch
+        _E:_R ->
+            lager:info("sofia profile resp failed to convert to XML (~s): ~p", [_E, _R]),		
+			case wh_util:is_true(ecallmgr_config:get(<<"sofia_conf">>)) of
+			        'true' -> do_sofia_conf(Node, Id);
+			        'false' ->
+			            lager:info("sofia conf disabled"),
+			            {'ok', Resp} = ecallmgr_fs_xml:not_found(),
+			            freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Resp))
+			end
+	end;
 handle_config_req(Node, ID, _Conf) ->
     lager:debug("ignoring conf ~s: ~s", [_Conf, ID]),
     {'ok', Resp} = ecallmgr_fs_xml:not_found(),
     freeswitch:fetch_reply(Node, ID, 'configuration', iolist_to_binary(Resp)).
+
+handle_config_req(Node, Id, <<"sofia.conf">>, Data) ->
+	put('callid', Id),
+	MyProfiles = ecallmgr_config:fetch(<<"fs_profiles">>, wh_json:new()),
+    try ecallmgr_fs_xml:sip_profiles_xml(MyProfiles) of
+        {'ok', ConfigXml} ->
+            lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
+            freeswitch:fetch_reply(Node, Id, 'configuration', erlang:iolist_to_binary(ConfigXml))
+    catch
+        _E:_R ->
+            lager:info("sofia profile resp failed to convert to XML (~s): ~p", [_E, _R]),		
+			case wh_util:is_true(ecallmgr_config:get(<<"sofia_conf">>)) of
+			        'true' -> do_sofia_conf(Node, Id);
+			        'false' ->
+			            lager:info("sofia conf disabled"),
+			            {'ok', Resp} = ecallmgr_fs_xml:not_found(),
+			            freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Resp))
+			end
+	end;
 
 handle_config_req(Node, ID, <<"conference.conf">>, Data) ->
     put('callid', ID),
