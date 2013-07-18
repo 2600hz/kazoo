@@ -523,7 +523,7 @@ set_rating_ccvs(JObj, Node) ->
                                 case wh_json:get_binary_value(Key, JObj) of
                                     'undefined' -> Acc;
                                     Value ->
-                                        [{?GET_CCV(Key), Value}|Acc]
+                                        [{Key, Value}|Acc]
                                    end
                            end, [], ?RATE_VARS),
     ecallmgr_util:set(Node, CallId, props:filter_undefined(Props)).
@@ -537,10 +537,10 @@ maybe_update_callee_id(JObj, Acc) ->
             [{<<"ignore_display_updates">>, <<"false">>}
              ,{<<"effective_callee_id_name">>, <<"$", ConvertedRate/binary
                                                  ," per min ${effective_callee_id_name}">>}
-             ,{?GET_CCV(<<"Rate">>), Rate}
+             ,{<<"Rate">>, Rate}
              | Acc
             ];
-        'false' -> [{?GET_CCV(<<"Rate">>), Rate}|Acc]
+        'false' -> [{<<"Rate">>, Rate}|Acc]
     end.
 
 -spec authz_req(ne_binary(), wh_proplist()) -> wh_proplist().
