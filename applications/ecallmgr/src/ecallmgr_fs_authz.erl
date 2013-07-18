@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 -export([start_link/1, start_link/2]).
--export([handle_channel_create/3]).
+-export([authorize/3]).
 -export([handle_session_heartbeat/2]).
 -export([rate_channel/2]).
 -export([kill_channel/2]).
@@ -55,6 +55,13 @@ start_link(Node) ->
 start_link(Node, Options) ->
     gen_server:start_link(?MODULE, [Node, Options], []).
 
+-spec authorize(wh_proplist(), ne_binary(), atom()) -> 'ok'.
+authorize(Props, CallId, Node) ->
+    put('callid', CallId),
+    Authorized = maybe_authorize_channel(Props, Node),
+    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized),
+    Authorized.
+
 -spec kill_channel(wh_proplist(), atom()) -> 'ok'.
 -spec kill_channel(ne_binary(), ne_binary(), atom()) -> 'ok'.
 
@@ -72,12 +79,6 @@ kill_channel(<<"inbound">>, CallId, Node) ->
 kill_channel(<<"outbound">>, CallId, Node) ->
     _ = freeswitch:api(Node, 'uuid_kill', wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
     'ok'.
-
--spec handle_channel_create(wh_proplist(), ne_binary(), atom()) -> 'ok'.
-handle_channel_create(Props, CallId, Node) ->
-    put('callid', CallId),
-    Authorized = maybe_authorize_channel(Props, Node),
-    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized).
 
 -spec handle_session_heartbeat(wh_proplist(), atom()) -> 'ok'.
 handle_session_heartbeat(Props, Node) ->
@@ -152,9 +153,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('bind_to_events', #state{node=Node}=State) ->
-    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"SESSION_HEARTBEAT">>}}) =:= 'true'
-    of
+    case gproc:reg({'p', 'l', {'event', Node, <<"SESSION_HEARTBEAT">>}}) =:= 'true' of
         'true' -> {'noreply', State};
         _ -> {'stop', 'gproc_badarg', State}
     end;
@@ -171,14 +170,8 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
-    _ = case props:get_value(<<"Event-Name">>, Props) of
-            <<"SESSION_HEARTBEAT">> ->
-                spawn(?MODULE, 'handle_session_heartbeat', [Props, Node]);
-            <<"CHANNEL_CREATE">> ->
-                spawn(?MODULE, 'handle_channel_create', [Props, CallId, Node]);
-            _ -> 'ok'
-        end,
+handle_info({'event', [_ | Props]}, #state{node=Node}=State) ->
+    _ = spawn(?MODULE, 'handle_session_heartbeat', [Props, Node]),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),

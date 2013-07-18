@@ -340,8 +340,9 @@ process_event(UUID, Props, Node) ->
     process_event(EventName, UUID, Props, Node).
 
 -spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
-process_event(<<"CHANNEL_CREATE">>, _, Props, Node) ->
-    ecallmgr_fs_channels:new(props_to_record(Props, Node));
+process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
+    _ = ecallmgr_fs_channels:new(props_to_record(Props, Node)),
+    ecallmgr_fs_authz:authorize(Props, UUID, Node);
 process_event(<<"CHANNEL_DESTROY">>, UUID, _, Node) ->
     ecallmgr_fs_channels:destroy(UUID, Node);
 process_event(<<"CHANNEL_ANSWER">>, UUID, _, _) ->    
