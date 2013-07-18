@@ -167,12 +167,6 @@ code_change(_OldVsn, State, _Extra) ->
 -spec process_route_req(atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 process_route_req(Node, FSID, CallId, Props) ->
     put('callid', CallId),
-    _ = case props:get_value(?GET_CCV(<<"Bridge-ID">>), Props) of
-            'undefined' ->
-                _ = ecallmgr_util:send_cmd(Node, CallId, <<"export">>, ?SET_CCV(<<"Bridge-ID">>, CallId));
-            _Else -> 
-                lager:debug("keeping bridge id ~s", [_Else])
-        end,
     lager:info("processing dialplan fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
     case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
         'false' -> search_for_route(Node, FSID, CallId, Props);
