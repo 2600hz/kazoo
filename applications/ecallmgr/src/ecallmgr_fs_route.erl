@@ -167,24 +167,19 @@ code_change(_OldVsn, State, _Extra) ->
 -spec process_route_req(atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 process_route_req(Node, FSID, CallId, Props) ->
     put('callid', CallId),
-    _ = case props:get_value(?GET_CCV(<<"Bridge-ID">>), Props) of
-            'undefined' ->
-                _ = ecallmgr_util:send_cmd(Node, CallId, <<"export">>, ?SET_CCV(<<"Bridge-ID">>, CallId));
-            _Else -> 
-                lager:debug("keeping bridge id ~s", [_Else])
-        end,
     lager:info("processing dialplan fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
     case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
         'false' -> search_for_route(Node, FSID, CallId, Props);
         'true' ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),
-            RespJObj = wh_json:from_list([{<<"Routes">>, []}
+            JObj = wh_json:from_list([{<<"Routes">>, []}
                                           ,{<<"Method">>, <<"park">>}
                                          ]),
-            reply_affirmative(Node, FSID, CallId, RespJObj)
+            reply_affirmative(Node, FSID, CallId, JObj)
     end.
 
 search_for_route(Node, FSID, CallId, Props) ->
+    ecallmgr_fs_authz:authorize(Props, CallId, Node),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,route_req(CallId, FSID, Props, Node)
                                   ,fun wapi_route:publish_req/1
@@ -192,20 +187,43 @@ search_for_route(Node, FSID, CallId, Props) ->
                                  ),
     case ReqResp of
         {'error', _R} -> lager:info("did not receive route response: ~p", [_R]);
-        {'ok', RespJObj} ->
-            'true' = wapi_route:resp_v(RespJObj),
-            reply_affirmative(Node, FSID, CallId, RespJObj)
+        {'ok', JObj} ->
+            'true' = wapi_route:resp_v(JObj),
+            choose_route_reply(JObj, Node, FSID, CallId)
+    end.
+
+choose_route_reply(JObj, Node, FSID, CallId) ->
+    AuthzEnabled = wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, 'false')),
+    case AuthzEnabled andalso wh_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
+        {'ok', 'false'} -> reply_forbidden(Node, FSID);
+        _Else ->
+            reply_affirmative(Node, FSID, CallId, JObj)
+    end.
+
+%% Reply with a 402 for unauthzed calls
+-spec reply_forbidden(atom(), ne_binary()) -> 'ok'.
+reply_forbidden(Node, FSID) ->
+    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
+                                                ,{<<"Route-Error-Code">>, <<"402">>}
+                                                ,{<<"Route-Error-Message">>, <<"Payment Required">>}
+                                               ]),
+    lager:debug("sending XML to ~s: ~s", [Node, XML]),
+    case freeswitch:fetch_reply(Node, FSID, 'dialplan', iolist_to_binary(XML)) of
+        'ok' ->
+            lager:debug("node ~s accepted our route unauthz", [Node]);
+        {'error', Reason} -> lager:debug("node ~s rejected our route unauthz, ~p", [Node, Reason]);
+        'timeout' -> lager:error("received no reply from node ~s, timeout", [Node])
     end.
 
 -spec reply_affirmative(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-reply_affirmative(Node, FSID, CallId, RespJObj) ->
-    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(RespJObj),
-    ServerQ = wh_json:get_value(<<"Server-ID">>, RespJObj),
+reply_affirmative(Node, FSID, CallId, JObj) ->
+    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj),
+    ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
     lager:info("sending affirmative XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FSID, 'dialplan', iolist_to_binary(XML), 3000) of
         'ok' ->
             lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),
-            CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, wh_json:new()),
+            CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
             _ = ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)),
             start_control_and_events(Node, FSID, CallId, ServerQ, CCVs);
         {'error', _Reason} -> lager:debug("node ~s rejected our route response, ~p", [Node, _Reason]);
