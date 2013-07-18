@@ -22,12 +22,21 @@ if [ "$NETWORKING" = "no" ]; then
     exit 0
 fi
 
+ensure_cookie () {
+   if [ ! -f /opt/kazoo/.erlang.cookie ] ; then
+        date +%s | sha256sum | base64 | head -c 32 > /opt/kazoo/.erlang.cookie
+   fi
+   chmod 400 /opt/kazoo/.erlang.cookie
+   chown ${USER}:daemon /opt/kazoo/.erlang.cookie
+}
+
 start() {
     echo -n $"Starting ${KZ_APP}: "
 
     export HOME=${KZ_DIR}
     export ERL_CRASH_DUMP=$(date +%s)_${KZ_APP}_erl_crash.dump
     export ERL_LIBS=${KZ_DIR}/deps:${KZ_DIR}/core
+    ensure_cookie
     daemon --user=${USER} "erl -name ${KZ_APP} -args_file /etc/kazoo/vm.args -pa ${KZ_DIR}/applications/*/ebin -pa ${KZ_DIR}/core/*/ebin -pa ${KZ_DIR}/deps/*/ebin -pa ${KZ_DIR}/applications/*/lib/*/ebin -detached -s ${KZ_APP} >/dev/null &"
     RETVAL=$?
     echo
