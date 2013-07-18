@@ -233,40 +233,37 @@ route_resp_xml(<<"bridge">>, Routes, JObj) ->
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
 route_resp_xml(<<"park">>, _Routes, JObj) ->
-    LogEl = route_resp_log_winning_node(),
-    RingbackEl = route_resp_ringback(JObj),
-    TransferEl = route_resp_transfer_ringback(JObj),
-    ParkEl = action_el(<<"park">>),
-
-    ParkConditionEl = case route_resp_pre_park_action(JObj) of
-                          'undefined' ->
-                              condition_el([LogEl, RingbackEl, TransferEl, ParkEl]);
-                          PreParkEl ->
-                              condition_el([LogEl, RingbackEl, TransferEl, PreParkEl, ParkEl])
-                      end,
-
-    ParkExtEl = extension_el(<<"park">>, 'undefined', [ParkConditionEl]),
-
+    Exten = [route_resp_log_winning_node()
+             ,route_resp_set_winning_node()
+             ,route_resp_bridge_id()
+             ,route_resp_ringback(JObj)
+             ,route_resp_transfer_ringback(JObj)
+             ,route_resp_pre_park_action(JObj)
+             ,action_el(<<"park">>)
+            ],
+    ParkExtEl = extension_el(<<"park">>, 'undefined', [condition_el(Exten)]),
     ContextEl = context_el(?WHISTLE_CONTEXT, [ParkExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Park Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
 route_resp_xml(<<"error">>, _Routes, JObj) ->
-    LogEl = route_resp_log_winning_node(),
-
-    RingbackEl = route_resp_ringback(JObj),
-    TransferEl = route_resp_transfer_ringback(JObj),
-
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
-
-    ErrEl = action_el(<<"respond">>, [ErrCode, ErrMsg]),
-    ErrCondEl = condition_el([LogEl, RingbackEl, TransferEl, ErrEl]),
-    ErrExtEl = extension_el([ErrCondEl]),
-
+    Exten = [route_resp_log_winning_node()
+             ,route_resp_set_winning_node()
+             ,route_resp_bridge_id()
+             ,route_resp_ringback(JObj)
+             ,route_resp_transfer_ringback(JObj)
+             ,action_el(<<"respond">>, [ErrCode, ErrMsg])
+            ],
+    ErrExtEl = extension_el([condition_el(Exten)]),
     ContextEl = context_el(?WHISTLE_CONTEXT, [ErrExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+route_resp_bridge_id() ->
+    Action = action_el(<<"export">>, [?SET_CCV(<<"Bridge-ID">>, <<"${UUID}">>)]),
+    condition_el(Action, ?GET_CCV(<<"Bridge-ID">>), <<"^$">>).
 
 -spec not_found() -> {'ok', iolist()}.
 not_found() ->
@@ -277,6 +274,9 @@ not_found() ->
 -spec route_resp_log_winning_node() -> xml_el().
 route_resp_log_winning_node() ->
     action_el(<<"log">>, [<<"NOTICE log|${uuid}|", (wh_util:to_binary(node()))/binary, " won call control">>]).
+
+route_resp_set_winning_node() ->
+    action_el(<<"export">>, [?SET_CCV(<<"Ecallmgr-Node">>, (wh_util:to_binary(node())))]).
 
 -spec route_resp_ringback(wh_json:object()) -> xml_el().
 route_resp_ringback(JObj) ->
@@ -660,13 +660,24 @@ extension_el(Name, Continue, Children) ->
                 ,content=Children
                }.
 
--spec condition_el(xml_el() | xml_els()) -> xml_el().
+-spec condition_el(xml_el() | xml_els() | 'undefined') -> xml_el().
 condition_el(Child) when not is_list(Child) ->
     condition_el([Child]);
 condition_el(Children) ->
     #xmlElement{name='condition'
-                ,content=Children
+                ,content=[Child || Child <- Children, Child =/= 'undefined'] 
                }.
+
+-spec condition_el(xml_el() | xml_els() | 'undefined', xml_attrib_value(), xml_attrib_value()) -> xml_el().
+condition_el(Child, Field, Expression) when not is_list(Child) ->
+    condition_el([Child], Field, Expression);
+condition_el(Children, Field, Expression) ->
+    #xmlElement{name='condition'
+                ,content=[Child || Child <- Children, Child =/= 'undefined'] 
+                ,attributes=[xml_attrib('field', Field)
+                             ,xml_attrib('expression', Expression)
+                            ]
+               }.    
 
 -spec action_el(xml_attrib_value()) -> xml_el().
 -spec action_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().

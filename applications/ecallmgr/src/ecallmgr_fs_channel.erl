@@ -342,7 +342,10 @@ process_event(UUID, Props, Node) ->
 -spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     _ = ecallmgr_fs_channels:new(props_to_record(Props, Node)),
-    ecallmgr_fs_authz:authorize(Props, UUID, Node);
+    case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) =:= wh_util:to_binary(node()) of
+        'true' -> ecallmgr_fs_authz:authorize(Props, UUID, Node);
+        'false' -> 'ok'
+    end;
 process_event(<<"CHANNEL_DESTROY">>, UUID, _, Node) ->
     ecallmgr_fs_channels:destroy(UUID, Node);
 process_event(<<"CHANNEL_ANSWER">>, UUID, _, _) ->    
@@ -362,7 +365,8 @@ process_event(_, _, _, _) ->
 
 -spec props_to_record(wh_proplist(), atom()) -> channel().
 props_to_record(Props, Node) ->
-    #channel{uuid=props:get_value(<<"Unique-ID">>, Props)
+    UUID = props:get_value(<<"Unique-ID">>, Props),
+    #channel{uuid=UUID
              ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
              ,direction=props:get_value(<<"Call-Direction">>, Props)
              ,account_id=props:get_value(?GET_CCV(<<"Account-ID">>), Props)
@@ -374,7 +378,7 @@ props_to_record(Props, Node) ->
              ,presence_id=props:get_value(?GET_CCV(<<"Channel-Presence-ID">>), Props
                                           ,props:get_value(<<"variable_presence_id">>, Props))
              ,fetch_id=props:get_value(?GET_CCV(<<"Fetch-ID">>), Props)
-             ,bridge_id=props:get_value(?GET_CCV(<<"Bridge-ID">>), Props)
+             ,bridge_id=props:get_value(?GET_CCV(<<"Bridge-ID">>), Props, UUID)
              ,reseller_id=props:get_value(?GET_CCV(<<"Reseller-ID">>), Props)
              ,reseller_billing=props:get_value(?GET_CCV(<<"Reseller-Billing">>), Props)
              ,precedence=wh_util:to_integer(props:get_value(?GET_CCV(<<"Precedence">>), Props, 5))
@@ -393,6 +397,7 @@ props_to_record(Props, Node) ->
             }.
 
 props_to_update(Props) ->
+    UUID = props:get_value(<<"Unique-ID">>, Props),
     props:filter_undefined([{#channel.destination, props:get_value(<<"Caller-Destination-Number">>, Props)}
                             ,{#channel.direction, props:get_value(<<"Call-Direction">>, Props)}
                             ,{#channel.account_id, props:get_value(?GET_CCV(<<"Account-ID">>), Props)}
@@ -404,7 +409,7 @@ props_to_update(Props) ->
                             ,{#channel.presence_id, props:get_value(?GET_CCV(<<"Channel-Presence-ID">>), Props
                                                                    ,props:get_value(<<"variable_presence_id">>, Props))}
                             ,{#channel.fetch_id, props:get_value(?GET_CCV(<<"Fetch-ID">>), Props)}
-                            ,{#channel.bridge_id, props:get_value(?GET_CCV(<<"Bridge-ID">>), Props)}
+                            ,{#channel.bridge_id, props:get_value(?GET_CCV(<<"Bridge-ID">>), Props, UUID)}
                             ,{#channel.reseller_id, props:get_value(?GET_CCV(<<"Reseller-ID">>), Props)}
                             ,{#channel.reseller_billing, props:get_value(?GET_CCV(<<"Reseller-Billing">>), Props)}
                             ,{#channel.precedence, wh_util:to_integer(props:get_value(?GET_CCV(<<"Precedence">>), Props, 5))}
