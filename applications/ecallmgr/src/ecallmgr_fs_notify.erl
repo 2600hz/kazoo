@@ -31,7 +31,7 @@
          }).
 
 -define(SERVER, ?MODULE).
--define(MWI_BODY, "~b/~b (~b/~b)").
+-define(MWI_BODY, "Message-Account: sip:~s\r\nMessages-Waiting: ~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ['mwi_update']}]}]).
 -define(RESPONDERS, [{{?MODULE, 'mwi_update'}
@@ -104,43 +104,39 @@ do_presence_update(State, JObj) ->
     relay_presence('PRESENCE_IN', PresenceId, Event, node(), Switch).
 
 -spec mwi_update(wh_json:object(), wh_proplist()) -> no_return().
-mwi_update(JObj, _Props) ->
+mwi_update(JObj, Props) ->
     _ = wh_util:put_callid(JObj),
     'true' = wapi_notifications:mwi_update_v(JObj),
-    maybe_send_mwi_update(JObj).
+    Username = wh_json:get_value(<<"Notify-User">>, JObj),
+    Realm = wh_json:get_value(<<"Notify-Realm">>, JObj),
+    case ecallmgr_registrar:lookup_contact(Realm, Username) of
+        {'error', 'not_found'} ->
+            lager:warning("failed to find contact for ~s@~s, dropping MWI update", [Username, Realm]);
+        {'ok', Contact} ->
+            Node = props:get_value('node', Props),
+            send_mwi_update(JObj, Node, Username, Realm, Contact)
+    end. 
 
-maybe_send_mwi_update(JObj) ->
-    case wh_json:get_value(<<"Switch-Nodename">>, JObj) of
-        'undefined' ->
-            Username = wh_json:get_value(<<"Notify-User">>, JObj),
-            Realm = wh_json:get_value(<<"Notify-Realm">>, JObj),
-            case ecallmgr_registrar:endpoint_node(Realm, Username) of
-                {'ok', Node} ->
-                    send_mwi_update(wh_util:to_atom(Node, 'true'), JObj);
-                {'error', _R} ->
-                    lager:info("unable to find ~s@~s node for MWI update: ~p", [Username, Realm, _R])
-            end;
-        Node ->
-            send_mwi_update(wh_util:to_atom(Node, 'true'), JObj)
-    end.
-
-send_mwi_update(Node, JObj) ->
+send_mwi_update(JObj, Node, Username, Realm, Contact) ->
     NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
-    MessageAccount = wh_json:get_value(<<"Message-Account">>, JObj),
-    Body = io_lib:format(?MWI_BODY, [NewMessages
+    Body = io_lib:format(?MWI_BODY, [<<Username/binary, "@", Realm/binary>>
+                                     ,case NewMessages of 0 -> "no"; _ -> "yes" end
+                                     ,NewMessages
                                      ,wh_json:get_integer_value(<<"Messages-Saved">>, JObj, 0)
                                      ,wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
                                      ,wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0)
                                     ]),
-    Headers = [{"MWI-Message-Account", wh_json:get_string_value(<<"Message-Account">>, JObj)}
-               ,{"MWI-Messages-Waiting", case NewMessages of 0 -> "no"; _ -> "yes" end}
-               ,{"MWI-Voice-Message", lists:flatten(Body)}
-               ,{"Sofia-Profile", ?DEFAULT_FS_PROFILE}
-               ,{"Call-ID", wh_json:get_string_value(<<"Call-ID">>, JObj)}
-               ,{"Sub-Call-ID", wh_json:get_string_value(<<"Subscription-Call-ID">>, JObj)}
+    Headers = [{"profile", ?DEFAULT_FS_PROFILE}
+               ,{"contact", Contact}
+               ,{"to-uri", <<"sip:", Username/binary, "@", Realm/binary>>}
+               ,{"from-uri", <<"sip:", Username/binary, "@", Realm/binary>>}
+               ,{"event-str", "message-summary"}
+               ,{"content-type", "application/simple-message-summary"}
+               ,{"content-length", wh_util:to_list(length(Body))}
+               ,{"body", lists:flatten(Body)}
               ],
-    Resp = freeswitch:sendevent(Node, 'MESSAGE_WAITING', props:filter_undefined(Headers)),
-    lager:debug("send MWI update for ~s to node ~s: ~p", [MessageAccount, Node, Resp]).
+    Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
+    lager:debug("sent MWI update to '~s@~s' via ~s: ~p", [Username, Realm, Node, Resp]).
 
 %%%===================================================================
 %%% gen_server callbacks

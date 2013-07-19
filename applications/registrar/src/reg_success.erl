@@ -67,6 +67,7 @@ maybe_send_new_notice(JObj, Username, Realm) ->
     case wh_cache:peek_local(?REGISTRAR_CACHE, reg_util:cache_user_to_reg_key(Realm, Username)) of
         {'ok', _} -> JObj;
         {'error', 'not_found'} ->
+            
             catch send_new_register(JObj)
     end.
 
@@ -80,4 +81,5 @@ store_reg_success(JObj, Username, Realm) ->
                          ,CacheProps
                         ),
     Contact = wh_json:get_value(<<"Contact">>, JObj),
-    lager:info("successful registration ~s@~s: ~s", [Username, Realm, Contact]).
+    lager:info("successful registration ~s@~s: ~s", [Username, Realm, Contact]),
+    JObj.
