@@ -82,27 +82,16 @@ handle_presence_update(JObj, Props) ->
          end,
               
     lager:debug("maybe sending update for ~s(~s): ~p", [U, S, _E]),
-    omnip_subscriptions:maybe_send_update(U, U, JObj, props:get_value('omnip_presences', Props), S).
+    omnip_subscriptions:maybe_send_update(U, JObj, props:get_value('omnip_presences', Props), S).
 
 -spec handle_presence_update_only(wh_json:object(), wh_proplist()) -> any().
 handle_presence_update_only(JObj, Props) ->
     'true' = wapi_omnipresence:presence_update_v(JObj),
+    lager:debug("update presence: ~p", [JObj]),
     update_presence_state(props:get_value(?MODULE, Props)
-                          ,wh_json:get_value(<<"Presence-ID">>, JObj)
+                          ,wh_json:get_first_defined([<<"Presence-ID">>, <<"From">>], JObj)
                           ,wh_json:get_value(<<"State">>, JObj)
                          ).
-
--spec update_to_record(wh_json:object()) -> presence_state().
-update_to_record(JObj) ->
-    U = case wh_json:find_first_defined([<<"Presence-ID">>, <<"To">>], JObj) of
-            <<"sip:", User/binary>> -> User;
-            User when is_binary(User) -> User
-        end,
-
-    S = wh_json:get_value(<<"State">>, JObj),
-    #omnip_presence_state{user=U
-                          ,state=S
-                         }.
 
 table_id() -> 'omnipresence_presence_states'.
 table_config() ->
@@ -110,8 +99,11 @@ table_config() ->
      ,{'keypos', #omnip_presence_state.user}
     ].
 
--spec update_presence_state(pid() | atom(), api_binary(), ne_binary()) -> 'ok'.
-update_presence_state(_Srv, 'undefined', _Update) -> 'ok';
+-spec update_presence_state(pid() | atom(), api_binary(), api_binary()) -> 'ok'.
+update_presence_state(_Srv, 'undefined', _Update) -> lager:debug("no user defined");
+update_presence_state(_Srv, _User, 'undefined') -> lager:debug("no presence update defined");
+update_presence_state(Srv, _User, _Update) when not is_pid(Srv), not is_atom(Srv) ->
+    lager:debug("srv isn't a pid: ~p ~p ~p", [Srv, _User, _Update]);
 update_presence_state(Srv, User, Update) ->
     PS = case ?MODULE:find_presence_state(User) of
              {'error', 'not_found'} ->
@@ -122,7 +114,8 @@ update_presence_state(Srv, User, Update) ->
          end,
     gen_listener:cast(Srv, {'update_presence_state', PS}).
 
--spec current_state(presence_state()) -> api_binary().
+-spec current_state(presence_state()) -> ne_binary().
+current_state(#omnip_presence_state{state='undefined'}) -> ?PRESENCE_HANGUP;
 current_state(#omnip_presence_state{state=State}) -> State.
 
 -spec user(presence_state()) -> api_binary().

@@ -63,7 +63,7 @@ print_presence_state({'ok', PS}) ->
     io:format(" ~50.s | ~10.s | ~30.s |~n"
               ,[omnip_presences:user(PS)
                 ,omnip_presences:current_state(PS)
-                ,wh_util:fpretty_print_datetime(omnip_presences:timestamp(PS))
+                ,wh_util:pretty_print_datetime(omnip_presences:timestamp(PS))
                ]).
 
 subscribe(Realm, User) ->

@@ -29,7 +29,7 @@
 
          ,subscription_to_json/1 ,subscriptions_to_json/1
 
-         ,maybe_send_update/5
+         ,maybe_send_update/4
         ]).
 
 -export([init/1
@@ -51,14 +51,14 @@
          }).
 
 -record(omnip_subscription, {
-          user :: ne_binary() | '_'
-          ,from :: api_binary() | '_'
-          ,stalker :: ne_binary() | '_' % amqp queue to publish updates to
-          ,expires = 0 :: non_neg_integer() | '_' | '$2'
+          user                                  :: ne_binary() | '_' %% user@realm.com
+          ,from                                 :: api_binary() | <<>> | '_' %% user@realm.com
+          ,stalker                              :: ne_binary() | '_' % amqp queue to publish updates to
+          ,expires = 0                          :: non_neg_integer() | '_' | '$2'
           ,timestamp = wh_util:current_tstamp() :: wh_now() | '_' | '$1'
-          ,protocol = <<"sip">> :: ne_binary() | '_' % protocol
-          ,username :: api_binary() | '_'
-          ,realm :: api_binary() | '_'
+          ,protocol = <<"sip">>                 :: ne_binary() | '_' % protocol
+          ,username                             :: api_binary() | '_'
+          ,realm                                :: api_binary() | '_'
          }).
 -type subscription() :: #omnip_subscription{}.
 -type subscriptions() :: [subscription(),...] | [].
@@ -151,7 +151,7 @@ send_update_to_listeners(JObj, Props) ->
             search_for_presence_state(U, JObj, Srv, Sub);
         {'ok', PS} ->
             lager:debug("found presence state for ~s: ~s", [U, omnip_presences:current_state(PS)]),
-            maybe_send_update(U, U, JObj, Srv, omnip_presences:current_state(PS), Sub)
+            maybe_send_update(U, JObj, Srv, omnip_presences:current_state(PS), Sub)
     end.
 
 search_for_presence_state(U, SubJObj, Srv, SubR) ->
@@ -171,7 +171,7 @@ search_for_presence_state(U, SubJObj, Srv, SubR) ->
     of
         {'ok', SearchJObj} ->
             lager:debug("calls in progress: ~p", [SearchJObj]),
-            maybe_send_update(U, U, SearchJObj, Srv, ?PRESENCE_ANSWERED, SubR);
+            maybe_send_update(U, SearchJObj, Srv, ?PRESENCE_ANSWERED, SubR);
         {'error', _E} ->
             lager:debug("Failed to lookup user channels: ~p", [_E]),
             probe_for_presence(User, Realm, SubJObj, Srv)
@@ -216,8 +216,8 @@ handle_new_channel(JObj, Props) ->
     From = wh_json:get_value(<<"From">>, JObj),
     Req = wh_json:get_value(<<"Request">>, JObj),
 
-    maybe_send_update(From, Req, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_RINGING),
-    maybe_send_update(Req, From, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_RINGING).
+    maybe_send_update(From, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_RINGING),
+    maybe_send_update(Req, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_RINGING).
 
 handle_answered_channel(JObj, Props) ->
     'true' = wapi_call:answered_channel_v(JObj),
@@ -225,8 +225,8 @@ handle_answered_channel(JObj, Props) ->
     From = wh_json:get_value(<<"From">>, JObj),
     Req = wh_json:get_value(<<"Request">>, JObj),
 
-    maybe_send_update(From, Req, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_ANSWERED),
-    maybe_send_update(Req, From, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_ANSWERED).
+    maybe_send_update(From, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_ANSWERED),
+    maybe_send_update(Req, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_ANSWERED).
 
 handle_destroy_channel(JObj, Props) ->
     'true' = wapi_call:destroy_channel_v(JObj),
@@ -234,41 +234,42 @@ handle_destroy_channel(JObj, Props) ->
     From = wh_json:get_value(<<"From">>, JObj),
     Req = wh_json:get_value(<<"Request">>, JObj),
 
-    maybe_send_update(From, Req, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_HANGUP),
-    maybe_send_update(Req, From, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_HANGUP).
+    maybe_send_update(From, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_HANGUP),
+    maybe_send_update(Req, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_HANGUP).
 
--spec maybe_send_update(ne_binary(), ne_binary(), wh_json:object(), pid(), ne_binary()) -> any().
-maybe_send_update(User, From, JObj, Srv, Update) ->
+-spec maybe_send_update(ne_binary(), wh_json:object(), pid(), ne_binary()) -> any().
+maybe_send_update(User, JObj, Srv, Update) ->
     case find_subscriptions(User) of
         {'ok', Subs} ->
             omnip_presences:update_presence_state(Srv, User, Update),
             lager:debug("updated ~s to ~s in ~p", [User, Update, Srv]),
-            [send_update(Update, From, JObj, S) || S <- Subs];
+            [send_update(Update, JObj, S) || S <- Subs];
         {'error', 'not_found'} ->
             lager:debug("no subs for ~s(~s)", [User, Update])
     end.
 
--spec maybe_send_update(ne_binary(), ne_binary(), wh_json:object(), pid(), ne_binary(), subscription()) -> any().
-maybe_send_update(User, From, JObj, Srv, Update, #omnip_subscription{expires=N}=SubR) when N > 0 ->
+-spec maybe_send_update(ne_binary(), wh_json:object(), pid(), ne_binary(), subscription()) -> any().
+maybe_send_update(User, JObj, Srv, Update, #omnip_subscription{expires=N}=SubR) when N > 0 ->
     case find_subscriptions(User) of
         {'ok', Subs} ->
             omnip_presences:update_presence_state(Srv, User, Update),
             lager:debug("updated ~s to ~s in ~p", [User, Update, Srv]),
-            [send_update(Update, From, JObj, S) || S <- [SubR | Subs]];
+            [send_update(Update, JObj, S) || S <- [SubR | Subs]];
         {'error', 'not_found'} ->
-            send_update(Update, From, JObj, SubR),
+            send_update(Update, JObj, SubR),
             lager:debug("no known subs for ~s(~s), sending to originator", [User, Update])
     end;
-maybe_send_update(User, From, JObj, Srv, Update, _SubR) ->
-    maybe_send_update(User, From, JObj, Srv, Update).
+maybe_send_update(User, JObj, Srv, Update, _SubR) ->
+    maybe_send_update(User, JObj, Srv, Update).
 
--spec send_update(ne_binary(), ne_binary(), wh_json:object(), subscription()) -> 'ok'.
-send_update(Update, From, JObj, #omnip_subscription{user=U
-                                                    ,stalker=S
-                                                    ,protocol=P
-                                                   }) ->
+-spec send_update(ne_binary(), wh_json:object(), subscription()) -> 'ok'.
+send_update(Update, JObj, #omnip_subscription{user=U
+                                              ,from=F
+                                              ,stalker=S
+                                              ,protocol=P
+                                             }) ->
     UpdateTo = <<P/binary, ":", U/binary>>,
-    UpdateFrom = <<P/binary, ":", From/binary>>,
+    UpdateFrom = <<P/binary, ":", F/binary>>,
 
     lager:debug("sending update '~s' to ~s from ~s (~s)", [Update, UpdateTo, UpdateFrom, S]),
 
@@ -284,14 +285,14 @@ send_update(Update, From, JObj, #omnip_subscription{user=U
 
 -spec subscribe_to_record(wh_json:object()) -> subscription().
 subscribe_to_record(JObj) ->
-    {P, U} = case wh_json:get_value(<<"User">>, JObj) of
-                 <<"sip:", User/binary>> -> {<<"sip">>, User};
-                 User -> {<<"sip">>, User}
-             end,
+    {P, U, [Username, Realm]} = extract_user(wh_json:get_value(<<"User">>, JObj)),
+    {P, F, _} = extract_user(wh_json:get_value(<<"From">>, JObj, <<>>)),
+
     S = wh_json:get_first_defined([<<"Queue">>, <<"Server-ID">>], JObj),
     E = expires(JObj),
-    [Username, Realm] = binary:split(U, <<"@">>),
+
     #omnip_subscription{user=U
+                        ,from=F
                         ,stalker=S
                         ,expires=E
                         ,protocol=P
@@ -299,27 +300,34 @@ subscribe_to_record(JObj) ->
                         ,realm=Realm
                        }.
 
+-spec extract_user(ne_binary()) -> {ne_binary(), ne_binary(), ne_binaries()}.
+extract_user(<<"sip:", User/binary>>) -> {<<"sip">>, User, binary:split(User, <<"@">>)};
+extract_user(User) -> {<<"sip">>, User, binary:split(User, <<"@">>)}.
+
+-spec subscriptions_to_json(subscriptions()) -> wh_json:objects().
 subscriptions_to_json(Subs) ->
-        subscriptions_to_json(Subs, []).
+    [subscription_to_json(S) || S <- Subs].
 
-subscriptions_to_json([], Acc) ->
-        lists:reverse(Acc);
-subscriptions_to_json([Sub|Subs], Acc) ->
-        JObj = subscription_to_json(Sub),
-        subscriptions_to_json(Subs, [JObj|Acc]).
-
-subscription_to_json(Sub) ->
-        wh_json:set_values(
-          [{<<"user">>, Sub#omnip_subscription.user}
-           ,{<<"from">>, Sub#omnip_subscription.from}
-           ,{<<"stalker">>, Sub#omnip_subscription.stalker}
-           ,{<<"expires">>, Sub#omnip_subscription.expires}
-           ,{<<"timestamp">>, Sub#omnip_subscription.timestamp}
-           ,{<<"protocol">>, Sub#omnip_subscription.protocol}
-           ,{<<"username">>, Sub#omnip_subscription.username}
-           ,{<<"realm">>, Sub#omnip_subscription.realm}
-          ]
-          ,wh_json:new()).
+-spec subscription_to_json(subscription()) -> wh_json:object().
+subscription_to_json(#omnip_subscription{user=User
+                                         ,from=From
+                                         ,stalker=Stalker
+                                         ,expires=Expires
+                                         ,timestamp=Timestamp
+                                         ,protocol=Protocol
+                                         ,username=Username
+                                         ,realm=Realm
+                                        }) ->
+    wh_json:from_list(
+      [{<<"user">>, User}
+       ,{<<"from">>, From}
+       ,{<<"stalker">>, Stalker}
+       ,{<<"expires">>, Expires}
+       ,{<<"timestamp">>, Timestamp}
+       ,{<<"protocol">>, Protocol}
+       ,{<<"username">>, Username}
+       ,{<<"realm">>, Realm}
+      ]).
 
 expires(I) when is_integer(I) -> I;
 expires(JObj) -> expires(wh_json:get_integer_value(<<"Expires">>, JObj)).
@@ -380,6 +388,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'subscribe', #omnip_subscription{from = <<>>}=_S}, State) ->
+    lager:debug("subscription with no from: ~p", [subscription_to_json(_S)]),
+    {'noreply', State};
 handle_cast({'subscribe', #omnip_subscription{expires=E
                                               ,user=_U
                                               ,stalker=_S

@@ -4,7 +4,7 @@
 -define(UPDATES_EXCHANGE, <<"dialoginfo">>).
 
 -define(SUBSCRIBE_HEADERS, [<<"User">>, <<"Expires">>]).
--define(OPTIONAL_SUBSCRIBE_HEADERS, [<<"Queue">>]).
+-define(OPTIONAL_SUBSCRIBE_HEADERS, [<<"Queue">>, <<"From">>]).
 -define(SUBSCRIBE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                            ,{<<"Event-Name">>, <<"subscription">>}
                           ]).
