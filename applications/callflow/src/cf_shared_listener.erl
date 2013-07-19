@@ -30,8 +30,13 @@
                      ,{{'cf_util', 'presence_mwi_query'}
                        ,[{<<"notification">>, <<"mwi_query">>}]
                       }
+                     ,{{'cf_util', 'presence_mwi_query'}
+                       ,[{<<"notification">>, <<"register">>}]
+                      }
                     ]).
--define(BINDINGS, [{'notifications', [{'restrict_to', ['presence_probe', 'mwi_query']}]}
+-define(BINDINGS, [{'notifications'
+                    ,[{'restrict_to', ['presence_probe', 'mwi_query', 'register']}]
+                   }
                    ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"callflow_listener">>).
