@@ -81,11 +81,11 @@ validate(#cb_context{req_verb = ?HTTP_POST}=Context, _, ?RESET) ->
 post(#cb_context{}=Context, User, ?RESET) ->
     [Username, Realm|_] = binary:split(User, <<"@">>),
     Req = [{<<"Username">>, Username}
-            ,{<<"Realm">>, Realm}
+           ,{<<"Realm">>, Realm}
            |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     whapps_util:amqp_pool_send(Req, fun wapi_presence:publish_reset/1),
-    Context#cb_context{resp_status=success}.
+    Context#cb_context{resp_status='success'}.
 
 %%%===================================================================
 %%% Internal functions
@@ -95,20 +95,16 @@ publish_search_req('undefined', Context) ->
     crossbar_util:response('error', <<"realm could not be found">>, 500, Context);
 publish_search_req(Realm, Context) ->
     Req = [{<<"Realm">>, Realm}
-    	   |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case whapps_util:amqp_pool_request(Req
-    								   ,fun wapi_presence:publish_search_req/1
-    								   ,fun wapi_presence:search_resp_v/1
-    								  )
+                                       ,fun wapi_presence:publish_search_req/1
+                                       ,fun wapi_presence:search_resp_v/1
+                                      )
     of
-    	{'ok', Subs} ->
-	    	JObj = wh_json:set_value(<<"subscriptions">>, wh_json:get_value(<<"Subscriptions">>, Subs), wh_json:new()),
-	    	Context#cb_context{resp_status=success, resp_data=JObj};
-	    {'error', Reason} ->
-	    	crossbar_util:response('error', wh_util:to_binary(Reason), 500, Context)
+        {'ok', Subs} ->
+            JObj = wh_json:set_value(<<"subscriptions">>, wh_json:get_value(<<"Subscriptions">>, Subs), wh_json:new()),
+            Context#cb_context{resp_status='success', resp_data=JObj};
+        {'error', Reason} ->
+            crossbar_util:response('error', wh_util:to_binary(Reason), 500, Context)
     end.
-
-
-
-
