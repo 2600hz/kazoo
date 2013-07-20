@@ -87,9 +87,10 @@ handle_presence_update(JObj, Props) ->
 -spec handle_presence_update_only(wh_json:object(), wh_proplist()) -> any().
 handle_presence_update_only(JObj, Props) ->
     'true' = wapi_omnipresence:presence_update_v(JObj),
-    lager:debug("update presence: ~p", [JObj]),
+    {_, U, _} = omnip_util:extract_user(wh_json:get_first_defined([<<"Presence-ID">>, <<"From">>], JObj)),
+
     update_presence_state(props:get_value(?MODULE, Props)
-                          ,wh_json:get_first_defined([<<"Presence-ID">>, <<"From">>], JObj)
+                          ,U
                           ,wh_json:get_value(<<"State">>, JObj)
                          ).
 
@@ -114,8 +115,8 @@ update_presence_state(Srv, User, Update) ->
          end,
     gen_listener:cast(Srv, {'update_presence_state', PS}).
 
--spec current_state(presence_state()) -> ne_binary().
-current_state(#omnip_presence_state{state='undefined'}) -> ?PRESENCE_HANGUP;
+-spec current_state(presence_state()) -> api_binary().
+current_state(#omnip_presence_state{state='undefined'}) -> 'undefined';
 current_state(#omnip_presence_state{state=State}) -> State.
 
 -spec user(presence_state()) -> api_binary().
@@ -204,12 +205,12 @@ find_presence_state(U) ->
                                  }])
     of
         [] -> {'error', 'not_found'};
+        [#omnip_presence_state{state='undefined'}|_] -> {'error', 'not_found'};
         [#omnip_presence_state{}=PS|_] -> {'ok', PS}
     end.
 
 find_presence_state(Realm, Username) ->
     find_presence_state(<<Username/binary, "@", Realm/binary>>).
-
 
 %%--------------------------------------------------------------------
 %% @private
