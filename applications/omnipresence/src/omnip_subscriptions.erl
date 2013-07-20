@@ -82,7 +82,7 @@ handle_search_req(JObj, _Props) ->
     Username = wh_json:get_value(<<"Username">>, JObj, '_'),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
 
-    lager:debug("searching for subs for ~s@~s", [Username, Realm]),
+    lager:debug("searching for subs for ~p@~s", [Username, Realm]),
 
     case search_for_subscriptions(Realm, Username) of
         [] -> 'ok';
@@ -137,6 +137,7 @@ handle_subscribe(JObj, Props) ->
     'true' = wapi_presence:subscribe_v(JObj1),
 
     %% sending update to whapps
+    lager:debug("new sub: ~p", [JObj1]),
     send_subscribe_to_whapps(JObj1),
     send_update_to_listeners(JObj1, Props).
 
@@ -277,8 +278,6 @@ send_update(Update, JObj, #omnip_subscription{user=U
     UpdateTo = <<P/binary, ":", U/binary>>,
     UpdateFrom = <<P/binary, ":", F/binary>>,
 
-    lager:debug("sending update '~s' to ~s from ~s (~s)", [Update, UpdateTo, UpdateFrom, S]),
-
     Prop = [{<<"To">>, UpdateTo}
             ,{<<"From">>, UpdateFrom}
             ,{<<"State">>, Update}
@@ -286,13 +285,16 @@ send_update(Update, JObj, #omnip_subscription{user=U
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
+
+    lager:debug("sending update '~s' to ~s from ~s (~s)", [Update, UpdateTo, UpdateFrom, S]),
+
     whapps_util:amqp_pool_send(Prop, fun(API) -> wapi_presence:publish_update(S, API) end),
     whapps_util:amqp_pool_send(Prop, fun wapi_omnipresence:publish_presence_update/1).
 
 -spec subscribe_to_record(wh_json:object()) -> subscription().
 subscribe_to_record(JObj) ->
-    {P, U, [Username, Realm]} = extract_user(wh_json:get_value(<<"User">>, JObj)),
-    {P, F, _} = extract_user(wh_json:get_value(<<"From">>, JObj, <<>>)),
+    {P, U, [Username, Realm]} = omnip_util:extract_user(wh_json:get_value(<<"User">>, JObj)),
+    {P, F, _} = omnip_util:extract_user(wh_json:get_value(<<"From">>, JObj, <<>>)),
 
     S = wh_json:get_first_defined([<<"Queue">>, <<"Server-ID">>], JObj),
     E = expires(JObj),
@@ -305,10 +307,6 @@ subscribe_to_record(JObj) ->
                         ,username=Username
                         ,realm=Realm
                        }.
-
--spec extract_user(ne_binary()) -> {ne_binary(), ne_binary(), ne_binaries()}.
-extract_user(<<"sip:", User/binary>>) -> {<<"sip">>, User, binary:split(User, <<"@">>)};
-extract_user(User) -> {<<"sip">>, User, binary:split(User, <<"@">>)}.
 
 -spec subscriptions_to_json(subscriptions()) -> wh_json:objects().
 subscriptions_to_json(Subs) ->
@@ -434,9 +432,11 @@ handle_cast(_Msg, State) ->
                                {'error', 'not_found'}.
 find_subscription(#omnip_subscription{user=U
                                       ,stalker=S
+                                      ,from=F
                                      }) ->
     case ets:match_object(table_id(), #omnip_subscription{user=U
                                                           ,stalker=S
+                                                          ,from=F
                                                           ,_='_'
                                                          })
     of
