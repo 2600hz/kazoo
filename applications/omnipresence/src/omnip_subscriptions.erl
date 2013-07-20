@@ -212,28 +212,34 @@ maybe_patch_msg_id(JObj) ->
 
 handle_new_channel(JObj, Props) ->
     'true' = wapi_call:new_channel_v(JObj),
+    wh_util:put_callid(JObj),
 
     From = wh_json:get_value(<<"From">>, JObj),
     Req = wh_json:get_value(<<"Request">>, JObj),
 
+    lager:debug("new channel"),
     maybe_send_update(From, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_RINGING),
     maybe_send_update(Req, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_RINGING).
 
 handle_answered_channel(JObj, Props) ->
     'true' = wapi_call:answered_channel_v(JObj),
+    wh_util:put_callid(JObj),
 
     From = wh_json:get_value(<<"From">>, JObj),
     Req = wh_json:get_value(<<"Request">>, JObj),
 
+    lager:debug("answered channel"),
     maybe_send_update(From, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_ANSWERED),
     maybe_send_update(Req, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_ANSWERED).
 
 handle_destroy_channel(JObj, Props) ->
     'true' = wapi_call:destroy_channel_v(JObj),
+    wh_util:put_callid(JObj),
 
     From = wh_json:get_value(<<"From">>, JObj),
     Req = wh_json:get_value(<<"Request">>, JObj),
 
+    lager:debug("destroy channel"),
     maybe_send_update(From, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_HANGUP),
     maybe_send_update(Req, JObj, props:get_value('omnip_presences', Props), ?PRESENCE_HANGUP).
 
