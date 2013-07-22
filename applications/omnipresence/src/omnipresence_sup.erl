@@ -11,7 +11,6 @@
 
 -export([start_link/0
          ,subscriptions_srv/0
-         ,presences_srv/0
         ]).
 -export([init/1]).
 
@@ -46,13 +45,6 @@ start_link() ->
 -spec subscriptions_srv() -> pid() | 'undefined'.
 subscriptions_srv() ->
     case [P || {_, P, 'worker', ['omnip_subscriptions']} <- supervisor:which_children(?MODULE)] of
-        [] -> 'undefined';
-        [Pid] -> Pid
-    end.
-
--spec presences_srv() -> pid() | 'undefined'.
-presences_srv() ->
-    case [P || {_, P, 'worker', ['omnip_presences']} <- supervisor:which_children(?MODULE)] of
         [] -> 'undefined';
         [Pid] -> Pid
     end.

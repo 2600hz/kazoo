@@ -11,7 +11,6 @@
 -include("omnipresence.hrl").
 
 -export([current_subscriptions/0, current_subscriptions/1, current_subscriptions/2
-         ,current_presence_state/2
          ,subscribe/2
         ]).
 
@@ -49,21 +48,6 @@ print_subscription(JObj, Now) ->
               ,[[wh_json:get_value(<<"username">>, JObj), "@", wh_json:get_value(<<"realm">>, JObj)]
                 ,wh_json:get_value(<<"from">>, JObj)
                 ,wh_util:to_binary(ExpiresIn)
-               ]).
-
-current_presence_state(Realm, User) ->
-    print_presence_state(
-      omnip_presences:find_presence_state(Realm, User)
-     ).
-
-print_presence_state({'error', 'not_found'}) ->
-    io:format("no presence state found~n");
-print_presence_state({'ok', PS}) ->
-    io:format(" ~50.s | ~10.s | ~30.s |~n", [<<"Endpoint">>, <<"Presence">>, <<"Timestamp">>]),
-    io:format(" ~50.s | ~10.s | ~30.s |~n"
-              ,[omnip_presences:user(PS)
-                ,omnip_presences:current_state(PS)
-                ,wh_util:pretty_print_datetime(omnip_presences:timestamp(PS))
                ]).
 
 subscribe(Realm, User) ->
