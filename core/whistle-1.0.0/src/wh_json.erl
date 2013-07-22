@@ -591,9 +591,9 @@ no_prune([K], JObj) when not is_list(JObj) ->
 no_prune([K|T], Array) when is_list(Array) ->
     {Less, [V|More]} = lists:split(wh_util:to_integer(K)-1, Array),
     case {is_json_object(V), T, V} of
-        {true, [_|_]=Keys, JObj} ->
+        {'true', [_|_]=Keys, JObj} ->
             Less ++ [no_prune(Keys, JObj)] ++ More;
-        {false, [_|_]=Keys, Arr} when is_list(Arr) ->
+        {'false', [_|_]=Keys, Arr} when is_list(Arr) ->
             Less ++ 'no_prune'(Keys, Arr) ++ More;
         {_,_,_} -> Less ++ More
     end;
@@ -727,9 +727,9 @@ flatten([_ | _] = Elems, Acc, Keys, Depth) ->
                 Acc, Elems);
 flatten({Key, Value}, Acc, Keys, Depth) ->
     case length(Keys) + 2 =:=  Depth of
-        false -> 
+        'false' -> 
             flatten(Value, Acc, [Key | Keys], Depth);
-        true ->
+        'true' ->
             case flatten(Value, [], [Key | Keys], Depth) of
                 [] -> Acc;
                 Group ->
@@ -739,8 +739,8 @@ flatten({Key, Value}, Acc, Keys, Depth) ->
     end;
 flatten(Value, Acc, [K | Keys], Depth) ->
     case length(Keys) + 1 =:= Depth of
-        false -> Acc;
-        true ->
+        'false' -> Acc;
+        'true' ->
             [{K, Value} | Acc]
     end.
 
@@ -790,7 +790,10 @@ prop_to_proplist() ->
                 end)
            ).
 
--define(D1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
+-define(D1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}
+                           ,{<<"d1k2">>, 'd1v2'}
+                           ,{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}
+                          ])).
 -define(D2, ?JSON_WRAPPER([{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?D1}])).
 -define(D3, ?JSON_WRAPPER([{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?D1, ?D2]}])).
 -define(D4, [?D1, ?D2, ?D3]).
@@ -804,40 +807,41 @@ prop_to_proplist() ->
 
 is_json_object_proper_test_() ->
     {"Runs wh_json PropEr tests for is_json_object/1",
-     {timeout, 10000, [?_assertEqual([], proper:module(?MODULE))]}}.
+     {'timeout', 10000, [?_assertEqual([], proper:module(?MODULE))]}}.
 
 is_empty_test() ->
-    ?assertEqual(true, is_empty(new())),    ?assertEqual(false, is_empty(?D1)),
-    ?assertEqual(false, is_empty(?D6)),
-    ?assertEqual(false, is_empty(123)),
-    ?assertEqual(false, is_empty(<<"foobar">>)),
-    ?assertEqual(false, is_empty([{bar, bas}])).
+    ?assertEqual('true', is_empty(new())),
+    ?assertEqual('false', is_empty(?D1)),
+    ?assertEqual('false', is_empty(?D6)),
+    ?assertEqual('false', is_empty(123)),
+    ?assertEqual('false', is_empty(<<"foobar">>)),
+    ?assertEqual('false', is_empty([{'bar', 'bas'}])).
 
 merge_jobjs_test() ->
     JObj = merge_jobjs(?D1, ?D2),
-    ?assertEqual(true, 'undefined' =/= get_value(<<"d1k1">>, JObj)),
-    ?assertEqual(true, 'undefined' =/= get_value(<<"d2k1">>, JObj)),
-    ?assertEqual(true, 'undefined' =/= get_value(<<"sub_d1">>, JObj)),
-    ?assertEqual(true, 'undefined' =:= get_value(<<"missing_k">>, JObj)).
+    ?assertEqual('true', 'undefined' =/= get_value(<<"d1k1">>, JObj)),
+    ?assertEqual('true', 'undefined' =/= get_value(<<"d2k1">>, JObj)),
+    ?assertEqual('true', 'undefined' =/= get_value(<<"sub_d1">>, JObj)),
+    ?assertEqual('true', 'undefined' =:= get_value(<<"missing_k">>, JObj)).
 
 merge_recursive_test() ->
-    JObj = merge_recursive(?D1, set_value(<<"d1k2">>, d2k2, ?D2)),
-    ?assertEqual(true, is_json_object(JObj)),
-    ?assertEqual(true, 'undefined' =/= get_value(<<"d1k1">>, JObj)),
-    ?assertEqual(true, 'undefined' =/= get_value(<<"d2k1">>, JObj)),
+    JObj = merge_recursive(?D1, set_value(<<"d1k2">>, 'd2k2', ?D2)),
+    ?assertEqual('true', is_json_object(JObj)),
+    ?assertEqual('true', 'undefined' =/= get_value(<<"d1k1">>, JObj)),
+    ?assertEqual('true', 'undefined' =/= get_value(<<"d2k1">>, JObj)),
 
-    ?assertEqual(true, 'undefined' =/= get_value([<<"d1k3">>, 2], JObj)),
+    ?assertEqual('true', 'undefined' =/= get_value([<<"d1k3">>, 2], JObj)),
 
-    ?assertEqual(true, 'undefined' =/= get_value(<<"sub_d1">>, JObj)),
+    ?assertEqual('true', 'undefined' =/= get_value(<<"sub_d1">>, JObj)),
 
-    ?assertEqual(true, 'undefined' =/= get_value([<<"sub_d1">>, <<"d1k1">>], JObj)),
-    ?assertEqual(true, d2k2 =:= get_value(<<"d1k2">>, JObj)), %% second JObj takes precedence
-    ?assertEqual(true, 'undefined' =:= get_value(<<"missing_k">>, JObj)).
+    ?assertEqual('true', 'undefined' =/= get_value([<<"sub_d1">>, <<"d1k1">>], JObj)),
+    ?assertEqual('true', 'd2k2' =:= get_value(<<"d1k2">>, JObj)), %% second JObj takes precedence
+    ?assertEqual('true', 'undefined' =:= get_value(<<"missing_k">>, JObj)).
 
 get_binary_value_test() ->
-    ?assertEqual(true, is_binary(get_binary_value(<<"d1k1">>, ?D1))),
+    ?assertEqual('true', is_binary(get_binary_value(<<"d1k1">>, ?D1))),
     ?assertEqual('undefined', get_binary_value(<<"d2k1">>, ?D1)),
-    ?assertEqual(true, is_binary(get_binary_value(<<"d1k1">>, ?D1, <<"something">>))),
+    ?assertEqual('true', is_binary(get_binary_value(<<"d1k1">>, ?D1, <<"something">>))),
     ?assertEqual(<<"something">>, get_binary_value(<<"d2k1">>, ?D1, <<"something">>)).
 
 get_integer_value_test() ->
@@ -847,7 +851,7 @@ get_integer_value_test() ->
     ?assertEqual(0, get_integer_value(<<"d1k1">>, ?D2, 0)).
 
 get_float_value_test() ->
-    ?assertEqual(true, is_float(get_float_value(<<"d2k2">>, ?D2))),
+    ?assertEqual('true', is_float(get_float_value(<<"d2k2">>, ?D2))),
     ?assertEqual('undefined', get_float_value(<<"d1k1">>, ?D2)),
     ?assertEqual(3.14, get_float_value(<<"d2k2">>, ?D2, 0.0)),
     ?assertEqual(0.0, get_float_value(<<"d1k1">>, ?D2, 0.0)).
@@ -858,12 +862,12 @@ get_binary_boolean_test() ->
     ?assertEqual(<<"true">>, get_binary_boolean(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'true'}]))).
 
 is_false_test() ->
-    ?assertEqual(false, is_false(<<"d1k1">>, ?D1)),
-    ?assertEqual(true, is_false(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'false'}]))).
+    ?assertEqual('false', is_false(<<"d1k1">>, ?D1)),
+    ?assertEqual('true', is_false(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'false'}]))).
 
 is_true_test() ->
-    ?assertEqual(false, is_true(<<"d1k1">>, ?D1)),
-    ?assertEqual(true, is_true(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'true'}]))).
+    ?assertEqual('false', is_true(<<"d1k1">>, ?D1)),
+    ?assertEqual('true', is_true(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'true'}]))).
 
 -define(D1_FILTERED, ?JSON_WRAPPER([{<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
 -define(D2_FILTERED, ?JSON_WRAPPER([{<<"sub_d1">>, ?D1}])).
@@ -878,17 +882,17 @@ new_test() ->
 
 -spec is_json_object_test() -> any().
 is_json_object_test() ->
-    ?assertEqual(false, is_json_object(foo)),
-    ?assertEqual(false, is_json_object(123)),
-    ?assertEqual(false, is_json_object([boo, yah])),
-    ?assertEqual(false, is_json_object(<<"bin">>)),
+    ?assertEqual('false', is_json_object(foo)),
+    ?assertEqual('false', is_json_object(123)),
+    ?assertEqual('false', is_json_object([boo, yah])),
+    ?assertEqual('false', is_json_object(<<"bin">>)),
 
-    ?assertEqual(true, is_json_object(?D1)),
-    ?assertEqual(true, is_json_object(?D2)),
-    ?assertEqual(true, is_json_object(?D3)),
-    ?assertEqual(true, lists:all(fun is_json_object/1, ?D4)),
-    ?assertEqual(true, is_json_object(?D6)),
-    ?assertEqual(true, is_json_object(?D7)).
+    ?assertEqual('true', is_json_object(?D1)),
+    ?assertEqual('true', is_json_object(?D2)),
+    ?assertEqual('true', is_json_object(?D3)),
+    ?assertEqual('true', lists:all(fun is_json_object/1, ?D4)),
+    ?assertEqual('true', is_json_object(?D6)),
+    ?assertEqual('true', is_json_object(?D7)).
 
 %% delete results
 -define(D1_AFTER_K1, ?JSON_WRAPPER([{<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
@@ -925,9 +929,9 @@ is_json_object_test() ->
 -spec get_keys_test() -> any().
 get_keys_test() ->
     Keys = [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>],
-    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, ?MODULE:get_keys([], ?D1))),
-    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, ?MODULE:get_keys([<<"sub_docs">>, 1], ?D3))),
-    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, [1,2,3]) end, ?MODULE:get_keys([<<"sub_docs">>], ?D3))).
+    ?assertEqual('true', lists:all(fun(K) -> lists:member(K, Keys) end, ?MODULE:get_keys([], ?D1))),
+    ?assertEqual('true', lists:all(fun(K) -> lists:member(K, Keys) end, ?MODULE:get_keys([<<"sub_docs">>, 1], ?D3))),
+    ?assertEqual('true', lists:all(fun(K) -> lists:member(K, [1,2,3]) end, ?MODULE:get_keys([<<"sub_docs">>], ?D3))).
 
 -spec to_proplist_test() -> any().
 to_proplist_test() ->
@@ -1072,7 +1076,7 @@ to_querystring_test() ->
                   end, Tests).
 
 get_values_test() ->
-    ?assertEqual(true, are_all_there(?D1, [<<"d1v1">>, d1v2, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
+    ?assertEqual('true', are_all_there(?D1, [<<"d1v1">>, d1v2, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
 
 -define(CODEC_JOBJ, ?JSON_WRAPPER([{<<"k1">>, <<"v1">>}
                                    ,{<<"k2">>, ?EMPTY_JSON_OBJECT}
