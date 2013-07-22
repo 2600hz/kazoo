@@ -176,7 +176,7 @@ send_redirect(IP, Call) ->
 
 -spec redirect_via_proxy(ne_binary(), whapps_call:call()) -> 'ok'.
 redirect_via_proxy(IP, Call) ->
-    Port = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"parking_server_sip_port">>, 5060)
+    Port = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"parking_server_sip_port">>, 5060),
     Contact = <<"sip:", (whapps_call:to_user(Call))/binary
                 ,"@", (whapps_call:to_realm(Call))/binary>>,
     Server = <<"sip:", IP/binary, ":", Port/binary>>,
@@ -184,7 +184,7 @@ redirect_via_proxy(IP, Call) ->
 
 -spec redirect_via_endpoint(ne_binary(), whapps_call:call()) -> 'ok'.
 redirect_via_endpoint(IP, Call) ->
-    Port = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"parking_server_sip_port">>, 5060)
+    Port = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"parking_server_sip_port">>, 5060),
     Contact = <<"sip:", (whapps_call:to_user(Call))/binary
                 ,"@", IP/binary, ":", Port/binary>>,
     whapps_call_command:redirect(Contact, Call).
