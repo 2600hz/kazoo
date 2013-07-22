@@ -12,7 +12,7 @@
 
 -export([start_link/0
 
-         ,handle_subscribe/2, handle_subscribe_only/2
+         ,handle_subscribe/2
          ,handle_new_channel/2
          ,handle_destroy_channel/2
          ,handle_answered_channel/2
@@ -131,32 +131,11 @@ handle_reset(JObj, _Props) ->
 %% handle_subscribe_only processes subscribes received on the whapp's dedicated
 %% queue, without the lookup of the current state
 -spec handle_subscribe(wh_json:object(), wh_proplist()) -> any().
-handle_subscribe(JObj, _Props) ->
-    JObj1 = maybe_patch_msg_id(JObj),
-    'true' = wapi_presence:subscribe_v(JObj1),
-
-    %% sending update to whapps
-    lager:debug("new sub: ~p", [JObj1]),
-    send_subscribe_to_whapps(JObj1).
-
-send_subscribe_to_whapps(JObj) ->
-    JObj1 = wh_json:set_values(wh_api:default_headers(?APP_NAME, ?APP_VERSION), JObj),
-    wapi_omnipresence:publish_subscribe(JObj1).
-
-handle_subscribe_only(JObj, Props) ->
-    JObj1 = maybe_patch_msg_id(JObj),
-
-    'true' = wapi_presence:subscribe_v(JObj1),
+handle_subscribe(JObj, Props) ->
+    'true' = wapi_presence:subscribe_v(JObj),
     gen_listener:cast(props:get_value(?MODULE, Props)
-                      ,{'subscribe', subscribe_to_record(JObj1)}
+                      ,{'subscribe', subscribe_to_record(JObj)}
                      ).
-
-%% needed until Kamailio is patched
-maybe_patch_msg_id(JObj) ->
-    case wh_json:get_value(<<"Msg-ID">>, JObj) of
-        'undefined' -> wh_json:set_value(<<"Msg-ID">>, <<"foo">>, JObj);
-        _ -> JObj
-    end.
 
 handle_new_channel(JObj, _Props) ->
     'true' = wapi_call:new_channel_v(JObj),
