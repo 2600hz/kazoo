@@ -23,25 +23,18 @@
 
 -record(state, {subs_pid :: pid()
                 ,subs_ref :: reference()
-                ,presences_pid :: pid()
-                ,presences_ref :: reference()
                }).
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
-                   %% Kazoo presence updates
-                   ,{'notifications', [{'restrict_to', ['presence_update', 'presence_probe']}]}
                    %% new Kamailio presence APIs
                    ,{'presence', [{'restrict_to', ['subscribe', 'update', 'reset']}]}
                    %% channel events that toggle presence lights
                    ,{'call', [{'restrict_to', ['new_channel', 'answered_channel', 'destroy_channel']}]}
                   ]).
--define(RESPONDERS, [{{'omnip_presences', 'handle_presence_update'}
-                       ,[{<<"notification">>, <<"presence_update">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_new_channel'}
-                       ,[{<<"channel">>, <<"new">>}]
-                      }
+-define(RESPONDERS, [{{'omnip_subscriptions', 'handle_new_channel'}
+                      ,[{<<"channel">>, <<"new">>}]
+                     }
                      ,{{'omnip_subscriptions', 'handle_answered_channel'}
                        ,[{<<"channel">>, <<"answered">>}]
                       }
@@ -71,8 +64,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [
-                                      {'bindings', ?BINDINGS}
+    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
@@ -98,7 +90,6 @@ start_link() ->
 init([]) ->
     put('callid', ?MODULE),
     gen_listener:cast(self(), {'find_subscriptions_srv'}),
-    gen_listener:cast(self(), {'find_presences_srv'}),
     lager:debug("omnipresence_listener started"),
     {'ok', #state{}}.
 
@@ -141,18 +132,6 @@ handle_cast({'find_subscriptions_srv'}, #state{subs_pid=_Pid}=State) ->
                                     ,subs_ref=erlang:monitor('process', P)
                                    }}
     end;
-handle_cast({'find_presences_srv'}, #state{presences_pid=_Pid}=State) ->
-    case omnipresence_sup:presences_srv() of
-        'undefined' ->
-            lager:debug("no presences_pid found"),
-            gen_listener:cast(self(), {'find_presences_srv'}),
-            {'noreply', State#state{presences_pid='undefined'}};
-        P when is_pid(P) ->
-            lager:debug("new presences pid: ~p", [P]),
-            {'noreply', State#state{presences_pid=P
-                                    ,presences_ref=erlang:monitor('process', P)
-                                   }}
-    end;
 
 handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
     {'noreply', State};
@@ -181,13 +160,6 @@ handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
     {'noreply', State#state{subs_pid='undefined'
                             ,subs_ref='undefined'
                            }};
-handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{presences_pid=Pid
-                                                      ,presences_ref=Ref
-                                                     }=State) ->
-    gen_listener:cast(self(), {'find_presences_srv'}),
-    {'noreply', State#state{presences_pid='undefined'
-                            ,presences_ref='undefined'
-                           }};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -200,12 +172,8 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{subs_pid=S
-                           ,presences_pid=P
-                          }) ->
-    {'reply', [{'omnip_subscriptions', S}
-               ,{'omnip_presences', P}
-              ]}.
+handle_event(_JObj, #state{subs_pid=S}) ->
+    {'reply', [{'omnip_subscriptions', S}]}.
 
 %%--------------------------------------------------------------------
 %% @private

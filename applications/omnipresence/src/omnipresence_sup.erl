@@ -22,16 +22,9 @@
                         ,{'find_me_function', fun ?MODULE:subscriptions_srv/0}
                        ]).
 
--define(PRESENCES_ETS_OPTS, [{'table_id', omnip_presences:table_id()}
-                             ,{'table_options', omnip_presences:table_config()}
-                             ,{'find_me_function', fun ?MODULE:presences_srv/0}
-                            ]).
-
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER_NAME_ARGS('kazoo_etsmgr_srv', 'omnipresence_subscriptions_tbl', [?SUBS_ETS_OPTS])
-                   ,?WORKER_NAME_ARGS('kazoo_etsmgr_srv', 'omnipresence_presences_tbl', [?PRESENCES_ETS_OPTS])
                    ,?WORKER('omnip_subscriptions')
-                   ,?WORKER('omnip_presences')
                    ,?WORKER('omnipresence_listener')
                    ,?WORKER('omnip_shared_listener')
                   ]).
