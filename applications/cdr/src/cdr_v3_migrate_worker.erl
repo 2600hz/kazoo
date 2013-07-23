@@ -11,7 +11,7 @@
 %% API
 -export([migrate_cdr_records/3]).
 
--import("cdr.hrl").
+-include("cdr.hrl").
 
 %%%===================================================================
 %%% API
@@ -22,7 +22,8 @@
 %% @spec
 %% @end
 %%--------------------------------------------------------------------
-migrate_cdr_records(AcctId, Start, End) ->
+migrate_cdr_records(AccountId, FromDate, ToDate) ->
+    lager:debug("Account Id: ~s, Start: ~s, End: ~s", [AccountId, FromDate, ToDate]),
     'ok'.
 
 

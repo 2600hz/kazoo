@@ -26,12 +26,7 @@ start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 start_v3_migrate() ->
-    case cdr_v3_migrate_server:start_link() of
-	{'ok', PID} -> 
-	    lager:debug("Migrate Started"),
-	    gen_server:cast(PID, {'start_migrate'});
-	{'error', E} -> lager:debug("Error when starting cdr migrate process: ~p", [E])
-    end.
+    supervisor:start_child(?MODULE, {?MODULE, {'v3_migrate_server', 'start_link', []}, 'permanent', 5000, 'worker', ['v3_migrate_server']}).
 
 %% ===================================================================
 %% Supervisor callbacks

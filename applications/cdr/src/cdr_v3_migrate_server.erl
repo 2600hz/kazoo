@@ -21,14 +21,14 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {current_account_id :: api_binary(),
-		account_list :: objects(),
-		current_from_date :: api_binary(),
-		current_to_date :: api_binary(),
-		response_pid :: pid(), %% pid of the processing of the response
-		response_ref :: reference() %% monitor ref for the pid
-         }).
--type state() :: #state{}.
+-record(state, {current_account_id :: api_binary()
+		,account_list :: ne_binaries()
+		,date_list :: api_binary()
+		,current_date :: api_binary()
+		,pid :: pid()
+		,ref :: reference()
+	       }).
+
 
 %%%===================================================================
 %%% API
@@ -62,15 +62,9 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:debug("Starting to migrate accounts to the new sharded db format"),
-    lager:debug("Execute Couch View to get all Accounts"),
-    case couch_mgr:get_results(<<"accounts">>, "listing_by_id", []) of
-	{'ok', Accounts} -> init_migrate(Accounts);
-	{'error', _}=E -> {'stop', E}
-    end.
-
-init_migrate(Accounts) ->    
-    lager:debug("Account List: ~p", [Accounts]),
-    {'ok', #state{account_list=Accounts}}.
+    gen_server:cast(self(), 'start_migrate'),
+    {'ok', #state{}}.
+   
 
 %%--------------------------------------------------------------------
 %% @private
@@ -100,16 +94,20 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast('start_migrate', State) ->
+    lager:debug("handle_cast: start_migrate called"),
 
-handle_cast({'start_migrate'}, #state{account_list=Accounts}=State) ->
-    lager:debug("Call to Handle Cast made"),
-    [CurrentAccount | RestAccounts] = Accounts,
-    FromDate = 63541090800,
-    ToDate = 63541177200,
-    {'ok', PID} = spawn_monitor('cdr_v3_migrate_worker', 'migrate_cdr_records', [CurrentAccount]),
-    {'reply', State#state{account_list=RestAccounts, current_account_id=CurrentAccount, current_to_date=ToDate, current_from_date=FromDate}}.
+    %%Make Call to Couch to get all Account Documents
+    [CurrentAccount | RestAccounts]  = whapps_util:get_all_accounts(),
+    [CurrentDate | DateList] = v3_migrate_lib:get_n_month_datetime_list(calendar:local_time(), 4),
+    {PID, REF} = spawn_monitor('cdr_v3_migrate_worker', 'migrate_cdr_records', [CurrentAccount, [CurrentDate]]),
+    {'reply', State#state{account_list=RestAccounts, current_account_id=CurrentAccount, date_list=DateList, current_date=CurrentDate, pid=PID, ref=REF}};
+
+handle_cast('start_next_worker', #state{account_list=AccountList}=State) ->
+    lager:debug("handle_cast: start_next_worker called"),
+    lager:debug("AccountList: ~p", [AccountList]),
+    lager:debug("State: ~p", [State]).
+    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -121,29 +119,26 @@ handle_cast({'start_migrate'}, #state{account_list=Accounts}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(_Info, State) ->
-    {'noreply', State}.
-
-handle_info({'DOWN', Ref, 'process', Pid, Reason}, #state{response_pid=Pid
-                                                          ,response_ref=Ref
+handle_info({'DOWN', Ref, 'process', Pid, Reason}, #state{pid=Pid
+                                                          ,ref=Ref
                                                          }=State) ->
     lager:debug("response pid ~p(~p) down: ~p", [Pid, Ref, Reason]),
     lager:debug("Placeholder for next call"),
-    {'noreply', State#state{response_pid='undefined'}, 'hibernate'};
+    {'noreply', State#state{pid='undefined'}, 'hibernate'}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%% necessary cleaning up. When it returns, the gen_server terminate
 %% with Reason. The return value is ignored.
 %%
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ok.
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -154,8 +149,9 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+    
