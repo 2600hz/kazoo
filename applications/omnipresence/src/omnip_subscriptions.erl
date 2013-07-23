@@ -172,11 +172,15 @@ maybe_send_update(JObj, State) ->
         {'ok', Subs} ->
             [send_update(Update, S) || S <- Subs];
         {'error', 'not_found'} ->
-            lager:debug("no subs for ~s or ~s(~s)", [To, From, Update])
+            lager:debug("no subs for ~s or ~s(~s)", [To, From, State])
     end.
 
 -spec send_update(wh_proplist(), subscription()) -> 'ok'.
-send_update(Update, #omnip_subscription{stalker=S}) ->
+send_update(Update, #omnip_subscription{stalker=S
+                                        ,user=_U
+                                        ,from=_F
+                                       }) ->
+    lager:debug("sending update for ~s from ~s to ~s", [_U, _F, S]),
     whapps_util:amqp_pool_send(Update, fun(API) -> wapi_presence:publish_update(S, API) end).
 
 -spec subscribe_to_record(wh_json:object()) -> subscription().
@@ -305,7 +309,7 @@ handle_cast({'subscribe', #omnip_subscription{user=_U
         {'ok', #omnip_subscription{timestamp=_T
                                    ,expires=_E
                                   }=O} ->
-            lager:debug("found subscription, removing old subscription (had ~p s left)", [_E - wh_util:elapsed_s(_T)]),
+            lager:debug("found subscription for ~s, removing old subscription (had ~p s left)", [_U, _E - wh_util:elapsed_s(_T)]),
             ets:delete_object(table_id(), O);
         {'error', 'not_found'} -> 'ok'
     end,
