@@ -27,9 +27,10 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
-                   ,{'presence', [{'restrict_to', ['update', 'reset', 'search_req']}]}
+                   ,{'presence', [{'restrict_to', ['update', 'reset']}]}
                    %% channel events that toggle presence lights
                    ,{'call', [{'restrict_to', ['new_channel', 'answered_channel', 'destroy_channel']}]}
+                   ,{'notifications', [{'restrict_to', ['presence_update']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_new_channel'}
                       ,[{<<"channel">>, <<"new">>}]
@@ -39,6 +40,9 @@
                       }
                      ,{{'omnip_subscriptions', 'handle_destroy_channel'}
                        ,[{<<"channel">>, <<"destroy">>}]
+                      }
+                     ,{{'omnip_subscriptions', 'handle_presence_update'}
+                       ,[{<<"notification">>, <<"presence_update">>}]
                       }
                      ,{{'omnip_subscriptions', 'handle_subscribe'}
                        ,[{<<"presence">>, <<"subscription">>}]

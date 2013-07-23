@@ -16,6 +16,8 @@
          ,handle_new_channel/2
          ,handle_destroy_channel/2
          ,handle_answered_channel/2
+         ,handle_presence_update/2
+
          ,handle_search_req/2
          ,handle_reset/2
 
@@ -137,6 +139,10 @@ handle_subscribe(JObj, Props) ->
                       ,{'subscribe', subscribe_to_record(JObj)}
                      ).
 
+handle_presence_update(JObj, _Props) ->
+    'true' = wapi_notifications:presence_update_v(JObj),
+    maybe_send_update(JObj, wh_json:get_value(<<"State">>, JObj)).
+
 handle_new_channel(JObj, _Props) ->
     'true' = wapi_call:new_channel_v(JObj),
     wh_util:put_callid(JObj),
@@ -160,14 +166,15 @@ handle_destroy_channel(JObj, _Props) ->
 
 -spec maybe_send_update(wh_json:object(), ne_binary()) -> any().
 maybe_send_update(JObj, State) ->
-    Update = [{<<"To">>, To = wh_json:get_value(<<"To">>, JObj)}
-              ,{<<"From">>, From = wh_json:get_value(<<"From">>, JObj)}
-              ,{<<"State">>, State}
-              ,{<<"Direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
-              ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-              ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ],
+    Update = props:filter_undefined(
+               [{<<"To">>, To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj)}
+                ,{<<"From">>, From = wh_json:get_value(<<"From">>, JObj)}
+                ,{<<"State">>, State}
+                ,{<<"Direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
+                ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
     case find_subscriptions(To, From) of
         {'ok', Subs} ->
             [send_update(Update, S) || S <- Subs];
@@ -178,9 +185,10 @@ maybe_send_update(JObj, State) ->
 -spec send_update(wh_proplist(), subscription()) -> 'ok'.
 send_update(Update, #omnip_subscription{stalker=S
                                         ,protocol=P
+                                        ,from=F
                                        }) ->
     To = props:get_value(<<"To">>, Update),
-    From = props:get_value(<<"From">>, Update),
+    From = props:get_value(<<"From">>, Update, F),
 
     lager:debug("sending update '~s' for '~s' from '~s' to '~s'", [props:get_value(<<"State">>, Update), To, From, S]),
 

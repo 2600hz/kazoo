@@ -29,7 +29,7 @@
 -define(BINDINGS, [{'self', []}
                    ,{'omnipresence', [{'restrict_to', ['subscribe', 'presence_update']}]}
                    %% new Kamailio presence APIs
-                   ,{'presence', [{'restrict_to', ['subscribe']}]}
+                   ,{'presence', [{'restrict_to', ['subscribe', 'search_req']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_search_req'}
                        ,[{<<"presence">>, <<"search_req">>}]
