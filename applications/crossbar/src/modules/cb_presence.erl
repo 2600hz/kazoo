@@ -67,17 +67,17 @@ resource_exists(_, ?RESET) -> 'true'.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
--spec validate(#cb_context{}, path_token(), ne_binary()) -> #cb_context{}.
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
 validate(#cb_context{req_verb = ?HTTP_GET, account_id=AccountId}=Context) ->
     Doc = cb_context:doc(crossbar_doc:load(AccountId, Context)),
     Realm = wh_json:get_value(<<"realm">>, Doc),
     publish_search_req(Realm, Context).
 
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, _, ?RESET) ->
-    Context#cb_context{resp_status=success}.
+    Context#cb_context{resp_status='success'}.
 
--spec post(#cb_context{}, path_token(), ne_binary()) -> #cb_context{}.
+-spec post(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
 post(#cb_context{}=Context, User, ?RESET) ->
     [Username, Realm|_] = binary:split(User, <<"@">>),
     Req = [{<<"Username">>, Username}
