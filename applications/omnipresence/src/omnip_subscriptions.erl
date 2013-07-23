@@ -179,9 +179,19 @@ maybe_send_update(JObj, State) ->
 send_update(Update, #omnip_subscription{stalker=S
                                         ,user=_U
                                         ,from=_F
+                                        ,protocol=P
                                        }) ->
-    lager:debug("sending update for ~s from ~s to ~s", [_U, _F, S]),
-    whapps_util:amqp_pool_send(Update, fun(API) -> wapi_presence:publish_update(S, API) end).
+    To = props:get_value(<<"To">>, Update),
+    From = props:get_value(<<"From">>, Update),
+
+    lager:debug("sending update for ~s from ~s to '~s'", [_U, _F, S]),
+
+    whapps_util:amqp_pool_send([{<<"To">>, <<P/binary, ":", To/binary>>}
+                                ,{<<"From">>, <<P/binary, ":", From/binary>>}
+                                | props:delete_keys([<<"To">>, <<"From">>], Update)
+                               ]
+                               ,fun(API) -> wapi_presence:publish_update(S, API) end
+                              ).
 
 -spec subscribe_to_record(wh_json:object()) -> subscription().
 subscribe_to_record(JObj) ->
@@ -191,6 +201,7 @@ subscribe_to_record(JObj) ->
     S = wh_json:get_first_defined([<<"Queue">>, <<"Server-ID">>], JObj),
     E = expires(JObj),
 
+    lager:debug("subscribe for ~s from ~s", [U, F]),
     #omnip_subscription{user=U
                         ,from=F
                         ,stalker=S
