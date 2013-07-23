@@ -4,7 +4,7 @@
 -define(UPDATES_EXCHANGE, <<"dialoginfo">>).
 
 -define(SUBSCRIBE_HEADERS, [<<"User">>, <<"Expires">>]).
--define(OPTIONAL_SUBSCRIBE_HEADERS, [<<"Queue">>]).
+-define(OPTIONAL_SUBSCRIBE_HEADERS, [<<"Queue">>, <<"From">>]).
 -define(SUBSCRIBE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                            ,{<<"Event-Name">>, <<"subscription">>}
                           ]).
@@ -15,7 +15,9 @@
                          ]).
 
 -define(UPDATE_HEADERS, [<<"To">>, <<"From">>, <<"State">>]).
--define(OPTIONAL_UPDATE_HEADERS, [<<"From-Tag">>, <<"To-Tag">>, <<"Call-ID">>]).
+-define(OPTIONAL_UPDATE_HEADERS, [<<"From-Tag">>, <<"To-Tag">>
+                                  ,<<"Call-ID">>, <<"Direction">>
+                                 ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                         ,{<<"Event-Name">>, <<"update">>}
                         ,{<<"State">>, ?PRESENCE_STATES}

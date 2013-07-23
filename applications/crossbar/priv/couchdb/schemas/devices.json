@@ -360,7 +360,7 @@
                "name":"IP (sip)",
                "type":"string",
                "description":"IP address for this device",
-               "required":false,
+               "required":false
             }
          },
          "default":{

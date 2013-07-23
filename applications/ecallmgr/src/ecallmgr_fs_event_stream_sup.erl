@@ -48,7 +48,6 @@ init([Node, Props]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     Children = create_children_spec(Node, Props),
-
     {'ok', {SupFlags, Children}}.
 
 create_children_spec(Node, Props) ->

@@ -11,7 +11,6 @@
 
 -export([start_link/0
          ,subscriptions_srv/0
-         ,presences_srv/0
         ]).
 -export([init/1]).
 
@@ -22,16 +21,9 @@
                         ,{'find_me_function', fun ?MODULE:subscriptions_srv/0}
                        ]).
 
--define(PRESENCES_ETS_OPTS, [{'table_id', omnip_presences:table_id()}
-                             ,{'table_options', omnip_presences:table_config()}
-                             ,{'find_me_function', fun ?MODULE:presences_srv/0}
-                            ]).
-
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER_NAME_ARGS('kazoo_etsmgr_srv', 'omnipresence_subscriptions_tbl', [?SUBS_ETS_OPTS])
-                   ,?WORKER_NAME_ARGS('kazoo_etsmgr_srv', 'omnipresence_presences_tbl', [?PRESENCES_ETS_OPTS])
                    ,?WORKER('omnip_subscriptions')
-                   ,?WORKER('omnip_presences')
                    ,?WORKER('omnipresence_listener')
                    ,?WORKER('omnip_shared_listener')
                   ]).
@@ -53,13 +45,6 @@ start_link() ->
 -spec subscriptions_srv() -> pid() | 'undefined'.
 subscriptions_srv() ->
     case [P || {_, P, 'worker', ['omnip_subscriptions']} <- supervisor:which_children(?MODULE)] of
-        [] -> 'undefined';
-        [Pid] -> Pid
-    end.
-
--spec presences_srv() -> pid() | 'undefined'.
-presences_srv() ->
-    case [P || {_, P, 'worker', ['omnip_presences']} <- supervisor:which_children(?MODULE)] of
         [] -> 'undefined';
         [Pid] -> Pid
     end.

@@ -51,7 +51,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         true -> wh_api:build_message(Prop, ?ASR_REQ_HEADERS, ?OPTIONAL_ASR_REQ_HEADERS);
@@ -60,7 +60,7 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
 
--spec req_v/1 :: (api_terms()) -> boolean().
+-spec req_v(api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ASR_REQ_HEADERS, ?ASR_REQ_VALUES, ?ASR_REQ_TYPES);
 req_v(JObj) ->
@@ -71,7 +71,7 @@ req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
         true -> wh_api:build_message(Prop, ?ASR_RESP_HEADERS, ?OPTIONAL_ASR_RESP_HEADERS);
@@ -80,7 +80,7 @@ resp(Prop) when is_list(Prop) ->
 resp(JObj) ->
     resp(wh_json:to_proplist(JObj)).
 
--spec resp_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
+-spec resp_v(proplist() | wh_json:object()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ASR_RESP_HEADERS, ?ASR_RESP_VALUES, ?ASR_RESP_TYPES);
 resp_v(JObj) ->
@@ -91,7 +91,7 @@ resp_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec error/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec error(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
         true -> wh_api:build_message(Prop, ?ASR_ERROR_HEADERS, ?OPTIONAL_ASR_ERROR_HEADERS);
@@ -100,7 +100,7 @@ error(Prop) when is_list(Prop) ->
 error(JObj) ->
     error(wh_json:to_proplist(JObj)).
 
--spec error_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
+-spec error_v(proplist() | wh_json:object()) -> boolean().
 error_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ASR_ERROR_HEADERS, ?ASR_ERROR_VALUES, ?ASR_ERROR_TYPES);
 error_v(JObj) ->
@@ -111,7 +111,7 @@ error_v(JObj) ->
 %% bind to a queue to the asr exchange and events
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
+-spec bind_q(binary(), proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:callctl_exchange(),
     amqp_util:bind_q_to_callctl(Queue, ?KEY_ASR_REQ).
@@ -121,7 +121,7 @@ bind_q(Queue, _Props) ->
 %% unbind to a queue to the asr exchange and events
 %% @end
 %%--------------------------------------------------------------------
--spec unbind_q/1 :: (binary()) -> 'ok'.
+-spec unbind_q(binary()) -> 'ok'.
 unbind_q(Queue) ->
     amqp_util:unbind_q_from_callctl(Queue).
 
@@ -130,8 +130,8 @@ unbind_q(Queue) ->
 %% prepare and publish an asr request
 %% @end
 %%--------------------------------------------------------------------
--spec publish_req/1 :: (api_terms()) -> 'ok'.
--spec publish_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
+-spec publish_req(api_terms()) -> 'ok'.
+-spec publish_req(api_terms(), ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
@@ -143,8 +143,8 @@ publish_req(Req, ContentType) ->
 %% prepare and publish an asr response
 %% @end
 %%--------------------------------------------------------------------
--spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(Queue, Resp, ContentType) ->
@@ -156,8 +156,8 @@ publish_resp(Queue, Resp, ContentType) ->
 %% prepare and publish an asr error
 %% @end
 %%--------------------------------------------------------------------
--spec publish_error/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_error/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_error(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_error(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_error(Queue, JObj) ->
     publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(Queue, Error, ContentType) ->
