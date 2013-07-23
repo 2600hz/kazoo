@@ -27,8 +27,7 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
-                   %% new Kamailio presence APIs
-                   ,{'presence', [{'restrict_to', ['subscribe', 'update', 'reset']}]}
+                   ,{'presence', [{'restrict_to', ['update', 'reset', 'search_req']}]}
                    %% channel events that toggle presence lights
                    ,{'call', [{'restrict_to', ['new_channel', 'answered_channel', 'destroy_channel']}]}
                   ]).

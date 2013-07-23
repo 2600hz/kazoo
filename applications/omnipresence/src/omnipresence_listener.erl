@@ -28,13 +28,17 @@
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
                    ,{'omnipresence', [{'restrict_to', ['subscribe', 'presence_update']}]}
-                   ,{'presence', [{'restrict_to', ['search_req']}]}
+                   %% new Kamailio presence APIs
+                   ,{'presence', [{'restrict_to', ['subscribe']}]}
                   ]).
--define(RESPONDERS, [{{'omnip_subscriptions', 'handle_subscribe_only'}
-                      ,[{<<"presence">>, <<"subscription">>}]
-                     }
-                     ,{{'omnip_subscriptions', 'handle_search_req'}
+-define(RESPONDERS, [{{'omnip_subscriptions', 'handle_search_req'}
                        ,[{<<"presence">>, <<"search_req">>}]
+                      }
+                     ,{{'omnip_subscriptions', 'handle_subscribe'}
+                       ,[{<<"presence">>, <<"subscription">>}]
+                      }
+                     ,{{'omnip_subscriptions', 'handle_reset'}
+                       ,[{<<"presence">>, <<"reset">>}]
                       }
                     ]).
 
