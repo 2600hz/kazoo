@@ -16,7 +16,7 @@
 -export([to_querystring/1]).
 -export([recursive_to_proplist/1]).
 
--export([get_first_defined/2]).
+-export([get_first_defined/2, get_first_defined/3]).
 -export([get_binary_boolean/2, get_binary_boolean/3]).
 -export([get_integer_value/2, get_integer_value/3]).
 -export([get_number_value/2, get_number_value/3]).
@@ -422,10 +422,14 @@ find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
         V -> V
     end.
 
-get_first_defined([], _JObj) -> 'undefined';
-get_first_defined([H|T], JObj) ->
+-spec get_first_defined(keys(), object()) -> 'undefined' | json_term().
+-spec get_first_defined(keys(), object(), Default) -> Default | json_term().
+get_first_defined(Keys, JObj) -> get_first_defined(Keys, JObj, 'undefined').
+
+get_first_defined([], _JObj, Default) -> Default;
+get_first_defined([H|T], JObj, Default) ->
     case ?MODULE:get_value(H, JObj) of
-        'undefined' -> get_first_defined(T, JObj);
+        'undefined' -> get_first_defined(T, JObj, Default);
         V -> V
     end.
 
