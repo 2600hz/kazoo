@@ -161,7 +161,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec maybe_save_in_account(api_binary(), api_binary(), wh_json:object()) -> 'ok'.
 maybe_save_in_account('undefined', _, JObj) ->
-    save_in_anonymous_cdrs(JObj);
+    cdr_util:save_in_anonymous_cdrs(JObj);
 maybe_save_in_account(AccountId, Timestamp, JObj) ->
     DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
     {{CDRYear, CDRMonth, _}, {_, _, _}} = DateTime,
@@ -173,48 +173,9 @@ maybe_save_in_account(AccountId, Timestamp, JObj) ->
     J = wh_doc:update_pvt_parameters(JObj, CDRDb, Props),
     J1 = wh_json:set_value(<<"_id">>, DocId, J),
     lager:debug("JSON: ~p", [J1]),
-    case save_cdr(CDRDb, J1) of
-        {'error', 'max_retries'} -> save_in_anonymous_cdrs(J1);
+    case cdr_util:save_cdr(CDRDb, J1) of
+        {'error', 'max_retries'} -> cdr_util:save_in_anonymous_cdrs(J1);
         'ok' -> 'ok'
     end.
-
--spec save_cdr(api_binary(), wh_json:object()) -> 'ok'.
-save_cdr(CDRDb, Doc) ->
-  save_cdr(CDRDb, Doc, 0).
-
-%-spec save_cdr(api_binary(), wh_json:object(), 0..?MAX_RETRIES) -> {'error', 'max_retries'};
-%	      (api_binary(), wh_json:object(), integer()) -> 'ok'. 
-save_cdr(_, _, ?MAX_RETRIES) -> {'error', 'max_retries'};
-
-save_cdr(CDRDb, Doc, Retries) ->
-  case couch_mgr:save_doc(CDRDb, Doc) of
-    {'error', 'not_found'} ->
-	  couch_mgr:db_create(CDRDb),
-	  save_cdr(CDRDb, Doc, Retries);
-    {'ok', _} -> 'ok';
-    {'error', _} -> save_cdr(CDRDb, Doc, Retries+1)
-  end.
-
--spec save_in_anonymous_cdrs(wh_json:object()) -> 'ok'.
-save_in_anonymous_cdrs(JObj) ->
-    Props = [{'type', 'cdr'}
-             ,{'crossbar_doc_vsn', 2}
-            ],
-    J = wh_doc:update_pvt_parameters(JObj, ?WH_ANONYMOUS_CDR_DB, Props),
-    case couch_mgr:save_doc(?WH_ANONYMOUS_CDR_DB, J) of
-        {'error', 'not_found'} ->
-            'undefined' = get('attempted_db_create'),
-            _ = create_anonymous_cdr_db(),
-            put('attempted_db_create', 'true'),
-            save_in_anonymous_cdrs(JObj);
-        {'error', 'conflict'} -> 'ok';
-        {'ok', _} -> 'ok'
-    end.
-
--spec create_anonymous_cdr_db() -> {'ok', wh_json:object()} |
-                                   {'error', term()}.
-create_anonymous_cdr_db() ->
-    couch_mgr:db_create(?WH_ANONYMOUS_CDR_DB),
-    couch_mgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>).
 
 
