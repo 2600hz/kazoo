@@ -37,6 +37,8 @@
 
 -export([from_list/1, merge_jobjs/2]).
 
+-export([load_fixture_from_file/2]).
+
 -export([normalize_jobj/1
          ,normalize/1
          ,normalize_key/1
@@ -626,6 +628,32 @@ replace_in_list(1, V1, [_OldV | Vs], Acc) ->
     lists:reverse([V1 | Acc]) ++ Vs;
 replace_in_list(N, V1, [V | Vs], Acc) ->
     replace_in_list(N-1, V1, Vs, [V | Acc]).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Read a json fixture file from the filesystem into memory
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec load_fixture_from_file(atom(), nonempty_string() | ne_binary()) ->
+                                {'ok', wh_json:object()} |
+                                {'error', atom()}.
+load_fixture_from_file(App, File) ->
+    Path = list_to_binary([code:priv_dir(App), "/couchdb/", wh_util:to_list(File)]),
+    lager:debug("read fixture from filesystem whapp ~s from CouchDB JSON file: ~s", [App, Path]),
+    try
+        {'ok', Bin} = file:read_file(Path),
+        decode(Bin)
+    catch
+        _Type:{'badmatch',{'error',Reason}} ->
+            lager:debug("badmatch error: ~p", [Reason]),
+            {'error', 'changeme'};
+        _Type:Reason ->
+            lager:debug("exception: ~p", [Reason]),
+            {'error', 'changeme'}
+    end.
+
+
 
 %%--------------------------------------------------------------------
 %% @doc
