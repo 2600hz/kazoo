@@ -23,7 +23,7 @@
          ,table_config/0
 
          ,find_subscription/1
-         ,find_subscriptions/1
+         ,find_subscriptions/2
 
          ,search_for_subscriptions/1, search_for_subscriptions/2
 
@@ -110,7 +110,7 @@ handle_reset(JObj, _Props) ->
 
     User = <<Username/binary, "@", Realm/binary>>,
 
-    case find_subscriptions(#omnip_subscription{user=User}) of
+    case find_subscriptions(User) of
         {'error', 'not_found'} -> 'ok';
         {'ok', Subs} ->
             lager:debug("sending flushes for ~s", [User]),
@@ -141,66 +141,43 @@ handle_new_channel(JObj, _Props) ->
     'true' = wapi_call:new_channel_v(JObj),
     wh_util:put_callid(JObj),
 
-    From = wh_json:get_value(<<"From">>, JObj),
-    Req = wh_json:get_value(<<"Request">>, JObj),
-
     lager:debug("new channel"),
-    maybe_send_update(From, JObj, ?PRESENCE_RINGING),
-    maybe_send_update(Req, JObj, ?PRESENCE_RINGING).
+    maybe_send_update(JObj, ?PRESENCE_RINGING).
 
 handle_answered_channel(JObj, _Props) ->
     'true' = wapi_call:answered_channel_v(JObj),
     wh_util:put_callid(JObj),
 
-    From = wh_json:get_value(<<"From">>, JObj),
-    Req = wh_json:get_value(<<"Request">>, JObj),
-
     lager:debug("answered channel"),
-    maybe_send_update(From, JObj, ?PRESENCE_ANSWERED),
-    maybe_send_update(Req, JObj, ?PRESENCE_ANSWERED).
+    maybe_send_update(JObj, ?PRESENCE_ANSWERED).
 
 handle_destroy_channel(JObj, _Props) ->
     'true' = wapi_call:destroy_channel_v(JObj),
     wh_util:put_callid(JObj),
 
-    From = wh_json:get_value(<<"From">>, JObj),
-    Req = wh_json:get_value(<<"Request">>, JObj),
-
     lager:debug("destroy channel"),
-    maybe_send_update(From, JObj, ?PRESENCE_HANGUP),
-    maybe_send_update(Req, JObj, ?PRESENCE_HANGUP).
+    maybe_send_update(JObj, ?PRESENCE_HANGUP).
 
--spec maybe_send_update(ne_binary(), wh_json:object(), ne_binary()) -> any().
-maybe_send_update(User, JObj, Update) ->
-    case find_subscriptions(User) of
+-spec maybe_send_update(wh_json:object(), ne_binary()) -> any().
+maybe_send_update(JObj, State) ->
+    Update = [{<<"To">>, To = wh_json:get_value(<<"To">>, JObj)}
+              ,{<<"From">>, From = wh_json:get_value(<<"From">>, JObj)}
+              ,{<<"State">>, State}
+              ,{<<"Direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
+              ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+              ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ],
+    case find_subscriptions(To, From) of
         {'ok', Subs} ->
-            [send_update(Update, JObj, S) || S <- Subs];
+            [send_update(Update, S) || S <- Subs];
         {'error', 'not_found'} ->
-            lager:debug("no subs for ~s(~s)", [User, Update])
+            lager:debug("no subs for ~s or ~s(~s)", [To, From, Update])
     end.
 
-
--spec send_update(ne_binary(), wh_json:object(), subscription()) -> 'ok'.
-send_update(Update, JObj, #omnip_subscription{user=U
-                                              ,from=F
-                                              ,stalker=S
-                                              ,protocol=P
-                                             }) ->
-    UpdateTo = <<P/binary, ":", U/binary>>,
-    UpdateFrom = <<P/binary, ":", F/binary>>,
-
-    Prop = [{<<"To">>, UpdateTo}
-            ,{<<"From">>, UpdateFrom}
-            ,{<<"State">>, Update}
-            ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
-
-    lager:debug("sending update '~s' to ~s from ~s (~s)", [Update, UpdateTo, UpdateFrom, S]),
-
-    whapps_util:amqp_pool_send(Prop, fun(API) -> wapi_presence:publish_update(S, API) end),
-    whapps_util:amqp_pool_send(Prop, fun wapi_omnipresence:publish_presence_update/1).
+-spec send_update(wh_proplist(), subscription()) -> 'ok'.
+send_update(Update, #omnip_subscription{stalker=S}) ->
+    whapps_util:amqp_pool_send(Update, fun(API) -> wapi_presence:publish_update(S, API) end).
 
 -spec subscribe_to_record(wh_json:object()) -> subscription().
 subscribe_to_record(JObj) ->
@@ -364,19 +341,38 @@ find_subscription(#omnip_subscription{user=U
             {'ok', Sub}
     end.
 
--spec find_subscriptions(subscription() | ne_binary()) ->
+-spec find_subscriptions(ne_binary()) ->
                                 {'ok', subscriptions()} |
                                 {'error', 'not_found'}.
-find_subscriptions(#omnip_subscription{user=U}) ->
-    case ets:match_object(table_id(), #omnip_subscription{user=U
-                                                          ,_='_'
-                                                         })
+-spec find_subscriptions(ne_binary(), ne_binary()) ->
+                                {'ok', subscriptions()} |
+                                {'error', 'not_found'}.
+find_subscriptions(User) ->
+    case ets:select(table_id(), [{#omnip_subscription{user='$1'
+                                                      ,_='_'
+                                                     }
+                                  ,[{'=:=', '$1', {'const', User}}]
+                                  ,['$_']
+                                 }])
     of
         [] -> {'error', 'not_found'};
         Subs -> {'ok', Subs}
-    end;
-find_subscriptions(User) when is_binary(User) ->
-    find_subscriptions(#omnip_subscription{user=User}).
+    end.
+
+find_subscriptions(To, From) ->
+    case ets:select(table_id(), [{#omnip_subscription{user='$1'
+                                                      ,_='_'
+                                                     }
+                                  ,[{'orelse'
+                                     ,{'=:=', '$1', {'const', To}}
+                                     ,{'=:=', '$1', {'const', From}}
+                                    }]
+                                  ,['$_']
+                                 }])
+    of
+        [] -> {'error', 'not_found'};
+        Subs -> {'ok', Subs}
+    end.
 
 expire_old_subscriptions() ->
     Now = wh_util:current_tstamp(),

@@ -15,7 +15,9 @@
                          ]).
 
 -define(UPDATE_HEADERS, [<<"To">>, <<"From">>, <<"State">>]).
--define(OPTIONAL_UPDATE_HEADERS, [<<"From-Tag">>, <<"To-Tag">>, <<"Call-ID">>]).
+-define(OPTIONAL_UPDATE_HEADERS, [<<"From-Tag">>, <<"To-Tag">>
+                                  ,<<"Call-ID">>, <<"Direction">>
+                                 ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                         ,{<<"Event-Name">>, <<"update">>}
                         ,{<<"State">>, ?PRESENCE_STATES}
