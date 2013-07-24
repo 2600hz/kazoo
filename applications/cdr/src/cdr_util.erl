@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author  <bwann@kazoodev.bwann-kazoo.local>
-%%% @copyright (C) 2013, 
+%%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
-%%%
+%%% Utility module for CDR operations
 %%% @end
-%%% Created : 26 Jun 2013 by  <bwann@kazoodev.bwann-kazoo.local>
+%%% @contributors
+%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(cdr_util).
 
@@ -19,27 +19,27 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec get_cdr_doc_id(integer(), integer()) -> ne_binary().
+-spec get_cdr_doc_id(pos_integer(), pos_integer()) -> ne_binary().
 get_cdr_doc_id(Year, Month) ->
     <<(wh_util:to_binary(Year))/binary, (wh_util:pad_month(Month))/binary, "-", (couch_mgr:get_uuid())/binary>>.
 
 
 -spec save_cdr(api_binary(), wh_json:object()) -> 'ok'.
 save_cdr(AccountMOD, Doc) ->
-  save_cdr(AccountMOD, Doc, 0).
+    save_cdr(AccountMOD, Doc, 0).
 
-%-spec save_cdr(api_binary(), wh_json:object(), 0..?MAX_RETRIES) -> {'error', 'max_retries'};
-%	      (api_binary(), wh_json:object(), integer()) -> 'ok'. 
+-spec save_cdr(api_binary(), wh_json:object(), 0..?MAX_RETRIES) -> 
+                      {'error', 'max_retries'} | 'ok'.
 save_cdr(_, _, ?MAX_RETRIES) -> {'error', 'max_retries'};
 
 save_cdr(AccountMOD, Doc, Retries) ->
-  case couch_mgr:save_doc(AccountMOD, Doc) of
-    {'error', 'not_found'} ->
-	  couch_mgr:db_create(AccountMOD),
-	  save_cdr(AccountMOD, Doc, Retries);
-    {'ok', _} -> 'ok';
-    {'error', _} -> save_cdr(AccountMOD, Doc, Retries+1)
-  end.
+    case couch_mgr:save_doc(AccountMOD, Doc) of
+        {'error', 'not_found'} ->
+            couch_mgr:db_create(AccountMOD),
+            save_cdr(AccountMOD, Doc, Retries);
+        {'ok', _} -> 'ok';
+        {'error', _} -> save_cdr(AccountMOD, Doc, Retries+1)
+    end.
 
 -spec save_in_anonymous_cdrs(wh_json:object()) -> 'ok'.
 save_in_anonymous_cdrs(JObj) ->

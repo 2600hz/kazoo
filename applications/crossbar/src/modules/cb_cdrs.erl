@@ -132,33 +132,40 @@ load_view(View, ViewOptions, Context) ->
                       ,whapps_config:get_is_true(?CONFIG_CAT, <<"calcuate_internal_cost_for_local_resources">>, 'false')
                      }
              end,
-
+    
     {_,ToDate,FromDate} = get_filter_params(Context),
-
+    
     case {cdr_db(FromDate, Context), cdr_db(ToDate, Context)} of
 	{Db, Db} -> 
-	    Context1 = fetch_from_db(G, L, View, ViewOptions, cb_context:set_account_db(Context,Db)),
-	    case cb_context:resp_status(Context1) of
-		'success' ->
-		    CDRs = cb_context:doc(Context1),
-		    cb_context:set_resp_data(Context1, CDRs);
-		_ -> Context1
-	    end;
+	    load_view_matching_db(View, ViewOptions, G, L, Context, Db);
 	{PastDb, PresentDb} ->
-	    Context1 = fetch_from_db(G, L, View, ViewOptions, cb_context:set_account_db(Context, PastDb)),
-	    case cb_context:resp_status(Context1) of
-		'success' -> 
-		    PastCDRs = cb_context:doc(Context1),
-		    Context2 = fetch_from_db(G, L, View, ViewOptions, cb_context:set_account_db(Context, PresentDb)),
-		    case cb_context:resp_status(Context2) of
-			'success' ->
-			    PresentCDRs = cb_context:doc(Context2),
-			    cb_context:set_resp_data(Context2, PastCDRs ++ PresentCDRs)
-		    end;
-		'error'  -> Context1
-	    end
+            load_view_spanning_dbs(View, ViewOptions, G, L, Context, PastDb, PresentDb)	    
     end.
 
+load_view_matching_db(View, ViewOptions, G, L, Context, Db) ->
+    Context1 = fetch_from_db(G, L, View, ViewOptions, cb_context:set_account_db(Context,Db)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            CDRs = cb_context:doc(Context1),
+            cb_context:set_resp_data(Context1, CDRs);
+        _ -> Context1
+    end.
+
+load_view_spanning_dbs(View, ViewOptions, G, L, Context, PastDb, PresentDb) ->
+    Context1 = fetch_from_db(G, L, View, ViewOptions, cb_context:set_account_db(Context, PastDb)),
+    case cb_context:resp_status(Context1) of
+        'success' -> 
+            PastCDRs = cb_context:doc(Context1),
+            Context2 = fetch_from_db(G, L, View, ViewOptions, cb_context:set_account_db(Context, PresentDb)),
+            case cb_context:resp_status(Context2) of
+                'success' ->
+                    PresentCDRs = cb_context:doc(Context2),
+                    cb_context:set_resp_data(Context2, PastCDRs ++ PresentCDRs)
+            end;
+        'error'  -> Context1
+    end.
+
+-spec fetch_from_db(boolean(), boolean(), ne_binary(), wh_proplist(), cb_context:context()) -> api_objects().
 fetch_from_db(G, L, View, ViewOptions, #cb_context{query_json=JObj}=Context) ->
     crossbar_doc:load_view(View
                            ,maybe_load_doc(G, L, ViewOptions)
@@ -168,6 +175,7 @@ fetch_from_db(G, L, View, ViewOptions, #cb_context{query_json=JObj}=Context) ->
                            ,fun(CDR, Acc) -> normalize_view_results(CDR, Acc, G, L) end
                           ).
 
+-spec maybe_add_design_doc(ne_binary()) -> 'ok' | {'error', 'not_found'}.
 maybe_add_design_doc(CDRDb) ->
     case couch_mgr:open_doc(CDRDb, <<"_design/cdrs">>) of
 	{'error', 'not_found'} -> couch_mgr:load_doc_from_file(CDRDb, 'crossbar', <<"account/cdrs.json">>);
@@ -181,6 +189,7 @@ maybe_load_doc(_, 'true', ViewOptions) ->
 maybe_load_doc(_, _, ViewOptions) ->
     ViewOptions.
 
+-spec cdr_db(pos_integer(), cb_context:context()) -> ne_binary().
 cdr_db(Timestamp, Context) ->
     Db = cdr_db_name(Timestamp, Context),
     case couch_mgr:db_exists(Db) of
@@ -190,11 +199,11 @@ cdr_db(Timestamp, Context) ->
 	'false' -> cb_context:account_db(Context)
     end.
 
+-spec cdr_db_name(pos_integer(), cb_context:context()) -> ne_binary().
 cdr_db_name(Timestamp, Context) ->
-    DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
-    {{CDRYear, CDRMonth, _}, {_, _, _}} = DateTime,
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     #cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, [AccountId]} | _]}=Context,
-    wh_util:format_account_id(AccountId, CDRYear, CDRMonth).
+    wh_util:format_account_id(AccountId, Year, Month).
 
 cdr_db_name(Year, Month, Context) ->
     #cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, [AccountId]} | _]}=Context,
@@ -206,7 +215,7 @@ cdr_db_name(Year, Month, Context) ->
 %% Load a CDR document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_cdr(ne_binary(), cb_context:context()) -> api_object().
 load_cdr(CDRId, Context) ->
     <<Year:4/binary, Month:2/binary, "-", _:32/binary>> = CDRId,
     AcctDb = cdr_db_name(wh_util:to_integer(Year), wh_util:to_integer(Month), Context),
