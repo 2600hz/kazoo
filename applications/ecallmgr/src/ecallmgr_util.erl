@@ -156,31 +156,37 @@ get_interface_properties(Node, Interface) ->
 
 %% retrieves the sip address for the 'to' field
 -spec get_sip_to(wh_proplist()) -> ne_binary().
-get_sip_to(Props) ->   
-    case props:get_value(<<"Call-Direction">>, Props) of
-        <<"outbound">> -> props:get_value(<<"Channel-Presence-ID">>, Props);
-        _Else -> props:get_value(<<"variable_sip_to_uri">>, Props, get_sip_request(Props))
+get_sip_to(Props) ->
+    get_sip_to(Props, props:get_value(<<"Call-Direction">>, Props)).
+get_sip_to(Props, <<"outbound">>) ->
+    case props:get_value(<<"Channel-Presence-ID">>, Props) of
+        'undefined' -> get_sip_request(Props);
+        PresenceId -> PresenceId
+    end;
+get_sip_to(Props, _) ->
+    case props:get_value(<<"variable_sip_to_uri">>, Props) of
+        'undefined' -> get_sip_request(Props);
+        ToUri -> ToUri
     end.
 
 %% retrieves the sip address for the 'from' field
 -spec get_sip_from(wh_proplist()) -> ne_binary().
 get_sip_from(Props) ->
-    case props:get_value(<<"Call-Direction">>, Props) of
-        <<"outbound">> ->
-            Number = props:get_value(<<"Other-Leg-Destination-Number">>, Props),
-            Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                             ,<<"variable_sip_auth_realm">>
-                                            ], Props, ?DEFAULT_REALM),
-            <<Number/binary, "@", Realm/binary>>;
-        _Else ->
-            Default = <<(props:get_value(<<"sip_from_user">>, Props, <<"nouser">>))/binary
-                        ,"@"
-                        ,(props:get_value(<<"sip_from_host">>, Props, ?DEFAULT_REALM))/binary
-                      >>,
-            props:get_first_defined([<<"Channel-Presence-ID">>
-                                     ,<<"variable_sip_from_uri">>
-                                    ], Props, Default)
-    end.
+    get_sip_from(Props, props:get_value(<<"Call-Direction">>, Props)).
+get_sip_from(Props, <<"outbound">>) ->
+    Number = props:get_value(<<"Other-Leg-Destination-Number">>, Props),
+    Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
+                                     ,<<"variable_sip_auth_realm">>
+                                    ], Props, ?DEFAULT_REALM),
+    <<Number/binary, "@", Realm/binary>>;
+get_sip_from(Props, _) ->
+    Default = <<(props:get_value(<<"sip_from_user">>, Props, <<"nouser">>))/binary
+                ,"@"
+                ,(props:get_value(<<"sip_from_host">>, Props, ?DEFAULT_REALM))/binary
+              >>,
+    props:get_first_defined([<<"Channel-Presence-ID">>
+                             ,<<"variable_sip_from_uri">>
+                            ], Props, Default).
 
 %% retrieves the sip address for the 'request' field
 -spec get_sip_request(wh_proplist()) -> ne_binary().
