@@ -40,7 +40,6 @@ generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdr
     wh_cache:flush(),
     case whapps_util:get_account_by_realm(AccountRealm) of
 	{'ok', AccountDb} ->
-	    lager:debug("AccountDB: ~s", [AccountDb]),
 	    {{CurrentYear, CurrentMonth, _},{_,_,_}} = calendar:universal_time(),
 	    DateRange = get_last_n_months(CurrentYear, CurrentMonth, NumMonths),
 	    lists:foreach(fun(Date) -> generate_test_account_cdrs(Date, AccountDb, NumCdrs, CdrJObjFixture) end, DateRange);
@@ -68,18 +67,13 @@ add_cdr_to_test_account(CreatedAtSeconds, AccountDb, CdrJObjFixture) ->
 
     
 delete_test_accounts(NumAccounts, NumMonths) ->
-    lists:foreach(fun({AccountName, _AccountRealm, _User, _Pass}) ->
-			  case whapps_util:get_accounts_by_name(AccountName) of
+    lists:foreach(fun({_AccountName, AccountRealm, _User, _Pass}) ->
+			  case whapps_util:get_account_by_realm(AccountRealm) of
 			      {'ok', AccountDb} -> 
 				  {{CurrentYear, CurrentMonth, _},{_,_,_}} = calendar:universal_time(),
 				  Months = get_last_n_months(CurrentYear, CurrentMonth, NumMonths),
-				  lager:debug("Found Account: ~s", [AccountName]),
-				  lager:debug("DB Name: ~s", [AccountDb]),
 				  AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-				  lager:debug("AccountId ~s", [AccountId]),
-				  
 				  AccountDbShards = [wh_util:format_account_id(AccountId, Year, Month) || {Year, Month} <- Months],
-				  
 				  lists:foreach(fun(AccountShardDb) ->
 							couch_mgr:db_delete(AccountShardDb)
 						end, AccountDbShards),
@@ -89,7 +83,7 @@ delete_test_accounts(NumAccounts, NumMonths) ->
 			      {'multiples', AccountDbs} ->
 				  lager:debug("Found multiple DBS for Account Name: ~p", [AccountDbs]);
 			      {'error', Reason} ->
-				  lager:debug("Failed to find account: ~p [~s]", [Reason, AccountName])
+				  lager:debug("Failed to find account: ~p [~s]", [Reason, _AccountName])
 			  end
 
 			      
