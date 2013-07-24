@@ -49,16 +49,16 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({local, ?MODULE}, ?MODULE, [{responders, ?RESPONDERS}
-                                                        ,{bindings, ?BINDINGS}
-                                                        ,{queue_name, ?QUEUE_NAME}
-                                                        ,{queue_options, ?QUEUE_OPTIONS}
-                                                        ,{consume_options, ?CONSUME_OPTIONS}
-                                                       ], []).
+    gen_listener:start_link({'local', ?MODULE}, ?MODULE, [{'responders', ?RESPONDERS}
+                                                          ,{'bindings', ?BINDINGS}
+                                                          ,{'queue_name', ?QUEUE_NAME}
+                                                          ,{'queue_options', ?QUEUE_OPTIONS}
+                                                          ,{'consume_options', ?CONSUME_OPTIONS}
+                                                         ], []).
 
--spec handle_call_status(wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_call_status(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_status(JObj, _Props) ->
-    true = wapi_call:call_status_req_v(JObj),
+    'true' = wapi_call:call_status_req_v(JObj),
     _ = wh_util:put_callid(JObj),
 
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -153,7 +153,7 @@ handle_info(_Msg, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{}) ->
+handle_event(_JObj, _State) ->
     {'reply', []}.
 
 %%--------------------------------------------------------------------
@@ -167,7 +167,7 @@ handle_event(_JObj, #state{}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{}) ->
+terminate(_Reason, _State) ->
     lager:info("fs calls terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
@@ -202,7 +202,8 @@ call_status_resp(Node, CallId, JObj) ->
             Resp = create_call_status_resp(Props, ChannelCallId =:= CallId),
             MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
             wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj)
-                                               ,wh_json:set_value(<<"Msg-ID">>, MsgId, wh_json:from_list(Resp)))
+                                               ,wh_json:set_value(<<"Msg-ID">>, MsgId, wh_json:from_list(Resp))
+                                              )
     end.
 
 -spec create_call_status_resp(wh_proplist(), boolean()) -> wh_proplist().
@@ -210,10 +211,12 @@ create_call_status_resp(Props, 'true') ->
     {OLCIName, OLCINum} = case props:get_value(<<"Other-Leg-Direction">>, Props) of
                               <<"outbound">> ->
                                   {props:get_value(<<"Other-Leg-Callee-ID-Name">>, Props)
-                                   ,props:get_value(<<"Other-Leg-Callee-ID-Number">>, Props)};
+                                   ,props:get_value(<<"Other-Leg-Callee-ID-Number">>, Props)
+                                  };
                               <<"inbound">> ->
                                   {props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)
-                                   ,props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)};
+                                   ,props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)
+                                  };
                               'undefined' ->
                                   {'undefined', 'undefined'}
                           end,
@@ -223,9 +226,9 @@ create_call_status_resp(Props, 'true') ->
      ,{<<"Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
      ,{<<"Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
      ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props
-                                              ,props:get_value(<<"Caller-Caller-ID-Name">>, Props))}
+                                             ,props:get_value(<<"Caller-Caller-ID-Name">>, Props))}
      ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, Props
-                                              ,props:get_value(<<"Caller-Caller-ID-Number">>, Props))}
+                                               ,props:get_value(<<"Caller-Caller-ID-Number">>, Props))}
      ,{<<"Destination-Number">>, props:get_value(<<"Caller-Destination-Number">>, Props)}
      ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Name">>, OLCIName}
@@ -243,16 +246,16 @@ create_call_status_resp(Props, 'false') ->
                                    ,props:get_value(<<"Caller-Caller-ID-Number">>, Props)};
                               'undefined' ->
                                   {'undefined', 'undefined'}
-                           end,
+                          end,
     [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
      ,{<<"Status">>, <<"active">>}
      ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
      ,{<<"Call-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props)}
      ,{<<"Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
      ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props
-                                              ,props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props))}
+                                             ,props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props))}
      ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, Props
-                                              ,props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props))}
+                                               ,props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props))}
      ,{<<"Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
      ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Name">>, OLCIName}
@@ -262,8 +265,8 @@ create_call_status_resp(Props, 'false') ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)].
 
 -spec uuid_dump(atom(), string() | binary()) ->
-                             {'ok', wh_proplist()} |
-                             'error'.
+                       {'ok', wh_proplist()} |
+                       'error'.
 uuid_dump(Node, UUID) ->
     uuid_dump(Node, UUID, wh_util:to_list(UUID)).
 uuid_dump(Node, UUID, ID) ->

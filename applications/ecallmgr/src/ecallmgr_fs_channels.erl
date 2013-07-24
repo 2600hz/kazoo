@@ -104,12 +104,12 @@ destroy(UUID, Node) ->
 -spec update(ne_binary(), pos_integer(), _) -> 'ok'.
 update(UUID, Key, Value) ->
     updates(UUID, [{Key, Value}]).
-    
+
 -spec updates(ne_binary(), wh_proplist()) -> 'ok'.
 updates(UUID, Updates) ->
     gen_server:call(?MODULE, {'channel_updates', UUID, Updates}).
 
--spec account_summary(ne_binary()) -> channels().
+-spec account_summary(ne_binary()) -> wh_json:object().
 account_summary(AccountId) ->
     MatchSpec = [{#channel{direction = '$1', account_id = '$2', account_billing = '$7'
                            ,authorizing_id = '$3', resource_id = '$4', bridge_id = '$5'
@@ -128,7 +128,7 @@ match_presence(PresenceId) ->
                 ],
     ets:select(?CHANNELS_TBL, MatchSpec).
 
--spec handle_query_auth_id(wh_json:object(), proplist()) -> 'ok'.
+-spec handle_query_auth_id(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_query_auth_id(JObj, _Props) ->
     'true' = wapi_call:query_auth_id_req_v(JObj),
     AuthId = wh_json:get_value(<<"Auth-ID">>, JObj),
@@ -436,7 +436,7 @@ find_by_auth_id(AuthorizingId) ->
 -spec find_by_user_realm(ne_binary(), ne_binary()) ->
                                 {'ok', wh_json:objects()} |
                                 {'error', 'not_found'}.
-find_by_user_realm(Username, Realm) ->    
+find_by_user_realm(Username, Realm) ->
     MatchSpec = [{#channel{username = '$1', realm='$2', _ = '_'}
                   ,[{'=:=', '$1', {'const', Username}}
                     ,{'=:=', '$2', {'const', Realm}}

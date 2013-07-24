@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%% Handles starting/stopping a call recording
 %%%
@@ -20,9 +20,9 @@
 
 -include("../callflow.hrl").
 
--spec start_event_listener(whapps_call:call(), wh_json:json_object()) -> 'ok'.
+-spec start_event_listener(whapps_call:call(), wh_json:object()) -> 'ok'.
 start_event_listener(Call, Data) ->
-    put(callid, whapps_call:call_id(Call)),
+    put('callid', whapps_call:call_id(Call)),
     TimeLimit = get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
     lager:info("listening for record stop (or ~b s), then storing the recording", [TimeLimit]),
 
@@ -39,7 +39,7 @@ start_event_listener(Call, Data) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Action = get_action(wh_json:get_value(<<"action">>, Data)),
     handle(Data, Call, Action),
@@ -51,7 +51,7 @@ handle(Data, Call, <<"start">> = Action) ->
     Format = get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
 
-    _P = cf_exe:add_event_listener(Call, {?MODULE, start_event_listener, [Data]}),
+    _P = cf_exe:add_event_listener(Call, {?MODULE, 'start_event_listener', [Data]}),
 
     lager:info("recording ~s starting, evt listener at ~p", [MediaName, _P]),
     whapps_call_command:record_call(MediaName, Action, TimeLimit, Call);
@@ -65,7 +65,7 @@ handle(Data, Call, <<"stop">> = Action) ->
     save_recording(Call, MediaName, Format).
 
 save_recording(Call, MediaName, Format) ->
-    {ok, MediaJObj} = store_recording_meta(Call, MediaName, Format),
+    {'ok', MediaJObj} = store_recording_meta(Call, MediaName, Format),
     lager:info("stored meta: ~p", [MediaJObj]),
 
     StoreUrl = store_url(Call, MediaJObj),
@@ -75,30 +75,30 @@ save_recording(Call, MediaName, Format) ->
 
 -spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 store_recording(MediaName, StoreUrl, Call) ->
-    ok = whapps_call_command:store(MediaName, StoreUrl, Call).
+    'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).
 
--spec get_action(cf_api_binary()) -> ne_binary().
-get_action(undefined) -> <<"start">>;
+-spec get_action(api_binary()) -> ne_binary().
+get_action('undefined') -> <<"start">>;
 get_action(<<"stop">>) -> <<"stop">>;
 get_action(_) -> <<"start">>.
 
 -spec get_timelimit('undefined' | integer()) -> pos_integer().
-get_timelimit(undefined) ->
+get_timelimit('undefined') ->
     whapps_config:get(?CF_CONFIG_CAT, <<"max_recording_time_limit">>, 600);
 get_timelimit(TL) ->
     case (Max = whapps_config:get(?CF_CONFIG_CAT, <<"max_recording_time_limit">>, 600)) > TL of
-        true -> TL;
-        false when Max > 0 -> Max;
-        false -> Max
+        'true' -> TL;
+        'false' when Max > 0 -> Max;
+        'false' -> Max
     end.
 
-get_format(undefined) -> whapps_config:get(?CF_CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);
+get_format('undefined') -> whapps_config:get(?CF_CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);
 get_format(<<"mp3">> = MP3) -> MP3;
 get_format(<<"wav">> = WAV) -> WAV;
-get_format(_) -> get_format(undefined).
+get_format(_) -> get_format('undefined').
 
 -spec store_recording_meta(whapps_call:call(), ne_binary(), cf_api_binary()) ->
-                                        {'ok', wh_json:json_object()} |
+                                        {'ok', wh_json:object()} |
                                         {'error', any()}.
 store_recording_meta(Call, MediaName, Ext) ->
     AcctDb = whapps_call:account_db(Call),
@@ -133,10 +133,10 @@ get_recording_doc_id(CallId) -> <<"call_recording_", CallId/binary>>.
 get_media_name(CallId, Ext) ->
     <<(get_recording_doc_id(CallId))/binary, ".", Ext/binary>>.
 
--spec store_url(whapps_call:call(), wh_json:json_object()) -> ne_binary().
+-spec store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
 store_url(Call, JObj) ->
     AccountDb = whapps_call:account_db(Call),
     MediaId = wh_json:get_value(<<"_id">>, JObj),
     MediaName = wh_json:get_value(<<"name">>, JObj),
-    {ok, URL} = wh_media_url:store(AccountDb, MediaId, MediaName),
+    {'ok', URL} = wh_media_url:store(AccountDb, MediaId, MediaName),
     URL.

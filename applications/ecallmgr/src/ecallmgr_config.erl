@@ -150,7 +150,8 @@ set(Key, Value, Node) ->
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,props:filter_undefined(Req)
                                   ,fun wapi_sysconf:publish_set_req/1
-                                  ,fun wh_amqp_worker:any_resp/1),
+                                  ,fun wh_amqp_worker:any_resp/1
+                                 ),
     case ReqResp of
         {'error', _R} ->
             lager:debug("set config for key '~s' failed: ~p", [Key, _R]);
@@ -168,5 +169,5 @@ get_response_value(JObj, Default) ->
         Value -> Value
     end.
 
--spec cache_key(term(), atom()) -> {?MODULE, term(), atom()}.
+-spec cache_key(term(), atom() | ne_binary()) -> {?MODULE, term(), atom() | ne_binary()}.
 cache_key(K, Node) -> {?MODULE, K, Node}.

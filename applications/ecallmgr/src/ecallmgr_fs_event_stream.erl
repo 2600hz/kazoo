@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -21,12 +21,13 @@
 
 -include("ecallmgr.hrl").
 
--record(state, {node
-                ,name
-                ,subclass
-                ,ip
-                ,port
-                ,socket}).
+-record(state, {node :: atom()
+                ,name :: atom() | ne_binary()
+                ,subclass :: api_binary()
+                ,ip :: inet:ip_address()
+                ,port :: inet:port_number()
+                ,socket :: inet:socket()
+               }).
 
 %%%===================================================================
 %%% API
@@ -39,6 +40,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link(atom(), atom() | ne_binary(), api_binary()) -> startlink_ret().
 start_link(Node, Name, Subclass) ->
     gen_server:start_link(?MODULE, [Node, Name, Subclass], []).
 
@@ -58,8 +60,15 @@ start_link(Node, Name, Subclass) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Name, Subclass]) ->
+    put('callid', list_to_binary([wh_util:to_binary(Node), $-
+                                  ,wh_util:to_binary(Name), $-
+                                  ,wh_util:to_binary(Subclass)
+                                 ])),
     gen_server:cast(self(), 'request_event_stream'),
-    {'ok', #state{node=Node, name=Name, subclass=Subclass}}.
+    {'ok', #state{node=Node
+                  ,name=Name
+                  ,subclass=Subclass
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -110,7 +119,7 @@ handle_cast('connect', #state{ip=IP, port=Port}=State) ->
             {'noreply', State#state{socket=Socket}};
         {'error', Reason} ->
             {'stop', Reason, State}
-    end;        
+    end;
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -181,13 +190,14 @@ get_event_binding(#state{name=Name, subclass=Subclass}) ->
             ]
     end.
 
+-spec process_event(ne_binary(), atom()) -> any().
 process_event(Data, Node) ->
     case binary_to_term(Data) of
-        {'event', [UUID | Props]} ->
+        {'event', [UUID | Props]} when is_binary(UUID) orelse UUID =:= 'undefined' ->
             wh_util:put_callid(UUID),
             EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
             maybe_send_event(EventName, UUID, Props, Node),
-            process_event(EventName, UUID, Props, Node);   
+            process_event(EventName, UUID, Props, Node);
          _Else ->
             'ok'
     end.
@@ -198,7 +208,7 @@ process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     publish_new_channel_event(Props);
 process_event(<<"CHANNEL_DESTROY">>, _, Props, _) ->
     publish_destroy_channel_event(Props);
-process_event(<<"CHANNEL_ANSWER">>, _, Props, _) ->    
+process_event(<<"CHANNEL_ANSWER">>, _, Props, _) ->
     publish_answered_channel_event(Props);
 process_event(<<"conference::maintenance">>, UUID, Props, Node) ->
     ecallmgr_fs_conferences:event(Node, UUID, Props);
