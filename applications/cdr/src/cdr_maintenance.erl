@@ -4,29 +4,38 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 15 Jul 2013 by Ben Wann <bwann@tickbook.local>
+%%% Created : 24 Jul 2013 by Ben Wann <bwann@tickbook.local>
 %%%-------------------------------------------------------------------
--module(cdr_v3_migrate_worker).
+-module(cdr_maintenance).
 
 %% API
--export([migrate_cdr_records/2]).
+-export([flush/0]).
+-export([stop_v3_migrator/0]).
+-export([start_v3_migrator/0]).
 
 -include("cdr.hrl").
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+-spec flush() -> 'ok'.
+flush() ->
+    wh_cache:flush_local(?CDR_CACHE).
+
+-spec stop_v3_migrator() -> any().
+stop_v3_migrator() ->
+    supervisor:terminate_child('cdr_sup', 'cdr_v3_migrate_server').
+
+-spec start_v3_migrator() -> any().
+start_v3_migrator() ->
+    supervisor:start_child('cdr_sup', 'cdr_v3_migrate_server').
+
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @spec
 %% @end
 %%--------------------------------------------------------------------
-migrate_cdr_records(AccountId, Date) ->
-    lager:debug("Account Id: ~s, Date: ~s", [AccountId, Date]),
-    'ok'.
-
-
 
 %%%===================================================================
 %%% Internal functions

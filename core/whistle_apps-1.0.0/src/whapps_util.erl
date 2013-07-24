@@ -183,6 +183,7 @@ get_all_accounts(Encoding) ->
     {'ok', Databases} = couch_mgr:db_info(),
     [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_account_db(Db)].
 
+is_account_db(<<"account/", _:34/binary, _:7/binary>>) -> 'false';
 is_account_db(<<"account/", _/binary>>) -> 'true';
 is_account_db(<<"account%2f", _/binary>>) -> 'true';
 is_account_db(<<"account%2F", _/binary>>) -> 'true';
