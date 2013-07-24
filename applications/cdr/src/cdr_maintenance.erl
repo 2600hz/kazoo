@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author Ben Wann <bwann@tickbook.local>
-%%% @copyright (C) 2013, Ben Wann
+%%% @Copyright (C) 2010-2013, 2600Hz
 %%% @doc
-%%%
+%%% Maintenance module for migrating CDRs to the new Transient
+%%% Account database sharding structure.
 %%% @end
-%%% Created : 24 Jul 2013 by Ben Wann <bwann@tickbook.local>
+%%% @contributors
+%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(cdr_maintenance).
 
@@ -24,12 +25,11 @@ flush() ->
 
 -spec stop_v3_migrator() -> any().
 stop_v3_migrator() ->
-    supervisor:terminate_child('cdr_sup', 'cdr_v3_migrate_server').
+    cdr_sup:stop_v3_migrate().
 
 -spec start_v3_migrator() -> any().
 start_v3_migrator() ->
-    supervisor:start_child('cdr_sup', 'cdr_v3_migrate_server').
-
+    cdr_sup:start_v3_migrate().
 
 %%--------------------------------------------------------------------
 %% @doc

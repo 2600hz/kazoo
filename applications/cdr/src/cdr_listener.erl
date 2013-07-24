@@ -6,6 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%   Edouard Swiac
+%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(cdr_listener).
 
@@ -61,10 +62,9 @@ start_link() ->
 handle_cdr(JObj, _Props) ->
     'true' = wapi_call:cdr_v(JObj),
     _ = wh_util:put_callid(JObj),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj, couch_mgr:get_uuid()),
     AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj),
     Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
-    maybe_save_in_account(AccountId, Timestamp, wh_json:set_value(<<"_id">>, CallId, wh_json:normalize_jobj(JObj))).
+    maybe_save_in_account(AccountId, Timestamp, wh_json:normalize_jobj(JObj)).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -163,19 +163,15 @@ code_change(_OldVsn, State, _Extra) ->
 maybe_save_in_account('undefined', _, JObj) ->
     cdr_util:save_in_anonymous_cdrs(JObj);
 maybe_save_in_account(AccountId, Timestamp, JObj) ->
-    DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
-    {{CDRYear, CDRMonth, _}, {_, _, _}} = DateTime,
-    CDRDb = wh_util:format_account_id(AccountId, CDRYear, CDRMonth),
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    AccountMODb = wh_util:format_account_id(AccountId, Year, Month),
     Props = [{'type', 'cdr'}
              ,{'crossbar_doc_vsn', 2}
             ],
-    DocId = cdr_util:get_cdr_doc_id(CDRYear, CDRMonth),
-    J = wh_doc:update_pvt_parameters(JObj, CDRDb, Props),
-    J1 = wh_json:set_value(<<"_id">>, DocId, J),
-    lager:debug("JSON: ~p", [J1]),
-    case cdr_util:save_cdr(CDRDb, J1) of
-        {'error', 'max_retries'} -> cdr_util:save_in_anonymous_cdrs(J1);
+    DocId = cdr_util:get_cdr_doc_id(Year, Month),
+    JObj1 = wh_doc:update_pvt_parameters(JObj, AccountMODb, Props),
+    JObj2 = wh_json:set_value(<<"_id">>, DocId, JObj1),
+    case cdr_util:save_cdr(AccountMODb, JObj2) of
+        {'error', 'max_retries'} -> lager:error("Could not write CDR to AccountMODb: ~s", [AccountMODb]);
         'ok' -> 'ok'
     end.
-
-
