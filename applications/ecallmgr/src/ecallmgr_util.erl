@@ -174,7 +174,7 @@ get_sip_to(Props, _) ->
 get_sip_from(Props) ->
     get_sip_from(Props, props:get_value(<<"Call-Direction">>, Props)).
 get_sip_from(Props, <<"outbound">>) ->
-    Number = props:get_value(<<"Other-Leg-Destination-Number">>, Props),
+    Number = props:get_value(<<"Other-Leg-Destination-Number">>, Props, <<"nonumber">>),
     Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
                                      ,<<"variable_sip_auth_realm">>
                                     ], Props, ?DEFAULT_REALM),
