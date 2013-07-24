@@ -238,6 +238,12 @@ publish_new_channel_event(Props) ->
         ecallmgr_call_events:create_event_props(<<"CHANNEL_CREATE">>, 'undefined', Props),
     wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_new_channel/1).
 
+-spec publish_answered_channel_event(wh_proplist()) -> 'ok'.
+publish_answered_channel_event(Props) ->
+    Req = wh_api:default_headers(<<"channel">>, <<"answered">>, ?APP_NAME, ?APP_VERSION) ++
+        ecallmgr_call_events:create_event_props(<<"CHANNEL_ANSWER">>, 'undefined', Props),
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_answered_channel/1).
+
 -spec publish_destroy_channel_event(wh_proplist()) -> 'ok'.
 publish_destroy_channel_event(Props) ->
     Req = wh_api:default_headers(<<"channel">>, <<"destroy">>, ?APP_NAME, ?APP_VERSION) ++
@@ -263,12 +269,6 @@ publish_register_event(Props, Node) ->
                        ]
                       ,wapi_registration:success_keys()),
     wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_registration:publish_success/1).
-
--spec publish_answered_channel_event(wh_proplist()) -> 'ok'.
-publish_answered_channel_event(Props) ->
-    Req = wh_api:default_headers(<<"channel">>, <<"answered">>, ?APP_NAME, ?APP_VERSION) ++
-        ecallmgr_call_events:create_event_props(<<"CHANNEL_ANSWER">>, 'undefined', Props),
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_answered_channel/1).
 
 -spec maybe_start_event_listener(atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
 maybe_start_event_listener(Node, UUID) ->

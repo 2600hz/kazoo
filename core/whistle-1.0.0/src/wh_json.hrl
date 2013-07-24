@@ -17,9 +17,6 @@
 -type object() :: ?JSON_WRAPPER(json_proplist()).
 -type objects() :: [object(),...] | [].
 
--type json_object() :: object().
--type json_objects() :: objects().
-
 -type json_string() :: ne_binary() | atom() | pos_integer().
 -type json_strings() :: [json_string()].
 -type json_number() :: integer() | float().
@@ -38,6 +35,6 @@
 -type json_term() :: json_string() | json_number() | json_array() | object() | json_iolist() | <<>>.
 -type json_terms() :: [json_term()].
 
--define(WH_JSON_HRL, true).
+-define(WH_JSON_HRL, 'true').
 -endif.
 

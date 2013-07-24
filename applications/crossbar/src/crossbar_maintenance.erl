@@ -45,6 +45,8 @@ migrate() ->
                    ,fun(L) -> sets:del_element(<<"cb_ts_accounts">>, L) end
                    ,fun(L) -> sets:del_element(<<"cb_local_provisioner_templates">>, L) end
                    ,fun(L) -> sets:del_element(<<"cb_global_provisioner_templates">>, L) end
+                   ,fun(L) -> sets:del_element(<<"cb_servers">>, L) end
+                   ,fun(L) -> sets:del_element(<<"cb_schema">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_phone_numbers">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_templates">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_onboard">>, L) end
@@ -62,14 +64,15 @@ migrate() ->
                    ,fun(L) -> sets:add_element(<<"cb_groups">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_contact_list">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_bulk">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_schemas">>, L) end
                   ],
     UpdatedModules = sets:to_list(lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
     _ = whapps_config:set_default(<<"crossbar">>, <<"autoload_modules">>, UpdatedModules),
-    case whapps_controller:stop_app(crossbar) of
-        ok -> whapps_controller:start_app(crossbar);
-        _Else -> ok
+    case whapps_controller:stop_app('crossbar') of
+        'ok' -> whapps_controller:start_app('crossbar');
+        _Else -> 'ok'
     end,
-    no_return.
+    'no_return'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -103,8 +106,7 @@ refresh(Value) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec start_module(text()) -> 'ok' | {'error', _}.
-start_module(Module) ->
-    crossbar:start_mod(Module).
+start_module(Module) -> crossbar:start_mod(Module).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -113,8 +115,7 @@ start_module(Module) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop_module(text()) -> 'ok' | {'error', _}.
-stop_module(Module) ->
-    crossbar:stop_mod(Module).
+stop_module(Module) -> crossbar:stop_mod(Module).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -122,9 +123,8 @@ stop_module(Module) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec running_modules() -> [atom(),...] | [].
-running_modules() ->
-    crossbar_bindings:modules_loaded().
+-spec running_modules() -> atoms().
+running_modules() -> crossbar_bindings:modules_loaded().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -133,22 +133,22 @@ running_modules() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec find_account_by_number(input_term()) ->
-                                          {'ok', ne_binary()} |
-                                          {'error', term()}.
+                                    {'ok', ne_binary()} |
+                                    {'error', term()}.
 find_account_by_number(Number) when not is_binary(Number) ->
     find_account_by_number(wh_util:to_binary(Number));
 find_account_by_number(Number) ->
     case wh_number_manager:lookup_account_by_number(Number) of
-        {ok, AccountId, _} ->
-            AccountDb = wh_util:format_account_id(AccountId, encoded),
+        {'ok', AccountId, _} ->
+            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
             print_account_info(AccountDb, AccountId);
-        {error, {not_in_service, AssignedTo}} ->
-            AccountDb = wh_util:format_account_id(AssignedTo, encoded),
+        {'error', {'not_in_service', AssignedTo}} ->
+            AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
             print_account_info(AccountDb, AssignedTo);
-        {error, {account_disabled, AssignedTo}} ->
-            AccountDb = wh_util:format_account_id(AssignedTo, encoded),
+        {'error', {'account_disabled', AssignedTo}} ->
+            AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
             print_account_info(AccountDb, AssignedTo);
-        {error, Reason}=E ->
+        {'error', Reason}=E ->
             io:format("failed to find account assigned to number '~s': ~p~n", [Number, Reason]),
             E
     end.
@@ -159,23 +159,24 @@ find_account_by_number(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_by_name(input_term()) -> {'ok', ne_binary()} |
-                                                  {'multiples', [ne_binary(),...]} |
-                                                  {'error', term()}.
+-spec find_account_by_name(input_term()) ->
+                                  {'ok', ne_binary()} |
+                                  {'multiples', [ne_binary(),...]} |
+                                  {'error', term()}.
 find_account_by_name(Name) when not is_binary(Name) ->
     find_account_by_name(wh_util:to_binary(Name));
 find_account_by_name(Name) ->
     case whapps_util:get_accounts_by_name(Name) of
-        {ok, AccountDb} ->
+        {'ok', AccountDb} ->
             print_account_info(AccountDb);
-        {multiples, AccountDbs} ->
+        {'multiples', AccountDbs} ->
             AccountIds = [begin
-                              {ok, AccountId} = print_account_info(AccountDb),
+                              {'ok', AccountId} = print_account_info(AccountDb),
                               AccountId
                           end || AccountDb <- AccountDbs
                          ],
-            {multiples, AccountIds};
-        {error, Reason}=E ->
+            {'multiples', AccountIds};
+        {'error', Reason}=E ->
             io:format("failed to find account: ~p~n", [Reason]),
             E
     end.
@@ -186,23 +187,24 @@ find_account_by_name(Name) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_by_realm(input_term()) -> {'ok', ne_binary()} |
-                                                  {'multiples', [ne_binary(),...]} |
-                                                  {'error', term()}.
+-spec find_account_by_realm(input_term()) ->
+                                   {'ok', ne_binary()} |
+                                   {'multiples', [ne_binary(),...]} |
+                                   {'error', term()}.
 find_account_by_realm(Realm) when not is_binary(Realm) ->
     find_account_by_realm(wh_util:to_binary(Realm));
 find_account_by_realm(Realm) ->
     case whapps_util:get_account_by_realm(Realm) of
-        {ok, AccountDb} ->
+        {'ok', AccountDb} ->
             print_account_info(AccountDb);
-        {multiples, AccountDbs} ->
+        {'multiples', AccountDbs} ->
             AccountIds = [begin
-                              {ok, AccountId} = print_account_info(AccountDb),
+                              {'ok', AccountId} = print_account_info(AccountDb),
                               AccountId
                           end || AccountDb <- AccountDbs
                          ],
-            {multiples, AccountIds};
-        {error, Reason}=E ->
+            {'multiples', AccountIds};
+        {'error', Reason}=E ->
             io:format("failed to find account: ~p~n", [Reason]),
             E
     end.
@@ -215,13 +217,12 @@ find_account_by_realm(Realm) ->
 %%--------------------------------------------------------------------
 -spec allow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 allow_account_number_additions(AccountId) ->
-    case update_account(AccountId, <<"pvt_wnm_allow_additions">>, true) of
-        {ok, _} ->
-            io:format("allowing account '~s' to add numbers~n", [AccountId]),
-            ok;
-        {error, Reason} ->
+    case update_account(AccountId, <<"pvt_wnm_allow_additions">>, 'true') of
+        {'ok', _} ->
+            io:format("allowing account '~s' to add numbers~n", [AccountId]);
+        {'error', Reason} ->
             io:format("failed to find account: ~p~n", [Reason]),
-            failed
+            'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -232,13 +233,12 @@ allow_account_number_additions(AccountId) ->
 %%--------------------------------------------------------------------
 -spec disallow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 disallow_account_number_additions(AccountId) ->
-    case update_account(AccountId, <<"pvt_wnm_allow_additions">>, false) of
-        {ok, _} ->
-            io:format("disallowed account '~s' to added numbers~n", [AccountId]),
-            ok;
-        {error, Reason} ->
+    case update_account(AccountId, <<"pvt_wnm_allow_additions">>, 'false') of
+        {'ok', _} ->
+            io:format("disallowed account '~s' to added numbers~n", [AccountId]);
+        {'error', Reason} ->
             io:format("failed to find account: ~p~n", [Reason]),
-            failed
+            'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -249,13 +249,12 @@ disallow_account_number_additions(AccountId) ->
 %%--------------------------------------------------------------------
 -spec enable_account(input_term()) -> 'ok' | 'failed'.
 enable_account(AccountId) ->
-    case update_account(AccountId, <<"pvt_enabled">>, true) of
-        {ok, _} ->
-            io:format("enabled account '~s'~n", [AccountId]),
-            ok;
-        {error, Reason} ->
+    case update_account(AccountId, <<"pvt_enabled">>, 'true') of
+        {'ok', _} ->
+            io:format("enabled account '~s'~n", [AccountId]);
+        {'error', Reason} ->
             io:format("failed to enable account: ~p~n", [Reason]),
-            failed
+            'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -266,13 +265,12 @@ enable_account(AccountId) ->
 %%--------------------------------------------------------------------
 -spec disable_account(input_term()) -> 'ok' | 'failed'.
 disable_account(AccountId) ->
-    case update_account(AccountId, <<"pvt_enabled">>, false) of
-        {ok, _} ->
-            io:format("disabled account '~s'~n", [AccountId]),
-            ok;
-        {error, Reason} ->
+    case update_account(AccountId, <<"pvt_enabled">>, 'false') of
+        {'ok', _} ->
+            io:format("disabled account '~s'~n", [AccountId]);
+        {'error', Reason} ->
             io:format("failed to disable account: ~p~n", [Reason]),
-            failed
+            'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -283,13 +281,12 @@ disable_account(AccountId) ->
 %%--------------------------------------------------------------------
 -spec promote_account(input_term()) -> 'ok' | 'failed'.
 promote_account(AccountId) ->
-    case update_account(AccountId, <<"pvt_superduper_admin">>, true) of
-        {ok, _} ->
-            io:format("promoted account '~s', this account now has permission to change system settings~n", [AccountId]),
-            ok;
-        {error, Reason} ->
+    case update_account(AccountId, <<"pvt_superduper_admin">>, 'true') of
+        {'ok', _} ->
+            io:format("promoted account '~s', this account now has permission to change system settings~n", [AccountId]);
+        {'error', Reason} ->
             io:format("failed to promote account: ~p~n", [Reason]),
-            failed
+            'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -300,13 +297,12 @@ promote_account(AccountId) ->
 %%--------------------------------------------------------------------
 -spec demote_account(input_term()) -> 'ok' | 'failed'.
 demote_account(AccountId) ->
-    case update_account(AccountId, <<"pvt_superduper_admin">>, false) of
-        {ok, _} ->
-            io:format("promoted account '~s', this account can no longer change system settings~n", [AccountId]),
-            ok;
-        {error, Reason} ->
+    case update_account(AccountId, <<"pvt_superduper_admin">>, 'false') of
+        {'ok', _} ->
+            io:format("promoted account '~s', this account can no longer change system settings~n", [AccountId]);
+        {'error', Reason} ->
             io:format("failed to demote account: ~p~n", [Reason]),
-            failed
+            'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -351,9 +347,9 @@ create_account(AccountName, Realm, Username, Password) ->
         'ok'
     catch
         _E:_R ->
-            lager:debug("crashed creating account: ~s: ~p", [_E, _R]),
+            lager:error("crashed creating account: ~s: ~p", [_E, _R]),
             ST = erlang:get_stacktrace(),
-            _ = [lager:debug("st: ~p", [S]) || S <- ST],
+            wh_util:log_stacktrace(ST),
             'failed'
     end.
 

@@ -187,7 +187,7 @@ delete(Context, Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec prepare_context(api_binary(), cb_context:context()) -> cb_context:context().
-prepare_context(undefined, Context) ->
+prepare_context('undefined', Context) ->
     Context#cb_context{db_name=?WH_ACCOUNTS_DB};
 prepare_context(Account, Context) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
