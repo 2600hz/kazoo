@@ -33,43 +33,39 @@ get_test_account_details(NumAccounts) ->
 
 generate_test_accounts(NumAccounts, NumMonths, NumCdrs) ->
     CdrJObjFixture = wh_json:load_fixture_from_file('cdr', 'fixtures/cdr.json'),
-    lists:foreach(fun(TestDetail) -> generate_test_account(TestDetail, NumMonths, NumCdrs, CdrJObjFixture) end, get_test_account_details(NumAccounts)).
+    lists:foreach(fun(AccountDetail) -> generate_test_account(AccountDetail, NumMonths, NumCdrs, CdrJObjFixture) end, get_test_account_details(NumAccounts)).
 
 generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdrs, CdrJObjFixture) ->
     crossbar_maintenance:create_account(AccountName, AccountRealm, User, Pass),
     wh_cache:flush(),
     case whapps_util:get_account_by_realm(AccountRealm) of
 	{'ok', AccountDb} ->
-	    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+	    lager:debug("AccountDB: ~s", [AccountDb]),
 	    {{CurrentYear, CurrentMonth, _},{_,_,_}} = calendar:universal_time(),
 	    DateRange = get_last_n_months(CurrentYear, CurrentMonth, NumMonths),
-	    lists:foreach(fun(Date) -> generate_test_account_cdrs(Date, AccountId, NumCdrs, CdrJObjFixture) end, DateRange);
+	    lists:foreach(fun(Date) -> generate_test_account_cdrs(Date, AccountDb, NumCdrs, CdrJObjFixture) end, DateRange);
 	{'multiples', AccountDbs} ->
 	    lager:debug("Found multiple DBS for Account Name: ~p", [AccountDbs]);
 	{'error', Reason} ->
 	    lager:debug("Failed to find account: ~p [~s]", [Reason, AccountName])
     end.
 
-generate_test_account_cdrs({Year, Month}, AccountId, NumCdrs, CdrJObjFixture) ->
+generate_test_account_cdrs({Year, Month}, AccountDb, NumCdrs, CdrJObjFixture) ->
     Dates = [calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {12,0,0}}) || Day <- lists:seq(1,NumCdrs)],
-    lists:foreach(fun(CreatedAtSeconds) -> add_cdr_to_test_account(CreatedAtSeconds, Year, Month, AccountId, CdrJObjFixture) end, Dates).
+    lists:foreach(fun(CreatedAtSeconds) -> add_cdr_to_test_account(CreatedAtSeconds, AccountDb, CdrJObjFixture) end, Dates).
 
-add_cdr_to_test_account(CreatedAtSeconds, Year, Month, AccountId, CdrJObjFixture) ->
-    AccountShardDb = wh_util:format_account_id(AccountId, Year, Month),
-    lager:debug("Account Shard DB: ~s", [AccountShardDb]),
+add_cdr_to_test_account(CreatedAtSeconds, AccountDb, CdrJObjFixture) ->
     Props = [{'type', 'cdr'}
 	     ,{'crossbar_doc_vsn', 2}
 	     ,{'pvt_created', CreatedAtSeconds}
 	    ],
-    DocId = cdr_util:get_cdr_doc_id(Year, Month),
-    JObj = wh_doc:update_pvt_parameters(CdrJObjFixture, AccountShardDb, Props),
-    JObj1 = wh_json:set_value(<<"_id">>, DocId, JObj),
-    case cdr_util:save_cdr(AccountShardDb, JObj1) of
-	{'error', 'max_retries'} -> lager:debug("Too many retries to save, failing");
-	'ok' -> 
-	    couch_mgr:revise_doc_from_file(AccountShardDb, 'cdr', <<"cdr.json">>),
-	    'ok'
+    JObj = wh_doc:update_pvt_parameters(CdrJObjFixture, AccountDb, Props),
+    case couch_mgr:save_doc(AccountDb, JObj) of
+        {'error', 'not_found'} -> lager:debug("Could not save cdr");
+        {'error', _} -> 'ok';
+        {'ok', _} -> 'ok'
     end.
+
     
 delete_test_accounts(NumAccounts, NumMonths) ->
     lists:foreach(fun({AccountName, _AccountRealm, _User, _Pass}) ->
