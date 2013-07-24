@@ -25,20 +25,20 @@ get_cdr_doc_id(Year, Month) ->
 
 
 -spec save_cdr(api_binary(), wh_json:object()) -> 'ok'.
-save_cdr(CDRDb, Doc) ->
-  save_cdr(CDRDb, Doc, 0).
+save_cdr(AccountMOD, Doc) ->
+  save_cdr(AccountMOD, Doc, 0).
 
 %-spec save_cdr(api_binary(), wh_json:object(), 0..?MAX_RETRIES) -> {'error', 'max_retries'};
 %	      (api_binary(), wh_json:object(), integer()) -> 'ok'. 
 save_cdr(_, _, ?MAX_RETRIES) -> {'error', 'max_retries'};
 
-save_cdr(CDRDb, Doc, Retries) ->
-  case couch_mgr:save_doc(CDRDb, Doc) of
+save_cdr(AccountMOD, Doc, Retries) ->
+  case couch_mgr:save_doc(AccountMOD, Doc) of
     {'error', 'not_found'} ->
-	  couch_mgr:db_create(CDRDb),
-	  save_cdr(CDRDb, Doc, Retries);
+	  couch_mgr:db_create(AccountMOD),
+	  save_cdr(AccountMOD, Doc, Retries);
     {'ok', _} -> 'ok';
-    {'error', _} -> save_cdr(CDRDb, Doc, Retries+1)
+    {'error', _} -> save_cdr(AccountMOD, Doc, Retries+1)
   end.
 
 -spec save_in_anonymous_cdrs(wh_json:object()) -> 'ok'.

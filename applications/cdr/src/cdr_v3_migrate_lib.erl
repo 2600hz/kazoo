@@ -50,20 +50,25 @@ generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdr
     end.
 
 generate_test_account_cdrs({Year, Month}, AccountDb, NumCdrs, CdrJObjFixture) ->
-    Dates = [calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {12,0,0}}) || Day <- lists:seq(1,NumCdrs)],
-    lists:foreach(fun(CreatedAtSeconds) -> add_cdr_to_test_account(CreatedAtSeconds, AccountDb, CdrJObjFixture) end, Dates).
+    Dates = [calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {12,0,0}}) || Day <- lists:seq(1, calendar:last_day_of_the_month(Year, Month))],
+    lists:foreach(fun(CreatedAtSeconds) -> 
+			  add_cdr_to_test_account(CreatedAtSeconds, AccountDb, CdrJObjFixture, NumCdrs)
+		  end, Dates).
 
-add_cdr_to_test_account(CreatedAtSeconds, AccountDb, CdrJObjFixture) ->
-    Props = [{'type', 'cdr'}
-	     ,{'crossbar_doc_vsn', 2}
-	     ,{'pvt_created', CreatedAtSeconds}
-	    ],
-    JObj = wh_doc:update_pvt_parameters(CdrJObjFixture, AccountDb, Props),
-    case couch_mgr:save_doc(AccountDb, JObj) of
-        {'error', 'not_found'} -> lager:debug("Could not save cdr");
-        {'error', _} -> 'ok';
-        {'ok', _} -> 'ok'
-    end.
+add_cdr_to_test_account(CreatedAtSeconds, AccountDb, CdrJObjFixture, NumCdrs) ->
+    
+    wh_util:for(NumCdrs, fun(_N) ->
+				 Props = [{'type', 'cdr'}
+					  ,{'crossbar_doc_vsn', 2}
+					  ,{'pvt_created', CreatedAtSeconds}
+					 ],
+				 JObj = wh_doc:update_pvt_parameters(CdrJObjFixture, AccountDb, Props),
+				 case couch_mgr:save_doc(AccountDb, JObj) of
+				     {'error', 'not_found'} -> lager:debug("Could not save cdr");
+				     {'error', _} -> 'ok';
+				     {'ok', _} -> 'ok'
+				 end
+			 end).
 
     
 delete_test_accounts(NumAccounts, NumMonths) ->

@@ -9,5 +9,7 @@
 -define(APP_VERSION, <<"0.4.1">>).
 -define(MAX_RETRIES, 3).
 
+-define(CDR_CACHE, 'cdr_cache').
+
 -define(CDR_HRL, 'true').
 -endif.

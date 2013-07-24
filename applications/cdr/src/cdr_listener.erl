@@ -169,7 +169,7 @@ maybe_save_in_account(AccountId, Timestamp, JObj) ->
     Props = [{'type', 'cdr'}
              ,{'crossbar_doc_vsn', 2}
             ],
-    DocId = <<(wh_util:to_binary(CDRYear))/binary, (wh_util:pad_month(CDRMonth))/binary, "-", (couch_mgr:get_uuid())/binary>>,
+    DocId = cdr_util:get_cdr_doc_id(CDRYear, CDRMonth),
     J = wh_doc:update_pvt_parameters(JObj, CDRDb, Props),
     J1 = wh_json:set_value(<<"_id">>, DocId, J),
     lager:debug("JSON: ~p", [J1]),

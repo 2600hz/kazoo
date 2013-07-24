@@ -44,7 +44,9 @@
          ,uri_decode/1
         ]).
 
--export([pad_month/1]).
+-export([pad_month/1
+	,for/2
+	]).
 
 -export([binary_md5/1]).
 -export([pad_binary/3, join_binary/1, join_binary/2]).
@@ -196,6 +198,15 @@ pad_month(Month) when Month < 10 ->
     <<"0", (to_binary(Month))/binary>>; 
 pad_month(Month) ->
     to_binary(Month).
+
+%%-spec(integer(), function()) -> 
+for(N, Fun) when is_integer(N), is_function(Fun, 1) ->
+    for({N, 0}, Fun);
+for({N, _}, _) when is_integer(N), N < 1 ->
+    'ok';
+for({N, LoopCount}, Fun) when is_integer(N), is_function(Fun, 1) ->
+    Fun(LoopCount),
+    for({N - 1, LoopCount + 1}, Fun).
 
 
 %%--------------------------------------------------------------------
