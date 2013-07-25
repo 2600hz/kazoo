@@ -67,11 +67,11 @@ start_link(Node) ->
     start_link(Node, []).
 
 start_link(Node, Options) ->
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                      ,{bindings, ?BINDINGS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
+    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+                                      ,{'bindings', ?BINDINGS}
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Node, Options]).
 
 -spec fetch(ne_binary()) ->
@@ -192,7 +192,7 @@ to_json(Channel) ->
                        ,{<<"other_leg">>, Channel#channel.other_leg}
                       ]).
 
--spec handle_channel_status(wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_channel_status(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
     'true' = wapi_call:channel_status_req_v(JObj),
     _ = wh_util:put_callid(JObj),
@@ -266,7 +266,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('bind_to_events', #state{node=Node}=State) ->
-    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_DATA">>}}) =:= 'true' 
+    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_DATA">>}}) =:= 'true'
         andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}}) =:= 'true'
         andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_DESTROY">>}}) =:= 'true'
         andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_ANSWER">>}}) =:= 'true'
@@ -348,14 +348,14 @@ process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     end;
 process_event(<<"CHANNEL_DESTROY">>, UUID, _, Node) ->
     ecallmgr_fs_channels:destroy(UUID, Node);
-process_event(<<"CHANNEL_ANSWER">>, UUID, _, _) ->    
+process_event(<<"CHANNEL_ANSWER">>, UUID, _, _) ->
     ecallmgr_fs_channels:update(UUID, #channel.answered, 'true');
 process_event(<<"CHANNEL_DATA">>, UUID, Props, _) ->
     ecallmgr_fs_channels:updates(UUID, props_to_update(Props));
 process_event(<<"CHANNEL_BRIDGE">>, UUID, Props, _) ->
     OtherLeg = get_other_leg(UUID, Props),
     ecallmgr_fs_channels:update(UUID, #channel.other_leg, OtherLeg),
-    ecallmgr_fs_channels:update(OtherLeg, #channel.other_leg, UUID);    
+    ecallmgr_fs_channels:update(OtherLeg, #channel.other_leg, UUID);
 process_event(<<"CHANNEL_UNBRIDGE">>, UUID, Props, _) ->
     OtherLeg = get_other_leg(UUID, Props),
     ecallmgr_fs_channels:update(UUID, #channel.other_leg, 'undefined'),

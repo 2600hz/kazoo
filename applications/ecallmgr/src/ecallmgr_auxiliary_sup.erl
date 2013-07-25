@@ -22,22 +22,10 @@
                                                 ]}]).
 -define(CACHE_UTIL_PROPS, [{'origin_bindings', [[{'db', ?WH_CONFIG_DB}]]}]).
 
--define(CHILD(Name, Type), fun(?ECALLMGR_REG_CACHE = N, 'cache') ->
-                                   {N, {'wh_cache', 'start_link', [N, ?CACHE_AUTHN_PROPS]}
-                                    ,'permanent', 5000, 'worker', ['wh_cache']};
-                              (?ECALLMGR_UTIL_CACHE = N, 'cache') ->
-                                   {N, {'wh_cache', 'start_link', [N, ?CACHE_UTIL_PROPS]}
-                                    ,'permanent', 5000, 'worker', ['wh_cache']};
-                              (N, 'cache') -> {N, {'wh_cache', 'start_link', [N]}
-                                             ,'permanent', 5000, 'worker', ['wh_cache']};
-                              (N, 'supervisor'=T) -> {N, {N, 'start_link', []}, 'permanent', 'infinity', T, [N]};
-                              (N, T) -> {N, {N, 'start_link', []}, 'permanent', 5000, T, [N]}
-                           end(Name, Type)).
-
--define(CHILDREN, [{?ECALLMGR_UTIL_CACHE, 'cache'}
-                   ,{?ECALLMGR_REG_CACHE, 'cache'}
-                   ,{?ECALLMGR_CALL_CACHE, 'cache'}
-                   ,{'ecallmgr_originate_sup', 'supervisor'}
+-define(CHILDREN, [?CACHE_ARGS(?ECALLMGR_UTIL_CACHE, ?CACHE_UTIL_PROPS)
+                   ,?CACHE_ARGS(?ECALLMGR_REG_CACHE, ?CACHE_AUTHN_PROPS)
+                   ,?CACHE(?ECALLMGR_CALL_CACHE)
+                   ,?SUPER('ecallmgr_originate_sup')
                   ]).
 
 %% ===================================================================
@@ -75,6 +63,5 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {'ok', {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

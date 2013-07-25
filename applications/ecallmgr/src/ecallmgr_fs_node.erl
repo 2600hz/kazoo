@@ -96,8 +96,7 @@ handle_reload_acls(_JObj, Props) ->
     Node = props:get_value('node', Props),
     case freeswitch:bgapi(Node, 'reloadacl', "") of
         {'ok', Job} -> lager:debug("reloadacl command sent to ~s: JobID: ~s", [Node, Job]);
-        {'error', _E} -> lager:debug("reloadacl failed with error: ~p", [_E]);
-        'timeout' -> lager:debug("reloadacl failed with error: timeout")
+        {'error', _E} -> lager:debug("reloadacl failed with error: ~p", [_E])
     end.
 
 -spec handle_reload_gtws(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -112,8 +111,7 @@ handle_reload_gtws(_JObj, Props) ->
     of
         'false' -> 'ok';
         {'ok', Job} -> lager:debug("sofia ~s command sent to ~s: JobID: ~s", [Args, Node, Job]);
-        {'error', _E} -> lager:debug("sofia ~s failed with error: ~p", [Args, _E]);
-        'timeout' -> lager:debug("sofia ~s failed with error: timeout", [Args])
+        {'error', _E} -> lager:debug("sofia ~s failed with error: ~p", [Args, _E])
     end.
 
 -spec fs_node(pid()) -> atom().
