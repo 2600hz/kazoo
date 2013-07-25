@@ -12,8 +12,16 @@
 -export([update_all_accounts/1]).
 -export([replicate_from_accounts/2, replicate_from_account/3]).
 -export([revise_whapp_views_in_accounts/1]).
--export([get_all_accounts/0, get_all_accounts/1]).
--export([is_account_db/1]).
+-export([get_all_accounts/0
+         ,get_all_accounts/1
+         ,get_all_accounts_and_mods/0
+         ,get_all_accounts_and_mods/1
+         ,get_all_account_mods/0
+         ,get_all_account_mods/1
+        ]).
+-export([is_account_db/1
+        ,is_account_mod/1
+        ]).
 -export([get_account_by_realm/1,get_accounts_by_name/1]).
 -export([get_master_account_id/0]).
 -export([find_oldest_doc/1]).
@@ -183,7 +191,26 @@ get_all_accounts(Encoding) ->
     {'ok', Databases} = couch_mgr:db_info(),
     [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_account_db(Db)].
 
-is_account_db(<<"account/", _:34/binary, _:7/binary>>) -> 'false';
+get_all_accounts_and_mods() -> get_all_accounts_and_mods(?REPLICATE_ENCODING).
+
+get_all_accounts_and_mods(Encoding) ->
+    {'ok', Databases} = couch_mgr:db_info(),
+    [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_account_db(Db) orelse is_account_mod(Db)].
+
+get_all_account_mods() -> get_all_account_mods(?REPLICATE_ENCODING).
+
+get_all_account_mods(Encoding) ->
+    {'ok', Databases} = couch_mgr:db_info(),
+    [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_account_mod(Db)].
+                                                 
+-spec is_account_mod(ne_binary()) -> boolean().
+is_account_mod(<<"account/", _AccountId:34/binary, "-", _Date:6/binary>>) -> 'true';
+is_account_mod(<<"account%2F", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'true';
+is_account_mod(_) -> 'false'. 
+
+-spec is_account_db(ne_binary()) -> boolean().
+is_account_db(<<"account/", _AccountId:34/binary, "-", _Date:6/binary>>) -> 'false';
+is_account_db(<<"account%2F", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'false'; 
 is_account_db(<<"account/", _/binary>>) -> 'true';
 is_account_db(<<"account%2f", _/binary>>) -> 'true';
 is_account_db(<<"account%2F", _/binary>>) -> 'true';
