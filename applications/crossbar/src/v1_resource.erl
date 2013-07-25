@@ -74,12 +74,12 @@ rest_init(Req0, Opts) ->
     ClientIP = wh_network_utils:iptuple_to_binary(Peer),
 
     Context0 = #cb_context{
-                  req_id = wh_util:to_binary(ReqId)
+                  req_id = ReqId
                   ,raw_host = wh_util:to_binary(Host)
                   ,port = wh_util:to_integer(Port)
                   ,raw_path = wh_util:to_binary(Path)
                   ,raw_qs = wh_util:to_binary(QS)
-                  ,method = wh_util:to_atom(Method)
+                  ,method = wh_util:to_binary(Method)
                   ,resp_status = 'fatal'
                   ,resp_error_msg = <<"init failed">>
                   ,resp_error_code = 500
@@ -572,7 +572,7 @@ to_csv(Req, #cb_context{resp_headers=RespHeaders}=Context) ->
 -spec is_csv_request(cb_context:context()) -> boolean().
 is_csv_request(#cb_context{query_json=Query}) ->
     case wh_json:get_value(<<"accept">>, Query, 'false') of
-        <<"csv">> -> 
+        <<"csv">> ->
             lager:debug("overriding req header to use csv", []),
             'true';
         _ -> 'false'
@@ -592,7 +592,7 @@ maybe_flatten_jobj(#cb_context{resp_data=RespData
                         ,fun(J) -> json_objs_to_csv(J) end
                        ],
             lists:foldl(
-              fun(F, J) -> 
+              fun(F, J) ->
                       F(J)
               end, JObj, Routines)
     end.
@@ -614,7 +614,7 @@ get_headers(JObjs) ->
 -spec check_integrity(list()) -> wh_json:objects().
 check_integrity(JObjs) ->
     Headers = get_headers(JObjs),
-    check_integrity(JObjs, Headers, []).    
+    check_integrity(JObjs, Headers, []).
 
 check_integrity([], _, Acc) ->
     lists:reverse(Acc);
@@ -629,11 +629,11 @@ check_integrity([JObj|JObjs], Headers, Acc) ->
               end, JObj, Headers),
     NJObj1 = wh_json:from_list(lists:keysort(1, wh_json:to_proplist(NJObj))),
     check_integrity(JObjs, Headers, [NJObj1|Acc]).
-    
+
 -spec create_csv_header(list()) -> wh_json:objects().
 create_csv_header([]) -> [];
 create_csv_header([JObj|_]=JObjs) -> [JObj|JObjs].
-            
+
 -spec json_objs_to_csv(wh_json:objects()) -> iolist().
 json_objs_to_csv([]) -> [];
 json_objs_to_csv([J|JObjs]) ->

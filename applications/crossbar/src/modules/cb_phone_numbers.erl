@@ -340,7 +340,7 @@ summary(Context) ->
             Else#cb_context{resp_data=clean_summary(Else)}
     end.
 
--spec clean_summary(cb_context:context()) -> wh_json:json().
+-spec clean_summary(cb_context:context()) -> wh_json:object().
 clean_summary(#cb_context{resp_data=JObj, account_id=AccountId}) ->
     Routines = [fun(J) ->
                     wh_json:delete_key(<<"id">>, J)

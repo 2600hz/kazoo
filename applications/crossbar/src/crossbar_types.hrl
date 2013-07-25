@@ -13,7 +13,7 @@
 %% {Type, SubType, Options}
 -type content_type() :: {ne_binary(), ne_binary(), wh_proplist()} | ne_binary().
 
--type crossbar_content_handler() :: {atom(), [{ne_binary(), ne_binary()},...]}.
+-type crossbar_content_handler() :: {atom(), [{ne_binary(), ne_binary()} | ne_binary(),...]}.
 -type crossbar_content_handlers() :: [crossbar_content_handler(),...] | [].
 
 -type http_method() :: ne_binary(). %% HTTP Verbs in UPPERCASE
