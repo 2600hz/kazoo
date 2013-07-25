@@ -14,8 +14,6 @@
 
 %% API
 -export([start_link/0]).
--export([migrate_account/2]).
-
 
 %% gen_server callbacks
 -export([init/1
@@ -25,6 +23,15 @@
 	 ,terminate/2
 	 ,code_change/3
 	]).
+
+-record(state, {
+          account_list :: wh_proplist()
+          ,date_list :: wh_proplist()
+          ,pid :: pid() %% pid of the processing of the response
+          ,ref :: reference() %% monitor ref for the pid
+         }).
+
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE). 
 
@@ -41,48 +48,6 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
--spec migrate_account(ne_binary(), list()) -> 'ok'.
-migrate_account(Account, DateList) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    lists:foreach(fun(Date) -> 
-                          migrate_account_day(Account, AccountDb, Date) 
-                  end, DateList).			 
-    
--spec migrate_account_day(ne_binary(), ne_binary(), {pos_integer(), pos_integer(), any()}) -> any().
-migrate_account_day(AccountId, AccountDb, {Year, Month, _}=Date) ->
-    ViewOptions = create_view_options(Date),
-    case couch_mgr:get_results(AccountDb, <<"cdrs/crossbar_listing">>, ViewOptions) of
-        {'ok', []} -> [];
-        {'error', _E} -> 
-            lager:debug("failed to lookup cdrs for ~s: ~p", [AccountDb, _E]), [];
-        {'ok', Cdrs} -> 
-            lists:foreach(fun(Cdr) -> 
-                                  copy_cdr_to_account_mod(AccountId
-                                                          ,AccountDb
-                                                          ,Cdr
-                                                          ,Year
-                                                          ,Month
-                                                         ) 
-                          end, Cdrs)
-    end.
-    
--spec copy_cdr_to_account_mod(ne_binary(), ne_binary(), wh_json:object(), pos_integer(), pos_integer()) -> any().
-copy_cdr_to_account_mod(AccountId, AccountDb, Cdr, Year, Month) ->
-    AccountMODb = wh_util:format_account_id(AccountId, Year, Month),
-    MODDocId = cdr_util:get_cdr_doc_id(Year, Month),
-    JObj = wh_json:set_value(<<"_id">>, MODDocId, Cdr),
-    case cdr_util:save_cdr(AccountMODb, JObj) of
-        {'error', 'max_retries'} -> lager:error("could not migrate cdr, max_retries reached");
-        'ok' -> 'ok'
-    end,
-    couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, Cdr)).
-
--spec create_view_options({{pos_integer(), pos_integer(), pos_integer()},{pos_integer(),pos_integer(),pos_integer()}}) -> list().
-create_view_options(Date) ->
-    StartTime = calendar:datetime_to_gregorian_seconds({Date, {0,0,0}}),
-    EndTime = calendar:datetime_to_gregorian_seconds({Date, {23,59,59}}),
-    [{<<"startkey">>, StartTime}, {<<"endkey">>, EndTime}].
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -138,18 +103,10 @@ handle_cast('start_migrate', {}) ->
     lager:debug("handle_cast: start_migrate called"),
     Accounts  = whapps_util:get_all_accounts(),
     DateList = cdr_v3_migrate_lib:get_n_month_date_list(calendar:universal_time(), 4),
-    gen_server:cast(self(), 'migrate_account'),
-    {'noreply', {Accounts, DateList}};
-
-handle_cast('migrate_account', {Accounts, DateList}) ->
-    [CurrentAccount | RestAccounts] = Accounts,
-    migrate_account(CurrentAccount, DateList),
-    case RestAccounts of
-	[] -> {'noreply', {}};
-        _ -> 
-	    gen_server:cast(self(), 'migrate_account'),
-	    {'noreply', {RestAccounts, DateList}}
-    end;
+    [FirstAccount | RestAccounts] = Accounts,
+    {PID, REF} = spawn_monitor('cdr_v3_migrate_worker', 'migrate_account_cdrs', [FirstAccount, DateList]),
+    
+    {'noreply', State#state{account_list=RestAccounts, date_list=DateList, pid=PID, ref=REF}};
 
 handle_cast(_Msg, State) ->
     lager:debug("catchall handle_cast executed"),
@@ -166,6 +123,22 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'DOWN', Ref, 'process', Pid, Reason}, #state{account_list=Accounts
+                                                          ,date_list=DateList
+                                                          ,pid=Pid
+                                                          ,ref=Ref
+                                                         }=State) ->
+    lager:debug("response pid ~p(~p) down: ~p", [Pid, Ref, Reason]),
+    case Accounts of
+        [] -> {'noreply', State};
+        _  -> 
+            [NextAccount | RestAccounts] = Accounts,
+            {NEWPID, NEWREF} = spawn_monitor('cdr_v3_migrate_worker', 'migrate_account_cdrs', [NextAccount, DateList]),
+            {'noreply', State#state{account_list=RestAccounts, date_list=DateList, pid=NEWPID, ref=NEWREF}}
+    end,
+    {'noreply', State#state{pid='undefined',ref='undefined'}, 'hibernate'};
+    
+
 handle_info(_Info, State) ->
     lager:debug("catchall handle_info executed"),
     {'noreply', State}.

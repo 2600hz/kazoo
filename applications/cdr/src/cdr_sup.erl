@@ -21,7 +21,6 @@
 -define(CACHE_PROPS, []).
 -define(CHILDREN, [?CACHE_ARGS(?CDR_CACHE, ?CACHE_PROPS)
                    ,?WORKER('cdr_listener')
-                   ,?WORKER('cdr_v3_migrate_server')
                   ]).
 
 %% ===================================================================
@@ -30,6 +29,15 @@
 
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+
+start_v3_migrate() ->
+    ChildSpec = {'cdr_v3_migrate'
+                 ,{'cdr_v3_migrate_server', 'start_link', []}
+                 ,'permanent'
+                 ,5000
+                 ,['cdr_v3_migrate_server']
+                },
+    supervisor:start_child(?MODULE, ChildSpec).
 
 %% ===================================================================
 %% Supervisor callbacks
