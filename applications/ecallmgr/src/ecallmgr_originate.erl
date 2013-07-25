@@ -641,6 +641,7 @@ publish_originate_resp(ServerId, JObj) ->
     wapi_resource:publish_originate_resp(ServerId, Resp).
 
 -spec publish_originate_resp(api_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+publish_originate_resp('undefined', _, _) -> 'ok';
 publish_originate_resp(ServerId, JObj, UUID) ->
     Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"originate_resp">>}

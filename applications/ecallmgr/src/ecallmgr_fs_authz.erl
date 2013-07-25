@@ -528,7 +528,7 @@ set_rating_ccvs(JObj, Node) ->
                            end, [], ?RATE_VARS),
     ecallmgr_util:set(Node, CallId, props:filter_undefined(Props)).
 
--spec maybe_update_callee_id(wh_json:object(), binary()) -> binary().
+-spec maybe_update_callee_id(wh_json:object(), wh_proplist()) -> wh_proplist().
 maybe_update_callee_id(JObj, Acc) ->
     Rate = wh_json:get_binary_value(<<"Rate">>, JObj, <<"0.00">>),
     case wh_json:is_true(<<"Update-Callee-ID">>, JObj, 'false') of

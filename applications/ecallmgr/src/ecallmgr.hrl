@@ -60,7 +60,7 @@
                   ,resource_id :: api_binary() | '$4' | '_'
                   ,presence_id :: api_binary() | '$2' | '_'
                   ,fetch_id :: api_binary() | '$5' | '_'
-                  ,bridge_id :: api_binary() | '$6' | '_'
+                  ,bridge_id :: api_binary() | '$5' | '_'
                   ,reseller_id :: api_binary() | '_'
                   ,reseller_billing :: api_binary() | '_'
                   ,realm :: api_binary() | '_' | '$2'
@@ -85,7 +85,7 @@
 -define(MAX_NODE_RESTART_FAILURES, 3).
 
 %% list of dialplan Application-Names that can execute after a call has hung up
--define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>, <<"record">>, <<"store_fax">>]). 
+-define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>, <<"record">>, <<"store_fax">>]).
 
 -define(SANITY_CHECK_PERIOD, 300000).
 
