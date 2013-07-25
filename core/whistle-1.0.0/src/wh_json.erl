@@ -647,10 +647,10 @@ load_fixture_from_file(App, File) ->
     catch
         _Type:{'badmatch',{'error',Reason}} ->
             lager:debug("badmatch error: ~p", [Reason]),
-            {'error', 'changeme'};
+            {'error', Reason};
         _Type:Reason ->
             lager:debug("exception: ~p", [Reason]),
-            {'error', 'changeme'}
+            {'error', Reason}
     end.
 
 

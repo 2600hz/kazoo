@@ -10,7 +10,9 @@
 
 %% API
 -export([get_n_month_date_list/2
+         ,get_last_n_months/3
 	 ,generate_test_accounts/3
+         ,get_test_account_details/1
 	 ,delete_test_accounts/2
 	]).
 
@@ -39,50 +41,54 @@ get_test_account_details(NumAccounts) ->
      } 
      || X <- lists:seq(1, NumAccounts)].
 
--spec generate_test_accounts(pos_integer(), pos_integer(), pos_integer()) -> any().
+-spec generate_test_accounts(pos_integer(), pos_integer(), pos_integer()) -> 'ok'.
 generate_test_accounts(NumAccounts, NumMonths, NumCdrs) ->
-    CdrJObjFixture = wh_json:load_fixture_from_file('cdr', 'fixtures/cdr.json'),
+    CdrJObjFixture = wh_json:load_fixture_from_file('cdr', "fixtures/cdr.json"),
     lists:foreach(fun(AccountDetail) -> 
                           generate_test_account(AccountDetail, NumMonths, NumCdrs, CdrJObjFixture) 
-                  end, get_test_account_details(NumAccounts)).
+                  end, get_test_account_details(NumAccounts)),
+    {'ok'}.
 
 -spec generate_test_account({ne_binary(),ne_binary(), ne_binary(), ne_binary()}
                             ,pos_integer(), pos_integer()
                             ,wh_json:object()
-                           ) -> any().
+                           ) -> 'ok' | {'error', any()}.
 generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdrs, CdrJObjFixture) ->
+    lager:debug("AccountName: ~s, Account Realm: ~s", [AccountName, AccountRealm]),
     crossbar_maintenance:create_account(AccountName, AccountRealm, User, Pass),
     wh_cache:flush(),
     case whapps_util:get_account_by_realm(AccountRealm) of
 	{'ok', AccountDb} ->
-	    {{CurrentYear, CurrentMonth, _},{_,_,_}} = calendar:universal_time(),
+	    {{CurrentYear, CurrentMonth, _},_} = calendar:universal_time(),
 	    DateRange = get_last_n_months(CurrentYear, CurrentMonth, NumMonths),
 	    lists:foreach(fun(Date) -> 
                                   generate_test_account_cdrs(Date, AccountDb, NumCdrs, CdrJObjFixture) 
                           end, DateRange);
 	{'multiples', AccountDbs} ->
-	    lager:debug("Found multiple DBS for Account Name: ~p", [AccountDbs]);
+	    lager:debug("Found multiple DBS for Account Name: ~p", [AccountDbs]),
+            {'error', 'multiple_account_dbs'};
 	{'error', Reason} ->
-	    lager:debug("Failed to find account: ~p [~s]", [Reason, AccountName])
+	    lager:debug("Failed to find account: ~p [~s]", [Reason, AccountName]),
+            {'error', Reason}
     end.
 
 -spec generate_test_account_cdrs({pos_integer(), pos_integer()}
                                  ,ne_binary()
                                  ,pos_integer()
                                  ,wh_json:object()
-                                ) -> any().
+                                ) -> 'ok' | {'error', any()}.
 generate_test_account_cdrs({Year, Month}, AccountDb, NumCdrs, CdrJObjFixture) ->
     Dates = [calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {12,0,0}}) 
              || Day <- lists:seq(1, calendar:last_day_of_the_month(Year, Month))],
     lists:foreach(fun(CreatedAtSeconds) -> 
 			  add_cdr_to_test_account(CreatedAtSeconds, AccountDb, CdrJObjFixture, NumCdrs)
-		  end, Dates).
+		  end, Dates),
+    {'ok'}.
 
 -spec add_cdr_to_test_account(pos_integer(), ne_binary(), wh_json:object(), pos_integer()) -> 'ok'.
 add_cdr_to_test_account(_, _, _, 0) -> 'ok';
 add_cdr_to_test_account(CreatedAtSeconds, AccountDb, CdrJObjFixture, NumCdrs) ->
     Props = [{'type', 'cdr'}
-             ,{'crossbar_doc_vsn', 2}
              ,{'pvt_created', CreatedAtSeconds}
             ],
     JObj = wh_doc:update_pvt_parameters(CdrJObjFixture, AccountDb, Props),
@@ -93,11 +99,12 @@ add_cdr_to_test_account(CreatedAtSeconds, AccountDb, CdrJObjFixture, NumCdrs) ->
     end,
     add_cdr_to_test_account(CreatedAtSeconds, AccountDb, CdrJObjFixture, NumCdrs - 1).
     
--spec delete_test_accounts(pos_integer(), pos_integer()) -> any().
+-spec delete_test_accounts(pos_integer(), pos_integer()) -> 'ok'.
 delete_test_accounts(NumAccounts, NumMonths) ->
     lists:foreach(fun(AccountDetails) -> 
                           delete_test_account(AccountDetails, NumMonths) 
-                  end, get_test_account_details(NumAccounts)).    
+                  end, get_test_account_details(NumAccounts)),
+    {'ok'}.
 
 -spec delete_test_account({ne_binary(), ne_binary(), ne_binary(), ne_binary()}
                           ,pos_integer()) -> 'ok' | {'error', any()}.
