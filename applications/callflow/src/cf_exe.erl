@@ -111,9 +111,9 @@ branch(Flow, Call) ->
     Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
     branch(Flow, Srv).
 
-add_event_listener(Srv, {_,_,_}=SpawnInfo) when is_pid(Srv) ->
+add_event_listener(Srv, {_,_}=SpawnInfo) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'add_event_listener', SpawnInfo});
-add_event_listener(Call, {_,_,_}=SpawnInfo) ->
+add_event_listener(Call, {_,_}=SpawnInfo) ->
     add_event_listener(whapps_call:kvs_fetch('cf_exe_pid', Call), SpawnInfo).
 
 -spec stop(whapps_call:call() | pid()) -> 'ok'.
@@ -314,15 +314,18 @@ handle_cast({'continue', Key}, #state{flow=Flow}=State) ->
     case wh_json:get_value([<<"children">>, Key], Flow) of
         'undefined' when Key =:= <<"_">> ->
             lager:info("wildcard child does not exist, we are lost...hanging up"),
-            {'stop', 'normal', State};
+            ?MODULE:stop(self()),
+            {'noreply', State};
         'undefined' ->
             lager:info("requested child does not exist, trying wild card", [Key]),
             ?MODULE:continue(self()),
             {'noreply', State};
         NewFlow ->
             case wh_json:is_empty(NewFlow) of
-                'true' -> {'stop', 'normal', State};
-                'false' -> {'noreply', launch_cf_module(State#state{flow=NewFlow})}
+                'false' -> {'noreply', launch_cf_module(State#state{flow=NewFlow})};
+                'true' ->
+                    ?MODULE:stop(self()),
+                    {'noreply', State}
             end
     end;
 handle_cast('stop', State) ->
@@ -343,18 +346,27 @@ handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     lager:info("binding to new call events"),
     gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),
     {'noreply', State#state{call=whapps_call:set_call_id(NewCallId, Call)}};
-handle_cast({'add_event_listener', {M, F, A}}, #state{call=Call}=State) ->
-    try spawn_link(M, F, [Call | A]) of
+handle_cast({'add_event_listener', {M, A}}, #state{call=Call}=State) ->
+    lager:debug("trying to start evt listener ~s: ~p", [M, A]),
+    try cf_event_handler_sup:new(M, [whapps_call:control_queue_helper('undefined'
+                                                                      ,whapps_call:call_id_helper('undefined', Call)
+                                                                     )
+                                     | A
+                                    ])
+    of
         P when is_pid(P) ->
-            lager:info("started event listener ~p from ~s:~s", [P, M, F]),
+            lager:info("started event listener ~p from ~s", [P, M]),
             {'noreply', State#state{call=whapps_call:kvs_update('cf_event_pids'
-                                                              ,fun(Ps) -> [P | Ps] end
-                                                              ,[P]
-                                                              ,Call
-                                                             )}}
+                                                                ,fun(Ps) -> [P | Ps] end
+                                                                ,[P]
+                                                                ,Call
+                                                               )}};
+        _E ->
+            lager:debug("error starting event listener: ~p", [_E]),
+            {'noreply', State}
     catch
         _:_R ->
-            lager:info("failed to spawn ~s:~s: ~p", [M, F, _R]),
+            lager:info("failed to spawn ~s:~s: ~p", [M, _R]),
             {'noreply', State}
     end;
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
@@ -409,7 +421,11 @@ handle_info(_Msg, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-handle_event(JObj, #state{cf_module_pid=Pid, call=Call, queue=ControllerQ, self=Self}) ->
+handle_event(JObj, #state{cf_module_pid=Pid
+                          ,call=Call
+                          ,queue=ControllerQ
+                          ,self=Self
+                         }) ->
     CallId = whapps_call:call_id_direct(Call),
     Others = whapps_call:kvs_fetch('cf_event_pids', [], Call),
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
@@ -439,11 +455,11 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call, queue=ControllerQ, self=
             'ignore';
         {{<<"error">>, _}, _} ->
             case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
-                CallId -> {'reply', [{cf_module_pid, Pid}
-                                     ,{cf_event_pids, Others}
+                CallId -> {'reply', [{'cf_module_pid', Pid}
+                                     ,{'cf_event_pids', Others}
                                     ]};
-                'undefined' -> {'reply', [{cf_module_pid, Pid}
-                                          ,{cf_event_pids, Others}
+                'undefined' -> {'reply', [{'cf_module_pid', Pid}
+                                          ,{'cf_event_pids', Others}
                                          ]};
                 _Else -> 'ignore'
             end;
