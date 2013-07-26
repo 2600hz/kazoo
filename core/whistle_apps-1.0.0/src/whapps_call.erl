@@ -138,7 +138,7 @@ new() -> #whapps_call{}.
 -spec put_callid(call()) -> api_binary().
 put_callid(#whapps_call{call_id='undefined'}) -> 'undefined';
 put_callid(#whapps_call{call_id=CallId}) ->
-    put(callid, CallId).
+    put('callid', CallId).
 
 -spec from_route_req(wh_json:object()) -> call().
 from_route_req(RouteReq) ->

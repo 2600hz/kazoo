@@ -72,12 +72,12 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({local, ?MODULE}, ?MODULE, [{responders, ?RESPONDERS}
-                                                        ,{bindings, ?BINDINGS}
-                                                        ,{queue_name, ?QUEUE_NAME}
-                                                        ,{queue_options, ?QUEUE_OPTIONS}
-                                                        ,{consume_options, ?CONSUME_OPTIONS}
-                                                       ], []).
+    gen_listener:start_link({'local', ?MODULE}, ?MODULE, [{'responders', ?RESPONDERS}
+                                                          ,{'bindings', ?BINDINGS}
+                                                          ,{'queue_name', ?QUEUE_NAME}
+                                                          ,{'queue_options', ?QUEUE_OPTIONS}
+                                                          ,{'consume_options', ?CONSUME_OPTIONS}
+                                                         ], []).
 
 -spec sync(atom(), ne_binaries()) -> 'ok'.
 sync(Node, Channels) ->
