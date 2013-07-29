@@ -11,7 +11,11 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0]).
+-export([start_link/0
+         ,start_v3_migrate/0
+         ,stop_v3_migrate/0
+         ,get_v3_migrate_status/1
+        ]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -19,9 +23,7 @@
 -include("cdr.hrl").
 
 -define(CACHE_PROPS, []).
--define(CHILDREN, [?CACHE_ARGS(?CDR_CACHE, ?CACHE_PROPS)
-                   ,?WORKER('cdr_listener')
-                  ]).
+
 
 %% ===================================================================
 %% API functions
@@ -30,14 +32,36 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
+-spec migrate_server(pid()) -> api_pid().
+migrate_server(Super) ->
+    hd([P || {_, P, 'worker', _} <- supervisor:which_children(Super)]).
+
+get_v3_migrate_status(Supervisor) ->
+    ServerPid = migrate_server(Supervisor),
+    case cdr_v3_migrate_server:status(ServerPid) of
+        {'reply', _, {'number_of_accounts', NumAccountsLeft}} -> 
+            lager:info("Number of Accounts: ~s", [NumAccountsLeft]);
+        _ -> lager:debug("No Response from status request")                       
+    end.
+
 start_v3_migrate() ->
-    ChildSpec = {'cdr_v3_migrate'
+    ChildSpec = {'cdr_v3_migrator'
                  ,{'cdr_v3_migrate_server', 'start_link', []}
-                 ,'permanent'
+                 ,'transient'
                  ,5000
+                 ,'worker'
                  ,['cdr_v3_migrate_server']
                 },
-    supervisor:start_child(?MODULE, ChildSpec).
+    case supervisor:start_child(?MODULE, ChildSpec) of
+        {'error', 'already_present'} -> 
+            supervisor:restart_child(?MODULE, 'cdr_v3_migrator');
+        {'error', _}=_E -> lager:debug("error starting cdr_v3_migrate: ~p", [_E]);
+        {'ok', _} -> 'ok'
+    end.
+
+stop_v3_migrate() ->
+    supervisor:terminate_child(?MODULE, 'cdr_v3_migrator'),
+    supervisor:delete_child(?MODULE, 'cdr_v3_migrator').
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -50,5 +74,4 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-
-    {'ok', {SupFlags, ?CHILDREN}}.
+    {'ok', {SupFlags, [?WORKER('cdr_listener')]}}.

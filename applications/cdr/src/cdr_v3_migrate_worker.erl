@@ -22,46 +22,62 @@
 %% @spec
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_account_cdrs(ne_binary(), list()) -> 'ok'.
-migrate_account_cdrs(Account, DateList) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+-spec migrate_account_cdrs(account_id(), wh_proplist()) -> 'ok'.
+migrate_account_cdrs(AccountId, _DateList) ->
+    lager:info("cdr_v3_migrate_worker: work started for AccountId: ~s", [AccountId]),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     lists:foreach(fun(Date) -> 
-                          migrate_cdr_for_date(Account, AccountDb, Date) 
-                  end, DateList).			 
-    
+                          migrate_cdr_for_date(AccountId, AccountDb, Date) 
+                  end, _DateList).			 
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec migrate_account_day(ne_binary(), ne_binary(), {pos_integer(), pos_integer(), any()}) -> any().
+-spec migrate_cdr_for_date(account_id(), account_db(), wh_date()) -> any().
 migrate_cdr_for_date(AccountId, AccountDb, {Year, Month, _}=Date) ->
     ViewOptions = create_view_options(Date),
     case couch_mgr:get_results(AccountDb, <<"cdrs/crossbar_listing">>, ViewOptions) of
-        {'ok', []} -> [];
+        {'ok', []} -> 'ok';
         {'error', _E} -> 
-            lager:debug("failed to lookup cdrs for ~s: ~p", [AccountDb, _E]), [];
+            lager:error("failed to lookup cdrs for ~s: ~p", [AccountDb, _E]), [];
         {'ok', Cdrs} -> 
-            lists:foreach(fun(Cdr) -> 
+            lists:foreach(fun(CdrDoc) -> 
                                   copy_cdr_to_account_mod(AccountId
                                                           ,AccountDb
-                                                          ,Cdr
+                                                          ,CdrDoc
                                                           ,Year
                                                           ,Month
                                                          ) 
-                          end, Cdrs)
+                          end, get_docs_from_view_results(AccountDb, Cdrs, []))
     end.
     
--spec copy_cdr_to_account_mod(ne_binary(), ne_binary(), wh_json:object(), pos_integer(), pos_integer()) -> any().
-copy_cdr_to_account_mod(AccountId, AccountDb, Cdr, Year, Month) ->
+-spec get_docs_from_view_results(account_db(), wh_json:object(), wh_proplist()) -> wh_proplist().
+get_docs_from_view_results(_, [], Acc) -> Acc;
+get_docs_from_view_results(AccountDb, [NextCdr|RestCdrs], Acc) ->
+    CdrId = wh_json:get_value(<<"id">>, NextCdr),
+    case couch_mgr:open_doc(AccountDb, CdrId) of
+        {'ok', JObj} -> 
+            JObj1 = wh_json:delete_key(<<"_rev">>, JObj),
+            get_docs_from_view_results(AccountDb, RestCdrs, [JObj1 | Acc]);
+        {'error', _}=_E  -> lager:error("cdr_v3_migrate worker: could not load cdr ~p", [_E])
+    end.
+    
+
+-spec copy_cdr_to_account_mod(account_id(), account_db(), ne_binary(), wh_year(), wh_month()) -> any().
+copy_cdr_to_account_mod(AccountId, _AccountDb, CdrDoc, Year, Month) ->
     AccountMODb = wh_util:format_account_id(AccountId, Year, Month),
     MODDocId = cdr_util:get_cdr_doc_id(Year, Month),
-    JObj = wh_json:set_value(<<"_id">>, MODDocId, Cdr),
+    JObj = wh_json:set_values([{<<"_id">>, MODDocId}
+                               ,{<<"pvt_account_id">>, AccountId}
+                               ,{<<"pvt_account_db">>, AccountMODb}
+                              ], CdrDoc),
     case cdr_util:save_cdr(AccountMODb, JObj) of
-        {'error', 'max_retries'} -> lager:error("could not migrate cdr, max_retries reached");
+        {'error', _}=_E -> lager:error("could not migrate cdr ~p", [_E]);
         'ok' -> 'ok'
-    end,
+    end.
     couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, Cdr)).
 
--spec create_view_options({{pos_integer(), pos_integer(), pos_integer()},{pos_integer(),pos_integer(),pos_integer()}}) -> list().
+-spec create_view_options(wh_datetime()) -> wh_proplist().
 create_view_options(Date) ->
     StartTime = calendar:datetime_to_gregorian_seconds({Date, {0,0,0}}),
     EndTime = calendar:datetime_to_gregorian_seconds({Date, {23,59,59}}),

@@ -162,6 +162,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec maybe_save_in_account(api_binary(), api_binary(), wh_json:object()) -> 'ok'.
 maybe_save_in_account('undefined', _, JObj) ->
     cdr_util:save_in_anonymous_cdrs(JObj);
+
 maybe_save_in_account(AccountId, Timestamp, JObj) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     AccountMODb = wh_util:format_account_id(AccountId, Year, Month),
