@@ -91,8 +91,8 @@ maybe_cached_owner_id(Props, JObj, AccountDb) ->
 -spec maybe_cached_hotdesk_ids(wh_proplist(), wh_json:object(), ne_binary()) -> wh_proplist().
 maybe_cached_hotdesk_ids(Props, JObj, AccountDb) ->
     case wh_json:get_keys([<<"hotdesk">>, <<"users">>], JObj) of
-        'undefined' -> Props;
-         OwnerIds ->
+        [] -> Props;
+        OwnerIds ->
             lists:foldl(fun(Id, P) ->
                                 [{'db', AccountDb, Id}|P]
                         end, Props, OwnerIds)

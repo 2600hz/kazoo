@@ -118,7 +118,7 @@ get_switch_nodename(CallId, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec retrieve(ne_binary(), wh_json:object(), whapps_call:call()) ->
-                      {'ok', wh_json:object()} | 
+                      {'ok', wh_json:object()} |
                       {'hungup', wh_json:object()} |
                       {'error', term()}.
 retrieve(SlotNumber, ParkedCalls, Call) ->
@@ -247,7 +247,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
 %% Builds the json object representing the call in the parking slot
 %% @end
 %%--------------------------------------------------------------------
--spec create_slot(api_binary(), whapps_call:call()) -> wh_json:object().
+-spec create_slot('undefined' | binary(), whapps_call:call()) -> wh_json:object().
 create_slot('undefined', Call) ->
     CallId = cf_exe:callid(Call),
     AccountDb = whapps_call:account_db(Call),

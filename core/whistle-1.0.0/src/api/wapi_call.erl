@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%% Call-related messages, like switch events, status requests, etc
 %%% @end

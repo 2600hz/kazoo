@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -72,7 +72,9 @@
 -spec start_link(whapps_call:call()) -> startlink_ret().
 start_link(Call) ->
     CallId = whapps_call:call_id(Call),
-    Bindings = [{'call', [{'callid', CallId}]}
+    Bindings = [{'call', [{'callid', CallId}
+                          ,{'restrict_to', ['events', 'cdr', 'destroy_channel', 'publisher_usurp']}
+                         ]}
                 ,{'self', []}
                ],
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
@@ -348,19 +350,10 @@ handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     {'noreply', State#state{call=whapps_call:set_call_id(NewCallId, Call)}};
 handle_cast({'add_event_listener', {M, A}}, #state{call=Call}=State) ->
     lager:debug("trying to start evt listener ~s: ~p", [M, A]),
-    try cf_event_handler_sup:new(M, [whapps_call:control_queue_helper('undefined'
-                                                                      ,whapps_call:call_id_helper('undefined', Call)
-                                                                     )
-                                     | A
-                                    ])
-    of
-        P when is_pid(P) ->
-            lager:info("started event listener ~p from ~s", [P, M]),
-            {'noreply', State#state{call=whapps_call:kvs_update('cf_event_pids'
-                                                                ,fun(Ps) -> [P | Ps] end
-                                                                ,[P]
-                                                                ,Call
-                                                               )}};
+    try cf_event_handler_sup:new(M, [whapps_call:clear_helpers(Call) | A]) of
+        {'ok', P} when is_pid(P) ->
+            lager:debug("started event listener ~p from ~s", [P, M]),
+            {'noreply', State};
         _E ->
             lager:debug("error starting event listener: ~p", [_E]),
             {'noreply', State}

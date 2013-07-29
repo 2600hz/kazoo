@@ -22,10 +22,12 @@
 -export([set_application_name/2, application_name/1]).
 -export([set_application_version/2, application_version/1]).
 -export([set_call_id/2, call_id/1, call_id_direct/1]).
--export([call_id_helper/2]).
+-export([call_id_helper/2, clear_call_id_helper/1]).
 -export([set_control_queue/2, control_queue/1, control_queue_direct/1]).
--export([control_queue_helper/2]).
+-export([control_queue_helper/2, clear_control_queue_helper/1]).
 -export([set_controller_queue/2, controller_queue/1]).
+
+-export([clear_helpers/1]).
 
 -export([set_caller_id_name/2, caller_id_name/1]).
 -export([set_caller_id_number/2, caller_id_number/1]).
@@ -131,6 +133,14 @@
 
 -spec default_helper_function(api_binary(), call()) -> api_binary().
 default_helper_function(Field, #whapps_call{}) -> Field.
+
+-spec clear_helpers(call()) -> call().
+clear_helpers(#whapps_call{}=Call) ->
+    Fs = [fun clear_custom_publish_function/1
+          ,fun clear_call_id_helper/1
+          ,fun clear_control_queue_helper/1
+         ],
+    lists:foldl(fun(F, Acc) -> F(Acc) end, Call, Fs).
 
 -spec new() -> call().
 new() -> #whapps_call{}.
@@ -375,6 +385,10 @@ call_id_helper(Fun, #whapps_call{}=Call) when is_function(Fun, 2) ->
 call_id_helper(_, #whapps_call{}=Call) ->
     Call#whapps_call{call_id_helper=fun ?MODULE:default_helper_function/2}.
 
+-spec clear_call_id_helper(call()) -> call().
+clear_call_id_helper(Call) ->
+    Call#whapps_call{call_id_helper=fun ?MODULE:default_helper_function/2}.
+
 -spec set_control_queue(ne_binary(), call()) -> call().
 set_control_queue(ControlQ, #whapps_call{}=Call) when is_binary(ControlQ) ->
     Call#whapps_call{control_q=ControlQ}.
@@ -393,6 +407,10 @@ control_queue_direct(#whapps_call{control_q=ControlQ}) ->
 control_queue_helper(Fun, #whapps_call{}=Call) when is_function(Fun, 2) ->
     Call#whapps_call{control_q_helper=Fun};
 control_queue_helper(_, #whapps_call{}=Call) ->
+    Call#whapps_call{control_q_helper=fun ?MODULE:default_helper_function/2}.
+
+-spec clear_control_queue_helper(call()) -> call().
+clear_control_queue_helper(#whapps_call{}=Call) ->
     Call#whapps_call{control_q_helper=fun ?MODULE:default_helper_function/2}.
 
 -spec set_controller_queue(ne_binary(), call()) -> call().
