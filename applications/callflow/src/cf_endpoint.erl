@@ -173,7 +173,6 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
     Merged1 = wh_json:merge_recursive(AccountAttr, OwnerAttr),
     Merged2 = wh_json:merge_recursive(Merged1, EndpointAttr),
-	lager:info("merged2 ~p",[Merged2]),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged2, Endpoint), Owner).
 
 -spec merge_call_restrictions(ne_binaries(), wh_json:object(), wh_json:object(), wh_json:object()) -> wh_json:object().
