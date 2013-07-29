@@ -67,7 +67,7 @@ start_link() ->
 init([]) ->
     lager:debug("starting to migrate accounts to the new sharded db format"),
     gen_server:cast(self(), 'start_migrate'),
-    {'ok', {}}.
+    {'ok', #state{}}.
    
 
 %%--------------------------------------------------------------------
@@ -84,10 +84,15 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(atom(), any(), state()) -> {_,_,_}.
+handle_call('status', _, #state{account_list=AccountsLeft}=_State) ->
+    Status = {'num_accounts_left', lists:flatlength(AccountsLeft)},
+    {'reply', 'ok', Status};
+
 handle_call(_Request, _From, State) ->
-    lager:debug("catchall handle_call executed"),
+    lager:debug("unhandled handle_call executed ~p~p", [_Request, _From]),
     Reply = 'ok',
-    {reply, Reply, State}.
+    {'reply', Reply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -99,17 +104,26 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast('start_migrate', {}) ->
+handle_cast('start_migrate', State) ->
     lager:debug("handle_cast: start_migrate called"),
     Accounts  = whapps_util:get_all_accounts(),
-    DateList = cdr_v3_migrate_lib:get_n_month_date_list(calendar:universal_time(), 4),
-    [FirstAccount | RestAccounts] = Accounts,
-    {PID, REF} = spawn_monitor('cdr_v3_migrate_worker', 'migrate_account_cdrs', [FirstAccount, DateList]),
-    
-    {'noreply', State#state{account_list=RestAccounts, date_list=DateList, pid=PID, ref=REF}};
+    DateList = cdr_v3_migrate_lib:get_n_month_date_list(calendar:universal_time(), 4), 
+    gen_server:cast(self(), 'start_next_worker'),
+    {'noreply', State#state{account_list=Accounts, date_list=DateList}};
+
+handle_cast('start_next_worker', #state{account_list=[]}=State) ->
+    lager:debug("reached end of accounts, exiting..."),
+    {'stop', 'normal', State};
+
+handle_cast('start_next_worker', #state{account_list=[NextAccount|RestAccounts]
+                                        ,date_list=DateList
+                                       }=State) ->
+    lager:debug("cdr_v3_migrate_server: handle_cast start_next_worker executed"),
+    {NEWPID, NEWREF} = spawn_monitor('cdr_v3_migrate_worker', 'migrate_account_cdrs', [NextAccount, DateList]),
+    {'noreply', State#state{account_list=RestAccounts, date_list=DateList, pid=NEWPID, ref=NEWREF}};
 
 handle_cast(_Msg, State) ->
-    lager:debug("catchall handle_cast executed"),
+    lager:debug("unhandled call to handle_cast executed"),
     {'noreply', State}.
     
 
@@ -123,24 +137,16 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', Ref, 'process', Pid, Reason}, #state{account_list=Accounts
-                                                          ,date_list=DateList
-                                                          ,pid=Pid
-                                                          ,ref=Ref
-                                                         }=State) ->
-    lager:debug("response pid ~p(~p) down: ~p", [Pid, Ref, Reason]),
-    case Accounts of
-        [] -> {'noreply', State};
-        _  -> 
-            [NextAccount | RestAccounts] = Accounts,
-            {NEWPID, NEWREF} = spawn_monitor('cdr_v3_migrate_worker', 'migrate_account_cdrs', [NextAccount, DateList]),
-            {'noreply', State#state{account_list=RestAccounts, date_list=DateList, pid=NEWPID, ref=NEWREF}}
-    end,
-    {'noreply', State#state{pid='undefined',ref='undefined'}, 'hibernate'};
+handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{pid=Pid
+                                                           ,ref=Ref
+                                                          }=State) ->
+    lager:debug("response pid ~p(~p) down: ~p", [Pid, Ref, _Reason]),
+    gen_server:cast(self(), 'start_next_worker'),
+    {'noreply', State#state{pid='undefined',ref='undefined'}};
     
 
 handle_info(_Info, State) ->
-    lager:debug("catchall handle_info executed"),
+    lager:debug("unhanled call to cdr_v3_migrate_server handle_info executed"),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -155,6 +161,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    lager:debug("cdr_v3_migrate_server terminated: ~p", [_Reason]),
     'ok'.
 
 %%--------------------------------------------------------------------

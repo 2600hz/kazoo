@@ -32,13 +32,15 @@ save_cdr(AccountMOD, Doc) ->
                       {'error', 'max_retries'} | 'ok'.
 save_cdr(_, _, ?MAX_RETRIES) -> {'error', 'max_retries'};
 
-save_cdr(AccountMOD, Doc, Retries) ->
-    case couch_mgr:save_doc(AccountMOD, Doc) of
+save_cdr(AccountMODb, Doc, Retries) ->
+    case couch_mgr:save_doc(AccountMODb, Doc) of
         {'error', 'not_found'} ->
-            couch_mgr:db_create(AccountMOD),
-            save_cdr(AccountMOD, Doc, Retries);
+            couch_mgr:db_create(AccountMODb),
+            save_cdr(AccountMODb, Doc, Retries);
         {'ok', _} -> 'ok';
-        {'error', _} -> save_cdr(AccountMOD, Doc, Retries+1)
+        {'error', _}=_E -> 
+            lager:error("Account MODd Create Error: ~p", [_E]),
+            save_cdr(AccountMODb, Doc, Retries+1)
     end.
 
 -spec save_in_anonymous_cdrs(wh_json:object()) -> 'ok'.

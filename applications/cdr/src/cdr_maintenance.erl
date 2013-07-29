@@ -11,8 +11,13 @@
 
 %% API
 -export([flush/0]).
--export([stop_v3_migrator/0]).
--export([start_v3_migrator/0]).
+-export([stop_v3_migrator/0
+         ,create_test_migrate_accounts/0
+         ,delete_test_migrate_accounts/0
+         ,start_v3_migrator/0
+         ,start_v3_test_migrator/0
+         ,clean_v3_test_migrator/0
+        ]).
 
 -include("cdr.hrl").
 
@@ -30,6 +35,33 @@ stop_v3_migrator() ->
 -spec start_v3_migrator() -> any().
 start_v3_migrator() ->
     cdr_sup:start_v3_migrate().
+
+-spec create_test_migrate_accounts() -> any().
+create_test_migrate_accounts() ->
+    NumTestAccounts = 2,
+    NumMonthsLegacyData = 6,
+    NumCdrsPerDay = 4,
+    _ = cdr_v3_migrate_lib:generate_test_accounts(NumTestAccounts, NumMonthsLegacyData, NumCdrsPerDay).
+
+delete_test_migrate_accounts() ->
+    NumTestAccounts = 2,
+    NumMonthsLegacyData = 6,
+    _ = cdr_v3_migrate_lib:delete_test_accounts(NumTestAccounts, NumMonthsLegacyData).
+
+-spec start_v3_test_migrator() -> any().
+start_v3_test_migrator() ->
+    NumTestAccounts = 2,
+    NumMonthsLegacyData = 6,
+    NumCdrsPerDay = 4,
+    _ = cdr_v3_migrate_lib:generate_test_accounts(NumTestAccounts, NumMonthsLegacyData, NumCdrsPerDay),
+    
+    cdr_sup:start_v3_migrate().
+
+-spec clean_v3_test_migrator() -> any().
+clean_v3_test_migrator() ->    
+    NumTestAccounts = 2,
+    NumMonthsLegacyData = 6,
+    _ = cdr_v3_migrate_lib:delete_test_accounts(NumTestAccounts, NumMonthsLegacyData).
 
 %%--------------------------------------------------------------------
 %% @doc
