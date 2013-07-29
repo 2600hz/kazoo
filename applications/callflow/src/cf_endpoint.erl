@@ -171,8 +171,6 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
     OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
-%%    Merged1 = wh_json:merge_recursive(AccountAttr, EndpointAttr),
-%%    Merged2 = wh_json:merge_recursive(Merged1, OwnerAttr),
     Merged1 = wh_json:merge_recursive(AccountAttr, OwnerAttr),
     Merged2 = wh_json:merge_recursive(Merged1, EndpointAttr),
 	lager:info("merged2 ~p",[Merged2]),
