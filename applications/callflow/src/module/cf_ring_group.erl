@@ -104,7 +104,7 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
             resolve_endpoint_ids(Members, [{Type, Id, Member}|EndpointIds], Call)
     end.
 
--spec get_group_members(wh_json:object(), ne_binary(), whapps_call:call()) -> wh_json:object().    
+-spec get_group_members(wh_json:object(), ne_binary(), whapps_call:call()) -> wh_json:objects().
 get_group_members(Member, Id, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, Id) of

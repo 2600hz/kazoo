@@ -854,6 +854,8 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
 
+    ecallmgr_util:set(Node, UUID, [{<<"Recording-URL">>, Url}]),
+
     Args = list_to_binary([Url, <<" ">>, File]),
     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
     Result = case send_fs_store(Node, Args, Method) of

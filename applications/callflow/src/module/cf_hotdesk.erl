@@ -86,7 +86,7 @@ handle_action(<<"toggle">>, Hotdesk, Call) ->
                                                             {'error', _}.
 
 bridge_to_endpoints(#hotdesk{endpoint_ids=EndpointIds}, Call) ->
-    Endpoints = build_endpoints(sets:to_list(EndpointIds), Call),
+    Endpoints = build_endpoints(EndpointIds, Call),
 %%    Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
     whapps_call_command:b_bridge(Endpoints, ?DEFAULT_TIMEOUT, <<"simultaneous">>, IgnoreEarlyMedia, Call).
@@ -165,7 +165,7 @@ login_authorizing_id('undefined', _, Call) ->
 login_authorizing_id(AuthorizingId, #hotdesk{owner_id=OwnerId}=Hotdesk, Call) ->
     AccountDb = whapps_call:account_db(Call),
     Fun = fun(JObj) ->
-                  wh_json:set_value([<<"hotdesk">>, <<"users">>, OwnerId], wh_json:new(), JObj) 
+                  wh_json:set_value([<<"hotdesk">>, <<"users">>, OwnerId], wh_json:new(), JObj)
           end,
     case update_hotdesk_endpoint(AccountDb, AuthorizingId, Fun) of
         {'ok', _} -> logged_in(Hotdesk, Call);

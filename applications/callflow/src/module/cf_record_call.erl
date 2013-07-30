@@ -7,6 +7,7 @@
 %%%   "action":["start","stop"] // one of these
 %%%   ,"time_limit":600 // in seconds, how long to record the call
 %%%   ,"format":["mp3","wav"] // what format to store the recording in
+%%%   ,"url":"http://server.com/path/to/dump/file" // what URL to PUT the file to
 %%% }
 %%% @end
 %%% @contributors
@@ -15,24 +16,15 @@
 -module(cf_record_call).
 
 -export([handle/2
-         ,start_event_listener/2
+         ,get_timelimit/1
+         ,get_format/1
+         ,get_url/1
+         ,get_media_name/2
+         ,should_store_recording/1
+         ,save_recording/4
         ]).
 
 -include("../callflow.hrl").
-
--spec start_event_listener(whapps_call:call(), wh_json:object()) -> 'ok'.
-start_event_listener(Call, Data) ->
-    put('callid', whapps_call:call_id(Call)),
-    TimeLimit = get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
-    lager:info("listening for record stop (or ~b s), then storing the recording", [TimeLimit]),
-
-    _Wait = whapps_call_command:wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, (TimeLimit + 10) * 1000),
-    lager:info("ok, done waiting: ~p", [_Wait]),
-
-    Format = get_format(wh_json:get_value(<<"format">>, Data)),
-    MediaName = get_media_name(whapps_call:call_id(Call), Format),
-
-    save_recording(Call, MediaName, Format).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -51,9 +43,9 @@ handle(Data, Call, <<"start">> = Action) ->
     Format = get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
 
-    _P = cf_exe:add_event_listener(Call, {?MODULE, 'start_event_listener', [Data]}),
+    'ok' = cf_exe:add_event_listener(Call, {'cf_record_call_listener', [Data]}),
 
-    lager:info("recording ~s starting, evt listener at ~p", [MediaName, _P]),
+    lager:debug("starting recording of ~s", [MediaName]),
     whapps_call_command:record_call(MediaName, Action, TimeLimit, Call);
 handle(Data, Call, <<"stop">> = Action) ->
     Format = get_format(wh_json:get_value(<<"format">>, Data)),
@@ -62,20 +54,37 @@ handle(Data, Call, <<"stop">> = Action) ->
     _ = whapps_call_command:record_call(MediaName, Action, Call),
     lager:info("recording of ~s stopped", [MediaName]),
 
-    save_recording(Call, MediaName, Format).
+    save_recording(Call, MediaName, Format, should_store_recording(get_url(Data))).
 
-save_recording(Call, MediaName, Format) ->
+save_recording(_Call, _MediaName, _Format, 'false') ->
+    lager:debug("not configured to store recording ~s", [_MediaName]);
+save_recording(Call, MediaName, Format, {'true', 'local'}) ->
     {'ok', MediaJObj} = store_recording_meta(Call, MediaName, Format),
     lager:info("stored meta: ~p", [MediaJObj]),
 
     StoreUrl = store_url(Call, MediaJObj),
-    lager:info("store url: ~s", [StoreUrl]),
+    lager:info("store local url: ~s", [StoreUrl]),
 
-    store_recording(MediaName, StoreUrl, Call).
+    store_recording(MediaName, StoreUrl, Call);
+save_recording(Call, MediaName, _Format, {'true', Url}) ->
+    lager:debug("store remote url: ~s", [Url]),
+    store_recording(MediaName, Url, Call).
 
 -spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
-store_recording(MediaName, StoreUrl, Call) ->
+store_recording(MediaName, Url, Call) ->
+    StoreUrl = append_path(Url, MediaName),
+    lager:debug("appending filename to url: ~s", [StoreUrl]),
     'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).
+
+append_path(Url, MediaName) ->
+    S = byte_size(Url)-1,
+
+    Encoded = cowboy_http:urlencode(MediaName),
+
+    case Url of
+        <<_:S/binary, "/">> -> <<Url/binary, Encoded/binary>>;
+        _ -> <<Url/binary, "/", Encoded/binary>>
+    end.
 
 -spec get_action(api_binary()) -> ne_binary().
 get_action('undefined') -> <<"start">>;
@@ -98,8 +107,8 @@ get_format(<<"wav">> = WAV) -> WAV;
 get_format(_) -> get_format('undefined').
 
 -spec store_recording_meta(whapps_call:call(), ne_binary(), cf_api_binary()) ->
-                                        {'ok', wh_json:object()} |
-                                        {'error', any()}.
+                                  {'ok', wh_json:object()} |
+                                  {'error', any()}.
 store_recording_meta(Call, MediaName, Ext) ->
     AcctDb = whapps_call:account_db(Call),
     CallId = whapps_call:call_id(Call),
@@ -140,3 +149,14 @@ store_url(Call, JObj) ->
     MediaName = wh_json:get_value(<<"name">>, JObj),
     {'ok', URL} = wh_media_url:store(AccountDb, MediaId, MediaName),
     URL.
+
+-spec should_store_recording(api_binary()) -> {'true', ne_binary() | 'local'} | 'false'.
+should_store_recording('undefined') ->
+    case whapps_config:get_is_true(?CF_CONFIG_CAT, <<"store_recordings">>, 'false') of
+        'true' -> {'true', 'local'};
+        'false' -> 'false'
+    end;
+should_store_recording(Url) -> {'true', Url}.
+
+get_url(Data) ->
+    wh_json:get_value(<<"url">>, Data).

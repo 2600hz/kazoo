@@ -524,11 +524,12 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_mwi_update(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-type vm_count() :: ne_binary() | non_neg_integer().
+-spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary()) -> 'ok'.
 send_mwi_update(New, Saved, Username, Realm) ->
     send_mwi_update(New, Saved, Username, Realm, wh_json:new()).
 
--spec send_mwi_update(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 send_mwi_update(New, Saved, Username, Realm, JObj) ->
     DefaultAccount = <<"sip:", Username/binary, "@", Realm/binary>>,
     Command = [{<<"Messages-New">>, New}
@@ -638,7 +639,7 @@ maybe_presence_parking_flow(Request, Realm, AccountDb) ->
                 <<"park">> ->
                     SlotNumber = wh_json:get_ne_value(<<"capture_group">>, Flow, Request),
                     wh_cache:store_local(?CALLFLOW_CACHE, ?PARKING_PRESENCE_KEY(AccountDb, Request), SlotNumber),
-                    presence_parking_slot_resp(Flow, Request, Realm, AccountDb);
+                    presence_parking_slot_resp(SlotNumber, Request, Realm, AccountDb);
                 _Else ->
                     wh_cache:store_local(?CALLFLOW_CACHE, ?PARKING_PRESENCE_KEY(AccountDb, Request), 'false'),
                     'ok'

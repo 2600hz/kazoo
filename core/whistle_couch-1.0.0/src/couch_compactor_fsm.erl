@@ -1034,8 +1034,10 @@ compact_shard(AdminConn, S, DDs) ->
             lager:debug("beginning compacting shard: ~p disk/~p data", [BeforeDisk, BeforeData])
     end,
 
-    'true' = couch_util:db_compact(AdminConn, S),
-    wait_for_compaction(AdminConn, S),
+    case couch_util:db_compact(AdminConn, S) of
+        'true' -> wait_for_compaction(AdminConn, S);
+        'false' -> 'ok'
+    end,
 
     couch_util:db_view_cleanup(AdminConn, S),
     wait_for_compaction(AdminConn, S),
@@ -1229,7 +1231,7 @@ get_db_disk_and_data(_Conn, _Encoded, N) when N >= 3 ->
     'undefined';
 get_db_disk_and_data(Conn, Encoded, N) ->
     case couch_util:db_info(Conn, Encoded) of
-        {'ok', Info} -> 
+        {'ok', Info} ->
             {wh_json:get_integer_value(<<"disk_size">>, Info)
              ,wh_json:get_integer_value([<<"other">>, <<"data_size">>], Info)
             };

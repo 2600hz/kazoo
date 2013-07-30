@@ -130,7 +130,7 @@ get_req_data(Context, Req0) ->
     get_req_data(Context, get_content_type(Req1), QS).
 
 get_query_string_data(Req0) ->
-    {QS0, Req1} = cowboy_req:qs_vals(Req0),    
+    {QS0, Req1} = cowboy_req:qs_vals(Req0),
     get_query_string_data(QS0, Req1).
 get_query_string_data([], Req) ->
     {wh_json:new(), Req};
@@ -205,7 +205,7 @@ maybe_extract_multipart(Context, Req0, QS) ->
 
             try get_url_encoded_body(ReqBody) of
                 JObj ->
-                    case wh_json:values(JObj) of
+                    case wh_json:get_values(JObj) of
                         {['true'], [JSON]} ->
                             lager:debug("failed to parse url-encoded request body, but we'll give json a go on ~p", [JSON]),
                             try_json(JSON, QS, Context, Req1);
