@@ -74,8 +74,8 @@ copy_cdr_to_account_mod(AccountId, _AccountDb, CdrDoc, Year, Month) ->
     case cdr_util:save_cdr(AccountMODb, JObj) of
         {'error', _}=_E -> lager:error("could not migrate cdr ~p", [_E]);
         'ok' -> 'ok'
-    end.
-    couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, Cdr)).
+    end,
+    couch_mgr:save_doc(_AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, CdrDoc)).
 
 -spec create_view_options(wh_datetime()) -> wh_proplist().
 create_view_options(Date) ->
