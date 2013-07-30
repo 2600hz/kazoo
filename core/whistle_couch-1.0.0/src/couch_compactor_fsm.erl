@@ -32,7 +32,9 @@
         ]).
 
 %% Internal
--export([compact_shard/3]).
+-export([compact_shard/3
+         ,rebuild_design_docs/3
+        ]).
 
 %% gen_fsm callbacks
 -export([init/1
@@ -102,8 +104,8 @@
 
           ,current_node :: ne_binary() | node_with_options()
           ,current_db :: ne_binary()
-          ,conn :: #server{}
-          ,admin_conn :: #server{}
+          ,conn :: server()
+          ,admin_conn :: server()
 
           %% [ {Job, Pid, Ref},...]
           ,queued_jobs = queue:new() :: queue()
@@ -433,11 +435,11 @@ compact({'compact', N}=Msg, #state{conn='undefined'
     end;
 
 compact({'compact_db', N, D}=Msg, #state{conn='undefined'
-                                               ,admin_conn='undefined'
-                                               ,nodes=[]
-                                               ,current_job_pid=P
-                                               ,current_job_ref=Ref
-                                              }=State) ->
+                                         ,admin_conn='undefined'
+                                         ,nodes=[]
+                                         ,current_job_pid=P
+                                         ,current_job_ref=Ref
+                                        }=State) ->
     Cookie = wh_couch_connections:get_node_cookie(),
     try get_node_connections(N, Cookie) of
         {'error', _} ->
@@ -650,7 +652,7 @@ compact({'compact_db', N, D}, #state{conn=Conn
                                                   ,current_db=D
                                                  }};
         'true' ->
-            lager:debug("compacting ~s on ~s", [D, N]),
+            lager:debug("compacting db '~s' on node '~s'", [D, N]),
             Ss = db_shards(AdminConn, N, D),
             DDs = db_design_docs(Conn, D),
             gen_fsm:send_event(self(), {'compact_db', N, D, Ss, DDs}),
@@ -718,12 +720,21 @@ compact({'compact_db', N, D, [], _}, #state{nodes=[]
                                         ,current_job_pid='undefined'
                                         ,current_job_ref='undefined'
                                        }};
+
+compact({'rebuild_views', N, D, DDs}, #state{conn=Conn}=State) ->
+    _P = spawn(?MODULE, 'rebuild_design_docs', [Conn, D, DDs]),
+    lager:debug("rebuilding views in ~p", [_P]),
+    gen_fsm:send_event(self(), {'compact_db', N, D, [], DDs}),
+    {'next_state', 'compact', State};
+
 compact({'compact_db', N, D, [], _}, #state{nodes=[Node|Ns]}=State) ->
-    lager:debug("no shards to compact for ~s on ~s", [D, N]),
+    lager:debug("no shards left to compact for db '~s' on node '~s'", [D, N]),
     gen_fsm:send_event(self(), {'compact_db', Node, D}),
-    {'next_state', 'compact', State#state{nodes=Ns}};
+    {'next_state', 'compact', State#state{nodes=Ns
+                                         ,dbs=[D]
+                                         }};
 compact({'compact_db', N, D, Ss, DDs}, #state{admin_conn=AdminConn}=State) ->
-    lager:debug("compacting shards for ~s on ~s", [D, N]),
+    lager:debug("compacting shards for db '~s' on node '~s'", [D, N]),
     try lists:split(?MAX_COMPACTING_SHARDS, Ss) of
         {Compact, Shards} ->
             ShardsPidRef = compact_shards(AdminConn, Compact, DDs),
@@ -734,7 +745,7 @@ compact({'compact_db', N, D, Ss, DDs}, #state{admin_conn=AdminConn}=State) ->
         'error':'badarg' ->
             ShardsPidRef = compact_shards(AdminConn, Ss, DDs),
             {'next_state', 'compact', State#state{shards_pid_ref=ShardsPidRef
-                                                  ,next_compaction_msg={'compact_db', N, D, [], DDs}
+                                                  ,next_compaction_msg={'rebuild_views', N, D, DDs}
                                                  }}
     end;
 compact(_Msg, State) ->
@@ -796,6 +807,7 @@ compact(Msg, {NewP, _}, #state{queued_jobs=Jobs}=State) ->
 %%--------------------------------------------------------------------
 wait({'timeout', Ref, Msg}, #state{wait_ref=Ref}=State) ->
     gen_fsm:send_event(self(), Msg),
+    lager:debug("done waiting for ~p, compacting with ~p", [Ref, Msg]),
     {'next_state', 'compact', State#state{wait_ref='undefined'}};
 wait(_Msg, State) ->
     lager:debug("unhandled wait/2 msg: ~p", [_Msg]),
@@ -924,6 +936,7 @@ handle_info({'DOWN', Ref, 'process', P, _Reason}, 'compact', #state{shards_pid_r
                                                                     ,next_compaction_msg=Msg
                                                                    }=State) ->
     WaitRef = gen_fsm:start_timer(?SLEEP_BETWEEN_COMPACTION, Msg),
+    lager:debug("pidref down ~p(~p) down, waiting in ~p", [P, Ref, WaitRef]),
     {'next_state', 'wait', State#state{wait_ref=WaitRef
                                        ,next_compaction_msg='undefined'
                                        ,shards_pid_ref='undefined'
@@ -983,7 +996,7 @@ encode_db(D) ->
 encode_design_doc(Design) ->
     binary:replace(Design, <<"_design/">>, <<>>, ['global']).
 
--spec node_dbs(#server{}) -> {'ok', wh_json:json_strings()}.
+-spec node_dbs(server()) -> {'ok', wh_json:json_strings()}.
 node_dbs(AdminConn) ->
     {'ok', Dbs} = couch_util:all_docs(AdminConn, <<"dbs">>, []),
     {'ok', shuffle([wh_json:get_value(<<"id">>, Db) || Db <- Dbs])}.
@@ -1007,9 +1020,53 @@ db_design_docs(Conn, D) ->
         {'error', _} -> []
     end.
 
+-spec rebuild_design_docs(server(), ne_binary(), ne_binaries()) -> 'ok'.
+-spec rebuild_design_doc(server(), ne_binary(), ne_binary()) -> 'ok'.
+rebuild_design_docs(Conn, D, DDs) ->
+    put('callid', 'rebuild_design_docs'),
+    _ = [rebuild_design_doc(Conn, D, DD) || DD <- DDs],
+    'ok'.
+
+rebuild_design_doc(Conn, D, DD) ->
+    lager:debug("rebuilding design doc '~s' on '~s'", [DD, D]),
+
+    %% first, get the design doc itself
+    case couch_util:open_doc(Conn, D, <<"_design/", DD/binary>>, []) of
+        {'ok', DesignDoc} ->
+            rebuild_design_doc(Conn, D, DD, DesignDoc);
+        {'error', _E} ->
+            lager:debug("failed to load design doc for '~s' in db '~s': ~p", [DD, D, _E])
+    end.
+
+rebuild_design_doc(Conn, D, DD, DesignDoc) ->
+    case wh_json:get_keys(<<"views">>, DesignDoc) of
+        [] -> lager:debug("design doc '~s' in '~s' had no views", [DD, D]);
+        Views ->
+            rebuild_views(Conn, D, DD, Views)
+    end.
+
+rebuild_views(Conn, D, DD, Views) ->
+    [rebuild_view(Conn, D, DD, V) || V <- Views],
+    'ok'.
+
+rebuild_view(Conn, D, DD, View) ->
+    case couch_util:get_results(Conn, D, <<DD/binary, "/", View/binary>>, [{'stale', 'update_after'}
+                                                                             ,{'limit', 1}
+                                                                            ])
+    of
+        {'error', _E} ->
+            lager:debug("error while rebuilding view '~s/~s' has rebuilt on '~s'\: ~p", [DD, View, D, _E]),
+            timer:sleep(?SLEEP_BETWEEN_VIEWS);
+        {'ok', _} ->
+            lager:debug("view '~s/~s' has rebuilt on '~s'", [DD, View, D]),
+            timer:sleep(?SLEEP_BETWEEN_VIEWS)
+    end.
+
 -spec compact_shards(server(), list(), list()) -> {pid(), reference()}.
 compact_shards(AdminConn, Ss, DDs) ->
+    LogId = get('callid'),
     PR = spawn_monitor(fun() ->
+                               put('callid', LogId),
                                Ps = [spawn_monitor(?MODULE, 'compact_shard', [AdminConn, Shard, DDs]) || Shard <- Ss],
                                lager:debug("shard compaction pids: ~p", [Ps]),
                                wait_for_pids(?MAX_WAIT_FOR_COMPACTION_PIDS, Ps)
@@ -1017,35 +1074,50 @@ compact_shards(AdminConn, Ss, DDs) ->
     lager:debug("compacting shards in ~p", [PR]),
     PR.
 
-wait_for_pids(_, []) -> 'ok';
+wait_for_pids(_, []) -> lager:debug("done waiting for compaction pids");
 wait_for_pids(MaxWait, [{P,Ref}|Ps]) ->
-    receive {'DOWN', Ref, 'process', P, _} -> wait_for_pids(MaxWait, Ps)
-    after MaxWait -> wait_for_pids(MaxWait, Ps)
+    receive {'DOWN', Ref, 'process', P, _} ->
+            lager:debug("recv down from ~p(~p)", [P, Ref]),
+            wait_for_pids(MaxWait, Ps)
+    after MaxWait ->
+            lager:debug("timed out waiting for ~p(~p), moving on", [P, Ref]),
+            wait_for_pids(MaxWait, Ps)
     end.
 
 compact_shard(AdminConn, S, DDs) ->
-    put('callid', S),
+    put('callid', 'compact_shard'),
 
     wait_for_compaction(AdminConn, S),
 
     case get_db_disk_and_data(AdminConn, S) of
-        'undefined' -> lager:debug("beginning compacting shard");
+        'undefined' ->
+            lager:debug("beginning compacting shard"),
+            start_compacting_shard(AdminConn, S, DDs);
+        'not_found' -> 'ok';
         {BeforeDisk, BeforeData} ->
-            lager:debug("beginning compacting shard: ~p disk/~p data", [BeforeDisk, BeforeData])
-    end,
+            lager:debug("beginning compacting shard: ~p disk/~p data", [BeforeDisk, BeforeData]),
+            start_compacting_shard(AdminConn, S, DDs)
+    end.
 
+start_compacting_shard(AdminConn, S, DDs) ->
     case couch_util:db_compact(AdminConn, S) of
-        'true' -> wait_for_compaction(AdminConn, S);
-        'false' -> 'ok'
-    end,
+        'true' -> continue_compacting_shard(AdminConn, S, DDs);
+        'false' -> lager:debug("compaction of shard failed, skipping")
+    end.
 
+continue_compacting_shard(AdminConn, S, DDs) ->
+    wait_for_compaction(AdminConn, S),
+
+    %% cleans up old view indexes
     couch_util:db_view_cleanup(AdminConn, S),
     wait_for_compaction(AdminConn, S),
 
+    %% compacts views
     compact_design_docs(AdminConn, S, DDs),
 
     case get_db_disk_and_data(AdminConn, S) of
         'undefined' -> lager:debug("finished compacting shard");
+        'not_found' -> lager:debug("finished compacting shard");
         {AfterDisk, AfterData} ->
             lager:debug("finished compacting shard: ~p disk/~p data", [AfterDisk, AfterData])
     end.
@@ -1074,12 +1146,13 @@ wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'error', {'conn_failed', 
     timer:sleep(?SLEEP_BETWEEN_POLL),
     wait_for_design_compaction(AdminConn, Shard, DDs, DD, couch_util:design_info(AdminConn, Shard, DD));
 wait_for_design_compaction(AdminConn, Shard, DDs, _DD, {'error', _E}) ->
-    lager:debug("failed design status for ~s: ~p", [_DD, _E]),
+    lager:debug("failed design status for '~s': ~p", [_DD, _E]),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
     wait_for_design_compaction(AdminConn, Shard, DDs);
 wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'ok', DesignInfo}) ->
     case wh_json:is_true(<<"compact_running">>, DesignInfo, 'false') of
-        'false' -> wait_for_design_compaction(AdminConn, Shard, DDs);
+        'false' ->
+            wait_for_design_compaction(AdminConn, Shard, DDs);
         'true' ->
             'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
             wait_for_design_compaction(AdminConn, Shard, DDs, DD, couch_util:design_info(AdminConn, Shard, DD))
@@ -1089,7 +1162,7 @@ wait_for_compaction(AdminConn, S) ->
     wait_for_compaction(AdminConn, S, couch_util:db_info(AdminConn, S)).
 
 wait_for_compaction(_AdminConn, _S, {'error', 'db_not_found'}) ->
-    lager:debug("db ~s wasn't found", [_S]);
+    lager:debug("shard '~s' wasn't found", [_S]);
 wait_for_compaction(AdminConn, S, {'error', _E}) ->
     lager:debug("failed to query db status: ~p", [couch_util:format_error(_E)]),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
@@ -1136,7 +1209,10 @@ get_node_connections(Host, Port, User, Pass, AdminPort, Retries) ->
          couch_util:get_new_connection(Host, AdminPort, User, Pass)
         }
     of
-        {'error', 'timeout'} ->
+        {{'error', 'timeout'}, _} ->
+            lager:debug("timed out getting connection for ~s, try again", [Host]),
+            get_node_connections(Host, Port, User, Pass, AdminPort, Retries+1);
+        {_, {'error', 'timeout'}} ->
             lager:debug("timed out getting connection for ~s, try again", [Host]),
             get_node_connections(Host, Port, User, Pass, AdminPort, Retries+1);
         {_Conn, _AdminConn}=Conns -> Conns
@@ -1158,7 +1234,9 @@ get_ports(Node) ->
          ,get_port(Node, ["httpd", "port"], fun wh_couch_connections:get_admin_port/0)
         }
     of
-        Ports -> Ports
+        Ports ->
+            lager:debug("fetched ports ~p from node ~s", [Ports, Node]),
+            Ports
     catch
         _E:_R ->
             lager:debug("failed to get ports: ~s: ~p", [_E, _R]),
@@ -1218,12 +1296,13 @@ should_compact(_Conn, _Encoded, ?HEUR_NONE) -> 'true';
 should_compact(Conn, Encoded, ?HEUR_RATIO) ->
     case get_db_disk_and_data(Conn, Encoded) of
         {Disk, Data} -> should_compact_ratio(Disk, Data);
-        'undefined' -> 'false'
+        'undefined' -> 'false';
+        'not_found' -> 'false'
     end.
 
 -spec get_db_disk_and_data(server(), ne_binary()) ->
                                   {pos_integer(), pos_integer()} |
-                                  'undefined'.
+                                  'undefined' | 'not_found'.
 get_db_disk_and_data(Conn, Encoded) ->
     get_db_disk_and_data(Conn, Encoded, 1).
 get_db_disk_and_data(_Conn, _Encoded, N) when N >= 3 ->
@@ -1239,6 +1318,12 @@ get_db_disk_and_data(Conn, Encoded, N) ->
             lager:debug("timed out asking for info, waiting and trying again"),
             timer:sleep(100),
             get_db_disk_and_data(Conn, Encoded, N+1);
+        {'error', 'not_found'} ->
+            lager:debug("db '~s' not found, skipping", [Encoded]),
+            'not_found';
+        {'error', 'db_not_found'} ->
+            lager:debug("shard '~s' not found, skipping", [Encoded]),
+            'not_found';
         {'error', _E} ->
             lager:debug("failed to lookup info: ~p", [_E]),
             'undefined'
