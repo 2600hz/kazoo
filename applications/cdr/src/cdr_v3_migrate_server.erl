@@ -26,7 +26,8 @@
 
 -record(state, {
           account_list :: wh_proplist()
-          ,date_list :: wh_proplist()
+          ,migrate_date_list :: wh_proplist()
+	  ,archive_start_date :: wh_proplist()
           ,pid :: pid() %% pid of the processing of the response
           ,ref :: reference() %% monitor ref for the pid
          }).
@@ -107,20 +108,26 @@ handle_call(_Request, _From, State) ->
 handle_cast('start_migrate', State) ->
     lager:debug("handle_cast: start_migrate called"),
     Accounts  = whapps_util:get_all_accounts(),
-    DateList = cdr_v3_migrate_lib:get_n_month_date_list(calendar:universal_time(), 4), 
+    MigrateDateList = cdr_v3_migrate_lib:get_prev_n_month_date_list(calendar:universal_time(), 4), 
+    [{LastYear, LastMonth, _} | _ ] = lists:reverse(MigrateDateList),
+    ArchiveStartDate = cdr_v3_migrate_lib:get_prev_month(LastYear, LastMonth),
     gen_server:cast(self(), 'start_next_worker'),
-    {'noreply', State#state{account_list=Accounts, date_list=DateList}};
+    {'noreply', State#state{account_list=Accounts
+			    ,migrate_date_list=MigrateDateList
+			    ,archive_start_date=ArchiveStartDate
+			   }};
 
 handle_cast('start_next_worker', #state{account_list=[]}=State) ->
     lager:debug("reached end of accounts, exiting..."),
     {'stop', 'normal', State};
 
 handle_cast('start_next_worker', #state{account_list=[NextAccount|RestAccounts]
-                                        ,date_list=DateList
+                                        ,migrate_date_list=MigrateDateList
+					,archive_start_date=ArchiveStartDate
                                        }=State) ->
     lager:debug("cdr_v3_migrate_server: handle_cast start_next_worker executed"),
-    {NEWPID, NEWREF} = spawn_monitor('cdr_v3_migrate_worker', 'migrate_account_cdrs', [NextAccount, DateList]),
-    {'noreply', State#state{account_list=RestAccounts, date_list=DateList, pid=NEWPID, ref=NEWREF}};
+    {NEWPID, NEWREF} = spawn_monitor('cdr_v3_migrate_worker', 'migrate_account_cdrs', [NextAccount, MigrateDateList, ArchiveStartDate]),
+    {'noreply', State#state{account_list=RestAccounts, pid=NEWPID, ref=NEWREF}};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled call to handle_cast executed"),

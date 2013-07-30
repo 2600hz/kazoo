@@ -9,9 +9,14 @@
 -module(cdr_v3_migrate_lib).
 
 %% API
--export([get_n_month_date_list/2
-         ,get_n_month_date_list/3
-         ,get_last_n_months/3
+-export([get_prev_n_month_date_list/2
+         ,get_prev_n_month_date_list/3
+	 ,get_next_n_month_date_list/2
+	 ,get_next_n_month_date_list/3
+         ,get_prev_n_months/3
+	 ,get_next_n_months/3
+	 ,get_prev_month/2
+	 ,get_next_month/2
 	 ,generate_test_accounts/3
          ,get_test_account_details/1
 	 ,delete_test_accounts/2
@@ -22,19 +27,35 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec get_n_month_date_list(wh_datetime(), pos_integer()) -> wh_proplist().
--spec get_n_month_date_list(wh_year(), wh_month(), pos_integer()) -> wh_proplist().
-get_n_month_date_list({{Year, Month, _}, _}, NumMonths) ->
-    get_n_month_date_list(Year, Month, NumMonths).
+-spec get_prev_n_month_date_list(wh_datetime(), pos_integer()) -> wh_proplist().
+-spec get_prev_n_month_date_list(wh_year(), wh_month(), pos_integer()) -> wh_proplist().
+get_prev_n_month_date_list({{Year, Month, _}, _}, NumMonths) ->
+    get_prev_n_month_date_list(Year, Month, NumMonths).
 
-get_n_month_date_list(Year, Month, NumMonths) ->
-    DateRange = lists:reverse(get_last_n_months(Year, Month, NumMonths)),
-    lists:foldl(fun get_n_month_date_list_fold/2, [], DateRange).
+get_prev_n_month_date_list(Year, Month, NumMonths) ->
+    DateRange = lists:reverse(get_prev_n_months(Year, Month, NumMonths)),
+    lists:foldl(fun get_prev_n_month_date_list_fold/2, [], DateRange).
 
--spec get_n_month_date_list_fold({pos_integer(), pos_integer()}, list()) -> any().
-get_n_month_date_list_fold({Year,Month}, Acc) ->
+-spec get_prev_n_month_date_list_fold({wh_year(), wh_month()}, list()) -> any().
+get_prev_n_month_date_list_fold({Year,Month}, Acc) ->
     [{Year,Month,Day}
      || Day <- lists:seq(calendar:last_day_of_the_month(Year,Month), 1, -1)
+    ] ++ Acc.
+
+-spec get_next_n_month_date_list(wh_datetime(), pos_integer()) -> wh_proplist().
+-spec get_next_n_month_date_list(wh_year(), wh_month(), pos_integer()) -> wh_proplist().
+get_next_n_month_date_list({{Year, Month, _}, _}, NumMonths) ->
+    DateRange = lists:reverse(get_next_n_months(Year, Month, NumMonths)),
+    lists:foldl(fun get_next_n_month_date_list_fold/2, [], DateRange).
+
+get_next_n_month_date_list(Year, Month, NumMonths) ->
+    DateRange = lists:reverse(get_next_n_months(Year, Month, NumMonths)),
+    lists:foldl(fun get_next_n_month_date_list_fold/2, [], DateRange).
+			     
+-spec get_next_n_month_date_list_fold({wh_year(), wh_month()}, list()) -> any().
+get_next_n_month_date_list_fold({Year, Month}, Acc) ->
+    [{Year, Month, Day}
+     || Day <- lists:seq(calendar:last_day_of_the_month(Year, Month), 1, -1)
     ] ++ Acc.
 
 -spec get_test_account_details(pos_integer()) -> api_binaries().
@@ -61,7 +82,7 @@ generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdr
     wh_cache:flush(),
     case get_account_by_realm(AccountRealm) of
 	{'ok', AccountDb} ->
-	    DateRange = get_n_month_date_list(calendar:universal_time(), NumMonths),
+	    DateRange = get_prev_n_month_date_list(calendar:universal_time(), NumMonths),
 	    lists:foreach(fun(Date) -> 
                                   generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs) 
                           end, DateRange);
@@ -122,7 +143,7 @@ delete_test_account({_AccountName, AccountRealm, _User, _Pass}, NumMonths) ->
     case whapps_util:get_account_by_realm(AccountRealm) of
         {'ok', AccountDb} -> 
             {{CurrentYear, CurrentMonth, _}, _} = calendar:universal_time(),
-            Months = get_last_n_months(CurrentYear, CurrentMonth, NumMonths),
+            Months = get_prev_n_months(CurrentYear, CurrentMonth, NumMonths),
             AccountId = wh_util:format_account_id(AccountDb, 'raw'),
             [delete_account_database(AccountId, {Year, Month}) 
              || {Year, Month} <- Months],
@@ -143,9 +164,13 @@ delete_account_database(AccountId, {Year, Month}) ->
     AccountMODb = wh_util:format_account_id(AccountId, Year, Month),
     couch_mgr:db_delete(AccountMODb).
 
--spec get_last_n_months(pos_integer(), pos_integer(), pos_integer()) -> wh_proplist().
-get_last_n_months(CurrentYear, CurrentMonth, NumMonths) when CurrentMonth =< 12, CurrentMonth > 0 ->
-    get_last_n_months(CurrentYear, CurrentMonth, NumMonths, []).
+-spec get_prev_n_months(wh_year(), wh_month(), pos_integer()) -> wh_proplist().
+get_prev_n_months(Year, Month, NumMonths) when Month =< 12, Month > 0 ->
+    get_prev_n_months(Year, Month, NumMonths, []).
+
+-spec get_next_n_months(wh_year(), wh_month(), pos_integer()) -> wh_proplist().
+get_next_n_months(Year, Month, NumMonths) when Month =< 12, Month > 0 ->
+    get_next_n_months(Year, Month, NumMonths, []).
     
 %%--------------------------------------------------------------------
 %% @doc
@@ -156,10 +181,31 @@ get_last_n_months(CurrentYear, CurrentMonth, NumMonths) when CurrentMonth =< 12,
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-get_last_n_months(_, _, 0, Acc) ->
+get_prev_n_months(_, _, 0, Acc) ->
     lists:reverse(Acc);
-get_last_n_months(CurrentYear, 1, NumMonths, Acc) ->
-    get_last_n_months(CurrentYear - 1, 12, NumMonths - 1, [{CurrentYear, 1} | Acc]);
-get_last_n_months(CurrentYear, Month, NumMonths, Acc) ->
-    get_last_n_months(CurrentYear, Month -1, NumMonths - 1, [{CurrentYear, Month} | Acc]).
+get_prev_n_months(CurrentYear, 1, NumMonths, Acc) ->
+    get_prev_n_months(CurrentYear - 1, 12, NumMonths - 1, [{CurrentYear, 1} | Acc]);
+get_prev_n_months(CurrentYear, Month, NumMonths, Acc) ->
+    get_prev_n_months(CurrentYear, Month -1, NumMonths - 1, [{CurrentYear, Month} | Acc]).
    
+get_next_n_months(_, _, 0, Acc) ->
+    lists:reverse(Acc);
+get_next_n_months(Year, 12, NumMonths, Acc) ->
+    get_next_n_months(Year + 1, 1, NumMonths - 1, [{Year, 12} | Acc]);
+get_next_n_months(Year, Month, NumMonths, Acc) ->
+    get_next_n_months(Year, Month + 1, NumMonths - 1, [{Year, Month} | Acc]).
+
+-spec get_prev_month(wh_year(), wh_month()) -> {wh_year(), wh_month()}.
+get_prev_month(Year, 1) ->
+    {Year - 1, 12};
+get_prev_month(Year, Month) ->
+    {Year, Month - 1}.
+
+-spec get_next_month(wh_year(), wh_month()) -> {wh_year(), wh_month()}.
+get_next_month(Year, 12) ->
+    {Year + 1, 1};
+get_next_month(Year, Month) ->
+    {Year, Month + 1}.
+
+    
+    
