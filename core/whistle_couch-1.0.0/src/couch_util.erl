@@ -95,7 +95,9 @@ get_new_connection(Host, Port, "", "") ->
 get_new_connection(Host, Port, User, Pass) ->
     get_new_conn(Host, Port, [{'basic_auth', {User, Pass}} | ?IBROWSE_OPTS]).
 
--spec get_new_conn(nonempty_string() | ne_binary(), pos_integer(), wh_proplist()) -> server().
+-spec get_new_conn(nonempty_string() | ne_binary(), pos_integer(), wh_proplist()) ->
+                          server() |
+                          {'error', 'timeout'}.
 get_new_conn(Host, Port, Opts) ->
     Conn = couchbeam:server_connection(wh_util:to_list(Host), Port, "", Opts),
     lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
@@ -193,16 +195,14 @@ db_exists(#server{}=Conn, DbName) ->
 
 -spec do_db_compact(db()) -> boolean().
 do_db_compact(#db{}=Db) ->
-    do_db_compact(Db, 0).
-do_db_compact(_Db, Retries) when Retries > 3 ->
-    lager:debug("retries exceeded"),
-    'false';
-do_db_compact(Db, Retries) ->
     case ?RETRY_504(couchbeam:compact(Db)) of
         'ok' -> 'true';
-        {'conn_failed', {'error', 'timeout'}} ->
-            lager:debug("connection timed out, trying again"),
-            do_db_compact(Db, Retries+1);
+        {'error', {'conn_failed', {'error', 'timeout'}}} ->
+            lager:debug("connection timed out"),
+            'false';
+        {'error', 'not_found'} ->
+            lager:debug("db_compact failed because db wasn't found"),
+            'false';
         {'error', _E} ->
             lager:debug("failed to compact: ~p", [_E]),
             'false'
@@ -614,7 +614,7 @@ maybe_add_rev(Db, DocId, Options) ->
 %%------------------------------------------------------------------------------
 -type retry504_ret() :: 'ok' | ne_binary() |
                         {'ok', wh_json:object() | wh_json:objects() |
-                         binary() | [binary(),...] | boolean() | integer()
+                         binary() | ne_binaries() | boolean() | integer()
                         } |
                         couchbeam_error() |
                         {'error', 'timeout'}.
@@ -624,7 +624,6 @@ maybe_add_rev(Db, DocId, Options) ->
 retry504s(Fun) when is_function(Fun, 0) ->
     retry504s(Fun, 0).
 retry504s(_Fun, 3) ->
-    wh_counter:inc(<<"couch.requests.failures">>),
     lager:debug("504 retry failed"),
     {'error', 'timeout'};
 retry504s(Fun, Cnt) ->
@@ -633,14 +632,9 @@ retry504s(Fun, Cnt) ->
             timer:sleep(100 * (Cnt+1)),
             retry504s(Fun, Cnt+1);
         {'error', {'ok', ErrCode, _Hdrs, _Body}} ->
-            wh_counter:inc(<<"couch.requests.failures">>),
             {'error', wh_util:to_integer(ErrCode)};
-        {'error', _Other}=E ->
-            wh_counter:inc(<<"couch.requests.failures">>),
-            E;
-        {'ok', _Other}=OK ->
-            wh_counter:inc(<<"couch.requests.successes">>),
-            OK;
+        {'error', _Other}=E -> E;
+        {'ok', _Other}=OK -> OK;
         {'EXIT', _E} ->
             ST = erlang:get_stacktrace(),
             lager:debug("exception running fun: ~p", [_E]),
