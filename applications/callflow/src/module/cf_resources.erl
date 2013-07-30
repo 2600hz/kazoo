@@ -14,7 +14,8 @@
 
 -define(VIEW_BY_RULES, <<"cf_attributes/active_resources_by_rules">>).
 
--type endpoint() :: {binary(), wh_json:objects(), ne_binary(),  'raw' | binary()}.
+-type endpoint_cid() :: {api_binary(), api_binary()}.
+-type endpoint() :: {binary(), wh_json:objects(), ne_binary(), endpoint_cid()}.
 -type endpoints() :: [] | [endpoint()].
 
 %%--------------------------------------------------------------------
@@ -86,7 +87,7 @@ bridge_to_resources([], _, _, _, _, Call) ->
 %% for use with the whistle bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoint(ne_binary(), wh_json:object(), ne_binary(), {api_binary(), api_binary()}, whapps_call:call()) ->
+-spec create_endpoint(binary(), wh_json:object(), ne_binary(), {api_binary(), api_binary()}, whapps_call:call()) ->
                              wh_json:object().
 create_endpoint(DestNum, JObj, RscId, {CIDNumber, CIDName}, Call) ->
     AccountDb = whapps_call:account_db(Call),
@@ -218,7 +219,7 @@ get_to_did(Data, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_caller_id(wh_json:object(), whapps_call:call()) ->
-                           {api_binary(), api_binary()}.
+                           endpoint_cid().
 get_caller_id(Resource, Call) ->
     case wh_json:is_true(<<"emergency">>, Resource) of
         'true' -> cf_attributes:caller_id(<<"emergency">>, Call);
@@ -236,7 +237,7 @@ get_caller_id(Resource, Call) ->
 %% full destination number otherwise return an empty list.
 %% @end
 %%--------------------------------------------------------------------
--spec evaluate_rules(list(), ne_binary()) -> api_binary().
+-spec evaluate_rules(list(), ne_binary()) -> api_binaries().
 evaluate_rules([_, Regex], DestNum) ->
     case re:run(DestNum, Regex) of
         {'match', [_, {Start,End}|_]} -> [binary:part(DestNum, Start, End)];

@@ -62,7 +62,7 @@ maybe_classification_restriction(JObj, Call) ->
     Number = whapps_call:request_user(Call),
     Classification = wnm_util:classify_number(Number),
     lager:debug("classified number as ~s, testing for call restrictions", [Classification]),
-    wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>.    
+    wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>.
 
 -spec enforce_closed_groups(wh_json:object(), whapps_call:call()) -> boolean().
 enforce_closed_groups(JObj, Call) ->
@@ -94,7 +94,7 @@ get_caller_groups(Groups, JObj, Call) ->
                         get_group_associations(Id, Groups, Set)
                 end, sets:new(), Ids).
 
--spec maybe_device_groups_intersect(ne_binary(), ne_binary(), wh_json:objects(), whapps_call:call()) -> boolean().
+-spec maybe_device_groups_intersect(ne_binary(), set(), wh_json:objects(), whapps_call:call()) -> boolean().
 maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
     CalleeGroups = get_group_associations(CalleeId, Groups),
     case sets:size(sets:intersection(CallerGroups, CalleeGroups)) =:= 0 of

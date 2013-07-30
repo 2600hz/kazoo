@@ -54,7 +54,8 @@ groups(Call) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec caller_id(ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec caller_id(ne_binary(), whapps_call:call()) ->
+                       {api_binary(), api_binary()}.
 caller_id(Attribute, Call) ->
     CCVs = whapps_call:custom_channel_vars(Call),
     Inception = whapps_call:inception(Call),
@@ -71,7 +72,8 @@ caller_id(Attribute, Call) ->
             maybe_get_dynamic_cid('true', Attribute, Call)
     end.
 
--spec maybe_get_dynamic_cid(boolean(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_get_dynamic_cid(boolean(), ne_binary(), whapps_call:call()) ->
+                                   {api_binary(), api_binary()}.
 maybe_get_dynamic_cid(Validate, Attribute, Call) ->
     case whapps_call:kvs_fetch('dynamic_cid', Call) of
         'undefined' -> maybe_get_endpoint_cid(Validate, Attribute, Call);
@@ -79,7 +81,8 @@ maybe_get_dynamic_cid(Validate, Attribute, Call) ->
             maybe_normalize_cid(DynamicCID, 'undefined', Validate, Attribute, Call)
     end.
 
--spec maybe_get_endpoint_cid(boolean(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_get_endpoint_cid(boolean(), ne_binary(), whapps_call:call()) ->
+                                    {api_binary(), api_binary()}.
 maybe_get_endpoint_cid(Validate, Attribute, Call) ->
     case cf_endpoint:get(Call) of
         {'error', _R} ->
@@ -100,8 +103,8 @@ maybe_normalize_cid(Number, 'undefined', Validate, Attribute, Call) ->
 maybe_normalize_cid(Number, Name, Validate, Attribute, Call) ->
     maybe_prefix_cid_number(wh_util:to_binary(Number), Name, Validate, Attribute, Call).
 
--spec maybe_prefix_cid_number(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
-                                           {api_binary(), api_binary()}.
+-spec maybe_prefix_cid_number(api_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
+                                     {api_binary(), api_binary()}.
 maybe_prefix_cid_number(Number, Name, Validate, Attribute, Call) ->
     case whapps_call:kvs_fetch('prepend_cid_number', Call) of
         'undefined' -> maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call);
@@ -110,8 +113,8 @@ maybe_prefix_cid_number(Number, Name, Validate, Attribute, Call) ->
             maybe_prefix_cid_name(Prefixed, Name, Validate, Attribute, Call)
     end.
 
--spec maybe_prefix_cid_name(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
-                                         {api_binary(), api_binary()}.
+-spec maybe_prefix_cid_name(api_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
+                                   {api_binary(), api_binary()}.
 maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call) ->
     case whapps_call:kvs_fetch('prepend_cid_name', Call) of
         'undefined' -> maybe_ensure_cid_valid(Number, Name, Validate, Attribute, Call);
@@ -120,7 +123,8 @@ maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call) ->
             maybe_ensure_cid_valid(Number, Prefixed, Validate, Attribute, Call)
     end.
 
--spec maybe_ensure_cid_valid(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_ensure_cid_valid(api_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
+                                    {api_binary(), api_binary()}.
 maybe_ensure_cid_valid(Number, Name, 'true', <<"external">>, Call) ->
     case whapps_config:get_is_true(<<"callflow">>, <<"ensure_valid_caller_id">>, 'false') of
         'true' -> ensure_valid_caller_id(Number, Name, Call);
@@ -139,7 +143,8 @@ maybe_ensure_cid_valid(Number, Name, _, Attribute, _) ->
     lager:info("~s caller id <~s> ~s", [Attribute, Name, Number]),
     {Number, Name}.
 
--spec ensure_valid_emergency_number(api_binary(), api_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec ensure_valid_emergency_number(api_binary(), api_binary(), whapps_call:call()) ->
+                                           {api_binary(), api_binary()}.
 ensure_valid_emergency_number('undefined', Name, Call) ->
     Numbers = valid_emergency_numbers(Call),
     find_valid_emergency_number(Numbers, 'undefined', Name);
@@ -153,7 +158,8 @@ ensure_valid_emergency_number(Number, Name, Call) ->
             find_valid_emergency_number(Numbers, Number, Name)
     end.
 
--spec find_valid_emergency_number(ne_binaries(), ne_binary(), ne_binary()) -> {api_binary(), api_binary()}.
+-spec find_valid_emergency_number(ne_binaries(), ne_binary(), ne_binary()) ->
+                                         {api_binary(), api_binary()}.
 find_valid_emergency_number([], Number, Name) ->
     case whapps_config:get_non_empty(<<"callflow">>, <<"default_emergency_number">>, <<>>) of
         'undefined' ->
@@ -168,7 +174,7 @@ find_valid_emergency_number([Number|_], _, Name) ->
     {Number, Name}.
 
 -spec ensure_valid_caller_id(ne_binary(), ne_binary(), whapps_call:call()) ->
-                                          {api_binary(), api_binary()}.
+                                    {api_binary(), api_binary()}.
 ensure_valid_caller_id(Number, Name, Call) ->
     case is_valid_caller_id(Number, Call) of
         'true' ->
@@ -178,7 +184,8 @@ ensure_valid_caller_id(Number, Name, Call) ->
             maybe_get_account_cid(Number, Name, Call)
     end.
 
--spec maybe_get_account_cid(ne_binary(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_get_account_cid(ne_binary(), ne_binary(), whapps_call:call()) ->
+                                   {api_binary(), api_binary()}.
 maybe_get_account_cid(Number, Name, Call) ->
     AccountDb = whapps_call:account_db(Call),
     AccountId = whapps_call:account_id(Call),
@@ -188,7 +195,8 @@ maybe_get_account_cid(Number, Name, Call) ->
             maybe_get_account_external_number(Number, Name, JObj, Call)
     end.
 
--spec maybe_get_account_external_number(ne_binary(), ne_binary(), wh_json:object(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_get_account_external_number(ne_binary(), ne_binary(), wh_json:object(), whapps_call:call()) ->
+                                               {api_binary(), api_binary()}.
 maybe_get_account_external_number(Number, Name, Account, Call) ->
     External = wh_json:get_ne_value([<<"caller_id">>, <<"external">>, <<"number">>], Account),
     case is_valid_caller_id(External, Call) of

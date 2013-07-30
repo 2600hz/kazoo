@@ -142,7 +142,7 @@ is_valid_json_object(MaybeJObj) ->
     end.
 
 -spec is_json_term(json_term()) -> boolean().
-is_json_term('undefined') -> throw({error, no_undefined_atom_in_jobj_please});
+is_json_term('undefined') -> throw({'error', 'no_undefined_atom_in_jobj_please'});
 is_json_term(V) when is_atom(V) -> 'true';
 is_json_term(V) when is_binary(V) -> 'true';
 is_json_term(V) when is_bitstring(V) -> 'true';
@@ -703,14 +703,14 @@ is_private_key(_) -> 'false'.
 
 -spec flatten(object(), integer(), list()) -> objects().
 -spec flatten(any(), list(), list(), integer()) -> objects().
-flatten(JObj, Depth, Ids) when is_list(Ids) -> 
+flatten(JObj, Depth, Ids) when is_list(Ids) ->
     lists:foldl(
-      fun(Id, Acc) -> 
+      fun(Id, Acc) ->
               Acc ++ flatten(JObj, Depth, Id)
       end, [], Ids);
-flatten(JObj, Depth, Id) -> 
+flatten(JObj, Depth, Id) ->
     lists:foldl(
-      fun(Obj, Acc) -> 
+      fun(Obj, Acc) ->
               case Obj of
                   {[Id|_], Data} ->
                       [{Data}|Acc];
@@ -721,17 +721,17 @@ flatten(JObj, Depth, Id) ->
       ,[]
       ,flatten(JObj, [], [], Depth)
      ).
-      
+
 flatten({[_ | _] = Elems}, Acc, Keys, Depth) ->
     flatten(Elems, Acc, Keys, Depth);
 flatten([_ | _] = Elems, Acc, Keys, Depth) ->
-    lists:foldl(fun (Value, A) -> 
+    lists:foldl(fun (Value, A) ->
                         flatten(Value, A, Keys, Depth)
                 end,
                 Acc, Elems);
 flatten({Key, Value}, Acc, Keys, Depth) ->
     case length(Keys) + 2 =:=  Depth of
-        'false' -> 
+        'false' ->
             flatten(Value, Acc, [Key | Keys], Depth);
         'true' ->
             case flatten(Value, [], [Key | Keys], Depth) of

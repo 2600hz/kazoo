@@ -21,10 +21,10 @@
 
 -define(CROSSBAR_DEFAULT_CONTENT_TYPE, {<<"application">>, <<"json">>, []}).
 
--define(CONTENT_PROVIDED, [{'to_json', [{<<"application">>, <<"json">>},{<<"application">>, <<"x-json">>}]}]).
--define(CONTENT_ACCEPTED, [{'from_json', [{<<"application">>, <<"json">>},{<<"application">>, <<"x-json">>}]}
+-define(CONTENT_PROVIDED, [{'to_json', ?JSON_CONTENT_TYPES}]).
+-define(CONTENT_ACCEPTED, [{'from_json', ?JSON_CONTENT_TYPES}
                            ,{'from_form', [{<<"application">>, <<"x-www-form-urlencoded">>}]}
-                           ,{'from_binary', [{<<"text">>, <<"csv">>}]}
+                           ,{'from_binary', ?CSV_CONTENT_TYPES}
                           ]).
 -define(ALLOWED_METHODS, [?HTTP_GET
                           ,?HTTP_POST
