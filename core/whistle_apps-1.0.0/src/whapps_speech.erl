@@ -75,8 +75,47 @@ create('undefined', Text, Voice, Format, Options) ->
 create(<<"ispeech">>, Text, Voice, Format, Options) ->
     VoiceMappings = [{<<"female/en-US">>, <<"usenglishfemale">>}
                      ,{<<"male/en-US">>, <<"usenglishmale">>}
+                     ,{<<"female/en-CA">>, <<"caenglishfemale">>}
+                     ,{<<"female/en-AU">>, <<"auenglishfemale">>}
                      ,{<<"female/en-GB">>, <<"ukenglishfemale">>}
                      ,{<<"male/en-GB">>, <<"ukenglishmale">>}
+                     ,{<<"female/es-US">>, <<"usspanishfemale">>}
+                     ,{<<"male/es-US">>, <<"usspanishmale">>}
+                     ,{<<"female/us-US">>, <<"usspanishfemale">>}
+                     ,{<<"female/zh-CN">>, <<"chchinesefemale">>}
+                     ,{<<"male/zh-CN">>, <<"chchinesemale">>}
+                     ,{<<"female/zh-HK">>, <<"hkchinesefemale">>}
+                     ,{<<"female/zh-TW">>, <<"twchinesefemale">>}
+                     ,{<<"female/ja-JP">>, <<"jpjapanesefemale">>}
+                     ,{<<"male/ja-JP">>, <<"jpjapanesemale">>}
+                     ,{<<"female/ko-KR">>, <<"krkoreanfemale">>}
+                     ,{<<"male/ko-KR">>, <<"krkoreanmale">>}
+                     ,{<<"female/da-DK">>, <<"eurdanishfemale">>}
+                     ,{<<"female/de-DE">>, <<"eurgermanfemale">>}
+                     ,{<<"male/de-DE">>, <<"eurgermanmale">>}
+                     ,{<<"female/ca-ES">>, <<"eurcatalanfemale">>}
+                     ,{<<"female/es-ES">>, <<"eurspanishfemale">>}
+                     ,{<<"female/es-ES">>, <<"eurspanishmale">>}
+                     ,{<<"female/fi-FI">>, <<"eurfinnishfemale">>}
+                     ,{<<"female/fr-CA">>, <<"cafrenchfemale">>}
+                     ,{<<"male/fr-CA">>, <<"cafrenchmale">>}
+                     ,{<<"female/fr-FR">>, <<"eurfrenchfemale">>}
+                     ,{<<"male/fr-FR">>, <<"eurfrenchmale">>}
+                     ,{<<"female/it-IT">>, <<"euritalianfemale">>}
+                     ,{<<"male/it-IT">>, <<"euritalianmale">>}
+                     ,{<<"female/nb-NO">>, <<"eurnorwegianfemale">>}
+                     ,{<<"female/nl-NL">>, <<"eurdutchfemale">>}
+                     ,{<<"female/pl-PL">>, <<"eurpolishfemale">>}
+                     ,{<<"female/pt-BR">>, <<"brportuguesefemale">>}
+                     ,{<<"female/pt-PT">>, <<"eurportuguesefemale">>}
+                     ,{<<"male/pt-PT">>, <<"eurportuguesemale">>}
+                     ,{<<"female/ru-RU">>, <<"rurussianfemale">>}
+                     ,{<<"male/ru-RU">>, <<"rurussianmale">>}
+                     ,{<<"female/sv-SE">>, <<"swswedishfemale">>}
+                     ,{<<"female/hu-HU">>, <<"huhungarianfemale">>}
+                     ,{<<"female/cs-CZ">>, <<"eurczechfemale">>}
+                     ,{<<"female/tr-TR">>, <<"eurturkishfemale">>}
+                     ,{<<"male/tr-TR">>, <<"eurturkishmale">>}
                     ],
     case props:get_value(Voice, VoiceMappings) of
         'undefined' ->
