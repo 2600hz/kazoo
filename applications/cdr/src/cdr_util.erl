@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (c) 2010-2013, 2600Hz
 %%% @doc
 %%% Utility module for CDR operations
 %%% @end
@@ -10,9 +10,9 @@
 
 %% API
 -export([save_cdr/2
-	 ,save_in_anonymous_cdrs/1
-	 ,get_cdr_doc_id/2
-	]).
+         ,save_in_anonymous_cdrs/1
+         ,get_cdr_doc_id/2
+        ]).
 
 -include("cdr.hrl").
 
@@ -21,8 +21,10 @@
 %%%===================================================================
 -spec get_cdr_doc_id(pos_integer(), pos_integer()) -> ne_binary().
 get_cdr_doc_id(Year, Month) ->
-    <<(wh_util:to_binary(Year))/binary, (wh_util:pad_month(Month))/binary, "-", (couch_mgr:get_uuid())/binary>>.
-
+    <<(wh_util:to_binary(Year))/binary
+      ,(wh_util:pad_month(Month))/binary
+      ,"-"
+      ,(couch_mgr:get_uuid())/binary>>.
 
 -spec save_cdr(api_binary(), wh_json:object()) -> 'ok'.
 save_cdr(AccountMOD, Doc) ->
@@ -64,7 +66,6 @@ save_in_anonymous_cdrs(JObj) ->
 create_anonymous_cdr_db() ->
     couch_mgr:db_create(?WH_ANONYMOUS_CDR_DB),
     couch_mgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>).
-
 
 %%--------------------------------------------------------------------
 %% @doc

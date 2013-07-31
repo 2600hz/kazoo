@@ -159,7 +159,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_save_in_account(api_binary(), api_binary(), wh_json:object()) -> 'ok'.
+-spec maybe_save_in_account(api_binary()
+                            ,api_binary()
+                            ,wh_json:object()) -> 'ok'.
 maybe_save_in_account('undefined', _, JObj) ->
     cdr_util:save_in_anonymous_cdrs(JObj);
 
@@ -173,6 +175,7 @@ maybe_save_in_account(AccountId, Timestamp, JObj) ->
     JObj1 = wh_doc:update_pvt_parameters(JObj, AccountMODb, Props),
     JObj2 = wh_json:set_value(<<"_id">>, DocId, JObj1),
     case cdr_util:save_cdr(AccountMODb, JObj2) of
-        {'error', 'max_retries'} -> lager:error("Could not write CDR to AccountMODb: ~s", [AccountMODb]);
+        {'error', 'max_retries'} -> 
+            lager:error("write fail: ~s", [AccountMODb]);
         'ok' -> 'ok'
     end.

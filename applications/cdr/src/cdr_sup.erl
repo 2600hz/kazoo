@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (c) 2010-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(cdr_sup).
 
@@ -39,8 +40,8 @@ migrate_server(Super) ->
 get_v3_migrate_status(Supervisor) ->
     ServerPid = migrate_server(Supervisor),
     case cdr_v3_migrate_server:status(ServerPid) of
-        {'reply', _, {'number_of_accounts', NumAccountsLeft}} -> 
-            lager:info("Number of Accounts: ~s", [NumAccountsLeft]);
+        {'number_of_accounts', NumAccountsLeft}} ->
+            lager:info("Migrate Status - Accounts Remaining: ~s", [NumAccountsLeft]);
         _ -> lager:debug("No Response from status request")                       
     end.
 
@@ -55,7 +56,7 @@ start_v3_migrate() ->
     case supervisor:start_child(?MODULE, ChildSpec) of
         {'error', 'already_present'} -> 
             supervisor:restart_child(?MODULE, 'cdr_v3_migrator');
-        {'error', _}=_E -> lager:debug("error starting cdr_v3_migrate: ~p", [_E]);
+        {'error', _E} -> lager:debug("error starting cdr_v3_migrate: ~p", [_E]);
         {'ok', _} -> 'ok'
     end.
 
