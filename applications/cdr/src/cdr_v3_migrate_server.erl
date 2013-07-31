@@ -1,10 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @author Ben Wann <bwann@tickbook.local>
-%%% @copyright (C) 2013, Ben Wann
+%%% @copyright (c) 2010-2013, 2600Hz
 %%% @doc
-%%%
+%%% Migration gen_server used for spawning the workers to migrate
+%%% data from the v2.x branch to x3.x branch
 %%% @end
-%%% Created : 15 Jul 2013 by Ben Wann <bwann@tickbook.local>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(cdr_v3_migrate_server).
 
@@ -17,24 +19,23 @@
 
 %% gen_server callbacks
 -export([init/1
-	 ,handle_call/3
-	 ,handle_cast/2
-	 ,handle_info/2
-	 ,terminate/2
-	 ,code_change/3
-	]).
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
--record(state, {
-          account_list :: wh_proplist()
-          ,migrate_date_list :: wh_proplist()
-	  ,archive_start_date :: wh_proplist()
-          ,pid :: pid() %% pid of the processing of the response
-          ,ref :: reference() %% monitor ref for the pid
+-record(state, {account_list :: wh_proplist()
+                ,migrate_date_list :: wh_proplist()
+                ,archive_start_date :: wh_proplist()
+                ,pid :: pid()
+                ,ref :: reference()
          }).
 
 -type state() :: #state{}.
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
 
 %%%===================================================================
 %%% API
@@ -48,7 +49,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -69,7 +70,6 @@ init([]) ->
     lager:debug("starting to migrate accounts to the new sharded db format"),
     gen_server:cast(self(), 'start_migrate'),
     {'ok', #state{}}.
-   
 
 %%--------------------------------------------------------------------
 %% @private
@@ -86,9 +86,9 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(atom(), any(), state()) -> {_,_,_}.
-handle_call('status', _, #state{account_list=AccountsLeft}=_State) ->
-    Status = {'num_accounts_left', lists:flatlength(AccountsLeft)},
-    {'reply', 'ok', Status};
+handle_call('status', _, #state{account_list=AccountsLeft}=State) ->
+    Status = {'num_accounts_left', length(AccountsLeft)},
+    {'reply', Status, State};
 
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled handle_call executed ~p~p", [_Request, _From]),
@@ -108,14 +108,16 @@ handle_call(_Request, _From, State) ->
 handle_cast('start_migrate', State) ->
     lager:debug("handle_cast: start_migrate called"),
     Accounts  = whapps_util:get_all_accounts(),
-    MigrateDateList = cdr_v3_migrate_lib:get_prev_n_month_date_list(calendar:universal_time(), 4), 
+    MigrateDateList = cdr_v3_migrate_lib:get_prev_n_month_date_list(
+                        calendar:universal_time()
+                        ,4),
     [{LastYear, LastMonth, _} | _ ] = lists:reverse(MigrateDateList),
     ArchiveStartDate = cdr_v3_migrate_lib:get_prev_month(LastYear, LastMonth),
     gen_server:cast(self(), 'start_next_worker'),
     {'noreply', State#state{account_list=Accounts
-			    ,migrate_date_list=MigrateDateList
-			    ,archive_start_date=ArchiveStartDate
-			   }};
+                            ,migrate_date_list=MigrateDateList
+                            ,archive_start_date=ArchiveStartDate
+                           }};
 
 handle_cast('start_next_worker', #state{account_list=[]}=State) ->
     lager:debug("reached end of accounts, exiting..."),
@@ -123,16 +125,20 @@ handle_cast('start_next_worker', #state{account_list=[]}=State) ->
 
 handle_cast('start_next_worker', #state{account_list=[NextAccount|RestAccounts]
                                         ,migrate_date_list=MigrateDateList
-					,archive_start_date=ArchiveStartDate
+                                        ,archive_start_date=ArchiveStartDate
                                        }=State) ->
-    lager:debug("cdr_v3_migrate_server: handle_cast start_next_worker executed"),
-    {NEWPID, NEWREF} = spawn_monitor('cdr_v3_migrate_worker', 'migrate_account_cdrs', [NextAccount, MigrateDateList, ArchiveStartDate]),
+    {NEWPID, NEWREF} = spawn_monitor('cdr_v3_migrate_worker'
+                                     ,'migrate_account_cdrs'
+                                     ,[NextAccount
+                                       ,MigrateDateList
+                                       ,ArchiveStartDate
+                                      ]),
     {'noreply', State#state{account_list=RestAccounts, pid=NEWPID, ref=NEWREF}};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled call to handle_cast executed"),
     {'noreply', State}.
-    
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -150,10 +156,9 @@ handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{pid=Pid
     lager:debug("response pid ~p(~p) down: ~p", [Pid, Ref, _Reason]),
     gen_server:cast(self(), 'start_next_worker'),
     {'noreply', State#state{pid='undefined',ref='undefined'}};
-    
 
 handle_info(_Info, State) ->
-    lager:debug("unhanled call to cdr_v3_migrate_server handle_info executed"),
+    lager:debug("unhandled message: ~p", [_Info])
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -167,8 +172,12 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{pid=PID}=State) ->
     lager:debug("cdr_v3_migrate_server terminated: ~p", [_Reason]),
+    case wh_util:is_pid(PID) of
+        'false' -> lager:debug("no pid reference");
+        'true' -> exit(PID, 'ok')
+    end,
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -185,4 +194,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-    

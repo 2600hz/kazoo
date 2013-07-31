@@ -4,14 +4,14 @@
     "caller_id_number": "callerid_number",
     "caller_id_name": "callerid_number",
     "custom_channel_vars": {
-	    "username": "account_username",
-	    "realm": "account_realm",
-	    "account_id": "7f89565344e3e6302df60168420e9265",
-	    "authorizing_id": "81d406796c370b29a3cdc3713720ed61",
-	    "authorizing_type": "device",
-	    "owner_id": "c119a4487f26920476ad6dec74471768",
-	    "inception": "on-net"
-	},
+        "username": "account_username",
+        "realm": "account_realm",
+        "account_id": "7f89565344e3e6302df60168420e9265",
+        "authorizing_id": "81d406796c370b29a3cdc3713720ed61",
+        "authorizing_type": "device",
+        "owner_id": "c119a4487f26920476ad6dec74471768",
+        "inception": "on-net"
+    },
     "handling_server_name": "kazoo.local",
     "call_id": "ZjM1ODg3NTNhNTI4NmM5ZTA3MmFjZWYzMWJmZGNkZjc",
     "server_id": "",
