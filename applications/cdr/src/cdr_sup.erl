@@ -40,7 +40,7 @@ migrate_server(Super) ->
 get_v3_migrate_status(Supervisor) ->
     ServerPid = migrate_server(Supervisor),
     case cdr_v3_migrate_server:status(ServerPid) of
-        {'number_of_accounts', NumAccountsLeft}} ->
+        {'number_of_accounts', NumAccountsLeft} ->
             lager:info("Migrate Status - Accounts Remaining: ~s", [NumAccountsLeft]);
         _ -> lager:debug("No Response from status request")                       
     end.

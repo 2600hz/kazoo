@@ -14,9 +14,11 @@
          ,get_next_n_month_date_list/2
          ,get_next_n_month_date_list/3
          ,get_prev_n_months/3
+         ,get_prev_n_months/4
          ,get_next_n_months/3
-         ,get_prev_month/2
-         ,get_next_month/2
+         ,get_next_n_months/4
+         ,prev_month/2
+         ,next_month/2
          ,generate_test_accounts/3
          ,get_test_account_details/1
          ,delete_test_accounts/2
@@ -28,34 +30,37 @@
 %%% API
 %%%===================================================================
 -spec get_prev_n_month_date_list(wh_datetime(), pos_integer()) -> wh_proplist().
--spec get_prev_n_month_date_list(wh_year(), wh_month(), pos_integer()) -> wh_proplist().
 get_prev_n_month_date_list({{Year, Month, _}, _}, NumMonths) ->
     get_prev_n_month_date_list(Year, Month, NumMonths).
 
+-spec get_prev_n_month_date_list(wh_year(), wh_month(), pos_integer()) -> wh_proplist().
 get_prev_n_month_date_list(Year, Month, NumMonths) ->
-    DateRange = lists:reverse(get_prev_n_months(Year, Month, NumMonths)),
-    lists:foldl(fun get_prev_n_month_date_list_fold/2, [], DateRange).
-
--spec get_prev_n_month_date_list_fold({wh_year(), wh_month()}, list()) -> any().
-get_prev_n_month_date_list_fold({Year,Month}, Acc) ->
-    [{Year,Month,Day}
-     || Day <- lists:seq(calendar:last_day_of_the_month(Year,Month), 1, -1)
-    ] ++ Acc.
+    SortDirection = 'DESC',
+    DateRange = get_prev_n_months(Year, Month, NumMonths, SortDirection),
+    lists:foldl(fun({NextYear, NextMonth}, Acc) -> 
+                        build_month_date_list(NextYear, NextMonth, SortDirection, Acc) 
+                end, [], DateRange).
 
 -spec get_next_n_month_date_list(wh_datetime(), pos_integer()) -> wh_proplist().
 -spec get_next_n_month_date_list(wh_year(), wh_month(), pos_integer()) -> wh_proplist().
 get_next_n_month_date_list({{Year, Month, _}, _}, NumMonths) ->
-    DateRange = lists:reverse(get_next_n_months(Year, Month, NumMonths)),
-    lists:foldl(fun get_next_n_month_date_list_fold/2, [], DateRange).
+    get_next_n_month_date_list(Year, Month, NumMonths).
 
 get_next_n_month_date_list(Year, Month, NumMonths) ->
-    DateRange = lists:reverse(get_next_n_months(Year, Month, NumMonths)),
-    lists:foldl(fun get_next_n_month_date_list_fold/2, [], DateRange).
+    SortDirection = 'ASC',
+    DateRange = get_next_n_months(Year, Month, NumMonths, SortDirection),
+    lists:foldl(fun({NextYear, NextMonth}, Acc) -> 
+                        build_month_date_list(NextYear, NextMonth, SortDirection, Acc) 
+                end, [], DateRange).
 
--spec get_next_n_month_date_list_fold({wh_year(), wh_month()}, list()) -> any().
-get_next_n_month_date_list_fold({Year, Month}, Acc) ->
+-spec build_month_date_list(wh_year(), wh_month(), atom(), list()) -> any().
+build_month_date_list(Year, Month, 'DESC', Acc) ->
     [{Year, Month, Day}
      || Day <- lists:seq(calendar:last_day_of_the_month(Year, Month), 1, -1)
+    ] ++ Acc;
+build_month_date_list(Year, Month, 'ASC', Acc) ->
+    [{Year, Month, Day}
+     || Day <- lists:seq(1, calendar:last_day_of_the_month(Year, Month))
     ] ++ Acc.
 
 -spec get_test_account_details(pos_integer()) -> api_binaries().
@@ -168,11 +173,24 @@ delete_account_database(AccountId, {Year, Month}) ->
 
 -spec get_prev_n_months(wh_year(), wh_month(), pos_integer()) -> wh_proplist().
 get_prev_n_months(Year, Month, NumMonths) when Month =< 12, Month > 0 ->
-    get_prev_n_months(Year, Month, NumMonths, []).
+    prev_n_months(Year, Month, NumMonths, 'ASC').
+
+-spec get_prev_n_months(wh_year(), wh_month(), pos_integer(), atom()) -> wh_proplist().
+get_prev_n_months(Year, Month, NumMonths, 'ASC') when Month =< 12, Month > 0 ->
+    lists:reverse(prev_n_months(Year, Month, NumMonths, []));
+get_prev_n_months(Year, Month, NumMonths, 'DESC') when Month =< 12, Month > 0 ->
+    prev_n_months(Year, Month, NumMonths, []).
+
 
 -spec get_next_n_months(wh_year(), wh_month(), pos_integer()) -> wh_proplist().
 get_next_n_months(Year, Month, NumMonths) when Month =< 12, Month > 0 ->
-    get_next_n_months(Year, Month, NumMonths, []).
+    get_next_n_months(Year, Month, NumMonths, 'ASC').
+
+-spec get_next_n_months(wh_year(), wh_month(), pos_integer(), atom()) -> wh_proplist().
+get_next_n_months(Year, Month, NumMonths, 'ASC') when Month =< 12, Month > 0 ->
+    next_n_months(Year, Month, NumMonths, []);
+get_next_n_months(Year, Month, NumMonths, 'DESC') when Month =< 12, Month > 0 ->
+    lists:reverse(next_n_months(Year, Month, NumMonths, [])).
     
 %%--------------------------------------------------------------------
 %% @doc
@@ -183,28 +201,28 @@ get_next_n_months(Year, Month, NumMonths) when Month =< 12, Month > 0 ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-get_prev_n_months(_, _, 0, Acc) ->
-    lists:reverse(Acc);
-get_prev_n_months(CurrentYear, 1, NumMonths, Acc) ->
-    get_prev_n_months(CurrentYear - 1, 12, NumMonths - 1, [{CurrentYear, 1} | Acc]);
-get_prev_n_months(CurrentYear, Month, NumMonths, Acc) ->
-    get_prev_n_months(CurrentYear, Month -1, NumMonths - 1, [{CurrentYear, Month} | Acc]).
+prev_n_months(_, _, 0, Acc) ->
+    Acc;
+prev_n_months(CurrentYear, 1, NumMonths, Acc) ->
+    prev_n_months(CurrentYear - 1, 12, NumMonths - 1, [{CurrentYear, 1} | Acc]);
+prev_n_months(CurrentYear, Month, NumMonths, Acc) ->
+    prev_n_months(CurrentYear, Month -1, NumMonths - 1, [{CurrentYear, Month} | Acc]).
    
-get_next_n_months(_, _, 0, Acc) ->
-    lists:reverse(Acc);
-get_next_n_months(Year, 12, NumMonths, Acc) ->
-    get_next_n_months(Year + 1, 1, NumMonths - 1, [{Year, 12} | Acc]);
-get_next_n_months(Year, Month, NumMonths, Acc) ->
-    get_next_n_months(Year, Month + 1, NumMonths - 1, [{Year, Month} | Acc]).
+next_n_months(_, _, 0, Acc) ->
+    Acc;
+next_n_months(Year, 12, NumMonths, Acc) ->
+    next_n_months(Year + 1, 1, NumMonths - 1, [{Year, 12} | Acc]);
+next_n_months(Year, Month, NumMonths, Acc) ->
+    next_n_months(Year, Month + 1, NumMonths - 1, [{Year, Month} | Acc]).
 
--spec get_prev_month(wh_year(), wh_month()) -> {wh_year(), wh_month()}.
-get_prev_month(Year, 1) ->
+-spec prev_month(wh_year(), wh_month()) -> {wh_year(), wh_month()}.
+prev_month(Year, 1) ->
     {Year - 1, 12};
-get_prev_month(Year, Month) ->
+prev_month(Year, Month) ->
     {Year, Month - 1}.
 
--spec get_next_month(wh_year(), wh_month()) -> {wh_year(), wh_month()}.
-get_next_month(Year, 12) ->
+-spec next_month(wh_year(), wh_month()) -> {wh_year(), wh_month()}.
+next_month(Year, 12) ->
     {Year + 1, 1};
-get_next_month(Year, Month) ->
+next_month(Year, Month) ->
     {Year, Month + 1}.

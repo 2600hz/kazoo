@@ -28,7 +28,7 @@
 
 -record(state, {account_list :: wh_proplist()
                 ,migrate_date_list :: wh_proplist()
-                ,archive_start_date :: wh_proplist()
+                ,archive_batch_size :: pos_integer()
                 ,pid :: pid()
                 ,ref :: reference()
          }).
@@ -67,7 +67,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    lager:debug("starting to migrate accounts to the new sharded db format"),
+    lager:debug("cdr_v3_migrate_server init"),
     gen_server:cast(self(), 'start_migrate'),
     {'ok', #state{}}.
 
@@ -107,16 +107,16 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast('start_migrate', State) ->
     lager:debug("handle_cast: start_migrate called"),
+    NumMonthsToShard = 4,
+    ArchiveBatchSize = 1000,
     Accounts  = whapps_util:get_all_accounts(),
     MigrateDateList = cdr_v3_migrate_lib:get_prev_n_month_date_list(
                         calendar:universal_time()
-                        ,4),
-    [{LastYear, LastMonth, _} | _ ] = lists:reverse(MigrateDateList),
-    ArchiveStartDate = cdr_v3_migrate_lib:get_prev_month(LastYear, LastMonth),
+                        ,NumMonthsToShard),
     gen_server:cast(self(), 'start_next_worker'),
     {'noreply', State#state{account_list=Accounts
                             ,migrate_date_list=MigrateDateList
-                            ,archive_start_date=ArchiveStartDate
+                            ,archive_batch_size=ArchiveBatchSize
                            }};
 
 handle_cast('start_next_worker', #state{account_list=[]}=State) ->
@@ -125,13 +125,13 @@ handle_cast('start_next_worker', #state{account_list=[]}=State) ->
 
 handle_cast('start_next_worker', #state{account_list=[NextAccount|RestAccounts]
                                         ,migrate_date_list=MigrateDateList
-                                        ,archive_start_date=ArchiveStartDate
+                                        ,archive_batch_size=ArchiveBatchSize
                                        }=State) ->
     {NEWPID, NEWREF} = spawn_monitor('cdr_v3_migrate_worker'
                                      ,'migrate_account_cdrs'
                                      ,[NextAccount
                                        ,MigrateDateList
-                                       ,ArchiveStartDate
+                                       ,ArchiveBatchSize
                                       ]),
     {'noreply', State#state{account_list=RestAccounts, pid=NEWPID, ref=NEWREF}};
 
@@ -158,7 +158,7 @@ handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{pid=Pid
     {'noreply', State#state{pid='undefined',ref='undefined'}};
 
 handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info])
+    lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -172,7 +172,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{pid=PID}=State) ->
+terminate(_Reason, #state{pid=PID}=_State) ->
     lager:debug("cdr_v3_migrate_server terminated: ~p", [_Reason]),
     case wh_util:is_pid(PID) of
         'false' -> lager:debug("no pid reference");
