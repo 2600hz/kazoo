@@ -45,6 +45,9 @@ create_test_migrate_accounts() ->
                                               ,NumMonthsLegacyData
                                               ,NumCdrsPerDay).
 
+get_v3_migrator_status() ->
+    cdr_sup:get_v3_migrate_status().
+
 delete_test_migrate_accounts() ->
     NumTestAccounts = 2,
     NumMonthsLegacyData = 6,

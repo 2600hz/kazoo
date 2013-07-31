@@ -15,7 +15,7 @@
 -export([start_link/0
          ,start_v3_migrate/0
          ,stop_v3_migrate/0
-         ,get_v3_migrate_status/1
+         ,get_v3_migrate_status/0
         ]).
 
 %% Supervisor callbacks
@@ -37,8 +37,8 @@ start_link() ->
 migrate_server(Super) ->
     hd([P || {_, P, 'worker', _} <- supervisor:which_children(Super)]).
 
-get_v3_migrate_status(Supervisor) ->
-    ServerPid = migrate_server(Supervisor),
+get_v3_migrate_status() ->
+    ServerPid = migrate_server(?MODULE),
     case cdr_v3_migrate_server:status(ServerPid) of
         {'number_of_accounts', NumAccountsLeft} ->
             lager:info("Migrate Status - Accounts Remaining: ~s", [NumAccountsLeft]);
