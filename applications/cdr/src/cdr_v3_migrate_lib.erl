@@ -124,7 +124,6 @@ get_account_by_realm(AccountRealm) ->
 generate_test_account_cdrs(_, _, _, 0) -> 'ok';
 generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs) ->
     DateTime = {Date, {random:uniform(23), random:uniform(59), random:uniform(59)}},
-    lager:debug("CDR DateTime: ~p", [DateTime]),
     CreatedAt = calendar:datetime_to_gregorian_seconds(DateTime),
     Props = [{<<"call_id">>, <<(couch_mgr:get_uuid())/binary>>}
              ,{<<"timestamp">>, CreatedAt}
@@ -137,7 +136,7 @@ generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs) ->
         {'ok', _} -> 'ok'
     end,
     generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs - 1).
-    
+
 -spec delete_test_accounts(pos_integer(), pos_integer()) -> 'ok'.
 delete_test_accounts(NumAccounts, NumMonths) ->
     lists:foreach(fun(AccountDetails) ->
@@ -148,7 +147,7 @@ delete_test_accounts(NumAccounts, NumMonths) ->
                           ,pos_integer()) -> 'ok' | {'error', any()}.
 delete_test_account({_AccountName, AccountRealm, _User, _Pass}, NumMonths) ->
     case whapps_util:get_account_by_realm(AccountRealm) of
-        {'ok', AccountDb} -> 
+        {'ok', AccountDb} ->
             {{CurrentYear, CurrentMonth, _}, _} = calendar:universal_time(),
             Months = get_prev_n_months(CurrentYear, CurrentMonth, NumMonths),
             AccountId = wh_util:format_account_id(AccountDb, 'raw'),
@@ -173,7 +172,7 @@ delete_account_database(AccountId, {Year, Month}) ->
 
 -spec get_prev_n_months(wh_year(), wh_month(), pos_integer()) -> wh_proplist().
 get_prev_n_months(Year, Month, NumMonths) when Month =< 12, Month > 0 ->
-    prev_n_months(Year, Month, NumMonths, 'ASC').
+    get_prev_n_months(Year, Month, NumMonths, 'ASC').
 
 -spec get_prev_n_months(wh_year(), wh_month(), pos_integer(), atom()) -> wh_proplist().
 get_prev_n_months(Year, Month, NumMonths, 'ASC') when Month =< 12, Month > 0 ->
