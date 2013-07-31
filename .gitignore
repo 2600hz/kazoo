@@ -36,3 +36,4 @@ deps/rabbitmq_client-*
 !deps/rabbitmq_server-*/plugins-src/eldap-wrapper/eldap-git/ebin/eldap.app
 !deps/rabbitmq_server-*/plugins-src/erlang-rfc4627-wrapper/erlang-rfc4627-git/ebin/rfc4627_jsonrpc.app
 !deps/rabbitmq_server-*/plugins-src/webmachine-wrapper/webmachine-git/ebin/webmachine.app
+applications/*/priv/archive_data/*

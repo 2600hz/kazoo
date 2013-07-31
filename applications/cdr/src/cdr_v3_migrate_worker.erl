@@ -25,93 +25,95 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec migrate_account_cdrs(account_db(), wh_proplist(), wh_date()) -> 'ok'.
-migrate_account_cdrs(AccountDb, DbMigrateDateList, FSArchiveStartDate) ->
+migrate_account_cdrs(AccountDb, DbMigrateDateList, ArchiveBatchSize) ->
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-    MaxArchiveMonths = 48,
-    lists:foreach(fun(DbMigrateDate) -> 
+    lists:foreach(fun(DbMigrateDate) ->
                           migrate_cdrs_for_date(AccountId
                                                 ,AccountDb
                                                 ,DbMigrateDate)
                   end, DbMigrateDateList),
     start_fs_archive(AccountId
                      ,AccountDb
-                     ,FSArchiveStartDate
-                     ,MaxArchiveMonths).
+                     ,ArchiveBatchSize).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
--spec start_fs_archive(account_id(), account_db(), {wh_year(), wh_month()}, pos_integer()) -> any().
-start_fs_archive(AccountId, AccountDb, FSArchiveStartDate, ArchiveIterationsLeft) ->
+-spec start_fs_archive(account_id(), account_db(), pos_integer()) -> any().
+start_fs_archive(AccountId, AccountDb, ArchiveBatchSize) ->
+    lager:debug("starting account filesystem archive"),
     _ = maybe_add_migrate_design_doc(AccountDb),
-    archive_cdrs(AccountId, AccountDb, FSArchiveStartDate, ArchiveIterationsLeft).
+    archive_cdrs(AccountId, AccountDb, ArchiveBatchSize).
 
--spec archive_cdrs(account_id(), account_db(), {wh_year(), wh_month()}, pos_integer()) -> any().
-archive_cdrs(_, _, _, 0) ->
-    lager:debug("cdr_v3_migrate_worker: file system archiver reached maximum archive depth");
-archive_cdrs(AccountId, AccountDb, {Year, Month}, ArchiveIterationsLeft) ->
-    lager:debug("Max Archive Iterations Left: ~p", [ArchiveIterationsLeft]),
+-spec archive_cdrs(account_id(), account_db(), pos_integer()) -> any().
+archive_cdrs(AccountId, AccountDb, ArchiveBatchSize) ->
     case count_cdrs_left_to_migrate(AccountDb) > 0 of
         'false' -> 'ok';
-        'true' -> archive_cdrs_for_date(AccountId
-                                        ,AccountDb
-                                        ,Year,
-                                        Month
-                                        ,ArchiveIterationsLeft)
+        'true' -> archive_cdr_batch(AccountId
+                                     ,AccountDb
+                                     ,ArchiveBatchSize)
     end.
 
--spec archive_cdrs_for_date(account_id()
-                            ,account_db(),
-                            wh_year()
-                            ,wh_month()
-                            ,pos_integer()) -> 'ok'.
-archive_cdrs_for_date(AccountId, AccountDb, Year, Month, ArchiveIterationsLeft) ->
-    StartTime = calendar:datetime_to_gregorian_seconds({{Year, Month, 1}, {0,0,0}}),
-    EndTime = calendar:datetime_to_gregorian_seconds({{Year, Month, calendar:last_day_of_the_month(Year, Month)}, {23, 59, 59}}),
-    ViewOptions = [{'startkey', StartTime}
-                   ,{'endkey', EndTime}
-                  ],
+-spec archive_cdr_batch(account_id()
+                        ,account_db()
+                        ,pos_integer()) -> 'ok'.
+archive_cdr_batch(AccountId, AccountDb, ArchiveBatchSize) ->
+    ViewOptions = [{'limit', ArchiveBatchSize}, 'include_docs'],
     case couch_mgr:get_results(AccountDb, <<"cdrs/crossbar_listing">>, ViewOptions) of
-        {'error', _E} -> 
-            lager:error("failed to lookup cdrs for ~s: ~p", [AccountDb, _E]);
-        {'ok', []} -> lager:debug("No results from view with view options ~p", [ViewOptions]);
-        {'ok', Cdrs} -> 
-            lager:debug("Got some cdrs back for the view options: ~p", [ViewOptions]),
-            lists:foreach(fun(CdrDoc) -> 
-                                  archive_cdr(AccountId
-                                              ,AccountDb
-                                              ,CdrDoc
-                                              ,Year
-                                              ,Month
-                                             )
-                          end, get_docs_from_view_results(AccountDb, Cdrs, []))
+        {'error', _R} ->
+            lager:error("cdr archive error ~s: ~p", [AccountDb, _R]);
+        {'ok', JObjs} ->
+            lager:debug("Received JObjs: ~p", [length(JObjs)]),
+            [archive(AccountId, AccountDb, CdrDocs) || CdrDocs <- chunk_list(JObjs, 100)]
     end,
-    NextDate = cdr_v3_migrate_lib:get_prev_month(Year, Month),
-    archive_cdrs(AccountId, AccountDb, NextDate, ArchiveIterationsLeft - 1).
+    archive_cdrs(AccountId, AccountDb, ArchiveBatchSize).
 
--spec archive_cdr(account_id(), account_db(), wh_json:object(), wh_year(), wh_month()) -> 'ok'.
-archive_cdr(AccountId, AccountDb, Cdr, Year, Month) ->
-    DocId = wh_json:get_value(<<"_id">>, Cdr),
-    FileName = <<(DocId)/binary, ".json">>,
+-spec archive(account_id(), account_db(), wh_proplist()) -> 'ok'.
+archive(AccountId, AccountDb, JObjs) ->
+    CdrDocs = extract_docs_from_cdr_chunk(JObjs, []),
+    Now = calendar:universal_time(),
+    Seconds = calendar:datetime_to_gregorian_seconds(Now),
+    FileName = <<"archive-",(wh_util:to_binary(Seconds))/binary, ".csv">>,
     ArchivePath = list_to_binary([code:priv_dir('cdr')
                                   ,"/archive_data/"
                                   ,AccountId
                                   ,"/"
-                                  ,wh_util:to_binary(Year)
-                                  ,wh_util:pad_month(Month)
-                                  ,"/"
                                  ]),
     case filelib:ensure_dir(ArchivePath) of
         'ok' ->
-    FilePath = list_to_binary([ArchivePath, FileName]),
-    case file:write_file(FilePath, io_lib:fwrite("~s", [wh_json:encode(Cdr)])) of
-        {'error', _E} -> lager:error("Error writing file: ~p", [_E]);
-        'ok' -> 'ok'
-    end;
-{'error', _E} -> lager:error("Error creating directory: ~p", [_E])
+            FilePath = list_to_binary([ArchivePath, FileName]),
+            CsvData = csv_util:json_objs_to_csv(CdrDocs),
+            case file:write_file(FilePath, CsvData) of
+                {'error', _E} -> lager:error("Error writing file: ~p", [_E]);
+                'ok' -> 'ok'
+            end;
+        {'error', _E} -> lager:error("Error creating directory: ~p", [_E])
     end,
-    couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, Cdr)).
+    soft_delete_cdrs(AccountDb, CdrDocs).
+
+extract_docs_from_cdr_chunk([], Acc) -> Acc;
+extract_docs_from_cdr_chunk([Cdr | CdrChunk], Acc) ->
+    Doc = wh_json:get_value([<<"doc">>], Cdr),
+    CdrDoc = wh_json:delete_key(<<"custom_channel_vars">>, Doc),
+    extract_docs_from_cdr_chunk(CdrChunk, [CdrDoc | Acc]).
+
+soft_delete_cdrs(_, []) -> 'ok';
+soft_delete_cdrs(AccountDb, [JObj | RestJObjs]) ->
+    UpdatedDoc = wh_json:set_value(<<"pvt_deleted">>, true, JObj),
+    couch_mgr:save_doc(AccountDb, UpdatedDoc),
+    soft_delete_cdrs(AccountDb, RestJObjs).
+
+-spec chunk_list(list(), pos_integer()) -> wh_proplist().
+chunk_list(List, Cs) ->
+    Noc = fun(X) -> Y = length(List)/X , %% X == size of one chunk
+                    case Y == (Z = trunc(Y)) of %% 5 == (Z = trunc(5.0)) == true
+                        true  -> Z-1 ; %% -> 5-1 -> 4
+                        false -> Z %% Y == e.g. 4.5 -> 4
+                    end
+          end ,
+    [ begin lists:sublist(List, (Cs*Elem)+1, Cs)
+      end || Elem <- lists:seq(0,Noc(Cs)) ] .
 
 -spec count_cdrs_left_to_migrate(account_db()) -> integer().
 count_cdrs_left_to_migrate(AccountDb) ->
@@ -139,46 +141,32 @@ migrate_cdrs_for_date(AccountId, AccountDb, {Year, Month, _}=Date) ->
     ViewOptions = create_view_options(Date),
     case couch_mgr:get_results(AccountDb, <<"cdrs/crossbar_listing">>, ViewOptions) of
         {'ok', []} -> 'ok';
-        {'error', _E} -> 
+        {'error', _E} ->
             lager:error("failed view ~s: ~p", [AccountDb, _E]), [];
-        {'ok', Cdrs} -> 
-            lists:foreach(fun(CdrDoc) -> 
-                                  copy_cdr_to_account_mod(AccountId
-                                                          ,AccountDb
-                                                          ,CdrDoc
-                                                          ,Year
-                                                          ,Month
-                                                         ) 
-                          end, get_docs_from_view_results(AccountDb, Cdrs, []))
+        {'ok', Cdrs} ->
+            [copy_cdr_to_account_mod(AccountId
+                                     ,AccountDb
+                                     ,wh_json:get_value([<<"doc">>], CdrDoc)
+                                     ,Year
+                                     ,Month
+                                    )
+             || CdrDoc <- Cdrs]
     end.
-    
--spec get_docs_from_view_results(account_db()
-                                 ,wh_json:object()
-                                 ,wh_proplist()) -> wh_proplist().
-get_docs_from_view_results(_, [], Acc) -> Acc;
-get_docs_from_view_results(AccountDb, [NextCdr|RestCdrs], Acc) ->
-    CdrId = wh_json:get_value(<<"id">>, NextCdr),
-    case couch_mgr:open_doc(AccountDb, CdrId) of
-        {'ok', JObj} -> 
-            JObj1 = wh_json:delete_key(<<"_rev">>, JObj),
-            get_docs_from_view_results(AccountDb, RestCdrs, [JObj1 | Acc]);
-        {'error', _E} -> lager:error("migrate worker: error ~p", [_E])
-    end.
-    
 
 -spec copy_cdr_to_account_mod(account_id()
                               ,account_db()
-                              ,ne_binary()
+                              ,wh_json:object()
                               ,wh_year()
                               ,wh_month()) -> any().
 copy_cdr_to_account_mod(AccountId, AccountDb, CdrDoc, Year, Month) ->
     AccountMODb = wh_util:format_account_id(AccountId, Year, Month),
     MODDocId = cdr_util:get_cdr_doc_id(Year, Month),
-    JObj = wh_json:set_values([{<<"_id">>, MODDocId}
+    JObj = wh_json:delete_key(<<"_rev">>, CdrDoc),
+    JObj1 = wh_json:set_values([{<<"_id">>, MODDocId}
                                ,{<<"pvt_account_id">>, AccountId}
                                ,{<<"pvt_account_db">>, AccountMODb}
-                              ], CdrDoc),
-    case cdr_util:save_cdr(AccountMODb, JObj) of
+                              ], JObj),
+    case cdr_util:save_cdr(AccountMODb, JObj1) of
         {'error', _}=_E -> lager:error("could not migrate cdr ~p", [_E]);
         'ok' -> 'ok'
     end,
@@ -189,4 +177,4 @@ copy_cdr_to_account_mod(AccountId, AccountDb, CdrDoc, Year, Month) ->
 create_view_options(Date) ->
     StartTime = calendar:datetime_to_gregorian_seconds({Date, {0,0,0}}),
     EndTime = calendar:datetime_to_gregorian_seconds({Date, {23,59,59}}),
-    [{<<"startkey">>, StartTime}, {<<"endkey">>, EndTime}].
+    [{<<"startkey">>, StartTime}, {<<"endkey">>, EndTime}, 'include_docs'].

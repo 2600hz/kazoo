@@ -11,9 +11,9 @@
 
 -export([log_stacktrace/0, log_stacktrace/1]).
 -export([format_account_id/1
-	 ,format_account_id/2
-	 , format_account_id/3
-	]).
+         ,format_account_id/2
+         , format_account_id/3
+        ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1]).
 -export([get_account_realm/1, get_account_realm/2]).
@@ -44,9 +44,7 @@
          ,uri_decode/1
         ]).
 
--export([pad_month/1
-	,for/2
-	]).
+-export([pad_month/1]).
 
 -export([binary_md5/1]).
 -export([pad_binary/3, join_binary/1, join_binary/2]).
@@ -191,23 +189,16 @@ format_account_id(AccountId, 'encoded') when is_binary(AccountId) ->
 format_account_id(AccountId, 'raw') -> AccountId.
 
 format_account_id(AccountId, Year, Month) when is_integer(Year), is_integer(Month) ->
-    <<(format_account_id(AccountId, 'encoded'))/binary,"-",(to_binary(Year))/binary,(pad_month(Month))/binary>>.
+    <<(format_account_id(AccountId, 'encoded'))/binary
+      ,"-"
+      ,(to_binary(Year))/binary
+      ,(pad_month(Month))/binary>>.
 
 -spec pad_month(pos_integer()) -> ne_binary().
 pad_month(Month) when Month < 10 ->
     <<"0", (to_binary(Month))/binary>>; 
 pad_month(Month) ->
     to_binary(Month).
-
-%%-spec(integer(), function()) -> 
-for(N, Fun) when is_integer(N), is_function(Fun, 1) ->
-    for({N, 0}, Fun);
-for({N, _}, _) when is_integer(N), N < 1 ->
-    'ok';
-for({N, LoopCount}, Fun) when is_integer(N), is_function(Fun, 1) ->
-    Fun(LoopCount),
-    for({N - 1, LoopCount + 1}, Fun).
-
 
 %%--------------------------------------------------------------------
 %% @public

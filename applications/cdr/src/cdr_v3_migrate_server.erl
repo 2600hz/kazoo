@@ -136,7 +136,7 @@ handle_cast('start_next_worker', #state{account_list=[NextAccount|RestAccounts]
     {'noreply', State#state{account_list=RestAccounts, pid=NEWPID, ref=NEWREF}};
 
 handle_cast(_Msg, State) ->
-    lager:debug("unhandled call to handle_cast executed"),
+    lager:debug("unhandled call to handle_cast executed, ~p", [_Msg]),
     {'noreply', State}.
 
 
@@ -174,7 +174,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{pid=PID}=_State) ->
     lager:debug("cdr_v3_migrate_server terminated: ~p", [_Reason]),
-    case wh_util:is_pid(PID) of
+    case is_pid(PID) of
         'false' -> lager:debug("no pid reference");
         'true' -> exit(PID, 'ok')
     end,
