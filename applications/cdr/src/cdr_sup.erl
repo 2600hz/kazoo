@@ -30,21 +30,33 @@
 %% API functions
 %% ===================================================================
 
+-spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec migrate_server(pid()) -> api_pid().
+-spec migrate_server(atom()) -> api_pid().
 migrate_server(Super) ->
-    hd([P || {_, P, 'worker', _} <- supervisor:which_children(Super)]).
+    case child_of_type(Super, 'cdr_v3_migrator') of
+        [] -> 'undefined';
+        [P] -> P
+    end.
 
+-spec child_of_type(pid(), atom()) -> pids().
+child_of_type(S, T) ->
+    [P || {Ty, P, 'worker', _} <- supervisor:which_children(S), T =:= Ty].
+
+
+-spec get_v3_migrate_status() -> 'ok'.
 get_v3_migrate_status() ->
     ServerPid = migrate_server(?MODULE),
     case cdr_v3_migrate_server:status(ServerPid) of
-        {'number_of_accounts', NumAccountsLeft} ->
-            lager:info("Migrate Status - Accounts Remaining: ~s", [NumAccountsLeft]);
-        _ -> lager:debug("No Response from status request")                       
+        {'num_accounts', NumAccountsLeft} ->
+            lager:info("cdr_migrator: accts remaining: ~p", [NumAccountsLeft]);
+        _ ->
+            lager:debug("no status")
     end.
 
+-spec start_v3_migrate() -> 'ok' | wh_std_return().
 start_v3_migrate() ->
     ChildSpec = {'cdr_v3_migrator'
                  ,{'cdr_v3_migrate_server', 'start_link', []}
@@ -59,7 +71,7 @@ start_v3_migrate() ->
         {'error', _E} -> lager:debug("error starting cdr_v3_migrate: ~p", [_E]);
         {'ok', _} -> 'ok'
     end.
-
+-spec stop_v3_migrate() -> 'ok' | wh_std_return().
 stop_v3_migrate() ->
     supervisor:terminate_child(?MODULE, 'cdr_v3_migrator'),
     supervisor:delete_child(?MODULE, 'cdr_v3_migrator').

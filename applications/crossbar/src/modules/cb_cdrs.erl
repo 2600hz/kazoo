@@ -152,7 +152,7 @@ load_view_matching_db(View, ViewOptions, G, L, Context, Db) ->
 load_view_spanning_dbs(View, ViewOptions, G, L, Context, PastDb, PresentDb) ->
     Context1 = fetch_from_db(G, L, View, ViewOptions, cb_context:set_account_db(Context, PastDb)),
     case cb_context:resp_status(Context1) of
-        'success' -> 
+        'success' ->
             PastCDRs = cb_context:doc(Context1),
             Context2 = fetch_from_db(G, L, View, ViewOptions, cb_context:set_account_db(Context, PresentDb)),
             case cb_context:resp_status(Context2) of

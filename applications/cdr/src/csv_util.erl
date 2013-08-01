@@ -13,19 +13,27 @@
 -include("cdr.hrl").
 
 %% API
--export([json_objs_to_csv/1
+-export([json_objs_to_csv/1,
+         json_objs_to_csv/2
          ,test_convert/1
         ]).
+
+-define(INCLUDE_HEADERS, 'true').
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
-
 -spec json_objs_to_csv(wh_json:objects()) -> iolist().
-json_objs_to_csv([]) -> [];
-json_objs_to_csv([J|JObjs]) ->
-    [csv_header(J), [json_to_csv(JObj) || JObj <- [J | JObjs]]].
+json_objs_to_csv(JObjs) ->
+    json_objs_to_csv(JObjs, ?INCLUDE_HEADERS).
+
+-spec json_objs_to_csv(wh_json:objects(), boolean()) -> iolist().
+json_objs_to_csv([], _) -> [];
+json_objs_to_csv([J|JObjs], 'true') ->
+    [csv_header(J), json_to_csv(J) | [json_to_csv(JObj) || JObj <- JObjs]];
+json_objs_to_csv(JObjs, 'false') ->
+    [json_to_csv(JObj) || JObj <- JObjs].
 
 test_convert(AccountDb) ->
     ViewOptions = ['include_docs'],
@@ -89,5 +97,5 @@ correct_jobj(JObj) ->
     L = lists:map(fun(X) -> correct_proplist(X) end, Prop),
     wh_json:from_list(L).
 
-correct_proplist({K}) -> {K, <<"">>};
+correct_proplist({K}) -> {K, <<>>};
 correct_proplist(T) -> T.
