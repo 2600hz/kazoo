@@ -82,7 +82,6 @@
 -record(state, {
           node :: atom()
          ,callid :: ne_binary()
-         ,self :: 'undefined' | pid()
          ,command_q = queue:new() :: queue()
          ,current_app :: api_binary()
          ,current_cmd :: api_object()
@@ -233,7 +232,6 @@ init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
     {'ok', #state{node=Node
                   ,callid=CallId
                   ,command_q=queue:new()
-                  ,self=self()
                   ,start_time=erlang:now()
                   ,fetch_id=FetchId
                   ,controller_q=ControllerQ
@@ -887,9 +885,9 @@ is_post_hangup_command(AppName) ->
 -spec execute_control_request(wh_json:object(), #state{}) -> 'ok'.
 execute_control_request(Cmd, #state{node=Node
                                     ,callid=CallId
-                                    ,self=Srv
                                    }) ->
     put('callid', CallId),
+    Srv = self(),
     try
         lager:debug("executing call command '~s' ~s", [wh_json:get_value(<<"Application-Name">>, Cmd)
                                                        ,wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)
