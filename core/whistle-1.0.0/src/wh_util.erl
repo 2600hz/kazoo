@@ -12,7 +12,7 @@
 -export([log_stacktrace/0, log_stacktrace/1]).
 -export([format_account_id/1
          ,format_account_id/2
-         , format_account_id/3
+         ,format_account_id/3
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1]).
@@ -196,7 +196,7 @@ format_account_id(AccountId, Year, Month) when is_integer(Year), is_integer(Mont
 
 -spec pad_month(pos_integer()) -> ne_binary().
 pad_month(Month) when Month < 10 ->
-    <<"0", (to_binary(Month))/binary>>; 
+    <<"0", (to_binary(Month))/binary>>;
 pad_month(Month) ->
     to_binary(Month).
 

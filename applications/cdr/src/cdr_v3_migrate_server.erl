@@ -85,7 +85,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(atom(), any(), state()) -> {_,_,_}.
+-spec handle_call(atom(), any(), state()) -> handle_call_ret().
 handle_call('status', _, #state{account_list=AccountsLeft}=State) ->
     Status = {'num_accounts_left', length(AccountsLeft)},
     {'reply', Status, State};
@@ -107,8 +107,8 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast('start_migrate', State) ->
     lager:debug("handle_cast: start_migrate called"),
-    NumMonthsToShard = 4,
-    ArchiveBatchSize = 1000,
+    NumMonthsToShard = whapps_config:get_integer(?CONFIG_CAT, <<"v3_migrate_num_months">>, 4),
+    ArchiveBatchSize = whapps_config:get_integer(?CONFIG_CAT, <<"v3_migrate_batch_size">>, 1000),
     Accounts  = whapps_util:get_all_accounts(),
     MigrateDateList = cdr_v3_migrate_lib:get_prev_n_month_date_list(
                         calendar:universal_time()

@@ -26,23 +26,24 @@ get_cdr_doc_id(Year, Month) ->
       ,"-"
       ,(couch_mgr:get_uuid())/binary>>.
 
--spec save_cdr(api_binary(), wh_json:object()) -> 'ok'.
+-spec save_cdr(api_binary(), wh_json:object()) -> 
+                      'ok' | wh_std_return().
 save_cdr(AccountMOD, Doc) ->
     save_cdr(AccountMOD, Doc, 0).
 
 -spec save_cdr(api_binary(), wh_json:object(), 0..?MAX_RETRIES) -> 
-                      {'error', 'max_retries'} | 'ok'.
-save_cdr(_, _, ?MAX_RETRIES) -> {'error', 'max_retries'};
-
+                      {'error', any()} | 'ok'.
+save_cdr(_, _, ?MAX_RETRIES) -> 
+    {'error', 'max_retries'};
 save_cdr(AccountMODb, Doc, Retries) ->
     case couch_mgr:save_doc(AccountMODb, Doc) of
         {'error', 'not_found'} ->
             couch_mgr:db_create(AccountMODb),
             save_cdr(AccountMODb, Doc, Retries);
-        {'ok', _} -> 'ok';
-        {'error', _}=_E -> 
+        {'error', _E} -> 
             lager:error("Account MODd Create Error: ~p", [_E]),
-            save_cdr(AccountMODb, Doc, Retries+1)
+            save_cdr(AccountMODb, Doc, Retries+1);
+        {'ok', _} -> 'ok'
     end.
 
 -spec save_in_anonymous_cdrs(wh_json:object()) -> 'ok'.
