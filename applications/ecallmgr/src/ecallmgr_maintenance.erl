@@ -116,7 +116,7 @@ sync_channels() ->
 -spec sync_channels(text()) -> 'ok'.
 sync_channels(Node) ->
     N = wh_util:to_atom(Node, 'true'),
-    _ = [ecallmgr_fs_channels:sync_channels(Srv)
+    _ = [ecallmgr_fs_node:sync_channels(Srv)
          || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
                 ,ecallmgr_fs_node:fs_node(Srv) =:= N
         ],
