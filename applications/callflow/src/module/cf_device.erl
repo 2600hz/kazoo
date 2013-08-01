@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -27,7 +27,10 @@ handle(Data, Call) ->
             lager:info("completed successful bridge to the device"),
             cf_exe:stop(Call);
         {'fail', _}=F ->
-            cf_util:handle_bridge_failure(F, Call);
+            case cf_util:handle_bridge_failure(F, Call) of
+                'ok' -> lager:debug("bridge failure handled");
+                'not_found' -> cf_exe:continue(Call)
+            end;
         {'error', _R} ->
             lager:info("error bridging to device: ~p", [_R]),
             cf_exe:continue(Call)

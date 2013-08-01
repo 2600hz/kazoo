@@ -22,7 +22,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     _ = offnet_req(Data, Call),
     case wait_for_offnet(Call) of
@@ -31,16 +31,15 @@ handle(Data, Call) ->
             cf_exe:stop(Call);
         {Cause, Code} ->
             lager:info("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
-            case (cf_util:handle_bridge_failure(Cause, Call) =:= 'ok')
-                orelse (cf_util:handle_bridge_failure(Code, Call) =:= 'ok') of
-                'true' -> 'ok';
-                'false' ->
+            case cf_util:handle_bridge_failure(Cause, Code, Call) of
+                'ok' -> lager:debug("found bridge failure child");
+                'not_found' ->
                     cf_util:send_default_response(Cause, Call),
                     cf_exe:continue(Call)
             end
     end.
 
--spec offnet_req(wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec offnet_req(wh_json:object(), whapps_call:call()) -> 'ok'.
 offnet_req(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
@@ -78,17 +77,17 @@ offnet_req(Data, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Use the e164 normalized number unless the callflow options specify 
+%% Use the e164 normalized number unless the callflow options specify
 %% otherwise
 %% @end
 %%--------------------------------------------------------------------
--spec get_to_did(wh_json:json_object(), whapps_call:call()) -> ne_binary().
+-spec get_to_did(wh_json:object(), whapps_call:call()) -> ne_binary().
 get_to_did(Data, Call) ->
     case wh_json:is_true(<<"do_not_normalize">>, Data) of
         'false' -> whapps_call:request_user(Call);
         'true' ->
             Request = whapps_call:request(Call),
-            [RequestUser, _] = binary:split(Request, <<"@">>),            
+            [RequestUser, _] = binary:split(Request, <<"@">>),
             RequestUser
     end.
 
@@ -98,7 +97,7 @@ get_to_did(Data, Call) ->
 %% Consume Erlang messages and return on offnet response
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_offnet(whapps_call:call()) -> {ne_binary(), ne_binary() | 'undefined'}.
+-spec wait_for_offnet(whapps_call:call()) -> {ne_binary(), api_binary()}.
 wait_for_offnet(Call) ->
     case whapps_call_command:receive_event(?DEFAULT_EVENT_WAIT, 'true') of
         {'ok', JObj} ->
@@ -125,12 +124,12 @@ wait_for_offnet(Call) ->
 %% build a json object of those now.
 %% @end
 %%--------------------------------------------------------------------
--spec build_sip_headers(wh_json:json_object(), whapps_call:call()) -> api_object().
+-spec build_sip_headers(wh_json:object(), whapps_call:call()) -> api_object().
 build_sip_headers(Data, Call) ->
     Builders = [fun(J) ->
                         case wh_json:is_true(<<"emit_account_id">>, Data) of
                             'false' -> J;
-                            'true' -> 
+                            'true' ->
                                 wh_json:set_value(<<"X-Account-ID">>, whapps_call:account_id(Call), J)
                         end
                 end

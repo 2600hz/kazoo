@@ -12,12 +12,12 @@
                          ,'channel_hungup' |
                          'channel_unbridge' |
                          'timeout' |
-                         wh_json:json_object()
+                         wh_json:object()
                         }.
--type cf_api_std_return() :: cf_api_error() | {'ok', wh_json:json_object()}.
--type cf_api_bridge_return() :: {'error', 'timeout' | wh_json:json_object()} |
-                                {'fail', wh_json:json_object()} |
-                                {'ok', wh_json:json_object()}.
+-type cf_api_std_return() :: cf_api_error() | {'ok', wh_json:object()}.
+-type cf_api_bridge_return() :: {'error', 'timeout' | wh_json:object()} |
+                                {'fail', wh_json:object()} |
+                                {'ok', wh_json:object()}.
 -type cf_api_binary() :: binary() | 'undefined'.
 
 -define(APP_NAME, <<"callflow">>).
@@ -41,10 +41,10 @@
 
 -define(MANUAL_PRESENCE_DOC, <<"manual_presence">>).
 
--define(CALLFLOW_CACHE, callflow_cache).
+-define(CALLFLOW_CACHE, 'callflow_cache').
 
 -define(CF_ATTR_LOWER_KEY, <<109,108,112,112>>).
 -define(CF_ATTR_UPPER_KEY, <<109,097,120,095,112,114,101,099,101,100,101,110,099,101>>).
 
--define(CALLFLOW_HRL, true).
+-define(CALLFLOW_HRL, 'true').
 -endif.

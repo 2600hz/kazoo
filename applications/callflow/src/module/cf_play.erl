@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -18,11 +18,11 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     AccountId = whapps_call:account_id(Call),
     case wh_json:get_value(<<"id">>, Data) of
-        undefined ->
+        'undefined' ->
             lager:info("invalid data in the play callflow"),
             cf_exe:continue(Call);
         <<"/system_media", _/binary>> = Path -> play(Data, Call, Path);
@@ -37,11 +37,11 @@ handle(Data, Call) ->
             cf_exe:continue(Call)
     end.
 
--spec play(wh_json:json_object(), whapps_call:call(), ne_binary()) -> 'ok'.
+-spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> 'ok'.
 play(Data, Call, Media) ->
     case wh_json:is_false(<<"answer">>, Data) of
-        true -> ok;
-        false -> whapps_call_command:answer(Call)
+        'true' -> 'ok';
+        'false' -> whapps_call_command:answer(Call)
     end,
     lager:info("playing media ~s", [Media]),
     _ = whapps_call_command:b_play(Media, Call),

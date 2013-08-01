@@ -189,11 +189,11 @@ get_all_branch_keys(Call) ->
     get_all_branch_keys(Srv).
 
 -spec attempt(whapps_call:call() | pid()) ->
-                           {'attempt_resp', 'ok'} |
-                           {'attempt_resp', {'error', term()}}.
+                     {'attempt_resp', 'ok'} |
+                     {'attempt_resp', {'error', term()}}.
 -spec attempt(ne_binary(), whapps_call:call() | pid()) ->
-                           {'attempt_resp', 'ok'} |
-                           {'attempt_resp', {'error', term()}}.
+                     {'attempt_resp', 'ok'} |
+                     {'attempt_resp', {'error', term()}}.
 attempt(Srv) -> attempt(<<"_">>, Srv).
 
 attempt(Key, Srv) when is_pid(Srv) ->

@@ -56,10 +56,9 @@ bridge_to_resources([{DestNum, Rsc, RscId, CID}|T], Timeout, IgnoreEarlyMedia, R
         {'fail', R} when T =:= [] ->
             {Cause, Code} = whapps_util:get_call_termination_reason(R),
             lager:notice("exhausted all local resources attempting bridge, final cause ~s:~s", [Code, Cause]),
-            case (cf_util:handle_bridge_failure(Cause, Call) =:= 'ok')
-                orelse (cf_util:handle_bridge_failure(Code, Call) =:= 'ok') of
-                'true' -> 'ok';
-                'false' ->
+            case cf_util:handle_bridge_failure(Cause, Code, Call) of
+                'ok' -> lager:debug("handled bridge failure");
+                'not_found' ->
                     cf_util:send_default_response(Cause, Call),
                     cf_exe:continue(Call)
             end;
@@ -72,12 +71,12 @@ bridge_to_resources([{DestNum, Rsc, RscId, CID}|T], Timeout, IgnoreEarlyMedia, R
 bridge_to_resources([], _, _, _, _, Call) ->
     lager:info("resources exhausted without success"),
     WildcardIsEmpty = cf_exe:wildcard_is_empty(Call),
-    case cf_util:handle_bridge_failure(<<"NO_ROUTE_DESTINATION">>, Call) =:= 'ok' of
-        'true' -> 'ok';
-        'false' when WildcardIsEmpty ->
+    case cf_util:handle_bridge_failure(<<"NO_ROUTE_DESTINATION">>, Call) of
+        'ok' -> lager:debug("handled bridge failure");
+        'not_found' when WildcardIsEmpty ->
             cf_util:send_default_response(<<"NO_ROUTE_DESTINATION">>, Call),
             cf_exe:continue(Call);
-        'false' -> cf_exe:continue(Call)
+        'not_found' -> cf_exe:continue(Call)
     end.
 
 %%--------------------------------------------------------------------

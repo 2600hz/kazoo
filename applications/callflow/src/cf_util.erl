@@ -325,7 +325,8 @@ get_operator_callflow(Account) ->
 %% certain actions, like cf_offnet and cf_resources
 %% @end
 %%--------------------------------------------------------------------
--spec handle_bridge_failure({'fail', wh_json:object()} | api_binary(), whapps_call:call()) -> 'ok' | 'not_found'.
+-spec handle_bridge_failure({'fail', wh_json:object()} | api_binary(), whapps_call:call()) ->
+                                   'ok' | 'not_found'.
 handle_bridge_failure({'fail', Reason}, Call) ->
     {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
     handle_bridge_failure(Cause, Code, Call);
@@ -340,15 +341,14 @@ handle_bridge_failure(Failure, Call) ->
             'not_found'
     end.
 
--spec handle_bridge_failure(api_binary(), api_binary(), whapps_call:call()) -> 'ok' | 'not_found'.
+-spec handle_bridge_failure(api_binary(), api_binary(), whapps_call:call()) ->
+                                   'ok' | 'not_found'.
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("attempting to find failure branch for ~s:~s", [Code, Cause]),
     case (handle_bridge_failure(Cause, Call) =:= 'ok')
         orelse (handle_bridge_failure(Code, Call) =:= 'ok') of
         'true' -> 'ok';
-        'false' ->
-            cf_exe:continue(Call),
-            'not_found'
+        'false' -> 'not_found'
     end.
 
 %%--------------------------------------------------------------------

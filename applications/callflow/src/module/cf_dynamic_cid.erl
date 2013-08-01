@@ -44,36 +44,34 @@
 %%       comeback and make it correctly ;)
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:json_object(), whapps_call:call()) -> ok.
+-spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     DynamicCID = #dynamic_cid{},
     Prompts = DynamicCID#dynamic_cid.prompts,
     _ = whapps_call_command:b_play(<<"silence_stream://100">>, Call),
     Media = case wh_json:get_ne_value(<<"media_id">>, Data) of
-                undefined ->
-                    Prompts#prompts.default_prompt;
-                Else ->
-                    Else
+                'undefined' -> Prompts#prompts.default_prompt;
+                Else -> Else
             end,
     Min = DynamicCID#dynamic_cid.min_digits,
     Max = DynamicCID#dynamic_cid.max_digits,
     Regex = DynamicCID#dynamic_cid.whitelist,
     DefaultCID = DynamicCID#dynamic_cid.default_cid,
-    CID = case whapps_call_command:b_play_and_collect_digits(Min, Max, Media, <<"1">>, <<"5000">>, undefined, Regex, Call) of
-              {ok, <<>>} ->
+    CID = case whapps_call_command:b_play_and_collect_digits(Min, Max, Media, <<"1">>, <<"5000">>, 'undefined', Regex, Call) of
+              {'ok', <<>>} ->
                   _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
                   DefaultCID;
-              {ok, Digits} ->
+              {'ok', Digits} ->
                   _ = whapps_call_command:play(Prompts#prompts.accept_tone, Call),
                   Digits;
-              {error, _} ->
+              {'error', _} ->
                   _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
                   DefaultCID
           end,
     lager:info("setting the caller id number to ~s", [CID]),
 
-    {ok, C1} = cf_exe:get_call(Call),
-    Updates = [fun(C) -> whapps_call:kvs_store(dynamic_cid, CID, C) end
+    {'ok', C1} = cf_exe:get_call(Call),
+    Updates = [fun(C) -> whapps_call:kvs_store('dynamic_cid', CID, C) end
                ,fun(C) -> whapps_call:set_caller_id_number(CID, C) end
               ],
     cf_exe:set_call(whapps_call:exec(Updates, C1)),

@@ -40,7 +40,11 @@ attempt_endpoints(Endpoints, Data, Call) ->
         {'ok', _} ->
             lager:info("completed successful bridge to the ring group - call finished normally"),
             cf_exe:stop(Call);
-        {'fail', _}=F -> cf_util:handle_bridge_failure(F, Call);
+        {'fail', _}=F ->
+            case cf_util:handle_bridge_failure(F, Call) of
+                'ok' -> lager:debug("bridge failure handled");
+                'not_found' -> cf_exe:continue(Call)
+            end;
         {'error', _R} ->
             lager:info("error bridging to ring group: ~p", [_R]),
             cf_exe:continue(Call)
