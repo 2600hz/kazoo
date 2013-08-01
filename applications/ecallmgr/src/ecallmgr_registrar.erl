@@ -475,7 +475,7 @@ maybe_query_authn(#registration{username=Username, realm=Realm}=Reg) ->
                              ,authorizing_id = wh_json:get_value(<<"Authorizing-ID">>, CCVs)
                              ,authorizing_type = wh_json:get_value(<<"Authorizing-Type">>, CCVs)
                              ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
-                             ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister">>, CCVs)
+                             ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
                             }
     end.    
 
@@ -522,7 +522,7 @@ query_authn(#registration{username=Username, realm=Realm
                              ,authorizing_id = AuthorizingId
                              ,authorizing_type = wh_json:get_value(<<"Authorizing-Type">>, CCVs)
                              ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
-                             ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister">>, CCVs)
+                             ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
                             }
     end.
 
@@ -582,7 +582,6 @@ to_props(Reg) ->
      ,{<<"Suppress-Unregister-Notify">>, Reg#registration.suppress_unregister}
      ,{<<"Owner-ID">>, Reg#registration.owner_id}
     ].
-
 
 -spec filter(wh_json:object(), wh_json:object()) -> wh_json:object().
 filter([], JObj) -> JObj;

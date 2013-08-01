@@ -45,11 +45,13 @@ handle_req(JObj, _Props) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec send_auth_resp/2  :: (#auth_user{}, wh_json:json_object()) -> 'ok'.
-send_auth_resp(#auth_user{password=Password, method=Method}=AuthUser, JObj) ->
+send_auth_resp(#auth_user{password=Password, method=Method
+                          ,suppress_unregister_notifications=SupressUnregister}=AuthUser, JObj) ->
     Category = wh_json:get_value(<<"Event-Category">>, JObj),
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Auth-Password">>, Password}
             ,{<<"Auth-Method">>, Method}
+            ,{<<"Suppress-Unregister-Notifications">>, SupressUnregister}
             ,{<<"Custom-Channel-Vars">>, create_ccvs(AuthUser)}
             | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
            ],

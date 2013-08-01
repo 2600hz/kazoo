@@ -381,7 +381,6 @@ lookup_regs(AccountRealm) ->
             lager:debug("error getting reg: ~p", [_E]),
             [];
         {_, JObjs} ->
-            io:format("~p~n", [JObjs]),
             [wh_json:from_list([{<<"device_id">>, AuthorizingId}
                                 ,{<<"registered">>, 'true'}
                                ])
