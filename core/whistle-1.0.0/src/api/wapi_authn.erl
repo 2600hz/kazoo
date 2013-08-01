@@ -32,7 +32,7 @@
                             ,<<"Auth-User">>, <<"Auth-Realm">>
                            ]).
 -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>, <<"Switch-Hostname">>
-                                         ,<<"Orig-IP">>
+                                         ,<<"Orig-IP">>, <<"Call-ID">>
                                     ]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}

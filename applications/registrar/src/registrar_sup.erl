@@ -19,7 +19,6 @@
                          ]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 -define(CHILDREN, [?CACHE_ARGS(?REGISTRAR_CACHE, ?CACHE_PROPS)
-                   ,?WORKER('registrar_listener')
                    ,?WORKER('registrar_shared_listener')
                   ]).
 

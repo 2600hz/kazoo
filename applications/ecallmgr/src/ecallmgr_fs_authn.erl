@@ -26,7 +26,6 @@
         ]).
 
 -define(SERVER, ?MODULE).
--define(CREDS_KEY(Realm, Username), {?MODULE, 'authn', Username, Realm}).
 
 -include("ecallmgr.hrl").
 
@@ -208,7 +207,7 @@ handle_lookup_resp(_, _, _, {'error', _R}) ->
                                    {'ok', wh_json:object()} |
                                    {'error', _}.
 maybe_query_registrar(Realm, Username, Node, Id, Method, Props) ->
-    case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?CREDS_KEY(Realm, Username)) of
+    case wh_cache:peek_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} -> query_registrar(Realm, Username, Node, Id, Method, Props)
     end.
@@ -226,6 +225,7 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
            ,{<<"Auth-User">>, Username}
            ,{<<"Auth-Realm">>, Realm}
            ,{<<"Media-Server">>, wh_util:to_binary(Node)}
+           ,{<<"Call-ID">>, props:get_value(<<"sip_call_id">>, Props, Id)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
@@ -238,8 +238,12 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
         {'ok', JObj}=Ok ->
             lager:debug("received authn information"),
             AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-            AuthId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj),
-            CacheProps = [{'origin', {'db', wh_util:format_account_id(AccountId, 'encoded'), AuthId}}],
-            wh_cache:store_local(?ECALLMGR_REG_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
+            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+            AuthorizingId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj),
+            CacheProps = [{'origin', [{'db', AccountDb, AuthorizingId}
+                                      ,{'db', AccountDb, AccountId}
+                                     ]}
+                         ],
+            wh_cache:store_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
             Ok
     end.

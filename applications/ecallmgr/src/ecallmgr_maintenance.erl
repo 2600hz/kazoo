@@ -98,7 +98,7 @@ flush_node_conferences(Node) ->
 
 -spec flush_registrar() -> 'ok'.
 flush_registrar() ->
-    wh_cache:flush_local(?ECALLMGR_REG_CACHE).
+    wh_cache:flush_local(?ECALLMGR_AUTH_CACHE).
 
 -spec flush_util() -> 'ok'.
 flush_util() ->
