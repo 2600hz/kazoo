@@ -229,7 +229,7 @@ try_failover_e164(State, ToDID) ->
 %%--------------------------------------------------------------------
 %% Out-of-band functions
 %%--------------------------------------------------------------------
--spec get_endpoint_data(wh_json:json_object()) -> {'endpoint', wh_json:json_object()}.
+-spec get_endpoint_data(wh_json:object()) -> {'endpoint', wh_json:object()}.
 get_endpoint_data(JObj) ->
     %% wh_timer:tick("inbound_route/1"),
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
@@ -258,7 +258,7 @@ get_endpoint_data(JObj) ->
     }.
 
 -spec routing_data(ne_binary(), ne_binary()) -> [{<<_:48,_:_*8>>,_},...] | [].
--spec routing_data(ne_binary(), ne_binary(), wh_json:json_object()) -> [{<<_:48,_:_*8>>,_},...] | [].
+-spec routing_data(ne_binary(), ne_binary(), wh_json:object()) -> [{<<_:48,_:_*8>>,_},...] | [].
 routing_data(ToDID, AcctID) ->
     case ts_util:lookup_did(ToDID, AcctID) of
         {ok, Settings} ->

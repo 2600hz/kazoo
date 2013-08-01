@@ -231,7 +231,7 @@ call_has_ended(CallId) ->
         {'error', _R} -> 'true'
     end.
 
--spec reconcile_grace_period_exceeded(wh_json:json_object()) -> boolean().
+-spec reconcile_grace_period_exceeded(wh_json:object()) -> boolean().
 reconcile_grace_period_exceeded(JObj) ->
     Current = wh_util:current_tstamp(),
     Modified = wh_json:get_integer_value(<<"pvt_modified">>, JObj, Current),

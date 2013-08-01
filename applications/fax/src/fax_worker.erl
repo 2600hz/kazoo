@@ -271,7 +271,7 @@ attempt_to_acquire_job(Id) ->
                     {'error', 'job_not_available'}
             end
     end.
-
+        
 -spec bump_modified(ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
 bump_modified(JobId) ->
     case couch_mgr:open_doc(?WH_FAXES, JobId) of

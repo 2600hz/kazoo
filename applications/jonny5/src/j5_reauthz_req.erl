@@ -17,7 +17,7 @@
 
 -include("jonny5.hrl").
 
--spec handle_req(wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_authz:reauthz_req_v(JObj),
     wh_util:put_callid(JObj),
@@ -31,7 +31,7 @@ handle_req(JObj, _Props) ->
 
     maybe_skip_reauth(wh_json:get_value(<<"Call-Direction">>, JObj), Limits, JObj).
 
--spec maybe_skip_reauth(ne_binary(), #limits{}, wh_json:json_object()) -> 'ok'.
+-spec maybe_skip_reauth(ne_binary(), #limits{}, wh_json:object()) -> 'ok'.
 maybe_skip_reauth(<<"outbound">>, #limits{soft_limit_outbound='true'}, JObj) ->
     lager:debug("outbound calls are not enforcing (soft limit)", []),
     send_allow_resp(JObj);
@@ -45,8 +45,8 @@ maybe_skip_reauth(_, Limits, JObj) ->
         _Else -> send_allow_resp(JObj)
     end.
 
--spec send_allow_resp(wh_json:json_object()) -> 'ok'.
--spec send_allow_resp(wh_json:json_object(), wh_json:json_object()) -> 'ok'.
+-spec send_allow_resp(wh_json:object()) -> 'ok'.
+-spec send_allow_resp(wh_json:object(), wh_json:object()) -> 'ok'.
 
 send_allow_resp(JObj) ->
     send_allow_resp(JObj, undefined).
@@ -55,8 +55,8 @@ send_allow_resp(JObj, CCVs) ->
     lager:debug("reauthorization succeeded", []),
     send_resp(JObj, CCVs, <<"true">>).
 
--spec send_deny_resp(wh_json:json_object()) -> 'ok'.
--spec send_deny_resp(wh_json:json_object(), wh_json:json_object()) -> 'ok'.
+-spec send_deny_resp(wh_json:object()) -> 'ok'.
+-spec send_deny_resp(wh_json:object(), wh_json:object()) -> 'ok'.
 
 send_deny_resp(JObj) ->
     send_deny_resp(JObj, undefined).
@@ -65,7 +65,7 @@ send_deny_resp(JObj, CCVs) ->
     lager:debug("reauthorization failed", []),
     send_resp(JObj, CCVs, <<"false">>).
 
--spec send_resp(wh_json:json_object(), wh_json:json_object(), ne_binary()) -> 'ok'.
+-spec send_resp(wh_json:object(), wh_json:object(), ne_binary()) -> 'ok'.
 send_resp(JObj, CCVs, Authd) ->
     Resp = [{<<"Is-Authorized">>, Authd}
             ,{<<"Type">>, wh_json:get_value(<<"Type">>, JObj)}

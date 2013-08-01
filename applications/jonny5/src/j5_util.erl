@@ -47,7 +47,7 @@ get_limits(Account) ->
             Limits
     end.
 
--spec get_limit(ne_binary(), wh_json:json_object()) -> integer().
+-spec get_limit(ne_binary(), wh_json:object()) -> integer().
 get_limit(Key, JObj) ->
     DefaultValue = whapps_config:get_integer(<<"jonny5">>, <<"default_", Key/binary>>, -1),
     PublicValue =  wh_json:get_integer_value(Key, JObj, DefaultValue),
@@ -58,7 +58,7 @@ get_limit(Key, JObj) ->
         _Else -> PublicValue
     end.
 
--spec get_limit_jobj(ne_binary()) -> wh_json:json_object().
+-spec get_limit_jobj(ne_binary()) -> wh_json:object().
 get_limit_jobj(AccountDb) ->
     case couch_mgr:open_doc(AccountDb, <<"limits">>) of
         {'ok', J} -> J;
@@ -67,7 +67,7 @@ get_limit_jobj(AccountDb) ->
             create_init_limits(AccountDb)
     end.
 
--spec create_init_limits(ne_binary()) -> wh_json:json_object().
+-spec create_init_limits(ne_binary()) -> wh_json:object().
 create_init_limits(AccountDb) ->
     TStamp = wh_util:current_tstamp(),
     JObj = wh_json:from_list([{<<"_id">>, <<"limits">>}
@@ -98,7 +98,7 @@ remove_call_charges(AccountId, CallId) ->
             'ok'
     end.
 
--spec send_system_alert(ne_binary(), wh_json:json_object(), #limits{}) -> pid().
+-spec send_system_alert(ne_binary(), wh_json:object(), #limits{}) -> pid().
 -ifdef(TEST).
 send_system_alert(_Reason, _JObj, _Limits) -> spawn(fun() -> ok end).
 -else.

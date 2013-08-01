@@ -13,13 +13,13 @@
 
 -include("jonny5.hrl").
 
--spec is_available(#limits{}, wh_json:json_object()) -> boolean().
+-spec is_available(#limits{}, wh_json:object()) -> boolean().
 is_available(#limits{account_id=AccountId}=Limits, JObj) ->
     Balance = wht_util:current_balance(AccountId),
     prepay_is_available(Limits, Balance, JObj)
         orelse postpay_is_available(Limits, Balance, JObj).
 
--spec reauthorize(#limits{}, wh_json:json_object()) -> 'ok'.
+-spec reauthorize(#limits{}, wh_json:object()) -> 'ok'.
 reauthorize(#limits{reserve_amount=ReserveAmount}=Limits, JObj) ->
     case ReserveAmount - wht_util:call_cost(JObj) > 0 of
         'true' ->
@@ -29,7 +29,7 @@ reauthorize(#limits{reserve_amount=ReserveAmount}=Limits, JObj) ->
             maybe_debit_next_minute(Limits, JObj)
     end.
 
--spec reconcile_cdr(ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec reconcile_cdr(ne_binary(), wh_json:object()) -> 'ok'.
 reconcile_cdr(Account, JObj) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     Units = wh_transactions:call_charges(Account, CallId)
@@ -39,7 +39,7 @@ reconcile_cdr(Account, JObj) ->
         'false' -> create_credit_transaction(<<"end">>, Units, Account, JObj)
     end.
 
--spec prepay_is_available(#limits{}, integer(), wh_json:json_object()) -> boolean().
+-spec prepay_is_available(#limits{}, integer(), wh_json:object()) -> boolean().
 prepay_is_available(#limits{allow_prepay='false'}, _, _) ->
     'false';
 prepay_is_available(#limits{allow_prepay='true', reserve_amount=ReserveAmount
@@ -51,7 +51,7 @@ prepay_is_available(#limits{allow_prepay='true', reserve_amount=ReserveAmount
             'true'
     end.
 
--spec postpay_is_available(#limits{}, integer(), wh_json:json_object()) -> boolean().
+-spec postpay_is_available(#limits{}, integer(), wh_json:object()) -> boolean().
 postpay_is_available(#limits{allow_postpay='false'}, _, _) ->
     'false';
 postpay_is_available(#limits{allow_postpay='true', max_postpay_amount=MaxPostpay
@@ -64,7 +64,7 @@ postpay_is_available(#limits{allow_postpay='true', max_postpay_amount=MaxPostpay
             'true'
     end.
 
--spec maybe_debit_next_minute(#limits{}, wh_json:json_object()) -> boolean().
+-spec maybe_debit_next_minute(#limits{}, wh_json:object()) -> boolean().
 maybe_debit_next_minute(#limits{account_id=AccountId}=Limits, JObj) ->
     Amount = wht_util:per_minute_cost(JObj),
     case is_credit_still_available(wht_util:current_balance(AccountId) - Amount, Limits) of

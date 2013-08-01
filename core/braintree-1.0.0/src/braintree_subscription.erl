@@ -499,7 +499,7 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (subscription()) -> wh_json:json_object().
+-spec record_to_json/1 :: (subscription()) -> wh_json:object().
 record_to_json(Subscription) ->
     Props = [{<<"id">>, Subscription#bt_subscription.id}
              ,{<<"balance">>, Subscription#bt_subscription.balance}

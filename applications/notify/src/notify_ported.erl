@@ -42,7 +42,7 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     io:format("GOT ~p~n", [JObj]),
     true = wapi_notifications:ported_v(JObj),
@@ -77,7 +77,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:json_object(), wh_json:json_objects()) -> proplist().
+-spec create_template_props(wh_json:object(), wh_json:objects()) -> proplist().
 create_template_props(Event, Account) ->
     Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, Event)),
     [{<<"request">>, notify_util:json_to_template_props(Event)}
@@ -93,7 +93,7 @@ create_template_props(Event, Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_send_from(wh_json:json_object()) -> ne_binary().
+-spec get_send_from(wh_json:object()) -> ne_binary().
 get_send_from(Admin) ->
     DefaultFrom = wh_util:to_binary(node()),
     case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"send_from_admin_email">>, true) of

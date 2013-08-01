@@ -123,7 +123,7 @@ create_port_in(#number{number=Number, assign_to=AssignTo
 %% @end
 %%--------------------------------------------------------------------
 -spec get/1 :: (ne_binary()) -> wnm_number().
--spec get/2 :: (ne_binary(), 'undefined' | wh_json:json_object()) -> wnm_number().
+-spec get/2 :: (ne_binary(), 'undefined' | wh_json:object()) -> wnm_number().
 
 get(Number) ->
     get(Number, undefined).
@@ -559,8 +559,8 @@ disconnected(Number) ->
 %% convert a json object to the number record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record/2 :: (wh_json:json_object(), boolean() | wnm_number()) -> wnm_number().
--spec json_to_record/3 :: (wh_json:json_object(), boolean(), wnm_number()) -> wnm_number().
+-spec json_to_record/2 :: (wh_json:object(), boolean() | wnm_number()) -> wnm_number().
+-spec json_to_record/3 :: (wh_json:object(), boolean(), wnm_number()) -> wnm_number().
 json_to_record(JObj, #number{}=Number) ->
     json_to_record(JObj, false, Number);
 json_to_record(JObj, IsNew) when is_boolean(IsNew) ->
@@ -590,7 +590,7 @@ json_to_record(JObj, IsNew, #number{number=Num, number_db=Db}=Number) ->
 %% convert a json object to the number record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (wnm_number()) -> wh_json:json_object().
+-spec record_to_json/1 :: (wnm_number()) -> wh_json:object().
 record_to_json(#number{number_doc=JObj}=N) ->
     Updates = [{<<"_id">>, N#number.number}
                ,{<<"pvt_number_state">>, N#number.state}
@@ -670,7 +670,7 @@ delete_number_doc(#number{number_db=Db, number=Num, number_doc=JObj}=Number) ->
 %% into the current phone_numbers doc.
 %% @end
 %%--------------------------------------------------------------------
--spec resolve_account_phone_numbers_conflict/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+-spec resolve_account_phone_numbers_conflict/3 :: (wh_json:object(), ne_binary(), ne_binary()) -> {'ok', wh_json:object()} |
                                                                                                        {'error', _}.
 resolve_account_phone_numbers_conflict(JObj, Num, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
@@ -772,12 +772,12 @@ error_service_restriction(Reason, N) ->
     lager:debug("number billing restriction: ~s", [Reason]),
     throw({service_restriction, N#number{error_jobj=wh_json:from_list([{<<"credit">>, wh_util:to_binary(Reason)}])}}).
 
--spec error_provider_fault/2 :: (wh_json:json_object(), wnm_number()) -> no_return().
+-spec error_provider_fault/2 :: (wh_json:object(), wnm_number()) -> no_return().
 error_provider_fault(Reason, N) ->
     lager:debug("feature provider(s) fault: ~p", [wh_json:encode(Reason)]),
     throw({provider_fault, N#number{error_jobj=wh_json:from_list([{<<"provider_fault">>, Reason}])}}).
 
--spec error_carrier_fault/2 :: (wh_json:json_object() | ne_binary(), wnm_number()) -> no_return().
+-spec error_carrier_fault/2 :: (wh_json:object() | ne_binary(), wnm_number()) -> no_return().
 error_carrier_fault(Reason, N) ->
     lager:debug("carrier provider fault: ~p", [wh_json:encode(Reason)]),
     throw({carrier_fault, N#number{error_jobj=wh_json:from_list([{<<"carrier_fault">>, Reason}])}}).
@@ -860,7 +860,7 @@ update_phone_number_doc(Account, #number{number=Num, phone_number_docs=PhoneNumb
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_phone_number_doc/2 :: (ne_binary(), wnm_number()) -> {'ok', wh_json:json_object()} |
+-spec get_phone_number_doc/2 :: (ne_binary(), wnm_number()) -> {'ok', wh_json:object()} |
                                                                {'error', _}.
 get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
     case dict:find(Account, Docs) of
@@ -874,7 +874,7 @@ get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_number_summary/2 :: (ne_binary(), wnm_number()) -> wh_json:json_object().
+-spec create_number_summary/2 :: (ne_binary(), wnm_number()) -> wh_json:object().
 create_number_summary(_Account, #number{state=State, features=Features, module_name=ModuleName
                                 ,assigned_to=AssignedTo, number_doc=Doc, used_by=UsedBy}) ->
     MaybeOwned = case (ModuleName == 'wnm_local') of
@@ -896,7 +896,7 @@ create_number_summary(_Account, #number{state=State, features=Features, module_n
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_phone_number_doc/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} |
+-spec load_phone_number_doc/1 :: (ne_binary()) -> {'ok', wh_json:object()} |
                                                   {'error', _}.
 load_phone_number_doc(Account) ->
     AccountDb = wh_util:format_account_id(Account, encoded),
@@ -1003,7 +1003,7 @@ activate_phone_number(Units, #number{current_balance=Balance}=N) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec append_feature_debit/3 :: (wh_json:json_string(), integer(), wnm_number()) -> wh_json:json_objects().
+-spec append_feature_debit/3 :: (wh_json:json_string(), integer(), wnm_number()) -> wh_json:objects().
 append_feature_debit(Feature, Units, #number{billing_id=Ledger
                                              ,assigned_to=AccountId
                                              ,activations=Activations
@@ -1036,7 +1036,7 @@ append_feature_debit(Feature, Units, #number{billing_id=Ledger
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec append_phone_number_debit/2 :: (integer(), wnm_number()) -> wh_json:json_objects().
+-spec append_phone_number_debit/2 :: (integer(), wnm_number()) -> wh_json:objects().
 append_phone_number_debit(Units, #number{billing_id=Ledger, assigned_to=AccountId
                                          ,activations=Activations, number=Number}) ->
     LedgerId =  wh_util:format_account_id(Ledger, 'raw'),

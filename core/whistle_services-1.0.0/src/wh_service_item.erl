@@ -47,7 +47,7 @@
                           ,single_discount_rate = 0.00 :: float()
                           ,cumulative_discount = 0 :: integer()
                           ,cumulative_discount_rate = 0.00 :: float()
-                          ,bookkeepers = wh_json:new() :: wh_json:json_object()
+                          ,bookkeepers = wh_json:new() :: wh_json:object()
                          }).
 
 -type(item() :: #wh_service_item{}).
@@ -259,7 +259,7 @@ bookkeeper(Bookkeeper, #wh_service_item{bookkeepers=Bookkeepers}) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec set_bookkeepers/2 :: (wh_json:json_object(), #wh_service_item{}) -> #wh_service_item{}.
+-spec set_bookkeepers/2 :: (wh_json:object(), #wh_service_item{}) -> #wh_service_item{}.
 set_bookkeepers(Bookkeepers, #wh_service_item{}=ServiceItem) ->
     ServiceItem#wh_service_item{bookkeepers=Bookkeepers}.
 

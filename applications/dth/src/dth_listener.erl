@@ -182,7 +182,7 @@ refresh_blacklist(WSDL) ->
     lager:debug("Entries: ~p", [BlockListEntries]),
     wh_cache:store_local(?DTH_CACHE, dth_util:blacklist_cache_key(), BlockListEntries).
 
--spec get_blocklist_entries(#'p:GetBlockListResponse'{}) -> wh_json:json_object().
+-spec get_blocklist_entries(#'p:GetBlockListResponse'{}) -> wh_json:object().
 get_blocklist_entries(#'p:GetBlockListResponse'{
                          'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
                            'BlockListEntry'=undefined

@@ -43,7 +43,7 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:new_account_v(JObj),
     whapps_util:put_callid(JObj),
@@ -86,7 +86,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:json_object(), wh_json:json_object(), wh_json:json_object(), wh_json:json_object()) 
+-spec create_template_props(wh_json:object(), wh_json:object(), wh_json:object(), wh_json:object()) 
                                  -> proplist().
 create_template_props(Event, Admin, Account, AllDocs) ->
     Owners = [{wh_json:get_value([<<"doc">>, <<"_id">>], J1), wh_json:get_value(<<"doc">>, J1)}
@@ -143,7 +143,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_account([] | [wh_json:json_object(),...]) -> wh_json:json_object().
+-spec find_account([] | [wh_json:object(),...]) -> wh_json:object().
 find_account([]) ->
     wh_json:new();
 find_account([Doc|Docs]) ->
@@ -159,7 +159,7 @@ find_account([Doc|Docs]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_admin([] | [wh_json:json_object(),...]) -> wh_json:json_object().
+-spec find_admin([] | [wh_json:object(),...]) -> wh_json:object().
 find_admin([]) ->
     wh_json:new();
 find_admin([Doc|Docs]) ->

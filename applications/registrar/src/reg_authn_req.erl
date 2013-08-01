@@ -15,13 +15,7 @@
 init() ->
     'ok'.
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%-----------------------------------------------------------------------------
--spec handle_req(wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_authn:req_v(JObj),
     _ = wh_util:put_callid(JObj),
@@ -44,9 +38,8 @@ handle_req(JObj, _Props) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_auth_resp/2  :: (#auth_user{}, wh_json:json_object()) -> 'ok'.
-send_auth_resp(#auth_user{password=Password, method=Method
-                          ,suppress_unregister_notifications=SupressUnregister}=AuthUser, JObj) ->
+-spec send_auth_resp/2  :: (#auth_user{}, wh_json:object()) -> 'ok'.
+send_auth_resp(#auth_user{password=Password, method=Method}=AuthUser, JObj) ->
     Category = wh_json:get_value(<<"Event-Category">>, JObj),
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Auth-Password">>, Password}
@@ -65,7 +58,7 @@ send_auth_resp(#auth_user{password=Password, method=Method
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_auth_error(wh_json:json_object()) -> 'ok'.
+-spec send_auth_error(wh_json:object()) -> 'ok'.
 send_auth_error(JObj) ->
 %% NOTE: Kamailio needs registrar errors since it is blocking with no
 %%   timeout (at the moment) but when we seek auth for INVITEs we need
@@ -86,7 +79,7 @@ send_auth_error(JObj) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec create_ccvs(#auth_user{}) -> wh_json:object().
-create_ccvs(#auth_user{}=AuthUser) ->    
+create_ccvs(#auth_user{}=AuthUser) ->
     Props = [{<<"Username">>, AuthUser#auth_user.username}
              ,{<<"Realm">>, AuthUser#auth_user.realm}
              ,{<<"Account-ID">>, AuthUser#auth_user.account_id}
@@ -167,7 +160,7 @@ get_auth_user_in_agg(Username, Realm) ->
                    ,'include_docs'
                   ],
     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_aggregate">>, 'false')
-        andalso couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) 
+        andalso couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions)
     of
         'false' ->
             lager:debug("SIP credential aggregate db is disabled"),
