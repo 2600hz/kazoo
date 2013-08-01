@@ -58,7 +58,10 @@ handle_action(<<"bridge">>, Hotdesk, Call) ->
             lager:info("completed successful bridge to the hotdesk"),
             cf_exe:continue(Call);
         {'fail', _}=Failure ->
-            cf_util:handle_bridge_failure(Failure, Call);
+            case cf_util:handle_bridge_failure(Failure, Call) of
+                'ok' -> lager:debug("bridge failure handled");
+                'not_found' -> cf_exe:continue(Call)
+            end;
         {'error', _R} ->
             lager:info("error bridging to hotdesk: ~p", [_R]),
             cf_exe:continue(Call)
@@ -81,13 +84,13 @@ handle_action(<<"toggle">>, Hotdesk, Call) ->
 %% Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints(hotdesk(), whapps_call:call()) -> {'ok', wh_json:object()} |
-                                                            {'fail', wh_json:object()} |
-                                                            {'error', _}.
+-spec bridge_to_endpoints(hotdesk(), whapps_call:call()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'fail', wh_json:object()} |
+                                 {'error', _}.
 
 bridge_to_endpoints(#hotdesk{endpoint_ids=EndpointIds}, Call) ->
     Endpoints = build_endpoints(EndpointIds, Call),
-%%    Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
     whapps_call_command:b_bridge(Endpoints, ?DEFAULT_TIMEOUT, <<"simultaneous">>, IgnoreEarlyMedia, Call).
 
@@ -234,20 +237,23 @@ logged_out(_, Call) ->
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
--spec get_hotdesk_profile(api_binary(), whapps_call:call()) -> hotdesk() | {'error', _}.
+-spec get_hotdesk_profile(api_binary(), whapps_call:call()) ->
+                                 hotdesk() |
+                                 {'error', _}.
 get_hotdesk_profile('undefined', Call) -> find_hotdesk_profile(Call, 1);
 get_hotdesk_profile(OwnerId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', JObj} -> from_json(JObj, Call);
-        {'error', R}=E ->
-            lager:info("failed to load hotdesking profile for user ~s: ~p", [OwnerId, R]),
+        {'error', _R}=E ->
+            lager:info("failed to load hotdesking profile for user ~s: ~p", [OwnerId, _R]),
             whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
             E
     end.
 
 -spec find_hotdesk_profile(whapps_call:call(), 1..?MAX_LOGIN_ATTEMPTS) ->
-                                  hotdesk() | {'error', _}.
+                                  hotdesk() |
+                                  {'error', _}.
 find_hotdesk_profile(Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
     lager:info("too many failed attempts to get the hotdesk id"),
     whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
@@ -267,7 +273,9 @@ find_hotdesk_profile(Call, Loop) ->
             E
     end.
 
--spec lookup_hotdesk_id(ne_binary(), whapps_call:call()) ->  hotdesk() | {'error', _}.
+-spec lookup_hotdesk_id(ne_binary(), whapps_call:call()) ->
+                               hotdesk() |
+                               {'error', _}.
 lookup_hotdesk_id(HotdeskId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     ViewOptions = [{'key', HotdeskId}

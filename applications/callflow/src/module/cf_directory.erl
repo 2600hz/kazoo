@@ -254,7 +254,8 @@ play_confirm_match(Call, User) ->
                             ,{'play', ?PROMPT_CONFIRM_MENU, ?ANY_DIGIT}
                            ]).
 
--spec play_directory_instructions(whapps_call:call(), 'first' | 'last' | ne_binary()) -> {'ok', binary()}.
+-spec play_directory_instructions(whapps_call:call(), 'first' | 'last' | ne_binary()) ->
+                                         {'ok', binary()}.
 play_directory_instructions(Call, 'first') ->
     play_and_collect(Call, [{'play', ?PROMPT_ENTER_PERSON_FIRSTNAME}]);
 play_directory_instructions(Call, 'last') ->

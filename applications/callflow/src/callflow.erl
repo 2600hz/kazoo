@@ -1,14 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP, INC
+%%% @copyright (C) 2011-2013, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 27 June 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(callflow).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("callflow.hrl").
 
 -export([start_link/0, stop/0]).
 
@@ -41,6 +41,6 @@ stop() -> 'ok'.
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    ok = wh_util:ensure_started(sasl), % logging
-    ok = wh_util:ensure_started(crypto), % random
-    wh_util:ensure_started(whistle_amqp). % amqp wrapper
+    'ok' = wh_util:ensure_started('sasl'), % logging
+    'ok' = wh_util:ensure_started('crypto'), % random
+    wh_util:ensure_started('whistle_amqp'). % amqp wrapper

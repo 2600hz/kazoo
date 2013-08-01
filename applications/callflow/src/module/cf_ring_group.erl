@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -77,7 +77,8 @@ resolve_endpoint_ids(Members, Call) ->
 
 -type endpoint_intermediate() :: {ne_binary(), ne_binary(), api_object()}.
 -type endpoint_intermediates() :: [] | [endpoint_intermediate(),...].
--spec resolve_endpoint_ids(wh_json:objects(), endpoint_intermediates(), whapps_call:call()) -> endpoint_intermediates().
+-spec resolve_endpoint_ids(wh_json:objects(), endpoint_intermediates(), whapps_call:call()) ->
+                                  endpoint_intermediates().
 resolve_endpoint_ids([], EndpointIds, _) -> EndpointIds;
 resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
     Id = wh_json:get_value(<<"id">>, Member),
@@ -108,7 +109,8 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
             resolve_endpoint_ids(Members, [{Type, Id, Member}|EndpointIds], Call)
     end.
 
--spec get_group_members(wh_json:object(), ne_binary(), whapps_call:call()) -> wh_json:objects().
+-spec get_group_members(wh_json:object(), ne_binary(), whapps_call:call()) ->
+                               wh_json:objects().
 get_group_members(Member, Id, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, Id) of

@@ -1,5 +1,5 @@
 %%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -84,7 +84,7 @@ allow_dial(Data, Call, Retries) ->
             lager:info("callflow ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)]),
             Updates = [fun(C) -> whapps_call:set_request(list_to_binary([Number, "@", whapps_call:request_realm(C)]), C) end
                        ,fun(C) -> whapps_call:set_to(list_to_binary([Number, "@", whapps_call:to_realm(C)]), C) end
-                       ,fun(C) when NoMatch -> 
+                       ,fun(C) when NoMatch ->
                                 {CIDNum, CIDName} = cf_attributes:caller_id(<<"external">>, C),
                                 C1 = whapps_call:set_caller_id_number(CIDNum, C),
                                 whapps_call:set_caller_id_name(CIDName, C1);
@@ -159,7 +159,8 @@ set_caller_id(Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_get_account_cid(ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_get_account_cid(ne_binary(), whapps_call:call()) ->
+                                   {api_binary(), api_binary()}.
 maybe_get_account_cid(AccountId, Call) ->
     Name = whapps_call:caller_id_name(Call),
     Number = whapps_call:caller_id_number(Call),
@@ -175,7 +176,8 @@ maybe_get_account_cid(AccountId, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_get_account_external_number(ne_binary(), ne_binary(), wh_json:object(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_get_account_external_number(ne_binary(), ne_binary(), wh_json:object(), whapps_call:call()) ->
+                                               {api_binary(), api_binary()}.
 maybe_get_account_external_number(Number, Name, Account, Call) ->
     External = wh_json:get_ne_value([<<"caller_id">>, <<"external">>, <<"number">>], Account),
     case is_valid_caller_id(External, Call) of

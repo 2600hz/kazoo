@@ -244,7 +244,8 @@ evaluate_rules([_, Regex], DestNum) ->
         _ -> []
     end.
 
--spec maybe_from_uri(boolean() | ne_binary(), ne_binary() | wh_json:object(), api_binary()) -> api_binary().
+-spec maybe_from_uri(boolean() | ne_binary(), ne_binary() | wh_json:object(), api_binary()) ->
+                            api_binary().
 maybe_from_uri('true', CNum, Realm) -> from_uri(CNum, Realm);
 maybe_from_uri('false', CNum, Realm) ->
     case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>) of

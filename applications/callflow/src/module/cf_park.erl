@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -163,7 +163,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
 -spec get_node_url(atom(), wh_json:object()) -> ne_binary().
 get_node_url(Node, JObj) ->
     case wh_json:get_value(<<"Switch-URL">>, JObj) of
-        'undefined' -> 
+        'undefined' ->
             IP = get_node_ip(Node),
             Port = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"parking_server_sip_port">>, 5060),
             <<"sip:mod_sofia@", IP/binary, ":", Port/binary>>;
@@ -289,7 +289,8 @@ create_slot(ParkerCallId, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_slot_number(wh_json:object(), whapps_call:call()) -> ne_binary().
-get_slot_number(_, CaptureGroup) when is_binary(CaptureGroup) andalso size(CaptureGroup) > 0 ->
+get_slot_number(_, CaptureGroup) when is_binary(CaptureGroup)
+                                      andalso size(CaptureGroup) > 0 ->
     CaptureGroup;
 get_slot_number(ParkedCalls, _) ->
     Slots = [wh_util:to_integer(Slot)
@@ -635,7 +636,8 @@ get_endpoint_id(Username, Call) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
--spec ringback_parker(api_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'answered' | 'failed'.
+-spec ringback_parker(api_binary(), ne_binary(), ne_binary(), whapps_call:call()) ->
+                             'answered' | 'failed'.
 ringback_parker('undefined', _, _, _) -> 'failed';
 ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
     case cf_endpoint:build(EndpointId, wh_json:from_list([{<<"can_call_self">>, 'true'}]), Call) of

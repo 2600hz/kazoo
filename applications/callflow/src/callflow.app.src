@@ -1,14 +1,14 @@
 {application, callflow,
  [
-  {description, "Callflow - traversing throught the tree..."}
-  ,{vsn, "0.0.1"}
+  {description, "Callflow - traversing through the tree..."}
+  ,{vsn, "3.0.0"}
   ,{modules, []}
   ,{registered, []}
   ,{applications, [
-		   kernel
-		   ,stdlib
-		   ,crypto
-		  ]}
+                   kernel
+                   ,stdlib
+                   ,crypto
+                  ]}
   ,{mod, { callflow_app, []} }
   ,{env, []}
  ]}.

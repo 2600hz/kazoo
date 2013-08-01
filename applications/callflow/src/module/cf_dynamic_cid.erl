@@ -25,14 +25,16 @@
                   default_prompt =
                       whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_prompt">>, <<"/system_media/dynamic-cid-enter_cid">>)
                  }).
+-type prompts() :: #prompts{}.
 
 -record(dynamic_cid, {
-          prompts = #prompts{},
+          prompts = #prompts{} :: prompts(),
           default_cid = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_cid">>, <<"0000000000">>),
           max_digits = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"max_digits">>, <<"10">>),
           min_digits = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"min_digits">>, <<"10">>),
           whitelist = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"whitelist_regex">>, <<"\\d+">>)
          }).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
