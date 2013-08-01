@@ -170,11 +170,14 @@
 
 %% Notify Register
 -define(REGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
--define(OPTIONAL_REGISTER_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
-                                          ,<<"From-User">>, <<"From-Host">>, <<"FreeSWITCH-Hostname">>, <<"RPid">>
-                                          ,<<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
-                                          ,<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>, <<"Account-DB">>
-                                          ,<<"Authorizing-ID">>, <<"Suppress-Unregister-Notify">>
+-define(OPTIONAL_REGISTER_HEADERS, [<<"Owner-ID">>, <<"User-Agent">>, <<"Call-ID">>
+                                        ,<<"From-User">>, <<"From-Host">>
+                                        ,<<"To-User">>, <<"To-Host">>
+                                        ,<<"Network-IP">>, <<"Network-Port">>
+                                        ,<<"Event-Timestamp">>, <<"Contact">>
+                                        ,<<"Expires">>, <<"Account-DB">>
+                                        ,<<"Authorizing-ID">>, <<"Authorizing-Type">>
+                                        ,<<"Suppress-Unregister-Notify">>
                                      ]).
 -define(REGISTER_VALUES, [{<<"Event-Category">>, <<"notification">>}
                             ,{<<"Event-Name">>, <<"register">>}
