@@ -79,7 +79,7 @@
                                                 ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
                                                 ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
                                                 ,<<"Weight-Cost">>, <<"Weight-Location">>
-                                                ,<<"From-User">>, <<"From-Realm">>
+                                                ,<<"From-User">>, <<"From-Realm">>, <<"From-URI">>
                                            ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
                                   ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
