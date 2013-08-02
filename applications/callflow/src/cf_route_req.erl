@@ -14,6 +14,7 @@
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
+    'true' = wapi_route:route_req_v(JObj),
     Call = whapps_call:from_route_req(JObj),
     case is_binary(whapps_call:account_id(Call))
         andalso callflow_should_respond(Call)
@@ -81,12 +82,14 @@ callflow_should_respond(Call) ->
 %%-----------------------------------------------------------------------------
 -spec send_route_response(wh_json:object(), wh_json:object(), ne_binary(), whapps_call:call()) -> 'ok'.
 send_route_response(Flow, JObj, Q, Call) ->
+    AccountId = whapps_call:account_id(Call),
     Resp = props:filter_undefined([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                                    ,{<<"Routes">>, []}
                                    ,{<<"Method">>, <<"park">>}
                                    ,{<<"Transfer-Media">>, get_transfer_media(Flow, JObj)}
                                    ,{<<"Ringback-Media">>, get_ringback_media(Flow, JObj)}
                                    ,{<<"Pre-Park">>, pre_park_action(Call)}
+                                   ,{<<"From-Host">>, wh_util:get_account_realm(AccountId)}
                                    | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                                   ]),
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
