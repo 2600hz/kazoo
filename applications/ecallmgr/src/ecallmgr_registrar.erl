@@ -53,6 +53,8 @@
 -define(REG_CONSUME_OPTIONS, []).
 -define(SUMMARY_REGEX, <<"^.*?:.*@([0-9.:]*)(?:;fs_path=.*?:([0-9.:]*))*(?:.*;received=.*?:([0-9.:]*))*">>).
 
+-record(state, {started = wh_util:current_tstamp()}).
+
 -record(registration, {id
                        ,username
                        ,realm
@@ -120,7 +122,7 @@ reg_query(JObj, _Props) ->
 lookup_contact(Realm, Username) ->
     case ets:lookup(?MODULE, registration_id(Username, Realm)) of
         [#registration{contact=Contact}] -> {'ok', Contact};
-        _Else -> {'error', 'not_found'}
+        _Else -> fetch_contact(Username, Realm)
     end.
 
 -spec summary() -> 'ok'.
@@ -218,7 +220,7 @@ init([]) ->
     lager:debug("starting new ecallmgr registrar"),
     _ = ets:new(?MODULE, ['set', 'protected', 'named_table', {'keypos', #registration.id}]),
     erlang:send_after(2000, self(), 'expire'),
-    {'ok', []}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -234,6 +236,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call('registrar_age', _, #state{started=Started}=State) ->
+    {'reply', wh_util:current_tstamp() - Started, State};
 handle_call(_Msg, _From, State) ->
     {'noreply', State}.
 
@@ -328,15 +332,42 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec fetch_contact(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_found'}.
+fetch_contact(Username, Realm) ->
+    Reg = [{<<"Username">>, Username}
+           ,{<<"Realm">>, Realm}
+           ,{<<"Fields">>, [<<"Contact">>]}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case wh_amqp_worker:call_collect(?ECALLMGR_AMQP_POOL
+                                     ,Reg
+                                     ,fun wapi_registration:publish_query_req/1
+                                     ,{'ecallmgr', fun wapi_registration:query_resp_v/1}
+                                     ,2000)
+    of
+        {'ok', JObjs} -> 
+            case [Contact
+                  || JObj <- JObjs
+                         ,wapi_registration:query_resp_v(JObj)
+                         ,(Contact = wh_json:get_value([<<"Fields">>, 1, <<"Contact">>]
+                                                       ,JObj)) =/= 'undefined'
+                 ]
+            of
+                [Contact|_] -> {'ok', Contact};
+                _Else -> {'error', 'not_found'}
+            end;
+        _Else -> {'error', 'not_found'}
+    end.
+
 -spec expire_objects() -> 'ok'.
 expire_objects() ->
     Now = wh_util:current_tstamp(),
     MatchSpec = [{#registration{expires = '$1'
-                               ,last_registration = '$2'
-                               , _ = '_'}
-                 ,[{'>', {const, Now}, {'+', '$1', '$2'}}]
-                 ,['$_']
-                }],
+                                ,last_registration = '$2'
+                                , _ = '_'}
+                  ,[{'>', {const, Now}, {'+', '$1', '$2'}}]
+                  ,['$_']
+                 }],
     expire_object(ets:select(?MODULE, MatchSpec, 1)).
 
 -spec expire_object(_) -> 'ok'.
@@ -349,9 +380,9 @@ expire_object({[#registration{id=Id, username=Username, realm=Realm}=Reg]
                ,Continuation}) ->
     _ = ets:delete(?MODULE, Id),
     _ = spawn(fun() ->
-                      case globally_registered(Username, Realm) of
-                          'true' -> 'ok';
-                          'false' -> send_deregister_notice(Reg)
+                      case oldest_registrar(Username, Realm) of
+                          'false' -> 'ok';
+                          'true' -> send_deregister_notice(Reg)
                       end
               end),
     expire_object(ets:select(Continuation)).
@@ -398,6 +429,7 @@ resp_to_query(JObj) ->
             wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
         [_|_]=Registrations ->
             Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    ,{<<"Registrar-Age">>, gen_server:call(?MODULE, 'registrar_age')}
                     ,{<<"Fields">>, [filter(Fields, Registration)
                                      || Registration <- Registrations
                                     ]}
@@ -547,9 +579,9 @@ update_cache(#registration{authorizing_id=AuthorizingId, account_id=AccountId
 
 -spec maybe_send_register_notice(registration()) -> 'ok'.
 maybe_send_register_notice(#registration{username=Username, realm=Realm}=Reg) ->
-    case globally_registered(Username, Realm) of
-        'true' -> 'ok';
-        'false' -> send_register_notice(Reg)
+    case oldest_registrar(Username, Realm) of
+        'false' -> 'ok';
+        'true' -> send_register_notice(Reg)
     end.
              
 -spec send_register_notice(registration()) -> 'ok'.
@@ -594,8 +626,8 @@ filter(Fields, JObj) ->
                                           [ {F, wh_json:get_value(F, JObj)} | Acc]
                                   end, [], Fields)).
 
--spec globally_registered(ne_binary(), ne_binary()) -> boolean().
-globally_registered(Username, Realm) ->
+-spec oldest_registrar(ne_binary(), ne_binary()) -> boolean().
+oldest_registrar(Username, Realm) ->
     Reg = [{<<"Username">>, Username}
            ,{<<"Realm">>, Realm}
            ,{<<"Fields">>, [<<"Expires">>]}
@@ -607,8 +639,17 @@ globally_registered(Username, Realm) ->
                                      ,'ecallmgr'
                                      ,2000) 
     of
-        {'ok', JObjs} -> lists:any(fun wapi_registration:query_resp_v/1, JObjs);
-        _Else -> 'false'
+        {'ok', JObjs} ->
+            case
+                [wh_json:get_integer_value(<<"Registrar-Age">>, JObj, 0)
+                 || JObj <- JObjs
+                        ,wapi_registration:query_resp_v(JObj)
+                ] 
+            of
+                [] -> 'true';
+                Ages -> lists:max(Ages) =< gen_server:call(?MODULE, 'registrar_age')
+            end;
+        _Else -> 'true'
     end.
 
 print_summary('$end_of_table') ->
