@@ -53,10 +53,9 @@ bind(Node, Type) ->
 bind(Node, Type, Timeout) ->
     gen_server:call({'mod_kazoo', Node}, {'bind', Type}, Timeout).
 
--spec fetch_reply(atom(), binary(), binary(), binary() | string()) ->
-                         'ok' |
-                         {'error', 'baduuid'}.
--spec fetch_reply(atom(), binary(), binary(), binary() | string(), pos_integer() | 'infinity') ->
+-spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string()) ->
+                         'ok'.
+-spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), pos_integer() | 'infinity') ->
                          'ok' |
                          {'error', 'baduuid'}.
 fetch_reply(Node, FetchID, Section, Reply) ->

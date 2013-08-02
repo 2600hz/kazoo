@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -20,10 +20,6 @@
 %% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Restart, Shutdown, Type),
-        {Name, {Name, 'start_link', []}, Restart, Shutdown, Type, [Name]}).
-
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -35,14 +31,12 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 -spec new(whapps_call:call()) -> sup_startchild_ret().
-new(Call) ->
-    supervisor:start_child(?MODULE, [Call]).
+new(Call) -> supervisor:start_child(?MODULE, [Call]).
 
--spec workers() -> [pid(),...] | [].
+-spec workers() -> pids().
 workers() ->
     [ Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
 
@@ -67,4 +61,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?CHILD('cf_exe', 'temporary', 2000, 'worker')]}}.
+    {'ok', {SupFlags, [?WORKER_TYPE('cf_exe', 'temporary')]}}.

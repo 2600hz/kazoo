@@ -11,7 +11,7 @@
       "carrier":{
         "type":"string"
         ,"description":"Friendly name for the carrier providing this rate"
-      }
+      },
       "iso_country_code":{
          "type":"string",
          "description":"Country code this rate applies to"
@@ -23,7 +23,7 @@
        "rate_name":{
            "type":"string"
            ,"description":"Friendly name of the rate"
-       }
+       },
        "internal_rate_cost":{
            "type":"number",
            "description":"The per-min rate charged by the upstream provider"
@@ -31,7 +31,7 @@
        "rate_cost":{
            "type":"number"
            ,"description":"The per-min rate charged to the downstream customer"
-           ,"required":true,
+           ,"required":true
        },
        "rate_increment":{
            "type":"number"

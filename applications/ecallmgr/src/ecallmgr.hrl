@@ -9,7 +9,7 @@
 -define(ECALLMGR_AMQP_POOL, 'ecallmgr_amqp_pool').
 
 -define(ECALLMGR_UTIL_CACHE, 'ecallmgr_util_cache').
--define(ECALLMGR_REG_CACHE, 'ecallmgr_reg_cache').
+-define(ECALLMGR_AUTH_CACHE, 'ecallmgr_auth_cache').
 -define(ECALLMGR_CALL_CACHE, 'ecallmgr_call_cache').
 
 -define(CHANNELS_TBL, 'ecallmgr_channels').
@@ -60,7 +60,7 @@
                   ,resource_id :: api_binary() | '$4' | '_'
                   ,presence_id :: api_binary() | '$2' | '_'
                   ,fetch_id :: api_binary() | '$5' | '_'
-                  ,bridge_id :: api_binary() | '$6' | '_'
+                  ,bridge_id :: api_binary() | '$5' | '_'
                   ,reseller_id :: api_binary() | '_'
                   ,reseller_billing :: api_binary() | '_'
                   ,realm :: api_binary() | '_' | '$2'
@@ -80,12 +80,12 @@
 -type channel() :: #channel{}.
 -type channels() :: [channel(),...] | [].
 
--define(DEFAULT_DOMAIN, <<"whistle.2600hz.org">>).
--define(MAX_TIMEOUT_FOR_NODE_RESTART, 10000). % 10 seconds
+-define(DEFAULT_REALM, ecallmgr_config:get(<<"default_realm">>, <<"nodomain.com">>)).
+-define(MAX_TIMEOUT_FOR_NODE_RESTART, ecallmgr_config:get_integer(<<"max_timeout_for_node_restart">>, 10000)). % 10 seconds
 -define(MAX_NODE_RESTART_FAILURES, 3).
 
 %% list of dialplan Application-Names that can execute after a call has hung up
--define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>, <<"record">>, <<"store_fax">>]). 
+-define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>, <<"record">>, <<"store_fax">>]).
 
 -define(SANITY_CHECK_PERIOD, 300000).
 
@@ -108,6 +108,8 @@
 
 -define(GET_CCV(Key), <<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>).
 -define(SET_CCV(Key, Value), <<?CHANNEL_VAR_PREFIX, Key/binary, "=", Value/binary>>).
+
+-define(CREDS_KEY(Realm, Username), {?MODULE, 'authn', Username, Realm}).
 
 %% Call and Channel Vars that have a special prefix instead of the standard CHANNEL_VAR_PREFIX prefix
 %% [{AMQP-Header, FS-var-name}]

@@ -32,7 +32,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                     ecallmgr_util:send_cmd(Node, UUID, AppName, AppData);
                 {AppName, AppData, NewNode} ->
                     ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
-                Apps when is_list(Apps) ->
+                [_|_]=Apps ->
                     [ecallmgr_util:send_cmd(Node, UUID, AppName, AppData) || {AppName, AppData} <- Apps]
             end;
         'false' ->
@@ -209,12 +209,12 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
                 <<"put">> ->
                     %% stream file over HTTP PUT
                     lager:debug("stream ~s via HTTP PUT", [RecordingName]),
-                    stream_over_http(Node, UUID, RecordingName, put, store, JObj),
+                    stream_over_http(Node, UUID, RecordingName, 'put', 'store', JObj),
                     {<<"store">>, 'noop'};
                 <<"post">> ->
                     %% stream file over HTTP POST
                     lager:debug("stream ~s via HTTP POST", [RecordingName]),
-                    stream_over_http(Node, UUID, RecordingName, post, store, JObj),
+                    stream_over_http(Node, UUID, RecordingName, 'post', 'store', JObj),
                     {<<"store">>, 'noop'};
                 _Method ->
                     %% unhandled method
@@ -231,7 +231,7 @@ get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
             lager:debug("attempting to store fax on ~s: ~s", [Node, File]),
             case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
                 <<"put">> ->
-                    stream_over_http(Node, UUID, File, put, fax, JObj),
+                    stream_over_http(Node, UUID, File, 'put', 'fax', JObj),
                     {App, 'noop'};
                 _Method ->
                     lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
@@ -853,6 +853,8 @@ bridge_post_exec(DP, _, _, _) ->
 stream_over_http(Node, UUID, File, Method, Type, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
+
+    ecallmgr_util:set(Node, UUID, [{<<"Recording-URL">>, Url}]),
 
     Args = list_to_binary([Url, <<" ">>, File]),
     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),

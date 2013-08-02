@@ -13,6 +13,13 @@
 
 -export([start_link/0]).
 -export([sync/2]).
+-export([summary/0
+         ,summary/1
+        ]).
+-export([details/0
+         ,details/1
+        ]).
+-export([authz_summary/0]).
 -export([show_all/0]).
 -export([flush_node/1]).
 -export([new/1]).
@@ -72,16 +79,61 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({local, ?MODULE}, ?MODULE, [{responders, ?RESPONDERS}
-                                                        ,{bindings, ?BINDINGS}
-                                                        ,{queue_name, ?QUEUE_NAME}
-                                                        ,{queue_options, ?QUEUE_OPTIONS}
-                                                        ,{consume_options, ?CONSUME_OPTIONS}
-                                                       ], []).
+    gen_listener:start_link({'local', ?MODULE}, ?MODULE, [{'responders', ?RESPONDERS}
+                                                          ,{'bindings', ?BINDINGS}
+                                                          ,{'queue_name', ?QUEUE_NAME}
+                                                          ,{'queue_options', ?QUEUE_OPTIONS}
+                                                          ,{'consume_options', ?CONSUME_OPTIONS}
+                                                         ], []).
 
 -spec sync(atom(), ne_binaries()) -> 'ok'.
 sync(Node, Channels) ->
     gen_server:cast(?MODULE, {'sync_channels', Node, Channels}).
+
+-spec summary() -> 'ok'.
+summary() ->
+    MatchSpec = [{#channel{_ = '_'}
+                  ,[]
+                  ,['$_']
+                 }],
+    print_summary(ets:select(?CHANNELS_TBL, MatchSpec, 1)).
+
+-spec summary(text()) -> 'ok'.
+summary(Node) when not is_atom(Node) ->
+    summary(wh_util:to_atom(Node, 'true'));
+summary(Node) ->
+    MatchSpec = [{#channel{node='$1', _ = '_'}
+                  ,[{'=:=', '$1', {'const', Node}}]
+                  ,['$_']
+                 }],
+    print_summary(ets:select(?CHANNELS_TBL, MatchSpec, 1)).    
+
+-spec details() -> 'ok'.
+details() ->
+    MatchSpec = [{#channel{_ = '_'}
+                  ,[]
+                  ,['$_']
+                 }],
+    print_details(ets:select(?CHANNELS_TBL, MatchSpec, 1)).    
+
+-spec details(text()) -> 'ok'.
+details(UUID) when not is_binary(UUID) ->
+    details(wh_util:to_binary(UUID));
+details(UUID) ->
+    MatchSpec = [{#channel{uuid=UUID, _ = '_'}
+                  ,[{'=:=', '$1', {'const', UUID}}]
+                  ,['$_']
+                 }],
+    print_details(ets:select(?CHANNELS_TBL, MatchSpec, 1)).
+
+-spec authz_summary() -> 'ok'.
+authz_summary() ->
+    MatchSpec = [{#channel{account_id='$1', _ = '_'}
+                  ,[]
+                  ,['$1']
+                 }],
+    AccountIds = sets:from_list(ets:select(?CHANNELS_TBL, MatchSpec)),
+    print_authz_summary(sets:to_list(AccountIds)).
 
 -spec show_all() -> wh_json:objects().
 show_all() ->
@@ -104,12 +156,12 @@ destroy(UUID, Node) ->
 -spec update(ne_binary(), pos_integer(), _) -> 'ok'.
 update(UUID, Key, Value) ->
     updates(UUID, [{Key, Value}]).
-    
+
 -spec updates(ne_binary(), wh_proplist()) -> 'ok'.
 updates(UUID, Updates) ->
     gen_server:call(?MODULE, {'channel_updates', UUID, Updates}).
 
--spec account_summary(ne_binary()) -> channels().
+-spec account_summary(ne_binary()) -> wh_json:object().
 account_summary(AccountId) ->
     MatchSpec = [{#channel{direction = '$1', account_id = '$2', account_billing = '$7'
                            ,authorizing_id = '$3', resource_id = '$4', bridge_id = '$5'
@@ -128,7 +180,7 @@ match_presence(PresenceId) ->
                 ],
     ets:select(?CHANNELS_TBL, MatchSpec).
 
--spec handle_query_auth_id(wh_json:object(), proplist()) -> 'ok'.
+-spec handle_query_auth_id(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_query_auth_id(JObj, _Props) ->
     'true' = wapi_call:query_auth_id_req_v(JObj),
     AuthId = wh_json:get_value(<<"Auth-ID">>, JObj),
@@ -436,7 +488,7 @@ find_by_auth_id(AuthorizingId) ->
 -spec find_by_user_realm(ne_binary(), ne_binary()) ->
                                 {'ok', wh_json:objects()} |
                                 {'error', 'not_found'}.
-find_by_user_realm(Username, Realm) ->    
+find_by_user_realm(Username, Realm) ->
     MatchSpec = [{#channel{username = '$1', realm='$2', _ = '_'}
                   ,[{'=:=', '$1', {'const', Username}}
                     ,{'=:=', '$2', {'const', Realm}}
@@ -450,3 +502,67 @@ find_by_user_realm(Username, Realm) ->
                     || Channel <- Channels
                    ]}
     end.
+
+print_summary('$end_of_table') ->
+    io:format("No channels found!~n", []);
+print_summary(Match) ->
+    io:format("+----------------------------------------------------+------------------------------------------+-----------+-----------------+----------------------------------+~n"),
+    io:format("| UUID                                               | Node                                     | Direction | Destination     | Account-ID                       |~n"),
+    io:format("+====================================================+==========================================+===========+=================+==================================+~n"),
+    print_summary(Match, 0).
+
+print_summary('$end_of_table', Count) ->
+    io:format("+----------------------------------------------------+------------------------------------------+-----------+-----------------+----------------------------------+~n"),
+    io:format("Found ~p channels~n", [Count]);
+print_summary({[#channel{uuid=UUID, node=Node
+                         ,direction=Direction
+                         ,destination=Destination
+                         ,account_id=AccountId}]
+               ,Continuation}
+              ,Count) ->
+    io:format("| ~-50s | ~-40s | ~-9s | ~-15s | ~-32s |~n"
+              ,[UUID, Node, Direction, Destination, AccountId]),
+    print_summary(ets:select(Continuation), Count + 1).
+
+print_details('$end_of_table') ->
+    io:format("No channels found!~n", []);
+print_details(Match) ->
+    print_details(Match, 0).
+
+print_details('$end_of_table', Count) ->
+    io:format("~n"),
+    io:format("Found ~p channels~n", [Count]);
+print_details({[#channel{}=Channel]
+               ,Continuation}
+              ,Count) ->
+    io:format("~n"),
+    _ = [io:format("~-19s: ~s~n", [K, wh_util:to_binary(V)])
+         || {K, V} <- ecallmgr_fs_channel:to_props(Channel)
+        ],
+    print_details(ets:select(Continuation), Count + 1).
+
+print_authz_summary([]) ->
+    io:format("No accounts found!~n");
+print_authz_summary(AccountIds) ->
+    io:format("+----------------------------------+------------+------------+-------------------------+-------------------------+------------+~n"),
+    io:format("| Account ID                       | Calls      | Channels   |        Flat-Rate        |        Per-Minute       | Resources  |~n"),
+    io:format("|                                  |            |            | Inbound    | Outbound   | Inbound    | Outbound   |            |~n"),
+    io:format("+==================================+============+============+============+============+============+============+============+"),
+    print_authz_summary(AccountIds, 0).
+
+print_authz_summary([], Count) ->
+    io:format("~n+----------------------------------+------------+------------+------------+------------+------------+------------+------------+~n"),
+    io:format("Found ~p accounts~n", [Count]);
+print_authz_summary([AccountId|AccountIds], Count) ->
+    JObj = account_summary(AccountId),
+    io:format("~n| ~-32s | ~-10s | ~-10s | ~-10s | ~-10s | ~-10s | ~-10s | ~-10s |"
+              ,[AccountId
+                ,wh_json:get_binary_value(<<"Calls">>, JObj, 0)
+                ,wh_json:get_binary_value(<<"Channels">>, JObj, 0)
+                ,wh_json:get_binary_value(<<"Inbound-Flat-Rate">>, JObj, 0)
+                ,wh_json:get_binary_value(<<"Outbound-Flat-Rate">>, JObj, 0)
+                ,wh_json:get_binary_value(<<"Inbound-Per-Minute">>, JObj, 0)
+                ,wh_json:get_binary_value(<<"Outbound-Per-Minute">>, JObj, 0)
+                ,wh_json:get_binary_value(<<"Resource-Consuming-Calls">>, JObj, 0)
+               ]),
+    print_authz_summary(AccountIds, Count + 1).

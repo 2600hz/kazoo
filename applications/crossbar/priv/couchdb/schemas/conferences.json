@@ -76,7 +76,7 @@
                 "name":"Play Entry Prompt (member)",
                 "description":"Toggle whether to announce to the caller that they're entering a conference",
                 "type":"boolean",
-                "default":true"
+                "default":true
             }
          },
          "default":{

@@ -22,7 +22,10 @@
 -export([remove/1]).
 -export([nodeup/1]).
 -export([is_node_up/1]).
--export([status/0]).
+-export([summary/0]).
+-export([details/0
+         ,details/1
+        ]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -85,40 +88,29 @@ connected() -> gen_server:call(?MODULE, 'connected_nodes').
 -spec is_node_up(atom()) -> boolean().
 is_node_up(Node) -> gen_server:call(?MODULE, {'is_node_up', Node}).
 
--spec status() -> 'ok'.
-status() ->
-    _ = [begin
-             NodeName = Node#node.node,
-             io:format("Node: ~s~n", [NodeName]),
-             io:format("Cookie: ~s~n", [Node#node.cookie]),
-             io:format("Client: ~s~n", [Node#node.client_version]),
-             io:format("Connected: ~p~n", [Node#node.connected]),
-             io:format("Options: ~p~n", [Node#node.options]),
-             _ = case ecallmgr_fs_pinger_sup:find_pinger(NodeName) of
-                     'undefined' -> 'ok';
-                     PingerPid ->
-                         io:format("Pinger: ~p~n", [PingerPid])
-                 end,
-             _ = case ecallmgr_fs_sup:find_node(NodeName) of
-                   'undefined' -> 'ok';
-                   NodeSupPid ->
-                         io:format("Supervisor: ~p~n", [NodeSupPid]),
-                         io:format("Workers:~n", []),
-                         [begin
-                              io:format("    ~p (~s)~n", [Pid, Name])
-                          end
-                          || {Name, Pid, _, _} <- supervisor:which_children(NodeSupPid)
-                         ]
-                 end,
-             io:format("~n", [])
-         end
-         || {_, Node} <- gen_server:call(?MODULE, 'nodes')
-        ],
-    'ok'.
-
 -spec all_nodes_connected() -> boolean().
 all_nodes_connected() ->
     length(ecallmgr_config:get(<<"fs_nodes">>, [])) =:= length(connected()).
+
+-spec summary() -> 'ok'.
+summary() ->
+    print_summary(gen_server:call(?MODULE, 'nodes')).
+
+-spec details() -> 'ok'.
+-spec details(text()) -> 'ok'.
+
+details() ->
+    print_details(gen_server:call(?MODULE, 'nodes')).
+
+details(NodeName) when not is_atom(NodeName) ->
+    details(wh_util:to_atom(NodeName, 'true'));
+details(NodeName) ->
+    case gen_server:call(?MODULE, {'node', NodeName}) of
+        {'error', 'not_found'} ->
+            io:format("Node ~s not found!~n", [NodeName]);
+        {'ok', Node} ->
+            details([{'undefined', Node}])
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -186,6 +178,11 @@ handle_call({'add_fs_node', NodeName, Cookie, Options}, From, State) ->
     {'noreply', State};
 handle_call('nodes', _From, #state{nodes=Nodes}=State) ->
     {'reply', dict:to_list(Nodes), State};
+handle_call({'node', Node}, _From, #state{nodes=Nodes}=State) ->
+    case dict:find(Node, Nodes) of
+        'error' -> {'reply', {'error', 'not_found'}, State};
+        {'ok', #node{}=N} -> {'reply', {'ok', N}, State}
+    end;
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -511,3 +508,56 @@ start_node_from_config(MaybeJObj) ->
                 _E:_R -> lager:debug("failed to add ~s(~s): ~s: ~p", [Node, Cookie, _E, _R])
             end
     end.
+
+print_details([]) ->
+    io:format("No nodes found!~n", []);
+print_details(Nodes) ->
+    print_details(Nodes, 0).
+
+print_details([], Count) ->
+    io:format("~n"),
+    io:format("Found ~p nodes~n", [Count]);
+print_details([{NodeName, Node}|Nodes],Count) ->
+    io:format("~n"),
+    io:format("~-12s: ~s~n", [<<"Node">>, NodeName]),
+    io:format("~-12s: ~s~n", [<<"Cookie">>, Node#node.cookie]),
+    io:format("~-12s: ~s~n", [<<"Client">>, Node#node.client_version]),
+    io:format("~-12s: ~p~n", [<<"Connected">>, Node#node.connected]),
+    io:format("~-12s: ~p~n", [<<"Options">>, Node#node.options]),
+    _ = case ecallmgr_fs_pinger_sup:find_pinger(NodeName) of
+            'undefined' -> 'ok';
+            PingerPid ->
+                io:format("~-12s: ~p~n", [<<"Pinger">>, PingerPid])
+        end,
+    _ = case ecallmgr_fs_sup:find_node(NodeName) of
+            'undefined' -> 'ok';
+            NodeSupPid ->
+                io:format("~-12s: ~p~n", [<<"Supervisor">>, NodeSupPid]),
+                io:format("Workers~n"),
+                [begin
+                     io:format("    ~-15w ~s~n", [Pid, Name])
+                 end
+                 || {Name, Pid, _, _} <- supervisor:which_children(NodeSupPid)
+                ]
+        end,
+    print_details(Nodes, Count + 1).
+
+print_summary([]) ->
+    io:format("No nodes found!~n", []);
+print_summary(Nodes) ->
+    io:format("+----------------------------------------------------+-----------+----------------------------------+----------------------+~n"),
+    io:format("| Node Name                                          | Connected | Cookie                           | Version              |~n"),
+    io:format("+====================================================+===========+==================================+======================+~n"),
+    print_summary(Nodes, 0).
+
+print_summary([], Count) ->
+    io:format("+----------------------------------------------------+-----------+----------------------------------+----------------------+~n"),
+    io:format("Found ~p nodes~n", [Count]);
+print_summary([{_, Node}|Nodes], Count) ->
+    io:format("| ~-50s | ~-9s | ~-32s | ~-20s |~n"
+              ,[Node#node.node
+                ,Node#node.connected
+                ,Node#node.cookie
+                ,Node#node.client_version
+               ]),
+    print_summary(Nodes, Count + 1).

@@ -1,26 +1,26 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(registrar_sup).
+-module(cf_event_handler_sup).
 
 -behaviour(supervisor).
 
--include_lib("reg.hrl").
+-include("callflow.hrl").
 
+%% API
 -export([start_link/0]).
+-export([new/2]).
+-export([workers/0]).
+
+%% Supervisor callbacks
 -export([init/1]).
 
--define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
-                          ,[{'type', <<"device">>}]
-                         ]).
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
--define(CHILDREN, [?CACHE_ARGS(?REGISTRAR_CACHE, ?CACHE_PROPS)
-                   ,?WORKER('registrar_shared_listener')
-                  ]).
+-include("callflow.hrl").
 
 %% ===================================================================
 %% API functions
@@ -35,6 +35,14 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+
+-spec new(atom(), list()) -> sup_startchild_ret().
+new(M, A) ->
+    supervisor:start_child(?MODULE, ?WORKER_ARGS_TYPE(M, A, 'temporary')).
+
+-spec workers() -> pids().
+workers() ->
+    [ Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -52,9 +60,9 @@ start_link() ->
 -spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
-    MaxRestarts = 5,
-    MaxSecondsBetweenRestarts = 10,
+    MaxRestarts = 0,
+    MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, ?CHILDREN}}.
+    {'ok', {SupFlags, []}}.

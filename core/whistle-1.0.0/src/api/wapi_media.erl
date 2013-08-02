@@ -62,7 +62,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req/1 :: (wh_json:json_object() | proplist()) -> {'ok', iolist()} | {'error', string()}.
+-spec req(wh_json:object() | proplist()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         true -> wh_api:build_message(Prop, ?MEDIA_REQ_HEADERS, ?OPTIONAL_MEDIA_REQ_HEADERS);
@@ -71,7 +71,7 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
 
--spec req_v/1 :: (wh_json:json_object() | proplist()) -> boolean().
+-spec req_v(wh_json:object() | proplist()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?MEDIA_REQ_HEADERS, ?MEDIA_REQ_VALUES, ?MEDIA_REQ_TYPES);
 req_v(JObj) ->
@@ -82,7 +82,7 @@ req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp/1 :: (wh_json:json_object() | proplist()) -> {'ok', iolist()} | {'error', string()}.
+-spec resp(wh_json:object() | proplist()) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
         true -> wh_api:build_message(Prop, ?MEDIA_RESP_HEADERS, ?OPTIONAL_MEDIA_RESP_HEADERS);
@@ -91,7 +91,7 @@ resp(Prop) when is_list(Prop) ->
 resp(JObj) ->
     resp(wh_json:to_proplist(JObj)).
 
--spec resp_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
+-spec resp_v(proplist() | wh_json:object()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?MEDIA_RESP_HEADERS, ?MEDIA_RESP_VALUES, ?MEDIA_RESP_TYPES);
 resp_v(JObj) ->
@@ -102,7 +102,7 @@ resp_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec error/1 :: (proplist() | wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec error(proplist() | wh_json:object()) -> {'ok', iolist()} | {'error', string()}.
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
         true -> wh_api:build_message(Prop, ?MEDIA_ERROR_HEADERS, ?OPTIONAL_MEDIA_ERROR_HEADERS);
@@ -111,39 +111,39 @@ error(Prop) when is_list(Prop) ->
 error(JObj) ->
     error(wh_json:to_proplist(JObj)).
 
--spec error_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
+-spec error_v(proplist() | wh_json:object()) -> boolean().
 error_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?MEDIA_ERROR_HEADERS, ?MEDIA_ERROR_VALUES, ?MEDIA_ERROR_TYPES);
 error_v(JObj) ->
     error_v(wh_json:to_proplist(JObj)).
 
--spec bind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:callevt_exchange(),
     amqp_util:bind_q_to_callevt(Queue, media_req).
 
--spec unbind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_callevt(Queue, media_req).
 
--spec publish_req/1 :: (api_terms()) -> 'ok'.
--spec publish_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
+-spec publish_req(api_terms()) -> 'ok'.
+-spec publish_req(api_terms(), ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?MEDIA_REQ_VALUES, fun ?MODULE:req/1),
     amqp_util:callevt_publish(Payload, ContentType, media_req).
 
--spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(Queue, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?MEDIA_RESP_VALUES, fun ?MODULE:resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
--spec publish_error/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_error/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_error(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_error(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_error(Queue, JObj) ->
     publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(Queue, Error, ContentType) ->

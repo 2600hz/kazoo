@@ -24,8 +24,8 @@
 -define(APP_NAME, <<"whistle">>).
 -define(APP_VERSION, <<"1.2.1">>).
 
--spec cnam_request/1 :: (wh_json:json_object()) -> 'ok'.
--spec cnam_request/2 :: (wh_json:json_object(), wh_json:json_object()) -> 'ok'.
+-spec cnam_request(wh_json:object()) -> 'ok'.
+-spec cnam_request(wh_json:object(), wh_json:object()) -> 'ok'.
 
 cnam_request(PhoneNumber) ->
     AccountId = wh_json:get_ne_value(<<"pvt_assigned_to">>, PhoneNumber),
@@ -46,8 +46,8 @@ cnam_request(PhoneNumber, Account) ->
              ],
     wapi_notifications:publish_cnam_request(Notify).
 
--spec port_request/1 :: (wh_json:json_object()) -> 'ok'.
--spec port_request/2 :: (wh_json:json_object(), wh_json:json_object()) -> 'ok'.
+-spec port_request(wh_json:object()) -> 'ok'.
+-spec port_request(wh_json:object(), wh_json:object()) -> 'ok'.
 
 port_request(PhoneNumber) ->
     AccountId = wh_json:get_ne_value(<<"pvt_assigned_to">>, PhoneNumber),
@@ -68,9 +68,9 @@ port_request(PhoneNumber, Account) ->
              ],
     wapi_notifications:publish_cnam_request(Notify).
 
--spec deregister/1 :: (wh_json:json_object()) -> 'ok'.
--spec deregister/2 :: (wh_json:json_object(), wh_json:json_object()) -> 'ok'.
--spec deregister/3 :: (wh_json:json_object(), wh_json:json_object(), wh_json:json_object()) -> 'ok'.
+-spec deregister(wh_json:object()) -> 'ok'.
+-spec deregister(wh_json:object(), wh_json:object()) -> 'ok'.
+-spec deregister(wh_json:object(), wh_json:object(), wh_json:object()) -> 'ok'.
 
 deregister(LastReg) ->
     AuthorizingId = wh_json:get_value(<<"Authorizing-ID">>, LastReg),
@@ -116,8 +116,8 @@ first_call(_Account) ->
 first_registration(_Account) ->
     ok.
 
--spec transaction/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
--spec transaction/3 :: (ne_binary(), wh_json:json_object(), 'undefined' | wh_json:json_object()) -> 'ok'.
+-spec transaction(ne_binary(), wh_json:object()) -> 'ok'.
+-spec transaction(ne_binary(), wh_json:object(), api_object()) -> 'ok'.
 
 transaction(Account, Transaction) ->
     transaction(Account, Transaction, undefined).
@@ -130,8 +130,8 @@ transaction(Account, Transaction, ServicePlan) ->
              ],
     wapi_notifications:publish_transaction(props:filter_undefined(Notify)).
 
--spec system_alert/2 :: (atom() | string() | binary(), [term()]) -> 'ok'.
--spec system_alert/3 :: (atom() | string() | binary(), [term()], proplist()) -> 'ok'.
+-spec system_alert(atom() | string() | binary(), [term()]) -> 'ok'.
+-spec system_alert(atom() | string() | binary(), [term()], proplist()) -> 'ok'.
 
 system_alert(Format, Args) ->
     system_alert(Format, Args, []).
@@ -145,7 +145,7 @@ system_alert(Format, Args, Props) ->
             ],
     wapi_notifications:publish_system_alert(Notify).
 
--spec generic_alert/2 :: (atom() | string() | binary(), atom() | string() | binary()) -> 'ok'.
+-spec generic_alert(atom() | string() | binary(), atom() | string() | binary()) -> 'ok'.
 generic_alert(Subject, Msg) ->
     Notify= [{<<"Message">>, wh_util:to_binary(Msg)}
              ,{<<"Subject">>, <<"KAZOO: ", (wh_util:to_binary(Subject))/binary>>}

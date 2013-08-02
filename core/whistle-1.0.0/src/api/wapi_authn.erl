@@ -32,7 +32,7 @@
                             ,<<"Auth-User">>, <<"Auth-Realm">>
                            ]).
 -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>, <<"Switch-Hostname">>
-                                         ,<<"Orig-IP">>
+                                         ,<<"Orig-IP">>, <<"Call-ID">>
                                     ]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}
@@ -46,9 +46,9 @@
 
 %% Authentication Responses
 -define(AUTHN_RESP_HEADERS, [<<"Auth-Method">>, <<"Auth-Password">>]).
--define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>
-                                          ,<<"Custom-Channel-Vars">>
-                                          ,<<"Auth-Username">>
+-define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Custom-Channel-Vars">>
+                                      ,<<"Auth-Username">>
+                                      ,<<"Suppress-Unregister-Notifications">>
                                      ]).
 -define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
                            ,{<<"Event-Name">>, <<"authn_resp">>}

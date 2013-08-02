@@ -208,11 +208,10 @@ reply_forbidden(Node, FSID) ->
                                                 ,{<<"Route-Error-Message">>, <<"Payment Required">>}
                                                ]),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
-    case freeswitch:fetch_reply(Node, FSID, 'dialplan', iolist_to_binary(XML)) of
+    case freeswitch:fetch_reply(Node, FSID, 'dialplan', iolist_to_binary(XML), 3000) of
         'ok' ->
             lager:debug("node ~s accepted our route unauthz", [Node]);
-        {'error', Reason} -> lager:debug("node ~s rejected our route unauthz, ~p", [Node, Reason]);
-        'timeout' -> lager:error("received no reply from node ~s, timeout", [Node])
+        {'error', Reason} -> lager:debug("node ~s rejected our route unauthz, ~p", [Node, Reason])
     end.
 
 -spec reply_affirmative(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
@@ -220,14 +219,22 @@ reply_affirmative(Node, FSID, CallId, JObj) ->
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj),
     ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
     lager:info("sending affirmative XML to ~s: ~s", [Node, XML]),
+    FromURI = case wh_json:get_value(<<"From-URI">>, JObj) of
+                  'undefined' -> 
+                      FromUser = wh_json:get_value(<<"From-User">>, JObj, <<"${sip_from_user}">>),
+                      FromHost = wh_json:get_value(<<"From-Host">>, JObj, <<"${sip_from_host}">>),
+                      <<"sip_from_uri=sip:"
+                        ,FromUser/binary, "@", FromHost/binary>>;
+                  Else -> Else
+              end,
     case freeswitch:fetch_reply(Node, FSID, 'dialplan', iolist_to_binary(XML), 3000) of
         'ok' ->
             lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),
             CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
             _ = ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)),
+            _ = ecallmgr_util:export(Node, CallId, [{<<"From-URI">>, FromURI}]),
             start_control_and_events(Node, FSID, CallId, ServerQ, CCVs);
-        {'error', _Reason} -> lager:debug("node ~s rejected our route response, ~p", [Node, _Reason]);
-        'timeout' -> lager:error("received no reply from node ~s, timeout", [Node])
+        {'error', _Reason} -> lager:debug("node ~s rejected our route response, ~p", [Node, _Reason])
     end.
 
 -spec start_control_and_events(atom(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.

@@ -19,7 +19,7 @@
          ,get_is_true/2, get_is_true/3, is_true/2, is_true/3
          ,get_is_false/2, get_is_false/3, is_false/2, is_false/3
          ,get_keys/1
-         ,get_first_defined/2
+         ,get_first_defined/2, get_first_defined/3
          ,get_all_values/2, get_values/2
          ,set_value/3
          ,unique/1
@@ -35,32 +35,32 @@
 
 -spec set_value(wh_proplist_key(), wh_proplist_value(), wh_proplist()) ->
                        wh_proplist().
-set_value(K, V, Prop) ->
-    [{K, V} | [KV || {Key, _}=KV <- Prop, K =/= Key]].
+set_value(K, V, Props) ->
+    [{K, V} | [KV || {Key, _}=KV <- Props, K =/= Key]].
 
 -type filter_fun() :: fun(({wh_proplist_key(), wh_proplist_value()}) -> boolean()).
 -spec filter(filter_fun(), wh_proplist()) -> wh_proplist().
-filter(Fun, Prop) when is_function(Fun, 1), is_list(Prop) ->
-    lists:filter(Fun, Prop).
+filter(Fun, Props) when is_function(Fun, 1), is_list(Props) ->
+    lists:filter(Fun, Props).
 
 -spec filter_empty(wh_proplist()) -> wh_proplist().
-filter_empty(Prop) ->
-    [KV || {_, V}=KV <- Prop, (not wh_util:is_empty(V))].
+filter_empty(Props) ->
+    [KV || {_, V}=KV <- Props, (not wh_util:is_empty(V))].
 
 -spec filter_undefined(wh_proplist()) -> wh_proplist().
-filter_undefined(Prop) ->
-    [KV || {_, V}=KV <- Prop, V =/= 'undefined'].
+filter_undefined(Props) ->
+    [KV || {_, V}=KV <- Props, V =/= 'undefined'].
 
 -spec get_value(wh_proplist_key(), wh_proplist()) -> term().
 -spec get_value(wh_proplist_key(), wh_proplist(), Default) -> Default | term().
-get_value(Key, Prop) ->
-    get_value(Key, Prop, 'undefined').
+get_value(Key, Props) ->
+    get_value(Key, Props, 'undefined').
 
 get_value(_Key, [], Def) -> Def;
-get_value(Key, Prop, Default) when is_list(Prop) ->
-    case lists:keyfind(Key, 1, Prop) of
+get_value(Key, Props, Default) when is_list(Props) ->
+    case lists:keyfind(Key, 1, Props) of
         'false' ->
-            case lists:member(Key, Prop) of
+            case lists:member(Key, Props) of
                 'true' -> 'true';
                 'false' -> Default
             end;
@@ -69,38 +69,41 @@ get_value(Key, Prop, Default) when is_list(Prop) ->
     end.
 
 %% Given a list of keys, find the first one defined
--spec get_first_defined(wh_proplist_keys(), wh_proplist()) -> term().
-get_first_defined([], _Prop) -> 'undefined';
-get_first_defined([H|T], Prop) ->
-    case get_value(H, Prop) of
-        'undefined' -> get_first_defined(T, Prop);
+-spec get_first_defined(wh_proplist_keys(), wh_proplist()) -> 'undefined' | term().
+-spec get_first_defined(wh_proplist_keys(), wh_proplist(), Default) -> Default | term().
+get_first_defined(Keys, Props) -> get_first_defined(Keys, Props, 'undefined').
+
+get_first_defined([], _Props, Default) -> Default;
+get_first_defined([H|T], Props, Default) ->
+    case get_value(H, Props) of
+        'undefined' -> get_first_defined(T, Props, Default);
         V -> V
     end.
 
 -spec get_is_true(wh_proplist_key(), wh_proplist()) -> api_boolean().
 -spec get_is_true(wh_proplist_key(), wh_proplist(), Default) -> Default | boolean().
-get_is_true(Key, Prop) -> is_true(Key, Prop).
-get_is_true(Key, Prop, Default) -> is_true(Key, Prop, Default).
+get_is_true(Key, Props) -> is_true(Key, Props).
+get_is_true(Key, Props, Default) -> is_true(Key, Props, Default).
 
 -spec is_true(wh_proplist_key(), wh_proplist()) -> api_boolean().
 -spec is_true(wh_proplist_key(), wh_proplist(), Default) -> Default | boolean().
-is_true(Key, Prop) ->
-    is_true(Key, Prop, 'undefined').
-is_true(Key, Prop, Default) ->
-    case get_value(Key, Prop) of
+is_true(Key, Props) ->
+    is_true(Key, Props, 'undefined').
+is_true(Key, Props, Default) ->
+    case get_value(Key, Props) of
         'undefined' -> Default;
         V -> wh_util:is_true(V)
     end.
 
 -spec get_is_false(wh_proplist_key(), wh_proplist()) -> api_boolean().
 -spec get_is_false(wh_proplist_key(), wh_proplist(), Default) -> Default | boolean().
-get_is_false(Key, Prop) -> is_false(Key, Prop).
-get_is_false(Key, Prop, Default) -> is_false(Key, Prop, Default).
+get_is_false(Key, Props) -> is_false(Key, Props).
+get_is_false(Key, Props, Default) -> is_false(Key, Props, Default).
 
-is_false(Key, Prop) ->
-    is_false(Key, Prop, 'undefined').
-is_false(Key, Prop, Default) ->
-    case get_value(Key, Prop) of
+is_false(Key, Props) ->
+    is_false(Key, Props, 'undefined').
+is_false(Key, Props, Default) ->
+    case get_value(Key, Props) of
         'undefined' -> Default;
         V -> wh_util:is_false(V)
     end.
@@ -109,10 +112,10 @@ is_false(Key, Prop, Default) ->
                                api_integer().
 -spec get_integer_value(wh_proplist_key(), wh_proplist(), Default) ->
                                integer() | Default.
-get_integer_value(Key, Prop) ->
-    get_integer_value(Key, Prop, 'undefined').
-get_integer_value(Key, Prop, Default) ->
-    case ?MODULE:get_value(Key, Prop) of
+get_integer_value(Key, Props) ->
+    get_integer_value(Key, Props, 'undefined').
+get_integer_value(Key, Props, Default) ->
+    case ?MODULE:get_value(Key, Props) of
         'undefined' -> Default;
         Val -> wh_util:to_integer(Val)
     end.
@@ -121,10 +124,10 @@ get_integer_value(Key, Prop, Default) ->
                             atom().
 -spec get_atom_value(wh_proplist_key(), wh_proplist(), Default) ->
                             atom() | Default.
-get_atom_value(Key, Prop) ->
-    get_atom_value(Key, Prop, 'undefined').
-get_atom_value(Key, Prop, Default) ->
-    case ?MODULE:get_value(Key, Prop) of
+get_atom_value(Key, Props) ->
+    get_atom_value(Key, Props, 'undefined').
+get_atom_value(Key, Props, Default) ->
+    case ?MODULE:get_value(Key, Props) of
         'undefined' -> Default;
         Val -> wh_util:to_atom(Val)
     end.
@@ -132,33 +135,33 @@ get_atom_value(Key, Prop, Default) ->
 -spec get_binary_value(wh_proplist_key(), wh_proplist()) -> api_binary().
 -spec get_binary_value(wh_proplist_key(), wh_proplist(), Default) ->
                               ne_binary() | Default.
-get_binary_value(Key, Prop) ->
-    get_binary_value(Key, Prop, 'undefined').
-get_binary_value(Key, Prop, Default) ->
-    case ?MODULE:get_value(Key, Prop) of
+get_binary_value(Key, Props) ->
+    get_binary_value(Key, Props, 'undefined').
+get_binary_value(Key, Props, Default) ->
+    case ?MODULE:get_value(Key, Props) of
         'undefined' -> Default;
         V -> wh_util:to_binary(V)
     end.
 
 -spec get_keys(wh_proplist()) -> wh_proplist_keys().
-get_keys(Prop) -> [K || {K,_} <- Prop].
+get_keys(Props) -> [K || {K,_} <- Props].
 
 -spec get_all_values(wh_proplist_key(), wh_proplist()) -> wh_proplist_values().
-get_all_values(Key, Prop) -> get_values(Key, Prop).
-get_values(Key, Prop) -> [V || {K, V} <- Prop, K =:= Key].
+get_all_values(Key, Props) -> get_values(Key, Props).
+get_values(Key, Props) -> [V || {K, V} <- Props, K =:= Key].
 
 -spec delete(ne_binary() | atom(), wh_proplist()) -> wh_proplist().
-delete(K, Prop) ->
-    case lists:keyfind(K, 1, Prop) of
-        {K, _} -> lists:keydelete(K, 1, Prop);
-        'false' -> lists:delete(K, Prop)
+delete(K, Props) ->
+    case lists:keyfind(K, 1, Props) of
+        {K, _} -> lists:keydelete(K, 1, Props);
+        'false' -> lists:delete(K, Props)
     end.
 
-delete_keys([_|_]=Ks, Prop) -> lists:foldl(fun ?MODULE:delete/2, Prop, Ks).
+delete_keys([_|_]=Ks, Props) -> lists:foldl(fun ?MODULE:delete/2, Props, Ks).
 
 -spec is_defined(wh_proplist_key(), wh_proplist()) -> boolean().
-is_defined(Key, Prop) ->
-    case lists:keyfind(Key, 1, Prop) of
+is_defined(Key, Props) ->
+    case lists:keyfind(Key, 1, Props) of
         {Key,_} -> 'true';
         _ -> 'false'
     end.

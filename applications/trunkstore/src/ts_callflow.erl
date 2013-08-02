@@ -75,10 +75,12 @@ start_amqp(#ts_callflow_state{}=State) ->
     State#ts_callflow_state{my_q=Q}.
 
 -spec send_park(ts_state()) -> ts_state().
-send_park(#ts_callflow_state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=State) ->
+send_park(#ts_callflow_state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj
+                             ,acctid=AccountId}=State) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
+            ,{<<"From-Host">>, wh_util:get_account_realm(AccountId)}
             ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())}
             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],

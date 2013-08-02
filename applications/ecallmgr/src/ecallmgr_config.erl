@@ -10,7 +10,9 @@
 -module(ecallmgr_config).
 
 -export([flush/0, flush/1]).
--export([get/1, get/2, get/3]).
+-export([get/1, get/2, get/3
+         ,get_integer/1, get_integer/2, get_integer/3
+        ]).
 -export([fetch/1, fetch/2, fetch/3]).
 -export([set/2, set/3]).
 
@@ -71,6 +73,25 @@ get(Key, Default, Node) ->
             Value
     end.
 
+-spec get_integer(wh_json:key()) -> integer() | 'undefined'.
+-spec get_integer(wh_json:key(), Default) -> integer() | Default.
+-spec get_integer(wh_json:key(), Default, wh_json:key() | atom()) -> integer() | Default.
+get_integer(Key) ->
+    case get(Key) of
+        'undefined' -> 'undefined';
+        N -> wh_util:to_integer(N)
+    end.
+get_integer(Key, Default) ->
+    case get(Key, Default) of
+        Default -> Default;
+        N -> wh_util:to_integer(N)
+    end.
+get_integer(Key, Default, Node) ->
+    case get(Key, Default, Node) of
+        Default -> Default;
+        N -> wh_util:to_integer(N)
+    end.
+
 -spec fetch(wh_json:key()) -> wh_json:json_term() | 'undefined'.
 -spec fetch(wh_json:key(), Default) -> wh_json:json_term() | Default.
 -spec fetch(wh_json:key(), Default, wh_json:key() | atom()) -> wh_json:json_term() | Default.
@@ -129,7 +150,8 @@ set(Key, Value, Node) ->
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,props:filter_undefined(Req)
                                   ,fun wapi_sysconf:publish_set_req/1
-                                  ,fun wh_amqp_worker:any_resp/1),
+                                  ,fun wh_amqp_worker:any_resp/1
+                                 ),
     case ReqResp of
         {'error', _R} ->
             lager:debug("set config for key '~s' failed: ~p", [Key, _R]);
@@ -147,5 +169,5 @@ get_response_value(JObj, Default) ->
         Value -> Value
     end.
 
-cache_key(K, Node) ->
-    {?MODULE, K, Node}.
+-spec cache_key(term(), atom() | ne_binary()) -> {?MODULE, term(), atom() | ne_binary()}.
+cache_key(K, Node) -> {?MODULE, K, Node}.

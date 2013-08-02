@@ -35,6 +35,7 @@
 -define(CHILDREN, [?CACHE_ARGS(?CALLFLOW_CACHE, ?CACHE_PROPS)
                    ,?WORKER('cf_shared_listener')
                    ,?WORKER('cf_listener')
+                   ,?SUPER('cf_event_handler_sup')
                    ,?SUPER('cf_exe_sup')
                   ]).
 

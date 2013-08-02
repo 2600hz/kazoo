@@ -91,8 +91,8 @@ maybe_cached_owner_id(Props, JObj, AccountDb) ->
 -spec maybe_cached_hotdesk_ids(wh_proplist(), wh_json:object(), ne_binary()) -> wh_proplist().
 maybe_cached_hotdesk_ids(Props, JObj, AccountDb) ->
     case wh_json:get_keys([<<"hotdesk">>, <<"users">>], JObj) of
-        'undefined' -> Props;
-         OwnerIds ->
+        [] -> Props;
+        OwnerIds ->
             lists:foldl(fun(Id, P) ->
                                 [{'db', AccountDb, Id}|P]
                         end, Props, OwnerIds)
@@ -171,8 +171,8 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
     OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
-    Merged1 = wh_json:merge_recursive(AccountAttr, EndpointAttr),
-    Merged2 = wh_json:merge_recursive(Merged1, OwnerAttr),
+    Merged1 = wh_json:merge_recursive(AccountAttr, OwnerAttr),
+    Merged2 = wh_json:merge_recursive(Merged1, EndpointAttr),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged2, Endpoint), Owner).
 
 -spec merge_call_restrictions(ne_binaries(), wh_json:object(), wh_json:object(), wh_json:object()) -> wh_json:object().
