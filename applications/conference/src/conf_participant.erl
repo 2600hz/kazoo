@@ -328,7 +328,8 @@ handle_cast({'route_req', JObj}, #participant{call=Call}=Participant) ->
     ControllerQ = whapps_call:controller_queue(Call),
     publish_route_response(ControllerQ
                            ,wh_json:get_value(<<"Msg-ID">>, JObj)
-                           ,wh_json:get_value(<<"Server-ID">>, JObj)),
+                           ,wh_json:get_value(<<"Server-ID">>, JObj)
+                           ,whapps_call:account_id(Call)),
     {'noreply', Participant#participant{bridge=whapps_call:set_controller_queue(ControllerQ, Bridge)}};
 handle_cast({'authn_req', JObj}, #participant{conference=Conference
                                               ,call=Call
@@ -635,12 +636,13 @@ bridge_to_conference(Route, Conference, Call) ->
               ],
     whapps_call_command:send_command(Command, Call).
 
--spec publish_route_response/3 :: (ne_binary(), api_binary(), ne_binary()) -> 'ok'.
-publish_route_response(ControllerQ, MsgId, ServerId) ->
+-spec publish_route_response/4 :: (ne_binary(), api_binary(), ne_binary(), ne_binary()) -> 'ok'.
+publish_route_response(ControllerQ, MsgId, ServerId, AccountId) ->
     lager:debug("sending route response for participant invite from local server"),
     Resp = [{<<"Msg-ID">>, MsgId}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
+            ,{<<"From-Host">>, wh_util:get_account_realm(AccountId)}
             | wh_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)],
     wapi_route:publish_resp(ServerId, Resp).
 
