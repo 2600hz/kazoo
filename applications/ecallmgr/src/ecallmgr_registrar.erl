@@ -361,8 +361,12 @@ maybe_resp_to_query(JObj) ->
     case wh_json:get_value(<<"Node">>, JObj) 
         =:= wh_util:to_binary(node()) 
     of
-        'true' -> 'ok';
-        'false' -> resp_to_query(JObj)
+        'false' -> resp_to_query(JObj);
+        'true' ->
+            Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
 -spec resp_to_query(wh_json:object()) -> 'ok'.            
