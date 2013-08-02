@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(whapps_maintenance).
 
@@ -20,6 +21,7 @@
 -export([cleanup_aggregated_account/1]).
 -export([migrate_limits/0, migrate_limits/1]).
 -export([migrate_media/0, migrate_media/1]).
+-export([call_id_status/1]).
 
 -export([get_all_account_views/0]).
 
@@ -98,13 +100,14 @@ migrate() ->
 %%--------------------------------------------------------------------
 -spec find_invalid_acccount_dbs() -> ne_binaries().
 find_invalid_acccount_dbs() ->
-    lists:foldr(fun(AccountDb, Acc) ->
-                        AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-                        case couch_mgr:open_doc(AccountDb, AccountId) of
-                            {'error', 'not_found'} -> [AccountDb|Acc];
-                            {'ok', _} -> Acc
-                        end
-                end, [], whapps_util:get_all_accounts()).
+    lists:foldr(fun find_invalid_acccount_dbs_fold/2, [], whapps_util:get_all_accounts()).
+
+find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
+    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', 'not_found'} -> [AccountDb|Acc];
+        {'ok', _} -> Acc
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -127,7 +130,7 @@ blocking_refresh() ->
 -spec refresh(ne_binary(), wh_json:objects()) -> 'ok'.
 
 refresh() ->
-    spawn(fun do_refresh/0),
+    _ = spawn(fun do_refresh/0),
     'started'.
 
 -spec do_refresh() -> pos_integer().
@@ -143,8 +146,8 @@ do_refresh() ->
 
     Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
-             |whapps_util:get_views_json('crossbar', "account") ++
-                 whapps_util:get_views_json('callflow', "views")
+             |whapps_util:get_views_json('crossbar', "account")
+             ++ whapps_util:get_views_json('callflow', "views")
             ],
     Accounts = whapps_util:get_all_accounts(),
     Total = length(Accounts),
@@ -166,9 +169,10 @@ refresh(?WH_SIP_DB) ->
 
     _ = case couch_mgr:all_docs(?WH_SIP_DB, ['include_docs']) of
             {'ok', JObjs} ->
-                [cleanup_aggregated_device(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs];
-            _ ->
-                'ok'
+                [cleanup_aggregated_device(wh_json:get_value(<<"doc">>, JObj))
+                 || JObj <- JObjs
+                ];
+            _ -> 'ok'
         end,
     wapi_switch:publish_reload_acls();
 refresh(?WH_SCHEMA_DB) ->
@@ -194,9 +198,10 @@ refresh(?WH_ACCOUNTS_DB) ->
     whapps_util:update_views(?WH_ACCOUNTS_DB, Views, 'true'),
     _ = case couch_mgr:all_docs(?WH_ACCOUNTS_DB, ['include_docs']) of
             {'ok', JObjs} ->
-                _ = [cleanup_aggregated_account(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs];
-            _ ->
-                'ok'
+                _ = [cleanup_aggregated_account(wh_json:get_value(<<"doc">>, JObj))
+                     || JObj <- JObjs
+                    ];
+            _ -> 'ok'
         end,
     'ok';
 refresh(?WH_PROVISIONER_DB) ->
@@ -236,8 +241,7 @@ refresh_account_db(AccountDb, AccountId, Views, JObj) ->
             {'ok', Devices} ->
                 _ = refresh_account_devices(AccountDb, AccountRealm, Devices),
                 remove_aggregate_devices(AccountDb, AccountRealm, Devices);
-            {'error', _} ->
-                'ok'
+            {'error', _} -> 'ok'
         end,
     io:format("    updating views in ~s~n", [AccountDb]),
     whapps_util:update_views(AccountDb, Views, 'true').
@@ -279,12 +283,13 @@ cleanup_aggregated_account(Account) ->
                   Else -> wh_util:format_account_id(Else, 'encoded')
               end,
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account, Default),
-    _ = case AccountDb =/= 'undefined' andalso (couch_mgr:db_exists(AccountDb) =/= 'true') of
+    _ = case AccountDb =/= 'undefined'
+            andalso (couch_mgr:db_exists(AccountDb) =/= 'true')
+        of
             'true' ->
                 io:format("    removing aggregated account for missing db ~s~n", [AccountDb]),
                 couch_mgr:del_doc(?WH_ACCOUNTS_DB, Account);
-            'false' ->
-                'ok'
+            'false' -> 'ok'
         end,
     'ok'.
 
@@ -301,7 +306,9 @@ cleanup_aggregated_device(Device) ->
                   Else -> wh_util:format_account_id(Else, 'encoded')
               end,
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Device, Default),
-    case AccountDb =/= 'undefined' andalso (couch_mgr:db_exists(AccountDb) =/= 'true') of
+    case AccountDb =/= 'undefined'
+        andalso (couch_mgr:db_exists(AccountDb) =/= 'true')
+    of
         'false' -> 'ok';
         'true' ->
             io:format("    removing aggregated device for missing db ~s~n", [AccountDb]),
@@ -350,12 +357,13 @@ purge_doc_type(Type, Account) ->
 migrate_limits() ->
     Accounts = whapps_util:get_all_accounts(),
     Total = length(Accounts),
-    lists:foldr(fun(AccountDb, Current) ->
-                        io:format("migrating limits doc in database (~p/~p) '~s'~n", [Current, Total, AccountDb]),
-                        _ = migrate_limits(AccountDb),
-                        Current + 1
-                end, 1, Accounts),
+    lists:foldr(fun(A, C) -> migrate_limits_fold(A, C, Total) end, 1, Accounts),
     'ok'.
+
+migrate_limits_fold(AccountDb, Current, Total) ->
+    io:format("migrating limits doc in database (~p/~p) '~s'~n", [Current, Total, AccountDb]),
+    _ = migrate_limits(AccountDb),
+    Current + 1.
 
 migrate_limits(Account) when not is_binary(Account) ->
     migrate_limits(wh_util:to_binary(Account));
@@ -420,12 +428,13 @@ clean_trunkstore_docs(AccountDb, [JObj|JObjs], Trunks, InboundTrunks) ->
     NewTrunks = case wh_json:get_integer_value([<<"account">>, <<"trunks">>], Doc, 0) of
                     OldTrunks when OldTrunks > Trunks -> OldTrunks;
                     _ -> Trunks
-           end,
+                end,
 
-    NewInboundTrunks = case wh_json:get_integer_value([<<"account">>, <<"inbound_trunks">>], Doc, 0) of
-                           OldInboundTrunks when OldInboundTrunks > InboundTrunks -> OldInboundTrunks;
-                           _ -> Trunks
-                       end,
+    NewInboundTrunks =
+        case wh_json:get_integer_value([<<"account">>, <<"inbound_trunks">>], Doc, 0) of
+            OldInboundTrunks when OldInboundTrunks > InboundTrunks -> OldInboundTrunks;
+            _ -> Trunks
+        end,
     clean_trunkstore_docs(AccountDb, JObjs, NewTrunks, NewInboundTrunks).
 
 %%--------------------------------------------------------------------
@@ -440,13 +449,14 @@ clean_trunkstore_docs(AccountDb, [JObj|JObjs], Trunks, InboundTrunks) ->
 migrate_media() ->
     Accounts = whapps_util:get_all_accounts(),
     Total = length(Accounts),
-    lists:foldr(fun(AccountDb, Current) ->
-                        io:format("migrating media in database (~p/~p) '~s'", [Current, Total, AccountDb]),
-                        _ = migrate_media(AccountDb),
-                        couch_compactor:compact_db(AccountDb),
-                        Current + 1
-                end, 1, Accounts),
+    lists:foldr(fun(A, C) -> migrate_media_fold(A, C, Total) end, 1, Accounts),
     'ok'.
+
+migrate_media_fold(AccountDb, Current, Total) ->
+    io:format("migrating media in database (~p/~p) '~s'", [Current, Total, AccountDb]),
+    _ = migrate_media(AccountDb),
+    couch_compactor:compact_db(AccountDb),
+    Current + 1.
 
 migrate_media(Account) when not is_binary(Account) ->
     migrate_media(wh_util:to_binary(Account));
@@ -507,18 +517,18 @@ migrate_attachment(AccountDb, ViewJObj) ->
 
 remove_deprecated_attachment_properties(AccountDb, Id, JObj) ->
     J = wh_json:delete_keys([<<"status">>, <<"content_size">>, <<"size">>
-                                 ,<<"content_type">>, <<"content_length">>
-                                 ,<<"format">>, <<"sample">>, <<"media_type">>
+                             ,<<"content_type">>, <<"content_length">>
+                             ,<<"format">>, <<"sample">>, <<"media_type">>
                             ], JObj),
     Result = case (J =/= JObj) andalso wh_json:get_value(<<"source_id">>, J) of
-                 'false' -> 'no_need';
+                 'false' -> 'ignore';
                  'undefined' ->
                      couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"media_source">>, <<"upload">>, J));
                  _Else ->
                      couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"media_source">>, <<"recording">>, J))
              end,
     case Result of
-        'no_need' -> 'ok';
+        'ignore' -> 'ok';
         {'ok', _} ->
             io:format("removed depreciated properties from ~s/~s~n", [AccountDb, Id]);
         {'error', _}=E3 ->
@@ -670,6 +680,28 @@ get_all_account_views() ->
     [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
      ,whapps_util:get_view_json('whistle_apps', ?RESELLER_VIEW_FILE)
      ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
+<<<<<<< HEAD
      | whapps_util:get_views_json('crossbar', "account") ++
          whapps_util:get_views_json('callflow', "views")
     ].
+=======
+     |whapps_util:get_views_json('crossbar', "account")
+     ++ whapps_util:get_views_json('callflow', "views")
+    ].
+
+-spec call_id_status(ne_binary()) -> 'ok'.
+call_id_status(CallId) ->
+    Req = [{<<"Call-ID">>, wh_util:to_binary(CallId)}
+           | wh_api:default_headers(<<"shell">>, <<"0">>)
+          ],
+    case whapps_util:amqp_pool_request(Req
+                                       ,fun wapi_call:publish_channel_status_req/1
+                                       ,fun wapi_call:channel_status_resp_v/1
+                                      )
+    of
+        {'ok', Resp} ->
+            lager:info("channel '~s' has status '~s'", [CallId, wapi_call:get_status(Resp)]);
+        {'error', _E} ->
+            lager:info("failed to get status of '~s': '~p'", [CallId, _E])
+    end.
+>>>>>>> KAZOO-1104: updated formatting, added call_id_status helper
