@@ -345,7 +345,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec send_req(whapps_call:call(), ne_binary(), http_method(), wh_json:object()) ->
+-spec send_req(whapps_call:call(), ne_binary(), http_method(), wh_json:object() | wh_proplist()) ->
                       'ok' |
                       {'ok', ibrowse_req_id()} |
                       {'stop', whapps_call:call()}.
