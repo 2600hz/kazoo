@@ -64,7 +64,7 @@
 
 %% Registration Query Response
 -define(REG_QUERY_RESP_HEADERS, [<<"Fields">>]).
--define(OPTIONAL_REG_QUERY_RESP_HEADERS, [<<"Multiple">>]).
+-define(OPTIONAL_REG_QUERY_RESP_HEADERS, [<<"Registrar-Age">>]).
 -define(REG_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
                                 ,{<<"Event-Name">>, <<"reg_query_resp">>}
                                ]).
