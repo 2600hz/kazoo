@@ -23,17 +23,15 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
+%% TODO change name...
 -spec json_objs_to_csv(wh_json:objects()) -> iolist().
 json_objs_to_csv(JObjs) ->
     json_objs_to_csv(JObjs, ?INCLUDE_HEADERS).
 
 -spec json_objs_to_csv(wh_json:objects(), boolean()) -> iolist().
 json_objs_to_csv([], _) -> [];
-json_objs_to_csv([J|JObjs], 'true') ->
-    [csv_header(J), json_to_csv(J) | [json_to_csv(JObj) || JObj <- JObjs]];
-json_objs_to_csv(JObjs, 'false') ->
-    [json_to_csv(JObj) || JObj <- JObjs].
+json_objs_to_csv(JObjs, _) ->
+    wh_json:encode(JObjs).
 
 test_convert(AccountDb) ->
     ViewOptions = ['include_docs'],
@@ -51,7 +49,6 @@ test_convert(AccountDb) ->
             maybe_save_csv(<<"test.csv">>, CsvData)
     end.
 
-
 %%--------------------------------------------------------------------
 %% @doc
 %% @spec
@@ -61,6 +58,7 @@ test_convert(AccountDb) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec maybe_save_csv(ne_binary(), iolist()) -> 'ok'.
 maybe_save_csv(FileName, CsvData) ->
     TestPath = list_to_binary([code:priv_dir('cdr')
                                ,"/test_data/"
@@ -74,28 +72,3 @@ maybe_save_csv(FileName, CsvData) ->
             end;
         {'error', _E} -> lager:error("Error creating directory: ~p", [_E])
     end.
-
--spec csv_header(wh_json:object()) -> iolist().
-csv_header(JObj) ->
-    csv_ize(wh_json:get_keys(JObj)).
-
--spec json_to_csv(wh_json:object()) -> iolist().
-json_to_csv(JObj) ->
-    {Vs, _} = wh_json:get_values(correct_jobj(JObj)),
-    csv_ize(Vs).
-
--spec csv_ize(wh_json:keys()) -> iolist().
-csv_ize([F|Rest]) ->
-    [<<"\"">>, wh_util:to_binary(F), <<"\"">>
-     ,[[<<",\"">>, wh_util:to_binary(V), <<"\"">>] || V <- Rest]
-     ,<<"\n">>
-    ].
-
--spec correct_jobj(wh_json:object()) -> wh_json:object().
-correct_jobj(JObj) ->
-    Prop = wh_json:to_proplist(JObj),
-    L = lists:map(fun(X) -> correct_proplist(X) end, Prop),
-    wh_json:from_list(L).
-
-correct_proplist({K}) -> {K, <<>>};
-correct_proplist(T) -> T.

@@ -153,6 +153,9 @@ change_syslog_log_level(L) ->
 
 format_account_id(Doc) -> format_account_id(Doc, 'unencoded').
 
+format_account_id(DbName, Timestamp) when is_integer(Timestamp) andalso Timestamp > 0 ->
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    format_account_id(DbName, Year, Month);
 format_account_id(<<"accounts">>, _) -> <<"accounts">>;
 %% unencode the account db name
 format_account_id(<<"account/", _/binary>> = DbName, 'unencoded') ->
