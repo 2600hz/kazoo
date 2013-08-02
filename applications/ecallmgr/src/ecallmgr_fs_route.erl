@@ -223,8 +223,7 @@ reply_affirmative(Node, FSID, CallId, JObj) ->
                   'undefined' -> 
                       FromUser = wh_json:get_value(<<"From-User">>, JObj, <<"${sip_from_user}">>),
                       FromHost = wh_json:get_value(<<"From-Host">>, JObj, <<"${sip_from_host}">>),
-                      <<"sip_from_uri=sip:"
-                        ,FromUser/binary, "@", FromHost/binary>>;
+                      <<"sip:", FromUser/binary, "@", FromHost/binary>>;
                   Else -> Else
               end,
     case freeswitch:fetch_reply(Node, FSID, 'dialplan', iolist_to_binary(XML), 3000) of
