@@ -14,7 +14,7 @@
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
-    'true' = wapi_route:route_req_v(JObj),
+    'true' = wapi_route:req_v(JObj),
     Call = whapps_call:from_route_req(JObj),
     case is_binary(whapps_call:account_id(Call))
         andalso callflow_should_respond(Call)
