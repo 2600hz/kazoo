@@ -588,12 +588,14 @@ maybe_send_register_notice(#registration{username=Username, realm=Realm}=Reg) ->
              
 -spec send_register_notice(registration()) -> 'ok'.
 send_register_notice(Reg) ->
+    io:format("send_register_notice~n", []),
     Props = to_props(Reg) 
         ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
     wapi_notifications:publish_register(Props).
 
 -spec send_deregister_notice(registration()) -> 'ok'.
 send_deregister_notice(Reg) ->
+    io:format("send_deregister_notice~n", []),
     Props = to_props(Reg) 
         ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
     wapi_notifications:publish_deregister(Props).
