@@ -12,8 +12,7 @@
 
 -include("reg.hrl").
 
-init() ->
-    'ok'.
+init() -> 'ok'.
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
@@ -38,8 +37,11 @@ handle_req(JObj, _Props) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_auth_resp/2  :: (#auth_user{}, wh_json:object()) -> 'ok'.
-send_auth_resp(#auth_user{password=Password, method=Method}=AuthUser, JObj) ->
+-spec send_auth_resp(auth_user(), wh_json:object()) -> 'ok'.
+send_auth_resp(#auth_user{password=Password
+                          ,method=Method
+                          ,suppress_unregister_notifications=SupressUnregister
+                         }=AuthUser, JObj) ->
     Category = wh_json:get_value(<<"Event-Category">>, JObj),
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Auth-Password">>, Password}
@@ -78,7 +80,7 @@ send_auth_error(JObj) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec create_ccvs(#auth_user{}) -> wh_json:object().
+-spec create_ccvs(auth_user()) -> wh_json:object().
 create_ccvs(#auth_user{}=AuthUser) ->
     Props = [{<<"Username">>, AuthUser#auth_user.username}
              ,{<<"Realm">>, AuthUser#auth_user.realm}
@@ -97,13 +99,12 @@ create_ccvs(#auth_user{}=AuthUser) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec lookup_auth_user(ne_binary(), ne_binary()) ->
-                              {'ok', #auth_user{}} |
+                              {'ok', auth_user()} |
                               {'error', 'not_found'}.
 lookup_auth_user(Username, Realm) ->
     case get_auth_user(Username, Realm) of
         {'error', _}=E -> E;
-        {'ok', JObj} ->
-            check_auth_user(JObj, Username, Realm)
+        {'ok', JObj} -> check_auth_user(JObj, Username, Realm)
     end.
 
 %%-----------------------------------------------------------------------------
@@ -113,13 +114,12 @@ lookup_auth_user(Username, Realm) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec check_auth_user(wh_json:object(), ne_binary(), ne_binary()) ->
-                             {'ok', #auth_user{}} |
+                             {'ok', auth_user()} |
                              {'error', _}.
 check_auth_user(JObj, Username, Realm) ->
     case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], JObj)) of
         'false' -> {'error', 'not_found'};
-        'true' ->
-            {'ok', jobj_to_auth_user(JObj, Username, Realm)}
+        'true' -> {'ok', jobj_to_auth_user(JObj, Username, Realm)}
     end.
 
 %%-----------------------------------------------------------------------------
@@ -207,7 +207,7 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec jobj_to_auth_user(wh_json:object(), ne_binary(), ne_binary()) -> #auth_user{}.
+-spec jobj_to_auth_user(wh_json:object(), ne_binary(), ne_binary()) -> auth_user().
 jobj_to_auth_user(JObj, Username, Realm) ->
     AuthValue = wh_json:get_value(<<"value">>, JObj),
     AuthDoc = wh_json:get_value(<<"doc">>, JObj),
@@ -229,13 +229,13 @@ jobj_to_auth_user(JObj, Username, Realm) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_account_id/1  :: (wh_json:object()) -> api_binary().
+-spec get_account_id(wh_json:object()) -> api_binary().
 get_account_id(JObj) ->
     case wh_json:get_value(<<"pvt_account_id">>, JObj) of
         'undefined' ->
             case wh_json:get_value(<<"pvt_account_db">>, JObj) of
                 'undefined' -> 'undefined';
-                AccountDb -> wh_util:format_account_id(AccountDb, raw)
+                AccountDb -> wh_util:format_account_id(AccountDb, 'raw')
             end;
         AccountId -> AccountId
     end.
@@ -246,7 +246,7 @@ get_account_id(JObj) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_account_db/1  :: (wh_json:object()) -> api_binary().
+-spec get_account_db(wh_json:object()) -> api_binary().
 get_account_db(JObj) ->
     case wh_json:get_value(<<"pvt_account_db">>, JObj) of
         'undefined' ->
@@ -263,7 +263,7 @@ get_account_db(JObj) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_method/1  :: (wh_json:object()) -> ne_binary().
+-spec get_auth_method(wh_json:object()) -> ne_binary().
 get_auth_method(JObj) ->
     Method = wh_json:get_binary_value(<<"method">>, JObj, <<"password">>),
     wh_util:to_lower_binary(Method).
