@@ -89,7 +89,7 @@ send_route_response(Flow, JObj, Q, Call) ->
                                    ,{<<"Transfer-Media">>, get_transfer_media(Flow, JObj)}
                                    ,{<<"Ringback-Media">>, get_ringback_media(Flow, JObj)}
                                    ,{<<"Pre-Park">>, pre_park_action(Call)}
-                                   ,{<<"From-Host">>, wh_util:get_account_realm(AccountId)}
+                                   ,{<<"From-Realm">>, wh_util:get_account_realm(AccountId)}
                                    | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                                   ]),
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),

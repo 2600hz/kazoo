@@ -47,7 +47,7 @@ send_route_response(ReqJObj, Call, AccountId, Id, Type) ->
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-            ,{<<"From-Host">>, wh_util:get_account_realm(AccountId)}
+            ,{<<"From-Realm">>, wh_util:get_account_realm(AccountId)}
             | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
            ],
     wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, ReqJObj), Resp),
