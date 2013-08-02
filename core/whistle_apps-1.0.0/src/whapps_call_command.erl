@@ -514,9 +514,7 @@ b_ring(Call) ->
 %%--------------------------------------------------------------------
 -spec receive_fax(whapps_call:call()) -> 'ok'.
 -spec b_receive_fax(whapps_call:call()) ->
-                           whapps_api_error() |
-                           {'ok', wh_json:object()}.
-
+                           wait_for_fax_ret().
 receive_fax(Call) ->
     Command = [{<<"Application-Name">>, <<"receive_fax">>}],
     send_command(Command, Call).
@@ -1926,6 +1924,9 @@ wait_for_fax(Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_EXECUTE">>, <<"receive_fax">>} -> wait_for_fax('infinity');
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"receive_fax">>} ->
                     {'ok', wh_json:set_value(<<"Fax-Success">>, 'true', JObj)};
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
+                    lager:debug("channel hungup but no end of fax"),
+                    {'error', 'channel_hungup'};
                 _ -> wait_for_fax(whapps_util:decr_timeout(Timeout, Start))
             end;
         _ -> wait_for_fax(whapps_util:decr_timeout(Timeout, Start))

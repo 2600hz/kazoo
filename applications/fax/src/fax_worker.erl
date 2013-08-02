@@ -26,7 +26,11 @@
 -include("fax.hrl").
 
 -record(state, {queue_name :: api_binary()
+<<<<<<< HEAD
                 ,pool :: 'undefined' | pid()
+=======
+                ,pool :: api_pid()
+>>>>>>> KAZOO-1104: updated fax app with spec/types
                 ,job_id :: api_binary()
                 ,job :: api_object()
                 ,keep_alive :: 'undefined' | reference()
@@ -34,6 +38,7 @@
                }).
 -type state() :: #state{}.
 
+<<<<<<< HEAD
 -define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_tx_resp'}
                       ,[{<<"resource">>, <<"offnet_resp">>}]
@@ -42,6 +47,13 @@
                        ,[{<<"call_detail">>, <<"cdr">>}]
                       }
                     ]).
+=======
+%% By convention, we put the options here in macros, but not required.
+-define(BINDINGS, [{'self', []}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_tx_resp'}
+                      ,[{<<"resource">>, <<"offnet_resp">>}]
+                     }]).
+>>>>>>> KAZOO-1104: updated fax app with spec/types
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -62,16 +74,23 @@ start_link(_) ->
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
+<<<<<<< HEAD
                                       ,{'consume_options', ?CONSUME_OPTIONS}
+=======
+                                      ,{'route_options', ?ROUTE_OPTIONS}
+>>>>>>> KAZOO-1104: updated fax app with spec/types
                                      ], []).
 
 handle_tx_resp(JObj, Props) ->
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'tx_resp', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
+<<<<<<< HEAD
 
 handle_call_event(JObj, Props) ->
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'tx_resp', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
+=======
+>>>>>>> KAZOO-1104: updated fax app with spec/types
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -135,11 +154,19 @@ handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
 handle_cast({'tx_resp', _, _}, State) ->
     {'noreply', State};
 handle_cast({_, Pid, _}, #state{queue_name='undefined'}=State) when is_pid(Pid) ->
+<<<<<<< HEAD
     lager:debug("worker received request with unknown queue name, rejecting", []),
     gen_server:cast(Pid, {'job_complete', self()}),
     {'noreply', State};
 handle_cast({_, Pid, _}, #state{job_id=JobId}=State) when is_binary(JobId), is_pid(Pid) ->
     lager:debug("worker received request while still processing a job, rejecting", []),
+=======
+    lager:info("worker received request with unknown queue name, rejecting"),
+    gen_server:cast(Pid, {'job_complete', self()}),
+    {'noreply', State};
+handle_cast({_, Pid, _}, #state{job_id=JobId}=State) when is_binary(JobId), is_pid(Pid) ->
+    lager:info("worker received request while still processing a job, rejecting"),
+>>>>>>> KAZOO-1104: updated fax app with spec/types
     gen_server:cast(Pid, {'job_complete', self()}),
     {'noreply', State};
 handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
@@ -174,8 +201,14 @@ handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
             gen_server:cast(Pid, {'job_complete', self()}),
             {'noreply', reset(State)}
     end;
+<<<<<<< HEAD
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue_name=Q}};
+=======
+handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
+    lager:debug("worker discovered queue name ~s", [QueueName]),
+    {'noreply', State#state{queue_name=QueueName}};
+>>>>>>> KAZOO-1104: updated fax app with spec/types
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
@@ -210,7 +243,11 @@ handle_info('job_timeout', #state{job=JObj}=State) ->
     release_failed_job('job_timeout', 'undefined', JObj),
     {'noreply', reset(State)};
 handle_info(_Info, State) ->
+<<<<<<< HEAD
     lager:debug("unhandled message: ~p", [_Info]),
+=======
+    lager:debug("unhandled msg: ~p", [_Info]),
+>>>>>>> KAZOO-1104: updated fax app with spec/types
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -261,17 +298,24 @@ attempt_to_acquire_job(Id) ->
         {'ok', JObj} ->
             case wh_json:get_value(<<"pvt_job_status">>, JObj) of
                 <<"pending">> ->
+<<<<<<< HEAD
                     couch_mgr:save_doc(?WH_FAXES, wh_json:set_values(
                                                     [{<<"pvt_job_status">>, <<"processing">>}
                                                      ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
                                                      ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                                     ], JObj));
+=======
+                    couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
+                                                                      ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
+                                                                      ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                                                     ],JObj));
+>>>>>>> KAZOO-1104: updated fax app with spec/types
                 _Else ->
                     lager:debug("job not in an available status: ~s", [_Else]),
                     {'error', 'job_not_available'}
             end
     end.
-        
+
 -spec bump_modified(ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
 bump_modified(JobId) ->
     case couch_mgr:open_doc(?WH_FAXES, JobId) of
@@ -289,10 +333,17 @@ bump_modified(JobId) ->
 
 -spec release_failed_job('fetch_failed', string(), wh_json:object()) -> 'failure';
                         ('bad_file', ne_binary(), wh_json:object()) -> 'failure';
+<<<<<<< HEAD
                         ('fetch_error', {atom(), _}, wh_json:object()) -> 'failure';
                         ('tx_resp', wh_json:object(), wh_json:object()) -> 'failure';
                         ('exception', _, wh_json:object()) -> 'failure';
                         ('job_timeout', _, wh_json:object()) -> 'failure';
+=======
+                        ('job_timeout', 'undefined', wh_json:object()) -> 'failure';
+                        ('fetch_error', {atom(), _}, wh_json:object()) -> 'failure';
+                        ('tx_resp', wh_json:object(), wh_json:object()) -> 'failure';
+                        ('exception', _, wh_json:object()) -> 'failure';
+>>>>>>> KAZOO-1104: updated fax app with spec/types
                         ('timeout', _, wh_json:object()) -> 'failure'.
 release_failed_job('fetch_failed', Status, JObj) ->
     Msg = wh_util:to_binary(io_lib:format("could not retrieve file, http response ~s", [Status])),
@@ -438,18 +489,30 @@ execute_job(JObj, Q) ->
     end.
 
 -spec fetch_document(wh_json:object()) ->
+<<<<<<< HEAD
                             {'ok', string(), wh_proplist(), ne_binary()} |
+=======
+                            {'ok', string(), proplist(), ne_binary()} |
+>>>>>>> KAZOO-1104: updated fax app with spec/types
                             {'error', term()}.
 fetch_document(JObj) ->
     FetchRequest = wh_json:get_value(<<"document">>, JObj),
     Url = wh_json:get_string_value(<<"url">>, FetchRequest),
     Method = wh_util:to_atom(wh_json:get_value(<<"method">>, FetchRequest, <<"get">>), 'true'),
+<<<<<<< HEAD
+=======
+
+>>>>>>> KAZOO-1104: updated fax app with spec/types
     Headers = props:filter_undefined(
                 [{"Host", wh_json:get_string_value(<<"host">>, FetchRequest)}
                  ,{"Referer", wh_json:get_string_value(<<"referer">>, FetchRequest)}
                  ,{"User-Agent", wh_json:get_string_value(<<"user_agent">>, FetchRequest, wh_util:to_list(node()))}
                  ,{"Content-Type", wh_json:get_string_value(<<"content_type">>, FetchRequest, <<"text/plain">>)}
                 ]),
+<<<<<<< HEAD
+=======
+
+>>>>>>> KAZOO-1104: updated fax app with spec/types
     HTTPOptions = [{'response_format', 'binary'}],
     Body = wh_json:get_string_value(<<"content">>, FetchRequest, ""),
     lager:debug("making ~s request to '~s'", [Method, Url]),
@@ -507,8 +570,11 @@ normalize_content_type(CT) ->
 -spec send_fax(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 send_fax(JobId, JObj, Q) ->
     IgnoreEarlyMedia = wh_util:to_binary(whapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
+<<<<<<< HEAD
     CallId = wh_util:rand_hex_binary(8),
 
+=======
+>>>>>>> KAZOO-1104: updated fax app with spec/types
     Request = [{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
                ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
                ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}

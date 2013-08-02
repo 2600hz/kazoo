@@ -32,7 +32,7 @@
           call :: whapps_call:call()
          ,action = 'receive' :: 'receive' | 'transmit'
          ,handler :: {pid(), reference()}
-         ,owner_id :: ne_binary()
+         ,owner_id :: api_binary()
          }).
 -type state() :: #state{}.
 
@@ -50,11 +50,13 @@
 start_link(Call, JObj) ->
     gen_listener:start_link(?MODULE
                             ,[{'bindings', [{'call', [{'callid', whapps_call:call_id(Call)}]}
-                                            ,{'self', []}
-                                           ]}
-                              ,{'responders', [{{?MODULE, 'relay_event'}, {<<"*">>, <<"*">>}}]}
-                             ]
-                            ,[Call, JObj]).
+                                          ,{'self', []}
+                                         ]}
+                            ,{'responders', [{{?MODULE, 'relay_event'}
+                                              ,[{<<"*">>, <<"*">>}]
+                                             }]}
+                           ]
+                          ,[Call, JObj]).
 
 -spec relay_event(wh_json:object(), wh_proplist()) -> any().
 relay_event(JObj, Props) ->
@@ -79,16 +81,13 @@ relay_event(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Call, JObj]) ->
-    put('callid', whapps_call:call_id(Call)),
-
-    lager:debug("fax request starting"),
+    whapps_call:put_callid(Call),
     gen_listener:cast(self(), 'start_action'),
-
     {'ok', #state{
-              call = Call
-              ,action = get_action(JObj)
-              ,owner_id = wh_json:get_value(<<"Owner-ID">>, JObj)
-             }}.
+       call = Call
+       ,action = get_action(JObj)
+       ,owner_id = wh_json:get_value(<<"Owner-ID">>, JObj)
+      }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -118,9 +117,9 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('start_action', #state{call=Call
-                                 ,action='receive'
-                                 ,owner_id=OwnerId
-                                }=State) ->
+                                   ,action='receive'
+                                   ,owner_id=OwnerId
+                                  }=State) ->
     {_Pid, _Ref}=Recv = spawn_monitor(?MODULE, 'receive_fax', [Call, OwnerId]),
     lager:debug("receiving a fax in ~p(~p)", [_Pid, _Ref]),
     {'noreply', State#state{handler=Recv}};
@@ -187,7 +186,7 @@ get_action(JObj) ->
 
 -spec receive_fax(whapps_call:call(), api_binary()) -> any().
 receive_fax(Call, OwnerId) ->
-    put('callid', whapps_call:call_id(Call)),
+    whapps_call:put_callid(Call),
 
     whapps_call_command:answer(Call),
     case whapps_call_command:b_receive_fax(Call) of
@@ -196,8 +195,10 @@ receive_fax(Call, OwnerId) ->
             whapps_call_command:hangup(Call),
 
             maybe_store_fax(Call, OwnerId, RecvJObj);
-        {'error', _E} ->
-            lager:debug("rxfax unhandled: ~p", [_E])
+        {'error', 'channel_hungup'} ->
+            lager:debug("rxfax hungup prematurely");
+        _Resp ->
+            lager:debug("rxfax unhandled: ~p", [_Resp])
     end.
 
 maybe_store_fax(Call, OwnerId, RecvJObj) ->
@@ -245,8 +246,7 @@ store_fax(Call, OwnerId, JObj) ->
 create_fax_doc(Call, OwnerId, JObj) ->
     AccountDb = whapps_call:account_db(Call),
 
-    TStamp = wh_util:current_tstamp(),
-    {{Y,M,D}, {H,I,S}} = calendar:gregorian_seconds_to_datetime(TStamp),
+    {{Y,M,D}, {H,I,S}} = calendar:gregorian_seconds_to_datetime(wh_util:current_tstamp()),
 
     Name = list_to_binary(["fax message received at "
                            ,wh_util:to_binary(Y), "-", wh_util:to_binary(M), "-", wh_util:to_binary(D)
