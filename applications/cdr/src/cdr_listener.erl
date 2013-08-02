@@ -64,7 +64,7 @@ handle_cdr(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
     AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj),
     Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
-    maybe_save_in_account(AccountId, Timestamp, wh_json:normalize_jobj(JObj)).
+    prepare_and_save(AccountId, Timestamp, JObj).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -159,23 +159,44 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_save_in_account(api_binary()
-                            ,api_binary()
-                            ,wh_json:object()) -> 'ok'.
-maybe_save_in_account('undefined', _, JObj) ->
-    cdr_util:save_in_anonymous_cdrs(JObj);
+-spec prepare_and_save(account_id(), pos_integer(), wh_json:object()) -> wh_json:object().
+prepare_and_save(AccountId, Timestamp, JObj) ->
+    Routines = [fun normalize/3
+                ,fun update_pvt_parameters/3
+                ,fun set_doc_id/3
+                ,fun save_cdr/3
+               ],
+    lists:foldr(fun(F, J) ->
+                        F(AccountId, Timestamp, J) 
+                end, JObj, Routines).
 
-maybe_save_in_account(AccountId, Timestamp, JObj) ->
-    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    AccountMODb = wh_util:format_account_id(AccountId, Year, Month),
+-spec normalize(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+normalize(_, _, JObj) ->
+    wh_json:normalize_jobj(JObj).    
+
+-spec update_pvt_parameters(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+update_pvt_parameters('undefined', _, JObj) ->
     Props = [{'type', 'cdr'}
              ,{'crossbar_doc_vsn', 2}
             ],
-    DocId = cdr_util:get_cdr_doc_id(Year, Month),
-    JObj1 = wh_doc:update_pvt_parameters(JObj, AccountMODb, Props),
-    JObj2 = wh_json:set_value(<<"_id">>, DocId, JObj1),
-    case cdr_util:save_cdr(AccountMODb, JObj2) of
+    wh_doc:update_pvt_parameters(JObj, ?WH_ANONYMOUS_CDR_DB, Props);
+update_pvt_parameters(AccountId, Timestamp, JObj) ->
+    AccountMODb = wh_util:format_account_id(AccountId, Timestamp),    
+    Props = [{'type', 'cdr'}
+             ,{'crossbar_doc_vsn', 2}
+            ],
+    wh_doc:update_pvt_parameters(JObj, AccountMODb, Props).
+
+-spec set_doc_id(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+set_doc_id(_, Timestamp, JObj) ->
+    DocId = cdr_util:get_cdr_doc_id(Timestamp),
+    wh_json:set_value(<<"_id">>, DocId, JObj).
+
+-spec save_cdr(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+save_cdr(_, _, JObj) ->
+    CDRDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    case cdr_util:save_cdr(CDRDb, JObj) of
         {'error', 'max_retries'} -> 
-            lager:error("write fail: ~s", [AccountMODb]);
+            lager:error("write fail: ~s", [CDRDb]);
         'ok' -> 'ok'
     end.

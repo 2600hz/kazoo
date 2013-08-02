@@ -87,7 +87,6 @@ generate_test_accounts(NumAccounts, NumMonths, NumCdrs) ->
                            ) -> 'ok' | {'error', any()}.
 generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdrs, CdrJObjFixture) ->
     crossbar_maintenance:create_account(AccountName, AccountRealm, User, Pass),
-    wh_cache:flush(),
     case get_account_by_realm(AccountRealm) of
         {'ok', AccountDb} ->
             DateRange = get_prev_n_month_date_list(calendar:universal_time(), NumMonths),

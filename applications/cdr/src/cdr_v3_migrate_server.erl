@@ -89,7 +89,6 @@ init([]) ->
 handle_call('status', _, #state{account_list=AccountsLeft}=State) ->
     Status = {'num_accounts_left', length(AccountsLeft)},
     {'reply', Status, State};
-
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled handle_call executed ~p~p", [_Request, _From]),
     Reply = 'ok',
@@ -118,11 +117,9 @@ handle_cast('start_migrate', State) ->
                             ,migrate_date_list=MigrateDateList
                             ,archive_batch_size=ArchiveBatchSize
                            }};
-
 handle_cast('start_next_worker', #state{account_list=[]}=State) ->
     lager:debug("reached end of accounts, exiting..."),
     {'stop', 'normal', State};
-
 handle_cast('start_next_worker', #state{account_list=[NextAccount|RestAccounts]
                                         ,migrate_date_list=MigrateDateList
                                         ,archive_batch_size=ArchiveBatchSize
@@ -134,11 +131,9 @@ handle_cast('start_next_worker', #state{account_list=[NextAccount|RestAccounts]
                                        ,ArchiveBatchSize
                                       ]),
     {'noreply', State#state{account_list=RestAccounts, pid=NEWPID, ref=NEWREF}};
-
 handle_cast(_Msg, State) ->
     lager:debug("unhandled call to handle_cast executed, ~p", [_Msg]),
     {'noreply', State}.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -155,8 +150,7 @@ handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{pid=Pid
                                                           }=State) ->
     lager:debug("response pid ~p(~p) down: ~p", [Pid, Ref, _Reason]),
     gen_server:cast(self(), 'start_next_worker'),
-    {'noreply', State#state{pid='undefined',ref='undefined'}};
-
+    {'noreply', reset(State)};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -194,3 +188,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+reset(State) ->
+    State#state{pid='undefined'
+                ,ref='undefined'}.
