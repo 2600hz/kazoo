@@ -544,7 +544,7 @@ print_details({[#channel{}=Channel]
 print_authz_summary([]) ->
     io:format("No accounts found!~n");
 print_authz_summary(AccountIds) ->
-    io:format("+----------------------------------+------------+------------+------------+------------+------------+------------+------------+~n"),
+    io:format("+----------------------------------+------------+------------+-------------------------+-------------------------+------------+~n"),
     io:format("| Account ID                       | Calls      | Channels   |        Flat-Rate        |        Per-Minute       | Resources  |~n"),
     io:format("|                                  |            |            | Inbound    | Outbound   | Inbound    | Outbound   |            |~n"),
     io:format("+==================================+============+============+============+============+============+============+============+"),
