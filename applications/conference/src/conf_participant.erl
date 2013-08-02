@@ -547,7 +547,6 @@ sync_participant(JObj, Call, #participant{in_conference='true'}=Participant) ->
     case find_participant(Participants, whapps_call:call_id(Call)) of
         {'ok', Participator} ->
             lager:debug("caller has is still in the conference", []),
-            io:format("~p~n", [Participator]),
             Participant#participant{in_conference='true'
                                     ,muted=(not wh_json:is_true(<<"Speak">>, Participator))
                                     ,deaf=(not wh_json:is_true(<<"Hear">>, Participator))
@@ -642,7 +641,7 @@ publish_route_response(ControllerQ, MsgId, ServerId, AccountId) ->
     Resp = [{<<"Msg-ID">>, MsgId}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
-            ,{<<"From-Host">>, wh_util:get_account_realm(AccountId)}
+            ,{<<"From-Realm">>, wh_util:get_account_realm(AccountId)}
             | wh_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)],
     wapi_route:publish_resp(ServerId, Resp).
 
