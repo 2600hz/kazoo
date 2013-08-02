@@ -395,6 +395,7 @@ maybe_resp_to_query(JObj) ->
         'false' -> resp_to_query(JObj);
         'true' ->
             Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    ,{<<"Registrar-Age">>, gen_server:call(?MODULE, 'registrar_age')}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
@@ -424,6 +425,7 @@ resp_to_query(JObj) ->
     of
         [] ->
             Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    ,{<<"Registrar-Age">>, gen_server:call(?MODULE, 'registrar_age')}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
@@ -586,12 +588,14 @@ maybe_send_register_notice(#registration{username=Username, realm=Realm}=Reg) ->
              
 -spec send_register_notice(registration()) -> 'ok'.
 send_register_notice(Reg) ->
+    io:format("send_register_notice~n", []),
     Props = to_props(Reg) 
         ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
     wapi_notifications:publish_register(Props).
 
 -spec send_deregister_notice(registration()) -> 'ok'.
 send_deregister_notice(Reg) ->
+    io:format("send_deregister_notice~n", []),
     Props = to_props(Reg) 
         ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
     wapi_notifications:publish_deregister(Props).
@@ -643,8 +647,7 @@ oldest_registrar(Username, Realm) ->
             case
                 [wh_json:get_integer_value(<<"Registrar-Age">>, JObj, 0)
                  || JObj <- JObjs
-                        ,wapi_registration:query_resp_v(JObj)
-                ] 
+                ]
             of
                 [] -> 'true';
                 Ages -> lists:max(Ages) =< gen_server:call(?MODULE, 'registrar_age')
