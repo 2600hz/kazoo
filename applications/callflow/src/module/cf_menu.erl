@@ -26,8 +26,8 @@
           menu_id :: api_binary()
          ,name = <<>> :: binary()
          ,retries = 3 :: pos_integer()
-         ,timeout = <<"2000">> :: ne_binary()
-         ,max_length = <<"4">> :: ne_binary()
+         ,timeout = 2000 :: pos_integer()
+         ,max_length = 4 :: pos_integer()
          ,hunt = 'false' :: boolean()
          ,hunt_deny = <<>> :: binary()
          ,hunt_allow = <<>> :: binary()
@@ -81,7 +81,7 @@ menu_loop(#cf_menu_data{retries=Retries
                         ,record_pin=RecordPin
                         ,record_from_offnet=RecOffnet
                        }=Menu, Call) ->
-    case whapps_call_command:b_play_and_collect_digits(<<"1">>, MaxLength, get_prompt(Menu, Call), <<"1">>, Timeout, Call) of
+    case whapps_call_command:b_play_and_collect_digits(1, MaxLength, get_prompt(Menu, Call), 1, Timeout, Call) of
         {'ok', <<>>} ->
             lager:info("menu entry timeout"),
             case cf_exe:attempt(<<"timeout">>, Call) of
@@ -123,7 +123,7 @@ menu_loop(#cf_menu_data{retries=Retries
 %% The primary sequence logic to route the collected digits
 %% @end
 %%--------------------------------------------------------------------
--spec try_match_digits(binary(), menu(), whapps_call:call()) -> boolean().
+-spec try_match_digits(ne_binary(), menu(), whapps_call:call()) -> boolean().
 try_match_digits(Digits, Menu, Call) ->
     lager:info("trying to match digits ~s", [Digits]),
     is_callflow_child(Digits, Menu, Call)
@@ -466,9 +466,9 @@ get_menu_profile(Data, Call) ->
                      ,retries =
                          wh_json:get_integer_value(<<"retries">>, JObj, Default#cf_menu_data.retries)
                      ,timeout =
-                         wh_json:get_binary_value(<<"timeout">>, JObj, Default#cf_menu_data.timeout)
+                         wh_json:get_integer_value(<<"timeout">>, JObj, Default#cf_menu_data.timeout)
                      ,max_length =
-                         wh_json:get_binary_value(<<"max_extension_length">>, JObj, Default#cf_menu_data.max_length)
+                         wh_json:get_integer_value(<<"max_extension_length">>, JObj, Default#cf_menu_data.max_length)
                      ,hunt =
                          wh_json:is_true(<<"hunt">>, JObj, Default#cf_menu_data.hunt)
                      ,hunt_deny =

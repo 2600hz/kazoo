@@ -163,7 +163,7 @@ cf_deactivate(CF, Call) ->
 -spec cf_update_number(callfwd(), 'undefined' | binary(), whapps_call:call()) -> callfwd().
 cf_update_number(CF, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
     EnterNumber = whapps_util:get_prompt(<<"cf-enter_number">>, Call),
-    case whapps_call_command:b_play_and_collect_digits(<<"3">>, <<"20">>, EnterNumber, <<"1">>, <<"8000">>, Call) of
+    case whapps_call_command:b_play_and_collect_digits(3, 20, EnterNumber, 1, 8000, Call) of
         {'ok', <<>>} -> cf_update_number(CF, CaptureGroup, Call);
         {'ok', Number} ->
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),

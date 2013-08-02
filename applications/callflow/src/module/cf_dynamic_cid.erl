@@ -30,8 +30,8 @@
 -record(dynamic_cid, {
           prompts = #prompts{} :: prompts(),
           default_cid = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_cid">>, <<"0000000000">>),
-          max_digits = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"max_digits">>, <<"10">>),
-          min_digits = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"min_digits">>, <<"10">>),
+          max_digits = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"max_digits">>, 10),
+          min_digits = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"min_digits">>, 10),
           whitelist = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"whitelist_regex">>, <<"\\d+">>)
          }).
 
@@ -59,7 +59,7 @@ handle(Data, Call) ->
     Max = DynamicCID#dynamic_cid.max_digits,
     Regex = DynamicCID#dynamic_cid.whitelist,
     DefaultCID = DynamicCID#dynamic_cid.default_cid,
-    CID = case whapps_call_command:b_play_and_collect_digits(Min, Max, Media, <<"1">>, <<"5000">>, 'undefined', Regex, Call) of
+    CID = case whapps_call_command:b_play_and_collect_digits(Min, Max, Media, 1, 5000, 'undefined', Regex, Call) of
               {'ok', <<>>} ->
                   _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
                   DefaultCID;

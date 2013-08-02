@@ -35,7 +35,7 @@ handle(Data, Call) ->
     end,
     cf_exe:continue(Call).
 
--spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> 'ok'.
+-spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> whapps_api_std_return().
 play(Data, Call, Media) ->
     case wh_json:is_false(<<"answer">>, Data) of
         'true' -> 'ok';

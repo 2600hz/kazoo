@@ -43,7 +43,7 @@ try_collect_pin(Call, _, 0) ->
     'fail';
 try_collect_pin(Call, Pin, Retries) ->
     Prompt = <<"disa-enter_pin">>,
-    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, Prompt, Call) of
+    case whapps_call_command:b_prompt_and_collect_digits(1, 6, Prompt, Call) of
         {'ok', Pin} ->
             lager:info("pin matches, permitting"),
             'allow';

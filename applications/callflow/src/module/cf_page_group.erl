@@ -38,11 +38,6 @@ attempt_page(Endpoints, Data, Call) ->
         {'ok', _} ->
             lager:info("completed successful bridge to the page group - call finished normally"),
             cf_exe:stop(Call);
-        {'fail', _}=F ->
-            case cf_util:handle_bridge_failure(F, Call) of
-                'ok' -> lager:debug("handled bridge failure");
-                'not_found' -> cf_exe:continue(Call)
-            end;
         {'error', _R} ->
             lager:info("error bridging to page group: ~p", [_R]),
             cf_exe:continue(Call)

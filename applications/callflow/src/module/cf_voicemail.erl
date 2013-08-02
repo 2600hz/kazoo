@@ -147,7 +147,7 @@ check_mailbox(#mailbox{pin = <<>>, exists='true'}, 'false', Call, _) ->
     'ok';
 check_mailbox(#mailbox{pin=Pin}=Box, IsOwner, Call, Loop) ->
     lager:info("requesting pin number to check mailbox"),
-    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_pass">>, <<"1">>, Call) of
+    case whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"vm-enter_pass">>, 1, Call) of
         {'ok', Pin} ->
             lager:info("caller entered a valid pin"),
             main_menu(Box, Call);
@@ -174,7 +174,7 @@ find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loo
     'ok';
 find_mailbox(Box, Call, Loop) ->
     lager:info("requesting mailbox number to check"),
-    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"15">>, <<"vm-enter_id">>, <<"1">>, Call) of
+    case whapps_call_command:b_prompt_and_collect_digits(1, 15, <<"vm-enter_id">>, 1, Call) of
         {'ok', <<>>} ->
             find_mailbox(Box, Call, Loop + 1);
         {'ok', Mailbox} ->
@@ -713,9 +713,9 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
 change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
     lager:info("requesting new mailbox pin number"),
     try
-        {'ok', Pin} = whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_new_pin">>, <<"1">>, Call),
+        {'ok', Pin} = whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"vm-enter_new_pin">>, 1, Call),
         lager:info("collected first pin"),
-        {'ok', Pin} = whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_new_pin_confirm">>, <<"1">>, Call),
+        {'ok', Pin} = whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"vm-enter_new_pin_confirm">>, 1, Call),
         lager:info("collected second pin"),
         if byte_size(Pin) == 0 -> throw('pin_empty'); 'true' -> 'ok' end,
         lager:info("entered pin is not empty"),

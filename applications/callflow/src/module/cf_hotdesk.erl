@@ -31,7 +31,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> any().
+-spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Action = wh_json:get_value(<<"action">>, Data),
 
@@ -117,30 +117,31 @@ build_endpoints([EndpointId|EndpointIds], Endpoints, Call) ->
 %% 3y) Is the pin valid?
 %% 3n) Login
 %%--------------------------------------------------------------------
--spec login(hotdesk(), whapps_call:call()) -> 'ok'.
+-spec login(hotdesk(), whapps_call:call()) -> whapps_api_std_return().
 %% TODO: a UI bug keeps the hotdesk enabled from ever being true
 %%login(#hotdesk{enabled=false}, Call) ->
 %%    whapps_call_command:b_prompt(<<"hotdesk-disabled">>, Call);
 login(Hotdesk, Call) -> maybe_require_login_pin(Hotdesk, Call).
 
--spec maybe_require_login_pin(hotdesk(), whapps_call:call()) -> 'ok'.
+-spec maybe_require_login_pin(hotdesk(), whapps_call:call()) -> whapps_api_std_return().
 maybe_require_login_pin(#hotdesk{require_pin='false'}=Hotdesk, Call) ->
     maybe_logout_elsewhere(Hotdesk, Call);
 maybe_require_login_pin(Hotdesk, Call) ->
     require_login_pin(Hotdesk, Call).
 
--spec require_login_pin(hotdesk(), whapps_call:call()) -> 'ok'.
+-spec require_login_pin(hotdesk(), whapps_call:call()) -> whapps_api_std_return().
 require_login_pin(Hotdesk, Call) ->
     require_login_pin(Hotdesk, Call, 1).
 
--spec require_login_pin(hotdesk(), whapps_call:call(), 1..?MAX_LOGIN_ATTEMPTS) -> 'ok'.
+-spec require_login_pin(hotdesk(), whapps_call:call(), 1..?MAX_LOGIN_ATTEMPTS) ->
+                               whapps_api_std_return().
 require_login_pin(_, Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
     lager:info("maximum number of invalid hotdesk pin attempts"),
     whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
     whapps_call_command:b_prompt(<<"vm-goodbye">>, Call);
 require_login_pin(#hotdesk{require_pin='true', pin=Pin}=Hotdesk, Call, Loop) ->
     _ = whapps_call_command:answer(Call),
-    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"hotdesk-enter_pin">>, <<"1">>, Call) of
+    case whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"hotdesk-enter_pin">>, 1, Call) of
         {'ok', Pin} ->
             maybe_logout_elsewhere(Hotdesk, Call);
         {'ok', _} ->
@@ -150,18 +151,21 @@ require_login_pin(#hotdesk{require_pin='true', pin=Pin}=Hotdesk, Call, Loop) ->
             lager:info("caller hungup during login")
     end.
 
--spec maybe_logout_elsewhere(hotdesk(), whapps_call:call()) -> 'ok'.
+-spec maybe_logout_elsewhere(hotdesk(), whapps_call:call()) ->
+                                    whapps_api_std_return().
 maybe_logout_elsewhere(#hotdesk{keep_logged_in_elsewhere='false'}=Hotdesk, Call) ->
     H = remove_from_endpoints(Hotdesk, Call),
     get_authorizing_id(H, Call);
 maybe_logout_elsewhere(Hotdesk, Call) ->
     get_authorizing_id(Hotdesk, Call).
 
--spec get_authorizing_id(hotdesk(), whapps_call:call()) -> 'ok'.
+-spec get_authorizing_id(hotdesk(), whapps_call:call()) ->
+                                whapps_api_std_return().
 get_authorizing_id(Hotdesk, Call) ->
     login_authorizing_id(whapps_call:authorizing_id(Call), Hotdesk, Call).
 
--spec login_authorizing_id(api_binary(), hotdesk(), whapps_call:call()) -> 'ok'.
+-spec login_authorizing_id(api_binary(), hotdesk(), whapps_call:call()) ->
+                                  whapps_api_std_return().
 login_authorizing_id('undefined', _, Call) ->
     whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
     whapps_call_command:b_prompt(<<"vm-goodbye">>, Call);
@@ -177,7 +181,8 @@ login_authorizing_id(AuthorizingId, #hotdesk{owner_id=OwnerId}=Hotdesk, Call) ->
             whapps_call_command:b_prompt(<<"vm-goodbye">>, Call)
     end.
 
--spec logged_in(hotdesk(), whapps_call:call()) -> 'ok'.
+-spec logged_in(hotdesk(), whapps_call:call()) ->
+                       whapps_api_std_return().
 logged_in(_, Call) ->
     whapps_call_command:b_prompt(<<"hotdesk-logged_in">>, Call),
     whapps_call_command:b_prompt(<<"vm-goodbye">>, Call).
@@ -195,10 +200,11 @@ logged_in(_, Call) ->
 %% 3) Infrom the user
 %% @end
 %%--------------------------------------------------------------------
--spec logout(hotdesk(), whapps_call:call()) -> 'ok'.
+-spec logout(hotdesk(), whapps_call:call()) -> whapps_api_std_return().
 logout(Hotdesk, Call) -> maybe_keep_logged_in_elsewhere(Hotdesk, Call).
 
--spec maybe_keep_logged_in_elsewhere(hotdesk(), whapps_call:call()) -> 'ok'.
+-spec maybe_keep_logged_in_elsewhere(hotdesk(), whapps_call:call()) ->
+                                            whapps_api_std_return().
 maybe_keep_logged_in_elsewhere(#hotdesk{keep_logged_in_elsewhere='true'}=Hotdesk
                                ,Call) ->
     keep_logged_in_elsewhere(whapps_call:authorizing_id(Call), Hotdesk, Call);
@@ -206,7 +212,8 @@ maybe_keep_logged_in_elsewhere(Hotdesk, Call) ->
     H = remove_from_endpoints(Hotdesk, Call),
     logged_out(H, Call).
 
--spec keep_logged_in_elsewhere(api_binary(), hotdesk(), whapps_call:call()) -> 'ok'.
+-spec keep_logged_in_elsewhere(api_binary(), hotdesk(), whapps_call:call()) ->
+                                      whapps_api_std_return().
 keep_logged_in_elsewhere('undefined', Hotdesk, Call) ->
     logged_out(Hotdesk, Call);
 keep_logged_in_elsewhere(AuthorizingId, #hotdesk{endpoint_ids=EndpointIds
@@ -225,7 +232,7 @@ keep_logged_in_elsewhere(AuthorizingId, #hotdesk{endpoint_ids=EndpointIds
             whapps_call_command:b_prompt(<<"vm-goodbye">>, Call)
     end.
 
--spec logged_out(hotdesk(), whapps_call:call()) -> 'ok'.
+-spec logged_out(hotdesk(), whapps_call:call()) -> whapps_api_std_return().
 logged_out(_, Call) ->
     whapps_call_command:b_prompt(<<"hotdesk-logged_out">>, Call),
     whapps_call_command:b_prompt(<<"vm-goodbye">>, Call).
@@ -260,7 +267,7 @@ find_hotdesk_profile(Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
     {'error', 'too_many_attempts'};
 find_hotdesk_profile(Call, Loop) ->
     whapps_call_command:answer(Call),
-    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"10">>, <<"hotdesk-enter_id">>, <<"1">>, Call) of
+    case whapps_call_command:b_prompt_and_collect_digits(1, 10, <<"hotdesk-enter_id">>, 1, Call) of
         {'ok', <<>>} -> find_hotdesk_profile(Call, Loop + 1);
         {'ok', HotdeskId} ->
             case lookup_hotdesk_id(HotdeskId, Call) of
