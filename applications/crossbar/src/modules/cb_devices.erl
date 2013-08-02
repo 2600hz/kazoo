@@ -25,6 +25,7 @@
          ,reconcile_services/1
          ,is_ip_acl_unique/1
          ,get_all_acl_ips/0
+         ,lookup_regs/1
         ]).
 
 -include("../crossbar.hrl").
@@ -373,7 +374,7 @@ lookup_regs(AccountRealm) ->
           ],
     Resp = whapps_util:amqp_pool_collect(Req
                                          ,fun wapi_registration:publish_query_req/1
-                                         ,'registrar'
+                                         ,'ecallmgr'
                                         ),
     case Resp of
         {'error', _E} ->

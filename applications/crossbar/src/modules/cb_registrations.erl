@@ -60,7 +60,7 @@ lookup_regs(AccountRealm) ->
           ],
     ReqResp = whapps_util:amqp_pool_collect(Req
                                             ,fun wapi_registration:publish_query_req/1
-                                            ,'registrar'
+                                            ,'ecallmgr'
                                            ),
     case ReqResp of
         {'error', _} -> [];
@@ -79,18 +79,12 @@ merge_responses([JObj|JObjs], Regs) ->
     merge_responses(JObjs, merge_response(JObj, Regs)).
 
 merge_response(JObj, Regs) ->
-    Fields = case wh_json:is_true(<<"Multiple">>, JObj) of
-                 'true' -> wh_json:get_value(<<"Fields">>, JObj, []);
-                 'false' ->
-                     [wh_json:get_value(<<"Fields">>, JObj, wh_json:new())]
-             end,
     lists:foldl(fun(J, R) ->
                         case wh_json:get_ne_value(<<"Contact">>, J) of
                             'undefined' -> R;
-                            Contact ->
-                                dict:store(Contact, J, R)
+                            Contact -> dict:store(Contact, J, R)
                         end
-                end, Regs, Fields).
+                end, Regs, wh_json:get_value(<<"Fields">>, JObj, [])).
 
 normalize_registration(JObj) ->
     Contact = wh_json:get_binary_value(<<"Contact">>, JObj, <<>>),

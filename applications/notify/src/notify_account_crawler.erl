@@ -210,21 +210,24 @@ maybe_test_for_registrations(AccountId, AccountDb, JObj) ->
 
 -spec test_for_registrations(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 test_for_registrations(AccountId, AccountDb, Realm) ->
-    Req = [{<<"Realm">>, Realm}
+    lager:debug("looking for any registrations in realm ~s", [Realm]),
+    Reg = [{<<"Realm">>, Realm}
            ,{<<"Fields">>, [<<"Account-ID">>]}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    lager:debug("looking for any registrations in realm ~s", [Realm]),
-    ReqResp = whapps_util:amqp_pool_request(Req
-                                            ,fun wapi_registration:publish_query_req/1
-                                            ,fun wapi_registration:query_resp_v/1
-                                            ,2000
-                                           ),
-    case ReqResp of
-        {'error', _} -> 'ok';
-        {'ok', _} ->
-            lager:debug("found initial registration for account ~s (~s)", [AccountId, Realm]),
-            handle_initial_registration(AccountId, AccountDb)
+    case whapps_util:amqp_pool_collect(Reg
+                                       ,fun wapi_registration:publish_query_req/1
+                                       ,'ecallmgr'
+                                       ,2000) 
+    of
+        {'ok', JObjs} -> 
+            case lists:any(fun wapi_registration:query_resp_v/1, JObjs) of
+                'false' -> 'ok';
+                'true' ->
+                    lager:debug("found initial registration for account ~s (~s)", [AccountId, Realm]),
+                    handle_initial_registration(AccountId, AccountDb)
+            end;
+        _Else -> 'ok'
     end.
 
 -spec handle_initial_registration(ne_binary(), ne_binary()) -> 'ok'.

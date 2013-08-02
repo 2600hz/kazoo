@@ -213,7 +213,7 @@ process_event(<<"CHANNEL_ANSWER">>, _, Props, _) ->
 process_event(<<"conference::maintenance">>, UUID, Props, Node) ->
     ecallmgr_fs_conferences:event(Node, UUID, Props);
 process_event(<<"sofia::register">>, _, Props, Node) ->
-    ecallmgr_registrar:reg_success(Props, Node),
+%%    ecallmgr_registrar:reg_success(Props, Node),
     publish_register_event(Props, Node);
 process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),

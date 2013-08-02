@@ -23,9 +23,10 @@
 -define(CACHE_UTIL_PROPS, [{'origin_bindings', [[{'db', ?WH_CONFIG_DB}]]}]).
 
 -define(CHILDREN, [?CACHE_ARGS(?ECALLMGR_UTIL_CACHE, ?CACHE_UTIL_PROPS)
-                   ,?CACHE_ARGS(?ECALLMGR_REG_CACHE, ?CACHE_AUTHN_PROPS)
+                   ,?CACHE_ARGS(?ECALLMGR_AUTH_CACHE, ?CACHE_AUTHN_PROPS)
                    ,?CACHE(?ECALLMGR_CALL_CACHE)
                    ,?SUPER('ecallmgr_originate_sup')
+                   ,?WORKER('ecallmgr_registrar')
                   ]).
 
 %% ===================================================================
