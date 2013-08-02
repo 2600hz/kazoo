@@ -89,15 +89,15 @@ send_onnet(State, Command) ->
 
 wait_for_bridge(State) ->
     case ts_callflow:wait_for_bridge(State) of
-        {bridged, State1} ->
+        {'bridged', State1} ->
             wait_for_cdr(State1);
-        {error, State2} ->
+        {'error', State2} ->
             lager:info("error waiting for bridge, try failover"),
             try_failover(State2);
-        {hangup, State3} ->
+        {'hangup', State3} ->
             ALeg = ts_callflow:get_aleg_id(State3),
             ts_callflow:finish_leg(State3, ALeg);
-        {timeout, State4} ->
+        {'timeout', State4} ->
             try_failover(State4)
     end.
 

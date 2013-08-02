@@ -46,7 +46,7 @@
           ,route_req_jobj = wh_json:new() :: wh_json:object()
           ,ep_data = wh_json:new() :: wh_json:object() %% data for the endpoint, either an actual endpoint or an offnet request
           ,my_q = <<>> :: binary()
-          ,callctl_q = <<>> :: binary()
+          ,callctl_q :: api_binary()
           ,call_cost = 0.0 :: float()
           ,failover :: wh_json:object()
          }).
