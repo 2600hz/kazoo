@@ -72,7 +72,7 @@
 
 %% Registration Query Error
 -define(REG_QUERY_ERR_HEADERS, []).
--define(OPTIONAL_REG_QUERY_ERR_HEADERS, []).
+-define(OPTIONAL_REG_QUERY_ERR_HEADERS, [<<"Registrar-Age">>]).
 -define(REG_QUERY_ERR_VALUES, [{<<"Event-Category">>, <<"directory">>}
                                 ,{<<"Event-Name">>, <<"reg_query_error">>}
                                ]).
