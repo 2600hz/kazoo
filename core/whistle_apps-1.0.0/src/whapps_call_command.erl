@@ -144,6 +144,8 @@
 -type audio_macro_prompts() :: [audio_macro_prompt(),...] | [].
 -export_type([audio_macro_prompt/0]).
 
+-define(HOUR_IN_MS, 360000).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -1737,9 +1739,9 @@ wait_for_dtmf(Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_bridge(wh_timeout(), whapps_call:call()) ->
-                                   whapps_api_bridge_return().
+                             whapps_api_bridge_return().
 -spec wait_for_bridge(wh_timeout(), 'undefined' | fun((wh_json:object()) -> any()), whapps_call:call()) ->
-                                   whapps_api_bridge_return().
+                             whapps_api_bridge_return().
 wait_for_bridge(Timeout, Call) ->
     wait_for_bridge(Timeout, 'undefined', Call).
 
@@ -1765,7 +1767,7 @@ wait_for_bridge(Timeout, Fun, Call) ->
                         'false' -> 'ok';
                         'true' -> Fun(JObj)
                     end,
-                    wait_for_bridge('infinity', Fun, Call);
+                    wait_for_bridge(?HOUR_IN_MS, Fun, Call);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     {Result, JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
@@ -1778,7 +1780,21 @@ wait_for_bridge(Timeout, Fun, Call) ->
         %%   this process hangs around...
         _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call)
     after
-        Timeout -> {'error', 'timeout'}
+        Timeout ->
+            case whapps_util:amqp_pool_request([{<<"Call-ID">>, whapps_call:call_id_direct(Call)}
+                                                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                               ]
+                                               ,fun wapi_call:publish_channel_status_req/1
+                                               ,fun wapi_call:channel_status_resp_v/1
+                                              )
+            of
+                {'error', _} -> {'error', 'timeout'};
+                {'ok', Resp} ->
+                    case wapi_call:get_status(Resp) of
+                        <<"success">> -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call);
+                        _ -> {'error', 'timeout'}
+                    end
+            end
     end.
 
 %%--------------------------------------------------------------------
