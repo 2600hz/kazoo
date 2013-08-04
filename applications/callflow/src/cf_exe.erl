@@ -212,7 +212,7 @@ wildcard_is_empty(Call) ->
 -spec relay_amqp(wh_json:object(), wh_proplist()) -> any().
 relay_amqp(JObj, Props) ->
     Pids = case props:get_value('cf_module_pid', Props) of
-               {P, _} when is_pid(P) -> [P | props:get_value('cf_event_pids', Props, [])];
+               P when is_pid(P) -> [P | props:get_value('cf_event_pids', Props, [])];
                _ -> props:get_value('cf_event_pids', Props, [])
            end,
     [whapps_call_command:relay_event(Pid, JObj) || Pid <- Pids, is_pid(Pid)].
