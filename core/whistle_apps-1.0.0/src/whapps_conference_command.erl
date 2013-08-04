@@ -46,28 +46,25 @@ search(Conference) ->
                                            ),
     lager:debug("searching for conference ~s", [ConferenceId]),
     case ReqResp of
-        {'ok', [Response|_]} ->
-            case wapi_conference:search_resp_v(Response) of
-                'true' ->
-                    lager:info("recieved valid conference search response for ~s", [ConferenceId]),
-                    {'ok', Response};
-                'false' ->
-                    lager:info("recieved invalid conference search response for ~s", [ConferenceId]),
-                    {'error', Response}
-            end;
-        {'timeout', _} ->
-            lager:warning("timeout while searching for conference ~s", [ConferenceId]),
-            timer:sleep(500),
-            search(Conference);
-        {'error', 'timeout'} ->
-            lager:warning("timeout while searching for conference ~s", [ConferenceId]),
-            timer:sleep(500),
-            search(Conference);
         {'error', _R}=E ->
             lager:info("recieved error while searching for ~s: ~-800p", [ConferenceId, _R]),
-            E
+            E;
+        {_, JObjs} -> conference_search_filter(JObjs, ConferenceId)
     end.
 
+-spec conference_search_filter(wh_json:objects(), ne_binary()) -> {'ok', wh_json:object()} | {'error', 'not_found'}.
+conference_search_filter([], ConferenceId) -> 
+    lager:info("recieved invalid conference search response for ~s", [ConferenceId]),
+    {'error', 'not_found'};    
+conference_search_filter([JObj|JObjs], ConferenceId) ->
+    case wapi_conference:search_resp_v(JObj) of
+        'true' ->
+            lager:info("recieved valid conference search response for ~s", [ConferenceId]),
+            {'ok', JObj};
+        'false' ->
+            conference_search_filter(JObjs, ConferenceId)
+    end.
+        
 -spec deaf_participant(non_neg_integer(), whapps_conference:conference()) -> 'ok'.
 deaf_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"deaf_participant">>}

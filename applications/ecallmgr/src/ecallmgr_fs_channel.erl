@@ -201,13 +201,10 @@ to_props(Channel) ->
 handle_channel_status(JObj, _Props) ->
     'true' = wapi_call:channel_status_req_v(JObj),
     _ = wh_util:put_callid(JObj),
-
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     lager:debug("channel status request received"),
-
-    AllNodesConnected = ecallmgr_fs_nodes:all_nodes_connected(),
     case fetch(CallId) of
-        {'error', 'not_found'} when AllNodesConnected ->
+        {'error', 'not_found'} ->
             lager:debug("no node found with channel ~s", [CallId]),
             Resp = [{<<"Call-ID">>, CallId}
                     ,{<<"Status">>, <<"terminated">>}
@@ -216,8 +213,6 @@ handle_channel_status(JObj, _Props) ->
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-        {'error', 'not_found'} ->
-            lager:debug("no node found with channel ~s, but we are not authoritative", [CallId]);
         {'ok', Channel} ->
             channel_status_resp(CallId, Channel, JObj)
     end.
