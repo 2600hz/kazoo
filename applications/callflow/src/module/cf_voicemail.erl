@@ -147,6 +147,7 @@ check_mailbox(#mailbox{pin = <<>>, exists='true'}, 'false', Call, _) ->
     'ok';
 check_mailbox(#mailbox{pin=Pin}=Box, IsOwner, Call, Loop) ->
     lager:info("requesting pin number to check mailbox"),
+    put('cf_voicemail', ?LINE),
     case whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"vm-enter_pass">>, 1, Call) of
         {'ok', Pin} ->
             lager:info("caller entered a valid pin"),
@@ -174,6 +175,7 @@ find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loo
     'ok';
 find_mailbox(Box, Call, Loop) ->
     lager:info("requesting mailbox number to check"),
+    put('cf_voicemail', ?LINE),
     case whapps_call_command:b_prompt_and_collect_digits(1, 15, <<"vm-enter_id">>, 1, Call) of
         {'ok', <<>>} ->
             find_mailbox(Box, Call, Loop + 1);
@@ -392,6 +394,7 @@ main_menu(#mailbox{owner_id=OwnerId
     NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved)
                                              ++ [{'prompt', <<"vm-main_menu">>}]
                                              ,Call),
+    put('cf_voicemail', ?LINE),
     case whapps_call_command:collect_digits(1, 5000, 2000, NoopId, Call) of
         {'error', _} ->
             lager:info("error during mailbox main menu"),
@@ -553,6 +556,7 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
                              }=Box, Call) ->
     lager:info("playing message menu"),
     NoopId = whapps_call_command:audio_macro(Prompt, Call),
+    put('cf_voicemail', ?LINE),
     case whapps_call_command:collect_digits(1, 5000, 2000, NoopId, Call)of
         {'ok', Keep} -> {'ok', 'keep'};
         {'ok', Delete} -> {'ok', 'delete'};
@@ -583,6 +587,7 @@ config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable
                     }=Box, Call, Loop) when Loop < 4 ->
     lager:info("playing mailbox configuration menu"),
     {'ok', _} = whapps_call_command:b_flush(Call),
+    put('cf_voicemail', ?LINE),
     case whapps_call_command:b_prompt_and_collect_digit(<<"vm-settings_menu">>, Call) of
         {'ok', RecUnavailable} ->
             lager:info("caller choose to record their unavailable greeting"),
@@ -713,8 +718,10 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
 change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
     lager:info("requesting new mailbox pin number"),
     try
+        put('cf_voicemail', ?LINE),
         {'ok', Pin} = whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"vm-enter_new_pin">>, 1, Call),
         lager:info("collected first pin"),
+        put('cf_voicemail', ?LINE),
         {'ok', Pin} = whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"vm-enter_new_pin_confirm">>, 1, Call),
         lager:info("collected second pin"),
         if byte_size(Pin) == 0 -> throw('pin_empty'); 'true' -> 'ok' end,
@@ -1072,6 +1079,7 @@ review_recording(AttachmentName, AllowOperator
                           }=Box
                  ,Call, Loop) ->
     lager:info("playing recording review options"),
+    put('cf_voicemail', ?LINE),
     case whapps_call_command:b_prompt_and_collect_digit(<<"vm-review_recording">>, Call) of
         {'ok', Listen} ->
             lager:info("caller choose to replay the recording"),
