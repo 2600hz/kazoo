@@ -211,26 +211,31 @@ channel_status(Call) ->
     channel_status(whapps_call:call_id(Call), whapps_call:controller_queue(Call)).
 
 -spec b_channel_status(api_binary() | whapps_call:call()) -> whapps_api_std_return().
-b_channel_status('undefined') -> {'error', no_channel_id};
+b_channel_status('undefined') -> {'error', 'no_channel_id'};
 b_channel_status(ChannelId) when is_binary(ChannelId) ->
     Command = [{<<"Call-ID">>, ChannelId}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    Resp = wh_amqp_worker:call('whapps_amqp_pool'
-                               ,Command
-                               ,fun(C) -> wapi_call:publish_channel_status_req(ChannelId, C) end
-                               ,fun wapi_call:channel_status_resp_v/1
-                              ),
+    Resp = wh_amqp_worker:call_collect('whapps_amqp_pool'
+                                       ,Command
+                                       ,fun(C) -> wapi_call:publish_channel_status_req(ChannelId, C) end
+                                       ,{'ecallmgr', fun wapi_call:channel_status_resp_v/1}
+                                      ),
     case Resp of
-        {'error', 'timeout'} -> {'ok', wh_json:new()};
         {'error', _}=E -> E;
-        {'ok', JObj}=Ok ->
-            case wh_json:get_value(<<"Status">>, JObj) of
-                <<"active">> -> Ok;
-                _Else -> {'error', JObj}
-            end
+        {_, JObjs} -> channel_status_filter(JObjs)
     end;
 b_channel_status(Call) -> b_channel_status(whapps_call:call_id(Call)).
+
+-spec channel_status_filter(wh_json:objects()) -> {'ok', wh_json:object()} | {'error', 'not_found'}.
+channel_status_filter([]) -> {'error', 'not_found'};
+channel_status_filter([JObj|JObjs]) ->
+    case wapi_call:channel_status_resp_v(JObj) andalso
+        wh_json:get_value(<<"Status">>, JObj) =:= <<"active">>
+    of
+        'true' -> {'ok', JObj};
+        'false' -> channel_status_filter(JObjs)
+    end.
 
 %%--------------------------------------------------------------------
 %% @pubic
