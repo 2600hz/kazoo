@@ -1745,8 +1745,13 @@ wait_for_dtmf(Timeout) ->
 wait_for_bridge(Timeout, Call) ->
     wait_for_bridge(Timeout, 'undefined', Call).
 
+wait_for_bridge(Timeout, _, _) when Timeout < 0 ->
+    {'error', 'timeout'};
 wait_for_bridge(Timeout, Fun, Call) ->
     Start = erlang:now(),
+
+    RecvTimeout = recv_timeout(Timeout),
+
     receive
         {'amqp_msg', JObj} ->
             AppResponse = wh_json:get_value(<<"Application-Response">>, JObj,
@@ -1767,7 +1772,7 @@ wait_for_bridge(Timeout, Fun, Call) ->
                         'false' -> 'ok';
                         'true' -> Fun(JObj)
                     end,
-                    wait_for_bridge(?HOUR_IN_MS, Fun, Call);
+                    wait_for_bridge('infinity', Fun, Call);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     {Result, JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
@@ -1780,7 +1785,7 @@ wait_for_bridge(Timeout, Fun, Call) ->
         %%   this process hangs around...
         _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call)
     after
-        Timeout ->
+        RecvTimeout ->
             case whapps_util:amqp_pool_request([{<<"Call-ID">>, whapps_call:call_id_direct(Call)}
                                                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                                ]
@@ -1796,6 +1801,10 @@ wait_for_bridge(Timeout, Fun, Call) ->
                     end
             end
     end.
+
+-spec recv_timeout(wh_timeout()) -> integer().
+recv_timeout('infinity') -> ?HOUR_IN_MS;
+recv_timeout(T) -> T.
 
 %%--------------------------------------------------------------------
 %% @public
