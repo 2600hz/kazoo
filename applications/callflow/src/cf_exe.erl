@@ -508,13 +508,25 @@ terminate({'shutdown', 'transfer'}, _) ->
     lager:info("callflow execution has been transfered");
 terminate({'shutdown', 'control_usurped'}, _) ->
     lager:info("the call has been usurped by an external process");
-terminate(_Reason, #state{call=Call}) ->
+terminate(_Reason, #state{call=Call
+                          ,cf_module_pid='undefined'
+                         }) ->
+    hangup_call(Call),
+    lager:info("callflow execution has been stopped: ~p", [_Reason]);
+terminate(_Reason, #state{call=Call
+                          ,cf_module_pid={Pid, _}
+                         }) ->
+    exit(Pid, 'kill'),
+    hangup_call(Call),
+    lager:info("callflow execution has been stopped: ~p", [_Reason]).
+
+-spec hangup_call(whapps_call:call()) -> 'ok'.
+hangup_call(Call) ->
     Cmd = [{<<"Event-Name">>, <<"command">>}
            ,{<<"Event-Category">>, <<"call">>}
            ,{<<"Application-Name">>, <<"hangup">>}
           ],
-    send_command(Cmd, whapps_call:control_queue_direct(Call), whapps_call:call_id_direct(Call)),
-    lager:info("callflow execution has been stopped: ~p", [_Reason]).
+    send_command(Cmd, whapps_call:control_queue_direct(Call), whapps_call:call_id_direct(Call)).
 
 %%--------------------------------------------------------------------
 %% @private
