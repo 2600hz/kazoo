@@ -23,6 +23,7 @@
 -export([nodeup/1]).
 -export([is_node_up/1]).
 -export([sip_url/1]).
+-export([sip_external_ip/1]).
 -export([summary/0]).
 -export([details/0
          ,details/1
@@ -99,6 +100,19 @@ sip_url(Node) ->
          ]
     of
         [URL|_] -> URL;
+        _Else -> 'undefined'
+    end.
+
+-spec sip_external_ip(text()) -> api_binary().
+sip_external_ip(Node) when not is_atom(Node) ->
+    sip_external_ip(wh_util:to_atom(Node, 'true'));
+sip_external_ip(Node) ->
+    case [ecallmgr_fs_node:sip_external_ip(Srv)
+          || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
+                 ,ecallmgr_fs_node:fs_node(Srv) =:= Node
+         ]
+    of
+        [IP|_] -> IP;
         _Else -> 'undefined'
     end.
 

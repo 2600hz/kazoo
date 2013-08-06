@@ -17,6 +17,7 @@
 -export([sync_channels/1]).
 -export([sync_interface/1]).
 -export([sip_url/1]).
+-export([sip_external_ip/1]).
 -export([fs_node/1]).
 -export([hostname/1]).
 -export([init/1
@@ -132,6 +133,10 @@ hostname(Srv) ->
 sip_url(Srv) ->
     gen_server:call(Srv, 'sip_url').
 
+-spec sip_external_ip(pid()) -> api_binary().
+sip_external_ip(Srv) ->
+    gen_server:call(Srv, 'sip_external_ip').
+
 -spec handle_reload_acls(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reload_acls(_JObj, Props) ->
     Node = props:get_value('node', Props),
@@ -200,6 +205,8 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call('sip_external_ip', _, #state{interface=Interface}=State) ->
+    {'reply', Interface#interface.ext_sip_ip, State};
 handle_call('sip_url', _, #state{interface=Interface}=State) ->
     {'reply', Interface#interface.url, State};
 handle_call('node', _, #state{node=Node}=State) ->
