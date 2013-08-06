@@ -114,8 +114,8 @@
          ,b_privacy/2
         ]).
 
--export([wait_for_message/1, wait_for_message/2
-         ,wait_for_message/3, wait_for_message/4
+-export([wait_for_message/2, wait_for_message/3
+         ,wait_for_message/4, wait_for_message/5
         ]).
 -export([wait_for_application/1, wait_for_application/2
          ,wait_for_application/3, wait_for_application/4
@@ -126,7 +126,7 @@
 -export([wait_for_bridge/2, wait_for_bridge/3]).
 -export([wait_for_channel_bridge/0, wait_for_channel_unbridge/0]).
 -export([wait_for_dtmf/1]).
--export([wait_for_noop/1]).
+-export([wait_for_noop/2]).
 -export([wait_for_hangup/0, wait_for_unbridge/0]).
 -export([wait_for_application_or_dtmf/2]).
 -export([collect_digits/2, collect_digits/3
@@ -485,7 +485,7 @@ fetch(FromOtherLeg, Call) ->
 b_fetch(Call) -> b_fetch('false', Call).
 b_fetch(FromOtherLeg, Call) ->
     fetch(FromOtherLeg, Call),
-    case wait_for_message(<<"fetch">>) of
+    case wait_for_message(Call, <<"fetch">>) of
         {'ok', JObj} ->
             {'ok', wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())};
         {'error', _}=E -> E
@@ -506,7 +506,7 @@ ring(Call) ->
 
 b_ring(Call) ->
     ring(Call),
-    wait_for_message(<<"ring">>).
+    wait_for_message(Call, <<"ring">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -543,7 +543,7 @@ answer_now(Call) -> send_command([{<<"Application-Name">>, <<"answer">>}
 
 b_answer(Call) ->
     answer(Call),
-    wait_for_message(<<"answer">>).
+    wait_for_message(Call, <<"answer">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -559,7 +559,7 @@ echo(Call) -> send_command([{<<"Application-Name">>, <<"echo">>}], Call).
 
 b_echo(Call) ->
     echo(Call),
-    wait_for_message(<<"echo">>).
+    wait_for_message(Call, <<"echo">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -736,7 +736,7 @@ b_hold(Timeout, Call) when is_integer(Timeout) orelse Timeout =:= 'infinity' ->
 b_hold(MOH, Call) -> b_hold('infinity', MOH, Call).
 b_hold(Timeout, MOH, Call) ->
     hold(MOH, Call),
-    wait_for_message(<<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Timeout).
+    wait_for_message(Call, <<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Timeout).
 
 -spec park(whapps_call:call()) -> 'ok'.
 park(Call) ->
@@ -802,8 +802,10 @@ play(Media, Terminators, Call) ->
     send_command(Command, Call),
     NoopId.
 
-b_play(Media, Call) -> b_play(Media, ?ANY_DIGIT, Call).
-b_play(Media, Terminators, Call) -> wait_for_noop(play(Media, Terminators, Call)).
+b_play(Media, Call) ->
+    b_play(Media, ?ANY_DIGIT, Call).
+b_play(Media, Terminators, Call) ->
+    wait_for_noop(Call, play(Media, Terminators, Call)).
 
 -spec play_command(ne_binary(), ne_binaries(), whapps_call:call()) -> wh_json:object().
 play_command(Media, Terminators, Call) ->
@@ -881,11 +883,16 @@ tts_command(SayMe, Voice, Lang, Terminators, Engine, Call) ->
 -spec b_tts(api_binary(), api_binary(), api_binary(), api_binaries(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_tts(api_binary(), api_binary(), api_binary(), api_binaries(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
 
-b_tts(SayMe, Call) -> wait_for_noop(tts(SayMe, Call)).
-b_tts(SayMe, Voice, Call) -> wait_for_noop(tts(SayMe, Voice, Call)).
-b_tts(SayMe, Voice, Lang, Call) -> wait_for_noop(tts(SayMe, Voice, Lang, Call)).
-b_tts(SayMe, Voice, Lang, Terminators, Call) -> wait_for_noop(tts(SayMe, Voice, Lang, Terminators, Call)).
-b_tts(SayMe, Voice, Lang, Terminators, Engine, Call) -> wait_for_noop(tts(SayMe, Voice, Lang, Terminators, Engine, Call)).
+b_tts(SayMe, Call) ->
+    wait_for_noop(Call, tts(SayMe, Call)).
+b_tts(SayMe, Voice, Call) ->
+    wait_for_noop(Call, tts(SayMe, Voice, Call)).
+b_tts(SayMe, Voice, Lang, Call) ->
+    wait_for_noop(Call, tts(SayMe, Voice, Lang, Call)).
+b_tts(SayMe, Voice, Lang, Terminators, Call) ->
+    wait_for_noop(Call, tts(SayMe, Voice, Lang, Terminators, Call)).
+b_tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
+    wait_for_noop(Call, tts(SayMe, Voice, Lang, Terminators, Engine, Call)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1319,7 +1326,7 @@ b_say(Say, Type, Method, Call) ->
     b_say(Say, Type, Method, <<"en">>, Call).
 b_say(Say, Type, Method, Language, Call) ->
     say(Say, Type, Method, Language, Call),
-    wait_for_message(<<"say">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, 'infinity').
+    wait_for_message(Call, <<"say">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, 'infinity').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1368,7 +1375,7 @@ b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
     b_conference(ConfId, Mute, Deaf, Moderator, 'false', Call).
 b_conference(ConfId, Mute, Deaf, Moderator, Reinvite, Call) ->
     conference(ConfId, Mute, Deaf, Moderator, Reinvite, Call),
-    wait_for_message(<<"conference">>, <<"CHANNEL_EXECUTE">>).
+    wait_for_message(Call, <<"conference">>, <<"CHANNEL_EXECUTE">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1387,7 +1394,7 @@ noop(Call) ->
     send_command(Command, Call),
     NoopId.
 
-b_noop(Call) -> wait_for_noop(noop(Call)).
+b_noop(Call) -> wait_for_noop(Call, noop(Call)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1408,7 +1415,7 @@ flush(Call) ->
     send_command(Command, Call),
     NoopId.
 
-b_flush(Call) -> wait_for_noop(flush(Call)).
+b_flush(Call) -> wait_for_noop(Call, flush(Call)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1438,7 +1445,7 @@ b_privacy(Call) -> b_privacy(<<"full">>, Call).
 b_privacy('undefined', Call) -> b_privacy(Call);
 b_privacy(Mode, Call) ->
     privacy(Mode, Call),
-    wait_for_message(<<"privacy">>).
+    wait_for_message(Call, <<"privacy">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1564,20 +1571,25 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
 %% for the optional timeout period then errors are returned.
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_message(binary()) -> whapps_api_std_return().
--spec wait_for_message(binary(), ne_binary()) -> whapps_api_std_return().
--spec wait_for_message(binary(), ne_binary(), ne_binary()) -> whapps_api_std_return().
--spec wait_for_message(binary(), ne_binary(), ne_binary(), wh_timeout()) -> whapps_api_std_return().
+-spec wait_for_message(whapps_call:call(), binary()) ->
+                              whapps_api_std_return().
+-spec wait_for_message(whapps_call:call(), binary(), ne_binary()) ->
+                              whapps_api_std_return().
+-spec wait_for_message(whapps_call:call(), binary(), ne_binary(), ne_binary()) ->
+                              whapps_api_std_return().
+-spec wait_for_message(whapps_call:call(), binary(), ne_binary(), ne_binary(), wh_timeout()) ->
+                              whapps_api_std_return().
 
-wait_for_message(Application) ->
-    wait_for_message(Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
-wait_for_message(Application, Event) ->
-    wait_for_message(Application, Event, <<"call_event">>).
-wait_for_message(Application, Event, Type) ->
-    wait_for_message(Application, Event, Type, 5000).
+wait_for_message(Call, Application) ->
+    wait_for_message(Call, Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
+wait_for_message(Call, Application, Event) ->
+    wait_for_message(Call, Application, Event, <<"call_event">>).
+wait_for_message(Call, Application, Event, Type) ->
+    wait_for_message(Call, Application, Event, Type, 5000).
 
-wait_for_message(Application, Event, Type, Timeout) ->
+wait_for_message(Call, Application, Event, Type, Timeout) ->
     Start = erlang:now(),
+    RecvTimeout = recv_timeout(Timeout),
     receive
         {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
@@ -1593,12 +1605,17 @@ wait_for_message(Application, Event, Type, Timeout) ->
                 {Type, Event, Application} ->
                     {'ok', JObj};
                 _ ->
-                    wait_for_message(Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
+                    wait_for_message(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
             end;
         _ ->
-            wait_for_message(Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
+            wait_for_message(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
     after
-        Timeout -> {'error', 'timeout'}
+        RecvTimeout ->
+            case is_call_up(Call) of
+                'true' ->
+                    wait_for_message(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start));
+                'false' -> {'error', 'timeout'}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -1786,21 +1803,30 @@ wait_for_bridge(Timeout, Fun, Call) ->
         _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call)
     after
         RecvTimeout ->
-            case whapps_util:amqp_pool_request([{<<"Call-ID">>, whapps_call:call_id_direct(Call)}
-                                                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                               ]
-                                               ,fun wapi_call:publish_channel_status_req/1
-                                               ,fun wapi_call:channel_status_resp_v/1
-                                              )
-            of
-                {'error', _} -> {'error', 'timeout'};
-                {'ok', Resp} ->
-                    case wapi_call:get_status(Resp) of
-                        <<"success">> -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call);
-                        _ -> {'error', 'timeout'}
-                    end
+            case is_call_up(Call) of
+                'true' -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call);
+                'false' -> {'error', 'timeout'}
             end
     end.
+
+-spec is_call_up(whapps_call:call() | ne_binary()) -> boolean().
+is_call_up(CallId) when is_binary(CallId) ->
+    case whapps_util:amqp_pool_request([{<<"Call-ID">>, CallId}
+                                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                       ]
+                                       ,fun wapi_call:publish_channel_status_req/1
+                                       ,fun wapi_call:channel_status_resp_v/1
+                                      )
+    of
+        {'error', _} -> 'false';
+        {'ok', Resp} ->
+                    case wapi_call:get_status(Resp) of
+                        <<"success">> -> 'true';
+                        _ -> 'false'
+                    end
+    end;
+is_call_up(Call) ->
+    is_call_up(whapps_call:call_id_direct(Call)).
 
 -spec recv_timeout(wh_timeout()) -> integer().
 recv_timeout('infinity') -> ?HOUR_IN_MS;
@@ -1812,13 +1838,13 @@ recv_timeout(T) -> T.
 %% Wait for a noop or a specific noop to occur
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_noop(api_binary()) -> whapps_api_std_return().
-wait_for_noop(NoopId) ->
-    case wait_for_message(<<"noop">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, 'infinity') of
+-spec wait_for_noop(whapps_call:call(), api_binary()) -> whapps_api_std_return().
+wait_for_noop(Call, NoopId) ->
+    case wait_for_message(Call, <<"noop">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, 'infinity') of
         {'ok', JObj}=OK ->
             case wh_json:get_value(<<"Application-Response">>, JObj) of
                 NoopId when is_binary(NoopId), NoopId =/= <<>> -> OK;
-                _No when is_binary(NoopId), NoopId =/= <<>> -> wait_for_noop(NoopId);
+                _No when is_binary(NoopId), NoopId =/= <<>> -> wait_for_noop(Call, NoopId);
                 _ -> OK
             end;
         Else -> Else

@@ -367,7 +367,7 @@ send_default_response(Cause, Call) ->
             case wh_call_response:send_default(CallId, CtrlQ, Cause) of
                 {'error', 'no_response'} -> 'ok';
                 {'ok', NoopId} ->
-                    _ = whapps_call_command:wait_for_noop(NoopId),
+                    _ = whapps_call_command:wait_for_noop(Call, NoopId),
                     'ok'
             end
     end.
