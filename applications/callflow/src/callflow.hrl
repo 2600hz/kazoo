@@ -35,7 +35,6 @@
 
 -define(NO_MATCH_CF, <<"no_match">>).
 
--define(DEFAULT_TIMEOUT, <<"20">>).
 -define(DEFAULT_TIMEOUT_S, 20).
 -define(DEFAULT_CALLER_ID_NUMBER, <<"0000000000">>).
 

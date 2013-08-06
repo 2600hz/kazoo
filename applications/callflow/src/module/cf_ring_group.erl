@@ -32,7 +32,7 @@ handle(Data, Call) ->
 
 -spec attempt_endpoints(wh_json:objects(), wh_json:object(), whapps_call:call()) -> 'ok'.
 attempt_endpoints(Endpoints, Data, Call) ->
-    Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
+    Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
