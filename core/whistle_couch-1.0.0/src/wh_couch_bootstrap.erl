@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -110,7 +110,6 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('timeout', State) ->
-%%    _ = wh_couch_sup:stop_bootstrap(),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -144,7 +143,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_config() -> {'ok', wh_proplist()}.
+-type couch_config_tuple() :: {string(), inet:port_number(), string(), string(), inet:port_number()}.
+-type couch_config_proplist() :: [{'default_couch_host', couch_config_tuple()},...] | [].
+-spec get_config() -> couch_config_proplist().
 get_config() ->
     [IP|_] = wh_config:get('bigcouch', 'ip', ["localhost"]),
     [Port|_] = wh_config:get_integer('bigcouch', 'port', [5984]),
@@ -153,7 +154,7 @@ get_config() ->
     [AdminPort|_] = wh_config:get_integer('bigcouch', 'admin_port', [5986]),
     [{'default_couch_host', {IP, Port, Username, Pwd, AdminPort}}].
 
--spec create_connection(wh_proplist()) -> couch_connection().
+-spec create_connection(couch_config_proplist()) -> couch_connection().
 create_connection(Props) ->
     Routines = [fun(C) ->
                         import_config(props:get_value('default_couch_host', Props), C)
@@ -162,7 +163,7 @@ create_connection(Props) ->
                ],
     lists:foldl(fun(F, C) -> F(C) end, #wh_couch_connection{id = 1}, Routines).
 
--spec create_admin_connection(wh_proplist()) -> couch_connection().
+-spec create_admin_connection(couch_config_proplist()) -> couch_connection().
 create_admin_connection(Props) ->
     Routines = [fun(C) ->
                         case props:get_value('default_couch_host', Props) of
