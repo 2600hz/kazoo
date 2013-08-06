@@ -22,6 +22,7 @@
 -export([remove/1]).
 -export([nodeup/1]).
 -export([is_node_up/1]).
+-export([sip_url/1]).
 -export([summary/0]).
 -export([details/0
          ,details/1
@@ -87,6 +88,19 @@ connected() -> gen_server:call(?MODULE, 'connected_nodes').
 
 -spec is_node_up(atom()) -> boolean().
 is_node_up(Node) -> gen_server:call(?MODULE, {'is_node_up', Node}).
+
+-spec sip_url(text()) -> api_binary().
+sip_url(Node) when not is_atom(Node) ->
+    sip_url(wh_util:to_atom(Node, 'true'));
+sip_url(Node) ->
+    case [ecallmgr_fs_node:sip_url(Srv)
+          || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
+                 ,ecallmgr_fs_node:fs_node(Srv) =:= Node
+         ]
+    of
+        [URL|_] -> URL;
+        _Else -> 'undefined'
+    end.
 
 -spec all_nodes_connected() -> boolean().
 all_nodes_connected() ->

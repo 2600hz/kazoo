@@ -96,19 +96,11 @@ handle(Data, Call) ->
 %% Determine the hostname of the switch
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_get_switch_nodename(whapps_call:call() | ne_binary()) -> api_binary().
-maybe_get_switch_nodename(CallId) ->
+-spec get_channel_status(whapps_call:call() | ne_binary()) -> api_binary().
+get_channel_status(CallId) ->
     case whapps_call_command:b_channel_status(CallId) of
-        {'error', _} -> 'undefined';
-        {'ok', JObj} ->
-            get_switch_nodename(CallId, JObj)
-    end.
-
--spec get_switch_nodename(ne_binary() | whapps_call:call(), wh_json:object()) -> api_binary().
-get_switch_nodename(CallId, JObj) ->
-    case wh_json:get_ne_value(<<"Switch-Nodename">>, JObj) of
-        'undefined' -> maybe_get_switch_nodename(CallId);
-        Switch -> Switch
+        {'error', _} -> wh_json:new();
+        {'ok', JObj} -> JObj
     end.
 
 %%--------------------------------------------------------------------
@@ -130,7 +122,8 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
             CallerNode = whapps_call:switch_nodename(Call),
             ParkedCall = wh_json:get_ne_value(<<"Call-ID">>, Slot),
             lager:info("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller", [SlotNumber, ParkedCall]),
-            case maybe_get_switch_nodename(ParkedCall) of
+            ChannelStatus = get_channel_status(ParkedCall),
+            case wh_json:get_ne_value(<<"Switch-Nodename">>, ChannelStatus) of
                 'undefined' ->
                     lager:info("the parked call has hungup, but is was still listed in the slot"),
                     case cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)) of
@@ -160,34 +153,41 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
                     end;
                 OtherNode ->
                     lager:info("the parked call is on node ~s but this call is on node ~s, redirecting", [OtherNode, CallerNode]),
-                    IP = get_node_ip(OtherNode),
-                    send_redirect(IP, Call),
+                    URL = get_node_url(OtherNode, ChannelStatus),
+                    send_redirect(URL, Call),
                     cf_exe:transfer(Call),
                     {'ok', ParkedCalls}
             end
     end.
 
+-spec get_node_url(atom(), wh_json:object()) -> ne_binary().
+get_node_url(Node, JObj) ->
+    case wh_json:get_value(<<"Switch-URL">>, JObj) of
+        'undefined' -> 
+            IP = get_node_ip(Node),
+            Port = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"parking_server_sip_port">>, 5060),
+            <<"sip:mod_sofia@", IP/binary, ":", Port/binary>>;
+        URL -> URL
+    end.
+
 -spec send_redirect(ne_binary(), whapps_call:call()) -> 'ok'.
-send_redirect(IP, Call) ->
+send_redirect(URL, Call) ->
     case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"redirect_via_proxy">>, 'true') of
-        'true' -> redirect_via_proxy(IP, Call);
-        'false' -> redirect_via_endpoint(IP, Call)
+        'true' -> redirect_via_proxy(URL, Call);
+        'false' -> redirect_via_endpoint(URL, Call)
     end.
 
 -spec redirect_via_proxy(ne_binary(), whapps_call:call()) -> 'ok'.
-redirect_via_proxy(IP, Call) ->
-    Port = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"parking_server_sip_port">>, 5060),
+redirect_via_proxy(URL, Call) ->
     Contact = <<"sip:", (whapps_call:to_user(Call))/binary
                 ,"@", (whapps_call:to_realm(Call))/binary>>,
-    Server = <<"sip:", IP/binary, ":", Port/binary>>,
-    whapps_call_command:redirect(Contact, Server, Call).
+    CorrectedURL = binary:replace(URL, <<"mod_sofia@">>, <<>>),
+    whapps_call_command:redirect(Contact, CorrectedURL, Call).
 
 -spec redirect_via_endpoint(ne_binary(), whapps_call:call()) -> 'ok'.
-redirect_via_endpoint(IP, Call) ->
-    Port = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"parking_server_sip_port">>, 5060),
-    Contact = <<"sip:", (whapps_call:to_user(Call))/binary
-                ,"@", IP/binary, ":", Port/binary>>,
-    whapps_call_command:redirect(Contact, Call).
+redirect_via_endpoint(URL, Call) ->
+    CorrectedURL = binary:replace(URL, <<"mod_sofia">>, whapps_call:to_user(Call)),
+    whapps_call_command:redirect(CorrectedURL, Call).
 
 %%--------------------------------------------------------------------
 %% @private
