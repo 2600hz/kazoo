@@ -650,7 +650,7 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
                                  whapps_call:set_caller_id_name(OriginalCID, Call)
                          end,
             Call1 = whapps_call:set_caller_id_name(TmpCID, Call),
-            whapps_call_command:bridge(Endpoints, <<"20">>, Call1),
+            whapps_call_command:bridge(Endpoints, ?DEFAULT_TIMEOUT_S, Call1),
             case whapps_call_command:wait_for_bridge(30000, CleanUpFun, Call1) of
                 {'ok', _} ->
                     lager:info("completed successful bridge to the ringback device"),

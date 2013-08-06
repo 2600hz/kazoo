@@ -27,7 +27,7 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     {'ok', Endpoints} = find_endpoints(Data, Call),
-    Timeout = wh_json:get_value(<<"timeout">>, Data, <<"60">>),
+    Timeout = wh_json:get_integer_value(<<"timeout">>, Data, 60),
     IgnoreEarlyMedia = wh_json:get_value(<<"ignore_early_media">>, Data, <<"false">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     bridge_to_resources(Endpoints, Timeout, IgnoreEarlyMedia, Ringback, Data, Call).
@@ -43,7 +43,7 @@ handle(Data, Call) ->
 %% advanced, because its cool like that
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_resources(endpoints(), api_binary(), api_binary(), api_binary(), wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec bridge_to_resources(endpoints(), integer(), api_binary(), api_binary(), wh_json:object(), whapps_call:call()) -> 'ok'.
 bridge_to_resources([{DestNum, Rsc, RscId, CID}|T], Timeout, IgnoreEarlyMedia, Ringback, Data, Call) ->
     Endpoint = [create_endpoint(DestNum, Gtw, RscId, CID, Call)
                 || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)
