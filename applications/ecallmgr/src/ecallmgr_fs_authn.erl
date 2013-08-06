@@ -165,6 +165,7 @@ handle_directory_lookup(Id, Props, Node) ->
         Else ->
             lager:debug("received fetch request for ~s (~s) user creds from ~s", [Else, Id, Node])
     end,
+    whistle_stats:increment_counter("register-attempt"),
     case {props:get_value(<<"Event-Name">>, Props), props:get_value(<<"action">>, Props)} of
         {<<"REQUEST_PARAMS">>, <<"sip_auth">>} ->
             Method = props:get_value(<<"sip_auth_method">>, Props),

@@ -180,7 +180,18 @@ publish(UUID, Props) ->
     wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
                         ,CDR
                         ,fun(P) -> wapi_call:publish_cdr(UUID, P) end
-                       ).
+                       ),
+    catch case proplists:get_value(<<"Hangup-Cause">>,Props) of
+              Hangup when Hangup==<<"UNALLOCATED_NUMBER">>;
+                    Hangup==<<"NO_ROUTE_DESTINATION">>;
+                    Hangup==<<"RECOVERY_ON_TIMER_EXPIRE">>;
+                    Hangup==<<"PROGRESS_TIMEOUT">> ->
+            Realm = proplists:get_value(<<"Realm">>,<<"unknown">>),
+            whistle_stats:increment_counter(Realm,Hangup);
+        _ ->
+            nothing
+    end.
+
 
 -spec create_cdr(wh_proplist()) -> wh_proplist().
 create_cdr(Props) ->

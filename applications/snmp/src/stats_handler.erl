@@ -17,11 +17,11 @@
 
 handle_req(JObj,_Props) ->
     Items = simplify_structure(JObj),
-    io:format("Got items ~p~n",[Items]),
+    lager:debug("Got items ~p~n",[Items]),
     store_items(Items).
 
 handle_event(JObj,Props) ->
-    io:format("Event occurred ~p ~p~n",[JObj,Props]).
+    lager:debug("Event occurred ~p ~p~n",[JObj,Props]).
 
 get_db() ->
     [{Table,wh_cache:peek_local(?STATS_CACHE,Table)} || 
@@ -35,7 +35,7 @@ get_db(Table) ->
     end.
 
 save_db(Table,Values) ->
-    io:format("Trying to store in ~s~n~p~n",[Table,Values]),
+    lager:debug("Trying to store in ~s~n~p~n",[Table,Values]),
     wh_cache:store_local(?STATS_CACHE,Table,Values),
     if Table == <<"sip">> ->
 	    update_sipdb(Values);
@@ -59,17 +59,17 @@ store_items([]) ->
 store_items([{TableName, Items} | Rest]) when is_list(Items) ->    
     case proplists:get_value(<<"nodename">>,Items) of
 	undefined ->
-	    io:format("Can't find the node name ~n~p",[Items]);
+	    lager:debug("Can't find the node name ~n~p",[Items]);
 	NodeName ->
 	    NewDb = store_item2(Items,get_db(TableName),NodeName),
 	    save_db(TableName,NewDb)
     end,
     store_items(Rest);
 store_items([H,T]) ->
-    io:format("Ignoring ~p~n",[H]),
+    lager:debug("Ignoring ~p~n",[H]),
     store_items(T);
 store_items(Other) -> 
-    io:format("Ignoring ~p~n",[Other]).
+    lager:debug("Ignoring ~p~n",[Other]).
 
 %%% Store information ordered by node name so on restart, snmp monitoring
 %%% applications will get table data in the same order.
@@ -120,7 +120,7 @@ get_next2([],_,Table,Order) ->
 get_next2([Row],Cols,Table,Order) ->
     MaxRow = length(Table),
     MaxCol = length(Order),
-%    io:format("maxrow ~w MaxCol ~w Row ~p col ~p",[MaxRow,MaxCol,Row,Cols]),
+%    lager:debug("maxrow ~w MaxCol ~w Row ~p col ~p",[MaxRow,MaxCol,Row,Cols]),
     if Row < MaxRow ->
 	    [{[C,Row+1],value(Row+1,C,Table,Order)} || C <- Cols];
        true ->
@@ -132,7 +132,7 @@ get_next2([Row],Cols,Table,Order) ->
     end.
 
 value(_,_,Table,[]) ->
-    io:format("Trying to read from undefined table ~p~n",[Table]),
+    lager:debug("Trying to read from undefined table ~p~n",[Table]),
     0;
 value(Row,Col,Table,Order) ->
     {Key,Default} = lists:nth(Col,Order),
