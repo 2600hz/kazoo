@@ -312,8 +312,12 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'set_call', Call}, State) ->
     {'noreply', State#state{call=Call}};
-handle_cast({'continue', Key}, #state{flow=Flow}=State) ->
-    lager:info("continuing to child ~s", [Key]),
+handle_cast({'continue', Key}, #state{flow=Flow
+                                      ,cf_module_pid=OldPidRef
+                                     }=State) ->
+    lager:info("continuing to child '~s'", [Key]),
+    maybe_stop_caring(OldPidRef),
+
     case wh_json:get_value([<<"children">>, Key], Flow) of
         'undefined' when Key =:= <<"_">> ->
             lager:info("wildcard child does not exist, we are lost...hanging up"),
@@ -562,13 +566,19 @@ launch_cf_module(#state{call=Call
                 ,call=whapps_call:kvs_store('cf_last_action', Action, Call)
                }.
 
+maybe_stop_caring('undefined') -> 'ok';
+maybe_stop_caring({P, R}) ->
+    unlink(P),
+    erlang:demonitor(R, ['flush']),
+    lager:debug("stopped caring about ~p(~p)", [P, R]).
+
 -spec maybe_start_cf_module(ne_binary(), wh_proplist(), whapps_call:call()) ->
                                    {{pid(), reference()} | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = wh_util:to_atom(ModuleBin, 'true'),
     try CFModule:module_info('imports') of
         _ ->
-            lager:info("moving to action ~s", [CFModule]),
+            lager:info("moving to action '~s'", [CFModule]),
             spawn_cf_module(CFModule, Data, Call)
     catch
         'error':'undef' ->
