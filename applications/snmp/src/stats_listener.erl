@@ -28,7 +28,7 @@ start() ->
     application:start(stats_master).
 
 start_link() ->
-    io:format("starting new stats proc"),
+    lager:debug("starting new stats proc"),
     [wh_util:ensure_started(A) || A <- [sasl, whistle_amqp]],
     gen_listener:start_link(?MODULE
                             ,[{bindings, ?BINDINGS}

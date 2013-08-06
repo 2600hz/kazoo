@@ -114,6 +114,7 @@ reg_success(JObj, _Props) ->
                                                                ,Registration#registration.realm
                                                                ,Registration#registration.contact
                                                               ]),    
+    whistle_stats:increment_counter("register-success"),
     maybe_initial_registration(Registration).
 
 -spec reg_query(wh_json:object(), wh_proplist()) -> 'ok'.
