@@ -95,7 +95,7 @@ create(<<"ispeech">>, Text, Voice, Format, Options) ->
                      ,{<<"male/de-DE">>, <<"eurgermanmale">>}
                      ,{<<"female/ca-ES">>, <<"eurcatalanfemale">>}
                      ,{<<"female/es-ES">>, <<"eurspanishfemale">>}
-                     ,{<<"female/es-ES">>, <<"eurspanishmale">>}
+                     ,{<<"male/es-ES">>, <<"eurspanishmale">>}
                      ,{<<"female/fi-FI">>, <<"eurfinnishfemale">>}
                      ,{<<"female/fr-CA">>, <<"cafrenchfemale">>}
                      ,{<<"male/fr-CA">>, <<"cafrenchmale">>}
