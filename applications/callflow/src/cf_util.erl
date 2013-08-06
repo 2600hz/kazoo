@@ -94,8 +94,12 @@ presence_mwi_query(JObj, _Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-type mwi_update_return() :: 'missing_account_db' |
+                             'missing_owner_id'.
 -spec unsolicited_owner_mwi_update(api_binary(), api_binary()) ->
-                                          'ok' | {'error', _}.
+                                          'ok' |
+                                          {'error', mwi_update_return()} |
+                                          couch_mgr:couchbeam_error().
 unsolicited_owner_mwi_update('undefined', _) -> {'error', 'missing_account_db'};
 unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
