@@ -96,7 +96,7 @@ handle(Data, Call) ->
 %% Determine the hostname of the switch
 %% @end
 %%--------------------------------------------------------------------
--spec get_channel_status(whapps_call:call() | ne_binary()) -> api_binary().
+-spec get_channel_status(api_binary()) -> wh_json:object().
 get_channel_status(CallId) ->
     case whapps_call_command:b_channel_status(CallId) of
         {'error', _} -> wh_json:new();

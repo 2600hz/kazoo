@@ -462,8 +462,8 @@ is_digit(_) -> 'false'.
 %% @end
 %%-----------------------------------------------------------------------------
 -spec lookup_callflow_patterns(ne_binary(), ne_binary()) ->
-                                            {'ok', {wh_json:object(), ne_binary()}} |
-                                            {'error', term()}.
+                                      {'ok', {wh_json:object(), ne_binary()}} |
+                                      {'error', term()}.
 lookup_callflow_patterns(Number, Db) ->
     lager:info("lookup callflow patterns for ~s in ~s", [Number, Db]),
     case couch_mgr:get_results(Db, ?LIST_BY_PATTERN, ['include_docs']) of
@@ -483,8 +483,10 @@ lookup_callflow_patterns(Number, Db) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec test_callflow_patterns(wh_json:objects(), ne_binary()
-                                   ,{'undefined', <<>>} | {wh_json:object(), ne_binary()})
-                                  -> {'undefined', <<>>} | {wh_json:object(), ne_binary()}.
+                             ,{'undefined', <<>>} | {wh_json:object(), ne_binary()}
+                            ) ->
+                                    {'undefined', <<>>} |
+                                    {wh_json:object(), ne_binary()}.
 test_callflow_patterns([], _, Result) ->
     Result;
 test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
