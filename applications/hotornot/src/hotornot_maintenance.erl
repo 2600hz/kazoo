@@ -24,8 +24,8 @@
 local_summary() ->
     io:format("use rates_for_did/1 to see what rates would be used for a DID").
 
--spec rates_for_did(ne_binary()) -> no_return().
--spec rates_for_did(ne_binary(), api_binary(), trunking_options()) -> no_return().
+-spec rates_for_did(ne_binary()) -> any().
+-spec rates_for_did(ne_binary(), api_binary(), trunking_options()) -> any().
 rates_for_did(DID) ->
     rates_for_did(DID, 'undefined', []).
 rates_for_did(DID, Direction, RouteOptions) when is_list(RouteOptions) ->
@@ -43,14 +43,14 @@ rates_for_did(DID, Direction, RouteOptions) when is_list(RouteOptions) ->
             ?LOCAL_SUMMARY_HEADER,
             [print_rate(R) || R <- Matching]
     end;
-rates_for_did(DID, Direction, _Opts) ->
-    rates_for_did(DID, Direction, []).
+rates_for_did(DID, Direction, Opt) ->
+    rates_for_did(DID, Direction, [Opt]).
 
 rates_between(Pre, Post) ->
-    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{'startkey', wh_util:to_binary(Pre)}
-                                                                  ,{'endkey', wh_util:to_binary(Post)}]
-                              )
-    of
+    ViewOpts = [{'startkey', wh_util:to_binary(Pre)}
+                ,{'endkey', wh_util:to_binary(Post)}
+               ],
+    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, ViewOpts) of
         {'ok', []} -> io:format("rate lookup had no results~n");
         {'error', _E} -> io:format("rate lookup error: ~p~n", [_E]);
         {'ok', Rates} ->
