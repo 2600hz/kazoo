@@ -76,7 +76,9 @@
         ]).
 
 %% Types
--export_type([get_results_return/0]).
+-export_type([get_results_return/0
+              ,couchbeam_error/0
+             ]).
 
 -include_lib("wh_couch.hrl").
 

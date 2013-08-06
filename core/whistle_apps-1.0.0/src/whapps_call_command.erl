@@ -1535,12 +1535,14 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                 {<<"error">>, _, <<"noop">>} ->
                     case wh_json:get_value([<<"Request">>, <<"Msg-ID">>], JObj, NoopId) of
                         NoopId when is_binary(NoopId), NoopId =/= <<>> ->
-                            lager:debug("channel execution error while collecting digits: ~s", [wh_json:encode(JObj)]),
+                            lager:debug("channel execution error while collecting digits: ~s"
+                                        ,[wh_json:get_value(<<"Error-Message">>, JObj)]
+                                       ),
                             {'error', JObj};
                         _NID when is_binary(NoopId), NoopId =/= <<>> ->
                             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After);
-                        _ ->
-                            lager:debug("channel execution error while collecting digits: ~s", [wh_json:encode(JObj)]),
+                        _NID ->
+                            lager:debug("channel execution error while collecting digits with noop-id ~s: ~s", [NoopId, wh_json:encode(JObj)]),
                             {'error', JObj}
                     end;
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
@@ -1814,7 +1816,7 @@ wait_for_bridge(Timeout, Fun, Call) ->
                      end,
             case get_event_type(JObj) of
                 {<<"error">>, _, <<"bridge">>} ->
-                    lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:encode(JObj)]),
+                    lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:get_value(<<"Error-Message">>, JObj)]),
                     {'error', JObj};
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
                     CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
