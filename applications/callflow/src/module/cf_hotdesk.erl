@@ -324,7 +324,8 @@ remove_from_endpoints(#hotdesk{endpoint_ids=[EndpointId|Endpoints]
     _ = update_hotdesk_endpoint(AccountDb, EndpointId, Fun),
     remove_from_endpoints(Hotdesk#hotdesk{endpoint_ids=Endpoints}, Call).
 
--spec update_hotdesk_endpoint(ne_binary(), api_binary(), function()) -> wh_jobj_return().
+-spec update_hotdesk_endpoint(ne_binary(), api_binary() | wh_json:object(), function()) ->
+                                     wh_jobj_return().
 update_hotdesk_endpoint(_, 'undefined', _) -> {'error', 'not_found'};
 update_hotdesk_endpoint(AccountDb, EndpointId, Fun) when is_binary(EndpointId) ->
     case couch_mgr:open_doc(AccountDb, EndpointId) of

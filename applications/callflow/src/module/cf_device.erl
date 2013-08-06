@@ -32,7 +32,9 @@ handle(Data, Call) ->
                 'not_found' -> cf_exe:continue(Call)
             end;
         {'error', _R} ->
-            lager:info("error bridging to device: ~p", [_R]),
+            lager:info("error bridging to device: ~s"
+                       ,[wh_json:get_value(<<"Error-Message">>, _R)]
+                      ),
             cf_exe:continue(Call)
     end.
 
