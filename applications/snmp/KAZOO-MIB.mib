@@ -1,0 +1,289 @@
+KAZOO-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	enterprises, OBJECT-TYPE, MODULE-IDENTITY,
+	Integer32, Gauge32, Counter32, Counter64, TimeTicks
+		FROM SNMPv2-SMI
+	DisplayString, DateAndTime
+       		FROM SNMPv2-TC
+	InetAddressType, InetAddress
+       		FROM INET-ADDRESS-MIB
+	MODULE-COMPLIANCE, OBJECT-GROUP, NOTIFICATION-GROUP
+        	FROM SNMPv2-CONF
+;
+
+kazoo MODULE-IDENTITY
+	LAST-UPDATED "20130703"
+	ORGANIZATION "2600hz.com"
+	CONTACT-INFO
+		"web: http://www.2600hz.com email: info@2600hz.com"
+	DESCRIPTION
+		"This MIB module allows monitoring of a Kazoo server"
+	REVISION "1"
+	DESCRIPTION "First version"
+	::= { enterprises 700001 }
+
+core OBJECT IDENTIFIER ::= { kazoo 1 }
+
+identity OBJECT IDENTIFIER ::= { core 1 }
+
+groups OBJECT IDENTIFIER ::= { core 200 }
+
+kazoo-ver OBJECT-TYPE
+	SYNTAX      DisplayString
+	MAX-ACCESS  read-only
+	STATUS      current
+	DESCRIPTION "Version of Kazoo"
+	::= { identity 1 }
+
+vm OBJECT IDENTIFIER ::= { core 2 }
+
+vm-statistics OBJECT-TYPE
+	SYNTAX      SEQUENCE OF Vm-statistics-entry
+	MAX-ACCESS  not-accessible
+        STATUS      current
+	DESCRIPTION "Table listing erlang VMs in cluster with basic stats."
+	::= { vm 1 }
+
+vm-statistics-entry OBJECT-TYPE
+	SYNTAX		Vm-statistics-entry 
+	MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION "An erlang VM in the Kazoo cluster"
+        INDEX   { nodename }
+        ::= { vm-statistics 1 }
+
+Vm-statistics-entry ::= SEQUENCE {
+	nodename	OCTET STRING,
+	erlang-version	OCTET STRING,
+	memory-total	Gauge32,
+	memory-processes Gauge32,
+	memory-system	Gauge32,
+	memory-atom	Gauge32,
+	memory-binary	Gauge32,
+	memory-code	Gauge32,
+	memory-ets	Gauge32
+}
+	
+nodename OBJECT-TYPE 
+        SYNTAX          OCTET STRING
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Name of the node"
+        ::= { vm-statistics-entry 1 }
+
+erlang-version OBJECT-TYPE 
+        SYNTAX          OCTET STRING
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Erlang version"
+        ::= { vm-statistics-entry 2 }
+
+memory-total OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Total memory"
+        ::= { vm-statistics-entry 3 }
+
+memory-processes OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Memory used by processes"
+        ::= { vm-statistics-entry 4 }
+
+memory-system OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Memory used by system"
+        ::= { vm-statistics-entry 5 }
+
+memory-atom OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Memory used by atom"
+        ::= { vm-statistics-entry 6 }
+
+memory-binary OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Memory used by binary"
+        ::= { vm-statistics-entry 7 }
+
+memory-code OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Memory used by code"
+        ::= { vm-statistics-entry 8 }
+
+memory-ets OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Memory used by ets"
+        ::= { vm-statistics-entry 9 }
+
+ecallmgr OBJECT IDENTIFIER ::= { core 3 }
+
+ecallmgr-tab OBJECT-TYPE
+        SYNTAX      SEQUENCE OF Ecallmgr-entry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION "Table listing ecallmgrs and stats"
+        ::= { ecallmgr 1 }
+
+ecallmgr-entry OBJECT-TYPE
+        SYNTAX      Ecallmgr-entry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION "An ecallmgr process in the cluster"
+        INDEX   { ec-nodename }
+        ::= { ecallmgr-tab 1 }
+
+Ecallmgr-entry ::= SEQUENCE {
+        ec-nodename	OCTET STRING,
+	ec-reduction	Gauge32,
+	ec-processes	Gauge32,
+	ec-register-attempt Gauge32,
+	ec-register-fail Gauge32,
+	ec-presence	 Gauge32
+}
+
+ec-nodename OBJECT-TYPE 
+        SYNTAX          OCTET STRING
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Name of the node"
+        ::= { ecallmgr-entry 1 }
+
+ec-reduction OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Number of reductions"
+        ::= { ecallmgr-entry 2 }
+
+ec-processes OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Number of processes"
+        ::= { ecallmgr-entry 3 }
+
+ec-register-attempt OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Number of registration attempts"
+        ::= { ecallmgr-entry 4 }
+
+ec-register-fail OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Number of registration failures"
+        ::= { ecallmgr-entry 5 }
+
+ec-presence OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Number of presence attempts"
+        ::= { ecallmgr-entry 6 }
+
+sip OBJECT IDENTIFIER ::= { core 4 }
+
+sip-domain OBJECT-TYPE
+	SYNTAX	    SEQUENCE OF Sip-domain-entry
+	MAX-ACCESS  not-accessible
+    	STATUS      current
+    	DESCRIPTION "Table listing sip domains defined in Kazoo"
+	::= { sip 1 }
+
+sip-domain-entry OBJECT-TYPE
+    	SYNTAX      Sip-domain-entry
+     	MAX-ACCESS  not-accessible
+     	STATUS      current
+     	DESCRIPTION "A sip domain defined in Kazoo"
+     	INDEX   { sip-domain-name }
+     	::= { sip-domain 1 }
+	
+Sip-domain-entry ::= SEQUENCE {
+    	sip-domain-name	OCTET STRING,
+	sip-recovery-expire Gauge32,
+	sip-progress-timeout Gauge32,
+	sip-unallocated-number Gauge32
+}
+
+sip-domain-name OBJECT-TYPE 
+	SYNTAX		OCTET STRING
+	MAX-ACCESS  	read-only
+	STATUS      	current
+	DESCRIPTION	"Name of the domain"
+	::= { sip-domain-entry 1 }
+	
+sip-recovery-expire OBJECT-TYPE 
+	SYNTAX		Gauge32
+	MAX-ACCESS  	read-only
+	STATUS      	current
+	DESCRIPTION	"Recovery expiry for each domain"
+	::= { sip-domain-entry 2 }
+	
+sip-progress-timeout OBJECT-TYPE 
+	SYNTAX		Gauge32
+	MAX-ACCESS  	read-only
+	STATUS      	current
+	DESCRIPTION	"Progress timeouts for each domain"
+	::= { sip-domain-entry 3 }
+	
+sip-unallocated-number OBJECT-TYPE
+	SYNTAX      Gauge32
+	MAX-ACCESS  read-only
+	STATUS      current
+	DESCRIPTION "Unallocated number events for domain"
+	::= { sip-domain-entry 4 }
+
+amqp OBJECT IDENTIFIER ::= { core 5 }
+
+amqperr OBJECT-TYPE
+	SYNTAX      Counter32
+	MAX-ACCESS  read-only
+	STATUS      current
+	DESCRIPTION "The current number of AMQP errors"
+	::= { amqp 1 }
+
+amqpecall OBJECT-TYPE
+        SYNTAX	    Gauge32
+	MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION "The rate of AMQP requests for ecallmgr"
+	::= { amqp 2 }
+
+amqpwhapps OBJECT-TYPE
+        SYNTAX	    Gauge32
+	MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION "The rate of AMQP requests for whistle_apps"
+	::= { amqp 3 }
+
+bigcouch OBJECT IDENTIFIER ::= { core 6 }
+
+
+allgroup OBJECT-GROUP
+	OBJECTS { amqperr, sip-domain-name, ec-presence, ec-register-fail,
+		ec-register-attempt, ec-processes, ec-reduction, ec-nodename,
+		memory-ets, memory-code, memory-binary, memory-atom,
+		memory-system, memory-processes, memory-total,
+		erlang-version, nodename, amqpwhapps,
+		amqpecall, sip-unallocated-number, sip-progress-timeout,
+		sip-recovery-expire, kazoo-ver
+	}
+	STATUS  current
+	DESCRIPTION "Various snmp oids"
+	::= { groups 1 }
+END
