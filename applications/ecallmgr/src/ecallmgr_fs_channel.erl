@@ -433,6 +433,7 @@ channel_status_resp(CallId, Channel, JObj) ->
             ,{<<"Status">>, <<"active">>}
             ,{<<"Switch-Hostname">>, Hostname}
             ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
+            ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],

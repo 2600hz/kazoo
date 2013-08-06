@@ -15,6 +15,8 @@
 -export([handle_reload_acls/2]).
 -export([handle_reload_gtws/2]).
 -export([sync_channels/1]).
+-export([sync_interface/1]).
+-export([sip_url/1]).
 -export([fs_node/1]).
 -export([hostname/1]).
 -export([init/1
@@ -28,10 +30,42 @@
 
 -include("ecallmgr.hrl").
 
+-record(interface, {name
+                    ,domain_name
+                    ,auto_nat
+                    ,presence_hosts
+                    ,dialplan
+                    ,context
+                    ,challenge_realm
+                    ,rtp_ip
+                    ,ext_rtp_ip
+                    ,sip_ip
+                    ,ext_sip_ip
+                    ,url
+                    ,bind_url
+                    ,hold_music
+                    ,outbound_proxy
+                    ,codecs_in
+                    ,codecs_out
+                    ,tel_event
+                    ,dtmf_mode
+                    ,cng
+                    ,session_to
+                    ,max_dialog
+                    ,no_media
+                    ,late_neg
+                    ,proxy_media
+                    ,zrtp_passthru
+                    ,aggressive_nat
+                    ,stun_enabled
+                    ,stun_auto_disabled
+                   }).
+-type interface() :: #interface{}.
+
 -record(state, {node :: atom()
                 ,options = [] :: wh_proplist()
+                ,interface :: interface()
                }).
--type state() :: #state{}.
 
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
                       ,[{<<"switch_event">>, <<"reload_acls">>}]
@@ -82,6 +116,9 @@ start_link(Node, Options) ->
 -spec sync_channels(pid()) -> 'ok'.
 sync_channels(Srv) -> gen_server:cast(Srv, 'sync_channels').
 
+-spec sync_interface(pid()) -> 'ok'.
+sync_interface(Srv) -> gen_server:cast(Srv, 'sync_interface').
+
 -spec hostname(pid()) -> api_binary().
 hostname(Srv) ->
     case fs_node(Srv) of
@@ -90,6 +127,10 @@ hostname(Srv) ->
             [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
             Hostname
     end.
+
+-spec sip_url(pid()) -> api_binary().
+sip_url(Srv) ->
+    gen_server:call(Srv, 'sip_url').
 
 -spec handle_reload_acls(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reload_acls(_JObj, Props) ->
@@ -159,8 +200,9 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call('node', _, state()) -> {'reply', atom(), state()}.
-handle_call('node', _From, #state{node=Node}=State) ->
+handle_call('sip_url', _, #state{interface=Interface}=State) ->
+    {'reply', Interface#interface.url, State};
+handle_call('node', _, #state{node=Node}=State) ->
     {'reply', Node, State}.
 
 %%--------------------------------------------------------------------
@@ -173,6 +215,9 @@ handle_call('node', _From, #state{node=Node}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('sync_interface', #state{node=Node}=State) ->
+    Interface = interface_from_props(ecallmgr_util:get_interface_properties(Node)),
+    {'noreply', State#state{interface=Interface}};
 handle_cast('sync_channels', #state{node=Node}=State) ->
     Channels = [wh_json:get_value(<<"uuid">>, J)
                 || J <- channels_as_json(Node)
@@ -248,6 +293,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec run_start_cmds(atom()) -> pid().
 run_start_cmds(Node) ->
+    Parent = self(),
     spawn_link(fun() ->
                        timer:sleep(5000),
                        Cmds = ecallmgr_config:get(<<"fs_cmds">>, [], Node),
@@ -255,7 +301,8 @@ run_start_cmds(Node) ->
                        case lists:filter(fun was_not_successful_cmd/1, Res) of
                            [] -> 'ok';
                            Errs -> print_api_responses(Errs)
-                       end
+                       end,
+                       sync_interface(Parent)
                end).
 
 -spec process_cmds(atom(), wh_json:object() | ne_binaries()) -> cmd_results().
@@ -356,3 +403,44 @@ channels_as_json(Node) ->
         {'error', _} -> [];
         'timeout' -> []
     end.
+
+-spec interface_from_props(wh_proplist()) -> interface().
+interface_from_props(Props) ->
+    #interface{name=props:get_value(<<"Name">>, Props, ?DEFAULT_FS_PROFILE)
+               ,domain_name=props:get_value(<<"DomainName">>, Props)
+               ,auto_nat=props:get_is_true(<<"Auto-NAT">>, Props)
+               ,presence_hosts=props:get_value(<<"PresHosts">>, Props)
+               ,dialplan=props:get_value(<<"Dialplan">>, Props)
+               ,context=props:get_value(<<"Context">>, Props)
+               ,challenge_realm=props:get_value(<<"ChallengeRealm">>, Props)
+               ,rtp_ip=props:get_value(<<"RTP-IP">>, Props)
+               ,ext_rtp_ip=props:get_value(<<"Ext-RTP-IP">>, Props)
+               ,sip_ip=props:get_value(<<"SIP-IP">>, Props)
+               ,ext_sip_ip=props:get_value(<<"Ext-SIP-IP">>, Props)
+               ,url=props:get_value(<<"URL">>, Props)
+               ,bind_url=props:get_value(<<"BIND-URL">>, Props)
+               ,hold_music=props:get_value(<<"HOLD_MUSIC">>, Props)
+               ,outbound_proxy=props:get_value(<<"OUTBOUND-PROXY">>, Props)
+               ,codecs_in=split_codes(<<"CODECSIN">>, Props)
+               ,codecs_out=split_codes(<<"CODECSOUT">>, Props)
+               ,tel_event=props:get_value(<<"TEL-EVENT">>, Props)
+               ,dtmf_mode=props:get_value(<<"DTMF-MODE">>, Props)
+               ,cng=props:get_value(<<"CNG">>, Props)
+               ,session_to=props:get_value(<<"SESSION-TO">>, Props)
+               ,max_dialog=props:get_value(<<"MAX-DIALOG">>, Props)
+               ,no_media=props:get_is_true(<<"NOMEDIA">>, Props)
+               ,late_neg=props:get_is_true(<<"LATE-NEG">>, Props)
+               ,proxy_media=props:get_is_true(<<"PROXY-MEDIA">>, Props)
+               ,zrtp_passthru=props:get_is_true(<<"ZRTP-PASSTHRU">>, Props)
+               ,aggressive_nat=props:get_is_true(<<"AGGRESSIVENAT">>, Props)
+               ,stun_enabled=props:get_is_true(<<"STUN-ENABLED">>, Props)
+               ,stun_auto_disabled=props:get_is_true(<<"STUN-AUTO-DISABLE">>, Props)
+              }.
+
+-spec split_codes(ne_binary(), wh_proplist()) -> ne_binaries().
+split_codes(Key, Props) ->
+    [Codec
+     || Codec <- binary:split(props:get_value(Key, Props, <<>>), <<",">>, [global])
+            ,not wh_util:is_empty(Codec)
+    ].
+    
