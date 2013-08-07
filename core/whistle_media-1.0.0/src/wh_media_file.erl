@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -19,6 +19,7 @@
                            {'error', 'no_data'} |
                            {'error', 'no_stream_strategy'}.
 get_uri(Media, JObj) when is_binary(Media) ->
+    wh_util:put_callid(JObj),
     Paths = [Path
              || Path <- binary:split(Media, <<"/">>, ['global', 'trim'])
                     ,(not wh_util:is_empty(Path))
@@ -48,8 +49,13 @@ prepare_proxy([Db, Id, Attachment]) ->
 
 -spec start_media_file_cache(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 start_media_file_cache(Db, Id, Attachment) ->
-    {'ok', _FileServer} = wh_media_cache_sup:start_file_server(Db, Id, Attachment),
-    lager:debug("file server at ~p for ~s/~s/~s", [_FileServer, Db, Id, Attachment]).
+    case wh_media_cache_sup:start_file_server(Db, Id, Attachment) of
+        {'ok', _FileServer} ->
+            lager:debug("file server at ~p for ~s/~s/~s", [_FileServer, Db, Id, Attachment]);
+        E ->
+            lager:debug("failed to start server for ~s/~s/~s: ~p", [Db, Id, Attachment, E]),
+            throw(E)
+    end.
 
 -spec find_attachment(ne_binaries() | ne_binary()) ->
                              {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
