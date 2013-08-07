@@ -181,12 +181,12 @@ publish(UUID, Props) ->
                         ,CDR
                         ,fun(P) -> wapi_call:publish_cdr(UUID, P) end
                        ),
-    catch case proplists:get_value(<<"Hangup-Cause">>,Props) of
+    catch case props:get_value(<<"Hangup-Cause">>,Props) of
               Hangup when Hangup==<<"UNALLOCATED_NUMBER">>;
                     Hangup==<<"NO_ROUTE_DESTINATION">>;
                     Hangup==<<"RECOVERY_ON_TIMER_EXPIRE">>;
                     Hangup==<<"PROGRESS_TIMEOUT">> ->
-            Realm = proplists:get_value(<<"Realm">>,<<"unknown">>),
+            Realm = props:get_value(<<"Realm">>,Props,<<"unknown">>),
             whistle_stats:increment_counter(Realm,Hangup);
         _ ->
             nothing
