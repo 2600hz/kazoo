@@ -11,12 +11,12 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0,increment_counter/1,increment_counter/2, send_counter/2,
+	 send_absolute/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3,stop/0,increment_counter/1,
-	 increment_counter/2, send_counter/2,send_absolute/2]).
+	 terminate/2, code_change/3,stop/0]).
 
 -define(SERVER, ?MODULE). 
 -define(SEND_STATS,10000).
@@ -169,7 +169,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% value or sets the value.
 
 store_value(add,Key,Value,State=#state{ecall=ECall}) when is_integer(Value) ->
-    NewValue =  proplists:get_value(Key,ECall,0) + Value,
+    NewValue =  props:get_value(Key,ECall,0) + Value,
     State#state{ecall = lists:keystore(Key,1,ECall,{Key,NewValue})};
 store_value(store,Key,Value,State=#state{ecall=ECall}) ->
     State#state{ecall = lists:keystore(Key,1,ECall,{Key,Value})}.
@@ -177,12 +177,12 @@ store_value(store,Key,Value,State=#state{ecall=ECall}) ->
 %%% Sip events are stored according to the sip realm/domain
 store_value(Operation,Realm,Key,Value,State=#state{sip=SipL}) when 
       is_integer(Value) ->
-    NewData = case proplists:get_value(Realm,SipL) of
+    NewData = case props:get_value(Realm,SipL) of
 		  undefined ->
 		      [{Key,Value}];
 		  RData ->
 		      NewValue = if Operation == add ->
-					 proplists:get_value(Key,RData,0)+Value;
+					 props:get_value(Key,RData,0)+Value;
 				    true ->
 					 Value
 				 end,
@@ -218,8 +218,8 @@ get_sip_values(SipL) ->
 get_ecallmgr_values([]) ->
     [];
 get_ecallmgr_values(Ecall) ->
-    RegFail = case {proplists:get_value("register-attempt",Ecall),
-		    proplists:get_value("register-success",Ecall)} of
+    RegFail = case {props:get_value("register-attempt",Ecall),
+		    props:get_value("register-success",Ecall)} of
 		  {undefined,_} -> 0;
 		  {_,undefined} -> 0;
 		  {Reg,RegSucc} -> lists:max([Reg-RegSucc,0])
@@ -228,7 +228,7 @@ get_ecallmgr_values(Ecall) ->
 		{_,X,_,_} <- supervisor:which_children(ecallmgr_sup),is_pid(X)],
 
 %%% Sums the total reductions for all ecallmgr processes.
-    Reduction = lists:sum([proplists:get_value(reductions,X) || 
+    Reduction = lists:sum([props:get_value(reductions,X) || 
 			      X <- Procs, is_list(X)]),
     [{<<"ecallmgr">>, 
       prepare_json([ {nodename,node()},{reduction,Reduction},

@@ -57,7 +57,7 @@ simplify_structure(Other) ->
 store_items([]) ->
     finish;
 store_items([{TableName, Items} | Rest]) when is_list(Items) ->    
-    case proplists:get_value(<<"nodename">>,Items) of
+    case props:get_value(<<"nodename">>,Items) of
 	undefined ->
 	    lager:debug("Can't find the node name ~n~p",[Items]);
 	NodeName ->
@@ -76,7 +76,7 @@ store_items(Other) ->
 store_item2(NewItems,[],_NodeName) ->
     [ NewItems ];
 store_item2(NewItems,[ Table | Rest ], NodeName ) ->
-    case proplists:get_value( <<"nodename">>,Table) of
+    case props:get_value( <<"nodename">>,Table) of
 	NodeName ->
 	    [ NewItems | Rest ];
 	Node ->
@@ -88,7 +88,7 @@ store_item2(NewItems,[ Table | Rest ], NodeName ) ->
     end.
 
 update_sipdb(OldSip) ->   
-    NewSip = lists:foldl(fun(Item,Db) -> collect_items(Item,Db) end,[],OldSip),
+    NewSip = lists:foldl(fun collect_items/2 ,[],OldSip),
     NewSip2 = [[{<<"domain-name">>,SipDomain} | Attr] ||
 		  {SipDomain,Attr} <- NewSip],
     save_db(<<"sip-domain">>,NewSip2).
@@ -98,8 +98,8 @@ collect_items([],Db) ->
 collect_items([{<<"nodename">>,_} | Rest],Db) ->
     collect_items(Rest,Db);
 collect_items([{Domain,Items} | Rest],Db) ->
-    DomainData = proplists:get_value(Domain,Db,[]),
-    Fun = fun(Key,Value) -> proplists:get_value(Key,DomainData,0) + Value end,
+    DomainData = props:get_value(Domain,Db,[]),
+    Fun = fun(Key,Value) -> props:get_value(Key,DomainData,0) + Value end,
     NewData = [{Key,Fun(Key,Value)} || {Key,Value} <- Items] ++
 	[{Key,Value} || {Key,Value} <- DomainData, 
 			lists:keymember(Key,1,Items) == false ],
@@ -136,7 +136,7 @@ value(_,_,Table,[]) ->
     0;
 value(Row,Col,Table,Order) ->
     {Key,Default} = lists:nth(Col,Order),
-    Val = proplists:get_value(Key,lists:nth(Row,Table),Default),
+    Val = props:get_value(Key,lists:nth(Row,Table),Default),
     if is_binary(Val) ->
 	    binary_to_list(Val);
        true ->
