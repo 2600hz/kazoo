@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -614,10 +614,14 @@ publish_error(Error, UUID, Request, ServerId) ->
     E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request)}
          ,{<<"Call-ID">>, UUID}
          ,{<<"Request">>, Request}
-         ,{<<"Error-Message">>, Error}
+         ,{<<"Error-Message">>, cleanup_error(Error)}
          | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
         ],
     wh_api:publish_error(ServerId, props:filter_undefined(E)).
+
+-spec cleanup_error(ne_binary()) -> ne_binary().
+cleanup_error(<<"-ERR ", E/binary>>) -> E;
+cleanup_error(E) -> E.
 
 -spec publish_originate_ready(ne_binary(), created_uuid() | ne_binary(), wh_json:object(), ne_binary(), api_binary()) -> 'ok'.
 publish_originate_ready(_, _, _, _, 'undefined') -> 'ok';
