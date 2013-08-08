@@ -24,6 +24,7 @@
          ,handle_info/2
          ,terminate/2
          ,code_change/3
+         ,status/1
         ]).
 
 -record(state, {account_list :: wh_proplist()
@@ -70,6 +71,14 @@ init([]) ->
     lager:debug("cdr_v3_migrate_server init"),
     gen_server:cast(self(), 'start_migrate'),
     {'ok', #state{}}.
+
+-spec status(pid()) -> handle_call_ret() | wh_std_return().
+status(ServerPid) ->
+    case is_pid(ServerPid) of
+        'true' ->
+            gen_server:call(ServerPid, 'status');
+        'false' -> {'error', 'process_not_found'}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -124,13 +133,13 @@ handle_cast('start_next_worker', #state{account_list=[NextAccount|RestAccounts]
                                         ,migrate_date_list=MigrateDateList
                                         ,archive_batch_size=ArchiveBatchSize
                                        }=State) ->
-    {NEWPID, NEWREF} = spawn_monitor('cdr_v3_migrate_worker'
+    {NewPid, NewRef} = spawn_monitor('cdr_v3_migrate_worker'
                                      ,'migrate_account_cdrs'
                                      ,[NextAccount
                                        ,MigrateDateList
                                        ,ArchiveBatchSize
                                       ]),
-    {'noreply', State#state{account_list=RestAccounts, pid=NEWPID, ref=NEWREF}};
+    {'noreply', State#state{account_list=RestAccounts, pid=NewPid, ref=NewRef}};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled call to handle_cast executed, ~p", [_Msg]),
     {'noreply', State}.

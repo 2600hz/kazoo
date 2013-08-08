@@ -65,9 +65,9 @@ build_month_date_list(Year, Month, 'ASC', Acc) ->
 
 -spec get_test_account_details(pos_integer()) -> api_binaries().
 get_test_account_details(NumAccounts) ->
-    [{<<"v3migratetest", (wh_util:to_binary(X))/binary>>
-          , <<"v3migratetest",(wh_util:to_binary(X))/binary,".realm.com">>
-          , <<"v3testuser", (wh_util:to_binary(X))/binary, "-user">>
+    [{<<"v3migratetest", (wh_util:to_binary(io_lib:format("~3..0B",[X])))/binary>>
+          , <<"v3migratetest",(wh_util:to_binary(io_lib:format("~3..0B", [X])))/binary,".realm.com">>
+          , <<"v3testuser", (wh_util:to_binary(io_lib:format("~3..0B", [X])))/binary, "-user">>
           , <<"v3password">>
      } || X <- lists:seq(1, NumAccounts)].
 
@@ -158,8 +158,8 @@ maybe_get_migrate_account(AccountDb) ->
     end.
 
 -spec matches_realm(ne_binary()) -> boolean().
-matches_realm(<<"migratetest", _:1/binary, ".realm.com">>) -> 'true';
-matches_realm(<<"v3migratetest", _:1/binary, ".realm.com">>) -> 'true';
+matches_realm(<<"migratetest", _:3/binary, ".realm.com">>) -> 'true';
+matches_realm(<<"v3migratetest", _:3/binary, ".realm.com">>) -> 'true';
 matches_realm(Realm) ->
     lager:debug("Realm does not match migrate pattern: ~p", [Realm]),
     'false'.

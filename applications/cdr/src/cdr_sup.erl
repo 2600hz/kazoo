@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @copyright (c) 2010-2013, 2600Hz
 %%% @doc
@@ -34,8 +35,8 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec migrate_server(atom()) -> api_pid().
-migrate_server(Super) ->
+-spec get_migrate_server_pid(atom()) -> api_pid().
+get_migrate_server_pid(Super) ->
     case child_of_type(Super, 'cdr_v3_migrator') of
         [] -> 'undefined';
         [P] -> P
@@ -48,12 +49,16 @@ child_of_type(S, T) ->
 
 -spec get_v3_migrate_status() -> 'ok'.
 get_v3_migrate_status() ->
-    ServerPid = migrate_server(?MODULE),
-    case cdr_v3_migrate_server:status(ServerPid) of
-        {'num_accounts', NumAccountsLeft} ->
-            lager:info("cdr_migrator: accts remaining: ~p", [NumAccountsLeft]);
-        _ ->
-            lager:debug("no status")
+    ServerPid = get_migrate_server_pid(?MODULE),
+    case {is_pid(ServerPid), cdr_v3_migrate_server:status(ServerPid)} of
+        {'true', {'num_accounts_left', NumAccountsLeft}} ->
+            io:format("cdr_v3_migrator: accts remaining: ~p~n", [NumAccountsLeft]);
+        {'true', {'error', _E}} ->
+            io:format("cdr_v3_migrator: error ~p~n", [_E]);
+        {'true', _E} ->
+            io:format("cdr_v3_migrator: no status~p~n", [_E]);
+        {'false', _} ->
+            io:format("cdr_v3_migrator: migrate server pid not found~n")
     end.
 
 -spec start_v3_migrate() -> 'ok' | wh_std_return().
