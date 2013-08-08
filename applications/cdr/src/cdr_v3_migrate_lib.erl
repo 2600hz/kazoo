@@ -203,7 +203,7 @@ get_next_n_months(Year, Month, NumMonths) when Month =< 12, Month > 0 ->
     get_next_n_months(Year, Month, NumMonths, 'ASC').
 
 -spec get_next_n_months(wh_year(), wh_month(), pos_integer(), atom()) -> wh_proplist().
-get_next_n_months(Year, Month, NumMonths, 'ASC') when Month =< 12, Month > 0 ->
+get_next_n_months(Year, Month, NumMonths, 'ASC') when Month =< 11, Month > 0 ->
     next_n_months(Year, Month, NumMonths, []);
 get_next_n_months(Year, Month, NumMonths, 'DESC') when Month =< 12, Month > 0 ->
     lists:reverse(next_n_months(Year, Month, NumMonths, [])).
