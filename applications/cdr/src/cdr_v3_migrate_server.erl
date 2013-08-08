@@ -141,7 +141,7 @@ handle_cast('start_next_worker', #state{account_list=[NextAccount|RestAccounts]
                                       ]),
     {'noreply', State#state{account_list=RestAccounts, pid=NewPid, ref=NewRef}};
 handle_cast(_Msg, State) ->
-    lager:debug("unhandled call to handle_cast executed, ~p", [_Msg]),
+    lager:debug("unhandled handle_cast ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------

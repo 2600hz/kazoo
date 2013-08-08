@@ -143,7 +143,7 @@ soft_delete_cdrs(AccountDb, JObjs) ->
         {'error', _E} ->
             lager:error("cdr_migrator: error soft deleting");
         {'ok', _} ->
-            lager:info("cdr_migrator: soft deleted batch of docs")
+            lager:debug("cdr_migrator: soft deleted batch of docs")
     end.
 
 -spec migrate_cdrs_for_date(account_id(), account_db(), wh_date()) -> any().

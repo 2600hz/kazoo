@@ -94,10 +94,10 @@ generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdr
                                   generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs) 
                           end, DateRange);
         {'multiples', AccountDbs} ->
-            lager:debug("Found multiple DBS for Account Name: ~p", [AccountDbs]),
+            lager:debug("found multiple DBS for Account Name: ~p", [AccountDbs]),
             {'error', 'multiple_account_dbs'};
         {'error', Reason} ->
-            lager:debug("Failed to find account: ~p [~s]", [Reason, AccountName]),
+            lager:debug("failed to find account: ~p [~s]", [Reason, AccountName]),
             {'error', Reason}
     end.
 
@@ -131,7 +131,7 @@ generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs) ->
             ],
     Doc = wh_json:set_values(Props, CdrJObjFixture),
     case couch_mgr:save_doc(AccountDb, Doc) of
-        {'error',_}=_E -> lager:debug("CDR Save Failed: ~p", [_E]);
+        {'error',_}=_E -> lager:debug("cdr Save Failed: ~p", [_E]);
         {'ok', _} -> 'ok'
     end,
     generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs - 1).
@@ -161,14 +161,14 @@ maybe_get_migrate_account(AccountDb) ->
 matches_realm(<<"migratetest", _:3/binary, ".realm.com">>) -> 'true';
 matches_realm(<<"v3migratetest", _:3/binary, ".realm.com">>) -> 'true';
 matches_realm(Realm) ->
-    lager:debug("Realm does not match migrate pattern: ~p", [Realm]),
+    lager:debug("realm does not match migrate pattern: ~p", [Realm]),
     'false'.
 
 -spec maybe_delete_test_account(account_db()) -> 'ok' | {'error', any()}.
 maybe_delete_test_account(AccountDb) ->
     case maybe_get_migrate_account(AccountDb) of
         'false' -> 'ok';
-        [] -> lager:debug("AccountDb is not a migrate test: ~p", [AccountDb]);
+        [] -> lager:debug("account_db is not a migrate test: ~p", [AccountDb]);
         [_Account] ->
             NumMonthsToShard = whapps_config:get_integer(?CONFIG_CAT, <<"v3_migrate_num_months">>, 4),
             AccountId = wh_util:format_account_id(AccountDb, 'raw'),
