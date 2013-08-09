@@ -55,11 +55,13 @@ start_link(Node) ->
 start_link(Node, Options) ->
     gen_server:start_link(?MODULE, [Node, Options], []).
 
--spec authorize(wh_proplist(), ne_binary(), atom()) -> 'ok'.
+-spec authorize(wh_proplist(), ne_binary(), atom()) -> boolean().
 authorize(Props, CallId, Node) ->
     put('callid', CallId),
     Authorized = maybe_authorize_channel(Props, Node),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized),
+    ChannelAuthorized = wh_util:to_binary(Authorized),
+    ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Channel-Authorized">>, ChannelAuthorized)),
     Authorized.
 
 -spec kill_channel(wh_proplist(), atom()) -> 'ok'.
@@ -207,6 +209,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec maybe_authorize_channel(wh_proplist(), atom()) -> boolean().
 maybe_authorize_channel(Props, Node) ->
+    case props:get_value(?GET_CCV(<<"Channel-Authorized">>), Props) of
+        <<"true">> = T -> T;
+        <<"false">> = F -> F;
+        _Else -> 
+            maybe_channel_recovering(Props, Node)
+    end.
+
+-spec maybe_channel_recovering(wh_proplist(), atom()) -> boolean().
+maybe_channel_recovering(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
         'true' -> allow_call(Props, CallId, Node);
