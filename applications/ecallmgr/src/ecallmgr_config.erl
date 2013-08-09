@@ -12,6 +12,7 @@
 -export([flush/0, flush/1]).
 -export([get/1, get/2, get/3
          ,get_integer/1, get_integer/2, get_integer/3
+         ,get_boolean/1, get_boolean/2, get_boolean/3
         ]).
 -export([fetch/1, fetch/2, fetch/3]).
 -export([set/2, set/3]).
@@ -90,6 +91,25 @@ get_integer(Key, Default, Node) ->
     case get(Key, Default, Node) of
         Default -> Default;
         N -> wh_util:to_integer(N)
+    end.
+
+-spec get_boolean(wh_json:key()) -> boolean() | 'undefined'.
+-spec get_boolean(wh_json:key(), Default) -> boolean() | Default.
+-spec get_boolean(wh_json:key(), Default, wh_json:key() | atom()) -> boolean() | Default.
+get_boolean(Key) ->
+    case get(Key) of
+        'undefined' -> 'undefined';
+        N -> wh_util:to_boolean(N)
+    end.
+get_boolean(Key, Default) ->
+    case get(Key, Default) of
+        Default -> Default;
+        N -> wh_util:to_boolean(N)
+    end.
+get_boolean(Key, Default, Node) ->
+    case get(Key, Default, Node) of
+        Default -> Default;
+        N -> wh_util:to_boolean(N)
     end.
 
 -spec fetch(wh_json:key()) -> wh_json:json_term() | 'undefined'.
