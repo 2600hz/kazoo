@@ -523,7 +523,7 @@ query_authn(#registration{username=Username, realm=Realm
                           ,from_user=FromUser, from_host=FromHost
                           ,network_ip=NetworkIP, registrar_node=Node
                           ,call_id=CallId}=Reg) ->
-    lager:debug("looking up credentials of ~s@~s for a ~s", [Username, Realm]),
+    lager:debug("looking up credentials of ~s@~s", [Username, Realm]),
     Req = [{<<"To">>, <<ToUser/binary, "@", ToHost/binary>>}
            ,{<<"From">>, <<FromUser/binary, "@", FromHost/binary>>}
            ,{<<"Orig-IP">>, NetworkIP}
