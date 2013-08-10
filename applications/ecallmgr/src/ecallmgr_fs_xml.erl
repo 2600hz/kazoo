@@ -152,14 +152,16 @@ caller_controls_xml(CCs) when is_list(CCs) ->
     caller_controls_el(GroupsEls);
 caller_controls_xml(CCs) -> caller_controls_xml(wh_json:to_proplist(CCs)).
 
-group_xml(Name, Controls) ->
+group_xml(Name, Controls) when is_list(Controls) ->
     ControlEls = [control_el(wh_json:get_value(<<"action">>, Control)
                              ,wh_json:get_value(<<"digits">>, Control)
                              ,wh_json:get_value(<<"data">>, Control)
                             )
                   || Control <- Controls
                  ],
-    group_el(Name, ControlEls).
+    group_el(Name, ControlEls);
+group_xml(Name, Controls) ->
+    group_xml(Name, wh_json:to_proplist(Controls)).
 
 chat_permissions_xml(CPs) when is_list(CPs) ->
     ProfileEls = [profile_xml(Name, Users) || {Name, Users} <- CPs],
