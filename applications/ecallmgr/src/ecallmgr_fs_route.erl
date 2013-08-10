@@ -221,7 +221,7 @@ reply_affirmative(Node, FSID, CallId, JObj) ->
     lager:info("sending affirmative XML to ~s: ~s", [Node, XML]),
     FromURI = case wh_json:get_value(<<"From-URI">>, JObj) of
                   'undefined' -> 
-                      FromUser = wh_json:get_value(<<"From-User">>, JObj, <<"${sip_from_user}">>),
+                      FromUser = wh_json:get_value(<<"From-User">>, JObj, <<"${caller_id_number}">>),
                       FromRealm = wh_json:get_value(<<"From-Realm">>, JObj, <<"${sip_from_host}">>),
                       <<"sip:", FromUser/binary, "@", FromRealm/binary>>;
                   Else -> Else

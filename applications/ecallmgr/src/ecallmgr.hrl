@@ -83,7 +83,9 @@
 -define(MAX_NODE_RESTART_FAILURES, 3).
 
 %% list of dialplan Application-Names that can execute after a call has hung up
--define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>, <<"record">>, <<"store_fax">>]).
+-define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>
+                               ,<<"record">>, <<"store_fax">>, <<"receive_fax">>
+                              ]).
 
 -define(SANITY_CHECK_PERIOD, 300000).
 
