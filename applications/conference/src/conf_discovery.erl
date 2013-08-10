@@ -317,19 +317,13 @@ search_for_conference(Conference, Call, Srv) ->
 
 -spec handle_search_error(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 handle_search_error(Conference, Call, Srv) ->
-    lager:debug("participant switch nodename '~p'", [whapps_call:switch_nodename(Call)]),
-    [_, SwitchHostname] = binary:split(whapps_call:switch_nodename(Call), <<"@">>),
-    case negotiate_focus(SwitchHostname, Conference, Call) of
-        {'ok', _} ->
-            lager:debug("conference is not currently running but our update was accepted, starting on ~s", [SwitchHostname]),
-            conf_participant:set_conference(Conference, Srv),
-            conf_participant:join_local(Srv);
-        {'error', 'conflict'} ->
-            lager:debug("conference is not currently running but our update was in conflict, searching again"),
-            search_for_conference(Conference, Call, Srv);
-        {'error', _R} ->
-            lager:debug("conference is not currently running but our update failed: ~p", [_R]),
-            discovery_failed(Call, Srv)
+    timer:sleep(crypto:rand_uniform(2000, 3000)),
+    case whapps_conference_command:search(Conference) of
+        {'error', _} ->
+            lager:debug("conference is not currently running or unable to locate"),
+            discovery_failed(Call, Srv);
+        {'ok', JObj} ->
+            handle_search_resp(JObj, Conference, Call, Srv)
     end.
 
 -spec handle_search_resp(wh_json:object(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
@@ -460,14 +454,6 @@ validate_conference_pin(_, Conference, Call, Loop) ->
                     validate_conference_pin('undefined', Conference, Call, Loop + 1)
             end
     end.
-
--spec negotiate_focus(ne_binary(), whapps_conference:conference(), whapps_call:call()) ->
-                             {'ok', wh_json:object()} |
-                             {'error', term()}.
-negotiate_focus(SwitchHostname, Conference, Call) ->
-    AccountDb = whapps_call:account_db(Call),
-    JObj = whapps_conference:conference_doc(Conference),
-    couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"focus">>, SwitchHostname, JObj)).
 
 -spec create_conference(wh_json:object(), binary()) -> whapps_conference:conference().
 create_conference(JObj, Digits) ->
