@@ -374,7 +374,7 @@ wait_for_creation(Conference, After) ->
     Start = erlang:now(),
     case whapps_conference_command:search(Conference) of
         {'ok', _}=Ok -> Ok;
-        {'error', _} -> 
+        {'error', _} ->
             timer:sleep(1000),
             wait_for_creation(Conference, whapps_util:decr_timeout(After, Start))
     end.
