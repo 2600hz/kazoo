@@ -39,7 +39,7 @@ update_status(?NE_BINARY = AcctId, AgentId, Status, Options) ->
            ,{<<"Timestamp">>, wh_util:current_tstamp()}
            | Options ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wapi_acdc_stats:publish_status_update(API).        
+    wapi_acdc_stats:publish_status_update(API).
 
 -spec most_recent_status(ne_binary(), ne_binary()) ->
                                 {'ok', ne_binary()} |
@@ -100,10 +100,24 @@ most_recent_statuses(AcctId, Options) when is_list(Options) ->
 
 most_recent_statuses(AcctId, AgentId, Options) ->
     Self = self(),
-    DB = spawn_monitor(?MODULE, 'async_most_recent_db_statuses', [AcctId, AgentId, Options, Self]),
+
     ETS = spawn_monitor(?MODULE, 'async_most_recent_ets_statuses', [AcctId, AgentId, Options, Self]),
 
+    DB = maybe_start_db_lookup('async_most_recent_db_statuses', AcctId, AgentId, Options, Self),
+
+    lager:debug("ets ~p db ~p", [ETS, DB]),
     maybe_reduce_statuses(AgentId, receive_statuses([ETS, DB])).
+
+-spec maybe_start_db_lookup(atom(), ne_binary(), ne_binary(), list(), pid()) ->
+                                   {pid(), reference()}.
+maybe_start_db_lookup(F, AcctId, AgentId, Options, Self) ->
+    lager:debug("db fetch key ~p", [db_fetch_key(F, AcctId, AgentId)]),
+    case wh_cache:fetch_local(?ACDC_CACHE, db_fetch_key(F, AcctId, AgentId)) of
+        {'ok', _} -> 'undefined';
+        {'error', 'not_found'} ->
+            spawn_monitor(?MODULE, F, [AcctId, AgentId, Options, Self])
+    end.
+db_fetch_key(F, AcctId, AgentId) -> {F, AcctId, AgentId}.
 
 maybe_reduce_statuses('undefined', Statuses) ->
     {'ok', wh_json:map(fun map_reduce_agent_statuses/2, Statuses)};
@@ -123,12 +137,20 @@ reduce_agent_statuses(_, Data, {T, _}=Acc) ->
         _:_ -> Acc
     end.
 
+-type receive_info() :: [{pid(), reference()} | 'undefined',...] | [].
+-spec receive_statuses(receive_info()) ->
+                              wh_json:object().
+-spec receive_statuses(receive_info(), wh_json:object()) ->
+                              wh_json:object().
 receive_statuses(Reqs) -> receive_statuses(Reqs, wh_json:new()).
 
 receive_statuses([], AccJObj) -> AccJObj;
+receive_statuses(['undefined' | Reqs], AccJObj) ->
+    receive_statuses(Reqs, AccJObj);
 receive_statuses([{Pid, Ref} | Reqs], AccJObj) ->
     receive
         {'statuses', Statuses, Pid} ->
+            lager:debug("recv statuses from ~p", [Pid]),
             clear_monitor(Ref),
             receive_statuses(Reqs, wh_json:merge_recursive(Statuses, AccJObj));
         {'DOWN', Ref, 'process', Pid, _R} ->
@@ -140,6 +162,7 @@ receive_statuses([{Pid, Ref} | Reqs], AccJObj) ->
             receive_statuses(Reqs, AccJObj)
     end.
 
+-spec clear_monitor(reference()) -> 'ok'.
 clear_monitor(Ref) ->
     erlang:demonitor(Ref, ['flush']),
     receive
@@ -147,25 +170,29 @@ clear_monitor(Ref) ->
     after 0 -> 'ok'
     end.
 
--spec async_most_recent_ets_statuses(ne_binary(), api_binary(), wh_proplist(), pid()) -> 'ok'.
+-spec async_most_recent_ets_statuses(ne_binary(), api_binary(), wh_proplist(), pid()) ->
+                                            'ok'.
 async_most_recent_ets_statuses(AcctId, AgentId, Options, Pid) ->
     case most_recent_ets_statuses(AcctId, AgentId, Options) of
         {'ok', Statuses} ->
             Pid ! {'statuses', Statuses, self()},
             'ok';
         {'error', _E} ->
-            Pid ! {'statuses', [], self()},
+            Pid ! {'statuses', wh_json:new(), self()},
             'ok'
     end.
 
--spec async_most_recent_db_statuses(ne_binary(), api_binary(), wh_proplist(), pid()) -> 'ok'.
+-spec async_most_recent_db_statuses(ne_binary(), api_binary(), wh_proplist(), pid()) ->
+                                           'ok'.
 async_most_recent_db_statuses(AcctId, AgentId, Options, Pid) ->
     case most_recent_db_statuses(AcctId, AgentId, Options) of
         {'ok', Statuses} ->
             Pid ! {'statuses', Statuses, self()},
+            lager:debug("store db fetch key ~p", [db_fetch_key('async_most_recent_db_statuses', AcctId, AgentId)]),
+            wh_cache:store_local(?ACDC_CACHE, db_fetch_key('async_most_recent_db_statuses', AcctId, AgentId), 'true'),
             'ok';
         {'error', _E} ->
-            Pid ! {'statuses', [], self()},
+            Pid ! {'statuses', wh_json:new(), self()},
             'ok'
     end.
 
@@ -347,5 +374,5 @@ changed([F|From], To, Add, Rm) ->
         'true' -> changed(From, lists:delete(F, To), Add, Rm);
         'false' -> changed(From, To, Add, [F|Rm])
     end.
-            
-    
+
+
