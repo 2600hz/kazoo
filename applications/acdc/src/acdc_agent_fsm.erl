@@ -1676,7 +1676,7 @@ get_endpoints(OrigEPs, Srv, Call, AgentId) ->
             {Add, Rm} = changed_endpoints(OrigEPs, EPs),
             _ = [monitor_endpoint(EP, AcctId, Srv) || EP <- Add],
             _ = [unmonitor_endpoint(EP, AcctId, Srv) || EP <- Rm],
-            
+
             {'ok', EPs};
         {'EXIT', E} ->
             lager:debug("failed to load endpoints: ~p", [E]),
@@ -1731,15 +1731,18 @@ maybe_notify(Ns, Key, State) ->
             'ok'
     end.
 
+-spec get_method(wh_json:object()) -> 'get' | 'post'.
 get_method(Ns) ->
     case wh_json:get_value(<<"method">>, Ns) of
         'undefined' -> 'get';
         M -> standardize_method(wh_util:to_lower_binary(M))
     end.
-standardize_method(<<"get">>) -> 'get';
+
+-spec standardize_method(ne_binary()) -> 'get' | 'post'.
 standardize_method(<<"post">>) -> 'post';
 standardize_method(_) -> 'get'.
 
+-spec notify(ne_binary(), 'get' | 'post', ne_binary(), fsm_state()) -> 'ok'.
 notify(Url, Method, Key, #state{acct_id=AcctId
                                 ,agent_id=AgentId
                                 ,member_call=MCall
@@ -1761,6 +1764,7 @@ notify(Url, Method, Key, #state{acct_id=AcctId
                ])),
     notify(Url, Method, Data).
 
+-spec notify(ne_binary(), 'get' | 'post', wh_json:object()) -> 'ok'.
 notify(Url, 'post', Data) ->
     notify(Url, [], 'post', wh_json:encode(Data)
            ,[{'content_type', "application/json"}]
@@ -1770,6 +1774,7 @@ notify(Url, 'get', Data) ->
            ,[], 'get', <<>>, []
           ).
 
+-spec notify(ne_binary(), [], 'get' | 'post', binary(), wh_proplist()) -> 'ok'.
 notify(Uri, Headers, Method, Body, Opts) ->
     case ibrowse:send_req(wh_util:to_list(Uri)
                           ,Headers
@@ -1789,12 +1794,14 @@ notify(Uri, Headers, Method, Body, Opts) ->
             lager:debug("failed to send request to ~s: ~p", [Uri, _E])
     end.
 
+-spec cdr_url(wh_json:object()) -> api_binary().
 cdr_url(JObj) ->
     case wh_json:get_value([<<"Notifications">>, ?NOTIFY_CDR], JObj) of
         'undefined' -> wh_json:get_ne_value(<<"CDR-Url">>, JObj);
         Url -> Url
     end.
 
+-spec recording_url(wh_json:object()) -> api_binary().
 recording_url(JObj) ->
     case wh_json:get_value([<<"Notifications">>, ?NOTIFY_RECORDING], JObj) of
         'undefined' -> wh_json:get_ne_value(<<"Recording-URL">>, JObj);

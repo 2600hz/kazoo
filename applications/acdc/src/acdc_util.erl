@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -23,6 +23,7 @@
 
 -include("acdc.hrl").
 
+-spec queue_presence_update(ne_binary(), ne_binary()) -> 'ok'.
 queue_presence_update(AcctId, QueueId) ->
     case wapi_acdc_queue:queue_size(AcctId, QueueId) of
         0 -> presence_update(AcctId, QueueId, ?PRESENCE_GREEN);
@@ -30,12 +31,14 @@ queue_presence_update(AcctId, QueueId) ->
         _N -> lager:debug("queue size for ~s(~s): ~p", [QueueId, AcctId, _N])
     end.
 
+-spec agent_presence_update(ne_binary(), ne_binary()) -> 'ok'.
 agent_presence_update(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' -> presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID);
         P when is_pid(P) -> presence_update(AcctId, AgentId, ?PRESENCE_GREEN)
     end.
 
+-spec presence_update(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 presence_update(AcctId, PresenceId, State) ->
     AcctDb = wh_util:format_account_id(AcctId, 'encoded'),
     {'ok', AcctDoc} = couch_mgr:open_cache_doc(AcctDb, AcctId),
