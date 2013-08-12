@@ -109,7 +109,7 @@ most_recent_statuses(AcctId, AgentId, Options) ->
     maybe_reduce_statuses(AgentId, receive_statuses([ETS, DB])).
 
 -spec maybe_start_db_lookup(atom(), ne_binary(), ne_binary(), list(), pid()) ->
-                                   {pid(), reference()}.
+                                   {pid(), reference()} | 'undefined'.
 maybe_start_db_lookup(F, AcctId, AgentId, Options, Self) ->
     lager:debug("db fetch key ~p", [db_fetch_key(F, AcctId, AgentId)]),
     case wh_cache:fetch_local(?ACDC_CACHE, db_fetch_key(F, AcctId, AgentId)) of
@@ -119,6 +119,8 @@ maybe_start_db_lookup(F, AcctId, AgentId, Options, Self) ->
     end.
 db_fetch_key(F, AcctId, AgentId) -> {F, AcctId, AgentId}.
 
+-spec maybe_reduce_statuses(api_binary(), wh_json:object()) ->
+                                   {'ok', wh_json:object()}.
 maybe_reduce_statuses('undefined', Statuses) ->
     {'ok', wh_json:map(fun map_reduce_agent_statuses/2, Statuses)};
 maybe_reduce_statuses(_, Statuses) -> {'ok', Statuses}.
@@ -196,6 +198,12 @@ async_most_recent_db_statuses(AcctId, AgentId, Options, Pid) ->
             'ok'
     end.
 
+-spec most_recent_ets_statuses(ne_binary()) ->
+                                      statuses_return() |
+                                      {'error', _}.
+-spec most_recent_ets_statuses(ne_binary(), api_binary(), wh_proplist()) ->
+                                      statuses_return() |
+                                      {'error', _}.
 most_recent_ets_statuses(AcctId) ->
     most_recent_ets_statuses(AcctId, 'undefined', []).
 most_recent_ets_statuses(AcctId, ?NE_BINARY = AgentId) ->
@@ -217,6 +225,12 @@ most_recent_ets_statuses(AcctId, AgentId, Options) ->
             {'ok', wh_json:get_value([<<"Agents">>], Resp, wh_json:new())}
     end.
 
+-spec most_recent_db_statuses(ne_binary()) ->
+                                      statuses_return() |
+                                      {'error', _}.
+-spec most_recent_db_statuses(ne_binary(), api_binary(), wh_proplist()) ->
+                                      statuses_return() |
+                                      {'error', _}.
 most_recent_db_statuses(AcctId) ->
     most_recent_db_statuses(AcctId, 'undefined', []).
 most_recent_db_statuses(AcctId, ?NE_BINARY = AgentId) ->
