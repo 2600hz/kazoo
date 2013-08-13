@@ -563,6 +563,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
 
                     acdc_stats:agent_connecting(AcctId, AgentId, CallId, CIDName, CIDNum),
                     lager:info("trying to ring agent endpoints(~p)", [length(UpdatedEPs)]),
+                    lager:debug("notifications for the queue: ~p", [wh_json:get_value(<<"Notifications">>, JObj)]),
                     {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
                                                           ,member_call=Call
                                                           ,member_call_id=CallId
@@ -834,6 +835,9 @@ ringing({'channel_answered', ACallId}, #state{agent_call_id=ACallId
 ringing({'channel_answered', MCallId}, #state{member_call_id=MCallId}=State) ->
     lager:debug("caller's channel answered"),
     {'next_state', 'ringing', State};
+ringing({'channel_answered', ACallId}=Evt, #state{agent_call_id=_NotACallId}=State) ->
+    lager:debug("recv answer for ~s, not ~s", [ACallId, _NotACallId]),
+    ringing(Evt, State#state{agent_call_id=ACallId});
 
 ringing({'sync_req', JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
@@ -1787,7 +1791,7 @@ notify(Uri, Headers, Method, Body, Opts) ->
                          )
     of
         {'ok', _Status, _ResponseHeaders, _ResponseBody} ->
-            lager:debug("!s req to ~s: ~s", [Method, Uri, _Status]);
+            lager:debug("~s req to ~s: ~s", [Method, Uri, _Status]);
         {'error', {'url_parsing_failed',_}} ->
             lager:debug("failed to parse the URL ~s", [Uri]);
         {'error', _E} ->
