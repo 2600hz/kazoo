@@ -158,6 +158,7 @@ get_interface_properties(Node, Interface) ->
 -spec get_sip_to(wh_proplist()) -> ne_binary().
 get_sip_to(Props) ->
     get_sip_to(Props, props:get_value(<<"Call-Direction">>, Props)).
+
 get_sip_to(Props, <<"outbound">>) ->
     case props:get_value(<<"Channel-Presence-ID">>, Props) of
         'undefined' -> get_sip_request(Props);
@@ -173,12 +174,19 @@ get_sip_to(Props, _) ->
 -spec get_sip_from(wh_proplist()) -> ne_binary().
 get_sip_from(Props) ->
     get_sip_from(Props, props:get_value(<<"Call-Direction">>, Props)).
+
 get_sip_from(Props, <<"outbound">>) ->
-    Number = props:get_value(<<"Other-Leg-Destination-Number">>, Props, <<"nonumber">>),
-    Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                     ,<<"variable_sip_auth_realm">>
-                                    ], Props, ?DEFAULT_REALM),
-    <<Number/binary, "@", Realm/binary>>;
+    case props:get_value(<<"Other-Leg-Channel-Name">>, Props) of
+        'undefined' ->
+            Number = props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props, <<"nouser">>),
+            Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
+                                             ,<<"variable_sip_auth_realm">>
+                                            ], Props, ?DEFAULT_REALM),
+            props:get_value(<<"variable_sip_from_uri">>, Props,
+                            <<Number/binary, "@", Realm/binary>>);
+        OtherChannel -> 
+            lists:last(binary:split(OtherChannel, <<"/">>, ['global']))
+    end;
 get_sip_from(Props, _) ->
     Default = <<(props:get_value(<<"sip_from_user">>, Props, <<"nouser">>))/binary
                 ,"@"
