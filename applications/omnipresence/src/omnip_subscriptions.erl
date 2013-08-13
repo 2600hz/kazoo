@@ -25,11 +25,12 @@
          ,table_config/0
 
          ,find_subscription/1
-         ,find_subscriptions/2
 
-         ,search_for_subscriptions/1, search_for_subscriptions/2
+         ,search_for_subscriptions/1
+         ,search_for_subscriptions/2
 
-         ,subscription_to_json/1 ,subscriptions_to_json/1
+         ,subscription_to_json/1
+         ,subscriptions_to_json/1
         ]).
 
 -export([init/1
@@ -175,7 +176,11 @@ maybe_send_update(JObj, State) ->
                 ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    case find_subscriptions(To, From) of
+    User = case wh_json:get_value(<<"Call-Direction">>, JObj) of 
+               <<"outbound">> -> To;
+               _Else -> From
+           end,
+    case find_subscriptions(User) of
         {'ok', Subs} ->
             [send_update(Update, S) || S <- Subs];
         {'error', 'not_found'} ->
@@ -365,9 +370,6 @@ find_subscription(#omnip_subscription{user=U
 -spec find_subscriptions(ne_binary()) ->
                                 {'ok', subscriptions()} |
                                 {'error', 'not_found'}.
--spec find_subscriptions(ne_binary(), ne_binary()) ->
-                                {'ok', subscriptions()} |
-                                {'error', 'not_found'}.
 find_subscriptions(User) ->
     case ets:select(table_id(), [{#omnip_subscription{user='$1'
                                                       ,_='_'
@@ -377,23 +379,20 @@ find_subscriptions(User) ->
                                  }])
     of
         [] -> {'error', 'not_found'};
-        Subs -> {'ok', Subs}
+        Subs -> {'ok', dedup(Subs)}
     end.
 
-find_subscriptions(To, From) ->
-    case ets:select(table_id(), [{#omnip_subscription{user='$1'
-                                                      ,_='_'
-                                                     }
-                                  ,[{'orelse'
-                                     ,{'=:=', '$1', {'const', To}}
-                                     ,{'=:=', '$1', {'const', From}}
-                                    }]
-                                  ,['$_']
-                                 }])
-    of
-        [] -> {'error', 'not_found'};
-        Subs -> {'ok', Subs}
-    end.
+-spec dedup(subscriptions()) -> subscriptions().
+dedup(Subscriptions) ->
+    dedup(Subscriptions, dict:new()).
+
+-spec dedup(subscriptions(), dict()) -> subscriptions().
+dedup([], Dictionary) ->
+    [Subscription || {_, Subscription} <- dict:to_list(Dictionary)];
+dedup([#omnip_subscription{user=User, stalker=Stalker}=Subscription
+       |Subscriptions
+      ], Dictionary) ->
+    dedup(Subscriptions, dict:store({User, Stalker}, Subscription, Dictionary)).
 
 expire_old_subscriptions() ->
     Now = wh_util:current_tstamp(),
