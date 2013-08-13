@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Token auth module
 %%%
@@ -32,6 +32,8 @@
                     ,'permanent', 5000, 'worker', [?MODULE]
                    }).
 
+-define(LOOP_TIMEOUT, whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -57,9 +59,8 @@ stop() ->
 init(Parent) ->
     proc_lib:init_ack(Parent, {'ok', self()}),
     put('callid', ?LOG_SYSTEM_ID),
-    Expiry = whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_DAY),
 
-    ?MODULE:cleanup_loop(Expiry).
+    ?MODULE:cleanup_loop(?LOOP_TIMEOUT).
 
 -spec finish_request(cb_context:context()) -> any().
 finish_request(#cb_context{auth_doc='undefined'}) -> 'ok';
@@ -79,7 +80,7 @@ cleanup_loop(Expiry) ->
     after
         Timeout ->
             ?MODULE:clean_expired(Expiry),
-            ?MODULE:cleanup_loop(whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_DAY))
+            ?MODULE:cleanup_loop(?LOOP_TIMEOUT)
     end.
 
 clean_expired(Expiry) ->
