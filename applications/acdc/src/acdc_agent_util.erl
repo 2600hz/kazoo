@@ -105,13 +105,11 @@ most_recent_statuses(AcctId, AgentId, Options) ->
 
     DB = maybe_start_db_lookup('async_most_recent_db_statuses', AcctId, AgentId, Options, Self),
 
-    lager:debug("ets ~p db ~p", [ETS, DB]),
     maybe_reduce_statuses(AgentId, receive_statuses([ETS, DB])).
 
 -spec maybe_start_db_lookup(atom(), ne_binary(), ne_binary(), list(), pid()) ->
                                    {pid(), reference()} | 'undefined'.
 maybe_start_db_lookup(F, AcctId, AgentId, Options, Self) ->
-    lager:debug("db fetch key ~p", [db_fetch_key(F, AcctId, AgentId)]),
     case wh_cache:fetch_local(?ACDC_CACHE, db_fetch_key(F, AcctId, AgentId)) of
         {'ok', _} -> 'undefined';
         {'error', 'not_found'} ->
@@ -152,7 +150,6 @@ receive_statuses(['undefined' | Reqs], AccJObj) ->
 receive_statuses([{Pid, Ref} | Reqs], AccJObj) ->
     receive
         {'statuses', Statuses, Pid} ->
-            lager:debug("recv statuses from ~p", [Pid]),
             clear_monitor(Ref),
             receive_statuses(Reqs, wh_json:merge_recursive(Statuses, AccJObj));
         {'DOWN', Ref, 'process', Pid, _R} ->
@@ -190,7 +187,6 @@ async_most_recent_db_statuses(AcctId, AgentId, Options, Pid) ->
     case most_recent_db_statuses(AcctId, AgentId, Options) of
         {'ok', Statuses} ->
             Pid ! {'statuses', Statuses, self()},
-            lager:debug("store db fetch key ~p", [db_fetch_key('async_most_recent_db_statuses', AcctId, AgentId)]),
             wh_cache:store_local(?ACDC_CACHE, db_fetch_key('async_most_recent_db_statuses', AcctId, AgentId), 'true'),
             'ok';
         {'error', _E} ->
