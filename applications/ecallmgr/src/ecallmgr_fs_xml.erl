@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Generate the XML for various FS responses
 %%% @end
@@ -665,7 +665,7 @@ condition_el(Child) when not is_list(Child) ->
     condition_el([Child]);
 condition_el(Children) ->
     #xmlElement{name='condition'
-                ,content=[Child || Child <- Children, Child =/= 'undefined'] 
+                ,content=[Child || Child <- Children, Child =/= 'undefined']
                }.
 
 -spec condition_el(xml_el() | xml_els() | 'undefined', xml_attrib_value(), xml_attrib_value()) -> xml_el().
@@ -673,11 +673,11 @@ condition_el(Child, Field, Expression) when not is_list(Child) ->
     condition_el([Child], Field, Expression);
 condition_el(Children, Field, Expression) ->
     #xmlElement{name='condition'
-                ,content=[Child || Child <- Children, Child =/= 'undefined'] 
+                ,content=[Child || Child <- Children, Child =/= 'undefined']
                 ,attributes=[xml_attrib('field', Field)
                              ,xml_attrib('expression', Expression)
                             ]
-               }.    
+               }.
 
 -spec action_el(xml_attrib_value()) -> xml_el().
 -spec action_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
