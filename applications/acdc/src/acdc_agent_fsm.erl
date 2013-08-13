@@ -544,7 +544,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
         MyId ->
             lager:debug("trying to ring agent ~s to connect to caller in queue ~s", [AgentId, QueueId]),
 
-            case get_endpoints(OrigEPs, Srv, Call, AgentId) of
+            case get_endpoints(OrigEPs, Srv, Call, AgentId, QueueId) of
                 {'error', 'no_endpoints'} ->
                     lager:info("agent ~s has no endpoints assigned; logging agent out", [AgentId]),
                     acdc_agent:logout_agent(Srv),
@@ -1294,7 +1294,7 @@ handle_event('load_endpoints', StateName, #state{agent_id=AgentId
     %% Inform us of things with us as owner
     catch gproc:reg(?OWNER_UPDATE_REG(AcctId, AgentId)),
 
-    case get_endpoints([], Srv, Call, AgentId) of
+    case get_endpoints([], Srv, Call, AgentId, 'undefined') of
         {'error', 'no_endpoints'} -> {'next_state', StateName, State};
         {'ok', EPs} -> {'next_state', StateName, State#state{endpoints=EPs}};
         {'error', E} -> {'stop', E, State}
@@ -1666,7 +1666,7 @@ maybe_remove_endpoint(EPId, EPs, AcctId, Srv) ->
             EPs1
     end.
 
-get_endpoints(OrigEPs, Srv, Call, AgentId) ->
+get_endpoints(OrigEPs, Srv, Call, AgentId, QueueId) ->
     case catch acdc_util:get_endpoints(Call, AgentId) of
         [] ->
             {'error', 'no_endpoints'};
@@ -1677,7 +1677,7 @@ get_endpoints(OrigEPs, Srv, Call, AgentId) ->
             _ = [monitor_endpoint(EP, AcctId, Srv) || EP <- Add],
             _ = [unmonitor_endpoint(EP, AcctId, Srv) || EP <- Rm],
 
-            {'ok', EPs};
+            {'ok', [wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Queue-ID">>], QueueId, EP) || EP <- EPs]};
         {'EXIT', E} ->
             lager:debug("failed to load endpoints: ~p", [E]),
             acdc_agent:stop(Srv),
