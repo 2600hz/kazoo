@@ -148,8 +148,10 @@ resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided(cb_context:context()) -> cb_context:context().
--spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
+-spec content_types_provided(cb_context:context()) ->
+                                    cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(#cb_context{}=Context) -> Context.
 content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
     CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
@@ -299,7 +301,6 @@ is_valid_endpoint(Context, DataJObj) ->
 is_valid_endpoint_type(Context, CallMeJObj) ->
     case wh_json:get_value(<<"pvt_type">>, CallMeJObj) of
         <<"device">> -> 'true';
-        %%<<"user">> -> true;
         _ ->
             {'false'
              ,cb_context:add_validation_error(<<"id">>, <<"type">>
@@ -422,7 +423,7 @@ read(Id, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
@@ -436,13 +437,13 @@ check_queue_schema(QueueId, Context) ->
 on_successful_validation('undefined', #cb_context{doc=Doc}=Context) ->
     Props = [{<<"pvt_type">>, <<"queue">>}],
     Context#cb_context{doc=wh_json:set_values(Props, Doc)};
-on_successful_validation(QueueId, #cb_context{}=Context) -> 
+on_successful_validation(QueueId, #cb_context{}=Context) ->
     crossbar_doc:load_merge(QueueId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 load_queue_agents(Id, #cb_context{resp_data=Queue}=Context) ->
@@ -539,6 +540,7 @@ fetch_all_queue_stats(Context) ->
         StartRange -> fetch_ranged_queue_stats(Context, StartRange)
     end.
 
+-spec fetch_all_current_queue_stats(cb_context:context()) -> cb_context:context().
 fetch_all_current_queue_stats(Context) ->
     lager:debug("querying for all recent stats"),
     Req = props:filter_undefined(
@@ -551,7 +553,7 @@ fetch_all_current_queue_stats(Context) ->
 
 format_stats(Context, Resp) ->
     Stats = wh_json:from_list([{<<"current_timestamp">>, wh_util:current_tstamp()}
-                               ,{<<"stats">>, 
+                               ,{<<"stats">>,
                                  wh_doc:public_fields(
                                    wh_json:get_value(<<"Handled">>, Resp, []) ++
                                        wh_json:get_value(<<"Abandoned">>, Resp, []) ++
@@ -604,6 +606,7 @@ fetch_ranged_queue_stats(Context, From, To, 'false') ->
     lager:debug("ranged query from ~b to ~b of archived stats", [From, To]),
     Context.
 
+-spec fetch_from_amqp(cb_context:context(), wh_proplist()) -> cb_context:context().
 fetch_from_amqp(Context, Req) ->
     case whapps_util:amqp_pool_request(Req
                                        ,fun wapi_acdc_stats:publish_current_calls_req/1

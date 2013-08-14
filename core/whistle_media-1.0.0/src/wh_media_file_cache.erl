@@ -41,6 +41,7 @@
          ,reqs :: [{pid(), reference()},...] | []
          ,timer_ref :: reference()
          }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -85,8 +86,14 @@ init([Db, Id, Attachment, CallId]) ->
     end,
     maybe_start_file_cache(Db, Id, Attachment).
 
+-spec maybe_start_file_cache(ne_binary(), ne_binary(), ne_binary()) ->
+                                    {'stop', _} |
+                                    {'ok', state()}.
 maybe_start_file_cache(Db, Id, Attachment) ->
     case couch_mgr:open_doc(Db, Id) of
+        {'error', 'not_found'} ->
+            lager:warning("failed to find '~s' in '~s'", [Id, Db]),
+            {'stop', 'not_found'};
         {'error', Reason} ->
             lager:debug("unable get metadata for ~s on ~s in ~s: ~p", [Attachment, Id, Db, Reason]),
             {'stop', Reason};

@@ -842,7 +842,7 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--type get_results_return() :: {'ok', wh_json:objects() | wh_json:json_strings()} |
+-type get_results_return() :: {'ok', wh_json:objects() | wh_json:keys()} |
                               couchbeam_error().
 -spec get_all_results(ne_binary(), ne_binary()) -> get_results_return().
 -spec get_results(ne_binary(), ne_binary()) -> get_results_return().
