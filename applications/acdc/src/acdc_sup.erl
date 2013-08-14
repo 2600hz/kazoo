@@ -18,7 +18,12 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--define(CHILDREN, [?SUPER('acdc_agents_sup')
+-define(CACHE, {?ACDC_CACHE, {'wh_cache', 'start_link', [?ACDC_CACHE]}
+                ,'permanent', 5000, 'worker', ['wh_cache']
+               }).
+
+-define(CHILDREN, [?CACHE
+                   ,?SUPER('acdc_agents_sup')
                    ,?SUPER('acdc_queues_sup')
                    ,?SUPER('acdc_stats_sup')
                    ,?WORKER('acdc_agent_manager')

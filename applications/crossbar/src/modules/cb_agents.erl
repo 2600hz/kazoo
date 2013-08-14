@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% CRUD for call queues
@@ -132,9 +132,12 @@ content_types_provided(#cb_context{}=Context, _, ?STATUS_PATH_TOKEN) -> Context.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context()) ->
+                      cb_context:context().
+-spec validate(cb_context:context(), path_token()) ->
+                      cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) ->
+                      cb_context:context().
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context).
 
@@ -153,6 +156,7 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, AgentId, ?STATUS_PATH_TOKEN)
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?STATUS_PATH_TOKEN, AgentId) ->
     fetch_agent_status(AgentId, Context).
 
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, AgentId, ?STATUS_PATH_TOKEN) ->
     case cb_context:req_value(Context, <<"status">>) of
         <<"login">> -> publish_update(Context, AgentId, fun wapi_acdc_agent:publish_login/1);
@@ -162,6 +166,7 @@ post(Context, AgentId, ?STATUS_PATH_TOKEN) ->
     end,
     crossbar_util:response(<<"status update sent">>, Context).
 
+-spec publish_update(cb_context:context(), api_binary(), function()) -> 'ok'.
 publish_update(Context, AgentId, PubFun) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, cb_context:account_id(Context)}
@@ -183,19 +188,19 @@ publish_update(Context, AgentId, PubFun) ->
 read(Id, Context) -> crossbar_doc:load(Id, Context).
 
 -define(CB_AGENTS_LIST, <<"users/crossbar_listing">>).
+-spec fetch_all_agent_statuses(cb_context:context()) -> cb_context:context().
 fetch_all_agent_statuses(Context) ->
     fetch_all_current_statuses(Context
                                ,'undefined'
                                ,cb_context:req_value(Context, <<"status">>)
                               ).
 
+-spec fetch_agent_status(api_binary(), cb_context:context()) -> cb_context:context().
 fetch_agent_status(AgentId, Context) ->
     case wh_util:is_true(cb_context:req_value(Context, <<"recent">>)) of
         'false' ->
-            case acdc_agent_util:most_recent_status(cb_context:account_id(Context), AgentId) of
-                {'ok', Resp} ->  crossbar_util:response(Resp, Context);
-                {'error', E} -> crossbar_util:response('error', <<"failed to query status">>, 500, E, Context)
-            end;
+            {'ok', Resp} = acdc_agent_util:most_recent_status(cb_context:account_id(Context), AgentId),
+            crossbar_util:response(Resp, Context);
         'true' ->
             fetch_all_current_statuses(Context
                                        ,AgentId
@@ -210,11 +215,13 @@ fetch_all_agent_stats(Context) ->
         StartRange -> fetch_ranged_agent_stats(Context, StartRange)
     end.
 
+-spec fetch_all_current_agent_stats(cb_context:context()) -> cb_context:context().
 fetch_all_current_agent_stats(Context) ->
     fetch_all_current_stats(Context
                             ,cb_context:req_value(Context, <<"agent_id">>)
                            ).
 
+-spec fetch_all_current_stats(cb_context:context(), api_binary()) -> cb_context:context().
 fetch_all_current_stats(Context, AgentId) ->
     Now = wh_util:current_tstamp(),
     Yday = Now - ?SECONDS_IN_DAY,
@@ -228,6 +235,8 @@ fetch_all_current_stats(Context, AgentId) ->
             ]),
     fetch_stats_from_amqp(Context, Req).
 
+-spec fetch_all_current_statuses(cb_context:context(), api_binary(), api_binary()) ->
+                                        cb_context:context().
 fetch_all_current_statuses(Context, AgentId, Status) ->
     Now = wh_util:current_tstamp(),
     Yday = Now - ?SECONDS_IN_DAY,
@@ -242,11 +251,10 @@ fetch_all_current_statuses(Context, AgentId, Status) ->
               ,{<<"Most-Recent">>, wh_util:is_false(Recent)}
              ]),
 
-    case acdc_agent_util:most_recent_statuses(cb_context:account_id(Context), Opts) of
-        {'ok', Resp} -> crossbar_util:response(Resp, Context);
-        {'error', E} -> crossbar_util:response('error', <<"failed to query statuses">>, 500, E, Context)
-    end.
+    {'ok', Resp} = acdc_agent_util:most_recent_statuses(cb_context:account_id(Context), Opts),
+    crossbar_util:response(Resp, Context).
 
+-spec fetch_ranged_agent_stats(cb_context:context(), pos_integer()) -> cb_context:context().
 fetch_ranged_agent_stats(Context, StartRange) ->
     MaxRange = whapps_config:get_integer(<<"acdc">>, <<"archive_window_s">>, 3600),
 
@@ -272,6 +280,8 @@ fetch_ranged_agent_stats(Context, StartRange) ->
             fetch_ranged_agent_stats(Context, F, To, F >= Past)
     end.
 
+-spec fetch_ranged_agent_stats(cb_context:context(), pos_integer(), pos_integer(), boolean()) ->
+                                      cb_context:context().
 fetch_ranged_agent_stats(Context, From, To, 'true') ->
     lager:debug("ranged query from ~b to ~b(~b) of current stats (now ~b)", [From, To, To-From, wh_util:current_tstamp()]),
     Req = props:filter_undefined(
@@ -287,7 +297,7 @@ fetch_ranged_agent_stats(Context, From, To, 'false') ->
     lager:debug("ranged query from ~b to ~b of archived stats", [From, To]),
     Context.
 
-
+-spec fetch_stats_from_amqp(cb_context:context(), wh_proplist()) -> cb_context:context().
 fetch_stats_from_amqp(Context, Req) ->
     case whapps_util:amqp_pool_request(Req
                                        ,fun wapi_acdc_stats:publish_current_calls_req/1
@@ -311,6 +321,7 @@ format_stats(Context, Resp) ->
 
     crossbar_util:response(lists:foldl(fun format_stats_fold/2, wh_json:new(), Stats), Context).
 
+-spec format_stats_fold(wh_json:object(), wh_json:object()) -> wh_json:object().
 format_stats_fold(Stat, Acc) ->
     QueueId = wh_json:get_value(<<"queue_id">>, Stat),
 
@@ -348,7 +359,8 @@ maybe_add_answered(_, _, _S) ->
     lager:debug("status ~s not indicative of an answered call", [_S]),
     [].
 
--spec add_answered(wh_json:object(), wh_json:object()) -> [{wh_json:key(), non_neg_integer()},...].
+-spec add_answered(wh_json:object(), wh_json:object()) ->
+                          [{wh_json:key(), non_neg_integer()},...].
 add_answered(Stat, Acc) ->
     AgentId = wh_json:get_value(<<"agent_id">>, Stat),
     QueueId = wh_json:get_value(<<"queue_id">>, Stat),
@@ -363,6 +375,8 @@ add_answered(Stat, Acc) ->
      ,{QAnsweredK, QAnswered + 1}
     ].
 
+-spec maybe_add_misses(wh_json:object(), wh_json:object(), ne_binary()) ->
+                              wh_json:object().
 maybe_add_misses(Stat, Acc, QueueId) ->
     case wh_json:get_value(<<"misses">>, Stat, []) of
         [] -> Acc;
@@ -372,6 +386,7 @@ maybe_add_misses(Stat, Acc, QueueId) ->
                         end, Acc, Misses)
     end.
 
+-spec add_miss(wh_json:object(), wh_json:object(), ne_binary()) -> wh_json:object().
 add_miss(Miss, Acc, QueueId) ->
     AgentId = wh_json:get_value(<<"agent_id">>, Miss),
     MissesK = [AgentId, <<"missed_calls">>],
@@ -417,17 +432,19 @@ normalize_view_results(JObj, Acc) ->
      | Acc
     ].
 
-validate_status_change(Context) -> 
+-spec validate_status_change(cb_context:context()) -> cb_context:context().
+validate_status_change(Context) ->
     case cb_context:resp_status(Context) of
         'success' ->
             lager:debug("read agent doc"),
             validate_status_change(Context, cb_context:req_value(Context, <<"status">>));
-        _ -> 
+        _ ->
             lager:debug("failed to read agent doc"),
             check_for_status_error(Context, cb_context:req_value(Context, <<"status">>))
     end.
 
 -define(STATUS_CHANGES, [<<"login">>, <<"logout">>, <<"pause">>, <<"resume">>]).
+-spec validate_status_change(cb_context:context(), api_binary()) -> cb_context:context().
 validate_status_change(Context, S) ->
     case lists:member(S, ?STATUS_CHANGES) of
         'true' -> validate_status_change_params(Context, S);
@@ -436,6 +453,7 @@ validate_status_change(Context, S) ->
             cb_context:add_validation_error(<<"status">>, <<"enum">>, <<"value is not a valid status">>, Context)
     end.
 
+-spec check_for_status_error(cb_context:context(), api_binary()) -> cb_context:context().
 check_for_status_error(Context, S) ->
     case lists:member(S, ?STATUS_CHANGES) of
         'true' -> Context;
@@ -444,6 +462,8 @@ check_for_status_error(Context, S) ->
             cb_context:add_validation_error(<<"status">>, <<"enum">>, <<"value is not a valid status">>, Context)
     end.
 
+-spec validate_status_change_params(cb_context:context(), ne_binary()) ->
+                                           cb_context:context().
 validate_status_change_params(Context, <<"pause">>) ->
     try wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>)) of
         N when N >= 0 -> cb_context:set_resp_status(Context, 'success');

@@ -6,7 +6,7 @@
 
 -define(TIMEOUT, 1000 * 60 * 60). %% check every hour
 
--define(COMPACT_THRESHOLD, 500). 
+-define(COMPACT_THRESHOLD, 500).
 -define(MIN_DISK_SIZE, 131072).
 -define(DEFAULT_PORT, 5984).
 -define(DEFAULT_ADMIN_PORT, 5986).
@@ -23,7 +23,7 @@
                             'db_not_found' | 'worker_is_dead' | 'invalid_db_name' |
                             'unknown_req_id' | 'retry_later' |
                             'req_timedout' | 'sel_conn_closed' |
-                            'invalid_view_name' |
+                            'invalid_view_name' | 'gateway_timeout' |
                             {integer(), term()} | % {error_code, body}
                             integer() |
                             {'EXIT', term()} |
