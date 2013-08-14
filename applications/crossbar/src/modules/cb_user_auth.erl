@@ -291,7 +291,8 @@ create_token(#cb_context{doc=JObj}=Context) ->
                 {'ok', Doc} ->
                     AuthToken = wh_json:get_value(<<"_id">>, Doc),
                     lager:debug("created new local auth token ~s", [AuthToken]),
-                    crossbar_util:response(crossbar_util:response_auth(JObj)
+                    JObj1 = wh_json:set_value(<<"apps">>, load_installed_apps(AccountId, OwnerId), JObj),
+                    crossbar_util:response(crossbar_util:response_auth(JObj1)
                                             ,Context#cb_context{auth_token=AuthToken
                                                                 ,auth_doc=Doc
                                                                });
@@ -299,6 +300,78 @@ create_token(#cb_context{doc=JObj}=Context) ->
                     lager:debug("could not create new local auth token, ~p", [R]),
                     cb_context:add_system_error('invalid_credentials', Context)
             end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to create a token and save it to the token db
+%% @end
+%%--------------------------------------------------------------------
+-spec load_installed_apps(ne_binary(), ne_binary()) -> ne_binaries().
+load_installed_apps(AccountId, UserId) ->
+    AccoundDb = wh_util:format_account_id(AccountId, 'encoded'),
+    Routines = [fun(_) -> load_apps_ids(AccoundDb) end
+                ,fun(Ids) -> load_apps(AccoundDb, UserId, Ids) end
+               ],
+    lists:foldl(fun(F, C) -> F(C) end, [], Routines).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to create a token and save it to the token db
+%% @end
+%%--------------------------------------------------------------------
+-spec load_apps_ids(ne_binary()) -> ne_binaries() | [].
+load_apps_ids(AccoundDb) ->
+    case couch_mgr:get_all_results(AccoundDb, <<"apps_store/crossbar_listing">>) of
+        {'ok', JObjs} ->
+            lists:foldl(
+                fun(JObj, Acc) ->
+                    case wh_json:get_value([<<"value">>, <<"installed">>], JObj) of
+                        'false' -> Acc;
+                        'true' -> 
+                            [wh_json:get_value(<<"key">>, JObj)|Acc]
+                    end
+                end
+                ,[]
+                ,JObjs);
+        {'error', _E} ->
+            []
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to create a token and save it to the token db
+%% @end
+%%--------------------------------------------------------------------
+-spec load_apps(ne_binary(), ne_binary(), ne_binaries()) -> ne_binaries() | [].
+-spec load_apps(ne_binary(), ne_binary(), ne_binaries(), ne_binaries()) -> ne_binaries() | [].
+load_apps(_, _, []) ->
+    [];
+load_apps(AccoundDb, UserId, Ids) ->
+    load_apps(AccoundDb, UserId, Ids, []).
+
+load_apps(_, _, [], Acc) ->
+    Acc;
+load_apps(AccoundDb, UserId, [Id|Ids], Acc) ->
+    case couch_mgr:open_doc(AccoundDb, Id) of
+        {'ok', JObj} ->
+            case wh_json:get_value([<<"installed">>, <<"all">>], JObj) of
+                'true' ->
+                    load_apps(AccoundDb, UserId, Ids, [Id|Acc]);
+                _ ->
+                    Users = wh_json:get_value([<<"installed">>, <<"users">>], JObj),
+                    case lists:member(UserId, Users) of
+                        'true' ->
+                            load_apps(AccoundDb, UserId, Ids, [Id|Acc]);
+                        'false' ->
+                            load_apps(AccoundDb, UserId, Ids, Acc)
+                    end
+            end;
+        {'error', _E} ->
+            load_apps(AccoundDb, UserId, Ids, Acc)
     end.
 
 %%--------------------------------------------------------------------
