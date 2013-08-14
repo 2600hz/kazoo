@@ -75,6 +75,8 @@
                                              ,<<"Eavesdrop-Call-ID">>
                                              ,<<"Eavesdrop-Mode">>
                                              ,<<"Eavesdrop-Group-ID">>
+                                             ,<<"Fax-Ident">>
+                                             ,<<"Fax-Header">>
                                          | fun() ->
                                                    wapi_dialplan:optional_bridge_req_headers()
                                            end()

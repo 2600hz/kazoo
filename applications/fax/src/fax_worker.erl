@@ -501,6 +501,8 @@ send_fax(JobId, JObj, Q) ->
                ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
                ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
                ,{<<"To-DID">>, wnm_util:to_e164(wh_json:get_value(<<"to_number">>, JObj))}
+               ,{<<"Fax-Ident">>, wh_json:get_value(<<"fax_ident">>, JObj)}
+               ,{<<"Fax-Header">>, wh_json:get_value(<<"fax_header">>, JObj)}
                ,{<<"Resource-Type">>, <<"originate">>}
                ,{<<"Msg-ID">>, JobId}
                ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
