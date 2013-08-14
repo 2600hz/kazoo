@@ -544,9 +544,6 @@ unbind_q(Queue, Props) ->
 unbind_q(Q, 'undefined', CallId) ->
     'ok' = amqp_util:unbind_q_from_callevt(Q, CallId),
     'ok' = amqp_util:unbind_q_from_callevt(Q, CallId, 'cdr'),
-    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?NEW_CHANNEL_ROUTING_KEY),
-    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?DESTROY_CHANNEL_ROUTING_KEY(CallId)),
-    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?ANSWERED_CHANNEL_ROUTING_KEY(CallId)),
     'ok' = amqp_util:unbind_q_from_callevt(Q, CallId, 'publisher_usurp');
 
 unbind_q(Q, ['events'|T], CallId) ->
