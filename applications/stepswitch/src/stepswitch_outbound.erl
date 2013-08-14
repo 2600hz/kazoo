@@ -267,8 +267,8 @@ originate_to_endpoints(Endpoints, JObj) ->
                  ,{<<"Outbound-Caller-ID-Name">>, CIDName}
                  ,{<<"Outbound-Callee-ID-Number">>, CalleeIdNumber}
                  ,{<<"Outbound-Callee-ID-Name">>, CalleeIdName}
-                 ,{<<"Fax-Ident">>, wh_json:get_value(<<"Fax-Ident">>, JObj)}
-                 ,{<<"Fax-Header">>, wh_json:get_value(<<"Fax-Header">>, JObj)}
+                 ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, JObj, CIDNum)}
+                 ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, CIDName)}
                  ,{<<"Caller-ID-Number">>, CIDNum}
                  ,{<<"Caller-ID-Name">>, CIDName}
                  ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}

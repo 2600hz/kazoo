@@ -202,6 +202,8 @@
                                ,{<<"Enable-T38-Fax">>, <<"fax_enable_t38">>}
                                ,{<<"Enable-T38-Fax-Request">>, <<"fax_enable_t38_request">>}
                                ,{<<"Enable-T38-Passthrough">>, <<"t38_passthru">>}
+                               ,{<<"Fax-Identity-Number">>, <<"fax_ident">>}
+                               ,{<<"Fax-Identity-Name">>, <<"fax_header">>}
                                ,{<<"sip_rh_X-Redirect-Server">>, <<"sip_rh_X-Redirect-Server">>}
                                ,{<<"park_after_bridge">>, <<"park_after_bridge">>}
                                ,{<<"continue_on_fail">>, <<"continue_on_fail">>}

@@ -32,7 +32,7 @@
               ,<<"Control-Queue">>, <<"Call-ID">>, <<"Application-Data">>
               ,<<"Account-ID">>, <<"Outbound-Call-ID">>
               ,<<"Call-ID">>, <<"Mode">>, <<"Group-ID">> % Eavesdrop
-              ,<<"Force-Outbound">>, <<"Fax-Ident">>, <<"Fax-Header">>
+              ,<<"Force-Outbound">>, <<"Fax-Identity-Number">>, <<"Fax-Identity-Name">>
               ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
               ,<<"Enable-T38-Passthrough">>, <<"Force-Fax">>, <<"Enable-T38-Gateway">>
          ]).
