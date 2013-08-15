@@ -374,21 +374,14 @@ release_failed_job('job_timeout', _Error, JObj) ->
 
 -spec release_successful_job(wh_json:object(), wh_json:object()) -> 'ok'.
 release_successful_job(Resp, JObj) ->
-    Result = [{<<"success">>, wh_json:is_true([<<"Resource-Response">>, <<"Fax-Success">>], Resp, 'false')}
-              ,{<<"result_code">>, wh_json:get_value([<<"Resource-Response">>, <<"Fax-Result-Code">>], Resp, 0)}
-              ,{<<"result_message">>, wh_json:get_value([<<"Resource-Response">>, <<"Fax-Result-Text">>], Resp, <<>>)}
-              ,{<<"pages_sent">>, wh_json:get_integer_value([<<"Resource-Response">>, <<"Fax-Transferred-Pages">>], Resp, 0)}
-              ,{<<"time_elapsed">>, elapsed_time(JObj)}
-              ,{<<"fax_bad_rows">>, wh_json:get_integer_value([<<"Resource-Response">>, <<"Fax-Bad-Rows">>], Resp, 0)}
-              ,{<<"fax_speed">>, wh_json:get_integer_value([<<"Resource-Response">>, <<"Fax-Transfer-Rate">>], Resp, 0)}
-              ,{<<"fax_receiver_id">>, <<>>}
-              ,{<<"fax_error_correction">>, wh_json:is_true([<<"Resource-Response">>, <<"Fax-ECM-Used">>], Resp, 'false')}
+    Result = [{<<"time_elapsed">>, elapsed_time(JObj)}
+              | fax_request:fax_properties(wh_json:get_value(<<"Resource-Response">>, Resp))
              ],
     release_job(Result, JObj).
 
 -spec release_job(wh_proplist(), wh_json:object()) -> 'ok' | 'failure'.
 release_job(Result, JObj) ->
-    Success = props:get_value(<<"success">>, Result, 'false'),
+    Success = props:is_true(<<"success">>, Result, 'false'),
     Updaters = [fun(J) -> wh_json:set_value(<<"tx_result">>, wh_json:from_list(Result), J) end
                 ,fun(J) ->
                          Attempts = wh_json:get_integer_value(<<"attempts">>, J, 0),

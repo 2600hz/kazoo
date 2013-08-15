@@ -14,6 +14,7 @@
 -export([start_link/2
          ,relay_event/2
          ,receive_fax/2
+         ,fax_properties/1
         ]).
 
 %% gen_listener callbacks
@@ -255,13 +256,16 @@ create_fax_doc(Call, OwnerId, JObj) ->
                           ]),
 
     Props = [{<<"name">>, Name}
+             ,{<<"to_number">>, whapps_call:request_user(Call)}
+             ,{<<"from_number">>, whapps_call:from_user(Call)}
              ,{<<"description">>, <<"fax document received">>}
              ,{<<"source_type">>, <<"incoming_fax">>}
              ,{<<"timestamp">>, wh_json:get_value(<<"Timestamp">>, JObj)}
              ,{<<"owner_id">>, OwnerId}
              ,{<<"media_type">>, <<"tiff">>}
              ,{<<"call_id">>, whapps_call:call_id(Call)}
-             | fax_properties(JObj)
+             ,{<<"rx_results">>, wh_json:from_list(fax_properties(JObj))}
+             ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
             ],
 
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props)
