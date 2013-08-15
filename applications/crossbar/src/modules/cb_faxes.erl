@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -43,14 +43,14 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.faxes">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.faxes">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.faxes">>, ?MODULE, content_types_provided),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.faxes">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.faxes">>, ?MODULE, get),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.faxes">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.faxes">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.faxes">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.faxes">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.faxes">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.faxes">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.faxes">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.faxes">>, ?MODULE, 'get'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.faxes">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.faxes">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"v1_resource.execute.delete.faxes">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -59,10 +59,10 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods() | [].
--spec allowed_methods(path_token()) -> http_methods() | [].
--spec allowed_methods(path_token(), path_token()) -> http_methods() | [].
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods() | [].
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
     [?HTTP_PUT].
@@ -94,12 +94,12 @@ allowed_methods(?INCOMING, _Id, ?ATTACHMENT) ->
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
-resource_exists() -> true.
-resource_exists(?INCOMING) -> true;
-resource_exists(?OUTGOING) -> true.
-resource_exists(?INCOMING, _Id) -> true;
-resource_exists(?OUTGOING, _Id) -> true.
-resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> true.
+resource_exists() -> 'true'.
+resource_exists(?INCOMING) -> 'true';
+resource_exists(?OUTGOING) -> 'true'.
+resource_exists(?INCOMING, _Id) -> 'true';
+resource_exists(?OUTGOING, _Id) -> 'true'.
+resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -108,16 +108,16 @@ resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> true.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided(#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, ?INCOMING, FaxId, ?ATTACHMENT) ->
     case load_fax_meta(FaxId, Context) of
-        #cb_context{resp_status=success, doc=JObj} ->
+        #cb_context{resp_status='success', doc=JObj} ->
             case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj)) of
                 [] -> Context;
                 [Attachment|_] ->
                     CT = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
                     [Type, SubType] = binary:split(CT, <<"/">>),
-                    Context#cb_context{content_types_provided=[{to_binary, [{Type, SubType}]}]}
+                    Context#cb_context{content_types_provided=[{'to_binary', [{Type, SubType}]}]}
             end
     end;
 content_types_provided(Context, _, _, _) ->
@@ -133,10 +133,10 @@ content_types_provided(Context, _, _, _) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
--spec validate(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
--spec validate(#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     create(Context#cb_context{db_name=?WH_FAXES}).
@@ -168,10 +168,10 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?INCOMING, Id, ?ATTACHMENT) 
 %% the resource into the resp_data, resp_headers, etc...
 %% @end
 %%--------------------------------------------------------------------
--spec get(#cb_context{}) -> #cb_context{}.
--spec get(#cb_context{}, path_token()) -> #cb_context{}.
--spec get(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
--spec get(#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+-spec get(cb_context:context()) -> cb_context:context().
+-spec get(cb_context:context(), path_token()) -> cb_context:context().
+-spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec get(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
 get(#cb_context{}=Context) ->
     Context.
@@ -188,8 +188,8 @@ get(#cb_context{}=Context, _, _, _) ->
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put(#cb_context{}) -> #cb_context{}.
--spec put(#cb_context{}, path_token()) -> #cb_context{}.
+-spec put(cb_context:context()) -> cb_context:context().
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(#cb_context{}=Context) ->
     crossbar_doc:save(Context).
 put(#cb_context{}=Context, ?OUTGOING) ->
@@ -202,8 +202,8 @@ put(#cb_context{}=Context, ?OUTGOING) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post(#cb_context{}) -> #cb_context{}.
--spec post(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec post(cb_context:context()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(#cb_context{}=Context) ->
     crossbar_doc:save(Context).
 post(#cb_context{}=Context, ?OUTGOING, _) ->
@@ -215,7 +215,7 @@ post(#cb_context{}=Context, ?OUTGOING, _) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(#cb_context{}=Context, ?OUTGOING, _Id) ->
     crossbar_doc:delete(Context).
 
@@ -225,9 +225,9 @@ delete(#cb_context{}=Context, ?OUTGOING, _Id) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create(#cb_context{}) -> #cb_context{}.
+-spec create(cb_context:context()) -> cb_context:context().
 create(#cb_context{}=Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"faxes">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
@@ -236,7 +236,7 @@ create(#cb_context{}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
@@ -246,7 +246,7 @@ read(Id, Context) ->
 %% Load a fax document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_fax_meta(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_fax_meta(ne_binary(), cb_context:context()) -> cb_context:context().
 load_fax_meta(FaxId, Context) ->
     crossbar_doc:load(FaxId, Context).
 
@@ -257,7 +257,7 @@ load_fax_meta(FaxId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec update(ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, #cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"faxes">>, Context, OnSuccess).
@@ -265,12 +265,14 @@ update(Id, #cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
-on_successful_validation(undefined, #cb_context{doc=JObj, account_id=AccountId}=Context) ->
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
+-spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+on_successful_validation('undefined', #cb_context{doc=JObj
+                                                ,account_id=AccountId
+                                               }=Context) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Context#cb_context{doc=wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
                                                ,{<<"pvt_job_status">>, <<"pending">>}
                                                ,{<<"attempts">>, 0}
@@ -280,9 +282,11 @@ on_successful_validation(undefined, #cb_context{doc=JObj, account_id=AccountId}=
 on_successful_validation(DocId, #cb_context{}=Context) ->
     maybe_reset_job(crossbar_doc:load_merge(DocId, Context)).
 
-maybe_reset_job(#cb_context{resp_status=success, doc=JObj}=Context) ->
+maybe_reset_job(#cb_context{resp_status='success'
+                            ,doc=JObj
+                           }=Context) ->
     case wh_json:get_value(<<"pvt_job_status">>, JObj) of
-        undefined -> Context;
+        'undefined' -> Context;
         _Else ->
             J = wh_json:set_values([{<<"pvt_job_status">>, <<"pending">>}
                                     ,{<<"attempts">>, 0}
@@ -298,12 +302,12 @@ maybe_reset_job(Context) -> Context.
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec incoming_summary(#cb_context{}) -> #cb_context{}.
+-spec incoming_summary(cb_context:context()) -> cb_context:context().
 incoming_summary(#cb_context{}=Context) ->
     crossbar_doc:load_view(?CB_LIST
-                           ,[{startkey, [?FAX_FILE_TYPE]}
-                             ,{endkey, [?FAX_FILE_TYPE, wh_json:new()]}
-                             ,include_docs
+                           ,[{'startkey', [?FAX_FILE_TYPE]}
+                             ,{'endkey', [?FAX_FILE_TYPE, wh_json:new()]}
+                             ,'include_docs'
                             ]
                            ,Context
                            ,fun normalize_incoming_view_results/2
@@ -315,13 +319,13 @@ incoming_summary(#cb_context{}=Context) ->
 %% Load the binary attachment of a fax doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_fax_binary(path_token(), #cb_context{}) -> #cb_context{}.
+-spec load_fax_binary(path_token(), cb_context:context()) -> cb_context:context().
 load_fax_binary(FaxId, #cb_context{resp_headers=RespHeaders}=Context) ->
     case load_fax_meta(FaxId, Context) of
-        #cb_context{resp_status=success, doc=JObj} ->
+        #cb_context{resp_status='success', doc=JObj} ->
             FaxMeta = wh_json:get_value([<<"_attachments">>], JObj),
             case wh_json:get_keys(FaxMeta) of
-                [] -> cb_context:add_system_error(bad_identifier, [{details, FaxId}], Context);
+                [] -> cb_context:add_system_error('bad_identifier', [{'details', FaxId}], Context);
                 [Attachment|_] ->
                     Context1 = crossbar_doc:load_attachment(JObj, Attachment, Context),
                     Context1#cb_context{resp_headers = [{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
@@ -329,7 +333,8 @@ load_fax_binary(FaxId, #cb_context{resp_headers=RespHeaders}=Context) ->
                                                         ,{<<"Content-Length">>, wh_json:get_value([Attachment, <<"length">>], FaxMeta)}
                                                         | RespHeaders
                                                        ]
-                                       ,resp_etag=undefined}
+                                        ,resp_etag='undefined'
+                                       }
             end;
         Context1 -> Context1
     end.
@@ -341,10 +346,10 @@ load_fax_binary(FaxId, #cb_context{resp_headers=RespHeaders}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec outgoing_summary(#cb_context{}) -> #cb_context{}.
+-spec outgoing_summary(cb_context:context()) -> cb_context:context().
 outgoing_summary(#cb_context{account_id=AccountId}=Context) ->
-    ViewOptions=[{<<"key">>, AccountId}
-                 ,include_docs
+    ViewOptions=[{'key', AccountId}
+                 ,'include_docs'
                 ],
     crossbar_doc:load_view(<<"faxes/crossbar_listing">>
                            ,ViewOptions
