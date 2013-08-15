@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -20,10 +20,6 @@
 %% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Restart, Shutdown, Type),
-        {Name, {Name, start_link, []}, Restart, Shutdown, Type, [Name]}).
-
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -36,15 +32,15 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec new(whapps_call:call(), wh_json:json_object()) -> sup_startchild_ret().
+-spec new(whapps_call:call(), wh_json:object()) -> sup_startchild_ret().
 new(Call, JObj) ->
     supervisor:start_child(?MODULE, [Call, JObj]).
 
--spec workers() -> [pid(),...] | [].
+-spec workers() -> pids().
 workers() ->
-    [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE)].
+    [ Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -61,10 +57,10 @@ workers() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = simple_one_for_one,
+    RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 0,
     MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(fax_request, temporary, 2000, worker)]}}.
+    {'ok', {SupFlags, [?WORKER_TYPE('fax_request', 'temporary')]}}.
