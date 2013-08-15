@@ -14,10 +14,10 @@
 -include("ecallmgr.hrl").
 
 -spec exec_cmd(atom(), ne_binary(), wh_json:object(), pid()) ->
-                            'ok' |
-                            'error' |
-                            ecallmgr_util:send_cmd_ret() |
-                            [ecallmgr_util:send_cmd_ret(),...].
+                      'ok' |
+                      'error' |
+                      ecallmgr_util:send_cmd_ret() |
+                      [ecallmgr_util:send_cmd_ret(),...].
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     App = wh_json:get_value(<<"Application-Name">>, JObj),
