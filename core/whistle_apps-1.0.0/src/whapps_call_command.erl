@@ -496,8 +496,9 @@ b_ring(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec receive_fax(whapps_call:call()) -> 'ok'.
--spec b_receive_fax(whapps_call:call()) -> whapps_api_error() |
-                                           {'ok', wh_json:object()}.
+-spec b_receive_fax(whapps_call:call()) ->
+                           whapps_api_error() |
+                           {'ok', wh_json:object()}.
 
 receive_fax(Call) ->
     Command = [{<<"Application-Name">>, <<"receive_fax">>}],
