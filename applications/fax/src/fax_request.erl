@@ -14,7 +14,6 @@
 -export([start_link/2
          ,relay_event/2
          ,receive_fax/2
-         ,fax_properties/1
         ]).
 
 %% gen_listener callbacks
@@ -264,7 +263,7 @@ create_fax_doc(Call, OwnerId, JObj) ->
              ,{<<"owner_id">>, OwnerId}
              ,{<<"media_type">>, <<"tiff">>}
              ,{<<"call_id">>, whapps_call:call_id(Call)}
-             ,{<<"rx_results">>, wh_json:from_list(fax_properties(JObj))}
+             ,{<<"rx_results">>, wh_json:from_list(fax_util:fax_properties(JObj))}
              ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
             ],
 
@@ -275,10 +274,6 @@ create_fax_doc(Call, OwnerId, JObj) ->
 
     {'ok', Doc1} = couch_mgr:save_doc(AccountDb, Doc),
     wh_json:get_value(<<"_id">>, Doc1).
-
--spec fax_properties(wh_json:object()) -> wh_proplist().
-fax_properties(JObj) ->
-    [{wh_json:normalize_key(K), V} || {<<"Fax-", K/binary>>, V} <- wh_json:to_proplist(JObj)].
 
 attachment_url(Call, File, FaxDocId) ->
     AccountDb = whapps_call:account_db(Call),

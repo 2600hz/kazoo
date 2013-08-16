@@ -375,7 +375,7 @@ release_failed_job('job_timeout', _Error, JObj) ->
 -spec release_successful_job(wh_json:object(), wh_json:object()) -> 'ok'.
 release_successful_job(Resp, JObj) ->
     Result = [{<<"time_elapsed">>, elapsed_time(JObj)}
-              | fax_request:fax_properties(wh_json:get_value(<<"Resource-Response">>, Resp))
+              | fax_util:fax_properties(wh_json:get_value(<<"Resource-Response">>, Resp))
              ],
     release_job(Result, JObj).
 
