@@ -428,7 +428,7 @@ execute_job(JObj, Q) ->
     end.
 
 -spec fetch_document(wh_json:object()) ->
-                            {'ok', string(), proplist(), ne_binary()} |
+                            {'ok', string(), wh_proplist(), ne_binary()} |
                             {'error', term()}.
 fetch_document(JObj) ->
     FetchRequest = wh_json:get_value(<<"document">>, JObj),
