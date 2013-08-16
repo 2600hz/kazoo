@@ -11,7 +11,9 @@
 -behaviour(gen_listener).
 
 -export([start_link/1]).
--export([handle_tx_resp/2]).
+-export([handle_tx_resp/2
+         ,handle_call_event/2
+        ]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -35,7 +37,11 @@
 -define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_tx_resp'}
                       ,[{<<"resource">>, <<"offnet_resp">>}]
-                     }]).
+                     }
+                     ,{{?MODULE, 'handle_call_event'}
+                       ,[{<<"call_detail">>, <<"cdr">>}]
+                      }
+                    ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -60,6 +66,10 @@ start_link(_) ->
                                      ], []).
 
 handle_tx_resp(JObj, Props) ->
+    Srv = props:get_value('server', Props),
+    gen_server:cast(Srv, {'tx_resp', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
+
+handle_call_event(JObj, Props) ->
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'tx_resp', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
 
@@ -497,6 +507,8 @@ normalize_content_type(CT) ->
 -spec send_fax(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 send_fax(JobId, JObj, Q) ->
     IgnoreEarlyMedia = wh_util:to_binary(whapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
+    CallId = wh_util:rand_hex_binary(8),
+
     Request = [{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
                ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
                ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
@@ -512,8 +524,10 @@ send_fax(JobId, JObj, Q) ->
                ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>]}
                ,{<<"Application-Name">>, <<"fax">>}
                ,{<<"Application-Data">>, get_proxy_url(JobId)}
+               ,{<<"Outbound-Call-ID">>, CallId}
                | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
               ],
+    gen_listener:add_binding(self(), 'call', [{'restrict_to', ['cdr']}, {'callid', CallId}]),
     wapi_offnet_resource:publish_req(Request).
 
 -spec get_proxy_url(ne_binary()) -> ne_binary().
