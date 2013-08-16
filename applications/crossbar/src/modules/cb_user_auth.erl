@@ -348,10 +348,9 @@ load_apps_ids(AccoundDb) ->
 %%--------------------------------------------------------------------
 -spec load_apps(ne_binary(), ne_binary(), ne_binaries()) -> ne_binaries() | [].
 -spec load_apps(ne_binary(), ne_binary(), ne_binaries(), ne_binaries()) -> ne_binaries() | [].
-load_apps(_, _, []) ->
-    [];
+
 load_apps(AccoundDb, UserId, Ids) ->
-    load_apps(AccoundDb, UserId, Ids, []).
+    load_apps(AccoundDb, UserId, Ids, wh_json:new()).
 
 load_apps(_, _, [], Acc) ->
     Acc;
@@ -360,19 +359,34 @@ load_apps(AccoundDb, UserId, [Id|Ids], Acc) ->
         {'ok', JObj} ->
             case wh_json:get_value([<<"installed">>, <<"all">>], JObj) of
                 'true' ->
-                    load_apps(AccoundDb, UserId, Ids, [Id|Acc]);
+                    load_apps(AccoundDb, UserId
+                              ,Ids
+                              ,wh_json:set_value(Id, get_app_info(JObj), Acc));
                 _ ->
-                    Users = wh_json:get_value([<<"installed">>, <<"users">>], JObj),
-                    case lists:member(UserId, Users) of
-                        'true' ->
-                            load_apps(AccoundDb, UserId, Ids, [Id|Acc]);
-                        'false' ->
-                            load_apps(AccoundDb, UserId, Ids, Acc)
-                    end
+                    lists:foldl(
+                        fun(User, _) ->
+                            case wh_json:get_value(<<"id">>, User) =:= UserId of
+                                'true' ->
+                                    load_apps(AccoundDb, UserId
+                                              ,Ids, wh_json:set_value(Id, get_app_info(JObj), Acc));
+                                'false' ->
+                                    load_apps(AccoundDb, UserId, Ids, Acc)
+                            end
+                        end
+                        ,[]
+                        ,wh_json:get_value([<<"installed">>, <<"users">>], JObj))
             end;
         {'error', _E} ->
             load_apps(AccoundDb, UserId, Ids, Acc)
     end.
+
+get_app_info(JObj) ->
+    wh_json:set_values([{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
+                        ,{<<"i18n">>, wh_json:get_value(<<"i18n">>, JObj)}
+                        ,{<<"icon">>, wh_json:get_value(<<"icon">>, JObj)}
+                       ]
+                       ,wh_json:new()).
+
 
 %%--------------------------------------------------------------------
 %% @private
