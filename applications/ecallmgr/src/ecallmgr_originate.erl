@@ -38,6 +38,7 @@
                 ,tref :: 'undefined' | reference()
                 ,fetch_id = wh_util:rand_hex_binary(16)
                }).
+-type state() :: #state{}.
 
 -define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_originate_execute'}
@@ -227,7 +228,6 @@ handle_cast({'get_originate_action'}, #state{originate_req=JObj
 handle_cast({'build_originate_args'}, #state{uuid='undefined'}=State) ->
     lager:debug("no uuid defined, building one"),
     gen_listener:cast(self(), {'create_uuid'}),
-    gen_listener:cast(self(), {'build_originate_args'}),
     {'noreply', State};
 
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
@@ -236,10 +236,7 @@ handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,dialstrings='undefined'
                                             }=State) ->
     gen_listener:cast(self(), {'originate_ready'}),
-    Endpoints = [update_endpoint(Endpoint, State)
-                 || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
-                ],
-    {'noreply', State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, Endpoints, JObj, FetchId)}};
+    {'noreply', State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, State, JObj, FetchId)}};
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,action = Action
                                              ,app = ?ORIGINATE_EAVESDROP
@@ -247,20 +244,15 @@ handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,dialstrings='undefined'
                                             }=State) ->
     gen_listener:cast(self(), {'originate_ready'}),
-    Endpoints = [update_endpoint(Endpoint, State)
-                 || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
-                ],
-    {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, FetchId)}};
+    {'noreply', State#state{dialstrings=build_originate_args(Action, State, JObj, FetchId)}};
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,action=Action
                                              ,fetch_id=FetchId
                                              ,dialstrings='undefined'
                                             }=State) ->
     gen_listener:cast(self(), {'originate_execute'}),
-    Endpoints = [update_endpoint(Endpoint, State)
-                 || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
-                ],
-    {'noreply', State#state{dialstrings=build_originate_args(Action, Endpoints, JObj, FetchId)}};
+    {'noreply', State#state{dialstrings=build_originate_args(Action, State, JObj, FetchId)}};
+
 handle_cast({'originate_ready'}, #state{node=_Node}=State) ->
     case start_control_process(State) of
         {'ok', #state{control_pid=Pid
@@ -492,7 +484,20 @@ get_eavesdrop_action(JObj) ->
         'undefined' -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>
     end.
 
--spec build_originate_args(ne_binary(), wh_json:objects(), wh_json:object(), ne_binary()) -> ne_binary().
+-spec build_originate_args(ne_binary(), state() | wh_json:objects(), wh_json:object(), ne_binary()) -> ne_binary().
+build_originate_args(Action, #state{}=State, JObj, FetchId) ->
+    case wh_json:get_ne_value(<<"Endpoints">>, JObj, []) of
+        [] ->
+            lager:warning("no endpoints defined in originate request"),
+            'undefined';
+        [_Endpoint]=Endpoints ->
+            lager:debug("only one endpoint, don't create per-endpoint UUIDs"),
+            build_originate_args(Action, Endpoints, JObj, FetchId);
+        Endpoints ->
+            lager:debug("multiple endpoints defined, assigning uuids to each"),
+            UpdatedEndpoints = [update_endpoint(Endpoint, State) || Endpoint <- Endpoints],
+            build_originate_args(Action, UpdatedEndpoints, JObj, FetchId)
+    end;
 build_originate_args(Action, Endpoints, JObj, FetchId) ->
     lager:debug("building originate command arguments"),
     DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
