@@ -25,6 +25,12 @@
 -export([sync_channels/0
          ,sync_channels/1
         ]).
+-export([conference_summary/0
+         ,conference_summary/1
+        ]).
+-export([conference_details/0
+         ,conference_details/1
+        ]).
 -export([sync_conferences/0
          ,sync_conferences/1
         ]).
@@ -116,9 +122,27 @@ sync_channels(Node) ->
         ],
     'ok'.
 
+-spec conference_summary() -> 'no_return'.
+conference_summary() ->
+    ecallmgr_fs_conferences:summary().
+
+-spec conference_summary(text()) -> 'no_return'.
+conference_summary(Node) ->
+    ecallmgr_fs_conferences:summary(Node).
+
+-spec conference_details() -> 'no_return'.
+conference_details() ->
+    ecallmgr_fs_conferences:details(),
+    'no_return'.
+
+-spec conference_details(text()) -> 'no_return'.
+conference_details(UUID) ->
+    ecallmgr_fs_conferences:details(UUID),
+    'no_return'.
+
 -spec sync_conferences() -> 'ok'.
 sync_conferences() ->
-    _ = [ecallmgr_fs_conferences:sync_conferences(N)
+    _ = [ecallmgr_fs_conferences:sync_node(N)
          || N <- ecallmgr_fs_nodes:connected()
         ],
     'ok'.
@@ -126,7 +150,7 @@ sync_conferences() ->
 -spec sync_conferences(text()) -> 'ok'.
 sync_conferences(Node) ->
     N = wh_util:to_atom(Node, 'true'),
-    ecallmgr_fs_conferences:sync_conferences(N),
+    ecallmgr_fs_conferences:sync_node(N),
     'ok'.
 
 -spec flush_node_channels(string() | binary() | atom()) -> 'ok'.

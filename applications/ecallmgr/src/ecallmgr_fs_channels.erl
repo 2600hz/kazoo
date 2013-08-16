@@ -120,7 +120,7 @@ details() ->
 details(UUID) when not is_binary(UUID) ->
     details(wh_util:to_binary(UUID));
 details(UUID) ->
-    MatchSpec = [{#channel{uuid=UUID, _ = '_'}
+    MatchSpec = [{#channel{uuid='$1', _ = '_'}
                   ,[{'=:=', '$1', {'const', UUID}}]
                   ,['$_']
                  }],
@@ -530,8 +530,7 @@ print_details(Match) ->
     print_details(Match, 0).
 
 print_details('$end_of_table', Count) ->
-    io:format("~n"),
-    io:format("Found ~p channels~n", [Count]);
+    io:format("~nFound ~p channels~n", [Count]);
 print_details({[#channel{}=Channel]
                ,Continuation}
               ,Count) ->
