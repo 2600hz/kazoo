@@ -217,17 +217,16 @@ test_for_registrations(AccountId, AccountDb, Realm) ->
           ],
     case whapps_util:amqp_pool_collect(Reg
                                        ,fun wapi_registration:publish_query_req/1
-                                       ,'ecallmgr'
-                                       ,2000) 
+                                       ,{'ecallmgr', fun wapi_registration:query_resp_v/1}) 
     of
-        {'ok', JObjs} -> 
+        {'error', _} -> 'ok';
+        {_, JObjs} -> 
             case lists:any(fun wapi_registration:query_resp_v/1, JObjs) of
                 'false' -> 'ok';
                 'true' ->
                     lager:debug("found initial registration for account ~s (~s)", [AccountId, Realm]),
                     handle_initial_registration(AccountId, AccountDb)
-            end;
-        _Else -> 'ok'
+            end
     end.
 
 -spec handle_initial_registration(ne_binary(), ne_binary()) -> 'ok'.
