@@ -417,7 +417,7 @@ conference_from_props(Props, Node, Conference) ->
                           ,name=props:get_value(<<"Conference-Name">>, Props)
                           ,profile_name=props:get_value(<<"Conference-Profile-Name">>, Props)
                           ,start_time = wh_util:current_tstamp()
-                          ,switch_hostname=props:get_value(<<"FreeSWITCH-Hostname">>, Props)
+                          ,switch_hostname=props:get_value(<<"FreeSWITCH-Hostname">>, Props, wh_util:to_binary(Node))
                           ,switch_url=ecallmgr_fs_nodes:sip_url(Node)
                           ,switch_external_ip=ecallmgr_fs_nodes:sip_external_ip(Node)
                          }.

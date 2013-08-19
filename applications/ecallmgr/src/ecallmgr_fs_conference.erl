@@ -774,7 +774,10 @@ publish_new_participant_event(Props, Node) ->
     Event = [{<<"Participants">>, ecallmgr_fs_conferences:participants_to_json(Participants)}
              ,{<<"Focus">>, wh_util:to_binary(Node)}
              ,{<<"Conference-ID">>, ConferenceName}
-             ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
+             ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}             
+             ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props, wh_util:to_binary(Node))}
+             ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
+             ,{<<"Switch-External-IP">>, ecallmgr_fs_nodes:sip_external_ip(Node)}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     Publisher = fun(P) -> wapi_conference:publish_participants_event(ConferenceName, P) end,
@@ -792,6 +795,9 @@ publish_participant_destroy_event(Props, Node) ->
              ,{<<"Focus">>, wh_util:to_binary(Node)}
              ,{<<"Conference-ID">>, ConferenceName}
              ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
+             ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props, wh_util:to_binary(Node))}
+             ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
+             ,{<<"Switch-External-IP">>, ecallmgr_fs_nodes:sip_external_ip(Node)}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     Publisher = fun(P) -> wapi_conference:publish_participants_event(ConferenceName, P) end,

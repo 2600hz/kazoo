@@ -304,27 +304,57 @@ prepare_whapps_conference(Conference, Call, Srv) ->
                 ,fun(C) -> whapps_conference:set_application_name(<<"conferences">>, C) end
                ],
     C = whapps_conference:update(Routines, Conference),
+    _ = case whapps_conference:play_entry_prompt(C) of
+            'false' -> 'ok';
+            'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
+        end,
     search_for_conference(C, Call, Srv).
 
 -spec search_for_conference(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 search_for_conference(Conference, Call, Srv) ->
     case whapps_conference_command:search(Conference) of
-        {'error', _} ->
-            handle_search_error(Conference, Call, Srv);
-        {'ok', JObj} ->
-            handle_search_resp(JObj, Conference, Call, Srv)
+        {'error', _} -> handle_search_error(Conference, Call, Srv);
+        {'ok', JObj} -> handle_search_resp(JObj, Conference, Call, Srv)
     end.
 
 -spec handle_search_error(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 handle_search_error(Conference, Call, Srv) ->
-    timer:sleep(crypto:rand_uniform(2000, 3000)),
-    case whapps_conference_command:search(Conference) of
-        {'error', _} ->
-            lager:debug("creating conference on switch nodename '~p'", [whapps_call:switch_hostname(Call)]),
+    wh_amqp_channel:remove_consumer_pid(),
+    Queue = whapps_conference:id(Conference),
+    _ = amqp_util:new_queue(Queue),
+    try amqp_util:basic_consume(Queue, [{'exclusive', 'true'}]) of
+        'ok' ->
+            lager:debug("initial participant creating conference on switch nodename '~p'", [whapps_call:switch_hostname(Call)]),
             conf_participant:set_conference(Conference, Srv),
-            conf_participant:join_local(Srv);
-        {'ok', JObj} ->
-            handle_search_resp(JObj, Conference, Call, Srv)
+            conf_participant:join_local(Srv),
+            wait_for_creation(Conference)
+    catch
+        'exit':{{'shutdown', {'server_initiated_close', 403, <<"ACCESS_REFUSED", _/binary>>}}, _} ->
+            lager:debug("conference queue ~s is exclusive, waiting for conference creation by initial participant", [Queue]),
+            handle_resource_locked(Conference, Call, Srv)
+    end.
+
+-spec handle_resource_locked(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+handle_resource_locked(Conference, Call, Srv) ->
+    case wait_for_creation(Conference) of
+        {'ok', JObj} -> handle_search_resp(JObj, Conference, Call, Srv);
+        {'error', 'timeout'} -> handle_search_error(Conference, Call, Srv)
+    end.
+
+-spec wait_for_creation(whapps_conference:conference()) -> {'ok', wh_json:object()} | {'error', 'timeout'}.
+wait_for_creation(Conference) ->
+    lager:debug("checking if conference ~s has been created", [whapps_conference:id(Conference)]),
+    wait_for_creation(Conference, 8000).
+
+-spec wait_for_creation(whapps_conference:conference(), non_neg_integer()) -> {'ok', wh_json:object()} | {'error', 'timeout'}.
+wait_for_creation(_, After) when After =< 0 -> {'error', 'timeout'};
+wait_for_creation(Conference, After) ->
+    Start = erlang:now(),
+    case whapps_conference_command:search(Conference) of
+        {'ok', _}=Ok -> Ok;
+        {'error', _} -> 
+            timer:sleep(1000),
+            wait_for_creation(Conference, whapps_util:decr_timeout(After, Start))
     end.
 
 -spec handle_search_resp(wh_json:object(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.

@@ -175,6 +175,10 @@ relay_amqp(JObj, Props) ->
 -spec handle_participants_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_participants_event(JObj, Props) ->
     'true' = wapi_conference:participants_event_v(JObj),
+    _ = [whapps_call_command:relay_event(Pid, JObj)
+         || Pid <- props:get_value('call_event_consumers', Props, [])
+                ,is_pid(Pid)
+        ],
     Srv = props:get_value('server', Props),
     gen_listener:cast(Srv, {'sync_participant', JObj}).
 
@@ -302,19 +306,11 @@ handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
 handle_cast('join_local', #participant{call=Call
                                        ,conference=Conference
                                       }=Participant) ->
-    _ = case whapps_conference:play_entry_prompt(Conference) of
-            'false' -> 'ok';
-            'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
-        end,
     send_conference_command(Conference, Call),
     {'noreply', Participant};
 handle_cast({'join_remote', JObj}, #participant{call=Call
                                                 ,conference=Conference
                                                }=Participant) ->
-    _ = case whapps_conference:play_entry_prompt(Conference) of
-            'false' -> 'ok';
-            'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
-        end,
     gen_listener:add_binding(self(), 'route', []),
     gen_listener:add_binding(self(), 'authn', []),
     BridgeRequest = couch_mgr:get_uuid(),
