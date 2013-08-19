@@ -176,16 +176,21 @@ handle_cast('store_recording', #state{media_name=MediaName
 
 handle_cast({'channel_status',<<"active">>}, #state{channel_status_ref='undefined'}=State) ->
     {'noreply', State#state{channel_status_ref=start_check_call_timer()}};
-handle_cast({'channel_status', <<"terminated">>}, #state{channel_status_ref='undefined'}=State) ->
+handle_cast({'channel_status', <<"terminated">>}, #state{channel_status_ref='undefined'
+                                                         ,store_attempted='false'
+                                                        }=State) ->
     lager:debug("channel terminated, we're done here"),
     {'stop', 'normal', State};
+handle_cast({'channel_status', <<"terminated">>}, #state{channel_status_ref='undefined'
+                                                         ,store_attempted='true'
+                                                        }=State) ->
+    lager:debug("channel terminated, but we've sent a store attempt, so hold on"),
+    {'noreply', State};
 handle_cast({'channel_status', _S}, #state{channel_status_ref='undefined'}=State) ->
     Ref = start_check_call_timer(),
     lager:debug("unknown channel status respoonse: ~s, starting timer back up: ~p", [_S, Ref]),
     {'noreply', State#state{channel_status_ref=Ref}};
-
-handle_cast({'channel_status', _S}, #state{channel_status_ref=Ref}=State) ->
-    lager:debug("ignoring channel status respoonse: ~s (have ref ~p)", [_S, Ref]),
+handle_cast({'channel_status', _S}, State) ->
     {'noreply', State};
 
 handle_cast('store_succeeded', State) ->
