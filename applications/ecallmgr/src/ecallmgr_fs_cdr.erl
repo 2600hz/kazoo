@@ -183,17 +183,26 @@ publish(UUID, Props) ->
                         ,CDR
                         ,fun(P) -> wapi_call:publish_cdr(UUID, P) end
                        ),
-    catch case props:get_value(<<"Hangup-Cause">>,Props) of
-              Hangup when Hangup==<<"UNALLOCATED_NUMBER">>;
-                    Hangup==<<"NO_ROUTE_DESTINATION">>;
-                    Hangup==<<"RECOVERY_ON_TIMER_EXPIRE">>;
-                    Hangup==<<"PROGRESS_TIMEOUT">> ->
-            Realm = props:get_value(<<"Realm">>,Props,<<"unknown">>),
-            whistle_stats:increment_counter(Realm,Hangup);
-        _ ->
-            nothing
+    case props:get_value(<<"Call-Direction">>,CDR) of
+	<<"inbound">> ->
+	    Hangup = props:get_value(<<"Hangup-Cause">>,CDR,<<"unknown">>),
+	    Realm = get_realm(CDR),
+	    whistle_stats:increment_counter(Realm,Hangup);
+	_ ->
+	    nothing
     end.
 
+-spec get_realm(wh_proplist()) -> binary().
+get_realm(CDR) ->
+    props:get_value(<<"Realm">>,CDR,
+		    props:get_value(<<"Realm">>,
+				    element(1,
+					    props:get_value(
+					      <<"Custom-Channel-Vars">>,
+					      CDR,{[]})),
+				    <<"off-net">>)
+		   ).
+				    
 
 -spec create_cdr(wh_proplist()) -> wh_proplist().
 create_cdr(Props) ->

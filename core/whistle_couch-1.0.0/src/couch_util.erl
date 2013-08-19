@@ -625,20 +625,27 @@ retry504s(Fun) when is_function(Fun, 0) ->
     retry504s(Fun, 0).
 retry504s(_Fun, 3) ->
     lager:debug("504 retry failed"),
+    whistle_stats:increment_counter(<<"bigcouch-504-error">>),
     {'error', 'timeout'};
 retry504s(Fun, Cnt) ->
+    whistle_stats:increment_counter(<<"bigcouch-request">>),
     case catch Fun() of
         {'error', {'ok', "504", _, _}} ->
+	    whistle_stats:increment_counter(<<"bigcouch-504-error">>),
             timer:sleep(100 * (Cnt+1)),
             retry504s(Fun, Cnt+1);
         {'error', {'ok', ErrCode, _Hdrs, _Body}} ->
+	    whistle_stats:increment_counter(<<"bigcouch-other-error">>),
             {'error', wh_util:to_integer(ErrCode)};
-        {'error', _Other}=E -> E;
+        {'error', _Other}=E -> 
+	    whistle_stats:increment_counter(<<"bigcouch-other-error">>),
+	    E;
         {'ok', _Other}=OK -> OK;
         {'EXIT', _E} ->
             ST = erlang:get_stacktrace(),
             lager:debug("exception running fun: ~p", [_E]),
             wh_util:log_stacktrace(ST),
+	    whistle_stats:increment_counter(<<"bigcouch-other-error">>),
             retry504s(Fun, Cnt+1);
         OK -> OK
     end.

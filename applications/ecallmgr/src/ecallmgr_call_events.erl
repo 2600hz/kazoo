@@ -542,7 +542,7 @@ publish_event(Props) ->
     case {ApplicationName, EventName} of
         {_, <<"dtmf">>} ->
             Pressed = props:get_value(<<"DTMF-Digit">>, Props),
-            lager:debug("publishing recevied DTMF digit ~s", [Pressed]);
+            lager:debug("publishing received DTMF digit ~s", [Pressed]);
         {<<>>, _} ->
             lager:debug("publishing call event ~s", [wh_util:to_lower_binary(EventName)]);
         {ApplicationName, <<"channel_execute_complete">>} ->
