@@ -63,10 +63,10 @@
         ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_views">>, 2000)
        ).
 -define(MAX_COMPACTING_SHARDS
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_shards">>, 10)
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_shards">>, 2)
        ).
 -define(MAX_COMPACTING_VIEWS
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 5)
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 2)
        ).
 -define(MAX_WAIT_FOR_COMPACTION_PIDS
         ,case whapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pids">>, 360000) of
@@ -1175,7 +1175,7 @@ wait_for_compaction(AdminConn, S, {'ok', ShardData}) ->
             wait_for_compaction(AdminConn, S)
     end.
 
-get_node_connections({N, Opts}, Cookie) ->
+get_node_connections({N, Opts}, ConfigCookie) ->
     lager:debug("getting connections from opts: ~p", [Opts]),
     [_, Host] = binary:split(N, <<"@">>),
 
@@ -1184,6 +1184,7 @@ get_node_connections({N, Opts}, Cookie) ->
                     ,props:get_value('password', Opts, ConfigPass)
                    },
 
+    Cookie = props:get_value('cookie', Opts, ConfigCookie),
     {ConfigPort, ConfigAdminPort} = get_ports(wh_util:to_atom(N, 'true'), Cookie),
     {Port, AdminPort} = {props:get_value('port', Opts, ConfigPort)
                          ,props:get_value('admin_port', Opts, ConfigAdminPort)
