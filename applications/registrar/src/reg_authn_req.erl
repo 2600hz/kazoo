@@ -67,7 +67,13 @@ send_auth_resp(#auth_user{password=Password, method=Method
 %%-----------------------------------------------------------------------------
 -spec send_auth_error(wh_json:json_object()) -> 'ok'.
 send_auth_error(JObj) ->
+%% NOTE: Kamailio needs registrar errors since it is blocking with no
+%%   timeout (at the moment) but when we seek auth for INVITEs we need
+%%   to wait for conferences, ect.  Since Kamailio does not honor
+%%   Defer-Response we can use that flag on registrar errors
+%%   to queue in Kazoo but still advance Kamailio.
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            ,{<<"Defer-Response">>, <<"true">>}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("sending SIP authentication error"),
