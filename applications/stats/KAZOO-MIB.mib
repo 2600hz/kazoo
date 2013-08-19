@@ -62,7 +62,12 @@ Vm-statistics-entry ::= SEQUENCE {
 	memory-atom	Gauge32,
 	memory-binary	Gauge32,
 	memory-code	Gauge32,
-	memory-ets	Gauge32
+	memory-ets	Gauge32,
+	amqp-error	Gauge32,
+	amqp-request	Gauge32,
+	bigcouch-504-error Gauge32,
+	bigcouch-other-error Gauge32,
+	bigcouch-request Gauge32
 }
 	
 nodename OBJECT-TYPE 
@@ -127,6 +132,41 @@ memory-ets OBJECT-TYPE
         STATUS          current
         DESCRIPTION     "Memory used by ets"
         ::= { vm-statistics-entry 9 }
+
+amqp-error OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Amqp errors for start_amqp"
+        ::= { vm-statistics-entry 10 }
+
+amqp-request OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Amqp requests"
+        ::= { vm-statistics-entry 11 }
+
+bigcouch-504-error OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "504 errors from bigcouch requests"
+        ::= { vm-statistics-entry 12 }
+
+bigcouch-other-error OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Other errors from bigcouch requests"
+        ::= { vm-statistics-entry 13 }
+
+bigcouch-request OBJECT-TYPE 
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     "Number of bigcouch requests"
+        ::= { vm-statistics-entry 14 }
 
 ecallmgr OBJECT IDENTIFIER ::= { core 3 }
 
@@ -217,7 +257,15 @@ Sip-domain-entry ::= SEQUENCE {
     	sip-domain-name	OCTET STRING,
 	sip-recovery-expire Gauge32,
 	sip-progress-timeout Gauge32,
-	sip-unallocated-number Gauge32
+	sip-unallocated-number Gauge32,
+	sip-no-route-destination Gauge32,
+	sip-normal-clearing Gauge32,
+	sip-originator-cancel Gauge32,
+	sip-destination-out-of-order Gauge32,
+	sip-requested-chan-unavail Gauge32,
+	sip-no-answer Gauge32,
+	sip-invalid-number-format Gauge32,
+	sip-incompatible-destination Gauge32
 }
 
 sip-domain-name OBJECT-TYPE 
@@ -248,40 +296,75 @@ sip-unallocated-number OBJECT-TYPE
 	DESCRIPTION "Unallocated number events for domain"
 	::= { sip-domain-entry 4 }
 
-amqp OBJECT IDENTIFIER ::= { core 5 }
-
-amqperr OBJECT-TYPE
-	SYNTAX      Counter32
+sip-no-route-destination OBJECT-TYPE
+	SYNTAX      Gauge32
 	MAX-ACCESS  read-only
 	STATUS      current
-	DESCRIPTION "The current number of AMQP errors"
-	::= { amqp 1 }
+	DESCRIPTION "No route to destination events for domain"
+	::= { sip-domain-entry 5 }
 
-amqpecall OBJECT-TYPE
-        SYNTAX	    Gauge32
+sip-normal-clearing OBJECT-TYPE
+	SYNTAX      Gauge32
 	MAX-ACCESS  read-only
-        STATUS      current
-        DESCRIPTION "The rate of AMQP requests for ecallmgr"
-	::= { amqp 2 }
+	STATUS      current
+	DESCRIPTION "Successful calls for domain"
+	::= { sip-domain-entry 6 }
 
-amqpwhapps OBJECT-TYPE
-        SYNTAX	    Gauge32
+sip-originator-cancel OBJECT-TYPE
+	SYNTAX      Gauge32
 	MAX-ACCESS  read-only
-        STATUS      current
-        DESCRIPTION "The rate of AMQP requests for whistle_apps"
-	::= { amqp 3 }
+	STATUS      current
+	DESCRIPTION "Originator cancel events for domain"
+	::= { sip-domain-entry 7 }
 
-bigcouch OBJECT IDENTIFIER ::= { core 6 }
+sip-destination-out-of-order OBJECT-TYPE
+	SYNTAX      Gauge32
+	MAX-ACCESS  read-only
+	STATUS      current
+	DESCRIPTION "Destination out of order events for domain"
+	::= { sip-domain-entry 8 }
 
+sip-requested-chan-unavail OBJECT-TYPE
+	SYNTAX      Gauge32
+	MAX-ACCESS  read-only
+	STATUS      current
+	DESCRIPTION "No channel available events for domain"
+	::= { sip-domain-entry 9 }
+
+sip-no-answer OBJECT-TYPE
+	SYNTAX      Gauge32
+	MAX-ACCESS  read-only
+	STATUS      current
+	DESCRIPTION "No answer events for domain"
+	::= { sip-domain-entry 10 }
+
+sip-invalid-number-format OBJECT-TYPE
+	SYNTAX      Gauge32
+	MAX-ACCESS  read-only
+	STATUS      current
+	DESCRIPTION "Invalid format events for domain"
+	::= { sip-domain-entry 11 }
+
+sip-incompatible-destination OBJECT-TYPE
+	SYNTAX      Gauge32
+	MAX-ACCESS  read-only
+	STATUS      current
+	DESCRIPTION "Incompatible destination events for domain"
+	::= { sip-domain-entry 12 }
 
 allgroup OBJECT-GROUP
-	OBJECTS { amqperr, sip-domain-name, ec-presence, ec-register-fail,
+	OBJECTS { sip-domain-name, ec-presence, ec-register-fail,
 		ec-register-attempt, ec-processes, ec-reduction, ec-nodename,
 		memory-ets, memory-code, memory-binary, memory-atom,
 		memory-system, memory-processes, memory-total,
-		erlang-version, nodename, amqpwhapps,
-		amqpecall, sip-unallocated-number, sip-progress-timeout,
-		sip-recovery-expire, kazoo-ver
+		erlang-version, nodename, 
+		 sip-unallocated-number, sip-progress-timeout,
+		sip-recovery-expire, kazoo-ver, sip-normal-clearing,
+		sip-no-route-destination, bigcouch-other-error,
+		bigcouch-504-error, amqp-request, amqp-error, sip-no-answer,
+		sip-requested-chan-unavail, sip-destination-out-of-order,
+		sip-originator-cancel, sip-incompatible-destination,
+		sip-invalid-number-format, bigcouch-request
 	}
 	STATUS  current
 	DESCRIPTION "Various snmp oids"

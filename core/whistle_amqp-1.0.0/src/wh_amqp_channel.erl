@@ -145,6 +145,7 @@ publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg)
     case wh_amqp_channels:get_channel() of
         #wh_amqp_channel{channel=Pid, uri=URI} when is_pid(Pid) ->
             amqp_channel:call(Pid, BasicPub, AmqpMsg),
+	    whistle_stats:increment_counter(<<"amqp-request">>),
             lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p", [_Exchange, URI, _RK, Pid]);
         #wh_amqp_channel{} ->
             _ = wh_amqp_channels:reconnect(),

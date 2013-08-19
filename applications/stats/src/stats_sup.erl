@@ -14,7 +14,7 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
-%% Added to work with old verison of wh_types.hrl
+%% Following definitions missing in old verison of wh_types.hrl
 -ifndef(CACHE).
 -define(CACHE(N), {N, {'wh_cache', 'start_link', [N]}, 'permanent', 5000, 'worker', ['wh_cache']}).
 -endif.

@@ -11,8 +11,8 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0,start/0,init/1,handle_call/3,handle_cast/2,handle_info/2
-         ,terminate/2,code_change/3]).
+-export([start_link/0, start/0, init/1,handle_call/3,handle_cast/2
+	 ,handle_info/2,terminate/2,code_change/3]).
 
 -record(state,{}).
 
@@ -20,8 +20,8 @@
 -define(RESPONDERS, [{stats_handler,[{<<"*">>, <<"*">>}]}]).
 -define(BINDINGS, [{self,[]}]).
 -define(QUEUE_NAME, <<"statistics">>).
-%-define(QUEUE_OPTIONS, [{exclusive, true}]).
-%-define(CONSUME_OPTIONS, [{exclusive, true}]).
+%%%-define(QUEUE_OPTIONS, [{exclusive, true}]).
+%%%-define(CONSUME_OPTIONS, [{exclusive, true}]).
 
 
 start() ->
@@ -34,8 +34,8 @@ start_link() ->
                             ,[{bindings, ?BINDINGS}
                               ,{responders, ?RESPONDERS}
                               ,{queue_name, ?QUEUE_NAME}
-                              %,{queue_options, ?QUEUE_OPTIONS}
-                              %,{consume_options, ?CONSUME_OPTIONS}
+			      %%,{queue_options, ?QUEUE_OPTIONS}
+                              %%,{consume_options, ?CONSUME_OPTIONS}
                              ]
                             ,[]).
 
@@ -43,7 +43,7 @@ init([]) ->
     {ok,#state{}}.
 
 handle_call(_Request,_From,State) ->
-    {reply,{error,not_implemented},State}.
+    {reply,{error,'not_implemented'},State}.
 
 handle_cast(_Request,State) ->
     {noreply,State}.
@@ -56,5 +56,3 @@ code_change(_OldVsn, State, _Extra) ->
 
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
-
-    

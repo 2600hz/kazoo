@@ -1,8 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @author Stephen Gibberd <stephen.gibberd@2600hz.com>
-%%% Created :  5 Jul 2013 by Stephen Gibberd <stephen.gibberd@2600hz.com>
 %%% This process runs on each node in the Kazoo cluster. It collects information
-%%% on each node, and regularly sends the information to whistle_stats_master
+%%% on each node, and regularly sends the information the stats application.
 %%% For ecallmgr nodes, it also collects ecallmgr information, and 
 %%% sip events statistics.
 %%%-------------------------------------------------------------------
@@ -11,17 +10,28 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0,increment_counter/1,increment_counter/2, send_counter/2,
-	 send_absolute/2]).
+-export([start_link/0]).
+
+%% Public APIs
+-export([increment_counter/1
+	 ,increment_counter/2
+	 ,send_counter/2
+	 ,send_absolute/2
+	 ,stop/0
+	 ,getdb/0
+	]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3,stop/0]).
+	 terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE). 
--define(SEND_STATS,10000).
+-define(SEND_INTERVAL,10000).
 
--record(state, {ecall=[],sip=[],send_stats=?SEND_STATS}).
+-record(state, {variables=[]
+		,sip=[]
+		,send_stats=?SEND_INTERVAL
+	       }).
 
 %%%===================================================================
 %%% API
@@ -35,7 +45,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    start_link(?SEND_STATS).
+    start_link(?SEND_INTERVAL).
 start_link(Send_stats) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [Send_stats], []).
 
@@ -94,30 +104,34 @@ handle_call(Other,_From,State) ->
 handle_cast(stop,State) ->
     {stop,ok,State};
 handle_cast({Operation,Key,Val}, State) when Operation==add;Operation==store->
-    lager:debug("Got cast ~s ~p ~p",[Operation,Key,Val]),
     NewState = store_value(Operation,Key,Val,State),
+    lager:debug("Got cast ~p ~p ~p",[Operation,Key,Val]),
     {noreply, NewState};
 handle_cast({Operation,Realm,Key,Val}, State) when Operation==add;
 						   Operation==store->
-    lager:debug("Got cast ~s ~p ~p ~p",[Operation,Realm,Key,Val]),
+    lager:debug("Got cast ~p ~p ~p ~p",[Operation,Realm,Key,Val]),
     NewState = store_value(Operation,Realm,Key,Val,State),
     {noreply, NewState};
-handle_cast(Other,State) ->
-    lager:debug("Cast: ~p",[Other]),
+handle_cast(_,State) ->
     {noreply,State}.
 
 stop() ->
     gen_server:cast(?MODULE,stop).
 
+getdb() ->
+    gen_server:call(?MODULE,get_db).
+
 increment_counter(Item) ->
     send_counter(Item,1).
+
 increment_counter(Realm,Item) ->
-    gen_server:cast(?MODULE,{add,Realm,Item,1}).
+    gen_server:cast(?MODULE,{'add',Realm,Item,1}).
 
 send_counter(Item,Value) when is_integer(Value) ->
-    gen_server:cast(?MODULE,{add,Item,Value}).
+    gen_server:cast(?MODULE,{'add',Item,Value}).
+
 send_absolute(Item,Value) ->
-    gen_server:cast(?MODULE,{store,Item,Value}).
+    gen_server:cast(?MODULE,{'store',Item,Value}).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -128,12 +142,12 @@ send_absolute(Item,Value) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'send_stats', Send_stats},State) ->
-    send_stats(State#state.ecall,State#state.sip),
-    erlang:send_after(Send_stats, self(), {'send_stats', Send_stats}),
-    {noreply, State};
+handle_info({'send_stats', SendStats},State) ->
+    send_stats(State#state.variables,State#state.sip),
+    erlang:send_after(SendStats, self(), {'send_stats', SendStats}),
+    {'noreply', State};
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -158,107 +172,91 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
+
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-%%% #state{}  stores ecallmgr statistics in the ecall field, and sip event
+%%% #state{}  stores statistics in the variables field, and sip event
 %%% statistics in the sip field. store_value() either increments the existing
 %%% value or sets the value.
 
-store_value(add,Key,Value,State=#state{ecall=ECall}) when is_integer(Value) ->
-    NewValue =  props:get_value(Key,ECall,0) + Value,
-    State#state{ecall = lists:keystore(Key,1,ECall,{Key,NewValue})};
-store_value(store,Key,Value,State=#state{ecall=ECall}) ->
-    State#state{ecall = lists:keystore(Key,1,ECall,{Key,Value})}.
+store_value('add',Key,Value,State=#state{variables=Var}) 
+  when is_integer(Value) ->
+    NewValue =  props:get_value(Key,Var,0) + Value,
+    State#state{variables = lists:keystore(Key,1,Var,{Key,NewValue})};
+store_value('store',Key,Value,State=#state{variables=Var}) ->
+    State#state{variables = lists:keystore(Key,1,Var,{Key,Value})}.
 
 %%% Sip events are stored according to the sip realm/domain
-store_value(Operation,Realm,Key,Value,State=#state{sip=SipL}) when 
+store_value(Operation,Realm,Key,Value,State=#state{sip=SipList}) when 
       is_integer(Value) ->
-    NewData = case props:get_value(Realm,SipL) of
-		  undefined ->
+    NewData = case props:get_value(Realm,SipList) of
+		  'undefined' ->
 		      [{Key,Value}];
-		  RData ->
-		      NewValue = if Operation == add ->
-					 props:get_value(Key,RData,0)+Value;
-				    true ->
+		  RealmData ->
+		      NewValue = if Operation == 'add' ->
+					 props:get_value(Key,RealmData,0)+Value;
+				    'true' ->
 					 Value
 				 end,
-		      %lager:debug("RData ~p~nNewVale ~w",[RData,NewValue]),
-		      lists:keystore(Key,1,RData,{Key,NewValue})
+		      lists:keystore(Key,1,RealmData,{Key,NewValue})
 	      end,
-    State#state{sip=lists:keystore(Realm,1,SipL,{Realm,NewData})}.
+    State#state{sip=lists:keystore(Realm,1,SipList,{Realm,NewData})}.
 
 %%% send_stats collects and sends the statistics to the whistle_stats_master
 %%% process. All node (VMs) send memory usage
-send_stats(EcallL,SipL) ->
-     VM = [{<<"vm">>,
-	    prepare_json([{nodename,node()},
-			  {'memory-total',erlang:memory(total)},
-			  {'memory-processes',erlang:memory(processes)},
-			  {'memory-system',erlang:memory(system)},
-			  {'memory-atom',erlang:memory(atom)},
-			  {'memory-binary',erlang:memory(binary)},
-			  {'memory-code',erlang:memory(code)},
-			  {'erlang-version',
-			   erlang:system_info(system_version)--"\n"},
-			  {'memory-ets',erlang:memory(ets)}]) }],
-    Ecall = get_ecallmgr_values(EcallL),
-    Sip =  get_sip_values(SipL),
-    lager:debug("sip is ~p",[Sip]),
-    send({VM ++ Ecall ++ Sip}).
+send_stats(VarList,SipList) when is_list(VarList), is_list(SipList) ->
+    Vals = [
+	    {'nodename',node()},
+	    {'memory-total',erlang:memory(total)},
+	    {'memory-processes',erlang:memory(processes)},
+	    {'memory-system',erlang:memory(system)},
+	    {'memory-atom',erlang:memory(atom)},
+	    {'memory-binary',erlang:memory(binary)},
+	    {'memory-code',erlang:memory(code)},
+	    {'erlang-version',erlang:system_info(system_version)--"\n"},
+	    {'memory-ets',erlang:memory(ets)} ]
+	++ VarList
+	++ get_ecallmgr_values(VarList)
+	++ get_sip_values(SipList),
+    send(Vals).
 
 get_sip_values([]) ->
     [];
-get_sip_values(SipL) ->
-    [{<<"sip">>,  prepare_json([{nodename,node()} | SipL])  }].
+get_sip_values(SipList) ->
+    [{<<"sip">>, SipList }].
 
-get_ecallmgr_values([]) ->
-    [];
-get_ecallmgr_values(Ecall) ->
-    RegFail = case {props:get_value("register-attempt",Ecall),
-		    props:get_value("register-success",Ecall)} of
+get_ecallmgr_values(VarList) ->
+    case atom_to_list(node()) of
+	"ecallmgr@" ++ _ ->
+	    get_ecallmgr_values2(VarList);
+	_ ->
+	    []
+    end.
+
+get_ecallmgr_values2(VarList) ->
+    RegFail = case {props:get_value("register-attempt",VarList),
+		    props:get_value("register-success",VarList)} of
 		  {undefined,_} -> 0;
 		  {_,undefined} -> 0;
 		  {Reg,RegSucc} -> lists:max([Reg-RegSucc,0])
 	      end,
+%%% Sums the total reductions for all ecallmgr processes.
     Procs = [process_info(X) || 
 		{_,X,_,_} <- supervisor:which_children(ecallmgr_sup),is_pid(X)],
-
-%%% Sums the total reductions for all ecallmgr processes.
     Reduction = lists:sum([props:get_value(reductions,X) || 
 			      X <- Procs, is_list(X)]),
-    [{<<"ecallmgr">>, 
-      prepare_json([ {nodename,node()},{reduction,Reduction},
-		     {"register-fail",RegFail},
-		     {processes, length(processes())} | Ecall])}].
 
-prepare_json(List) when is_list(List) ->
-    case lists:all(fun(X) -> is_integer(X) end,List) of
-	true ->
-	    List;
-	false ->
-	    {[ {to_binary(K), prepare_json(V)}  || {K,V} <- List]}
-    end;
-prepare_json(Val) ->
-    Val.
-
-to_binary(X) when is_list(X) ->
-    list_to_binary(X);
-to_binary(X) when is_atom(X) ->
-    atom_to_binary(X,utf8);
-to_binary(X) when is_binary(X)->
-    X.
+    [{'reduction',Reduction}
+     ,{'register-fail',RegFail}
+     ,{'processes', length(processes())} 
+    ].
 
 send(RawPayload) ->
-%    lager:debug("Trying to convert to json ~n~p",[RawPayload]),
-    Payload = wh_json:encode(RawPayload),
-    lager:debug("Sending to stats_master ~p",[Payload]),
+%%%   lager:debug("trying to convert to json ~n~p",[RawPayload]),
+    Payload = wh_json:encode(wh_json:recursive_from_proplist(RawPayload)),
+%%%   lager:debug("sending to stats_master ~p",[Payload]),
     amqp_util:targeted_publish(<<"statistics">>,Payload).
-
-    
-	    
-    
-    
