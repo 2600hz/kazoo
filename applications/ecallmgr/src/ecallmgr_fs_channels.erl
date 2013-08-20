@@ -31,6 +31,7 @@
 -export([match_presence/1]).
 -export([handle_query_auth_id/2]).
 -export([handle_query_user_channels/2]).
+-export([handle_channel_status/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -47,6 +48,9 @@
                      }
                      ,{{?MODULE, 'handle_query_user_channels'}
                        ,[{<<"call_event">>, <<"query_user_channels_req">>}]
+                      }
+                     ,{{?MODULE, 'handle_channel_status'}
+                       ,[{<<"call_event">>, <<"channel_status_req">>}]
                       }
                     ]).
 -define(BINDINGS, [{'call', [{'restrict_to', ['status_req']}]}]).
@@ -210,6 +214,37 @@ handle_query_user_channels(JObj, _Props) ->
             ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
             lager:debug("sending back channel data for ~s@~s to ~s", [Username, Realm, ServerId]),
             wapi_call:publish_query_user_channels_resp(ServerId, Resp)
+    end.
+
+-spec handle_channel_status(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_channel_status(JObj, _Props) ->
+    'true' = wapi_call:channel_status_req_v(JObj),
+    _ = wh_util:put_callid(JObj),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    lager:debug("channel status request received"),
+    case ecallmgr_fs_channel:fetch(CallId) of
+        {'error', 'not_found'} ->
+            lager:debug("no node found with channel ~s", [CallId]),
+            Resp = [{<<"Call-ID">>, CallId}
+                    ,{<<"Status">>, <<"terminated">>}
+                    ,{<<"Error-Msg">>, <<"no node found with channel">>}
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+        {'ok', Channel} ->
+            Node = wh_json:get_binary_value(<<"node">>, Channel),
+            [_, Hostname] = binary:split(Node, <<"@">>),
+            lager:debug("channel is on ~s", [Hostname]),
+            Resp = [{<<"Call-ID">>, CallId}
+                    ,{<<"Status">>, <<"active">>}
+                    ,{<<"Switch-Hostname">>, Hostname}
+                    ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
+                    ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
 %%%===================================================================
