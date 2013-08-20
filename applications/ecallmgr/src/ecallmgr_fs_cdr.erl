@@ -47,6 +47,8 @@
                             ,{<<"variable_digits_dialed">>, <<"Digits-Dialed">>}
                             ,{<<"ecallmgr">>, <<"Custom-Channel-Vars">>}
                             ,{fun(P) -> ecallmgr_util:get_sip_request(P) end, <<"Request">>}
+                            ,{fun(P) -> ecallmgr_util:get_sip_to(P) end, <<"To">>}
+                            ,{fun(P) -> ecallmgr_util:get_sip_from(P) end, <<"From">>}
                            ]).
 -define(FS_TO_WHISTLE_OUTBOUND_MAP, [{<<"variable_sip_cid_type">>, <<"Caller-ID-Type">>}]).
 

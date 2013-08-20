@@ -14,9 +14,10 @@
 
          ,handle_subscribe/2
          ,handle_new_channel/2
-         ,handle_destroy_channel/2
+         ,handle_cdr/2
          ,handle_answered_channel/2
          ,handle_presence_update/2
+
 
          ,handle_search_req/2
          ,handle_reset/2
@@ -158,18 +159,18 @@ handle_answered_channel(JObj, _Props) ->
     lager:debug("answered channel"),
     maybe_send_update(JObj, ?PRESENCE_ANSWERED).
 
-handle_destroy_channel(JObj, _Props) ->
-    'true' = wapi_call:destroy_channel_v(JObj),
+handle_cdr(JObj, _Props) ->
+    'true' = wapi_call:cdr_v(JObj),
     wh_util:put_callid(JObj),
 
-    lager:debug("destroy channel"),
+    lager:debug("channel cdr"),
     maybe_send_update(JObj, ?PRESENCE_HANGUP).
 
 -spec maybe_send_update(wh_json:object(), ne_binary()) -> any().
 maybe_send_update(JObj, State) ->
     Update = props:filter_undefined(
-               [{<<"To">>, To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj)}
-                ,{<<"From">>, From = wh_json:get_value(<<"From">>, JObj)}
+               [{<<"To">>, To = get_to(JObj)}
+                ,{<<"From">>, From = get_from(JObj)}
                 ,{<<"State">>, State}
                 ,{<<"Direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
                 ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
@@ -456,3 +457,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec get_to(wh_json:object() | ne_binary()) -> ne_binary().
+get_to(<<"sip:", User/binary>>) -> User;
+get_to(User) when is_binary(User) -> User;
+get_to(JObj) ->
+    get_to(wh_json:get_first_defined([<<"To">>
+                                      ,<<"To-Uri">>
+                                      ,<<"Presence-ID">>
+                                     ], JObj)).
+
+-spec get_from(wh_json:object() | ne_binary()) -> ne_binary().
+get_from(<<"sip:", User/binary>>) -> User;
+get_from(User) when is_binary(User) -> User;
+get_from(JObj) ->
+    get_from(wh_json:get_first_defined([<<"From">>
+                                        ,<<"From-Uri">>
+                                       ], JObj)).

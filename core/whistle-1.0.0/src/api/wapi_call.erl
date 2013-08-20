@@ -198,10 +198,9 @@
                                         ,<<"Remote-SDP">>, <<"Local-SDP">>, <<"Caller-ID-Name">>
                                         ,<<"Caller-ID-Number">>, <<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                                         ,<<"User-Agent">>, <<"Caller-ID-Type">>, <<"Other-Leg-Call-ID">>
-                                        ,<<"Timestamp">>, <<"Request">>
+                                        ,<<"Timestamp">>, <<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
                                         ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
-                                        ,<<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
-                                        ,<<"Digits-Dialed">>
+                                        ,<<"Digits-Dialed">>, <<"To">>, <<"From">>, <<"Request">>
                                    ]).
 -define(CALL_CDR_VALUES, [{<<"Event-Category">>, <<"call_detail">>}
                           ,{<<"Event-Name">>, <<"cdr">>}
