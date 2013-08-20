@@ -661,7 +661,7 @@ bridge(Endpoints, Call) ->
 bridge(Endpoints, Timeout, Call) ->
     bridge(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
 bridge(Endpoints, Timeout, Strategy, Call) ->
-    bridge(Endpoints, Timeout, Strategy, <<"false">>, Call).
+    bridge(Endpoints, Timeout, Strategy, <<"true">>, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
