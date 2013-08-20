@@ -177,8 +177,8 @@ maybe_send_update(JObj, State) ->
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     User = case wh_json:get_value(<<"Call-Direction">>, JObj) of 
-               <<"outbound">> -> To;
-               _Else -> From
+               <<"inbound">> -> From;
+               _Else -> To
            end,
     case find_subscriptions(User) of
         {'ok', Subs} ->
