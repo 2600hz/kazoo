@@ -341,6 +341,10 @@ get_channel_vars({<<"To-Realm">>, Realm}, Vars) ->
                      ,"='", wh_util:to_list(Realm), "'"])
      | Vars
     ];
+get_channel_vars({<<"To-URI">>, ToURI}, Vars) ->
+    [<<"sip_invite_to_uri=<", ToURI/binary, ">">>
+     | Vars
+    ];
 
 get_channel_vars({<<"Caller-ID-Type">>, <<"from">>}, Vars) ->
     [ <<"sip_cid_type=none">> | Vars];

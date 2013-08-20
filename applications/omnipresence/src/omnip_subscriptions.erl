@@ -24,9 +24,10 @@
 
          ,table_id/0
          ,table_config/0
-
+         
          ,find_subscription/1
-
+         ,find_subscriptions/1
+         
          ,search_for_subscriptions/1
          ,search_for_subscriptions/2
 
@@ -148,29 +149,23 @@ handle_presence_update(JObj, _Props) ->
 handle_new_channel(JObj, _Props) ->
     'true' = wapi_call:new_channel_v(JObj),
     wh_util:put_callid(JObj),
-
-    lager:debug("new channel"),
     maybe_send_update(JObj, ?PRESENCE_RINGING).
 
 handle_answered_channel(JObj, _Props) ->
     'true' = wapi_call:answered_channel_v(JObj),
     wh_util:put_callid(JObj),
-
-    lager:debug("answered channel"),
     maybe_send_update(JObj, ?PRESENCE_ANSWERED).
 
 handle_cdr(JObj, _Props) ->
     'true' = wapi_call:cdr_v(JObj),
     wh_util:put_callid(JObj),
-
-    lager:debug("channel cdr"),
     maybe_send_update(JObj, ?PRESENCE_HANGUP).
 
 -spec maybe_send_update(wh_json:object(), ne_binary()) -> any().
 maybe_send_update(JObj, State) ->
     Update = props:filter_undefined(
-               [{<<"To">>, To = get_to(JObj)}
-                ,{<<"From">>, From = get_from(JObj)}
+               [{<<"To">>, To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj)}
+                ,{<<"From">>, From = wh_json:get_value(<<"From">>, JObj)}
                 ,{<<"State">>, State}
                 ,{<<"Direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
                 ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
@@ -185,7 +180,8 @@ maybe_send_update(JObj, State) ->
         {'ok', Subs} ->
             [send_update(Update, S) || S <- Subs];
         {'error', 'not_found'} ->
-            lager:debug("no subs for ~s or ~s(~s)", [To, From, State])
+            lager:debug("no subscriptions for ~s/~s ~s (entity ~s)"
+                        ,[To, From, State, User])
     end.
 
 -spec send_update(wh_proplist(), subscription()) -> 'ok'.
@@ -195,8 +191,9 @@ send_update(Update, #omnip_subscription{stalker=S
                                        }) ->
     To = props:get_value(<<"To">>, Update),
     From = props:get_value(<<"From">>, Update, F),
+    State = props:get_value(<<"State">>, Update),
 
-    lager:debug("sending update '~s' for '~s' from '~s' to '~s'", [props:get_value(<<"State">>, Update), To, From, S]),
+    lager:debug("sending update ~s/~s ~s to '~s'", [To, From, State, S]),
 
     whapps_util:amqp_pool_send([{<<"To">>, <<P/binary, ":", To/binary>>}
                                 ,{<<"From">>, <<P/binary, ":", From/binary>>}
@@ -213,7 +210,6 @@ subscribe_to_record(JObj) ->
     S = wh_json:get_first_defined([<<"Queue">>, <<"Server-ID">>], JObj),
     E = expires(JObj),
 
-    lager:debug("subscribe for ~s from ~s", [U, F]),
     #omnip_subscription{user=U
                         ,from=F
                         ,stalker=S
@@ -312,29 +308,33 @@ handle_cast({'subscribe', #omnip_subscription{from = <<>>}=_S}, State) ->
     {'noreply', State};
 handle_cast({'subscribe', #omnip_subscription{expires=E
                                               ,user=_U
+                                              ,from=_F
                                               ,stalker=_S
                                              }=S}, State) when E =< 0 ->
-    lager:debug("maybe remove subscription for ~s(~s)", [_U, _S]),
     case find_subscription(S) of
         {'ok', #omnip_subscription{timestamp=_T
                                    ,expires=_E
                                    }=O} ->
-            lager:debug("found subscription, removing (had ~p s left)", [_E - wh_util:elapsed_s(_T)]),
+            lager:debug("unsubscribe ~s/~s (had ~p s left)", [_U, _F, _E - wh_util:elapsed_s(_T)]),
             ets:delete_object(table_id(), O);
-        {'error', 'not_found'} ->
-            lager:debug("subscription not found, ignoring")
+        {'error', 'not_found'} -> 'ok'
     end,
     {'noreply', State};
 handle_cast({'subscribe', #omnip_subscription{user=_U
+                                              ,from=_F
+                                              ,expires=_E1
                                               ,stalker=_S
                                              }=S}, State) ->
     case find_subscription(S) of
         {'ok', #omnip_subscription{timestamp=_T
-                                   ,expires=_E
+                                   ,expires=_E2
                                   }=O} ->
-            lager:debug("found subscription for ~s, removing old subscription (had ~p s left)", [_U, _E - wh_util:elapsed_s(_T)]),
+            lager:debug("re-subscribe ~s/~s expires in ~ps(prior remaing ~ps)"
+                        ,[_U, _F, _E1, _E2 - wh_util:elapsed_s(_T)]),
             ets:delete_object(table_id(), O);
-        {'error', 'not_found'} -> 'ok'
+        {'error', 'not_found'} -> 
+            lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1]),
+            'ok'
     end,
     ets:insert(table_id(), S),
     {'noreply', State};
@@ -457,19 +457,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_to(wh_json:object() | ne_binary()) -> ne_binary().
-get_to(<<"sip:", User/binary>>) -> User;
-get_to(User) when is_binary(User) -> User;
-get_to(JObj) ->
-    get_to(wh_json:get_first_defined([<<"To">>
-                                      ,<<"To-Uri">>
-                                      ,<<"Presence-ID">>
-                                     ], JObj)).
-
--spec get_from(wh_json:object() | ne_binary()) -> ne_binary().
-get_from(<<"sip:", User/binary>>) -> User;
-get_from(User) when is_binary(User) -> User;
-get_from(JObj) ->
-    get_from(wh_json:get_first_defined([<<"From">>
-                                        ,<<"From-Uri">>
-                                       ], JObj)).
