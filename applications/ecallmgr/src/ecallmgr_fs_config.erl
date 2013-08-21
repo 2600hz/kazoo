@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%% Send config commands to FS
 %%% @end
@@ -216,7 +216,6 @@ handle_config_req(Node, ID, <<"conference.conf">>, Data) ->
               end,
     lager:debug("replying to ~s with profile ~s: ~s", [ID, Profile, XmlResp]),
     freeswitch:fetch_reply(Node, ID, 'configuration', iolist_to_binary(XmlResp));
-
 handle_config_req(Node, ID, _Conf, _) ->
     lager:debug("ignoring conf ~s: ~s", [_Conf, ID]),
     {'ok', Resp} = ecallmgr_fs_xml:not_found(),
@@ -390,4 +389,4 @@ maybe_fix_profile_tts(Name, Profile) ->
 fix_flite_tts(Profile) ->
     Voice = wh_json:get_value(<<"tts-voice">>, Profile),
     wh_json:set_value(<<"tts-voice">>, ecallmgr_fs_flite:voice(Voice), Profile).
-            
+
