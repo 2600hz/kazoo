@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Directory lookups from FS
 %%% @end
@@ -29,7 +29,7 @@
 
 -include("ecallmgr.hrl").
 
--record(state, {node = 'undefined' :: atom()
+-record(state, {node :: atom()
                 ,options = [] :: wh_proplist()
                }).
 
@@ -66,7 +66,9 @@ init([Node, Options]) ->
     put('callid', Node),
     lager:info("starting new fs authn listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_directory'),
-    {'ok', #state{node=Node, options=Options}}.
+    {'ok', #state{node=Node
+                  ,options=Options
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -259,4 +261,4 @@ maybe_defered_error(Realm, Username, JObj) ->
             wh_cache:store_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
             {'ok', JObj}
     end.
-            
+

@@ -124,6 +124,7 @@ handle_cast('connect', #state{ip=IP, port=Port}=State) ->
             {'stop', Reason, State}
     end;
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -148,7 +149,8 @@ handle_info({'tcp_error', Socket, _Reason}, #state{socket=Socket}=State) ->
     gen_tcp:close(Socket),
     gen_server:cast(self(), 'request_event_stream'),
     {'noreply', State#state{socket='undefined'}};
-handle_info(_Info, State) ->
+handle_info(_Msg, State) ->
+    lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -224,6 +226,8 @@ process_event(?CHANNEL_MOVE_COMPLETE_EVENT_BIN, _, Props, Node) ->
     gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
                ,?CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Props)
               );
+process_event(<<"sofia::register">>, _UUID, Props, Node) ->
+    gproc:send({'p', 'l', ?REGISTER_SUCCESS_REG}, ?REGISTER_SUCCESS_MSG(Node, Props));
 process_event(_, _, _, _) ->
     'ok'.
 
