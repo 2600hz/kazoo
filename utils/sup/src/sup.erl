@@ -12,7 +12,7 @@
 -export([main/1]).
 
 -include_lib("whistle/include/wh_types.hrl").
-
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(WHAPPS_VM_ARGS, ["/opt/kazoo/whistle_apps/conf/vm.args"
                          ,"/opt/whistle/whistle/whistle_apps/conf/vm.args"
@@ -22,7 +22,7 @@
                        ]).
 -define(MAX_CHARS, round(math:pow(2012, 80))).
 
--spec main/1 :: (string()) -> no_return().
+-spec main(string()) -> no_return().
 main(CommandLineArgs) ->
     main(CommandLineArgs, 0).
 
@@ -65,7 +65,7 @@ main(CommandLineArgs, Loops) ->
             end
     end.
 
--spec get_target/2 :: (proplist(), boolean()) -> atom().
+-spec get_target(proplist(), boolean()) -> atom().
 get_target(Options, Verbose) ->
     Node = proplists:get_value(node, Options),
     Host = get_host(Options),
@@ -83,15 +83,16 @@ get_target(Options, Verbose) ->
             print_ping_failed(Target, Cookie)
     end.
 
--spec get_cookie/2 :: (proplist(), string()) -> 'ok'.
+-spec get_cookie(proplist(), string()) -> 'ok'.
 get_cookie(Options, Node) ->
-    Cookie = case {Node, proplists:get_value(cookie, Options, "")} of
+    Cookie = case {Node, props:get_value('cookie', Options, "")} of
                  {"whistle_apps", ""} -> maybe_get_cookie('whistle_apps');
                  {"ecallmgr", ""} -> maybe_get_cookie('ecallmgr');
                  {_, ""} -> print_no_setcookie();
                  {_, C} -> C
              end,
-    erlang:set_cookie(node(), Cookie),
+    lager:debug("cookie found: '~p'", [Cookie]),
+    erlang:set_cookie(node(), wh_util:to_atom(Cookie, 'true')),
     Cookie.
 
 maybe_get_cookie('whistle_apps') ->
@@ -111,7 +112,7 @@ maybe_get_cookie('ecallmgr') ->
 maybe_get_cookie(_) ->
     print_no_setcookie().
 
--spec get_cookie_from_vmargs/1 :: ([string(),...]) -> string().
+-spec get_cookie_from_vmargs([string(),...]) -> string().
 get_cookie_from_vmargs([]) ->
     print_no_setcookie();
 get_cookie_from_vmargs([File|Files]) ->
@@ -124,7 +125,7 @@ get_cookie_from_vmargs([File|Files]) ->
             end
     end.
 
--spec get_host/1 :: (proplist()) -> string().
+-spec get_host(proplist()) -> string().
 get_host(Options) ->
     Host = proplists:get_value(host, Options),
     case inet:gethostbyname(Host) of
@@ -137,12 +138,12 @@ get_host(Options) ->
             print_unresolvable_host(Host)
     end.
 
--spec my_name/0 :: () -> atom().
+-spec my_name() -> atom().
 my_name() ->
     Localhost = net_adm:localhost(),
     list_to_atom("sup_" ++ os:getpid() ++ "@" ++ Localhost).
 
--spec parse_args/1 :: (string()) -> {'ok', proplist(), list()}.
+-spec parse_args(string()) -> {'ok', proplist(), list()}.
 parse_args(CommandLineArgs) ->
     OptSpecList = option_spec_list(),
     case getopt:parse(OptSpecList, CommandLineArgs) of
@@ -154,14 +155,14 @@ parse_args(CommandLineArgs) ->
             display_help(1)
     end.
 
--spec print_no_setcookie/0 :: () -> no_return().
+-spec print_no_setcookie() -> no_return().
 print_no_setcookie() ->
     io:format(standard_io, "Unable to automatically determine cookie~n", []),
     io:format(standard_io, "Please provide the cookie of the node you are connecting to~n", []),
     io:format(standard_io, "\"./sup -c <cookie>\"~n", []),
     halt(1).
 
--spec print_ping_failed/2 :: (string(), string()) -> no_return().
+-spec print_ping_failed(string(), string()) -> no_return().
 print_ping_failed(Target, Cookie) ->
     io:format(standard_io, "Failed to connect to service '~s' with cookie '~s'~n", [Target, Cookie]),
     io:format(standard_io, "  Possible fixes:~n", []),
@@ -170,7 +171,7 @@ print_ping_failed(Target, Cookie) ->
     io:format(standard_io, "    * Verify that the hostname being used is a whistle node~n", []),
     halt(1).
 
--spec print_unresolvable_host/1 :: (string()) -> no_return().
+-spec print_unresolvable_host(string()) -> no_return().
 print_unresolvable_host(Host) ->
     io:format(standard_io, "If you can not run \"ping ~s\" then this program will not be able to connect.~n", [Host]),
     io:format(standard_io, "  Possible fixes:~n", []),
@@ -179,13 +180,13 @@ print_unresolvable_host(Host) ->
     io:format(standard_io, "    * Create a DNS record for \"~s\"~n", [Host]),
     halt(1).
 
--spec display_help/1 :: (non_neg_integer()) -> no_return().
+-spec display_help(non_neg_integer()) -> no_return().
 display_help(Return) ->
     OptSpecList = option_spec_list(),
     getopt:usage(OptSpecList, "sup", "[args ...]"),
     erlang:halt(Return).
 
--spec option_spec_list/0 :: () -> proplist().
+-spec option_spec_list() -> wh_proplist().
 option_spec_list() ->
     [{help, $?, "help", undefined, "Show the program options"},
      {host, $h, "host", {string, net_adm:localhost()}, "System hostname, defaults to system hostname"},

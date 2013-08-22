@@ -133,8 +133,8 @@ set_missing_values(Prop, HeaderValues) when is_list(Prop) ->
                         PropAcc;
                    ({K, _}=KV, PropAcc) ->
                         case is_empty(props:get_value(K, Prop)) of
-                            true -> [ KV | PropAcc ];
-                            false -> PropAcc
+                            'true' -> [ KV | PropAcc ];
+                            'false' -> PropAcc
                         end
                 end, Prop, HeaderValues);
 set_missing_values(JObj, HeaderValues) ->
@@ -161,23 +161,24 @@ do_empty_value_removal([{<<"Msg-ID">>,_}=KV|T], Acc) ->
     do_empty_value_removal(T, [KV|Acc]);
 do_empty_value_removal([{K,V}=KV|T], Acc) ->
     case is_empty(V) of
-        true -> do_empty_value_removal(T, Acc);
-        false ->
+        'true' -> do_empty_value_removal(T, Acc);
+        'false' ->
             case wh_json:is_json_object(V) orelse
-                wh_util:is_proplist(V) of
-                true ->
+                wh_util:is_proplist(V)
+            of
+                'true' ->
                     SubElm = {K, remove_empty_values(V)},
                     do_empty_value_removal(T, [SubElm|Acc]);
-                false ->
+                'false' ->
                     do_empty_value_removal(T, [KV|Acc])
             end
     end.
 
 -spec is_empty(term()) -> boolean().
-is_empty(undefined) -> true;
-is_empty([]) -> true;
-is_empty(<<>>) -> true;
-is_empty(_) -> false.
+is_empty('undefined') -> 'true';
+is_empty([]) -> 'true';
+is_empty(<<>>) -> 'true';
+is_empty(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @doc Extract just the default headers from a message
@@ -187,7 +188,7 @@ is_empty(_) -> false.
 extract_defaults(Prop) when is_list(Prop) ->
     %% not measurable faster over the foldl, but cleaner (imo)
     [ {H, V} || H <- ?DEFAULT_HEADERS ++ ?OPTIONAL_DEFAULT_HEADERS,
-                (V = props:get_value(H, Prop)) =/= undefined
+                (V = props:get_value(H, Prop)) =/= 'undefined'
     ];
 extract_defaults(JObj) ->
     extract_defaults(wh_json:to_proplist(JObj)).
@@ -209,8 +210,8 @@ remove_defaults(JObj) ->
 -spec error_resp(api_terms()) -> api_formatter_return().
 error_resp(Prop) when is_list(Prop) ->
     case error_resp_v(Prop) of
-        true -> build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for error_resp"}
+        'true' -> build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for error_resp"}
     end;
 error_resp(JObj) ->
     error_resp(wh_json:to_proplist(JObj)).
@@ -226,7 +227,7 @@ error_resp_v(JObj) ->
 publish_error(TargetQ, JObj) ->
     publish_error(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(TargetQ, Error, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Error, ?ERROR_RESP_VALUES, fun ?MODULE:error_resp/1),
+    {'ok', Payload} = wh_api:prepare_api_payload(Error, ?ERROR_RESP_VALUES, fun ?MODULE:error_resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 %%%===================================================================
@@ -234,64 +235,67 @@ publish_error(TargetQ, Error, ContentType) ->
 %%%===================================================================
 -spec validate(api_terms(), api_headers(), wh_proplist(), wh_proplist()) -> boolean().
 validate(Prop, ReqH, Vals, Types) when is_list(Prop) ->
-    case has_all(Prop, ?DEFAULT_HEADERS) andalso
-        validate_message(Prop, ReqH, Vals, Types) of
-        true -> true;
-        false ->
+    case has_all(Prop, ?DEFAULT_HEADERS)
+        andalso validate_message(Prop, ReqH, Vals, Types)
+    of
+        'true' -> 'true';
+        'false' ->
             lager:debug("failing API JSON: ~s", [wh_json:encode(wh_json:from_list(Prop))]),
-            false
+            'false'
     end;
 validate(JObj, ReqH, Vals, Types) ->
     validate(wh_json:to_proplist(JObj), ReqH, Vals, Types).
 
 -spec validate_message(api_terms(), api_headers(), wh_proplist(), wh_proplist()) -> boolean().
 validate_message(Prop, ReqH, Vals, Types) when is_list(Prop) ->
-    has_all(Prop, ReqH) andalso
-        values_check(Prop, Vals) andalso
-        type_check(Prop, Types);
+    has_all(Prop, ReqH)
+        andalso values_check(Prop, Vals)
+        andalso type_check(Prop, Types);
 validate_message(JObj, ReqH, Vals, Types) ->
     validate_message(wh_json:to_proplist(JObj), ReqH, Vals, Types).
 
 -spec build_message(api_terms(), api_headers(), api_headers()) -> api_formatter_return().
 build_message(Prop, ReqH, OptH) when is_list(Prop) ->
     case defaults(Prop) of
-        {error, _Reason}=Error ->
+        {'error', _Reason}=Error ->
             lager:debug("API message does not have the default headers ~s: ~p"
-                        ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
+                        ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]
+                       ),
             Error;
         HeadAndProp ->
             case build_message_specific_headers(HeadAndProp, ReqH, OptH) of
-                {ok, FinalHeaders} -> headers_to_json(FinalHeaders);
+                {'ok', FinalHeaders} -> headers_to_json(FinalHeaders);
                 Err -> Err
             end
     end;
 build_message(JObj, ReqH, OptH) ->
     build_message(wh_json:to_proplist(JObj), ReqH, OptH).
 
--spec build_message_specific_headers(wh_proplist() | {api_headers(), wh_proplist()}, api_headers(), api_headers()) -> {'ok', wh_proplist()} |
-                                                                                                                      {'error', string()}.
+-spec build_message_specific_headers(wh_proplist() | {api_headers(), wh_proplist()}, api_headers(), api_headers()) ->
+                                            {'ok', wh_proplist()} |
+                                            {'error', string()}.
 build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
-        {error, _Reason} = Error ->
+        {'error', _Reason} = Error ->
             lager:debug("API message does not have the required headers ~s: ~p"
-                        ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
+                        ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]
+                       ),
             Error;
         {Headers1, Prop1} ->
             {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
-            {ok, Headers2}
+            {'ok', Headers2}
     end;
 build_message_specific_headers(Prop, ReqH, OptH) ->
     build_message_specific_headers({[], Prop}, ReqH, OptH).
 
--spec build_message_specific(Msg, ReqHeaders, OptHeaders) -> api_formatter_return() when
-      Msg :: wh_proplist() | {api_headers(), wh_proplist()},
-      ReqHeaders :: api_headers(),
-      OptHeaders :: api_headers().
+-spec build_message_specific(wh_proplist() | {api_headers(), wh_proplist()}, api_headers(), api_headers()) ->
+                                    api_formatter_return().
 build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
-        {error, _Reason} = Error ->
+        {'error', _Reason} = Error ->
             lager:debug("API message does not have the required headers ~s: ~p"
-                        ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
+                        ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]
+                       ),
             Error;
         {Headers1, Prop1} ->
             {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
@@ -303,54 +307,56 @@ build_message_specific(Prop, ReqH, OptH) ->
 -spec headers_to_json(wh_proplist()) -> api_formatter_return().
 headers_to_json([_|_]=HeadersProp) ->
     try wh_json:encode(wh_json:from_list(HeadersProp)) of
-        JSON -> {ok, JSON}
+        JSON -> {'ok', JSON}
     catch
-        _What:_Why -> {error, io_lib:format("WHISTLE TO_JSON ~p: ~p~n~p~n", [_What, _Why, HeadersProp])}
+        _What:_Why -> {'error', io_lib:format("WHISTLE TO_JSON ~p: ~p~n~p~n", [_What, _Why, HeadersProp])}
     end.
 
 %% Checks Prop for all default headers, throws error if one is missing
 %% defaults(PassedProps) -> { Headers, NewPropList } | {error, Reason}
--spec defaults(api_terms()) -> {wh_proplist(), wh_proplist()} |
-                                     {'error', string()}.
-defaults(Prop) ->
-    defaults(Prop, []).
+-spec defaults(api_terms()) ->
+                      {wh_proplist(), wh_proplist()} |
+                      {'error', string()}.
+defaults(Prop) -> defaults(Prop, []).
 defaults(Prop, Headers) ->
     case update_required_headers(Prop, ?DEFAULT_HEADERS, Headers) of
-        {error, _Reason} = Error ->
+        {'error', _Reason} = Error ->
             Error;
         {Headers1, Prop1} ->
             update_optional_headers(Prop1, ?OPTIONAL_DEFAULT_HEADERS, Headers1)
     end.
 
--spec update_required_headers(wh_proplist(), api_headers(), wh_proplist()) -> {wh_proplist(), wh_proplist()} |
-                                                                              {'error', string()}.
+-spec update_required_headers(wh_proplist(), api_headers(), wh_proplist()) ->
+                                     {wh_proplist(), wh_proplist()} |
+                                     {'error', string()}.
 update_required_headers(Prop, Fields, Headers) ->
     case has_all(Prop, Fields) of
-        true -> add_headers(Prop, Fields, Headers);
-        false -> {error, "All required headers not defined"}
+        'true' -> add_headers(Prop, Fields, Headers);
+        'false' -> {'error', "All required headers not defined"}
     end.
 
--spec update_optional_headers(wh_proplist(), api_headers(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
+-spec update_optional_headers(wh_proplist(), api_headers(), wh_proplist()) ->
+                                     {wh_proplist(), wh_proplist()}.
 update_optional_headers(Prop, Fields, Headers) ->
     case has_any(Prop, Fields) of
-        true ->
-            add_optional_headers(Prop, Fields, Headers);
-        false ->
-            {Headers, Prop}
+        'true' -> add_optional_headers(Prop, Fields, Headers);
+        'false' -> {Headers, Prop}
     end.
 
 %% add [Header] from Prop to HeadProp
--spec add_headers(wh_proplist(), api_headers(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
+-spec add_headers(wh_proplist(), api_headers(), wh_proplist()) ->
+                         {wh_proplist(), wh_proplist()}.
 add_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) ->
                         {[{K, props:get_value(K, KVs)} | Headers1], props:delete(K, KVs)}
                 end, {Headers, Prop}, Fields).
 
--spec add_optional_headers(wh_proplist(), api_headers(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
+-spec add_optional_headers(wh_proplist(), api_headers(), wh_proplist()) ->
+                                  {wh_proplist(), wh_proplist()}.
 add_optional_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) ->
                         case props:get_value(K, KVs) of
-                            undefined -> {Headers1, KVs};
+                            'undefined' -> {Headers1, KVs};
                             V -> {[{K, V} | Headers1], props:delete(K, KVs)}
                         end
                 end, {Headers, Prop}, Fields).
@@ -360,10 +366,10 @@ add_optional_headers(Prop, Fields, Headers) ->
 has_all(Prop, Headers) ->
     lists:all(fun(Header) ->
                       case props:is_defined(Header, Prop) of
-                          true -> true;
-                          false ->
+                          'true' -> 'true';
+                          'false' ->
                               lager:debug("failed to find key '~s' on API message", [Header]),
-                              false
+                              'false'
                       end
               end, Headers).
 
@@ -377,23 +383,23 @@ has_any(Prop, Headers) ->
 values_check(Prop, Values) ->
     lists:all(fun({Key, Vs}) when is_list(Vs) ->
                       case props:get_value(Key, Prop) of
-                          undefined -> true; % isn't defined in Prop, has_all will error if req'd
+                          'undefined' -> 'true'; % isn't defined in Prop, has_all will error if req'd
                           V -> case lists:member(V, Vs) of
-                                   true -> true;
-                                   false ->
+                                   'true' -> 'true';
+                                   'false' ->
                                        lager:debug("API key '~s' value '~p' is not one of the values: ~p"
                                                    ,[Key, V, Vs]),
-                                       false
+                                       'false'
                                end
                       end;
                  ({Key, V}) ->
                       case props:get_value(Key, Prop) of
-                          undefined -> true; % isn't defined in Prop, has_all will error if req'd
-                          V -> true;
+                          'undefined' -> 'true'; % isn't defined in Prop, has_all will error if req'd
+                          V -> 'true';
                           _Val ->
                               lager:debug("API key '~s' value '~p' is not '~p'"
                                           ,[Key, _Val, V]),
-                              false
+                              'false'
                       end
               end, Values).
 
@@ -402,18 +408,19 @@ values_check(Prop, Values) ->
 type_check(Prop, Types) ->
     lists:all(fun({Key, Fun}) ->
                       case props:get_value(Key, Prop) of
-                          undefined -> true; % isn't defined in Prop, has_all will error if req'd
+                          %% isn't defined in Prop, has_all will error if req'd
+                          'undefined' -> 'true';
                           Value ->
                               try case Fun(Value) of % returns boolean
-                                      true -> true;
-                                      false ->
+                                      'true' -> 'true';
+                                      'false' ->
                                           lager:debug("API key '~s' value '~p' failed validation fun", [Key, Value]),
-                                          false
+                                          'false'
                                   end
                               catch
                                   _:_R ->
                                       lager:debug("API key '~s' value '~p' caused validation fun exception: ~p", [Key, Value, _R]),
-                                      false
+                                      'false'
                               end
                       end
               end, Types).

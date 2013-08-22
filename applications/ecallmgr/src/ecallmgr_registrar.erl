@@ -13,7 +13,9 @@
 -export([start_link/0]).
 -export([lookup_contact/2]).
 -export([reg_success/2]).
--export([reg_query/2]).
+-export([reg_query/2
+         ,handle_reg_success/2
+        ]).
 -export([summary/0
          ,summary/1
         ]).
@@ -141,7 +143,7 @@ summary(Realm) ->
                   ,[{'=:=', '$1', {const, Realm}}]
                   ,['$_']
                  }],
-    print_summary(ets:select(?MODULE, MatchSpec, 1)).    
+    print_summary(ets:select(?MODULE, MatchSpec, 1)).
 
 -spec details() -> 'ok'.
 details() ->
@@ -157,7 +159,7 @@ details(User) when not is_binary(User) ->
 details(User) ->
     case binary:split(User, <<"@">>) of
         [Username, Realm] -> details(Username, Realm);
-         _Else -> 
+         _Else ->
             MatchSpec = [{#registration{realm = '$1', _ = '_'}
                           ,[{'=:=', '$1', {const, User}}]
                           ,['$_']
@@ -200,6 +202,28 @@ flush(Username, Realm) when not is_binary(Username) ->
 flush(Username, Realm) ->
     gen_server:cast(?MODULE, {'flush', Username, Realm}).
 
+-spec handle_reg_success(atom(), wh_proplist()) -> 'ok'.
+handle_reg_success(Node, Props) ->
+    put('callid', props:get_first_defined([<<"Call-ID">>, <<"call-id">>], Props, 'reg_success')),
+    Req = lists:foldl(fun(K, Acc) ->
+                              case props:get_first_defined([wh_util:to_lower_binary(K), K], Props) of
+                                  'undefined' -> Acc;
+                                  V -> [{K, V} | Acc]
+                              end
+                      end
+                      ,[{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
+                        ,{<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
+                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                       ]
+                      ,wapi_registration:success_keys()),
+    lager:debug("sending successful registration for ~s@~s"
+                ,[props:get_value(<<"Username">>, Req), props:get_value(<<"Realm">>, Req)]
+               ),
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                        ,Req
+                        ,fun wapi_registration:publish_success/1
+                       ).
+
 %%%===================================================================
 %%% gen_listener callbacks
 %%%===================================================================
@@ -220,6 +244,9 @@ init([]) ->
     lager:debug("starting new ecallmgr registrar"),
     _ = ets:new(?MODULE, ['set', 'protected', 'named_table', {'keypos', #registration.id}]),
     erlang:send_after(2000, self(), 'expire'),
+
+    gproc:reg({'p', 'l', ?REGISTER_SUCCESS_REG}),
+
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -288,6 +315,9 @@ handle_info('expire', State) ->
     _ = expire_objects(),
     _ = erlang:send_after(2000, self(), 'expire'),
     {'noreply', State};
+handle_info(?REGISTER_SUCCESS_MSG(Node, Props), State) ->
+    spawn(?MODULE, 'handle_reg_success', [Node, Props]),
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -345,7 +375,7 @@ fetch_contact(Username, Realm) ->
                                      ,{'ecallmgr', fun wapi_registration:query_resp_v/1}
                                      ,2000)
     of
-        {'ok', JObjs} -> 
+        {'ok', JObjs} ->
             case [Contact
                   || JObj <- JObjs
                          ,wapi_registration:query_resp_v(JObj)
@@ -389,8 +419,8 @@ expire_object({[#registration{id=Id, username=Username, realm=Realm}=Reg]
 
 -spec maybe_resp_to_query(wh_json:object()) -> 'ok'.
 maybe_resp_to_query(JObj) ->
-    case wh_json:get_value(<<"Node">>, JObj) 
-        =:= wh_util:to_binary(node()) 
+    case wh_json:get_value(<<"Node">>, JObj)
+        =:= wh_util:to_binary(node())
     of
         'false' -> resp_to_query(JObj);
         'true' ->
@@ -401,12 +431,12 @@ maybe_resp_to_query(JObj) ->
             wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
--spec resp_to_query(wh_json:object()) -> 'ok'.            
+-spec resp_to_query(wh_json:object()) -> 'ok'.
 resp_to_query(JObj) ->
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     MatchSpec = case wh_json:get_value(<<"Username">>, JObj) of
-                    'undefined' -> 
+                    'undefined' ->
                         [{#registration{realm = '$1', _ = '_'}
                           ,[{'=:=', '$1', {const, Realm}}]
                           ,['$_']
@@ -438,7 +468,7 @@ resp_to_query(JObj) ->
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
-    end. 
+    end.
 
 -spec registration_id(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 registration_id(Username, Realm) ->
@@ -486,8 +516,7 @@ existing_or_new_registration(Username, Realm) ->
     end.
 
 -spec maybe_initial_registration(registration()) -> 'ok'.
-maybe_initial_registration(#registration{initial='false'}) ->
-    'ok';
+maybe_initial_registration(#registration{initial='false'}) -> 'ok';
 maybe_initial_registration(#registration{initial='true'}=Reg) ->
     initial_registration(Reg).
 
@@ -501,7 +530,9 @@ initial_registration(#registration{}=Reg) ->
     'ok'.
 
 -spec maybe_query_authn(registration()) -> registration().
-maybe_query_authn(#registration{username=Username, realm=Realm}=Reg) ->
+maybe_query_authn(#registration{username=Username
+                                ,realm=Realm
+                               }=Reg) ->
     case wh_cache:peek_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username)) of
         {'error', 'not_found'} -> query_authn(Reg);
         {'ok', JObj} ->
@@ -515,14 +546,19 @@ maybe_query_authn(#registration{username=Username, realm=Realm}=Reg) ->
                              ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
                              ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
                             }
-    end.    
+    end.
 
 -spec query_authn(registration()) -> registration().
-query_authn(#registration{username=Username, realm=Realm
-                          ,to_user=ToUser, to_host=ToHost
-                          ,from_user=FromUser, from_host=FromHost
-                          ,network_ip=NetworkIP, registrar_node=Node
-                          ,call_id=CallId}=Reg) ->
+query_authn(#registration{username=Username
+                          ,realm=Realm
+                          ,to_user=ToUser
+                          ,to_host=ToHost
+                          ,from_user=FromUser
+                          ,from_host=FromHost
+                          ,network_ip=NetworkIP
+                          ,registrar_node=Node
+                          ,call_id=CallId
+                         }=Reg) ->
     lager:debug("looking up credentials of ~s@~s", [Username, Realm]),
     Req = [{<<"To">>, <<ToUser/binary, "@", ToHost/binary>>}
            ,{<<"From">>, <<FromUser/binary, "@", FromHost/binary>>}
@@ -565,10 +601,14 @@ query_authn(#registration{username=Username, realm=Realm
     end.
 
 -spec update_cache(registration()) -> registration().
-update_cache(#registration{authorizing_id=AuthorizingId, account_id=AccountId
-                           ,authorizing_type=AuthorizingType, account_db=AccountDb
-                           ,suppress_unregister=SuppressUnregister, owner_id=OwnerId
-                           ,id=Id}=Reg) ->
+update_cache(#registration{authorizing_id=AuthorizingId
+                           ,account_id=AccountId
+                           ,authorizing_type=AuthorizingType
+                           ,account_db=AccountDb
+                           ,suppress_unregister=SuppressUnregister
+                           ,owner_id=OwnerId
+                           ,id=Id
+                          }=Reg) ->
     Props = [{#registration.account_id, AccountId}
              ,{#registration.account_db, AccountDb}
              ,{#registration.authorizing_id, AuthorizingId}
@@ -580,21 +620,23 @@ update_cache(#registration{authorizing_id=AuthorizingId, account_id=AccountId
     Reg.
 
 -spec maybe_send_register_notice(registration()) -> 'ok'.
-maybe_send_register_notice(#registration{username=Username, realm=Realm}=Reg) ->
+maybe_send_register_notice(#registration{username=Username
+                                         ,realm=Realm
+                                        }=Reg) ->
     case oldest_registrar(Username, Realm) of
         'false' -> 'ok';
         'true' -> send_register_notice(Reg)
     end.
-             
+
 -spec send_register_notice(registration()) -> 'ok'.
 send_register_notice(Reg) ->
-    Props = to_props(Reg) 
+    Props = to_props(Reg)
         ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
     wapi_notifications:publish_register(Props).
 
 -spec send_deregister_notice(registration()) -> 'ok'.
 send_deregister_notice(Reg) ->
-    Props = to_props(Reg) 
+    Props = to_props(Reg)
         ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
     wapi_notifications:publish_deregister(Props).
 
@@ -639,7 +681,7 @@ oldest_registrar(Username, Realm) ->
                                      ,Reg
                                      ,fun wapi_registration:publish_query_req/1
                                      ,'ecallmgr'
-                                     ,2000) 
+                                     ,2000)
     of
         {'ok', JObjs} ->
             case
@@ -664,9 +706,12 @@ print_summary(Match) ->
 print_summary('$end_of_table', Count) ->
     io:format("+----------------------------------------------------+------------------------+------------------------+------------------------+------+~n"),
     io:format("Found ~p registrations~n", [Count]);
-print_summary({[#registration{username=Username, realm=Realm
-                              ,contact=Contact, expires=Expires
-                              ,last_registration=LastRegistration}]
+print_summary({[#registration{username=Username
+                              ,realm=Realm
+                              ,contact=Contact
+                              ,expires=Expires
+                              ,last_registration=LastRegistration
+                             }]
                ,Continuation}
               ,Count) ->
     User = <<Username/binary, "@", Realm/binary>>,

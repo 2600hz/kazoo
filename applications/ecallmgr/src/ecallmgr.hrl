@@ -351,6 +351,9 @@
 -define(CHANNEL_MOVE_RELEASED_MSG(Node, UUID, Evt), {'channel_move_released', Node, UUID, Evt}).
 -define(CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Evt), {'channel_move_complete', Node, UUID, Evt}).
 
+-define(REGISTER_SUCCESS_REG, 'register_success').
+-define(REGISTER_SUCCESS_MSG(Node, Props), {Node, Props}).
+
 -define(FS_EVENT_REG_MSG(Node, EvtName), {'event', Node, EvtName}).
 -define(FS_CALL_EVENT_REG_MSG(Node, EvtName), {'call_event', Node, EvtName}).
 
