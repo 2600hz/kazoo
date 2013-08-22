@@ -932,11 +932,15 @@ handle_sync_event(_Event, _From, StateName, State) ->
 handle_info('$maybe_start_auto_compaction_job', CurrentState, State) ->
     maybe_start_auto_compaction_job(),
     {'next_state', CurrentState, State};
-handle_info({'DOWN', Ref, 'process', P, _Reason}, 'compact', #state{shards_pid_ref={P, Ref}
-                                                                    ,next_compaction_msg=Msg
+handle_info({'DOWN', Ref, 'process', P, _Reason}, _StateName, #state{shards_pid_ref={P, Ref}
+                                                                     ,next_compaction_msg=Msg
+                                                                     ,wait_ref=_OldWaitRef
                                                                    }=State) ->
     WaitRef = gen_fsm:start_timer(?SLEEP_BETWEEN_COMPACTION, Msg),
-    lager:debug("pidref down ~p(~p) down, waiting in ~p", [P, Ref, WaitRef]),
+    lager:debug("pidref down ~p(~p) down during ~s", [P, Ref, _StateName]),
+    lager:debug("old wait ref: ~p new wait ref: ~p", [_OldWaitRef, WaitRef]),
+    lager:debug("next compaction msg: ~p", [Msg]),
+
     {'next_state', 'wait', State#state{wait_ref=WaitRef
                                        ,next_compaction_msg='undefined'
                                        ,shards_pid_ref='undefined'
