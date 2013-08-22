@@ -162,7 +162,7 @@ handle_info({'event', ['undefined' | Props]}, #state{node=Node}=State) ->
             {'continue', CustomProps} ->
                 send_conference_event(Action, Props, CustomProps)
         end,
-    process_conference_event(Action, Props, Node),    
+    process_conference_event(Action, Props, Node),
     {'noreply', State};
 handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
     Action = props:get_value(<<"Action">>, Props),
@@ -217,7 +217,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_participant_event(ne_binary(), wh_proplist(), atom(), ne_binary()) -> 
+-spec process_participant_event(ne_binary(), wh_proplist(), atom(), ne_binary()) ->
                                        {'continue', wh_proplist()} |
                                        'continue' |
                                        'stop'.
@@ -248,7 +248,7 @@ process_participant_event(<<"undeaf-member">>, _, _, CallId) ->
 process_participant_event(<<"hup-member">>, _, _, CallId) ->
     _ = ecallmgr_fs_conferences:participant_destroy(CallId),
     'continue';
-process_participant_event(<<"kick-member">>, _, _, CallId) -> 
+process_participant_event(<<"kick-member">>, _, _, CallId) ->
     _ = ecallmgr_fs_conferences:participant_destroy(CallId),
     'continue';
 process_participant_event(<<"mute-detect">>, _, _, _) -> 'stop';
@@ -270,7 +270,7 @@ process_participant_event(<<"gain-level">>, Props, _, CallId) ->
     Level = props:get_integer_value(<<"New-Level">>, Props, 0),
     ecallmgr_fs_conferences:participant_update(CallId, [{#participant.gain_level, Level}]),
     'stop';
-process_participant_event(<<"energy-level-member">>, _, _, _) -> 
+process_participant_event(<<"energy-level-member">>, _, _, _) ->
     %% EnergyLevel = props:get_value(<<"Energy-Level">>, Props),
     'stop';
 process_participant_event(<<"volume-in-member">>, _, _, _) ->
@@ -279,7 +279,7 @@ process_participant_event(<<"volume-in-member">>, _, _, _) ->
 process_participant_event(<<"volume-out-member">>, _, _, _) ->
     %% VolumeLevel = props:get_value(<<"Volume-Level">>, Props),
     'stop';
-process_participant_event(<<"dtmf-member">>, _, _, _) -> 
+process_participant_event(<<"dtmf-member">>, _, _, _) ->
     %% Note: these are digits sent by the API or other means,
     %%    and not those dialed by the participant
     %% Digits = props:get_value(<<"Digits">>, props),
@@ -436,9 +436,9 @@ send_participant_event(Action, CallId, Props, CustomProps) ->
              ,{<<"Channel-Presence-ID">>, props:get_value(<<"Channel-Presence-ID">>, Props)}
              ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
              %% NOTE: Participant-ID is depreciated, use call-id instead
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)             
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    %% TODO: After KAZOO-27 is accepted the relay should not be necessary and we can 
+    %% TODO: After KAZOO-27 is accepted the relay should not be necessary and we can
     %%    use publish_participant_event
     %% Publisher = fun(P) -> wapi_conference:publish_participant_event(ConferenceName, P) end,
     %% _ = wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Event, Publisher),
@@ -760,8 +760,9 @@ relay_event(Props) ->
 
 -spec relay_event(ne_binary(), atom(), wh_proplist()) -> 'ok'.
 relay_event(UUID, Node, Props) ->
-    EventName = props:get_value(<<"Event-Name">>, Props),
-    lager:debug("relaying conf event ~s(~s) to ~s", [EventName, props:get_value(<<"Application">>, Props), UUID]),
+    EventName = props:get_first_defined([<<"Event">>, <<"Event-Name">>], Props),
+    Application = props:get_first_defined([<<"Application">>, <<"Action">>], Props),
+    lager:debug("relaying conf event ~s(~s) to ~s", [EventName, Application, UUID]),
     Payload = {'event', [UUID, {<<"Caller-Unique-ID">>, UUID} | Props]},
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, Payload),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)}, Payload).
@@ -774,7 +775,7 @@ publish_new_participant_event(Props, Node) ->
     Event = [{<<"Participants">>, ecallmgr_fs_conferences:participants_to_json(Participants)}
              ,{<<"Focus">>, wh_util:to_binary(Node)}
              ,{<<"Conference-ID">>, ConferenceName}
-             ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}             
+             ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
              ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props, wh_util:to_binary(Node))}
              ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
              ,{<<"Switch-External-IP">>, ecallmgr_fs_nodes:sip_external_ip(Node)}
