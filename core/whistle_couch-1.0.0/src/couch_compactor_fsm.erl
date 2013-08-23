@@ -329,10 +329,19 @@ ready('cancel_current_job', _, State) ->
 
 ready('cancel_all_jobs', _, #state{queued_jobs=Jobs}=State) ->
     _ = [ maybe_send_update(P, Ref, 'job_cancelled') || {_, P, Ref} <- queue:to_list(Jobs)],
-    {'reply', {'ok', 'jobs_cancelled'}, 'ready', State#state{queued_jobs=queue:new()
-                                                             ,next_compaction_msg='undefined'
-                                                             ,shards_pid_ref='undefined'
+    {'reply', {'ok', 'jobs_cancelled'}, 'ready', State#state{nodes=[]
+                                                             ,dbs=[]
                                                              ,wait_ref='undefined'
+                                                             ,shards_pid_ref='undefined'
+                                                             ,next_compaction_msg='undefined'
+                                                             ,current_node='undefined'
+                                                             ,current_db='undefined'
+                                                             ,conn='undefined'
+                                                             ,admin_conn='undefined'
+                                                             ,queued_jobs=queue:new()
+                                                             ,current_job_pid='undefined'
+                                                             ,current_job_ref='undefined'
+                                                             ,current_job_heuristic = ?HEUR_NONE
                                                             }};
 
 ready(Msg, {NewP, _}, #state{queued_jobs=Jobs}=State) ->
@@ -379,7 +388,7 @@ compact({'compact', N}, #state{conn='undefined'
     Cookie = wh_couch_connections:get_node_cookie(),
     try get_node_connections(N, Cookie) of
         {'error', _E} ->
-            lager:debug("failed to connect to node ~s: ~p", [N, _E]),
+            lager:debug("failed to connect to node ~p: ~p", [N, _E]),
             maybe_send_update(P, Ref, 'job_finished'),
             gen_fsm:send_event(self(), 'next_job'),
             {'next_state', 'ready', State#state{conn='undefined'
@@ -761,11 +770,11 @@ compact('status', _, #state{current_node=N
                       ,{'queued_jobs', queued_jobs_status(Jobs)}
                      ]}, 'compact', State};
 
-compact('cancel_current_job', _, #state{current_job_pid=P
+compact('cancel_current_job', _, #state{current_job_pid=Pid
                                         ,current_job_ref=Ref
                                        }=State) ->
-    lager:debug("cancelling job"),
-    maybe_send_update(P, Ref, 'job_cancelled'),
+    lager:debug("cancelling job ~p(~p)", [Pid, Ref]),
+    maybe_send_update(Pid, Ref, 'job_cancelled'),
     gen_fsm:send_event(self(), 'next_job'),
     {'reply', {'ok', 'job_cancelled'}, 'ready'
      ,State#state{conn='undefined'
