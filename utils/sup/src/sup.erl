@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%% A really simple escript to accept RPC request and push them
 %%% into a running whistle virtual machine.
@@ -14,10 +14,12 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
--define(WHAPPS_VM_ARGS, ["/opt/kazoo/whistle_apps/conf/vm.args"
+-define(WHAPPS_VM_ARGS, ["/etc/kazoo/vm.args"
+                         ,"/opt/kazoo/whistle_apps/conf/vm.args"
                          ,"/opt/whistle/whistle/whistle_apps/conf/vm.args"
                         ]).
--define(ECALL_VM_ARGS, ["/opt/kazoo/ecallmgr/conf/vm.args"
+-define(ECALL_VM_ARGS, ["/etc/kazoo/vm.args"
+                        ,"/opt/kazoo/ecallmgr/conf/vm.args"
                         ,"/opt/whistle/whistle/ecallmgr/conf/vm.args"
                        ]).
 -define(MAX_CHARS, round(math:pow(2012, 80))).
@@ -29,16 +31,16 @@ main(CommandLineArgs) ->
 main(CommandLineArgs, Loops) ->
     os:cmd("epmd -daemon"),
     net_kernel:stop(),
-    case net_kernel:start([my_name(), longnames]) of
-        {error, _} when Loops < 3 ->
-            io:format(standard_error, "Unable to start command bridge network kernel, try again~n", []),
+    case net_kernel:start([my_name(), 'longnames']) of
+        {'error', _} when Loops < 3 ->
+            io:format('standard_error', "Unable to start command bridge network kernel, try again~n", []),
             halt(1);
-        {error, _} ->
+        {'error', _} ->
             main(CommandLineArgs, Loops + 1);
         _Else ->
-            {ok, Options, Args} = parse_args(CommandLineArgs),
-            lists:member(help, Options) andalso display_help(1),
-            Verbose = proplists:get_value(verbose, Options) =/= undefined,
+            {'ok', Options, Args} = parse_args(CommandLineArgs),
+            lists:member('help', Options) andalso display_help(1),
+            Verbose = proplists:get_value('verbose', Options) =/= 'undefined',
             Target = get_target(Options, Verbose),
             Module = list_to_atom(proplists:get_value(module, Options, "nomodule")),
             Function = list_to_atom(proplists:get_value(function, Options, "nofunction")),
