@@ -492,6 +492,7 @@ send_fax(JobId, JObj, Q) ->
                ,{<<"To-DID">>, wnm_util:to_e164(wh_json:get_value(<<"to_number">>, JObj))}
                ,{<<"Resource-Type">>, <<"originate">>}
                ,{<<"Msg-ID">>, JobId}
+               ,{<<"Force-Fax">>, 'true'}
                ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Authorizing-ID">>, JobId}
                                                                ,{<<"Authorizing-Type">>, <<"outbound_fax">>}

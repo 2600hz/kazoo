@@ -247,6 +247,11 @@ originate_to_endpoints(Endpoints, JObj) ->
 
     lager:debug("setting from-uri to ~s", [FromURI]),
 
+    ForceFax = case wh_json:is_true(<<"Force-Fax">>, JObj) of
+                   'false' -> 'undefined';
+                   'true' -> <<"peer">>
+               end,
+
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Updates = [{<<"Account-ID">>, AccountId}
                ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
@@ -274,6 +279,7 @@ originate_to_endpoints(Endpoints, JObj) ->
                  ,{<<"Outbound-Callee-ID-Name">>, CalleeIdName}
                  ,{<<"Caller-ID-Number">>, CIDNum}
                  ,{<<"Caller-ID-Name">>, CIDName}
+                 ,{<<"Force-Fax">>, ForceFax}
                  ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                  ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                  ,{<<"Continue-On-Fail">>, <<"true">>}
