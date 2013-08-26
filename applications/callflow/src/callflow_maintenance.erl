@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -42,9 +42,9 @@ do_show_calls([], Total) ->
     io:format("Total: ~p~n", [Total]);
 do_show_calls([Srv|Srvs], Total) ->
     case catch(cf_exe:get_call(Srv)) of
-        {ok, Call} -> 
+        {'ok', Call} ->
             io:format("CF_EXE(~p): ~p~n", [Srv, whapps_call:to_proplist(Call)]);
-        _ -> ok
+        _ -> 'ok'
     end,
     do_show_calls(Srvs, Total + 1).
 
@@ -58,8 +58,7 @@ do_show_calls([Srv|Srvs], Total) ->
 blocking_refresh() ->
     lists:foreach(fun(AccountDb) ->
                           refresh(AccountDb)
-                  end, whapps_util:get_all_accounts()),
-    ok.
+                  end, whapps_util:get_all_accounts()).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -79,8 +78,8 @@ refresh() ->
     started.
 
 refresh(<<Account/binary>>) ->
-    AccountDb = wh_util:format_account_id(Account, encoded),
-    Views = whapps_util:get_views_json(callflow, "views"),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    Views = whapps_util:get_views_json('callflow', "views"),
     whapps_util:update_views(AccountDb, Views);
 refresh(Account) ->
     refresh(wh_util:to_binary(Account)).
@@ -88,36 +87,39 @@ refresh(Account) ->
 -spec migrate_recorded_name() -> any().
 -spec migrate_recorded_name(ne_binary()) -> any().
 migrate_recorded_name() ->
-    [catch migrate_recorded_name(AccountDb) || AccountDb <- whapps_util:get_all_accounts(encoded)].
+    [catch migrate_recorded_name(AccountDb) || AccountDb <- whapps_util:get_all_accounts('encoded')].
 migrate_recorded_name(Db) ->
     lager:info("migrating all name recordings from vmboxes w/ owner_id in ~s", [Db]),
 
-    case couch_mgr:get_results(Db, <<"vmboxes/crossbar_listing">>, [include_docs]) of
-        {ok, []} -> lager:info("no vmboxes in ~s", [Db]);
-        {error, _E} -> lager:info("unable to get vm box list: ~p", [_E]);
-        {ok, VMBoxes} -> [do_recorded_name_migration(Db, wh_json:get_value(<<"doc">>, VMBox)) || VMBox <- VMBoxes]
+    case couch_mgr:get_results(Db, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
+        {'ok', []} -> lager:info("no vmboxes in ~s", [Db]);
+        {'error', _E} -> lager:info("unable to get vm box list: ~p", [_E]);
+        {'ok', VMBoxes} ->
+            [do_recorded_name_migration(Db, wh_json:get_value(<<"doc">>, VMBox))
+             || VMBox <- VMBoxes
+            ]
     end.
 
--spec do_recorded_name_migration(ne_binary(), wh_json:json_object()) -> any().
--spec do_recorded_name_migration(ne_binary(), wh_json:json_object(), 'undefined' | ne_binary()) -> any().
+-spec do_recorded_name_migration(ne_binary(), wh_json:object()) -> any().
+-spec do_recorded_name_migration(ne_binary(), wh_json:object(), api_binary()) -> any().
 do_recorded_name_migration(Db, VMBox) ->
     VMBoxId = wh_json:get_value(<<"_id">>, VMBox),
     case wh_json:get_value(?RECORDED_NAME_KEY, VMBox) of
-        undefined -> lager:info("vm box ~s has no recorded name to migrate", [VMBoxId]);
+        'undefined' -> lager:info("vm box ~s has no recorded name to migrate", [VMBoxId]);
         MediaId ->
             lager:info("vm box ~s has recorded name in doc ~s", [VMBoxId, MediaId]),
             do_recorded_name_migration(Db, MediaId, wh_json:get_value(<<"owner_id">>, VMBox)),
-            {ok, _} = couch_mgr:save_doc(Db, wh_json:delete_key(?RECORDED_NAME_KEY, VMBox))
+            {'ok', _} = couch_mgr:save_doc(Db, wh_json:delete_key(?RECORDED_NAME_KEY, VMBox))
     end.
 
-do_recorded_name_migration(_Db, _MediaId, undefined) ->
+do_recorded_name_migration(_Db, _MediaId, 'undefined') ->
     lager:info("no owner id on vm box");
 do_recorded_name_migration(Db, MediaId, OwnerId) ->
-    {ok, Owner} = couch_mgr:open_doc(Db, OwnerId),
+    {'ok', Owner} = couch_mgr:open_doc(Db, OwnerId),
     case wh_json:get_value(?RECORDED_NAME_KEY, Owner) of
-        undefined ->
+        'undefined' ->
             lager:info("no recorded name on owner, setting to ~s", [MediaId]),
-            {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(?RECORDED_NAME_KEY, MediaId, Owner)),
+            {'ok', _} = couch_mgr:save_doc(Db, wh_json:set_value(?RECORDED_NAME_KEY, MediaId, Owner)),
             lager:info("updated owner doc with recorded name doc id ~s", [MediaId]);
         MediaId ->
             lager:info("owner already has recorded name at ~s", [MediaId]);
@@ -136,19 +138,19 @@ do_recorded_name_migration(Db, MediaId, OwnerId) ->
 -spec migrate_menus/0:: () -> ['done' | 'error',...].
 -spec migrate_menus(ne_binary()) -> 'done' | 'error'.
 migrate_menus() ->
-    [ migrate_menus(Account) || Account <- whapps_util:get_all_accounts(raw) ].
+    [migrate_menus(Account) || Account <- whapps_util:get_all_accounts('raw')].
 migrate_menus(Account) ->
-    Db = wh_util:format_account_id(Account, encoded),
+    Db = wh_util:format_account_id(Account, 'encoded'),
     lager:info("migrating all menus in ~s", [Db]),
-    case couch_mgr:get_results(Db, <<"menus/crossbar_listing">>, [include_docs]) of
-        {ok, []} ->
+    case couch_mgr:get_results(Db, <<"menus/crossbar_listing">>, ['include_docs']) of
+        {'ok', []} ->
             lager:info("db ~s has no menus", [Db]),
-            done;
-        {ok, Menus} ->
+            'done';
+        {'ok', Menus} ->
             [do_menu_migration(Menu, Db) || Menu <- Menus];
-        {error, _E} ->
+        {'error', _E} ->
             lager:info("unable to get a list of menus: ~p", [_E]),
-            error
+            'error'
     end.
 
 do_menu_migration(Menu, Db) ->
@@ -156,20 +158,18 @@ do_menu_migration(Menu, Db) ->
     MenuId = wh_json:get_value(<<"_id">>, Doc),
     VSN = wh_json:get_integer_value(<<"pvt_vsn">>, Doc, 1),
     case couch_mgr:fetch_attachment(Db, MenuId, <<"prompt.mp3">>) of
-        {ok, _} when VSN =/= 1 ->
-            lager:info("menu ~s in ~s already migrated", [MenuId, Db]),
-            ok;
-        {ok, Bin} ->
+        {'ok', _} when VSN =/= 1 ->
+            lager:info("menu ~s in ~s already migrated", [MenuId, Db]);
+        {'ok', Bin} ->
             Name = <<(wh_json:get_value(<<"name">>, Doc, <<>>))/binary, " menu greeting">>,
             MediaId = create_media_doc(Name, <<"menu">>, MenuId, Db),
             AName = <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>,
-            {ok, _} = couch_mgr:put_attachment(Db, MediaId, AName, Bin),
-            ok = update_doc([<<"media">>, <<"greeting">>], MediaId, MenuId, Db),
-            ok = update_doc([<<"pvt_vsn">>], <<"2">>, MenuId, Db),
+            {'ok', _} = couch_mgr:put_attachment(Db, MediaId, AName, Bin),
+            'ok' = update_doc([<<"media">>, <<"greeting">>], MediaId, MenuId, Db),
+            'ok' = update_doc([<<"pvt_vsn">>], <<"2">>, MenuId, Db),
             lager:info("migrated menu ~s in ~s prompt to /~s/~s/~s", [MenuId, Db, Db, MediaId, AName]);
         _ ->
-            lager:info("menu ~s in ~s has no greeting or prompt", [MenuId, Db]),
-            ok
+            lager:info("menu ~s in ~s has no greeting or prompt", [MenuId, Db])
     end.
 
 %%--------------------------------------------------------------------
@@ -185,9 +185,9 @@ create_media_doc(Name, SourceType, SourceId, Db) ->
              ,{<<"source_id">>, SourceId}
              ,{<<"content_type">>, <<"audio/mpeg">>}
              ,{<<"media_type">>, <<"mp3">>}
-             ,{<<"streamable">>, true}],
-    Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{type, <<"media">>}]),
-    {ok, JObj} = couch_mgr:save_doc(Db, Doc),
+             ,{<<"streamable">>, 'true'}],
+    Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{'type', <<"media">>}]),
+    {'ok', JObj} = couch_mgr:save_doc(Db, Doc),
     wh_json:get_value(<<"_id">>, JObj).
 
 %%--------------------------------------------------------------------
@@ -196,18 +196,16 @@ create_media_doc(Name, SourceType, SourceId, Db) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc(list() | binary(), wh_json:json_term(), binary(), binary()) -> 'ok' | {'error', atom()}.
+-spec update_doc(list() | binary(), wh_json:json_term(), binary(), binary()) ->
+                        'ok' | {'error', atom()}.
 update_doc(Key, Value, Id, Db) ->
     case couch_mgr:open_doc(Db, Id) of
-        {ok, JObj} ->
+        {'ok', JObj} ->
             case couch_mgr:save_doc(Db, wh_json:set_value(Key, Value, JObj)) of
-                {error, conflict} ->
-                    update_doc(Key, Value, Id, Db);
-                {ok, _} ->
-                    ok;
-                {error, _}=E ->
-                    lager:info("unable to update ~s in ~s, ~p", [Id, Db, E])
+                {'error', 'conflict'} -> update_doc(Key, Value, Id, Db);
+                {'ok', _} -> 'ok';
+                {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E])
             end;
-        {error, _}=E ->
+        {'error', _}=E ->
             lager:info("unable to update ~s in ~s, ~p", [Id, Db, E])
     end.
