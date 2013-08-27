@@ -305,6 +305,7 @@ ready('next_job', #state{queued_jobs=Jobs}=State) ->
     case queue:out(Jobs) of
         {'empty', _} ->
             maybe_start_auto_compaction_job(),
+            lager:debug("returning to 'ready'"),
             {'next_state', 'ready', State#state{current_job_pid='undefined'
                                                 ,current_job_ref='undefined'
                                                }};
@@ -312,13 +313,14 @@ ready('next_job', #state{queued_jobs=Jobs}=State) ->
             maybe_send_update(P, Ref, 'job_starting'),
             gen_fsm:send_event(self(), Job),
             lager:debug("starting queued job for ~p:~p: ~p", [P, Ref, Job]),
+            lager:debug("returning to 'ready'"),
             {'next_state', 'ready', State#state{queued_jobs=Jobs1
                                                 ,current_job_pid=P
                                                 ,current_job_ref=Ref
                                                }}
     end;
 ready(_Msg, State) ->
-    lager:debug("unhandled msg: ~p", [_Msg]),
+    lager:debug("unhandled msg in ready: ~p", [_Msg]),
     {'next_state', 'ready', State}.
 
 ready('status', _, #state{}=State) ->
@@ -391,6 +393,7 @@ compact({'compact', N}, #state{conn='undefined'
             lager:debug("failed to connect to node ~p: ~p", [N, _E]),
             maybe_send_update(Pid, Ref, 'job_finished'),
             gen_fsm:send_event(self(), 'next_job'),
+            lager:debug("returning to 'ready'"),
             {'next_state', 'ready', State#state{conn='undefined'
                                                 ,admin_conn='undefined'
                                                 ,current_node='undefined'
@@ -409,6 +412,7 @@ compact({'compact', N}, #state{conn='undefined'
             lager:debug("failed to connect to node ~s: timed out", [N]),
             maybe_send_update(Pid, Ref, 'job_finished'),
             gen_fsm:send_event(self(), 'next_job'),
+            lager:debug("returning to 'ready'"),
             {'next_state', 'ready', State#state{conn='undefined'
                                                 ,admin_conn='undefined'
                                                 ,current_node='undefined'
@@ -455,6 +459,7 @@ compact({'compact_db', N, D}=Msg, #state{conn='undefined'
             lager:debug("failed to connect to node ~s: timed out", [N]),
             maybe_send_update(Pid, Ref, 'job_finished'),
             gen_fsm:send_event(self(), 'next_job'),
+            lager:debug("returning to 'ready'"),
             {'next_state', 'ready', State#state{conn='undefined'
                                                 ,admin_conn='undefined'
                                                 ,current_node='undefined'
@@ -474,6 +479,7 @@ compact({'compact_db', N, D}=Msg, #state{conn='undefined'
             lager:debug("failed to connect to node ~s: timed out", [N]),
             maybe_send_update(Pid, Ref, 'job_finished'),
             gen_fsm:send_event(self(), 'next_job'),
+            lager:debug("returning to 'ready'"),
             {'next_state', 'ready', State#state{conn='undefined'
                                                 ,admin_conn='undefined'
                                                 ,current_node='undefined'
@@ -520,6 +526,7 @@ compact('compact', #state{nodes=[]
     lager:debug("no nodes to compact"),
     maybe_send_update(Pid, Ref, 'job_finished'),
     gen_fsm:send_event(self(), 'next_job'),
+    lager:debug("returning to 'ready'"),
     {'next_state', 'ready', State#state{conn='undefined'
                                         ,admin_conn='undefined'
                                         ,current_node='undefined'
@@ -626,8 +633,14 @@ compact({'compact_db', N, D}, #state{conn=Conn
     of
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
+<<<<<<< Updated upstream
             maybe_send_update(Pid, Ref, 'job_finished'),
             gen_fsm:send_event_after(?SLEEP_BETWEEN_POLL, 'next_job'),
+=======
+            maybe_send_update(P, Ref, 'job_finished'),
+            _R = gen_fsm:send_event_after(?SLEEP_BETWEEN_POLL, 'next_job'),
+            lager:debug("returning to 'ready': ~p", [_R]),
+>>>>>>> Stashed changes
             {'next_state', 'ready', State#state{conn='undefined'
                                                 ,admin_conn='undefined'
                                                 ,current_node='undefined'
@@ -724,6 +737,7 @@ compact({'compact_db', N, D, [], _}, #state{nodes=[]
     lager:debug("no shards to compact for ~s on ~s", [D, N]),
     maybe_send_update(Pid, Ref, 'job_finished'),
     gen_fsm:send_event(self(), 'next_job'),
+    lager:debug("returning to 'ready'"),
     {'next_state', 'ready', State#state{conn='undefined'
                                         ,admin_conn='undefined'
                                         ,current_node='undefined'
@@ -782,6 +796,7 @@ compact('cancel_current_job', _, #state{current_job_pid=Pid
     lager:debug("cancelling job ~p(~p)", [Pid, Ref]),
     maybe_send_update(Pid, Ref, 'job_cancelled'),
     gen_fsm:send_event(self(), 'next_job'),
+    lager:debug("returning to 'ready'"),
     {'reply', {'ok', 'job_cancelled'}, 'ready'
      ,State#state{conn='undefined'
                   ,admin_conn='undefined'
@@ -801,7 +816,12 @@ compact('cancel_all_jobs', _, #state{queued_jobs=Jobs
 
     maybe_send_update(CPid, CRef, 'job_cancelled'),
 
+<<<<<<< Updated upstream
     _ = [ maybe_send_update(Pid, Ref, 'job_cancelled') || {_, Pid, Ref} <- queue:to_list(Jobs)],
+=======
+    _ = [ maybe_send_update(P, Ref, 'job_cancelled') || {_, P, Ref} <- queue:to_list(Jobs)],
+    lager:debug("returning to 'ready'"),
+>>>>>>> Stashed changes
     {'reply', {'ok', 'jobs_cancelled'}, 'ready'
      ,State#state{conn='undefined'
                   ,admin_conn='undefined'
@@ -852,6 +872,7 @@ wait('cancel_current_job', _, #state{current_job_pid=Pid
     maybe_send_update(Pid, Ref, 'job_cancelled'),
     _ = erlang:cancel_timer(WRef),
     gen_fsm:send_event(self(), 'next_job'),
+    lager:debug("returning to 'ready'"),
     {'reply', {'ok', 'job_cancelled'}, 'ready', State#state{conn='undefined'
                                                             ,admin_conn='undefined'
                                                             ,current_node='undefined'
@@ -872,7 +893,12 @@ wait('cancel_all_jobs', _, #state{queued_jobs=Jobs
     _ = erlang:cancel_timer(WRef),
     maybe_send_update(CPid, CRef, 'job_cancelled'),
 
+<<<<<<< Updated upstream
     _ = [ maybe_send_update(Pid, Ref, 'job_cancelled') || {_, Pid, Ref} <- queue:to_list(Jobs)],
+=======
+    _ = [ maybe_send_update(P, Ref, 'job_cancelled') || {_, P, Ref} <- queue:to_list(Jobs)],
+    lager:debug("returning to 'ready'"),
+>>>>>>> Stashed changes
     {'reply', {'ok', 'jobs_cancelled'}, 'ready', State#state{conn='undefined'
                                                              ,admin_conn='undefined'
                                                              ,current_node='undefined'
