@@ -633,14 +633,9 @@ compact({'compact_db', N, D}, #state{conn=Conn
     of
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
-<<<<<<< Updated upstream
             maybe_send_update(Pid, Ref, 'job_finished'),
-            gen_fsm:send_event_after(?SLEEP_BETWEEN_POLL, 'next_job'),
-=======
-            maybe_send_update(P, Ref, 'job_finished'),
             _R = gen_fsm:send_event_after(?SLEEP_BETWEEN_POLL, 'next_job'),
             lager:debug("returning to 'ready': ~p", [_R]),
->>>>>>> Stashed changes
             {'next_state', 'ready', State#state{conn='undefined'
                                                 ,admin_conn='undefined'
                                                 ,current_node='undefined'
@@ -816,12 +811,8 @@ compact('cancel_all_jobs', _, #state{queued_jobs=Jobs
 
     maybe_send_update(CPid, CRef, 'job_cancelled'),
 
-<<<<<<< Updated upstream
-    _ = [ maybe_send_update(Pid, Ref, 'job_cancelled') || {_, Pid, Ref} <- queue:to_list(Jobs)],
-=======
     _ = [ maybe_send_update(P, Ref, 'job_cancelled') || {_, P, Ref} <- queue:to_list(Jobs)],
     lager:debug("returning to 'ready'"),
->>>>>>> Stashed changes
     {'reply', {'ok', 'jobs_cancelled'}, 'ready'
      ,State#state{conn='undefined'
                   ,admin_conn='undefined'
@@ -893,12 +884,8 @@ wait('cancel_all_jobs', _, #state{queued_jobs=Jobs
     _ = erlang:cancel_timer(WRef),
     maybe_send_update(CPid, CRef, 'job_cancelled'),
 
-<<<<<<< Updated upstream
-    _ = [ maybe_send_update(Pid, Ref, 'job_cancelled') || {_, Pid, Ref} <- queue:to_list(Jobs)],
-=======
     _ = [ maybe_send_update(P, Ref, 'job_cancelled') || {_, P, Ref} <- queue:to_list(Jobs)],
     lager:debug("returning to 'ready'"),
->>>>>>> Stashed changes
     {'reply', {'ok', 'jobs_cancelled'}, 'ready', State#state{conn='undefined'
                                                              ,admin_conn='undefined'
                                                              ,current_node='undefined'
