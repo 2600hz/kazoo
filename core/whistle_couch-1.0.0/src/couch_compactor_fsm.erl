@@ -725,6 +725,12 @@ compact({'compact', N, D, Ss, DDs}, #state{admin_conn=AdminConn
                                                  }}
     end;
 
+compact({'compact', N, _D, [], _}, #state{dbs=[Db|Dbs]}=State) ->
+    gen_fsm:send_event(self(), {'compact', N, Db}),
+    {'next_state', 'compact', State#state{dbs=Dbs
+                                          ,shards_pid_ref='undefined'
+                                          ,next_compaction_msg='undefined'
+                                         }};
 compact({'compact_db', N, D, [], _}, #state{nodes=[]
                                             ,current_job_pid=Pid
                                             ,current_job_ref=Ref
@@ -739,6 +745,7 @@ compact({'compact_db', N, D, [], _}, #state{nodes=[]
                                         ,current_db='undefined'
                                         ,current_job_pid='undefined'
                                         ,current_job_ref='undefined'
+                                        ,next_compaction_msg='undefined'
                                        }};
 
 compact({'rebuild_views', N, D, DDs}, #state{conn=Conn}=State) ->
