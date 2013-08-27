@@ -83,6 +83,7 @@
           ,validation_errors = wh_json:new() :: wh_json:object()
           ,client_ip = <<"127.0.0.1">> :: ne_binary()
           ,load_merge_bypass :: api_object()
+          ,profile_id :: api_binary()
          }).
 
 -define(CROSSBAR_HRL, 'true').

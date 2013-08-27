@@ -65,6 +65,11 @@ rest_init(Req0, Opts) ->
             end,
     put('callid', ReqId),
 
+    ProfileId = case cowboy_req:header(<<"x-profile-id">>, Req0) of
+                    {'undefined', _} -> 'undefined';
+                    {ProfId, _} -> wh_util:to_binary(ProfId)
+                end,
+
     {Host, Req1} = cowboy_req:host(Req0),
     {Port, Req2} = cowboy_req:port(Req1),
     {Path, Req3} = cowboy_req:path(Req2),
@@ -84,6 +89,7 @@ rest_init(Req0, Opts) ->
                   ,resp_error_msg = <<"init failed">>
                   ,resp_error_code = 500
                   ,client_ip = ClientIP
+                  ,profile_id = ProfileId
                  },
 
     {Context1, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {Context0, Opts}),
