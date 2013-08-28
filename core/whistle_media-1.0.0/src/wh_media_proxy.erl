@@ -95,14 +95,14 @@ maybe_start_ssl(Dispatch) ->
 -spec on_request(cowboy_req:req()) -> cowboy_req:req().
 on_request(Req0) ->
 
-    {Method, Req1} = cowboy_req:method(Req0),
+    {_Method, Req1} = cowboy_req:method(Req0),
 
-    _ = wh_counter:inc(<<"media_proxy.requests.methods.", (wh_util:to_upper_binary(Method))/binary>>),
+%    _ = wh_counter:inc(<<"media_proxy.requests.methods.", (wh_util:to_upper_binary(Method))/binary>>),
     Req1.
 
 -spec on_response(cowboy_http:status(), cowboy_http:headers(), cowboy_req:req()) -> cowboy_req:req().
-on_response(Status, _Headers, Req) ->
-    wh_counter:inc(<<"media_proxy.responses.", (wh_util:to_binary(Status))/binary>>),
+on_response(_Status, _Headers, Req) ->
+%    wh_counter:inc(<<"media_proxy.responses.", (wh_util:to_binary(Status))/binary>>),
     Req.
 
 -spec find_file(string(), string()) -> string().    
