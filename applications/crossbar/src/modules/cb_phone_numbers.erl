@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -52,16 +52,16 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"account.created">>, ?MODULE, populate_phone_numbers),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.phone_numbers">>, ?MODULE, content_types_accepted),
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.phone_numbers">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.phone_numbers">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.phone_numbers">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.phone_numbers">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.phone_numbers">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.phone_numbers">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"account.created">>, ?MODULE, 'populate_phone_numbers'),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.phone_numbers">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.phone_numbers">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.phone_numbers">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.phone_numbers">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.phone_numbers">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.phone_numbers">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"v1_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -70,7 +70,10 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec populate_phone_numbers(cb_context:context()) -> 'ok'.
-populate_phone_numbers(#cb_context{db_name=AccountDb, account_id=AccountId}) ->
+populate_phone_numbers(Context) ->
+    AccountDb = cb_context:account_db(Context),
+    AccountId = cb_context:account_id(Context),
+
     PVTs = [{<<"_id">>, ?WNM_PHONE_NUMBER_DOC}
             ,{<<"pvt_account_db">>, AccountDb}
             ,{<<"pvt_account_id">>, AccountId}
@@ -80,7 +83,7 @@ populate_phone_numbers(#cb_context{db_name=AccountDb, account_id=AccountId}) ->
             ,{<<"pvt_created">>, wh_util:current_tstamp()}
            ],
     _ = couch_mgr:save_doc(AccountDb, wh_json:from_list(PVTs)),
-    ok.
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -121,7 +124,6 @@ allowed_methods(<<"collection">>, ?ACTIVATE) ->
 allowed_methods(_, ?PORT_DOCS, _) ->
     [?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -134,19 +136,19 @@ allowed_methods(_, ?PORT_DOCS, _) ->
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> boolean().
 -spec resource_exists(path_token(), path_token(), path_token()) -> boolean().
-resource_exists() -> true.
+resource_exists() -> 'true'.
 
-resource_exists(_) -> true.
+resource_exists(_) -> 'true'.
 
-resource_exists(_, ?ACTIVATE) -> true;
-resource_exists(_, ?RESERVE) -> true;
-resource_exists(_, ?PORT) -> true;
-resource_exists(_, ?PORT_DOCS) -> true;
-resource_exists(_, ?IDENTIFY) -> true;
-resource_exists(_, _) -> false.
+resource_exists(_, ?ACTIVATE) -> 'true';
+resource_exists(_, ?RESERVE) -> 'true';
+resource_exists(_, ?PORT) -> 'true';
+resource_exists(_, ?PORT_DOCS) -> 'true';
+resource_exists(_, ?IDENTIFY) -> 'true';
+resource_exists(_, _) -> 'false'.
 
-resource_exists(_, ?PORT_DOCS, _) -> true;
-resource_exists(_, _, _) -> false.
+resource_exists(_, ?PORT_DOCS, _) -> 'true';
+resource_exists(_, _, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -154,11 +156,12 @@ resource_exists(_, _, _) -> false.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+-spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
 content_types_accepted(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?PORT_DOCS, _Name) ->
-    Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]};
+    Context#cb_context{content_types_accepted=[{'from_binary', ?MIME_TYPES}]};
 content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, _Number, ?PORT_DOCS, _Name) ->
-    Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]}.
+    Context#cb_context{content_types_accepted=[{'from_binary', ?MIME_TYPES}]}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -168,7 +171,10 @@ content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, _Number, ?POR
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> 'true'.
-authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = ?HTTP_GET}) -> true.
+authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}]
+                         ,req_verb = ?HTTP_GET
+                        }) ->
+    'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -178,7 +184,10 @@ authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = ?HTTP_
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> 'true'.
-authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = ?HTTP_GET}) -> true.
+authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}]
+                      ,req_verb = ?HTTP_GET
+                     }) ->
+    'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -194,11 +203,12 @@ authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = ?HTTP_GET
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
-validate(#cb_context{req_verb = ?HTTP_GET, account_id=undefined}=Context) ->
+validate(#cb_context{req_verb = ?HTTP_GET
+                     ,account_id='undefined'
+                    }=Context) ->
     find_numbers(Context);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context).
-
 
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, <<"collection">>) ->
     validate_request(Context);
@@ -207,8 +217,9 @@ validate(#cb_context{req_verb = ?HTTP_POST}=Context, <<"collection">>) ->
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, <<"collection">>) ->
     validate_delete(Context);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?CLASSIFIERS) ->
-    Context#cb_context{resp_status=success
-                       ,resp_data=wnm_util:available_classifiers()};
+    cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
+                             ,wnm_util:available_classifiers()
+                            );
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number) ->
     read(Number, Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number) ->
@@ -245,61 +256,84 @@ validate(Context, _, ?PORT_DOCS, _) ->
     Message = <<"please provide a single port document per request">>,
     cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
 
--spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token()) ->
+                  cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token(), path_token()) ->
+                  cb_context:context().
 post(Context, <<"collection">>) ->
     Results = collection_process(Context),
     set_response(Results, <<>>, Context);
-post(#cb_context{doc=JObj, auth_account_id=AuthBy}=Context, Number) ->
-    Result = wh_number_manager:set_public_fields(Number, JObj, AuthBy),
+post(Context, Number) ->
+    Result = wh_number_manager:set_public_fields(Number
+                                                 ,cb_context:doc(Context)
+                                                 ,cb_context:auth_account_id(Context)
+                                                ),
     set_response(Result, Number, Context).
 
-post(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
-    put_attachments(Number, Context, Files).
+post(Context, Number, ?PORT_DOCS, _) ->
+    put_attachments(Number, Context, cb_context:req_files(Context)).
 
--spec put(cb_context:context(), path_token()) -> cb_context:context().
--spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec put(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-
+-spec put(cb_context:context(), path_token()) ->
+                 cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token()) ->
+                 cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token(), path_token()) ->
+                 cb_context:context().
 put(Context, <<"collection">>) ->
     Results = collection_process(Context),
     set_response(Results, <<>>, Context);
-put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number) ->
-    Result = wh_number_manager:create_number(Number, AssignTo, AuthBy, JObj),
+put(Context, Number) ->
+    Result = wh_number_manager:create_number(Number
+                                             ,cb_context:account_id(Context)
+                                             ,cb_context:auth_account_id(Context)
+                                             ,cb_context:doc(Context)
+                                            ),
     set_response(Result, Number, Context).
 
 put(Context, <<"collection">>, ?ACTIVATE) ->
     Results = collection_process(Context, ?ACTIVATE),
     set_response(Results, <<>>, Context);
-put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?PORT) ->
-    Result = wh_number_manager:port_in(Number, AssignTo, AuthBy, JObj),
+put(Context, Number, ?PORT) ->
+    Result = wh_number_manager:port_in(Number
+                                       ,cb_context:account_id(Context)
+                                       ,cb_context:auth_account_id(Context)
+                                       ,cb_context:doc(Context)
+                                      ),
     set_response(Result, Number, Context);
-put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?ACTIVATE) ->
-    Result = wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj),
+put(Context, Number, ?ACTIVATE) ->
+    Result = wh_number_manager:assign_number_to_account(Number
+                                                        ,cb_context:account_id(Context)
+                                                        ,cb_context:auth_account_id(Context)
+                                                        ,cb_context:doc(Context)
+                                                       ),
     set_response(Result, Number, Context);
-put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?RESERVE) ->
-    Result = wh_number_manager:reserve_number(Number, AssignTo, AuthBy, JObj),
+put(Context, Number, ?RESERVE) ->
+    Result = wh_number_manager:reserve_number(Number
+                                              ,cb_context:account_id(Context)
+                                              ,cb_context:auth_account_id(Context)
+                                              ,cb_context:doc(Context)
+                                             ),
     set_response(Result, Number, Context);
-put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS) ->
-    put_attachments(Number, Context, Files).
+put(Context, Number, ?PORT_DOCS) ->
+    put_attachments(Number, Context, cb_context:req_files(Context)).
 
+put(Context, Number, ?PORT_DOCS, _) ->
+    put_attachments(Number, Context, cb_context:req_files(Context)).
 
-put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
-    put_attachments(Number, Context, Files).
-
--spec delete(cb_context:context(), path_token()) -> cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-
+-spec delete(cb_context:context(), path_token()) ->
+                    cb_context:context().
+-spec delete(cb_context:context(), path_token(), path_token(), path_token()) ->
+                    cb_context:context().
 delete(Context, <<"collection">>) ->
     Results = collection_process(Context),
     set_response(Results, <<>>, Context);
-delete(#cb_context{auth_account_id=AuthBy}=Context, Number) ->
-    Result = wh_number_manager:release_number(Number, AuthBy),
+delete(Context, Number) ->
+    Result = wh_number_manager:release_number(Number, cb_context:auth_account_id(Context)),
     set_response(Result, Number, Context).
 
-delete(#cb_context{auth_account_id=AuthBy}=Context, Number, ?PORT_DOCS, Name) ->
+delete(Context, Number, ?PORT_DOCS, Name) ->
     FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
-    Result = wh_number_manager:delete_attachment(Number, FileName, AuthBy),
+    Result = wh_number_manager:delete_attachment(Number, FileName, cb_context:auth_account_id(Context)),
     set_response(Result, Number, Context).
 
 %%%===================================================================
@@ -313,16 +347,21 @@ delete(#cb_context{auth_account_id=AuthBy}=Context, Number, ?PORT_DOCS, Name) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(cb_context:context()) -> cb_context:context().
-find_numbers(#cb_context{query_json=JObj}=Context) ->
+find_numbers(Context) ->
+    JObj = cb_context:query_string(Context),
     OnSuccess = fun(C) ->
                         Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
                         Quantity = wh_json:get_ne_value(<<"quantity">>, JObj, 1),
-                        C#cb_context{resp_status=success
-                                     ,resp_data=wh_number_manager:find(Prefix, Quantity)
-                                    }
+                        cb_context:set_resp_data(
+                          cb_context:set_resp_status(C, 'success')
+                          ,wh_number_manager:find(Prefix, Quantity)
+                         )
                 end,
     Schema = wh_json:decode(?FIND_NUMBER_SCHEMA),
-    cb_context:validate_request_data(Schema, Context#cb_context{req_data=JObj}, OnSuccess).
+    cb_context:validate_request_data(Schema
+                                     ,cb_context:set_req_data(Context, JObj)
+                                     ,OnSuccess
+                                    ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -337,25 +376,27 @@ summary(Context) ->
         #cb_context{resp_error_code=404}=C ->
             crossbar_util:response(wh_json:new(), C);
         Else ->
-            Else#cb_context{resp_data=clean_summary(Else)}
+            cb_context:set_resp_data(Else, clean_summary(Else))
     end.
 
 -spec clean_summary(cb_context:context()) -> wh_json:object().
-clean_summary(#cb_context{resp_data=JObj, account_id=AccountId}) ->
-    Routines = [fun(J) ->
-                    wh_json:delete_key(<<"id">>, J)
-                end
-                ,fun(J) ->
-                    wh_json:set_value(<<"numbers">>, J, wh_json:new())
-                end
-                ,fun(J) ->
-                    Service =  wh_services:fetch(AccountId),
-                    Quantity = wh_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
-                    wh_json:set_value(<<"casquade_quantity">>, Quantity, J)
-                end
-                ],
-    lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
+clean_summary(Context) ->
+    JObj = cb_context:resp_data(Context),
+    AccountId = cb_context:account_id(Context),
 
+    Routines = [fun(J) ->
+                        wh_json:delete_key(<<"id">>, J)
+                end
+                ,fun(J) ->
+                         wh_json:set_value(<<"numbers">>, J, wh_json:new())
+                 end
+                ,fun(J) ->
+                         Service =  wh_services:fetch(AccountId),
+                         Quantity = wh_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
+                         wh_json:set_value(<<"casquade_quantity">>, Quantity, J)
+                 end
+               ],
+    lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -373,8 +414,10 @@ identify(Context, Number) ->
             set_response({wh_util:to_binary(E), <<>>}, Number, Context);
         {'ok', AccountId, Options} ->
             JObj = wh_json:set_values([{<<"account_id">>, AccountId}
-                                        ,{<<"number">>, proplists:get_value(number, Options)}]
-                                    ,wh_json:new()),
+                                       ,{<<"number">>, props:get_value('number', Options)}
+                                      ]
+                                      ,wh_json:new()
+                                     ),
             set_response({'ok', JObj}, Number, Context)
     end.
 
@@ -385,8 +428,8 @@ identify(Context, Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
-read(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
-    Result = wh_number_manager:get_public_fields(Number, AuthBy),
+read(Number, Context) ->
+    Result = wh_number_manager:get_public_fields(Number, cb_context:auth_account_id(Context)),
     set_response(Result, Number, Context).
 
 %%--------------------------------------------------------------------
@@ -399,7 +442,8 @@ read(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
 validate_request(Context) ->
     maybe_add_porting_email(Context).
 
-maybe_add_porting_email(#cb_context{req_data=JObj}=Context) ->
+maybe_add_porting_email(Context) ->
+    JObj = cb_context:req_data(Context),
     case wh_json:get_ne_value(<<"port">>, JObj) =/= 'undefined'
         andalso wh_json:get_ne_value([<<"port">>, <<"email">>], JObj) =:= 'undefined'
     of
@@ -407,27 +451,29 @@ maybe_add_porting_email(#cb_context{req_data=JObj}=Context) ->
         'true' -> add_porting_email(Context)
     end.
 
-add_porting_email(#cb_context{req_data=JObj}=Context) ->
+add_porting_email(Context) ->
+    JObj = cb_context:req_data(Context),
     case get_auth_user_email(Context) of
         'undefined' -> check_phone_number_schema(Context);
         Email ->
             J = wh_json:set_value([<<"port">>, <<"email">>], Email, JObj),
-            check_phone_number_schema(Context#cb_context{req_data=J})
+            check_phone_number_schema(cb_context:set_req_data(Context, J))
     end.
 
 check_phone_number_schema(Context) ->
     cb_context:validate_request_data(<<"phone_numbers">>, Context).
 
-get_auth_user_email(#cb_context{auth_doc=JObj, auth_account_id=AccountId}) ->
+get_auth_user_email(Context) ->
+    JObj = cb_context:auth_doc(Context),
+    AccountId = cb_context:auth_account_id(Context),
+
     case wh_json:get_value(<<"owner_id">>, JObj) of
         'undefined' -> 'undefined';
         UserId ->
-            AccountDb = wh_util:format_account_id(AccountId, encoded),
+            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
             case couch_mgr:open_doc(AccountDb, UserId) of
-                {'ok', User} ->
-                    wh_json:get_value(<<"email">>, User);
-                {'error', _} ->
-                    'undefined'
+                {'ok', User} -> wh_json:get_value(<<"email">>, User);
+                {'error', _} -> 'undefined'
             end
     end.
 
@@ -438,10 +484,11 @@ get_auth_user_email(#cb_context{auth_doc=JObj, auth_account_id=AccountId}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_delete(cb_context:context()) -> cb_context:context().
-validate_delete(#cb_context{}=Context) ->
-    Context#cb_context{resp_status=success
-                       ,doc=undefined
-                      }.
+validate_delete(Context) ->
+    cb_context:set_doc(
+      cb_context:set_resp_status(Context, 'success')
+      ,'undefined'
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -450,8 +497,8 @@ validate_delete(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec list_attachments(ne_binary(), cb_context:context()) -> cb_context:context().
-list_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
-    Result = wh_number_manager:list_attachments(Number, AuthBy),
+list_attachments(Number, Context) ->
+    Result = wh_number_manager:list_attachments(Number, cb_context:auth_account_id(Context)),
     set_response(Result, Number, Context).
 
 %%--------------------------------------------------------------------
@@ -460,18 +507,20 @@ list_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec put_attachments(ne_binary(), cb_context:context(), wh_proplist()) -> cb_context:context().
+-spec put_attachments(ne_binary(), cb_context:context(), wh_proplist()) ->
+                             cb_context:context().
 put_attachments(_, Context, []) ->
-    Context#cb_context{resp_status=success};
-put_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context, [{Filename, FileObj}|Files]) ->
+    cb_context:set_resp_status(Context, 'success');
+put_attachments(Number, Context, [{Filename, FileObj}|Files]) ->
+    AuthBy = cb_context:auth_account_id(Context),
     HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
     Content = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
-    Options = [{headers, [{content_type, wh_util:to_list(CT)}]}],
+    Options = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
     lager:debug("setting Content-Type to ~s", [CT]),
     case wh_number_manager:put_attachment(Number, Filename, Content, Options, AuthBy) of
-        {ok, NewDoc} ->
-            put_attachments(Number, Context#cb_context{resp_data=NewDoc}, Files);
+        {'ok', NewDoc} ->
+            put_attachments(Number, cb_context:set_resp_data(Context, NewDoc), Files);
         Result ->
             set_response(Result, Number, Context)
     end.
@@ -482,63 +531,79 @@ put_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context, [{Filename,
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_response(operation_return(), ne_binary(), cb_context:context()) -> cb_context:context().
-set_response({ok, Doc}, _, Context) ->
+-spec set_response(operation_return(), binary(), cb_context:context()) ->
+                          cb_context:context().
+set_response({'ok', Doc}, _, Context) ->
     crossbar_util:response(Doc, Context);
 set_response({Error, Reason}, _, Context) ->
-    crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context);
+    crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context);
 set_response(_Else, _, Context) ->
     lager:debug("unexpected response: ~p", [_Else]),
-    cb_context:add_system_error(unspecified_fault, Context).
+    cb_context:add_system_error('unspecified_fault', Context).
 
--spec collection_process(cb_context:context()) -> operation_return().
--spec collection_process(cb_context:context(), ne_binaries()) -> operation_return().
-collection_process(#cb_context{req_data=Data}=Context) ->
-    Numbers = wh_json:get_value(<<"numbers">>, Data, []),
+-spec collection_process(cb_context:context()) ->
+                                operation_return().
+-spec collection_process(cb_context:context(), ne_binary() | ne_binaries()) ->
+                                operation_return().
+collection_process(Context) ->
+    Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     Result = collection_process(Context, Numbers),
     {'ok', Result}.
 
-collection_process(#cb_context{req_data=Data}=Context, ?ACTIVATE) ->
-    Numbers = wh_json:get_value(<<"numbers">>, Data, []),
+collection_process(Context, ?ACTIVATE) ->
+    Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     Result = collection_process(Context, Numbers, ?ACTIVATE),
     {'ok', Result};
 collection_process(Context, Numbers) ->
-    Temp = wh_json:set_values([{<<"success">>, wh_json:new()}, {<<"error">>, wh_json:new()}], wh_json:new()),
+    Temp = wh_json:set_values([{<<"success">>, wh_json:new()}
+                               ,{<<"error">>, wh_json:new()}
+                              ], wh_json:new()),
     lists:foldl(
-        fun(Number, Acc) ->
-            case collection_action(Context, Number) of
-                {'ok', JObj} ->
-                    wh_json:set_value([<<"success">>, Number], JObj, Acc);
-                {State, _} ->
-                    JObj = wh_json:set_value(<<"reason">>, State, wh_json:new()),
-                    wh_json:set_value([<<"error">>, Number], JObj, Acc)
-            end
-        end
-        ,Temp
-        ,Numbers
-    ).
+      fun(Number, Acc) ->
+              case collection_action(Context, Number) of
+                  {'ok', JObj} ->
+                      wh_json:set_value([<<"success">>, Number], JObj, Acc);
+                  {State, _} ->
+                      JObj = wh_json:set_value(<<"reason">>, State, wh_json:new()),
+                      wh_json:set_value([<<"error">>, Number], JObj, Acc)
+              end
+      end
+      ,Temp
+      ,Numbers
+     ).
 
 collection_process(Context, Numbers, Action) ->
-    Temp = wh_json:set_values([{<<"success">>, wh_json:new()}, {<<"error">>, wh_json:new()}], wh_json:new()),
+    Temp = wh_json:set_values([{<<"success">>, wh_json:new()}
+                               ,{<<"error">>, wh_json:new()}
+                              ], wh_json:new()),
     lists:foldl(
-        fun(Number, Acc) ->
-            case collection_action(Context, Number, Action) of
-                {'ok', JObj} ->
-                    wh_json:set_value([<<"success">>, Number], JObj, Acc);
-                {State, _} ->
-                    JObj = wh_json:set_value(<<"reason">>, State, wh_json:new()),
-                    wh_json:set_value([<<"error">>, Number], JObj, Acc)
-            end
-        end
-        ,Temp
-        ,Numbers
-    ).
+      fun(Number, Acc) ->
+              case collection_action(Context, Number, Action) of
+                  {'ok', JObj} ->
+                      wh_json:set_value([<<"success">>, Number], JObj, Acc);
+                  {State, _} ->
+                      JObj = wh_json:set_value(<<"reason">>, State, wh_json:new()),
+                      wh_json:set_value([<<"error">>, Number], JObj, Acc)
+              end
+      end
+      ,Temp
+      ,Numbers
+     ).
 
--spec collection_action(cb_context:context(), ne_binary()) -> operation_return().
--spec collection_action(cb_context:context(), ne_binary(), ne_binary()) -> operation_return().
-collection_action(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj, req_verb= ?HTTP_PUT}, Number) ->
+-spec collection_action(cb_context:context(), ne_binary()) ->
+                               operation_return().
+-spec collection_action(cb_context:context(), ne_binary(), ne_binary()) ->
+                               operation_return().
+collection_action(#cb_context{account_id=AssignTo
+                              ,auth_account_id=AuthBy
+                              ,doc=JObj
+                              ,req_verb = ?HTTP_PUT
+                             }, Number) ->
     wh_number_manager:create_number(Number, AssignTo, AuthBy, wh_json:delete_key(<<"numbers">>, JObj));
-collection_action(#cb_context{auth_account_id=AuthBy, doc=Doc, req_verb= ?HTTP_POST}, Number) ->
+collection_action(#cb_context{auth_account_id=AuthBy
+                              ,doc=Doc
+                              ,req_verb = ?HTTP_POST
+                             }, Number) ->
     case wh_number_manager:get_public_fields(Number, AuthBy) of
         {'ok', JObj} ->
             Doc1 = wh_json:delete_key(<<"numbers">>, Doc),
@@ -547,10 +612,16 @@ collection_action(#cb_context{auth_account_id=AuthBy, doc=Doc, req_verb= ?HTTP_P
             lager:error("error while fetching number ~p : ~p", [Number, Error]),
             {State, Error}
     end;
-collection_action(#cb_context{auth_account_id=AuthBy, req_verb= ?HTTP_DELETE}, Number) ->
+collection_action(#cb_context{auth_account_id=AuthBy
+                              ,req_verb = ?HTTP_DELETE
+                             }, Number) ->
     wh_number_manager:release_number(Number, AuthBy).
 
-collection_action(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj, req_verb= ?HTTP_PUT}, Number, ?ACTIVATE) ->
+collection_action(#cb_context{account_id=AssignTo
+                              ,auth_account_id=AuthBy
+                              ,doc=JObj
+                              ,req_verb = ?HTTP_PUT
+                             }, Number, ?ACTIVATE) ->
     case wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj) of
         {'ok', RJObj} ->
             {'ok', wh_json:delete_key(<<"numbers">>, RJObj)};
