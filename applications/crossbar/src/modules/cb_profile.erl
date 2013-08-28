@@ -17,7 +17,7 @@
 
 -include("../crossbar.hrl").
 
--define(CB_LIST, <<"skels/crossbar_listing">>).
+-define(TRACE_PATH, whapps_config:get(?CONFIG_CAT, <<"trace_path">>, <<"/tmp">>)).
 
 %%%===================================================================
 %%% API
@@ -40,10 +40,12 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.init">>, ?MODULE, 'req_init'),
     _ = crossbar_bindings:bind(<<"v1_resource.finish_request.*.*">>, ?MODULE, 'req_finish').
 
+-spec req_init({cb_context:context(), cowboy_req:req()}) ->
+                      {cb_context:context(), cowboy_req:req()}.
 req_init({#cb_context{profile_id='undefined'}, _}=InitArgs) ->
     InitArgs;
 req_init({#cb_context{profile_id=ProfileId}, _}=InitArgs) ->
-    File = list_to_binary(["/tmp/", ProfileId, ".trace"]),
+    File = list_to_binary([?TRACE_PATH, ProfileId, ".trace"]),
     case fprof:trace(['start'
                       ,'verbose'
                       ,{'file', wh_util:to_list(File)}
@@ -57,9 +59,10 @@ req_init({#cb_context{profile_id=ProfileId}, _}=InitArgs) ->
     end,
     InitArgs.
 
+-spec req_finish(cb_context:context()) -> any().
 req_finish(#cb_context{profile_id='undefined'}) -> 'ok';
 req_finish(#cb_context{profile_id=ProfileId}) ->
-    File = list_to_binary(["/tmp/", ProfileId, ".trace"]),
+    File = list_to_binary([?TRACE_PATH, ProfileId, ".trace"]),
     lager:debug("now run: erlgrind ~s", [File]),
     lager:debug("then run kcachegrind on the .cgrind file created"),
     fprof:trace(['stop'
