@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -1005,6 +1005,8 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, CdrUrl) ->
               ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
               ,{<<"Outbound-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
               ,{<<"Outbound-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+              ,{<<"Outbound-Callee-ID-Name">>, whapps_call:callee_id_name(Call)}
+              ,{<<"Outbound-Callee-ID-Number">>, whapps_call:callee_id_number(Call)}
               ,{<<"Existing-Call-ID">>, whapps_call:call_id(Call)}
               ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
               | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)

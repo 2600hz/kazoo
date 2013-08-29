@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012 VoIP INC
+%%% @copyright (C) 2011-2013 2600Hz INC
 %%% @doc
 %%% Dialplan API definitions
 %%% @end
@@ -524,7 +524,7 @@
                                           %% sets joining member to nospeak relations
                                           ,<<"Member-Nospeak">>
                                           %% update relations
-                                          ,<<"Nospeak-Check">> 
+                                          ,<<"Nospeak-Check">>
                                          ]).
 -define(CONFERENCE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                 ,{<<"Event-Name">>, <<"command">>}
