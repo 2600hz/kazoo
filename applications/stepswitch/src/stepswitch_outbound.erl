@@ -228,6 +228,13 @@ originate_to_endpoints(Endpoints, JObj) ->
     CIDName = wh_json:get_ne_value(<<"Outbound-Caller-ID-Name">>, JObj
                                    ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj)),
 
+    {CalleeIdNumber, CalleeIdName} =
+        {wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)
+         ,wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)
+        },
+    lager:debug("set outbound callee id to ~s '~s'", [CalleeIdNumber, CalleeIdName]),
+
+
     FromURI = case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false') of
                   'true' ->
                       case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
@@ -263,6 +270,8 @@ originate_to_endpoints(Endpoints, JObj) ->
                  ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
                  ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
                  ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+                 ,{<<"Outbound-Callee-ID-Number">>, CalleeIdNumber}
+                 ,{<<"Outbound-Callee-ID-Name">>, CalleeIdName}
                  ,{<<"Caller-ID-Number">>, CIDNum}
                  ,{<<"Caller-ID-Name">>, CIDName}
                  ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
