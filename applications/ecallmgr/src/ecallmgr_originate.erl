@@ -198,6 +198,7 @@ handle_cast({'create_uuid'}, #state{node=Node
                                    }=State) ->
     UUID = {_, Id} = create_uuid(JObj, Node),
     put('callid', Id),
+    lager:debug("created uuid ~p", [UUID]),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
 
     case start_control_process(State#state{uuid=UUID}) of
@@ -280,7 +281,7 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
                                          }=State) ->
     case originate_execute(Node, Dialstrings, find_originate_timeout(JObj)) of
         {'ok', UUID} when is_pid(CtrlPid) ->
-            lager:debug("originate completed for: ~s", [UUID]),
+            lager:debug("originate completed for: ~s with ctrl ~p", [UUID, CtrlPid]),
             _ = publish_originate_resp(ServerId, JObj, UUID),
             {'stop', 'normal', State#state{control_pid='undefined'}};
         {'ok', WinningUUID} when is_pid(CtrlPid) ->
@@ -485,14 +486,15 @@ get_eavesdrop_action(JObj) ->
     end.
 
 -spec build_originate_args(ne_binary(), state() | wh_json:objects(), wh_json:object(), ne_binary()) -> ne_binary().
-build_originate_args(Action, #state{}=State, JObj, FetchId) ->
+build_originate_args(Action, #state{uuid=UUID}=State, JObj, FetchId) ->
     case wh_json:get_ne_value(<<"Endpoints">>, JObj, []) of
         [] ->
             lager:warning("no endpoints defined in originate request"),
             'undefined';
-        [_Endpoint]=Endpoints ->
+        [Endpoint] ->
             lager:debug("only one endpoint, don't create per-endpoint UUIDs"),
-            build_originate_args(Action, Endpoints, JObj, FetchId);
+            maybe_start_call_handlers(UUID, State#state{control_pid='undefined'}),
+            build_originate_args(Action, [update_endpoint(Endpoint, UUID)], JObj, FetchId);
         Endpoints ->
             lager:debug("multiple endpoints defined, assigning uuids to each"),
             UpdatedEndpoints = [update_endpoint(Endpoint, State) || Endpoint <- Endpoints],
@@ -696,7 +698,8 @@ maybe_send_originate_uuid(_, _, _) -> 'ok'.
 find_originate_timeout(JObj) ->
     OTimeout = case wh_json:get_integer_value(<<"Timeout">>, JObj) of
                    'undefined' -> 10;
-                   LT -> LT
+                   LT when LT > 0 -> LT;
+                   _ -> 10
                end,
     find_max_endpoint_timeout(
       wh_json:get_value(<<"Endpoints">>, JObj, [])
@@ -711,6 +714,9 @@ find_max_endpoint_timeout([EP|EPs], T) ->
         _ -> find_max_endpoint_timeout(EPs, T)
     end.
 
+-spec start_control_process(state()) ->
+                                   {'ok', state()} |
+                                   {'error', _}.
 start_control_process(#state{originate_req=JObj
                              ,node=Node
                              ,uuid={_, Id}=UUID
@@ -735,6 +741,7 @@ start_control_process(#state{control_pid=Pid
     lager:debug("control process ~p exists for uuid ~p", [Pid, _UUID]),
     {'ok', State}.
 
+-spec maybe_start_call_handlers(created_uuid(), state()) -> 'ok'.
 maybe_start_call_handlers(UUID, State) ->
     case start_control_process(State#state{uuid=UUID}) of
         {'ok', #state{control_pid=_Pid}} ->
@@ -746,12 +753,15 @@ maybe_start_call_handlers(UUID, State) ->
 start_abandon_timer() ->
     erlang:send_after(?REPLY_TIMEOUT, self(), {'abandon_originate'}).
 
+-spec update_endpoint(wh_json:object(), state() | created_uuid()) -> wh_json:object().
 update_endpoint(Endpoint, #state{node=Node
                                  ,originate_req=JObj
                                 }=State) ->
     {_, Id} = UUID = create_uuid(Endpoint, JObj, Node),
     maybe_start_call_handlers(UUID, State#state{uuid=UUID, control_pid='undefined'}),
-    wh_json:set_value(<<"origination_uuid">>, Id, Endpoint).
+    wh_json:set_value(<<"origination_uuid">>, Id, Endpoint);
+update_endpoint(Endpoint, {_, ID}) ->
+    wh_json:set_value(<<"origination_uuid">>, ID, Endpoint).
 
 -spec should_update_uuid(api_binary(), wh_proplist()) -> boolean().
 should_update_uuid(OldUUID, Props) ->
