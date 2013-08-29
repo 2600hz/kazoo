@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%% Lookup cnam
 %%% @end
@@ -33,6 +33,11 @@
 -define(DEFAULT_USER_AGENT_HDR, <<"Kazoo Stepswitch CNAM">>).
 -define(DEFAULT_CONTENT_TYPE_HDR, <<"application/json">>).
 
+
+-define(HTTP_ACCEPT_HEADER, whapps_config:get_string(?CONFIG_CAT, <<"http_accept_header">>, ?DEFAULT_ACCEPT_HDR)).
+-define(HTTP_USER_AGENT, whapps_config:get_string(?CONFIG_CAT, <<"http_user_agent_header">>, ?DEFAULT_USER_AGENT_HDR)).
+-define(HTTP_CONTENT_TYPE, whapps_config:get_string(?CONFIG_CAT, <<"http_content_type_header">>, ?DEFAULT_CONTENT_TYPE_HDR)).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -65,8 +70,8 @@ get_cnam(JObj) ->
     Number = wh_json:get_value(<<"Caller-ID-Number">>, JObj, <<"0000000000">>),
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key(Num)) of
-        {ok, CNAM} -> CNAM;
-        {error, not_found} ->
+        {'ok', CNAM} -> CNAM;
+        {'error', 'not_found'} ->
             fetch_cnam(Num, wh_json:set_value(<<"phone_number">>, wh_util:uri_encode(Num), JObj))
     end.
 
@@ -86,8 +91,8 @@ get_cnam(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    TemplateName = wh_util:to_atom(couch_mgr:get_uuid(), true),
-    {ok, TemplateName}.
+    TemplateName = wh_util:to_atom(couch_mgr:get_uuid(), 'true'),
+    {'ok', TemplateName}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -232,6 +237,7 @@ make_request(Number, JObj) ->
             <<>>
     end.
 
+-spec get_http_url(wh_json:object()) -> list().
 get_http_url(JObj) ->
     Template = whapps_config:get_binary(?CONFIG_CAT, <<"http_url">>, ?DEFAULT_URL),
     case binary:match(Template, <<"opencnam">>) of
@@ -240,9 +246,18 @@ get_http_url(JObj) ->
             lists:flatten(Url);
         _Else ->
             {'ok', Url} = render(JObj, Template),
-            lists:flatten([Url, "?ref=2600hz&format=pbx"])
+            case mochiweb_util:urlsplit(wh_util:to_list(Url)) of
+                {_Scheme, _Host, _Path, "", _Segment} ->
+                    lists:flatten([Url, "?ref=2600hz&format=pbx"]);
+                {Scheme, Host, Path, QS, Segment} ->
+                    mochiweb_util:urlunsplit({Scheme, Host, Path
+                                              ,[QS, "ref=2600hz&format=pbx"]
+                                              ,Segment
+                                             })
+            end
     end.
 
+-spec get_http_body(wh_json:object()) -> list().
 get_http_body(JObj) ->
     Template = whapps_config:get_binary(?CONFIG_CAT, <<"http_body">>, ?DEFAULT_CONTENT),
     case wh_util:is_empty(Template) of
@@ -253,9 +268,9 @@ get_http_body(JObj) ->
     end.
 
 get_http_headers() ->
-    [{"Accept", whapps_config:get_string(?CONFIG_CAT, <<"http_accept_header">>, ?DEFAULT_ACCEPT_HDR)}
-     ,{"User-Agent", whapps_config:get_string(?CONFIG_CAT, <<"http_user_agent_header">>, ?DEFAULT_USER_AGENT_HDR)}
-     ,{"Content-Type", whapps_config:get_string(?CONFIG_CAT, <<"http_content_type_header">>, ?DEFAULT_CONTENT_TYPE_HDR)}
+    [{"Accept", ?HTTP_ACCEPT_HEADER}
+     ,{"User-Agent", ?HTTP_USER_AGENT}
+     ,{"Content-Type", ?HTTP_CONTENT_TYPE}
     ].
 
 get_http_options(Url) ->
