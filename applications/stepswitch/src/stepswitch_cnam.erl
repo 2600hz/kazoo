@@ -251,7 +251,7 @@ get_http_url(JObj) ->
                     lists:flatten([Url, "?ref=2600hz&format=pbx"]);
                 {Scheme, Host, Path, QS, Segment} ->
                     mochiweb_util:urlunsplit({Scheme, Host, Path
-                                              ,[QS, "ref=2600hz&format=pbx"]
+                                              ,[QS, "&ref=2600hz&format=pbx"]
                                               ,Segment
                                              })
             end
