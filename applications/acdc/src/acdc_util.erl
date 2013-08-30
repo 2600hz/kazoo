@@ -79,7 +79,7 @@ agent_devices(AcctDb, AgentId) ->
     end.
 
 -spec get_endpoints(whapps_call:call(), ne_binary() | couch_mgr:get_results_return()) ->
-                                 wh_json:objects().
+                           wh_json:objects().
 get_endpoints(Call, ?NE_BINARY = AgentId) ->
     cf_user:get_endpoints(AgentId, [], Call).
 

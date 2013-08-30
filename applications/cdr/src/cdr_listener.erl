@@ -63,7 +63,59 @@ handle_cdr(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj, couch_mgr:get_uuid()),
     AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj),
-    maybe_save_in_account(AccountId, wh_json:set_value(<<"_id">>, CallId, wh_json:normalize_jobj(JObj))).
+    maybe_save_in_account(AccountId, fix_up_cdr(CallId, JObj)).
+
+fix_up_cdr(CallId, JObj) ->
+    Fixers = [fun maybe_fix_up_callee_id/1],
+
+    FixedCDR = lists:foldl(fun(F, AccJObj) -> F(AccJObj) end, JObj, Fixers),
+    wh_json:set_value(<<"_id">>, CallId, wh_json:normalize_jobj(FixedCDR)).
+
+-spec maybe_fix_up_callee_id(wh_json:object()) -> wh_json:object().
+maybe_fix_up_callee_id(JObj) ->
+    case wh_json:get_value(<<"Callee-ID-Number">>, JObj) of
+        'undefined' ->
+            maybe_fix_callee_id_number_with_to_uri(JObj);
+        CalleeIdNumber ->
+            case wh_json:get_value(<<"Caller-ID-Number">>, JObj) of
+                CalleeIdNumber ->
+                    lager:debug("callee is the same as caller id number, fixing"),
+                    maybe_fix_callee_id_number_with_to_uri(JObj);
+                _ ->
+                    maybe_fix_callee_id_name(JObj, CalleeIdNumber)
+            end
+    end.
+
+-spec maybe_fix_callee_id_name(wh_json:object(), ne_binary()) -> wh_json:object().
+maybe_fix_callee_id_name(JObj, CalleeIdNumber) ->
+    case wh_json:get_value(<<"Callee-ID-Name">>, JObj) of
+        'undefined' ->
+            lager:debug("setting callee id name to '~s'", [CalleeIdNumber]),
+            wh_json:set_value(<<"Callee-ID-Name">>, CalleeIdNumber, JObj);
+        CalleeIdName ->
+            case wh_json:get_value(<<"Caller-ID-Name">>, JObj) of
+                CalleeIdName ->
+                    lager:debug("overriding callee id name with '~s'", [CalleeIdNumber]),
+                    wh_json:set_value(<<"Callee-ID-Name">>, CalleeIdNumber, JObj);
+                _ ->
+                    JObj
+            end
+    end.
+
+-spec maybe_fix_callee_id_number_with_to_uri(wh_json:object()) -> wh_json:object().
+maybe_fix_callee_id_number_with_to_uri(JObj) ->
+    try binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
+        [ToUser, _ToRealm] ->
+            lager:debug("updating callee id number to '~s'", [ToUser]),
+            maybe_fix_callee_id_name(wh_json:set_value(<<"Callee-ID-Number">>, ToUser, JObj), ToUser);
+        _Split ->
+            lager:debug("weird split result: ~p", [_Split]),
+            JObj
+    catch
+        _E:_R ->
+            lager:debug("failed to split: ~s: ~p", [_E, _R]),
+            JObj
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
