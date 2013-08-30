@@ -400,9 +400,12 @@ wait_for_bridge(Timeout) ->
                     wait_for_bridge('infinity');
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} -> hangup_result(JObj);
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} -> hangup_result(JObj);
-                _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout,Start))
+                _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start))
             end;
-        _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout,Start))
+        _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start))
+    after Timeout ->
+            lager:debug("timed out after ~p ms", [Timeout]),
+            {'error', 'timeout'}
     end.
 
 %%--------------------------------------------------------------------
@@ -571,7 +574,11 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
 %% create and send a Whistle offnet resource response
 %% @end
 %%--------------------------------------------------------------------
--spec response({'error', 'no_resources'} | bridge_resp() | execute_ext_resp() | originate_resp(), wh_json:object()) -> wh_proplist().
+-spec response({'error', 'no_resources' | 'timeout'} |
+               bridge_resp() |
+               execute_ext_resp() |
+               originate_resp()
+               ,wh_json:object()) -> wh_proplist().
 response({'ok', Resp}, JObj) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
