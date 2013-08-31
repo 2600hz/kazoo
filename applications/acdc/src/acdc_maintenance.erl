@@ -17,6 +17,7 @@
          ,migrate_to_acdc_db/0, migrate/0
          ,refresh/0, refresh_account/1
          ,flush_call_stat/1
+         ,queues_summary/0, queues_summary/1, queue_summary/2
         ]).
 
 -include("acdc.hrl").
@@ -278,3 +279,24 @@ flush_call_stat(CallId) ->
                                      ),
             io:format("setting call to 'abandoned'~n", [])
     end.
+
+queues_summary() ->
+    show_queues_summary(acdc_queues_sup:queues_running()).
+
+queues_summary(AcctId) ->
+    show_queues_summary(
+      [Q || {_, {QAcctId, _}} = Q <- acdc_queues_sup:queues_running(),
+            QAcctId =:= AcctId
+      ]).
+
+queue_summary(AcctId, QueueId) ->
+    show_queues_summary(
+      [Q || {_, {QAcctId, QQueueId}} = Q <- acdc_queues_sup:queues_running(),
+            QAcctId =:= AcctId,
+            QQueueId =:= QueueId
+      ]).
+
+show_queues_summary([]) -> 'ok';
+show_queues_summary([{P, {AcctId, QueueId}}|Qs]) ->
+    io:format("  P: ~p A: ~s Q: ~s~n", [P, AcctId, QueueId]),
+    show_queues_summary(Qs).
