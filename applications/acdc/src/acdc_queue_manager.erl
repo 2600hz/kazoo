@@ -236,6 +236,7 @@ should_ignore_member_call(Srv, Call, AccountId, QueueId) ->
                        ),
     gen_listener:call(Srv, {'should_ignore_member_call', K}).
 
+-spec config(pid()) -> {ne_binary(), ne_binary()}.
 config(Srv) -> gen_listener:call(Srv, 'config').
 
 -spec current_agents(server_ref()) -> ne_binaries().

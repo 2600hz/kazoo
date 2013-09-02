@@ -40,6 +40,7 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
+-spec new(ne_binary(), ne_binary()) -> startlink_ret().
 new(AcctId, QueueId) ->
     case find_queue_supervisor(AcctId, QueueId) of
         P when is_pid(P) -> {'ok', P};
