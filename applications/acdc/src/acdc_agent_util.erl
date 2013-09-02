@@ -236,8 +236,8 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
     end.
 
 -spec most_recent_db_statuses(ne_binary()) ->
-                                      statuses_return() |
-                                      {'error', _}.
+                                     statuses_return() |
+                                     {'error', _}.
 -spec most_recent_db_statuses(ne_binary(), api_binary(), wh_proplist()) ->
                                       statuses_return() |
                                       {'error', _}.
