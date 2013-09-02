@@ -102,7 +102,7 @@ is_agent_in_acct(Super, AcctId) ->
         _ -> 'false'
     end.
 
--spec agents_running() -> [{pid(), {ne_binary(), ne_binary()}},...] | [].
+-spec agents_running() -> [{pid(), acdc_agent:config()},...] | [].
 agents_running() ->
     [{W, catch acdc_agent:config(acdc_agent_sup:agent(W))} || W <- workers()].
 
