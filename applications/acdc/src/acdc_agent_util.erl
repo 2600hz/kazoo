@@ -119,7 +119,7 @@ most_recent_statuses(AccountId, AgentId, Options) ->
     maybe_reduce_statuses(AgentId, receive_statuses([ETS, DB])).
 
 -spec maybe_start_db_lookup(atom(), ne_binary(), api_binary(), list(), pid()) ->
-                                   {pid(), reference()} | 'undefined'.
+                                   pid_ref() | 'undefined'.
 maybe_start_db_lookup(F, AccountId, AgentId, Options, Self) ->
     case wh_cache:fetch_local(?ACDC_CACHE, db_fetch_key(F, AccountId, AgentId)) of
         {'ok', _} -> 'undefined';
