@@ -306,7 +306,7 @@ queue_summary(AcctId, QueueId) ->
 -spec show_queues_summary([{pid(), {ne_binary(), ne_binary()}},...] | []) -> 'ok'.
 show_queues_summary([]) -> 'ok';
 show_queues_summary([{P, {AcctId, QueueId}}|Qs]) ->
-    io:format("  Supervisor: ~p Acct: ~s Queue: ~s~n", [P, AcctId, QueueId]),
+    lager:info("  Supervisor: ~p Acct: ~s Queue: ~s~n", [P, AcctId, QueueId]),
     show_queues_summary(Qs).
 
 queues_detail() ->
@@ -327,21 +327,21 @@ agents_summary() ->
 
 agents_summary(AcctId) ->
     show_agents_summary(
-      [A || {_, {AAcctId, _}} = A <- acdc_agents_sup:agents_running(),
+      [A || {_, {AAcctId, _, _}} = A <- acdc_agents_sup:agents_running(),
             AAcctId =:= AcctId
       ]).
 
 agent_summary(AcctId, AgentId) ->
     show_agents_summary(
-      [Q || {_, {AAcctId, AAgentId}} = Q <- acdc_agents_sup:agents_running(),
+      [Q || {_, {AAcctId, AAgentId, _}} = Q <- acdc_agents_sup:agents_running(),
             AAcctId =:= AcctId,
             AAgentId =:= AgentId
       ]).
 
--spec show_agents_summary([{pid(), {ne_binary(), ne_binary()}},...] | []) -> 'ok'.
+-spec show_agents_summary([{pid(), {ne_binary(), ne_binary(), ne_binary()}},...] | []) -> 'ok'.
 show_agents_summary([]) -> 'ok';
-show_agents_summary([{P, {AcctId, QueueId}}|Qs]) ->
-    io:format("  Supervisor: ~p Acct: ~s Agent: ~s~n", [P, AcctId, QueueId]),
+show_agents_summary([{P, {AcctId, QueueId, _AMQPQueue}}|Qs]) ->
+    lager:info("  Supervisor: ~p Acct: ~s Agent: ~s", [P, AcctId, QueueId]),
     show_queues_summary(Qs).
 
 agents_detail() ->
