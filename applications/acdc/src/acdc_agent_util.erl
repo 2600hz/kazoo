@@ -39,7 +39,7 @@ update_status(?NE_BINARY = AccountId, AgentId, Status, Options) ->
            ,{<<"Timestamp">>, wh_util:current_tstamp()}
            | Options ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wapi_acdc_stats:publish_status_update(API).
+    whapps_util:amqp_pool_send(API, fun wapi_acdc_stats:publish_status_update/1).
 
 -spec most_recent_status(ne_binary(), ne_binary()) ->
                                 {'ok', ne_binary()} |
