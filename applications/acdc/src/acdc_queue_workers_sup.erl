@@ -54,7 +54,7 @@ workers(Super) ->
 worker_count(Super) -> length(supervisor:which_children(Super)).
 
 status(Super) ->
-    io:format("  Workers Supervisor: ~p~n", [Super]),
+    lager:info("  Workers Supervisor: ~p", [Super]),
     [acdc_queue_worker_sup:status(WorkerSup) || WorkerSup <- workers(Super)].
 
 %%%===================================================================
