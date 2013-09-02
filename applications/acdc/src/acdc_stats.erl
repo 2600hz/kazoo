@@ -19,6 +19,16 @@
 
          ,find_call/1
          ,call_stat_to_json/1
+         ,agent_ready/2
+         ,agent_logged_in/2
+         ,agent_logged_out/2
+         ,agent_connecting/3, agent_connecting/5
+         ,agent_connected/3, agent_connected/5
+         ,agent_wrapup/3
+         ,agent_paused/3
+         ,agent_outbound/3
+
+         ,agent_statuses/0
         ]).
 
 %% ETS config
@@ -107,6 +117,105 @@ call_processed(AccountId, QueueId, AgentId, CallId) ->
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_call_processed/1).
 
+agent_ready(AcctId, AgentId) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"ready">>}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_ready/1).
+
+agent_logged_in(AcctId, AgentId) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"logged_in">>}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_logged_in/1).
+
+agent_logged_out(AcctId, AgentId) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"logged_out">>}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_logged_out/1).
+
+agent_connecting(AcctId, AgentId, CallId) ->
+    agent_connecting(AcctId, AgentId, CallId, 'undefined', 'undefined').
+agent_connecting(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"connecting">>}
+              ,{<<"Call-ID">>, CallId}
+              ,{<<"Caller-ID-Name">>, CallerIDName}
+              ,{<<"Caller-ID-Number">>, CallerIDNumber}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_connecting/1).
+
+agent_connected(AcctId, AgentId, CallId) ->
+    agent_connected(AcctId, AgentId, CallId, 'undefined', 'undefined').
+agent_connected(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"connected">>}
+              ,{<<"Call-ID">>, CallId}
+              ,{<<"Caller-ID-Name">>, CallerIDName}
+              ,{<<"Caller-ID-Number">>, CallerIDNumber}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_connected/1).
+
+agent_wrapup(AcctId, AgentId, WaitTime) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"wrapup">>}
+              ,{<<"Wait-Time">>, WaitTime}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_wrapup/1).
+
+agent_paused(AcctId, AgentId, 'undefined') ->
+    lager:debug("undefined pause time for ~s(~s)", [AgentId, AcctId]);
+agent_paused(AcctId, AgentId, PauseTime) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"paused">>}
+              ,{<<"Pause-Time">>, PauseTime}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_paused/1).
+
+agent_outbound(AcctId, AgentId, CallId) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"outbound">>}
+              ,{<<"Call-ID">>, CallId}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_outbound/1).
+
+-spec agent_statuses() -> ne_binaries().
+agent_statuses() ->
+    ?STATUS_STATUSES.
+
 %% ETS config
 call_table_id() -> 'acdc_stats_call'.
 call_key_pos() -> #call_stat.id.
@@ -167,6 +276,55 @@ handle_call_stat(JObj, Props) ->
         _Name ->
             lager:debug("recv unknown call stat type ~s: ~p", [_Name, JObj])
     end.
+
+-spec handle_status_stat(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_status_stat(JObj, Props) ->
+    'true' = case (EventName = wh_json:get_value(<<"Event-Name">>, JObj)) of
+                 <<"ready">> -> wapi_acdc_stats:status_ready_v(JObj);
+                 <<"logged_in">> -> wapi_acdc_stats:status_logged_in_v(JObj);
+                 <<"logged_out">> -> wapi_acdc_stats:status_logged_out_v(JObj);
+                 <<"connecting">> -> wapi_acdc_stats:status_connecting_v(JObj);
+                 <<"connected">> -> wapi_acdc_stats:status_connected_v(JObj);
+                 <<"wrapup">> -> wapi_acdc_stats:status_wrapup_v(JObj);
+                 <<"paused">> -> wapi_acdc_stats:status_paused_v(JObj);
+                 <<"outbound">> -> wapi_acdc_stats:status_outbound_v(JObj);
+                 _Name ->
+                     lager:debug("recv unknown status stat type ~s: ~p", [_Name, JObj]),
+                     'false'
+             end,
+
+    AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
+    Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
+
+    gen_listener:cast(props:get_value('server', Props)
+                      ,{'create_status', #status_stat{id=status_stat_id(AgentId, Timestamp, EventName)
+                                                      ,agent_id=AgentId
+                                                      ,acct_id=wh_json:get_value(<<"Account-ID">>, JObj)
+                                                      ,status=EventName
+                                                      ,timestamp=Timestamp
+                                                      ,callid=wh_json:get_value(<<"Call-ID">>, JObj)
+                                                      ,wait_time=wait_time(EventName, JObj)
+                                                      ,pause_time=pause_time(EventName, JObj)
+                                                      ,caller_id_name=caller_id_name(EventName, JObj)
+                                                      ,caller_id_number=caller_id_number(EventName, JObj)
+                                                     }}).
+
+-spec wait_time(ne_binary(), wh_json:object()) -> api_integer().
+wait_time(<<"paused">>, _) -> 'undefined';
+wait_time(_, JObj) -> wh_json:get_integer_value(<<"Wait-Time">>, JObj).
+
+-spec pause_time(ne_binary(), wh_json:object()) -> api_integer().
+pause_time(<<"paused">>, JObj) ->
+    case wh_json:get_integer_value(<<"Pause-Time">>, JObj) of
+        'undefined' -> wh_json:get_integer_value(<<"Wait-Time">>, JObj);
+        PT -> PT
+    end;
+pause_time(_, _JObj) -> 'undefined'.
+
+caller_id_name(_, JObj) ->
+    wh_json:get_value(<<"Caller-ID-Name">>, JObj).
+caller_id_number(_, JObj) ->
+    wh_json:get_value(<<"Caller-ID-Number">>, JObj).
 
 -spec handle_call_query(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_query(JObj, _Prop) ->

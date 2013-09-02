@@ -23,6 +23,7 @@
 
          ,agents_summary/0, agents_summary/1, agent_summary/2
          ,agents_detail/0, agents_detail/1, agent_detail/2
+         ,set_agent_status/3
         ]).
 
 -include("acdc.hrl").
@@ -417,4 +418,14 @@ agent_detail(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' -> lager:info("no agent ~s in account ~s", [AgentId, AcctId]);
         Pid -> acdc_agent_sup:status(Pid)
+    end.
+
+set_agent_status(AcctId, AgentId, Status) ->
+    Statuses = acdc_stats:agent_statuses(),
+    case lists:member(Status, Statuses) of
+        'true' ->
+            lager:info("sending AMQP update to all listening agent procs for ~s", [AgentId]),
+            acdc_agent_util:update_status(AcctId, AgentId, Status);
+        'false' ->
+            lager:info("invalid status to transition to; use on of ~p", [Statuses])
     end.
