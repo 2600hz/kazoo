@@ -19,6 +19,9 @@
          ,flush_call_stat/1
          ,queues_summary/0, queues_summary/1, queue_summary/2
          ,queues_detail/0, queues_detail/1, queue_detail/2
+
+         ,agents_summary/0, agents_summary/1, agent_summary/2
+         ,agents_detail/0, agents_detail/1, agent_detail/2
         ]).
 
 -include("acdc.hrl").
@@ -303,7 +306,7 @@ queue_summary(AcctId, QueueId) ->
 -spec show_queues_summary([{pid(), {ne_binary(), ne_binary()}},...] | []) -> 'ok'.
 show_queues_summary([]) -> 'ok';
 show_queues_summary([{P, {AcctId, QueueId}}|Qs]) ->
-    io:format("  P: ~p A: ~s Q: ~s~n", [P, AcctId, QueueId]),
+    io:format("  Supervisor: ~p Acct: ~s Queue: ~s~n", [P, AcctId, QueueId]),
     show_queues_summary(Qs).
 
 queues_detail() ->
@@ -317,4 +320,39 @@ queue_detail(AcctId, QueueId) ->
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
         'undefined' -> lager:debug("no queue ~s in account ~s", [QueueId, AcctId]);
         Pid -> acdc_queue_sup:status(Pid)
+    end.
+
+agents_summary() ->
+    show_agents_summary(acdc_agents_sup:agents_running()).
+
+agents_summary(AcctId) ->
+    show_agents_summary(
+      [A || {_, {AAcctId, _}} = A <- acdc_agents_sup:agents_running(),
+            AAcctId =:= AcctId
+      ]).
+
+agent_summary(AcctId, AgentId) ->
+    show_agents_summary(
+      [Q || {_, {AAcctId, AAgentId}} = Q <- acdc_agents_sup:agents_running(),
+            AAcctId =:= AcctId,
+            AAgentId =:= AgentId
+      ]).
+
+-spec show_agents_summary([{pid(), {ne_binary(), ne_binary()}},...] | []) -> 'ok'.
+show_agents_summary([]) -> 'ok';
+show_agents_summary([{P, {AcctId, QueueId}}|Qs]) ->
+    io:format("  Supervisor: ~p Acct: ~s Agent: ~s~n", [P, AcctId, QueueId]),
+    show_queues_summary(Qs).
+
+agents_detail() ->
+    acdc_agents_sup:status().
+agents_detail(AcctId) ->
+    [acdc_agent_sup:status(S)
+     || S <- acdc_agents_sup:find_acct_supervisors(AcctId)
+    ],
+    'ok'.
+agent_detail(AcctId, AgentId) ->
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        'undefined' -> lager:debug("no agent ~s in account ~s", [AgentId, AcctId]);
+        Pid -> acdc_agent_sup:status(Pid)
     end.

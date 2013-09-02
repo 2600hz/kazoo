@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -20,6 +20,7 @@
          ,find_acct_supervisors/1
          ,find_agent_supervisor/2
          ,status/0
+         ,agents_running/0
          ,restart_acct/1
          ,restart_agent/2
         ]).
@@ -96,6 +97,10 @@ is_agent_in_acct(Super, AcctId) ->
         {AcctId, _, _} -> 'true';
         _ -> 'false'
     end.
+
+-spec agents_running() -> [{pid(), {ne_binary(), ne_binary()}},...] | [].
+agents_running() ->
+    [{W, catch acdc_agent:config(acdc_agent_sup:agent(W))} || W <- workers()].
 
 -spec find_agent_supervisor(api_binary(), api_binary()) -> api_pid().
 -spec find_agent_supervisor(api_binary(), api_binary(), pids()) -> api_pid().
