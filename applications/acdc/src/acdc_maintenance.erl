@@ -23,7 +23,12 @@
 
          ,agents_summary/0, agents_summary/1, agent_summary/2
          ,agents_detail/0, agents_detail/1, agent_detail/2
-         ,set_agent_status/3
+         ,agent_login/2
+         ,agent_logout/2
+         ,agent_pause/2, agent_pause/3
+         ,agent_resume/2
+         ,agent_queue_login/3
+         ,agent_queue_logout/3
         ]).
 
 -include("acdc.hrl").
@@ -420,12 +425,70 @@ agent_detail(AcctId, AgentId) ->
         Pid -> acdc_agent_sup:status(Pid)
     end.
 
-set_agent_status(AcctId, AgentId, Status) ->
-    Statuses = acdc_stats:agent_statuses(),
-    case lists:member(Status, Statuses) of
-        'true' ->
-            lager:info("sending AMQP update to all listening agent procs for ~s", [AgentId]),
-            acdc_agent_util:update_status(AcctId, AgentId, Status);
-        'false' ->
-            lager:info("invalid status to transition to; use on of ~p", [Statuses])
-    end.
+agent_login(AcctId, AgentId) ->
+    put('callid', ?MODULE),
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                |  wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    whapps_util:amqp_pool_send(Update, fun wapi_acdc_agent:publish_login/1),
+    lager:info("published login update for agent").
+
+agent_logout(AcctId, AgentId) ->
+    put('callid', ?MODULE),
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                |  wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    whapps_util:amqp_pool_send(Update, fun wapi_acdc_agent:publish_logout/1),
+    lager:info("published logout update for agent").
+
+agent_pause(AcctId, AgentId) ->
+    agent_pause(AcctId, AgentId
+                ,whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
+               ).
+agent_pause(AcctId, AgentId, Timeout) ->
+    put('callid', ?MODULE),
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                ,{<<"Timeout">>, wh_util:to_integer(Timeout)}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    whapps_util:amqp_pool_send(Update, fun wapi_acdc_agent:publish_pause/1),
+    lager:info("published pause for agent").
+
+agent_resume(AcctId, AgentId) ->
+    put('callid', ?MODULE),
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                |  wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    whapps_util:amqp_pool_send(Update, fun wapi_acdc_agent:publish_resume/1),
+    lager:info("published resume for agent").
+
+
+agent_queue_login(AcctId, AgentId, QueueId) ->
+    put('callid', ?MODULE),
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                ,{<<"Queue-ID">>, QueueId}
+                |  wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    whapps_util:amqp_pool_send(Update, fun wapi_acdc_agent:publish_login_queue/1),
+    lager:info("published login update for agent").
+
+agent_queue_logout(AcctId, AgentId, QueueId) ->
+    put('callid', ?MODULE),
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                ,{<<"Queue-ID">>, QueueId}
+                |  wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    whapps_util:amqp_pool_send(Update, fun wapi_acdc_agent:publish_logout_queue/1),
+    lager:info("published logout update for agent").
