@@ -18,6 +18,7 @@
          ,refresh/0, refresh_account/1
          ,flush_call_stat/1
          ,queues_summary/0, queues_summary/1, queue_summary/2
+         ,queues_detail/0, queues_detail/1, queue_detail/2
         ]).
 
 -include("acdc.hrl").
@@ -280,6 +281,9 @@ flush_call_stat(CallId) ->
             io:format("setting call to 'abandoned'~n", [])
     end.
 
+-spec queues_summary() -> 'ok'.
+-spec queues_summary(ne_binary()) -> 'ok'.
+-spec queue_summary(ne_binary(), ne_binary()) -> 'ok'.
 queues_summary() ->
     show_queues_summary(acdc_queues_sup:queues_running()).
 
@@ -296,7 +300,21 @@ queue_summary(AcctId, QueueId) ->
             QQueueId =:= QueueId
       ]).
 
+-spec show_queues_summary([{pid(), {ne_binary(), ne_binary()}},...] | []) -> 'ok'.
 show_queues_summary([]) -> 'ok';
 show_queues_summary([{P, {AcctId, QueueId}}|Qs]) ->
     io:format("  P: ~p A: ~s Q: ~s~n", [P, AcctId, QueueId]),
     show_queues_summary(Qs).
+
+queues_detail() ->
+    acdc_queues_sup:status().
+queues_detail(AcctId) ->
+    [acdc_queue_sup:status(S)
+     || S <- acdc_queues_sup:find_acct_supervisors(AcctId)
+    ],
+    'ok'.
+queue_detail(AcctId, QueueId) ->
+    case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
+        'undefined' -> lager:debug("no queue ~s in account ~s", [QueueId, AcctId]);
+        Pid -> acdc_queue_sup:status(Pid)
+    end.
