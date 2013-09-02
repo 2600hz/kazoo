@@ -318,7 +318,7 @@ queues_detail(AcctId) ->
     'ok'.
 queue_detail(AcctId, QueueId) ->
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
-        'undefined' -> lager:debug("no queue ~s in account ~s", [QueueId, AcctId]);
+        'undefined' -> lager:info("no queue ~s in account ~s", [QueueId, AcctId]);
         Pid -> acdc_queue_sup:status(Pid)
     end.
 
@@ -353,6 +353,6 @@ agents_detail(AcctId) ->
     'ok'.
 agent_detail(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
-        'undefined' -> lager:debug("no agent ~s in account ~s", [AgentId, AcctId]);
+        'undefined' -> lager:info("no agent ~s in account ~s", [AgentId, AcctId]);
         Pid -> acdc_agent_sup:status(Pid)
     end.
