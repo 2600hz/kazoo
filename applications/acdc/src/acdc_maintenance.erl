@@ -19,6 +19,7 @@
          ,flush_call_stat/1
          ,queues_summary/0, queues_summary/1, queue_summary/2
          ,queues_detail/0, queues_detail/1, queue_detail/2
+         ,queues_restart/1, queue_restart/2
 
          ,agents_summary/0, agents_summary/1, agent_summary/2
          ,agents_detail/0, agents_detail/1, agent_detail/2
@@ -327,6 +328,54 @@ queue_detail(AcctId, QueueId) ->
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
         'undefined' -> lager:info("no queue ~s in account ~s", [QueueId, AcctId]);
         Pid -> acdc_queue_sup:status(Pid)
+    end.
+
+queues_restart(AcctId) ->
+    put('callid', ?MODULE),
+    case acdc_queues_sup:find_acct_supervisors(AcctId) of
+        [] ->
+            lager:info("there are no running queues in ~s", [AcctId]);
+        Pids ->
+            [maybe_stop_then_start_queue(AcctId, Pid) || Pid <- Pids]
+    end.
+queue_restart(AcctId, QueueId) ->
+    put('callid', ?MODULE),
+    case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
+        'undefined' ->
+            lager:info("queue ~s in account ~s not running", [QueueId, AcctId]);
+        Pid ->
+            maybe_stop_then_start_queue(AcctId, QueueId, Pid)
+    end.
+
+-spec maybe_stop_then_start_queue(ne_binary(), pid()) -> 'ok'.
+-spec maybe_stop_then_start_queue(ne_binary(), ne_binary(), pid()) -> 'ok'.
+
+maybe_stop_then_start_queue(AcctId, Pid) ->
+    {AcctId, QueueId} = acdc_queue_manager:config(acdc_queue_sup:manager(Pid)),
+    maybe_stop_then_start_queue(AcctId, QueueId, Pid).
+maybe_stop_then_start_queue(AcctId, QueueId, Pid) ->
+    case supervisor:terminate_child('acdc_queues_sup', Pid) of
+        'ok' ->
+            lager:info("stopped queue supervisor ~p", [Pid]),
+            maybe_start_queue(AcctId, QueueId);
+        {'error', 'not_found'} ->
+            lager:info("queue supervisor ~p not found", [Pid]);
+        {'error', _E} ->
+            lager:info("failed to terminate queue supervisor ~p: ~p", [_E])
+    end.
+
+maybe_start_queue(AcctId, QueueId) ->
+    case acdc_queues_sup:new(AcctId, QueueId) of
+        {'ok', 'undefined'} ->
+            lager:info("tried to start queue but it asked to be ignored");
+        {'ok', Pid} ->
+            lager:info("started queue back up in ~p", [Pid]);
+        {'error', 'already_present'} ->
+            lager:info("queue is already present (but not running)");
+        {'error', {'already_running', Pid}} ->
+            lager:info("queue is already running in ~p", [Pid]);
+        {'error', _E} ->
+            lager:info("failed to start queue: ~p", [_E])
     end.
 
 agents_summary() ->
