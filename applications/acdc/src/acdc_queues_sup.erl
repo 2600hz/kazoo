@@ -78,7 +78,11 @@ find_queue_supervisor(AcctId, QueueId, [Super|Rest]) ->
 -spec status() -> 'ok'.
 status() ->
     lager:info("ACDc Queues Status"),
-    _ = spawn(fun() -> [acdc_queue_sup:status(Sup) || Sup <- workers()] end),
+    LogId = get('callid'),
+    _ = spawn(fun() ->
+                      put('callid', LogId),
+                      [acdc_queue_sup:status(Sup) || Sup <- workers()]
+              end),
     'ok'.
 
 -spec queues_running() -> [{pid(), term()},...] | [].
