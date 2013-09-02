@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -54,7 +54,7 @@ workers(Super) ->
 worker_count(Super) -> length(supervisor:which_children(Super)).
 
 status(Super) ->
-    lager:info("  Workers Supervisor: ~p", [Super]),
+    io:format("  Workers Supervisor: ~p~n", [Super]),
     [acdc_queue_worker_sup:status(WorkerSup) || WorkerSup <- workers(Super)].
 
 %%%===================================================================
