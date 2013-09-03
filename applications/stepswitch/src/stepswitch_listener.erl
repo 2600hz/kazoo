@@ -289,10 +289,8 @@ create_resrc(JObj) ->
 -spec create_gateway(wh_json:object(), ne_binary()) -> #gateway{}.
 create_gateway(JObj, Id) ->
     Default = #gateway{},
-
     EndpointType = endpoint_type(JObj, Default),
     EndpointOptions = endpoint_options(JObj, EndpointType),
-
     #gateway{resource_id = Id
              ,server =
                  wh_json:get_value(<<"server">>, JObj, Default#gateway.server)
@@ -310,6 +308,8 @@ create_gateway(JObj, Id) ->
                  wh_json:get_binary_value(<<"suffix">>, JObj, Default#gateway.suffix)
              ,codecs =
                  wh_json:get_value(<<"codecs">>, JObj, Default#gateway.codecs)
+             ,t38_setting = 
+                 wh_json:get_value(<<"t38_setting">>, JObj, Default#gateway.t38_setting)
              ,bypass_media =
                  wh_json:get_value(<<"bypass_media">>, JObj)
              ,caller_id_type =

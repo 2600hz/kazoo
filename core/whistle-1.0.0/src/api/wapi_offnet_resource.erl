@@ -23,15 +23,18 @@
                                       ,<<"Application-Name">>
                                      ]).
 -define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS
-        ,[<<"Timeout">>, <<"Ignore-Early-Media">>, <<"Flags">>, <<"Media">>
-          ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
-          ,<<"Emergency-Caller-ID-Name">>, <<"Emergency-Caller-ID-Number">>
-          ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
-          ,<<"Hold-Media">>, <<"Presence-ID">>, <<"Account-Realm">>
-          ,<<"Control-Queue">>, <<"Call-ID">>, <<"Application-Data">>
-          ,<<"Account-ID">>, <<"Outbound-Call-ID">>, <<"Force-Fax">>
-          ,<<"Call-ID">>, <<"Mode">>, <<"Group-ID">> % Eavesdrop
-          ,<<"Force-Outbound">>
+        ,[<<"Timeout">>
+              ,<<"Ignore-Early-Media">>, <<"Flags">>, <<"Media">>
+              ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
+              ,<<"Emergency-Caller-ID-Name">>, <<"Emergency-Caller-ID-Number">>
+              ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+              ,<<"Hold-Media">>, <<"Presence-ID">>, <<"Account-Realm">>
+              ,<<"Control-Queue">>, <<"Call-ID">>, <<"Application-Data">>
+              ,<<"Account-ID">>, <<"Outbound-Call-ID">>
+              ,<<"Call-ID">>, <<"Mode">>, <<"Group-ID">> % Eavesdrop
+              ,<<"Force-Outbound">>
+              ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
+              ,<<"Enable-T38-Passthrough">>, <<"Force-Fax">>
          ]).
 -define(OFFNET_RESOURCE_REQ_VALUES
         ,[{<<"Event-Category">>, <<"resource">>}

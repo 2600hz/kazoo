@@ -35,7 +35,7 @@ handle(Req0, State) ->
                                {'ok', Content} ->
                                    lager:debug("sending fax contents", []),
                                    TmpDir = whapps_config:get_binary(?CONFIG_CAT, <<"file_cache_path">>, <<"/tmp/">>),
-                                   Headers = [{'Content-Type', "image/tiff"}],
+                                   Headers = [{<<"Content-Type">>, <<"image/tiff">>}],
                                    cowboy_req:reply(200, Headers, Content, Req1);
                                {'error', _Reason} ->
                                    lager:debug("could not open file '~s': ~p", [File, _Reason]),

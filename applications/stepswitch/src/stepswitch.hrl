@@ -33,6 +33,7 @@
           ,codecs = whapps_config:get(<<"stepswitch">>, <<"default_codecs">>, [])
           ,bypass_media = whapps_config:get_is_true(<<"stepswitch">>, <<"default_bypass_media">>, false)
           ,caller_id_type = whapps_config:get_binary(<<"stepswitch">>, <<"default_caller_id_type">>, <<"external">>)
+          ,t38_setting = whapps_config:get_binary(<<"stepswitch">>, <<"default_t38_settings">>, <<"passthrough">>)
           ,sip_headers = 'undefined'
           ,sip_interface = 'undefined'
           ,progress_timeout = whapps_config:get_integer(<<"stepswitch">>, <<"default_progress_timeout">>, 8) :: pos_integer()

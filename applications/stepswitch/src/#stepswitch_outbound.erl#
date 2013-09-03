@@ -107,8 +107,7 @@ attempt_to_fulfill_originate_req(Number, JObj, Props) ->
     Flags = wh_json:get_value(<<"Flags">>, JObj, []),
     Resources = props:get_value('resources', Props),
     {Endpoints, _} = find_endpoints(Number, Flags, Resources, JObj),
-    case {originate_to_endpoints(Endpoints, Resources, JObj),
-          correct_shortdial(Number, JObj)} of
+    case {originate_to_endpoints(Endpoints, JObj), correct_shortdial(Number, JObj)} of
         {{'error', 'no_resources'}, 'fail'} -> {'error', 'no_resources'};
         {{'error', 'no_resources'}, CorrectedNumber} ->
             lager:debug("found no resources for number as originated, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
@@ -150,12 +149,6 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
         end,
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
 
-    {CalleeIdNumber, CalleeIdName} =
-        {wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)
-         ,wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)
-        },
-    lager:debug("set outbound callee id to ~s '~s'", [CalleeIdNumber, CalleeIdName]),
-
     FromURI = case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false') of
                   'true' ->
                       case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
@@ -186,14 +179,12 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
-               ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj, <<"false">>)}
+               ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
                ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
                ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
                ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
                ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
                ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-               ,{<<"Outbound-Callee-ID-Number">>, CalleeIdNumber}
-               ,{<<"Outbound-Callee-ID-Name">>, CalleeIdName}
                ,{<<"Caller-ID-Number">>, CIDNum}
                ,{<<"Caller-ID-Name">>, CIDName}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
@@ -216,25 +207,18 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
 %% the emergency CID.
 %% @end
 %%--------------------------------------------------------------------
--spec originate_to_endpoints(wh_proplist(), wh_proplist(), wh_json:object()) ->
+-spec originate_to_endpoints(wh_proplist(), wh_json:object()) ->
                                     {'error', 'no_resources'} |
                                     originate_resp().
-originate_to_endpoints([], _, _) -> {'error', 'no_resources'};
-originate_to_endpoints(Endpoints, Resources, JObj) ->
+originate_to_endpoints([], _) -> {'error', 'no_resources'};
+originate_to_endpoints(Endpoints, JObj) ->
     lager:debug("found resources that can originate the number...to the cloud!"),
     Q = create_queue(),
-    _T38Settings = get_t38_settings('originate', Endpoints, Resources),
+
     CIDNum = wh_json:get_ne_value(<<"Outbound-Caller-ID-Number">>, JObj
                                   ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
     CIDName = wh_json:get_ne_value(<<"Outbound-Caller-ID-Name">>, JObj
                                    ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj)),
-
-    {CalleeIdNumber, CalleeIdName} =
-        {wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)
-         ,wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)
-        },
-    lager:debug("set outbound callee id to ~s '~s'", [CalleeIdNumber, CalleeIdName]),
-
 
     FromURI = case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false') of
                   'true' ->
@@ -246,16 +230,15 @@ originate_to_endpoints(Endpoints, Resources, JObj) ->
                   'false' -> 'undefined'
               end,
 
+    lager:debug("bwann - jobj ~p", [JObj]),
+
     lager:debug("setting from-uri to ~s", [FromURI]),
 
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Updates = [{<<"Account-ID">>, AccountId}
                ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                ,{<<"From-URI">>, FromURI}
-               %,{<<"Force-Fax">>, wh_json:get_value(<<"Force-Fax">>, JObj)}
-               %,{<<"Enable-T38-Fax">>, props:get_value(<<"Enable-T38-Fax">>, T38Settings)}
-               %,{<<"Enable-T38-Fax-Request">>, props:get_value(<<"Enable-T38-Fax-Request">>, T38Settings)}
-               %,{<<"Enable-T38-Passthrough">>, props:get_value(<<"Enable-T38-Passthrough">>, T38Settings)}
+               ,{<<"Force-Fax">>, wh_json:get_value(<<"Force-Fax">>, JObj)}
                ,{<<"Global-Resource">>, <<"true">>}
               ],
     CCVs = wh_json:set_values(props:filter_undefined(Updates)
@@ -275,13 +258,11 @@ originate_to_endpoints(Endpoints, Resources, JObj) ->
                  ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
                  ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
                  ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-                 ,{<<"Outbound-Callee-ID-Number">>, CalleeIdNumber}
-                 ,{<<"Outbound-Callee-ID-Name">>, CalleeIdName}
                  ,{<<"Caller-ID-Number">>, CIDNum}
                  ,{<<"Caller-ID-Name">>, CIDName}
-                                                %,{<<"Enable-T38-Fax">>, props:get_value(<<"Enable-T38-Fax">>, T38Settings)}
-                                                %,{<<"Enable-T38-Fax-Request">>, props:get_value(<<"Enable-T38-Fax-Request">>, T38Settings)}
-                                                %,{<<"Enable-T38-Passthrough">>, props:get_value(<<"Enable-T38-Passthrough">>, T38Settings)}
+                 ,{<<"Enable-T38-Fax">>, wh_json:get_value(<<"Enable-T38-Fax">>, JObj)}
+                 ,{<<"Enable-T38-Fax-Request">>, wh_json:get_value(<<"Enable-T38-Fax-Request">>, JObj)}
+                 ,{<<"Enable-T38-Passthrough">>, wh_json:get_value(<<"Enable-T38-Passthrough">>, JObj)}
                  ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                  ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                  ,{<<"Continue-On-Fail">>, <<"true">>}
@@ -292,30 +273,6 @@ originate_to_endpoints(Endpoints, Resources, JObj) ->
                 ]),
     wapi_resource:publish_originate_req(Request),
     wait_for_originate(MsgId).
-
--spec get_t38_settings(atom(), wh_proplist(), endpoints()) -> wh_proplist().
-get_t38_settings('originate', Endpoints, Resources) ->
-    lager:debug("bwann - endpoints ~p~n", [Endpoints]),
-    lager:debug("bwann - resources ~p~n", [Resources]),
-    Settings = get_t38_originate_settings(Endpoints, Resources, []),
-    lager:debug("Calculated Settings: ~p", [Settings]);
-get_t38_settings('bridge', Endpoints, Resources) ->
-    get_t38_bridge_settings(Endpoints, Resources, []).
-
--spec get_t38_originate_settings(wh_proplist(), endpoints(), wh_proplist()) -> wh_proplist().
-get_t38_originate_settings([], _, Acc) -> Acc;
-get_t38_originate_settings([Endpoint | RestEndpoints], Resources, Acc) ->
-    Acc1 = props:set_value(<<"Resource-ID">>, wh_json:get_value(<<"Resource-ID">>, Endpoint), Acc),
-    get_t38_originate_settings(RestEndpoints, Resources, Acc1).
-
-
--spec get_t38_bridge_settings(wh_proplist(), endpoints(), wh_proplist()) -> wh_proplist().
-get_t38_bridge_settings([], _, Acc) -> Acc;
-get_t38_bridge_settings(Endpoints, _Resources, _Acc) ->
-    lager:debug("Bridge Endpoints: ~p~n", [Endpoints]).
-
-%print_endpoint(Number, #gateway{resource_id=ResourceID}=Gateway, Delay) ->                                |
-%    {ResourceID, Delay, stepswitch_util:get_dialstring(Gateway, Number)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -432,12 +389,9 @@ wait_for_bridge(Timeout) ->
                     wait_for_bridge('infinity');
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} -> hangup_result(JObj);
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} -> hangup_result(JObj);
-                _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start))
+                _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout,Start))
             end;
-        _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start))
-    after Timeout ->
-            lager:debug("timed out after ~p ms", [Timeout]),
-            {'error', 'timeout'}
+        _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout,Start))
     end.
 
 %%--------------------------------------------------------------------
@@ -554,9 +508,9 @@ build_endpoints([{_, GracePeriod, Number, [Gateway], _}|T], JObj, Delay, Acc0) -
 build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], JObj, Delay, Acc0) ->
     {D2, Acc1} = lists:foldl(fun(Gateway, {0, AccIn}) ->
                                      {2, [build_endpoint(Number, Gateway, 0, JObj)|AccIn]};
-                                (Gateway, {D0, AccIn}) ->
+                                 (Gateway, {D0, AccIn}) ->
                                      {D0 + 2, [build_endpoint(Number, Gateway, D0, JObj)|AccIn]}
-                             end, {Delay, Acc0}, Gateways),
+                            end, {Delay, Acc0}, Gateways),
     build_endpoints(T, JObj, D2 - 2 + GracePeriod, Acc1).
 
 %%--------------------------------------------------------------------
@@ -606,11 +560,7 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
 %% create and send a Whistle offnet resource response
 %% @end
 %%--------------------------------------------------------------------
--spec response({'error', 'no_resources' | 'timeout'} |
-               bridge_resp() |
-               execute_ext_resp() |
-               originate_resp()
-               ,wh_json:object()) -> wh_proplist().
+-spec response({'error', 'no_resources'} | bridge_resp() | execute_ext_resp() | originate_resp(), wh_json:object()) -> wh_proplist().
 response({'ok', Resp}, JObj) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
@@ -681,7 +631,7 @@ response({'error', Error}, JObj) ->
 -spec correct_shortdial(ne_binary(), wh_json:object()) -> ne_binary() | 'fail'.
 correct_shortdial(Number, JObj) ->
     CIDNum = wh_json:get_ne_value(<<"Outbound-Caller-ID-Number">>, JObj
-                                  ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
+                               ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
     MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length > 0 ->
