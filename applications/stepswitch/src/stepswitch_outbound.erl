@@ -107,7 +107,7 @@ attempt_to_fulfill_originate_req(Number, JObj, Props) ->
     Flags = wh_json:get_value(<<"Flags">>, JObj, []),
     Resources = props:get_value('resources', Props),
     {Endpoints, _} = find_endpoints(Number, Flags, Resources, JObj),
-    case {originate_to_endpoints(Endpoints, Resources, JObj),
+    case {originate_to_endpoints(Endpoints, JObj),
           correct_shortdial(Number, JObj)} of
         {{'error', 'no_resources'}, 'fail'} -> {'error', 'no_resources'};
         {{'error', 'no_resources'}, CorrectedNumber} ->
@@ -216,14 +216,16 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
 %% the emergency CID.
 %% @end
 %%--------------------------------------------------------------------
--spec originate_to_endpoints(wh_proplist(), wh_proplist(), wh_json:object()) ->
+-spec originate_to_endpoints(wh_proplist(), wh_json:object()) ->
                                     {'error', 'no_resources'} |
                                     originate_resp().
-originate_to_endpoints([], _, _) -> {'error', 'no_resources'};
-originate_to_endpoints(Endpoints, Resources, JObj) ->
+originate_to_endpoints([], _) -> {'error', 'no_resources'};
+originate_to_endpoints(Endpoints, JObj) ->
     lager:debug("found resources that can originate the number...to the cloud!"),
     Q = create_queue(),
-    _T38Settings = get_t38_settings('originate', Endpoints, Resources),
+    
+    lager:debug("bwann - endpoints: ~p", [Endpoints]),
+
     CIDNum = wh_json:get_ne_value(<<"Outbound-Caller-ID-Number">>, JObj
                                   ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
     CIDName = wh_json:get_ne_value(<<"Outbound-Caller-ID-Name">>, JObj
@@ -252,10 +254,6 @@ originate_to_endpoints(Endpoints, Resources, JObj) ->
     Updates = [{<<"Account-ID">>, AccountId}
                ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                ,{<<"From-URI">>, FromURI}
-               %,{<<"Force-Fax">>, wh_json:get_value(<<"Force-Fax">>, JObj)}
-               %,{<<"Enable-T38-Fax">>, props:get_value(<<"Enable-T38-Fax">>, T38Settings)}
-               %,{<<"Enable-T38-Fax-Request">>, props:get_value(<<"Enable-T38-Fax-Request">>, T38Settings)}
-               %,{<<"Enable-T38-Passthrough">>, props:get_value(<<"Enable-T38-Passthrough">>, T38Settings)}
                ,{<<"Global-Resource">>, <<"true">>}
               ],
     CCVs = wh_json:set_values(props:filter_undefined(Updates)
@@ -279,9 +277,6 @@ originate_to_endpoints(Endpoints, Resources, JObj) ->
                  ,{<<"Outbound-Callee-ID-Name">>, CalleeIdName}
                  ,{<<"Caller-ID-Number">>, CIDNum}
                  ,{<<"Caller-ID-Name">>, CIDName}
-                                                %,{<<"Enable-T38-Fax">>, props:get_value(<<"Enable-T38-Fax">>, T38Settings)}
-                                                %,{<<"Enable-T38-Fax-Request">>, props:get_value(<<"Enable-T38-Fax-Request">>, T38Settings)}
-                                                %,{<<"Enable-T38-Passthrough">>, props:get_value(<<"Enable-T38-Passthrough">>, T38Settings)}
                  ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                  ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                  ,{<<"Continue-On-Fail">>, <<"true">>}
@@ -292,30 +287,6 @@ originate_to_endpoints(Endpoints, Resources, JObj) ->
                 ]),
     wapi_resource:publish_originate_req(Request),
     wait_for_originate(MsgId).
-
--spec get_t38_settings(atom(), wh_proplist(), endpoints()) -> wh_proplist().
-get_t38_settings('originate', Endpoints, Resources) ->
-    lager:debug("bwann - endpoints ~p~n", [Endpoints]),
-    lager:debug("bwann - resources ~p~n", [Resources]),
-    Settings = get_t38_originate_settings(Endpoints, Resources, []),
-    lager:debug("Calculated Settings: ~p", [Settings]);
-get_t38_settings('bridge', Endpoints, Resources) ->
-    get_t38_bridge_settings(Endpoints, Resources, []).
-
--spec get_t38_originate_settings(wh_proplist(), endpoints(), wh_proplist()) -> wh_proplist().
-get_t38_originate_settings([], _, Acc) -> Acc;
-get_t38_originate_settings([Endpoint | RestEndpoints], Resources, Acc) ->
-    Acc1 = props:set_value(<<"Resource-ID">>, wh_json:get_value(<<"Resource-ID">>, Endpoint), Acc),
-    get_t38_originate_settings(RestEndpoints, Resources, Acc1).
-
-
--spec get_t38_bridge_settings(wh_proplist(), endpoints(), wh_proplist()) -> wh_proplist().
-get_t38_bridge_settings([], _, Acc) -> Acc;
-get_t38_bridge_settings(Endpoints, _Resources, _Acc) ->
-    lager:debug("Bridge Endpoints: ~p~n", [Endpoints]).
-
-%print_endpoint(Number, #gateway{resource_id=ResourceID}=Gateway, Delay) ->                                |
-%    {ResourceID, Delay, stepswitch_util:get_dialstring(Gateway, Number)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -569,7 +540,6 @@ build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], JObj, Delay, Acc0) ->
 build_endpoint(Number, Gateway, _Delay, JObj) ->
     Route = stepswitch_util:get_dialstring(Gateway, Number),
     lager:debug("found resource ~s (~s)", [Gateway#gateway.resource_id, Route]),
-
     FromUri = case Gateway#gateway.format_from_uri of
                   'false' -> 'undefined';
                   'true' ->
@@ -577,9 +547,12 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
               end,
     lager:debug("setting from-uri to ~p on gateway ~p", [FromUri, Gateway#gateway.resource_id]),
 
+    FaxSettings = get_t38_settings(Gateway#gateway.t38_setting),
+
     CCVs = [{<<"Resource-ID">>, Gateway#gateway.resource_id}
             ,{<<"From-URI">>, FromUri}
-           ],
+           ] ++ FaxSettings,
+
     Prop = [{<<"Invite-Format">>, Gateway#gateway.invite_format}
             ,{<<"Route">>, stepswitch_util:get_dialstring(Gateway, Number)}
             ,{<<"Callee-ID-Name">>, wh_util:to_binary(Number)}
@@ -598,6 +571,31 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
             ,{<<"Endpoint-Options">>, Gateway#gateway.endpoint_options}
            ],
     wh_json:from_list([KV || {_, V}=KV <- Prop, V =/= 'undefined' andalso V =/= <<"0">>]).
+
+get_t38_settings(<<"none">>) ->
+    [{<<"Enable-T38-Fax">>, 'undefined'}
+     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"T38-Gateway-Direction">>, 'undefined'}
+     ];
+get_t38_settings(<<"passthrough">>) ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+     ,{<<"Enable-T38-Passthrough">>, 'true'}
+     ,{<<"T38-Gateway-Direction">>, 'undefined'}
+    ];
+get_t38_settings(<<"device">>) ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"T38-Gateway-Direction">>, 'self'}
+    ];
+get_t38_settings(<<"carrier">>) ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"T38-Gateway-Direction">>, 'peer'}
+    ].
 
 %%--------------------------------------------------------------------
 %% @private

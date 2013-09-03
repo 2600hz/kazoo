@@ -399,6 +399,8 @@ get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     end;
 get_channel_vars(_, Vars) -> Vars.
 
+get_channel_vars_fold({<<"Enable-T38-Gateway">>, Direction}, Acc) ->
+    [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
 get_channel_vars_fold({<<"Force-Fax">>, Direction}, Acc) ->
     [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
 get_channel_vars_fold({K, V}, Acc) ->

@@ -167,7 +167,7 @@ handle_cast(_Msg, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
+% @doc
 %% Handling all non call/cast messages
 %%
 %% @spec handle_info(Info, State) -> {noreply, State} |
@@ -495,12 +495,8 @@ send_fax(JobId, JObj, Q) ->
                ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Authorizing-ID">>, JobId}
                                                                ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
-                                                               ,{<<"Force-Fax">>, <<"peer">>}
                                                               ])}
                ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>]}
-               ,{<<"Enable-T38-Fax">>, <<"true">>}
-               ,{<<"Enable-T38-Fax-Request">>, <<"true">>}
-               %,{<<"Enable-T38-Passthrough">>, <<"true">>}
                ,{<<"Application-Name">>, <<"fax">>}
                ,{<<"Application-Data">>, get_proxy_url(JobId)}
                | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
