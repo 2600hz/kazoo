@@ -359,26 +359,35 @@ load_apps(AccoundDb, UserId, [Id|Ids], Acc) ->
         {'ok', JObj} ->
             case wh_json:get_value([<<"installed">>, <<"all">>], JObj) of
                 'true' ->
-                    load_apps(AccoundDb, UserId
+                    load_apps(AccoundDb
+                              ,UserId
                               ,Ids
                               ,wh_json:set_value(Id, get_app_info(JObj), Acc));
                 _ ->
-                    lists:foldl(
-                        fun(User, _) ->
-                            case wh_json:get_value(<<"id">>, User) =:= UserId of
-                                'true' ->
-                                    load_apps(AccoundDb, UserId
-                                              ,Ids, wh_json:set_value(Id, get_app_info(JObj), Acc));
-                                'false' ->
-                                    load_apps(AccoundDb, UserId, Ids, Acc)
-                            end
-                        end
-                        ,[]
-                        ,wh_json:get_value([<<"installed">>, <<"users">>], JObj))
+                    case is_app_used_by_user(JObj, UserId) of
+                        'true' ->
+                            load_apps(AccoundDb
+                                      ,UserId
+                                      ,Ids
+                                      ,wh_json:set_value(Id, get_app_info(JObj), Acc));
+                        'false' ->
+                            load_apps(AccoundDb, UserId, Ids, Acc)
+                    end
             end;
         {'error', _E} ->
             load_apps(AccoundDb, UserId, Ids, Acc)
     end.
+
+is_app_used_by_user(AppJObj, UserId) ->
+    lists:foldl(
+        fun(User, Acc) ->
+            case wh_json:get_value(<<"id">>, User) =:= UserId of
+                'true' -> 'true';
+                'false' -> Acc
+            end
+        end
+        ,'false'
+        ,wh_json:get_value([<<"installed">>, <<"users">>], AppJObj)).
 
 get_app_info(JObj) ->
     wh_json:set_values([{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
