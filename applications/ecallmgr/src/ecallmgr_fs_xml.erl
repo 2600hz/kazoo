@@ -390,6 +390,9 @@ get_channel_vars({<<"Forward-IP">>, <<"sip:", _/binary>>=V}, Vars) ->
 get_channel_vars({<<"Forward-IP">>, V}, Vars) ->
     get_channel_vars({<<"Forward-IP">>, <<"sip:", V/binary>>}, Vars);
 
+get_channel_vars({<<"Enable-T38-Gateway">>, Direction}, Vars) ->
+    [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">> | Vars];
+
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> Vars;
@@ -399,8 +402,6 @@ get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     end;
 get_channel_vars(_, Vars) -> Vars.
 
-get_channel_vars_fold({<<"Enable-T38-Gateway">>, Direction}, Acc) ->
-    [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
 get_channel_vars_fold({<<"Force-Fax">>, Direction}, Acc) ->
     [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
 get_channel_vars_fold({K, V}, Acc) ->

@@ -500,9 +500,11 @@ build_originate_args(Action, Endpoints, JObj, FetchId) ->
                         _Else -> <<"|">>
                     end,
     DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
+    lager:debug("bwann - dialstrings ~p", [DialStrings]),
     J = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
                             ,{<<"Loopback-Bowout">>, <<"true">>}
                            ], JObj),
+    lager:debug("bwann - channel vars ~p", [ecallmgr_fs_xml:get_channel_vars(J)]),
     list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).
 
 -spec originate_execute(atom(), ne_binary(), pos_integer()) ->

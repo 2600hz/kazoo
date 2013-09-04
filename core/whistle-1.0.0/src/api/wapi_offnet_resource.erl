@@ -34,7 +34,7 @@
               ,<<"Call-ID">>, <<"Mode">>, <<"Group-ID">> % Eavesdrop
               ,<<"Force-Outbound">>
               ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
-              ,<<"Enable-T38-Passthrough">>, <<"Force-Fax">>
+              ,<<"Enable-T38-Passthrough">>, <<"Force-Fax">>, <<"Enable-T38-Gateway">>
          ]).
 -define(OFFNET_RESOURCE_REQ_VALUES
         ,[{<<"Event-Category">>, <<"resource">>}
@@ -59,6 +59,7 @@
           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
           ,{<<"Flags">>, fun is_list/1}
           ,{<<"Force-Fax">>, fun wh_util:is_boolean/1}
+          ,{<<"Enable-T38-Gateway">>, fun is_binary/1}
           ,{<<"Force-Outbound">>, fun wh_util:is_boolean/1}
          ]).
 

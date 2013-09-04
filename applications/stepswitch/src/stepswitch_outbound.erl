@@ -167,16 +167,10 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
               end,
     lager:debug("setting from-uri to ~s", [FromURI]),
 
-    ForceFax = case wh_json:is_true(<<"Force-Fax">>, JObj) of
-                   'false' -> 'undefined';
-                   'true' -> <<"peer">>
-               end,
-
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Updates = [{<<"Account-ID">>, AccountId}
                ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                ,{<<"From-URI">>, FromURI}
-               ,{<<"Force-Fax">>, ForceFax}
                ,{<<"Ignore-Display-Updates">>, <<"true">>}
                ,{<<"Global-Resource">>, <<"true">>}
               ],
@@ -223,8 +217,6 @@ originate_to_endpoints([], _) -> {'error', 'no_resources'};
 originate_to_endpoints(Endpoints, JObj) ->
     lager:debug("found resources that can originate the number...to the cloud!"),
     Q = create_queue(),
-    
-    lager:debug("bwann - endpoints: ~p", [Endpoints]),
 
     CIDNum = wh_json:get_ne_value(<<"Outbound-Caller-ID-Number">>, JObj
                                   ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
@@ -548,10 +540,9 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
     lager:debug("setting from-uri to ~p on gateway ~p", [FromUri, Gateway#gateway.resource_id]),
 
     FaxSettings = get_t38_settings(Gateway#gateway.t38_setting),
-
     CCVs = [{<<"Resource-ID">>, Gateway#gateway.resource_id}
             ,{<<"From-URI">>, FromUri}
-           ] ++ FaxSettings,
+           ],
 
     Prop = [{<<"Invite-Format">>, Gateway#gateway.invite_format}
             ,{<<"Route">>, stepswitch_util:get_dialstring(Gateway, Number)}
@@ -569,32 +560,32 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
             ,{<<"Endpoint-Type">>, Gateway#gateway.endpoint_type}
             ,{<<"Endpoint-Options">>, Gateway#gateway.endpoint_options}
-           ],
+           ] ++ FaxSettings,
     wh_json:from_list([KV || {_, V}=KV <- Prop, V =/= 'undefined' andalso V =/= <<"0">>]).
 
 get_t38_settings(<<"none">>) ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
      ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"T38-Gateway-Direction">>, 'undefined'}
-     ];
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ];
 get_t38_settings(<<"passthrough">>) ->
     [{<<"Enable-T38-Fax">>, 'true'}
      ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
      ,{<<"Enable-T38-Passthrough">>, 'true'}
-     ,{<<"T38-Gateway-Direction">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
 get_t38_settings(<<"device">>) ->
     [{<<"Enable-T38-Fax">>, 'true'}
      ,{<<"Enable-T38-Fax-Request">>, 'true'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"T38-Gateway-Direction">>, 'self'}
+     ,{<<"Enable-T38-Gateway">>, <<"self">>}
     ];
 get_t38_settings(<<"carrier">>) ->
     [{<<"Enable-T38-Fax">>, 'true'}
      ,{<<"Enable-T38-Fax-Request">>, 'true'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"T38-Gateway-Direction">>, 'peer'}
+     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ].
 
 %%--------------------------------------------------------------------

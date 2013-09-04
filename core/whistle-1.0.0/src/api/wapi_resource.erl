@@ -71,11 +71,7 @@
                                              ,<<"Custom-Channel-Vars">>
                                              ,<<"Export-Custom-Channel-Vars">>
                                              ,<<"Outbound-Call-ID">>
-                                             ,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore                                             
-                                             ,<<"Enable-T38-Fax">>
-                                             ,<<"Enable-T38-Fax-Request">>
-                                             ,<<"Enable-T38-Passthrough">>
-                                             %% Eavesdrop
+                                             ,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore                                                                  %% Eavesdrop
                                              ,<<"Eavesdrop-Call-ID">>
                                              ,<<"Eavesdrop-Mode">>
                                              ,<<"Eavesdrop-Group-ID">>
