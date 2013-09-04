@@ -1,3 +1,19 @@
 # FreeSWITCH command to send a fax to your Kazoo-managed FreeSWITCH server
 
 originate [sip_auth_password='password',sip_auth_username='username']sofia/sipinterface_1/+12223334444@realm;fs_path=sip:ip.add.re.ss &txfax(/path/to/file.tiff)
+
+curl -H 'Content-Type: application/json' -H 'X-Auth-Token: CROSSBAR_AUTH_TOKEN' http://CROSSBAR_URL/v1/accounts/ACCOUNT_ID/faxes/outgoing -d '{
+   "data":{
+      "document":{
+         "url":"http://RESOLVABLE_IP_ADDRESS/test.pdf",
+         "method":"get"
+      },
+      "retries":3,
+      "from_name":"Fax Sender",
+      "from_number":"18885551212",
+      "to_name":"Fax Recipient",
+      "to_number":"15555552001",
+      "fax_identity_number": "18885551212",
+      "fax_identity_name": "Fax Header"
+   }
+}' -v -X PUT

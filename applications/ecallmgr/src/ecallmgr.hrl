@@ -199,6 +199,9 @@
                                ,{<<"RECORD_APPEND">>, <<"RECORD_APPEND">>}
                                ,{<<"fax_enable_t38_request">>, <<"fax_enable_t38_request">>}
                                ,{<<"fax_enable_t38">>, <<"fax_enable_t38">>}
+                               ,{<<"Enable-T38-Fax">>, <<"fax_enable_t38">>}
+                               ,{<<"Enable-T38-Fax-Request">>, <<"fax_enable_t38_request">>}
+                               ,{<<"Enable-T38-Passthrough">>, <<"t38_passthru">>}
                                ,{<<"sip_rh_X-Redirect-Server">>, <<"sip_rh_X-Redirect-Server">>}
                                ,{<<"park_after_bridge">>, <<"park_after_bridge">>}
                                ,{<<"continue_on_fail">>, <<"continue_on_fail">>}
