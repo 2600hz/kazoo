@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012 VoIP INC
+%%% @copyright (C) 2010-2013 2600Hz INC
 %%% @doc
 %%% Execute call commands
 %%% @end
@@ -1116,7 +1116,11 @@ get_terminators(JObj) -> get_terminators(wh_json:get_ne_value(<<"Terminators">>,
 set_terminators(Node, UUID, Ts) ->
     case get_terminators(Ts) of
         'undefined' -> 'ok';
-        {K, V} -> ecallmgr_util:set(Node, UUID, [{K, V}])
+        {K, V} ->
+            case ecallmgr_util:set(Node, UUID, [{K, V}]) of
+                {'ok', _} -> 'ok';
+                E -> E
+            end
     end.
 
 -ifdef(TEST).
