@@ -33,11 +33,13 @@
                      ,{{'cf_util', 'presence_mwi_query'}
                        ,[{<<"notification">>, <<"register">>}]
                       }
+                     ,{'cf_route_resume', [{<<"callflow">>, <<"resume">>}]}
                     ]).
 -define(BINDINGS, [{'notifications'
                     ,[{'restrict_to', ['presence_probe', 'mwi_query', 'register']}]
                    }
                    ,{'self', []}
+                   ,{'callflow', []}
                   ]).
 -define(QUEUE_NAME, <<"callflow_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
