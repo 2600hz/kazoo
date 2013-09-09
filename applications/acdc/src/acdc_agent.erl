@@ -757,13 +757,17 @@ handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
                                                        ,agent_id=AgentId
                                                       }=State) ->
     lager:debug("no custom presence id, using ~s for ~s", [AgentId, PresenceState]),
-    acdc_util:presence_update(AcctId, AgentId, PresenceState),
+    acdc_util:presence_update(AcctId, AgentId, PresenceState
+                              ,wh_util:to_hex_binary(crypto:md5(AgentId))
+                             ),
     {'noreply', State};
 handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
                                                        ,agent_presence_id=PresenceId
                                                       }=State) ->
     lager:debug("custom presence id, using ~s for ~s", [PresenceId, PresenceState]),
-    acdc_util:presence_update(AcctId, PresenceId, PresenceState),
+    acdc_util:presence_update(AcctId, PresenceId, PresenceState
+                              ,wh_util:to_hex_binary(crypto:md5(PresenceId))
+                             ),
     {'noreply', State};
 
 handle_cast({'update_status', Status}, #state{agent_id=AgentId

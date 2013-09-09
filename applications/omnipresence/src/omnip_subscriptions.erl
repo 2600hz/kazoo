@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -24,10 +24,10 @@
 
          ,table_id/0
          ,table_config/0
-         
+
          ,find_subscription/1
          ,find_subscriptions/1
-         
+
          ,search_for_subscriptions/1
          ,search_for_subscriptions/2
 
@@ -163,8 +163,9 @@ handle_cdr(JObj, _Props) ->
 
 -spec maybe_send_update(wh_json:object(), ne_binary()) -> any().
 maybe_send_update(JObj, State) ->
+    To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
     Update = props:filter_undefined(
-               [{<<"To">>, To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj)}
+               [{<<"To">>, To}
                 ,{<<"From">>, From = wh_json:get_value(<<"From">>, JObj)}
                 ,{<<"State">>, State}
                 ,{<<"Direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
@@ -172,7 +173,7 @@ maybe_send_update(JObj, State) ->
                 ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    User = case wh_json:get_value(<<"Call-Direction">>, JObj) of 
+    User = case wh_json:get_value(<<"Call-Direction">>, JObj) of
                <<"inbound">> -> From;
                _Else -> To
            end,
@@ -332,7 +333,7 @@ handle_cast({'subscribe', #omnip_subscription{user=_U
             lager:debug("re-subscribe ~s/~s expires in ~ps(prior remaing ~ps)"
                         ,[_U, _F, _E1, _E2 - wh_util:elapsed_s(_T)]),
             ets:delete_object(table_id(), O);
-        {'error', 'not_found'} -> 
+        {'error', 'not_found'} ->
             lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1]),
             'ok'
     end,
@@ -390,10 +391,13 @@ dedup(Subscriptions) ->
 -spec dedup(subscriptions(), dict()) -> subscriptions().
 dedup([], Dictionary) ->
     [Subscription || {_, Subscription} <- dict:to_list(Dictionary)];
-dedup([#omnip_subscription{user=User, stalker=Stalker}=Subscription
+dedup([#omnip_subscription{user=User
+                           ,stalker=Stalker
+                           ,from=From
+                          }=Subscription
        |Subscriptions
       ], Dictionary) ->
-    dedup(Subscriptions, dict:store({User, Stalker}, Subscription, Dictionary)).
+    dedup(Subscriptions, dict:store({User, From, Stalker}, Subscription, Dictionary)).
 
 expire_old_subscriptions() ->
     Now = wh_util:current_tstamp(),
