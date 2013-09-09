@@ -40,7 +40,6 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--define(HEARTBEAT, 5000).
 -define(EXPIRE_PERIOD, 1000).
 -define(FUDGE_FACTOR, 1.25).
 -define(APP_NAME, <<"wh_nodes">>).
@@ -53,7 +52,7 @@
                }).
 
 -record(node, {node = node()
-               ,expires = ?HEARTBEAT
+               ,expires = 0
                ,whapps = []
                ,media_servers = []
                ,last_heartbeat = wh_util:now_ms(now())
@@ -246,14 +245,15 @@ handle_info('expire_nodes', #state{tab=Tab}=State) ->
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
     {'noreply', State};
 handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref}=State) ->
-    try create_node() of
+    Heartbeat = crypto:rand_uniform(5000, 15000),
+    try create_node(Heartbeat) of
         Node -> wapi_nodes:publish_advertise(advertise_payload(Node))
     catch
         _:_ -> 'ok'
     end,
 
     Reference = erlang:make_ref(),
-    _ = erlang:send_after(?HEARTBEAT, self(), {'heartbeat', Reference}),
+    _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
     {'noreply', State#state{heartbeat_ref=Reference}};
 handle_info({'DOWN', Ref, 'process', Pid, _}, #state{notify_new=NewSet
                                                      ,notify_expire=ExpireSet}=State) ->
@@ -303,9 +303,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec create_node() -> wh_node().
-create_node() ->
-    maybe_add_whapps_data(#node{}).
+-spec create_node(5000..15000) -> wh_node().
+create_node(Heartbeat) ->
+    maybe_add_whapps_data(#node{expires=Heartbeat}).
 
 -spec maybe_add_whapps_data(wh_node()) -> wh_node().
 maybe_add_whapps_data(Node) ->
@@ -361,7 +361,7 @@ advertise_payload(Node) ->
 from_json(JObj) ->
     Node = wh_json:get_value(<<"Node">>, JObj),
     #node{node=wh_util:to_atom(Node, 'true')
-          ,expires=wh_json:get_integer_value(<<"Expires">>, JObj, ?HEARTBEAT) * ?FUDGE_FACTOR
+          ,expires=wh_json:get_integer_value(<<"Expires">>, JObj, 0) * ?FUDGE_FACTOR
           ,whapps=wh_json:get_value(<<"WhApps">>, JObj, [])
           ,media_servers=wh_json:get_value(<<"Media-Servers">>, JObj, [])
          }.
