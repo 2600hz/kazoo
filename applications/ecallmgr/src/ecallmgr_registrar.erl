@@ -51,7 +51,7 @@
 -define(REG_QUEUE_NAME, <<"">>).
 -define(REG_QUEUE_OPTIONS, []).
 -define(REG_CONSUME_OPTIONS, []).
--define(SUMMARY_REGEX, <<"^.*?:.*@([0-9.:]*)(?:;fs_path=.*?:([0-9.:]*))*(?:.*;received=.*?:([0-9.:]*))*">>).
+-define(SUMMARY_REGEX, <<"^.*?:.*@([0-9.:]*)(?:;fs_path=.*?:([0-9.:]*))*OA">>).
 
 -record(state, {started = wh_util:current_tstamp()}).
 
@@ -656,13 +656,13 @@ oldest_registrar(Username, Realm) ->
 print_summary('$end_of_table') ->
     io:format("No registrations found!~n", []);
 print_summary(Match) ->
-    io:format("+----------------------------------------------------+------------------------+------------------------+------------------------+------+~n"),
-    io:format("| User                                               | Contact                | Path                   | Received               |  Exp |~n"),
-    io:format("+====================================================+========================+========================+========================+======+~n"),
+    io:format("+-----------------------------------------------+------------------------+------------------------+----------------------------------+------+~n"),
+    io:format("| User                                          | Contact                | Path                   | Call-ID                          |  Exp |~n"),
+    io:format("+===============================================+========================+========================+==================================+======+~n"),
     print_summary(Match, 0).
 
 print_summary('$end_of_table', Count) ->
-    io:format("+----------------------------------------------------+------------------------+------------------------+------------------------+------+~n"),
+    io:format("+-----------------------------------------------+------------------------+------------------------+----------------------------------+------+~n"),
     io:format("Found ~p registrations~n", [Count]);
 print_summary({[#registration{username=Username, realm=Realm
                               ,contact=Contact, expires=Expires
@@ -672,15 +672,12 @@ print_summary({[#registration{username=Username, realm=Realm
     User = <<Username/binary, "@", Realm/binary>>,
     Remaining = (LastRegistration + Expires) - wh_util:current_tstamp(),
     _ = case re:run(Contact, ?SUMMARY_REGEX, [{'capture', 'all_but_first', 'binary'}]) of
-            {'match', [Host, Path, Received]} ->
-                io:format("| ~-50s | ~-22s | ~-22s | ~-22s | ~-4B |~n"
-                          ,[User, Host, Path, Received, Remaining]);
             {'match', [Host, Path]} ->
-                io:format("| ~-50s | ~-22s | ~-22s | ~-22s | ~-4B |~n"
-                          ,[User, Host, Path, <<>>, Remaining]);
+                io:format("| ~-45s | ~-22s | ~-22s | ~-32s | ~-4B |~n"
+                          ,[User, Host, Path, CallId, Remaining]);
             {'match', [Host]} ->
-                io:format("| ~-50s | ~-22s | ~-22s | ~-22s | ~-4B |~n"
-                          ,[User, Host, <<>>, <<>>, Remaining]);
+                io:format("| ~-45s | ~-22s | ~-22s | ~-32s | ~-4B |~n"
+                          ,[User, Host, <<>>, CallId, Remaining]);
             _Else -> 'ok'
         end,
     print_summary(ets:select(Continuation), Count + 1).
