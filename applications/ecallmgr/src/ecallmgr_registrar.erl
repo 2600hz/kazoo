@@ -51,7 +51,7 @@
 -define(REG_QUEUE_NAME, <<"">>).
 -define(REG_QUEUE_OPTIONS, []).
 -define(REG_CONSUME_OPTIONS, []).
--define(SUMMARY_REGEX, <<"^.*?:.*@([0-9.:]*)(?:;fs_path=.*?:([0-9.:]*))*OA">>).
+-define(SUMMARY_REGEX, <<"^.*?:.*@([0-9.:]*)(?:;fs_path=.*?:([0-9.:]*))*">>).
 
 -record(state, {started = wh_util:current_tstamp()}).
 
@@ -666,8 +666,9 @@ print_summary('$end_of_table', Count) ->
     io:format("Found ~p registrations~n", [Count]);
 print_summary({[#registration{username=Username, realm=Realm
                               ,contact=Contact, expires=Expires
-                              ,last_registration=LastRegistration}]
-               ,Continuation}
+                              ,last_registration=LastRegistration
+                              ,call_id=CallId}
+               ], Continuation}
               ,Count) ->
     User = <<Username/binary, "@", Realm/binary>>,
     Remaining = (LastRegistration + Expires) - wh_util:current_tstamp(),

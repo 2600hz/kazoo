@@ -128,11 +128,15 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %%--------------------------------------------------------------------
 -spec collect_recipients(ne_binary()) -> ne_binaries().
 collect_recipients(AccountId) ->
-    Routines = [fun(T) -> maybe_send_to_account_admins(AccountId, T) end
-                ,fun(T) -> maybe_send_to_master_support(T) end
-               ],
-    To = lists:foldl(fun(F, T) -> F(T) end, [], Routines),
-    sets:to_list(sets:from_list(To)).
+    case whapps_config:get(?MOD_CONFIG_CAT, <<"override_to">>) of
+        'undefined' ->
+            Routines = [fun(T) -> maybe_send_to_account_admins(AccountId, T) end
+                        ,fun(T) -> maybe_send_to_master_support(T) end
+                       ],
+            To = lists:foldl(fun(F, T) -> F(T) end, [], Routines),
+            sets:to_list(sets:from_list(To));
+        To -> [To]
+    end.
 
 -spec maybe_send_to_account_admins(ne_binary(), ne_binaries()) -> ne_binaries().
 maybe_send_to_account_admins(AccountId, To) ->
