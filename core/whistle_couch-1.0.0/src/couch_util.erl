@@ -216,7 +216,9 @@ do_db_view_cleanup(#db{}=Db) ->
 -spec design_compact(server(), ne_binary(), ne_binary()) -> boolean().
 design_compact(#server{}=Conn, DbName, Design) ->
     case couchbeam:compact(get_db(Conn, DbName), Design) of
-        {'error', _E} -> 'false';
+        {'error', _E} ->
+            lager:debug("failed to compact design doc: ~p", [_E]),
+            'false';
         'ok' -> 'true'
     end.
 
