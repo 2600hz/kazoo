@@ -119,7 +119,7 @@
          ,fsm_call_id :: api_binary() % used when no call-ids are available
          ,endpoints = [] :: wh_json:objects()
          ,outbound_call_id :: api_binary()
-         ,max_connect_failures :: pos_integer()
+         ,max_connect_failures :: pos_integer() | 'infinity'
          ,connect_failures = 0 :: non_neg_integer()
          }).
 -type fsm_state() :: #state{}.
@@ -349,10 +349,14 @@ init([AcctId, AgentId, Supervisor, Props, IsThief]) ->
                           ,max_connect_failures=max_failures(AcctDb, AcctId)
                          }}.
 
+-spec max_failures(ne_binary(), ne_binary()) -> pos_integer() | 'infinity'.
 max_failures(AcctDb, AcctId) ->
     case couch_mgr:open_cache_doc(AcctDb, AcctId) of
         {'ok', AcctJObj} ->
-            wh_json:get_integer_value(<<"max_connect_failures">>, AcctJObj, ?MAX_FAILURES);
+            case wh_json:get_integer_value(<<"max_connect_failures">>, AcctJObj, ?MAX_FAILURES) of
+                N when N > 0 -> N;
+                _ -> 'infinity'
+            end;
         {'error', _} -> ?MAX_FAILURES
     end.
 
@@ -594,7 +598,7 @@ ready({'member_connect_req', _}, #state{max_connect_failures=Max
                                         ,acct_id=AcctId
                                         ,agent_id=AgentId
                                         ,agent_proc=Srv
-                                       }=State) when Fails >= Max ->
+                                       }=State) when is_integer(Max), Fails >= Max ->
     lager:info("agent has failed to connect ~b times, logging out", [Fails]),
     acdc_agent:logout_agent(Srv),
     acdc_stats:agent_logged_out(AcctId, AgentId),
@@ -1481,7 +1485,7 @@ clear_call(#state{connect_failures=Fails
                   ,acct_id=AcctId
                   ,agent_id=AgentId
                   ,agent_proc=Srv
-                 }=State, 'failed') when (Max - Fails) =< 1 ->
+                 }=State, 'failed') when is_integer(Max), (Max - Fails) =< 1 ->
     acdc_agent:logout_agent(Srv),
     acdc_stats:agent_logged_out(AcctId, AgentId),
     lager:debug("agent has failed to connect ~b times, logging out", [Fails+1]),
@@ -1688,7 +1692,7 @@ get_endpoints(OrigEPs, Srv, Call, AgentId, QueueId) ->
             {'error', E}
     end.
 
-return_to_state(Fails, MaxFails, _, _) when Fails >= MaxFails ->
+return_to_state(Fails, MaxFails, _, _) when is_integer(MaxFails), Fails >= MaxFails ->
     lager:debug("fails ~b max ~b going to pause", [Fails, MaxFails]),
     'paused';
 return_to_state(_Fails, _MaxFails, AcctId, AgentId) ->
