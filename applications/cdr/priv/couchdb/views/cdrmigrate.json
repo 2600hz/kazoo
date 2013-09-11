@@ -1,0 +1,10 @@
+{
+   "_id": "_design/cdrmigrate",
+   "language": "javascript",
+   "views": {
+       "cdr_migrate_count": {
+           "map": "function(doc) { if (doc.pvt_type != 'cdr' || doc.pvt_deleted) return;  emit(doc._id, 1); }",
+           "reduce": "_count"
+       }
+   }
+}

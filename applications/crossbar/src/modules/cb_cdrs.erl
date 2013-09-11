@@ -10,6 +10,7 @@
 %%%   Edouard Swiac
 %%%   James Aimonetti
 %%%   Karl Anderson
+%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(cb_cdrs).
 
@@ -123,7 +124,7 @@ load_cdr_summary(Context) ->
     lager:debug("invalid URL chain for cdr summary request"),
     cb_context:add_system_error('faulty_request', Context).
 
-load_view(View, ViewOptions, #cb_context{query_json=JObj}=Context) ->
+load_view(View, ViewOptions, Context) ->
     {G, L} = case cb_modules_util:is_superduper_admin(Context) of
                  'false' -> {'false', 'false'};
                  'true' ->
@@ -131,6 +132,42 @@ load_view(View, ViewOptions, #cb_context{query_json=JObj}=Context) ->
                       ,whapps_config:get_is_true(?CONFIG_CAT, <<"calcuate_internal_cost_for_local_resources">>, 'false')
                      }
              end,
+    {_,ToDate,FromDate} = get_filter_params(Context),
+    case {cdr_db(FromDate, Context), cdr_db(ToDate, Context)} of
+        {Db, Db} -> 
+            load_view_matching_db(View, ViewOptions, G, L, Context, Db);
+        {PastDb, PresentDb} ->
+            load_view_spanning_dbs(View, ViewOptions, G, L, Context, PastDb, PresentDb)
+    end.
+
+load_view_matching_db(View, ViewOptions, G, L, Context, Db) ->
+    Context1 = fetch_from_db(G, L, View, ViewOptions, cb_context:set_account_db(Context,Db)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            CDRs = cb_context:doc(Context1),
+            cb_context:set_resp_data(Context1, CDRs);
+        _ -> Context1
+    end.
+
+load_view_spanning_dbs(View, ViewOptions, G, L, Context, PastDb, PresentDb) ->
+    Context1 = fetch_from_db(G, L, View, ViewOptions, cb_context:set_account_db(Context, PastDb)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            PastCDRs = cb_context:doc(Context1),
+            Context2 = fetch_from_db(G, L, View, ViewOptions, cb_context:set_account_db(Context, PresentDb)),
+            case cb_context:resp_status(Context2) of
+                'success' ->
+                    PresentCDRs = cb_context:doc(Context2),
+                    cb_context:set_resp_data(Context2, PastCDRs ++ PresentCDRs);
+                {'error', _E} -> lager:error("error ~p", [_E]),
+                                 Context2
+            end;
+        'error'  -> Context1;
+        _ -> Context1
+    end.
+
+-spec fetch_from_db(boolean(), boolean(), ne_binary(), wh_proplist(), cb_context:context()) -> api_objects().
+fetch_from_db(G, L, View, ViewOptions, #cb_context{query_json=JObj}=Context) ->
     crossbar_doc:load_view(View
                            ,maybe_load_doc(G, L, ViewOptions)
                            ,Context#cb_context{query_json=wh_json:delete_keys([<<"created_to">>
@@ -139,6 +176,15 @@ load_view(View, ViewOptions, #cb_context{query_json=JObj}=Context) ->
                            ,fun(CDR, Acc) -> normalize_view_results(CDR, Acc, G, L) end
                           ).
 
+-spec maybe_add_design_doc(ne_binary()) -> 'ok' | {'error', 'not_found'}.
+maybe_add_design_doc(AccountMODb) ->
+    case couch_mgr:open_doc(AccountMODb, <<"_design/cdrs">>) of
+        {'error', 'not_found'} -> couch_mgr:load_doc_from_file(AccountMODb
+                                                               ,'crossbar'
+                                                               ,<<"account/cdrs.json">>);
+        {'ok', _ } -> 'ok'
+    end.
+
 maybe_load_doc('true', _, ViewOptions) ->
     ['include_docs' | ViewOptions];
 maybe_load_doc(_, 'true', ViewOptions) ->
@@ -146,15 +192,38 @@ maybe_load_doc(_, 'true', ViewOptions) ->
 maybe_load_doc(_, _, ViewOptions) ->
     ViewOptions.
 
+-spec cdr_db(pos_integer(), cb_context:context()) -> ne_binary().
+cdr_db(Timestamp, Context) ->
+    Db = cdr_db_name(Timestamp, Context),
+    case couch_mgr:db_exists(Db) of
+        'true' ->
+            maybe_add_design_doc(Db),
+            Db;
+        'false' -> cb_context:account_db(Context)
+    end.
+
+-spec cdr_db_name(pos_integer(), cb_context:context()) -> ne_binary().
+cdr_db_name(Timestamp, Context) ->
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    #cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, [AccountId]} | _]}=Context,
+    wh_util:format_account_id(AccountId, Year, Month).
+
+cdr_db_name(Year, Month, Context) ->
+    #cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, [AccountId]} | _]}=Context,
+    wh_util:format_account_id(AccountId, Year, Month).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Load a CDR document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr(ne_binary(), cb_context:context()) -> cb_context:context().
-load_cdr(CdrId, Context) ->
-    crossbar_doc:load(CdrId, Context).
+-spec load_cdr(ne_binary(), cb_context:context()) -> api_object().
+load_cdr(CDRId, Context) ->
+    <<Year:4/binary, Month:2/binary, "-", _:32/binary>> = CDRId,
+    AcctDb = cdr_db_name(wh_util:to_integer(Year), wh_util:to_integer(Month), Context),
+    Context1 = cb_context:set_account_db(Context,AcctDb),
+    crossbar_doc:load(CDRId, Context1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -202,21 +271,31 @@ calc_internal_cost(RateDoc, Cdr) ->
     RateMin = wh_json:get_integer_value(<<"rate_minimum">>, RateDoc, 60),
     Surcharge = wh_json:get_float_value(<<"rate_surcharge">>, RateDoc, 0.0),
     BillingSecs = wh_json:get_integer_value(<<"billing_seconds">>, Cdr, 0),
-    case wh_json:get_value(<<"pvt_vsn">>, Cdr) of 
-        1 -> 
+    case wh_json:get_value(<<"pvt_vsn">>, Cdr) of
+        1 ->
             Cost = wht_util:calculate_cost(wht_util:dollars_to_units(Rate)
                                            ,RateIncr
                                            ,RateMin
                                            ,wht_util:dollars_to_units(Surcharge)
                                            ,BillingSecs),
             wht_util:units_to_dollars(Cost);
-        _ -> 
+        _ ->
             Cost = wht_util:calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
             wht_util:units_to_dollars(Cost)
     end.
 
 filter_cdr_fields(JObj) ->
     JObj.
+
+
+-spec get_filter_params(cb_context:context()) ->
+                                       {'ok', wh_proplist()} |
+                                       {'error', cb_context:context()}.
+get_filter_params(#cb_context{query_json=JObj}) ->
+    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, 6048000),
+    To = wh_json:get_integer_value(<<"created_to">>, JObj, wh_util:current_tstamp()),
+    From = wh_json:get_integer_value(<<"created_from">>, JObj, wh_util:current_tstamp() - MaxRange),
+    {MaxRange,To,From}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -225,12 +304,10 @@ filter_cdr_fields(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_view_options(api_binary(), cb_context:context()) ->
-                                       {'ok', wh_proplist()} |
-                                       {'error', cb_context:context()}.
-create_view_options(OwnerId, #cb_context{query_json=JObj}=Context) ->
-    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, 6048000),
-    To = wh_json:get_integer_value(<<"created_to">>, JObj, wh_util:current_tstamp()),
-    From = wh_json:get_integer_value(<<"created_from">>, JObj, wh_util:current_tstamp() - MaxRange),
+                                 {'ok', wh_proplist()} |
+                                 {'error', cb_context:context()}.
+create_view_options(OwnerId, Context) ->
+    {MaxRange,To,From} = get_filter_params(Context),
     Diff = To - From,
     case {Diff < 0, Diff > MaxRange} of
         {'true', _} ->

@@ -1,0 +1,30 @@
+{
+    "call_direction": "inbound",
+    "request": "*97@accountrealm.com",
+    "caller_id_number": "callerid_number",
+    "caller_id_name": "callerid_number",
+    "custom_channel_vars": {
+        "username": "account_username",
+        "realm": "account_realm",
+        "account_id": "7f89565344e3e6302df60168420e9265",
+        "authorizing_id": "81d406796c370b29a3cdc3713720ed61",
+        "authorizing_type": "device",
+        "owner_id": "c119a4487f26920476ad6dec74471768",
+        "inception": "on-net"
+    },
+    "handling_server_name": "kazoo.local",
+    "call_id": "ZjM1ODg3NTNhNTI4NmM5ZTA3MmFjZWYzMWJmZGNkZjc",
+    "server_id": "",
+    "node": "ecallmgr@kazoo.local",
+    "msg_id": "2fd859f5a2e561d1909c0ad3b7c80991",
+    "app_version": "0.8.0",
+    "app_name": "ecallmgr",
+    "event_name": "cdr",
+    "event_category": "call_detail",
+    "pvt_vsn": 2,
+    "pvt_account_id": "7f89565344e3e6302df60168420e9265-201307",
+    "pvt_account_db": "account%2F7f%2F89%2F565344e3e6302df60168420e9265-201307",
+    "pvt_type": "cdr",
+    "pvt_created": 63542353959,
+    "pvt_modified": 63542353959
+}

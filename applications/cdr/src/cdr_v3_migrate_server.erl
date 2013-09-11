@@ -1,43 +1,42 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (c) 2010-2013, 2600Hz
 %%% @doc
-%%% Listen for CDR events and record them to the database
+%%% Migration gen_server used for spawning the workers to migrate
+%%% data from the v2.x branch to x3.x branch
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
-%%%   Edouard Swiac
 %%%   Ben Wann
 %%%-------------------------------------------------------------------
--module(cdr_listener).
+-module(cdr_v3_migrate_server).
 
--behaviour(gen_listener).
+-behaviour(gen_server).
+
+-include("cdr.hrl").
 
 %% API
--export([start_link/0
-         ,handle_cdr/2
-        ]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
          ,handle_info/2
-         ,handle_event/2
          ,terminate/2
          ,code_change/3
+         ,status/1
         ]).
 
--include("cdr.hrl").
+-record(state, {account_list :: wh_proplist()
+                ,migrate_date_list :: wh_proplist()
+                ,archive_batch_size :: pos_integer()
+                ,pid :: pid()
+                ,ref :: reference()
+         }).
+
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
-
--define(RESPONDERS, [{{?MODULE, 'handle_cdr'}, [{<<"call_detail">>, <<"cdr">>}]}]).
--define(BINDINGS, [{'call', [{'restrict_to', ['cdr']}
-                             ,{'callid', <<"*">>}
-                            ]}]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -51,20 +50,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], []).
-
--spec handle_cdr(wh_json:object(), wh_proplist()) -> any().
-handle_cdr(JObj, _Props) ->
-    'true' = wapi_call:cdr_v(JObj),
-    _ = wh_util:put_callid(JObj),
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj),
-    Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
-    prepare_and_save(AccountId, Timestamp, JObj).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -82,7 +68,17 @@ handle_cdr(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {'ok', 'ok'}.
+    lager:debug("cdr_v3_migrate_server init"),
+    gen_server:cast(self(), 'start_migrate'),
+    {'ok', #state{}}.
+
+-spec status(pid()) -> handle_call_ret() | wh_std_return().
+status(ServerPid) ->
+    case is_pid(ServerPid) of
+        'true' ->
+            gen_server:call(ServerPid, 'status');
+        'false' -> {'error', 'process_not_found'}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -98,8 +94,14 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(atom(), any(), state()) -> handle_call_ret().
+handle_call('status', _, #state{account_list=AccountsLeft}=State) ->
+    Status = {'num_accounts_left', length(AccountsLeft)},
+    {'reply', Status, State};
 handle_call(_Request, _From, State) ->
-    {'reply', {'error', 'not_implemented'}, State}.
+    lager:debug("unhandled handle_call executed ~p~p", [_Request, _From]),
+    Reply = 'ok',
+    {'reply', Reply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -111,7 +113,35 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('start_migrate', State) ->
+    lager:debug("handle_cast: start_migrate called"),
+    NumMonthsToShard = whapps_config:get_integer(?CONFIG_CAT, <<"v3_migrate_num_months">>, 4),
+    ArchiveBatchSize = whapps_config:get_integer(?CONFIG_CAT, <<"v3_migrate_batch_size">>, 1000),
+    Accounts  = whapps_util:get_all_accounts(),
+    MigrateDateList = cdr_v3_migrate_lib:get_prev_n_month_date_list(
+                        calendar:universal_time()
+                        ,NumMonthsToShard),
+    gen_server:cast(self(), 'start_next_worker'),
+    {'noreply', State#state{account_list=Accounts
+                            ,migrate_date_list=MigrateDateList
+                            ,archive_batch_size=ArchiveBatchSize
+                           }};
+handle_cast('start_next_worker', #state{account_list=[]}=State) ->
+    lager:debug("reached end of accounts, exiting..."),
+    {'stop', 'normal', State};
+handle_cast('start_next_worker', #state{account_list=[NextAccount|RestAccounts]
+                                        ,migrate_date_list=MigrateDateList
+                                        ,archive_batch_size=ArchiveBatchSize
+                                       }=State) ->
+    {NewPid, NewRef} = spawn_monitor('cdr_v3_migrate_worker'
+                                     ,'migrate_account_cdrs'
+                                     ,[NextAccount
+                                       ,MigrateDateList
+                                       ,ArchiveBatchSize
+                                      ]),
+    {'noreply', State#state{account_list=RestAccounts, pid=NewPid, ref=NewRef}};
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled handle_cast ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -124,26 +154,34 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{pid=Pid
+                                                           ,ref=Ref
+                                                          }=State) ->
+    lager:debug("response pid ~p(~p) down: ~p", [Pid, Ref, _Reason]),
+    gen_server:cast(self(), 'start_next_worker'),
+    {'noreply', reset(State)};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
-
-handle_event(_JObj, _State) ->
-    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%% necessary cleaning up. When it returns, the gen_server terminate
 %% with Reason. The return value is ignored.
 %%
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    lager:debug("cdr listener terminating: ~p", [_Reason]).
+terminate(_Reason, #state{pid=PID}=_State) ->
+    lager:debug("cdr_v3_migrate_server terminated: ~p", [_Reason]),
+    case is_pid(PID) of
+        'false' -> lager:debug("no pid reference");
+        'true' -> exit(PID, 'ok')
+    end,
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -159,44 +197,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec prepare_and_save(account_id(), pos_integer(), wh_json:object()) -> wh_json:object().
-prepare_and_save(AccountId, Timestamp, JObj) ->
-    Routines = [fun normalize/3
-                ,fun update_pvt_parameters/3
-                ,fun set_doc_id/3
-                ,fun save_cdr/3
-               ],
-    lists:foldr(fun(F, J) ->
-                        F(AccountId, Timestamp, J) 
-                end, JObj, Routines).
-
--spec normalize(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
-normalize(_, _, JObj) ->
-    wh_json:normalize_jobj(JObj).    
-
--spec update_pvt_parameters(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
-update_pvt_parameters('undefined', _, JObj) ->
-    Props = [{'type', 'cdr'}
-             ,{'crossbar_doc_vsn', 2}
-            ],
-    wh_doc:update_pvt_parameters(JObj, ?WH_ANONYMOUS_CDR_DB, Props);
-update_pvt_parameters(AccountId, Timestamp, JObj) ->
-    AccountMODb = wh_util:format_account_id(AccountId, Timestamp),    
-    Props = [{'type', 'cdr'}
-             ,{'crossbar_doc_vsn', 2}
-            ],
-    wh_doc:update_pvt_parameters(JObj, AccountMODb, Props).
-
--spec set_doc_id(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
-set_doc_id(_, Timestamp, JObj) ->
-    DocId = cdr_util:get_cdr_doc_id(Timestamp),
-    wh_json:set_value(<<"_id">>, DocId, JObj).
-
--spec save_cdr(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
-save_cdr(_, _, JObj) ->
-    CDRDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
-    case cdr_util:save_cdr(CDRDb, JObj) of
-        {'error', 'max_retries'} -> 
-            lager:error("write fail: ~s", [CDRDb]);
-        'ok' -> 'ok'
-    end.
+reset(State) ->
+    State#state{pid='undefined'
+                ,ref='undefined'}.
