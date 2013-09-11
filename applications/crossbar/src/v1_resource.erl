@@ -107,17 +107,17 @@ rest_terminate(Req, #cb_context{start=T1
     lager:info("OPTIONS request fulfilled in ~p ms", [wh_util:elapsed_ms(T1)]),
     _ = v1_util:finish_request(Req, Context);
 rest_terminate(Req, #cb_context{start=T1
-                                ,resp_status=Status
-                                ,auth_account_id=AcctId
+                                ,resp_status=_Status
+                                ,auth_account_id=_AcctId
                                 ,req_verb=Verb
                                }=Context) ->
     lager:info("~s request fulfilled in ~p ms", [Verb, wh_util:elapsed_ms(T1)]),
-    case Status of
-        'success' -> wh_counter:inc(<<"crossbar.requests.successes">>);
-        _ -> wh_counter:inc(<<"crossbar.requests.failures">>)
-    end,
+%    case Status of
+%        'success' -> wh_counter:inc(<<"crossbar.requests.successes">>);
+%        _ -> wh_counter:inc(<<"crossbar.requests.failures">>)
+%    end,
 
-    wh_counter:inc(<<"crossbar.requests.accounts.", (wh_util:to_binary(AcctId))/binary>>),
+%    wh_counter:inc(<<"crossbar.requests.accounts.", (wh_util:to_binary(AcctId))/binary>>),
     _ = v1_util:finish_request(Req, Context).
 
 %%%===================================================================

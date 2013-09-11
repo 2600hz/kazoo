@@ -1,11 +1,12 @@
-{application, folsom,
+{application, stats,
  [
   {description, ""},
-  {vsn, "folsom-0.6-63"},
+  {vsn, "1"},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib
                  ]},
+  {mod, { stats_app, []}},
   {env, []}
  ]}.

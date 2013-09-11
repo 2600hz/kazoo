@@ -71,7 +71,8 @@ start_link(Node, Options) ->
 
 -spec presence_update(wh_json:object(), wh_proplist()) -> any().
 presence_update(JObj, _Props) ->
-    do_presence_update(wh_json:get_value(<<"State">>, JObj), JObj).
+    do_presence_update(wh_json:get_value(<<"State">>, JObj), JObj),
+    whistle_stats:increment_counter("presence").
 
 -spec do_presence_update(api_binary(), wh_json:object()) -> any().
 do_presence_update('undefined', JObj) ->

@@ -110,6 +110,7 @@ reg_success(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
     Registration = create_registration(JObj),
     gen_server:cast(?MODULE, {'insert_registration', Registration}),
+    whistle_stats:increment_counter("register-success"),
     maybe_initial_registration(Registration).
 
 -spec reg_query(wh_json:object(), wh_proplist()) -> 'ok'.

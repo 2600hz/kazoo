@@ -126,7 +126,7 @@ handle_publisher_usurp(JObj, Props) ->
     Ref = props:get_value('reference', Props),
     Node = wh_util:to_binary(props:get_value('node', Props)),
 
-    lager:debug("recieved publisher usurp for ~s on ~s (if ~s != ~s)", [wh_json:get_value(<<"Call-ID">>, JObj), wh_json:get_value(<<"Media-Node">>, JObj), Ref, wh_json:get_value(<<"Reference">>, JObj)]),
+    lager:debug("received publisher usurp for ~s on ~s (if ~s != ~s)", [wh_json:get_value(<<"Call-ID">>, JObj), wh_json:get_value(<<"Media-Node">>, JObj), Ref, wh_json:get_value(<<"Reference">>, JObj)]),
 
     case CallId =:= wh_json:get_value(<<"Call-ID">>, JObj)
         andalso Node =:= wh_json:get_value(<<"Media-Node">>, JObj)
@@ -535,7 +535,7 @@ publish_event(Props) ->
     case {ApplicationName, EventName} of
         {_, <<"dtmf">>} ->
             Pressed = props:get_value(<<"DTMF-Digit">>, Props),
-            lager:debug("publishing recevied DTMF digit ~s", [Pressed]);
+            lager:debug("publishing received DTMF digit ~s", [Pressed]);
         {<<>>, _} ->
             lager:debug("publishing call event ~s", [wh_util:to_lower_binary(EventName)]);
         {ApplicationName, <<"channel_execute_complete">>} ->

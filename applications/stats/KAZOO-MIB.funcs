@@ -1,0 +1,4 @@
+{'kazoo-ver',{whistle_snmp,kazoo_ver,[]}}.
+{'sip-domain',{whistle_snmp,get_oid,[<<"sip-domain">>]}}.
+{'vm-statistics',{whistle_snmp,get_oid,[<<"vm">>]}}.
+{'ecallmgr-tab',{whistle_snmp,get_oid,[<<"ecallmgr">>]}}.
