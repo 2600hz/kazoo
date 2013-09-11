@@ -143,20 +143,47 @@ create(_, _, _, _, _) ->
 %%------------------------------------------------------------------------------
 %% Transcribe the audio binary
 %%------------------------------------------------------------------------------
--spec asr_freeform(ne_binary()) -> asr_resp().
--spec asr_freeform(ne_binary(), ne_binary()) -> asr_resp().
--spec asr_freeform(ne_binary(), ne_binary(), ne_binary()) -> asr_resp().
--spec asr_freeform(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> asr_resp().
--spec asr_freeform(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> provider_return().
-asr_freeform(Bin) ->
-    asr_freeform(Bin, <<"application/x-wav">>).
-asr_freeform(Bin, ContentType) ->
-    asr_freeform(Bin, ContentType, <<"en-US">>).
-asr_freeform(Bin, ContentType, Locale) ->
-    asr_freeform(Bin, ContentType, Locale, []).
-asr_freeform(Bin, ContentType, Locale, Options) ->
-    Provider = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<"ispeech">>),
-    case asr_freeform(Provider, Bin, ContentType, Locale, Options) of
+-spec asr_freeform(binary()) -> asr_resp().
+-spec asr_freeform(binary(), ne_binary()) -> asr_resp().
+-spec asr_freeform(binary(), ne_binary(), ne_binary()) -> asr_resp().
+-spec asr_freeform(binary(), ne_binary(), ne_binary(), wh_proplist()) -> asr_resp().
+asr_freeform(Content) ->
+    asr_freeform(Content, <<"application/wav">>).
+asr_freeform(Content, ContentType) ->
+    asr_freeform(Content, ContentType, <<"en-US">>).
+asr_freeform(Content, ContentType, Locale) ->
+    asr_freeform(Content, ContentType, Locale, []).
+asr_freeform(Content, ContentType, Locale, Options) ->
+    Provider = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<>>),
+    case wh_util:is_empty(Provider) of
+        'true' -> {'error', 'no_asr_provider'};
+        'false' -> maybe_convert_content(Content, ContentType, Locale, Options)
+    end.
+
+-spec maybe_convert_content(binary(), ne_binary(), ne_binary(), wh_proplist()) -> provider_return().
+maybe_convert_content(Content, ContentType, Locale, Options) ->
+    ContentTypes = whapps_config:get(?MOD_CONFIG_CAT
+                                     ,<<"asr_content_types">>
+                                     ,[<<"application/mpeg">>
+                                       ,<<"application/wav">>
+                                      ]),
+    case lists:member(ContentType, ContentTypes) of
+        'true' -> attempt_asr_freeform(Content, ContentType, Locale, Options);
+        'false' -> 
+            ConvertTo = whapps_config:get_binary(?MOD_CONFIG_CAT
+                                                 ,<<"asr_prefered_content_type">>
+                                                 ,<<"application/mpeg">>),
+            case convert_content(Content, ContentType, ConvertTo) of
+                'error' -> {'error', 'unsupported_content_type'};
+                Converted ->
+                    attempt_asr_freeform(Converted, ContentType, Locale, Options)
+            end
+    end.
+
+-spec attempt_asr_freeform(binary(), ne_binary(), ne_binary(), wh_proplist()) -> provider_return().
+attempt_asr_freeform(Content, ContentType, Locale, Options) ->
+    Provider = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<>>),
+    case attempt_asr_freeform(Provider, Content, ContentType, Locale, Options) of
         {'error', _R}=E ->
             lager:debug("asr failed with error ~p", [_R]),
             E;
@@ -172,11 +199,11 @@ asr_freeform(Bin, ContentType, Locale, Options) ->
             {'error', 'asr_provider_failure', wh_json:decode(Content)}
     end.
 
-asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Options) ->
+-spec attempt_asr_freeform(api_binary(), binary(), ne_binary(), ne_binary(), wh_proplist()) -> provider_return().
+attempt_asr_freeform(_, <<>>, _, _, _) -> {'error', 'no_content'};
+attempt_asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Options) ->
     BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"asr_url">>, <<"http://api.ispeech.org/api/json">>),
-
     lager:debug("sending request to ~s", [BaseUrl]),
-
     Props = [{<<"apikey">>, whapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_api_key">>, <<>>)}
              ,{<<"action">>, <<"recognize">>}
              ,{<<"freeform">>, <<"1">>}
@@ -187,12 +214,10 @@ asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Options) ->
             ],
     Headers = [{"Content-Type", "application/json"}],
     HTTPOptions = [{'response_format', 'binary'} | Options],
-
     Body = wh_json:encode(wh_json:from_list(Props)),
     lager:debug("req body: ~s", [Body]),
-
     ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions);
-asr_freeform(_, _, _, _, _) ->
+attempt_asr_freeform(_, _, _, _, _) ->
     {'error', 'unknown_provider'}.
 
 %%------------------------------------------------------------------------------
@@ -204,7 +229,7 @@ asr_freeform(_, _, _, _, _) ->
 -spec asr_commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), wh_proplist()) -> asr_resp().
 -spec asr_commands(ne_binary(), ne_binary(), ne_binaries(), ne_binary(), ne_binary(), wh_proplist()) -> provider_return().
 asr_commands(Bin, Commands) ->
-    asr_commands(Bin, Commands, <<"application/x-wav">>).
+    asr_commands(Bin, Commands, <<"application/wav">>).
 asr_commands(Bin, Commands, ContentType) ->
     asr_commands(Bin, Commands, ContentType, <<"en-US">>).
 asr_commands(Bin, Commands, ContentType, Locale) ->
@@ -269,3 +294,27 @@ create_response({'ok', "200", Headers, Content}) ->
 create_response({'ok', Code, _, Content}) ->
     lager:warning("creating speech file failed with code ~s: ~s", [Code, Content]),
     {'error', 'tts_provider_failure'}.
+
+-spec convert_content(binary(), ne_binary(), ne_binary()) -> binary() | 'error'.
+convert_content(Content, <<"audio/mpeg">>, <<"application/wav">> = ContentType) ->
+    Mp3File = tmp_file_name(<<"mp3">>),
+    WavFile = tmp_file_name(<<"wav">>),    
+    _ = file:write_file(Mp3File, Content),
+    Cmd = io_lib:format("lame --decode ~s ~s &> /dev/null && echo -n \"success\"", [Mp3File, WavFile]),
+    _ = os:cmd(Cmd),
+    _ = file:delete(Mp3File),
+    case file:read_file(WavFile) of
+        {'ok', WavContent} ->
+            _ = file:delete(WavFile),
+            WavContent;
+        {'error', _R} ->
+            lager:info("unable to convert mpeg to wav: ~p", [_R]),
+            'error'
+    end;
+convert_content(_, ContentType, ConvertTo) ->
+    lager:info("unsupported conversion from %s to %s", [ContentType, ConvertTo]),
+    'error'.
+
+-spec tmp_file_name(ne_binary()) -> string().
+tmp_file_name(Ext) ->
+    wh_util:to_list(<<"/tmp/", (wh_util:rand_hex_binary(10))/binary, "_voicemail.", Ext/binary>>).

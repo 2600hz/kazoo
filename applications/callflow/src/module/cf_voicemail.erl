@@ -821,35 +821,33 @@ save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
 
 -spec maybe_transcribe(whapps_call:call(), ne_binary(), boolean()) ->
                                     'undefined' | wh_json:object().
-maybe_transcribe(Call, MediaId, true) ->
+maybe_transcribe(Call, MediaId, 'true') ->
     Db = whapps_call:account_db(Call),
-    {ok, MediaDoc} = couch_mgr:open_doc(Db, MediaId),
-
+    {'ok', MediaDoc} = couch_mgr:open_doc(Db, MediaId),
     case wh_json:get_value(<<"_attachments">>, MediaDoc, []) of
         [] ->
             lager:warning("no audio attachments on media doc ~s: ~p", [MediaId, MediaDoc]),
-            undefined;
+            'undefined';
         Attachments ->
             {Attachment, MetaData} = hd(wh_json:to_proplist(Attachments)),
             case couch_mgr:fetch_attachment(Db, MediaId, Attachment) of
-                {ok, Bin} ->
+                {'ok', Bin} ->
                     lager:info("transcribing first attachment ~s: ~p", [Attachment, MetaData]),
                     maybe_transcribe(Db, MediaDoc, Bin, wh_json:get_value(<<"content_type">>, MetaData));
-                {error, _E} ->
+                {'error', _E} ->
                     lager:info("error fetching vm: ~p", [_E]),
-                    undefined
+                    'undefined'
             end
     end;
-maybe_transcribe(_, _, false) ->
-    undefined.
+maybe_transcribe(_, _, 'false') -> 'undefined'.
 
 -spec maybe_transcribe(ne_binary(), wh_json:object(), binary(), api_binary()) ->
                                     'undefined' | wh_json:object().
-maybe_transcribe(_, _, _, undefined) -> undefined;
-maybe_transcribe(_, _, <<>>, _) -> undefined;
-maybe_transcribe(Db, MediaDoc, Bin, <<"audio/wav">>) ->
-    case whapps_speech:asr_freeform(Bin) of
-        {ok, Resp} ->
+maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
+maybe_transcribe(_, _, <<>>, _) -> 'undefined';
+maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
+    case whapps_speech:asr_freeform(Bin, ContentType) of
+        {'ok', Resp} ->
             lager:info("transcription resp: ~p", [Resp]),
             MediaDoc1 = wh_json:set_value(<<"transcription">>, Resp, MediaDoc),
             _ = couch_mgr:ensure_saved(Db, MediaDoc1),
@@ -857,56 +855,17 @@ maybe_transcribe(Db, MediaDoc, Bin, <<"audio/wav">>) ->
                                    ,wh_json:get_value(<<"text">>, Resp)
                                    ,Resp
                                   );
-        {error, _E} ->
-            lager:info("error getting ASR: ~p", [_E]),
-            undefined
-    end;
-maybe_transcribe(Db, MediaDoc, Bin, <<"audio/mpeg">>) ->
-	case whapps_config:get_is_true(<<"voicemail">>, <<"convert_mp3_to_wav">>, 'false') of
-		'true' ->
-	case convert_mp3_to_wav(Bin) of
-		{'ok', WavBin} ->
-			maybe_transcribe(Db,MediaDoc,WavBin,<<"audio/wav">>);
-		
-        {error, _E} ->
-            lager:info("error getting ASR: ~p", [_E]),
-            undefined
-	end;
-	   'false' -> undefined
-	end;		
-maybe_transcribe(_, _, _, _ContentType) ->
-    lager:info("un-ASR-able content type: ~s", [_ContentType]),
-    undefined.
-
-
--spec convert_mp3_to_wav(ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
-convert_mp3_to_wav(AttachmentBin) ->
-    Mp3File = tmp_file_name(<<"mp3">>),
-    WavFile = tmp_file_name(<<"wav">>),    
-    _ = file:write_file(Mp3File, AttachmentBin),
-    Cmd = io_lib:format("lame --decode ~s ~s &> /dev/null && echo -n \"success\"", [Mp3File, WavFile]),
-    _ = os:cmd(Cmd),
-    _ = file:delete(Mp3File),
-    case file:read_file(WavFile) of
-        {ok, WavBin} ->
-            _ = file:delete(WavFile),
-            {'ok', WavBin};
-        {error, _R}=E ->
-            lager:debug("unable to convert tiff: ~p", [_R]),
-            E
+        {'error', _E} ->
+            lager:info("error transcribing: ~p", [_E]),
+            'undefined'
     end.
-
--spec tmp_file_name(ne_binary()) -> string().
-tmp_file_name(Ext) ->
-    wh_util:to_list(<<"/tmp/", (wh_util:rand_hex_binary(10))/binary, "_voicemail.", Ext/binary>>).
-
 
 -spec is_valid_transcription(api_binary(), binary(), wh_json:object()) ->
                                           wh_json:object() | 'undefined'.
 is_valid_transcription(<<"success">>, ?NE_BINARY, Resp) -> Resp;
 is_valid_transcription(_Res, _Txt, _) ->
     lager:info("not valid transcription: ~s: '~s'", [_Res, _Txt]),
-    undefined.
+    'undefined'.
 
 %%--------------------------------------------------------------------
 %% @private
