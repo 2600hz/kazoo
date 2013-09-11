@@ -370,17 +370,17 @@ response(Code, Cause, Media, Call) ->
 %%--------------------------------------------------------------------
 -spec pickup(ne_binary(), whapps_call:call()) -> 'ok'.
 -spec pickup(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
--spec pickup(ne_binary(), api_binary(), api_binary() | boolean(), whapps_call:call()) -> 'ok'.
--spec pickup(ne_binary(), api_binary(), api_binary() | boolean(), api_binary() | boolean(), whapps_call:call()) -> 'ok'.
--spec pickup(ne_binary(), api_binary(), api_binary() | boolean(), api_binary() | boolean(), api_binary() | boolean(), whapps_call:call()) -> 'ok'.
+-spec pickup(ne_binary(), api_binary(), boolean(), whapps_call:call()) -> 'ok'.
+-spec pickup(ne_binary(), api_binary(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
+-spec pickup(ne_binary(), api_binary(), boolean(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
 pickup(TargetCallId, Call) ->
-    pickup(TargetCallId, 'undefined', Call).
+    pickup(TargetCallId, <<"tail">>, Call).
 pickup(TargetCallId, Insert, Call) ->
-    pickup(TargetCallId, Insert, 'undefined', Call).
+    pickup(TargetCallId, Insert, 'false', Call).
 pickup(TargetCallId, Insert, ContinueOnFail, Call) ->
-    pickup(TargetCallId, Insert, ContinueOnFail, 'undefined', Call).
+    pickup(TargetCallId, Insert, ContinueOnFail, 'true', Call).
 pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
-    pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, 'undefined', Call).
+    pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, 'false', Call).
 pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     Command = [{<<"Application-Name">>, <<"call_pickup">>}
                ,{<<"Target-Call-ID">>, TargetCallId}
@@ -395,11 +395,11 @@ pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, 
                       {'ok', wh_json:object()}.
 -spec b_pickup(ne_binary(), ne_binary(), whapps_call:call()) ->
                       {'ok', wh_json:object()}.
--spec b_pickup(ne_binary(), ne_binary(), ne_binary() | boolean(), whapps_call:call()) ->
+-spec b_pickup(ne_binary(), ne_binary(), boolean(), whapps_call:call()) ->
                       {'ok', wh_json:object()}.
--spec b_pickup(ne_binary(), ne_binary(), ne_binary() | boolean(), ne_binary() | boolean(), whapps_call:call()) ->
+-spec b_pickup(ne_binary(), ne_binary(), boolean(), boolean(), whapps_call:call()) ->
                       {'ok', wh_json:object()}.
--spec b_pickup(ne_binary(), ne_binary(), ne_binary() | boolean(), ne_binary() | boolean(), ne_binary() | boolean(), whapps_call:call()) ->
+-spec b_pickup(ne_binary(), ne_binary(), boolean(), boolean(), boolean(), whapps_call:call()) ->
                       {'ok', wh_json:object()}.
 b_pickup(TargetCallId, Call) ->
     pickup(TargetCallId, Call),
