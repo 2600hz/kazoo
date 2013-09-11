@@ -480,6 +480,7 @@ create_event_props(EventName, ApplicationName, Props) ->
        ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
        ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props,
                                                     props:get_value(<<"variable_holding_uuid">>, Props))}
+
        ,{<<"Fax-Success">>, props:get_value(<<"variable_fax_success">>, Props) =/= <<"0">>}
        ,{<<"Fax-Result-Code">>, props:get_value(<<"variable_fax_result_code">>, Props)}
        ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
@@ -488,6 +489,7 @@ create_event_props(EventName, ApplicationName, Props) ->
        ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
        ,{<<"Fax-Bad-Rows">>, props:get_value(<<"variable_fax_bad_rows">>, Props)}
        ,{<<"Fax-Transfer-Rate">>, props:get_value(<<"variable_fax_transfer_rate">>, Props)}
+
        ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
        %% this sucks, its leaky but I dont see a better way around it since we need the raw application
        %% name in call_control... (see note in call_control on start_link for why we need to use AMQP

@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
@@ -332,7 +333,6 @@ get_channel_vars({<<"SIP-Headers">>, SIPJObj}, Vars) ->
     lists:foldl(fun({K,V}, Vars0) ->
                         [ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
                 end, Vars, SIPHeaders);
-
 get_channel_vars({<<"To-User">>, Username}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Username"
                      ,"='", wh_util:to_list(Username), "'"])
