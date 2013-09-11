@@ -14,12 +14,6 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
-%% Added to work with old verison of wh_types.hrl
--ifndef(WORKER).
--define(WORKER(I), {I, {I, 'start_link', []}, 'permanent', 5000, 'worker', [I]}).
--endif.
-
-%% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('whistle_stats')]).
 
 %% ===================================================================

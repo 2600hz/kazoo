@@ -130,6 +130,7 @@ maybe_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, Am
     case wh_amqp_channels:find() of
         #wh_amqp_channel{channel=Pid, uri=URI} when is_pid(Pid) ->
             amqp_channel:call(Pid, BasicPub, AmqpMsg),
+            whistle_stats:increment_counter(<<"amqp-request">>),
             lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p", [_Exchange, URI, _RK, Pid]);
         _Else ->
             lager:debug("dropping payload to ~s exchange (routing key ~s): ~s", [_Exchange, _RK, AmqpMsg#'amqp_msg'.payload])
@@ -145,7 +146,7 @@ publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg)
     case wh_amqp_channels:get_channel() of
         #wh_amqp_channel{channel=Pid, uri=URI} when is_pid(Pid) ->
             amqp_channel:call(Pid, BasicPub, AmqpMsg),
-	    whistle_stats:increment_counter(<<"amqp-request">>),
+            whistle_stats:increment_counter(<<"amqp-request">>),
             lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p", [_Exchange, URI, _RK, Pid]);
         #wh_amqp_channel{} ->
             _ = wh_amqp_channels:reconnect(),
@@ -210,7 +211,9 @@ command(#wh_amqp_channel{channel=Pid}=Channel, Command) ->
     handle_command_result(Result, Command, Channel).
 
 -spec handle_command_result(command_ret(), wh_amqp_command(), wh_amqp_channel()) -> command_ret().
-handle_command_result({'error', _}=Error, _, _) -> Error;
+handle_command_result({'error', _}=Error, _, _) -> 
+    whistle_stats:increment_counter(<<"amqp_error">>),
+    Error;
 handle_command_result({'ok', Ok}, Command, Channel) ->
     handle_command_result(Ok, Command, Channel);
 handle_command_result(#'basic.qos_ok'{}
@@ -265,6 +268,7 @@ handle_command_result('ok', Command, #wh_amqp_channel{channel=Pid}=Channel) ->
     _ = wh_amqp_channels:command(Channel, Command),
     'ok';
 handle_command_result(_Else, _R, _) ->
+    whistle_stats:increment_counter(<<"amqp_error">>),
     lager:warning("unexpected AMQP command result: ~p", [_R]),
     {'error', 'unexpected_result'}.
 

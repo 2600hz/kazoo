@@ -14,7 +14,7 @@
 
 -export([to_proplist/1, to_proplist/2]).
 -export([to_querystring/1]).
--export([recursive_to_proplist/1, recursive_from_proplist/1]).
+-export([recursive_to_proplist/1]).
 
 -export([get_first_defined/2, get_first_defined/3]).
 -export([get_binary_boolean/2, get_binary_boolean/3]).
@@ -166,21 +166,6 @@ is_json_term(MaybeJObj) ->
 -spec from_list(json_proplist()) -> object().
 from_list([]) -> new();
 from_list(L) when is_list(L) -> ?JSON_WRAPPER(L).
-
-%% Prepares nested proplists to convert to JSON
--spec recursive_from_proplist(term()) -> object().
-recursive_from_proplist([]) ->
-    new();
-recursive_from_proplist(List) when is_list(List) ->
-    case lists:all(fun is_integer/1,List) of
-	'true' ->
-	    List;
-	_ ->
-	    {[ {wh_util:to_binary(K), recursive_from_proplist(V)} || 
-		 {K,V} <- List ]}
-    end;
-recursive_from_proplist(Other) ->
-    Other.
 
 %% only a top-level merge
 %% merges JObj1 into JObj2

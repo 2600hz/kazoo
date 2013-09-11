@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%%
+%%% 
 %%% @end
 %%% @contributors
+%%%    Stephen Gibberd <stephen.gibberd@2600hz.com>
 %%%-------------------------------------------------------------------
 -module(stats_sup).
 
@@ -14,15 +15,6 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
-%% Following definitions missing in old verison of wh_types.hrl
--ifndef(CACHE).
--define(CACHE(N), {N, {'wh_cache', 'start_link', [N]}, 'permanent', 5000, 'worker', ['wh_cache']}).
--endif.
--ifndef(WORKER).
--define(WORKER(I), {I, {I, 'start_link', []}, 'permanent', 5000, 'worker', [I]}).
--endif.
-
-%% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE('stats_cache')
                    ,?WORKER('stats_listener')
                   ]).

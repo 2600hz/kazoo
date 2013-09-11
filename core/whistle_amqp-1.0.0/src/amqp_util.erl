@@ -583,15 +583,9 @@ new_queue(Queue, Options) when is_binary(Queue) ->
                                  ,message_count=MCnt
                                  ,consumer_count=CCnt
                                 }} when Return =:= 'all' -> {Q, MCnt, CCnt};
-        {'error', _}=E -> 
-	    whistle_stats:increment_counter(<<"amqp_error">>),
-	    E;
-        {'EXIT', {{'shutdown', Reason}, _}} ->
-	    whistle_stats:increment_counter(<<"amqp_error">>),
-	    {'error', Reason};
-        {'EXIT',{'noproc', _}} -> 
-	    whistle_stats:increment_counter(<<"amqp_error">>),
-	    {'error', 'no_channel'}
+        {'error', _}=E -> E;
+        {'EXIT', {{'shutdown', Reason}, _}} -> {'error', Reason};
+        {'EXIT',{'noproc', _}} -> {'error', 'no_channel'}
     end.
 
 -spec new_queue_name() -> ne_binary().
