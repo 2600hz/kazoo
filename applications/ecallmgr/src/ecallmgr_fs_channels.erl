@@ -560,6 +560,9 @@ find_by_user_realm(Username, Realm) ->
                    ]}
     end.
 
+-spec find_users_channels(ne_binaries(), ne_binary()) ->
+                                 {'ok', wh_json:objects()} |
+                                 {'error', 'not_found'}.
 find_users_channels(Usernames, Realm) ->
     ETSUsernames = build_ors(Usernames),
     MatchSpec = [{#channel{username='$1', realm='$2', _ = '_'}
@@ -590,10 +593,12 @@ print_summary(Match) ->
 print_summary('$end_of_table', Count) ->
     io:format("+----------------------------------------------------+------------------------------------------+-----------+-----------------+----------------------------------+~n"),
     io:format("Found ~p channels~n", [Count]);
-print_summary({[#channel{uuid=UUID, node=Node
+print_summary({[#channel{uuid=UUID
+                         ,node=Node
                          ,direction=Direction
                          ,destination=Destination
-                         ,account_id=AccountId}]
+                         ,account_id=AccountId
+                        }]
                ,Continuation}
               ,Count) ->
     io:format("| ~-50s | ~-40s | ~-9s | ~-15s | ~-32s |~n"
