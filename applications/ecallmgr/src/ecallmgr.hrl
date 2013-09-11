@@ -50,7 +50,7 @@
 -record(channel, {uuid :: api_binary() | '$1' | '_'
                   ,destination :: api_binary() | '_'
                   ,direction :: api_binary() | '$1' | '_'
-                  ,account_id :: api_binary() | '$2' | '_'
+                  ,account_id :: api_binary() | '$1' | '$2' | '_'
                   ,account_billing :: api_binary() | '$7' | '_'
                   ,authorizing_id :: api_binary() | '$1' | '$3' | '_'
                   ,authorizing_type :: api_binary() | '_'
