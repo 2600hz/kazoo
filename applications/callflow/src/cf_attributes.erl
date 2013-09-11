@@ -12,7 +12,7 @@
 
 -export([valid_emergency_numbers/1]).
 -export([temporal_rules/1]).
--export([groups/1]).
+-export([groups/1, groups/2]).
 -export([caller_id/2]).
 -export([callee_id/2]).
 -export([moh_attributes/2, moh_attributes/3]).
@@ -33,7 +33,9 @@ temporal_rules(Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/temporal_rules">>, ['include_docs']) of
         {'ok', JObjs} -> JObjs;
-        {'error', _} -> []
+        {'error', _E} ->
+            lager:debug("failed to find temporal rules: ~p", [_E]),
+            []
     end.
 
 %%-----------------------------------------------------------------------------
@@ -42,13 +44,16 @@ temporal_rules(Call) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec groups(whapps_call:call()) -> wh_json:objects().
+-spec groups(whapps_call:call(), wh_proplist()) -> wh_json:objects().
 groups(Call) ->
+    groups(Call, []).
+groups(Call, ViewOptions) ->
     AccountDb = whapps_call:account_db(Call),
-    ViewOptions = [],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/groups">>, ViewOptions) of
-        {'ok', JObj} -> JObj;
-        {'error', _} -> wh_json:new()
+        {'ok', JObjs} -> JObjs;
+        {'error', _} -> []
     end.
+
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
