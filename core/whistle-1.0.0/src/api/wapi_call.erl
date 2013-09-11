@@ -700,6 +700,10 @@ publish_query_user_channels_req(JObj) ->
                                     ,wh_json:get_value(<<"Realm">>, JObj)
                                     ,?DEFAULT_CONTENT_TYPE
                                    ).
+
+publish_query_user_channels_req(Req, 'undefined', Realm, ContentType) ->
+    Username = first_username(Req),
+    publish_query_user_channels_req(Req, Username, Realm, ContentType);
 publish_query_user_channels_req(Req, Username, Realm, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?QUERY_USER_CHANNELS_REQ_VALUES, fun ?MODULE:query_user_channels_req/1),
     amqp_util:callevt_publish(<<Username/binary, ":", Realm/binary>>, Payload, 'status_req', ContentType).
@@ -739,3 +743,11 @@ publish_usurp_publisher(CallId, JObj, ContentType) ->
 -spec get_status(api_terms()) -> ne_binary().
 get_status(API) when is_list(API) -> props:get_value(<<"Status">>, API);
 get_status(API) -> wh_json:get_value(<<"Status">>, API).
+
+-spec first_username(api_terms()) -> ne_binary().
+first_username(Props) when is_list(Props) ->
+    [U|_] = props:get_value(<<"Usernames">>, Props),
+    U;
+first_username(JObj) ->
+    [U|_] = wh_json:get_value(<<"Usernames">>, JObj),
+    U.
