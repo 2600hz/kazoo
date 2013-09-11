@@ -861,9 +861,45 @@ maybe_transcribe(Db, MediaDoc, Bin, <<"audio/wav">>) ->
             lager:info("error getting ASR: ~p", [_E]),
             undefined
     end;
+maybe_transcribe(Db, MediaDoc, Bin, <<"audio/mpeg">>) ->
+	case whapps_config:get_is_true(<<"voicemail">>, <<"convert_mp3_to_wav">>, 'false') of
+		'true' ->
+	case convert_mp3_to_wav(Bin) of
+		{'ok', WavBin} ->
+			maybe_transcribe(Db,MediaDoc,WavBin,<<"audio/wav">>);
+		
+        {error, _E} ->
+            lager:info("error getting ASR: ~p", [_E]),
+            undefined
+	end;
+	   'false' -> undefined
+	end;		
 maybe_transcribe(_, _, _, _ContentType) ->
     lager:info("un-ASR-able content type: ~s", [_ContentType]),
     undefined.
+
+
+-spec convert_mp3_to_wav(ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
+convert_mp3_to_wav(AttachmentBin) ->
+    Mp3File = tmp_file_name(<<"mp3">>),
+    WavFile = tmp_file_name(<<"wav">>),    
+    _ = file:write_file(Mp3File, AttachmentBin),
+    Cmd = io_lib:format("lame --decode ~s ~s &> /dev/null && echo -n \"success\"", [Mp3File, WavFile]),
+    _ = os:cmd(Cmd),
+    _ = file:delete(Mp3File),
+    case file:read_file(WavFile) of
+        {ok, WavBin} ->
+            _ = file:delete(WavFile),
+            {'ok', WavBin};
+        {error, _R}=E ->
+            lager:debug("unable to convert tiff: ~p", [_R]),
+            E
+    end.
+
+-spec tmp_file_name(ne_binary()) -> string().
+tmp_file_name(Ext) ->
+    wh_util:to_list(<<"/tmp/", (wh_util:rand_hex_binary(10))/binary, "_voicemail.", Ext/binary>>).
+
 
 -spec is_valid_transcription(api_binary(), binary(), wh_json:object()) ->
                                           wh_json:object() | 'undefined'.
