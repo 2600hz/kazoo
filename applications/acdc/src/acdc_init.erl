@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%% Iterate over each account, find configured queues and configured
 %%% agents, and start the attendant processes
@@ -42,6 +42,7 @@ init_acct(Acct) ->
                 ,couch_mgr:get_results(AcctDb, <<"users/crossbar_listing">>, [])
                ).
 
+-spec init_acct_queues(ne_binary()) -> any().
 init_acct_queues(Acct) ->
     AcctDb = wh_util:format_account_id(Acct, 'encoded'),
     AcctId = wh_util:format_account_id(Acct, 'raw'),
@@ -51,6 +52,7 @@ init_acct_queues(Acct) ->
                 ,couch_mgr:get_results(AcctDb, <<"queues/crossbar_listing">>, [])
                ).
 
+-spec init_acct_agents(ne_binary()) -> any().
 init_acct_agents(Acct) ->
     AcctDb = wh_util:format_account_id(Acct, 'encoded'),
     AcctId = wh_util:format_account_id(Acct, 'raw'),
@@ -60,7 +62,7 @@ init_acct_agents(Acct) ->
                 ,couch_mgr:get_results(AcctDb, <<"users/crossbar_listing">>, [])
                ).
 
--spec init_queues(ne_binary(), {'ok', wh_json:objects()} | {'error', _}) -> any().
+-spec init_queues(ne_binary(), couch_mgr:get_results_return()) -> any().
 init_queues(_, {'ok', []}) -> 'ok';
 init_queues(AcctId, {'error', 'gateway_timeout'}) ->
     lager:debug("gateway timed out loading queues in account ~s, trying again in a moment", [AcctId]),
@@ -76,6 +78,7 @@ init_queues(AcctId, {'ok', Qs}) ->
     acdc_stats:init_db(AcctId),
     [acdc_queues_sup:new(AcctId, wh_json:get_value(<<"id">>, Q)) || Q <- Qs].
 
+-spec init_agents(ne_binary(), couch_mgr:get_results_return()) -> any().
 init_agents(_, {'ok', []}) -> 'ok';
 init_agents(AcctId, {'error', 'gateway_timeout'}) ->
     lager:debug("gateway timed out loading agents in account ~s, trying again in a moment", [AcctId]),
@@ -92,14 +95,17 @@ init_agents(AcctId, {'ok', As}) ->
 
 wait_a_bit() -> timer:sleep(1000 + random:uniform(500)).
 
-try_queues_again(AcctId) -> try_again(AcctId, <<"queues/crossbar_listing">>).
-try_agents_again(AcctId) -> try_again(AcctId, <<"users/crossbar_listing">>).
+try_queues_again(AcctId) ->
+    try_again(AcctId, <<"queues/crossbar_listing">>, fun init_queues/2).
+try_agents_again(AcctId) ->
+    try_again(AcctId, <<"users/crossbar_listing">>, fun init_agents/2).
 
-try_again(AcctId, View) ->
+try_again(AcctId, View, F) ->
     spawn(fun() ->
                   put('callid', ?MODULE),
                   wait_a_bit(),
-                  init_queues(AcctId, couch_mgr:get_results(wh_util:format_account_id(AcctId, 'encoded')
-                                                            ,View, []
-                                                           ))
+                  F(AcctId, couch_mgr:get_results(
+                              wh_util:format_account_id(AcctId, 'encoded')
+                              ,View, []
+                             ))
           end).

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -757,13 +757,17 @@ handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
                                                        ,agent_id=AgentId
                                                       }=State) ->
     lager:debug("no custom presence id, using ~s for ~s", [AgentId, PresenceState]),
-    acdc_util:presence_update(AcctId, AgentId, PresenceState),
+    acdc_util:presence_update(AcctId, AgentId, PresenceState
+                              ,wh_util:to_hex_binary(crypto:md5(AgentId))
+                             ),
     {'noreply', State};
 handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
                                                        ,agent_presence_id=PresenceId
                                                       }=State) ->
     lager:debug("custom presence id, using ~s for ~s", [PresenceId, PresenceState]),
-    acdc_util:presence_update(AcctId, PresenceId, PresenceState),
+    acdc_util:presence_update(AcctId, PresenceId, PresenceState
+                              ,wh_util:to_hex_binary(crypto:md5(PresenceId))
+                             ),
     {'noreply', State};
 
 handle_cast({'update_status', Status}, #state{agent_id=AgentId
@@ -959,7 +963,7 @@ call_id(Call) ->
                         end, 'undefined', Keys)
     end.
 
--spec maybe_connect_to_agent(ne_binary(), list(), whapps_call:call(), api_integer(), ne_binary(), api_binary()) ->
+-spec maybe_connect_to_agent(ne_binary(), wh_json:objects(), whapps_call:call(), api_integer(), ne_binary(), api_binary()) ->
                                     ne_binaries().
 maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, CdrUrl) ->
     MCallId = whapps_call:call_id(Call),

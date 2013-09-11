@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -28,6 +28,9 @@
                 ,port :: inet:port_number()
                 ,socket :: inet:socket()
                }).
+-type state() :: #state{}.
+
+-define(PUBLISH_CHANNEL_STATE, <<"publish_channel_state">>).
 
 %%%===================================================================
 %%% API
@@ -121,6 +124,7 @@ handle_cast('connect', #state{ip=IP, port=Port}=State) ->
             {'stop', Reason, State}
     end;
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -145,7 +149,8 @@ handle_info({'tcp_error', Socket, _Reason}, #state{socket=Socket}=State) ->
     gen_tcp:close(Socket),
     gen_server:cast(self(), 'request_event_stream'),
     {'noreply', State#state{socket='undefined'}};
-handle_info(_Info, State) ->
+handle_info(_Msg, State) ->
+    lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -161,11 +166,11 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{socket='undefined', node=Node}=State) ->
     lager:debug("event stream for ~p on node ~p terminating: ~p"
-                , [get_event_binding(State), Node, _Reason]);
+                ,[get_event_binding(State), Node, _Reason]);
 terminate(_Reason, #state{socket=Socket, node=Node}=State) ->
     gen_tcp:close(Socket),
     lager:debug("event stream for ~p on node ~p terminating: ~p"
-                , [get_event_binding(State), Node, _Reason]).
+                ,[get_event_binding(State), Node, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -181,6 +186,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec get_event_binding(state()) -> [atom(),...].
 get_event_binding(#state{name=Name, subclass=Subclass}) ->
     case wh_util:is_empty(Subclass) of
         'true' -> [wh_util:to_atom(Name, 'true')];
@@ -210,11 +216,6 @@ process_event(<<"CHANNEL_DESTROY">>, _, Props, _) ->
     publish_destroy_channel_event(Props);
 process_event(<<"CHANNEL_ANSWER">>, _, Props, _) ->
     publish_answered_channel_event(Props);
-process_event(<<"conference::maintenance">>, UUID, Props, Node) ->
-    ecallmgr_fs_conferences:event(Node, UUID, Props);
-process_event(<<"sofia::register">>, _, Props, Node) ->
-%%    ecallmgr_registrar:reg_success(Props, Node),
-    publish_register_event(Props, Node);
 process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
     gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
@@ -225,6 +226,8 @@ process_event(?CHANNEL_MOVE_COMPLETE_EVENT_BIN, _, Props, Node) ->
     gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
                ,?CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Props)
               );
+process_event(<<"sofia::register">>, _UUID, Props, Node) ->
+    gproc:send({'p', 'l', ?REGISTER_SUCCESS_REG}, ?REGISTER_SUCCESS_MSG(Node, Props));
 process_event(_, _, _, _) ->
     'ok'.
 
@@ -242,44 +245,6 @@ maybe_send_call_event('undefined', _, _) -> 'ok';
 maybe_send_call_event(CallId, Props, Node) ->
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}, {'event', [CallId | Props]}).
 
--spec publish_new_channel_event(wh_proplist()) -> 'ok'.
-publish_new_channel_event(Props) ->
-    Req = wh_api:default_headers(<<"channel">>, <<"new">>, ?APP_NAME, ?APP_VERSION) ++
-        ecallmgr_call_events:create_event_props(<<"CHANNEL_CREATE">>, 'undefined', Props),
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_new_channel/1).
-
--spec publish_answered_channel_event(wh_proplist()) -> 'ok'.
-publish_answered_channel_event(Props) ->
-    Req = wh_api:default_headers(<<"channel">>, <<"answered">>, ?APP_NAME, ?APP_VERSION) ++
-        ecallmgr_call_events:create_event_props(<<"CHANNEL_ANSWER">>, 'undefined', Props),
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_answered_channel/1).
-
--spec publish_destroy_channel_event(wh_proplist()) -> 'ok'.
-publish_destroy_channel_event(Props) ->
-    Req = wh_api:default_headers(<<"channel">>, <<"destroy">>, ?APP_NAME, ?APP_VERSION) ++
-                                          ecallmgr_call_events:create_event_props(<<"CHANNEL_DESTROY">>, 'undefined', Props),
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_destroy_channel/1).
-
--spec publish_register_event(wh_proplist(), atom()) -> 'ok'.
-publish_register_event(Props, Node) ->
-    Req = lists:foldl(fun(K, Api) ->
-                              case props:get_value(wh_util:to_lower_binary(K), Props) of
-                                  'undefined' ->
-                                      case props:get_value(K, Props) of
-                                          'undefined' -> Api;
-                                          V -> [{K, V} | Api]
-                                      end;
-                                  V -> [{K, V} | Api]
-                              end
-                      end
-                      ,[{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
-                        ,{<<"Call-ID">>, get('callid')}
-                        ,{<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
-                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                       ]
-                      ,wapi_registration:success_keys()),
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_registration:publish_success/1).
-
 -spec maybe_start_event_listener(atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
 maybe_start_event_listener(Node, UUID) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}) of
@@ -287,4 +252,33 @@ maybe_start_event_listener(Node, UUID) ->
         _E -> 'ok'
     end.
 
+-spec publish_new_channel_event(wh_proplist()) -> 'ok'.
+publish_new_channel_event(Props) ->
+    case ecallmgr_config:get_boolean(?PUBLISH_CHANNEL_STATE, 'false') of
+        'false' -> 'ok';
+        'true' ->
+            Req = wh_api:default_headers(<<"channel">>, <<"new">>, ?APP_NAME, ?APP_VERSION) ++
+                ecallmgr_call_events:create_event_props(<<"CHANNEL_CREATE">>, 'undefined', Props),
+            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_new_channel/1)
+    end.
+
+-spec publish_answered_channel_event(wh_proplist()) -> 'ok'.
+publish_answered_channel_event(Props) ->
+    case ecallmgr_config:get_boolean(?PUBLISH_CHANNEL_STATE, 'false') of
+        'false' -> 'ok';
+        'true' ->
+            Req = wh_api:default_headers(<<"channel">>, <<"answered">>, ?APP_NAME, ?APP_VERSION) ++
+                ecallmgr_call_events:create_event_props(<<"CHANNEL_ANSWER">>, 'undefined', Props),
+            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_answered_channel/1)
+    end.
+
+-spec publish_destroy_channel_event(wh_proplist()) -> 'ok'.
+publish_destroy_channel_event(Props) ->
+    case ecallmgr_config:get_boolean(?PUBLISH_CHANNEL_STATE, 'false') of
+        'false' -> 'ok';
+        'true' ->
+            Req = wh_api:default_headers(<<"channel">>, <<"destroy">>, ?APP_NAME, ?APP_VERSION) ++
+                ecallmgr_call_events:create_event_props(<<"CHANNEL_DESTROY">>, 'undefined', Props),
+            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_destroy_channel/1)
+    end.
 

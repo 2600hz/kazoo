@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%% Helpers for manipulating the #cb_context{} record
 %%% @end
@@ -24,9 +24,12 @@
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
          ,auth_token/1, set_auth_token/2
+         ,auth_doc/1, set_auth_doc/2
+         ,auth_account_id/1, set_auth_account_id/2
          ,req_verb/1, set_req_verb/2
          ,req_data/1, set_req_data/2
          ,req_id/1, set_req_id/2
+         ,req_files/1, set_req_files/2
          ,query_string/1, set_query_string/2
          ,client_ip/1
          ,doc/1, set_doc/2
@@ -51,8 +54,11 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
+auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
+auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
 req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
 req_data(#cb_context{req_data=ReqData}) -> ReqData.
+req_files(#cb_context{req_files=ReqFiles}) -> ReqFiles.
 query_string(#cb_context{query_json=Q}) -> Q.
 client_ip(#cb_context{client_ip=IP}) -> IP.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
@@ -65,8 +71,11 @@ resp_headers(#cb_context{resp_headers=RespHeaders}) -> RespHeaders.
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
 set_auth_token(#cb_context{}=Context, AuthToken) -> Context#cb_context{auth_token=AuthToken}.
+set_auth_doc(Context, AuthDoc) -> Context#cb_context{auth_doc=AuthDoc}.
+set_auth_account_id(#cb_context{}=Context, AuthBy) -> Context#cb_context{auth_account_id=AuthBy}.
 set_req_verb(#cb_context{}=Context, ReqVerb) -> Context#cb_context{req_verb=ReqVerb}.
 set_req_data(#cb_context{}=Context, ReqData) -> Context#cb_context{req_data=ReqData}.
+set_req_files(Context, ReqFiles) -> Context#cb_context{req_files=ReqFiles}.
 set_query_string(#cb_context{}=Context, Q) -> Context#cb_context{query_json=Q}.
 set_req_id(#cb_context{}=Context, ReqId) -> Context#cb_context{req_id=ReqId}.
 set_doc(#cb_context{}=Context, Doc) -> Context#cb_context{doc=Doc}.

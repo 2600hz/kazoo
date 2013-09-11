@@ -496,8 +496,9 @@ b_ring(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec receive_fax(whapps_call:call()) -> 'ok'.
--spec b_receive_fax(whapps_call:call()) -> whapps_api_error() |
-                                           {'ok', wh_json:object()}.
+-spec b_receive_fax(whapps_call:call()) ->
+                           whapps_api_error() |
+                           {'ok', wh_json:object()}.
 
 receive_fax(Call) ->
     Command = [{<<"Application-Name">>, <<"receive_fax">>}],
@@ -661,7 +662,7 @@ bridge(Endpoints, Call) ->
 bridge(Endpoints, Timeout, Call) ->
     bridge(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
 bridge(Endpoints, Timeout, Strategy, Call) ->
-    bridge(Endpoints, Timeout, Strategy, <<"false">>, Call).
+    bridge(Endpoints, Timeout, Strategy, <<"true">>, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->

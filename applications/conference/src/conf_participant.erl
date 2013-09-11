@@ -111,19 +111,19 @@ start_link(Call) ->
                                      ], [Call]).
 
 -spec conference(pid()) -> {'ok', whapps_conference:conference()}.
-conference(Srv) -> gen_listener:call(Srv, {'get_conference'}, 500).
+conference(Srv) -> gen_listener:call(Srv, {'get_conference'}).
 
 -spec set_conference(whapps_conference:conference(), pid()) -> 'ok'.
 set_conference(Conference, Srv) -> gen_listener:cast(Srv, {'set_conference', Conference}).
 
 -spec discovery_event(pid()) -> {'ok', wh_json:object()}.
-discovery_event(Srv) -> gen_listener:call(Srv, {'get_discovery_event'}, 500).
+discovery_event(Srv) -> gen_listener:call(Srv, {'get_discovery_event'}).
 
 -spec set_discovery_event(wh_json:object(), pid()) -> 'ok'.
 set_discovery_event(DE, Srv) -> gen_listener:cast(Srv, {'set_discovery_event', DE}).
 
 -spec call(pid()) -> {'ok', whapps_call:call()}.
-call(Srv) -> gen_listener:call(Srv, {'get_call'}, 500).
+call(Srv) -> gen_listener:call(Srv, {'get_call'}).
 
 -spec join_local(pid()) -> 'ok'.
 join_local(Srv) -> gen_listener:cast(Srv, 'join_local').
@@ -175,6 +175,10 @@ relay_amqp(JObj, Props) ->
 -spec handle_participants_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_participants_event(JObj, Props) ->
     'true' = wapi_conference:participants_event_v(JObj),
+    _ = [whapps_call_command:relay_event(Pid, JObj)
+         || Pid <- props:get_value('call_event_consumers', Props, [])
+                ,is_pid(Pid)
+        ],
     Srv = props:get_value('server', Props),
     gen_listener:cast(Srv, {'sync_participant', JObj}).
 
@@ -302,19 +306,11 @@ handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
 handle_cast('join_local', #participant{call=Call
                                        ,conference=Conference
                                       }=Participant) ->
-    _ = case whapps_conference:play_entry_prompt(Conference) of
-            'false' -> 'ok';
-            'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
-        end,
     send_conference_command(Conference, Call),
     {'noreply', Participant};
 handle_cast({'join_remote', JObj}, #participant{call=Call
                                                 ,conference=Conference
                                                }=Participant) ->
-    _ = case whapps_conference:play_entry_prompt(Conference) of
-            'false' -> 'ok';
-            'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
-        end,
     gen_listener:add_binding(self(), 'route', []),
     gen_listener:add_binding(self(), 'authn', []),
     BridgeRequest = couch_mgr:get_uuid(),

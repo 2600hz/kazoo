@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -28,7 +28,7 @@
 handle(Data, Call) ->
     {'ok', Endpoints} = find_endpoints(Data, Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, <<"60">>),
-    IgnoreEarlyMedia = wh_json:get_value(<<"ignore_early_media">>, Data),
+    IgnoreEarlyMedia = wh_json:get_value(<<"ignore_early_media">>, Data, <<"false">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     bridge_to_resources(Endpoints, Timeout, IgnoreEarlyMedia, Ringback, Data, Call).
 

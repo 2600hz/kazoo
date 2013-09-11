@@ -158,6 +158,7 @@ get_interface_properties(Node, Interface) ->
 -spec get_sip_to(wh_proplist()) -> ne_binary().
 get_sip_to(Props) ->
     get_sip_to(Props, props:get_value(<<"Call-Direction">>, Props)).
+
 get_sip_to(Props, <<"outbound">>) ->
     case props:get_value(<<"Channel-Presence-ID">>, Props) of
         'undefined' -> get_sip_request(Props);
@@ -173,12 +174,19 @@ get_sip_to(Props, _) ->
 -spec get_sip_from(wh_proplist()) -> ne_binary().
 get_sip_from(Props) ->
     get_sip_from(Props, props:get_value(<<"Call-Direction">>, Props)).
+
 get_sip_from(Props, <<"outbound">>) ->
-    Number = props:get_value(<<"Other-Leg-Destination-Number">>, Props, <<"nonumber">>),
-    Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                     ,<<"variable_sip_auth_realm">>
-                                    ], Props, ?DEFAULT_REALM),
-    <<Number/binary, "@", Realm/binary>>;
+    case props:get_value(<<"Other-Leg-Channel-Name">>, Props) of
+        'undefined' ->
+            Number = props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props, <<"nouser">>),
+            Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
+                                             ,<<"variable_sip_auth_realm">>
+                                            ], Props, ?DEFAULT_REALM),
+            props:get_value(<<"variable_sip_from_uri">>, Props,
+                            <<Number/binary, "@", Realm/binary>>);
+        OtherChannel -> 
+            lists:last(binary:split(OtherChannel, <<"/">>, ['global']))
+    end;
 get_sip_from(Props, _) ->
     Default = <<(props:get_value(<<"sip_from_user">>, Props, <<"nouser">>))/binary
                 ,"@"
@@ -437,9 +445,21 @@ endpoint_jobj_to_record(Endpoint, IncludeVars) ->
                      ,channel_selection = get_endpoint_channel_selection(Endpoint)
                      ,interface = get_endpoint_interface(Endpoint)
                      ,sip_interface = wh_json:get_ne_value(<<"SIP-Interface">>, Endpoint)
-                     ,channel_vars = ecallmgr_fs_xml:get_leg_vars(Endpoint)
+                     ,channel_vars = get_leg_vars(Endpoint, ToUser)
                      ,include_channel_vars = IncludeVars
                     }.
+
+-spec get_leg_vars(wh_json:object(), api_binary()) -> iolist().
+get_leg_vars(Endpoint, ToUser) ->
+    User = wh_json:get_ne_value(<<"To-Username">>, Endpoint, ToUser),
+    Realm = wh_json:get_ne_value(<<"To-Realm">>, Endpoint),
+    case wh_util:is_empty(User) orelse wh_util:is_empty(Realm) of
+        'true' -> ecallmgr_fs_xml:get_leg_vars(Endpoint);
+        'false' ->
+            ToURI = <<"sip:", User/binary, "@", Realm/binary>>,
+            E = wh_json:set_value(<<"To-URI">>, ToURI, Endpoint),
+            ecallmgr_fs_xml:get_leg_vars(E)
+    end.
 
 -spec get_endpoint_span(wh_json:object()) -> ne_binary().
 get_endpoint_span(Endpoint) ->

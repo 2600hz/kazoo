@@ -9,6 +9,7 @@
 -module(whistle_maintenance).
 
 -export([nodes/0]).
+-export([hotload/1]).
 -export([syslog_level/1
          ,error_level/1
          ,console_level/1
@@ -42,6 +43,18 @@ console_level(Level) ->
 
 nodes() ->
     wh_nodes:status().
+
+hotload(Module) when is_atom(Module) ->
+    _ = code:soft_purge(Module),
+    case code:load_file(Module) of
+        {'module', _} -> 'ok';          
+        {'error' , Reason} ->
+            io:format("ERROR: unable to hotload ~s: ~s~n", [Module, Reason]),
+            'no_return'
+    end;
+hotload(Module) ->
+    hotload(wh_util:to_atom(Module, 'true')).
+
 
 gc_all() ->
     gc_pids(processes()).

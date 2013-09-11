@@ -52,7 +52,7 @@ find_candidate_translators(<<"application/xml">>) ->
 find_candidate_translators(<<"application/json">>) ->
     ['kzt_kazoo'];
 find_candidate_translators(_) ->
-    [].
+    ['kzt_twiml'].
 
 is_recognized(M, Cmds) ->
     case catch M:parse_cmds(Cmds) of

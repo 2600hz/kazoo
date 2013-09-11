@@ -25,7 +25,6 @@
          ,to_json/1
          ,to_props/1
         ]).
--export([handle_channel_status/2]).
 -export([process_event/3]).
 -export([init/1
          ,handle_call/3
@@ -39,15 +38,6 @@
 -compile([{'no_auto_import', [node/1]}]).
 
 -include("ecallmgr.hrl").
-
--define(RESPONDERS, [{{?MODULE, 'handle_channel_status'}
-                      ,[{<<"call_event">>, <<"channel_status_req">>}]
-                     }
-                    ]).
--define(BINDINGS, [{'call', [{'restrict_to', ['status_req']}]}]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
 
 -record(state, {node = 'undefined' :: atom()
                 ,options = [] :: wh_proplist()
@@ -68,12 +58,7 @@ start_link(Node) ->
     start_link(Node, []).
 
 start_link(Node, Options) ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], [Node, Options]).
+    gen_server:start_link(?MODULE, [Node, Options], []).
 
 -spec fetch(ne_binary()) ->
                    {'ok', wh_json:object()} |
@@ -196,26 +181,6 @@ to_props(Channel) ->
      ,{<<"dialplan">>, Channel#channel.dialplan}
      ,{<<"other_leg">>, Channel#channel.other_leg}
     ].
-
--spec handle_channel_status(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_channel_status(JObj, _Props) ->
-    'true' = wapi_call:channel_status_req_v(JObj),
-    _ = wh_util:put_callid(JObj),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    lager:debug("channel status request received"),
-    case fetch(CallId) of
-        {'error', 'not_found'} ->
-            lager:debug("no node found with channel ~s", [CallId]),
-            Resp = [{<<"Call-ID">>, CallId}
-                    ,{<<"Status">>, <<"terminated">>}
-                    ,{<<"Error-Msg">>, <<"no node found with channel">>}
-                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-        {'ok', Channel} ->
-            channel_status_resp(CallId, Channel, JObj)
-    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -423,21 +388,6 @@ props_to_update(Props) ->
                             ,{#channel.context, props:get_value(<<"Caller-Context">>, Props)}
                             ,{#channel.dialplan, props:get_value(<<"Caller-Dialplan">>, Props)}
                            ]).
-
--spec channel_status_resp(ne_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
-channel_status_resp(CallId, Channel, JObj) ->
-    Node = wh_json:get_binary_value(<<"node">>, Channel),
-    [_, Hostname] = binary:split(Node, <<"@">>),
-    lager:debug("channel is on ~s", [Hostname]),
-    Resp = [{<<"Call-ID">>, CallId}
-            ,{<<"Status">>, <<"active">>}
-            ,{<<"Switch-Hostname">>, Hostname}
-            ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
-            ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
-            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
-    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 get_other_leg(UUID, Props) ->
     get_other_leg(UUID, Props, props:get_value(<<"Other-Leg-Unique-ID">>, Props)).

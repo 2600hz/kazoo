@@ -29,7 +29,12 @@
 -define(BINDINGS, [{'self', []}
                    ,{'presence', [{'restrict_to', ['update', 'reset']}]}
                    %% channel events that toggle presence lights
-                   ,{'call', [{'restrict_to', ['new_channel', 'answered_channel', 'destroy_channel']}]}
+                   ,{'call', [{'restrict_to', ['new_channel'
+                                               ,'answered_channel'
+                                               ,'cdr'
+                                              ]}
+                              ,{'callid', <<"*">>}
+                             ]}
                    ,{'notifications', [{'restrict_to', ['presence_update']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_new_channel'}
@@ -38,8 +43,8 @@
                      ,{{'omnip_subscriptions', 'handle_answered_channel'}
                        ,[{<<"channel">>, <<"answered">>}]
                       }
-                     ,{{'omnip_subscriptions', 'handle_destroy_channel'}
-                       ,[{<<"channel">>, <<"destroy">>}]
+                     ,{{'omnip_subscriptions', 'handle_cdr'}
+                       ,[{<<"call_detail">>, <<"cdr">>}]
                       }
                      ,{{'omnip_subscriptions', 'handle_presence_update'}
                        ,[{<<"notification">>, <<"presence_update">>}]

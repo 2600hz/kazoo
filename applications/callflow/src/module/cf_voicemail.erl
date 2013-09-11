@@ -749,12 +749,11 @@ change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
 new_message(AttachmentName, Length, Box, Call) ->
     lager:debug("saving new ~bms voicemail message and metadata", [Length]),
     MediaId = message_media_doc(whapps_call:account_db(Call), Box, AttachmentName),
-
     case store_recording(AttachmentName, MediaId, Call) of
-        {ok, _StoreJObj} ->
-            update_mailbox(Box, Call, MediaId, Length);
-        {error, FailJObj} ->
-            lager:debug("failed to store media: ~p", [FailJObj])
+        'true' -> update_mailbox(Box, Call, MediaId, Length);
+        'false' ->
+            lager:warning("failed to store media: ~p", [MediaId]),
+            couch_mgr:del_doc(whapps_call:account_db(Call), MediaId)
     end.
 
 update_mailbox(#mailbox{mailbox_id=Id
@@ -793,9 +792,9 @@ update_mailbox(#mailbox{mailbox_id=Id
         end,
     cf_util:unsolicited_owner_mwi_update(whapps_call:account_db(Call), OwnerId).
 
-maybe_save_meta(Length, #mailbox{delete_after_notify=false}=Box, Call, MediaId, _UpdateJObj) ->
+maybe_save_meta(Length, #mailbox{delete_after_notify='false'}=Box, Call, MediaId, _UpdateJObj) ->
     save_meta(Length, Box, Call, MediaId);
-maybe_save_meta(Length, #mailbox{delete_after_notify=true}=Box, Call, MediaId, UpdateJObj) ->
+maybe_save_meta(Length, #mailbox{delete_after_notify='true'}=Box, Call, MediaId, UpdateJObj) ->
     case wh_json:get_value(<<"Status">>, UpdateJObj) of
         <<"completed">> ->
             lager:debug("attachment was sent out via notification, deleting media file"),
@@ -1110,19 +1109,20 @@ review_recording(AttachmentName, AllowOperator
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) ->
-                                   {'ok', wh_json:object()} |
-                                   {'error', wh_json:object()}.
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> boolean().
 store_recording(AttachmentName, DocId, Call) ->
     lager:debug("storing recording ~s in doc ~s", [AttachmentName, DocId]),
-    {ok, StoreJObj} = whapps_call_command:b_store(AttachmentName
-                                                  ,get_new_attachment_url(AttachmentName, DocId, Call)
-                                                  ,Call),
-    case wh_json:get_value(<<"Application-Response">>, StoreJObj) of
-        <<"failure">> ->
-            lager:debug("seems store failed"),
-            {error, StoreJObj};
-        _ -> {ok, StoreJObj}
+    _ = whapps_call_command:b_store(AttachmentName
+                                    ,get_new_attachment_url(AttachmentName, DocId, Call)
+                                    ,Call),
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:open_doc(AccountDb, DocId) of
+        {'ok', JObj} ->
+            MinLength = whapps_config:get_integer(<<"voicemail">>, <<"min_message_size">>, 500),
+            AttachmentLength = wh_json:get_integer_value([<<"_attachments">>, AttachmentName, <<"length">>], JObj, 0),
+            lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
+            AttachmentLength > MinLength;
+        _Else -> 'false'
     end.
 
 %%--------------------------------------------------------------------

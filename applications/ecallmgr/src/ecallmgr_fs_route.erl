@@ -173,13 +173,13 @@ process_route_req(Node, FSID, CallId, Props) ->
         'true' ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),
             JObj = wh_json:from_list([{<<"Routes">>, []}
-                                          ,{<<"Method">>, <<"park">>}
-                                         ]),
+                                      ,{<<"Method">>, <<"park">>}
+                                     ]),
             reply_affirmative(Node, FSID, CallId, JObj)
     end.
 
 search_for_route(Node, FSID, CallId, Props) ->
-    ecallmgr_fs_authz:authorize(Props, CallId, Node),
+    _ = spawn('ecallmgr_fs_authz', 'authorize', [Props, CallId, Node]),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,route_req(CallId, FSID, Props, Node)
                                   ,fun wapi_route:publish_req/1
@@ -221,7 +221,7 @@ reply_affirmative(Node, FSID, CallId, JObj) ->
     lager:info("sending affirmative XML to ~s: ~s", [Node, XML]),
     FromURI = case wh_json:get_value(<<"From-URI">>, JObj) of
                   'undefined' -> 
-                      FromUser = wh_json:get_value(<<"From-User">>, JObj, <<"${sip_from_user}">>),
+                      FromUser = wh_json:get_value(<<"From-User">>, JObj, <<"${caller_id_number}">>),
                       FromRealm = wh_json:get_value(<<"From-Realm">>, JObj, <<"${sip_from_host}">>),
                       <<"sip:", FromUser/binary, "@", FromRealm/binary>>;
                   Else -> Else
@@ -230,9 +230,9 @@ reply_affirmative(Node, FSID, CallId, JObj) ->
         'ok' ->
             lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),
             CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+            _ = start_control_and_events(Node, FSID, CallId, ServerQ, CCVs),
             _ = ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)),
-            _ = ecallmgr_util:export(Node, CallId, [{<<"From-URI">>, FromURI}]),
-            start_control_and_events(Node, FSID, CallId, ServerQ, CCVs);
+            ecallmgr_util:export(Node, CallId, [{<<"From-URI">>, FromURI}]);
         {'error', _Reason} -> lager:debug("node ~s rejected our route response, ~p", [Node, _Reason])
     end.
 

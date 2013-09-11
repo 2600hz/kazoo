@@ -67,11 +67,16 @@
 -define(KEY_RESOURCE_REQ, <<"originate.resource.req">>).
 
 -define(ORIGINATE_REQ_HEADERS, [<<"Endpoints">>, <<"Application-Name">>]).
--define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>, <<"Custom-Channel-Vars">>
-                                         ,<<"Export-Custom-Channel-Vars">>, <<"Outbound-Call-ID">>
-                                         ,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore
-                                         %% Eavesdrop
-                                         ,<<"Eavesdrop-Call-ID">>, <<"Eavesdrop-Mode">>, <<"Eavesdrop-Group-ID">>
+-define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>
+                                             ,<<"Custom-Channel-Vars">>
+                                             ,<<"Export-Custom-Channel-Vars">>
+                                             ,<<"Outbound-Call-ID">>
+                                             ,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore                                                                  %% Eavesdrop
+                                             ,<<"Eavesdrop-Call-ID">>
+                                             ,<<"Eavesdrop-Mode">>
+                                             ,<<"Eavesdrop-Group-ID">>
+                                             ,<<"Fax-Identity-Number">>
+                                             ,<<"Fax-Identity-Name">>
                                          | fun() ->
                                                    wapi_dialplan:optional_bridge_req_headers()
                                            end()

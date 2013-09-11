@@ -3,6 +3,7 @@
 
 -define(MILLISECONDS_IN_DAY, 86400000).
 -define(SECONDS_IN_DAY, 86400).
+-define(SECONDS_IN_HOUR, 3600).
 
 -define(ANY_DIGIT, [<<"1">>, <<"2">>, <<"3">>
                     ,<<"4">>, <<"5">>, <<"6">>

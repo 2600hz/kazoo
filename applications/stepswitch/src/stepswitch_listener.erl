@@ -148,7 +148,7 @@ handle_info({document_changes, DocId, [Changes]}, #state{resrcs=Resrcs}=State) -
     Rev = wh_json:get_value(<<"rev">>, Changes),
     case lists:keysearch(DocId, #resrc.id, Resrcs) of
         {value, #resrc{rev=Rev}} -> {noreply, State, hibernate};
-        _ -> 
+        _ ->
             lager:info("reloading offnet resource ~s", [DocId]),
             {noreply, State#state{resrcs=update_resrc(DocId, Resrcs)}, hibernate}
     end;
@@ -254,7 +254,7 @@ update_resrc(DocId, Resrcs) ->
 %% populates it with all enabled gateways
 %% @end
 %%--------------------------------------------------------------------
--spec create_resrc(wh_json:json_object()) -> #resrc{}.
+-spec create_resrc(wh_json:object()) -> #resrc{}.
 create_resrc(JObj) ->
     Default = #resrc{},
     Id = wh_json:get_value(<<"_id">>, JObj),
@@ -286,13 +286,11 @@ create_resrc(JObj) ->
 %% Given a gateway JSON object it builds a gateway record
 %% @end
 %%--------------------------------------------------------------------
--spec create_gateway(wh_json:json_object(), ne_binary()) -> #gateway{}.
+-spec create_gateway(wh_json:object(), ne_binary()) -> #gateway{}.
 create_gateway(JObj, Id) ->
     Default = #gateway{},
-
     EndpointType = endpoint_type(JObj, Default),
     EndpointOptions = endpoint_options(JObj, EndpointType),
-
     #gateway{resource_id = Id
              ,server =
                  wh_json:get_value(<<"server">>, JObj, Default#gateway.server)
@@ -310,6 +308,8 @@ create_gateway(JObj, Id) ->
                  wh_json:get_binary_value(<<"suffix">>, JObj, Default#gateway.suffix)
              ,codecs =
                  wh_json:get_value(<<"codecs">>, JObj, Default#gateway.codecs)
+             ,t38_setting = 
+                 wh_json:get_value(<<"t38_setting">>, JObj, Default#gateway.t38_setting)
              ,bypass_media =
                  wh_json:get_value(<<"bypass_media">>, JObj)
              ,caller_id_type =

@@ -107,7 +107,8 @@ attempt_to_fulfill_originate_req(Number, JObj, Props) ->
     Flags = wh_json:get_value(<<"Flags">>, JObj, []),
     Resources = props:get_value('resources', Props),
     {Endpoints, _} = find_endpoints(Number, Flags, Resources, JObj),
-    case {originate_to_endpoints(Endpoints, JObj), correct_shortdial(Number, JObj)} of
+    case {originate_to_endpoints(Endpoints, JObj),
+          correct_shortdial(Number, JObj)} of
         {{'error', 'no_resources'}, 'fail'} -> {'error', 'no_resources'};
         {{'error', 'no_resources'}, CorrectedNumber} ->
             lager:debug("found no resources for number as originated, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
@@ -149,6 +150,12 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
         end,
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
 
+    {CalleeIdNumber, CalleeIdName} =
+        {wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)
+         ,wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)
+        },
+    lager:debug("set outbound callee id to ~s '~s'", [CalleeIdNumber, CalleeIdName]),
+
     FromURI = case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false') of
                   'true' ->
                       case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
@@ -170,20 +177,17 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
     CCVs = wh_json:set_values(props:filter_undefined(Updates)
                               ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
 
-    ForceFax = case wh_json:is_true(<<"Force-Fax">>, JObj) of
-                   'false' -> 'undefined';
-                   'true' -> <<"peer">>
-               end,
-
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
-               ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
+               ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj, <<"false">>)}
                ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
                ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
                ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
                ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
                ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+               ,{<<"Outbound-Callee-ID-Number">>, CalleeIdNumber}
+               ,{<<"Outbound-Callee-ID-Name">>, CalleeIdName}
                ,{<<"Caller-ID-Number">>, CIDNum}
                ,{<<"Caller-ID-Name">>, CIDName}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
@@ -191,7 +195,6 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
                ,{<<"Continue-On-Fail">>, <<"true">>}
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
                ,{<<"Custom-Channel-Vars">>, CCVs}
-               ,{<<"Force-Fax">>, ForceFax}
                ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
@@ -219,6 +222,13 @@ originate_to_endpoints(Endpoints, JObj) ->
                                   ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
     CIDName = wh_json:get_ne_value(<<"Outbound-Caller-ID-Name">>, JObj
                                    ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj)),
+
+    {CalleeIdNumber, CalleeIdName} =
+        {wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)
+         ,wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)
+        },
+    lager:debug("set outbound callee id to ~s '~s'", [CalleeIdNumber, CalleeIdName]),
+
 
     FromURI = case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false') of
                   'true' ->
@@ -255,6 +265,10 @@ originate_to_endpoints(Endpoints, JObj) ->
                  ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
                  ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
                  ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+                 ,{<<"Outbound-Callee-ID-Number">>, CalleeIdNumber}
+                 ,{<<"Outbound-Callee-ID-Name">>, CalleeIdName}
+                 ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, JObj, CIDNum)}
+                 ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, CIDName)}
                  ,{<<"Caller-ID-Number">>, CIDNum}
                  ,{<<"Caller-ID-Name">>, CIDName}
                  ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
@@ -383,9 +397,12 @@ wait_for_bridge(Timeout) ->
                     wait_for_bridge('infinity');
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} -> hangup_result(JObj);
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} -> hangup_result(JObj);
-                _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout,Start))
+                _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start))
             end;
-        _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout,Start))
+        _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start))
+    after Timeout ->
+            lager:debug("timed out after ~p ms", [Timeout]),
+            {'error', 'timeout'}
     end.
 
 %%--------------------------------------------------------------------
@@ -502,9 +519,9 @@ build_endpoints([{_, GracePeriod, Number, [Gateway], _}|T], JObj, Delay, Acc0) -
 build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], JObj, Delay, Acc0) ->
     {D2, Acc1} = lists:foldl(fun(Gateway, {0, AccIn}) ->
                                      {2, [build_endpoint(Number, Gateway, 0, JObj)|AccIn]};
-                                 (Gateway, {D0, AccIn}) ->
+                                (Gateway, {D0, AccIn}) ->
                                      {D0 + 2, [build_endpoint(Number, Gateway, D0, JObj)|AccIn]}
-                            end, {Delay, Acc0}, Gateways),
+                             end, {Delay, Acc0}, Gateways),
     build_endpoints(T, JObj, D2 - 2 + GracePeriod, Acc1).
 
 %%--------------------------------------------------------------------
@@ -517,7 +534,6 @@ build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], JObj, Delay, Acc0) ->
 build_endpoint(Number, Gateway, _Delay, JObj) ->
     Route = stepswitch_util:get_dialstring(Gateway, Number),
     lager:debug("found resource ~s (~s)", [Gateway#gateway.resource_id, Route]),
-
     FromUri = case Gateway#gateway.format_from_uri of
                   'false' -> 'undefined';
                   'true' ->
@@ -525,9 +541,11 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
               end,
     lager:debug("setting from-uri to ~p on gateway ~p", [FromUri, Gateway#gateway.resource_id]),
 
+    FaxSettings = get_t38_settings(Gateway#gateway.t38_setting),
     CCVs = [{<<"Resource-ID">>, Gateway#gateway.resource_id}
             ,{<<"From-URI">>, FromUri}
            ],
+
     Prop = [{<<"Invite-Format">>, Gateway#gateway.invite_format}
             ,{<<"Route">>, stepswitch_util:get_dialstring(Gateway, Number)}
             ,{<<"Callee-ID-Name">>, wh_util:to_binary(Number)}
@@ -544,8 +562,33 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
             ,{<<"Endpoint-Type">>, Gateway#gateway.endpoint_type}
             ,{<<"Endpoint-Options">>, Gateway#gateway.endpoint_options}
-           ],
+           ] ++ FaxSettings,
     wh_json:from_list([KV || {_, V}=KV <- Prop, V =/= 'undefined' andalso V =/= <<"0">>]).
+
+get_t38_settings(<<"none">>) ->
+    [{<<"Enable-T38-Fax">>, 'undefined'}
+     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ];
+get_t38_settings(<<"passthrough">>) ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+     ,{<<"Enable-T38-Passthrough">>, 'true'}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ];
+get_t38_settings(<<"device">>) ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, <<"self">>}
+    ];
+get_t38_settings(<<"carrier">>) ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -554,7 +597,11 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
 %% create and send a Whistle offnet resource response
 %% @end
 %%--------------------------------------------------------------------
--spec response({'error', 'no_resources'} | bridge_resp() | execute_ext_resp() | originate_resp(), wh_json:object()) -> wh_proplist().
+-spec response({'error', 'no_resources' | 'timeout'} |
+               bridge_resp() |
+               execute_ext_resp() |
+               originate_resp()
+               ,wh_json:object()) -> wh_proplist().
 response({'ok', Resp}, JObj) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
@@ -625,7 +672,7 @@ response({'error', Error}, JObj) ->
 -spec correct_shortdial(ne_binary(), wh_json:object()) -> ne_binary() | 'fail'.
 correct_shortdial(Number, JObj) ->
     CIDNum = wh_json:get_ne_value(<<"Outbound-Caller-ID-Number">>, JObj
-                               ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
+                                  ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
     MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length > 0 ->

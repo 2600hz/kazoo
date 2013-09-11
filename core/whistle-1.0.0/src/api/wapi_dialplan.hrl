@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012 VoIP INC
+%%% @copyright (C) 2011-2013 2600Hz INC
 %%% @doc
 %%% Dialplan API definitions
 %%% @end
@@ -31,6 +31,10 @@
               ,<<"Media">>, <<"Hold-Media">>, <<"Ringback">>
               ,<<"Custom-Channel-Vars">>, <<"Secure-RTP">>, <<"Force-Fax">>
               ,<<"SIP-Transport">>, <<"SIP-Headers">>
+              ,<<"Enable-T38-Fax">>
+              ,<<"Enable-T38-Fax-Request">>
+              ,<<"Enable-T38-Passthrough">>
+              ,<<"Enable-T38-Gateway">>
          ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
@@ -38,7 +42,7 @@
                             ,{<<"Dial-Endpoint-Method">>, [?DIAL_METHOD_SINGLE, ?DIAL_METHOD_SIMUL]}
                             ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
                             ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>]}
-                            ,{<<"Force-Fax">>, [<<"self">>, <<"peer">>]}
+                            ,{<<"Enable-T38-Gateway">>, [<<"self">>, <<"peer">>]}
                             ,?INSERT_AT_TUPLE
                            ]).
 -define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
@@ -65,10 +69,14 @@
                ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
                ,<<"Proxy-IP">>, <<"Forward-IP">>, <<"SIP-Transport">>
                ,<<"SIP-Interface">>
+               ,<<"Enable-T38-Fax">>
+               ,<<"Enable-T38-Fax-Request">>
+               ,<<"Enable-T38-Passthrough">>
+               ,<<"Enable-T38-Gateway">>
          ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
-                                     ,{<<"Force-Fax">>, [<<"self">>, <<"peer">>]}
+                                     ,{<<"Enable-T38-Gateway">>, [<<"self">>, <<"peer">>]}
                                      ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>, <<"sctp">>]}
                                     ]).
 -define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
@@ -524,7 +532,7 @@
                                           %% sets joining member to nospeak relations
                                           ,<<"Member-Nospeak">>
                                           %% update relations
-                                          ,<<"Nospeak-Check">> 
+                                          ,<<"Nospeak-Check">>
                                          ]).
 -define(CONFERENCE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                 ,{<<"Event-Name">>, <<"command">>}

@@ -1,7 +1,5 @@
 -ifndef(ECALLMGR_HRL).
 
--compile([{'parse_transform', 'lager_transform'}]).
-
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_api.hrl").
@@ -80,12 +78,57 @@
 -type channel() :: #channel{}.
 -type channels() :: [channel(),...] | [].
 
+-record(conference, {name :: api_binary() | '$1' | '_'
+                     ,uuid :: api_binary() | '$1' | '_'
+                     ,node :: atom() | '$1' | '$2' | '_'
+                     ,participants = 0 :: non_neg_integer() | '_'
+                     ,profile_name = <<"default">> :: ne_binary() | '_'
+                     ,with_floor :: 'undefined' | non_neg_integer() | '_' % which participant has the floor
+                     ,lost_floor :: 'undefined' | non_neg_integer() | '_' % which participant has lost the floor
+                     ,running = 'true' :: boolean() | '_'
+                     ,answered = 'true' :: boolean() | '_'
+                     ,enforce_min = 'true' :: boolean() | '_'
+                     ,dynamic = 'true' :: boolean() | '_'
+                     ,exit_sound = 'true' :: boolean() | '_'
+                     ,enter_sound = 'true' :: boolean() | '_'
+                     ,start_time = wh_util:current_tstamp() :: non_neg_integer() | '_'
+                     ,switch_hostname :: api_binary() | '_'
+                     ,switch_url :: api_binary() | '_'
+                     ,switch_external_ip :: api_binary() | '_'
+                    }).
+
+-type conference() :: #conference{}.
+-type conferences() :: [conference(),...] | [].
+
+-record(participant, {uuid :: api_binary() | '$1' | '_'
+                      ,node :: atom() | '$2' | '_'
+                      ,conference_uuid :: api_binary() | '$1'| '_'
+                      ,conference_name :: api_binary() | '$1'| '_'
+                      ,floor = 'false' :: boolean() | '_'
+                      ,hear = 'true' :: boolean() | '_'
+                      ,speak = 'true' :: boolean() | '_'
+                      ,talking = 'false' :: boolean() | '_'
+                      ,mute_detect = 'false' :: boolean() | '_'
+                      ,member_id = 0 :: non_neg_integer() | '_'
+                      ,member_type :: api_binary() | '_'
+                      ,energy_level = 0 :: non_neg_integer() | '_'
+                      ,volume_level = 0 :: non_neg_integer() | '_'
+                      ,gain_level = 0 :: non_neg_integer() | '_'
+                      ,current_energy = 0 :: non_neg_integer() | '_'
+                      ,video = 'false' :: boolean() | '_'
+                      ,is_moderator = 'false' :: boolean() | '_'
+                     }).
+-type participant() :: #participant{}.
+-type participants() :: [participant(),...] | [].
+
 -define(DEFAULT_REALM, ecallmgr_config:get(<<"default_realm">>, <<"nodomain.com">>)).
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, ecallmgr_config:get_integer(<<"max_timeout_for_node_restart">>, 10000)). % 10 seconds
 -define(MAX_NODE_RESTART_FAILURES, 3).
 
 %% list of dialplan Application-Names that can execute after a call has hung up
--define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>, <<"record">>, <<"store_fax">>]).
+-define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>
+                               ,<<"record">>, <<"store_fax">>, <<"receive_fax">>
+                              ]).
 
 -define(SANITY_CHECK_PERIOD, 300000).
 
@@ -156,6 +199,11 @@
                                ,{<<"RECORD_APPEND">>, <<"RECORD_APPEND">>}
                                ,{<<"fax_enable_t38_request">>, <<"fax_enable_t38_request">>}
                                ,{<<"fax_enable_t38">>, <<"fax_enable_t38">>}
+                               ,{<<"Enable-T38-Fax">>, <<"fax_enable_t38">>}
+                               ,{<<"Enable-T38-Fax-Request">>, <<"fax_enable_t38_request">>}
+                               ,{<<"Enable-T38-Passthrough">>, <<"t38_passthru">>}
+                               ,{<<"Fax-Identity-Number">>, <<"fax_ident">>}
+                               ,{<<"Fax-Identity-Name">>, <<"fax_header">>}
                                ,{<<"sip_rh_X-Redirect-Server">>, <<"sip_rh_X-Redirect-Server">>}
                                ,{<<"park_after_bridge">>, <<"park_after_bridge">>}
                                ,{<<"continue_on_fail">>, <<"continue_on_fail">>}
@@ -307,6 +355,9 @@
 -define(CHANNEL_MOVE_REG(Node, UUID), {'channel_move', Node, UUID}).
 -define(CHANNEL_MOVE_RELEASED_MSG(Node, UUID, Evt), {'channel_move_released', Node, UUID, Evt}).
 -define(CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Evt), {'channel_move_complete', Node, UUID, Evt}).
+
+-define(REGISTER_SUCCESS_REG, 'register_success').
+-define(REGISTER_SUCCESS_MSG(Node, Props), {Node, Props}).
 
 -define(FS_EVENT_REG_MSG(Node, EvtName), {'event', Node, EvtName}).
 -define(FS_CALL_EVENT_REG_MSG(Node, EvtName), {'call_event', Node, EvtName}).

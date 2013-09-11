@@ -1,5 +1,6 @@
+
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Generate the XML for various FS responses
 %%% @end
@@ -152,14 +153,16 @@ caller_controls_xml(CCs) when is_list(CCs) ->
     caller_controls_el(GroupsEls);
 caller_controls_xml(CCs) -> caller_controls_xml(wh_json:to_proplist(CCs)).
 
-group_xml(Name, Controls) ->
+group_xml(Name, Controls) when is_list(Controls) ->
     ControlEls = [control_el(wh_json:get_value(<<"action">>, Control)
                              ,wh_json:get_value(<<"digits">>, Control)
                              ,wh_json:get_value(<<"data">>, Control)
                             )
                   || Control <- Controls
                  ],
-    group_el(Name, ControlEls).
+    group_el(Name, ControlEls);
+group_xml(Name, Controls) ->
+    group_xml(Name, wh_json:to_proplist(Controls)).
 
 chat_permissions_xml(CPs) when is_list(CPs) ->
     ProfileEls = [profile_xml(Name, Users) || {Name, Users} <- CPs],
@@ -330,7 +333,6 @@ get_channel_vars({<<"SIP-Headers">>, SIPJObj}, Vars) ->
     lists:foldl(fun({K,V}, Vars0) ->
                         [ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
                 end, Vars, SIPHeaders);
-
 get_channel_vars({<<"To-User">>, Username}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Username"
                      ,"='", wh_util:to_list(Username), "'"])
@@ -339,6 +341,10 @@ get_channel_vars({<<"To-User">>, Username}, Vars) ->
 get_channel_vars({<<"To-Realm">>, Realm}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Realm"
                      ,"='", wh_util:to_list(Realm), "'"])
+     | Vars
+    ];
+get_channel_vars({<<"To-URI">>, ToURI}, Vars) ->
+    [<<"sip_invite_to_uri=<", ToURI/binary, ">">>
      | Vars
     ];
 
@@ -383,6 +389,9 @@ get_channel_vars({<<"Forward-IP">>, <<"sip:", _/binary>>=V}, Vars) ->
 
 get_channel_vars({<<"Forward-IP">>, V}, Vars) ->
     get_channel_vars({<<"Forward-IP">>, <<"sip:", V/binary>>}, Vars);
+
+get_channel_vars({<<"Enable-T38-Gateway">>, Direction}, Vars) ->
+    [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">> | Vars];
 
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
@@ -665,7 +674,7 @@ condition_el(Child) when not is_list(Child) ->
     condition_el([Child]);
 condition_el(Children) ->
     #xmlElement{name='condition'
-                ,content=[Child || Child <- Children, Child =/= 'undefined'] 
+                ,content=[Child || Child <- Children, Child =/= 'undefined']
                }.
 
 -spec condition_el(xml_el() | xml_els() | 'undefined', xml_attrib_value(), xml_attrib_value()) -> xml_el().
@@ -673,11 +682,11 @@ condition_el(Child, Field, Expression) when not is_list(Child) ->
     condition_el([Child], Field, Expression);
 condition_el(Children, Field, Expression) ->
     #xmlElement{name='condition'
-                ,content=[Child || Child <- Children, Child =/= 'undefined'] 
+                ,content=[Child || Child <- Children, Child =/= 'undefined']
                 ,attributes=[xml_attrib('field', Field)
                              ,xml_attrib('expression', Expression)
                             ]
-               }.    
+               }.
 
 -spec action_el(xml_attrib_value()) -> xml_el().
 -spec action_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().

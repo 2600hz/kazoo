@@ -86,39 +86,61 @@ handle_discovery_req(JObj, _) ->
 handle_config_req(JObj, _Props) ->
     'true' = wapi_conference:config_req_v(JObj),
     ConfigName = wh_json:get_value(<<"Profile">>, JObj),
-    case whapps_config:get(<<"conferences">>, [<<"profiles">>, ConfigName]) of
-        'undefined' -> lager:debug("no profile defined for ~s", [ConfigName]);
-        Profile ->
-            lager:debug("profile ~s found", [ConfigName]),
-            Resp = [{<<"Profiles">>, wh_json:from_list([{ConfigName, Profile}])}
-                    ,{<<"Caller-Controls">>, caller_controls(ConfigName)}
-                    ,{<<"Advertise">>, advertise(ConfigName)}
-                    ,{<<"Chat-Permissions">>, chat_permissions(ConfigName)}
-                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            wapi_conference:publish_config_resp(wh_json:get_value(<<"Server-ID">>, JObj)
-                                                ,props:filter_undefined(Resp)
-                                               )
+
+    fetch_config(JObj, ConfigName).
+
+fetch_config(JObj, <<"default">> = ConfigName) ->
+    Config =  whapps_config:get(<<"conferences">>, [<<"profiles">>, ConfigName], wh_json:from_list(?DEFAULT_PROFILE_CONFIG)),
+    fetch_config(JObj, ConfigName, Config);
+fetch_config(JObj, ConfigName) ->
+    Config =  whapps_config:get(<<"conferences">>, [<<"profiles">>, ConfigName]),
+    fetch_config(JObj, ConfigName, Config).
+
+fetch_config(_JObj, _ConfigName, 'undefined') ->
+    lager:debug("no profile defined for ~s", [_ConfigName]);
+fetch_config(JObj, ConfigName, Profile) ->
+    lager:debug("profile ~s found", [ConfigName]),
+    Resp = [{<<"Profiles">>, wh_json:from_list([{ConfigName, Profile}])}
+            ,{<<"Caller-Controls">>, caller_controls(ConfigName)}
+            ,{<<"Advertise">>, advertise(ConfigName)}
+            ,{<<"Chat-Permissions">>, chat_permissions(ConfigName)}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    try
+        wapi_conference:publish_config_resp(wh_json:get_value(<<"Server-ID">>, JObj)
+                                            ,props:filter_undefined(Resp)
+                                           )
+    catch
+        _E:_R ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("failed: ~s: ~p", [_E, _R]),
+            wh_util:log_stacktrace(ST)
     end.
 
+caller_controls(<<"default">> = ConfigName) ->
+    caller_controls(ConfigName, whapps_config:get(<<"conferences">>, [<<"caller-controls">>, ConfigName], ?DEFAULT_CALLER_CONTROLS_CONFIG));
 caller_controls(ConfigName) ->
-    case whapps_config:get(<<"conferences">>, [<<"caller-controls">>, ConfigName]) of
-        'undefined' -> 'undefined';
-        Controls -> wh_json:from_list([{ConfigName, Controls}])
-    end.
+    caller_controls(ConfigName, whapps_config:get(<<"conferences">>, [<<"caller-controls">>, ConfigName])).
 
+caller_controls(_ConfigName, 'undefined') -> 'undefined';
+caller_controls(ConfigName, Controls) ->
+    wh_json:from_list([{ConfigName, Controls}]).
+
+advertise(<<"default">> = ConfigName) ->
+    advertise(ConfigName, whapps_config:get(<<"conferences">>, [<<"advertise">>, ConfigName], ?DEFAULT_ADVERTISE_CONFIG));
 advertise(ConfigName) ->
-    case whapps_config:get(<<"conferences">>, [<<"advertise">>, ConfigName]) of
-        'undefined' -> 'undefined';
-        Advertise -> wh_json:from_list([{ConfigName, Advertise}])
-    end.
+    advertise(ConfigName, whapps_config:get(<<"conferences">>, [<<"advertise">>, ConfigName])).
 
+advertise(_ConfigName, 'undefined') -> 'undefined';
+advertise(ConfigName, Advertise) -> wh_json:from_list([{ConfigName, Advertise}]).
+
+chat_permissions(<<"default">> = ConfigName) ->
+    chat_permissions(ConfigName, whapps_config:get(<<"conferences">>, [<<"chat-permissions">>, ConfigName], ?DEFAULT_CHAT_CONFIG));
 chat_permissions(ConfigName) ->
-    case whapps_config:get(<<"conferences">>, [<<"chat-permissions">>, ConfigName]) of
-        'undefined' -> 'undefined';
-        Chat -> wh_json:from_list([{ConfigName, Chat}])
-    end.
+    chat_permissions(ConfigName, whapps_config:get(<<"conferences">>, [<<"chat-permissions">>, ConfigName])).
+chat_permissions(_ConfigName, 'undefined') -> 'undefined';
+chat_permissions(ConfigName, Chat) -> wh_json:from_list([{ConfigName, Chat}]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -304,32 +326,57 @@ prepare_whapps_conference(Conference, Call, Srv) ->
                 ,fun(C) -> whapps_conference:set_application_name(<<"conferences">>, C) end
                ],
     C = whapps_conference:update(Routines, Conference),
+    _ = case whapps_conference:play_entry_prompt(C) of
+            'false' -> 'ok';
+            'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
+        end,
     search_for_conference(C, Call, Srv).
 
 -spec search_for_conference(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 search_for_conference(Conference, Call, Srv) ->
     case whapps_conference_command:search(Conference) of
-        {'error', _} ->
-            handle_search_error(Conference, Call, Srv);
-        {'ok', JObj} ->
-            handle_search_resp(JObj, Conference, Call, Srv)
+        {'error', _} -> handle_search_error(Conference, Call, Srv);
+        {'ok', JObj} -> handle_search_resp(JObj, Conference, Call, Srv)
     end.
 
 -spec handle_search_error(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 handle_search_error(Conference, Call, Srv) ->
-    lager:debug("participant switch nodename '~p'", [whapps_call:switch_nodename(Call)]),
-    [_, SwitchHostname] = binary:split(whapps_call:switch_nodename(Call), <<"@">>),
-    case negotiate_focus(SwitchHostname, Conference, Call) of
-        {'ok', _} ->
-            lager:debug("conference is not currently running but our update was accepted, starting on ~s", [SwitchHostname]),
+    wh_amqp_channel:remove_consumer_pid(),
+    Queue = whapps_conference:id(Conference),
+    _ = amqp_util:new_queue(Queue),
+    try amqp_util:basic_consume(Queue, [{'exclusive', 'true'}]) of
+        'ok' ->
+            lager:debug("initial participant creating conference on switch nodename '~p'", [whapps_call:switch_hostname(Call)]),
             conf_participant:set_conference(Conference, Srv),
-            conf_participant:join_local(Srv);
-        {'error', 'conflict'} ->
-            lager:debug("conference is not currently running but our update was in conflict, searching again"),
-            search_for_conference(Conference, Call, Srv);
-        {'error', _R} ->
-            lager:debug("conference is not currently running but our update failed: ~p", [_R]),
-            discovery_failed(Call, Srv)
+            conf_participant:join_local(Srv),
+            wait_for_creation(Conference)
+    catch
+        'exit':{{'shutdown', {'server_initiated_close', 403, <<"ACCESS_REFUSED", _/binary>>}}, _} ->
+            lager:debug("conference queue ~s is exclusive, waiting for conference creation by initial participant", [Queue]),
+            handle_resource_locked(Conference, Call, Srv)
+    end.
+
+-spec handle_resource_locked(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+handle_resource_locked(Conference, Call, Srv) ->
+    case wait_for_creation(Conference) of
+        {'ok', JObj} -> handle_search_resp(JObj, Conference, Call, Srv);
+        {'error', 'timeout'} -> handle_search_error(Conference, Call, Srv)
+    end.
+
+-spec wait_for_creation(whapps_conference:conference()) -> {'ok', wh_json:object()} | {'error', 'timeout'}.
+wait_for_creation(Conference) ->
+    lager:debug("checking if conference ~s has been created", [whapps_conference:id(Conference)]),
+    wait_for_creation(Conference, 8000).
+
+-spec wait_for_creation(whapps_conference:conference(), non_neg_integer()) -> {'ok', wh_json:object()} | {'error', 'timeout'}.
+wait_for_creation(_, After) when After =< 0 -> {'error', 'timeout'};
+wait_for_creation(Conference, After) ->
+    Start = erlang:now(),
+    case whapps_conference_command:search(Conference) of
+        {'ok', _}=Ok -> Ok;
+        {'error', _} ->
+            timer:sleep(1000),
+            wait_for_creation(Conference, whapps_util:decr_timeout(After, Start))
     end.
 
 -spec handle_search_resp(wh_json:object(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
@@ -460,14 +507,6 @@ validate_conference_pin(_, Conference, Call, Loop) ->
                     validate_conference_pin('undefined', Conference, Call, Loop + 1)
             end
     end.
-
--spec negotiate_focus(ne_binary(), whapps_conference:conference(), whapps_call:call()) ->
-                             {'ok', wh_json:object()} |
-                             {'error', term()}.
-negotiate_focus(SwitchHostname, Conference, Call) ->
-    AccountDb = whapps_call:account_db(Call),
-    JObj = whapps_conference:conference_doc(Conference),
-    couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"focus">>, SwitchHostname, JObj)).
 
 -spec create_conference(wh_json:object(), binary()) -> whapps_conference:conference().
 create_conference(JObj, Digits) ->

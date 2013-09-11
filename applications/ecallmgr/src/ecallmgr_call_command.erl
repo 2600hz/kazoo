@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012 VoIP INC
+%%% @copyright (C) 2010-2013 2600Hz INC
 %%% @doc
 %%% Execute call commands
 %%% @end
@@ -14,10 +14,10 @@
 -include("ecallmgr.hrl").
 
 -spec exec_cmd(atom(), ne_binary(), wh_json:object(), pid()) ->
-                            'ok' |
-                            'error' |
-                            ecallmgr_util:send_cmd_ret() |
-                            [ecallmgr_util:send_cmd_ret(),...].
+                      'ok' |
+                      'error' |
+                      ecallmgr_util:send_cmd_ret() |
+                      [ecallmgr_util:send_cmd_ret(),...].
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     App = wh_json:get_value(<<"Application-Name">>, JObj),
@@ -1116,7 +1116,11 @@ get_terminators(JObj) -> get_terminators(wh_json:get_ne_value(<<"Terminators">>,
 set_terminators(Node, UUID, Ts) ->
     case get_terminators(Ts) of
         'undefined' -> 'ok';
-        {K, V} -> ecallmgr_util:set(Node, UUID, [{K, V}])
+        {K, V} ->
+            case ecallmgr_util:set(Node, UUID, [{K, V}]) of
+                {'ok', _} -> 'ok';
+                E -> E
+            end
     end.
 
 -ifdef(TEST).

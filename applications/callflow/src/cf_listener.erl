@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Listener for route requests that can be fulfilled by callflows
 %%% @end
@@ -26,11 +26,9 @@
 
 -define(RESPONDERS, [{'cf_route_req', [{<<"dialplan">>, <<"route_req">>}]}
                      ,{'cf_route_win', [{<<"dialplan">>, <<"route_win">>}]}
-                     ,{'cf_route_resume', [{<<"callflow">>, <<"resume">>}]}
                     ]).
 -define(BINDINGS, [{'route', []}
                    ,{'self', []}
-                   ,{'callflow', []}
                   ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).

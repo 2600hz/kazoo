@@ -119,7 +119,7 @@
          ,fsm_call_id :: api_binary() % used when no call-ids are available
          ,endpoints = [] :: wh_json:objects()
          ,outbound_call_id :: api_binary()
-         ,max_connect_failures :: pos_integer()
+         ,max_connect_failures :: pos_integer() | 'infinity'
          ,connect_failures = 0 :: non_neg_integer()
          }).
 -type fsm_state() :: #state{}.
@@ -349,10 +349,14 @@ init([AcctId, AgentId, Supervisor, Props, IsThief]) ->
                           ,max_connect_failures=max_failures(AcctDb, AcctId)
                          }}.
 
+-spec max_failures(ne_binary(), ne_binary()) -> pos_integer() | 'infinity'.
 max_failures(AcctDb, AcctId) ->
     case couch_mgr:open_cache_doc(AcctDb, AcctId) of
         {'ok', AcctJObj} ->
-            wh_json:get_integer_value(<<"max_connect_failures">>, AcctJObj, ?MAX_FAILURES);
+            case wh_json:get_integer_value(<<"max_connect_failures">>, AcctJObj, ?MAX_FAILURES) of
+                N when N > 0 -> N;
+                _ -> 'infinity'
+            end;
         {'error', _} -> ?MAX_FAILURES
     end.
 
@@ -544,7 +548,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
         MyId ->
             lager:debug("trying to ring agent ~s to connect to caller in queue ~s", [AgentId, QueueId]),
 
-            case get_endpoints(OrigEPs, Srv, Call, AgentId) of
+            case get_endpoints(OrigEPs, Srv, Call, AgentId, QueueId) of
                 {'error', 'no_endpoints'} ->
                     lager:info("agent ~s has no endpoints assigned; logging agent out", [AgentId]),
                     acdc_agent:logout_agent(Srv),
@@ -563,6 +567,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
 
                     acdc_stats:agent_connecting(AcctId, AgentId, CallId, CIDName, CIDNum),
                     lager:info("trying to ring agent endpoints(~p)", [length(UpdatedEPs)]),
+                    lager:debug("notifications for the queue: ~p", [wh_json:get_value(<<"Notifications">>, JObj)]),
                     {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
                                                           ,member_call=Call
                                                           ,member_call_id=CallId
@@ -593,7 +598,7 @@ ready({'member_connect_req', _}, #state{max_connect_failures=Max
                                         ,acct_id=AcctId
                                         ,agent_id=AgentId
                                         ,agent_proc=Srv
-                                       }=State) when Fails >= Max ->
+                                       }=State) when is_integer(Max), Fails >= Max ->
     lager:info("agent has failed to connect ~b times, logging out", [Fails]),
     acdc_agent:logout_agent(Srv),
     acdc_stats:agent_logged_out(AcctId, AgentId),
@@ -834,6 +839,9 @@ ringing({'channel_answered', ACallId}, #state{agent_call_id=ACallId
 ringing({'channel_answered', MCallId}, #state{member_call_id=MCallId}=State) ->
     lager:debug("caller's channel answered"),
     {'next_state', 'ringing', State};
+ringing({'channel_answered', ACallId}=Evt, #state{agent_call_id=_NotACallId}=State) ->
+    lager:debug("recv answer for ~s, not ~s", [ACallId, _NotACallId]),
+    ringing(Evt, State#state{agent_call_id=ACallId});
 
 ringing({'sync_req', JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
@@ -1294,7 +1302,7 @@ handle_event('load_endpoints', StateName, #state{agent_id=AgentId
     %% Inform us of things with us as owner
     catch gproc:reg(?OWNER_UPDATE_REG(AcctId, AgentId)),
 
-    case get_endpoints([], Srv, Call, AgentId) of
+    case get_endpoints([], Srv, Call, AgentId, 'undefined') of
         {'error', 'no_endpoints'} -> {'next_state', StateName, State};
         {'ok', EPs} -> {'next_state', StateName, State#state{endpoints=EPs}};
         {'error', E} -> {'stop', E, State}
@@ -1477,7 +1485,7 @@ clear_call(#state{connect_failures=Fails
                   ,acct_id=AcctId
                   ,agent_id=AgentId
                   ,agent_proc=Srv
-                 }=State, 'failed') when (Max - Fails) =< 1 ->
+                 }=State, 'failed') when is_integer(Max), (Max - Fails) =< 1 ->
     acdc_agent:logout_agent(Srv),
     acdc_stats:agent_logged_out(AcctId, AgentId),
     lager:debug("agent has failed to connect ~b times, logging out", [Fails+1]),
@@ -1666,7 +1674,7 @@ maybe_remove_endpoint(EPId, EPs, AcctId, Srv) ->
             EPs1
     end.
 
-get_endpoints(OrigEPs, Srv, Call, AgentId) ->
+get_endpoints(OrigEPs, Srv, Call, AgentId, QueueId) ->
     case catch acdc_util:get_endpoints(Call, AgentId) of
         [] ->
             {'error', 'no_endpoints'};
@@ -1676,15 +1684,15 @@ get_endpoints(OrigEPs, Srv, Call, AgentId) ->
             {Add, Rm} = changed_endpoints(OrigEPs, EPs),
             _ = [monitor_endpoint(EP, AcctId, Srv) || EP <- Add],
             _ = [unmonitor_endpoint(EP, AcctId, Srv) || EP <- Rm],
-            
-            {'ok', EPs};
+
+            {'ok', [wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Queue-ID">>], QueueId, EP) || EP <- EPs]};
         {'EXIT', E} ->
             lager:debug("failed to load endpoints: ~p", [E]),
             acdc_agent:stop(Srv),
             {'error', E}
     end.
 
-return_to_state(Fails, MaxFails, _, _) when Fails >= MaxFails ->
+return_to_state(Fails, MaxFails, _, _) when is_integer(MaxFails), Fails >= MaxFails ->
     lager:debug("fails ~b max ~b going to pause", [Fails, MaxFails]),
     'paused';
 return_to_state(_Fails, _MaxFails, AcctId, AgentId) ->
@@ -1731,15 +1739,18 @@ maybe_notify(Ns, Key, State) ->
             'ok'
     end.
 
+-spec get_method(wh_json:object()) -> 'get' | 'post'.
 get_method(Ns) ->
     case wh_json:get_value(<<"method">>, Ns) of
         'undefined' -> 'get';
         M -> standardize_method(wh_util:to_lower_binary(M))
     end.
-standardize_method(<<"get">>) -> 'get';
+
+-spec standardize_method(ne_binary()) -> 'get' | 'post'.
 standardize_method(<<"post">>) -> 'post';
 standardize_method(_) -> 'get'.
 
+-spec notify(ne_binary(), 'get' | 'post', ne_binary(), fsm_state()) -> 'ok'.
 notify(Url, Method, Key, #state{acct_id=AcctId
                                 ,agent_id=AgentId
                                 ,member_call=MCall
@@ -1761,6 +1772,7 @@ notify(Url, Method, Key, #state{acct_id=AcctId
                ])),
     notify(Url, Method, Data).
 
+-spec notify(ne_binary(), 'get' | 'post', wh_json:object()) -> 'ok'.
 notify(Url, 'post', Data) ->
     notify(Url, [], 'post', wh_json:encode(Data)
            ,[{'content_type', "application/json"}]
@@ -1770,6 +1782,7 @@ notify(Url, 'get', Data) ->
            ,[], 'get', <<>>, []
           ).
 
+-spec notify(ne_binary(), [], 'get' | 'post', binary(), wh_proplist()) -> 'ok'.
 notify(Uri, Headers, Method, Body, Opts) ->
     case ibrowse:send_req(wh_util:to_list(Uri)
                           ,Headers
@@ -1782,19 +1795,21 @@ notify(Uri, Headers, Method, Body, Opts) ->
                          )
     of
         {'ok', _Status, _ResponseHeaders, _ResponseBody} ->
-            lager:debug("!s req to ~s: ~s", [Method, Uri, _Status]);
+            lager:debug("~s req to ~s: ~s", [Method, Uri, _Status]);
         {'error', {'url_parsing_failed',_}} ->
             lager:debug("failed to parse the URL ~s", [Uri]);
         {'error', _E} ->
             lager:debug("failed to send request to ~s: ~p", [Uri, _E])
     end.
 
+-spec cdr_url(wh_json:object()) -> api_binary().
 cdr_url(JObj) ->
     case wh_json:get_value([<<"Notifications">>, ?NOTIFY_CDR], JObj) of
         'undefined' -> wh_json:get_ne_value(<<"CDR-Url">>, JObj);
         Url -> Url
     end.
 
+-spec recording_url(wh_json:object()) -> api_binary().
 recording_url(JObj) ->
     case wh_json:get_value([<<"Notifications">>, ?NOTIFY_RECORDING], JObj) of
         'undefined' -> wh_json:get_ne_value(<<"Recording-URL">>, JObj);

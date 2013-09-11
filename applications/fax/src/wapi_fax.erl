@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -25,8 +25,8 @@
 
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
-        false -> {error, "Proplist failed validation for fax_req"};
-        true -> wh_api:build_message(Prop, ?FAX_REQ_HEADERS, ?OPTIONAL_FAX_REQ_HEADERS)
+        'false' -> {'error', "Proplist failed validation for fax_req"};
+        'true' -> wh_api:build_message(Prop, ?FAX_REQ_HEADERS, ?OPTIONAL_FAX_REQ_HEADERS)
     end;
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).

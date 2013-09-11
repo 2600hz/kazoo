@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -17,12 +17,13 @@
          ,proc_id/0, proc_id/1, proc_id/2
          ,queue_presence_update/2
          ,agent_presence_update/2
-         ,presence_update/3
+         ,presence_update/3, presence_update/4
          ,send_cdr/2
         ]).
 
 -include("acdc.hrl").
 
+-spec queue_presence_update(ne_binary(), ne_binary()) -> 'ok'.
 queue_presence_update(AcctId, QueueId) ->
     case wapi_acdc_queue:queue_size(AcctId, QueueId) of
         0 -> presence_update(AcctId, QueueId, ?PRESENCE_GREEN);
@@ -30,19 +31,24 @@ queue_presence_update(AcctId, QueueId) ->
         _N -> lager:debug("queue size for ~s(~s): ~p", [QueueId, AcctId, _N])
     end.
 
+-spec agent_presence_update(ne_binary(), ne_binary()) -> 'ok'.
 agent_presence_update(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' -> presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID);
         P when is_pid(P) -> presence_update(AcctId, AgentId, ?PRESENCE_GREEN)
     end.
 
+-spec presence_update(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec presence_update(ne_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 presence_update(AcctId, PresenceId, State) ->
+    presence_update(AcctId, PresenceId, State, 'undefined').
+presence_update(AcctId, PresenceId, State, CallId) ->
     AcctDb = wh_util:format_account_id(AcctId, 'encoded'),
     {'ok', AcctDoc} = couch_mgr:open_cache_doc(AcctDb, AcctId),
     To = <<PresenceId/binary, "@", (wh_json:get_value(<<"realm">>, AcctDoc))/binary>>,
 
     lager:debug("sending presence update '~s' to '~s'", [State, To]),
-    whapps_call_command:presence(State, To).
+    whapps_call_command:presence(State, To, CallId).
 
 -spec send_cdr(ne_binary(), wh_json:object()) -> 'ok'.
 send_cdr(Url, JObj) ->
@@ -76,7 +82,7 @@ agent_devices(AcctDb, AgentId) ->
     end.
 
 -spec get_endpoints(whapps_call:call(), ne_binary() | couch_mgr:get_results_return()) ->
-                                 wh_json:objects().
+                           wh_json:objects().
 get_endpoints(Call, ?NE_BINARY = AgentId) ->
     cf_user:get_endpoints(AgentId, [], Call).
 

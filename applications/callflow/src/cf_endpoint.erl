@@ -584,10 +584,12 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Route">>, wh_json:get_value(<<"route">>, SIPJObj)}
          ,{<<"Proxy-IP">>, wh_json:get_value(<<"proxy">>, SIPJObj)}
          ,{<<"Forward-IP">>, wh_json:get_value(<<"forward">>, SIPJObj)}
+         ,{<<"Callee-ID-Name">>, CalleeName}
          ,{<<"Callee-ID-Number">>, CalleeNum}
+         ,{<<"Outbound-Callee-ID-Name">>, CalleeName}
+         ,{<<"Outbound-Callee-ID-Number">>, CalleeNum}
          ,{<<"Outbound-Caller-ID-Number">>, OutgoingCIDNum}
          ,{<<"Outbound-Caller-ID-Name">>, IntCIDName}
-         ,{<<"Callee-ID-Name">>, CalleeName}
          ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Endpoint)}
          ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
          ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}

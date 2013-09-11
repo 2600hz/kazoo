@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Token auth module
 %%%
@@ -32,6 +32,8 @@
                     ,'permanent', 5000, 'worker', [?MODULE]
                    }).
 
+-define(LOOP_TIMEOUT, whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -57,11 +59,11 @@ stop() ->
 init(Parent) ->
     proc_lib:init_ack(Parent, {'ok', self()}),
     put('callid', ?LOG_SYSTEM_ID),
-    Expiry = whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_DAY),
 
-    ?MODULE:cleanup_loop(Expiry).
+    ?MODULE:cleanup_loop(?LOOP_TIMEOUT).
 
 -spec finish_request(cb_context:context()) -> any().
+finish_request(#cb_context{auth_doc = <<>>}) -> 'ok';
 finish_request(#cb_context{auth_doc='undefined'}) -> 'ok';
 finish_request(#cb_context{auth_doc=AuthDoc}=Context) ->
     cb_context:put_reqid(Context),
@@ -79,17 +81,17 @@ cleanup_loop(Expiry) ->
     after
         Timeout ->
             ?MODULE:clean_expired(Expiry),
-            ?MODULE:cleanup_loop(whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_DAY))
+            ?MODULE:cleanup_loop(?LOOP_TIMEOUT)
     end.
 
 clean_expired(Expiry) ->
     CreatedBefore = wh_util:current_tstamp() - Expiry, % gregorian seconds - Expiry time
+    ViewOpts = [{'startkey', 0}
+                ,{'endkey', CreatedBefore}
+                ,{'limit', 5000}
+               ],
 
-    case couch_mgr:get_results(?TOKEN_DB, <<"token_auth/listing_by_mtime">>, [{'startkey', 0}
-                                                                              ,{'endkey', CreatedBefore}
-                                                                              ,{'limit', 5000}
-                                                                             ])
-    of
+    case couch_mgr:get_results(?TOKEN_DB, <<"token_auth/listing_by_mtime">>, ViewOpts) of
         {'ok', []} -> lager:debug("no expired tokens found"), 'ok';
         {'ok', L} ->
             lager:debug("removing ~b expired tokens", [length(L)]),
@@ -130,9 +132,12 @@ check_auth_token(#cb_context{auth_token=AuthToken}=Context) ->
     case couch_mgr:open_cache_doc(?TOKEN_DB, AuthToken) of
         {'ok', JObj} ->
             lager:debug("token auth is valid, authenticating"),
-            {'true', Context#cb_context{auth_account_id=wh_json:get_ne_value(<<"account_id">>, JObj)
-                                        ,auth_doc=wh_json:set_value(<<"modified">>, wh_util:current_tstamp(), JObj)
-                                       }};
+            {'true', cb_context:set_auth_doc(
+                       cb_context:set_auth_account_id(Context
+                                                      ,wh_json:get_ne_value(<<"account_id">>, JObj))
+                       ,wh_json:set_value(<<"modified">>, wh_util:current_tstamp(), JObj)
+                      )
+            };
         {'error', R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),
             'false'

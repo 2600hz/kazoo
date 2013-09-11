@@ -65,7 +65,7 @@
 
 -record(state, {node :: atom()
                 ,options = [] :: wh_proplist()
-                ,interface :: interface()
+                ,interface = #interface{} :: interface()
                }).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
