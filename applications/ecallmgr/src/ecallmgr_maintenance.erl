@@ -71,12 +71,12 @@ list_fs_nodes() -> ecallmgr_fs_nodes:connected().
 -spec node_summary() -> 'no_return'.
 node_summary() ->
     ecallmgr_fs_nodes:summary(),
-    'no_return'. 
+    'no_return'.
 
 -spec node_details() -> 'no_return'.
 node_details() ->
     ecallmgr_fs_nodes:details(),
-    'no_return'. 
+    'no_return'.
 
 -spec node_details(text()) -> 'no_return'.
 node_details(NodeName) ->
@@ -90,11 +90,13 @@ authz_summary() ->
 
 -spec channel_summary() -> 'no_return'.
 channel_summary() ->
-    ecallmgr_fs_channels:summary().
+    ecallmgr_fs_channels:summary(),
+    'no_return'.
 
 -spec channel_summary(text()) -> 'no_return'.
 channel_summary(Node) ->
-    ecallmgr_fs_channels:summary(Node).
+    ecallmgr_fs_channels:summary(Node),
+    'no_return'.
 
 -spec channel_details() -> 'no_return'.
 channel_details() ->
@@ -124,11 +126,13 @@ sync_channels(Node) ->
 
 -spec conference_summary() -> 'no_return'.
 conference_summary() ->
-    ecallmgr_fs_conferences:summary().
+    ecallmgr_fs_conferences:summary(),
+    'no_return'.
 
 -spec conference_summary(text()) -> 'no_return'.
 conference_summary(Node) ->
-    ecallmgr_fs_conferences:summary(Node).
+    ecallmgr_fs_conferences:summary(Node),
+    'no_return'.
 
 -spec conference_details() -> 'no_return'.
 conference_details() ->
@@ -199,7 +203,7 @@ registrar_details(Username, Realm) ->
     'no_return'.
 
 -spec flush_authn() -> 'ok'.
-flush_authn() ->                         
+flush_authn() ->
     wh_cache:flush_local(?ECALLMGR_AUTH_CACHE).
 
 -spec flush_util() -> 'ok'.
