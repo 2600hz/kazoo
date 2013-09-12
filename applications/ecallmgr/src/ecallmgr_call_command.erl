@@ -553,6 +553,9 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %% Call pickup command helpers
 %% @end
 %%--------------------------------------------------------------------
+-spec call_pickup(atom(), ne_binary(), wh_json:object()) ->
+                         {ne_binary(), ne_binary()} |
+                         {'error', ne_binary()}.
 call_pickup(Node, UUID, JObj) ->
     Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
 
@@ -693,15 +696,17 @@ maybe_add_conference_flag({K, V}, Acc) ->
         _ -> Acc
     end.
 
+-spec wait_for_conference(ne_binary()) -> {'ok', atom()}.
 wait_for_conference(ConfName) ->
     case ecallmgr_fs_conferences:node(ConfName) of
         {'ok', _N}=OK -> OK;
         {'error', 'not_found'} ->
             timer:sleep(100),
-            wait_for_conference(ConfName);
-        {'error', 'multiple_conferences', Ns} ->
-            lager:debug("conference on multiple nodes: ~p", [Ns]),
-            {'error', 'multiple_conferences'}
+            wait_for_conference(ConfName)
+        %% waiting for big conferences for this
+        %% {'error', 'multiple_conferences', Ns} ->
+        %%     lager:debug("conference on multiple nodes: ~p", [Ns]),
+        %%     {'error', 'multiple_conferences'}
     end.
 
 %%--------------------------------------------------------------------
