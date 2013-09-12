@@ -927,7 +927,7 @@ publish_command(CtrlQ, Prop, DPApp) ->
                     {'error', 'invalid_dialplan_object'};
                 {_, 1} ->
                     {'ok', Payload} = ?MODULE:BuildMsgFun(wh_api:set_missing_values(Prop, ?DEFAULT_VALUES)),
-                    amqp_util:callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE)                
+                    amqp_util:callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE)
             end
     catch
         _:R ->
