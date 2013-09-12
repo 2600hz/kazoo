@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -12,7 +12,23 @@
 -include("ecallmgr.hrl").
 
 -export([start_link/2]).
+
+-export([node_srv/1
+         ,authn_srv/1
+         ,route_srv/1
+         ,channel_srv/1
+         ,config_srv/1
+         ,resource_srv/1
+         ,notify_srv/1
+         ,authz_srv/1
+         ,cdr_srv/1
+         ,conference_srv/1
+         ,event_stream_sup/1
+        ]).
+
 -export([init/1]).
+
+-include("ecallmgr.hrl").
 
 -define(CHILD(Name, Mod, Args), fun('ecallmgr_fs_event_stream_sup' = N, M, A) ->
                                         {N, {M, 'start_link', A}, 'permanent', 'infinity', 'supervisor', [N]};
@@ -37,6 +53,39 @@
 %%--------------------------------------------------------------------
 -spec start_link(atom(), wh_proplist()) -> startlink_ret().
 start_link(Node, Options) -> supervisor:start_link({'local', Node}, ?MODULE, [Node, Options]).
+
+node_srv(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "edon_").
+
+authn_srv(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "nhtua_").
+
+route_srv(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "etuor_").
+
+channel_srv(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "lennahc_").
+
+config_srv(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "gifnoc_").
+
+resource_srv(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "ecruoser_").
+
+notify_srv(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "yfiton_").
+
+authz_srv(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "zhtua_").
+
+cdr_srv(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "rdc_").
+
+conference_srv(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "ecnerefnoc_").
+
+event_stream_sup(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "pus_maerts_tneve_").
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -70,3 +119,11 @@ init([Node, Options]) ->
                ],
 
     {'ok', {SupFlags, Children}}.
+
+-spec srv([{atom(), pid(), _, _},...] | [], list()) -> api_pid().
+srv([], _) -> 'undefined';
+srv([{Name, Pid, _, _} | Children], Suffix) ->
+    case lists:prefix(Suffix, lists:reverse(wh_util:to_list(Name))) of
+        'true' -> Pid;
+        'false' -> srv(Children, Suffix)
+    end.
