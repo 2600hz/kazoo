@@ -346,13 +346,16 @@
                                                ,<<"Other-Leg">>
                                                ,<<"Continue-On-Fail">>, <<"Continue-On-Cancel">>
                                                ,<<"Park-After-Pickup">> %% Will park either leg after cancel
+                                               ,<<"Move-Channel-If-Necessary">>
                                           ]).
 -define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}
                                  ,{<<"Application-Name">>, <<"call_pickup">>}
                                  ,?INSERT_AT_TUPLE
                                 ]).
--define(CALL_PICKUP_REQ_TYPES, [{<<"Park-After-Pickup">>, fun wh_util:is_boolean/1}]).
+-define(CALL_PICKUP_REQ_TYPES, [{<<"Park-After-Pickup">>, fun wh_util:is_boolean/1}
+                                ,{<<"Move-Channel-If-Necessary">>, fun wh_util:is_boolean/1}
+                               ]).
 
 %% Play Request
 -define(PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
