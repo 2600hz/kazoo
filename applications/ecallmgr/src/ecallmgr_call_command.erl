@@ -431,25 +431,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
 get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
     case wapi_dialplan:call_pickup_v(JObj) of
         'false' -> {'error', <<"intercept failed to execute as JObj did not validate">>};
-        'true' ->
-            Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
-
-            case ecallmgr_fs_channel:fetch(Target) of
-                {'ok', Channel} ->
-                    OtherNode = wh_json:get_binary_value(<<"node">>, Channel),
-                    case OtherNode =:= wh_util:to_binary(Node) of
-                        'true' ->
-                            lager:debug("target ~s is on same node(~s) as us", [Target, Node]),
-                            get_call_pickup_app(Node, UUID, JObj, Target);
-                        'false' ->
-                            lager:debug("target ~s is on ~s, not ~s...moving", [Target, OtherNode, Node]),
-                            'true' = ecallmgr_channel_move:move(Target, OtherNode, Node),
-                            get_call_pickup_app(Node, UUID, JObj, Target)
-                    end;
-                {'error', 'not_found'} ->
-                    lager:debug("failed to find target callid ~s", [Target]),
-                    {'error', <<"failed to find target callid ", Target/binary>>}
-            end
+        'true' -> call_pickup(Node, UUID, JObj)
     end;
 
 get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
@@ -571,6 +553,34 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %% Call pickup command helpers
 %% @end
 %%--------------------------------------------------------------------
+call_pickup(Node, UUID, JObj) ->
+    Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
+
+    case ecallmgr_fs_channel:fetch(Target) of
+        {'ok', Channel} ->
+            OtherNode = wh_json:get_binary_value(<<"node">>, Channel),
+            case OtherNode =:= wh_util:to_binary(Node) of
+                'true' ->
+                    lager:debug("target ~s is on same node(~s) as us", [Target, Node]),
+                    get_call_pickup_app(Node, UUID, JObj, Target);
+                'false' ->
+                    call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode)
+            end;
+        {'error', 'not_found'} ->
+            lager:debug("failed to find target callid ~s", [Target]),
+            {'error', <<"failed to find target callid ", Target/binary>>}
+    end.
+call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
+    case wh_json:is_true(<<"Move-Channel-If-Necessary">>, JObj, 'false') of
+        'true' ->
+            lager:debug("target ~s is on ~s, not ~s...moving", [Target, OtherNode, Node]),
+            'true' = ecallmgr_channel_move:move(Target, OtherNode, Node),
+            get_call_pickup_app(Node, UUID, JObj, Target);
+        'false' ->
+            lager:debug("target ~s is on ~s, not ~s, need to redirect", [Target, OtherNode, Node]),
+            {'error', <<"target is on different media server: ", OtherNode/binary>>}
+    end.
+
 -spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.
 get_call_pickup_app(Node, UUID, JObj, Target) ->
