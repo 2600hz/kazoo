@@ -559,26 +559,48 @@ print_details([{NodeName, Node}|Nodes],Count) ->
                      io:format("    ~-15w ~s~n", [Pid, Name])
                  end
                  || {Name, Pid, _, _} <- supervisor:which_children(NodeSupPid)
-                ]
+                ],
+                print_node_details(NodeName)
         end,
     print_details(Nodes, Count + 1).
+
+print_node_details(Node) ->
+    Capabilities = ecallmgr_fs_node:get_capabilities(Node),
+    io:format("Capabilities:~n", []),
+    wh_json:foreach(fun print_capability/1, Capabilities).
+
+print_capability({Capability, Properties}) ->
+    IsLoaded = case wh_json:is_true(<<"is_loaded">>, Properties) of
+                   'true' -> <<>>;
+                   'false' -> <<" not">>
+               end,
+    io:format("  ~-12s provided by ~s, is~s available~n", [Capability
+                                                           ,wh_json:get_value(<<"module">>, Properties)
+                                                           ,IsLoaded
+                                                          ]).
 
 print_summary([]) ->
     io:format("No nodes found!~n", []);
 print_summary(Nodes) ->
-    io:format("+----------------------------------------------------+-----------+----------------------------------+----------------------+~n"),
-    io:format("| Node Name                                          | Connected | Cookie                           | Version              |~n"),
-    io:format("+====================================================+===========+==================================+======================+~n"),
+    io:format("+----------------------------------------------------+-----------+----------------------------------+----------------------+--------------------~n"),
+    io:format("| Node Name                                          | Connected | Cookie                           | Version              | Capabilities~n"),
+    io:format("+====================================================+===========+==================================+======================+====================~n"),
     print_summary(Nodes, 0).
 
 print_summary([], Count) ->
-    io:format("+----------------------------------------------------+-----------+----------------------------------+----------------------+~n"),
+    io:format("+----------------------------------------------------+-----------+----------------------------------+----------------------+--------------------~n"),
     io:format("Found ~p nodes~n", [Count]);
 print_summary([{_, Node}|Nodes], Count) ->
-    io:format("| ~-50s | ~-9s | ~-32s | ~-20s |~n"
+    Capabilities = ecallmgr_fs_node:get_capabilities(Node#node.node),
+    Loaded = [Capability
+              || {Capability, Properties} <- wh_json:to_proplist(Capabilities),
+                 wh_json:is_true(<<"is_loaded">>, Properties)
+             ],
+    io:format("| ~-50s | ~-9s | ~-32s | ~-20s | ~s~n"
               ,[Node#node.node
                 ,Node#node.connected
                 ,Node#node.cookie
                 ,Node#node.client_version
+                ,wh_util:join_binary(Loaded, <<", ">>)
                ]),
     print_summary(Nodes, Count + 1).
