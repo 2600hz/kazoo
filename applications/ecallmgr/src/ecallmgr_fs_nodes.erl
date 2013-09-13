@@ -28,6 +28,13 @@
 -export([details/0
          ,details/1
         ]).
+
+-export([has_capability/2
+         ,set_capability/3
+         ,add_capability/2
+         ,get_capability/2, get_capabilities/1
+        ]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -48,6 +55,16 @@
                ,options = [] :: wh_proplist()
               }).
 -type fs_node() :: #node{}.
+
+-record(capability, {node :: atom()
+                     ,name :: ne_binary()
+                     ,module :: ne_binary()
+                     ,is_loaded = 'false' :: boolean()
+                    }).
+-type capability() :: #capability{}.
+-type capabilities() :: [capability(),...] | [].
+
+-define(CAPABILITY_TBL, 'ecallmgr_fs_node_capabilities').
 
 -record(state, {nodes = dict:new() :: dict() %fs_nodes()
                 ,self = self() :: pid()
@@ -140,6 +157,80 @@ details(NodeName) ->
             details([{'undefined', Node}])
     end.
 
+-spec has_capability(atom(), ne_binary()) -> boolean().
+has_capability(Node, Capability) ->
+    MatchSpec = [{#capability{node='$1'
+                              ,name='$2'
+                              ,is_loaded='$3'
+                              ,_='_'
+                             }
+                  ,[{'=:=', '$1', Node}
+                    ,{'=:=', '$2', Capability}
+                   ]
+                  ,['$3']
+                 }],
+    case ets:select(?CAPABILITY_TBL, MatchSpec) of
+        [] -> 'false';
+        [Loaded] -> Loaded
+    end.
+
+get_capability(Node, Capability) ->
+    get_capability(Node, Capability, 'json').
+get_capability(Node, Capability, Format) ->
+    MatchSpec = [{#capability{node='$1'
+                              ,name='$2'
+                              ,_='_'
+                             }
+                  ,[{'=:=', '$1', Node}
+                    ,{'=:=', '$2', Capability}
+                   ]
+                  ,['$_']
+                 }],
+    format_capability(Format, ets:select(?CAPABILITY_TBL, MatchSpec)).
+
+-spec get_capabilities(atom()) -> wh_json:objects() | capabilities().
+-spec get_capabilities(atom(), 'json' | 'record') -> wh_json:objects() | capabilities().
+get_capabilities(Node) ->
+    get_capabilities(Node, 'json').
+
+get_capabilities(Node, Format) ->
+    MatchSpec = [{#capability{node='$1'
+                              ,_='_'
+                             }
+                  ,[{'=:=', '$1', Node}]
+                  ,['$_']
+                 }],
+    format_capabilities(Format, ets:select(?CAPABILITY_TBL, MatchSpec)).
+
+-spec format_capabilities('json' | 'record', capabilities()) -> capabilities() | wh_json:objects().
+format_capabilities('record', Results) -> Results;
+format_capabilities('json', Results) ->
+    [capability_to_json(Result) || Result <- Results].
+
+-spec format_capability('json' | 'record', [capability()]) -> api_object() | capability().
+format_capability('record', [Capability]) -> Capability;
+format_capability('json', [Capability]) -> capability_to_json(Capability);
+format_capability(_, []) -> 'undefined'.
+
+-spec set_capability(atom(), ne_binary(), boolean()) -> 'ok'.
+set_capability(Node, Capability, Toggle) when is_boolean(Toggle) ->
+    gen_listener:call(?MODULE, {'set_capability', Node, Capability, Toggle}).
+
+-spec add_capability(atom(), wh_json:object()) -> 'ok'.
+add_capability(Node, Capability) ->
+    gen_listener:call(?MODULE, {'add_capability', Node, Capability}).
+
+capability_to_json(#capability{node=Node
+                               ,name=Capability
+                               ,module=Module
+                               ,is_loaded=IsLoaded
+                              }) ->
+    wh_json:from_list([{<<"node">>, wh_util:to_binary(Node)}
+                       ,{<<"capability">>, Capability}
+                       ,{<<"module">>, Module}
+                       ,{<<"is_loaded">>, IsLoaded}
+                      ]).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -161,6 +252,7 @@ init([]) ->
     lager:debug("starting new fs handler"),
     _ = spawn_link(fun() -> start_preconfigured_servers() end),
     _ = ets:new('sip_subscriptions', ['set', 'public', 'named_table', {'keypos', #sip_subscription.key}]),
+    _ = ets:new(?CAPABILITY_TBL, ['bag', 'protected', 'named_table', {'keypos', #capability.node}]),
     _ = erlang:send_after(?EXPIRE_CHECK, self(), 'expire_sip_subscriptions'),
     {'ok', #state{}}.
 
@@ -211,6 +303,16 @@ handle_call({'node', Node}, _From, #state{nodes=Nodes}=State) ->
         'error' -> {'reply', {'error', 'not_found'}, State};
         {'ok', #node{}=N} -> {'reply', {'ok', N}, State}
     end;
+handle_call({'add_capability', Node, Capability}, _, State) ->
+    ets:insert(?CAPABILITY_TBL, #capability{node=Node
+                                            ,name=wh_json:get_value(<<"capability">>, Capability)
+                                            ,module=wh_json:get_value(<<"module">>, Capability)
+                                            ,is_loaded=wh_json:is_true(<<"is_loaded">>, Capability)
+                                           }),
+    {'reply', 'ok', State};
+handle_call({'set_capability', Node, Capability, Toggle}, _, State) ->
+    {'reply', 'ok', State};
+
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -565,17 +667,17 @@ print_details([{NodeName, Node}|Nodes],Count) ->
     print_details(Nodes, Count + 1).
 
 print_node_details(Node) ->
-    Capabilities = ecallmgr_fs_node:get_capabilities(Node),
+    Capabilities = get_capabilities(Node),
     io:format("Capabilities:~n", []),
-    wh_json:foreach(fun print_capability/1, Capabilities).
+    lists:foreach(fun print_capability/1, Capabilities).
 
-print_capability({Capability, Properties}) ->
-    IsLoaded = case wh_json:is_true(<<"is_loaded">>, Properties) of
+print_capability(Capability) ->
+    IsLoaded = case wh_json:is_true(<<"is_loaded">>, Capability) of
                    'true' -> <<>>;
                    'false' -> <<" not">>
                end,
-    io:format("  ~-12s provided by ~s, is~s available~n", [Capability
-                                                           ,wh_json:get_value(<<"module">>, Properties)
+    io:format("  ~-12s provided by ~s, is~s available~n", [wh_json:get_value(<<"capability">>, Capability)
+                                                           ,wh_json:get_value(<<"module">>, Capability)
                                                            ,IsLoaded
                                                           ]).
 
@@ -591,10 +693,10 @@ print_summary([], Count) ->
     io:format("+----------------------------------------------------+-----------+----------------------------------+----------------------+--------------------~n"),
     io:format("Found ~p nodes~n", [Count]);
 print_summary([{_, Node}|Nodes], Count) ->
-    Capabilities = ecallmgr_fs_node:get_capabilities(Node#node.node),
-    Loaded = [Capability
-              || {Capability, Properties} <- wh_json:to_proplist(Capabilities),
-                 wh_json:is_true(<<"is_loaded">>, Properties)
+    Capabilities = ecallmgr_fs_nodes:get_capabilities(Node#node.node),
+    Loaded = [wh_json:get_value(<<"capability">>, Capability)
+              || Capability <- Capabilities,
+                 wh_json:is_true(<<"is_loaded">>, Capability)
              ],
     io:format("| ~-50s | ~-9s | ~-32s | ~-20s | ~s~n"
               ,[Node#node.node
