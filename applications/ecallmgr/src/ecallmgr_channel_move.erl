@@ -17,6 +17,10 @@ move(UUID, ONode, NNode) ->
     OriginalNode = wh_util:to_atom(ONode),
     NewNode = wh_util:to_atom(NNode),
 
+    'true' = ecallmgr_fs_node:has_capability(OriginalNode, <<"channel_move">>) andalso
+        'true' = ecallmgr_fs_node:has_capability(NewNode, <<"channel_move">>),
+    lager:debug("both servers support channel_move, continuing"),
+
     ecallmgr_fs_channel:set_node(NewNode, UUID),
     ecallmgr_call_events:shutdown(OriginalNode, UUID),
     ecallmgr_call_control:update_node(NewNode, UUID),
