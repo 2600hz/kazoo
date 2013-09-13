@@ -21,6 +21,7 @@
 -export([has_capability/2
          ,set_capability/3
          ,add_capability/3
+         ,get_capabilities/1
         ]).
 -export([sip_url/1]).
 -export([sip_external_ip/1]).
@@ -231,6 +232,10 @@ fs_node(Srv) ->
 has_capability(Srv, Capability) ->
     gen_listener:call(find_srv(Srv), {'has_capability', Capability}).
 
+-spec get_capabilities(pid() | atom()) -> wh_json:object().
+get_capabilities(Srv) ->
+    gen_listener:call(find_srv(Srv), 'get_capabilities').
+
 -spec set_capability(pid() | atom(), ne_binary(), boolean()) -> 'ok'.
 set_capability(Srv, Capability, Toggle) when is_boolean(Toggle) ->
     gen_listener:call(find_srv(Srv), {'set_capability', Capability, Toggle}).
@@ -295,6 +300,8 @@ handle_call({'set_capability', Capability, Toggle}, _From, #state{capabilities=C
         _Properties ->
             {'reply', 'ok', State#state{capabilities=wh_json:set_value([Capability, <<"is_loaded">>], Toggle, Cs)}}
     end;
+handle_call('get_capabilities', _From, #state{capabilities=Cs}=State) ->
+    {'reply', Cs, State};
 handle_call({'add_capability', Capability, Properties}, _From, #state{capabilities=Cs
                                                                       ,node=Node
                                                                      }=State) ->
