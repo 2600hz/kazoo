@@ -18,11 +18,6 @@
          ,sync_interface/1
          ,sync_capabilities/1
         ]).
--export([has_capability/2
-         ,set_capability/3
-         ,add_capability/3
-         ,get_capabilities/1
-        ]).
 -export([sip_url/1]).
 -export([sip_external_ip/1]).
 -export([fs_node/1]).
@@ -70,57 +65,55 @@
                    }).
 -type interface() :: #interface{}.
 
--define(DEFAULT_CAPABILITIES, wh_json:from_list(
-                                [{<<"conference">>, wh_json:from_list(
-                                                      [{<<"module">>, <<"mod_conference">>}
-                                                       ,{<<"is_loaded">>, 'false'}
-                                                      ])}
-                                 ,{<<"channel_move">>, wh_json:from_list(
-                                                         [{<<"module">>, <<"mod_channel_move">>}
-                                                          ,{<<"is_loaded">>, 'false'}
-                                                         ])}
-                                 ,{<<"http_cache">>, wh_json:from_list(
-                                                       [{<<"module">>, <<"mod_http_cache">>}
-                                                        ,{<<"is_loaded">>, 'false'}
-                                                       ])}
-                                 ,{<<"dialplan">>, wh_json:from_list(
-                                                     [{<<"module">>, <<"mod_dptools">>}
-                                                      ,{<<"is_loaded">>, 'false'}
-                                                     ])}
-                                 ,{<<"sip">>, wh_json:from_list(
-                                                [{<<"module">>, <<"mod_sofia">>}
-                                                 ,{<<"is_loaded">>, 'false'}
-                                                ])}
-                                 ,{<<"fax">>, wh_json:from_list(
-                                                [{<<"module">>, <<"mod_spandsp">>}
-                                                 ,{<<"is_loaded">>, 'false'}
-                                                ])}
-                                 ,{<<"tts">>, wh_json:from_list(
-                                                [{<<"module">>, <<"mod_flite">>}
-                                                 ,{<<"is_loaded">>, 'false'}
-                                                ])}
-                                 ,{<<"freetdm">>, wh_json:from_list(
-                                                    [{<<"module">>, <<"mod_freetdm">>}
-                                                     ,{<<"is_loaded">>, 'false'}
-                                                    ])}
-                                 ,{<<"skype">>, wh_json:from_list(
-                                                  [{<<"module">>, <<"mod_skypopen">>}
-                                                   ,{<<"is_loaded">>, 'false'}
-                                                  ])}
-                                 ,{<<"xmpp">>, wh_json:from_list(
-                                                 [{<<"module">>, <<"mod_dingaling">>}
+-define(DEFAULT_CAPABILITIES, [wh_json:from_list([{<<"module">>, <<"mod_conference">>}
                                                   ,{<<"is_loaded">>, 'false'}
-                                                 ])}
-                                 ,{<<"skinny">>, wh_json:from_list(
-                                                   [{<<"module">>, <<"mod_skinny">>}
-                                                    ,{<<"is_loaded">>, 'false'}
-                                                   ])}
-                                ])).
+                                                  ,{<<"capability">>, <<"conference">>}
+                                                 ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_channel_move">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"channel_move">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_http_cache">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"http_cache">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_dptools">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"dialplan">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_sofia">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"sip">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_spandsp">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"fax">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_flite">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"tts">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_freetdm">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"freetdm">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_skypopen">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"skype">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_dingaling">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"xmpp">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_skinny">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"skinny">>}
+                                                  ])
+                              ]).
 
 -record(state, {node :: atom()
                 ,options = []                         :: wh_proplist()
                 ,interface = #interface{}             :: interface()
-                ,capabilities = ?DEFAULT_CAPABILITIES :: wh_json:object()
                }).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
@@ -228,22 +221,6 @@ fs_node(Srv) ->
         Else -> Else
     end.
 
--spec has_capability(pid() | atom(), ne_binary()) -> boolean().
-has_capability(Srv, Capability) ->
-    gen_listener:call(find_srv(Srv), {'has_capability', Capability}).
-
--spec get_capabilities(pid() | atom()) -> wh_json:object().
-get_capabilities(Srv) ->
-    gen_listener:call(find_srv(Srv), 'get_capabilities').
-
--spec set_capability(pid() | atom(), ne_binary(), boolean()) -> 'ok'.
-set_capability(Srv, Capability, Toggle) when is_boolean(Toggle) ->
-    gen_listener:call(find_srv(Srv), {'set_capability', Capability, Toggle}).
-
--spec add_capability(pid() | atom(), ne_binary(), wh_json:object()) -> 'ok'.
-add_capability(Srv, Capability, Properties) ->
-    gen_listener:call(find_srv(Srv), {'add_capability', Capability, Properties}).
-
 find_srv(Pid) when is_pid(Pid) -> Pid;
 find_srv(Node) when is_atom(Node) ->
     ecallmgr_fs_node_sup:node_srv(ecallmgr_fs_sup:find_node(Node)).
@@ -271,6 +248,7 @@ init([Node, Options]) ->
     sync_channels(self()),
     _Pid = run_start_cmds(Node),
     lager:debug("running start commands in ~p", [_Pid]),
+
     {'ok', #state{node=Node, options=Options}}.
 
 %%--------------------------------------------------------------------
@@ -292,28 +270,7 @@ handle_call('sip_external_ip', _, #state{interface=Interface}=State) ->
 handle_call('sip_url', _, #state{interface=Interface}=State) ->
     {'reply', Interface#interface.url, State};
 handle_call('node', _, #state{node=Node}=State) ->
-    {'reply', Node, State};
-handle_call({'set_capability', Capability, Toggle}, _From, #state{capabilities=Cs}=State) ->
-    case wh_json:get_value(Capability, Cs) of
-        'undefined' ->
-            {'reply', {'error', 'not_found'}, State};
-        _Properties ->
-            {'reply', 'ok', State#state{capabilities=wh_json:set_value([Capability, <<"is_loaded">>], Toggle, Cs)}}
-    end;
-handle_call('get_capabilities', _From, #state{capabilities=Cs}=State) ->
-    {'reply', Cs, State};
-handle_call({'add_capability', Capability, Properties}, _From, #state{capabilities=Cs
-                                                                      ,node=Node
-                                                                     }=State) ->
-    Cs1 = maybe_add_capability(Node, Capability, Properties, Cs),
-    case wh_json:get_value([Capability, <<"is_loaded">>], Cs1) of
-        'undefined' ->
-            {'reply', {'error', 'failed'}, State#state{capabilities=Cs1}};
-        IsLoaded ->
-            {'reply', {'ok', IsLoaded}, State#state{capabilities=Cs1}}
-    end;
-handle_call({'has_capability', Capability}, _, #state{capabilities=Cs}=State) ->
-    {'reply', wh_json:is_true([Capability, <<"is_loaded">>], Cs), State}.
+    {'reply', Node, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -329,9 +286,8 @@ handle_cast('sync_interface', #state{node=Node}=State) ->
     Interface = interface_from_props(ecallmgr_util:get_interface_properties(Node)),
     {'noreply', State#state{interface=Interface}};
 handle_cast('sync_capabilities', #state{node=Node}=State) ->
-    PossibleCapabilities = ecallmgr_config:get(<<"capabilities">>, ?DEFAULT_CAPABILITIES),
-    Capabilities = probe_capabilities(Node, PossibleCapabilities),
-    {'noreply', State#state{capabilities=Capabilities}};
+    _ = spawn(fun() -> probe_capabilities(Node, ecallmgr_config:get(<<"capabilities">>, ?DEFAULT_CAPABILITIES)) end),
+    {'noreply', State};
 handle_cast('sync_channels', #state{node=Node}=State) ->
     Channels = [wh_json:get_value(<<"uuid">>, J)
                 || J <- channels_as_json(Node)
@@ -559,25 +515,25 @@ split_codes(Key, Props) ->
             ,not wh_util:is_empty(Codec)
     ].
 
--spec probe_capabilities(atom(), wh_json:object()) -> wh_json:object().
+-spec probe_capabilities(atom(), wh_json:objects()) -> 'ok'.
 probe_capabilities(Node, PossibleCapabilities) ->
-    wh_json:foldl(fun(Feature, Args, Acc) ->
-                          maybe_add_capability(Node, Feature, Args, Acc)
-                  end, [], PossibleCapabilities).
+    lists:foreach(fun(Capability) ->
+                            maybe_add_capability(Node, Capability)
+                    end, PossibleCapabilities).
 
--spec maybe_add_capability(atom(), ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
-maybe_add_capability(Node, Feature, Args, Acc) ->
-    Module = wh_json:get_value(<<"module">>, Args),
+-spec maybe_add_capability(atom(), wh_json:object()) -> any().
+maybe_add_capability(Node, Capability) ->
+    Module = wh_json:get_value(<<"module">>, Capability),
     lager:debug("probing ~s about ~s", [Node, Module]),
     case freeswitch:api(Node, 'module_exists', wh_util:to_binary(Module)) of
         {'ok', Maybe} ->
             case wh_util:is_true(Maybe) of
                 'true' ->
                     lager:debug("adding capability of ~s", [Module]),
-                    wh_json:set_value(Feature, wh_json:set_value(<<"is_loaded">>, 'true', Args), Acc);
-                'false' -> Acc
+                    ecallmgr_fs_nodes:add_capability(Node, wh_json:set_value(<<"is_loaded">>, 'true', Capability));
+                'false' ->
+                    ecallmgr_fs_nodes:add_capability(Node, wh_json:set_value(<<"is_loaded">>, 'false', Capability))
             end;
         {'error', _E} ->
-            lager:debug("failed to probe node ~s: ~p", [Node, _E]),
-            Acc
+            lager:debug("failed to probe node ~s: ~p", [Node, _E])
     end.
