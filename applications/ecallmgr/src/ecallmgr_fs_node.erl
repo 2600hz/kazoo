@@ -14,10 +14,13 @@
 -export([start_link/1, start_link/2]).
 -export([handle_reload_acls/2]).
 -export([handle_reload_gtws/2]).
--export([sync_channels/1]).
--export([sync_interface/1]).
+-export([sync_channels/1
+         ,sync_interface/1
+         ,sync_capabilities/1
+        ]).
 -export([has_capability/2
          ,set_capability/3
+         ,add_capability/3
         ]).
 -export([sip_url/1]).
 -export([sip_external_ip/1]).
@@ -95,6 +98,22 @@
                                                 [{<<"module">>, <<"mod_flite">>}
                                                  ,{<<"is_loaded">>, 'false'}
                                                 ])}
+                                 ,{<<"freetdm">>, wh_json:from_list(
+                                                    [{<<"module">>, <<"mod_freetdm">>}
+                                                     ,{<<"is_loaded">>, 'false'}
+                                                    ])}
+                                 ,{<<"skype">>, wh_json:from_list(
+                                                  [{<<"module">>, <<"mod_skypopen">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                  ])}
+                                 ,{<<"xmpp">>, wh_json:from_list(
+                                                 [{<<"module">>, <<"mod_dingaling">>}
+                                                  ,{<<"is_loaded">>, 'false'}
+                                                 ])}
+                                 ,{<<"skinny">>, wh_json:from_list(
+                                                   [{<<"module">>, <<"mod_skinny">>}
+                                                    ,{<<"is_loaded">>, 'false'}
+                                                   ])}
                                 ])).
 
 -record(state, {node :: atom()
@@ -149,14 +168,17 @@ start_link(Node, Options) ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Node, Options]).
 
--spec sync_channels(pid()) -> 'ok'.
-sync_channels(Srv) -> gen_server:cast(Srv, 'sync_channels').
+-spec sync_channels(pid() | atom()) -> 'ok'.
+sync_channels(Srv) ->
+    gen_server:cast(find_srv(Srv), 'sync_channels').
 
--spec sync_interface(pid()) -> 'ok'.
-sync_interface(Srv) -> gen_server:cast(Srv, 'sync_interface').
+-spec sync_interface(pid() | atom()) -> 'ok'.
+sync_interface(Srv) ->
+    gen_server:cast(find_srv(Srv), 'sync_interface').
 
--spec sync_capabilities(pid()) -> 'ok'.
-sync_capabilities(Srv) -> gen_server:cast(Srv, 'sync_capabilities').
+-spec sync_capabilities(pid() | atom()) -> 'ok'.
+sync_capabilities(Srv) ->
+    gen_server:cast(find_srv(Srv), 'sync_capabilities').
 
 -spec hostname(pid()) -> api_binary().
 hostname(Srv) ->
@@ -167,13 +189,13 @@ hostname(Srv) ->
             Hostname
     end.
 
--spec sip_url(pid()) -> api_binary().
+-spec sip_url(pid() | atom()) -> api_binary().
 sip_url(Srv) ->
-    gen_server:call(Srv, 'sip_url').
+    gen_server:call(find_srv(Srv), 'sip_url').
 
--spec sip_external_ip(pid()) -> api_binary().
+-spec sip_external_ip(pid() | atom()) -> api_binary().
 sip_external_ip(Srv) ->
-    gen_server:call(Srv, 'sip_external_ip').
+    gen_server:call(find_srv(Srv), 'sip_external_ip').
 
 -spec handle_reload_acls(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reload_acls(_JObj, Props) ->
@@ -198,9 +220,9 @@ handle_reload_gtws(_JObj, Props) ->
         {'error', _E} -> lager:debug("sofia ~s failed with error: ~p", [Args, _E])
     end.
 
--spec fs_node(pid()) -> atom().
+-spec fs_node(pid() | atom()) -> atom().
 fs_node(Srv) ->
-    case catch(gen_server:call(Srv, 'node', ?FS_TIMEOUT)) of
+    case catch(gen_server:call(find_srv(Srv), 'node', ?FS_TIMEOUT)) of
         {'EXIT', _} -> 'undefined';
         Else -> Else
     end.
@@ -212,6 +234,10 @@ has_capability(Srv, Capability) ->
 -spec set_capability(pid() | atom(), ne_binary(), boolean()) -> 'ok'.
 set_capability(Srv, Capability, Toggle) when is_boolean(Toggle) ->
     gen_listener:call(find_srv(Srv), {'set_capability', Capability, Toggle}).
+
+-spec add_capability(pid() | atom(), ne_binary(), wh_json:object()) -> 'ok'.
+add_capability(Srv, Capability, Properties) ->
+    gen_listener:call(find_srv(Srv), {'add_capability', Capability, Properties}).
 
 find_srv(Pid) when is_pid(Pid) -> Pid;
 find_srv(Node) when is_atom(Node) ->
@@ -262,6 +288,23 @@ handle_call('sip_url', _, #state{interface=Interface}=State) ->
     {'reply', Interface#interface.url, State};
 handle_call('node', _, #state{node=Node}=State) ->
     {'reply', Node, State};
+handle_call({'set_capability', Capability, Toggle}, _From, #state{capabilities=Cs}=State) ->
+    case wh_json:get_value(Capability, Cs) of
+        'undefined' ->
+            {'reply', {'error', 'not_found'}, State};
+        _Properties ->
+            {'reply', 'ok', State#state{capabilities=wh_json:set_value([Capability, <<"is_loaded">>], Toggle, Cs)}}
+    end;
+handle_call({'add_capability', Capability, Properties}, _From, #state{capabilities=Cs
+                                                                      ,node=Node
+                                                                     }=State) ->
+    Cs1 = maybe_add_capability(Node, Capability, Properties, Cs),
+    case wh_json:get_value([Capability, <<"is_loaded">>], Cs1) of
+        'undefined' ->
+            {'reply', {'error', 'failed'}, State#state{capabilities=Cs1}};
+        IsLoaded ->
+            {'reply', {'ok', IsLoaded}, State#state{capabilities=Cs1}}
+    end;
 handle_call({'has_capability', Capability}, _, #state{capabilities=Cs}=State) ->
     {'reply', wh_json:is_true([Capability, <<"is_loaded">>], Cs), State}.
 
