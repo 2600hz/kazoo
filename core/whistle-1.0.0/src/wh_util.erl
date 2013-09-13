@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2013, 2600Hz INC
 %%% @doc
 %%% Various utilities - a veritable cornicopia
 %%% @end
@@ -327,7 +327,7 @@ try_load_module(Name) ->
     Module = wh_util:to_atom(Name, 'true'),
     try Module:module_info('imports') of
         _ when Module =:= 'undefined' -> 'false';
-        _ -> 
+        _ ->
             {'module', Module} = code:ensure_loaded(Module),
             Module
     catch
