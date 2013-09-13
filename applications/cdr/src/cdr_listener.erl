@@ -166,7 +166,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                 ,fun set_doc_id/3
                 ,fun save_cdr/3
                ],
-    lists:foldr(fun(F, J) ->
+    lists:foldl(fun(F, J) ->
                         F(AccountId, Timestamp, J) 
                 end, JObj, Routines).
 

@@ -42,7 +42,7 @@ save_cdr(_, _, ?MAX_RETRIES) ->
 save_cdr(AccountMODb, Doc, Retries) ->
     case couch_mgr:save_doc(AccountMODb, Doc) of
         {'error', 'not_found'} ->
-            'true' = couch_mgr:db_create(AccountMODb),
+            _ = couch_mgr:db_create(AccountMODb),
             save_cdr(AccountMODb, Doc, Retries + 1);
         {'error', _E} -> 
             lager:error("Account MODd Create Error: ~p", [_E]),
