@@ -585,23 +585,45 @@ call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
     end.
 
 -spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
-                                 wh_proplist().
+                                 {ne_binary(), ne_binary()}.
 get_call_pickup_app(Node, UUID, JObj, Target) ->
     ExportsApi = [{<<"Park-After-Pickup">>, <<"false">>}
                   ,{<<"Continue-On-Fail">>, <<"true">>}
                   ,{<<"Continue-On-Cancel">>, <<"true">>}
                  ],
 
-    Exports = lists:foldl(fun({Export, Default}, Acc) ->
-                                  [{wh_json:normalize_key(Export)
-                                    ,wh_json:get_binary_boolean(Export, JObj, Default)
-                                   } | Acc
-                                  ]
-                          end, [], ExportsApi),
-    ecallmgr_util:export(Node, UUID, [{<<"failure_causes">>, <<"NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>}
-                                      | Exports
-                                     ]),
+    SetApi = [{<<"Unbridged-Only">>, 'undefined', <<"intercept_unbridged_only">>}
+              ,{<<"Unanswered-Only">>, 'undefined', <<"intercept_unanswered_only">>}
+             ],
+
+    Exports = [{<<"failure_causes">>, <<"NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>}
+               | build_set_args(ExportsApi, JObj)
+              ],
+
+    ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
+    ecallmgr_util:export(Node, UUID, Exports),
     {<<"intercept">>, Target}.
+
+-type set_headers() :: wh_proplist() | [{ne_binary(), api_binary(), ne_binary()},...].
+-spec build_set_args(set_headers(), wh_json:object()) ->
+                            wh_proplist().
+-spec build_set_args(set_headers(), wh_json:object(), wh_proplist()) ->
+                            wh_proplist().
+build_set_args(Headers, JObj) ->
+    build_set_args(Headers, JObj, []).
+
+build_set_args([], _, Args) ->
+    lists:reverse(props:filter_undefined(Args));
+build_set_args([{ApiHeader, Default}|Headers], JObj, Args) ->
+    build_set_args(Headers, JObj, [{wh_json:normalize_key(ApiHeader)
+                                    ,wh_json:get_binary_boolean(ApiHeader, JObj, Default)
+                                   } | Args
+                                  ]);
+build_set_args([{ApiHeader, Default, FSHeader}|Headers], JObj, Args) ->
+    build_set_args(Headers, JObj, [{FSHeader
+                                    ,wh_json:get_binary_boolean(ApiHeader, JObj, Default)
+                                   } | Args
+                                   ]).
 
 %%--------------------------------------------------------------------
 %% @private
