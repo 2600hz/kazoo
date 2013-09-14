@@ -648,10 +648,7 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
                     {<<"conference">>, 'noop'};
                 {'ok', OtherNode} ->
                     lager:debug("conference has started on other node ~s, lets move", [OtherNode]),
-                    get_conference_app(ChanNode, UUID, JObj, 'true');
-                {'error', _E} ->
-                    lager:debug("error waiting for conference: ~p", [_E]),
-                    {<<"conference">>, 'noop'}
+                    get_conference_app(ChanNode, UUID, JObj, 'true')
             end;
         {'ok', ChanNode} ->
             lager:debug("channel is on same node as conference"),
