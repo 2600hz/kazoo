@@ -585,28 +585,23 @@ call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
     end.
 
 -spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
-                                 {ne_binary(), ne_binary()}.
+                                 wh_proplist().
 get_call_pickup_app(Node, UUID, JObj, Target) ->
-    _ = case wh_json:is_true(<<"Park-After-Pickup">>, JObj, 'false') of
-            'false' -> ecallmgr_util:export(Node, UUID, [{<<"park_after_bridge">>, <<"false">>}]);
-            'true' ->
-                _ = ecallmgr_util:set(Node, Target, [{<<"park_after_bridge">>, <<"true">>}]),
-                ecallmgr_util:set(Node, UUID, [{<<"park_after_bridge">>, <<"true">>}])
-        end,
+    ExportsApi = [{<<"Park-After-Pickup">>, <<"false">>}
+                  ,{<<"Continue-On-Fail">>, <<"true">>}
+                  ,{<<"Continue-On-Cancel">>, <<"true">>}
+                 ],
 
-    _ = case wh_json:is_true(<<"Continue-On-Fail">>, JObj, 'true') of
-            'false' -> ecallmgr_util:export(Node, UUID, [{<<"continue_on_fail">>, <<"false">>}]);
-            'true' -> ecallmgr_util:export(Node, UUID, [{<<"continue_on_fail">>, <<"true">>}])
-        end,
-
-    _ = case wh_json:is_true(<<"Continue-On-Cancel">>, JObj, 'true') of
-            'false' -> ecallmgr_util:export(Node, UUID, [{<<"continue_on_cancel">>, <<"false">>}]);
-            'true' -> ecallmgr_util:export(Node, UUID, [{<<"continue_on_cancel">>, <<"true">>}])
-        end,
-
-    _ = ecallmgr_util:export(Node, UUID, [{<<"failure_causes">>, <<"NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>}]),
-
-    {<<"call_pickup">>, <<UUID/binary, " ", Target/binary>>}.
+    Exports = lists:foldl(fun({Export, Default}, Acc) ->
+                                  [{wh_json:normalize_key(Export)
+                                    ,wh_json:get_binary_boolean(Export, JObj, Default)
+                                   } | Acc
+                                  ]
+                          end, [], ExportsApi),
+    ecallmgr_util:export(Node, UUID, [{<<"failure_causes">>, <<"NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>}
+                                      | Exports
+                                     ]),
+    {<<"intercept">>, Target}.
 
 %%--------------------------------------------------------------------
 %% @private
