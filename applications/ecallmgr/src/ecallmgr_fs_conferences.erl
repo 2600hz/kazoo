@@ -101,7 +101,7 @@ summary(Node) ->
                   ,[{'=:=', '$1', {'const', Node}}]
                   ,['$_']
                  }],
-    print_summary(ets:select(?CONFERENCES_TBL, MatchSpec, 1)).    
+    print_summary(ets:select(?CONFERENCES_TBL, MatchSpec, 1)).
 
 -spec details() -> 'ok'.
 details() ->
@@ -109,7 +109,7 @@ details() ->
                   ,[]
                   ,['$_']
                  }],
-    print_details(ets:select(?CONFERENCES_TBL, MatchSpec, 1)).    
+    print_details(ets:select(?CONFERENCES_TBL, MatchSpec, 1)).
 
 -spec details(text()) -> 'ok'.
 details(UUID) when not is_binary(UUID) ->
@@ -120,7 +120,7 @@ details(UUID) ->
                   ,['$_']
                  }],
     print_details(ets:select(?CONFERENCES_TBL, MatchSpec, 1)).
- 
+
 -spec create(wh_proplist(), atom()) -> conference().
 create(Props, Node) ->
     gen_server:call(?MODULE, {'conference_create', Props, Node}).
@@ -175,7 +175,7 @@ participant_callid(UUID, MemberId) ->
     case ets:match(?PARTICIPANTS_TBL, #participant{conference_uuid=UUID
                                                    ,member_id=MemberId
                                                    ,uuid='$1'
-                                                   ,_ = '_'}) 
+                                                   ,_ = '_'})
     of
         [[CallId]] -> CallId;
         _Else -> 'undefined'
@@ -454,7 +454,7 @@ participants_to_json([Participant|Participants], JObjs) ->
 participant_to_json(#participant{}=Participant) ->
     wh_json:from_list(participant_to_props(Participant)).
 
--spec participant_to_props(participant()) -> wh_json:object().
+-spec participant_to_props(participant()) -> wh_proplist().
 participant_to_props(#participant{uuid=UUID
                                   ,conference_name=ConfName
                                   ,conference_uuid=ConfUUID
@@ -469,7 +469,8 @@ participant_to_props(#participant{uuid=UUID
                                   ,current_energy=CurrentEnergy
                                   ,video=Video
                                   ,is_moderator=IsMod
-                                  ,node=Node}) ->
+                                  ,node=Node
+                                 }) ->
       props:filter_undefined(
         [{<<"Call-ID">>, UUID}
          ,{<<"Conference-Name">>, ConfName}
@@ -488,6 +489,7 @@ participant_to_props(#participant{uuid=UUID
          ,{<<"Is-Moderator">>, IsMod}
         ]).
 
+-spec conference_to_props(conference()) -> wh_proplist().
 conference_to_props(#conference{name=Name
                                 ,uuid=UUID
                                 ,node=Node
@@ -503,7 +505,8 @@ conference_to_props(#conference{name=Name
                                 ,start_time=StartTime
                                 ,switch_hostname=Hostname
                                 ,switch_external_ip=ExternalIP
-                                ,switch_url=SwitchURL}) ->
+                                ,switch_url=SwitchURL
+                               }) ->
     props:filter_undefined(
       [{<<"Name">>, Name}
        ,{<<"Instance-ID">>, UUID}
@@ -573,7 +576,8 @@ xml_to_conference(#xmlElement{name='conference'
                                                ,switch_external_ip=ecallmgr_fs_nodes:sip_external_ip(Node)
                                               }).
 
--spec xml_attrs_to_conference(xml_el(), conference()) -> conference().
+-spec xml_attrs_to_conference(xml_attribs(), conference()) ->
+                                     conference().
 xml_attrs_to_conference([], Conference) -> Conference;
 xml_attrs_to_conference([#xmlAttribute{name=Name, value=Value}
                          |Attrs
@@ -581,7 +585,8 @@ xml_attrs_to_conference([#xmlAttribute{name=Name, value=Value}
     C = xml_attr_to_conference(Conference, Name, Value),
     xml_attrs_to_conference(Attrs, C).
 
--spec xml_attr_to_conference(conference(), atom(), any()) -> conference().
+-spec xml_attr_to_conference(conference(), xml_attrib_name(), xml_attrib_value()) ->
+                                    conference().
 xml_attr_to_conference(Conference, 'name', Value) ->
     Conference#conference{name=wh_util:to_binary(Value)};
 xml_attr_to_conference(Conference, 'member-count', Value) ->
@@ -659,7 +664,7 @@ xml_member_to_participant([#xmlElement{name='energy'
 xml_member_to_participant([_|XmlElements], Participant) ->
     xml_member_to_participant(XmlElements, Participant).
 
--spec xml_member_flags_to_participant(participant(), xml_els()) -> participant().
+-spec xml_member_flags_to_participant(xml_els(), participant()) -> participant().
 xml_member_flags_to_participant([], Participant) -> Participant;
 xml_member_flags_to_participant([#xmlElement{name='talking'
                                              ,content=Speak
@@ -705,7 +710,8 @@ xml_member_flags_to_participant([_|XmlElements], Participant) ->
     xml_member_flags_to_participant(XmlElements, Participant).
 
 -spec xml_text_to_binary(xml_els()) -> ne_binary().
-xml_text_to_binary(XmlElements) -> iolist_to_binary([V || #xmlText{value=V} <- XmlElements]).
+xml_text_to_binary(XmlElements) ->
+    iolist_to_binary([V || #xmlText{value=V} <- XmlElements]).
 
 -spec maybe_destroy_conference(ne_binary()) -> boolean().
 maybe_destroy_conference(UUID) ->
@@ -729,11 +735,11 @@ get_conference_dictionary([#conference{uuid=UUID}=Conference
 get_conference_dictionary([_|Conferences], Dictionary) ->
     get_conference_dictionary(Conferences, Dictionary).
 
--spec get_participant_dictionary(conferences()) -> dict().
+-spec get_participant_dictionary(participants()) -> dict().
 get_participant_dictionary(Participants) ->
     get_participant_dictionary(Participants, dict:new()).
 
--spec get_participant_dictionary(conferences(), dict()) -> dict().
+-spec get_participant_dictionary(participants(), dict()) -> dict().
 get_participant_dictionary([], Dictionary) -> Dictionary;
 get_participant_dictionary([#participant{uuid=UUID}=Participant
                             | Participants
@@ -766,7 +772,7 @@ sync_conferences(Conferences, Node) ->
         ],
     'ok'.
 
--spec sync_participants(dict(), atom()) -> 'ok'.                                           
+-spec sync_participants(dict(), atom()) -> 'ok'.
 sync_participants(Participants, Node) ->
     MatchSpec = [{#participant{uuid = '$1', node = '$2', _ = '_'}
                   ,[{'=:=', '$2', {'const', Node}}]
@@ -825,7 +831,7 @@ print_details({[#conference{name=Name}=Conference]
         ],
     _ = case participants(Name) of
             [] -> io:format("Participants       : 0~n");
-            Participants ->            
+            Participants ->
                 io:format("Participants       : ~B", [length(Participants)]),
                 print_participant_details(Participants)
         end,
