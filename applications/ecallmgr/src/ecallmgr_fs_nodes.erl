@@ -56,10 +56,10 @@
               }).
 -type fs_node() :: #node{}.
 
--record(capability, {node :: atom()
-                     ,name :: ne_binary()
-                     ,module :: ne_binary()
-                     ,is_loaded = 'false' :: boolean()
+-record(capability, {node :: atom() | '$1' | '_'
+                     ,name :: ne_binary() | '$1' | '$2' | '_'
+                     ,module :: ne_binary() | '_'
+                     ,is_loaded = 'false' :: boolean() | '$3' | '_'
                     }).
 -type capability() :: #capability{}.
 -type capabilities() :: [capability(),...] | [].
@@ -154,7 +154,7 @@ details(NodeName) ->
         {'error', 'not_found'} ->
             io:format("Node ~s not found!~n", [NodeName]);
         {'ok', Node} ->
-            details([{'undefined', Node}])
+            print_details([{'undefined', Node}])
     end.
 
 -spec has_capability(atom(), ne_binary()) -> boolean().

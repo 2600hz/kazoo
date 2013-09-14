@@ -713,11 +713,11 @@ to_props(Reg) ->
      ,{<<"Owner-ID">>, Reg#registration.owner_id}
     ].
 
--spec filter(wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec filter(wh_json:keys(), wh_json:object()) -> wh_json:object().
 filter([], JObj) -> JObj;
 filter(Fields, JObj) ->
     wh_json:from_list(lists:foldl(fun(F, Acc) ->
-                                          [ {F, wh_json:get_value(F, JObj)} | Acc]
+                                          [{F, wh_json:get_value(F, JObj)} | Acc]
                                   end, [], Fields)).
 
 -spec oldest_registrar(ne_binary(), ne_binary()) -> boolean().
