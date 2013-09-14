@@ -32,7 +32,7 @@
 -export([has_capability/2
          ,set_capability/3
          ,add_capability/2
-         ,get_capability/2, get_capabilities/1
+         ,get_capability/2, get_capabilities/1, get_capabilities/2
         ]).
 
 -export([init/1
@@ -174,6 +174,34 @@ has_capability(Node, Capability) ->
         [Loaded] -> Loaded
     end.
 
+-spec remove_capabilities(atom()) -> non_neg_integer().
+remove_capabilities(Node) ->
+    MatchSpec = [{#capability{node='$1'
+                              ,_='_'
+                             }
+                  ,[{'=:=', '$1', Node}]
+                  ,['true']
+                 }],
+    ets:select_delete(?CAPABILITY_TBL, MatchSpec).
+
+-spec remove_capability(atom(), ne_binary()) -> non_neg_integer().
+remove_capability(Node, Name) ->
+    MatchSpec = [{#capability{node='$1'
+                              ,name='$2'
+                              ,_='_'
+                             }
+                  ,[{'=:=', '$1', Node}
+                    ,{'=:=', '$2', Name}
+                   ]
+                  ,['true']
+                 }],
+    ets:select_delete(?CAPABILITY_TBL, MatchSpec).
+
+
+-spec get_capability(atom(), ne_binary()) ->
+                            capability() | api_object().
+-spec get_capability(atom(), ne_binary(), 'json' | 'record') ->
+                            capability() | api_object().
 get_capability(Node, Capability) ->
     get_capability(Node, Capability, 'json').
 get_capability(Node, Capability, Format) ->
@@ -188,8 +216,10 @@ get_capability(Node, Capability, Format) ->
                  }],
     format_capability(Format, ets:select(?CAPABILITY_TBL, MatchSpec)).
 
--spec get_capabilities(atom()) -> wh_json:objects() | capabilities().
--spec get_capabilities(atom(), 'json' | 'record') -> wh_json:objects() | capabilities().
+-spec get_capabilities(atom()) ->
+                              wh_json:objects() | capabilities().
+-spec get_capabilities(atom(), 'json' | 'record') ->
+                              wh_json:objects() | capabilities().
 get_capabilities(Node) ->
     get_capabilities(Node, 'json').
 
@@ -310,8 +340,14 @@ handle_call({'add_capability', Node, Capability}, _, State) ->
                                             ,is_loaded=wh_json:is_true(<<"is_loaded">>, Capability)
                                            }),
     {'reply', 'ok', State};
-handle_call({'set_capability', Node, Capability, Toggle}, _, State) ->
-    {'reply', 'ok', State};
+handle_call({'set_capability', Node, Name, Toggle}, _, State) ->
+    case get_capability(Node, Name, 'record') of
+        'undefined' -> {'reply', {'error', 'no_capability'}, State};
+        #capability{}=Capability ->
+            ets:delete_object(?CAPABILITY_TBL, Capability),
+            ets:insert(?CAPABILITY_TBL, Capability#capability{is_loaded=Toggle}),
+            {'reply', 'ok', State}
+    end;
 
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
@@ -335,7 +371,12 @@ handle_cast({'update_node', #node{node=NodeName, connected=Connected}=Node}
     {'noreply', State#state{nodes=dict:store(NodeName, Node, Nodes)}};
 handle_cast({'remove_node', #node{node=NodeName}}, #state{nodes=Nodes}=State) ->
     erlang:monitor_node(NodeName, 'false'),
+    remove_capabilities(NodeName),
     {'noreply', State#state{nodes=dict:erase(NodeName, Nodes)}};
+handle_cast({'remove_capabilities', NodeName}, State) ->
+    _Rm = remove_capabilities(NodeName),
+    lager:debug("removed ~p capabilities from ~s", [_Rm, NodeName]),
+    {'noreply', State};
 handle_cast({'rm_fs_node', NodeName}, State) ->
     LogId = get('callid'),
     spawn(fun() ->
@@ -465,6 +506,7 @@ handle_nodeup(#node{}=Node, #state{self=Srv}) ->
 handle_nodedown(#node{node=NodeName}=Node, #state{self=Srv}) ->
     lager:critical("recieved node down notice for ~s", [NodeName]),
     _ = maybe_disconnect_from_node(Node),
+    gen_server:cast(Srv, {'remove_capabilities', NodeName}),
     case maybe_connect_to_node(Node) of
         {'error', _} ->
             _ = gen_listener:cast(Srv, {'update_node', Node#node{connected='false'}}),
