@@ -13,7 +13,9 @@
 -include("ecallmgr.hrl").
 
 -export([start_link/0]).
--export([start_control_process/3]).
+-export([start_control_process/3
+         ,start_control_process/5
+        ]).
 -export([start_event_process/2]).
 -export([init/1]).
 
@@ -39,8 +41,16 @@ start_link() ->
 start_event_process(Node, UUID) ->
     ecallmgr_call_event_sup:start_proc([Node, UUID]).
 
-start_control_process(Node, UUID, BillingId) ->
-    ecallmgr_call_control_sup:start_proc([Node, UUID, BillingId]).
+start_control_process(Node, CallId, FetchId) ->
+    start_control_process(Node, CallId, FetchId, 'undefined', wh_json:new()).
+
+start_control_process(Node, CallId, FetchId, ControllerQ, CCVs) ->
+    ecallmgr_call_control_sup:start_proc([Node
+                                          ,CallId
+                                          ,FetchId
+                                          ,ControllerQ
+                                          ,CCVs
+                                         ]).
 
 %% ===================================================================
 %% Supervisor callbacks

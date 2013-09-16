@@ -115,21 +115,23 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'fetch', _Section, _Something, _Key, _Value, ID, ['undefined' | _Data]}, #state{node=Node}=State) ->
-    lager:debug("fetch unknown section from ~s: ~p So: ~p, K: ~p V: ~p ID: ~s", [Node, _Section, _Something, _Key, _Value, ID]),
+handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Data]}, #state{node=Node}=State) ->
+    lager:warning("fetch unknown section from ~s: ~p So: ~p, K: ~p V: ~p Id: ~s"
+                  ,[Node, _Section, _Something, _Key, _Value, Id]),
     {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
-    _ = freeswitch:fetch_reply(Node, ID, 'dialplan', Resp),
+    _ = freeswitch:fetch_reply(Node, Id, 'dialplan', Resp),
     {'noreply', State};
-handle_info({'fetch', 'dialplan', _Tag, _Key, _Value, FSID, [CallID | FSData]}, #state{node=Node}=State) ->
+handle_info({'fetch', 'dialplan', _Tag, _Key, _Value, FSId, [CallId | FSData]}, #state{node=Node}=State) ->
     case {props:get_value(<<"Event-Name">>, FSData), props:get_value(<<"Caller-Context">>, FSData)} of
         {<<"REQUEST_PARAMS">>, ?WHISTLE_CONTEXT} ->
             %% TODO: move this to a supervisor somewhere
-            spawn(?MODULE, 'process_route_req', [Node, FSID, CallID, FSData]),
+            lager:info("processing dialplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
+            spawn(?MODULE, 'process_route_req', [Node, FSId, CallId, FSData]),
             {'noreply', State, 'hibernate'};
         {_Other, _Context} ->
             lager:debug("ignoring event ~s in context ~s from ~s", [_Other, _Context, Node]),
             {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
-            _ = freeswitch:fetch_reply(Node, FSID, 'dialplan', Resp),
+            _ = freeswitch:fetch_reply(Node, FSId, 'dialplan', Resp),
             {'noreply', State, 'hibernate'}
     end;
 handle_info(_Other, State) ->
@@ -140,7 +142,7 @@ handle_info(_Other, State) ->
 %% @private
 %% @doc
 %% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
+% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
 %%
@@ -165,60 +167,61 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec process_route_req(atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
-process_route_req(Node, FSID, CallId, Props) ->
+process_route_req(Node, FetchId, CallId, Props) ->
     put('callid', CallId),
-    lager:info("processing dialplan fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
     case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
-        'false' -> search_for_route(Node, FSID, CallId, Props);
+        'false' -> search_for_route(Node, FetchId, CallId, Props);
         'true' ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),
             JObj = wh_json:from_list([{<<"Routes">>, []}
                                       ,{<<"Method">>, <<"park">>}
                                      ]),
-            reply_affirmative(Node, FSID, CallId, JObj)
+            reply_affirmative(Node, FetchId, CallId, JObj)
     end.
 
-search_for_route(Node, FSID, CallId, Props) ->
+search_for_route(Node, FetchId, CallId, Props) ->
     _ = spawn('ecallmgr_fs_authz', 'authorize', [Props, CallId, Node]),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,route_req(CallId, FSID, Props, Node)
+                                  ,route_req(CallId, FetchId, Props, Node)
                                   ,fun wapi_route:publish_req/1
                                   ,fun wapi_route:is_actionable_resp/1
                                  ),
     case ReqResp of
-        {'error', _R} -> lager:info("did not receive route response: ~p", [_R]);
+        {'error', _R} -> 
+            lager:info("did not receive route response for request ~s: ~p", [FetchId, _R]);
         {'ok', JObj} ->
             'true' = wapi_route:resp_v(JObj),
-            choose_route_reply(JObj, Node, FSID, CallId)
+            choose_route_reply(JObj, Node, FetchId, CallId)
     end.
 
-choose_route_reply(JObj, Node, FSID, CallId) ->
+choose_route_reply(JObj, Node, FetchId, CallId) ->
     AuthzEnabled = wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, 'false')),
     case AuthzEnabled andalso wh_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
-        {'ok', 'false'} -> reply_forbidden(Node, FSID);
+        {'ok', 'false'} -> reply_forbidden(Node, FetchId);
         _Else ->
-            reply_affirmative(Node, FSID, CallId, JObj)
+            reply_affirmative(Node, FetchId, CallId, JObj)
     end.
 
 %% Reply with a 402 for unauthzed calls
 -spec reply_forbidden(atom(), ne_binary()) -> 'ok'.
-reply_forbidden(Node, FSID) ->
+reply_forbidden(Node, FetchId) ->
+    lager:info("received forbidden route response for ~s, sending 402 Payment Required", [FetchId]),
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
                                                 ,{<<"Route-Error-Code">>, <<"402">>}
                                                 ,{<<"Route-Error-Message">>, <<"Payment Required">>}
                                                ]),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
-    case freeswitch:fetch_reply(Node, FSID, 'dialplan', iolist_to_binary(XML), 3000) of
-        'ok' ->
-            lager:debug("node ~s accepted our route unauthz", [Node]);
-        {'error', Reason} -> lager:debug("node ~s rejected our route unauthz, ~p", [Node, Reason])
+    case freeswitch:fetch_reply(Node, FetchId, 'dialplan', iolist_to_binary(XML), 3000) of
+        'ok' -> lager:info("node ~s accepted route response for request ~s", [Node, FetchId]);
+        {'error', Reason} -> lager:debug("node ~s rejected our route unauthz: ~p", [Node, Reason])
     end.
 
 -spec reply_affirmative(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-reply_affirmative(Node, FSID, CallId, JObj) ->
+reply_affirmative(Node, FetchId, CallId, JObj) ->
+    lager:info("received affirmative route response for request ~s", [FetchId]),
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj),
     ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    lager:info("sending affirmative XML to ~s: ~s", [Node, XML]),
+    lager:debug("sending XML to ~s: ~s", [Node, XML]),
     FromURI = case wh_json:get_value(<<"From-URI">>, JObj) of
                   'undefined' -> 
                       FromUser = wh_json:get_value(<<"From-User">>, JObj, <<"${caller_id_number}">>),
@@ -226,41 +229,21 @@ reply_affirmative(Node, FSID, CallId, JObj) ->
                       <<"sip:", FromUser/binary, "@", FromRealm/binary>>;
                   Else -> Else
               end,
-    case freeswitch:fetch_reply(Node, FSID, 'dialplan', iolist_to_binary(XML), 3000) of
+    case freeswitch:fetch_reply(Node, FetchId, 'dialplan', iolist_to_binary(XML), 3000) of
         'ok' ->
-            lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),
+            lager:info("node ~s accepted route response for request ~s", [Node, FetchId]),
             CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-            _ = start_control_and_events(Node, FSID, CallId, ServerQ, CCVs),
+            _ = ecallmgr_call_sup:start_event_process(Node, CallId),
+            _ = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
             _ = ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)),
             ecallmgr_util:export(Node, CallId, [{<<"From-URI">>, FromURI}]);
-        {'error', _Reason} -> lager:debug("node ~s rejected our route response, ~p", [Node, _Reason])
+        {'error', _Reason} -> lager:debug("node ~s rejected our route response: ~p", [Node, _Reason])
     end.
 
--spec start_control_and_events(atom(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-start_control_and_events(Node, FSID, CallId, SendTo, CCVs) ->
-    {'ok', CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallId, FSID),
-    {'ok', _EvtPid} = ecallmgr_call_sup:start_event_process(Node, CallId),
-    CtlQ = ecallmgr_call_control:queue_name(CtlPid),
-    CtlProp = [{<<"Msg-ID">>, CallId}
-               ,{<<"Call-ID">>, CallId}
-               ,{<<"Control-Queue">>, CtlQ}
-               ,{<<"Custom-Channel-Vars">>, CCVs}
-               | wh_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    send_control_queue(SendTo, CtlProp).
-
--spec send_control_queue(ne_binary(), wh_proplist()) -> 'ok'.
-send_control_queue(SendTo, CtlProp) ->
-    lager:debug("sending route_win to ~s", [SendTo]),
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                        ,CtlProp
-                        ,fun(P) -> wapi_route:publish_win(SendTo, P) end
-                       ).
-
 -spec route_req(ne_binary(), ne_binary(), wh_proplist(), atom()) -> wh_proplist().
-route_req(CallId, FSID, Props, Node) ->
-    CCVs = [{<<"Fetch-ID">>, FSID}],
-    [{<<"Msg-ID">>, FSID}
+route_req(CallId, FetchId, Props, Node) ->
+    CCVs = [{<<"Fetch-ID">>, FetchId}],
+    [{<<"Msg-ID">>, FetchId}
      ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props,
                                              props:get_value(<<"Caller-Caller-ID-Name">>, Props, <<"Unknown">>))}
      ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, Props,
