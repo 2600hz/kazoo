@@ -48,7 +48,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/3, stop/1]).
+-export([start_link/5, stop/1]).
 -export([handle_call_command/2]).
 -export([handle_conference_command/2]).
 -export([handle_call_events/2]).
@@ -95,6 +95,8 @@
          ,sanity_check_tref :: api_reference()
          ,msg_id :: api_binary()
          ,fetch_id :: api_binary()
+         ,controller_q :: api_binary()
+         ,initial_ccvs :: wh_json:object()
          }).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_call_command'}
@@ -122,8 +124,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(atom(), ne_binary(), api_binary()) -> startlink_ret().
-start_link(Node, CallId, FetchId) ->
+-spec start_link(atom(), ne_binary(), api_binary(), api_binary(), wh_json:new()) -> startlink_ret().
+start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
     %% We need to become completely decoupled from ecallmgr_call_events
     %% because the call_events process might have been spun up with A->B
     %% then transfered to A->D, but the route landed in a different
@@ -142,7 +144,7 @@ start_link(Node, CallId, FetchId) ->
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ]
-                            ,[Node, CallId, FetchId]).
+                            ,[Node, CallId, FetchId, ControllerQ, CCVs]).
 
 -spec stop(pid()) -> 'ok'.
 stop(Srv) ->
@@ -224,7 +226,7 @@ handle_call_events(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Node, CallId, FetchId]) ->
+init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
     put('callid', CallId),
     lager:debug("starting call control listener"),
     gen_listener:cast(self(), 'init'),
@@ -234,6 +236,8 @@ init([Node, CallId, FetchId]) ->
                   ,self=self()
                   ,start_time=erlang:now()
                   ,fetch_id=FetchId
+                  ,controller_q=ControllerQ
+                  ,initial_ccvs=CCVs
                  }}.
 
 %%--------------------------------------------------------------------
@@ -410,6 +414,28 @@ handle_cast({'dialplan', JObj}, #state{callid=CallId
     end;
 handle_cast({'event_execute_complete', CallId, AppName, JObj}, #state{callid=CallId}=State) ->
     {'noreply', handle_event_execute_complete(AppName, JObj, State)};
+handle_cast({'gen_listener', {'created_queue', _}}, #state{controller_q='undefined'}=State) ->
+    {'noreply', State};
+handle_cast({'gen_listener', {'created_queue', Q}}, #state{callid=CallId
+                                                           ,controller_q=SendTo
+                                                           ,initial_ccvs=CCVs
+                                                          }=State) ->
+    CtlProp = [{<<"Msg-ID">>, CallId}
+               ,{<<"Call-ID">>, CallId}
+               ,{<<"Control-Queue">>, Q}
+               ,{<<"Custom-Channel-Vars">>, CCVs}
+               | wh_api:default_headers(Q, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    lager:debug("sending route_win to ~s", [SendTo]),
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                        ,CtlProp
+                        ,fun(P) -> wapi_route:publish_win(SendTo, P) end
+                       ),
+        {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
+    {'noreply', State};
 handle_cast(_, State) ->
     {'noreply', State}.
 

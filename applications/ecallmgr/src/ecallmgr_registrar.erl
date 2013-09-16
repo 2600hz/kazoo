@@ -110,6 +110,10 @@ reg_success(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
     Registration = create_registration(JObj),
     gen_server:cast(?MODULE, {'insert_registration', Registration}),
+    lager:info("inserted registration ~s@~s with contact ~s", [Registration#registration.username
+                                                               ,Registration#registration.realm
+                                                               ,Registration#registration.contact
+                                                              ]),    
     maybe_initial_registration(Registration).
 
 -spec reg_query(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -123,7 +127,9 @@ reg_query(JObj, _Props) ->
                             {'error', 'not_found'}.
 lookup_contact(Realm, Username) ->
     case ets:lookup(?MODULE, registration_id(Username, Realm)) of
-        [#registration{contact=Contact}] -> {'ok', Contact};
+        [#registration{contact=Contact}] -> 
+            lager:info("found user ~s@~s contact ~s", [Username, Realm, Contact]),
+            {'ok', Contact};
         _Else -> fetch_contact(Username, Realm)
     end.
 
@@ -281,7 +287,8 @@ handle_call(_Msg, _From, State) ->
 handle_cast({'insert_registration', Registration}, State) ->
     _ = ets:insert(?MODULE, Registration#registration{initial='false'}),
     {'noreply', State};
-handle_cast({'update_registration', Id, Props}, State) ->
+handle_cast({'update_registration', {Username, Realm}=Id, Props}, State) ->
+    lager:debug("updated registration ~s@~s", [Username, Realm]),
     _ = ets:update_element(?MODULE, Id, Props),
     {'noreply', State};
 handle_cast('flush', State) ->
@@ -293,7 +300,7 @@ handle_cast({'flush', Realm}, State) ->
                   ,['true']}
                 ],
     NumberDeleted = ets:select_delete(?MODULE, MatchSpec),
-    io:format("removed ~p registrations~n", [NumberDeleted]),
+    lager:debug("removed ~p expired registrations", [NumberDeleted]),
     {'noreply', State};
 handle_cast({'flush', Username, Realm}, State) ->
     _ = ets:delete(?MODULE, registration_id(Username, Realm)),
@@ -383,10 +390,16 @@ fetch_contact(Username, Realm) ->
                                                        ,JObj)) =/= 'undefined'
                  ]
             of
-                [Contact|_] -> {'ok', Contact};
-                _Else -> {'error', 'not_found'}
+                [Contact|_] ->
+                    lager:info("fetched user ~s@~s contact ~s", [Username, Realm, Contact]),
+                    {'ok', Contact};
+                _Else ->
+                    lager:info("contact query for user ~s@~s returned an empty result", [Username, Realm]),
+                    {'error', 'not_found'}
             end;
-        _Else -> {'error', 'not_found'}
+        _Else -> 
+            lager:info("contact query for user ~s@~s failed: ~p", [Username, Realm, _Else]),
+            {'error', 'not_found'}
     end.
 
 -spec expire_objects() -> 'ok'.
@@ -402,17 +415,27 @@ expire_objects() ->
 
 -spec expire_object(_) -> 'ok'.
 expire_object('$end_of_table') -> 'ok';
-expire_object({[#registration{id=Id, suppress_unregister='true'}]
-               ,Continuation}) ->
+expire_object({[#registration{id=Id, suppress_unregister='true'
+                              ,username=Username, realm=Realm
+                              ,call_id=CallId}
+               ], Continuation}) ->
+    put(callid, CallId),
+    lager:debug("registration ~s@~s expired", [Username, Realm]),
     _ = ets:delete(?MODULE, Id),
     expire_object(ets:select(Continuation));
-expire_object({[#registration{id=Id, username=Username, realm=Realm}=Reg]
-               ,Continuation}) ->
+expire_object({[#registration{id=Id, username=Username, realm=Realm
+                              ,call_id=CallId}=Reg
+               ], Continuation}) ->
+    put(callid, CallId),
+    lager:debug("registration ~s@~s expired", [Username, Realm]),
     _ = ets:delete(?MODULE, Id),
     _ = spawn(fun() ->
+                      put(callid, CallId),
                       case oldest_registrar(Username, Realm) of
                           'false' -> 'ok';
-                          'true' -> send_deregister_notice(Reg)
+                          'true' -> 
+                              lager:debug("sending deregister notice for ~s@~s", [Username, Realm]),
+                              send_deregister_notice(Reg)
                       end
               end),
     expire_object(ets:select(Continuation)).
@@ -510,6 +533,7 @@ existing_or_new_registration(Username, Realm) ->
     case ets:lookup(?MODULE, registration_id(Username, Realm)) of
         [#registration{}=Reg] -> Reg;
         _Else ->
+            lager:debug("new registration ~s@~s", [Username, Realm]),
             #registration{id=registration_id(Username, Realm)
                           ,initial_registration=wh_util:current_tstamp()
                          }
@@ -625,7 +649,9 @@ maybe_send_register_notice(#registration{username=Username
                                         }=Reg) ->
     case oldest_registrar(Username, Realm) of
         'false' -> 'ok';
-        'true' -> send_register_notice(Reg)
+        'true' ->
+            lager:debug("sending register notice for ~s@~s", [Username, Realm]),
+            send_register_notice(Reg)
     end.
 
 -spec send_register_notice(registration()) -> 'ok'.
