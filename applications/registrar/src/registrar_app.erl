@@ -10,7 +10,7 @@
 
 -behaviour(application).
 
--include_lib("reg.hrl").
+-include("reg.hrl").
 
 %% Application callbacks
 -export([start/2, stop/1]).

@@ -33,6 +33,7 @@
 -export([usurp_publisher/1, usurp_publisher_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
+-export([declare_exchanges/0]).
 
 -export([publish_new_channel/1, publish_new_channel/2]).
 -export([publish_destroy_channel/1, publish_destroy_channel/2]).
@@ -502,8 +503,6 @@ usurp_publisher_v(JObj) -> usurp_publisher_v(wh_json:to_proplist(JObj)).
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     CallId = props:get_value('callid', Props, <<"*">>),
-    amqp_util:callevt_exchange(),
-    amqp_util:callmgr_exchange(),
     bind_q(Queue, props:get_value('restrict_to', Props), CallId).
 
 bind_q(Q, 'undefined', CallId) ->
@@ -568,6 +567,16 @@ unbind_q(Q, ['publisher_usurp'|T], CallId) ->
     unbind_q(Q, T, CallId);
 unbind_q(Q, [_|T], CallId) -> unbind_q(Q, T, CallId);
 unbind_q(_Q, [], _CallId) -> 'ok'.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callevt_exchange(),
+    amqp_util:callmgr_exchange().    
 
 -spec publish_event(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_event(ne_binary(), api_terms(), ne_binary()) -> 'ok'.

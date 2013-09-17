@@ -10,6 +10,8 @@
 
 -behaviour(application).
 
+-include("hotornot.hrl").
+
 %% Application callbacks
 -export([start/2, stop/1]).
 

@@ -27,6 +27,7 @@
 -export([bind_q/2
          ,unbind_q/2
         ]).
+-export([declare_exchanges/0]).
 
 -export([publish_sync_req/1, publish_sync_req/2
          ,publish_sync_resp/2, publish_sync_resp/3
@@ -374,9 +375,6 @@ bind_q(Q, Props) ->
     AgentId = props:get_value('agent_id', Props, <<"*">>),
     AcctId = props:get_value('account_id', Props, <<"*">>),
     Status = props:get_value('status', Props, <<"*">>),
-
-    amqp_util:whapps_exchange(),
-
     bind_q(Q, {AcctId, AgentId, Status}, props:get_value('restrict_to', Props)).
 
 bind_q(Q, {AcctId, AgentId, Status}, 'undefined') ->
@@ -426,6 +424,15 @@ unbind_q(Q, {AcctId, AgentId, _}=Ids, ['stats'|T]) ->
     unbind_q(Q, Ids, T);
 unbind_q(Q, Ids, [_|T]) -> unbind_q(Q, Ids, T);
 unbind_q(_, _, []) -> 'ok'.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->    
+    amqp_util:whapps_exchange().
 
 %%------------------------------------------------------------------------------
 %% Publishers for convenience

@@ -14,6 +14,7 @@
          ,resp/1, resp_v/1
          ,error/1, error_v/1
          ,bind_q/2, unbind_q/2
+         ,declare_exchanges/0
          ,publish_req/1, publish_req/2
          ,publish_resp/2, publish_resp/3
          ,publish_error/2, publish_error/3
@@ -137,14 +138,21 @@ error_v(JObj) -> error_v(wh_json:to_proplist(JObj)).
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Q, Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
-
-    amqp_util:callmgr_exchange(),
     amqp_util:bind_q_to_callmgr(Q, get_authn_req_routing(Realm)).
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     amqp_util:unbind_q_from_callmgr(Q, get_authn_req_routing(Realm)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callmgr_exchange().
 
 %%--------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange

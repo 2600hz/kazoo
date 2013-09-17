@@ -98,12 +98,18 @@ start_deps() ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = amqp_util:callmgr_exchange(),
-    _ = amqp_util:configuration_exchange(),
-    _ = amqp_util:notifications_exchange(),
-    _ = amqp_util:sysconf_exchange(),
-    _ = amqp_util:targeted_exchange(),
-    amqp_util:whapps_exchange().
+    _ = wapi_acdc_agent:declare_exchanges(),
+    _ = wapi_acdc_stats:declare_exchanges(),
+    _ = wapi_money:declare_exchanges(),
+    _ = wapi_notifications:declare_exchanges(),
+    _ = wapi_presence:declare_exchanges(),
+    _ = wapi_registration:declare_exchanges(),
+    _ = wapi_resource:declare_exchanges(),
+    _ = wapi_switch:declare_exchanges(),
+    _ = wapi_sysconf:declare_exchanges(),
+    _ = wapi_call:declare_exchanges(),
+    _ = wapi_dialplan:declare_exchanges(),
+    wapi_self:declare_exchanges().
 
 %%--------------------------------------------------------------------
 %% @private

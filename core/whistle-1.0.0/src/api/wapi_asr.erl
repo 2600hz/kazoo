@@ -10,12 +10,14 @@
 
 -compile({no_auto_import, [error/1]}).
 
--export([req/1, resp/1, error/1, req_v/1, resp_v/1, error_v/1]).
-
+-export([req/1, req_v/1]).
+-export([resp/1, resp_v/1]).
+-export([error/1, error_v/1]).
 -export([bind_q/2, unbind_q/1]).
-
--export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
-         ,publish_error/2, publish_error/3]).
+-export([declare_exchanges/0]).
+-export([publish_req/1, publish_req/2]).
+-export([publish_resp/2, publish_resp/3]).
+-export([publish_error/2, publish_error/3]).
 
 -include_lib("whistle/include/wh_api.hrl").
 
@@ -113,7 +115,6 @@ error_v(JObj) ->
 %%--------------------------------------------------------------------
 -spec bind_q(binary(), proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
-    amqp_util:callctl_exchange(),
     amqp_util:bind_q_to_callctl(Queue, ?KEY_ASR_REQ).
 
 %%--------------------------------------------------------------------
@@ -124,6 +125,15 @@ bind_q(Queue, _Props) ->
 -spec unbind_q(binary()) -> 'ok'.
 unbind_q(Queue) ->
     amqp_util:unbind_q_from_callctl(Queue).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callctl_exchange().
 
 %%--------------------------------------------------------------------
 %% @doc

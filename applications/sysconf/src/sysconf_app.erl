@@ -9,6 +9,8 @@
 
 -behaviour(application).
 
+-include("sysconf.hrl").
+
 %% Application callbacks
 -export([start/2, stop/1]).
 

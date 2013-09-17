@@ -18,6 +18,7 @@
          ,balance_req/1, balance_req_v/1
          ,balance_resp/1, balance_resp_v/1
          ,bind_q/2, unbind_q/2
+         ,declare_exchanges/0
          ,publish_credit/1, publish_credit/2
          ,publish_debit/1, publish_debit/2
          ,publish_balance_req/1, publish_balance_req/2
@@ -140,13 +141,21 @@ balance_resp_v(JObj) ->
 -spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     Routing = routing_key(Props),
-    amqp_util:configuration_exchange(),
     amqp_util:bind_q_to_configuration(Queue, Routing).
 
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     Routing = routing_key(Props),
     amqp_util:unbind_q_from_configuration(Queue, Routing).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:configuration_exchange().
 
 routing_key(Props) ->
     list_to_binary([<<"transaction.">>

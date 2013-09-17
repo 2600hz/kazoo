@@ -6,7 +6,9 @@
 %%%-------------------------------------------------------------------
 -module(wapi_fs).
 
--export([req/1, req_v/1, publish_req/2, publish_req/3]).
+-export([req/1, req_v/1]).
+-export([declare_exchanges/0]).
+-export([publish_req/2, publish_req/3]).
 
 -include_lib("whistle/include/wh_api.hrl").
 
@@ -40,6 +42,15 @@ req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?FS_REQ_HEADERS, ?FS_REQ_VALUES, ?FS_REQ_TYPES);
 req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callctl_exchange().
 
 -spec publish_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.

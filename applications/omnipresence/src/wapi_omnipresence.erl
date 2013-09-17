@@ -12,6 +12,7 @@
          ,presence_update/1, presence_update_v/1
          ,bind_q/2
          ,unbind_q/2
+         ,declare_exchanges/0
          ,publish_subscribe/1, publish_subscribe/2
          ,publish_presence_update/1, publish_presence_update/2
          ]).
@@ -56,7 +57,6 @@ presence_update_v(Prop) when is_list(Prop) ->
 presence_update_v(JObj) -> presence_update_v(wh_json:to_proplist(JObj)).
 
 bind_q(Queue, Props) ->
-    amqp_util:whapps_exchange(),
     bind_q(Queue, Props, props:get_value('restrict_to', Props)).
 
 bind_q(Queue, Props, 'undefined') ->
@@ -100,6 +100,15 @@ unbind_q(Queue, Props, [_|Ps]) ->
     unbind_q(Queue, Props, Ps);
 unbind_q(_, _, []) -> 'ok'.
 
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:whapps_exchange().
+    
 publish_subscribe(JObj) ->
     publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_subscribe(API, ContentType) ->

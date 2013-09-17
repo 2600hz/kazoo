@@ -13,6 +13,7 @@
 -export([req/1, req_v/1
          ,bind_q/2
          ,unbind_q/2
+         ,declare_exchanges/0
          ,publish_req/1, publish_req/2
         ]).
 
@@ -45,8 +46,6 @@ req_v(JObj) ->
 -spec bind_q(ne_binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     Realm = props:get_value(realm, Props, <<"*">>),
-
-    amqp_util:callmgr_exchange(),
     amqp_util:bind_q_to_callmgr(Queue, get_pivot_req_routing(Realm)).
 
 -spec unbind_q(ne_binary(), proplist()) -> 'ok'.
@@ -54,6 +53,15 @@ unbind_q(Queue, Props) ->
     Realm = props:get_value(realm, Props, <<"*">>),
     amqp_util:unbind_q_from_callmgr(Queue, get_pivot_req_routing(Realm)).
 
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callmgr_exchange().
+    
 get_pivot_req_routing(Realm) when is_binary(Realm) ->
     list_to_binary([?KEY_PIVOT_REQ, ".", amqp_util:encode(Realm)]);
 get_pivot_req_routing(Api) ->

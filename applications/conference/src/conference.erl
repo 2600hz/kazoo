@@ -58,4 +58,7 @@ declare_exchanges() ->
     _ = wapi_authn:declare_exchanges(),    
     _ = wapi_conference:declare_exchanges(),
     _ = wapi_route:declare_exchanges(),
+    _ = wapi_call:declare_exchanges(),
+    _ = wapi_dialplan:declare_exchanges(),
+    _ = wapi_notifications:declare_exchanges(), 
     wapi_self:declare_exchanges().
