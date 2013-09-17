@@ -12,16 +12,21 @@
 -include("conference.hrl").
 
 -export([start_link/0]).
--export([listener_proc/0]).
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
-                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{?CONFERENCE_CACHE, cache}
-                   ,{conf_participant_sup, supervisor}
-                   ,{conf_discovery, worker}
+-define(CACHE, {?CONFERENCE_CACHE, {'wh_cache', 'start_link', [?CONFERENCE_CACHE]}
+                ,'permanent', 5000, 'worker', ['wh_cache']
+               }).
+
+-define(CHILDREN, [?CACHE
+                   ,?SUPER('conf_participant_sup')
+                   ,?WORKER('conf_discovery')
                   ]).
+
+%% ===================================================================
+%% API functions
+%% ===================================================================
+
 
 %% ===================================================================
 %% API functions
@@ -35,13 +40,7 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
--spec listener_proc() -> {'ok', pid()}.
-listener_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= skel_listener],
-    {ok, P}.
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -63,6 +62,5 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

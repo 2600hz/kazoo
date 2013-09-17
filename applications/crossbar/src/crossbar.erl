@@ -25,20 +25,112 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     put('callid', ?LOG_SYSTEM_ID),
-
     _ = start_deps(),
-
+    _ = declare_exchanges(),
     Dispatch = cowboy_router:compile([
                                       %% {HostMatch, list({PathMatch, Handler, Opts})}
                                       {'_', [{<<"/v1/[...]">>, 'v1_resource', []}
                                              ,{'_', 'crossbar_default_handler', []}
                                             ]}
                                      ]),
-
     maybe_start_plaintext(Dispatch),
     maybe_start_ssl(Dispatch),
-
     crossbar_sup:start_link().
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Stop the app
+%% @end
+%%--------------------------------------------------------------------
+-spec stop() -> 'ok'.
+stop() ->
+    cowboy:stop_listener('v1_resource'),
+    cowboy:stop_listener('v1_resource_ssl'),
+    exit(whereis('crossbar_sup'), 'shutdown').
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Load a crossbar module's bindings into the bindings server
+%% @end
+%%--------------------------------------------------------------------
+-spec start_mod(atom() | string() | binary()) -> any().
+start_mod(CBMod) when not is_atom(CBMod) -> start_mod(wh_util:to_atom(CBMod, 'true'));
+start_mod(CBMod) -> CBMod:init().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Load a crossbar module's bindings into the bindings server
+%% @end
+%%--------------------------------------------------------------------
+-spec stop_mod(atom() | string() | binary()) -> any().
+
+stop_mod(CBMod) when not is_atom(CBMod) -> stop_mod(wh_util:to_atom(CBMod, 'true'));
+stop_mod(CBMod) ->
+    crossbar_bindings:flush_mod(CBMod),
+    case erlang:function_exported(CBMod, 'stop', 0) of
+        'true' -> CBMod:stop();
+        'false' -> 'ok'
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all dependencies for this app are already running
+%% @end
+%%--------------------------------------------------------------------
+-spec start_deps() -> 'ok'.
+start_deps() ->
+    whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
+    _ = [wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'inets'
+                                                ,'ranch' ,'cowboy', 'whistle_amqp'
+                                               ]],
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all exchanges used are declared
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = amqp_util:callmgr_exchange(),
+    _ = amqp_util:configuration_exchange(),
+    _ = amqp_util:notifications_exchange(),
+    _ = amqp_util:sysconf_exchange(),
+    _ = amqp_util:targeted_exchange(),
+    amqp_util:whapps_exchange().
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Functions for onrequest and onresponse callbacks
+%% @end
+%%--------------------------------------------------------------------
+-spec on_request(cowboy_req:req()) -> cowboy_req:req().
+on_request(Req0) ->
+    {Method, Req1} = cowboy_req:method(Req0),
+    case Method of
+        'OPTIONS' -> Req1;
+        _ ->
+            wh_counter:inc(<<"crossbar.requests.methods.", (wh_util:to_upper_binary(Method))/binary>>),
+            Req1
+    end.
+
+-spec on_response(cowboy_http:status(), cowboy_http:headers(), text(), cowboy_req:req()) -> cowboy_req:req().
+on_response(Status, _Headers, _Body, Req0) ->
+    {Method, Req1} = cowboy_req:method(Req0),
+    case Method of
+        ?HTTP_OPTIONS -> Req1;
+        'OPTIONS' -> Req1;
+        _ ->
+            wh_counter:inc(<<"crossbar.responses.", (wh_util:to_binary(Status))/binary>>),
+            Req1
+    end.
 
 maybe_start_plaintext(Dispatch) ->
     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_plaintext">>, 'true') of
@@ -139,82 +231,4 @@ find_file(File, Root) ->
                     lager:info("failed to find file at ~s", [FromRoot]),
                     throw({'invalid_file', File})
             end
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Stop the app
-%% @end
-%%--------------------------------------------------------------------
--spec stop() -> 'ok'.
-stop() ->
-    cowboy:stop_listener('v1_resource'),
-    cowboy:stop_listener('v1_resource_ssl').
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Load a crossbar module's bindings into the bindings server
-%% @end
-%%--------------------------------------------------------------------
--spec start_mod(atom() | string() | binary()) -> any().
-start_mod(CBMod) when not is_atom(CBMod) -> start_mod(wh_util:to_atom(CBMod, 'true'));
-start_mod(CBMod) -> CBMod:init().
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Load a crossbar module's bindings into the bindings server
-%% @end
-%%--------------------------------------------------------------------
--spec stop_mod(atom() | string() | binary()) -> any().
-
-stop_mod(CBMod) when not is_atom(CBMod) -> stop_mod(wh_util:to_atom(CBMod, 'true'));
-stop_mod(CBMod) ->
-    crossbar_bindings:flush_mod(CBMod),
-    case erlang:function_exported(CBMod, 'stop', 0) of
-        'true' -> CBMod:stop();
-        'false' -> 'ok'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Ensures that all dependencies for this app are already running
-%% @end
-%%--------------------------------------------------------------------
--spec start_deps() -> 'ok'.
-start_deps() ->
-    whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'inets'
-                                                ,'ranch' ,'cowboy', 'whistle_amqp'
-                                               ]],
-    'ok'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Functions for onrequest and onresponse callbacks
-%% @end
-%%--------------------------------------------------------------------
--spec on_request(cowboy_req:req()) -> cowboy_req:req().
-on_request(Req0) ->
-    {Method, Req1} = cowboy_req:method(Req0),
-    case Method of
-        'OPTIONS' -> Req1;
-        _ ->
-            wh_counter:inc(<<"crossbar.requests.methods.", (wh_util:to_upper_binary(Method))/binary>>),
-            Req1
-    end.
-
--spec on_response(cowboy_http:status(), cowboy_http:headers(), text(), cowboy_req:req()) -> cowboy_req:req().
-on_response(Status, _Headers, _Body, Req0) ->
-    {Method, Req1} = cowboy_req:method(Req0),
-    case Method of
-        ?HTTP_OPTIONS -> Req1;
-        'OPTIONS' -> Req1;
-        _ ->
-            wh_counter:inc(<<"crossbar.responses.", (wh_util:to_binary(Status))/binary>>),
-            Req1
     end.

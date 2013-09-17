@@ -20,7 +20,7 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
-
+    _ = declare_exchanges(),
     Dispatch = cowboy_router:compile([
                                       %% {HostMatch, list({PathMatch, Handler, Opts})}
                                       {'_', [{<<"/fax/[...]">>, 'fax_file_proxy', []}]}
@@ -43,7 +43,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
 stop() ->
-    cowboy:stop_listener('fax_file'),
+    exit(whereis('fax_sup'), 'shutdown'),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -55,5 +55,18 @@ stop() ->
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'inets', 'cowboy', 'whistle_amqp']],
+    _ = [wh_util:ensure_started(App) || App <- ['crypto', 'inets', 'cowboy', 'whistle_amqp']],
     'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all exchanges used are declared
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_fax:declare_exchanges(),
+    _ = wapi_notifications:declare_exchanges(),
+    _ = wapi_offnet_resource:declare_exchanges(),
+    wapi_self:declare_exchanges().

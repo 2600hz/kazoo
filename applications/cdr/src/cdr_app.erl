@@ -16,15 +16,22 @@
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
-
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application start behaviour
+%% @end
+%%--------------------------------------------------------------------
 -spec start(term(), term()) ->
                    {'ok', pid()} |
                    {'error', term()}.
-start(_StartType, _StartArgs) ->
-    case cdr:start_link() of
-        {'ok', P} -> {'ok', P};
-        {'error', {'already_started', P}} -> {'ok', P};
-        {'error', _}=E -> E
-    end.
+start(_StartType, _StartArgs) -> cdr:start_link().
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application stop behaviour
+%% @end
+%%--------------------------------------------------------------------
+-spec stop(term()) -> 'ok'.
 stop(_State) -> cdr:stop().

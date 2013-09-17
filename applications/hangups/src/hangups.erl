@@ -20,7 +20,8 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    start_deps(),
+    _ = start_deps(),
+    _ = declare_exchanges(),
     hangups_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -30,7 +31,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() -> 'ok'.
+stop() ->
+    exit(whereis('hangups_sup'), 'shutdown'),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -41,6 +44,16 @@ stop() -> 'ok'.
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    wh_util:ensure_started('sasl'), % logging
-    wh_util:ensure_started('crypto'), % random
-    wh_util:ensure_started('whistle_amqp'). % amqp wrapper
+    _ = [wh_util:ensure_started(App) || App <- ['crypto', 'whistle_amqp']],
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all exchanges used are declared
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_call:declare_exchanges(),
+    wapi_self:declare_exchanges().

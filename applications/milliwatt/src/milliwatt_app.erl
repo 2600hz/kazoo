@@ -21,12 +21,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start(term(), term()) -> {'ok', pid()} | {'error', startlink_err()}.
-start(_Type, _Args) ->
-    case milliwatt_sup:start_link() of
-        {ok, P} -> {ok, P};
-        {error, {already_started, P} } -> {ok, P};
-        {error, _}=E -> E
-    end.
+start(_Type, _Args) -> milliwatt:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -35,5 +30,4 @@ start(_Type, _Args) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop(term()) -> 'ok'.
-stop(_State) ->
-    ok.
+stop(_State) -> milliwatt:stop().
