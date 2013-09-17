@@ -10,6 +10,7 @@
 
 -author('James Aimonetti <james@2600hz.org>').
 -export([start_link/0
+         ,start/0
          ,stop/0
          ,start_deps/0
         ]).
@@ -32,6 +33,16 @@ start_link() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Starts the application
+%% @end
+%%--------------------------------------------------------------------
+-spec start() -> 'ok' | {'error', _}.
+start() ->
+    application:start(?MODULE).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Stop the app
 %% @end
 %%--------------------------------------------------------------------
@@ -49,7 +60,11 @@ stop() ->
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [wh_util:ensure_started(App) || App <- ['crypto', 'whistle_amqp']],
+    _ = [wh_util:ensure_started(App) || App <- ['crypto'
+                                                ,'lager'
+                                                ,'whistle_amqp'
+                                                ,'whistle_couch'
+                                               ]],
     'ok'.
 
 %%--------------------------------------------------------------------

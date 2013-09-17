@@ -10,7 +10,10 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
--export([start_link/0, stop/0]).
+-export([start_link/0
+         ,start/0
+         ,stop/0
+        ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -23,6 +26,16 @@ start_link() ->
     _ = start_deps(),
     _ = declare_exchanges(),
     conference_sup:start_link().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the application
+%% @end
+%%--------------------------------------------------------------------
+-spec start() -> 'ok' | {'error', _}.
+start() ->
+    application:start(?MODULE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -44,7 +57,11 @@ stop() ->
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [wh_util:ensure_started(App) || App <- ['crypto', 'whistle_amqp']],
+    _ = [wh_util:ensure_started(App) || App <- ['crypto'
+                                                ,'lager'
+                                                ,'whistle_amqp'
+                                                ,'whistle_couch'
+                                               ]],
     'ok'.
 
 %%--------------------------------------------------------------------

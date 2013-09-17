@@ -10,6 +10,7 @@
 -include("ecallmgr.hrl").
 
 -export([start_link/0]).
+-export([start/0]).
 -export([stop/0]).
 
 %%--------------------------------------------------------------------
@@ -20,10 +21,19 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    _ = lager:start(),
     _ = start_deps(),
     _ = declare_exchanges(),
     ecallmgr_sup:start_link().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the application
+%% @end
+%%--------------------------------------------------------------------
+-spec start() -> 'ok' | {'error', _}.
+start() ->
+    application:start(?MODULE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -46,6 +56,7 @@ stop() ->
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     _ = [wh_util:ensure_started(App) || App <- ['crypto'
+                                                ,'lager'
                                                 ,'whistle_amqp'
                                                 ,'gproc'
                                                 ,'ibrowse'

@@ -7,7 +7,6 @@
   ,{applications, [
                    kernel
                    ,stdlib
-                   ,crypto
                   ]}
   ,{mod, { crossbar_app, []} }
   ,{env, []}

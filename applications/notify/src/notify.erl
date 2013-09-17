@@ -9,7 +9,10 @@
 -module(notify).
 
 -author('James Aimonetti <james@2600hz.org>').
--export([start_link/0, stop/0]).
+-export([start_link/0
+         ,start/0
+         ,stop/0
+        ]).
 
 -include("notify.hrl").
 
@@ -24,6 +27,16 @@ start_link() ->
     _ = start_deps(),
     _ = declare_exchanges(),
     notify_sup:start_link().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the application
+%% @end
+%%--------------------------------------------------------------------
+-spec start() -> 'ok' | {'error', _}.
+start() ->
+    application:start(?MODULE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -45,7 +58,11 @@ stop() ->
 -spec start_deps() -> _.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    [wh_util:ensure_started(App) || App <- ['crypto', 'whistle_amqp']].
+    [wh_util:ensure_started(App) || App <- ['crypto'
+                                            ,'lager'
+                                            ,'whistle_amqp'
+                                            ,'whistle_couch'
+                                           ]].
 
 %%--------------------------------------------------------------------
 %% @private

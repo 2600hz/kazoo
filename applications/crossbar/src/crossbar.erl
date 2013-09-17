@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(crossbar).
 
--export([start_link/0, stop/0
+-export([start_link/0, start/0, stop/0
          ,start_mod/1, stop_mod/1
         ]).
 
@@ -37,6 +37,8 @@ start_link() ->
     maybe_start_ssl(Dispatch),
     crossbar_sup:start_link().
 
+start() ->
+    application:start(crossbar).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -85,8 +87,13 @@ stop_mod(CBMod) ->
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'inets'
-                                                ,'ranch' ,'cowboy', 'whistle_amqp'
+    _ = [wh_util:ensure_started(App) || App <- ['crypto'
+                                                ,'inets' 
+                                                ,'lager'
+                                                ,'whistle_amqp'
+                                                ,'whistle_couch'                                               
+                                                ,'ranch' 
+                                                ,'cowboy'
                                                ]],
     'ok'.
 

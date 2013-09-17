@@ -7,7 +7,6 @@
   ,{applications, [
 		   kernel
 		   ,stdlib
-		   ,crypto
 		  ]}
   ,{mod, { hotornot_app, []} }
   ,{env, []}

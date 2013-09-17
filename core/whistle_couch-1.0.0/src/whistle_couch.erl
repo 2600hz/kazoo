@@ -8,40 +8,72 @@
 %%%-------------------------------------------------------------------
 -module(whistle_couch).
 
--behaviour(application).
+-include_lib("whistle/include/wh_types.hrl").
 
--export([start/2, start/0
-         ,start_link/0
-         ,start_deps/0
-         ,stop/0, stop/1
+-export([start_link/0
+         ,start/0
+         ,stop/0
         ]).
 
--define(DEPS, ['sasl', 'crypto', 'public_key', 'ibrowse', 'couchbeam']).
+-define(DEPS, ['sasl'
+               ,'crypto'
+               ,'public_key'
+               ,'ibrowse'
+               ,'couchbeam'
+               ,'lager'
+              ]).
 
-%%
-start(_Type, _Args) ->
-    _ = start_deps(),
-    whistle_couch_sup:start_link().
-
-%% @spec start_link() -> {ok,Pid::pid()}
-%% @doc Starts the app for inclusion in a supervisor tree
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the app for inclusion in a supervisor tree
+%% @end
+%%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
+    _ = declare_exchanges(),
     whistle_couch_sup:start_link().
 
-%% @spec start() -> ok
-%% @doc Start the couch server.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the application
+%% @end
+%%--------------------------------------------------------------------
+-spec start() -> 'ok' | {'error', _}.
 start() ->
-    _ = start_deps(),
-    application:start('whistle_couch').
+    application:start(?MODULE).
 
--spec start_deps() -> any().
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Stop the app
+%% @end
+%%--------------------------------------------------------------------
+-spec stop() -> 'ok'.
+stop() ->
+    exit(whereis('whistle_couch_sup'), 'shutdown'),
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all dependencies for this app are already running
+%% @end
+%%--------------------------------------------------------------------
+-spec start_deps() -> 'ok'.
 start_deps() ->
-    whistle_couch_deps:ensure(?MODULE),
-    [wh_util:ensure_started(Dep) || Dep <- ?DEPS].
+    _ = [wh_util:ensure_started(App) || App <- ?DEPS],
+    'ok'.
 
-%% @spec stop() -> ok
-%% @doc Stop the couch server.
-stop() -> application:stop('whistle_couch').
-
-stop(_) -> 'ok'.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all exchanges used are declared
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_conf:declare_exchanges(),
+    wapi_self:declare_exchanges().

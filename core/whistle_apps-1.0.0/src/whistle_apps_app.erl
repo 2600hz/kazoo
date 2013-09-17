@@ -1,19 +1,37 @@
+%%%-------------------------------------------------------------------
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @copyright (C) 2010-2011, VoIP INC
+%%% @doc
+%%%
+%%% @end
+%%%-------------------------------------------------------------------
 -module(whistle_apps_app).
 
 -behaviour(application).
 
-%% Application callbacks
+-include_lib("whistle/include/wh_types.hrl").
+
 -export([start/2, stop/1]).
 
--define(PIDFILE, [code:priv_dir('whistle_apps'), "/whistle_apps.pid"]).
-
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application start behaviour
+%% @end
+%%--------------------------------------------------------------------
+-spec start(term(), term()) ->
+                   {'ok', pid()} |
+                   {'error', startlink_err()}.
+start(_StartType, _StartArgs) -> whistle_apps:start_link().
 
-start(_StartType, _StartArgs) ->
-    _ = wh_util:write_pid(?PIDFILE),
-    whistle_apps:start_link().
-
-stop(_State) ->
-    'ok' = file:delete(?PIDFILE).
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application stop behaviour
+%% @end
+%%--------------------------------------------------------------------
+-spec stop(term()) -> 'ok'.
+stop(_State) -> whistle_apps:stop().
