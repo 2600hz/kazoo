@@ -627,6 +627,7 @@ bridge_to_conference(Route, Conference, Call) ->
                ,{<<"Timeout">>, <<"20">>}
                ,{<<"Ignore-Early-Media">>, <<"false">>}
                ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+               ,{<<"Hold-Media">>, <<"silence">>}
                %%,{<<"Media">>, <<"bypass">>}
               ],
     whapps_call_command:send_command(Command, Call).

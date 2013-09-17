@@ -318,7 +318,7 @@ get_fs_app(Node, UUID, JObj, <<"hold">>) ->
             Media ->
                 Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
                 lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
-                ecallmgr_util:set(Node, UUID, [{<<"hold_music">>, Stream}])
+                ecallmgr_util:set(Node, UUID, [{<<"Hold-Media">>, Stream}])
         end,
     {<<"endless_playback">>, <<"${hold_music}">>};
 
@@ -605,7 +605,7 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
     ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
     Cmd = list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)]),
-
+    ecallmgr_util:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
     case ecallmgr_fs_conferences:node(ConfName) of
         {'error', 'not_found'} ->
             lager:debug("conference ~s hasn't been started yet", [ConfName]),
@@ -632,12 +632,14 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
             'true' = ecallmgr_channel_move:move(UUID, ChanNode, ConfNode),
             lager:debug("channel has moved to ~s", [ConfNode]),
             maybe_set_nospeak_flags(ConfNode, UUID, JObj),
+            ecallmgr_util:export(ConfNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
             {<<"conference">>, Cmd, ConfNode}
     end;
 get_conference_app(ChanNode, UUID, JObj, 'false') ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
     ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
     maybe_set_nospeak_flags(ChanNode, UUID, JObj),
+    ecallmgr_util:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
     {<<"conference">>, list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)])}.
 
 maybe_set_nospeak_flags(Node, UUID, JObj) ->
