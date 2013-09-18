@@ -574,6 +574,8 @@ call_pickup(Node, UUID, JObj) ->
             {'error', <<"failed to find target callid ", Target/binary>>}
     end.
 
+-spec call_pickup_maybe_move(atom(), ne_binary(), wh_json:object(), ne_binary(), ne_binary()) ->
+                                    {ne_binary(), ne_binary()}.
 call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
     case wh_json:is_true(<<"Move-Channel-If-Necessary">>, JObj, 'false') of
         'true' ->
@@ -606,7 +608,7 @@ call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
                                ),
 
             lager:debug("now issue the redirect to ~s", [OtherNode]),
-            ecallmgr_call_command:redirect(UUID, OtherNode),
+            ecallmgr_channel_redirect:redirect(UUID, OtherNode),
             {'error', <<"target is on different media server: ", OtherNode/binary>>}
     end.
 
