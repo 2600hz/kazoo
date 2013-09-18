@@ -564,7 +564,7 @@ find_by_user_realm(Username, Realm) ->
                                  {'ok', wh_json:objects()} |
                                  {'error', 'not_found'}.
 find_users_channels(Usernames, Realm) ->
-    ETSUsernames = build_ors(Usernames),
+    ETSUsernames = build_matchspec_ors(Usernames),
     MatchSpec = [{#channel{username='$1', realm='$2', _ = '_'}
                   ,[ETSUsernames
                     ,{'=:=', '$2', {'const', Realm}}
@@ -579,7 +579,7 @@ find_users_channels(Usernames, Realm) ->
                    ]}
     end.
 
-build_ors(L) ->
+build_matchspec_ors(L) ->
     lists:foldl(fun(El, Acc) -> {'or', {'=:=', '$1', El}, Acc} end, 'false', L).
 
 print_summary('$end_of_table') ->
