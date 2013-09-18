@@ -1,21 +1,38 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2012-2013, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%-------------------------------------------------------------------
 -module(ecallmgr_app).
 
 -behaviour(application).
 
+-include_lib("whistle/include/wh_types.hrl").
+
 -export([start/2]).
 -export([stop/1]).
-
--define(PIDFILE, "/ecallmgr.pid").
 
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
-start(_StartType, _StartArgs) ->
-    _ = case code:priv_dir(ecallmgr) of
-            {error, _} -> ok;
-            Prefix -> wh_util:write_pid([Prefix, ?PIDFILE])
-        end,
-    ecallmgr:start_link().
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application start behaviour
+%% @end
+%%--------------------------------------------------------------------
+-spec start(term(), term()) ->
+                   {'ok', pid()} |
+                   {'error', startlink_err()}.
+start(_StartType, _StartArgs) -> ecallmgr:start_link().
 
-stop(_State) ->
-    ok = file:delete(?PIDFILE).
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application stop behaviour
+%% @end
+%%--------------------------------------------------------------------
+-spec stop(term()) -> 'ok'.
+stop(_State) -> ecallmgr:stop().

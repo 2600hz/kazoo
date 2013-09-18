@@ -7,7 +7,6 @@
   ,{applications, [
 		   kernel
 		   ,stdlib
-		   ,crypto
 		  ]}
   ,{mod, { dth_app, []} }
   ,{env, []}

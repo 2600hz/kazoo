@@ -25,6 +25,7 @@
 -export([bind_q/2
          ,unbind_q/2
         ]).
+-export([declare_exchanges/0]).
 
 -export([publish_subscribe/1, publish_subscribe/2
          ,publish_update/2, publish_update/3
@@ -192,10 +193,7 @@ is_valid_state(JObj) ->
 bind_q(Queue, Props) ->
     amqp_util:new_exchange(?SUBSCRIPTIONS_EXCHANGE, <<"fanout">>),
     amqp_util:new_exchange(?UPDATES_EXCHANGE, <<"direct">>),
-    amqp_util:callmgr_exchange(),
-
     Realm = props:get_value('realm', Props, <<"*">>),
-
     bind_q(Queue, Realm, props:get_value('restrict_to', Props)).
 
 bind_q(Queue, Realm, 'undefined') ->
@@ -258,6 +256,15 @@ unbind_q(Queue, Realm, [_|Restrict]) ->
     unbind_q(Queue, Realm, Restrict);
 unbind_q(_, _, []) -> 'ok'.
 
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callmgr_exchange().
+    
 publish_subscribe(JObj) ->
     publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_subscribe(API, ContentType) ->

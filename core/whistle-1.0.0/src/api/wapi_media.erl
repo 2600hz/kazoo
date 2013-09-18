@@ -10,12 +10,16 @@
 
 -compile({no_auto_import, [error/1]}).
 
--export([req/1, resp/1, error/1, req_v/1, resp_v/1, error_v/1]).
+-export([req/1, req_v/1]).
+-export([resp/1, resp_v/1]).
+-export([error/1, error_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
+-export([declare_exchanges/0]).
 
--export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
-         ,publish_error/2, publish_error/3]).
+-export([publish_req/1, publish_req/2]).
+-export([publish_resp/2, publish_resp/3]).
+-export([publish_error/2, publish_error/3]).
 
 -include_lib("whistle/include/wh_api.hrl").
 
@@ -28,7 +32,7 @@
                                     ]).
 -define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
                            ,{<<"Event-Name">>, <<"media_req">>}
-                           ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>, new, extant]}
+                           ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>, 'new', 'extant']}
                            ,{<<"Voice">>, [<<"male">>, <<"female">>]}
                            ,{<<"Format">>, [<<"mp3">>, <<"wav">>]}
                            ,{<<"Protocol">>, [<<"http">>, <<"https">>, <<"shout">>, <<"vlc">>]}
@@ -41,10 +45,10 @@
 -define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, <<"media">>}
                            ,{<<"Event-Name">>, <<"media_resp">>}
                           ]).
--define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true;
-                                                 (<<"http://", _/binary>>) -> true;
-                                                 (<<"vlc://", _/binary>>) -> true;
-                                                 (_) -> false
+-define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> 'true';
+                                                 (<<"http://", _/binary>>) -> 'true';
+                                                 (<<"vlc://", _/binary>>) -> 'true';
+                                                 (_) -> 'false'
                                               end}
                           ]).
 
@@ -65,8 +69,8 @@
 -spec req(wh_json:object() | proplist()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
-        true -> wh_api:build_message(Prop, ?MEDIA_REQ_HEADERS, ?OPTIONAL_MEDIA_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for media_req"}
+        'true' -> wh_api:build_message(Prop, ?MEDIA_REQ_HEADERS, ?OPTIONAL_MEDIA_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for media_req"}
     end;
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
@@ -85,8 +89,8 @@ req_v(JObj) ->
 -spec resp(wh_json:object() | proplist()) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
-        true -> wh_api:build_message(Prop, ?MEDIA_RESP_HEADERS, ?OPTIONAL_MEDIA_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for media_resp"}
+        'true' -> wh_api:build_message(Prop, ?MEDIA_RESP_HEADERS, ?OPTIONAL_MEDIA_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for media_resp"}
     end;
 resp(JObj) ->
     resp(wh_json:to_proplist(JObj)).
@@ -105,8 +109,8 @@ resp_v(JObj) ->
 -spec error(proplist() | wh_json:object()) -> {'ok', iolist()} | {'error', string()}.
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
-        true -> wh_api:build_message(Prop, ?MEDIA_ERROR_HEADERS, ?OPTIONAL_MEDIA_ERROR_HEADERS);
-        false -> {error, "Proplist failed validation for media_error"}
+        'true' -> wh_api:build_message(Prop, ?MEDIA_ERROR_HEADERS, ?OPTIONAL_MEDIA_ERROR_HEADERS);
+        'false' -> {'error', "Proplist failed validation for media_error"}
     end;
 error(JObj) ->
     error(wh_json:to_proplist(JObj)).
@@ -119,12 +123,20 @@ error_v(JObj) ->
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
-    amqp_util:callevt_exchange(),
-    amqp_util:bind_q_to_callevt(Queue, media_req).
+    amqp_util:bind_q_to_callevt(Queue, 'media_req').
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, _Props) ->
-    amqp_util:unbind_q_from_callevt(Queue, media_req).
+    amqp_util:unbind_q_from_callevt(Queue, 'media_req').
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callevt_exchange().
 
 -spec publish_req(api_terms()) -> 'ok'.
 -spec publish_req(api_terms(), ne_binary()) -> 'ok'.
@@ -132,7 +144,7 @@ publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?MEDIA_REQ_VALUES, fun ?MODULE:req/1),
-    amqp_util:callevt_publish(Payload, ContentType, media_req).
+    amqp_util:callevt_publish(Payload, ContentType, 'media_req').
 
 -spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.

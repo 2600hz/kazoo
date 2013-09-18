@@ -18,15 +18,16 @@
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application start behaviour
+%% @end
+%%--------------------------------------------------------------------
 -spec start(term(), term()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_StartType, _StartArgs) ->
-    case acdc_sup:start_link() of
-        {'ok', P} -> {'ok', P};
-        {'error', {'already_started', P} } -> {'ok', P};
-        {'error', _}=E -> E
-    end.
+start(_StartType, _StartArgs) -> acdc:start_link().
 
 %%--------------------------------------------------------------------
 %% @public

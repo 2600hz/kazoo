@@ -22,8 +22,7 @@
 -spec start(term(), term()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_Type, _Args) ->
-    fax:start_link().
+start(_Type, _Args) -> fax:start_link().
 
 %%--------------------------------------------------------------------
 %% @public

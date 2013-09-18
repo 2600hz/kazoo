@@ -14,18 +14,26 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
+
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
-
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application start behaviour
+%% @end
+%%--------------------------------------------------------------------
 -spec start(term(), term()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_StartType, _StartArgs) ->
-    case media_mgr:start_link() of
-        {'ok', P} -> {'ok', P};
-        {'error', {'already_started', P} } -> {'ok', P};
-        {'error', _}=E -> E
-    end.
+start(_StartType, _StartArgs) -> media_mgr:start_link().
 
-stop(_State) -> media_mgr:stop(), 'ok'.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application stop behaviour
+%% @end
+%%--------------------------------------------------------------------
+-spec stop(term()) -> 'ok'.
+stop(_State) -> media_mgr:stop().

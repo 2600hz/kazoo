@@ -16,6 +16,7 @@
          ,identify_req/1, identify_req_v/1
          ,identify_resp/1, identify_resp_v/1
          ,bind_q/2, unbind_q/2
+         ,declare_exchanges/0
          ,publish_authz_req/1, publish_authz_req/2
          ,publish_authz_resp/2, publish_authz_resp/3
          ,publish_reauthz_req/1, publish_reauthz_req/2
@@ -251,7 +252,6 @@ identify_resp_v(JObj) ->
 -spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 
 bind_q(Queue, Props) ->
-    amqp_util:callmgr_exchange(),
     bind_to_q(Queue, props:get_value(restrict_to, Props)).
 
 bind_to_q(Q, undefined) ->
@@ -285,6 +285,15 @@ unbind_q_from(Q, [identify|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     ok.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callmgr_exchange().
 
 %%--------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange

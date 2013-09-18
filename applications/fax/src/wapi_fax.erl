@@ -10,6 +10,7 @@
 
 -export([req/1, req_v/1
          ,bind_q/2, unbind_q/2
+         ,declare_exchanges/0
          ,publish_req/1, publish_req/2
         ]).
 
@@ -37,11 +38,19 @@ req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
 
 bind_q(Q, _Prop) ->
-    amqp_util:callmgr_exchange(),
     amqp_util:bind_q_to_callmgr(Q, fax_routing_key()).
 
 unbind_q(Q, _Prop) ->
     amqp_util:unbind_q_from_callmgr(Q, fax_routing_key()).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callmgr_exchange().
 
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).

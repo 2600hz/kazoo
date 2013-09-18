@@ -43,7 +43,6 @@
 -define(CHILDREN, [?WORKER('wh_nodes')
                    ,?WORKER('wh_cache')
                    ,?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?CACHE_PROPS)
-                   ,?SUPER('whistle_couch_sup')
                    ,?WORKER('whistle_apps_init')
                    ,?CACHE_ARGS(?WHAPPS_CALL_CACHE, ?CACHE_PROPS)
                    ,?POOL(?WHAPPS_AMQP_POOL)

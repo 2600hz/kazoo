@@ -7,7 +7,6 @@
   ,{applications, [
 		   kernel
 		   ,stdlib
-		   ,crypto
 		  ]}
   ,{mod, { media_mgr_app, []} }
   ,{env, []}

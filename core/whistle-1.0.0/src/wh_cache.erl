@@ -310,6 +310,7 @@ handle_document_change(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([Name, ExpirePeriod, Props]) ->
     put(callid, Name),
+    wapi_conf:declare_exchanges(),
     _ = erlang:send_after(ExpirePeriod, self(), {'expire', ExpirePeriod}),
     Tab = ets:new(Name, ['set', 'protected', 'named_table', {'keypos', #cache_obj.key}]),
     _ = case props:get_value('new_node_flush', Props) of

@@ -17,6 +17,7 @@
          ,set_resp/1, set_resp_v/1
          ,flush_req/1, flush_req_v/1
          ,bind_q/2, unbind_q/2
+         ,declare_exchanges/0
          ,publish_get_req/1, publish_get_req/2
          ,publish_get_resp/2, publish_get_resp/3
          ,publish_set_req/1, publish_set_req/2
@@ -155,8 +156,6 @@ flush_req_v(JObj) ->
 
 -spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 bind_q(Q, Prop) ->
-    amqp_util:sysconf_exchange(),
-
     add_bindings(Q, props:get_value(restrict_to, Prop)).
 
 add_bindings(Q, undefined) ->
@@ -191,6 +190,15 @@ rm_bindings(Q, [_|T]) ->
 rm_bindings(_, []) ->
     ok.
 
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:sysconf_exchange().
+    
 -spec publish_get_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_get_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
 publish_get_req(JObj) ->

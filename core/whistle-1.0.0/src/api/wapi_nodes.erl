@@ -10,6 +10,7 @@
 -export([advertise/1, advertise_v/1]).
 
 -export([bind_q/2, unbind_q/1]).
+-export([declare_exchanges/0]).
 
 -export([publish_advertise/1, publish_advertise/2]).
 
@@ -52,7 +53,6 @@ advertise_v(JObj) ->
 %%--------------------------------------------------------------------
 -spec bind_q(binary(), proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
-    amqp_util:nodes_exchange(),
     amqp_util:bind_q_to_nodes(Queue).
 
 %%--------------------------------------------------------------------
@@ -63,6 +63,15 @@ bind_q(Queue, _Props) ->
 -spec unbind_q(binary()) -> 'ok'.
 unbind_q(Queue) ->
     amqp_util:unbind_q_from_nodes(Queue).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:nodes_exchange().
 
 %%--------------------------------------------------------------------
 %% @doc

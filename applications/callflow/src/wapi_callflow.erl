@@ -13,7 +13,7 @@
 -export([bind_q/2
          ,unbind_q/2
         ]).
-
+-export([declare_exchanges/0]).
 -export([publish_resume/1, publish_resume/2]).
 
 -include("callflow.hrl").
@@ -47,12 +47,20 @@ resume_v(JObj) -> resume_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Q, _Props) ->
-    amqp_util:whapps_exchange(),
     amqp_util:bind_q_to_whapps(Q, ?RESUME_ROUTING_KEY).
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Q, _Props) ->
     amqp_util:unbind_q_from_whapps(Q, ?RESUME_ROUTING_KEY).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:whapps_exchange().
 
 %%--------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange

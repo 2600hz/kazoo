@@ -10,7 +10,10 @@
 
 -include("callflow.hrl").
 
--export([start_link/0, stop/0]).
+-export([start_link/0
+         ,start/0
+         ,stop/0
+        ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -20,8 +23,19 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    start_deps(),
+    _ = start_deps(),
+    _ = declare_exchanges(),
     callflow_sup:start_link().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the application
+%% @end
+%%--------------------------------------------------------------------
+-spec start() -> 'ok' | {'error', _}.
+start() ->
+    application:start(?MODULE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -30,7 +44,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() -> 'ok'.
+stop() ->
+    exit(whereis('callflow_sup'), 'shutdown'),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -41,6 +57,31 @@ stop() -> 'ok'.
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    'ok' = wh_util:ensure_started('sasl'), % logging
-    'ok' = wh_util:ensure_started('crypto'), % random
-    wh_util:ensure_started('whistle_amqp'). % amqp wrapper
+    _ = [wh_util:ensure_started(App) || App <- ['crypto'
+                                                ,'lager'
+                                                ,'whistle_amqp'
+                                                ,'whistle_couch'
+                                               ]],
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all exchanges used are declared
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_acdc_agent:declare_exchanges(), %% TODO: decouple
+    _ = wapi_acdc_queue:declare_exchanges(), %% TODO: decouple
+    _ = wapi_call:declare_exchanges(),
+    _ = wapi_callflow:declare_exchanges(),
+    _ = wapi_conf:declare_exchanges(),
+    _ = wapi_conference:declare_exchanges(),
+    _ = wapi_dialplan:declare_exchanges(),
+    _ = wapi_fax:declare_exchanges(), %% TODO: decouple
+    _ = wapi_notifications:declare_exchanges(),
+    _ = wapi_offnet_resource:declare_exchanges(),
+    _ = wapi_pivot:declare_exchanges(), %% TODO: decouple
+    _ = wapi_route:declare_exchanges(),
+    wapi_self:declare_exchanges().

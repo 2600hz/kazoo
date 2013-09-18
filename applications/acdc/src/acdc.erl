@@ -10,7 +10,10 @@
 
 -include("acdc.hrl").
 
--export([start_link/0, stop/0]).
+-export([start_link/0
+         ,start/0
+         ,stop/0
+        ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -21,7 +24,18 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
+    _ = declare_exchanges(),
     acdc_sup:start_link().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the application
+%% @end
+%%--------------------------------------------------------------------
+-spec start() -> 'ok' | {'error', _}.
+start() ->
+    application:start(?MODULE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -30,7 +44,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() -> 'ok'.
+stop() -> 
+    exit(whereis('acdc_sup'), 'shutdown'),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -41,5 +57,29 @@ stop() -> 'ok'.
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'inets', 'whistle_amqp']],
+    _ = [wh_util:ensure_started(App) || App <- ['crypto'
+                                                ,'inets'
+                                                ,'lager'
+                                                ,'whistle_amqp'
+                                                ,'whistle_couch'
+                                               ]],
     'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all exchanges used are declared
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_acdc_agent:declare_exchanges(),
+    _ = wapi_acdc_queue:declare_exchanges(),
+    _ = wapi_acdc_stats:declare_exchanges(),
+    _ = wapi_call:declare_exchanges(),
+    _ = wapi_conf:declare_exchanges(),
+    _ = wapi_dialplan:declare_exchanges(),
+    _ = wapi_notifications:declare_exchanges(),
+    _ = wapi_resource:declare_exchanges(),
+    _ = wapi_route:declare_exchanges(),
+    wapi_self:declare_exchanges().
