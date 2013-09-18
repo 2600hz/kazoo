@@ -97,6 +97,7 @@
          ,controller_q :: api_binary()
          ,initial_ccvs :: wh_json:object()
          }).
+-type state() :: #state{}.
 
 -define(RESPONDERS, [{{?MODULE, 'handle_call_command'}
                       ,[{<<"call">>, <<"command">>}]
@@ -367,7 +368,7 @@ handle_cast({'channel_destroyed', CallId, JObj},  #state{is_call_up='true'
                          }
              ,'hibernate'};
         'true' ->
-            lager:debug("channel destroy while moving to other node, deferring to new controller", []),
+            lager:debug("channel destroy while moving to other node, deferring to new controller"),
             {'stop', 'normal', State}
     end;
 handle_cast({'channel_destroyed', CallId, _},  #state{is_call_up='false'
@@ -475,10 +476,10 @@ handle_info({'event', [CallId | Props]}, #state{callid=CallId
         <<"sofia::transferee">> ->
             case props:get_value(?GET_CCV(<<"Fetch-ID">>), Props) of
                 FetchId ->
-                    lager:info("we have been transfered, terminate immediately", []),
+                    lager:info("we have been transfered, terminate immediately"),
                     {'stop', 'normal', State};
                 _Else ->
-                    lager:info("we were a different instance of this transfered call", []),
+                    lager:info("we were a different instance of this transfered call"),
                     {'noreply', State}
             end;
         <<"sofia::replaced">> ->
@@ -569,7 +570,7 @@ handle_info('sanity_check', #state{callid=CallId
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
             {'noreply', State#state{sanity_check_tref=TRef}};
         'false' ->
-            lager:debug("call uuid does not exist, executing post-hangup events and terminating", []),
+            lager:debug("call uuid does not exist, executing post-hangup events and terminating"),
             gen_listener:cast(self(), {'channel_destroyed', wh_json:new()}),
             {'noreply', State}
     end;
@@ -627,7 +628,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_event_execute_complete(api_binary(), wh_json:object(), #state{}) -> #state{}.
+-spec handle_event_execute_complete(api_binary(), wh_json:object(), state()) -> state().
 handle_event_execute_complete('undefined', _, State) ->
     State;
 handle_event_execute_complete(<<"noop">>, JObj, #state{msg_id=CurrMsgId}=State) ->
@@ -665,7 +666,7 @@ handle_event_execute_complete(AppName, JObj, #state{current_app=CurrApp}=State) 
             handle_event_execute_complete(CurrApp, JObj, State)
     end.
 
--spec handle_sofia_replaced(ne_binary(), #state{}) -> #state{}.
+-spec handle_sofia_replaced(ne_binary(), state()) -> state().
 handle_sofia_replaced(CallId, #state{callid=CallId}=State) ->
     State;
 handle_sofia_replaced(ReplacedBy, #state{callid=CallId, node=Node, other_legs=Legs}=State) ->
@@ -706,7 +707,7 @@ flush_group_id(CmdQ, GroupId, AppName) ->
                                ]),
     maybe_filter_queue([Filter], CmdQ).
 
--spec forward_queue(#state{}) -> #state{}.
+-spec forward_queue(state()) -> state().
 forward_queue(#state{callid = CallId
                      ,is_node_up = INU
                      ,is_call_up = CallUp
@@ -738,7 +739,7 @@ forward_queue(#state{callid = CallId
     end.
 
 %% execute all commands in JObj immediately, irregardless of what is running (if anything).
--spec insert_command(#state{}, insert_at_options(), wh_json:object()) -> queue().
+-spec insert_command(state(), insert_at_options(), wh_json:object()) -> queue().
 insert_command(#state{node=Node
                       ,callid=CallId
                       ,command_q=CommandQ
@@ -891,7 +892,7 @@ maybe_filter_queue([AppJObj|T]=Apps, CommandQ) ->
 is_post_hangup_command(AppName) ->
     lists:member(AppName, ?POST_HANGUP_COMMANDS).
 
--spec execute_control_request(wh_json:object(), #state{}) -> 'ok'.
+-spec execute_control_request(wh_json:object(), state()) -> 'ok'.
 execute_control_request(Cmd, #state{node=Node
                                     ,callid=CallId
                                    }) ->
@@ -962,7 +963,7 @@ send_error_resp(CallId, Cmd, Msg) ->
     lager:debug("sending execution error: ~p", [Resp]),
     wapi_dialplan:publish_error(CallId, Resp).
 
--spec get_keep_alive_ref(#state{}) -> 'undefined' | reference().
+-spec get_keep_alive_ref(state()) -> 'undefined' | reference().
 get_keep_alive_ref(#state{is_call_up='true'}) -> 'undefined';
 get_keep_alive_ref(#state{keep_alive_ref='undefined'
                           ,is_call_up='false'
