@@ -74,6 +74,8 @@
          ,unbind_q/2
         ]).
 
+-export([declare_exchanges/0]).
+
 -export([publish_action/2, publish_action/3
          ,publish_error/2, publish_error/3
          ,publish_event/2, publish_event/3
@@ -976,12 +978,20 @@ dial_method_single() -> ?DIAL_METHOD_SINGLE.
 dial_method_simultaneous() -> ?DIAL_METHOD_SIMUL.
 
 bind_q(Queue, _Prop) ->
-    _ = amqp_util:callctl_exchange(),
     _ = amqp_util:bind_q_to_callctl(Queue),
     'ok'.
 
 unbind_q(Queue, _Prop) ->
     amqp_util:unbind_q_from_callctl(Queue).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callctl_exchange().
 
 -spec terminators(api_binary()) -> ne_binaries().
 terminators(Bin) when is_binary(Bin) ->

@@ -9,7 +9,8 @@
 
 -include("ecallmgr.hrl").
 
--export([start_link/0, start/0]).
+-export([start_link/0]).
+-export([start/0]).
 -export([stop/0]).
 
 %%--------------------------------------------------------------------
@@ -21,12 +22,18 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
+    _ = declare_exchanges(),
     ecallmgr_sup:start_link().
 
--spec start() -> 'ok' | {'error', term()}.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the application
+%% @end
+%%--------------------------------------------------------------------
+-spec start() -> 'ok' | {'error', _}.
 start() ->
-    _ = start_deps(),
-    application:start(ecallmgr, permanent).
+    application:start(?MODULE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -36,7 +43,8 @@ start() ->
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
 stop() ->
-    application:stop(ecallmgr).
+    exit(whereis('ecallmgr_sup'), 'shutdown'),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -46,6 +54,34 @@ stop() ->
 %%--------------------------------------------------------------------
 -spec start_deps() -> 'ok'.
 start_deps() ->
-    lager:start(),
-    _ = [wh_util:ensure_started(App) || App <- [sasl, crypto, whistle_amqp, gproc, ibrowse, whistle_stats]],
-    ok.
+    whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
+    _ = [wh_util:ensure_started(App) || App <- ['crypto'
+                                                ,'lager'
+                                                ,'whistle_amqp'
+                                                ,'gproc'
+                                                ,'ibrowse'
+                                                ,'whistle_stats'
+                                               ]],
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all exchanges used are declared
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_authn:declare_exchanges(),
+    _ = wapi_authz:declare_exchanges(),
+    _ = wapi_call:declare_exchanges(),
+    _ = wapi_conference:declare_exchanges(),
+    _ = wapi_dialplan:declare_exchanges(),
+    _ = wapi_media:declare_exchanges(),
+    _ = wapi_notifications:declare_exchanges(),
+    _ = wapi_rate:declare_exchanges(),
+    _ = wapi_registration:declare_exchanges(),
+    _ = wapi_resource:declare_exchanges(),
+    _ = wapi_route:declare_exchanges(),
+    _ = wapi_sysconf:declare_exchanges(),
+    wapi_self:declare_exchanges().

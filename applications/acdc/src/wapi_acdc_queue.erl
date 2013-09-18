@@ -33,6 +33,7 @@
 -export([bind_q/2
          ,unbind_q/2
         ]).
+-export([declare_exchanges/0]).
 
 -export([publish_member_call/1, publish_member_call/2
          ,publish_shared_member_call/1, publish_shared_member_call/3, publish_shared_member_call/4
@@ -529,17 +530,11 @@ queue_size(AcctId, QueueId) ->
 bind_q(Q, Props) ->
     QID = props:get_value('queue_id', Props, <<"*">>),
     AcctId = props:get_value('account_id', Props),
-
-    amqp_util:callmgr_exchange(),
-    amqp_util:whapps_exchange(),
-
     bind_q(Q, AcctId, QID, props:get_value('restrict_to', Props)).
 
 bind_q(Q, AcctId, QID, 'undefined') ->
     amqp_util:bind_q_to_whapps(Q, sync_req_routing_key(AcctId, QID)),
-
     amqp_util:bind_q_to_whapps(Q, agent_change_routing_key(AcctId, QID)),
-
     amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
     amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
 bind_q(Q, AcctId, QID, ['member_call'|T]) ->
@@ -585,6 +580,16 @@ unbind_q(Q, AcctId, QID, [_|T]) ->
     unbind_q(Q, AcctId, QID, T);
 unbind_q(_, _, _, []) -> 'ok'.
 
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callmgr_exchange(),
+    amqp_util:whapps_exchange().
+    
 %%------------------------------------------------------------------------------
 %% Publishers for convenience
 %%------------------------------------------------------------------------------

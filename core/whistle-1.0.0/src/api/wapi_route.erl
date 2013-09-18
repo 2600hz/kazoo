@@ -15,6 +15,7 @@
          ,resp/1, resp_v/1
          ,win/1, win_v/1
          ,bind_q/2, unbind_q/2
+         ,declare_exchanges/0
          ,publish_req/1, publish_req/2
          ,publish_resp/2, publish_resp/3
          ,publish_win/2, publish_win/3
@@ -247,16 +248,22 @@ win_v(JObj) ->
 bind_q(Queue, Props) ->
     Realm = props:get_value(realm, Props, <<"*">>),
     User = props:get_value(user, Props, <<"*">>),
-
-    amqp_util:callmgr_exchange(),
     amqp_util:bind_q_to_callmgr(Queue, get_route_req_routing(Realm, User)).
 
 -spec unbind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     Realm = props:get_value(realm, Props, <<"*">>),
     User = props:get_value(user, Props, <<"*">>),
-
     amqp_util:unbind_q_from_callmgr(Queue, get_route_req_routing(Realm, User)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callmgr_exchange().
 
 get_route_req_routing(Realm, User) when is_binary(Realm), is_binary(User) ->
     list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).

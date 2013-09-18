@@ -9,6 +9,7 @@
 -module(dth).
 
 -export([start_link/0
+         ,start/0
          ,stop/0
          ,add_binding_to_q/2
          ,rm_binding_from_q/1
@@ -16,23 +17,67 @@
 
 -include("dth.hrl").
 
-%% @spec start_link() -> {ok,Pid::pid()}
-%% @doc Starts the app for inclusion in a supervisor tree
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the app for inclusion in a supervisor tree
+%% @end
+%%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    start_deps(),
+    _ = start_deps(),
+    _ = declare_exchanges(),
     dth_sup:start_link().
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the application
+%% @end
+%%--------------------------------------------------------------------
+-spec start() -> 'ok' | {'error', _}.
+start() ->
+    application:start(?MODULE).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Stop the app
+%% @end
+%%--------------------------------------------------------------------
+-spec stop() -> 'ok'.
+stop() -> 
+    exit(whereis('dth_sup'), 'shutdown'),
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all dependencies for this app are already running
+%% @end
+%%--------------------------------------------------------------------
+-spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    inets:start(),
-    wh_util:ensure_started('sasl'), % logging
-    wh_util:ensure_started('crypto'), % random
-    wh_util:ensure_started('ibrowse'),
-    wh_util:ensure_started('whistle_amqp'). % amqp wrapper
+    _ = [wh_util:ensure_started(App) || App <- ['crypto'
+                                                ,'inets'
+                                                ,'lager'
+                                                ,'whistle_amqp'
+                                                ,'whistle_couch'
+                                               ]],
+    'ok'.
 
-%% @spec stop() -> ok
-%% @doc Stop the basicapp server.
-stop() -> 'ok'.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all exchanges used are declared
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_call:declare_exchanges(),
+    wapi_self:declare_exchanges().
+
 
 add_binding_to_q(Q, _Props) ->
     amqp_util:bind_q_to_callmgr(Q, ?KEY_DTH_BLACKLIST_REQ),

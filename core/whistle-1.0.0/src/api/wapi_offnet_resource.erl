@@ -15,6 +15,7 @@
 -export([publish_resp/2, publish_resp/3]).
 -export([bind_q/2]).
 -export([unbind_q/1, unbind_q/2]).
+-export([declare_exchanges/0]).
 
 -include_lib("whistle/include/wh_api.hrl").
 
@@ -120,7 +121,6 @@ resp_v(JObj) ->
 
 -spec bind_q(ne_binary(), proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
-    _ = amqp_util:resource_exchange(),
     amqp_util:bind_q_to_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
 
 -spec unbind_q(ne_binary()) -> 'ok'.
@@ -129,6 +129,15 @@ unbind_q(Queue) ->
     amqp_util:unbind_q_from_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
 unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:resource_exchange().
 
 -spec publish_req(api_terms()) -> 'ok'.
 -spec publish_req(api_terms(), ne_binary()) -> 'ok'.

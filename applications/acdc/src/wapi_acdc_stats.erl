@@ -37,6 +37,7 @@
 -export([bind_q/2
          ,unbind_q/2
         ]).
+-export([declare_exchanges/0]).
 
 -export([publish_call_waiting/1, publish_call_waiting/2
          ,publish_call_missed/1, publish_call_missed/2
@@ -492,12 +493,9 @@ status_outbound_v(JObj) ->
     status_outbound_v(wh_json:to_proplist(JObj)).
 
 bind_q(Q, Props) ->
-    amqp_util:whapps_exchange(),
-
     QID = props:get_value('queue_id', Props, <<"*">>),
     AID = props:get_value('agent_id', Props, <<"*">>),
     AcctId = props:get_value('account_id', Props, <<"*">>),
-
     bind_q(Q, AcctId, QID, AID, props:get_value('restrict_to', Props)).
 
 bind_q(Q, AcctId, QID, AID, 'undefined') ->
@@ -546,6 +544,15 @@ unbind_q(Q, AcctId, QID, AID, ['query_status_stat'|L]) ->
     unbind_q(Q, AcctId, QID, AID, L);
 unbind_q(Q, AcctId, QID, AID, [_|L]) ->
     unbind_q(Q, AcctId, QID, AID, L).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->    
+    amqp_util:whapps_exchange().
 
 publish_call_waiting(JObj) ->
     publish_call_waiting(JObj, ?DEFAULT_CONTENT_TYPE).

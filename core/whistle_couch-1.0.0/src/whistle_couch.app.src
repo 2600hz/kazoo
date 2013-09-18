@@ -17,12 +17,6 @@
                     kernel
                    ,stdlib
                   ]}
-  ,{included_applications, [
-                             sasl
-                            ,crypto
-                            ,ibrowse
-                            ,couchbeam
-                           ]}
   ,{mod, { whistle_couch_app, []}}
   ,{env, []}
  ]}.

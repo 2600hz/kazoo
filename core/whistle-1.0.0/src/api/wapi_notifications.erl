@@ -10,6 +10,7 @@
 -module(wapi_notifications).
 
 -export([bind_q/2, unbind_q/2]).
+-export([declare_exchanges/0]).
 
 -export([voicemail/1, voicemail_v/1
          ,fax/1, fax_v/1
@@ -554,7 +555,6 @@ notify_update_v(JObj) -> notify_update_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
-    amqp_util:notifications_exchange(),
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
 
 bind_to_q(Q, 'undefined') ->
@@ -619,7 +619,6 @@ bind_to_q(_Q, []) ->
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 
 unbind_q(Queue, Props) ->
-    amqp_util:notifications_exchange(),
     unbind_q_from(Queue, props:get_value('restrict_to', Props)).
 
 unbind_q_from(Q, 'undefined') ->
@@ -680,6 +679,15 @@ unbind_q_from(Q, ['system_alert'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     'ok'.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:notifications_exchange().
 
 -spec publish_voicemail(api_terms()) -> 'ok'.
 -spec publish_voicemail(api_terms(), ne_binary()) -> 'ok'.

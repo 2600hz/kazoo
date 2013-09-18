@@ -9,7 +9,10 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
--export([start_link/0, stop/0]).
+-export([start_link/0
+         ,start/0
+         ,stop/0
+        ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -20,7 +23,18 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
+    _ = declare_exchanges(),
     media_mgr_sup:start_link().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the application
+%% @end
+%%--------------------------------------------------------------------
+-spec start() -> 'ok' | {'error', _}.
+start() ->
+    application:start(?MODULE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -30,7 +44,8 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
 stop() ->
-    wh_media_proxy:stop(),
+    _ = wh_media_proxy:stop(),
+    exit(whereis('media_mgr_sup'), 'shutdown'),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -42,5 +57,20 @@ stop() ->
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'whistle_amqp']],
+    _ = [wh_util:ensure_started(App) || App <- ['crypto'
+                                                ,'lager'
+                                                ,'whistle_amqp'
+                                                ,'whistle_couch'
+                                               ]],
     'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all exchanges used are declared
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_media:declare_exchanges(),
+    wapi_self:declare_exchanges().

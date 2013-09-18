@@ -13,6 +13,7 @@
 -export([dialplan_req/1]).
 
 -export([bind_q/2, unbind_q/2]).
+-export([declare_exchanges/0]).
 
 -export([publish_dialplan_req/2, publish_dialplan_req/3]).
 
@@ -36,11 +37,18 @@ dialplan_req_v(Prop) when is_list(Prop) ->
 dialplan_req_v(JObj) ->
     dialplan_req_v(wh_json:to_proplist(JObj)).
 
-bind_q(_, _) ->
-    ok.
+bind_q(_, _) -> 'ok'.
 
-unbind_q(_, _) ->
-    ok.
+unbind_q(_, _) -> 'ok'.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:targeted_exchange().
 
 %%--------------------------------------------------------------------
 %% @doc

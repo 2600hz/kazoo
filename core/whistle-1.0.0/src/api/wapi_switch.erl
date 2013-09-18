@@ -11,6 +11,7 @@
 -export([reload_gateways/1, reload_gateways_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
+-export([declare_exchanges/0]).
 
 -export([publish_reload_acls/0]).
 -export([publish_reload_gateways/0]).
@@ -69,7 +70,6 @@ reload_gateways_v(JObj) ->
 
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
-    amqp_util:configuration_exchange(),
     bind_to_q(Queue, props:get_value(restrict_to, Props)).
 
 bind_to_q(Q, undefined) ->
@@ -97,6 +97,15 @@ unbind_q_from(Q, [reload_gateways|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     ok.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:configuration_exchange().
 
 -spec publish_reload_acls/0 :: () -> 'ok'.
 publish_reload_acls() ->

@@ -16,6 +16,7 @@
         ]).
 
 -export([bind_q/2, unbind_q/2]).
+-export([declare_exchanges/0]).
 
 -export([success_keys/0]).
 
@@ -166,8 +167,6 @@ query_err_v(JObj) -> query_err_v(wh_json:to_proplist(JObj)).
 %%--------------------------------------------------------------------
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Q, Props) ->
-    amqp_util:callmgr_exchange(),
-
     bind_q(Q, props:get_value('retrict_to', Props), Props).
 
 bind_q(Q, 'undefined', Props) ->
@@ -197,6 +196,15 @@ unbind_q(Q, ['reg_query'|T], Props) ->
     unbind_q(Q, T, Props);
 unbind_q(Q, [_|T], Props) -> unbind_q(Q, T, Props);
 unbind_q(_, [], _) -> 'ok'.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callmgr_exchange().
 
 %%--------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange

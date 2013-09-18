@@ -24,6 +24,7 @@
 -export([is_valid_mode/1]).
 
 -export([bind_q/2, unbind_q/2]).
+-export([declare_exchanges/0]).
 
 -export([publish_originate_req/1, publish_originate_req/2
          ,publish_originate_resp/2, publish_originate_resp/3
@@ -281,7 +282,6 @@ is_valid_mode(M) ->
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Prop) ->
-    amqp_util:callmgr_exchange(),
     bind_q(Queue, Prop, props:get_value('restrict_to', Prop)).
 
 bind_q(Queue, _Prop, 'undefined') ->
@@ -316,6 +316,14 @@ unbind_q(Queue, Prop, [_|T]) ->
 unbind_q(_, _, []) ->
     'ok'.
 
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callmgr_exchange().
 
 -spec publish_originate_req(api_terms()) -> 'ok'.
 -spec publish_originate_req(api_terms(), ne_binary()) -> 'ok'.

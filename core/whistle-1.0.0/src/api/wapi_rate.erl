@@ -10,6 +10,7 @@
 -export([req/1, req_v/1
          ,resp/1, resp_v/1
          ,bind_q/2, unbind_q/2
+         ,declare_exchanges/0
          ,publish_req/1, publish_req/2
          ,publish_resp/2, publish_resp/3
         ]).
@@ -94,7 +95,6 @@ resp_v(JObj) ->
 %%--------------------------------------------------------------------
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
-    amqp_util:callmgr_exchange(),
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
 
 bind_to_q(Q, 'undefined') ->
@@ -120,6 +120,15 @@ unbind_q_from(Q, [_|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     'ok'.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:callmgr_exchange().
 
 %%--------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange

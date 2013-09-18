@@ -168,6 +168,8 @@ handle_advertise(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    wapi_nodes:declare_exchanges(),
+    wapi_self:declare_exchanges(),
     Tab = ets:new(?MODULE, ['set', 'protected', 'named_table', {'keypos', #node.node}]),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
     {'ok', #state{tab=Tab}}.

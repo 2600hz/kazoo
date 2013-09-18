@@ -26,12 +26,7 @@
 -spec start(term(), term()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_StartType, _StartArgs) ->
-    case crossbar:start_link() of
-        {'ok', P} -> lager:debug("crossbar_sup at ~p", [P]), {'ok', P};
-        {'error', {'already_started', P} } -> lager:debug("crossbar_sup already at ~p", [P]), {'ok', P};
-        {'error', _}=E -> lager:debug("crossbar_sup error: ~p", [E]), E
-    end.
+start(_StartType, _StartArgs) -> crossbar:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -40,5 +35,4 @@ start(_StartType, _StartArgs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop(term()) -> 'ok'.
-stop(_State) ->
-    crossbar:stop().
+stop(_State) -> crossbar:stop().

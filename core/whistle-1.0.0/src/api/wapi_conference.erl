@@ -41,6 +41,7 @@
         ]).
 
 -export([bind_q/2, unbind_q/2]).
+-export([declare_exchanges/0]).
 
 -export([publish_search_req/1, publish_search_req/2]).
 -export([publish_search_resp/2, publish_search_resp/3]).
@@ -884,7 +885,6 @@ config_resp_v(JObj) -> config_resp_v(wh_json:to_proplist(JObj)).
 %%--------------------------------------------------------------------
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
-    amqp_util:conference_exchange(),
     bind_to_q(Queue, props:get_value('restrict_to', Props), Props).
 
 bind_to_q(Q, 'undefined', _) ->
@@ -916,7 +916,6 @@ bind_to_q(_Q, [], _) -> 'ok'.
 %%--------------------------------------------------------------------
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
-    amqp_util:conference_exchange(),
     unbind_from_q(Queue, props:get_value('restrict_to', Props), Props).
 
 unbind_from_q(Q, 'undefined', _) ->
@@ -941,6 +940,15 @@ unbind_from_q(Q, ['config'|T], Props) ->
     unbind_from_q(Q, T, Props);
 unbind_from_q(_Q, [], _) -> 'ok'.
 
+%%--------------------------------------------------------------------
+%% @doc
+%% declare the exchanges used by this API
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    amqp_util:conference_exchange().
+    
 %%--------------------------------------------------------------------
 %% @doc
 %% Publish to the conference exchange

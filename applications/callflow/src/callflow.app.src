@@ -5,10 +5,9 @@
   ,{modules, []}
   ,{registered, []}
   ,{applications, [
-                   kernel
-                   ,stdlib
-                   ,crypto
-                  ]}
+		   kernel
+		   ,stdlib
+		  ]}
   ,{mod, { callflow_app, []} }
   ,{env, []}
  ]}.
