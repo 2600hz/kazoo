@@ -20,7 +20,7 @@
          ,exists/1
          ,import_moh/1
          ,set_account_id/2
-         ,fetch/1
+         ,fetch/1, fetch/2
          ,renew/2
          ,to_json/1
          ,to_props/1
@@ -60,14 +60,29 @@ start_link(Node) ->
 start_link(Node, Options) ->
     gen_server:start_link(?MODULE, [Node, Options], []).
 
+-type fetch_resp() :: wh_json:object() |
+                      wh_proplist() |
+                      channel().
+-type channel_format() :: 'json' | 'proplist' | 'record'.
+
 -spec fetch(ne_binary()) ->
-                   {'ok', wh_json:object()} |
+                   {'ok', fetch_resp()} |
+                   {'error', 'not_found'}.
+-spec fetch(ne_binary(), channel_format()) ->
+                   {'ok', fetch_resp()} |
                    {'error', 'not_found'}.
 fetch(UUID) ->
+    fetch(UUID, 'json').
+fetch(UUID, Format) ->
     case ets:lookup(?CHANNELS_TBL, UUID) of
-        [Channel] -> {'ok', to_json(Channel)};
+        [Channel] -> {'ok', format(Format, Channel)};
         _Else -> {'error', 'not_found'}
     end.
+
+-spec format(channel_format(), channel()) -> fetch_resp().
+format('json', Channel) -> to_json(Channel);
+format('proplist', Channel) -> to_props(Channel);
+format('record', Channel) -> Channel.
 
 -spec node(ne_binary()) ->
                   {'ok', atom()} |
