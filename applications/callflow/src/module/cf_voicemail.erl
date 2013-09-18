@@ -794,6 +794,7 @@ update_mailbox(#mailbox{mailbox_id=Id
                 lager:debug("notification error: ~p", [_E]),
                 save_meta(Length, Box, Call, MediaId)
         end,
+    timer:sleep(2500),
     _ = cf_util:unsolicited_owner_mwi_update(whapps_call:account_db(Call), OwnerId),
     'ok'.
 
