@@ -139,6 +139,8 @@
 
 -define(FS_TIMEOUT, 5000).
 
+-type fs_node() :: atom() | ne_binary() | pid().
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -162,15 +164,15 @@ start_link(Node, Options) ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Node, Options]).
 
--spec sync_channels(pid() | atom()) -> 'ok'.
+-spec sync_channels(fs_node()) -> 'ok'.
 sync_channels(Srv) ->
     gen_server:cast(find_srv(Srv), 'sync_channels').
 
--spec sync_interface(pid() | atom()) -> 'ok'.
+-spec sync_interface(fs_node()) -> 'ok'.
 sync_interface(Srv) ->
     gen_server:cast(find_srv(Srv), 'sync_interface').
 
--spec sync_capabilities(pid() | atom()) -> 'ok'.
+-spec sync_capabilities(fs_node()) -> 'ok'.
 sync_capabilities(Srv) ->
     gen_server:cast(find_srv(Srv), 'sync_capabilities').
 
@@ -183,11 +185,11 @@ hostname(Srv) ->
             Hostname
     end.
 
--spec sip_url(pid() | atom()) -> api_binary().
+-spec sip_url(fs_node()) -> api_binary().
 sip_url(Srv) ->
     gen_server:call(find_srv(Srv), 'sip_url').
 
--spec sip_external_ip(pid() | atom()) -> api_binary().
+-spec sip_external_ip(fs_node()) -> api_binary().
 sip_external_ip(Srv) ->
     gen_server:call(find_srv(Srv), 'sip_external_ip').
 
@@ -214,14 +216,16 @@ handle_reload_gtws(_JObj, Props) ->
         {'error', _E} -> lager:debug("sofia ~s failed with error: ~p", [Args, _E])
     end.
 
--spec fs_node(pid() | atom()) -> atom().
+-spec fs_node(fs_node()) -> atom().
 fs_node(Srv) ->
     case catch(gen_server:call(find_srv(Srv), 'node', ?FS_TIMEOUT)) of
         {'EXIT', _} -> 'undefined';
         Else -> Else
     end.
 
+-spec find_srv(fs_node()) -> pid().
 find_srv(Pid) when is_pid(Pid) -> Pid;
+find_srv(Node) when is_binary(Node) -> find_srv(wh_util:to_atom(Node));
 find_srv(Node) when is_atom(Node) ->
     ecallmgr_fs_node_sup:node_srv(ecallmgr_fs_sup:find_node(Node)).
 
