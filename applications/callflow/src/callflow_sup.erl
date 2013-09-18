@@ -11,8 +11,6 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
-
 %% API
 -export([start_link/0]).
 -export([listener_proc/0]).

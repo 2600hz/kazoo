@@ -53,7 +53,7 @@
 
 -define(TIMEOUT_MIN_DTMF, 5000).
 -define(TIMEOUT_DTMF, 2000).
--define(TIMEOUT_ENDPOINT, ?DEFAULT_TIMEOUT).
+-define(TIMEOUT_ENDPOINT, ?DEFAULT_TIMEOUT_S).
 
 -define(PROMPT_ENTER_PERSON_LASTNAME, <<"system_media/dir-enter_person_lastname">>). %% Please enter the first few letters of the person's lastname
 -define(PROMPT_ENTER_PERSON_FIRSTNAME, <<"system_media/dir-enter_person_firstname">>). %% Please enter the first few letters of the person's firstname
@@ -254,7 +254,8 @@ play_confirm_match(Call, User) ->
                             ,{'play', ?PROMPT_CONFIRM_MENU, ?ANY_DIGIT}
                            ]).
 
--spec play_directory_instructions(whapps_call:call(), 'first' | 'last' | ne_binary()) -> {'ok', binary()}.
+-spec play_directory_instructions(whapps_call:call(), 'first' | 'last' | ne_binary()) ->
+                                         {'ok', binary()}.
 play_directory_instructions(Call, 'first') ->
     play_and_collect(Call, [{'play', ?PROMPT_ENTER_PERSON_FIRSTNAME}]);
 play_directory_instructions(Call, 'last') ->

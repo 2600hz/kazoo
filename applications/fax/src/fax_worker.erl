@@ -26,13 +26,14 @@
 -include("fax.hrl").
 
 -record(state, {queue_name :: api_binary()
-                ,pool :: 'undefined' | pid()
+                ,pool :: api_pid()
                 ,job_id :: api_binary()
                 ,job :: api_object()
                 ,keep_alive :: 'undefined' | reference()
                 ,max_time :: 'undefined' | reference()
                }).
 -type state() :: #state{}.
+
 
 -define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_tx_resp'}
@@ -174,8 +175,9 @@ handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
             gen_server:cast(Pid, {'job_complete', self()}),
             {'noreply', reset(State)}
     end;
-handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
-    {'noreply', State#state{queue_name=Q}};
+handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
+    lager:debug("worker discovered queue name ~s", [QueueName]),
+    {'noreply', State#state{queue_name=QueueName}};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
@@ -261,11 +263,10 @@ attempt_to_acquire_job(Id) ->
         {'ok', JObj} ->
             case wh_json:get_value(<<"pvt_job_status">>, JObj) of
                 <<"pending">> ->
-                    couch_mgr:save_doc(?WH_FAXES, wh_json:set_values(
-                                                    [{<<"pvt_job_status">>, <<"processing">>}
-                                                     ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
-                                                     ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-                                                    ], JObj));
+                    couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
+                                                                      ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
+                                                                      ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                                                     ],JObj));
                 _Else ->
                     lager:debug("job not in an available status: ~s", [_Else]),
                     {'error', 'job_not_available'}
@@ -289,10 +290,10 @@ bump_modified(JobId) ->
 
 -spec release_failed_job('fetch_failed', string(), wh_json:object()) -> 'failure';
                         ('bad_file', ne_binary(), wh_json:object()) -> 'failure';
+                        ('job_timeout', 'undefined', wh_json:object()) -> 'failure';
                         ('fetch_error', {atom(), _}, wh_json:object()) -> 'failure';
                         ('tx_resp', wh_json:object(), wh_json:object()) -> 'failure';
                         ('exception', _, wh_json:object()) -> 'failure';
-                        ('job_timeout', _, wh_json:object()) -> 'failure';
                         ('timeout', _, wh_json:object()) -> 'failure'.
 release_failed_job('fetch_failed', Status, JObj) ->
     Msg = wh_util:to_binary(io_lib:format("could not retrieve file, http response ~s", [Status])),
@@ -508,7 +509,6 @@ normalize_content_type(CT) ->
 send_fax(JobId, JObj, Q) ->
     IgnoreEarlyMedia = wh_util:to_binary(whapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
     CallId = wh_util:rand_hex_binary(8),
-
     Request = [{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
                ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
                ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}

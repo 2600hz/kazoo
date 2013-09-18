@@ -361,7 +361,7 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (bt_transaction()) -> wh_json:json_object().
+-spec record_to_json/1 :: (bt_transaction()) -> wh_json:object().
 record_to_json(#bt_transaction{}=Transaction) ->
     Props = [{<<"id">>, Transaction#bt_transaction.id}
              ,{<<"status">>, Transaction#bt_transaction.status}

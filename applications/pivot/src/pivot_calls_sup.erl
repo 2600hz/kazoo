@@ -38,7 +38,7 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec new(whapps_call:call(), wh_json:json_object()) -> sup_startchild_ret().
+-spec new(whapps_call:call(), wh_json:object()) -> sup_startchild_ret().
 new(Call, JObj) ->
     supervisor:start_child(?MODULE, [Call, JObj]).
 

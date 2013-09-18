@@ -3,6 +3,7 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("whistle_apps/src/whapps_call_command_types.hrl").
 
 -type cf_exe_response() :: {'stop'} |
                            {'continue'} |
@@ -12,12 +13,12 @@
                          ,'channel_hungup' |
                          'channel_unbridge' |
                          'timeout' |
-                         wh_json:json_object()
+                         wh_json:object()
                         }.
--type cf_api_std_return() :: cf_api_error() | {'ok', wh_json:json_object()}.
--type cf_api_bridge_return() :: {'error', 'timeout' | wh_json:json_object()} |
-                                {'fail', wh_json:json_object()} |
-                                {'ok', wh_json:json_object()}.
+-type cf_api_std_return() :: cf_api_error() | {'ok', wh_json:object()}.
+-type cf_api_bridge_return() :: {'error', 'timeout' | wh_json:object()} |
+                                {'fail', wh_json:object()} |
+                                {'ok', wh_json:object()}.
 -type cf_api_binary() :: binary() | 'undefined'.
 
 -define(APP_NAME, <<"callflow">>).
@@ -34,17 +35,17 @@
 
 -define(NO_MATCH_CF, <<"no_match">>).
 
--define(DEFAULT_TIMEOUT, <<"20">>).
+-define(DEFAULT_TIMEOUT_S, 20).
 -define(DEFAULT_CALLER_ID_NUMBER, <<"0000000000">>).
 
 -define(CF_CONFIG_CAT, <<"callflow">>).
 
 -define(MANUAL_PRESENCE_DOC, <<"manual_presence">>).
 
--define(CALLFLOW_CACHE, callflow_cache).
+-define(CALLFLOW_CACHE, 'callflow_cache').
 
 -define(CF_ATTR_LOWER_KEY, <<109,108,112,112>>).
 -define(CF_ATTR_UPPER_KEY, <<109,097,120,095,112,114,101,099,101,100,101,110,099,101>>).
 
--define(CALLFLOW_HRL, true).
+-define(CALLFLOW_HRL, 'true').
 -endif.

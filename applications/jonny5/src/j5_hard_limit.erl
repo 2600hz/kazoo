@@ -11,7 +11,7 @@
 
 -include("jonny5.hrl").
 
--spec is_under(#limits{}, wh_json:json_object()) -> boolean().
+-spec is_under(#limits{}, wh_json:object()) -> boolean().
 is_under(Limits, JObj) ->
     case calls_at_limit(Limits, JObj)
         orelse resource_consumption_at_limit(Limits, JObj)
@@ -22,7 +22,7 @@ is_under(Limits, JObj) ->
             'false'
     end.
 
--spec calls_at_limit(#limits{}, wh_json:json_object()) -> boolean().
+-spec calls_at_limit(#limits{}, wh_json:object()) -> boolean().
 calls_at_limit(#limits{calls=-1}, _) ->
     'false';
 calls_at_limit(#limits{calls=0}, _) ->
@@ -31,7 +31,7 @@ calls_at_limit(#limits{calls=Resources}, JObj) ->
     ConsumedResources = wh_json:get_integer_value([<<"Usage">>, <<"Calls">>], JObj, 0),
     Resources - ConsumedResources < 0.
 
--spec resource_consumption_at_limit(#limits{}, wh_json:json_object()) -> boolean().
+-spec resource_consumption_at_limit(#limits{}, wh_json:object()) -> boolean().
 resource_consumption_at_limit(#limits{resource_consuming_calls=-1}, _) ->
     'false';
 resource_consumption_at_limit(#limits{resource_consuming_calls=0}, _) ->

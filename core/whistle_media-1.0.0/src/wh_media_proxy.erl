@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012 VoIP INC
+%%% @copyright (C) 2010-2013 2600Hz INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -105,7 +105,7 @@ on_response(Status, _Headers, Req) ->
     wh_counter:inc(<<"media_proxy.responses.", (wh_util:to_binary(Status))/binary>>),
     Req.
 
--spec find_file(string(), string()) -> string().    
+-spec find_file(string(), string()) -> string().
 find_file(File, Root) ->
     case filelib:is_file(File) of
         'true' -> File;

@@ -254,7 +254,7 @@ record_to_xml(#bt_card{}=Card, ToString) ->
 %% Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record/1 :: ('undefined' | wh_json:json_object()) -> card().
+-spec json_to_record/1 :: ('undefined' | wh_json:object()) -> card().
 json_to_record(undefined) ->
     undefined;
 json_to_record(JObj) ->
@@ -279,7 +279,7 @@ json_to_record(JObj) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (card()) -> wh_json:json_object().
+-spec record_to_json/1 :: (card()) -> wh_json:object().
 record_to_json(#bt_card{}=Card) ->
     Props =[{<<"id">>, Card#bt_card.token}
              ,{<<"bin">>, Card#bt_card.bin}
@@ -309,7 +309,7 @@ record_to_json(#bt_card{}=Card) ->
 %% a uuid to use during creation.
 %% @end
 %%--------------------------------------------------------------------
--spec create_or_get_json_id/1 :: (wh_json:json_object()) -> api_binary().
+-spec create_or_get_json_id/1 :: (wh_json:object()) -> api_binary().
 create_or_get_json_id(JObj) ->
     case wh_json:get_value(<<"number">>, JObj) of
         undefined ->

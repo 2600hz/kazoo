@@ -64,7 +64,7 @@ flush_realm_registrations(Realm) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec do_summary(list(), fun((wh_json:json_object()) -> 'ok')) -> ['ok',...].
+-spec do_summary(list(), fun((wh_json:object()) -> 'ok')) -> ['ok',...].
 do_summary(Registrations, PrintFun) ->
     [PrintFun(Registration) || Registration <- Registrations].
 
@@ -74,7 +74,7 @@ do_summary(Registrations, PrintFun) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_summary(wh_json:json_object()) -> 'ok'.
+-spec print_summary(wh_json:object()) -> 'ok'.
 print_summary(Registration) ->
     Username = wh_json:get_value(<<"Username">>, Registration),
     Realm = wh_json:get_value(<<"Realm">>, Registration),

@@ -43,7 +43,7 @@ empty() -> [].
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec from_service_json/1 :: (wh_json:json_object()) -> plans().
+-spec from_service_json/1 :: (wh_json:object()) -> plans().
 from_service_json(ServicesJObj) ->
     PlanIds = wh_json:get_keys(<<"plans">>, ServicesJObj),
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, ServicesJObj),
@@ -74,7 +74,7 @@ public_json([#wh_service_plans{plans=Plans}|ServicePlans], JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_service_plan/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+-spec add_service_plan/3 :: (ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
 add_service_plan(PlanId, ResellerId, ServicesJObj) ->
     Plan = wh_json:from_list([{<<"account_id">>, ResellerId}]),
     wh_json:set_value([<<"plans">>, PlanId], Plan, ServicesJObj).    
@@ -85,7 +85,7 @@ add_service_plan(PlanId, ResellerId, ServicesJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec delete_service_plan/2 :: (ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+-spec delete_service_plan/2 :: (ne_binary(), wh_json:object()) -> wh_json:object().
 delete_service_plan(PlanId, ServicesJObj) ->
     wh_json:delete_key([<<"plans">>, PlanId], ServicesJObj).
 
@@ -95,7 +95,7 @@ delete_service_plan(PlanId, ServicesJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec plan_summary/1 :: (wh_json:json_object()) -> wh_json:json_object().
+-spec plan_summary/1 :: (wh_json:object()) -> wh_json:object().
 plan_summary(ServicesJObj) ->
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, ServicesJObj),
     lists:foldl(fun(PlanId, J) ->
@@ -131,7 +131,7 @@ activation_charges(Category, Item, ServicePlans) ->
 %% suitable for use with the bookkeepers.
 %% @end
 %%--------------------------------------------------------------------
--spec create_items/1 :: (wh_json:json_object()) -> {'ok', wh_service_items:items()} | {'error', 'no_plans'}.
+-spec create_items/1 :: (wh_json:object()) -> {'ok', wh_service_items:items()} | {'error', 'no_plans'}.
 -spec create_items/2 :: (wh_services:services(), plans()) -> wh_service_items:items().
 
 create_items(ServiceJObj) ->
@@ -158,7 +158,7 @@ create_items(Services, ServicePlans) ->
 %% Return a json object with all the items for an account
 %% @end
 %%--------------------------------------------------------------------
--spec public_json_items/1 :: (wh_json:json_object()) -> wh_json:json_object().
+-spec public_json_items/1 :: (wh_json:object()) -> wh_json:object().
 public_json_items(ServiceJObj) ->
     case create_items(ServiceJObj) of
         {'ok', Items} ->
@@ -174,8 +174,8 @@ public_json_items(ServiceJObj) ->
 %% in the vendors #wh_service_plans data structure.
 %% @end
 %%--------------------------------------------------------------------
--spec get_plans/3 :: ([ne_binary(),...] | [], ne_binary(), wh_json:json_object()) -> plans().
--spec get_plans/4 :: ([ne_binary(),...] | [], ne_binary(), wh_json:json_object(), plans()) -> plans().
+-spec get_plans/3 :: ([ne_binary(),...] | [], ne_binary(), wh_json:object()) -> plans().
+-spec get_plans/4 :: ([ne_binary(),...] | [], ne_binary(), wh_json:object(), plans()) -> plans().
 
 get_plans(PlanIds, ResellerId, Sevices) ->
     get_plans(PlanIds, ResellerId, Sevices, empty()).
@@ -196,8 +196,8 @@ get_plans([PlanId|PlanIds], ResellerId, Services, ServicePlans) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_fetch_vendor_plan/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object())
-                                   -> 'undefined' | wh_json:json_object().
+-spec maybe_fetch_vendor_plan/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:object())
+                                   -> 'undefined' | wh_json:object().
 maybe_fetch_vendor_plan(PlanId, VendorId, VendorId, Overrides) ->
     wh_service_plan:fetch(PlanId, VendorId, Overrides);
 maybe_fetch_vendor_plan(PlanId, _, ResellerId, _) ->

@@ -22,7 +22,7 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers/2 :: (ne_binary(), pos_integer()) -> %{'ok', wh_json:json_object()} |
+-spec find_numbers/2 :: (ne_binary(), pos_integer()) -> %{'ok', wh_json:object()} |
                                                         {'error', 'non_available'}.
 find_numbers(Number, Quanity) when size(Number) < 5 ->
     find_numbers(<<"+1", Number/binary>>, Quanity);

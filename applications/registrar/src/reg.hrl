@@ -21,6 +21,7 @@
                     ,owner_id
                     ,suppress_unregister_notifications
                    }).
+-type auth_user() :: #auth_user{}.
 
 -define(REG_HRL, 'true').
 -endif.

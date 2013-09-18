@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -27,9 +27,14 @@ handle(Data, Call) ->
             lager:info("completed successful bridge to the device"),
             cf_exe:stop(Call);
         {'fail', _}=F ->
-            cf_util:handle_bridge_failure(F, Call);
+            case cf_util:handle_bridge_failure(F, Call) of
+                'ok' -> lager:debug("bridge failure handled");
+                'not_found' -> cf_exe:continue(Call)
+            end;
         {'error', _R} ->
-            lager:info("error bridging to device: ~p", [_R]),
+            lager:info("error bridging to device: ~s"
+                       ,[wh_json:get_value(<<"Error-Message">>, _R)]
+                      ),
             cf_exe:continue(Call)
     end.
 
@@ -47,7 +52,7 @@ bridge_to_endpoints(Data, Call) ->
     case cf_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
         {'ok', Endpoints} ->
-            Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
+            Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
             IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
             whapps_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call)
     end.

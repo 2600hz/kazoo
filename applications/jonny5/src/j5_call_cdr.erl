@@ -11,7 +11,7 @@
 
 -include("jonny5.hrl").
 
--spec handle_req(wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_call:cdr_v(JObj),
     wh_util:put_callid(JObj),

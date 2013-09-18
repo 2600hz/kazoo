@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% Data: {
@@ -18,8 +18,8 @@
 
 -type max_wait() :: pos_integer() | 'infinity'.
 
--record(member_call, {call :: whapps_call:call()
-                      ,queue_id :: api_binary()
+-record(member_call, {call              :: whapps_call:call()
+                      ,queue_id         :: api_binary()
                       ,config_data = [] :: wh_proplist()
                       ,max_wait = 60000 :: max_wait()
                      }).
@@ -48,7 +48,7 @@ handle(Data, Call) ->
     MaxWait = max_wait(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj, 3600)),
     MaxQueueSize = max_queue_size(wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj, 0)),
 
-    Call1 = whapps_call:kvs_store(caller_exit_key, wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>), Call),
+    Call1 = whapps_call:kvs_store('caller_exit_key', wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>), Call),
 
     CurrQueueSize = wapi_acdc_queue:queue_size(whapps_call:account_id(Call1), QueueId),
 
@@ -63,7 +63,7 @@ handle(Data, Call) ->
                      ).
 
 -spec maybe_enter_queue(member_call(), boolean()) -> any().
-maybe_enter_queue(#member_call{call=Call}, true) ->
+maybe_enter_queue(#member_call{call=Call}, 'true') ->
     lager:info("queue has reached max size"),
     cf_exe:continue(Call);
 maybe_enter_queue(#member_call{call=Call
@@ -71,12 +71,12 @@ maybe_enter_queue(#member_call{call=Call
                                ,queue_id=QueueId
                                ,max_wait= MaxWait
                               }=MC
-                  ,false) ->
+                  ,'false') ->
     lager:info("asking for an agent, waiting up to ~p ms", [MaxWait]),
 
     cf_exe:send_amqp(Call, MemberCall, fun wapi_acdc_queue:publish_member_call/1),
     _ = whapps_call_command:flush_dtmf(Call),
-    wait_for_bridge(MC#member_call{call=whapps_call:kvs_store(queue_id, QueueId, Call)}
+    wait_for_bridge(MC#member_call{call=whapps_call:kvs_store('queue_id', QueueId, Call)}
                     ,MaxWait
                    ).
 
@@ -126,7 +126,7 @@ process_message(#member_call{call=Call
     end;
 process_message(#member_call{call=Call}=MC, Timeout, Start, Wait, JObj, {<<"call_event">>, <<"DTMF">>}) ->
     DigitPressed = wh_json:get_value(<<"DTMF-Digit">>, JObj),
-    case DigitPressed =:= whapps_call:kvs_fetch(caller_exit_key, Call) of
+    case DigitPressed =:= whapps_call:kvs_fetch('caller_exit_key', Call) of
         'true' ->
             lager:info("caller pressed the exit key(~s), moving to next callflow action", [DigitPressed]),
             cancel_member_call(Call, <<"dtmf_exit">>),

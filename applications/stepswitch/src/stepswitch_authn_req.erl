@@ -18,7 +18,7 @@
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec handle_req(wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     true = wapi_authn:req_v(JObj),
 
@@ -40,7 +40,7 @@ handle_req(JObj, Props) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_auth_resp/2  :: (#gateway{}, wh_json:json_object()) -> 'ok'.
+-spec send_auth_resp/2  :: (#gateway{}, wh_json:object()) -> 'ok'.
 send_auth_resp(#gateway{resource_id=AuthId, realm=Realm
                         ,username=Username, password=Password}, JObj) ->
     Category = wh_json:get_value(<<"Event-Category">>, JObj),

@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012 VoIP Inc
+%%% @copyright (C) 2012-2013, 2600Hz Inc
 %%% @doc
 %%% Supervisor for running conference participant processes
 %%% @end
-%%% Created : 20 Feb 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(conf_participant_sup).
 
@@ -19,10 +20,6 @@
 -export([init/1]).
 
 -define(SERVER, ?MODULE).
-
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Restart, Shutdown, Type),
-        {Name, {Name, 'start_link', []}, Restart, Shutdown, Type, [Name]}).
 
 %%%===================================================================
 %%% API functions
@@ -66,4 +63,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?CHILD('conf_participant', 'temporary', 2000, 'worker')]}}.
+    {'ok', {SupFlags, [?WORKER_TYPE('conf_participant', 'temporary')]}}.

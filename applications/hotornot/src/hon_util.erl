@@ -19,10 +19,10 @@
 -define(BOTH_DIRECTIONS, [<<"inbound">>, <<"outbound">>]).
 
 -spec candidate_rates(ne_binary()) ->
-                                   {'ok', wh_json:json_objects()} |
+                                   {'ok', wh_json:objects()} |
                                    {'error', atom()}.
 -spec candidate_rates(ne_binary(), binary()) ->
-                                   {'ok', wh_json:json_objects()} |
+                                   {'ok', wh_json:objects()} |
                                    {'error', atom()}.
 candidate_rates(ToDID) ->
     candidate_rates(ToDID, <<>>).
@@ -62,7 +62,7 @@ matching_rates(Rates, DID, Direction, RouteOptions) ->
              matching_rate(Rate, E164, Direction, RouteOptions)
     ].
 
--spec sort_rates(wh_json:json_objects()) -> wh_json:json_objects().
+-spec sort_rates(wh_json:objects()) -> wh_json:objects().
 sort_rates(Rates) ->
     lists:usort(fun sort_rate/2, Rates).
 
@@ -71,7 +71,7 @@ sort_rates(Rates) ->
 %% Return whether the given rate is a candidate for the given DID
 %% taking into account direction of the call and options the DID
 %% needs to have available
--spec matching_rate(wh_json:json_object(), ne_binary(), 'undefined' | ne_binary(), trunking_options()) -> boolean().
+-spec matching_rate(wh_json:object(), ne_binary(), 'undefined' | ne_binary(), trunking_options()) -> boolean().
 matching_rate(Rate, E164, Direction, RouteOptions) ->
     (Direction =:= 'undefined' orelse lists:member(Direction, wh_json:get_value([<<"direction">>], Rate, ?BOTH_DIRECTIONS)))
         andalso options_match(RouteOptions, wh_json:get_value([<<"options">>], Rate, []))
@@ -80,7 +80,7 @@ matching_rate(Rate, E164, Direction, RouteOptions) ->
                          ).
 
 %% Return true if RateA has lower weight than RateB
--spec sort_rate(wh_json:json_object(), wh_json:json_object()) -> boolean().
+-spec sort_rate(wh_json:object(), wh_json:object()) -> boolean().
 sort_rate(RateA, RateB) ->
     wh_json:get_integer_value(<<"weight">>, RateA, 100) =< wh_json:get_integer_value(<<"weight">>, RateB, 100).
 

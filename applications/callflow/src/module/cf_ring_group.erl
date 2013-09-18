@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -32,7 +32,7 @@ handle(Data, Call) ->
 
 -spec attempt_endpoints(wh_json:objects(), wh_json:object(), whapps_call:call()) -> 'ok'.
 attempt_endpoints(Endpoints, Data, Call) ->
-    Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
+    Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
@@ -40,9 +40,15 @@ attempt_endpoints(Endpoints, Data, Call) ->
         {'ok', _} ->
             lager:info("completed successful bridge to the ring group - call finished normally"),
             cf_exe:stop(Call);
-        {'fail', _}=F -> cf_util:handle_bridge_failure(F, Call);
+        {'fail', _}=F ->
+            case cf_util:handle_bridge_failure(F, Call) of
+                'ok' -> lager:debug("bridge failure handled");
+                'not_found' -> cf_exe:continue(Call)
+            end;
         {'error', _R} ->
-            lager:info("error bridging to ring group: ~p", [_R]),
+            lager:info("error bridging to ring group: ~p"
+                       ,[wh_json:get_value(<<"Error-Message">>, _R)]
+                      ),
             cf_exe:continue(Call)
     end.
 
@@ -73,7 +79,8 @@ resolve_endpoint_ids(Members, Call) ->
 
 -type endpoint_intermediate() :: {ne_binary(), ne_binary(), api_object()}.
 -type endpoint_intermediates() :: [] | [endpoint_intermediate(),...].
--spec resolve_endpoint_ids(wh_json:objects(), endpoint_intermediates(), whapps_call:call()) -> endpoint_intermediates().
+-spec resolve_endpoint_ids(wh_json:objects(), endpoint_intermediates(), whapps_call:call()) ->
+                                  endpoint_intermediates().
 resolve_endpoint_ids([], EndpointIds, _) -> EndpointIds;
 resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
     Id = wh_json:get_value(<<"id">>, Member),
@@ -104,7 +111,8 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
             resolve_endpoint_ids(Members, [{Type, Id, Member}|EndpointIds], Call)
     end.
 
--spec get_group_members(wh_json:object(), ne_binary(), whapps_call:call()) -> wh_json:objects().
+-spec get_group_members(wh_json:object(), ne_binary(), whapps_call:call()) ->
+                               wh_json:objects().
 get_group_members(Member, Id, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, Id) of

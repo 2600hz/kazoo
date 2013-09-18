@@ -80,7 +80,7 @@ props_to_xml([{K, V}|T], Xml) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bt_error_to_json/1 :: (#bt_error{}) -> wh_json:json_object().
+-spec bt_error_to_json/1 :: (#bt_error{}) -> wh_json:object().
 bt_error_to_json(#bt_error{}=BtError) ->
     Props = [{<<"code">>, BtError#bt_error.code}
              ,{<<"message">>, BtError#bt_error.message}
@@ -94,7 +94,7 @@ bt_error_to_json(#bt_error{}=BtError) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bt_verification_to_json/1 :: (#bt_verification{}) -> wh_json:json_object().
+-spec bt_verification_to_json/1 :: (#bt_verification{}) -> wh_json:object().
 bt_verification_to_json(#bt_verification{}=BtVerification) ->
     Props = [{<<"verification_status">>, BtVerification#bt_verification.verification_status}
              ,{<<"processor_response_code">>, BtVerification#bt_verification.processor_response_code}
@@ -113,7 +113,7 @@ bt_verification_to_json(#bt_verification{}=BtVerification) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bt_api_error_to_json/1 :: (#bt_api_error{}) -> wh_json:json_object().
+-spec bt_api_error_to_json/1 :: (#bt_api_error{}) -> wh_json:object().
 bt_api_error_to_json(#bt_api_error{}=BtApiError) ->
     Props = [{<<"errors">>, [bt_error_to_json(Error) || Error <- BtApiError#bt_api_error.errors]}
              ,{<<"verification">>, bt_verification_to_json(BtApiError#bt_api_error.verification)}

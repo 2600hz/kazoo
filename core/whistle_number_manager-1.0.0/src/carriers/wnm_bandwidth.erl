@@ -38,7 +38,7 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec get_number_data/1 :: (ne_binary()) -> wh_json:json_object().
+-spec get_number_data/1 :: (ne_binary()) -> wh_json:object().
 get_number_data(<<"+", Rest/binary>>) ->
     get_number_data(Rest);
 get_number_data(<<"1", Rest/binary>>) ->
@@ -61,7 +61,7 @@ get_number_data(Number) ->
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers/2 :: (ne_binary(), pos_integer()) -> {'ok', wh_json:json_object()} |
+-spec find_numbers/2 :: (ne_binary(), pos_integer()) -> {'ok', wh_json:object()} |
                                                         {'error', term()}.
 find_numbers(<<"+", Rest/binary>>, Quanity) ->
     find_numbers(Rest, Quanity);
@@ -240,7 +240,7 @@ make_numbers_request(Verb, Props) ->
 %% Convert a number order response to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_order_response_to_json/1 :: (term()) -> wh_json:json_object().
+-spec number_order_response_to_json/1 :: (term()) -> wh_json:object().
 number_order_response_to_json([]) ->
     wh_json:new();
 number_order_response_to_json([Xml]) ->
@@ -264,7 +264,7 @@ number_order_response_to_json(Xml) ->
 %% Convert a number search response XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_search_response_to_json/1 :: (term()) -> wh_json:json_object().
+-spec number_search_response_to_json/1 :: (term()) -> wh_json:object().
 number_search_response_to_json([]) ->
     wh_json:new();
 number_search_response_to_json([Xml]) ->
@@ -286,7 +286,7 @@ number_search_response_to_json(Xml) ->
 %% Convert a rate center XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec rate_center_to_json/1 :: (list()) -> wh_json:json_object().
+-spec rate_center_to_json/1 :: (list()) -> wh_json:object().
 rate_center_to_json([]) ->
     wh_json:new();
 rate_center_to_json([Xml]) ->

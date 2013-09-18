@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP, INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Given a rate_req, find appropriate rate for the call
 %%% @end
@@ -16,33 +16,33 @@ init() -> whapps_maintenance:refresh(?WH_RATES_DB).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    true = wapi_rate:req_v(JObj),
+    'true' = wapi_rate:req_v(JObj),
     _ = wh_util:put_callid(JObj),
     lager:debug("valid rating request"),
     case get_rate_data(JObj) of
-        {error, no_rate_found} -> ok;
-        {ok, Resp} ->
+        {'error', 'no_rate_found'} -> 'ok';
+        {'ok', Resp} ->
             wapi_rate:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
                                    ,props:filter_undefined(Resp)
                                   )
     end.
 
 -spec get_rate_data(wh_json:object()) ->
-                                 {'ok', wh_proplist()} |
-                                 {'error', 'no_rate_found'}.
+                           {'ok', wh_proplist()} |
+                           {'error', 'no_rate_found'}.
 get_rate_data(JObj) ->
     ToDID = wh_json:get_value(<<"To-DID">>, JObj),
     FromDID = wh_json:get_value(<<"From-DID">>, JObj),
     case hon_util:candidate_rates(ToDID, FromDID) of
-        {ok, []} -> 
+        {'ok', []} ->
             wh_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
             lager:debug("rate lookup had no results"),
-            {error, no_rate_found};
-        {error, _E} -> 
+            {'error', 'no_rate_found'};
+        {'error', _E} ->
             wh_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
             lager:debug("rate lookup error: ~p", [_E]),
-            {error, no_rate_found};
-        {ok, Rates} ->
+            {'error', 'no_rate_found'};
+        {'ok', Rates} ->
             RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
             Direction = wh_json:get_value(<<"Direction">>, JObj),
             Matching = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions),
@@ -50,21 +50,21 @@ get_rate_data(JObj) ->
                 [] ->
                     wh_notify:system_alert("no rate found after filter/sort for ~s to ~s", [FromDID, ToDID]),
                     lager:debug("no rates left after filter"),
-                    {error, no_rate_found};
+                    {'error', 'no_rate_found'};
                 [Rate|_] ->
-                    {ok, rate_resp(Rate, JObj)}
+                    {'ok', rate_resp(Rate, JObj)}
             end
     end.
 
 -spec maybe_get_rate_discount(wh_json:object()) -> api_binary().
 maybe_get_rate_discount(JObj) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, <<"limits">>) of
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("unable to open account ~s definition: ~p", [AccountId, _R]),
-            undefined;
-        {ok, Def} ->
+            'undefined';
+        {'ok', Def} ->
             Number = wh_json:get_value(<<"To-DID">>, JObj),
             Classification = wnm_util:classify_number(Number),
             lager:debug("~s number discount percentage: ~p", [Classification, Def]),
@@ -99,7 +99,7 @@ get_surcharge(Rate) ->
     Surcharge = wh_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0),
     wht_util:dollars_to_units(Surcharge).
 
--spec get_rate_cost(wh_json:object()) -> ne_binary().
+-spec get_rate_cost(wh_json:object()) -> integer().
 get_rate_cost(Rate) ->
     Cost = wh_json:get_float_value(<<"rate_cost">>, Rate, 0.0),
     wht_util:dollars_to_units(Cost).
@@ -114,12 +114,11 @@ maybe_update_callee_id(JObj) ->
 
 -spec update_callee_id(wh_json:object()) -> boolean().
 update_callee_id(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {ok, AccountDoc} ->
+        {'ok', AccountDoc} ->
             wh_json:is_true([<<"caller_id_options">>, <<"show_rate">>], AccountDoc, 'false');
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("failed to load account ~p for update callee id ~p", [AccountId, _R]),
             'false'
     end.
-

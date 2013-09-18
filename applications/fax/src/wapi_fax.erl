@@ -46,7 +46,7 @@ unbind_q(Q, _Prop) ->
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Api, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Api, ?FAX_REQ_VALUES, fun req/1),
+    {'ok', Payload} = wh_api:prepare_api_payload(Api, ?FAX_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, fax_routing_key()).
 
 fax_routing_key() ->
