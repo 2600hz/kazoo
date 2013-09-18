@@ -76,7 +76,9 @@
         ]).
 
 %% Types
--export_type([get_results_return/0]).
+-export_type([get_results_return/0
+              ,couchbeam_error/0
+             ]).
 
 -include_lib("wh_couch.hrl").
 
@@ -185,27 +187,27 @@ revise_views_from_folder(DbName, App) ->
 -spec revise_docs_from_folder(ne_binary(), atom(), ne_binary() | nonempty_string(), boolean()) -> 'ok'.
 
 revise_docs_from_folder(DbName, App, Folder) ->
-    revise_docs_from_folder(DbName, App, Folder, true).
+    revise_docs_from_folder(DbName, App, Folder, 'true').
 
 revise_docs_from_folder(DbName, App, Folder, Sleep) ->
     Files = filelib:wildcard([code:priv_dir(App), "/couchdb/", wh_util:to_list(Folder), "/*.json"]),
     do_revise_docs_from_folder(DbName, Sleep, Files).
 
--spec do_revise_docs_from_folder(ne_binary(), boolean(), [ne_binary() | nonempty_string(),...]) -> 'ok'.
-do_revise_docs_from_folder(_, _, []) -> ok;
+-spec do_revise_docs_from_folder(ne_binary(), boolean(), ne_binaries()) -> 'ok'.
+do_revise_docs_from_folder(_, _, []) -> 'ok';
 do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
     try
-        {ok, Bin} = file:read_file(H),
+        {'ok', Bin} = file:read_file(H),
         JObj = wh_json:decode(Bin),
         Sleep andalso timer:sleep(250),
         case lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)) of
-            {ok, Rev} ->
+            {'ok', Rev} ->
                 lager:debug("update doc from file ~s in ~s", [H, DbName]),
                 save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj));
-            {error, not_found} ->
+            {'error', 'not_found'} ->
                 lager:debug("import doc from file ~s in ~s", [H, DbName]),
                 save_doc(DbName, JObj);
-            {error, Reason} ->
+            {'error', Reason} ->
                 lager:debug("failed to load doc ~s into ~s, ~p", [H, DbName, Reason])
         end,
         do_revise_docs_from_folder(DbName, Sleep, T)
@@ -226,20 +228,20 @@ load_fixtures_from_folder(DbName, App) ->
     Files = filelib:wildcard([code:priv_dir(App), "/couchdb/", ?FIXTURES_FOLDER, "/*.json"]),
     do_load_fixtures_from_folder(DbName, Files).
 
--spec do_load_fixtures_from_folder(ne_binary(), [ne_binary(),...] | []) -> 'ok'.
-do_load_fixtures_from_folder(_, []) -> ok;
+-spec do_load_fixtures_from_folder(ne_binary(), ne_binaries()) -> 'ok'.
+do_load_fixtures_from_folder(_, []) -> 'ok';
 do_load_fixtures_from_folder(DbName, [F|Fs]) ->
     try
-        {ok, Bin} = file:read_file(F),
+        {'ok', Bin} = file:read_file(F),
         FixJObj = wh_json:decode(Bin),
         FixId = wh_json:get_value(<<"_id">>, FixJObj),
         case lookup_doc_rev(DbName, FixId) of
-            {ok, _Rev} ->
+            {'ok', _Rev} ->
                 lager:debug("fixture ~s exists in ~s: ~s", [FixId, DbName, _Rev]);
-            {error, not_found} ->
+            {'error', 'not_found'} ->
                 lager:debug("saving fixture ~s to ~s", [FixId, DbName]),
                 save_doc(DbName, FixJObj);
-            {error, _Reason} ->
+            {'error', _Reason} ->
                 lager:debug("failed to lookup rev for fixture: ~p: ~s in ~s", [_Reason, FixId, DbName])
         end
     catch
@@ -259,8 +261,8 @@ db_exists(DbName) when ?VALID_DBNAME ->
     couch_util:db_exists(wh_couch_connections:get_server(), DbName);
 db_exists(DbName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> db_exists(Db);
-        {error, _}=E -> E
+        {'ok', Db} -> db_exists(Db);
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -269,9 +271,9 @@ db_exists(DbName) ->
 %% Retrieve information regarding all databases
 %% @end
 %%--------------------------------------------------------------------
--spec db_info() -> {'ok', [ne_binary(),...] | []} |
+-spec db_info() -> {'ok', ne_binaries()} |
                    couchbeam_error().
--spec admin_db_info() -> {'ok', [ne_binary(),...] | []} |
+-spec admin_db_info() -> {'ok', ne_binaries()} |
                          couchbeam_error().
 
 db_info() ->
@@ -295,16 +297,16 @@ db_info(DbName) when ?VALID_DBNAME ->
     couch_util:db_info(wh_couch_connections:get_server(), DbName);
 db_info(DbName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> db_info(Db);
-        {error, _}=E -> E
+        {'ok', Db} -> db_info(Db);
+        {'error', _}=E -> E
     end.
 
 admin_db_info(DbName) when ?VALID_DBNAME ->
     couch_util:db_info(wh_couch_connections:get_admin_server(), DbName);
 admin_db_info(DbName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> admin_db_info(Db);
-        {error, _}=E -> E
+        {'ok', Db} -> admin_db_info(Db);
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -324,16 +326,16 @@ design_info(DbName, DesignName) when ?VALID_DBNAME ->
     couch_util:design_info(wh_couch_connections:get_server(), DbName, DesignName);
 design_info(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> design_info(Db, DesignName);
-        {error, _}=E -> E
+        {'ok', Db} -> design_info(Db, DesignName);
+        {'error', _}=E -> E
     end.
 
 admin_design_info(DbName, DesignName) when ?VALID_DBNAME ->
     couch_util:design_info(wh_couch_connections:get_admin_server(), DbName, DesignName);
 admin_design_info(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> admin_design_info(Db, DesignName);
-        {error, _}=E -> E
+        {'ok', Db} -> admin_design_info(Db, DesignName);
+        {'error', _}=E -> E
     end.
 
 -spec design_compact(ne_binary(), ne_binary()) -> boolean().
@@ -343,16 +345,16 @@ design_compact(DbName, DesignName) when ?VALID_DBNAME->
     couch_util:design_compact(wh_couch_connections:get_server(), DbName, DesignName);
 design_compact(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> design_compact(Db, DesignName);
-        {error, _}=E -> E
+        {'ok', Db} -> design_compact(Db, DesignName);
+        {'error', _}=E -> E
     end.
 
 admin_design_compact(DbName, DesignName) when ?VALID_DBNAME ->
     couch_util:design_compact(wh_couch_connections:get_admin_server(), DbName, DesignName);
 admin_design_compact(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> admin_design_compact(Db, DesignName);
-        {error, _}=E -> E
+        {'ok', Db} -> admin_design_compact(Db, DesignName);
+        {'error', _}=E -> E
     end.
 
 -spec db_view_cleanup(ne_binary()) -> boolean().
@@ -362,16 +364,16 @@ db_view_cleanup(DbName) when ?VALID_DBNAME ->
     couch_util:db_view_cleanup(wh_couch_connections:get_server(), DbName);
 db_view_cleanup(DbName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> db_view_cleanup(Db);
-        {error, _}=E -> E
+        {'ok', Db} -> db_view_cleanup(Db);
+        {'error', _}=E -> E
     end.
 
 admin_db_view_cleanup(DbName) when ?VALID_DBNAME ->
     couch_util:db_view_cleanup(wh_couch_connections:get_admin_server(), DbName);
 admin_db_view_cleanup(DbName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> admin_db_view_cleanup(Db);
-        {error, _}=E -> E
+        {'ok', Db} -> admin_db_view_cleanup(Db);
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -431,8 +433,8 @@ db_create(DbName, Options) when ?VALID_DBNAME ->
     couch_util:db_create(wh_couch_connections:get_server(), DbName, Options);
 db_create(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> db_create(Db, Options);
-        {error, _}=E -> E
+        {'ok', Db} -> db_create(Db, Options);
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -448,16 +450,16 @@ db_compact(DbName) when ?VALID_DBNAME ->
     couch_util:db_compact(wh_couch_connections:get_server(), DbName);
 db_compact(DbName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> db_compact(Db);
-        {error, _}=E -> E
+        {'ok', Db} -> db_compact(Db);
+        {'error', _}=E -> E
     end.
 
 admin_db_compact(DbName) when ?VALID_DBNAME ->
     couch_util:db_compact(wh_couch_connections:get_admin_server(), DbName);
 admin_db_compact(DbName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> admin_db_compact(Db);
-        {error, _}=E -> E
+        {'ok', Db} -> admin_db_compact(Db);
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -471,8 +473,8 @@ db_delete(DbName) when ?VALID_DBNAME ->
     couch_util:db_delete(wh_couch_connections:get_server(), DbName);
 db_delete(DbName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> db_delete(Db);
-        {error, _}=E -> E
+        {'ok', Db} -> db_delete(Db);
+        {'error', _}=E -> E
     end.
 
 %%%===================================================================
@@ -521,8 +523,8 @@ flush_cache_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
     couch_util:flush_cache_doc(wh_couch_connections:get_server(), DbName, DocId, Options);
 flush_cache_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> flush_cache_doc(Db, DocId, Options);
-        {error, _}=E -> E
+        {'ok', Db} -> flush_cache_doc(Db, DocId, Options);
+        {'error', _}=E -> E
     end.
 
 flush_cache_docs() -> couch_util:flush_cache_docs().
@@ -553,8 +555,8 @@ open_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
     couch_util:open_doc(wh_couch_connections:get_server(), DbName, DocId, Options);
 open_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> open_doc(Db, DocId, Options);
-        {error, _}=E -> E
+        {'ok', Db} -> open_doc(Db, DocId, Options);
+        {'error', _}=E -> E
     end.
 
 
@@ -573,8 +575,8 @@ admin_open_doc(DbName, DocId, Options) when ?VALID_DBNAME->
     couch_util:open_doc(wh_couch_connections:get_admin_server(), DbName, DocId, Options);
 admin_open_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> admin_open_doc(Db, DocId, Options);
-        {error, _}=E -> E
+        {'ok', Db} -> admin_open_doc(Db, DocId, Options);
+        {'error', _}=E -> E
     end.
 
 -spec all_docs(text()) -> {'ok', wh_json:objects()} |
@@ -589,8 +591,8 @@ all_docs(DbName, Options) when ?VALID_DBNAME ->
     couch_util:all_docs(wh_couch_connections:get_server(), DbName, Options);
 all_docs(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> all_docs(Db, Options);
-        {error, _}=E -> E
+        {'ok', Db} -> all_docs(Db, Options);
+        {'error', _}=E -> E
     end.
 
 -spec admin_all_docs(text()) -> {'ok', wh_json:objects()} |
@@ -606,8 +608,8 @@ admin_all_docs(DbName, Options) when ?VALID_DBNAME ->
     couch_util:all_docs(wh_couch_connections:get_admin_server(), DbName, Options);
 admin_all_docs(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> admin_all_docs(Db, Options);
-        {error, _}=E -> E
+        {'ok', Db} -> admin_all_docs(Db, Options);
+        {'error', _}=E -> E
     end.
 
 -spec all_design_docs(text()) -> {'ok', wh_json:objects()} |
@@ -622,8 +624,8 @@ all_design_docs(DbName, Options) when ?VALID_DBNAME ->
     couch_util:all_design_docs(wh_couch_connections:get_server(), DbName, Options);
 all_design_docs(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> all_design_docs(Db, Options);
-        {error, _}=E -> E
+        {'ok', Db} -> all_design_docs(Db, Options);
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -635,13 +637,13 @@ all_design_docs(DbName, Options) ->
 -spec lookup_doc_rev(text(), api_binary()) ->
                             {'ok', ne_binary()} |
                             couchbeam_error().
-lookup_doc_rev(_DbName, undefined) -> {error, not_found};
+lookup_doc_rev(_DbName, 'undefined') -> {'error', 'not_found'};
 lookup_doc_rev(DbName, DocId) when ?VALID_DBNAME ->
     couch_util:lookup_doc_rev(wh_couch_connections:get_server(), DbName, DocId);
 lookup_doc_rev(DbName, DocId) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> lookup_doc_rev(Db, DocId);
-        {error, _}=E -> E
+        {'ok', Db} -> lookup_doc_rev(Db, DocId);
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -674,8 +676,8 @@ ensure_saved(DbName, Doc, Options) when ?VALID_DBNAME ->
     couch_util:ensure_saved(wh_couch_connections:get_server(), DbName, Doc, Options);
 ensure_saved(DbName, Doc, Options) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> ensure_saved(Db, Doc, Options);
-        {error, _}=E -> E
+        {'ok', Db} -> ensure_saved(Db, Doc, Options);
+        {'error', _}=E -> E
     end.
 
 -spec save_doc(text(), wh_json:object(), wh_proplist()) ->
@@ -685,8 +687,8 @@ save_doc(DbName, Doc, Options) when ?VALID_DBNAME ->
     couch_util:save_doc(wh_couch_connections:get_server(), DbName, Doc, Options);
 save_doc(DbName, Doc, Options) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> save_doc(Db, Doc, Options);
-        {error, _}=E -> E
+        {'ok', Db} -> save_doc(Db, Doc, Options);
+        {'error', _}=E -> E
     end.
 
 -spec save_docs(text(), wh_json:objects()) ->
@@ -703,8 +705,8 @@ save_docs(DbName, Docs, Options) when is_list(Docs) andalso ?VALID_DBNAME ->
     couch_util:save_docs(wh_couch_connections:get_server(), DbName, Docs, Options);
 save_docs(DbName, Docs, Options) when is_list(Docs) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> save_docs(Db, Docs, Options);
-        {error, _}=E -> E
+        {'ok', Db} -> save_docs(Db, Docs, Options);
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -725,15 +727,14 @@ update_doc(DbName, Id, UpdateProps) ->
 
 update_doc(DbName, Id, UpdateProps, CreateProps) ->
     case open_doc(DbName, Id) of
-        {error, not_found} ->
-            JObj = wh_json:from_list(lists:append([[{<<"_id">>, Id}], CreateProps, UpdateProps])),
+        {'error', 'not_found'} ->
+            JObj = wh_json:from_list(lists:append([[{<<"_id">>, Id}| CreateProps], UpdateProps])),
             save_doc(DbName, JObj);
-        {error, _}=E -> E;
-        {ok, JObj}=Ok ->
+        {'error', _}=E -> E;
+        {'ok', JObj}=Ok ->
             case wh_json:set_values(UpdateProps, JObj) of
                 JObj -> Ok;
-                UpdatedJObj ->
-                    save_doc(DbName, UpdatedJObj)
+                UpdatedJObj -> save_doc(DbName, UpdatedJObj)
             end
     end.
 
@@ -752,8 +753,8 @@ del_doc(DbName, Doc) when ?VALID_DBNAME ->
     couch_util:del_doc(wh_couch_connections:get_server(), DbName, Doc);
 del_doc(DbName, Doc) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> del_doc(Db, Doc);
-        {error, _}=E -> E
+        {'ok', Db} -> del_doc(Db, Doc);
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -768,8 +769,8 @@ del_docs(DbName, Docs) when is_list(Docs) andalso ?VALID_DBNAME ->
     couch_util:del_docs(wh_couch_connections:get_server(), DbName, Docs);
 del_docs(DbName, Docs) when is_list(Docs) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> del_docs(Db, Docs);
-        {error, _}=E -> E
+        {'ok', Db} -> del_docs(Db, Docs);
+        {'error', _}=E -> E
     end.
 
 %%%===================================================================
@@ -782,8 +783,8 @@ fetch_attachment(DbName, DocId, AName) when ?VALID_DBNAME ->
     couch_util:fetch_attachment(wh_couch_connections:get_server(), DbName, DocId, AName);
 fetch_attachment(DbName, DocId, AName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> fetch_attachment(Db, DocId, AName);
-        {error, _}=E -> E
+        {'ok', Db} -> fetch_attachment(Db, DocId, AName);
+        {'error', _}=E -> E
     end.
 
 -spec stream_attachment(text(), ne_binary(), ne_binary()) ->
@@ -793,8 +794,8 @@ stream_attachment(DbName, DocId, AName) when ?VALID_DBNAME ->
     couch_util:stream_attachment(wh_couch_connections:get_server(), DbName, DocId, AName, self());
 stream_attachment(DbName, DocId, AName) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> stream_attachment(Db, DocId, AName);
-        {error, _}=E -> E
+        {'ok', Db} -> stream_attachment(Db, DocId, AName);
+        {'error', _}=E -> E
     end.
 
 -spec put_attachment(text(), ne_binary(), ne_binary(), ne_binary()) ->
@@ -811,8 +812,8 @@ put_attachment(DbName, DocId, AName, Contents, Options) when ?VALID_DBNAME ->
     couch_util:put_attachment(wh_couch_connections:get_server(), DbName, DocId, AName, Contents, Options);
 put_attachment(DbName, DocId, AName, Contents, Options) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> put_attachment(Db, DocId, AName, Contents, Options);
-        {error, _}=E -> E
+        {'ok', Db} -> put_attachment(Db, DocId, AName, Contents, Options);
+        {'error', _}=E -> E
     end.
 
 -spec delete_attachment(text(), ne_binary(), ne_binary()) ->
@@ -828,8 +829,8 @@ delete_attachment(DbName, DocId, AName, Options) when ?VALID_DBNAME ->
     couch_util:delete_attachment(wh_couch_connections:get_server(), DbName, DocId, AName, Options);
 delete_attachment(DbName, DocId, AName, Options) ->
     case maybe_convert_dbname(DbName) of
-        {ok, Db} -> delete_attachment(Db, DocId, AName, Options);
-        {error, _}=E -> E
+        {'ok', Db} -> delete_attachment(Db, DocId, AName, Options);
+        {'error', _}=E -> E
     end.
 
 %%%===================================================================

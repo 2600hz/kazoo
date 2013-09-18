@@ -297,7 +297,7 @@ maybe_collect_conference_pin(Conference, Call, Srv) ->
             end
     end.
 
--spec collect_conference_pin(boolean() | 'undefined', whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+-spec collect_conference_pin(api_boolean(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 collect_conference_pin(Type, Conference, Call, Srv) ->
     case validate_conference_pin(Type, Conference, Call, 1) of
         {'ok', C} ->
@@ -311,7 +311,7 @@ prepare_whapps_conference(Conference, Call, Srv) ->
     Routines = [fun(C) ->
                         {'ok', JObj} = conf_participant:discovery_event(Srv),
                         case wh_json:is_true(<<"Moderator">>, JObj, 'false')
-                            orelse wh_json:is_true([<<"Conference-Doc">>, <<"moderator">>], JObj)
+                            orelse wh_json:is_true([<<"Conference-Doc">>, <<"moderator">>], JObj, 'undefined')
                         of
                             'undefined' -> C;
                             'true' ->
@@ -394,7 +394,7 @@ handle_search_resp(JObj, Conference, Call, Srv) ->
             conf_participant:join_remote(Srv, JObj)
     end.
 
--spec discovery_failed(whapps_call:call(), pid()) -> 'ok'.
+-spec discovery_failed(whapps_call:call(), pid() | 'undefined') -> 'ok'.
 discovery_failed(Call, _) -> whapps_call_command:hangup(Call).
 
 -spec validate_conference_id(api_binary(), whapps_call:call()) ->

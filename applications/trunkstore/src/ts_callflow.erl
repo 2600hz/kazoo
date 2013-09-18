@@ -112,8 +112,10 @@ wait_for_win(#ts_callflow_state{aleg_callid=CallID}=State) ->
             {lost, State}
     end.
 
--spec wait_for_bridge(ts_state()) -> {'bridged' | 'error' | 'hangup' | 'timeout', ts_state()}.
--spec wait_for_bridge(ts_state(), integer()) -> {'bridged' | 'error' | 'hangup' | 'timeout', ts_state()}.
+-spec wait_for_bridge(ts_state()) ->
+                             {'bridged' | 'error' | 'hangup' | 'timeout', ts_state()}.
+-spec wait_for_bridge(ts_state(), integer()) ->
+                             {'bridged' | 'error' | 'hangup' | 'timeout', ts_state()}.
 wait_for_bridge(State) ->
     wait_for_bridge(State, ?WAIT_FOR_BRIDGE_TIMEOUT).
 wait_for_bridge(State, Timeout) ->
@@ -122,19 +124,24 @@ wait_for_bridge(State, Timeout) ->
         {_, #amqp_msg{payload=Payload}} ->
             JObj = wh_json:decode(Payload),
             case process_event_for_bridge(State, JObj) of
-                ignore ->
+                'ignore' ->
                     wait_for_bridge(State, ?WAIT_FOR_BRIDGE_TIMEOUT);
-                {bridged, _}=Success -> Success;
-                {error, _}=Error -> Error;
-                {hangup, _}=Hangup -> Hangup
+                {'bridged', _}=Success -> Success;
+                {'error', _}=Error -> Error;
+                {'hangup', _}=Hangup -> Hangup
             end;
         _E ->
             lager:info("unexpected msg: ~p", [_E]),
             wait_for_bridge(State, ?WAIT_FOR_BRIDGE_TIMEOUT)
     end.
 
--spec process_event_for_bridge(ts_state(), wh_json:object()) -> 'ignore' | {'bridged' | 'error' | 'hangup', ts_state()}.
-process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State, JObj) ->
+-spec process_event_for_bridge(ts_state(), wh_json:object()) ->
+                                      'ignore' |
+                                      {'bridged' | 'error' | 'hangup', ts_state()}.
+process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
+                                            ,my_q=Q
+                                            ,callctl_q=CtlQ
+                                           }=State, JObj) ->
     case { wh_json:get_value(<<"Application-Name">>, JObj)
            ,wh_json:get_value(<<"Event-Name">>, JObj)
            ,wh_json:get_value(<<"Event-Category">>, JObj) } of
@@ -144,11 +151,11 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg, my_q=Q, callctl_q=
                 <<"SUCCESS">> ->
                     lager:info("offnet bridge has completed"),
                     lager:info("~p", [JObj]),
-                    {hangup, State};
+                    {'hangup', State};
                 _Err ->
                     Failure = wh_json:get_value(<<"Error-Message">>, JObj, wh_json:get_value(<<"Response-Code">>, JObj)),
                     lager:info("offnet failed: ~s(~s)", [Failure, _Err]),
-                    {error, State}
+                    {'error', State}
             end;
 
         { _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
@@ -157,15 +164,15 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg, my_q=Q, callctl_q=
 
             _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
             _ = amqp_util:basic_consume(Q),
-            {bridged, State#ts_callflow_state{bleg_callid=BLeg}};
+            {'bridged', State#ts_callflow_state{bleg_callid=BLeg}};
 
         { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
             lager:info("channel hungup before bridge"),
-            {hangup, State};
+            {'hangup', State};
 
         { _, _, <<"error">> } ->
             lager:info("execution failed"),
-            {error, State};
+            {'error', State};
 
         {_, <<"call_detail">>, <<"cdr">> } ->
             true = wapi_call:cdr_v(JObj),

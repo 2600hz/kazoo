@@ -70,7 +70,7 @@ record_to_xml(Discount, ToString) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (#bt_discount{}) -> wh_json:json_object().
+-spec record_to_json/1 :: (#bt_discount{}) -> wh_json:object().
 record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
     Props = [{<<"id">>, Id}
              ,{<<"amount">>, Amount}

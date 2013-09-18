@@ -10,9 +10,12 @@
 -define(MIN_DISK_SIZE, 131072).
 -define(DEFAULT_PORT, 5984).
 -define(DEFAULT_ADMIN_PORT, 5986).
--define(IBROWSE_OPTS, [{max_sessions, 512}, {max_pipeline_size, 10}, {connect_timeout, 100}]).
+-define(IBROWSE_OPTS, [{'max_sessions', 512}
+                       ,{'max_pipeline_size', 10}
+                       ,{'connect_timeout', 100}
+                      ]).
 
--define(WH_COUCH_CACHE, whistle_couch_cache).
+-define(WH_COUCH_CACHE, 'whistle_couch_cache').
 
 -define(FIXTURES_FOLDER, "fixtures").
 
@@ -35,22 +38,22 @@
 -record(design_data, {
           db_name = <<>> :: binary() %% the actual DB name, encoded (/ -> %2f)
          ,design_name = <<>> :: binary()
-         ,node = undefined :: atom()
-         ,shards = [] :: list(binary()) | []
+         ,node :: atom()
+         ,shards = [] :: ne_binaries()
          ,disk_size = 0 :: non_neg_integer()
          ,data_size = 0 :: non_neg_integer()
          ,conn = #server{} :: server()
          ,admin_conn = #server{} :: server()
-         ,do_compaction = false :: boolean()
+         ,do_compaction = 'false' :: boolean()
          }).
 -record(db_data, {
           db_name = <<>> :: binary() %% the shard name
-         ,node = undefined :: atom()
+         ,node :: atom()
          ,disk_size = 0 :: non_neg_integer()
          ,data_size = 0 :: non_neg_integer()
          ,conn = #server{} :: server()
          ,admin_conn = #server{} :: server()
-         ,do_compaction = false :: boolean()
+         ,do_compaction = 'false' :: boolean()
          }).
 
 -record(wh_couch_connection, {id = wh_util:current_tstamp()
@@ -58,14 +61,14 @@
                               ,port = ?DEFAULT_PORT
                               ,username = ""
                               ,password = ""
-                              ,connected = false
-                              ,ready = false
-                              ,admin = false
+                              ,connected = 'false'
+                              ,ready = 'false'
+                              ,admin = 'false'
                               ,server = #server{}
                              }).
 -type couch_connection() :: #wh_couch_connection{}.
 
 -type couchbeam_db() :: #db{}.
 
--define(WH_COUCH_HRL, true).
+-define(WH_COUCH_HRL, 'true').
 -endif.

@@ -72,7 +72,7 @@ maybe_publish_port(#number{current_number_doc=CurrentJObj, number_doc=JObj
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec publish_port_update/2 :: (wh_json:json_object(), wnm_number()) -> 'ok'.
+-spec publish_port_update/2 :: (wh_json:object(), wnm_number()) -> 'ok'.
 publish_port_update(Port, #number{number=Number, state=State, assigned_to=AssignedTo
                                   ,module_name=ModuleName, auth_by=AuthBy}) ->
     Notify = [{<<"Account-ID">>, AssignedTo}
@@ -91,7 +91,7 @@ publish_port_update(Port, #number{number=Number, state=State, assigned_to=Assign
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec publish_ported/2 :: (wh_json:json_object(), wnm_number()) -> 'ok'.
+-spec publish_ported/2 :: (wh_json:object(), wnm_number()) -> 'ok'.
 publish_ported(Port, #number{number=Number, state=State, assigned_to=AssignedTo
                              ,module_name=ModuleName, auth_by=AuthBy}) ->
     Notify = [{<<"Account-ID">>, AssignedTo}

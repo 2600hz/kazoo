@@ -177,7 +177,7 @@ get_callflow_account_numbers(AccountId) ->
 %% it is a 'info_' document (IE: trunkstore account)
 %% @end
 %%--------------------------------------------------------------------
--spec is_trunkstore_account/1 :: (wh_json:json_object()) -> boolean().
+-spec is_trunkstore_account/1 :: (wh_json:object()) -> boolean().
 is_trunkstore_account(JObj) ->
     wh_json:get_value(<<"type">>, JObj) =:= <<"sys_info">> orelse
         wh_json:get_value(<<"pvt_type">>, JObj) =:= <<"sys_info">>.

@@ -114,7 +114,7 @@ now_to_datetime(Secs) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ",
                                    [YY, MM, DD, Hour, Min, Sec])).
 
--spec get_to_user(wh_json:json_object()) -> binary().
+-spec get_to_user(wh_json:object()) -> binary().
 get_to_user(JObj) ->
     case wh_json:get_value(<<"Callee-ID-Number">>, JObj) of
         undefined ->
@@ -128,7 +128,7 @@ get_to_user(JObj) ->
             To
     end.
 
--spec get_from_user(wh_json:json_object()) -> binary().
+-spec get_from_user(wh_json:object()) -> binary().
 get_from_user(JObj) ->
     case wh_json:get_value(<<"Caller-ID-Number">>, JObj) of
         undefined ->
@@ -142,7 +142,7 @@ get_from_user(JObj) ->
             From
     end.
 
--spec get_account_code(wh_json:json_object()) -> ne_binary().
+-spec get_account_code(wh_json:object()) -> ne_binary().
 get_account_code(JObj) ->
     AccountID = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
                     AID when erlang:byte_size(AID) < 18 -> AID;

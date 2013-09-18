@@ -81,7 +81,7 @@ record_to_xml(Addon, ToString) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (bt_addon()) -> wh_json:json_object().
+-spec record_to_json/1 :: (bt_addon()) -> wh_json:object().
 record_to_json(#bt_addon{id=Id, amount=Amount, quantity=Q}) ->
     Props = [{<<"id">>, Id}
              ,{<<"amount">>, Amount}

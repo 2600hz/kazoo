@@ -20,8 +20,9 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) -> {'ok', pid()} |
-                               {'error', startlink_err()}.
+-spec start(term(), term()) ->
+                   {'ok', pid()} |
+                   {'error', startlink_err()}.
 start(_, _) ->
     case callflow:start_link() of
         {'ok', P} -> {'ok', P};

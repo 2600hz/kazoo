@@ -42,7 +42,7 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:system_alert_v(JObj),
     whapps_util:put_callid(JObj),
@@ -60,7 +60,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:json_object()) -> proplist().
+-spec create_template_props(wh_json:object()) -> proplist().
 create_template_props(Event) ->
     [{<<"request">>, notify_util:json_to_template_props(wh_json:delete_keys([<<"Details">>
                                                                                  ,<<"App-Version">>

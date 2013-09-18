@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% @end
 %%% @contributors
@@ -103,7 +103,7 @@ maybe_normalize_cid(Number, 'undefined', Validate, Attribute, Call) ->
 maybe_normalize_cid(Number, Name, Validate, Attribute, Call) ->
     maybe_prefix_cid_number(wh_util:to_binary(Number), Name, Validate, Attribute, Call).
 
--spec maybe_prefix_cid_number(api_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
+-spec maybe_prefix_cid_number(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
                                      {api_binary(), api_binary()}.
 maybe_prefix_cid_number(Number, Name, Validate, Attribute, Call) ->
     case whapps_call:kvs_fetch('prepend_cid_number', Call) of
@@ -113,7 +113,7 @@ maybe_prefix_cid_number(Number, Name, Validate, Attribute, Call) ->
             maybe_prefix_cid_name(Prefixed, Name, Validate, Attribute, Call)
     end.
 
--spec maybe_prefix_cid_name(api_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
+-spec maybe_prefix_cid_name(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
                                    {api_binary(), api_binary()}.
 maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call) ->
     case whapps_call:kvs_fetch('prepend_cid_name', Call) of
@@ -123,7 +123,7 @@ maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call) ->
             maybe_ensure_cid_valid(Number, Prefixed, Validate, Attribute, Call)
     end.
 
--spec maybe_ensure_cid_valid(api_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
+-spec maybe_ensure_cid_valid(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
                                     {api_binary(), api_binary()}.
 maybe_ensure_cid_valid(Number, Name, 'true', <<"external">>, Call) ->
     case whapps_config:get_is_true(<<"callflow">>, <<"ensure_valid_caller_id">>, 'false') of
@@ -143,11 +143,8 @@ maybe_ensure_cid_valid(Number, Name, _, Attribute, _) ->
     lager:info("~s caller id <~s> ~s", [Attribute, Name, Number]),
     {Number, Name}.
 
--spec ensure_valid_emergency_number(api_binary(), api_binary(), whapps_call:call()) ->
+-spec ensure_valid_emergency_number(ne_binary(), api_binary(), whapps_call:call()) ->
                                            {api_binary(), api_binary()}.
-ensure_valid_emergency_number('undefined', Name, Call) ->
-    Numbers = valid_emergency_numbers(Call),
-    find_valid_emergency_number(Numbers, 'undefined', Name);
 ensure_valid_emergency_number(Number, Name, Call) ->
     Numbers = valid_emergency_numbers(Call),
     case lists:member(Number, Numbers) of

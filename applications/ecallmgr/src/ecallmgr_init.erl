@@ -36,14 +36,13 @@ init() ->
     put('callid', ?MODULE),
     case wh_config:get_atom('ecallmgr', 'cookie') of
         [] ->
-            lager:warning("failed to set ecallmgr cookie ~n", []);
+            lager:info("no cookie defined for ecallmgr, leaving as ~s", [erlang:get_cookie()]);
         [Cookie|_] ->
+            OldCookie = erlang:get_cookie(),
             erlang:set_cookie(erlang:node(), Cookie),
-            lager:info("setting ecallmgr cookie to ~p~n", [Cookie])
+            lager:info("setting ecallmgr cookie to ~p (from ~s)", [Cookie, OldCookie])
     end,
-    set_loglevel(),
-    %% ecallmgr may be the first to start up, and it starts publishing here
-    amqp_util:sysconf_exchange().
+    set_loglevel().
 
 set_loglevel() ->
     [Console|_] = wh_config:get_atom('log', 'console', ['notice']),

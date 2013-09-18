@@ -17,7 +17,7 @@
 init() ->
     ok.
 
--spec handle_req(wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
     true = wapi_sysconf:get_req_v(ApiJObj),
 

@@ -75,7 +75,7 @@ refresh() ->
                                         refresh(AccountDb)
                                 end, whapps_util:get_all_accounts())
           end),
-    started.
+    'started'.
 
 refresh(<<Account/binary>>) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
@@ -135,7 +135,7 @@ do_recorded_name_migration(Db, MediaId, OwnerId) ->
 %% the latest version.
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_menus/0:: () -> ['done' | 'error',...].
+-spec migrate_menus() -> ['done' | 'error',...].
 -spec migrate_menus(ne_binary()) -> 'done' | 'error'.
 migrate_menus() ->
     [migrate_menus(Account) || Account <- whapps_util:get_all_accounts('raw')].
@@ -197,7 +197,8 @@ create_media_doc(Name, SourceType, SourceId, Db) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_doc(list() | binary(), wh_json:json_term(), binary(), binary()) ->
-                        'ok' | {'error', atom()}.
+                        'ok' |
+                        {'error', atom()}.
 update_doc(Key, Value, Id, Db) ->
     case couch_mgr:open_doc(Db, Id) of
         {'ok', JObj} ->

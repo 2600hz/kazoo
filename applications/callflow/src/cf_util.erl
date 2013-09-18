@@ -94,8 +94,12 @@ presence_mwi_query(JObj, _Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-type mwi_update_return() :: 'missing_account_db' |
+                             'missing_owner_id'.
 -spec unsolicited_owner_mwi_update(api_binary(), api_binary()) ->
-                                          'ok' | {'error', _}.
+                                          'ok' |
+                                          {'error', mwi_update_return()} |
+                                          couch_mgr:couchbeam_error().
 unsolicited_owner_mwi_update('undefined', _) -> {'error', 'missing_account_db'};
 unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
@@ -325,7 +329,8 @@ get_operator_callflow(Account) ->
 %% certain actions, like cf_offnet and cf_resources
 %% @end
 %%--------------------------------------------------------------------
--spec handle_bridge_failure({'fail', wh_json:object()} | api_binary(), whapps_call:call()) -> 'ok' | 'not_found'.
+-spec handle_bridge_failure({'fail', wh_json:object()} | api_binary(), whapps_call:call()) ->
+                                   'ok' | 'not_found'.
 handle_bridge_failure({'fail', Reason}, Call) ->
     {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
     handle_bridge_failure(Cause, Code, Call);
@@ -340,15 +345,14 @@ handle_bridge_failure(Failure, Call) ->
             'not_found'
     end.
 
--spec handle_bridge_failure(api_binary(), api_binary(), whapps_call:call()) -> 'ok' | 'not_found'.
+-spec handle_bridge_failure(api_binary(), api_binary(), whapps_call:call()) ->
+                                   'ok' | 'not_found'.
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("attempting to find failure branch for ~s:~s", [Code, Cause]),
     case (handle_bridge_failure(Cause, Call) =:= 'ok')
         orelse (handle_bridge_failure(Code, Call) =:= 'ok') of
         'true' -> 'ok';
-        'false' ->
-            cf_exe:continue(Call),
-            'not_found'
+        'false' -> 'not_found'
     end.
 
 %%--------------------------------------------------------------------
@@ -367,7 +371,7 @@ send_default_response(Cause, Call) ->
             case wh_call_response:send_default(CallId, CtrlQ, Cause) of
                 {'error', 'no_response'} -> 'ok';
                 {'ok', NoopId} ->
-                    _ = whapps_call_command:wait_for_noop(NoopId),
+                    _ = whapps_call_command:wait_for_noop(Call, NoopId),
                     'ok'
             end
     end.
@@ -462,8 +466,8 @@ is_digit(_) -> 'false'.
 %% @end
 %%-----------------------------------------------------------------------------
 -spec lookup_callflow_patterns(ne_binary(), ne_binary()) ->
-                                            {'ok', {wh_json:object(), ne_binary()}} |
-                                            {'error', term()}.
+                                      {'ok', {wh_json:object(), ne_binary()}} |
+                                      {'error', term()}.
 lookup_callflow_patterns(Number, Db) ->
     lager:info("lookup callflow patterns for ~s in ~s", [Number, Db]),
     case couch_mgr:get_results(Db, ?LIST_BY_PATTERN, ['include_docs']) of
@@ -483,8 +487,10 @@ lookup_callflow_patterns(Number, Db) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec test_callflow_patterns(wh_json:objects(), ne_binary()
-                                   ,{'undefined', <<>>} | {wh_json:object(), ne_binary()})
-                                  -> {'undefined', <<>>} | {wh_json:object(), ne_binary()}.
+                             ,{'undefined', <<>>} | {wh_json:object(), ne_binary()}
+                            ) ->
+                                    {'undefined', <<>>} |
+                                    {wh_json:object(), ne_binary()}.
 test_callflow_patterns([], _, Result) ->
     Result;
 test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->

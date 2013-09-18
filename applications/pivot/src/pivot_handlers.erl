@@ -15,7 +15,7 @@
 
 -include("pivot.hrl").
 
--spec handle_route_req(wh_json:json_object(), wh_proplist()) -> any().
+-spec handle_route_req(wh_json:object(), wh_proplist()) -> any().
 handle_route_req(JObj, Props) ->
     true = wapi_route:req_v(JObj),
     _Q = props:get_value(queue, Props),
@@ -24,7 +24,7 @@ handle_route_req(JObj, Props) ->
     ok.
 
 %% receiving the route_win means we are in control of the call
--spec handle_route_win(wh_json:json_object(), wh_proplist()) -> any().
+-spec handle_route_win(wh_json:object(), wh_proplist()) -> any().
 handle_route_win(JObj, _Props) ->
     true = wapi_route:win_v(JObj),
 

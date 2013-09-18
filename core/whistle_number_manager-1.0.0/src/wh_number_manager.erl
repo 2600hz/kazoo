@@ -144,7 +144,7 @@ ported(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_number/3 :: (ne_binary(), ne_binary(), ne_binary()) -> operation_return().
--spec create_number/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> operation_return().
+-spec create_number/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> operation_return().
 
 create_number(Number, AssignTo, AuthBy) ->
     create_number(Number, AssignTo, AuthBy, wh_json:new()).
@@ -202,7 +202,7 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec port_in/3 :: (ne_binary(), ne_binary(), ne_binary()) -> operation_return().
--spec port_in/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> operation_return().
+-spec port_in/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> operation_return().
 
 port_in(Number, AssignTo, AuthBy) ->
     port_in(Number, AssignTo, AuthBy, wh_json:new()).
@@ -314,7 +314,7 @@ free_numbers(AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reserve_number/3 :: (ne_binary(), ne_binary(), ne_binary()) -> operation_return().
--spec reserve_number/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object() | 'undefined')
+-spec reserve_number/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:object() | 'undefined')
                           -> operation_return().
 
 reserve_number(Number, AssignTo, AuthBy) ->
@@ -346,7 +346,7 @@ reserve_number(Number, AssignTo, AuthBy, PublicFields) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec assign_number_to_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> operation_return().
--spec assign_number_to_account/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object() | 'undefined')
+-spec assign_number_to_account/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:object() | 'undefined')
                                     -> operation_return().
 
 assign_number_to_account(Number, AssignTo, AuthBy) ->
@@ -563,7 +563,7 @@ get_public_fields(Number, AuthBy) ->
 %% Update the user configurable fields
 %% @end
 %%--------------------------------------------------------------------
--spec set_public_fields/3 :: (ne_binary(), wh_json:json_object(), ne_binary()) -> operation_return().
+-spec set_public_fields/3 :: (ne_binary(), wh_json:object(), ne_binary()) -> operation_return().
 set_public_fields(Number, PublicFields, AuthBy) ->
     Routines = [fun({_, #number{}}=E) -> E;
                    (#number{assigned_to=AssignedTo}=N) ->
@@ -622,7 +622,7 @@ track_assignment(Numbers, Assignment) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec prepare_find_results/2 :: (wh_proplist(), [] | [wh_json:json_strings(),...]) -> wh_json:json_strings().
--spec prepare_find_results/4 :: (wh_json:json_strings(), atom(), wh_json:json_object(), wh_json:json_strings())
+-spec prepare_find_results/4 :: (wh_json:json_strings(), atom(), wh_json:object(), wh_json:json_strings())
                                 -> wh_json:json_strings().
 
 prepare_find_results([], Found) ->

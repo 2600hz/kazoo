@@ -27,7 +27,7 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     {'ok', Endpoints} = find_endpoints(Data, Call),
-    Timeout = wh_json:get_value(<<"timeout">>, Data, <<"60">>),
+    Timeout = wh_json:get_integer_value(<<"timeout">>, Data, 60),
     IgnoreEarlyMedia = wh_json:get_value(<<"ignore_early_media">>, Data, <<"false">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     bridge_to_resources(Endpoints, Timeout, IgnoreEarlyMedia, Ringback, Data, Call).
@@ -43,7 +43,7 @@ handle(Data, Call) ->
 %% advanced, because its cool like that
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_resources(endpoints(), api_binary(), api_binary(), api_binary(), wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec bridge_to_resources(endpoints(), integer(), api_binary(), api_binary(), wh_json:object(), whapps_call:call()) -> 'ok'.
 bridge_to_resources([{DestNum, Rsc, RscId, CID}|T], Timeout, IgnoreEarlyMedia, Ringback, Data, Call) ->
     Endpoint = [create_endpoint(DestNum, Gtw, RscId, CID, Call)
                 || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)
@@ -56,10 +56,9 @@ bridge_to_resources([{DestNum, Rsc, RscId, CID}|T], Timeout, IgnoreEarlyMedia, R
         {'fail', R} when T =:= [] ->
             {Cause, Code} = whapps_util:get_call_termination_reason(R),
             lager:notice("exhausted all local resources attempting bridge, final cause ~s:~s", [Code, Cause]),
-            case (cf_util:handle_bridge_failure(Cause, Call) =:= 'ok')
-                orelse (cf_util:handle_bridge_failure(Code, Call) =:= 'ok') of
-                'true' -> 'ok';
-                'false' ->
+            case cf_util:handle_bridge_failure(Cause, Code, Call) of
+                'ok' -> lager:debug("handled bridge failure");
+                'not_found' ->
                     cf_util:send_default_response(Cause, Call),
                     cf_exe:continue(Call)
             end;
@@ -72,12 +71,12 @@ bridge_to_resources([{DestNum, Rsc, RscId, CID}|T], Timeout, IgnoreEarlyMedia, R
 bridge_to_resources([], _, _, _, _, Call) ->
     lager:info("resources exhausted without success"),
     WildcardIsEmpty = cf_exe:wildcard_is_empty(Call),
-    case cf_util:handle_bridge_failure(<<"NO_ROUTE_DESTINATION">>, Call) =:= 'ok' of
-        'true' -> 'ok';
-        'false' when WildcardIsEmpty ->
+    case cf_util:handle_bridge_failure(<<"NO_ROUTE_DESTINATION">>, Call) of
+        'ok' -> lager:debug("handled bridge failure");
+        'not_found' when WildcardIsEmpty ->
             cf_util:send_default_response(<<"NO_ROUTE_DESTINATION">>, Call),
             cf_exe:continue(Call);
-        'false' -> cf_exe:continue(Call)
+        'not_found' -> cf_exe:continue(Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -245,7 +244,8 @@ evaluate_rules([_, Regex], DestNum) ->
         _ -> []
     end.
 
--spec maybe_from_uri(boolean() | ne_binary(), ne_binary() | wh_json:object(), api_binary()) -> api_binary().
+-spec maybe_from_uri(boolean() | ne_binary(), ne_binary() | wh_json:object(), api_binary()) ->
+                            api_binary().
 maybe_from_uri('true', CNum, Realm) -> from_uri(CNum, Realm);
 maybe_from_uri('false', CNum, Realm) ->
     case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>) of

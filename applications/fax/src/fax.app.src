@@ -3,6 +3,7 @@
   {description, "Fax - Why is everyone faxinated with fax?"},
   {vsn, "1.0.0"},
   {registered, []},
+  {modules, []},
   {applications, [
                   kernel,
                   stdlib

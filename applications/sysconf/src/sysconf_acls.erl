@@ -12,7 +12,7 @@
 -include("sysconf.hrl").
 
 -type ip_list() :: [ne_binary(),...] | [].
--type acls() :: wh_json:json_object().
+-type acls() :: wh_json:object().
 
 build(Node) ->
     Routines = [fun offnet_resources/1
@@ -36,7 +36,7 @@ sip_auth_ips(ACLs) ->
             lists:foldr(fun handle_sip_auth_result/2, ACLs, JObjs)
     end.
 
--spec handle_sip_auth_result(wh_json:json_object(), acls()) -> acls().
+-spec handle_sip_auth_result(wh_json:object(), acls()) -> acls().
 handle_sip_auth_result(JObj, ACLs) ->
     IPs = wh_network_utils:resolve(wh_json:get_value(<<"key">>, JObj)),
     AccountId = wh_json:get_value([<<"value">>, <<"account_id">>], JObj),
@@ -66,7 +66,7 @@ offnet_resources(ACLs) ->
             lists:foldr(fun handle_resource_result/2, ACLs, JObjs)
     end.
 
--spec handle_resource_result(wh_json:json_object(), acls()) -> acls().
+-spec handle_resource_result(wh_json:object(), acls()) -> acls().
 handle_resource_result(JObj, ACLs) ->
     IPs = resource_ips(wh_json:get_value(<<"doc">>, JObj)),
     AuthorizingId = wh_json:get_value(<<"id">>, JObj),
@@ -80,13 +80,13 @@ resource_ips(JObj) ->
     IPs = lists:foldl(fun(F, I) -> F(JObj, I) end, [], Routines),
     lists:flatten(IPs).
 
--spec resource_inbound_ips(wh_json:json_object(), ip_list()) -> ip_list().
+-spec resource_inbound_ips(wh_json:object(), ip_list()) -> ip_list().
 resource_inbound_ips(JObj, IPs) ->
     lists:foldl(fun(Address, I) ->
                         [wh_network_utils:resolve(Address)|I]
                 end, IPs, wh_json:get_value(<<"inbound_ips">>, JObj, [])).    
 
--spec resource_server_ips(wh_json:json_object(), ip_list()) -> ip_list().
+-spec resource_server_ips(wh_json:object(), ip_list()) -> ip_list().
 resource_server_ips(JObj, IPs) ->
     lists:foldl(fun(Gateway, I) ->
                         case (not wh_json:is_false(<<"enabled">>, Gateway)) of

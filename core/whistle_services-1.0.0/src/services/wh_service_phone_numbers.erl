@@ -67,7 +67,7 @@ reconcile(Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_numbers/3 :: ([ne_binary(),...] | [], wh_json:json_object(), wh_services:services()) -> wh_services:services().
+-spec update_numbers/3 :: ([ne_binary(),...] | [], wh_json:object(), wh_services:services()) -> wh_services:services().
 update_numbers([], _, Services) ->
     Services;
 update_numbers([Number|Numbers], JObj, Services) ->

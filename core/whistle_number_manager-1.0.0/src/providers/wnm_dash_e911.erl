@@ -103,8 +103,8 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_e911/3 :: (ne_binary(), wh_json:json_object(), wh_json:json_object()) ->
-                               {'ok', wh_json:json_object()} |
+-spec update_e911/3 :: (ne_binary(), wh_json:object(), wh_json:object()) ->
+                               {'ok', wh_json:object()} |
                                {'error', _}.
 update_e911(Number, Address, JObj) ->
     Location = json_address_to_xml_location(Address),
@@ -216,8 +216,8 @@ emergency_provisioning_request(Verb, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_valid_location/1 :: (term()) ->
-                                     {'geocoded', wh_json:json_object()} |
-                                     {'provisioned', wh_json:json_object()} |
+                                     {'geocoded', wh_json:object()} |
+                                     {'provisioned', wh_json:object()} |
                                      {'error', binary()}.
 is_valid_location(Location) ->
     case emergency_provisioning_request('validateLocation', Location) of
@@ -244,8 +244,8 @@ is_valid_location(Location) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_location/3 :: (ne_binary(), term(), ne_binary()) ->
-                                {'geocoded', wh_json:json_object()} |
-                                {'provisioned', wh_json:json_object()} |
+                                {'geocoded', wh_json:object()} |
+                                {'provisioned', wh_json:object()} |
                                 {'error', binary()}.
 add_location(Number, Location, CallerName) ->
     Props = [{'uri', [{'uri', [wh_util:to_list(<<"tel:", (wnm_util:to_1npan(Number))/binary>>)]}
@@ -315,7 +315,7 @@ remove_number(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_address_to_xml_location/1 :: (wh_json:json_object()) -> wh_proplist().
+-spec json_address_to_xml_location/1 :: (wh_json:object()) -> wh_proplist().
 json_address_to_xml_location(JObj) ->
     Props = [{'address1', [wh_json:get_string_value(<<"street_address">>, JObj)]}
              ,{'address2', [wh_json:get_string_value(<<"extended_address">>, JObj)]}
@@ -332,7 +332,7 @@ json_address_to_xml_location(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec location_xml_to_json_address/1 :: (term()) -> wh_json:json_object().
+-spec location_xml_to_json_address/1 :: (term()) -> wh_json:object().
 location_xml_to_json_address([]) ->
     wh_json:new();
 location_xml_to_json_address([Xml]) ->
@@ -365,7 +365,7 @@ location_xml_to_json_address(Xml) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec legacy_data_xml_to_json/1 :: (term()) -> wh_json:json_object().
+-spec legacy_data_xml_to_json/1 :: (term()) -> wh_json:object().
 legacy_data_xml_to_json([]) ->
     wh_json:new();
 legacy_data_xml_to_json([Xml]) ->
