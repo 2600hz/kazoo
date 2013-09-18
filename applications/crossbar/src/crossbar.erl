@@ -129,20 +129,16 @@ on_request(Req0) ->
     {Method, Req1} = cowboy_req:method(Req0),
     case Method of
         'OPTIONS' -> Req1;
-        _ ->
-            wh_counter:inc(<<"crossbar.requests.methods.", (wh_util:to_upper_binary(Method))/binary>>),
-            Req1
+        _ -> Req1
     end.
 
 -spec on_response(cowboy_http:status(), cowboy_http:headers(), text(), cowboy_req:req()) -> cowboy_req:req().
-on_response(Status, _Headers, _Body, Req0) ->
+on_response(_Status, _Headers, _Body, Req0) ->
     {Method, Req1} = cowboy_req:method(Req0),
     case Method of
         ?HTTP_OPTIONS -> Req1;
         'OPTIONS' -> Req1;
-        _ ->
-            wh_counter:inc(<<"crossbar.responses.", (wh_util:to_binary(Status))/binary>>),
-            Req1
+        _ -> Req1
     end.
 
 maybe_start_plaintext(Dispatch) ->
