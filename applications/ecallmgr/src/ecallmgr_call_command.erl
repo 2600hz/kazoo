@@ -267,7 +267,7 @@ get_fs_app(Node, UUID, JObj, <<"tones">>) ->
                                         'undefined' -> [];
                                         R -> list_to_binary(["l=", wh_util:to_list(R), ";"])
                                     end,
-                           Freqs = string:join([ wh_util:to_list(V) || V <- wh_json:get_value(<<"Frequencies">>, Tone) ], ","),
+                           Freqs = string:join([wh_util:to_list(V) || V <- wh_json:get_value(<<"Frequencies">>, Tone)], ","),
                            On = wh_util:to_list(wh_json:get_value(<<"Duration-ON">>, Tone)),
                            Off = wh_util:to_list(wh_json:get_value(<<"Duration-OFF">>, Tone)),
                            wh_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
@@ -573,6 +573,7 @@ call_pickup(Node, UUID, JObj) ->
             lager:debug("failed to find target callid ~s", [Target]),
             {'error', <<"failed to find target callid ", Target/binary>>}
     end.
+
 call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
     case wh_json:is_true(<<"Move-Channel-If-Necessary">>, JObj, 'false') of
         'true' ->
@@ -581,6 +582,7 @@ call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
             get_call_pickup_app(Node, UUID, JObj, Target);
         'false' ->
             lager:debug("target ~s is on ~s, not ~s, need to redirect", [Target, OtherNode, Node]),
+            ecallmgr_call_command:redirect(UUID, OtherNode),
             {'error', <<"target is on different media server: ", OtherNode/binary>>}
     end.
 
