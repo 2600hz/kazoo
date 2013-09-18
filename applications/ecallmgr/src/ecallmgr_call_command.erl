@@ -582,6 +582,30 @@ call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
             get_call_pickup_app(Node, UUID, JObj, Target);
         'false' ->
             lager:debug("target ~s is on ~s, not ~s, need to redirect", [Target, OtherNode, Node]),
+            lager:debug("gotta usurp some fools first"),
+
+            ControlUsurp = [{<<"Call-ID">>, UUID}
+                            ,{<<"Control-Queue">>, wh_util:rand_hex_binary(4)}
+                            ,{<<"Controller-Queue">>, wh_util:rand_hex_binary(4)}
+                            ,{<<"Reason">>, <<"redirecting caller to other media switch">>}
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                           ],
+            PublishUsurp = [{<<"Call-ID">>, UUID}
+                            ,{<<"Reference">>, wh_util:rand_hex_binary(4)}
+                            ,{<<"Reason">>, <<"redirecting caller to other media switch">>}
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                           ],
+
+            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                                ,ControlUsurp
+                                ,fun(C) -> wapi_call:publish_usurp_control(UUID, C) end
+                               ),
+            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                                ,PublishUsurp
+                                ,fun(C) -> wapi_call:publish_usurp_publisher(UUID, C) end
+                               ),
+
+            lager:debug("now issue the redirect to ~s", [OtherNode]),
             ecallmgr_call_command:redirect(UUID, OtherNode),
             {'error', <<"target is on different media server: ", OtherNode/binary>>}
     end.
@@ -842,7 +866,7 @@ try_create_bridge_string(Endpoints, JObj) ->
     DialSeparator = bridge_determine_dial_separator(Endpoints, JObj),
     case ecallmgr_util:build_bridge_string(Endpoints, DialSeparator) of
         <<>> ->
-            lager:warning("bridge string resulted in no enpoints", []),
+            lager:warning("bridge string resulted in no enpoints"),
             throw(<<"registrar returned no endpoints">>);
         BridgeString -> BridgeString
     end.
