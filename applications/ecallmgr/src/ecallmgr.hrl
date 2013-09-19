@@ -206,8 +206,14 @@
                                ,{<<"Fax-Identity-Name">>, <<"fax_header">>}
                                ,{<<"sip_rh_X-Redirect-Server">>, <<"sip_rh_X-Redirect-Server">>}
                                ,{<<"park_after_bridge">>, <<"park_after_bridge">>}
+                               ,{<<"Park-After-Pickup">>, <<"park_after_bridge">>}
+                               ,{<<"park_after_pickup">>, <<"park_after_bridge">>}
                                ,{<<"continue_on_fail">>, <<"continue_on_fail">>}
                                ,{<<"continue_on_cancel">>, <<"continue_on_cancel">>}
+                               ,{<<"Unbridged-Only">>, <<"intercept_unbridged_only">>}
+                               ,{<<"intercept_unbridged_only">>, <<"intercept_unbridged_only">>}
+                               ,{<<"Unanswered-Only">>, <<"intercept_unanswered_only">>}
+                               ,{<<"intercept_unanswered_only">>, <<"intercept_unanswered_only">>}
                                ,{<<"conference_member_nospeak_relational">>, <<"conference_member_nospeak_relational">>}
                                ,{<<"conference_member_nospeak_check">>, <<"conference_member_nospeak_check">>}
                               ]).
