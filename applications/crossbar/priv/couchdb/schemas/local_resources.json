@@ -131,6 +131,16 @@
                      "PCMA"
                   ]
                },
+                "t38_setting":{
+                    "name":"T38 Setting",
+                    "description":"Whether this gateway is capable of supporting the t38 protocol",
+                    "type":"string",
+                    "enum":[
+                        "true",
+                        "false"
+                    ],
+                    "default":"true"
+                },
                "custom_sip_headers":{
                   "name":"Custom SIP Headers (gateways)",
                   "type":"object",

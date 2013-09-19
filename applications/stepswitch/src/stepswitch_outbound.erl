@@ -6,6 +6,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(stepswitch_outbound).
 
@@ -545,7 +546,9 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
               end,
     lager:debug("setting from-uri to ~p on gateway ~p", [FromUri, Gateway#gateway.resource_id]),
 
-    FaxSettings = get_t38_settings(Gateway#gateway.t38_setting),
+    FaxSettings = get_outbound_t38_settings(Gateway#gateway.t38_setting
+                                           ,wh_json:get_value(<<"Fax-T38-Enabled">>, JObj)),
+
     CCVs = [{<<"Resource-ID">>, Gateway#gateway.resource_id}
             ,{<<"From-URI">>, FromUri}
            ],
@@ -569,29 +572,56 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
            ] ++ FaxSettings,
     wh_json:from_list([KV || {_, V}=KV <- Prop, V =/= 'undefined' andalso V =/= <<"0">>]).
 
-get_t38_settings(<<"none">>) ->
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Get the t38 settings for an endpoint based on carrier and device
+%% @end
+%%--------------------------------------------------------------------
+-spec get_outbound_t38_settings(ne_binary(), ne_binary() | 'undefined') -> wh_proplist().
+get_outbound_t38_settings(CarrierFlag, 'undefined') ->
+    get_outbound_t38_settings(CarrierFlag);
+get_outbound_t38_settings(<<"true">>, <<"auto">>) ->
+    get_outbound_t38_settings(<<"true">>, <<"true">>);
+get_outbound_t38_settings(<<"true">>, <<"true">>) ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+    ,{<<"Enable-T38-Passthrough">>, 'true'}
+    ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
-get_t38_settings(<<"passthrough">>) ->
+get_outbound_t38_settings(<<"true">>, <<"false">>) ->
     [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, 'self'}
+    ];
+get_outbound_t38_settings(<<"false">>, <<"false">>) ->
+    [{<<"Enable-T38-Fax">>, 'undefined'}
      ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
      ,{<<"Enable-T38-Passthrough">>, 'true'}
      ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
-get_t38_settings(<<"device">>) ->
+get_outbound_t38_settings(<<"false">>, <<"true">>) ->
     [{<<"Enable-T38-Fax">>, 'true'}
      ,{<<"Enable-T38-Fax-Request">>, 'true'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"self">>}
+     ,{<<"Enable-T38-Gateway">>, 'peer'}
+    ].
+
+-spec get_outbound_t38_settings(ne_binary()) -> wh_proplist().
+get_outbound_t38_settings(<<"true">>) ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
-get_t38_settings(<<"carrier">>) ->
-    [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+get_outbound_t38_settings(<<"false">>) ->
+    [{<<"Enable-T38-Fax">>, 'undefined'}
+     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ].
 
 %%--------------------------------------------------------------------
