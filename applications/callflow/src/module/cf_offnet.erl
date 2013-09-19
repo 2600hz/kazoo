@@ -48,9 +48,6 @@ offnet_req(Data, Call) ->
                    {'ok', JObj} -> JObj;
                    {'error', _} -> wh_json:new()
                end,
-    Call1 = whapps_call:set_callee_t38('true', Call),
-
-    Props = whapps_call:t38_outbound(Call),
 
     Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
            ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
