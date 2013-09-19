@@ -441,7 +441,6 @@ handle_info(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_event(JObj, #state{cf_module_pid=PidRef
                           ,call=Call
-                          ,queue=ControllerQ
                           ,self=Self
                          }) ->
     CallId = whapps_call:call_id_direct(Call),
@@ -466,9 +465,11 @@ handle_event(JObj, #state{cf_module_pid=PidRef
                 end,
             'ignore';
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
-            _ = case wh_json:get_value(<<"Controller-Queue">>, JObj) of
-                    ControllerQ -> 'ok';
-                    _Else -> control_usurped(Self)
+            _ = case whapps_call:custom_channel_var(<<"Fetch-ID">>, Call)
+                    =:= wh_json:get_value(<<"Fetch-ID">>, JObj) 
+                of
+                    'false' -> control_usurped(Self);
+                    'true' -> 'ok'
                 end,
             'ignore';
         {{<<"error">>, _}, _} ->
