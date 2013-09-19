@@ -207,9 +207,9 @@ choose_route_reply(JObj, Node, FetchId, CallId) ->
 reply_forbidden(Node, FetchId) ->
     lager:info("received forbidden route response for ~s, sending 402 Payment Required", [FetchId]),
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
-                                                ,{<<"Route-Error-Code">>, <<"402">>}
-                                                ,{<<"Route-Error-Message">>, <<"Payment Required">>}
-                                               ]),
+                                                  ,{<<"Route-Error-Code">>, <<"402">>}
+                                                  ,{<<"Route-Error-Message">>, <<"Payment Required">>}
+                                                 ]),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, 'dialplan', iolist_to_binary(XML), 3000) of
         'ok' -> lager:info("node ~s accepted route response for request ~s", [Node, FetchId]);

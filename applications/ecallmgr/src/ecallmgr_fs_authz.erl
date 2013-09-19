@@ -75,7 +75,6 @@ kill_channel(Props, Node) ->
 kill_channel(<<"inbound">>, CallId, Node) ->
     %% Give any pending route requests a chance to cleanly terminate this call,
     %% if it has not been processed yet.  Then chop its head off....
-    timer:sleep(1000),
     _ = freeswitch:api(Node, 'uuid_kill', wh_util:to_list(<<CallId/binary, " INCOMING_CALL_BARRED">>)),
     'ok';
 kill_channel(<<"outbound">>, CallId, Node) ->

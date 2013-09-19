@@ -804,6 +804,7 @@ bridge_handle_ccvs(DP, _Node, _UUID, JObj) ->
 bridge_pre_exec(DP, _, _, _) ->
     [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
      ,{"application", "set continue_on_fail=true"}
+     ,{"application", "export sip_redirect_context=context_2"}
      |DP
     ].
 
