@@ -473,7 +473,9 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
             R = file:write_file(InputFile, RespContent),
             lager:debug("result of tmp file write: ~s", [R]),
-            Cmd = io_lib:format("/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s -- ~s &> /dev/null && echo -n \"success\"", [OutputFile, InputFile]),
+            DefaultCmd = <<"/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s -- ~s &> /dev/null && echo -n \"success\"">>,
+            ConvertCmd = whapps_config:get_binary(<<"fax">>, <<"conversion_command">>, DefaultCmd),
+            Cmd = io_lib:format(ConvertCmd, [OutputFile, InputFile]),
             lager:debug("attempting to convert pdf: ~s", [Cmd]),
             case os:cmd(Cmd) of
                 "success" ->
