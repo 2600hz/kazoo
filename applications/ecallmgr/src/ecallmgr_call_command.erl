@@ -559,20 +559,24 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 call_pickup(Node, UUID, JObj) ->
     Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
 
-    case ecallmgr_fs_channel:fetch(Target) of
-        {'ok', Channel} ->
-            OtherNode = wh_json:get_binary_value(<<"node">>, Channel),
-            case OtherNode =:= wh_util:to_binary(Node) of
-                'true' ->
-                    lager:debug("target ~s is on same node(~s) as us", [Target, Node]),
-                    get_call_pickup_app(Node, UUID, JObj, Target);
-                'false' ->
-                    call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode)
-            end;
+    case ecallmgr_fs_channel:fetch(Target, 'record') of
+        {'ok', #channel{node=Node
+                        ,answered=IsAnswered
+                       }} ->
+            lager:debug("target ~s is on same node(~s) as us", [Target, Node]),
+            maybe_answer(Node, UUID, IsAnswered),
+            get_call_pickup_app(Node, UUID, JObj, Target);
+        {'ok', #channel{node=OtherNode}} ->
+            lager:debug("target ~s is on other node (~s), not ~s", [Target, OtherNode, Node]),
+            call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode);
         {'error', 'not_found'} ->
             lager:debug("failed to find target callid ~s", [Target]),
             {'error', <<"failed to find target callid ", Target/binary>>}
     end.
+
+maybe_answer(_Node, _UUID, 'true') -> 'ok';
+maybe_answer(Node, UUID, 'false') ->
+    ecallmgr_util:send_cmd(Node, UUID, <<"answer">>, <<>>).
 
 -spec call_pickup_maybe_move(atom(), ne_binary(), wh_json:object(), ne_binary(), ne_binary()) ->
                                     {ne_binary(), ne_binary()}.
