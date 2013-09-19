@@ -26,7 +26,9 @@
 -define(BINDINGS, [{'route', []}
                    ,{'self', []}
                   ]).
--define(RESPONDERS, [{'reorder_route_req', [{<<"dialplan">>, <<"route_req">>}]}]).
+-define(RESPONDERS, [{'reorder_route_req'
+                      ,[{<<"dialplan">>, <<"route_req">>}]
+                     }]).
 -define(QUEUE_NAME, <<"reorder_listerner">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
