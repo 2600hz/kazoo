@@ -591,7 +591,7 @@ get_outbound_t38_settings(<<"true">>, <<"false">>) ->
     [{<<"Enable-T38-Fax">>, 'true'}
      ,{<<"Enable-T38-Fax-Request">>, 'true'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'self'}
+     ,{<<"Enable-T38-Gateway">>, <<"self">>}
     ];
 get_outbound_t38_settings(<<"false">>, <<"false">>) ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
@@ -603,7 +603,7 @@ get_outbound_t38_settings(<<"false">>, <<"true">>) ->
     [{<<"Enable-T38-Fax">>, 'true'}
      ,{<<"Enable-T38-Fax-Request">>, 'true'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'peer'}
+     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ].
 
 -spec get_outbound_t38_settings(ne_binary()) -> wh_proplist().
