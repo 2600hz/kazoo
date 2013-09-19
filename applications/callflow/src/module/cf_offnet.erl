@@ -53,9 +53,9 @@ offnet_req(Data, Call) ->
            ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
            ,{<<"Resource-Type">>, <<"audio">>}
            ,{<<"To-DID">>, get_to_did(Data, Call)}
-%%           ,{<<"Account-ID">>, whapps_call:account_id(Call)}
-           %%,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-           %%,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
+           ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+           ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
+           ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
            ,{<<"Application-Name">>, <<"bridge">>}
            ,{<<"Flags">>, wh_json:get_value(<<"outbound_flags">>, Endpoint
                                             ,wh_json:get_value(<<"outbound_flags">>, Data))}
