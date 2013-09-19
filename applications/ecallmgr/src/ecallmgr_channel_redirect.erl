@@ -34,11 +34,18 @@ redirect_via_endpoint(DestNodeURL, UUID) ->
     send_redirect('undefined', Contact, Channel).
 
 send_redirect('undefined', Contact, #channel{node=Node
-                                            ,uuid=UUID
+                                             ,uuid=UUID
+                                             ,answered=IsAnswered
                                             }) ->
-    ecallmgr_util:send_cmd(Node, UUID, <<"redirect">>, Contact);
+    ecallmgr_util:send_cmd(Node, UUID, redirect_app(IsAnswered), Contact);
 send_redirect(RedirectUrl, Contact, #channel{node=Node
                                              ,uuid=UUID
+                                             ,answered=IsAnswered
                                             }) ->
     ecallmgr_util:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectUrl}]),
-    ecallmgr_util:send_cmd(Node, UUID, <<"redirect">>, Contact).
+    ecallmgr_util:send_cmd(Node, UUID, redirect_app(IsAnswered), Contact).
+
+redirect_app('true') ->
+    <<"deflect">>;
+redirect_app('false') ->
+    <<"redirect">>.
