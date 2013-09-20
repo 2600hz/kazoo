@@ -185,30 +185,43 @@ search_for_route(Node, FetchId, CallId, Props) ->
                                   ,route_req(CallId, FetchId, Props, Node)
                                   ,fun wapi_route:publish_req/1
                                   ,fun wapi_route:is_actionable_resp/1
+                                  ,2500
                                  ),
     case ReqResp of
         {'error', _R} -> 
             lager:info("did not receive route response for request ~s: ~p", [FetchId, _R]);
         {'ok', JObj} ->
             'true' = wapi_route:resp_v(JObj),
-            choose_route_reply(JObj, Node, FetchId, CallId)
+            maybe_wait_for_authz(JObj, Node, FetchId, CallId)
     end.
 
-choose_route_reply(JObj, Node, FetchId, CallId) ->
-    AuthzEnabled = wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, 'false')),
-    case AuthzEnabled andalso wh_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
-        {'ok', 'false'} -> reply_forbidden(Node, FetchId);
-        _Else ->
-            reply_affirmative(Node, FetchId, CallId, JObj)
+maybe_wait_for_authz(JObj, Node, FetchId, CallId) ->
+    case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, 'false')) 
+        andalso wh_json:get_value(<<"Method">>, JObj) =/= <<"error">>
+    of
+        'true' -> wait_for_authz(JObj, Node, FetchId, CallId);
+        'false' -> reply_affirmative(Node, FetchId, CallId, JObj)
+    end.
+
+wait_for_authz(JObj, Node, FetchId, CallId) ->
+    case wh_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
+        {'ok', {'true', AuthzCCVs}} ->
+            _ = wh_cache:erase_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)),
+            CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),  
+            J = wh_json:set_value(<<"Custom-Channel-Vars">>
+                                  ,wh_json:merge_jobjs(CCVs, AuthzCCVs)
+                                  ,JObj),
+            reply_affirmative(Node, FetchId, CallId, J);
+        _Else -> reply_forbidden(Node, FetchId)
     end.
 
 %% Reply with a 402 for unauthzed calls
 -spec reply_forbidden(atom(), ne_binary()) -> 'ok'.
 reply_forbidden(Node, FetchId) ->
-    lager:info("received forbidden route response for ~s, sending 402 Payment Required", [FetchId]),
+    lager:info("received forbidden route response for ~s, sending 403 Incoming call barred", [FetchId]),
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
-                                                  ,{<<"Route-Error-Code">>, <<"402">>}
-                                                  ,{<<"Route-Error-Message">>, <<"Payment Required">>}
+                                                  ,{<<"Route-Error-Code">>, <<"403">>}
+                                                  ,{<<"Route-Error-Message">>, <<"Incoming call barred">>}
                                                  ]),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, 'dialplan', iolist_to_binary(XML), 3000) of

@@ -58,11 +58,7 @@ start_link(Node, Options) ->
 -spec authorize(wh_proplist(), ne_binary(), atom()) -> boolean().
 authorize(Props, CallId, Node) ->
     put('callid', CallId),
-    Authorized = maybe_authorize_channel(Props, Node),
-    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized),
-    ChannelAuthorized = wh_util:to_binary(Authorized),
-    ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Channel-Authorized">>, ChannelAuthorized)),
-    Authorized.
+    maybe_authorize_channel(Props, Node).
 
 -spec kill_channel(wh_proplist(), atom()) -> 'ok'.
 -spec kill_channel(ne_binary(), ne_binary(), atom()) -> 'ok'.
@@ -208,16 +204,24 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec maybe_authorize_channel(wh_proplist(), atom()) -> boolean().
 maybe_authorize_channel(Props, Node) ->
+    CallId = props:get_value(<<"Unique-ID">>, Props),
     case props:get_value(?GET_CCV(<<"Channel-Authorized">>), Props) of
-        <<"true">> = T -> T;
-        <<"false">> = F -> F;
-        _Else -> 
-            maybe_channel_recovering(Props, Node)
+        <<"true">> = T ->
+            wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+                                 ,?AUTHZ_RESPONSE_KEY(CallId)
+                                 ,{'true', wh_json:new()}),
+            T;
+        <<"false">> = F -> 
+            wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+                                 ,?AUTHZ_RESPONSE_KEY(CallId)
+                                 ,'false'),
+            F;
+        _Else ->
+            maybe_channel_recovering(Props, CallId, Node)
     end.
 
--spec maybe_channel_recovering(wh_proplist(), atom()) -> boolean().
-maybe_channel_recovering(Props, Node) ->
-    CallId = props:get_value(<<"Unique-ID">>, Props),
+-spec maybe_channel_recovering(wh_proplist(), ne_binary(), atom()) -> boolean().
+maybe_channel_recovering(Props, CallId, Node) ->
     case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
         'true' -> allow_call(Props, CallId, Node);
         'false' -> is_authz_enabled(Props, CallId, Node)
@@ -363,22 +367,31 @@ rate_call(Props, CallId, Node) ->
 -spec allow_call(wh_proplist(), ne_binary(), atom()) -> 'true'.
 allow_call(Props, CallId, Node) ->
     lager:debug("channel authorization succeeded, allowing call"),
-    Vars = [{<<"Account-ID">>, props:get_value(?GET_CCV(<<"Account-ID">>), Props)}
-             ,{<<"Account-Billing">>, props:get_value(?GET_CCV(<<"Account-Billing">>), Props)}
-             ,{<<"Reseller-ID">>, props:get_value(?GET_CCV(<<"Reseller-ID">>), Props)}
-             ,{<<"Reseller-Billing">>, props:get_value(?GET_CCV(<<"Reseller-Billing">>), Props)}
-%%             ,{?GET_CCV(<<"Global-Resource">>), props:get_value(?GET_CCV(<<"Global-Resource">>), Props)}
-            ],
-    ecallmgr_util:set(Node, CallId, props:filter_undefined(Vars)),
+    Vars = props:filter_undefined(
+             [{<<"Account-ID">>, props:get_value(?GET_CCV(<<"Account-ID">>), Props)}
+              ,{<<"Account-Billing">>, props:get_value(?GET_CCV(<<"Account-Billing">>), Props)}
+              ,{<<"Reseller-ID">>, props:get_value(?GET_CCV(<<"Reseller-ID">>), Props)}
+              ,{<<"Reseller-Billing">>, props:get_value(?GET_CCV(<<"Reseller-Billing">>), Props)}
+              ,{<<"Global-Resource">>, props:get_value(?GET_CCV(<<"Global-Resource">>), Props)}
+              ,{<<"Channel-Authorized">>, <<"true">>}
+             ]),
+    wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+                         ,?AUTHZ_RESPONSE_KEY(CallId)
+                         ,{'true', wh_json:from_list(Vars)}),
+    _ = case props:get_value(<<"Channel-State">>, Props) =:= <<"CS_ROUTING">> of
+            'true' ->
+                io:format("ignoring routing channel!~n", []),
+                'ok';
+            'false' -> ecallmgr_util:set(Node, CallId, props:filter_undefined(Vars))
+        end,
     'true'.
 
 -spec maybe_deny_call(wh_proplist(), api_binary(), atom()) -> boolean().
 maybe_deny_call(Props, CallId, Node) ->
     case wh_util:is_true(ecallmgr_config:get(<<"authz_dry_run">>, 'false')) of
-        'true' ->
-            rate_call(Props, CallId, Node),
-            'true';
+        'true' -> rate_call(Props, CallId, Node);
         'false' ->
+            wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), 'false'),
             spawn(?MODULE, 'kill_channel', [Props, Node]),
             'false'
     end.
