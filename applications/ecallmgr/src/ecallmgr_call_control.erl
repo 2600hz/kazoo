@@ -202,10 +202,11 @@ handle_call_events(JObj, Props) ->
     put('callid', wh_json:get_value(<<"Call-ID">>, JObj)),
     case wh_json:get_value(<<"Event-Name">>, JObj) of
         <<"usurp_control">> ->
-            Q = props:get_value('queue', Props),
-            case wh_json:get_value(<<"Control-Queue">>, JObj) of
-                Q -> 'ok';
-                _Else -> gen_listener:cast(Srv, {'usurp_control', JObj})
+            case wh_json:get_value(<<"Fetch-ID">>, JObj) 
+                =:= props:get_value('fetch_id', Props)
+            of
+                'false' -> gen_listener:cast(Srv, {'usurp_control', JObj});
+                'true' -> 'ok'
             end;
         _Else -> 'ok'
     end.
@@ -415,21 +416,28 @@ handle_cast({'event_execute_complete', CallId, AppName, JObj}, #state{callid=Cal
 handle_cast({'gen_listener', {'created_queue', _}}, #state{controller_q='undefined'}=State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{callid=CallId
-                                                           ,controller_q=SendTo
+                                                           ,controller_q=ControllerQ
                                                            ,initial_ccvs=CCVs
+                                                           ,fetch_id=FetchId
+                                                           ,node=Node
                                                           }=State) ->
-    CtlProp = [{<<"Msg-ID">>, CallId}
-               ,{<<"Call-ID">>, CallId}
-               ,{<<"Control-Queue">>, Q}
-               ,{<<"Custom-Channel-Vars">>, CCVs}
-               | wh_api:default_headers(Q, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    lager:debug("sending route_win to ~s", [SendTo]),
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                        ,CtlProp
-                        ,fun(P) -> wapi_route:publish_win(SendTo, P) end
-                       ),
-        {'noreply', State};
+    Win = [{<<"Msg-ID">>, CallId}
+           ,{<<"Call-ID">>, CallId}
+           ,{<<"Control-Queue">>, Q}
+           ,{<<"Custom-Channel-Vars">>, CCVs}
+           | wh_api:default_headers(Q, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
+          ],
+    lager:debug("sending route_win to ~s", [ControllerQ]),
+    wapi_route:publish_win(ControllerQ, Win),
+    Usurp = [{<<"Call-ID">>, CallId}
+             ,{<<"Fetch-ID">>, FetchId}
+             ,{<<"Reason">>, <<"Route-Win">>}
+             ,{<<"Media-Node">>, wh_util:to_binary(Node)}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    lager:debug("sending control usurp for ~s", [FetchId]),
+    wapi_call:publish_usurp_control(CallId, Usurp),
+    {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
@@ -581,8 +589,8 @@ handle_info(_Msg, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {'reply', []}.
+handle_event(_JObj, #state{fetch_id=FetchId}) ->
+    {'reply', [{'fetch_id', FetchId}]}.
 
 %%--------------------------------------------------------------------
 %% @private

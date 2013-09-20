@@ -606,10 +606,10 @@ publish_usurp_control(Call) ->
 
 -spec publish_usurp_control(ne_binary(), whapps_call:call()) -> 'ok'.
 publish_usurp_control(CallId, Call) ->
-    lager:info("usurp call control of ~s", [CallId]),
+    ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+    lager:info("usurp call control of ~s", [ExeFetchId]),
     Notice = [{<<"Call-ID">>, CallId}
-              ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
-              ,{<<"Controller-Queue">>, cf_exe:queue_name(Call)}
+              ,{<<"Fetch-ID">>, ExeFetchId}
               ,{<<"Reason">>, <<"park">>}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
