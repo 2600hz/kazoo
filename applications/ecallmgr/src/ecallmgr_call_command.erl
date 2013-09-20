@@ -733,15 +733,7 @@ bridge_handle_hold_media(DP, _Node, UUID, JObj) ->
     case wh_json:get_value(<<"Hold-Media">>, JObj) of
         'undefined' ->
             case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
-                'undefined' ->
-                    case ecallmgr_fs_channel:import_moh(UUID) of
-                        'true' ->
-                            [{"application", "export hold_music=${hold_music}"}
-                             ,{"application", "set import=hold_music"}
-                             |DP
-                            ];
-                        'false' -> DP
-                    end;
+                'undefined' -> DP;
                 Media ->
                     Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
                     lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),

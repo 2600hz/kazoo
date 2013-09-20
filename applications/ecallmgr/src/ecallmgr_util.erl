@@ -331,15 +331,43 @@ set(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V}]) ->
 set(Node, UUID, [{K, V}]) ->
     ecallmgr_fs_command:set(Node, UUID, [get_fs_key_and_value(K, V, UUID)]);
 set(Node, UUID, [{_, _}|_]=Props) ->
-    Multiset = lists:foldl(fun({<<"Auto-Answer", _/binary>> = K, V}, Acc) ->
-                                   [{<<"alert_info">>, <<"intercom">>}
-                                    ,get_fs_key_and_value(K, V, UUID)
-                                    | Acc
-                                   ];
-                              ({K, V}, Acc) ->
-                                   [get_fs_key_and_value(K, V, UUID) | Acc]
+    Multiset = lists:foldl(fun(Prop, Acc) ->
+                              set_fold(Node, UUID, Prop, Acc)
                            end, [], Props),
     ecallmgr_fs_command:set(Node, UUID, Multiset).
+
+set_fold(Node, UUID, {<<"Hold-Media">>, Value}, Acc) ->
+    Media = media_path(Value, 'extant', UUID, wh_json:new()),
+    AppArg = wh_util:to_list(<<"hold_music=", Media/binary>>),
+    %% NOTE: due to how we handle hold_music we need to export
+    %%    this var rather than set...
+    _ = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+                                        ,{"execute-app-name", "export"}
+                                        ,{"execute-app-arg", AppArg}
+                                       ]),
+    Acc;
+set_fold(_, UUID, {<<"Auto-Answer", _/binary>> = K, V}, Acc) ->
+    [{<<"alert_info">>, <<"intercom">>}
+     ,get_fs_key_and_value(K, V, UUID)
+     | Acc
+    ];
+set_fold(Node, UUID, {K, V}, Acc) ->
+    {FSVariable, FSValue} = get_fs_key_and_value(K, V, UUID),
+    %% NOTE: uuid_setXXX does not support vars:
+    %%   switch_channel.c:1287 Invalid data (XXX contains a variable)
+    %%   so issue a set command if it is present.
+    case binary:match(FSVariable, <<"${">>) =:= 'nomatch' 
+        andalso binary:match(FSValue, <<"${">>) =:= 'nomatch'
+    of
+        'true' -> [{FSVariable, FSValue} | Acc];
+        'false' ->
+            AppArg = wh_util:to_list(<<FSVariable/binary, "=", FSValue/binary>>),
+            _ = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+                                                ,{"execute-app-name", "set"}
+                                                ,{"execute-app-arg", AppArg}
+                                               ]),
+            Acc
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
