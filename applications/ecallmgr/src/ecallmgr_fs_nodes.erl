@@ -488,18 +488,11 @@ get_fs_client_version(NodeName) ->
     end.
 
 -spec reset_node_stats(fs_node()) -> 'ok'.
-reset_node_stats(#node{node=NodeName}) ->
-    NodeBin = amqp_util:encode(wh_util:to_binary(NodeName)),
-    wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 0),
-    wh_timer:delete(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
+reset_node_stats(#node{}) ->
     'ok'.
 
 -spec start_node_stats(fs_node()) -> 'ok'.
-start_node_stats(#node{node=NodeName}) ->
-    NodeBin = amqp_util:encode(wh_util:to_binary(NodeName)),
-    wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 1),
-    wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
-    wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".last_connected">>),
+start_node_stats(#node{}) ->
     'ok'.
 
 start_preconfigured_servers() ->
