@@ -33,12 +33,15 @@ handle(Data, Call) ->
     end,
     cf_exe:stop(Call).
 
+-spec connect_to_ringing_channel(ne_binaries(), whapps_call:call()) -> 'ok'.
 connect_to_ringing_channel(Usernames, Call) ->
     case find_channels(Usernames, Call) of
         [] -> no_channels_ringing(Call);
         Channels -> connect_to_a_channel(Channels, Call)
-    end.
+    end,
+    'ok'.
 
+-spec connect_to_a_channel(wh_json:objects(), whapps_call:call()) -> 'ok'.
 connect_to_a_channel(Channels, Call) ->
     MyUUID = whapps_call:call_id(Call),
     MyMediaServer = whapps_call:switch_nodename(Call),
@@ -49,17 +52,18 @@ connect_to_a_channel(Channels, Call) ->
         {[], []} ->
             lager:debug("no channels available to pickup"),
             no_channels_ringing(Call);
-        {[], Remote} ->
-            lager:debug("no unanswered calls on my media server"),
-            maybe_connect_to_a_remote_channel(Remote, Call);
-        {[RingingCallUUID|_Cs], _} ->
-            lager:debug("found a call (~s) on my media server", [RingingCallUUID]),
-            intercept_call(RingingCallUUID, Call)
+        {[], [RemoteUUID|_Remote]} ->
+            lager:debug("no unanswered calls on my media server, trying ~s", [RemoteUUID]),
+            intercept_call(RemoteUUID, Call);
+        {[LocalUUID|_Cs], _} ->
+            lager:debug("found a call (~s) on my media server", [LocalUUID]),
+            intercept_call(LocalUUID, Call)
     end.
 
-maybe_connect_to_a_remote_channel([{_, MediaServer}|_], Call) ->
-    'ok'.
-
+-spec sort_channels(wh_json:objects(), ne_binary(), ne_binary()) ->
+                           {ne_binaries(), ne_binaries()}.
+-spec sort_channels(wh_json:objects(), ne_binary(), ne_binary(), {ne_binaries(), ne_binaries()}) ->
+                           {ne_binaries(), ne_binaries()}.
 sort_channels(Channels, MyUUID, MyMediaServer) ->
     sort_channels(Channels, MyUUID, MyMediaServer, {[], []}).
 sort_channels([Channel|Channels], MyUUID, MyMediaServer, {Local, Remote}=Acc) ->
@@ -75,16 +79,46 @@ sort_channels([Channel|Channels], MyUUID, MyMediaServer, {Local, Remote}=Acc) ->
                         MyUUID ->
                             sort_channels(Channels, MyUUID, MyMediaServer, Acc);
                         UUID ->
-                            sort_channels(Channels, MyUUID, MyMediaServer, {[{UUID, MyMediaServer} | Local], Remote})
+                            sort_channels(Channels, MyUUID, MyMediaServer, {[UUID | Local], Remote})
                     end;
-                MediaServer ->
-                    sort_channels(Channels, MyUUID, MyMediaServer, {Local, [{UUID, MediaServer} | Remote]})
+                _OtherMediaServer ->
+                    sort_channels(Channels, MyUUID, MyMediaServer, {Local, [UUID | Remote]})
             end
     end.
 
+-spec intercept_call(ne_binary(), whapps_call:call()) -> 'ok'.
 intercept_call(UUID, Call) ->
-    Res = whapps_call_command:b_call_pickup(UUID, Call),
-    lager:debug("result of intercept: ~p", [Res]).
+    _ = whapps_call_command:pickup(UUID, Call),
+    case wait_for_pickup(Call) of
+        {'error', _E} ->
+            lager:debug("failed to pickup ~s: ~p", [UUID, _E]);
+        'ok' ->
+            lager:debug("call picked up"),
+            whapps_call_command:wait_for_hangup(),
+            lager:debug("hangup recv")
+    end.
+
+-spec wait_for_pickup(whapps_call:call()) ->
+                             'ok' |
+                             {'error', 'failed'} |
+                             {'error', 'timeout'}.
+wait_for_pickup(Call) ->
+    case whapps_call_command:receive_event(10000) of
+        {'ok', Evt} ->
+            pickup_event(Call, wh_util:get_event_type(Evt), Evt);
+        {'error', 'timeout'}=E ->
+            lager:debug("timed out"),
+            E
+    end.
+
+pickup_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
+    lager:debug("error in dialplan: ~s", [wh_json:get_value(<<"Error-Message">>, Evt)]),
+    {'error', 'failed'};
+pickup_event(_Call, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}, _Evt) ->
+    lager:debug("channel bridged to ~s", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, _Evt)]);
+pickup_event(Call, _Type, _Evt) ->
+    lager:debug("unhandled evt ~p", [_Type]),
+    wait_for_pickup(Call).
 
 -spec find_channels(ne_binaries(), whapps_call:call()) -> wh_json:objects().
 find_channels(Usernames, Call) ->
