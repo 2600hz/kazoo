@@ -131,7 +131,7 @@ get_dialstring(#gateway{route=Route}, _) ->
 %% Get the t38 settings for an endpoint based on carrier and device
 %% @end
 %%--------------------------------------------------------------------
--spec get_outbound_t38_settings(ne_binary(), ne_binary() | 'undefined') -> wh_proplist().
+-spec get_outbound_t38_settings(ne_binary(), api_binary()) -> wh_proplist().
 get_outbound_t38_settings(CarrierFlag, 'undefined') ->
     get_outbound_t38_settings(CarrierFlag);
 get_outbound_t38_settings(<<"true">>, <<"auto">>) ->
