@@ -66,25 +66,42 @@ connect_to_a_channel(Channels, Call) ->
                            {ne_binaries(), ne_binaries()}.
 sort_channels(Channels, MyUUID, MyMediaServer) ->
     sort_channels(Channels, MyUUID, MyMediaServer, {[], []}).
-sort_channels([Channel|Channels], MyUUID, MyMediaServer, {Local, Remote}=Acc) ->
-    case wh_json:is_false(<<"answered">>, Channel) of
+sort_channels([], _MyUUID, _MyMediaServer, Acc) -> Acc;
+sort_channels([Channel|Channels], MyUUID, MyMediaServer, Acc) ->
+    lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [wh_json:get_value(<<"uuid">>, Channel)
+                                                        ,wh_json:is_true(<<"answered">>, Channel)
+                                                        ,wh_json:get_value(<<"node">>, Channel)
+                                                        ,wh_json:get_value(<<"other_leg">>, Channel)
+                                                       ]),
+    case wh_json:is_true(<<"answered">>, Channel) of
         'true' ->
             sort_channels(Channels, MyUUID, MyMediaServer, Acc);
         'false' ->
-            UUID = wh_json:get_value(<<"uuid">>, Channel),
-
-            case wh_json:get_value(<<"node">>, Channel) of
-                MyMediaServer ->
-                    case UUID of
-                        MyUUID ->
-                            sort_channels(Channels, MyUUID, MyMediaServer, Acc);
-                        UUID ->
-                            sort_channels(Channels, MyUUID, MyMediaServer, {[UUID | Local], Remote})
-                    end;
-                _OtherMediaServer ->
-                    sort_channels(Channels, MyUUID, MyMediaServer, {Local, [UUID | Remote]})
-            end
+            maybe_add_unanswered_leg(Channels, MyUUID, MyMediaServer, Acc, Channel)
     end.
+
+-spec maybe_add_unanswered_leg(wh_json:objects(), ne_binary(), ne_binary(), {ne_binaries(), ne_binaries()}, wh_json:object()) ->
+                                      {ne_binaries(), ne_binaries()}.
+maybe_add_unanswered_leg(Channels, MyUUID, MyMediaServer, {Local, Remote}=Acc, Channel) ->
+    case wh_json:get_value(<<"node">>, Channel) of
+        MyMediaServer ->
+            case wh_json:get_value(<<"uuid">>, Channel) of
+                MyUUID ->
+                    sort_channels(Channels, MyUUID, MyMediaServer, Acc);
+                _UUID ->
+                    sort_channels(Channels, MyUUID, MyMediaServer, {maybe_add_other_leg(Channel, Local), Remote})
+            end;
+        _OtherMediaServer ->
+            sort_channels(Channels, MyUUID, MyMediaServer, {Local, maybe_add_other_leg(Channel, Remote)})
+    end.
+
+-spec maybe_add_other_leg(wh_json:object(), ne_binaries()) -> ne_binaries().
+maybe_add_other_leg(Channel, Legs) ->
+    case wh_json:get_value(<<"other_leg">>, Channel) of
+        'undefined' -> Legs;
+        Leg -> [Leg | Legs]
+    end.
+
 
 -spec intercept_call(ne_binary(), whapps_call:call()) -> 'ok'.
 intercept_call(UUID, Call) ->
@@ -185,6 +202,8 @@ find_user_endpoints([UserId|UserIds], DeviceIds, Call) ->
     find_user_endpoints(UserIds, lists:merge(lists:sort(UserDeviceIds), DeviceIds), Call).
 
 no_users_in_group(Call) ->
+    whapps_call_command:answer(Call),
     whapps_call_command:b_say(<<"no users found in group">>, Call).
 no_channels_ringing(Call) ->
+    whapps_call_command:answer(Call),
     whapps_call_command:b_say(<<"no channels ringing">>, Call).
