@@ -102,14 +102,12 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast('request_event_stream', #state{node=Node}=State) ->
     Binding = get_event_binding(State),
-    case gen_server:call({'mod_kazoo', Node}, {'event', Binding}, 2000) of
+
+    case maybe_bind(Node, Binding) of
         {'ok', {IP, Port}} ->
             {'ok', IPAddress} = inet_parse:address(IP),
             gen_server:cast(self(), 'connect'),
             {'noreply', State#state{ip=IPAddress, port=Port}};
-        'timeout' ->
-            lager:critical("timed-out establishing event stream to ~p for ~p", [Node, Binding]),
-            {'stop', 'timeout', State};
         {'error', Reason} ->
             lager:warning("unable to establish event stream to ~p for ~p: ~p", [Node, Binding, Reason]),
             {'stop', Reason, State}
@@ -126,6 +124,29 @@ handle_cast('connect', #state{ip=IP, port=Port}=State) ->
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
+
+maybe_bind(Node, Binding) ->
+    maybe_bind(Node, Binding, 0).
+maybe_bind(Node, Binding, 2) ->
+    case gen_server:call({'mod_kazoo', Node}, {'event', Binding}, 2000) of
+        {'ok', {_IP, _Port}}=OK -> OK;
+        'timeout' -> {'error', 'timeout'};
+        {'error', _Reason}=E -> E
+    end;
+maybe_bind(Node, Binding, Attempts) ->
+    try gen_server:call({'mod_kazoo', Node}, {'event', Binding}, 2000) of
+        {'ok', {_IP, _Port}}=OK -> OK;
+        'timeout' ->
+            lager:debug("timed out on attempt ~b to bind", [Attempts]),
+            maybe_bind(Node, Binding, Attempts+1);
+        {'error', _Reason} ->
+            lager:debug("failed on attempt ~b to bind: ~p", [Attempts, _Reason]),
+            maybe_bind(Node, Binding, Attempts+1)
+    catch
+        _E:_R ->
+            lager:debug("excepted on attempt ~b to bind: ~s: ~p", [Attempts, _E, _R]),
+            maybe_bind(Node, Binding, Attempts+1)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
