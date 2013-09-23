@@ -6,6 +6,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(stepswitch_outbound).
 
@@ -541,7 +542,9 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
               end,
     lager:debug("setting from-uri to ~p on gateway ~p", [FromUri, Gateway#gateway.resource_id]),
 
-    FaxSettings = get_t38_settings(Gateway#gateway.t38_setting),
+    FaxSettings = stepswitch_util:get_outbound_t38_settings(Gateway#gateway.t38_setting
+                                           ,wh_json:get_value(<<"Fax-T38-Enabled">>, JObj)),
+
     CCVs = [{<<"Resource-ID">>, Gateway#gateway.resource_id}
             ,{<<"From-URI">>, FromUri}
            ],
@@ -565,30 +568,6 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
            ] ++ FaxSettings,
     wh_json:from_list([KV || {_, V}=KV <- Prop, V =/= 'undefined' andalso V =/= <<"0">>]).
 
-get_t38_settings(<<"none">>) ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ];
-get_t38_settings(<<"passthrough">>) ->
-    [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'true'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ];
-get_t38_settings(<<"device">>) ->
-    [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"self">>}
-    ];
-get_t38_settings(<<"carrier">>) ->
-    [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
-    ].
 
 %%--------------------------------------------------------------------
 %% @private
