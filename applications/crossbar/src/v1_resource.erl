@@ -583,7 +583,15 @@ maybe_flatten_jobj(#cb_context{resp_data=RespData
                               }) ->
     Query = wh_json:to_proplist(JsonQuery),
     case proplists:get_all_values(<<"identifier">>, Query) of
-        [] -> json_objs_to_csv(RespData);
+        [] -> 
+            Routines = [fun(J) -> check_integrity(J) end
+                        ,fun(J) -> create_csv_header(J) end
+                        ,fun(J) -> json_objs_to_csv(J) end
+                       ],
+            lists:foldl(
+              fun(F, J) ->
+                      F(J)
+              end, RespData, Routines);
         Identifier ->
             Depth = wh_json:get_integer_value(<<"depth">>, JsonQuery, 1),
             JObj = wh_json:flatten(RespData, Depth, Identifier),
@@ -596,6 +604,25 @@ maybe_flatten_jobj(#cb_context{resp_data=RespData
                       F(J)
               end, JObj, Routines)
     end.
+
+-spec check_integrity(list()) -> wh_json:objects().
+check_integrity(JObjs) ->
+    Headers = get_headers(JObjs),
+    check_integrity(JObjs, Headers, []).
+
+check_integrity([], _, Acc) ->
+    lists:reverse(Acc);
+check_integrity([JObj|JObjs], Headers, Acc) ->
+    NJObj = lists:foldl(
+              fun(Header, J) ->
+                      case wh_json:get_value(Header, J) of
+                          'undefined' ->
+                              wh_json:set_value(Header, <<"">>, J);
+                          _ -> J
+                      end
+              end, JObj, Headers),
+    NJObj1 = wh_json:from_list(lists:keysort(1, wh_json:to_proplist(NJObj))),
+    check_integrity(JObjs, Headers, [NJObj1|Acc]).
 
 -spec get_headers(wh_json:objects()) -> ne_binaries().
 get_headers(JObjs) ->
@@ -610,25 +637,6 @@ get_headers(JObjs) ->
                         end
                 end, Headers, Keys)
       end, [], JObjs).
-
--spec check_integrity(list()) -> wh_json:objects().
-check_integrity(JObjs) ->
-    Headers = get_headers(JObjs),
-    check_integrity(JObjs, Headers, []).
-
-check_integrity([], _, Acc) ->
-    lists:reverse(Acc);
-check_integrity([JObj|JObjs], Headers, Acc) ->
-    NJObj = lists:foldl(
-              fun(Header, J) ->
-                      case wh_json:get_value(Header, J) of
-                          'undefined' ->
-                              wh_json:set_value(Header, <<"undefined">>, J);
-                          _ -> J
-                      end
-              end, JObj, Headers),
-    NJObj1 = wh_json:from_list(lists:keysort(1, wh_json:to_proplist(NJObj))),
-    check_integrity(JObjs, Headers, [NJObj1|Acc]).
 
 -spec create_csv_header(list()) -> wh_json:objects().
 create_csv_header([]) -> [];
