@@ -591,14 +591,14 @@ call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
             lager:debug("gotta usurp some fools first"),
 
             ControlUsurp = [{<<"Call-ID">>, UUID}
-                            ,{<<"Control-Queue">>, wh_util:rand_hex_binary(4)}
-                            ,{<<"Controller-Queue">>, wh_util:rand_hex_binary(4)}
-                            ,{<<"Reason">>, <<"redirecting caller to other media switch">>}
+                            ,{<<"Reason">>, <<"redirect">>}
+                            ,{<<"Fetch-ID">>, wh_util:rand_hex_binary(4)}
                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                            ],
             PublishUsurp = [{<<"Call-ID">>, UUID}
                             ,{<<"Reference">>, wh_util:rand_hex_binary(4)}
-                            ,{<<"Reason">>, <<"redirecting caller to other media switch">>}
+                            ,{<<"Media-Node">>, wh_util:to_binary(Node)}
+                            ,{<<"Reason">>, <<"redirect">>}
                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                            ],
 
@@ -612,8 +612,8 @@ call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
                                ),
 
             lager:debug("now issue the redirect to ~s", [OtherNode]),
-            ecallmgr_channel_redirect:redirect(UUID, OtherNode),
-            {'error', <<"target is on different media server: ", OtherNode/binary>>}
+            _ = ecallmgr_channel_redirect:redirect(UUID, OtherNode),
+            {'return', <<"target is on different media server: ", (wh_util:to_binary(OtherNode))/binary>>}
     end.
 
 -spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
@@ -631,6 +631,17 @@ get_call_pickup_app(Node, UUID, JObj, Target) ->
     Exports = [{<<"failure_causes">>, <<"NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>}
                | build_set_args(ExportsApi, JObj)
               ],
+
+    ControlUsurp = [{<<"Call-ID">>, Target}
+                    ,{<<"Reason">>, <<"redirect">>}
+                    ,{<<"Fetch-ID">>, wh_util:rand_hex_binary(4)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                        ,ControlUsurp
+                        ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
+                       ),
+    io:format("published ~p for ~s~n", [ControlUsurp, Target]),
 
     ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
     ecallmgr_util:export(Node, UUID, Exports),
