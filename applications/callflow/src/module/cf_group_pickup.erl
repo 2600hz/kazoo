@@ -4,8 +4,20 @@
 %%% Pickup a call in the specified group
 %%%
 %%% data: {
-%%%   "group_id":"_id_"
+%%%   "group_id":"_group_id_"
+%%%   ,"user_id":"_user_id_"
+%%%   ,"device_id":"_device_id_"
 %%% }
+%%%
+%%% One of the three - group_id, user_id, or owner_id - must be defined on
+%%% the data payload. Preference is given by most restrictive option set,
+%%% so device_id is checked for first, then user_id, and finally group_id.
+%%%
+%%% device_id will only steal a channel currently ringing that device
+%%% user_id will only steal a channel currently ringing any of the user's devices*
+%%% group_id will steal a channel from any devices/users in a group*
+%%%  * no guarantees on which if multiple inbound calls are ringing
+%%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -25,9 +37,7 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
-    GroupId = wh_json:get_ne_value(<<"group_id">>, Data),
-
-    case find_sip_users(GroupId, Call) of
+    case find_sip_endpoints(Data, Call) of
         [] -> no_users_in_group(Call);
         Usernames -> connect_to_ringing_channel(Usernames, Call)
     end,
@@ -162,6 +172,21 @@ find_channels(Usernames, Call) ->
             []
     end.
 
+find_sip_endpoints(Data, Call) ->
+    case wh_json:get_value(<<"device_id">>, Data) of
+        'undefined' ->
+            case wh_json:get_value(<<"user_id">>, Data) of
+                'undefined' ->
+                    find_sip_users(wh_json:get_value(<<"gorup_id">>, Data), Call);
+                UserId ->
+                    sip_users_from_endpoints(
+                      find_user_endpoints([UserId], [], Call), Call
+                     )
+            end;
+        DeviceId ->
+             sip_users_from_endpoints([DeviceId], Call)
+    end.
+
 -spec find_sip_users(ne_binary(), whapps_call:call()) -> ne_binaries().
 find_sip_users(GroupId, Call) ->
     GroupsJObj = cf_attributes:groups(Call),
@@ -193,7 +218,8 @@ sip_user_of_endpoint(EndpointId, Call) ->
             wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)
     end.
 
--spec find_endpoints(ne_binaries(), wh_json:object(), whapps_call:call()) -> ne_binaries().
+-spec find_endpoints(ne_binaries(), wh_json:object(), whapps_call:call()) ->
+                            ne_binaries().
 find_endpoints(Ids, GroupEndpoints, Call) ->
     {DeviceIds, UserIds} =
         lists:partition(fun(Id) ->
@@ -201,7 +227,8 @@ find_endpoints(Ids, GroupEndpoints, Call) ->
                         end, Ids),
     find_user_endpoints(UserIds, lists:sort(DeviceIds), Call).
 
--spec find_user_endpoints(ne_binaries(), ne_binaries(), whapps_call:call()) -> ne_binaries().
+-spec find_user_endpoints(ne_binaries(), ne_binaries(), whapps_call:call()) ->
+                                 ne_binaries().
 find_user_endpoints([], DeviceIds, _) -> DeviceIds;
 find_user_endpoints([UserId|UserIds], DeviceIds, Call) ->
     UserDeviceIds = cf_attributes:owned_by(UserId, <<"device">>, Call),
