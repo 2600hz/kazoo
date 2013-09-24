@@ -203,7 +203,7 @@ handle_call_events(JObj, Props) ->
     put('callid', wh_json:get_value(<<"Call-ID">>, JObj)),
     case wh_json:get_value(<<"Event-Name">>, JObj) of
         <<"usurp_control">> ->
-            case wh_json:get_value(<<"Fetch-ID">>, JObj) 
+            case wh_json:get_value(<<"Fetch-ID">>, JObj)
                 =:= props:get_value('fetch_id', Props)
             of
                 'false' -> gen_listener:cast(Srv, {'usurp_control', JObj});
@@ -492,7 +492,8 @@ handle_info({'event', [CallId | Props]}, #state{callid=CallId
                     {'noreply', State}
             end;
         <<"CHANNEL_EXECUTE">> when Application =:= <<"redirect">> ->
-            gen_listener:cast(self(), {'channel_redirected', JObj});
+            lager:info("terminating due to redirect"),
+            {'stop', 'normal', State};
         _Else ->
             {'noreply', State}
     end;
