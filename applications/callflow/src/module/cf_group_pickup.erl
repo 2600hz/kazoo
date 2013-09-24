@@ -105,7 +105,7 @@ maybe_add_other_leg(Channel, Legs) ->
 
 -spec intercept_call(ne_binary(), whapps_call:call()) -> 'ok'.
 intercept_call(UUID, Call) ->
-    _ = whapps_call_command:pickup(UUID, Call),
+    _ = whapps_call_command:send_cmd(pickup_cmd(UUID), Call),
     case wait_for_pickup(Call) of
         {'error', _E} ->
             lager:debug("failed to pickup ~s: ~p", [UUID, _E]);
@@ -114,6 +114,12 @@ intercept_call(UUID, Call) ->
             whapps_call_command:wait_for_hangup(),
             lager:debug("hangup recv")
     end.
+
+pickup_cmd(TargetCallId) ->
+    [{<<"Application-Name">>, <<"call_pickup">>}
+     ,{<<"Target-Call-ID">>, TargetCallId}
+     ,{<<"Unbridged-Only">>, 'true'}
+    ].
 
 -spec wait_for_pickup(whapps_call:call()) ->
                              'ok' |
