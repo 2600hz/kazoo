@@ -203,7 +203,7 @@ handle_call_events(JObj, Props) ->
     put('callid', wh_json:get_value(<<"Call-ID">>, JObj)),
     case wh_json:get_value(<<"Event-Name">>, JObj) of
         <<"usurp_control">> ->
-            case wh_json:get_value(<<"Fetch-ID">>, JObj) 
+            case wh_json:get_value(<<"Fetch-ID">>, JObj)
                 =:= props:get_value('fetch_id', Props)
             of
                 'false' -> gen_listener:cast(Srv, {'usurp_control', JObj});
