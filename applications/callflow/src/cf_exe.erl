@@ -73,7 +73,7 @@
 start_link(Call) ->
     CallId = whapps_call:call_id(Call),
     Bindings = [{'call', [{'callid', CallId}
-                          ,{'restrict_to', ['events', 'cdr', 'destroy_channel', 'publisher_usurp']}
+                          ,{'restrict_to', ['events', 'cdr', 'destroy_channel', 'control_usurp']}
                          ]}
                 ,{'self', []}
                ],
