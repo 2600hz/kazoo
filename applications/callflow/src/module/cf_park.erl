@@ -353,11 +353,12 @@ update_call_id(_, _, _, Loops) when Loops > 5 ->
 update_call_id(Replaces, ParkedCalls, Call, Loops) ->
     CallId = cf_exe:callid(Call),
     lager:info("update parked call id ~s with new call id ~s", [Replaces, CallId]),
+
     Slots = wh_json:get_value(<<"slots">>, ParkedCalls, wh_json:new()),
-    lager:debug("slots: ~p", [Slots]),
+
     case find_slot_by_callid(Slots, Replaces) of
         {'ok', SlotNumber, Slot} ->
-            lager:info("found parked call id ~s in slot ~s: ~p", [Replaces, SlotNumber, Slot]),
+            lager:info("found parked call id ~s in slot ~s", [Replaces, SlotNumber]),
             CallerNode = whapps_call:switch_nodename(Call),
             Updaters = [fun(J) -> wh_json:set_value(<<"Call-ID">>, CallId, J) end
                         ,fun(J) -> wh_json:set_value(<<"Node">>, CallerNode, J) end
@@ -378,7 +379,7 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
                          end
                        ],
             UpdatedSlot = lists:foldr(fun(F, J) -> F(J) end, Slot, Updaters),
-            lager:debug("updated slot ~s: ~p", [SlotNumber, UpdatedSlot]),
+
             JObj = wh_json:set_value([<<"slots">>, SlotNumber], UpdatedSlot, ParkedCalls),
             case couch_mgr:save_doc(whapps_call:account_db(Call), JObj) of
                 {'ok', _} ->
