@@ -80,6 +80,7 @@ empty() ->
 new(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Account = get_account_definition(AccountDb, AccountId),
+    ResellerId = get_reseller_id(AccountId),
     IsReseller = depreciated_is_reseller(Account),
     BillingId = depreciated_billing_id(Account),
     PvtTree = wh_json:get_value(<<"pvt_tree">>, Account, []),
@@ -92,11 +93,11 @@ new(AccountId) ->
              ,{<<"pvt_account_db">>, AccountDb}
              ,{<<"pvt_status">>, <<"good_standing">>}
              ,{<<"pvt_reseller">>, IsReseller}
-             ,{<<"pvt_reseller_id">>, get_reseller_id(PvtTree)}
+             ,{<<"pvt_reseller_id">>, ResellerId}
              ,{<<"pvt_tree">>, PvtTree}
              ,{?QUANTITIES, wh_json:new()}
              ,{<<"billing_id">>, BillingId}
-             ,{<<"plans">>, populate_service_plans(Account)}
+             ,{<<"plans">>, populate_service_plans(Account, ResellerId)}
             ],
     #wh_services{account_id=AccountId
                  ,jobj=wh_json:from_list(Props)
@@ -135,7 +136,7 @@ from_service_json(JObj) ->
 fetch(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     %% TODO: if reseller populate cascade via merchant id
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+    case couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
         {'ok', JObj} ->
             lager:debug("loaded account service doc ~s", [AccountId]),
             IsReseller = wh_json:is_true(<<"pvt_reseller">>, JObj),
@@ -274,7 +275,7 @@ set_billing_id(BillingId, AccountId) ->
 get_billing_id(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
     lager:debug("determining if account ~s is able to make updates", [AccountId]),
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+    case couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _R} ->
             lager:debug("unable to open account ~s services: ~p", [AccountId, _R]),
             AccountId;
@@ -344,6 +345,7 @@ public_json(#wh_services{jobj=ServicesJObj, cascade_quantities=CascadeQuantities
              ,{<<"plans">>, wh_service_plans:plan_summary(ServicesJObj)}
              ,{<<"billing_id">>, wh_json:get_value(<<"billing_id">>, ServicesJObj, AccountId)}
              ,{<<"reseller">>, wh_json:is_true(<<"pvt_reseller">>, ServicesJObj)}
+             ,{<<"reseller_id">>, wh_json:get_ne_value(<<"pvt_reseller_id">>, ServicesJObj)}
              ,{<<"dirty">>, wh_json:is_true(<<"pvt_dirty">>, ServicesJObj)}
              ,{<<"in_good_standing">>, InGoodStanding}
              ,{<<"items">>, wh_service_plans:public_json_items(ServicesJObj)}
@@ -367,14 +369,12 @@ find_reseller_id('undefined') ->
 find_reseller_id(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
-        {'error', _R} ->
-            lager:debug("unable to open services doc for account ~s: ~p", [AccountId, _R]),
-            find_reseller_id('undefined');
         {'ok', JObj} ->
             case wh_json:get_ne_value(<<"pvt_reseller_id">>, JObj) of
-                'undefined' -> find_reseller_id('undefined');
+                'undefined' -> get_reseller_id(Account);
                 ResellerId -> ResellerId
-            end
+            end;
+        {'error', _} -> get_reseller_id(Account)
     end.
 
 %%%===================================================================
@@ -393,7 +393,7 @@ find_reseller_id(Account) ->
 allow_updates(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     lager:debug("determining if account ~s is able to make updates", [AccountId]),
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+    case couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _R} ->
             lager:debug("unable to open account ~s services: ~p", [AccountId, _R]),
             default_maybe_allow_updates(AccountId);
@@ -648,11 +648,11 @@ cascade_quantities(Account, 'true') ->
 
 -spec do_cascade_quantities/2 :: (ne_binary(), ne_binary()) -> wh_json:object().
 do_cascade_quantities(Account, View) ->
-    AccountId = wh_util:format_account_id(Account, raw),
-    ViewOptions = [group
-                   ,reduce
-                   ,{startkey, [AccountId]}
-                   ,{endkey, [AccountId, wh_json:new()]}
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    ViewOptions = ['group'
+                   ,'reduce'
+                   ,{'startkey', [AccountId]}
+                   ,{'endkey', [AccountId, wh_json:new()]}
                   ],
     case couch_mgr:get_results(?WH_SERVICES_DB, View, ViewOptions) of
         {'error', _} -> wh_json:new();
@@ -694,9 +694,8 @@ depreciated_is_reseller(JObj) ->
 %% definition as this will be depreciated in the future.
 %% @end
 %%--------------------------------------------------------------------
--spec populate_service_plans/1 :: (ne_binary()) -> wh_json:object().
-populate_service_plans(JObj) ->
-    ResellerId = get_reseller_id(wh_json:get_value(<<"pvt_tree">>, JObj, [])),
+-spec populate_service_plans/2 :: (wh_json:object(), ne_binary()) -> wh_json:json_object().
+populate_service_plans(JObj, ResellerId) ->
     Plans = incorporate_default_service_plan(ResellerId, master_default_service_plan()),
     incorporate_depreciated_service_plans(Plans, JObj).
 
@@ -711,7 +710,7 @@ default_service_plan_id(ResellerId) ->
 
 -spec depreciated_default_service_plan_id/1 :: (ne_binary()) -> 'undefined' | wh_json:object().
 depreciated_default_service_plan_id(ResellerId) ->
-    ResellerDb = wh_util:format_account_id(ResellerId, encoded),
+    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
     case couch_mgr:open_doc(ResellerDb, ResellerId) of
         {'ok', JObj} -> wh_json:get_value(<<"default_service_plan">>, JObj);
         {'error', _R} ->
@@ -762,6 +761,7 @@ incorporate_depreciated_service_plans(Plans, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_reseller_id/1 :: ([ne_binary(),...] | []) -> 'undefined' | ne_binary().
+
 get_reseller_id([]) ->
     case whapps_util:get_master_account_id() of
         {'ok', MasterAccountId} -> MasterAccountId;
@@ -777,6 +777,17 @@ get_reseller_id([Parent|Ancestors]) ->
                 'false' -> get_reseller_id(Ancestors);
                 'true' -> Parent
             end
+    end;
+get_reseller_id(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'ok', JObj} ->
+            PvtTree = lists:reverse(wh_json:get_value(<<"pvt_tree">>, JObj, [])),
+            get_reseller_id(PvtTree);
+        {'error', _R} ->
+            lager:info("unable to open account defintion for ~s: ~p", [AccountId, _R]),
+            get_reseller_id([])
     end.
 
 %%--------------------------------------------------------------------
