@@ -95,7 +95,11 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
 lookup_number(Number, ForceOutbound) ->
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
-            case props:get_value('force_outbound', Props) andalso ForceOutbound of
+            lager:debug("checking whether number is forced offnet(~s) or API asked to force it offnet(~s)"
+                        ,[props:get_value('force_outbound', Props)
+                          ,ForceOutbound
+                         ]),
+            case props:get_value('force_outbound', Props) orelse ForceOutbound of
                 'true' -> {'error', 'not_found'};
                 'false' -> {'ok', AccountId}
             end;
