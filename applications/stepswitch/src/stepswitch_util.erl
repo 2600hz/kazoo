@@ -134,27 +134,27 @@ get_dialstring(#gateway{route=Route}, _) ->
 -spec get_outbound_t38_settings(ne_binary(), api_binary()) -> wh_proplist().
 get_outbound_t38_settings(CarrierFlag, 'undefined') ->
     get_outbound_t38_settings(CarrierFlag);
-get_outbound_t38_settings(<<"true">>, <<"auto">>) ->
+get_outbound_t38_settings('true', <<"auto">>) ->
     get_outbound_t38_settings(<<"true">>, <<"true">>);
-get_outbound_t38_settings(<<"true">>, <<"true">>) ->
+get_outbound_t38_settings('true', 'true') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
     ,{<<"Enable-T38-Passthrough">>, 'true'}
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
-get_outbound_t38_settings(<<"true">>, <<"false">>) ->
+get_outbound_t38_settings('true', 'false') ->
     [{<<"Enable-T38-Fax">>, 'true'}
      ,{<<"Enable-T38-Fax-Request">>, 'true'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
      ,{<<"Enable-T38-Gateway">>, <<"self">>}
     ];
-get_outbound_t38_settings(<<"false">>, <<"false">>) ->
+get_outbound_t38_settings('false', 'false') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
      ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
      ,{<<"Enable-T38-Passthrough">>, 'true'}
      ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
-get_outbound_t38_settings(<<"false">>, <<"true">>) ->
+get_outbound_t38_settings('false','true') ->
     [{<<"Enable-T38-Fax">>, 'true'}
      ,{<<"Enable-T38-Fax-Request">>, 'true'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
@@ -162,13 +162,13 @@ get_outbound_t38_settings(<<"false">>, <<"true">>) ->
     ].
 
 -spec get_outbound_t38_settings(ne_binary()) -> wh_proplist().
-get_outbound_t38_settings(<<"true">>) ->
+get_outbound_t38_settings('true') ->
     [{<<"Enable-T38-Fax">>, 'true'}
      ,{<<"Enable-T38-Fax-Request">>, 'true'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
      ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
-get_outbound_t38_settings(<<"false">>) ->
+get_outbound_t38_settings('false') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
      ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
