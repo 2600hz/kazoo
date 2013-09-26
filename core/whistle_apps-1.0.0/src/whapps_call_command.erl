@@ -732,7 +732,7 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
     b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
-    wait_for_bridge((Timeout*1000) + 10000, Call).
+    wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000, Call).
 
 %%--------------------------------------------------------------------
 %% @public

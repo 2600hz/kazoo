@@ -12,8 +12,9 @@
 
 -export([start_link/0]).
 -export([lookup_contact/2]).
--export([reg_success/2]).
--export([reg_query/2
+-export([reg_success/2
+         ,reg_query/2
+         ,reg_flush/2
          ,handle_reg_success/2
         ]).
 -export([summary/0
@@ -45,12 +46,15 @@
                      ,{{?MODULE, 'reg_success'}
                        ,[{<<"directory">>, <<"reg_success">>}]
                       }
+                     ,{{?MODULE, 'reg_flush'}
+                       ,[{<<"directory">>, <<"reg_flush">>}]
+                      }
                     ]).
--define(BINDINGS, [{'registration', [{'retrict_to', ['reg_success', 'reg_query']}]}
+-define(BINDINGS, [{'registration', [{'retrict_to', ['reg_success', 'reg_query', 'reg_flush']}]}
                    ,{'self', []}
                   ]).
 -define(SERVER, ?MODULE).
--define(REG_QUEUE_NAME, <<"">>).
+-define(REG_QUEUE_NAME, <<>>).
 -define(REG_QUEUE_OPTIONS, []).
 -define(REG_CONSUME_OPTIONS, []).
 -define(SUMMARY_REGEX, <<"^.*?:.*@([0-9.:]*)(?:;fs_path=.*?:([0-9.:]*))*">>).
@@ -113,7 +117,7 @@ reg_success(JObj, _Props) ->
     lager:info("inserted registration ~s@~s with contact ~s", [Registration#registration.username
                                                                ,Registration#registration.realm
                                                                ,Registration#registration.contact
-                                                              ]),    
+                                                              ]),
     whistle_stats:increment_counter("register-success"),
     maybe_initial_registration(Registration).
 
@@ -123,12 +127,21 @@ reg_query(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
     maybe_resp_to_query(JObj).
 
+reg_flush(JObj, _Props) ->
+    'true' = wapi_registration:flush_v(JObj),
+    lager:debug("recv req to flush ~s @ ~s", [wh_json:get_value(<<"Username">>, JObj)
+                                              ,wh_json:get_value(<<"Realm">>, JObj)
+                                             ]),
+    flush(wh_json:get_value(<<"Username">>, JObj)
+          ,wh_json:get_value(<<"Realm">>, JObj)
+         ).
+
 -spec lookup_contact(ne_binary(), ne_binary()) ->
                             {'ok', ne_binary()} |
                             {'error', 'not_found'}.
 lookup_contact(Realm, Username) ->
     case ets:lookup(?MODULE, registration_id(Username, Realm)) of
-        [#registration{contact=Contact}] -> 
+        [#registration{contact=Contact}] ->
             lager:info("found user ~s@~s contact ~s", [Username, Realm, Contact]),
             {'ok', Contact};
         _Else -> fetch_contact(Username, Realm)
@@ -201,7 +214,9 @@ flush(Realm) ->
         _Else -> gen_server:cast(?MODULE, {'flush', Realm})
     end.
 
--spec flush(text(), text()) -> 'ok'.
+-spec flush(text() | 'undefined', text()) -> 'ok'.
+flush('undefined', Realm) ->
+    flush(Realm);
 flush(Username, Realm) when not is_binary(Realm) ->
     flush(Username, wh_util:to_binary(Realm));
 flush(Username, Realm) when not is_binary(Username) ->
@@ -398,7 +413,7 @@ fetch_contact(Username, Realm) ->
                     lager:info("contact query for user ~s@~s returned an empty result", [Username, Realm]),
                     {'error', 'not_found'}
             end;
-        _Else -> 
+        _Else ->
             lager:info("contact query for user ~s@~s failed: ~p", [Username, Realm, _Else]),
             {'error', 'not_found'}
     end.
@@ -434,7 +449,7 @@ expire_object({[#registration{id=Id, username=Username, realm=Realm
                       put(callid, CallId),
                       case oldest_registrar(Username, Realm) of
                           'false' -> 'ok';
-                          'true' -> 
+                          'true' ->
                               lager:debug("sending deregister notice for ~s@~s", [Username, Realm]),
                               send_deregister_notice(Reg)
                       end

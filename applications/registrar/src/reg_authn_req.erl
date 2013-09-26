@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Handle authn_req messages
 %%% @end
@@ -117,7 +117,9 @@ lookup_auth_user(Username, Realm) ->
                              {'ok', auth_user()} |
                              {'error', _}.
 check_auth_user(JObj, Username, Realm) ->
-    case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], JObj)) of
+    case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], JObj))
+        andalso wh_json:is_true([<<"doc">>, <<"enabled">>], JObj, 'false')
+    of
         'false' -> {'error', 'not_found'};
         'true' -> {'ok', jobj_to_auth_user(JObj, Username, Realm)}
     end.

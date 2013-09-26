@@ -13,6 +13,7 @@
          ,query_req/1, query_req_v/1
          ,query_resp/1, query_resp_v/1
          ,query_err/1, query_err_v/1
+         ,flush/1, flush_v/1
         ]).
 
 -export([bind_q/2, unbind_q/2]).
@@ -24,6 +25,7 @@
          ,publish_query_req/1, publish_query_req/2
          ,publish_query_resp/2, publish_query_resp/3
          ,publish_query_err/2, publish_query_err/3
+         ,publish_flush/1, publish_flush/2
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
@@ -49,6 +51,14 @@
                              ,{<<"Event-Name">>, <<"reg_success">>}
                             ]).
 -define(REG_SUCCESS_TYPES, []).
+
+%% Registration Success
+-define(REG_FLUSH_HEADERS, [<<"Realm">>]).
+-define(OPTIONAL_REG_FLUSH_HEADERS, [<<"Username">>]).
+-define(REG_FLUSH_VALUES, [{<<"Event-Category">>, <<"directory">>}
+                             ,{<<"Event-Name">>, <<"reg_flush">>}
+                            ]).
+-define(REG_FLUSH_TYPES, []).
 
 %% Query Registrations
 -define(REG_QUERY_HEADERS, [<<"Realm">>]).
@@ -100,6 +110,26 @@ success(JObj) -> success(wh_json:to_proplist(JObj)).
 success_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?REG_SUCCESS_HEADERS, ?REG_SUCCESS_VALUES, ?REG_SUCCESS_TYPES);
 success_v(JObj) -> success_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Registration Success - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec flush(api_terms()) ->
+                   {'ok', iolist()} |
+                   {'error', string()}.
+flush(Prop) when is_list(Prop) ->
+    case flush_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?REG_FLUSH_HEADERS, ?OPTIONAL_REG_FLUSH_HEADERS);
+        'false' -> {'error', "Proplist failed validation for reg_flush"}
+    end;
+flush(JObj) -> flush(wh_json:to_proplist(JObj)).
+
+-spec flush_v(api_terms()) -> boolean().
+flush_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?REG_FLUSH_HEADERS, ?REG_FLUSH_VALUES, ?REG_FLUSH_TYPES);
+flush_v(JObj) -> flush_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Registration Query - see wiki
@@ -178,6 +208,10 @@ bind_q(Q, ['reg_success'|T], Props) ->
 bind_q(Q, ['reg_query'|T], Props) ->
     _ = amqp_util:bind_q_to_callmgr(Q, get_query_binding(Props)),
     bind_q(Q, T, Props);
+bind_q(Q, ['reg_flush'|T], Props) ->
+    Realm = props:get_value('realm', Props, <<"*">>),
+    _ = amqp_util:bind_q_to_callmgr(Q, get_flush_routing(Realm)),
+    bind_q(Q, T, Props);
 bind_q(Q, [_|T], Props) -> bind_q(Q, T, Props);
 bind_q(_, [], _) -> 'ok'.
 
@@ -193,6 +227,10 @@ unbind_q(Q, ['reg_success'|T], Props) ->
     unbind_q(Q, T, Props);
 unbind_q(Q, ['reg_query'|T], Props) ->
     _ = amqp_util:unbind_q_from_callmgr(Q, get_query_binding(Props)),
+    unbind_q(Q, T, Props);
+unbind_q(Q, ['reg_flush'|T], Props) ->
+    Realm = props:get_value('realm', Props, <<"*">>),
+    _ = amqp_util:unbind_q_from_callmgr(Q, get_flush_routing(Realm)),
     unbind_q(Q, T, Props);
 unbind_q(Q, [_|T], Props) -> unbind_q(Q, T, Props);
 unbind_q(_, [], _) -> 'ok'.
@@ -217,6 +255,18 @@ publish_success(JObj) ->
 publish_success(Success, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Success, ?REG_SUCCESS_VALUES, fun ?MODULE:success/1),
     amqp_util:callmgr_publish(Payload, ContentType, get_success_routing(Success)).
+
+%%--------------------------------------------------------------------
+%% @doc Publish the JSON iolist() to the proper Exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_flush(api_terms()) -> 'ok'.
+-spec publish_flush(api_terms(), ne_binary()) -> 'ok'.
+publish_flush(JObj) ->
+    publish_flush(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_flush(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?REG_FLUSH_VALUES, fun ?MODULE:flush/1),
+    amqp_util:callmgr_publish(Payload, ContentType, get_flush_routing(API)).
 
 -spec publish_query_req(api_terms()) -> 'ok'.
 -spec publish_query_req(api_terms(), ne_binary()) -> 'ok'.
@@ -307,3 +357,10 @@ get_query_binding(Props) ->
             end,
 
     iolist_to_binary([?KEY_REG_QUERY, Realm, User]).
+
+get_flush_routing(Realm) when is_binary(Realm) ->
+    <<"registration.flush.", (amqp_util:encode(Realm))/binary>>;
+get_flush_routing(Prop) when is_list(Prop) ->
+    get_flush_routing(props:get_value(<<"Realm">>, Prop));
+get_flush_routing(JObj) ->
+    get_flush_routing(wh_json:get_value(<<"Realm">>, JObj)).

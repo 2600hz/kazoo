@@ -177,6 +177,7 @@ post(#cb_context{}=Context, DeviceId) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_device(DeviceId, Context1),
     _ = provisioner_util:maybe_provision(Context1),
+    _ = maybe_flush_caches(Context1),
     Context1.
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -184,13 +185,15 @@ put(#cb_context{}=Context) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_device('undefined', Context1),
     _ = provisioner_util:maybe_provision(Context1),
+    _ = maybe_flush_caches(Context1),
     Context1.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(#cb_context{}=Context, DeviceId) ->
     Context1 = crossbar_doc:delete(Context),
+    _ = maybe_flush_caches(Context1),
     _ = provisioner_util:maybe_delete_provision(Context),
-    _ = maybe_remove_aggreate(DeviceId, Context),
+    _ = maybe_remove_aggregate(DeviceId, Context),
     Context1.
 
 %%%===================================================================
@@ -321,6 +324,26 @@ maybe_validate_quickcall(#cb_context{resp_status='success'
     of
         'false' -> cb_context:add_system_error('invalid_credentials', Context);
         'true' -> Context
+    end.
+
+-spec maybe_flush_caches(cb_context:context()) -> 'ok'.
+maybe_flush_caches(#cb_context{resp_status='success'
+                               ,doc=JObj
+                              }=Context) ->
+    case wh_json:is_true(<<"enabled">>, JObj, 'false') of
+        'true' -> 'ok';
+        'false' ->
+            AccountRealm = crossbar_util:get_account_realm(Context),
+            Realm = wh_json:get_ne_value([<<"sip">>, <<"realm">>], JObj, AccountRealm),
+
+            Req = [{<<"Username">>, wh_json:get_value([<<"sip">>, <<"username">>], JObj)}
+                   ,{<<"Realm">>, Realm}
+                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                  ],
+            lager:debug("sending cache flush for ~s @ ~s", [wh_json:get_value([<<"sip">>, <<"username">>], JObj)
+                                                            ,Realm
+                                                           ]),
+            whapps_util:amqp_pool_send(Req, fun wapi_registration:publish_flush/1)
     end.
 
 %%--------------------------------------------------------------------
@@ -467,9 +490,11 @@ is_ip_sip_auth_unique(IP, DeviceId) ->
 %%--------------------------------------------------------------------
 -spec maybe_aggregate_device(api_binary(), cb_context:context()) -> boolean().
 maybe_aggregate_device(DeviceId, #cb_context{resp_status='success', doc=JObj}=Context) ->
-    case wh_util:is_true(cb_context:fetch('aggregate_device', Context)) of
+    case wh_util:is_true(cb_context:fetch('aggregate_device', Context)) andalso
+        wh_json:is_true(<<"enabled">>, JObj, 'false')
+    of
         'false' ->
-            maybe_remove_aggreate(DeviceId, Context);
+            maybe_remove_aggregate(DeviceId, Context);
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
             _ = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
@@ -484,9 +509,9 @@ maybe_aggregate_device(_, _) -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_remove_aggreate(ne_binary(), cb_context:context()) -> boolean().
-maybe_remove_aggreate('undefined', _) -> 'false';
-maybe_remove_aggreate(DeviceId, #cb_context{resp_status='success'}) ->
+-spec maybe_remove_aggregate(ne_binary(), cb_context:context()) -> boolean().
+maybe_remove_aggregate('undefined', _) -> 'false';
+maybe_remove_aggregate(DeviceId, #cb_context{resp_status='success'}) ->
     case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
         {'ok', JObj} ->
             _ = couch_mgr:del_doc(?WH_SIP_DB, JObj),
@@ -494,7 +519,7 @@ maybe_remove_aggreate(DeviceId, #cb_context{resp_status='success'}) ->
             'true';
         {'error', 'not_found'} -> 'false'
     end;
-maybe_remove_aggreate(_, _) -> 'false'.
+maybe_remove_aggregate(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
