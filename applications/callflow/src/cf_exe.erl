@@ -350,7 +350,7 @@ handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     {'noreply', State#state{call=whapps_call:set_call_id(NewCallId, Call)}};
 handle_cast({'add_event_listener', {M, A}}, #state{call=Call}=State) ->
     lager:debug("trying to start evt listener ~s: ~p", [M, A]),
-    try cf_event_handler_sup:new(M, [whapps_call:clear_helpers(Call) | A]) of
+    try cf_event_handler_sup:new(event_listener_name(Call, M), M, [whapps_call:clear_helpers(Call) | A]) of
         {'ok', P} when is_pid(P) ->
             lager:debug("started event listener ~p from ~s", [P, M]),
             {'noreply', State};
@@ -376,6 +376,9 @@ handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
+
+event_listener_name(Call, Module) ->
+    <<(whapps_call:call_id_direct(Call))/binary, "-", (wh_util:to_binary(Module))/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private

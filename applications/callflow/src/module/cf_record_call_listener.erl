@@ -114,7 +114,7 @@ handle_call_event(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([Call, Data]) ->
     whapps_call:put_callid(Call),
-    lager:debug("starting event listener for cf_record_call"),
+    lager:info("starting event listener for cf_record_call"),
 
     Format = cf_record_call:get_format(wh_json:get_value(<<"format">>, Data)),
 
