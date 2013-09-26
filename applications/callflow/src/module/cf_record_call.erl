@@ -67,7 +67,7 @@ save_recording(Call, MediaName, Format, {'true', 'local'}) ->
 
     store_recording(MediaName, StoreUrl, Call);
 save_recording(Call, MediaName, _Format, {'true', Url}) ->
-    lager:debug("store remote url: ~s", [Url]),
+    lager:info("store remote url: ~s", [Url]),
     store_recording(MediaName, Url, Call).
 
 -spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.

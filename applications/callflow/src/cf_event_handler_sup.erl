@@ -14,7 +14,7 @@
 
 %% API
 -export([start_link/0]).
--export([new/2]).
+-export([new/3]).
 -export([workers/0]).
 
 %% Supervisor callbacks
@@ -36,13 +36,13 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec new(atom(), list()) -> sup_startchild_ret().
-new(M, A) ->
-    supervisor:start_child(?MODULE, ?WORKER_ARGS_TYPE(M, A, 'temporary')).
+-spec new(term(), atom(), list()) -> sup_startchild_ret().
+new(Name, M, A) ->
+    supervisor:start_child(?MODULE, ?WORKER_NAME_ARGS_TYPE(Name, M, A, 'temporary')).
 
 -spec workers() -> pids().
 workers() ->
-    [ Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
+    [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
 
 %% ===================================================================
 %% Supervisor callbacks
