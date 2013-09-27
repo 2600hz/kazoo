@@ -12,6 +12,7 @@
 -export([evaluate_flags/2]).
 -export([get_dialstring/2]).
 -export([get_outbound_t38_settings/1, get_outbound_t38_settings/2]).
+-export([create_resrc/1]).
 
 -include("stepswitch.hrl").
 
@@ -252,3 +253,134 @@ evaluate_rules([Regex|T], Number) ->
 -spec cache_key_number(ne_binary()) -> {'stepswitch_number', ne_binary()}.
 cache_key_number(Number) ->
     {'stepswitch_number', Number}.
+
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Given a resrc JSON object it builds a resrc record and
+%% populates it with all enabled gateways
+%% @end
+%%--------------------------------------------------------------------
+-spec create_resrc(wh_json:object()) -> #resrc{}.
+create_resrc(JObj) ->
+    Default = #resrc{},
+    Id = wh_json:get_value(<<"_id">>, JObj),
+    lager:debug("loading resource ~s", [Id]),
+
+    #resrc{id = Id
+           ,rev =
+               wh_json:get_value(<<"_rev">>, JObj)
+           ,weight_cost =
+               constrain_weight(wh_json:get_value(<<"weight_cost">>, JObj, Default#resrc.weight_cost))
+           ,grace_period =
+               wh_json:get_integer_value(<<"grace_period">>, JObj, Default#resrc.grace_period)
+           ,flags =
+               wh_json:get_value(<<"flags">>, JObj, Default#resrc.flags)
+           ,rules =
+               [R2 || R1 <- wh_json:get_value(<<"rules">>, JObj, Default#resrc.rules)
+                          ,(R2 = compile_rule(R1, Id)) =/= error]
+           ,gateways =
+               [create_gateway(G, Id) || G <- wh_json:get_value(<<"gateways">>, JObj, []),
+                                         wh_json:is_true(<<"enabled">>, G, 'true')]
+           ,is_emergency =
+               wh_json:is_true(<<"emergency">>, JObj)
+               orelse (wh_json:get_value([<<"caller_id_options">>, <<"type">>], JObj) =:= <<"emergency">>)
+          }.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Given a gateway JSON object it builds a gateway record
+%% @end
+%%--------------------------------------------------------------------
+-spec create_gateway(wh_json:object(), ne_binary()) -> #gateway{}.
+create_gateway(JObj, Id) ->
+    Default = #gateway{},
+    EndpointType = endpoint_type(JObj, Default),
+    EndpointOptions = endpoint_options(JObj, EndpointType),
+    #gateway{'resource_id' = Id
+             ,'server' =
+                 wh_json:get_value(<<"server">>, JObj, Default#gateway.server)
+             ,'realm' =
+                 wh_json:get_value(<<"realm">>, JObj, Default#gateway.realm)
+             ,'username' =
+                 wh_json:get_value(<<"username">>, JObj, Default#gateway.username)
+             ,'password' =
+                 wh_json:get_value(<<"password">>, JObj, Default#gateway.password)
+             ,'route' =
+                 wh_json:get_value(<<"route">>, JObj, Default#gateway.route)
+             ,'prefix' =
+                 wh_json:get_binary_value(<<"prefix">>, JObj, Default#gateway.prefix)
+             ,'suffix' =
+                 wh_json:get_binary_value(<<"suffix">>, JObj, Default#gateway.suffix)
+             ,'codecs' =
+                 wh_json:get_value(<<"codecs">>, JObj, Default#gateway.codecs)
+             ,'t38_setting' = 
+                 wh_json:get_value(<<"t38_setting">>, JObj, Default#gateway.t38_setting)
+             ,'bypass_media' =
+                 wh_json:get_value(<<"bypass_media">>, JObj)
+             ,'caller_id_type' =
+                 wh_json:get_value(<<"caller_id_type">>, JObj, Default#gateway.caller_id_type)
+             ,'sip_headers' =
+                 wh_json:get_value(<<"custom_sip_headers">>, JObj, Default#gateway.sip_headers)
+             ,'sip_interface' =
+                 wh_json:get_ne_value(<<"custom_sip_interface">>, JObj)
+             ,'progress_timeout' =
+                 wh_json:get_integer_value(<<"progress_timeout">>, JObj, Default#gateway.progress_timeout)
+             ,'invite_format' =
+                 wh_json:get_value(<<"invite_format">>, JObj, Default#gateway.invite_format)
+             ,'endpoint_type' = EndpointType
+             ,'endpoint_options' = EndpointOptions
+             ,'format_from_uri' = wh_json:is_true(<<"format_from_uri">>, JObj, Default#gateway.format_from_uri)
+            }.
+
+endpoint_type(JObj, #gateway{endpoint_type=ET}) ->
+    wh_json:get_value(<<"endpoint_type">>, JObj, ET).
+
+endpoint_options(JObj, <<"freetdm">>) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Span">>, wh_json:get_value(<<"span">>, JObj)}
+         ,{<<"Channel-Selection">>, wh_json:get_value(<<"channel_selection">>, JObj, <<"ascending">>)}
+        ]));
+endpoint_options(JObj, <<"skype">>) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Skype-Interface">>, wh_json:get_value(<<"interface">>, JObj)}
+         ,{<<"Skype-RR">>, wh_json:is_true(<<"skype_rr">>, JObj, true)}
+        ]));
+endpoint_options(_, _) ->
+    wh_json:new().
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Wrapper for re:compile so we can log rules that fail (including
+%% which resource it was on).
+%% @end
+%%--------------------------------------------------------------------
+-spec compile_rule(ne_binary(), ne_binary()) -> re:mp() | 'error'.
+compile_rule(Rule, Id) ->
+    case re:compile(Rule) of
+        {ok, MP} ->
+            lager:debug("compiled ~s on resource ~s", [Rule, Id]),
+            MP;
+        {error, R} ->
+            lager:debug("bad rule '~s' on resource ~s, ~p", [Rule, Id, R]),
+            error
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% constrain the weight on a scale from 1 to 100
+%% @end
+%%--------------------------------------------------------------------
+-spec constrain_weight(ne_binary() | integer()) -> integer().
+constrain_weight(W) when not is_integer(W) ->
+    constrain_weight(wh_util:to_integer(W));
+constrain_weight(W) when W > 100 -> 100;
+constrain_weight(W) when W < 1 -> 1;
+constrain_weight(W) -> W.

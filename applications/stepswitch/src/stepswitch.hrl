@@ -7,6 +7,7 @@
 
 -define(ROUTES_DB, <<"offnet">>).
 -define(RESOURCES_DB, <<"offnet">>).
+-define(LOCAL_RESOURCES_VIEW, <<"local_resources/crossbar_listing">>).
 
 -define(LIST_ROUTES_BY_NUMBER, <<"routes/listing_by_number">>).
 -define(LIST_ROUTE_DUPS, <<"routes/listing_by_assignment">>).

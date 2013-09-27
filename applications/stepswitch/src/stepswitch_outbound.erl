@@ -79,7 +79,13 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
                  _ ->
                      Flags = wh_json:get_value(<<"Flags">>, JObj, []),
                      Resources = props:get_value('resources', Props),
-                     {Endpoints, IsEmergency} = find_endpoints(Number, Flags, Resources, JObj),
+                     
+                     case wh_json:get_value(<<"Hunt-Account-ID">>, JObj) of
+                         'undefined' -> LocalResources = maybe_get_local_resources(wh_json:get_value(<<"Account-ID">>, JObj));
+                         AccountId -> LocalResources = maybe_get_local_resources(AccountId)
+                     end,                           
+                     AllResources = Resources ++ LocalResources,
+                     {Endpoints, IsEmergency} = find_endpoints(Number, Flags, AllResources, JObj),
                      bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj)
              end,
     case {Result, correct_shortdial(Number, JObj)} of
@@ -89,6 +95,18 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
             attempt_to_fulfill_bridge_req(CorrectedNumber, CtrlQ, JObj, Props);
         _Else -> Result
     end.
+
+maybe_get_local_resources('undefined') -> [];
+maybe_get_local_resources(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId),
+    case couch_mgr:get_results(AccountDb, ?LOCAL_RESOURCES_VIEW, [include_docs]) of
+        {ok, Resrcs} ->
+            [stepswitch_util:create_resrc(wh_json:get_value(<<"doc">>, R))
+             || R <- Resrcs, wh_util:is_true(wh_json:get_value([<<"doc">>, <<"enabled">>], R, 'true'))];
+        {error, _}=E ->
+            E
+    end.
+    
 
 -spec lookup_number(ne_binary(), boolean()) ->
                            {'ok', ne_binary()} |
