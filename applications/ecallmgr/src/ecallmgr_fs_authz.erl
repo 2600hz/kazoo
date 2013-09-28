@@ -379,9 +379,7 @@ allow_call(Props, CallId, Node) ->
                          ,?AUTHZ_RESPONSE_KEY(CallId)
                          ,{'true', wh_json:from_list(Vars)}),
     _ = case props:get_value(<<"Channel-State">>, Props) =:= <<"CS_ROUTING">> of
-            'true' ->
-                io:format("ignoring routing channel!~n", []),
-                'ok';
+            'true' -> 'ok';
             'false' -> ecallmgr_util:set(Node, CallId, props:filter_undefined(Vars))
         end,
     'true'.

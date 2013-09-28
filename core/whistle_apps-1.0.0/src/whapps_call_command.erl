@@ -1807,16 +1807,14 @@ wait_for_bridge(Timeout, Fun, Call) ->
 
     receive
         {'amqp_msg', JObj} ->
-            AppResponse = wh_json:get_value(<<"Application-Response">>, JObj,
-                                            wh_json:get_value(<<"Hangup-Cause">>, JObj)
-                                           ),
-            Result = case lists:member(AppResponse, ?SUCCESSFUL_HANGUPS) of
+            Disposition = wh_json:get_value(<<"Disposition">>, JObj),
+            Result = case Disposition =:= <<"SUCCESS">> of
                          'true' -> 'ok';
                          'false' -> 'fail'
                      end,
             case get_event_type(JObj) of
                 {<<"error">>, _, <<"bridge">>} ->
-                    lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:get_value(<<"Error-Message">>, JObj)]),
+                    lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:encode(JObj)]),
                     {'error', JObj};
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
                     CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
@@ -1827,9 +1825,14 @@ wait_for_bridge(Timeout, Fun, Call) ->
                     end,
                     wait_for_bridge('infinity', Fun, Call);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
+                    %% TODO: reduce log level if no issue is found with 
+                    %%    basing the Result on Disposition
+                    lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
                     {Result, JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-                    lager:debug("bridge completed with result ~s catagorized as ~s", [AppResponse, Result]),
+                    %% TODO: reduce log level if no issue is found with 
+                    %%    basing the Result on Disposition
+                    lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
                     {Result, JObj};
                 _ ->
                     wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call)
