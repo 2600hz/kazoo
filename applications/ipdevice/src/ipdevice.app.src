@@ -1,0 +1,12 @@
+{application, ipdevice,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { ipdevice_app, []}},
+  {env, []}
+ ]}.

@@ -167,8 +167,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec process_route_req(atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
-process_route_req(Node, FetchId, CallId, Props) ->
+process_route_req(Node, FetchId, CallId, PropsInitial) ->
     put('callid', CallId),
+%%% Check whether call is from device auth by id
+    Props = ecallmgr_device_ip:maybe_spoof_device(PropsInitial),
     case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
         'false' -> search_for_route(Node, FetchId, CallId, Props);
         'true' ->
