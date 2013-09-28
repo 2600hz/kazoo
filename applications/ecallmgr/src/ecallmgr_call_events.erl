@@ -595,7 +595,6 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
     ];
-
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"record">>, Prop) ->
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
@@ -756,8 +755,8 @@ get_hangup_cause(Props) ->
 
 -spec get_disposition(wh_proplist()) -> api_binary().
 get_disposition(Props) ->
-    find_event_value([<<"variable_endpoint_disposition">>
-                          ,<<"variable_originate_disposition">>
+    find_event_value([<<"variable_originate_disposition">>
+                      ,<<"variable_endpoint_disposition">>
                      ], Props).
 
 -spec get_hangup_code(wh_proplist()) -> api_binary().

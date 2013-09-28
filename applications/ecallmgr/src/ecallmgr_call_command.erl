@@ -794,8 +794,7 @@ bridge_handle_ccvs(DP, _Node, _UUID, JObj) ->
     end.
 
 bridge_pre_exec(DP, _, _, _) ->
-    [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
-     ,{"application", "set continue_on_fail=true"}
+    [{"application", "set continue_on_fail=true"}
      |DP
     ].
 

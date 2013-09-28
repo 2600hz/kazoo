@@ -135,11 +135,7 @@ event(Node, [_|_]=Events, Timeout) ->
         {'ok', {IP, Port}} when PortOpen =:= 'undefined' ->
             put('port_open', 'true'),
             {'ok', IPAddress} = inet_parse:address(IP),
-
-            io:format("connect to ~p(~p): ~p", [IPAddress, Port, IP]),
-
-            {'ok', Socket} = gen_tcp:connect(IPAddress, Port, [{'mode', 'binary'}, {'packet', 2}]),
-            io:format("Opened event socket ~p to port ~p~n", [Socket, Port]),
+            {'ok', _} = gen_tcp:connect(IPAddress, Port, [{'mode', 'binary'}, {'packet', 2}]),
             'ok';
         {'ok', _} -> 'ok';
         Else ->
