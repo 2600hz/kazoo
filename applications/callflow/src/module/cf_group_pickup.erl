@@ -177,7 +177,7 @@ find_sip_endpoints(Data, Call) ->
         'undefined' ->
             case wh_json:get_value(<<"user_id">>, Data) of
                 'undefined' ->
-                    find_sip_users(wh_json:get_value(<<"gorup_id">>, Data), Call);
+                    find_sip_users(wh_json:get_value(<<"group_id">>, Data), Call);
                 UserId ->
                     sip_users_from_endpoints(
                       find_user_endpoints([UserId], [], Call), Call
