@@ -136,7 +136,7 @@ maybe_ensure_cid_valid(Number, Name, 'true', <<"emergency">>, Call) ->
     case whapps_config:get_is_true(<<"callflow">>, <<"ensure_valid_emergency_number">>, 'false') of
         'true' -> ensure_valid_emergency_number(Number, Name, Call);
         'false' ->
-            lager:info("emergecy caller id <~s> ~s", [Name, Number]),
+            lager:info("emergency caller id <~s> ~s", [Name, Number]),
             {Number, Name}
     end;
 maybe_ensure_cid_valid(Number, Name, _, Attribute, _) ->
@@ -149,7 +149,7 @@ ensure_valid_emergency_number(Number, Name, Call) ->
     Numbers = valid_emergency_numbers(Call),
     case lists:member(Number, Numbers) of
         'true' ->
-            lager:info("emergecy caller id <~s> ~s", [Name, Number]),
+            lager:info("emergency caller id <~s> ~s", [Name, Number]),
             {Number, Name};
         'false' ->
             find_valid_emergency_number(Numbers, Number, Name)
@@ -160,14 +160,14 @@ ensure_valid_emergency_number(Number, Name, Call) ->
 find_valid_emergency_number([], Number, Name) ->
     case whapps_config:get_non_empty(<<"callflow">>, <<"default_emergency_number">>, <<>>) of
         'undefined' ->
-            lager:info("emergecy caller id <~s> ~s", [Name, Number]),
+            lager:info("emergency caller id <~s> ~s", [Name, Number]),
             {Number, Name};
         Default ->
-            lager:info("emergecy caller id <~s> ~s", [Name, Default]),
+            lager:info("emergency caller id <~s> ~s", [Name, Default]),
             {Default, Name}
     end;
 find_valid_emergency_number([Number|_], _, Name) ->
-    lager:info("emergecy caller id <~s> ~s", [Name, Number]),
+    lager:info("emergency caller id <~s> ~s", [Name, Number]),
     {Number, Name}.
 
 -spec ensure_valid_caller_id(ne_binary(), ne_binary(), whapps_call:call()) ->
