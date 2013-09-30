@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2013, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -12,6 +12,7 @@
 -export([phone_number_activation_charge/2]).
 
 -include("../whistle_services.hrl").
+-include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -19,7 +20,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec feature_activation_charge/2 :: (ne_binary(), wh_services:services()) -> integer().
+-spec feature_activation_charge(ne_binary(), wh_services:services()) -> integer().
 feature_activation_charge(<<"dash_e911">>, Services) ->
     feature_activation_charge(<<"e911">>, Services);
 feature_activation_charge(Feature, Services) ->
@@ -32,7 +33,7 @@ feature_activation_charge(Feature, Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec phone_number_activation_charge/2 :: (ne_binary(), wh_services:services()) -> integer().
+-spec phone_number_activation_charge(ne_binary(), wh_services:services()) -> integer().
 phone_number_activation_charge(Number, Services) ->
     case wnm_util:classify_number(Number) of
         'undefined' -> 0;
@@ -47,7 +48,7 @@ phone_number_activation_charge(Number, Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile/1 :: (wh_services:services()) -> wh_services:services().
+-spec reconcile(wh_services:services()) -> wh_services:services().
 reconcile(Services) ->
     AccountId = wh_services:account_id(Services),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
@@ -67,7 +68,7 @@ reconcile(Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_numbers/3 :: ([ne_binary(),...] | [], wh_json:object(), wh_services:services()) -> wh_services:services().
+-spec update_numbers(ne_binaries(), wh_json:object(), wh_services:services()) -> wh_services:services().
 update_numbers([], _, Services) ->
     Services;
 update_numbers([Number|Numbers], JObj, Services) ->
@@ -90,13 +91,24 @@ update_numbers([Number|Numbers], JObj, Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_number_quantities/2 :: (ne_binary(), wh_services:services()) -> wh_services:services().
+-spec update_number_quantities(ne_binary(), wh_services:services()) -> wh_services:services().
 update_number_quantities(Number, Services) ->
-    case wnm_util:classify_number(Number) of
+    case is_number_billable(Number) andalso wnm_util:classify_number(Number) of
+        'false' -> Services;
         'undefined' -> Services;
         Classification ->
             Quantity = wh_services:update_quantity(<<"phone_numbers">>, Classification, Services),
             wh_services:update(<<"phone_numbers">>, Classification, Quantity + 1, Services)
+    end.
+
+is_number_billable(DID) ->
+    case wnm_number:get(DID) of
+        #number{module_name = <<"wnm_local">>} ->
+            lager:debug("number is not billable: wnm_local"),
+            'false';
+        #number{module_name=_Mod} ->
+            lager:debug("number is billable: ~s", [_Mod]),
+            'true'
     end.
 
 %%--------------------------------------------------------------------
@@ -105,7 +117,7 @@ update_number_quantities(Number, Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_feature_quantities/2 :: ([ne_binary(),...] | [], wh_services:services()) -> wh_services:services().
+-spec update_feature_quantities(ne_binaries(), wh_services:services()) -> wh_services:services().
 update_feature_quantities([], Services) ->
     Services;
 update_feature_quantities([<<"dash_e911">>|Features], Services) ->

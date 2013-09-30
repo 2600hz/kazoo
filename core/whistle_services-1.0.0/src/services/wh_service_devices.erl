@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2013, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -17,7 +17,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile/1 :: (wh_services:services()) -> wh_services:services().
+-spec reconcile(wh_services:services()) -> wh_services:services().
 reconcile(Services) ->
     AccountId = wh_services:account_id(Services),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),

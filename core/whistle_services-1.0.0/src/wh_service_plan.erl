@@ -20,7 +20,7 @@
 %% Merge any plan overrides into the plan property.
 %% @end
 %%--------------------------------------------------------------------
--spec fetch/3 :: (ne_binary(), ne_binary(), wh_json:object()) -> 'undefined' | wh_json:object().
+-spec fetch(ne_binary(), ne_binary(), wh_json:object()) -> 'undefined' | wh_json:object().
 fetch(PlanId, VendorId, Overrides) ->
     VendorDb = wh_util:format_account_id(VendorId, 'encoded'),
     case couch_mgr:open_doc(VendorDb, PlanId) of
@@ -38,7 +38,7 @@ fetch(PlanId, VendorId, Overrides) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec activation_charges/3 :: (ne_binary(), ne_binary(), wh_json:object()) -> float().
+-spec activation_charges(ne_binary(), ne_binary(), wh_json:object()) -> float().
 activation_charges(Category, Item, ServicePlan) ->
     wh_json:get_float_value([<<"plan">>, Category, Item, <<"activation_charge">>], ServicePlan, 0.0).
 
@@ -48,8 +48,8 @@ activation_charges(Category, Item, ServicePlan) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_items/3 :: (wh_json:object(), wh_service_items:items(), wh_services:services()) -> wh_service_items:items().
--spec create_items/5 :: (ne_binary(), ne_binary(), wh_json:object(), wh_service_items:items(), wh_services:services()) -> wh_service_items:items().
+-spec create_items(wh_json:object(), wh_service_items:items(), wh_services:services()) -> wh_service_items:items().
+-spec create_items(ne_binary(), ne_binary(), wh_json:object(), wh_service_items:items(), wh_services:services()) -> wh_service_items:items().
 
 create_items(ServicePlan, ServiceItems, Services) ->
     Plan = wh_json:get_value(<<"plan">>, ServicePlan, wh_json:new()),
@@ -108,7 +108,7 @@ create_items(Category, Item, ServiceItems, ServicePlan, Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bookkeeper_jobj/3 :: (ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+-spec bookkeeper_jobj(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
 bookkeeper_jobj(Category, Item, ServicePlan) ->
     lists:foldl(fun(Bookkeeper, J) ->
                         Mapping = wh_json:get_value([<<"bookkeepers">>, Bookkeeper, Category, Item]
@@ -122,7 +122,7 @@ bookkeeper_jobj(Category, Item, ServicePlan) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_rate_at_quantity/4 :: (ne_binary(), ne_binary(), wh_json:object(), wh_services:services()) -> {float(), integer()}.
+-spec get_rate_at_quantity(ne_binary(), ne_binary(), wh_json:object(), wh_services:services()) -> {float(), integer()}.
 get_rate_at_quantity(Category, Item, ItemPlan, Services) ->
     Quantity = get_quantity(Category, Item, ItemPlan, Services),
     case get_flat_rate(Quantity, ItemPlan) of
@@ -137,7 +137,7 @@ get_rate_at_quantity(Category, Item, ItemPlan, Services) ->
 %% current quantity.
 %% @end
 %%--------------------------------------------------------------------
--spec get_quantity/4 :: (ne_binary(), ne_binary(), wh_json:object(), wh_services:services()) -> integer().
+-spec get_quantity(ne_binary(), ne_binary(), wh_json:object(), wh_services:services()) -> integer().
 get_quantity(Category, Item, ItemPlan, Services) ->
     ItemQuantity = get_item_quantity(Category, Item, ItemPlan, Services),
     case wh_json:get_integer_value(<<"minimum">>, ItemPlan, 0) of
@@ -154,7 +154,7 @@ get_quantity(Category, Item, ItemPlan, Services) ->
 %% current quantity.
 %% @end
 %%--------------------------------------------------------------------
--spec get_flat_rate/2 :: (non_neg_integer(), wh_json:object()) -> 'undefined' | float().
+-spec get_flat_rate(non_neg_integer(), wh_json:object()) -> 'undefined' | float().
 get_flat_rate(Quantity, JObj) ->
     Rates = wh_json:get_value(<<"flat_rates">>, JObj, wh_json:new()),
     L1 = [wh_util:to_integer(K) || K <- wh_json:get_keys(Rates)],
@@ -172,7 +172,7 @@ get_flat_rate(Quantity, JObj) ->
 %% quantity.  If no rates are viable attempt to use the "rate" property.
 %% @end
 %%--------------------------------------------------------------------
--spec get_quantity_rate/2 :: (non_neg_integer(), wh_json:object()) -> float().
+-spec get_quantity_rate(non_neg_integer(), wh_json:object()) -> float().
 get_quantity_rate(Quantity, JObj) ->
     Rates = wh_json:get_value(<<"rates">>, JObj, wh_json:new()),
     L1 = [wh_util:to_integer(K) || K <- wh_json:get_keys(Rates)],
@@ -186,12 +186,12 @@ get_quantity_rate(Quantity, JObj) ->
 %% @doc
 %% Get the item quantity, drawing solely from the provided account or
 %% (when the service plan dictates) the summed (cascaded) decendants.
-%% Also handle the special case were we should sum all items in a 
+%% Also handle the special case were we should sum all items in a
 %% given category, except a list of item names to ignore during
 %% summation.
 %% @end
 %%--------------------------------------------------------------------
--spec get_item_quantity/4 :: (ne_binary(), ne_binary(), wh_json:object(), wh_services:services()) -> integer().
+-spec get_item_quantity(ne_binary(), ne_binary(), wh_json:object(), wh_services:services()) -> integer().
 get_item_quantity(Category, <<"_all">>, ItemPlan, Services) ->
     Exceptions = wh_json:get_value(<<"exceptions">>, ItemPlan, []),
     case wh_json:is_true(<<"cascade">>, ItemPlan) of

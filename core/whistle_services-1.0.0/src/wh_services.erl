@@ -66,7 +66,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec empty/0 :: () -> services().
+-spec empty() -> services().
 empty() ->
     #wh_services{}.
 
@@ -76,7 +76,7 @@ empty() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec new/1 :: (ne_binary()) -> services().
+-spec new(ne_binary()) -> services().
 new(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Account = get_account_definition(AccountDb, AccountId),
@@ -113,7 +113,7 @@ new(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec from_service_json/1 :: (wh_json:object()) -> services().
+-spec from_service_json(wh_json:object()) -> services().
 from_service_json(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     IsReseller = wh_json:is_true(<<"pvt_reseller">>, JObj),
@@ -132,7 +132,7 @@ from_service_json(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch/1 :: (ne_binary()) -> services().
+-spec fetch(ne_binary()) -> services().
 fetch(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     %% TODO: if reseller populate cascade via merchant id
@@ -159,7 +159,7 @@ fetch(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_service_plan/2 :: (ne_binary(), services()) -> services().
+-spec add_service_plan(ne_binary(), services()) -> services().
 add_service_plan(PlanId, #wh_services{jobj=JObj}=Services) ->
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, JObj),
     Services#wh_services{jobj=wh_service_plans:add_service_plan(PlanId, ResellerId, JObj)}.
@@ -170,7 +170,7 @@ add_service_plan(PlanId, #wh_services{jobj=JObj}=Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec delete_service_plan/2 :: (ne_binary(), services()) -> services().
+-spec delete_service_plan(ne_binary(), services()) -> services().
 delete_service_plan(PlanId, #wh_services{jobj=JObj}=Services) ->
     Services#wh_services{jobj=wh_service_plans:delete_service_plan(PlanId, JObj)}.
 
@@ -180,7 +180,7 @@ delete_service_plan(PlanId, #wh_services{jobj=JObj}=Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save/1 :: (services()) -> services().
+-spec save(services()) -> services().
 save(#wh_services{jobj=JObj, updates=UpdatedQuantities, account_id=AccountId, dirty=ForceDirty}=Services) ->
     CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
     Dirty = have_quantities_changed(UpdatedQuantities, CurrentQuantities) orelse ForceDirty,
@@ -218,7 +218,7 @@ save(#wh_services{jobj=JObj, updates=UpdatedQuantities, account_id=AccountId, di
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (ne_binary()) -> wh_std_return().
+-spec delete(ne_binary()) -> wh_std_return().
 delete(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
     %% TODO: support other bookkeepers, and just cancel subscriptions....
@@ -242,7 +242,7 @@ delete(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_billing_id/2 :: (ne_binary(), ne_binary() | #wh_services{}) -> 'undefined' | #wh_services{}.
+-spec set_billing_id(api_binary(), ne_binary() | #wh_services{}) -> 'undefined' | #wh_services{}.
 set_billing_id('undefined', _) ->
     'undefined';
 set_billing_id(BillingId, #wh_services{billing_id=BillingId}) ->
@@ -271,7 +271,7 @@ set_billing_id(BillingId, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_billing_id/1 :: (ne_binary()) -> ne_binary().
+-spec get_billing_id(ne_binary()) -> ne_binary().
 get_billing_id(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
     lager:debug("determining if account ~s is able to make updates", [AccountId]),
@@ -294,7 +294,7 @@ get_billing_id(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update/4 :: (ne_binary(), ne_binary(), integer(), services()) -> services().
+-spec update(ne_binary(), ne_binary(), integer(), services()) -> services().
 update(Category, Item, Quantity, Services) when not is_integer(Quantity) ->
     update(Category, Item, wh_util:to_integer(Quantity), Services);
 update(Category, Item, Quantity, #wh_services{updates=JObj}=Services) when is_binary(Category), is_binary(Item) ->
@@ -306,7 +306,7 @@ update(Category, Item, Quantity, #wh_services{updates=JObj}=Services) when is_bi
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec activation_charges/3 :: (ne_binary(), ne_binary(), services() | ne_binary()) -> integer().
+-spec activation_charges(ne_binary(), ne_binary(), services() | ne_binary()) -> integer().
 activation_charges(Category, Item, #wh_services{jobj=ServicesJObj}) ->
     Plans = wh_service_plans:from_service_json(ServicesJObj),
     wh_service_plans:activation_charges(Category, Item, Plans);
@@ -319,7 +319,7 @@ activation_charges(Category, Item, Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec service_plan_json/1 :: (ne_binary() | #wh_services{}) -> wh_json:object().
+-spec service_plan_json(ne_binary() | #wh_services{}) -> wh_json:object().
 service_plan_json(#wh_services{jobj=ServicesJObj}) ->
     Plans = wh_service_plans:from_service_json(ServicesJObj),
     wh_service_plans:public_json(Plans);
@@ -332,7 +332,7 @@ service_plan_json(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec public_json/1 :: (ne_binary() | #wh_services{}) -> wh_json:object().
+-spec public_json(ne_binary() | #wh_services{}) -> wh_json:object().
 public_json(#wh_services{jobj=ServicesJObj, cascade_quantities=CascadeQuantities}) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, ServicesJObj),
     InGoodStanding = try maybe_follow_billling_id(AccountId, ServicesJObj) of
@@ -360,7 +360,7 @@ public_json(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_reseller_id/1 :: ('undefined' | ne_binary()) -> 'undefined' | ne_binary().
+-spec find_reseller_id(api_binary()) -> api_binary().
 find_reseller_id('undefined') ->
     case whapps_util:get_master_account_id() of
         {'error', _} -> 'undefined';
@@ -389,7 +389,7 @@ find_reseller_id(Account) ->
 %% accounting issues.
 %% @end
 %%--------------------------------------------------------------------
--spec allow_updates/1 :: (ne_binary()) -> boolean().
+-spec allow_updates(ne_binary()) -> boolean().
 allow_updates(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     lager:debug("determining if account ~s is able to make updates", [AccountId]),
@@ -444,7 +444,7 @@ default_maybe_allow_updates(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile/1 :: ('undefined' | ne_binary()) -> services().
+-spec reconcile(api_binary()) -> services().
 reconcile('undefined') ->
     [];
 reconcile(Account) ->
@@ -461,7 +461,7 @@ reconcile(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile/2 :: ('undefined' | ne_binary(), text()) -> 'false' | services().
+-spec reconcile(api_binary(), text()) -> 'false' | services().
 reconcile('undefined', _) -> 'false';
 reconcile(Account, Module) ->
     timer:sleep(1000),
@@ -484,7 +484,7 @@ reconcile(Account, Module) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec account_id/1 :: (services()) -> ne_binary().
+-spec account_id(services()) -> ne_binary().
 account_id(#wh_services{account_id=AccountId}) ->
     AccountId.
 
@@ -494,7 +494,7 @@ account_id(#wh_services{account_id=AccountId}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec quantity/3 :: (ne_binary(), ne_binary(), services()) -> integer().
+-spec quantity(ne_binary(), ne_binary(), services()) -> integer().
 quantity(_, _, #wh_services{deleted='true'}) -> 0;
 quantity(Category, Item, #wh_services{updates=UpdatedQuantities, jobj=JObj}) ->
     CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
@@ -507,7 +507,7 @@ quantity(Category, Item, #wh_services{updates=UpdatedQuantities, jobj=JObj}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_quantity/3 :: (ne_binary(), ne_binary(), services()) -> integer().
+-spec update_quantity(ne_binary(), ne_binary(), services()) -> integer().
 update_quantity(_, _, #wh_services{deleted='true'}) -> 0;
 update_quantity(Category, Item, #wh_services{updates=JObj}) ->
     wh_json:get_integer_value([Category, Item], JObj, 0).
@@ -518,7 +518,7 @@ update_quantity(Category, Item, #wh_services{updates=JObj}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec category_quantity/3 :: (ne_binary(), [ne_binary(),...] |[], services()) -> integer().
+-spec category_quantity(ne_binary(), [ne_binary(),...] |[], services()) -> integer().
 category_quantity(_, _, #wh_services{deleted='true'}) -> 'true';
 category_quantity(Category, Exceptions, #wh_services{updates=UpdatedQuantities, jobj=JObj}) ->
     CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
@@ -537,7 +537,7 @@ category_quantity(Category, Exceptions, #wh_services{updates=UpdatedQuantities, 
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cascade_quantity/3 :: (ne_binary(), ne_binary(), services()) -> integer().
+-spec cascade_quantity(ne_binary(), ne_binary(), services()) -> integer().
 cascade_quantity(_, _, #wh_services{deleted='true'}) -> 0;
 cascade_quantity(Category, Item, #wh_services{cascade_quantities=JObj}=Services) ->
     wh_json:get_integer_value([Category, Item], JObj, 0)
@@ -549,7 +549,7 @@ cascade_quantity(Category, Item, #wh_services{cascade_quantities=JObj}=Services)
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cascade_category_quantity/3 :: (ne_binary(), [ne_binary(),...] |[], services()) -> integer().
+-spec cascade_category_quantity(ne_binary(), [ne_binary(),...] |[], services()) -> integer().
 cascade_category_quantity(_, _, #wh_services{deleted='true'}) -> 0;
 cascade_category_quantity(Category, Exceptions, #wh_services{cascade_quantities=Quantities}=Services) ->
     lists:foldl(fun(Item, Sum) ->
@@ -567,7 +567,7 @@ cascade_category_quantity(Category, Exceptions, #wh_services{cascade_quantities=
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reset_category/2 :: (ne_binary(), services()) -> services().
+-spec reset_category(ne_binary(), services()) -> services().
 reset_category(Category, #wh_services{updates=JObj}=Services) ->
     Services#wh_services{updates=wh_json:set_value(Category, wh_json:new(), JObj)}.
 
@@ -578,7 +578,7 @@ reset_category(Category, #wh_services{updates=JObj}=Services) ->
 %% Helper function to know if an account is a reseller or not.
 %% @end
 %%--------------------------------------------------------------------
--spec is_reseller/1 :: (ne_binary() | #wh_services{}) -> boolean().
+-spec is_reseller(ne_binary() | #wh_services{}) -> boolean().
 is_reseller(Account) ->
     Service = public_json(Account),
     wh_json:is_true(<<"reseller">>, Service).
@@ -593,7 +593,7 @@ is_reseller(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_service_modules/0 :: () -> [atom(),...] | [].
+-spec get_service_modules() -> [atom(),...] | [].
 get_service_modules() ->
     case whapps_config:get(?WHS_CONFIG_CAT, <<"modules">>) of
         'undefined' ->
@@ -617,7 +617,7 @@ get_service_modules() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_service_module/1 :: (text()) -> atom() | 'false'.
+-spec get_service_module(text()) -> atom() | 'false'.
 get_service_module(Module) when not is_binary(Module) ->
     get_service_module(wh_util:to_binary(Module));
 get_service_module(<<"wh_service_", _/binary>>=Module) ->
@@ -639,14 +639,14 @@ get_service_module(Module) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cascade_quantities/2 :: (ne_binary(), boolean()) -> wh_json:object().
+-spec cascade_quantities(ne_binary(), boolean()) -> wh_json:object().
 
 cascade_quantities(Account, 'false') ->
     do_cascade_quantities(Account, <<"services/cascade_quantities">>);
 cascade_quantities(Account, 'true') ->
     do_cascade_quantities(Account, <<"services/reseller_quantities">>).
 
--spec do_cascade_quantities/2 :: (ne_binary(), ne_binary()) -> wh_json:object().
+-spec do_cascade_quantities(ne_binary(), ne_binary()) -> wh_json:object().
 do_cascade_quantities(Account, View) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     ViewOptions = ['group'
@@ -671,7 +671,7 @@ do_cascade_quantities(Account, View) ->
 %% definition as this will be depreciated in the future.
 %% @end
 %%--------------------------------------------------------------------
--spec depreciated_billing_id/1 :: (wh_json:object()) -> ne_binary().
+-spec depreciated_billing_id(wh_json:object()) -> ne_binary().
 depreciated_billing_id(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     wh_json:get_value(<<"billing_id">>, JObj, AccountId).
@@ -683,7 +683,7 @@ depreciated_billing_id(JObj) ->
 %% definition as this will be depreciated in the future.
 %% @end
 %%--------------------------------------------------------------------
--spec depreciated_is_reseller/1 :: (wh_json:object()) -> boolean().
+-spec depreciated_is_reseller(wh_json:object()) -> boolean().
 depreciated_is_reseller(JObj) ->
     wh_json:is_true(<<"pvt_reseller">>, JObj).
 
@@ -694,12 +694,12 @@ depreciated_is_reseller(JObj) ->
 %% definition as this will be depreciated in the future.
 %% @end
 %%--------------------------------------------------------------------
--spec populate_service_plans/2 :: (wh_json:object(), ne_binary()) -> wh_json:json_object().
+-spec populate_service_plans(wh_json:object(), ne_binary()) -> wh_json:json_object().
 populate_service_plans(JObj, ResellerId) ->
     Plans = incorporate_default_service_plan(ResellerId, master_default_service_plan()),
     incorporate_depreciated_service_plans(Plans, JObj).
 
--spec default_service_plan_id/1 :: (ne_binary()) -> 'undefined' | wh_json:object().
+-spec default_service_plan_id(ne_binary()) -> api_object().
 default_service_plan_id(ResellerId) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, ResellerId) of
         {'ok', JObj} -> wh_json:get_value(<<"default_service_plan">>, JObj);
@@ -708,7 +708,7 @@ default_service_plan_id(ResellerId) ->
             'undefined'
     end.
 
--spec depreciated_default_service_plan_id/1 :: (ne_binary()) -> 'undefined' | wh_json:object().
+-spec depreciated_default_service_plan_id(ne_binary()) -> api_object().
 depreciated_default_service_plan_id(ResellerId) ->
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
     case couch_mgr:open_doc(ResellerDb, ResellerId) of
@@ -718,7 +718,7 @@ depreciated_default_service_plan_id(ResellerId) ->
             'undefined'
     end.
 
--spec master_default_service_plan/0 :: () -> wh_json:object().
+-spec master_default_service_plan() -> wh_json:object().
 master_default_service_plan() ->
     case whapps_util:get_master_account_id() of
         {'error', _} -> wh_json:new();
@@ -726,7 +726,7 @@ master_default_service_plan() ->
             incorporate_default_service_plan(MasterAccountId, wh_json:new())
     end.
 
--spec incorporate_default_service_plan/2 :: (ne_binary(), wh_json:object()) -> wh_json:object().
+-spec incorporate_default_service_plan(ne_binary(), wh_json:object()) -> wh_json:object().
 incorporate_default_service_plan(ResellerId, JObj) ->
     case depreciated_default_service_plan_id(ResellerId) of
         'undefined' ->
@@ -741,7 +741,7 @@ incorporate_default_service_plan(ResellerId, JObj) ->
             wh_json:set_value(PlanId, Plan, JObj)
     end.
 
--spec incorporate_depreciated_service_plans/2 :: (wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec incorporate_depreciated_service_plans(wh_json:object(), wh_json:object()) -> wh_json:object().
 incorporate_depreciated_service_plans(Plans, JObj) ->
     PlanIds = wh_json:get_value(<<"pvt_service_plans">>, JObj),
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, JObj),
@@ -760,8 +760,7 @@ incorporate_depreciated_service_plans(Plans, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_reseller_id/1 :: ([ne_binary(),...] | []) -> 'undefined' | ne_binary().
-
+-spec get_reseller_id(ne_binaries()) -> api_binary().
 get_reseller_id([]) ->
     case whapps_util:get_master_account_id() of
         {'ok', MasterAccountId} -> MasterAccountId;
@@ -796,7 +795,7 @@ get_reseller_id(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_save/1 :: (services()) -> services().
+-spec maybe_save(services()) -> services().
 maybe_save(#wh_services{jobj=JObj, updates=UpdatedQuantities}=Services) ->
     CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
     case have_quantities_changed(UpdatedQuantities, CurrentQuantities) of
@@ -814,7 +813,7 @@ maybe_save(#wh_services{jobj=JObj, updates=UpdatedQuantities}=Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec have_quantities_changed/2 :: (wh_json:object(), wh_json:object()) -> boolean().
+-spec have_quantities_changed(wh_json:object(), wh_json:object()) -> boolean().
 have_quantities_changed(Updated, Current) ->
     lists:any(fun(Key) -> wh_json:get_value(Key, Updated) =/= wh_json:get_value(Key, Current) end
               ,[[Category, Item]
@@ -833,7 +832,7 @@ have_quantities_changed(Updated, Current) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_definition/2 :: (ne_binary(), ne_binary()) -> wh_json:object().
+-spec get_account_definition(ne_binary(), ne_binary()) -> wh_json:object().
 get_account_definition(AccountDb, AccountId) ->
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'error', _R} ->
@@ -848,7 +847,7 @@ get_account_definition(AccountDb, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_clean_old_billing_id/1 :: (services()) -> services().
+-spec maybe_clean_old_billing_id(services()) -> services().
 maybe_clean_old_billing_id(#wh_services{billing_id=BillingId, current_billing_id=BillingId}=Services) ->
     Services;
 maybe_clean_old_billing_id(#wh_services{current_billing_id=BillingId, account_id=BillingId, jobj=JObj}=Services) ->

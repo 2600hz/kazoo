@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -63,7 +63,7 @@
                                                                  ])}
                              ]).
 -define(DEFAULT_E164_CONVERTERS, [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>
-                                     ,wh_json:from_list([{<<"prefix">>, <<"+1">>}])
+                                       ,wh_json:from_list([{<<"prefix">>, <<"+1">>}])
                                   }
                                   ,{<<"^011(\\d*)$|^00(\\d*)$">>
                                         ,wh_json:from_list([{<<"prefix">>, <<"+">>}])
@@ -91,7 +91,7 @@ pretty_print(Format, Number) ->
     Num = wnm_util:normalize_number(Number),
     pretty_print(Format, Num, <<>>).
 
--spec pretty_print(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec pretty_print(binary(), binary(), binary()) -> binary().
 pretty_print(<<>>, _, Acc) -> Acc;
 pretty_print(<<"\\S", Format/binary>>, Number, Acc) ->
     pretty_print(Format, Number, <<Acc/binary, "S">>);
