@@ -655,8 +655,9 @@ publish_originate_resp(ServerId, JObj) ->
 publish_originate_resp('undefined', _JObj, _UUID) -> 'ok';
 publish_originate_resp(ServerId, JObj, UUID) ->
     Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
-                               ,{<<"Event-Name">>, <<"originate_resp">>}
-                               ,{<<"Call-ID">>, UUID}
+                              ,{<<"Application-Response">>, <<"SUCCESS">>} 
+                              ,{<<"Event-Name">>, <<"originate_resp">>}
+                              ,{<<"Call-ID">>, UUID}
                               ], JObj),
     wapi_resource:publish_originate_resp(ServerId, Resp).
 

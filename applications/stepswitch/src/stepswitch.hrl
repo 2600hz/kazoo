@@ -7,6 +7,7 @@
 
 -define(ROUTES_DB, <<"offnet">>).
 -define(RESOURCES_DB, <<"offnet">>).
+-define(LOCAL_RESOURCES_VIEW, <<"local_resources/crossbar_listing">>).
 
 -define(LIST_ROUTES_BY_NUMBER, <<"routes/listing_by_number">>).
 -define(LIST_ROUTE_DUPS, <<"routes/listing_by_assignment">>).
@@ -31,9 +32,9 @@
           ,prefix = whapps_config:get_binary(<<"stepswitch">>, <<"default_prefix">>, <<>>)
           ,suffix = whapps_config:get_binary(<<"stepswitch">>, <<"default_suffix">>, <<>>)
           ,codecs = whapps_config:get(<<"stepswitch">>, <<"default_codecs">>, [])
-          ,bypass_media = whapps_config:get_is_true(<<"stepswitch">>, <<"default_bypass_media">>, false)
+          ,bypass_media = whapps_config:get_is_true(<<"stepswitch">>, <<"default_bypass_media">>, 'false')
           ,caller_id_type = whapps_config:get_binary(<<"stepswitch">>, <<"default_caller_id_type">>, <<"external">>)
-          ,t38_setting = whapps_config:get_binary(<<"stepswitch">>, <<"default_t38_settings">>, <<"none">>)
+          ,t38_setting = whapps_config:get_is_true(<<"stepswitch">>, <<"default_t38_settings">>, 'false')
           ,sip_headers = 'undefined'
           ,sip_interface = 'undefined'
           ,progress_timeout = whapps_config:get_integer(<<"stepswitch">>, <<"default_progress_timeout">>, 8) :: pos_integer()
@@ -54,6 +55,8 @@
           ,is_emergency = 'true' :: boolean()
          }).
 
+-type resource() :: #resrc{}.
+-type resources() :: [#resrc{},...] | [].
 -type endpoint() :: {1..100, non_neg_integer(), ne_binary(), [#gateway{},...] | [], boolean()}.
 -type endpoints() :: [] | [endpoint()].
 
