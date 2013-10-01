@@ -84,7 +84,10 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
                          'undefined' -> LocalResources = maybe_get_local_resources(wh_json:get_value(<<"Account-ID">>, JObj));
                          AccountId -> LocalResources = maybe_get_local_resources(AccountId)
                      end,                           
-                     AllResources = Resources ++ LocalResources,
+                     AllResources = LocalResources ++ Resources,
+                     lager:debug("Global Resources: ~p", [Resources]),
+                     lager:debug("Local Resources: ~p", [LocalResources]),
+                     lager:debug("All Resources: ~p", [AllResources]),
                      {Endpoints, IsEmergency} = find_endpoints(Number, Flags, AllResources, JObj),
                      bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj)
              end,
@@ -95,18 +98,6 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
             attempt_to_fulfill_bridge_req(CorrectedNumber, CtrlQ, JObj, Props);
         _Else -> Result
     end.
-
-maybe_get_local_resources('undefined') -> [];
-maybe_get_local_resources(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId),
-    case couch_mgr:get_results(AccountDb, ?LOCAL_RESOURCES_VIEW, [include_docs]) of
-        {ok, Resrcs} ->
-            [stepswitch_util:create_resrc(wh_json:get_value(<<"doc">>, R))
-             || R <- Resrcs, wh_util:is_true(wh_json:get_value([<<"doc">>, <<"enabled">>], R, 'true'))];
-        {error, _}=E ->
-            E
-    end.
-    
 
 -spec lookup_number(ne_binary(), boolean()) ->
                            {'ok', ne_binary()} |
@@ -129,6 +120,15 @@ lookup_number(Number, ForceOutbound) ->
 attempt_to_fulfill_originate_req(Number, JObj, Props) ->
     Flags = wh_json:get_value(<<"Flags">>, JObj, []),
     Resources = props:get_value('resources', Props),
+    
+    case wh_json:get_value(<<"Hunt-Account-ID">>, JObj) of
+        'undefined' -> LocalResources = maybe_get_local_resources(wh_json:get_value(<<"Account-ID">>, JObj));
+        AccountId -> LocalResources = maybe_get_local_resources(AccountId)
+    end,                           
+    AllResources = LocalResources ++ Resources,
+    lager:debug("Global Resources: ~p", [Resources]),
+    lager:debug("Local Resources: ~p", [LocalResources]),
+    lager:debug("All Resources: ~p", [AllResources]),
     {Endpoints, _} = find_endpoints(Number, Flags, Resources, JObj),
     case {originate_to_endpoints(Endpoints, JObj),
           correct_shortdial(Number, JObj)} of
@@ -137,6 +137,23 @@ attempt_to_fulfill_originate_req(Number, JObj, Props) ->
             lager:debug("found no resources for number as originated, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
             attempt_to_fulfill_originate_req(CorrectedNumber, JObj, Props);
         {Result, _} -> Result
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_get_local_resources(api_binary()) -> resources().
+maybe_get_local_resources('undefined') -> [];
+maybe_get_local_resources(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId),
+    case couch_mgr:get_results(AccountDb, ?LOCAL_RESOURCES_VIEW, [include_docs]) of
+        {ok, Resrcs} ->
+            [stepswitch_util:create_resrc(wh_json:get_value(<<"doc">>, R))
+             || R <- Resrcs, wh_util:is_true(wh_json:get_value([<<"doc">>, <<"enabled">>], R, 'true'))];
+        {error, _} -> []
     end.
 
 %%--------------------------------------------------------------------

@@ -55,6 +55,8 @@
           ,is_emergency = 'true' :: boolean()
          }).
 
+-type resource() :: #resrc{}.
+-type resources() :: [#resrc{},...] | [].
 -type endpoint() :: {1..100, non_neg_integer(), ne_binary(), [#gateway{},...] | [], boolean()}.
 -type endpoints() :: [] | [endpoint()].
 
