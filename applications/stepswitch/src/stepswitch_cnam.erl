@@ -232,6 +232,7 @@ make_request(Number, JObj) ->
             <<>>
     end.
 
+-spec get_http_url(wh_json:object()) -> list().
 get_http_url(JObj) ->
     Template = whapps_config:get_binary(?CONFIG_CAT, <<"http_url">>, ?DEFAULT_URL),
     case binary:match(Template, <<"opencnam">>) of
@@ -240,7 +241,15 @@ get_http_url(JObj) ->
             lists:flatten(Url);
         _Else ->
             {'ok', Url} = render(JObj, Template),
-            lists:flatten([Url, "?ref=2600hz&format=pbx"])
+            case mochiweb_util:urlsplit(wh_util:to_list(Url)) of
+                {_Scheme, _Host, _Path, "", _Segment} ->
+                    lists:flatten([Url, "?ref=2600hz&format=pbx"]);
+                {Scheme, Host, Path, QS, Segment} ->
+                    mochiweb_util:urlunsplit({Scheme, Host, Path
+                                              ,[QS, "&ref=2600hz&format=pbx"]
+                                              ,Segment
+                                             })
+            end
     end.
 
 get_http_body(JObj) ->
