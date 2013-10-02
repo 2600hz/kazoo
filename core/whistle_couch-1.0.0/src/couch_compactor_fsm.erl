@@ -530,10 +530,11 @@ compact({'compact_db', N, D}=Msg, #state{conn='undefined'
     end;
 
 compact('compact', #state{nodes=[]
+                          ,dbs=[]
                           ,current_job_pid=Pid
                           ,current_job_ref=Ref
                          }=State) ->
-    lager:debug("no nodes to compact"),
+    lager:debug("no nodes to compact: ~p", [State]),
     maybe_send_update(Pid, Ref, 'job_finished'),
     gen_fsm:send_event(self(), 'next_job'),
     lager:debug("returning to 'ready'"),
@@ -555,7 +556,7 @@ compact('compact', #state{nodes=[N|Ns]}=State) ->
     {'next_state', 'compact', State#state{nodes=Ns}};
 
 compact({'compact', {N, _}}, #state{admin_conn=AdminConn}=State) ->
-    lager:debug("compacting node ~s", [N]),
+    lager:debug("compacting node ~s w/ options", [N]),
 
     {'ok', DBs} = node_dbs(AdminConn),
     [D|Ds] = shuffle(DBs),
@@ -584,6 +585,8 @@ compact({'compact', N, D}, #state{conn=Conn
                                   ,dbs=[]
                                   ,current_job_heuristic=Heur
                                  }=State) ->
+    lager:debug("checking if should compact ~s on ~s", [D, N]),
+
     Encoded = encode_db(D),
     case couch_util:db_exists(Conn, Encoded) andalso
         should_compact(Conn, Encoded, Heur)
@@ -607,6 +610,8 @@ compact({'compact', N, D}, #state{conn=Conn
                                   ,dbs=[Db|Dbs]
                                   ,current_job_heuristic=Heur
                                  }=State) ->
+    lager:debug("checking if should compact ~s on ~s", [D, N]),
+
     Encoded = encode_db(D),
     case couch_util:db_exists(Conn, Encoded) andalso
         should_compact(Conn, Encoded, Heur)
@@ -639,6 +644,7 @@ compact({'compact_db', N, D}, #state{conn=Conn
                                      ,current_job_ref=Ref
                                      ,current_job_heuristic=Heur
                                     }=State) ->
+    lager:debug("checking if should compact ~s on ~s", [D, N]),
     Encoded = encode_db(D),
     case couch_util:db_exists(Conn, Encoded) andalso
         should_compact(Conn, Encoded, Heur)
@@ -669,6 +675,8 @@ compact({'compact_db', N, D}, #state{conn=Conn
                                      ,nodes=[Node|Ns]
                                      ,current_job_heuristic=Heur
                                     }=State) ->
+    lager:debug("checking if should compact ~s on ~s", [D, N]),
+
     Encoded = encode_db(D),
     case couch_util:db_exists(Conn, Encoded) andalso
         should_compact(Conn, Encoded, Heur)
@@ -1226,7 +1234,7 @@ wait_for_compaction(AdminConn, S, {'error', _E}) ->
     wait_for_compaction(AdminConn, S);
 wait_for_compaction(AdminConn, S, {'ok', ShardData}) ->
     case wh_json:is_true(<<"compact_running">>, ShardData, 'false') of
-        'false' -> 'ok';
+        'false' -> lager:debug("compaction has ended");
         'true' ->
             'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
             wait_for_compaction(AdminConn, S)
