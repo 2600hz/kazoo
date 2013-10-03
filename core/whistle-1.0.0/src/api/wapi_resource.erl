@@ -69,6 +69,7 @@
 
 -define(ORIGINATE_REQ_HEADERS, [<<"Endpoints">>, <<"Application-Name">>]).
 -define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>
+                                             ,<<"Originate-Immediate">>
                                              ,<<"Custom-Channel-Vars">>
                                              ,<<"Export-Custom-Channel-Vars">>
                                              ,<<"Outbound-Call-ID">>

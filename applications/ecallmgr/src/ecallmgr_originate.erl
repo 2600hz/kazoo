@@ -236,8 +236,14 @@ handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,fetch_id=FetchId
                                              ,dialstrings='undefined'
                                             }=State) ->
-    gen_listener:cast(self(), {'originate_ready'}),
-    {'noreply', State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, State, JObj, FetchId)}};
+    case wh_json:is_true(<<"Originate-Immediate">>, JObj) of
+        'true' -> gen_listener:cast(self(), {'originate_execute'});
+        'false' -> gen_listener:cast(self(), {'originate_ready'})
+    end,
+    Endpoints = [update_endpoint(Endpoint, State)
+                 || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
+                ],
+    {'noreply', State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, Endpoints, JObj, FetchId)}};
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,action = Action
                                              ,app = ?ORIGINATE_EAVESDROP
