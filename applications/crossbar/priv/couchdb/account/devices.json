@@ -3,7 +3,7 @@
     ,"language": "javascript"
     ,"views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'owner_id': doc.owner_id, 'enabled':doc.enabled, 'device_type':doc.device_type || 'sip_device'}); }"
+            "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'mac_address': doc.mac_address || '', 'owner_id': doc.owner_id, 'enabled':doc.enabled, 'device_type':doc.device_type || 'sip_device'}); }"
         },
         "listing_by_owner": {
             "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit(doc.owner_id, {'id': doc._id, 'name': doc.name}); }"
