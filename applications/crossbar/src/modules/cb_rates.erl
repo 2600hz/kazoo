@@ -248,13 +248,15 @@ csv_to_rates(CSV, Context) ->
 -spec process_row([string(),...], {integer(), wh_json:objects()}) -> {integer(), wh_json:objects()}.
 process_row([Prefix, ISO, Desc, Rate], Acc) ->
     process_row([Prefix, ISO, Desc, Rate, Rate], Acc);
-process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
+process_row([Prefix, ISO, Desc, InternalSurcharge ,Surcharge, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
     case catch wh_util:to_integer(Prefix) of
         {'EXIT', _} -> Acc;
         _ ->
             Prefix1 = wh_util:to_binary(Prefix),
             ISO1 = strip_quotes(wh_util:to_binary(ISO)),
             Desc1 = strip_quotes(wh_util:to_binary(Desc)),
+            InternalSurcharge1 = wh_util:to_binary(InternalSurcharge),
+            Surcharge1 = wh_util:to_binary(Surcharge),
             InternalCost1 = wh_util:to_binary(InternalCost),
             Rate1 = wh_util:to_binary(Rate),
 
@@ -268,10 +270,11 @@ process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
                                         ,{<<"iso_country_code">>, ISO1}
                                         ,{<<"description">>, Desc1}
                                         ,{<<"rate_name">>, Desc1}
-                                        ,{<<"rate_cost">>, wh_util:to_float(Rate1)}
                                         ,{<<"rate_increment">>, 60}
                                         ,{<<"rate_minimum">>, 60}
-                                        ,{<<"rate_surcharge">>, 0}
+                                        ,{<<"rate_surcharge">>, wh_util:to_float(Surcharge1)}
+                                        ,{<<"rate_cost">>, wh_util:to_float(Rate1)}
+                                        ,{<<"pvt_rate_surcharge">>, wh_util:to_float(InternalSurcharge1)}
                                         ,{<<"pvt_rate_cost">>, wh_util:to_float(InternalCost1)}
                                         ,{<<"weight">>, constrain_weight(byte_size(Prefix1) * 10 - CostF)}
                                         ,{?HTTP_OPTIONS, []}
