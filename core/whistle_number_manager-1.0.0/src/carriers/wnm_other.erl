@@ -68,7 +68,7 @@ acquire_number(#number{number=Num}=Number) ->
 					lager:error("number lookup failed: ~p", [Reason]),
     				wnm_number:error_carrier_fault(Reason, Number);
 				{'ok', "200", _Headers, Body} ->
-					format_put_resp(Body, Number);
+					format_put_resp(wh_json:decode(Body), Number);
 				{'ok', _Status, _Headers, Body} ->
 					lager:error("number lookup failed: ~p", [Body]),
 					wnm_number:error_carrier_fault(Body, Number)
@@ -113,10 +113,9 @@ format_get_resp(Body) ->
 	end.
 
 format_put_resp(Body, Number) ->
-	io:format("MARKER0 ~p~n", [Body]),
 	case wh_json:get_value(<<"status">>, Body) of
 		<<"success">> ->
-			Number;
+			Number#number{module_data=wh_json:get_value(<<"data">>, Body, wh_json:new())};
 		Error ->
 			lager:error("number lookup resp error: ~p", [Error]),
 			wnm_number:error_carrier_fault(Error, Number)
