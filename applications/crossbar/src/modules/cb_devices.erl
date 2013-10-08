@@ -196,7 +196,7 @@ put(#cb_context{}=Context) ->
 delete(#cb_context{}=Context, DeviceId) ->
     Context1 = crossbar_doc:delete(Context),
     _ = provisioner_util:maybe_delete_provision(Context),
-    _ = maybe_remove_aggreate(DeviceId, Context),
+    _ = maybe_remove_aggregate(DeviceId, Context),
     Context1.
 
 %%%===================================================================
@@ -521,7 +521,7 @@ is_ip_sip_auth_unique(IP, DeviceId) ->
 maybe_aggregate_device(DeviceId, #cb_context{resp_status='success', doc=JObj}=Context) ->
     case wh_util:is_true(cb_context:fetch('aggregate_device', Context)) of
         'false' ->
-            maybe_remove_aggreate(DeviceId, Context);
+            maybe_remove_aggregate(DeviceId, Context);
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
             _ = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
@@ -536,9 +536,9 @@ maybe_aggregate_device(_, _) -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_remove_aggreate(ne_binary(), cb_context:context()) -> boolean().
-maybe_remove_aggreate('undefined', _) -> 'false';
-maybe_remove_aggreate(DeviceId, #cb_context{resp_status='success'}) ->
+-spec maybe_remove_aggregate(ne_binary(), cb_context:context()) -> boolean().
+maybe_remove_aggregate('undefined', _) -> 'false';
+maybe_remove_aggregate(DeviceId, #cb_context{resp_status='success'}) ->
     case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
         {'ok', JObj} ->
             _ = couch_mgr:del_doc(?WH_SIP_DB, JObj),
@@ -546,7 +546,7 @@ maybe_remove_aggreate(DeviceId, #cb_context{resp_status='success'}) ->
             'true';
         {'error', 'not_found'} -> 'false'
     end;
-maybe_remove_aggreate(_, _) -> 'false'.
+maybe_remove_aggregate(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
