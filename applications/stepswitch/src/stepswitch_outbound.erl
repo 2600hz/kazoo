@@ -208,14 +208,13 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
     lager:debug("setting from-uri to ~s", [FromURI]),
 
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    Updates = [{<<"Account-ID">>, AccountId}
-               ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
-               ,{<<"From-URI">>, FromURI}
-               ,{<<"Ignore-Display-Updates">>, <<"true">>}
-               ,{<<"Global-Resource">>, <<"true">>}
-              ],
-    CCVs = wh_json:set_values(props:filter_undefined(Updates)
-                              ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    CCVUpdates = props:filter_undefined([{<<"Account-ID">>, AccountId}
+                                        ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
+                                        ,{<<"From-URI">>, FromURI}
+                                        ,{<<"Ignore-Display-Updates">>, <<"true">>}
+                                        ,{<<"Global-Resource">>, <<"true">>}
+                                        ]),
 
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
@@ -234,7 +233,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
                ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                ,{<<"Continue-On-Fail">>, <<"true">>}
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
-               ,{<<"Custom-Channel-Vars">>, CCVs}
+               ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
                ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
@@ -283,13 +282,13 @@ originate_to_endpoints(Endpoints, JObj) ->
     lager:debug("setting from-uri to ~s", [FromURI]),
 
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    Updates = [{<<"Account-ID">>, AccountId}
-               ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
-               ,{<<"From-URI">>, FromURI}
-               ,{<<"Global-Resource">>, <<"true">>}
-              ],
-    CCVs = wh_json:set_values(props:filter_undefined(Updates)
-                              ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    CCVUpdates = props:filter_undefined(
+                   [{<<"Account-ID">>, AccountId}
+                   ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
+                   ,{<<"From-URI">>, FromURI}
+                   ,{<<"Global-Resource">>, <<"true">>}
+                   ]),
 
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:rand_hex_binary(16)),
     Application = wh_json:get_value(<<"Application-Name">>, JObj, <<"park">>),
@@ -315,7 +314,7 @@ originate_to_endpoints(Endpoints, JObj) ->
                  ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                  ,{<<"Continue-On-Fail">>, <<"true">>}
                  ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
-                 ,{<<"Custom-Channel-Vars">>, CCVs}
+                 ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
                  ,{<<"Outbound-Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, JObj)}
                  | wh_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
                 ]),
@@ -339,25 +338,25 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
     CIDName = wh_json:get_ne_value(<<"Outbound-Caller-ID-Name">>, JObj
                                    ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj)),
 
-    OffCCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    CCVUpdates = props:filter_undefined(
+                   [{<<"Account-ID">>, AccountId}
+                   ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
+                   ,{<<"Inception">>, <<"off-net">>}
+                   ,{<<"Retain-CID">>, <<"true">>}
+                   ,{<<"Caller-ID-Number">>, CIDNum}
+                   ,{<<"Caller-ID-Name">>, CIDName}
+                   ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
+                   ,{<<"Callee-ID-Name">>, get_account_name(Number, AccountId)}
+                   ,{<<"Global-Resource">>, <<"false">>}
+                   ]),
 
-    CCVs = [{<<"Account-ID">>, AccountId}
-            ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
-            ,{<<"Inception">>, <<"off-net">>}
-            ,{<<"Retain-CID">>, <<"true">>}
-            ,{<<"Caller-ID-Number">>, CIDNum}
-            ,{<<"Caller-ID-Name">>, CIDName}
-            ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
-            ,{<<"Callee-ID-Name">>, get_account_name(Number, AccountId)}
-            ,{<<"Global-Resource">>, <<"false">>}
-            | wh_json:to_proplist(OffCCVs)
-           ],
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
 
     Command = [{<<"Call-ID">>, get('callid')}
                ,{<<"Extension">>, Number}
                ,{<<"Reset">>, 'true'}
-               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
+               ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
                ,{<<"Application-Name">>, <<"execute_extension">>}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
