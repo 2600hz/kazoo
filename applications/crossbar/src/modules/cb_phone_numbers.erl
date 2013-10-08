@@ -48,6 +48,9 @@
                      ,{<<"application">>, <<"x-base64">>}
                     ]).
 
+-define(DEFAULT_COUNTRY, <<"US">>).
+-define(PHONE_NUMBERS_CONFIG_CAT, <<"crossbar.phone_numbers">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -220,6 +223,8 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?CLASSIFIERS) ->
     cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                              ,wnm_util:available_classifiers()
                             );
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, <<"prefix">>) ->
+    find_prefix(Context);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number) ->
     read(Number, Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number) ->
@@ -362,6 +367,53 @@ find_numbers(Context) ->
                                      ,cb_context:set_req_data(Context, JObj)
                                      ,OnSuccess
                                     ).
+
+-spec find_prefix(cb_context:context()) -> cb_context:context().
+find_prefix(Context) ->
+    QS = cb_context:query_string(Context),
+    case wh_json:get_ne_value(<<"city">>, QS) of
+        'undefined' -> cb_context:add_system_error('bad_identifier', Context);
+        City ->
+            case get_prefix(City) of
+                {'ok', Data} ->
+                    cb_context:set_resp_data(
+                        cb_context:set_resp_status(Context, 'success')
+                        ,Data
+                    );
+                {'error', Error} ->
+                    lager:error("error while prefix for city: ~p : ~p", [City, Error]),
+                    cb_context:set_resp_data(
+                        cb_context:set_resp_status(Context, 'error')
+                        ,Error
+                    )
+            end
+    end.
+
+-spec get_prefix(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+get_prefix(City) ->
+    Country = whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
+    case whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, <<"url">>) of
+        'undefined' ->
+            {'error', <<"Unable to acquire numbers missing carrier url">>};
+        Url ->
+            ReqParam  = wh_util:uri_encode(binary:bin_to_list(City)),
+            Req = binary:bin_to_list(<<Url/binary, Country/binary, "/city?pattern=">>),
+            Uri = lists:append(Req, ReqParam),
+            case ibrowse:send_req(Uri, [], 'get') of
+                {'error', Reason} ->
+                    {'error', Reason};
+                {'ok', "200", _Headers, Body} ->
+                    JObj =  wh_json:decode(Body),
+                    case wh_json:get_value(<<"data">>, JObj) of
+                        'undefined' -> {'error ', JObj};
+                        Data -> {'ok', Data}
+                    end;
+                {'ok', _Status, _Headers, Body} ->
+                    {'error', Body}
+            end
+    end.
+            
+
 
 %%--------------------------------------------------------------------
 %% @private
