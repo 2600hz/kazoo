@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(wh_number_manager).
 
--export([find/1, find/2]).
+-export([find/1, find/2, find/3]).
 -export([lookup_account_by_number/1]).
 -export([ported/1]).
 -export([create_number/3, create_number/4]).
@@ -39,14 +39,23 @@
 %%--------------------------------------------------------------------
 -spec find/1 :: (ne_binary()) -> [] | [ne_binary(),...].
 -spec find/2 :: (ne_binary(), ne_binary()) -> [] | [ne_binary(),...].
+-spec find/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> [] | [ne_binary(),...].
 
 find(Number) ->
-    find(Number, <<"1">>).
+    find(Number, <<"1">>, []).
 
 find(Number, Quanity) ->
     Num = wnm_util:normalize_number(Number),
     lager:debug("attempting to find ~p numbers with prefix '~s'", [Quanity, Number]),
-    Results = [{Module, catch(Module:find_numbers(Num, Quanity))}
+    Results = [{Module, catch(Module:find_numbers(Num, Quanity, []))}
+               || Module <- wnm_util:list_carrier_modules()
+              ],
+    prepare_find_results(Results, []).
+
+find(Number, Quanity, Opts) ->
+    Num = wnm_util:normalize_number(Number),
+    lager:debug("attempting to find ~p numbers with prefix '~s'", [Quanity, Number]),
+    Results = [{Module, catch(Module:find_numbers(Num, Quanity, Opts))}
                || Module <- wnm_util:list_carrier_modules()
               ],
     prepare_find_results(Results, []).

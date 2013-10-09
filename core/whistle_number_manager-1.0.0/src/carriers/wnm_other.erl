@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(wnm_other).
 
--export([find_numbers/2]).
+-export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
 
@@ -25,12 +25,9 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers/2 :: (ne_binary(), pos_integer()) -> {'error', _}.
-find_numbers(Number, Quantity) ->
-	DefaultCountry = whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
-	find_numbers(Number, Quantity, DefaultCountry).
-
-find_numbers(Number, Quantity, Country) ->
+-spec find_numbers/3 :: (ne_binary(), pos_integer(), wh_proplist()) -> {'error', _}.
+find_numbers(Number, Quantity, _Opts) ->
+	Country = whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
 	case whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"url">>) of
 		'undefined' ->
 			{'error', 'non_available'};
