@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -13,13 +13,14 @@
 -export([get_dialstring/2]).
 -export([get_outbound_t38_settings/1, get_outbound_t38_settings/2]).
 -export([create_resrc/1]).
+-export([maybe_transition_port_in/2]).
 
 -include("stepswitch.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec lookup_number(ne_binary()) ->
@@ -38,7 +39,6 @@ lookup_number(Number) ->
 fetch_number(Num) ->
     case wh_number_manager:lookup_account_by_number(Num) of
         {'ok', AccountId, Props} ->
-            _ = maybe_transition_port_in(Num, Props),
             CacheProps = [{'origin', {'db', wnm_util:number_to_db_name(Num), Num}}],
             wh_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Num), {AccountId, Props}, CacheProps),
             lager:debug("~s is associated with account ~s", [Num, AccountId]),
@@ -48,7 +48,7 @@ fetch_number(Num) ->
             E
     end.
 
--spec maybe_transition_port_in(ne_binary(), proplist()) -> 'false' | pid().
+-spec maybe_transition_port_in(ne_binary(), wh_proplist()) -> 'false' | pid().
 maybe_transition_port_in(Num, Props) ->
     case props:get_value('pending_port', Props) of
         'false' -> 'false';
@@ -58,7 +58,7 @@ maybe_transition_port_in(Num, Props) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_gateway_by_address(ne_binary(), #resrc{}|[#gateway{},...]|[]) -> 'undefined' | #gateway{}.
@@ -96,7 +96,7 @@ evaluate_number(Number, Resrcs) ->
 evaluate_flags(F1, Resrcs) ->
     [Resrc
      || #resrc{flags=F2}=Resrc <- Resrcs,
-        lists:all(fun(Flag) -> 
+        lists:all(fun(Flag) ->
                           wh_util:is_empty(Flag)
                               orelse lists:member(Flag, F2)
                   end, F1)
@@ -132,11 +132,11 @@ get_dialstring(#gateway{route=Route}, _) ->
 %% Get the t38 settings for an endpoint based on carrier and device
 %% @end
 %%--------------------------------------------------------------------
--spec get_outbound_t38_settings(ne_binary(), api_binary()) -> wh_proplist().
+-spec get_outbound_t38_settings(boolean(), api_binary() | boolean()) -> wh_proplist().
 get_outbound_t38_settings(CarrierFlag, 'undefined') ->
     get_outbound_t38_settings(CarrierFlag);
 get_outbound_t38_settings('true', <<"auto">>) ->
-    get_outbound_t38_settings(<<"true">>, <<"true">>);
+    get_outbound_t38_settings('true', 'true');
 get_outbound_t38_settings('true', 'true') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
@@ -162,7 +162,7 @@ get_outbound_t38_settings('false','true') ->
      ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ].
 
--spec get_outbound_t38_settings(ne_binary()) -> wh_proplist().
+-spec get_outbound_t38_settings(boolean()) -> wh_proplist().
 get_outbound_t38_settings('true') ->
     [{<<"Enable-T38-Fax">>, 'true'}
      ,{<<"Enable-T38-Fax-Request">>, 'true'}
@@ -247,7 +247,7 @@ evaluate_rules([Regex|T], Number) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec cache_key_number(ne_binary()) -> {'stepswitch_number', ne_binary()}.
@@ -317,7 +317,7 @@ create_gateway(JObj, Id) ->
                  wh_json:get_binary_value(<<"suffix">>, JObj, Default#gateway.suffix)
              ,'codecs' =
                  wh_json:get_value(<<"codecs">>, JObj, Default#gateway.codecs)
-             ,'t38_setting' = 
+             ,'t38_setting' =
                  wh_json:get_value(<<"t38_setting">>, JObj, Default#gateway.t38_setting)
              ,'bypass_media' =
                  wh_json:get_value(<<"bypass_media">>, JObj)
