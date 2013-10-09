@@ -37,11 +37,40 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
-    case find_sip_endpoints(Data, Call) of
-        [] -> no_users_in_group(Call);
-        Usernames -> connect_to_ringing_channel(Usernames, Call)
+    case maybe_allowed_to_intercept(Data, Call) of
+        'true' ->
+            case find_sip_endpoints(Data, Call) of
+                [] -> no_users_in_group(Call);
+                Usernames -> connect_to_ringing_channel(Usernames, Call)
+            end;
+        _ -> no_permission_to_intercept(Call)
     end,
     cf_exe:stop(Call).
+
+maybe_allowed_to_intercept(Data, Call) ->
+    case wh_json:get_value(<<"approved_device_id">>, Data) of
+        'undefined' ->
+            case wh_json:get_value(<<"approved_user_id">>, Data) of
+                'undefined' ->
+                    case wh_json:get_value(<<"approved_group_id">>, Data) of
+                        'undefined' ->
+                            true;
+                        GroupId ->
+                            maybe_belongs_to_group(GroupId, Call)
+                    end;
+                UserId ->
+                    maybe_belongs_to_user(UserId, Call)
+            end;
+        DeviceId ->
+            % Compare approved device_id with calling one
+            DeviceId == whapps_call:authorizing_id(Call)
+    end.
+
+maybe_belongs_to_user(UserId, Call) ->
+    is_in_list(whapps_call:authorizing_id(Call), find_user_endpoints([UserId],[],Call)).
+
+maybe_belongs_to_group(GroupId, Call) ->
+    is_in_list(whapps_call:authorizing_id(Call), find_group_endpoints(GroupId, Call)).
 
 -spec connect_to_ringing_channel(ne_binaries(), whapps_call:call()) -> 'ok'.
 connect_to_ringing_channel(Usernames, Call) ->
@@ -187,8 +216,14 @@ find_sip_endpoints(Data, Call) ->
              sip_users_from_endpoints([DeviceId], Call)
     end.
 
+
 -spec find_sip_users(ne_binary(), whapps_call:call()) -> ne_binaries().
 find_sip_users(GroupId, Call) ->
+            sip_users_from_endpoints(find_group_endpoints(GroupId, Call), Call).
+
+
+-spec find_group_endpoints(ne_binary(), whapps_call:call()) -> ne_binaries().
+find_group_endpoints(GroupId, Call) ->
     GroupsJObj = cf_attributes:groups(Call),
     case [wh_json:get_value(<<"value">>, JObj)
           || JObj <- GroupsJObj,
@@ -198,7 +233,7 @@ find_sip_users(GroupId, Call) ->
         [] -> [];
         [GroupEndpoints] ->
             Ids = wh_json:get_keys(GroupEndpoints),
-            sip_users_from_endpoints(find_endpoints(Ids, GroupEndpoints, Call), Call)
+            find_endpoints(Ids, GroupEndpoints, Call)
     end.
 
 -spec sip_users_from_endpoints(ne_binaries(), whapps_call:call()) -> ne_binaries().
@@ -240,3 +275,13 @@ no_users_in_group(Call) ->
 no_channels_ringing(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_say(<<"no channels ringing">>, Call).
+no_permission_to_intercept(Call) ->
+    whapps_call_command:answer(Call),
+    whapps_call_command:b_say(<<"you have no permission to intercept this call">>, Call).
+
+is_in_list(_,[]) -> 'false';
+is_in_list(Suspect, [H|T]) ->
+    case Suspect == H of
+        'true' -> 'true';
+        _ -> is_in_list(Suspect, T)
+    end.
