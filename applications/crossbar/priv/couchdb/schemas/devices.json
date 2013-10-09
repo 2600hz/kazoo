@@ -153,6 +153,7 @@
                      "type":"array",
                      "enum":[
                         "G729",
+                        "GSM",
                         "PCMU",
                         "PCMA",
                         "G722_16",
