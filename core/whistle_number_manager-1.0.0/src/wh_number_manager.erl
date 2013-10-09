@@ -635,16 +635,16 @@ track_assignment(Numbers, Assignment) ->
                                 -> wh_json:json_strings().
 
 prepare_find_results([], Found) ->
-    Results = lists:flatten(Found),
-    lager:debug("discovered ~p available numbers", [length(Results)]),
-    Results;
-prepare_find_results([{Module, {ok, ModuleResults}}|T], Found) ->
+    Found;
+prepare_find_results([{'wnm_other', {'ok', ModuleResults}}|T], Found) ->
+    prepare_find_results(T, ModuleResults++Found);
+prepare_find_results([{Module, {'ok', ModuleResults}}|T], Found) ->
     case wh_json:get_keys(ModuleResults) of
         [] -> prepare_find_results(T, Found);
         Numbers ->
             Results = prepare_find_results(Numbers, Module
                                            ,ModuleResults, Found),
-            prepare_find_results(T, [Results|Found])
+            prepare_find_results(T, Results)
     end;
 prepare_find_results([_|T], Found) ->
     prepare_find_results(T, Found).
@@ -652,11 +652,12 @@ prepare_find_results([_|T], Found) ->
 prepare_find_results([], _, _, Found) ->
     Found;
 prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
+    Result = [wh_json:from_list([{<<"number">>, Number}])|Found],
     case catch wnm_number:get(Number) of
         #number{state=State} ->
             case lists:member(State, ?WNM_AVALIABLE_STATES) of
                 true ->
-                    prepare_find_results(Numbers, ModuleName, ModuleResults, [Number|Found]);
+                    prepare_find_results(Numbers, ModuleName, ModuleResults, Result);
                 false ->
                     lager:debug("the discovery '~s' is not available: ~s", [Number, State]),
                     prepare_find_results(Numbers, ModuleName, ModuleResults, Found)
@@ -668,7 +669,7 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
                                 },
             case catch wnm_number:save(wnm_number:create_discovery(NewNumber)) of
                 #number{} ->
-                    prepare_find_results(Numbers, ModuleName, ModuleResults, [Number|Found]);
+                    prepare_find_results(Numbers, ModuleName, ModuleResults, Result);
                 {_R, #number{}} ->
                     lager:debug("failed to store discovery ~s: ~p", [Number, _R]),
                     prepare_find_results(Numbers, ModuleName, ModuleResults, Found)

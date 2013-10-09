@@ -26,14 +26,21 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers/3 :: (ne_binary(), pos_integer(), wh_proplist()) -> {'error', _}.
-find_numbers(Number, Quantity, _Opts) ->
-	Country = whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
+find_numbers(Number, Quantity, Props) ->
 	case whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"url">>) of
 		'undefined' ->
 			{'error', 'non_available'};
 		Url ->
-			get_numbers(Url, Country, Number, Quantity)
+			case props:get_value(<<"blocks">>, Props) of
+				'undefined' ->
+					get_numbers(Url, Number, Quantity, Props);
+				_ ->
+					get_blocks(Url, Number, Quantity, Props)
+				
+			end
 	end.
+
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -65,7 +72,7 @@ acquire_number(#number{number=Num}=Number) ->
 					lager:error("number lookup failed: ~p", [Reason]),
     				wnm_number:error_carrier_fault(Reason, Number);
 				{'ok', "200", _Headers, Body} ->
-					format_put_resp(wh_json:decode(Body), Number);
+					format_acquire_resp(wh_json:decode(Body), Number);
 				{'ok', _Status, _Headers, Body} ->
 					lager:error("number lookup failed: ~p", [Body]),
 					wnm_number:error_carrier_fault(Body, Number)
@@ -85,31 +92,75 @@ acquire_number(#number{number=Num}=Number) ->
 disconnect_number(Number) -> Number.
 
 
-get_numbers(Url, Country, Number, Quantity) ->
-	ReqBody = <<"?pattern=", Number/binary, "&limit=", Quantity/binary>>,
+-spec get_numbers/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 
+	{'error', 'non_available'} | [wh_json:object(), ...].
+get_numbers(Url, Number, Quantity, Props) ->
+	Offset = props:get_value(<<"offset">>, Props, <<"0">>),
+	Country = whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
+	ReqBody = <<"?pattern=", Number/binary, "&limit=", Quantity/binary, "&offset=", Offset/binary>>,
 	Uri = <<Url/binary, Country/binary, "/search", ReqBody/binary>>,
 	case ibrowse:send_req(binary:bin_to_list(Uri), [], 'get') of
 		{'error', Reason} ->
 			lager:error("number lookup error: ~p", [Reason]),
 			{'error', 'non_available'};
 		{'ok', "200", _Headers, Body} ->
-			format_get_resp(wh_json:decode(Body));
+			format_numbers_resp(wh_json:decode(Body));
 		{'ok', _Status, _Headers, Body} ->
 			lager:error("number lookup failed: ~p ~p", [_Status, Body]),
 			{'error', 'non_available'}
 	end.
 
-format_get_resp(Body) ->
+-spec get_blocks/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 
+	{'error', 'non_available'} | [wh_json:object(), ...].
+get_blocks(Url, Number, Quantity, Props) ->
+	Offset = props:get_value(<<"offset">>, Props, <<"0">>),
+	Limit = props:get_value(<<"blocks">>, Props, <<"0">>),
+	Country = whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
+	ReqBody = <<"?pattern=", (wh_util:uri_encode(Number))/binary
+				,"&size=", Quantity/binary
+				,"&offset=", Offset/binary
+				,"&limit=", Limit/binary>>,
+	Uri = <<Url/binary, Country/binary, "/block_search", ReqBody/binary>>,
+	case ibrowse:send_req(binary:bin_to_list(Uri), [], 'get') of
+		{'error', Reason} ->
+			lager:error("block lookup error: ~p", [Reason]),
+			{'error', 'non_available'};
+		{'ok', "200", _Headers, Body} ->
+			format_blocks_resp(wh_json:decode(Body));
+		{'ok', _Status, _Headers, Body} ->
+			lager:error("block lookup failed: ~p ~p", [_Status, Body]),
+			{'error', 'non_available'}
+	end.
+
+-spec format_numbers_resp/1 :: (wh_json:object()) -> {'error', 'non_available'} | [wh_json:object(), ...].
+format_numbers_resp(Body) ->
+	case wh_json:get_value(<<"status">>, Body) of
+		<<"success">> ->
+			Numbers= wh_json:foldl(
+				fun(K, V, Acc) ->
+					[wh_json:set_value(<<"number">>, K, V)|Acc]
+			   	end
+			   	,[]
+			   	,wh_json:get_value(<<"data">>, Body, wh_json:new())),
+			{'ok', Numbers};
+		_Error ->
+			lager:error("block lookup resp error: ~p", [_Error]),
+			{'error', 'non_available'}
+	end.
+
+-spec format_blocks_resp/1 :: (wh_json:object()) -> {'error', 'non_available'} | [wh_json:object(), ...].
+format_blocks_resp(Body) ->
 	case wh_json:get_value(<<"status">>, Body) of
 		<<"success">> ->
 			Numbers = wh_json:get_value(<<"data">>, Body, wh_json:new()),
 			{'ok', Numbers};
 		_Error ->
-			lager:error("number lookup resp error: ~p", [_Error]),
+			lager:error("block lookup resp error: ~p", [Body]),
 			{'error', 'non_available'}
 	end.
 
-format_put_resp(Body, Number) ->
+-spec format_acquire_resp/2 :: (wh_json:object(), wnm_number()) -> wnm_number().
+format_acquire_resp(Body, Number) ->
 	case wh_json:get_value(<<"status">>, Body) of
 		<<"success">> ->
 			Number#number{module_data=wh_json:get_value(<<"data">>, Body, wh_json:new())};

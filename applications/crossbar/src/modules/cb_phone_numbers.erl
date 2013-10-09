@@ -359,7 +359,7 @@ find_numbers(Context) ->
                         Quantity = wh_json:get_ne_value(<<"quantity">>, JObj, 1),
                         cb_context:set_resp_data(
                           cb_context:set_resp_status(C, 'success')
-                          ,wh_number_manager:find(Prefix, Quantity)
+                          ,wh_number_manager:find(Prefix, Quantity, wh_json:to_proplist(JObj))
                          )
                 end,
     Schema = wh_json:decode(?FIND_NUMBER_SCHEMA),
