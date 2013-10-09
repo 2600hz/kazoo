@@ -6,14 +6,12 @@
 %%%-------------------------------------------------------------------
 -module(stepswitch_util).
 
+-export([get_realm/1]).
+-export([get_inbound_destination/1]).
+-export([get_outbound_destination/1]).
 -export([lookup_number/1]).
--export([maybe_gateway_by_address/2]).
--export([evaluate_number/2]).
--export([evaluate_flags/2]).
--export([get_dialstring/2]).
--export([get_outbound_t38_settings/1, get_outbound_t38_settings/2]).
--export([create_resrc/1]).
--export([maybe_transition_port_in/2]).
+-export([correct_shortdial/2]).
+-export([hangup_result/1]).
 
 -include("stepswitch.hrl").
 
@@ -21,6 +19,62 @@
 %% @public
 %% @doc
 %%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_realm(api_binary() | wh_json:object()) -> api_binary().
+get_realm('undefined') -> 'undefined';
+get_realm(From) when is_binary(From) ->
+    case binary:split(From, <<"@">>) of
+        [_, Realm] -> Realm;
+        _Else -> 'undefined'
+    end;
+get_realm(JObj) ->
+    AuthRealm = wh_json:get_value(<<"Auth-Realm">>, JObj),
+    case wh_util:is_empty(AuthRealm)
+        orelse wh_network_utils:is_ipv4(AuthRealm) 
+        orelse wh_network_utils:is_ipv6(AuthRealm) 
+    of
+        'false' -> AuthRealm;
+        'true' ->
+            get_realm(wh_json:get_value(<<"From">>, JObj))
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec get_inbound_destination(wh_json:object()) -> ne_binary().
+get_inbound_destination(JObj) ->
+    {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
+    case whapps_config:get_is_true(<<"stepswitch">>, <<"assume_inbound_e164">>, 'false') of
+        'true' -> assume_e164(Number);
+        'false' -> wnm_util:to_e164(Number)
+    end.
+
+-spec assume_e164(ne_binary()) -> ne_binary().
+assume_e164(<<$+, _/binary>> = Number) -> Number;
+assume_e164(Number) -> <<$+, Number/binary>>.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec get_outbound_destination(wh_json:object()) -> ne_binary().
+get_outbound_destination(JObj) ->
+    {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
+     case wh_json:is_true(<<"Bypass-E164">>, JObj) of
+         'false' -> wnm_util:to_e164(Number);
+         'true' -> Number
+     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
 %% @end
 %%--------------------------------------------------------------------
 -spec lookup_number(ne_binary()) ->
@@ -55,332 +109,118 @@ maybe_transition_port_in(Num, Props) ->
         'true' -> spawn('wh_number_manager', 'ported', [Num])
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_gateway_by_address(ne_binary(), #resrc{}|[#gateway{},...]|[]) -> 'undefined' | #gateway{}.
-maybe_gateway_by_address(_, []) -> 'undefined';
-maybe_gateway_by_address(Address, [#resrc{gateways=Gateways}|Resources]) ->
-    case maybe_gateway_by_address(Address, Gateways) of
-        'undefined' -> maybe_gateway_by_address(Address, Resources);
-        Gateway -> Gateway
-    end;
-maybe_gateway_by_address(Address, [#gateway{server=Address}=Gateway|_]) ->
-    Gateway;
-maybe_gateway_by_address(Address, [_G|Gateways]) ->
-    maybe_gateway_by_address(Address, Gateways).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Filter the list of resources returning only those with a rule that
-%% matches the number.  The list is of tuples with three elements,
-%% the weight, the captured component of the number, and the gateways.
-%% @end
-%%--------------------------------------------------------------------
--spec evaluate_number(ne_binary(), [#resrc{}]) -> endpoints().
-evaluate_number(Number, Resrcs) ->
-    sort_endpoints(get_endpoints(Number, Resrcs)).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Filter the list of resources returning only those that have every
-%% flag provided
-%% @end
-%%--------------------------------------------------------------------
--spec evaluate_flags(list(), [#resrc{}]) -> [#resrc{}].
-evaluate_flags(F1, Resrcs) ->
-    [Resrc
-     || #resrc{flags=F2}=Resrc <- Resrcs,
-        lists:all(fun(Flag) ->
-                          wh_util:is_empty(Flag)
-                              orelse lists:member(Flag, F2)
-                  end, F1)
-    ].
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Build the sip url of a resource gateway
-%% @end
-%%--------------------------------------------------------------------
--spec get_dialstring(#gateway{}, ne_binary()) -> ne_binary().
-get_dialstring(#gateway{route='undefined'
-                        ,prefix=Prefix
-                        ,suffix=Suffix
-                        ,server=Server
-                       }, Number) ->
-    list_to_binary(["sip:"
-                    ,wh_util:to_binary(Prefix)
-                    ,Number
-                    ,wh_util:to_binary(Suffix)
-                    ,"@"
-                    ,wh_util:to_binary(Server)
-                   ]);
-get_dialstring(#gateway{route=Route}, _) ->
-    Route.
-
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get the t38 settings for an endpoint based on carrier and device
-%% @end
-%%--------------------------------------------------------------------
--spec get_outbound_t38_settings(boolean(), api_binary() | boolean()) -> wh_proplist().
-get_outbound_t38_settings(CarrierFlag, 'undefined') ->
-    get_outbound_t38_settings(CarrierFlag);
-get_outbound_t38_settings('true', <<"auto">>) ->
-    get_outbound_t38_settings('true', 'true');
-get_outbound_t38_settings('true', 'true') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
-    ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-    ,{<<"Enable-T38-Passthrough">>, 'true'}
-    ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ];
-get_outbound_t38_settings('true', 'false') ->
-    [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"self">>}
-    ];
-get_outbound_t38_settings('false', 'false') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'true'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ];
-get_outbound_t38_settings('false','true') ->
-    [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
-    ].
-
--spec get_outbound_t38_settings(boolean()) -> wh_proplist().
-get_outbound_t38_settings('true') ->
-    [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ];
-get_outbound_t38_settings('false') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ].
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Sort the gateway tuples returned by evalutate_resrcs according to
-%% weight.
-%% @end
-%%--------------------------------------------------------------------
--spec sort_endpoints(endpoints()) -> endpoints().
-sort_endpoints(Endpoints) ->
-    lists:sort(fun({W1, _, _, _, _}, {W2, _, _, _, _}) ->
-                       W1 =< W2
-               end, Endpoints).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec get_endpoints(ne_binary(), [#resrc{}]) -> endpoints().
-get_endpoints(Number, Resrcs) ->
-    EPs = [get_endpoint(Number, R) || R <- Resrcs],
-    [Endpoint || Endpoint <- EPs, Endpoint =/= 'no_match'].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Given a gateway JSON object it builds a gateway record
-%% @end
-%%--------------------------------------------------------------------
--spec get_endpoint(ne_binary(), #resrc{}) -> endpoint() | 'no_match'.
-get_endpoint(Number, #resrc{weight_cost=WC
-                            ,gateways=Gtws
-                            ,rules=Rules
-                            ,grace_period=GP
-                            ,is_emergency=IsEmergency
-                           }) ->
-    case evaluate_rules(Rules, Number) of
-        {'ok', DestNum} -> {WC, GP, DestNum, Gtws, IsEmergency};
-        {'error', 'no_match'} -> 'no_match'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function loops over rules (regex) and until one matches
-%% the destination number.  If the matching rule has a
-%% capture group return the largest group, otherwise return the whole
-%% number.  In the event that no rules match then return an error.
-%% @end
-%%--------------------------------------------------------------------
--spec evaluate_rules(re:mp(), ne_binary()) ->
-                            {'ok', ne_binary()} |
-                            {'error', 'no_match'}.
-evaluate_rules([], _) -> {'error', 'no_match'};
-evaluate_rules([Regex|T], Number) ->
-    case re:run(Number, Regex) of
-        {'match', [{Start,End}]} ->
-            {'ok', binary:part(Number, Start, End)};
-        {'match', CaptureGroups} ->
-            %% find the largest matching group if present by sorting the position of the
-            %% matching groups by list, reverse so head is largest, then take the head of the list
-            {Start, End} = hd(lists:reverse(lists:keysort(2, tl(CaptureGroups)))),
-            {'ok', binary:part(Number, Start, End)};
-        _ ->
-            evaluate_rules(T, Number)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec cache_key_number(ne_binary()) -> {'stepswitch_number', ne_binary()}.
 cache_key_number(Number) ->
     {'stepswitch_number', Number}.
 
-
-
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
-%% Given a resrc JSON object it builds a resrc record and
-%% populates it with all enabled gateways
+%% if the given number is shorter then a known caller id then try
+%% to pad the front of the dialed number with values from the
+%% callerid.
 %% @end
 %%--------------------------------------------------------------------
--spec create_resrc(wh_json:object()) -> #resrc{}.
-create_resrc(JObj) ->
-    Default = #resrc{},
-    Id = wh_json:get_value(<<"_id">>, JObj),
-    lager:debug("loading resource ~s", [Id]),
-
-    #resrc{id = Id
-           ,rev =
-               wh_json:get_value(<<"_rev">>, JObj)
-           ,weight_cost =
-               constrain_weight(wh_json:get_value(<<"weight_cost">>, JObj, Default#resrc.weight_cost))
-           ,grace_period =
-               wh_json:get_integer_value(<<"grace_period">>, JObj, Default#resrc.grace_period)
-           ,flags =
-               wh_json:get_value(<<"flags">>, JObj, Default#resrc.flags)
-           ,rules =
-               [R2 || R1 <- wh_json:get_value(<<"rules">>, JObj, Default#resrc.rules)
-                          ,(R2 = compile_rule(R1, Id)) =/= error]
-           ,gateways =
-               [create_gateway(G, Id) || G <- wh_json:get_value(<<"gateways">>, JObj, []),
-                                         wh_json:is_true(<<"enabled">>, G, 'true')]
-           ,is_emergency =
-               wh_json:is_true(<<"emergency">>, JObj)
-               orelse (wh_json:get_value([<<"caller_id_options">>, <<"type">>], JObj) =:= <<"emergency">>)
-          }.
+-spec correct_shortdial(ne_binary(), wh_json:object()) -> ne_binary() | 'undefined'.
+correct_shortdial(Number, JObj) ->
+    CIDNum = wh_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
+                                        ,<<"Emergency-Caller-ID-Number">>
+                                       ], JObj),
+    MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
+    case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
+        Length when Length =< MaxCorrection, Length > 0 ->
+            wnm_util:to_e164(<<(binary:part(CIDNum, 0, Length))/binary, Number/binary>>);
+        _ -> 'undefined'
+    end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
-%% Given a gateway JSON object it builds a gateway record
+%% Determine if the hangup case indicates a call failure
 %% @end
 %%--------------------------------------------------------------------
--spec create_gateway(wh_json:object(), ne_binary()) -> #gateway{}.
-create_gateway(JObj, Id) ->
-    Default = #gateway{},
-    EndpointType = endpoint_type(JObj, Default),
-    EndpointOptions = endpoint_options(JObj, EndpointType),
-    #gateway{'resource_id' = Id
-             ,'server' =
-                 wh_json:get_value(<<"server">>, JObj, Default#gateway.server)
-             ,'realm' =
-                 wh_json:get_value(<<"realm">>, JObj, Default#gateway.realm)
-             ,'username' =
-                 wh_json:get_value(<<"username">>, JObj, Default#gateway.username)
-             ,'password' =
-                 wh_json:get_value(<<"password">>, JObj, Default#gateway.password)
-             ,'route' =
-                 wh_json:get_value(<<"route">>, JObj, Default#gateway.route)
-             ,'prefix' =
-                 wh_json:get_binary_value(<<"prefix">>, JObj, Default#gateway.prefix)
-             ,'suffix' =
-                 wh_json:get_binary_value(<<"suffix">>, JObj, Default#gateway.suffix)
-             ,'codecs' =
-                 wh_json:get_value(<<"codecs">>, JObj, Default#gateway.codecs)
-             ,'t38_setting' =
-                 wh_json:get_value(<<"t38_setting">>, JObj, Default#gateway.t38_setting)
-             ,'bypass_media' =
-                 wh_json:get_value(<<"bypass_media">>, JObj)
-             ,'caller_id_type' =
-                 wh_json:get_value(<<"caller_id_type">>, JObj, Default#gateway.caller_id_type)
-             ,'sip_headers' =
-                 wh_json:get_value(<<"custom_sip_headers">>, JObj, Default#gateway.sip_headers)
-             ,'sip_interface' =
-                 wh_json:get_ne_value(<<"custom_sip_interface">>, JObj)
-             ,'progress_timeout' =
-                 wh_json:get_integer_value(<<"progress_timeout">>, JObj, Default#gateway.progress_timeout)
-             ,'invite_format' =
-                 wh_json:get_value(<<"invite_format">>, JObj, Default#gateway.invite_format)
-             ,'endpoint_type' = EndpointType
-             ,'endpoint_options' = EndpointOptions
-             ,'format_from_uri' = wh_json:is_true(<<"format_from_uri">>, JObj, Default#gateway.format_from_uri)
-            }.
-
-endpoint_type(JObj, #gateway{endpoint_type=ET}) ->
-    wh_json:get_value(<<"endpoint_type">>, JObj, ET).
-
-endpoint_options(JObj, <<"freetdm">>) ->
-    wh_json:from_list(
-      props:filter_undefined(
-        [{<<"Span">>, wh_json:get_value(<<"span">>, JObj)}
-         ,{<<"Channel-Selection">>, wh_json:get_value(<<"channel_selection">>, JObj, <<"ascending">>)}
-        ]));
-endpoint_options(JObj, <<"skype">>) ->
-    wh_json:from_list(
-      props:filter_undefined(
-        [{<<"Skype-Interface">>, wh_json:get_value(<<"interface">>, JObj)}
-         ,{<<"Skype-RR">>, wh_json:is_true(<<"skype_rr">>, JObj, true)}
-        ]));
-endpoint_options(_, _) ->
-    wh_json:new().
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Wrapper for re:compile so we can log rules that fail (including
-%% which resource it was on).
-%% @end
-%%--------------------------------------------------------------------
--spec compile_rule(ne_binary(), ne_binary()) -> re:mp() | 'error'.
-compile_rule(Rule, Id) ->
-    case re:compile(Rule) of
-        {ok, MP} ->
-            lager:debug("compiled ~s on resource ~s", [Rule, Id]),
-            MP;
-        {error, R} ->
-            lager:debug("bad rule '~s' on resource ~s, ~p", [Rule, Id, R]),
-            error
+-spec hangup_result(wh_json:object()) -> {'ok' | 'fail', wh_json:object()}.
+hangup_result(JObj) ->
+    AppResponse = wh_json:get_value(<<"Application-Response">>, JObj,
+                                    wh_json:get_value(<<"Hangup-Cause">>, JObj)),
+    SuccessfulCause = lists:member(AppResponse, ?SUCCESSFUL_HANGUP_CAUSES),
+    case wh_json:get_value(<<"Hangup-Code">>, JObj) of
+        <<"sip:", Code/binary>> when SuccessfulCause ->
+            try wh_util:to_integer(Code) < 400 of
+                'true' -> {'ok', JObj};
+                'false' when SuccessfulCause ->
+                    {'fail', wh_json:set_value(<<"Application-Response">>, <<"NORMAL_TEMPORARY_FAILURE">>, JObj)};
+                'false' -> {'fail', JObj}
+            catch
+                _:_ when SuccessfulCause -> {'ok', JObj};
+                _:_  -> {'fail', JObj}
+            end;
+        _Else when SuccessfulCause -> {'ok', JObj};
+        _Else -> {'fail', JObj}
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% constrain the weight on a scale from 1 to 100
+%% given the result of either wait_for_bridge or wait_for_execute_extension
+%% create and send a Whistle offnet resource response
 %% @end
 %%--------------------------------------------------------------------
--spec constrain_weight(ne_binary() | integer()) -> integer().
-constrain_weight(W) when not is_integer(W) ->
-    constrain_weight(wh_util:to_integer(W));
-constrain_weight(W) when W > 100 -> 100;
-constrain_weight(W) when W < 1 -> 1;
-constrain_weight(W) -> W.
+response({'ok', Resp}, JObj) ->
+    lager:debug("outbound request successfully completed"),
+    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+     ,{<<"Response-Message">>, <<"SUCCESS">>}
+     ,{<<"Response-Code">>, <<"sip:200">>}
+     ,{<<"Resource-Response">>, Resp}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ];
+response({'ready', Resp}, JObj) ->
+    lager:debug("originate is ready to execute"),
+    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Resp)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+     ,{<<"Control-Queue">>, wh_json:get_value(<<"Control-Queue">>, Resp)}
+     ,{<<"Response-Message">>, <<"READY">>}
+     ,{<<"Resource-Response">>, Resp}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ];
+response({'fail', Response}, JObj) ->
+    lager:debug("resources for outbound request failed"),
+    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+     ,{<<"Response-Message">>, wh_json:get_value(<<"Application-Response">>, Response,
+                                                 wh_json:get_value(<<"Hangup-Cause">>, Response))}
+     ,{<<"Response-Code">>, wh_json:get_value(<<"Hangup-Code">>, Response)}
+     ,{<<"Resource-Response">>, Response}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ];
+response({'error', 'no_resources'}, JObj) ->
+    lager:debug("no available resources"),
+    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+     ,{<<"Response-Message">>, <<"NO_ROUTE_DESTINATION">>}
+     ,{<<"Response-Code">>, <<"sip:404">>}
+     ,{<<"Error-Message">>, <<"no available resources">>}
+     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ];
+response({'error', 'timeout'}, JObj) ->
+    lager:debug("attempt to connect to resources timed out"),
+    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
+     ,{<<"Response-Code">>, <<"sip:500">>}
+     ,{<<"Error-Message">>, <<"bridge request timed out">>}
+     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ];
+response({'error', Error}, JObj) ->
+    lager:debug("error during outbound request: ~s", [wh_util:to_binary(wh_json:encode(Error))]),
+    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
+     ,{<<"Response-Code">>, <<"sip:500">>}
+     ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, Error, <<"failed to process request">>)}
+     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].

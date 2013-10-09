@@ -6,22 +6,22 @@
 %%%-------------------------------------------------------------------
 -module(stepswitch_inbound).
 
--export([init/0
-         ,handle_req/2
-        ]).
+-export([handle_req/2]).
 
 -include("stepswitch.hrl").
 
--spec init() -> 'ok'.
-init() -> 'ok'.
-
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_req(JObj, _Prop) ->
+handle_req(JObj, _Props) ->
+    'true' = wapi_route:req_v(JObj),
     _ = whapps_util:put_callid(JObj),
-    case wh_json:get_ne_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
-        'undefined' ->
-            lager:debug("received new inbound dialplan route request"),
-            _ =  inbound_handler(JObj);
+    case wh_json:get_ne_value(?CCV(<<"Account-ID">>), JObj) of
+        'undefined' -> maybe_relay_request(JObj);
         _AcctID -> 'ok'
     end.
 
@@ -31,18 +31,24 @@ handle_req(JObj, _Prop) ->
 %% handle a request inbound from offnet
 %% @end
 %%--------------------------------------------------------------------
--spec inbound_handler(wh_json:object()) -> 'ok'.
--spec inbound_handler(wh_json:object(), ne_binary()) -> 'ok'.
-inbound_handler(JObj) ->
-    inbound_handler(JObj, get_dest_number(JObj)).
-inbound_handler(JObj, Number) ->
+maybe_relay_request(JObj) ->
+    Number = stepswitch_util:get_inbound_destination(JObj),
     case stepswitch_util:lookup_number(Number) of
-        {'ok', AccountId, Props} ->
-            lager:debug("number associated with account ~s, checking if port_in is in play", [AccountId]),
-            _ = stepswitch_util:maybe_transition_port_in(wnm_util:normalize_number(Number), Props),
-            relay_route_req(AccountId, Props, JObj);
-        {'error', _R} ->
-            lager:debug("failed to find account for number ~s: ~p", [Number, _R])
+        {'error', _R} -> 
+            lager:info("unable to determine account for ~s: ~p", [Number, _R]);
+        {'ok', Props} ->
+            lager:debug("relaying route request"),
+            Routines = [fun set_account_id/2
+                        ,fun set_inception/2
+                        ,fun maybe_find_resource/2
+                        ,fun maybe_set_ringback/2
+                        ,fun maybe_set_transfer_media/2
+                        ,fun maybe_lookup_cnam/2
+                        ,fun relay_request/2
+                       ],
+            lists:foldl(fun(F, J) ->  F(Props, J) end
+                        ,JObj
+                        ,Routines)
     end.
 
 %%--------------------------------------------------------------------
@@ -51,18 +57,52 @@ inbound_handler(JObj, Number) ->
 %% determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
--spec get_dest_number(wh_json:object()) -> ne_binary().
-get_dest_number(JObj) ->
-    {User, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
-    case whapps_config:get_is_true(<<"stepswitch">>, <<"assume_inbound_e164">>) of
-        'true' ->
-            Number = assume_e164(User),
-            lager:debug("assuming number is e164, normalizing to ~s", [Number]),
-            Number;
-        _ ->
-            Number = wnm_util:to_e164(User),
-            lager:debug("converted number to e164: ~s", [Number]),
-            Number
+-spec set_account_id(wh_proplist(), wh_json:object()) -> wh_json:object().
+set_account_id(Props, JObj) ->
+    AccountId = props:get_value('account_id', Props),
+    wh_json:set_value(?CCV(<<"Account-ID">>), AccountId, JObj).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_inception(wh_proplist(), wh_json:object()) -> wh_json:object().
+set_inception(_, JObj) ->
+    wh_json:set_value(?CCV(<<"Inception">>), <<"off-net">>, JObj).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_find_resource(wh_proplist(), wh_json:object()) -> wh_json:object().
+maybe_find_resource(_, JObj) ->
+    case stepswitch_resources:reverse_lookup(JObj) of
+        {'error', 'not_found'} -> JObj;
+        {'ok', Props} ->
+            case props:get_value('global', Props) of
+                'true' ->
+                    ResourceId = props:get_value('resource_id', Props),
+                    wh_json:set_value(?CCV(<<"Resource-ID">>), ResourceId, JObj);
+                'false' -> JObj
+            end
+    end.
+    
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_set_ringback(wh_proplist(), wh_json:object()) -> wh_json:object().
+maybe_set_ringback(Props, JObj) ->
+    case props:get_value('ringback_media', Props) of
+        'undefined' -> JObj;
+        MediaId ->
+            wh_json:set_value(?CCV(<<"Ringback-Media">>), MediaId, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -71,9 +111,13 @@ get_dest_number(JObj) ->
 %% determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
--spec assume_e164(ne_binary()) -> ne_binary().
-assume_e164(<<$+, _/binary>> = Number) -> Number;
-assume_e164(Number) -> <<$+, Number/binary>>.
+-spec maybe_set_transfer_media(wh_proplist(), wh_json:object()) -> wh_json:object().
+maybe_set_transfer_media(Props, JObj) ->
+    case props:get_value('transfer_media', Props) of
+        'undefined' -> JObj;
+        MediaId ->
+            wh_json:set_value(?CCV(<<"Transfer-Media">>), MediaId, JObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -82,18 +126,12 @@ assume_e164(Number) -> <<$+, Number/binary>>.
 %% account and authorizing  ID
 %% @end
 %%--------------------------------------------------------------------
--spec custom_channel_vars(ne_binary(), wh_json:object()) -> wh_json:object().
-custom_channel_vars(AccountId, JObj) ->
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-    RemoveKeys = [<<"Account-ID">>
-                  ,<<"Inception">>
-                  ,<<"Authorizing-ID">>
-                 ],
-    Props = [{<<"Account-ID">>, AccountId}
-             ,{<<"Inception">>, <<"off-net">>}
-            ],
-    UpdatedCCVs = wh_json:set_values(Props, wh_json:delete_keys(RemoveKeys, CCVs)),
-    wh_json:set_value(<<"Custom-Channel-Vars">>, UpdatedCCVs, JObj).
+-spec maybe_lookup_cnam(wh_proplist(), wh_json:object()) -> wh_json:object().
+maybe_lookup_cnam(Props, JObj) ->
+    case props:get_value('inbound_cnam', Props) of
+        'false' -> JObj;
+        'true' -> stepswitch_cnam:lookup(JObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -101,29 +139,6 @@ custom_channel_vars(AccountId, JObj) ->
 %% relay a route request once populated with the new properties
 %% @end
 %%--------------------------------------------------------------------
--spec relay_route_req(ne_binary(), wh_proplist(), wh_json:object()) -> 'ok'.
-relay_route_req(AccountId, Props, JObj) ->
-    Routines = [fun(J) -> custom_channel_vars(AccountId, J) end
-                ,fun(J) ->
-                         case props:get_value('inbound_cnam', Props) of
-                             'false' -> J;
-                             'true' -> stepswitch_cnam:lookup(J)
-                         end
-                 end
-                ,fun(J) ->
-                         case props:get_value('ringback_media', Props) of
-                             'undefined' -> J;
-                             MediaId ->
-                                 wh_json:set_value(<<"Ringback-Media">>, MediaId, J)
-                         end
-                 end
-                ,fun(J) ->
-                         case props:get_value('transfer_media', Props) of
-                             'undefined' -> J;
-                             MediaId ->
-                                 wh_json:set_value(<<"Transfer-Media">>, MediaId, J)
-                         end
-                 end
-               ],
-    wapi_route:publish_req(lists:foldl(fun(F, J) -> F(J) end, JObj, Routines)),
-    lager:debug("relayed route request").
+-spec relay_request(wh_proplist(), wh_json:object()) -> wh_json:object().
+relay_request(_, JObj) ->
+    wapi_route:publish_req(JObj).

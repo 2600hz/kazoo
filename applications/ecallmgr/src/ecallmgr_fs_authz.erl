@@ -261,7 +261,9 @@ is_consuming_resource(Props, CallId, Node) ->
                     allow_call(Props, CallId, Node)
             end;
         <<"inbound">> ->
-            case props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props) =:= 'undefined' of
+            case props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props) =:= 'undefined' 
+                orelse props:get_value(?GET_CCV(<<"Authorizing-Type">>), Props) =:= <<"resource">>
+            of
                 'true' -> set_heartbeat_on_answer(Props, CallId, Node);
                 'false' ->
                     lager:debug("inbound channel is not consuming a resource"),

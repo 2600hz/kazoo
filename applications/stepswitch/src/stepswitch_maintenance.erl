@@ -15,7 +15,7 @@
 -export([refresh/0]).
 -export([lookup_number/1]).
 -export([reload_resources/0]).
--export([process_number/1, process_number/2]).
+-export([process_number/1]).
 -export([emergency_cid/1, emergency_cid/2, emergency_cid/3]).
 
 %%--------------------------------------------------------------------
@@ -64,7 +64,8 @@ refresh() ->
 -spec lookup_number(string()) ->
                            {'ok', binary()} |
                            {'error', atom()}.
-lookup_number(Number) -> gen_server:call('stepswitch_listener', {'lookup_number', Number}).
+lookup_number(Number) ->
+    stepswitch_util:stepswitch_util(Number).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -74,7 +75,7 @@ lookup_number(Number) -> gen_server:call('stepswitch_listener', {'lookup_number'
 %% @end
 %%--------------------------------------------------------------------
 -spec reload_resources() -> 'ok'.
-reload_resources() -> gen_server:call('stepswitch_listener', {'reload_resrcs'}).
+reload_resources() -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -85,13 +86,8 @@ reload_resources() -> gen_server:call('stepswitch_listener', {'reload_resrcs'}).
 %% @end
 %%--------------------------------------------------------------------
 -spec process_number(string()) -> list() | {'error', atom()}.
--spec process_number(string(), list()) -> list() | {'error', atom()}.
-
 process_number(Number) ->
-    gen_server:call('stepswitch_listener', {'process_number', Number}).
-
-process_number(Number, Flags) ->
-    gen_server:call('stepswitch_listener', {'process_number', Number, Flags}).
+    stepswitch_resources:get_endpoints(Number, wh_json:new()).
 
 %%--------------------------------------------------------------------
 %% @public
