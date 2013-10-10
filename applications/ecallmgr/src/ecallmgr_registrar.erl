@@ -431,22 +431,26 @@ expire_objects() ->
 
 -spec expire_object(_) -> 'ok'.
 expire_object('$end_of_table') -> 'ok';
-expire_object({[#registration{id=Id, suppress_unregister='true'
-                              ,username=Username, realm=Realm
+expire_object({[#registration{id=Id
+                              ,suppress_unregister='true'
+                              ,username=Username
+                              ,realm=Realm
                               ,call_id=CallId}
                ], Continuation}) ->
     put(callid, CallId),
     lager:debug("registration ~s@~s expired", [Username, Realm]),
     _ = ets:delete(?MODULE, Id),
     expire_object(ets:select(Continuation));
-expire_object({[#registration{id=Id, username=Username, realm=Realm
+expire_object({[#registration{id=Id
+                              ,username=Username
+                              ,realm=Realm
                               ,call_id=CallId}=Reg
                ], Continuation}) ->
-    put(callid, CallId),
+    put('callid', CallId),
     lager:debug("registration ~s@~s expired", [Username, Realm]),
     _ = ets:delete(?MODULE, Id),
     _ = spawn(fun() ->
-                      put(callid, CallId),
+                      put('callid', CallId),
                       case oldest_registrar(Username, Realm) of
                           'false' -> 'ok';
                           'true' ->
@@ -473,18 +477,22 @@ maybe_resp_to_query(JObj) ->
 -spec resp_to_query(wh_json:object()) -> 'ok'.
 resp_to_query(JObj) ->
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),
-    Realm = wh_json:get_value(<<"Realm">>, JObj),
+    Realm = wh_util:to_lower_binary(wh_json:get_value(<<"Realm">>, JObj)),
     MatchSpec = case wh_json:get_value(<<"Username">>, JObj) of
                     'undefined' ->
-                        [{#registration{realm = '$1', _ = '_'}
-                          ,[{'=:=', '$1', {const, Realm}}]
+                        [{#registration{realm = '$1'
+                                        ,_ = '_'
+                                       }
+                          ,[{'=:=', '$1', {'const', Realm}}]
                           ,['$_']
                          }];
                     Username ->
-                        [{#registration{realm = '$1', username = '$2'
-                                        ,_ = '_'}
-                          ,[{'andalso', {'=:=', '$1', {const, Realm}}
-                             ,{'=:=', '$2', {const, Username}}}]
+                        [{#registration{realm = '$1'
+                                        ,username = '$2'
+                                        ,_ = '_'
+                                       }
+                          ,[{'andalso', {'=:=', '$1', {'const', Realm}}
+                             ,{'=:=', '$2', {'const', Username}}}]
                           ,['$_']
                          }]
                 end,
@@ -511,7 +519,7 @@ resp_to_query(JObj) ->
 
 -spec registration_id(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 registration_id(Username, Realm) ->
-    {Username, Realm}.
+    {wh_util:to_lower_binary(Username), wh_util:to_lower_binary(Realm)}.
 
 -spec create_registration(wh_json:object()) -> registration().
 create_registration(JObj) ->
@@ -748,10 +756,13 @@ print_summary(Match) ->
 print_summary('$end_of_table', Count) ->
     io:format("+-----------------------------------------------+------------------------+------------------------+----------------------------------+------+~n"),
     io:format("Found ~p registrations~n", [Count]);
-print_summary({[#registration{username=Username, realm=Realm
-                              ,contact=Contact, expires=Expires
+print_summary({[#registration{username=Username
+                              ,realm=Realm
+                              ,contact=Contact
+                              ,expires=Expires
                               ,last_registration=LastRegistration
-                              ,call_id=CallId}
+                              ,call_id=CallId
+                             }
                ], Continuation}
               ,Count) ->
     User = <<Username/binary, "@", Realm/binary>>,
