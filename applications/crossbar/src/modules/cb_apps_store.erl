@@ -13,11 +13,11 @@
 -export([init/0
          ,authenticate/1
          ,authorize/1
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,validate/1, validate/2, validate/3
-         ,content_types_provided/3
-         ,get/1, get/2, get/3
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,validate/1, validate/2, validate/3, validate/4
+         ,content_types_provided/3 ,content_types_provided/4
+         ,get/1, get/2, get/3, get/4
          ,post/2
         ]).
 
@@ -76,11 +76,14 @@ authorize(_) -> 'false'.
 -spec allowed_methods() -> http_methods() | [].
 -spec allowed_methods(path_token()) -> http_methods() | [].
 -spec allowed_methods(path_token(), path_token()) -> http_methods() | [].
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods() | [].
 allowed_methods() ->
     [?HTTP_GET].
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST].
 allowed_methods(_, _) ->
+    [?HTTP_GET].
+allowed_methods(_, _, _) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -95,12 +98,16 @@ allowed_methods(_, _) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 resource_exists(_, _) -> 'true'.
+resource_exists(_, _, _) -> 'true'.
 
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
+                                    cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Id, <<"icon">>) ->
     case read(Id, Context) of
@@ -112,9 +119,24 @@ content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Id, <<"icon">>
                     CT = wh_json:get_value(<<"content_type">>, Attachment),
                     [Type, SubType] = binary:split(CT, <<"/">>),
                     Context#cb_context{content_types_provided=[{'to_binary', [{Type, SubType}]}]}
-            end
+            end;
+        _ -> Context
     end;
 content_types_provided(Context, _, _) -> Context.
+
+content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Id, <<"screenshot">>, Num) ->
+    case read(Id, Context) of
+        #cb_context{resp_status='success'}=Con ->
+            case maybe_get_screenshot(Num, Con) of
+                'error' -> Context;
+                {'ok', _, Attachment} ->
+                    CT = wh_json:get_value(<<"content_type">>, Attachment),
+                    [Type, SubType] = binary:split(CT, <<"/">>),
+                    Context#cb_context{content_types_provided=[{'to_binary', [{Type, SubType}]}]}
+            end;
+        _ -> Context
+    end;
+content_types_provided(Context, _, _, _) -> Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -129,6 +151,7 @@ content_types_provided(Context, _, _) -> Context.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context).
 
@@ -138,9 +161,10 @@ validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
     update(Id, Context).
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, <<"icon">>) ->
-    get_icon(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, <<"screenshots">>) ->
     get_icon(Id, Context).
+
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, <<"screenshot">>, Num) ->
+    get_sreenshot(Id, Context, Num).
 
 -spec get_icon(ne_binary(), cb_context:context()) -> cb_context:context().
 get_icon(Id, Context) ->
@@ -162,6 +186,40 @@ get_icon(Id, Context) ->
         Context1 -> Context1
     end.
 
+-spec get_sreenshot(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
+get_sreenshot(Id, Context, Num) ->
+    case read(Id, Context) of
+        #cb_context{resp_status='success'}=Con ->
+            case maybe_get_screenshot(Num, Con) of
+                'error' ->
+                    crossbar_util:response_bad_identifier(Num, Context);
+                {'ok', Screenshot, Attachment} ->
+                    lists:foldl(
+                        fun({K, V}, C) ->
+                            cb_context:add_resp_header(K, V, C)
+                        end
+                        ,crossbar_doc:load_attachment(Id, Screenshot, Con)
+                        ,[{<<"Content-Disposition">>, <<"attachment; filename=", Screenshot/binary>>}
+                          ,{<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Attachment)}
+                          ,{<<"Content-Length">>, wh_json:get_value(<<"length">>, Attachment)}
+                         ])
+            end;
+        Context1 -> Context1
+    end.
+
+maybe_get_screenshot(Num, #cb_context{doc=JObj}=Context) ->
+    Screenshots = wh_json:get_value(<<"screenshots">>, JObj),
+    try lists:nth(wh_util:to_integer(Num)+1, Screenshots) of
+        S -> maybe_get_attachment(Context, S)
+    catch
+        _:_ -> 'error'
+    end.
+
+maybe_get_attachment(#cb_context{doc=JObj}, Name) ->
+    case wh_json:get_value([<<"_attachments">>, Name], JObj) of
+        'undefined' -> 'error';
+        Attachment -> {'ok', Name, Attachment}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -173,11 +231,14 @@ get_icon(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec get(cb_context:context()) -> cb_context:context().
 -spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec get(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 get(#cb_context{}=Context) ->
     Context.
 get(#cb_context{}=Context, _) ->
     Context.
 get(#cb_context{}=Context, _, _) ->
+    Context.
+get(#cb_context{}=Context, _, _, _) ->
     Context.
 
 %%--------------------------------------------------------------------
