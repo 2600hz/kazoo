@@ -111,7 +111,7 @@ reg_success(JObj, _Props) ->
     lager:info("inserted registration ~s@~s with contact ~s", [Registration#registration.username
                                                                ,Registration#registration.realm
                                                                ,Registration#registration.contact
-                                                              ]),    
+                                                              ]),
     maybe_initial_registration(Registration).
 
 -spec reg_query(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -125,7 +125,7 @@ reg_query(JObj, _Props) ->
                             {'error', 'not_found'}.
 lookup_contact(Realm, Username) ->
     case ets:lookup(?MODULE, registration_id(Username, Realm)) of
-        [#registration{contact=Contact}] -> 
+        [#registration{contact=Contact}] ->
             lager:info("found user ~s@~s contact ~s", [Username, Realm, Contact]),
             {'ok', Contact};
         _Else -> fetch_contact(Username, Realm)
@@ -147,7 +147,7 @@ summary(Realm) ->
                   ,[{'=:=', '$1', {const, Realm}}]
                   ,['$_']
                  }],
-    print_summary(ets:select(?MODULE, MatchSpec, 1)).    
+    print_summary(ets:select(?MODULE, MatchSpec, 1)).
 
 -spec details() -> 'ok'.
 details() ->
@@ -163,7 +163,7 @@ details(User) when not is_binary(User) ->
 details(User) ->
     case binary:split(User, <<"@">>) of
         [Username, Realm] -> details(Username, Realm);
-         _Else -> 
+         _Else ->
             MatchSpec = [{#registration{realm = '$1', _ = '_'}
                           ,[{'=:=', '$1', {const, User}}]
                           ,['$_']
@@ -352,7 +352,7 @@ fetch_contact(Username, Realm) ->
                                      ,{'ecallmgr', fun wapi_registration:query_resp_v/1}
                                      ,2000)
     of
-        {'ok', JObjs} -> 
+        {'ok', JObjs} ->
             case [Contact
                   || JObj <- JObjs
                          ,wapi_registration:query_resp_v(JObj)
@@ -367,7 +367,7 @@ fetch_contact(Username, Realm) ->
                     lager:info("contact query for user ~s@~s returned an empty result", [Username, Realm]),
                     {'error', 'not_found'}
             end;
-        _Else -> 
+        _Else ->
             lager:info("contact query for user ~s@~s failed: ~p", [Username, Realm, _Else]),
             {'error', 'not_found'}
     end.
@@ -403,7 +403,7 @@ expire_object({[#registration{id=Id, username=Username, realm=Realm
                       put(callid, CallId),
                       case oldest_registrar(Username, Realm) of
                           'false' -> 'ok';
-                          'true' -> 
+                          'true' ->
                               lager:debug("sending deregister notice for ~s@~s", [Username, Realm]),
                               send_deregister_notice(Reg)
                       end
@@ -412,8 +412,8 @@ expire_object({[#registration{id=Id, username=Username, realm=Realm
 
 -spec maybe_resp_to_query(wh_json:object()) -> 'ok'.
 maybe_resp_to_query(JObj) ->
-    case wh_json:get_value(<<"Node">>, JObj) 
-        =:= wh_util:to_binary(node()) 
+    case wh_json:get_value(<<"Node">>, JObj)
+        =:= wh_util:to_binary(node())
     of
         'false' -> resp_to_query(JObj);
         'true' ->
@@ -424,12 +424,12 @@ maybe_resp_to_query(JObj) ->
             wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
--spec resp_to_query(wh_json:object()) -> 'ok'.            
+-spec resp_to_query(wh_json:object()) -> 'ok'.
 resp_to_query(JObj) ->
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     MatchSpec = case wh_json:get_value(<<"Username">>, JObj) of
-                    'undefined' -> 
+                    'undefined' ->
                         [{#registration{realm = '$1', _ = '_'}
                           ,[{'=:=', '$1', {const, Realm}}]
                           ,['$_']
@@ -461,11 +461,11 @@ resp_to_query(JObj) ->
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
-    end. 
+    end.
 
 -spec registration_id(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 registration_id(Username, Realm) ->
-    {Username, Realm}.
+    {wh_util:to_lower_binary(Username), wh_util:to_lower_binary(Realm)}.
 
 -spec create_registration(wh_json:object()) -> registration().
 create_registration(JObj) ->
@@ -539,7 +539,7 @@ maybe_query_authn(#registration{username=Username, realm=Realm}=Reg) ->
                              ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
                              ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
                             }
-    end.    
+    end.
 
 -spec query_authn(registration()) -> registration().
 query_authn(#registration{username=Username, realm=Realm
@@ -611,16 +611,16 @@ maybe_send_register_notice(#registration{username=Username, realm=Realm}=Reg) ->
             lager:debug("sending register notice for ~s@~s", [Username, Realm]),
             send_register_notice(Reg)
     end.
-             
+
 -spec send_register_notice(registration()) -> 'ok'.
 send_register_notice(Reg) ->
-    Props = to_props(Reg) 
+    Props = to_props(Reg)
         ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
     wapi_notifications:publish_register(Props).
 
 -spec send_deregister_notice(registration()) -> 'ok'.
 send_deregister_notice(Reg) ->
-    Props = to_props(Reg) 
+    Props = to_props(Reg)
         ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
     wapi_notifications:publish_deregister(Props).
 
@@ -665,7 +665,7 @@ oldest_registrar(Username, Realm) ->
                                      ,Reg
                                      ,fun wapi_registration:publish_query_req/1
                                      ,'ecallmgr'
-                                     ,2000) 
+                                     ,2000)
     of
         {'ok', JObjs} ->
             case
