@@ -392,7 +392,6 @@ is_app_used_by_user(AppJObj, UserId) ->
 get_app_info(JObj) ->
     wh_json:set_values([{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
                         ,{<<"i18n">>, wh_json:get_value(<<"i18n">>, JObj)}
-                        ,{<<"icon">>, wh_json:get_value(<<"icon">>, JObj)}
                        ]
                        ,wh_json:new()).
 
