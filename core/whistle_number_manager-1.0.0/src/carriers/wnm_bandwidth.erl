@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(wnm_bandwidth).
 
--export([find_numbers/2]).
+-export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
 -export([get_number_data/1]).
@@ -61,13 +61,13 @@ get_number_data(Number) ->
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers/2 :: (ne_binary(), pos_integer()) -> {'ok', wh_json:object()} |
+-spec find_numbers/3 :: (ne_binary(), pos_integer(), wh_proplist()) -> {'ok', wh_json:object()} |
                                                         {'error', term()}.
-find_numbers(<<"+", Rest/binary>>, Quanity) ->
-    find_numbers(Rest, Quanity);
-find_numbers(<<"1", Rest/binary>>, Quanity) ->
-    find_numbers(Rest, Quanity);
-find_numbers(<<NPA:3/binary>>, Quanity) ->
+find_numbers(<<"+", Rest/binary>>, Quanity, Opts) ->
+    find_numbers(Rest, Quanity, Opts);
+find_numbers(<<"1", Rest/binary>>, Quanity, Opts) ->
+    find_numbers(Rest, Quanity, Opts);
+find_numbers(<<NPA:3/binary>>, Quanity, _) ->
     Props = [{'areaCode', [wh_util:to_list(NPA)]}
              ,{'maxQuantity', [wh_util:to_list(Quanity)]}], 
     case make_numbers_request('areaCodeNumberSearch', Props) of
@@ -82,7 +82,7 @@ find_numbers(<<NPA:3/binary>>, Quanity) ->
                     || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)],
             {ok, wh_json:from_list(Resp)}
     end;
-find_numbers(Search, Quanity) ->
+find_numbers(Search, Quanity, _) ->
     NpaNxx = binary:part(Search, 0, (case size(Search) of L when L < 6 -> L; _ -> 6 end)),
     Props = [{'npaNxx', [wh_util:to_list(NpaNxx)]}
              ,{'maxQuantity', [wh_util:to_list(Quanity)]}], 
