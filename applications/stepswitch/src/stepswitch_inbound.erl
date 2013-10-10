@@ -6,7 +6,9 @@
 %%%-------------------------------------------------------------------
 -module(stepswitch_inbound).
 
--export([init/0, handle_req/2]).
+-export([init/0
+         ,handle_req/2
+        ]).
 
 -include("stepswitch.hrl").
 
@@ -36,7 +38,8 @@ inbound_handler(JObj) ->
 inbound_handler(JObj, Number) ->
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
-            lager:debug("number associated with account ~s", [AccountId]),
+            lager:debug("number associated with account ~s, checking if port_in is in play", [AccountId]),
+            _ = stepswitch_util:maybe_transition_port_in(wnm_util:normalize_number(Number), Props),
             relay_route_req(AccountId, Props, JObj);
         {'error', _R} ->
             lager:debug("failed to find account for number ~s: ~p", [Number, _R])
