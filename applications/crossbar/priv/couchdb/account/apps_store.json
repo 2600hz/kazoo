@@ -1,0 +1,12 @@
+{
+    "_id": "_design/apps_store"
+    ,"language": "javascript"
+    ,"views": {
+        "crossbar_listing": {
+            "map": "function (doc) {if (doc.pvt_type != 'app' || doc.pvt_deleted) return; var installed = false; if(doc.installed) {(doc.installed.all) ? installed=true : installed=(doc.installed.users.length > 0);}emit(doc._id, {id: doc._id, name: doc.name, 'i18n': doc['i18n'], filter_tags: doc.filter_tags, icon: doc.icon, installed: installed});}"
+        }
+    }
+    ,"filters": {
+        "export":"function(doc, req) { return ( doc.pvt_type == 'app' ); }"
+    }
+}

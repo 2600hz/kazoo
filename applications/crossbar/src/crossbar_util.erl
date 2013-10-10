@@ -327,15 +327,25 @@ enable_account(AccountId) ->
 %%--------------------------------------------------------------------
 -spec response_auth(wh_json:object()) -> wh_json:object().
 response_auth(JObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, JObj, <<>>),
-    OwnerId = wh_json:get_value(<<"owner_id">>, JObj, <<>>),
+    AccountId = wh_json:get_value(<<"account_id">>, JObj, 'undefined'),
+    OwnerId = wh_json:get_value(<<"owner_id">>, JObj, 'undefined'),
+    ConfId = wh_json:get_value(<<"conference_id">>, JObj, 'undefined'),
+    IsModerator = wh_json:get_value(<<"is_moderator">>, JObj, 'undefined'),
+    Apps = wh_json:get_value(<<"apps">>, JObj, 'undefined'),
     IsReseller = wh_services:is_reseller(AccountId),
     ResellerId = wh_services:find_reseller_id(AccountId),
-    wh_json:from_list([{<<"account_id">>, AccountId}
-                       ,{<<"owner_id">>, OwnerId}
-                       ,{<<"is_reseller">>, IsReseller}
-                       ,{<<"reseller_id">>, ResellerId}
-                      ]).
+    wh_json:from_list(
+        props:filter_undefined(
+            [{<<"account_id">>, AccountId}
+             ,{<<"owner_id">>, OwnerId}
+             ,{<<"is_reseller">>, IsReseller}
+             ,{<<"reseller_id">>, ResellerId}
+             ,{<<"conference_id">>, ConfId}
+             ,{<<"is_moderator">>, IsModerator}
+             ,{<<"apps">>, Apps}
+            ]
+        )
+    ).
 
 %%--------------------------------------------------------------------
 %% @public
