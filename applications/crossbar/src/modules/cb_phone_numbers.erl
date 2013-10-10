@@ -174,10 +174,15 @@ content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, _Number, ?POR
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> 'true'.
-authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}]
+authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[<<"prefix">>]}]
+                         ,req_verb = ?HTTP_GET
+                        }) ->
+    'true';
+authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>, []}]
                          ,req_verb = ?HTTP_GET
                         }) ->
     'true'.
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -187,10 +192,15 @@ authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}]
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> 'true'.
+authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[<<"prefix">>]}]
+                      ,req_verb = ?HTTP_GET
+                     }) ->
+    'true';
 authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}]
                       ,req_verb = ?HTTP_GET
                      }) ->
     'true'.
+
 
 %%--------------------------------------------------------------------
 %% @public
