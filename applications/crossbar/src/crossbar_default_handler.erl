@@ -27,7 +27,6 @@ handle(Req, State) ->
     Headers = [{<<"Content-Type">>, <<"text/plain; charset=UTF-8">>}],
     Path = code:priv_dir('crossbar') ++ "/kazoo.txt",
     {'ok', Bytes} = file:read_file(Path),
-    io:format("~p~n", [Bytes]),
     {'ok', Req1} = cowboy_req:reply(200, Headers, Bytes, Req),
     {'ok', Req1, State}.
 
