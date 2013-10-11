@@ -491,7 +491,8 @@ handle_info({'event', [CallId | Props]}, #state{callid=CallId
                     {'noreply', State}
             end;
         <<"CHANNEL_EXECUTE">> when Application =:= <<"redirect">> ->
-            gen_listener:cast(self(), {'channel_redirected', JObj});
+            gen_listener:cast(self(), {'channel_redirected', JObj}),
+            {'stop', 'normal', State};
         _Else ->
             {'noreply', State}
     end;
