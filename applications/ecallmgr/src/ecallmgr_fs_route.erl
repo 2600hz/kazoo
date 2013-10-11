@@ -233,17 +233,28 @@ reply_forbidden(Node, FetchId) ->
 reply_affirmative(Node, FetchId, CallId, JObj) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj),
-    ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, 'dialplan', iolist_to_binary(XML), 3000) of
+        {'error', _Reason} -> lager:debug("node ~s rejected our route response: ~p", [Node, _Reason]);
         'ok' ->
             lager:info("node ~s accepted route response for request ~s", [Node, FetchId]),
-            CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-            _ = ecallmgr_call_sup:start_event_process(Node, CallId),
-            _ = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
-            ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs));
-        {'error', _Reason} -> lager:debug("node ~s rejected our route response: ~p", [Node, _Reason])
+            maybe_start_call_handling(Node, FetchId, CallId, JObj)
     end.
+
+-spec maybe_start_call_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_start_call_handling(Node, FetchId, CallId, JObj) ->
+    case wh_json:get_value(<<"Method">>, JObj) of
+        <<"error">> -> 'ok';
+        _Else -> start_call_handling(Node, FetchId, CallId, JObj)
+    end.
+
+-spec start_call_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+start_call_handling(Node, FetchId, CallId, JObj) ->
+    ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    _ = ecallmgr_call_sup:start_event_process(Node, CallId),
+    _ = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
+    ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)).   
 
 -spec route_req(ne_binary(), ne_binary(), wh_proplist(), atom()) -> wh_proplist().
 route_req(CallId, FetchId, Props, Node) ->
