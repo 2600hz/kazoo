@@ -235,21 +235,13 @@ reply_affirmative(Node, FetchId, CallId, JObj) ->
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj),
     ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
-    FromURI = case wh_json:get_value(<<"From-URI">>, JObj) of
-                  'undefined' -> 
-                      FromUser = wh_json:get_value(<<"From-User">>, JObj, <<"${caller_id_number}">>),
-                      FromRealm = wh_json:get_value(<<"From-Realm">>, JObj, <<"${sip_from_host}">>),
-                      <<"sip:", FromUser/binary, "@", FromRealm/binary>>;
-                  Else -> Else
-              end,
     case freeswitch:fetch_reply(Node, FetchId, 'dialplan', iolist_to_binary(XML), 3000) of
         'ok' ->
             lager:info("node ~s accepted route response for request ~s", [Node, FetchId]),
             CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
             _ = ecallmgr_call_sup:start_event_process(Node, CallId),
             _ = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
-            _ = ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)),
-            ecallmgr_util:export(Node, CallId, [{<<"From-URI">>, FromURI}]);
+            ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs));
         {'error', _Reason} -> lager:debug("node ~s rejected our route response: ~p", [Node, _Reason])
     end.
 
