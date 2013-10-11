@@ -715,10 +715,12 @@ start_timer(_) -> 'undefined'.
 -spec add_other_queue(binary(), wh_proplist(), wh_proplist(), state()) -> {ne_binary(), state()}.
 add_other_queue(<<>>, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
     {'ok', Q} = start_amqp(QueueProps),
+    gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
     _ = [create_binding(Type, BindProps, Q) || {Type, BindProps} <- Bindings],
     {Q, State#state{other_queues=[{Q, {Bindings, QueueProps}}|OtherQueues]}};
 add_other_queue(QueueName, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
     {'ok', Q} = start_amqp([{'queue_name', QueueName} | QueueProps]),
+    gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
     _ = [create_binding(Type, BindProps, Q) || {Type, BindProps} <- Bindings],
     case props:get_value(QueueName, OtherQueues) of
         'undefined' ->
