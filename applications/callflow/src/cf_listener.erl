@@ -25,12 +25,10 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{'cf_route_req', [{<<"dialplan">>, <<"route_req">>}]}
-                     ,{'cf_route_win', [{<<"dialplan">>, <<"route_win">>}]}
-                     ,{'cf_route_resume', [{<<"callflow">>, <<"resume">>}]}
+                    ,{'cf_route_win', [{<<"dialplan">>, <<"route_win">>}]}
                     ]).
 -define(BINDINGS, [{'route', []}
-                   ,{'self', []}
-                   ,{'callflow', []}
+                  ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
