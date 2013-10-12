@@ -316,6 +316,7 @@ default_sip_settings() ->
      ,{<<"debug-presence">>, <<"0">>}
      ,{<<"debug-sla">>, <<"0">>}
      ,{<<"auto-restart">>, <<"false">>}
+     ,{<<"rtp-enable-zrtp">>, <<"true">>}
     ].
 
 default_sip_gateways() -> [].
