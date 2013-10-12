@@ -320,6 +320,7 @@ default_sip_settings() ->
      ,{<<"debug-sla">>, <<"0">>}
      ,{<<"auto-restart">>, <<"false">>}
      ,{<<"rtp-enable-zrtp">>, <<"true">>}
+     ,{<<"liberal-dtmf">>, <<"true">>}
     ].
 
 default_sip_gateways() -> [].
