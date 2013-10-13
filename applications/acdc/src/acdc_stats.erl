@@ -855,6 +855,7 @@ maybe_archive_call_data(Srv, Match) ->
     case ets:select(call_table_id(), Match) of
         [] -> 'ok';
         Stats ->
+            couch_mgr:suppress_change_notice(),
             ToSave = lists:foldl(fun archive_call_fold/2, dict:new(), Stats),
             [couch_mgr:save_docs(db_name(Acct), Docs)
              || {Acct, Docs} <- dict:to_list(ToSave)
@@ -950,6 +951,7 @@ maybe_archive_status_data(Srv, Match) ->
     case ets:select(status_table_id(), Match) of
         [] -> 'ok';
         Stats ->
+            couch_mgr:suppress_change_notice(),
             ToSave = lists:foldl(fun archive_status_fold/2, dict:new(), Stats),
             [couch_mgr:save_docs(db_name(Acct), Docs)
              || {Acct, Docs} <- dict:to_list(ToSave)
