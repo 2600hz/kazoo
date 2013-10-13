@@ -38,8 +38,8 @@
 
          ,init_db/1
          ,db_name/1
-         ,archive_call_data/1
-         ,archive_status_data/1
+         ,archive_call_data/2
+         ,archive_status_data/2
         ]).
 
 %% AMQP Callbacks
@@ -98,6 +98,7 @@
           ,status :: api_binary() | '$2' | '$4' | '_'
           ,caller_id_name :: api_binary() | '_'
           ,caller_id_number :: api_binary() | '_'
+          ,is_archived = 'false' :: boolean() | '$3' | '_'
          }).
 -type call_stat() :: #call_stat{}.
 
@@ -117,6 +118,7 @@
           ,callid :: api_binary() | '_'
           ,caller_id_name :: api_binary() | '_'
           ,caller_id_number :: api_binary() | '_'
+          ,is_archived = 'false' :: boolean() | '$1' | '$2' | '_'
          }).
 -type status_stat() :: #status_stat{}.
 
@@ -374,7 +376,7 @@ handle_status_stat(JObj, Props) ->
 -spec wait_time(ne_binary(), wh_json:object()) -> api_integer().
 wait_time(<<"paused">>, _) -> 'undefined';
 wait_time(_, JObj) -> wh_json:get_integer_value(<<"Wait-Time">>, JObj).
-    
+
 -spec pause_time(ne_binary(), wh_json:object()) -> api_integer().
 pause_time(<<"paused">>, JObj) ->
     case wh_json:get_integer_value(<<"Pause-Time">>, JObj) of
@@ -462,7 +464,7 @@ handle_cast({'create_status', #status_stat{id=_Id, status=_Status}=Stat}, State)
             {'noreply', State}
     end;
 handle_cast({'update_call', Id, Updates}, State) ->
-    lager:debug("updating stat ~s", [Id]),
+    lager:debug("updating call stat ~s: ~p", [Id, Updates]),
     ets:update_element(call_table_id(), Id, Updates),
     {'noreply', State};
 handle_cast({'remove_call', [{M, P, _}]}, State) ->
@@ -472,6 +474,10 @@ handle_cast({'remove_call', [{M, P, _}]}, State) ->
     lager:debug("removed calls (or not): ~p", [N]),
     {'noreply', State};
 
+handle_cast({'update_status', Id, Updates}, State) ->
+    lager:debug("updating status stat ~s: ~p", [Id, Updates]),
+    ets:update_element(status_table_id(), Id, Updates),
+    {'noreply', State};
 handle_cast({'remove_status', [{M, P, _}]}, State) ->
     Match = [{M, P, ['true']}],
     lager:debug("removing status stats from table"),
@@ -764,13 +770,15 @@ trim_query_statuses_fold(TBin, Datum, {Ks, Data}=Acc) ->
 
 -spec archive_data() -> 'ok'.
 archive_data() ->
-    _ = spawn(?MODULE, 'archive_call_data', ['false']),
-    _ = spawn(?MODULE, 'archive_status_data', ['false']),
+    Self = self(),
+    _ = spawn(?MODULE, 'archive_call_data', [Self, 'false']),
+    _ = spawn(?MODULE, 'archive_status_data', [Self, 'false']),
     'ok'.
 
 force_archive_data() ->
-    _ = spawn(?MODULE, 'archive_call_data', ['true']),
-    _ = spawn(?MODULE, 'archive_status_data', ['true']),
+    Self = self(),
+    _ = spawn(?MODULE, 'archive_call_data', [Self, 'true']),
+    _ = spawn(?MODULE, 'archive_status_data', [Self, 'true']),
     'ok'.
 
 cleanup_data(Srv) ->
@@ -811,35 +819,49 @@ cleanup_data(Srv) ->
 cleanup_unfinished(Unfinished) ->
     lager:debug("unfinished stats: ~p", [Unfinished]).
 
-archive_call_data('true') ->
+archive_call_data(Srv, 'true') ->
     put('callid', <<"acdc_stats.force_call_archiver">>),
 
-    Match = [{#call_stat{status='$1', _='_'}
+    Match = [{#call_stat{status='$1'
+                         ,is_archived='$2'
+                         ,_='_'
+                        }
               ,[{'=/=', '$1', {'const', <<"waiting">>}}
                 ,{'=/=', '$1', {'const', <<"handled">>}}
+                ,{'=:=', '$2', 'false'}
                ]
               ,['$_']
              }],
-    maybe_archive_call_data(Match);
-archive_call_data('false') ->
+    maybe_archive_call_data(Srv, Match);
+archive_call_data(Srv, 'false') ->
     put('callid', <<"acdc_stats.call_archiver">>),
 
     Past = wh_util:current_tstamp() - ?ARCHIVE_WINDOW,
-    Match = [{#call_stat{entered_timestamp='$1', status='$2', _='_'}
+    Match = [{#call_stat{entered_timestamp='$1'
+                         ,status='$2'
+                         ,is_archived='$3'
+                         , _='_'
+                        }
               ,[{'=<', '$1', Past}
                 ,{'=/=', '$2', {'const', <<"waiting">>}}
                 ,{'=/=', '$2', {'const', <<"handled">>}}
+                ,{'=:=', '$3', 'false'}
                ]
               ,['$_']
              }],
-    maybe_archive_call_data(Match).
+    maybe_archive_call_data(Srv, Match).
 
-maybe_archive_call_data(Match) ->
+maybe_archive_call_data(Srv, Match) ->
     case ets:select(call_table_id(), Match) of
         [] -> 'ok';
         Stats ->
             ToSave = lists:foldl(fun archive_call_fold/2, dict:new(), Stats),
-            [couch_mgr:save_docs(db_name(Acct), Docs) || {Acct, Docs} <- dict:to_list(ToSave)]
+            [couch_mgr:save_docs(db_name(Acct), Docs)
+             || {Acct, Docs} <- dict:to_list(ToSave)
+            ],
+            [gen_listener:cast(Srv, {'update_call', Id, [{#call_stat.is_archived, 'true'}]})
+             || #call_stat{id=Id} <- Stats
+            ]
     end.
 
 -spec query_call_fold(call_stat(), dict()) -> dict().
@@ -899,30 +921,42 @@ call_stat_to_doc(#call_stat{id=Id
         ,{'type', <<"call_stat">>}
        ]).
 
-archive_status_data('true') ->
+archive_status_data(Srv, 'true') ->
     put('callid', <<"acdc_stats.force_status_archiver">>),
 
-    Match = [{#status_stat{_='_'}
-              ,[]
+    Match = [{#status_stat{is_archived='$1'
+                           ,_='_'
+                          }
+              ,[{'=:=', '$1', 'false'}]
               ,['$_']
              }],
-    maybe_archive_status_data(Match);
-archive_status_data('false') ->
+    maybe_archive_status_data(Srv, Match);
+archive_status_data(Srv, 'false') ->
     put('callid', <<"acdc_stats.status_archiver">>),
 
     Past = wh_util:current_tstamp() - ?ARCHIVE_WINDOW,
-    Match = [{#status_stat{timestamp='$1', _='_'}
-              ,[{'=<', '$1', Past}]
+    Match = [{#status_stat{timestamp='$1'
+                           ,is_archived='$2'
+                           ,_='_'
+                          }
+              ,[{'=<', '$1', Past}
+                ,{'=:=', '$2', 'false'}
+               ]
               ,['$_']
              }],
-    maybe_archive_status_data(Match).
+    maybe_archive_status_data(Srv, Match).
 
-maybe_archive_status_data(Match) ->
+maybe_archive_status_data(Srv, Match) ->
     case ets:select(status_table_id(), Match) of
         [] -> 'ok';
         Stats ->
             ToSave = lists:foldl(fun archive_status_fold/2, dict:new(), Stats),
-            [couch_mgr:save_docs(db_name(Acct), Docs) || {Acct, Docs} <- dict:to_list(ToSave)]
+            [couch_mgr:save_docs(db_name(Acct), Docs)
+             || {Acct, Docs} <- dict:to_list(ToSave)
+            ],
+            [gen_listener:cast(Srv, {'update_status', Id, [{#status_stat.is_archived, 'true'}]})
+             || #status_stat{id=Id} <- Stats
+            ]
     end.
 
 -spec archive_status_fold(status_stat(), dict()) -> dict().
