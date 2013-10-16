@@ -213,9 +213,9 @@ maybe_init_mod(ModBin) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call('modules_loaded', _, #state{bindings=Bs}=State) ->
-    Mods = lists:foldl(fun({_, _, MFs}, Acc) ->
-                               [ K || {K, _} <- props:unique(queue:to_list(MFs))] ++ Acc
-                       end, [], Bs),
+    Mods = ets:foldl(fun( {_, _, MFs, _}, Acc) ->
+                        [ K || {K, _} <- props:unique(queue:to_list(MFs))] ++ Acc
+                       end, [], ?MODULE),
     {'reply', lists:usort(Mods), State};
 
 handle_call('current_bindings', _, #state{bindings=Bs}=State) ->
