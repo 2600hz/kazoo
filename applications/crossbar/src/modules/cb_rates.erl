@@ -33,18 +33,17 @@
 %%%===================================================================
 init() ->
     _ = init_db(),
-
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.rates">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.rates">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.rates">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.rates">>, ?MODULE, content_types_accepted),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.rates">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.rates">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.rates">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.rates">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.rates">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.rates">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.rates">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.rates">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.rates">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"v1_resource.execute.delete.rates">>, ?MODULE, 'delete').
 
 init_db() ->
     _ = couch_mgr:db_create(?WH_RATES_DB),
-    couch_mgr:revise_doc_from_file(?WH_RATES_DB, crossbar, "views/rates.json").
+    couch_mgr:revise_doc_from_file(?WH_RATES_DB, 'crossbar', "views/rates.json").
 
 %%--------------------------------------------------------------------
 %% @private
@@ -56,9 +55,10 @@ init_db() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
@@ -71,13 +71,14 @@ allowed_methods(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
+resource_exists() -> 'true'.
+
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists(_) -> 'true'.
 
 -spec content_types_accepted(#cb_context{}) -> #cb_context{}.
 content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context) ->
-    Context#cb_context{content_types_accepted = [{from_binary, ?UPLOAD_MIME_TYPES}]}.
+    Context#cb_context{content_types_accepted = [{'from_binary', ?UPLOAD_MIME_TYPES}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -132,7 +133,7 @@ delete(#cb_context{}=Context, _RateId) ->
 %%--------------------------------------------------------------------
 -spec create(#cb_context{}) -> #cb_context{}.
 create(#cb_context{}=Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"rates">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
@@ -192,11 +193,11 @@ summary(Context) ->
 check_uploaded_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
     lager:debug("checking file ~s", [_Name]),
     case wh_json:get_value(<<"contents">>, File) of
-        undefined ->
+        'undefined' ->
             Message = <<"file contents not found">>,
             cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
         Bin when is_binary(Bin) ->
-            Context#cb_context{resp_status=success}
+            Context#cb_context{resp_status='success'}
     end;
 check_uploaded_file(Context) ->
     Message = <<"no file to process">>,
@@ -218,6 +219,15 @@ normalize_view_results(JObj, Acc) ->
 %% Convert the file, based on content-type, to rate documents
 %% @end
 %%--------------------------------------------------------------------
+-spec upload_csv(#cb_context{}) -> 'ok'.
+upload_csv(Context) ->
+    _ = cb_context:put_reqid(Context),
+    Now = erlang:now(),
+    {'ok', {Count, Rates}} = process_upload_file(Context),
+    lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, wh_util:elapsed_ms(Now)]),
+    _  = crossbar_doc:save(Context#cb_context{doc=Rates}, [{'publish_doc', 'false'}]),
+    lager:debug("it took ~b milli to process and save ~b rates", [wh_util:elapsed_ms(Now), Count]).
+
 -spec process_upload_file(#cb_context{}) -> {'ok', {non_neg_integer(), wh_json:objects()}}.
 process_upload_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
     lager:debug("converting file ~s", [_Name]),
@@ -233,95 +243,154 @@ convert_file(<<"text/comma-separated-values">>, FileContents, Context) ->
     csv_to_rates(FileContents, Context);
 convert_file(ContentType, _, _) ->
     lager:debug("unknown content type: ~s", [ContentType]),
-    throw({unknown_content_type, ContentType}).
+    throw({'unknown_content_type', ContentType}).
 
 -spec csv_to_rates(ne_binary(), #cb_context{}) -> {'ok', {integer(), wh_json:objects()}}.
 csv_to_rates(CSV, Context) ->
     BulkInsert = couch_util:max_bulk_insert(),
     ecsv:process_csv_binary_with(CSV
-                                 ,fun(Row, {Cnt, RateDocs}) ->
-                                          process_row(Context, Row, Cnt, RateDocs, BulkInsert)
+                                 ,fun(Row, {Count, JObjs}) ->
+                                          process_row(Context, Row, Count, JObjs, BulkInsert)
                                   end
                                  ,{0, []}
                                 ).
 
--spec process_row([string(),...], {integer(), wh_json:objects()}) -> {integer(), wh_json:objects()}.
-process_row([Prefix, ISO, Desc, Rate], Acc) ->
-    process_row([Prefix, ISO, Desc, Rate, Rate], Acc);
-process_row([Prefix, ISO, Desc, InternalSurcharge ,Surcharge, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
-    case catch wh_util:to_integer(Prefix) of
-        {'EXIT', _} -> Acc;
-        _ ->
-            Prefix1 = wh_util:to_binary(Prefix),
-            ISO1 = strip_quotes(wh_util:to_binary(ISO)),
-            Desc1 = strip_quotes(wh_util:to_binary(Desc)),
-            InternalSurcharge1 = wh_util:to_binary(InternalSurcharge),
-            Surcharge1 = wh_util:to_binary(Surcharge),
-            InternalCost1 = wh_util:to_binary(InternalCost),
-            Rate1 = wh_util:to_binary(Rate),
+%% NOTE: Support row formates-
+%%    [Prefix, ISO, Desc, Rate]
+%%    [Prefix, ISO, Desc, InternalRate, Rate]
+%%    [Prefix, ISO, Desc, Surcharge, InternalRate, Rate]
+%%    [Prefix, ISO, Desc, InternalSurcharge, Surcharge, InternalRate, Rate]
 
+-type rate_row() :: [string(),...].
+-type rate_row_acc() :: {integer(), wh_json:objects()}.
+
+-spec process_row(#cb_context{}, rate_row(), integer(), wh_json:objects(), integer()) -> rate_row_acc().
+process_row(Context, Row, Count, JObjs, BulkInsert) ->
+    J = case Count > 1 andalso (Count rem BulkInsert) =:= 0 of
+            'false' -> JObjs;
+            'true' ->
+                save_processed_rates(Context#cb_context{doc=JObjs}, Count),
+                []
+        end,
+    process_row(Row, {Count, J}).
+
+-spec process_row(rate_row(), rate_row_acc()) -> rate_row_acc().
+process_row(Row, {Count, JObjs}=Acc) ->
+    case get_row_prefix(Row) of
+        'undefined' -> Acc;
+        Prefix ->
+            ISO = get_row_iso(Row),
+            Description = get_row_description(Row),
+            InternalRate = get_row_internal_rate(Row),
             %% The idea here is the more expensive rate will have a higher CostF
             %% and decrement it from the weight so it has a lower weight #
             %% meaning it should be more likely used
-            CostF = trunc(wh_util:to_float(InternalCost) * 100),
+            Weight = constrain_weight(byte_size(wh_util:to_binay(Prefix)) * 10
+                                      - trunc(InternalRate * 100)),
+            Id = <<ISO/binary, "-", (wh_util:to_binary(Prefix))/binary>>,
+            Props = props:filter_undefined([{<<"_id">>, Id}
+                                            ,{<<"prefix">>, Prefix}
+                                            ,{<<"weight">>, Weight}
+                                            ,{<<"description">>, Description}
+                                            ,{<<"rate_name">>, Description}
+                                            ,{<<"iso_country_code">>, ISO}
+                                            ,{<<"pvt_rate_cost">>, InternalRate}
+                                            ,{<<"pvt_carrier">>, <<"default">>}
+                                            ,{<<"pvt_type">>, <<"rate">>}
+                                            ,{<<"rate_increment">>, 60}
+                                            ,{<<"rate_minimum">>, 60}
+                                            ,{<<"rate_surcharge">>, get_row_surcharge(Row)}
+                                            ,{<<"rate_cost">>, get_row_rate(Row)}
+                                            ,{<<"pvt_rate_surcharge">>, get_row_internal_surcharge(Row)}
+                                            ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
+                                            ,{?HTTP_OPTIONS, []}
+                                         ]),
+                
+            {Count + 1, [wh_json:from_list(Props) | JObjs]}
+    end.
 
-            {Cnt+1, [wh_json:from_list([{<<"_id">>, list_to_binary([ISO1, "-", Prefix])}
-                                        ,{<<"prefix">>, Prefix1}
-                                        ,{<<"iso_country_code">>, ISO1}
-                                        ,{<<"description">>, Desc1}
-                                        ,{<<"rate_name">>, Desc1}
-                                        ,{<<"rate_increment">>, 60}
-                                        ,{<<"rate_minimum">>, 60}
-                                        ,{<<"rate_surcharge">>, wh_util:to_float(Surcharge1)}
-                                        ,{<<"rate_cost">>, wh_util:to_float(Rate1)}
-                                        ,{<<"pvt_rate_surcharge">>, wh_util:to_float(InternalSurcharge1)}
-                                        ,{<<"pvt_rate_cost">>, wh_util:to_float(InternalCost1)}
-                                        ,{<<"weight">>, constrain_weight(byte_size(Prefix1) * 10 - CostF)}
-                                        ,{?HTTP_OPTIONS, []}
-                                        ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix1))/binary, "(\\d*)$">>]}
-                                        ,{<<"pvt_carrier">>, <<"default">>}
-                                        ,{<<"pvt_type">>, <<"rate">>}
-                                       ])
-                     | RateDocs
-                    ]}
+-spec get_row_prefix(rate_row()) -> api_binary().
+get_row_prefix([Prefix | _]=_R) ->
+    try wh_util:to_integer(Prefix) of
+        P -> P
+    catch
+        _:_ -> 
+            lager:info("non-integer prefix on row: ~p", [_R]),
+            'undefined'
     end;
-process_row(_Row, Acc) ->
-    lager:debug("ignoring row ~p", [_Row]),
-    Acc.
+get_row_prefix(_R) ->
+    lager:info("prefix not found on row: ~p", [_R]),
+    'undefined'.
+
+-spec get_row_iso(rate_row()) -> ne_binary().
+get_row_iso([_, ISO | _]) -> strip_quotes(wh_util:to_binary(ISO));
+get_row_iso(_R) ->
+    lager:info("iso not found on row: ~p", [_R]),
+    <<"XX">>.
+
+-spec get_row_description(rate_row()) -> api_binary().
+get_row_description([_, _, Description | _]) ->
+    strip_quotes(wh_util:to_binary(Description));
+get_row_description(_R) ->
+    lager:info("description not found on row: ~p", [_R]),
+    'undefined'.
+
+-spec get_row_internal_surcharge(rate_row()) -> api_binary().
+get_row_internal_surcharge([_, _, _, InternalSurcharge, _, _ | _]) ->
+    wh_util:to_float(InternalSurcharge);
+get_row_internal_surcharge(_R) ->
+    lager:info("internal surcharge not found on row: ~p", [_R]),
+    'undefined'.
+
+-spec get_row_surcharge(rate_row()) -> api_binary().
+get_row_surcharge([_, _, _, Surcharge, _, _]) ->
+    get_row_surcharge(Surcharge);
+get_row_surcharge([_, _, _, _, Surcharge, _ | _]) ->
+    get_row_surcharge(Surcharge);
+get_row_surcharge([_|_]=_R) -> 
+    lager:info("surcharge not found on row: ~p", [_R]),
+    'undefined';
+get_row_surcharge(Surcharge) ->
+    wh_util:to_float(Surcharge).
+
+-spec get_row_internal_rate(rate_row()) -> api_binary().
+get_row_internal_rate([_, _, _, Rate]) -> get_row_internal_rate(Rate);
+get_row_internal_rate([_, _, _, InternalRate, _]) ->
+    get_row_internal_rate(InternalRate);
+get_row_internal_rate([_, _, _, _, InternalRate, _]) ->
+    get_row_internal_rate(InternalRate);
+get_row_internal_rate([_, _, _, _, _, InternalRate | _]) -> 
+    get_row_internal_rate(InternalRate);
+get_row_internal_rate([_|_]=_R) ->
+    lager:info("internal rate not found on row: ~p", [_R]),
+    'undefined';
+get_row_internal_rate(InternalRate) ->
+    wh_util:to_float(InternalRate).
+
+-spec get_row_rate(rate_row()) -> api_binary().
+get_row_rate([_, _, _, Rate]) -> get_row_rate(Rate);
+get_row_rate([_, _, _, _, Rate]) -> get_row_rate(Rate);
+get_row_rate([_, _, _, _, _, Rate]) -> get_row_rate(Rate);
+get_row_rate([_, _, _, _, _, _, Rate | _]) -> get_row_rate(Rate);
+get_row_rate([_|_]=_R) ->
+    lager:info("rate not found on row: ~p", [_R]),
+    'undefined';
+get_row_rate(Rate) -> wh_util:to_float(Rate).
 
 -spec strip_quotes(ne_binary()) -> ne_binary().
 strip_quotes(Bin) ->
-    binary:replace(Bin, [<<"\"">>, <<"\'">>], <<>>, [global]).
+    binary:replace(Bin, [<<"\"">>, <<"\'">>], <<>>, ['global']).
 
 -spec constrain_weight(integer()) -> 1..100.
 constrain_weight(X) when X =< 0 -> 1;
 constrain_weight(X) when X >= 100 -> 100;
 constrain_weight(X) -> X.
 
-upload_csv(Context) ->
-    _ = cb_context:put_reqid(Context),
-    Now = erlang:now(),
-    {ok, {Count, Rates}} = process_upload_file(Context),
-
-    lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, wh_util:elapsed_ms(Now)]),
-    _  = crossbar_doc:save(Context#cb_context{doc=Rates}, [{publish_doc, false}]),
-
-    lager:debug("it took ~b milli to process and save ~b rates", [wh_util:elapsed_ms(Now), Count]).
-
-save_processed_rates(Context, Cnt) ->
+-spec save_processed_rates(#cb_context{}, integer()) -> pid().
+save_processed_rates(Context, Count) ->
     spawn(fun() ->
                   Now = erlang:now(),
                   _ = cb_context:put_reqid(Context),
-                  _ = crossbar_doc:save(Context, [{publish_doc, false}]),
-                  lager:debug("saved up to ~b docs (took ~b ms)", [Cnt, wh_util:elapsed_ms(Now)])
+                  _ = crossbar_doc:save(Context, [{'publish_doc', 'false'}]),
+                  lager:debug("saved up to ~b docs (took ~b ms)", [Count, wh_util:elapsed_ms(Now)])
           end).
-
--spec process_row(#cb_context{}, [string(),...], integer(), wh_json:objects(), integer()) -> {integer(), wh_json:objects()}.
-process_row(Context, Row, Cnt, RateDocs, BulkInsert) ->
-    RateDocs1 = case Cnt > 1 andalso (Cnt rem BulkInsert) =:= 0 of
-                    false -> RateDocs;
-                    true ->
-                        save_processed_rates(Context#cb_context{doc=RateDocs}, Cnt),
-                        []
-                end,
-    process_row(Row, {Cnt, RateDocs1}).
