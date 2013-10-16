@@ -28,12 +28,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.templates">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.templates">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.templates">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.templates">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.templates">>, ?MODULE, delete),
-    crossbar_bindings:bind(<<"account.created">>, ?MODULE, account_created).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.templates">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.templates">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.templates">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.templates">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.templates">>, ?MODULE, 'delete'),
+    crossbar_bindings:bind(<<"account.created">>, ?MODULE, 'account_created').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -45,11 +45,10 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
+allowed_methods() -> [?HTTP_GET].
+
 -spec allowed_methods(path_token()) -> http_methods().
-allowed_methods() ->
-    [?HTTP_GET].
-allowed_methods(_) ->
-    [?HTTP_PUT, ?HTTP_DELETE].
+allowed_methods(_) -> [?HTTP_PUT, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -60,9 +59,10 @@ allowed_methods(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
+resource_exists() -> 'true'.
+
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -80,8 +80,8 @@ validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = ?HTTP_GET}=Con
 
 validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = ?HTTP_PUT}=Context, TemplateName) ->
     case load_template_db(TemplateName, Context) of
-        #cb_context{resp_status=success} ->
-            cb_context:add_system_error(datastore_conflict, Context);
+        #cb_context{resp_status='success'} ->
+            cb_context:add_system_error('datastore_conflict', Context);
         _Else ->
             crossbar_util:response(wh_json:new(), Context)
     end;
@@ -94,14 +94,14 @@ put(Context, TemplateName) ->
     create_template_db(TemplateName, Context).
 
 delete(Context, TemplateName) ->
-    DbName = format_template_name(TemplateName, encoded),
+    DbName = format_template_name(TemplateName, 'encoded'),
     case couch_mgr:db_delete(DbName) of
-        true -> crossbar_util:response(wh_json:new(), Context);
-        false -> cb_context:add_system_error(datastore_fault, Context)
+        'true' -> crossbar_util:response(wh_json:new(), Context);
+        'false' -> cb_context:add_system_error('datastore_fault', Context)
     end.
 
 account_created(#cb_context{doc=JObj, account_id=AccountId, db_name=AccountDb}) ->
-    import_template(wh_json:get_value(<<"role">>, JObj), AccountId, AccountDb).
+    import_template(wh_json:get_value(<<"template">>, JObj), AccountId, AccountDb).
 
 %%%===================================================================
 %%% Internal functions
@@ -116,14 +116,14 @@ account_created(#cb_context{doc=JObj, account_id=AccountId, db_name=AccountDb}) 
 -spec summary(#cb_context{}) -> #cb_context{}.
 summary(Context) ->
     case couch_mgr:db_info() of
-        {ok, Dbs} ->
-            Context#cb_context{resp_status=success
-                               ,resp_data = [format_template_name(Db, raw) || Db <- Dbs,
-                                            (fun(<<?DB_PREFIX, _/binary>>) -> true;
-                                                (_) -> false end)(Db)]
+        {'ok', Dbs} ->
+            Context#cb_context{resp_status='success'
+                               ,resp_data=[format_template_name(Db, 'raw') || Db <- Dbs,
+                                           (fun(<<?DB_PREFIX, _/binary>>) -> 'true';
+                                               (_) -> 'false' end)(Db)
+                                          ]
                               };
-        _ ->
-            cb_context:add_system_error(datastore_missing_view, Context)
+        _ -> cb_context:add_system_error('datastore_missing_view', Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -137,16 +137,16 @@ summary(Context) ->
 load_template_db([TemplateName], Context) ->
     load_template_db(TemplateName, Context);
 load_template_db(TemplateName, Context) ->
-    DbName = format_template_name(TemplateName, encoded),
+    DbName = format_template_name(TemplateName, 'encoded'),
     case couch_mgr:db_exists(DbName) of
-        false ->
+        'false' ->
             lager:debug("check failed for template db ~s", [DbName]),
-            cb_context:add_system_error(datastore_missing, Context);
-        true ->
+            cb_context:add_system_error('datastore_missing', Context);
+        'true' ->
             lager:debug("check succeeded for template db ~s", [DbName]),
-            Context#cb_context{resp_status=success
-                               ,db_name = DbName
-                               ,account_id = TemplateName
+            Context#cb_context{resp_status='success'
+                               ,db_name=DbName
+                               ,account_id=TemplateName
                               }
     end.
 
@@ -156,18 +156,18 @@ load_template_db(TemplateName, Context) ->
 %% Format the template/db name into a raw, unencoded or encoded form.
 %% @end
 %%--------------------------------------------------------------------
--spec format_template_name(ne_binary(), encoded | raw) -> ne_binary().
-format_template_name(<<"template%2F", _/binary>> = TemplateName, encoded) ->
+-spec format_template_name(ne_binary(), 'encoded' | 'raw') -> ne_binary().
+format_template_name(<<"template%2F", _/binary>> = TemplateName, 'encoded') ->
     TemplateName;
-format_template_name(<<"template/", TemplateName/binary>>, encoded) ->
+format_template_name(<<"template/", TemplateName/binary>>, 'encoded') ->
     <<"template%2F", TemplateName/binary>>;
-format_template_name(TemplateName, encoded) ->
+format_template_name(TemplateName, 'encoded') ->
     <<"template%2F", TemplateName/binary>>;
-format_template_name(<<"template%2F", TemplateName/binary>>, raw) ->
+format_template_name(<<"template%2F", TemplateName/binary>>, 'raw') ->
     TemplateName;
-format_template_name(<<"template/", TemplateName/binary>>, raw) ->
+format_template_name(<<"template/", TemplateName/binary>>, 'raw') ->
     TemplateName; 
-format_template_name(TemplateName, raw) ->
+format_template_name(TemplateName, 'raw') ->
     TemplateName.
 
 %%--------------------------------------------------------------------
@@ -179,16 +179,16 @@ format_template_name(TemplateName, raw) ->
 %%--------------------------------------------------------------------
 -spec create_template_db(ne_binary(), #cb_context{}) -> #cb_context{}.
 create_template_db(TemplateName, Context) ->
-    TemplateDb = format_template_name(TemplateName, encoded),
+    TemplateDb = format_template_name(TemplateName, 'encoded'),
     case couch_mgr:db_create(TemplateDb) of
-        false ->
+        'false' ->
             lager:debug("failed to create database: ~s", [TemplateDb]),
-            cb_context:add_system_error(datastore_fault, Context);
-        true ->
+            cb_context:add_system_error('datastore_fault', Context);
+        'true' ->
             lager:debug("created DB for template ~s", [TemplateName]),
-            couch_mgr:revise_docs_from_folder(TemplateDb, crossbar, "account", false),
-            _ = couch_mgr:revise_doc_from_file(TemplateDb, crossbar, ?MAINTENANCE_VIEW_FILE),
-            Context#cb_context{resp_status=success}
+            couch_mgr:revise_docs_from_folder(TemplateDb, 'crossbar', "account", 'false'),
+            _ = couch_mgr:revise_doc_from_file(TemplateDb, 'crossbar', ?MAINTENANCE_VIEW_FILE),
+            Context#cb_context{resp_status='success'}
     end.
 
 %%--------------------------------------------------------------------
@@ -198,22 +198,22 @@ create_template_db(TemplateName, Context) ->
 %% documents into the account
 %% @end
 %%--------------------------------------------------------------------
--spec import_template(undefined | ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-import_template(undefined, _, _) ->
-    ok;
+-spec import_template('undefined' | ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+import_template('undefined', _, _) -> 'ok';
 import_template(TemplateName, AccountId, AccountDb) ->
-    TemplateDb = format_template_name(TemplateName, encoded),
+    %% TODO: use couch replication...
+    TemplateDb = format_template_name(TemplateName, 'encoded'),
     case couch_mgr:all_docs(TemplateDb) of
-        {ok, Docs} ->
+        {'ok', Docs} ->
             Ids = [Id || Doc <- Docs,
                          begin
                              Id = wh_json:get_value(<<"id">>, Doc),
-                             (fun(<<"_design/", _/binary>>) -> false;
-                                 (_) -> true end)(Id)
-                         end],
+                             (fun(<<"_design/", _/binary>>) -> 'false';
+                                 (_) -> 'true' end)(Id)
+                         end
+                  ],
             import_template_docs(Ids, TemplateDb, AccountId, AccountDb);
-        _ ->
-            ok
+        _ -> 'ok'
     end.            
 
 %%--------------------------------------------------------------------
@@ -224,16 +224,27 @@ import_template(TemplateName, AccountId, AccountDb) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec import_template_docs([] | [ne_binary(),...], ne_binary(), ne_binary(), ne_binary()) -> ok.
-import_template_docs([], _, _, _) ->
-    ok;
+import_template_docs([], _, _, _) -> 'ok';
 import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->
     case couch_mgr:open_doc(TemplateDb, Id) of
-        {ok, JObj} ->
-            Correctors = [fun(J) -> wh_json:set_value(<<"pvt_account_id">>, AccountId, J) end
-                          ,fun(J) -> wh_json:set_value(<<"pvt_account_db">>, AccountDb, J) end
-                         ],
-            _ = couch_mgr:ensure_saved(AccountDb, lists:foldr(fun(F, J) -> F(J) end, JObj, Correctors)),
+        {'ok', JObj} ->
+            Routines = [fun(J) -> wh_json:set_value(<<"pvt_account_id">>, AccountId, J) end
+                        ,fun(J) -> wh_json:set_value(<<"pvt_account_db">>, AccountDb, J) end
+                        ,fun(J) -> wh_json:delete_key(<<"_rev">>, J) end
+                        ,fun(J) -> wh_json:delete_key(<<"_attachments">>, J) end
+                       ],
+            _ = couch_mgr:ensure_saved(AccountDb, lists:foldr(fun(F, J) -> F(J) end, JObj, Routines)),
+            Attachments = wh_json:get_keys(<<"_attachments">>, JObj),
+            _ = import_template_attachments(Attachments, JObj, TemplateDb, AccountDb, Id),
             import_template_docs(Ids, TemplateDb, AccountId, AccountDb);
-        {error, _} ->
-            import_template_docs(Ids, TemplateDb, AccountId, AccountDb)
+        {'error', _} -> import_template_docs(Ids, TemplateDb, AccountId, AccountDb)
     end.
+
+-spec import_template_attachments(ne_binaries(), wh_json:object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+import_template_attachments([], _, _, _, _) -> 'ok';
+import_template_attachments([Attachment|Attachments], JObj, TemplateDb, AccountDb, Id) ->
+    {'ok', Bin} = couch_mgr:fetch_attachment(TemplateDb, Id, Attachment),
+    ContentType = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
+    Opts = [{'headers', [{'content_type', wh_util:to_list(ContentType)}]}]
+    _ = couch_mgr:put_attachment(AccountDb, Id, Attachment, Bin, Opts),
+    import_template_attachments(Attachments, JObj, TemplateDb, AccountDb, Id).
