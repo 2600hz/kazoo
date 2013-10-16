@@ -245,6 +245,6 @@ import_template_attachments([], _, _, _, _) -> 'ok';
 import_template_attachments([Attachment|Attachments], JObj, TemplateDb, AccountDb, Id) ->
     {'ok', Bin} = couch_mgr:fetch_attachment(TemplateDb, Id, Attachment),
     ContentType = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(ContentType)}]}]
+    Opts = [{'headers', [{'content_type', wh_util:to_list(ContentType)}]}],
     _ = couch_mgr:put_attachment(AccountDb, Id, Attachment, Bin, Opts),
     import_template_attachments(Attachments, JObj, TemplateDb, AccountDb, Id).
