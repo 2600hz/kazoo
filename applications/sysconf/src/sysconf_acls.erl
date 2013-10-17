@@ -42,8 +42,10 @@ handle_sip_auth_result(JObj, ACLs) ->
     AccountId = wh_json:get_value([<<"value">>, <<"account_id">>], JObj),
     AuthorizingId = wh_json:get_value(<<"id">>, JObj),
     AuthorizingType = wh_json:get_value([<<"value">>, <<"authorizing_type">>], JObj),    
-    add_trusted_objects(IPs, AccountId, AuthorizingId, AuthorizingType, ACLs).
-
+    ACL2  = add_acl_objects(IPs, AccountId, AuthorizingId, AuthorizingType,
+			    <<"trusted">>, ACLs),
+    add_acl_objects(IPs, AccountId, AuthorizingId, AuthorizingType,
+		    <<"authoratative">>, ACL2).
 -spec local_resources(acls()) -> acls().
 local_resources(ACLs) ->
     ViewOptions = [{include_docs, true}],
@@ -70,7 +72,8 @@ offnet_resources(ACLs) ->
 handle_resource_result(JObj, ACLs) ->
     IPs = resource_ips(wh_json:get_value(<<"doc">>, JObj)),
     AuthorizingId = wh_json:get_value(<<"id">>, JObj),
-    add_trusted_objects(IPs, undefined, AuthorizingId, <<"resource">>, ACLs).
+    add_acl_objects(IPs, undefined, AuthorizingId, <<"resource">>, 
+		    <<"trusted">>, ACLs).
 
 -spec resource_ips(acls()) -> acls().
 resource_ips(JObj) ->
@@ -97,16 +100,17 @@ resource_server_ips(JObj, IPs) ->
                         end
                 end, IPs, wh_json:get_value(<<"gateways">>, JObj, [])).
 
--spec add_trusted_objects(ip_list(), 'undefined'|ne_binary(), ne_binary(), ne_binary(), acls()) -> acls().
-add_trusted_objects([], _, _, _, ACLs) ->
+-spec add_acl_objects(ip_list(), 'undefined'|ne_binary(), ne_binary(), ne_binary(), ne_binary() , acls()) -> acls().
+
+add_acl_objects([], _, _, _, _, ACLs) ->
     ACLs;
-add_trusted_objects([IP|IPs], AccountId, AuthorizingId, AuthorizingType, ACLs) ->
+add_acl_objects([IP|IPs], AccountId, AuthorizingId, AuthorizingType, ListName, ACLs) when ListName == <<"trusted">> orelse ListName == <<"authoratative">> ->
     Props = [{<<"type">>, <<"allow">>}
-             ,{<<"network-list-name">>, <<"trusted">>}
+             ,{<<"network-list-name">>, ListName}
              ,{<<"cidr">>, <<IP/binary, "/32">>}
              ,{<<"account_id">>, AccountId}
              ,{<<"authorizing_id">>, AuthorizingId}
              ,{<<"authorizing_type">>, AuthorizingType}
             ],
     A = wh_json:set_value(IP, wh_json:from_list(props:filter_undefined(Props)), ACLs),
-    add_trusted_objects(IPs, AccountId, AuthorizingId, AuthorizingType, A).
+    add_acl_objects(IPs, AccountId, AuthorizingId, AuthorizingType, ListName, A).

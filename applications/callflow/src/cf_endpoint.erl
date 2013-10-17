@@ -593,7 +593,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"To-Username">>, get_to_username(SIPJObj)}
          ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call))}
          ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
-         ,{<<"To-IP">>, wh_json:get_value(<<"ip">>, SIPJObj)}
+         ,{<<"To-IP">>, get_ip_transport(SIPJObj)}
          ,{<<"Route">>, wh_json:get_value(<<"route">>, SIPJObj)}
          ,{<<"Proxy-IP">>, wh_json:get_value(<<"proxy">>, SIPJObj)}
          ,{<<"Forward-IP">>, wh_json:get_value(<<"forward">>, SIPJObj)}
@@ -627,6 +627,18 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
+
+-spec get_ip_transport(wh_json:object()) -> binary().
+get_ip_transport(SIPJObj) ->
+    Transport = case wh_json:get_value(<<"pvt_transport">>, SIPJObj) of
+                    T when T == <<"TCP">>; T == <<"UDP">>; T == <<"TLS">> ->
+                        <<";tranport=",T/binary>>;
+                    _ ->
+                        <<"">>
+                end,
+    IP = wh_json:get_value(<<"ip">>, SIPJObj),
+    <<IP/binary,Transport/binary>>.
+
 -spec create_skype_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                          wh_json:object().
 create_skype_endpoint(Endpoint, Properties, _Call) ->

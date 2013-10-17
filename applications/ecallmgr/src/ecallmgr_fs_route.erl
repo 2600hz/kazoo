@@ -167,16 +167,22 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec process_route_req(atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
-process_route_req(Node, FetchId, CallId, Props) ->
+process_route_req(Node, FetchId, CallId, PropsInitial) ->
     put('callid', CallId),
-    case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
-        'false' -> search_for_route(Node, FetchId, CallId, Props);
-        'true' ->
-            lager:debug("recovered channel already exists on ~s, park it", [Node]),
-            JObj = wh_json:from_list([{<<"Routes">>, []}
-                                      ,{<<"Method">>, <<"park">>}
-                                     ]),
-            reply_affirmative(Node, FetchId, CallId, JObj)
+%%% Check whether call is from device auth by id
+    case maybe_spoof_device(PropsInitial,FetchId) of
+	'ip_device_wrong_domain' ->
+	    reply_forbidden(Node, FetchId);
+	Props ->
+	    case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
+		'false' -> search_for_route(Node, FetchId, CallId, Props);
+		'true' ->
+		    lager:debug("recovered channel already exists on ~s, park it", [Node]),
+		    JObj = wh_json:from_list([{<<"Routes">>, []}
+					      ,{<<"Method">>, <<"park">>}
+					     ]),
+		    reply_affirmative(Node, FetchId, CallId, JObj)
+	    end
     end.
 
 search_for_route(Node, FetchId, CallId, Props) ->
@@ -275,3 +281,63 @@ route_req(CallId, FetchId, Props, Node) ->
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props, CCVs))}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
+
+-spec maybe_spoof_device(wh_proplist(),ne_binary()) -> wh_proplist().
+%%% If call originates from device with IP authentication, then spoof the
+%%% device.
+maybe_spoof_device(Node,Props,FetchId) ->
+    case props:get_value(<<"variable_sip_acl_authed_by">>,Props) of
+	<<"trusted">> ->
+	    IP = props:get_value(<<"Caller-Network-Addr">>,Props),
+	    case wh_cache:peek_local(?ECALLMGR_UTIL_CACHE,IP) of
+		{'ok', 'carrier'} ->
+		    Props;
+		_ ->
+		    case maybe_get_ip_device_props(Props,FetchId) of
+			{ok, NewProps} ->
+			    wh_json:to_proplist(NewProps);
+			'carrier' ->
+			    wh_cache:store_local(?ECALLMGR_UTIL_CACHE,IP,carrier),
+			    Props;
+			'ip_device_wrong_domain' ->
+			    'ip_device_wrong_domain'
+			_ ->
+			    Props
+		    end
+	    end;
+	_ ->
+	    Props
+    end.
+
+-spec maybe_get_ip_device_props(wh_proplist(),ne_binary()) 
+			       -> {ok,wh_proplist()} | fail.
+maybe_get_ip_device_props(Props,FetchId) ->
+    Req = [{<<"Msg-ID">>,FetchId}
+	   |  wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+	  ] ++ Props,
+    SendFun = fun(Payload) -> 
+		      P = wh_json:from_list(Payload),
+		      P2 = wh_json:encode(P),
+		      amqp_util:targeted_publish(<<"ipdevice">>,P2)
+	      end,
+    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                                  ,props:filter_undefined(Req)
+                                  ,SendFun
+				  ,fun wh_amqp_worker:any_resp/1
+                                 ),
+    case ReqResp of
+	{ok,Params} ->
+	    case wh_json:get_value(<<"result">>,Params) of
+		undefined ->
+		    ReqResp;
+		<<"is_carrier">> ->
+		    'carrier';
+		<<"wrong_domain">> ->
+		    'ip_device_wrong_domain';
+		_ ->
+		    'fail'
+	    end;
+	_ ->
+	    fail
+    end.
+    
