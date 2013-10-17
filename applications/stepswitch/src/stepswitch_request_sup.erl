@@ -1,35 +1,21 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% Root supervisor tree for stepswitch routing WhApp
+%%%
 %%% @end
+%%% @contributors
 %%%-------------------------------------------------------------------
-
--module(stepswitch_sup).
+-module(stepswitch_request_sup).
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
--include("stepswitch.hrl").
-
 -export([start_link/0]).
+-export([bridge/2]).
 -export([init/1]).
 
--define(POOL(N), {N, {'poolboy', 'start_link', [[{'worker_module', 'stepswitch_cnam'}
-                                                 ,{'name', {'local', N}}
-                                                 ,{'size', 10}
-                                                 ,{'max_overflow', 50}
-                                                 ,{'neg_resp_threshold', 1}
-                                                ]
-                                               ]}
-                  ,'permanent', 5000, 'worker', ['poolboy']
-                 }).
+-include("stepswitch.hrl").
 
--define(CHILDREN, [?CACHE(?STEPSWITCH_CACHE)
-                   ,?POOL(?STEPSWITCH_CNAM_POOL)
-                   ,?SUPER('stepswitch_request_sup')
-                   ,?WORKER('stepswitch_listener')
-                  ]).
+-define(CHILDREN, []).
 
 %% ===================================================================
 %% API functions
@@ -42,7 +28,17 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+start_link() ->
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+
+bridge(Endpoints, JObj) -> 
+    supervisor:start_child(?MODULE
+                           ,?WORKER_NAME_ARGS_TYPE(wh_json:get_value(<<"Call-ID">>, JObj)
+                                                   ,'stepswitch_bridge'
+                                                   ,[Endpoints, JObj]
+                                                   ,'temporary')).
+
+    
 
 %% ===================================================================
 %% Supervisor callbacks

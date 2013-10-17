@@ -43,6 +43,7 @@
           ,rules = [] :: list()
           ,gateways = [] :: list()
           ,is_emergency = 'true' :: boolean()
+          ,require_flags = 'false' :: boolean()
           ,global = 'true' :: boolean()
          }).
 
@@ -179,7 +180,8 @@ get_global_endpoints(Number, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-filter_resources([], Resources) -> Resources;
+filter_resources([], Resources) ->
+    [Resource || Resource <- Resources, not Resource#resrc.require_flags];
 filter_resources(Flags, Resources) ->
     filter_resources(Flags, Resources, []).
 
@@ -398,6 +400,7 @@ resource_from_jobj(JObj) ->
            ,rules = resource_rules(JObj)
            ,weight = resource_weight(JObj)
            ,grace_period = resource_grace_period(JObj)
+           ,require_flags = resource_require_flags(JObj)
            ,is_emergency = resource_is_emergency(JObj)
           }.
 
@@ -421,6 +424,10 @@ resource_grace_period(JObj) when not is_integer(JObj) ->
 resource_grace_period(GracePeriod) when GracePeriod > 100 -> 100;
 resource_grace_period(GracePeriod) when GracePeriod < 0 -> 0;
 resource_grace_period(GracePeriod) -> GracePeriod.
+
+-spec resource_require_flags(wh_json:object()) -> boolean().
+resource_require_flags(JObj) ->
+    wh_json:is_true(<<"require_flags">>, JObj).
 
 -spec resource_weight(wh_json:object() | integer()) -> integer().
 resource_weight(JObj) when not is_integer(JObj) ->

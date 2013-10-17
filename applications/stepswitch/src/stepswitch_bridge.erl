@@ -9,8 +9,7 @@
 
 -behaviour(gen_listener).
 
--export([start_link/1]).
--export([build_bridge/2]).
+-export([start_link/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -23,12 +22,14 @@
 -include("stepswitch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
--record(state, {}).
+-record(state, {endpoints
+                ,resource_req
+                ,request_handler
+                ,control_queue
+                ,response_queue
+                ,queue}).
 
--define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
-                      ,[{<<"*">>, <<"*">>}]
-                     }
-                    ]).
+-define(RESPONDERS, []).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -44,7 +45,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(CallId) ->
+start_link(Endpoints, JObj) ->
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     Bindings = [{'call', [{'callid', CallId}
                           ,{'restrict_to', ['events'
                                             ,'destroy_channel'
@@ -58,7 +60,7 @@ start_link(CallId) ->
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], [CallId]).
+                                     ], [Endpoints, JObj]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -75,8 +77,16 @@ start_link(CallId) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {'ok', #state{}}.
+init([Endpoints, JObj]) ->     
+    case wh_json:get_ne_value(<<"Control-Queue">>, JObj) of
+        'undefined' -> {'stop', 'normal'};
+        ControlQ ->
+            {'ok', #state{endpoints=Endpoints
+                          ,resource_req=JObj
+                          ,request_handler=self()
+                          ,control_queue=ControlQ
+                          ,response_queue=wh_json:get_ne_value(<<"Server-ID">>, JObj)}}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -93,6 +103,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
+    lager:debug("unhandled call: ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
@@ -105,10 +116,26 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'wh_amqp_channel', _}, State) ->
+    {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
-    io:format("created Q: ~p~n", [Q]),
+    {'noreply', State#state{queue=Q}};
+handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{control_queue=ControlQ}=State) ->
+    'ok' = wapi_dialplan:publish_command(ControlQ, build_bridge(State)),
+    lager:debug("sent bridge command to ~s", [ControlQ]),
+    {'noreply', State};
+handle_cast({'bridge_result', _JObj}, #state{response_queue='undefined'}=State) ->
+    lager:debug("bridge completed with result ~s", [wh_json:encode(_JObj)]),
+    {'stop', 'normal', State};
+handle_cast({'bridge_result', JObj}, #state{response_queue=ResponseQ}=State) ->
+    lager:debug("bridge completed with result ~s", [wh_json:encode(JObj)]),
+    wapi_offnet_resource:publish_resp(ResponseQ, JObj),
+    {'stop', 'normal', State};
+handle_cast({'bridged', CallId}, State) ->
+    lager:debug("requesting endpoint bridged to ~s", [CallId]),
     {'noreply', State};
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p~n", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -122,6 +149,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
+    lager:debug("unhandled info: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -132,7 +160,30 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
+handle_event(JObj, #state{request_handler=RequestHandler, resource_req=Request}) ->
+    Disposition = wh_json:get_value(<<"Disposition">>, JObj),
+    Result = case Disposition =:= <<"SUCCESS">> of
+                 'true' -> bridge_success(JObj, Request);
+                 'false' -> bridge_failure(JObj, Request)
+             end,
+    case whapps_util:get_event_type(JObj) of
+        {<<"error">>, _} ->
+            <<"bridge">> = wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj),
+            lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:encode(JObj)]),
+            gen_listener:cast(RequestHandler, {'bridge_result', bridge_error(JObj, Request)});
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+            lager:debug("channel destroy while waiting for bridge", []),
+            gen_listener:cast(RequestHandler, {'bridge_result', Result});
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
+            <<"bridge">> = wh_json:get_value(<<"Application-Name">>, JObj),
+            lager:debug("channel execute complete for bridge", []),
+            gen_listener:cast(RequestHandler, {'bridge_result', Result});
+        {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
+            CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
+            lager:debug("channel bridged to ~s", [CallId]),
+            gen_listener:cast(RequestHandler, {'bridged', CallId});
+        _ -> 'ok'
+    end,
     {'reply', []}.
 
 %%--------------------------------------------------------------------
@@ -163,22 +214,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-build_bridge(Endpoints, JObj) ->
-    io:format("~p~n", [JObj]),
-    IsEmergency = contains_emergency_endpoints(Endpoints),
-
-    {CIDNum, CIDName} = bridge_caller_id(IsEmergency, JObj),
+build_bridge(#state{endpoints=Endpoints, resource_req=JObj, queue=Q}) ->
+    {CIDNum, CIDName} = bridge_caller_id(Endpoints, JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
-
-    {CalleeIdNumber, CalleeIdName} =
-        {wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)
-         ,wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)
-        },
-    lager:debug("set outbound callee id to ~s '~s'", [CalleeIdNumber, CalleeIdName]),
-
     FromURI = bridge_from_uri(CIDNum, JObj),
     lager:debug("setting from-uri to ~s", [FromURI]),
-
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     CCVUpdates = props:filter_undefined([{<<"Ignore-Display-Updates">>, <<"true">>}
@@ -187,7 +227,6 @@ build_bridge(Endpoints, JObj) ->
                                          ,{<<"From-URI">>, FromURI}
                                          ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                                         ]),
-
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
@@ -195,8 +234,6 @@ build_bridge(Endpoints, JObj) ->
        ,{<<"Endpoints">>, Endpoints}
        ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
        ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-       ,{<<"Outbound-Callee-ID-Number">>, CalleeIdNumber}
-       ,{<<"Outbound-Callee-ID-Name">>, CalleeIdName}
        ,{<<"Caller-ID-Number">>, CIDNum}
        ,{<<"Caller-ID-Name">>, CIDName}
        ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
@@ -208,17 +245,29 @@ build_bridge(Endpoints, JObj) ->
        ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
        ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
        ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+       ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)}
+       ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
+       | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec bridge_caller_id(boolean(), wh_json:object()) -> {api_binary(), api_binary()}.
-bridge_caller_id('true', JObj) ->
+-spec bridge_caller_id(wh_json:objects(), wh_json:object()) -> {api_binary(), api_binary()}.
+bridge_caller_id(Endpoints, JObj) ->
+    case contains_emergency_endpoints(Endpoints) of
+        'true' -> bridge_emergency_caller_id(JObj);
+        'false' -> bridge_caller_id(JObj)
+    end.
+
+-spec bridge_emergency_caller_id(wh_json:object()) -> {api_binary(), api_binary()}.
+bridge_emergency_caller_id(JObj) ->
     lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
     {emergency_cid_number(JObj)
      ,wh_json:get_first_defined([<<"Emergency-Caller-ID-Name">>
                                  ,<<"Outbound-Caller-ID-Name">>
                                 ], JObj)
-    };
-bridge_caller_id('false', JObj) ->
+    }.
+
+-spec bridge_caller_id(wh_json:object()) -> {api_binary(), api_binary()}.
+bridge_caller_id(JObj) ->
     {wh_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
                                 ,<<"Emergency-Caller-ID-Number">>
                                ], JObj)
@@ -229,7 +278,9 @@ bridge_caller_id('false', JObj) ->
     
 -spec bridge_from_uri(ne_binary(), wh_json:object()) -> api_binary().
 bridge_from_uri(CIDNum, JObj) ->
-    case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false') of
+    case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false')
+        orelse wh_json:is_true(<<"Format-From-URI">>, JObj)
+    of
         'true' ->
             case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
                 {'undefined', _} -> 'undefined';
@@ -290,12 +341,6 @@ emergency_cid_number(Requested, [Candidate|Candidates], E911Enabled) ->
         'false' -> emergency_cid_number(Requested, Candidates, E911Enabled)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Determine if the provided resources contain a emergency route
-%% @end
-%%--------------------------------------------------------------------
 -spec contains_emergency_endpoints(wh_json:objects()) -> boolean().
 contains_emergency_endpoints([]) -> 'false';
 contains_emergency_endpoints([Endpoint|Endpoints]) ->
@@ -304,44 +349,46 @@ contains_emergency_endpoints([Endpoint|Endpoints]) ->
         'false' -> contains_emergency_endpoints(Endpoints)
     end.
 
+bridge_timeout(Request) ->
+    lager:debug("attempt to connect to resources timed out"),
+    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
+     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
+     ,{<<"Response-Code">>, <<"sip:500">>}
+     ,{<<"Error-Message">>, <<"bridge request timed out">>}
+     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, Request)}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
 
-%%execute_bridge(Command, Q, CtrlQ) ->    
-%%    case {Result, correct_shortdial(Number, JObj)} of
-%%        {{'error', 'no_resources'}, 'fail'} -> Result;
-%%        {{'error', 'no_resources'}, CorrectedNumber} ->
-%%            lager:debug("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
-%%            attempt_to_fulfill_bridge_req(CorrectedNumber, CtrlQ, JObj, Props);
-%%        _Else -> Result
-%%    end.
-%%    wapi_dialplan:publish_command(CtrlQ, [wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION) ++ props:filter_undefined(Command)]),
-%%    wait_for_bridge(whapps_config:get_integer(<<"stepswitch">>, <<"bridge_timeout">>, 30000)).
+bridge_error(JObj, Request) ->
+    lager:debug("error during outbound request: ~s", [wh_util:to_binary(wh_json:encode(JObj))]),
+    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
+     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
+     ,{<<"Response-Code">>, <<"sip:500">>}
+     ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, JObj, <<"failed to process request">>)}
+     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, Request)}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Consume AMQP messages waiting for the channel to end or the
-%% the bridge to complete.  However, if we receive a rate
-%% response then set the CCVs accordingly.
-%% @end
-%%--------------------------------------------------------------------
-%%-spec wait_for_bridge(wh_timeout()) -> bridge_resp().
-%%wait_for_bridge(Timeout) ->
-%%    Start = erlang:now(),
-%%    receive
-%%        {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
-%%            JObj = wh_json:decode(Payload, CT),
-%%            case get_event_type(JObj) of
-%%                {<<"error">>, <<"dialplan">>, _} -> {'error', JObj};
-%%                {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
-%%                    CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-%%                    lager:debug("outbound request bridged to call ~s", [CallId]),
-%%                    wait_for_bridge('infinity');
-%%                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} -> hangup_result(JObj);
-%%                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} -> hangup_result(JObj);
-%%                _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start))
-%%            end;
-%%        _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start))
-%%    after Timeout ->
-%%            lager:debug("timed out after ~p ms", [Timeout]),
-%%            {'error', 'timeout'}
-%%    end.
+bridge_success(JObj, Request) ->
+    lager:debug("outbound request successfully completed"),
+    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
+     ,{<<"Response-Message">>, <<"SUCCESS">>}
+     ,{<<"Response-Code">>, <<"sip:200">>}
+     ,{<<"Resource-Response">>, JObj}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
+
+bridge_failure(JObj, Request) ->
+    lager:debug("resources for outbound request failed"),
+    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
+     ,{<<"Response-Message">>, wh_json:get_first_defined([<<"Application-Response">>
+                                                          ,<<"Hangup-Cause">>
+                                                         ], JObj)}
+     ,{<<"Response-Code">>, wh_json:get_value(<<"Hangup-Code">>, JObj)}
+     ,{<<"Resource-Response">>, JObj}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].

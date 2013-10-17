@@ -126,6 +126,7 @@ correct_shortdial(Number, JObj) ->
     CIDNum = wh_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
                                         ,<<"Emergency-Caller-ID-Number">>
                                        ], JObj),
+    lager:debug("shortdial correction CID ~s", [CIDNum]),
     MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length > 0 ->

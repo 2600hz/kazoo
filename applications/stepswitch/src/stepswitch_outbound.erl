@@ -98,11 +98,12 @@ maybe_force_outbound(Props, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 maybe_bridge(Number, JObj) ->
+    io:format("~p~n~p~n", [wh_json:get_value(<<"Flags">>, JObj)
+                           ,stepswitch_resources:endpoints(Number, JObj)
+                          ]),
     case stepswitch_resources:endpoints(Number, JObj) of
-        [] -> {'error', 'no_resources'};
-        Endpoints -> 
-            R = stepswitch_bridge:build_bridge(Endpoints, JObj),
-            io:format("Bridge: ~p~n", [R])
+        [] -> publish_no_resources(JObj);
+        Endpoints -> stepswitch_request_sup:bridge(Endpoints, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -114,6 +115,26 @@ maybe_bridge(Number, JObj) ->
 local_extension(Props, JObj) ->
     'ok'.
 
+-spec publish_no_resources(wh_json:object()) -> 'ok'.
+publish_no_resources(JObj) ->
+    case wh_json:get_ne_value(<<"Server-ID">>, JObj) of
+        'undefined' -> 'ok';
+        ResponseQ ->
+            wapi_offnet_resource:publish_resp(ResponseQ, no_resources(JObj))
+    end.
+
+-spec no_resources(wh_json:object()) -> wh_proplist().
+no_resources(JObj) ->
+    ToDID = wh_json:get_value(<<"To-DID">>, JObj),
+    lager:info("no available resources for ~s", [ToDID]),
+    props:filter_undefined([{<<"To-DID">>, ToDID}
+                            ,{<<"Response-Message">>, <<"NO_ROUTE_DESTINATION">>}
+                            ,{<<"Response-Code">>, <<"sip:404">>}
+                            ,{<<"Error-Message">>, <<"no available resources">>}
+                            ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                           ]).
 
 
 
