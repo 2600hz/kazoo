@@ -22,7 +22,8 @@
 -include("stepswitch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
--record(state, {endpoints
+-record(state, {msg_id=wh_util:rand_hex_binary(12)
+                ,endpoints
                 ,resource_req
                 ,request_handler
                 ,response_queue
@@ -30,6 +31,9 @@
                 ,timeout}).
 
 -define(RESPONDERS, []).
+-define(BINDINGS, [{'resource', []}
+                   ,{'self', []}
+                  ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -46,15 +50,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Endpoints, JObj) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    Bindings = [{'call', [{'callid', CallId}
-                          ,{'restrict_to', ['events'
-                                            ,'destroy_channel'
-                                           ]}
-                         ]}
-                ,{'self', []}
-               ],
-    gen_listener:start_link(?MODULE, [{'bindings', Bindings}
+    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
@@ -133,6 +129,26 @@ handle_cast({'bridged', CallId}, #state{timeout=TimerRef}=State) ->
     lager:debug("channel bridged to ~s, canceling timeout", [CallId]),
     _ = erlang:cancel_timer(TimerRef),
     {'noreply', State#state{timeout='undefined'}};
+handle_cast('answered', #state{timeout='undefined'}=State) ->
+    lager:debug("channel answered"),
+    {'noreply', State};
+handle_cast('answered', #state{timeout=TimerRef}=State) ->
+    lager:debug("channel answered, canceling timeout"),
+    _ = erlang:cancel_timer(TimerRef),
+    {'noreply', State#state{timeout='undefined'}};
+handle_cast({'bind_to_call', 'undefined'}, #state{resource_req=Request}=State) ->
+    gen_listener:cast(self(), {'originate_result', originate_failure(wh_json:new(), Request)}),
+    {'stop', 'normal', State};
+handle_cast({'bind_to_call', CallId}, State) ->
+    wh_util:put_callid(CallId),
+    Props = [{'callid', CallId}
+             ,{'restrict_to', ['events'
+                               ,'destroy_channel'
+                              ]}
+            ],
+    gen_listener:add_binding(self(), 'call', Props),
+    gen_listener:rm_binding(self(), 'resource', []),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p~n", [_Msg]),
     {'noreply', State}.
@@ -165,7 +181,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(JObj, #state{request_handler=RequestHandler, resource_req=Request}) ->
+handle_event(JObj, #state{request_handler=RequestHandler, resource_req=Request, msg_id=MsgId}) ->
     case whapps_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             lager:debug("channel was destroy while waiting for execute extension", []),
@@ -173,19 +189,23 @@ handle_event(JObj, #state{request_handler=RequestHandler, resource_req=Request})
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
             CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
             gen_listener:cast(RequestHandler, {'bridged', CallId});
+        {<<"call_event">>, <<"CHANNEL_ANSWER">>} ->
+            gen_listener:cast(RequestHandler, 'answered');
         {<<"resource">>, <<"originate_resp">>} ->
+            MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
             case wh_json:get_value(<<"Application-Response">>, JObj) =:= <<"SUCCESS">> of
                 'true' ->
-                    gen_listener:cast(RequestHandler, {'originate_result', originate_success(JObj, Request)});
+                    gen_listener:cast(RequestHandler, {'bind_to_call', wh_json:get_value(<<"Call-ID">>, JObj)});
                 'false' ->
                     gen_listener:cast(RequestHandler, {'originate_result', originate_failure(JObj, Request)})
             end;
         {<<"error">>, <<"originate_resp">>} -> 
+            MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
             lager:debug("channel execution error while waiting for originate: ~s"
                         ,[wh_util:to_binary(wh_json:encode(JObj))]),
             gen_listener:cast(RequestHandler, {'originate_result', originate_error(JObj, Request)});
         {<<"dialplan">>, <<"originate_ready">>} ->
-            gen_listener:cast(RequestHandler, {'originate_result', originate_ready(JObj, Request)});
+            gen_listener:cast(RequestHandler, {'originate_result', originate_ready(JObj, Request)}); 
         _ -> 'ok'
     end,
     {'reply', []}.
@@ -218,7 +238,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-build_originate(#state{endpoints=Endpoints, resource_req=JObj, queue=Q}) ->
+build_originate(#state{endpoints=Endpoints, resource_req=JObj, queue=Q, msg_id=MsgId}) ->
     {CIDNum, CIDName} = originate_caller_id(JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
@@ -229,7 +249,6 @@ build_originate(#state{endpoints=Endpoints, resource_req=JObj, queue=Q}) ->
                     ,{<<"From-URI">>, originate_from_uri(CIDNum, JObj)}
                     ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                    ]),
-    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:rand_hex_binary(16)),
     Application = wh_json:get_value(<<"Application-Name">>, JObj, <<"park">>),
     props:filter_undefined(
       [{<<"Dial-Endpoint-Method">>, <<"single">>}
@@ -253,7 +272,6 @@ build_originate(#state{endpoints=Endpoints, resource_req=JObj, queue=Q}) ->
        ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
        ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
        ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
-       ,{<<"Outbound-Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, JObj)}
        | wh_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
@@ -286,7 +304,7 @@ originate_caller_id(JObj) ->
 -spec originate_timeout(wh_json:object()) -> wh_proplist().
 originate_timeout(Request) ->
     lager:debug("attempt to connect to resources timed out"),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
+    [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, Request)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
      ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
@@ -298,7 +316,7 @@ originate_timeout(Request) ->
 -spec originate_error(wh_json:object(), wh_json:object()) -> wh_proplist().
 originate_error(JObj, Request) ->
     lager:debug("error during originate request: ~s", [wh_util:to_binary(wh_json:encode(JObj))]),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
+    [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, Request)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
      ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
@@ -310,7 +328,7 @@ originate_error(JObj, Request) ->
 -spec originate_success(wh_json:object(), wh_json:object()) -> wh_proplist().
 originate_success(JObj, Request) ->
     lager:debug("originate request successfully completed"),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
+    [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, Request)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
      ,{<<"Response-Message">>, <<"SUCCESS">>}
      ,{<<"Response-Code">>, <<"sip:200">>}
@@ -321,7 +339,7 @@ originate_success(JObj, Request) ->
 -spec originate_failure(wh_json:object(), wh_json:object()) -> wh_proplist().
 originate_failure(JObj, Request) ->
     lager:debug("originate request failed: ~s", [wh_json:get_value(<<"Application-Response">>, JObj)]),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
+    [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, Request)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
      ,{<<"Response-Message">>, wh_json:get_first_defined([<<"Application-Response">>
                                                           ,<<"Hangup-Cause">>
@@ -334,7 +352,7 @@ originate_failure(JObj, Request) ->
 -spec originate_ready(wh_json:object(), wh_json:object()) -> wh_proplist().
 originate_ready(JObj, Request) ->
     lager:debug("originate is ready to execute"),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+    [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request)}
      ,{<<"Control-Queue">>, wh_json:get_value(<<"Control-Queue">>, JObj)}
      ,{<<"Response-Message">>, <<"READY">>}

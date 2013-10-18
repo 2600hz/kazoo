@@ -150,13 +150,19 @@ originate_execute_v(API) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec originate_req(api_terms()) ->
-                           {'ok', iolist()} |
-                           {'error', string()}.
+
+-spec originate_req(api_terms()) -> api_formatter_return().
 originate_req(Prop) when is_list(Prop) ->
-    case originate_req_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?ORIGINATE_REQ_HEADERS, ?OPTIONAL_ORIGINATE_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for originate request"}
+    EPs = [begin
+               {'ok', EPProps} = originate_req_endpoint_headers(EP),
+               wh_json:from_list(EPProps)
+           end
+           || EP <- props:get_value(<<"Endpoints">>, Prop, []),
+              originate_req_endpoint_v(EP)],
+    Prop1 = [ {<<"Endpoints">>, EPs} | props:delete(<<"Endpoints">>, Prop)],
+    case originate_req_v(Prop1) of
+        'true' -> wh_api:build_message(Prop1, ?ORIGINATE_REQ_HEADERS, ?OPTIONAL_ORIGINATE_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for originate_req"}
     end;
 originate_req(JObj) ->
     originate_req(wh_json:to_proplist(JObj)).
@@ -166,6 +172,21 @@ originate_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ORIGINATE_REQ_HEADERS, ?ORIGINATE_REQ_VALUES, ?ORIGINATE_REQ_TYPES);
 originate_req_v(JObj) ->
     originate_req_v(wh_json:to_proplist(JObj)).
+
+-spec originate_req_endpoint_headers(api_terms()) ->
+                                     {'ok', wh_proplist()} |
+                                     {'error', string()}.
+originate_req_endpoint_headers(Prop) when is_list(Prop) ->
+    wh_api:build_message_specific_headers(Prop, ?ORIGINATE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_ORIGINATE_REQ_ENDPOINT_HEADERS);
+originate_req_endpoint_headers(JObj) ->
+    originate_req_endpoint_headers(wh_json:to_proplist(JObj)).
+
+-spec originate_req_endpoint_v(api_terms()) -> boolean().
+originate_req_endpoint_v(Prop) when is_list(Prop) ->
+    wh_api:validate_message(Prop, ?ORIGINATE_REQ_ENDPOINT_HEADERS, ?ORIGINATE_REQ_ENDPOINT_VALUES, ?ORIGINATE_REQ_ENDPOINT_TYPES);
+originate_req_endpoint_v(JObj) ->
+    originate_req_endpoint_v(wh_json:to_proplist(JObj)).
+
 
 %%--------------------------------------------------------------------
 %% @doc Resource Request - see wiki

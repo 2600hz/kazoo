@@ -60,7 +60,12 @@ handle_originate_req(JObj) ->
     Number = stepswitch_util:get_outbound_destination(JObj),
     lager:debug("received outbound audio resource request for ~s from account ~s"
                 ,[Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
-    maybe_originate(Number, JObj).
+    case wh_json:get_value(<<"Outbound-Call-ID">>, JObj) of
+        'undefined' -> 
+            J = wh_json:set_value(<<"Outbound-Call-ID">>, wh_util:rand_hex_binary(8), JObj),
+            maybe_originate(Number, J);
+        _Else -> maybe_originate(Number, JObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

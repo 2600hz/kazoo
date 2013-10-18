@@ -52,7 +52,7 @@ local_extension(Props, JObj) ->
                                                    ,'temporary')).
 
 originate(Endpoints, JObj) ->
-    Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
+    Name = <<(wh_json:get_value(<<"Outbound-Call-ID">>, JObj))/binary
              ,"-", (wh_util:rand_hex_binary(3))/binary>>,
     supervisor:start_child(?MODULE
                            ,?WORKER_NAME_ARGS_TYPE(Name
