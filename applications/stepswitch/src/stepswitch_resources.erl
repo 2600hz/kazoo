@@ -430,12 +430,18 @@ fetch_global_resources() ->
             lager:warning("unable to fetch global resources: ~p", [_R]),
             [];
         {'ok', JObjs} ->
+            CacheProps = [{'origin', fetch_global_cache_origin(JObjs, [])}],
             Resources = resources_from_jobjs([wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]),
-            wh_cache:store_local(?STEPSWITCH_CACHE, 'global_resources', Resources),
+            wh_cache:store_local(?STEPSWITCH_CACHE, 'global_resources', Resources, CacheProps),
             Resources
     end.
 
-
+-spec fetch_global_cache_origin(wh_json:objects(), wh_proplist()) -> wh_proplist().
+fetch_global_cache_origin([], Props) -> Props;
+fetch_global_cache_origin([JObj|JObjs], Props) -> 
+    Id = wh_json:get_value(<<"id">>, JObj),
+    fetch_global_cache_origin(JObjs, [{'db', ?RESOURCES_DB, Id}|Props]).
+     
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -452,11 +458,18 @@ fetch_local_resources(AccountId) ->
             lager:warning("unable to fetch local resources from ~s: ~p", [AccountId, _R]),
             [];
         {'ok', JObjs} ->
+            CacheProps = [{'origin', fetch_global_cache_origin(JObjs, AccountDb, [])}],
             Resources = resources_from_jobjs([wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]),
             LocalResources = [Resource#resrc{global='false'} || Resource <- Resources],
-            wh_cache:store_local(?STEPSWITCH_CACHE, {'local_resources', AccountId}, LocalResources),
+            wh_cache:store_local(?STEPSWITCH_CACHE, {'local_resources', AccountId}, LocalResources, CacheProps),
             LocalResources
     end.
+
+-spec fetch_global_cache_origin(wh_json:objects(), ne_binary(), wh_proplist()) -> wh_proplist().
+fetch_global_cache_origin([], _, Props) -> Props;
+fetch_global_cache_origin([JObj|JObjs], AccountDb, Props) -> 
+    Id = wh_json:get_value(<<"id">>, JObj),
+    fetch_global_cache_origin(JObjs, AccountDb, [{'db', AccountDb, Id}|Props]).
 
 %%--------------------------------------------------------------------
 %% @private

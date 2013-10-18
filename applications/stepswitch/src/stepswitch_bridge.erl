@@ -51,7 +51,6 @@ start_link(Endpoints, JObj) ->
     Bindings = [{'call', [{'callid', CallId}
                           ,{'restrict_to', ['events'
                                             ,'destroy_channel'
-                                            ,'publisher_usurp'
                                            ]}
                          ]}
                 ,{'self', []}
@@ -260,6 +259,8 @@ build_bridge(#state{endpoints=Endpoints, resource_req=JObj, queue=Q}) ->
        ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
        ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
        ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+       ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, JObj, CIDNum)}
+       ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, CIDName)}
        ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)}
        ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)

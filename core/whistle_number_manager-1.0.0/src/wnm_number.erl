@@ -143,7 +143,7 @@ get(Number, PublicFields) ->
                         end
                 end
                 ,fun(#number{number_db=Db}=N) ->
-                         case couch_mgr:open_cache_doc(Db, Num) of
+                         case couch_mgr:open_doc(Db, Num) of
                              {'ok', JObj} -> merge_public_fields(PublicFields, json_to_record(JObj, N));
                              {'error', 'not_found'} -> error_number_not_found(N);
                              {'error', Reason} -> error_number_database(Reason, N)

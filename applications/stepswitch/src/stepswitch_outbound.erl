@@ -10,27 +10,10 @@
 %%%-------------------------------------------------------------------
 -module(stepswitch_outbound).
 
--export([init/0]).
 -export([handle_req/2]).
 
 -include("stepswitch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
-
--type bridge_resp() :: {'error', wh_json:object()} |
-                       {'error', 'timeout'} |
-                       {'ok', wh_json:object()} |
-                       {'fail', wh_json:object()}.
-
--type execute_ext_resp() ::  {'ok', wh_json:object()} |
-                             {'ok', 'execute_extension'} |
-                             {'fail', wh_json:object()}.
-
--type originate_resp() :: {'error', wh_json:object()} |
-                          {'ok', wh_json:object()} |
-                          {'ready', wh_json:object()} |
-                          {'fail', wh_json:object()}.
-
-init() -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -48,39 +31,44 @@ handle_req(JObj, _Props) ->
         <<"originate">> -> handle_originate_req(JObj)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_audio_req(wh_json:object()) -> any().
 handle_audio_req(JObj) ->
     Number = stepswitch_util:get_outbound_destination(JObj),
     lager:debug("received outbound audio resource request for ~s", [Number]),
     case stepswitch_util:lookup_number(Number) of
-        {'ok', Props} -> maybe_force_outbound(Props, JObj);
+        {'ok', AccountId, Props} ->
+            maybe_force_outbound([{'account_id', AccountId}
+                                  | Props
+                                 ], JObj);
         _ -> maybe_bridge(Number, JObj)
     end.
 
-%%    {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
-%%    lager:debug("bridge request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
-%%    CtrlQ = wh_json:get_value(<<"Control-Queue">>, JObj),
-%%    Result = attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props),
-%%    wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), response(Result, JObj)).
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% 
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_originate_req(wh_json:object()) -> any().
 handle_originate_req(JObj) ->
-    'ok'.
-%%    {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
-%%    lager:debug("originate request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
-%%    Result = attempt_to_fulfill_originate_req(Number, JObj, Props),
-%%    wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), response(Result, JObj)).
+    Number = stepswitch_util:get_outbound_destination(JObj),
+    lager:debug("received outbound audio resource request for ~s from account ~s"
+                ,[Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
+    maybe_originate(Number, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% 
 %% @end
-%%--------------------------------------------------------------------    
+%%--------------------------------------------------------------------
+-spec maybe_force_outbound(wh_proplist(), wh_json:object()) -> any().
 maybe_force_outbound(Props, JObj) ->
     case props:get_is_true('force_outbound', Props) orelse
         wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
@@ -97,6 +85,7 @@ maybe_force_outbound(Props, JObj) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_bridge(ne_binary(), wh_json:object()) -> any().
 maybe_bridge(Number, JObj) ->
     case stepswitch_resources:endpoints(Number, JObj) of
         [] -> publish_no_resources(JObj);
@@ -109,9 +98,28 @@ maybe_bridge(Number, JObj) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
-local_extension(Props, JObj) ->
-    'ok'.
+-spec local_extension(wh_proplist(), wh_json:object()) -> any().
+local_extension(Props, JObj) -> stepswitch_request_sup:local_extension(Props, JObj).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_originate(ne_binary(), wh_json:object()) -> any().
+maybe_originate(Number, JObj) ->
+    case stepswitch_resources:endpoints(Number, JObj) of
+        [] -> publish_no_resources(JObj);
+        Endpoints -> stepswitch_request_sup:originate(Endpoints, JObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
 -spec publish_no_resources(wh_json:object()) -> 'ok'.
 publish_no_resources(JObj) ->
     case wh_json:get_ne_value(<<"Server-ID">>, JObj) of
@@ -132,13 +140,3 @@ no_resources(JObj) ->
                             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                            ]).
-
-
-
-
-
-
-
-
-
-

@@ -11,6 +11,8 @@
 
 -export([start_link/0]).
 -export([bridge/2]).
+-export([local_extension/2]).
+-export([originate/2]).
 -export([init/1]).
 
 -include("stepswitch.hrl").
@@ -32,13 +34,31 @@ start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 bridge(Endpoints, JObj) -> 
+    Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
+             ,"-", (wh_util:rand_hex_binary(3))/binary>>,
     supervisor:start_child(?MODULE
-                           ,?WORKER_NAME_ARGS_TYPE(wh_json:get_value(<<"Call-ID">>, JObj)
+                           ,?WORKER_NAME_ARGS_TYPE(Name
                                                    ,'stepswitch_bridge'
                                                    ,[Endpoints, JObj]
                                                    ,'temporary')).
 
-    
+local_extension(Props, JObj) ->
+    Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
+             ,"-", (wh_util:rand_hex_binary(3))/binary>>,
+    supervisor:start_child(?MODULE
+                           ,?WORKER_NAME_ARGS_TYPE(Name
+                                                   ,'stepswitch_local_extension'
+                                                   ,[Props, JObj]
+                                                   ,'temporary')).
+
+originate(Endpoints, JObj) ->
+    Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
+             ,"-", (wh_util:rand_hex_binary(3))/binary>>,
+    supervisor:start_child(?MODULE
+                           ,?WORKER_NAME_ARGS_TYPE(Name
+                                                   ,'stepswitch_originate'
+                                                   ,[Endpoints, JObj]
+                                                   ,'temporary')).
 
 %% ===================================================================
 %% Supervisor callbacks
