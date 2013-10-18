@@ -94,6 +94,7 @@ sort_resources(Resources) ->
     lists:sort(fun(#resrc{weight=W1}, #resrc{weight=W2}) ->
                        W1 =< W2
                end, Resources).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -126,14 +127,14 @@ maybe_get_endpoints(Number, JObj) ->
 -spec maybe_get_local_endpoints(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:objects().
 maybe_get_local_endpoints(HuntAccount, Number, JObj) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    case wh_util:is_in_account_hierarchy(AccountId, HuntAccount, 'true') of
+    case wh_util:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
         'false' -> 
             lager:info("account ~s attempted to use local resources of ~s, but it is not allowed"
                        ,[AccountId, HuntAccount]),
             [];
         'true' ->
             lager:info("account ~s is using the local resources of ~s", [AccountId, HuntAccount]),
-            get_local_endpoints(AccountId, Number, JObj)
+            get_local_endpoints(HuntAccount, Number, JObj)
     end.    
 
 -spec get_local_endpoints(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:objects().
@@ -452,7 +453,7 @@ fetch_global_cache_origin([JObj|JObjs], Props) ->
 fetch_local_resources(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = ['include_docs'],
-    lager:debug("local resource cache miss, fetching from db ~s", AccountDb),
+    lager:debug("local resource cache miss, fetching from db ~s", [AccountDb]),
     case couch_mgr:get_results(AccountDb, ?LIST_RESOURCES_BY_ID, ViewOptions) of
         {'error', _R} ->
             lager:warning("unable to fetch local resources from ~s: ~p", [AccountId, _R]),

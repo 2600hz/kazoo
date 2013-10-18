@@ -80,7 +80,7 @@ build_offnet_request(Data, Call) ->
 -spec get_bypass_e164(wh_json:object()) -> boolean().
 get_bypass_e164(Data) ->
     wh_json:is_true(<<"do_not_normalize">>, Data)
-        orelse wh_json:is_true(<<"Bypass-E164">>, Data).
+        orelse wh_json:is_true(<<"bypass_e164">>, Data).
 
 -spec get_from_uri_realm(wh_json:object(), whapps_call:call()) -> api_binary().
 get_from_uri_realm(Data, Call) ->
