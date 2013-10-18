@@ -60,6 +60,7 @@
 -type wh_proplist_kv(K, V) :: [{K, V} | atom(),...] | [].
 -type wh_proplist_k(K) :: wh_proplist_kv(K, wh_proplist_value()).
 -type wh_proplist() :: wh_proplist_kv(wh_proplist_key(), wh_proplist_value()).
+-type wh_proplists() :: [wh_proplist(),...] | [].
 
 -type proplist_key() :: wh_proplist_key().
 -type proplist() :: wh_proplist().

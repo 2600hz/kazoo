@@ -31,11 +31,12 @@
               ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
               ,<<"Hold-Media">>, <<"Presence-ID">>, <<"Account-Realm">>
               ,<<"Control-Queue">>, <<"Call-ID">>, <<"Application-Data">>
-              ,<<"Account-ID">>, <<"Outbound-Call-ID">>
+              ,<<"Account-ID">>, <<"Outbound-Call-ID">>, <<"Hunt-Account-ID">>
               ,<<"Call-ID">>, <<"Mode">>, <<"Group-ID">> % Eavesdrop
               ,<<"Force-Outbound">>, <<"Fax-Identity-Number">>, <<"Fax-Identity-Name">>
               ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
               ,<<"Enable-T38-Passthrough">>, <<"Force-Fax">>, <<"Enable-T38-Gateway">>
+              ,<<"Format-From-URI">>, <<"From-URI-Realm">>, <<"Bypass-E164">>
          ]).
 -define(OFFNET_RESOURCE_REQ_VALUES
         ,[{<<"Event-Category">>, <<"resource">>}

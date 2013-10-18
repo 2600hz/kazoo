@@ -83,7 +83,9 @@ get_outbound_destination(JObj) ->
 lookup_number(Number) ->
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key_number(Num)) of
-        {'ok', {AccountId, Props}} -> {'ok', AccountId, Props};
+        {'ok', {AccountId, Props}} -> 
+            lager:debug("found number properties in stepswitch cache"),
+            {'ok', AccountId, Props};
         {'error', 'not_found'} -> fetch_number(Num)
     end.
 
@@ -126,12 +128,17 @@ correct_shortdial(Number, JObj) ->
     CIDNum = wh_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
                                         ,<<"Emergency-Caller-ID-Number">>
                                        ], JObj),
-    lager:debug("shortdial correction CID ~s", [CIDNum]),
     MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length > 0 ->
-            wnm_util:to_e164(<<(binary:part(CIDNum, 0, Length))/binary, Number/binary>>);
-        _ -> 'undefined'
+            CorrectedNumber = wnm_util:to_e164(<<(binary:part(CIDNum, 0, Length))/binary, Number/binary>>),
+            lager:debug("corrected shortdial ~s via CID ~s to ~s"
+                        ,[Number, CIDNum, CorrectedNumber]),
+            CorrectedNumber;
+        _ ->
+            lager:debug("unable to correct shortdial ~s via CID ~s"
+                        ,[Number, CIDNum]),
+            'undefined'
     end.
 
 %%--------------------------------------------------------------------
@@ -167,15 +174,6 @@ hangup_result(JObj) ->
 %% create and send a Whistle offnet resource response
 %% @end
 %%--------------------------------------------------------------------
-response({'ok', Resp}, JObj) ->
-    lager:debug("outbound request successfully completed"),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, <<"SUCCESS">>}
-     ,{<<"Response-Code">>, <<"sip:200">>}
-     ,{<<"Resource-Response">>, Resp}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ];
 response({'ready', Resp}, JObj) ->
     lager:debug("originate is ready to execute"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Resp)}
@@ -183,45 +181,5 @@ response({'ready', Resp}, JObj) ->
      ,{<<"Control-Queue">>, wh_json:get_value(<<"Control-Queue">>, Resp)}
      ,{<<"Response-Message">>, <<"READY">>}
      ,{<<"Resource-Response">>, Resp}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ];
-response({'fail', Response}, JObj) ->
-    lager:debug("resources for outbound request failed"),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, wh_json:get_value(<<"Application-Response">>, Response,
-                                                 wh_json:get_value(<<"Hangup-Cause">>, Response))}
-     ,{<<"Response-Code">>, wh_json:get_value(<<"Hangup-Code">>, Response)}
-     ,{<<"Resource-Response">>, Response}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ];
-response({'error', 'no_resources'}, JObj) ->
-    lager:debug("no available resources"),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, <<"NO_ROUTE_DESTINATION">>}
-     ,{<<"Response-Code">>, <<"sip:404">>}
-     ,{<<"Error-Message">>, <<"no available resources">>}
-     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ];
-response({'error', 'timeout'}, JObj) ->
-    lager:debug("attempt to connect to resources timed out"),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
-     ,{<<"Response-Code">>, <<"sip:500">>}
-     ,{<<"Error-Message">>, <<"bridge request timed out">>}
-     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ];
-response({'error', Error}, JObj) ->
-    lager:debug("error during outbound request: ~s", [wh_util:to_binary(wh_json:encode(Error))]),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
-     ,{<<"Response-Code">>, <<"sip:500">>}
-     ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, Error, <<"failed to process request">>)}
-     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].

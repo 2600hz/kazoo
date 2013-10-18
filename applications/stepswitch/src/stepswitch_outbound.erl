@@ -43,7 +43,6 @@ init() -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_offnet_resource:req_v(JObj),
     _ = whapps_util:put_callid(JObj),
-    lager:debug("received outbound request"),
     case wh_json:get_value(<<"Resource-Type">>, JObj) of
         <<"audio">> -> handle_audio_req(JObj);
         <<"originate">> -> handle_originate_req(JObj)
@@ -51,6 +50,7 @@ handle_req(JObj, _Props) ->
 
 handle_audio_req(JObj) ->
     Number = stepswitch_util:get_outbound_destination(JObj),
+    lager:debug("received outbound audio resource request for ~s", [Number]),
     case stepswitch_util:lookup_number(Number) of
         {'ok', Props} -> maybe_force_outbound(Props, JObj);
         _ -> maybe_bridge(Number, JObj)
@@ -98,9 +98,6 @@ maybe_force_outbound(Props, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 maybe_bridge(Number, JObj) ->
-    io:format("~p~n~p~n", [wh_json:get_value(<<"Flags">>, JObj)
-                           ,stepswitch_resources:endpoints(Number, JObj)
-                          ]),
     case stepswitch_resources:endpoints(Number, JObj) of
         [] -> publish_no_resources(JObj);
         Endpoints -> stepswitch_request_sup:bridge(Endpoints, JObj)

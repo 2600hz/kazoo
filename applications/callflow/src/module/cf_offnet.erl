@@ -48,7 +48,7 @@ handle_bridge_failure(Cause, Code, Call) ->
 %%--------------------------------------------------------------------
 -spec build_offnet_request(wh_json:object(), whapps_call:call()) -> 'ok'.
 build_offnet_request(Data, Call) ->
-    {ECIDNum, ECIDName} = get_emergency_caller_id(Call),
+    {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = get_caller_id(Data, Call),
     props:filter_undefined([{<<"Resource-Type">>, <<"audio">>}
                             ,{<<"Application-Name">>, <<"bridge">>}
@@ -62,21 +62,48 @@ build_offnet_request(Data, Call) ->
                             ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
                             ,{<<"Account-ID">>, whapps_call:account_id(Call)}
                             ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
+                            ,{<<"Media">>, wh_json:get_value(<<"Media">>, Data)}
+                            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
+                            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
+                            ,{<<"Format-From-URI">>, wh_json:is_true(<<"format_from_uri">>, Data)}
                             ,{<<"Hunt-Account-ID">>, get_hunt_account_id(Data, Call)}
                             ,{<<"Flags">>, get_flags(Data, Call)}
-                            ,{<<"Timeout">>, get_timeout(Data)}
                             ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Data)}
-                            ,{<<"Ringback">>, get_ringback(Data)}
-                            ,{<<"Media">>, get_media(Data)}
                             ,{<<"Force-Fax">>, get_force_fax(Call)}
                             ,{<<"SIP-Headers">>,get_sip_headers(Data, Call)}
                             ,{<<"To-DID">>, get_to_did(Data, Call)}
+                            ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
+                            ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
                             | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
                            ]).
 
--spec get_emergency_caller_id(wh_json:object()) -> api_binary().
-get_emergency_caller_id(Call) ->
-    cf_attributes:caller_id(<<"emergency">>, Call).
+-spec get_bypass_e164(wh_json:object()) -> boolean().
+get_bypass_e164(Data) ->
+    wh_json:is_true(<<"do_not_normalize">>, Data)
+        orelse wh_json:is_true(<<"Bypass-E164">>, Data).
+
+-spec get_from_uri_realm(wh_json:object(), whapps_call:call()) -> api_binary().
+get_from_uri_realm(Data, Call) ->
+    case wh_json:get_ne_value(<<"from_uri_realm">>, Data) of
+        'undefined' -> maybe_get_call_from_realm(Call);
+        Realm -> Realm
+    end.
+
+-spec maybe_get_call_from_realm(whapps_call:call()) -> api_binary().
+maybe_get_call_from_realm(Call) ->
+    case whapps_call:from_realm(Call) of
+        'undefined' -> get_account_realm(Call);
+        Realm -> Realm
+    end.
+
+-spec get_account_realm(whapps_call:call()) -> api_binary().
+get_account_realm(Call) ->
+    AccountId = whapps_call:account_id(Call),
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', JObj} -> wh_json:get_value(<<"realm">>, JObj);
+        {'error', _} -> 'undefined'
+    end.
 
 -spec get_caller_id(wh_json:object(), whapps_call:call()) -> api_binary().
 get_caller_id(Data, Call) ->
@@ -119,21 +146,9 @@ get_sip_headers(Data, Call) ->
         'false' -> JObj
     end.
 
--spec get_timeout(wh_json:object()) -> api_binary().
-get_timeout(Data) ->
-    wh_json:get_value(<<"timeout">>, Data).
-
 -spec get_ignore_early_media(wh_json:object()) -> api_binary().
 get_ignore_early_media(Data) ->
     wh_util:to_binary(wh_json:is_true(<<"ignore_early_media">>, Data, <<"false">>)).
-
--spec get_ringback(wh_json:object()) -> api_binary().
-get_ringback(Data) ->
-    wh_json:get_value(<<"ringback">>, Data).
-
--spec get_media(wh_json:object()) -> api_binary().
-get_media(Data) ->
-    wh_json:get_value(<<"Media">>, Data).
 
 -spec get_force_fax(whapps_call:call()) -> 'undefined' | boolean().
 get_force_fax(Call) ->
