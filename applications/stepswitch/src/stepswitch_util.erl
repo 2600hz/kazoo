@@ -11,7 +11,6 @@
 -export([get_outbound_destination/1]).
 -export([lookup_number/1]).
 -export([correct_shortdial/2]).
--export([hangup_result/1]).
 
 -include("stepswitch.hrl").
 
@@ -104,13 +103,6 @@ fetch_number(Num) ->
             E
     end.
 
--spec maybe_transition_port_in(ne_binary(), wh_proplist()) -> 'false' | pid().
-maybe_transition_port_in(Num, Props) ->
-    case props:get_value('pending_port', Props) of
-        'false' -> 'false';
-        'true' -> spawn('wh_number_manager', 'ported', [Num])
-    end.
-
 -spec cache_key_number(ne_binary()) -> {'stepswitch_number', ne_binary()}.
 cache_key_number(Number) ->
     {'stepswitch_number', Number}.
@@ -140,46 +132,3 @@ correct_shortdial(Number, JObj) ->
                         ,[Number, CIDNum]),
             'undefined'
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Determine if the hangup case indicates a call failure
-%% @end
-%%--------------------------------------------------------------------
--spec hangup_result(wh_json:object()) -> {'ok' | 'fail', wh_json:object()}.
-hangup_result(JObj) ->
-    AppResponse = wh_json:get_value(<<"Application-Response">>, JObj,
-                                    wh_json:get_value(<<"Hangup-Cause">>, JObj)),
-    SuccessfulCause = lists:member(AppResponse, ?SUCCESSFUL_HANGUP_CAUSES),
-    case wh_json:get_value(<<"Hangup-Code">>, JObj) of
-        <<"sip:", Code/binary>> when SuccessfulCause ->
-            try wh_util:to_integer(Code) < 400 of
-                'true' -> {'ok', JObj};
-                'false' when SuccessfulCause ->
-                    {'fail', wh_json:set_value(<<"Application-Response">>, <<"NORMAL_TEMPORARY_FAILURE">>, JObj)};
-                'false' -> {'fail', JObj}
-            catch
-                _:_ when SuccessfulCause -> {'ok', JObj};
-                _:_  -> {'fail', JObj}
-            end;
-        _Else when SuccessfulCause -> {'ok', JObj};
-        _Else -> {'fail', JObj}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% given the result of either wait_for_bridge or wait_for_execute_extension
-%% create and send a Whistle offnet resource response
-%% @end
-%%--------------------------------------------------------------------
-response({'ready', Resp}, JObj) ->
-    lager:debug("originate is ready to execute"),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Resp)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-     ,{<<"Control-Queue">>, wh_json:get_value(<<"Control-Queue">>, Resp)}
-     ,{<<"Response-Message">>, <<"READY">>}
-     ,{<<"Resource-Response">>, Resp}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ].

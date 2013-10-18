@@ -45,6 +45,7 @@ maybe_relay_request(JObj) ->
                         ,fun maybe_set_transfer_media/2
                         ,fun maybe_lookup_cnam/2
                         ,fun relay_request/2
+                        ,fun maybe_transition_port_in/2
                        ],
             lists:foldl(fun(F, J) ->  F(Props, J) end
                         ,JObj
@@ -142,3 +143,19 @@ maybe_lookup_cnam(Props, JObj) ->
 -spec relay_request(wh_proplist(), wh_json:object()) -> wh_json:object().
 relay_request(_, JObj) ->
     wapi_route:publish_req(JObj).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_transition_port_in(wh_proplist(), wh_json:object()) -> wh_json:object().
+maybe_transition_port_in(Props, _) ->
+    case props:get_value('pending_port', Props) of
+        'false' -> 'false';
+        'true' ->
+            Number = props:get_value('number', Props),
+            wh_number_manager:ported(wnm_util:normalize_number(Number))
+  end.
