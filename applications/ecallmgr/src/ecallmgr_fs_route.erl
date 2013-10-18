@@ -123,7 +123,7 @@ handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Da
     {'noreply', State};
 handle_info({'fetch', 'dialplan', _Tag, _Key, _Value, FSId, [CallId | FSData]}, #state{node=Node}=State) ->
     case {props:get_value(<<"Event-Name">>, FSData), props:get_value(<<"Caller-Context">>, FSData)} of
-        {<<"REQUEST_PARAMS">>, ?WHISTLE_CONTEXT} ->
+        {<<"REQUEST_PARAMS">>, _} ->
             %% TODO: move this to a supervisor somewhere
             lager:info("processing dialplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
             spawn(?MODULE, 'process_route_req', [Node, FSId, CallId, FSData]),
@@ -175,6 +175,7 @@ process_route_req(Node, FetchId, CallId, Props) ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),
             JObj = wh_json:from_list([{<<"Routes">>, []}
                                       ,{<<"Method">>, <<"park">>}
+                                      ,{<<"Context">>, hunt_context(Props)}
                                      ]),
             reply_affirmative(Node, FetchId, CallId, JObj)
     end.
@@ -192,10 +193,14 @@ search_for_route(Node, FetchId, CallId, Props) ->
             lager:info("did not receive route response for request ~s: ~p", [FetchId, _R]);
         {'ok', JObj} ->
             'true' = wapi_route:resp_v(JObj),
-            maybe_wait_for_authz(JObj, Node, FetchId, CallId)
+            J = wh_json:set_value(<<"Context">>, hunt_context(Props), JObj),
+            maybe_wait_for_authz(J, Node, FetchId, CallId)
     end.
 
-maybe_wait_for_authz(JObj, Node, FetchId, CallId) ->
+hunt_context(Props) ->
+    props:get_value(<<"Hunt-Context">>, Props, ?WHISTLE_CONTEXT).
+
+ maybe_wait_for_authz(JObj, Node, FetchId, CallId) ->
     case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, 'false')) 
         andalso wh_json:get_value(<<"Method">>, JObj) =/= <<"error">>
     of

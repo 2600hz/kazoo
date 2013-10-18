@@ -226,12 +226,11 @@ route_resp_xml(<<"bridge">>, Routes, JObj) ->
     TransferEl = route_resp_transfer_ringback(JObj),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldr(fun route_resp_fold/2, {1, []}, Routes),
-
     FailRespondEl = action_el(<<"respond">>, <<"${bridge_hangup_cause}">>),
     FailConditionEl = condition_el(FailRespondEl),
     FailExtEl = extension_el(<<"failed_bridge">>, <<"false">>, [FailConditionEl]),
-
-    ContextEl = context_el(?WHISTLE_CONTEXT, [LogEl, RingbackEl, TransferEl] ++ Extensions ++ [FailExtEl]),
+    Context = wh_json:get_value(<<"Context">>, JObj, ?WHISTLE_CONTEXT),
+    ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl] ++ Extensions ++ [FailExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
