@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(cf_offnet).
+-module(cf_resources).
 
 -include("../callflow.hrl").
 
