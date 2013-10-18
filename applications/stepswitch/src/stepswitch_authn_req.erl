@@ -18,19 +18,26 @@
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec handle_req(wh_json:object(), proplist()) -> 'ok'.
-handle_req(JObj, Props) ->
-    true = wapi_authn:req_v(JObj),
+-spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_req(JObj, _Props) ->
+    'true' = wapi_authn:req_v(JObj),
+    _ = wh_util:put_callid(JObj),
+    case wh_json:get_value(<<"Method">>, JObj) of
+        <<"reverse-lookup">> -> maybe_send_auth_resp(JObj);
+        _Else -> 'ok'
+    end.
 
-    put(callid, wh_json:get_value(<<"Msg-ID">>, JObj, <<"000000000000">>)),
-    AuthR = wh_json:get_value(<<"Auth-Realm">>, JObj),
-    Resources = props:get_value(resources, Props),
-
-    case wh_json:get_value(<<"Method">>, JObj) =:= <<"reverse-lookup">>
-        andalso stepswitch_util:maybe_gateway_by_address(AuthR, Resources) 
-    of
-        #gateway{}=Gateway -> send_auth_resp(Gateway, JObj);
-        _Else -> ok
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_send_auth_resp(wh_json:object()) -> 'ok'.
+maybe_send_auth_resp(JObj) ->
+    case stepswitch_resources:reverse_lookup(JObj) of
+        {'error', 'not_found'} -> 'ok';
+        {'ok', Props} -> send_auth_resp(JObj, Props)
     end.
 
 %%-----------------------------------------------------------------------------
@@ -40,28 +47,26 @@ handle_req(JObj, Props) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_auth_resp/2  :: (#gateway{}, wh_json:object()) -> 'ok'.
-send_auth_resp(#gateway{resource_id=AuthId, realm=Realm
-                        ,username=Username, password=Password}, JObj) ->
+-spec send_auth_resp/2  :: (wh_json:object(), wh_proplist()) -> 'ok'.
+send_auth_resp(JObj, Props) ->
     Category = wh_json:get_value(<<"Event-Category">>, JObj),
+    Username = props:get_value('username', Props),
 
-    CCVs = [{<<"Username">>, Username}
-            ,{<<"Realm">>, Realm}
-%%             TODO: this can only be added if callflows and trunkstore are updated....
-%%               since they look here to see if they should attempt to process
-%%               this common logic should be moved to whapps_call if possible.          
-%%            ,{<<"Authorizing-Type">>, <<"resource">>}
-            ,{<<"Inception">>, <<"off-net">>}
-            ,{<<"Authorizing-ID">>, AuthId}
-           ],
-
-    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            ,{<<"Auth-Password">>, Password}
-            ,{<<"Auth-Username">>, Username}
-            ,{<<"Auth-Method">>, <<"password">>}
-            ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
-            | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
-           ],
+    CCVs = props:filter_undefined(
+             [{<<"Inception">>, <<"off-net">>}
+%%              ,{<<"Authorizing-Type">>, <<"resource">>}
+              ,{<<"Username">>, Username}
+              ,{<<"Authorizing-ID">>, props:get_value('resource_id', Props)}
+              ,{<<"Realm">>, props:get_value('realm', Props)}
+             ]),
+    
+    Resp = props:filter_undefined(
+             [{<<"Auth-Method">>, <<"password">>}
+              ,{<<"Auth-Username">>, Username}
+              ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+              ,{<<"Auth-Password">>, props:get_value('password', Props)}
+              ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+              | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
+             ]),
     lager:debug("sending SIP authentication reply, with credentials"),
-    wapi_authn:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
-                            ,props:filter_undefined(Resp)).
+    wapi_authn:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).

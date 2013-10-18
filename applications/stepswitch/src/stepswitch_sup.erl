@@ -27,6 +27,7 @@
 
 -define(CHILDREN, [?CACHE(?STEPSWITCH_CACHE)
                    ,?POOL(?STEPSWITCH_CNAM_POOL)
+                   ,?SUPER('stepswitch_request_sup')
                    ,?WORKER('stepswitch_listener')
                   ]).
 
