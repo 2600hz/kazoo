@@ -378,7 +378,10 @@ get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
 get_channel_vars({<<"Timeout">>, V}, Vars) ->
     case wh_util:to_integer(V) of
         TO when TO > 0 ->
-            [ <<"call_timeout=", (wh_util:to_binary(TO))/binary>> | Vars];
+            [<<"call_timeout=", (wh_util:to_binary(TO))/binary>>
+             ,<<"originate_timeout=", (wh_util:to_binary(TO))/binary>>
+             | Vars
+            ];
         _Else -> Vars
     end;
 
