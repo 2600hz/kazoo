@@ -36,7 +36,7 @@ maybe_relay_request(JObj) ->
     case stepswitch_util:lookup_number(Number) of
         {'error', _R} -> 
             lager:info("unable to determine account for ~s: ~p", [Number, _R]);
-        {'ok', Props} ->
+        {'ok', _, Props} ->
             lager:debug("relaying route request"),
             Routines = [fun set_account_id/2
                         ,fun set_inception/2
