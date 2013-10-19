@@ -93,7 +93,11 @@ lookup_account_by_number(Number) ->
             {error, Error}
     end.
 
-number_options(#number{state=State, features=Features, module_name=Module, number=Num}=Number) ->
+number_options(#number{state=State
+                       ,features=Features
+                       ,module_name=Module
+                       ,number=Num
+                       ,assigned_to=AssignedTo}=Number) ->
     [{'force_outbound', should_force_outbound(Number)}
      ,{'pending_port', State =:= <<"port_in">>}
      ,{'local', Module =:= 'wnm_local'}
@@ -101,6 +105,7 @@ number_options(#number{state=State, features=Features, module_name=Module, numbe
      ,{'ringback_media', find_early_ringback(Number)}
      ,{'transfer_media', find_transfer_ringback(Number)}
      ,{'number', Num }
+     ,{'account_id', AssignedTo}
     ].
 
 should_force_outbound(#number{module_name=wnm_local}) -> true;
