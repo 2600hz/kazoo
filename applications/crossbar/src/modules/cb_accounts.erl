@@ -600,7 +600,7 @@ replicate_account_definition(JObj) ->
 %%--------------------------------------------------------------------
 -spec is_unique_realm(ne_binary() | 'undefined', ne_binary()) -> boolean().
 is_unique_realm(AccountId, Realm) ->
-    ViewOptions = [{<<"key">>, Realm}],
+    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Realm)}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_REALM, ViewOptions) of
         {ok, []} -> true;
         {ok, [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= AccountId;

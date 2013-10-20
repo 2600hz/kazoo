@@ -126,7 +126,8 @@ reg_query(JObj, _Props) ->
 lookup_contact(Realm, Username) ->
     case ets:lookup(?MODULE, registration_id(Username, Realm)) of
         [#registration{contact=Contact}] ->
-            lager:info("found user ~s@~s contact ~s", [Username, Realm, Contact]),
+            lager:info("found user ~s@~s contact ~s"
+                       ,[Username, Realm, Contact]),
             {'ok', Contact};
         _Else -> fetch_contact(Username, Realm)
     end.
@@ -143,8 +144,9 @@ summary() ->
 summary(Realm) when not is_binary(Realm) ->
     summary(wh_util:to_binary(Realm));
 summary(Realm) ->
-    MatchSpec = [{#registration{realm = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {const, Realm}}]
+    R = wh_util:to_lower_binary(Realm),
+    MatchSpec = [{#registration{id = {'_', '$1'}, _ = '_'}
+                  ,[{'=:=', '$1', {const, R}}]
                   ,['$_']
                  }],
     print_summary(ets:select(?MODULE, MatchSpec, 1)).
@@ -164,8 +166,9 @@ details(User) ->
     case binary:split(User, <<"@">>) of
         [Username, Realm] -> details(Username, Realm);
          _Else ->
-            MatchSpec = [{#registration{realm = '$1', _ = '_'}
-                          ,[{'=:=', '$1', {const, User}}]
+            Realm = wh_util:to_lower_binary(User),
+            MatchSpec = [{#registration{id = {'_', '$1'}, _ = '_'}
+                          ,[{'=:=', '$1', {const, Realm}}]
                           ,['$_']
                          }],
             print_details(ets:select(?MODULE, MatchSpec, 1))
@@ -177,10 +180,9 @@ details(Username, Realm) when not is_binary(Username) ->
 details(Username, Realm) when not is_binary(Realm) ->
     details(Username, wh_util:to_binary(Realm));
 details(Username, Realm) ->
-    MatchSpec = [{#registration{realm = '$1', username = '$2'
-                                ,_ = '_'}
-                  ,[{'andalso', {'=:=', '$1', {const, Realm}}
-                     ,{'=:=', '$2', {const, Username}}}]
+    Id =  registration_id(Username, Realm),
+    MatchSpec = [{#registration{id = '$1', _ = '_'}
+                  ,[{'=:=', '$1', {const, Id}}]
                   ,['$_']
                  }],
     print_details(ets:select(?MODULE, MatchSpec, 1)).
@@ -268,10 +270,11 @@ handle_cast('flush', State) ->
     _ = ets:delete_all_objects(?MODULE),
     {'noreply', State};
 handle_cast({'flush', Realm}, State) ->
-    MatchSpec = [{#registration{realm = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {const, Realm}}]
-                  ,['true']}
-                ],
+    R = wh_util:to_lower_binary(Realm),
+    MatchSpec = [{#registration{id = {'_', '$1'}, _ = '_'}
+                  ,[{'=:=', '$1', {const, R}}]
+                  ,['true']
+                 }],
     NumberDeleted = ets:select_delete(?MODULE, MatchSpec),
     lager:debug("removed ~p expired registrations", [NumberDeleted]),
     {'noreply', State};
@@ -430,15 +433,15 @@ resp_to_query(JObj) ->
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     MatchSpec = case wh_json:get_value(<<"Username">>, JObj) of
                     'undefined' ->
-                        [{#registration{realm = '$1', _ = '_'}
-                          ,[{'=:=', '$1', {const, Realm}}]
+                        R = wh_util:to_lower_binary(Realm),
+                        [{#registration{id = {'_', '$1'}, _ = '_'}
+                          ,[{'=:=', '$1', {const, R}}]
                           ,['$_']
                          }];
                     Username ->
-                        [{#registration{realm = '$1', username = '$2'
-                                        ,_ = '_'}
-                          ,[{'andalso', {'=:=', '$1', {const, Realm}}
-                             ,{'=:=', '$2', {const, Username}}}]
+                        Id = registration_id(Username, Realm),
+                        [{#registration{id = '$1', _ = '_'}
+                          ,[{'=:=', '$1', {const, Id}}]
                           ,['$_']
                          }]
                 end,

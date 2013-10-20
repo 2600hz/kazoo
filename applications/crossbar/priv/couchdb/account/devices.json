@@ -9,7 +9,7 @@
             "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit(doc.owner_id, {'id': doc._id, 'name': doc.name}); }"
         }
        ,"sip_credentials":{
-           "map": "function(doc) { if (typeof doc.sip !== 'undefined' && ! doc.pvt_deleted) { var sip = JSON.parse(JSON.stringify(doc.sip)); sip.authorizing_id = doc._id; sip.authorizing_type = doc.pvt_type; emit(sip.username, sip); } else if (doc.pvt_type === 'sys_info' && ! doc.pvt_deleted) { for (i in doc.servers) {var auth = doc.servers[i].auth; var sip = {'password': auth.auth_password, 'username': auth.auth_user, 'method': auth.auth_method || 'password', 'invite_format': doc.servers[i].options.inbound_format || 'e164'}; sip.authorizing_id = doc._id; sip.authorizing_type = doc.pvt_type; emit(sip.username, sip);}}}"
+           "map": "function (doc) {if (typeof doc.sip !== 'undefined' && !doc.pvt_deleted) {var sip = JSON.parse(JSON.stringify(doc.sip)); sip.authorizing_id = doc._id; sip.authorizing_type = doc.pvt_type; emit(sip.username.toLowerCase(), sip);} else if (doc.pvt_type === 'sys_info' && !doc.pvt_deleted) {for (i in doc.servers) {var auth = doc.servers[i].auth; var sip = {'password': auth.auth_password, 'username': auth.auth_user, 'method': auth.auth_method || 'password', 'invite_format': doc.servers[i].options.inbound_format || 'e164'}; sip.authorizing_id = doc._id; sip.authorizing_type = doc.pvt_type; emit(sip.username.toLowerCase(), sip);}}}"
         }
     }
     ,"filters": {
