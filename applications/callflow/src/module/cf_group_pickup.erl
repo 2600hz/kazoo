@@ -112,7 +112,6 @@ maybe_add_other_leg(Channel, Legs) ->
         Leg -> [Leg | Legs]
     end.
 
-
 -spec intercept_call(ne_binary(), whapps_call:call()) -> 'ok'.
 intercept_call(UUID, Call) ->
     _ = whapps_call_command:send_command(pickup_cmd(UUID), Call),
@@ -125,6 +124,7 @@ intercept_call(UUID, Call) ->
             lager:debug("hangup recv")
     end.
 
+-spec pickup_cmd(ne_binary()) -> wh_proplist().
 pickup_cmd(TargetCallId) ->
     [{<<"Application-Name">>, <<"call_pickup">>}
      ,{<<"Target-Call-ID">>, TargetCallId}
@@ -144,6 +144,9 @@ wait_for_pickup(Call) ->
             E
     end.
 
+-spec pickup_event(whapps_call:call(), {ne_binary(), ne_binary()}, wh_json:object()) ->
+                          {'error', 'failed' | 'timeout'} |
+                          'ok'.
 pickup_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
     lager:debug("error in dialplan: ~s", [wh_json:get_value(<<"Error-Message">>, Evt)]),
     {'error', 'failed'};
@@ -172,6 +175,8 @@ find_channels(Usernames, Call) ->
             []
     end.
 
+-spec find_sip_endpoints(wh_json:object(), whapps_call:call()) ->
+                                ne_binaries().
 find_sip_endpoints(Data, Call) ->
     case wh_json:get_value(<<"device_id">>, Data) of
         'undefined' ->
@@ -234,9 +239,12 @@ find_user_endpoints([UserId|UserIds], DeviceIds, Call) ->
     UserDeviceIds = cf_attributes:owned_by(UserId, <<"device">>, Call),
     find_user_endpoints(UserIds, lists:merge(lists:sort(UserDeviceIds), DeviceIds), Call).
 
+-spec no_users_in_group(whapps_call:call()) -> 'ok'.
 no_users_in_group(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_play(<<"system_media/pickup-no_users">>, Call).
+
+-spec no_channels_ringing(whapps_call:call()) -> 'ok'.
 no_channels_ringing(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_play(<<"system_media/pickup-no_channels">>, Call).

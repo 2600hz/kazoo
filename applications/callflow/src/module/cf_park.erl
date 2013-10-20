@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_park).
 
@@ -119,9 +120,12 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
             end
     end.
 
+-spec maybe_retrieve_slot(ne_binary(), wh_json:object(), ne_binary(), whapps_call:call()) ->
+                                 'ok' |
+                                 {'error', _}.
 maybe_retrieve_slot(SlotNumber, Slot, ParkedCall, Call) ->
     lager:info("retrieved parked call from slot, maybe bridging to caller ~s", [ParkedCall]),
-    %%publish_usurp_control(ParkedCall, Call),
+    %% publish_usurp_control(ParkedCall, Call),
     Name = wh_json:get_value(<<"CID-Name">>, Slot, <<"Parking Slot ", SlotNumber/binary>>),
     Number = wh_json:get_value(<<"CID-Number">>, Slot, SlotNumber),
     Update = [{<<"Callee-ID-Name">>, Name}
@@ -132,6 +136,7 @@ maybe_retrieve_slot(SlotNumber, Slot, ParkedCall, Call) ->
 
     wait_for_pickup(Call).
 
+-spec send_pickup(ne_binary(), whapps_call:call()) -> 'ok'.
 send_pickup(ParkedCall, Call) ->
     Req = [{<<"Unbridged-Only">>, 'true'}
            ,{<<"Application-Name">>, <<"call_pickup">>}
@@ -142,6 +147,10 @@ send_pickup(ParkedCall, Call) ->
           ],
     whapps_call_command:send_command(Req, Call).
 
+-spec wait_for_pickup(whapps_call:call()) ->
+                             'ok' |
+                             {'error', 'timeout'} |
+                             {'error', 'failed'}.
 wait_for_pickup(Call) ->
     case whapps_call_command:receive_event(10000) of
         {'ok', Evt} ->
@@ -151,6 +160,10 @@ wait_for_pickup(Call) ->
             E
     end.
 
+-spec pickup_event(whapps_call:call(), {ne_binary(), ne_binary()}, wh_json:object()) ->
+                          'ok' |
+                          {'error', 'timeout'} |
+                          {'error', 'failed'}.
 pickup_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
     lager:debug("error in dialplan: ~s", [wh_json:get_value(<<"Error-Message">>, Evt)]),
     {'error', 'failed'};

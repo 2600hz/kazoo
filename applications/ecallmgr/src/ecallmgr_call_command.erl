@@ -760,10 +760,6 @@ wait_for_conference(ConfName) ->
         {'error', 'not_found'} ->
             timer:sleep(100),
             wait_for_conference(ConfName)
-        %% waiting for big conferences for this
-        %% {'error', 'multiple_conferences', Ns} ->
-        %%     lager:debug("conference on multiple nodes: ~p", [Ns]),
-        %%     {'error', 'multiple_conferences'}
     end.
 
 %%--------------------------------------------------------------------
@@ -778,7 +774,7 @@ bridge_handle_ringback(Node, UUID, JObj) ->
             case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Ringback">>], JObj) of
                 'undefined' -> 'ok';
                 Media ->
-                    Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
+                    Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
                     lager:debug("bridge has custom ringback in channel vars: ~s", [Stream]),
                     ecallmgr_util:set(Node, UUID, [{<<"ringback">>, Stream}])
             end;
