@@ -236,7 +236,7 @@ find_user_endpoints([UserId|UserIds], DeviceIds, Call) ->
 
 no_users_in_group(Call) ->
     whapps_call_command:answer(Call),
-    whapps_call_command:b_say(<<"no users found in group">>, Call).
+    whapps_call_command:b_play(<<"system_media/pickup-no_users">>, Call).
 no_channels_ringing(Call) ->
     whapps_call_command:answer(Call),
-    whapps_call_command:b_say(<<"no channels ringing">>, Call).
+    whapps_call_command:b_play(<<"system_media/pickup-no_channels">>, Call).
