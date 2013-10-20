@@ -201,7 +201,11 @@ get_authn_req_routing(Req) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_auth_user(wh_json:object()) -> api_binary().
-get_auth_user(ApiJObj) -> wh_json:get_value(<<"Auth-User">>, ApiJObj).
+get_auth_user(ApiJObj) -> 
+    case wh_json:get_value(<<"Auth-User">>, ApiJObj) of
+        'undefined' -> 'undefined';
+         Username -> wh_util:to_lower_binary(Username)
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -216,9 +220,9 @@ get_auth_realm(ApiProp) when is_list(ApiProp) ->
     case wh_network_utils:is_ipv4(AuthRealm) 
         orelse wh_network_utils:is_ipv6(AuthRealm) 
     of
-        'false' -> AuthRealm;
+        'false' -> wh_util:to_lower_binary(AuthRealm);
         'true' ->
             [_ToUser, ToDomain] = binary:split(props:get_value(<<"To">>, ApiProp), <<"@">>),
-            ToDomain
+            wh_util:to_lower_binary(ToDomain)
     end;
 get_auth_realm(ApiJObj) -> get_auth_realm(wh_json:to_proplist(ApiJObj)).

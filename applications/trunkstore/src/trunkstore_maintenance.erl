@@ -83,7 +83,8 @@ create_credit_doc(AcctDB, AcctID, TSJObj) ->
     couch_mgr:save_doc(AcctDB, Transaction).
 
 account_exists_with_realm(Realm) ->
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, [{<<"key">>, Realm}]) of
+    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Realm)}],
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, ViewOptions) of
         {ok, []} -> false;
         {ok, [AcctObj]} -> {true, wh_json:get_value([<<"value">>, <<"account_db">>], AcctObj), wh_json:get_value([<<"value">>, <<"account_id">>], AcctObj)};
         {error, _E} ->

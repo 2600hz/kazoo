@@ -21,7 +21,7 @@
             "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.pvt_api_key, {'account_id': doc.pvt_account_id}); }"
         },
         "listing_by_realm": {
-            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.realm, {'account_id': doc.pvt_account_id, 'account_db': doc.pvt_account_db}); }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.realm.toLowerCase(), {'account_id': doc.pvt_account_id, 'account_db': doc.pvt_account_db}); }"
         },
         "listing_by_name": {
             "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var name = doc.name.toLowerCase(); name = name.replace(/[^a-z0-9]/g, ''); emit(name, {'account_id': doc.pvt_account_id, 'account_db': doc.pvt_account_db}); }"

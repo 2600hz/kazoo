@@ -443,7 +443,7 @@ is_sip_creds_unique(AccountDb, Realm, Username, DeviceId) ->
         andalso is_creds_global_unique(Realm, Username, DeviceId).
 
 is_creds_locally_unique(AccountDb, Username, DeviceId) ->
-    ViewOptions = [{<<"key">>, Username}],
+    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Username)}],
     case couch_mgr:get_results(AccountDb, <<"devices/sip_credentials">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= DeviceId;
@@ -452,7 +452,10 @@ is_creds_locally_unique(AccountDb, Username, DeviceId) ->
     end.
 
 is_creds_global_unique(Realm, Username, DeviceId) ->
-    ViewOptions = [{<<"key">>, [Realm, Username]}],
+    ViewOptions = [{<<"key">>, [wh_util:to_lower_binary(Realm)
+                                , wh_util:to_lower_binary(Username)
+                               ]
+                   }],
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= DeviceId;

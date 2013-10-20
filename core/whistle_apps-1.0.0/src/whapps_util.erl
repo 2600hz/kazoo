@@ -225,7 +225,8 @@ is_account_db(_) -> 'false'.
                                   {'ok', wh_json:key()} |
                                   {'multiples', wh_json:key()} |
                                   {'error', 'not_found'}.
-get_account_by_realm(Realm) ->
+get_account_by_realm(RawRealm) ->
+    Realm = wh_util:to_lower_binary(RawRealm),
     case wh_cache:peek(?ACCT_BY_REALM_CACHE(Realm)) of
         {'ok', Ok} -> Ok;
         {'error', 'not_found'} ->
