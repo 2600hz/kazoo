@@ -47,4 +47,5 @@ acquire_number(Number) -> Number.
 %% @end
 %%--------------------------------------------------------------------
 -spec disconnect_number/1 :: (wnm_number()) -> wnm_number().
-disconnect_number(Number) -> Number.
+disconnect_number(Number) -> 
+	Number#number{state = <<"released">>, reserve_history=ordsets:new(), hard_delete=true}.
