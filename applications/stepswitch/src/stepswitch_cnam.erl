@@ -225,7 +225,7 @@ make_request(Number, JObj) ->
     Method = get_http_method(),
     Headers = get_http_headers(),
     HTTPOptions = get_http_options(Url),
-    case ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions) of
+    case ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions, 1500) of
         {'ok', Status, _, ResponseBody} when size (ResponseBody) > 18 ->
             lager:debug("cnam lookup for ~p returned ~p: ~p", [Number, Status, ResponseBody]),
             binary:part(ResponseBody, 0, 18);
@@ -276,6 +276,7 @@ get_http_headers() ->
 get_http_options(Url) ->
     Defaults = [{'response_format', 'binary'}
                 ,{'connect_timeout', 500}
+                ,{'inactivity_timeout', 1500}
                ],
     Routines = [fun maybe_enable_ssl/2
                 ,fun maybe_enable_auth/2
