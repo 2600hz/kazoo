@@ -280,7 +280,7 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
             %%   into our mailbox for 1 second...
             lager:debug("buffering call events for 1 second post transfer"),
             timer:sleep(1000),
-            {'noreply', State}
+            {'noreply', State};
         {_, _} ->
             process_channel_event(Props),
             {'noreply', State}
