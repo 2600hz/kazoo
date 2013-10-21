@@ -530,13 +530,8 @@ released(#number{state = <<"reserved">>}=Number) ->
                 ,fun(#number{module_name=ModuleName, prev_assigned_to=AssignedTo, reserve_history=ReserveHistory}=N) ->
                     History = ordsets:del_element(AssignedTo, ReserveHistory),
                     case ordsets:to_list(History) of
-                        [] when ModuleName =:= wnm_local ->
-                            lager:debug("flagging released local number for hard delete", []),
-                            N#number{state = <<"released">>, reserve_history=ordsets:new(), hard_delete=true};
-                        [] ->
-                            lager:debug("moving ~p number to number_manager.released_state '~s'", [ModuleName, NewState]),
-                            N#number{state = NewState, reserve_history=ordsets:new()};
-                        [PrevReservation|_] ->
+						[] -> ModuleName:disconnect_number(N);
+						[PrevReservation|_] ->
                             lager:debug("unwinding reservation history, reserving on account ~s", [PrevReservation]),
                             N#number{reserve_history=History
                                      ,assigned_to=PrevReservation
@@ -562,12 +557,7 @@ released(#number{state = <<"in_service">>}=Number) ->
                 ,fun(#number{module_name=ModuleName, prev_assigned_to=AssignedTo, reserve_history=ReserveHistory}=N) ->
                     History = ordsets:del_element(AssignedTo, ReserveHistory),
                     case ordsets:to_list(History) of
-                        [] when ModuleName =:= wnm_local ->
-                            lager:debug("flagging local number for hard delete", []),
-                            N#number{state = <<"released">>, reserve_history=ordsets:new(), hard_delete=true};
-                        [] ->
-                            lager:debug("moving ~p number to number_manager.released_state '~s'", [ModuleName, NewState]),
-                            N#number{state = NewState, reserve_history=ordsets:new()};
+						[] -> ModuleName:disconnect_number(N);
                         [PrevReservation|_] ->
                             lager:debug("unwinding reservation history, reserving on account ~s", [PrevReservation]),
                             N#number{reserve_history=History
