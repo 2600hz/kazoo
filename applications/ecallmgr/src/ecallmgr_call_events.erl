@@ -272,6 +272,15 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
         {?CHANNEL_MOVE_RELEASED_EVENT_BIN, _} ->
             lager:debug("channel move released call on our node", []),
             {'stop', 'normal', State};
+        {<<"sofia::transferee">>, _} ->
+            process_channel_event(Props),
+            %% NOTE: if we are the transferee upstream apps need
+            %%   to unbind from the C leg call events and bind to
+            %%   our A leg events.  Give them time by buffering 
+            %%   into our mailbox for 1 second...
+            lager:debug("buffering call events for 1 second post transfer"),
+            timer:sleep(1000),
+            {'noreply', State}
         {_, _} ->
             process_channel_event(Props),
             {'noreply', State}
