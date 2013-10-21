@@ -19,7 +19,7 @@
 %% Helper macro for declaring children of supervisor
 -define(POOL(N),  {N, {'poolboy', 'start_link', [[{'name', {'local', N}}
                                                   ,{'worker_module', 'fax_worker'}
-                                                  ,{'size', 5}
+                                                  ,{'size', whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 5)}
                                                   ,{'max_overflow', 0}
                                                  ]]}
                    ,'permanent', 5000, 'worker', ['poolboy']}).
