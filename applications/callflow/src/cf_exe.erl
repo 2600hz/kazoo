@@ -73,7 +73,7 @@
 start_link(Call) ->
     CallId = whapps_call:call_id(Call),
     Bindings = [{'call', [{'callid', CallId}
-                          ,{'restrict_to', ['events', 'cdr', 'destroy_channel', 'publisher_usurp']}
+                          ,{'restrict_to', ['events', 'cdr', 'destroy_channel', 'control_usurp']}
                          ]}
                 ,{'self', []}
                ],
@@ -408,26 +408,30 @@ handle_info('initialize', #state{call=Call}) ->
 handle_info({'DOWN', Ref, 'process', Pid, 'normal'}, #state{cf_module_pid={Pid, Ref}
                                                             ,call=Call
                                                            }=State) ->
+    erlang:demonitor(Ref, ['flush']),
     lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
     {'noreply', State#state{cf_module_pid='undefined'}};
 
 handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
                                                            ,call=Call
                                                           }=State) ->
+    erlang:demonitor(Ref, ['flush']),
     LastAction = whapps_call:kvs_fetch('cf_last_action', Call),
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
     ?MODULE:continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
 
-handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_pid={Pid, _Ref}
+handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_pid={Pid, Ref}
                                             ,call=Call
                                            }=State) ->
+    erlang:demonitor(Ref, ['flush']),
     lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
     {'noreply', State#state{cf_module_pid='undefined'}};
 
-handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, _Ref}
+handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
                                            ,call=Call
                                           }=State) ->
+    erlang:demonitor(Ref, ['flush']),
     LastAction = whapps_call:kvs_fetch('cf_last_action', Call),
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
     ?MODULE:continue(self()),
@@ -469,7 +473,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
             'ignore';
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
             _ = case whapps_call:custom_channel_var(<<"Fetch-ID">>, Call)
-                    =:= wh_json:get_value(<<"Fetch-ID">>, JObj) 
+                    =:= wh_json:get_value(<<"Fetch-ID">>, JObj)
                 of
                     'false' -> control_usurped(Self);
                     'true' -> 'ok'

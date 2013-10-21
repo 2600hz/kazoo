@@ -131,8 +131,7 @@ send_cmd(Node, UUID, AppName, Args) ->
 
 -spec get_expires(wh_proplist()) -> integer().
 get_expires(Props) ->
-    Expiry = wh_util:to_integer(props:get_value(<<"Expires">>, Props
-                                                ,props:get_value(<<"expires">>, Props, 300))),
+    Expiry = wh_util:to_integer(props:get_first_defined([<<"Expires">>, <<"expires">>], Props, 300)),
     round(Expiry * 1.25).
 
 -spec get_interface_properties(atom()) -> wh_proplist().

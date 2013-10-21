@@ -20,7 +20,7 @@
          ,exists/1
          ,import_moh/1
          ,set_account_id/2
-         ,fetch/1
+         ,fetch/1, fetch/2
          ,renew/2
          ,to_json/1
          ,to_props/1
@@ -60,14 +60,29 @@ start_link(Node) ->
 start_link(Node, Options) ->
     gen_server:start_link(?MODULE, [Node, Options], []).
 
+-type fetch_resp() :: wh_json:object() |
+                      wh_proplist() |
+                      channel().
+-type channel_format() :: 'json' | 'proplist' | 'record'.
+
 -spec fetch(ne_binary()) ->
-                   {'ok', wh_json:object()} |
+                   {'ok', fetch_resp()} |
+                   {'error', 'not_found'}.
+-spec fetch(ne_binary(), channel_format()) ->
+                   {'ok', fetch_resp()} |
                    {'error', 'not_found'}.
 fetch(UUID) ->
+    fetch(UUID, 'json').
+fetch(UUID, Format) ->
     case ets:lookup(?CHANNELS_TBL, UUID) of
-        [Channel] -> {'ok', to_json(Channel)};
+        [Channel] -> {'ok', format(Format, Channel)};
         _Else -> {'error', 'not_found'}
     end.
+
+-spec format(channel_format(), channel()) -> fetch_resp().
+format('json', Channel) -> to_json(Channel);
+format('proplist', Channel) -> to_props(Channel);
+format('record', Channel) -> Channel.
 
 -spec node(ne_binary()) ->
                   {'ok', atom()} |
@@ -156,31 +171,32 @@ to_json(Channel) ->
 
 -spec to_props(channel()) -> wh_proplist().
 to_props(Channel) ->
-    [{<<"uuid">>, Channel#channel.uuid}
-     ,{<<"destination">>, Channel#channel.destination}
-     ,{<<"direction">>, Channel#channel.direction}
-     ,{<<"account_id">>, Channel#channel.account_id}
-     ,{<<"account_billing">>, Channel#channel.account_billing}
-     ,{<<"authorizing_id">>, Channel#channel.authorizing_id}
-     ,{<<"authorizing_type">>, Channel#channel.authorizing_type}
-     ,{<<"owner_id">>, Channel#channel.owner_id}
-     ,{<<"resource_id">>, Channel#channel.resource_id}
-     ,{<<"presence_id">>, Channel#channel.presence_id}
-     ,{<<"fetch_id">>, Channel#channel.fetch_id}
-     ,{<<"bridge_id">>, Channel#channel.bridge_id}
-     ,{<<"precedence">>, Channel#channel.precedence}
-     ,{<<"reseller_id">>, Channel#channel.reseller_id}
-     ,{<<"reseller_billing">>, Channel#channel.reseller_billing}
-     ,{<<"realm">>, Channel#channel.realm}
-     ,{<<"username">>, Channel#channel.username}
-     ,{<<"answered">>, Channel#channel.answered}
-     ,{<<"node">>, Channel#channel.node}
-     ,{<<"timestamp">>, Channel#channel.timestamp}
-     ,{<<"profile">>, Channel#channel.profile}
-     ,{<<"context">>, Channel#channel.context}
-     ,{<<"dialplan">>, Channel#channel.dialplan}
-     ,{<<"other_leg">>, Channel#channel.other_leg}
-    ].
+    props:filter_undefined(
+      [{<<"uuid">>, Channel#channel.uuid}
+       ,{<<"destination">>, Channel#channel.destination}
+       ,{<<"direction">>, Channel#channel.direction}
+       ,{<<"account_id">>, Channel#channel.account_id}
+       ,{<<"account_billing">>, Channel#channel.account_billing}
+       ,{<<"authorizing_id">>, Channel#channel.authorizing_id}
+       ,{<<"authorizing_type">>, Channel#channel.authorizing_type}
+       ,{<<"owner_id">>, Channel#channel.owner_id}
+       ,{<<"resource_id">>, Channel#channel.resource_id}
+       ,{<<"presence_id">>, Channel#channel.presence_id}
+       ,{<<"fetch_id">>, Channel#channel.fetch_id}
+       ,{<<"bridge_id">>, Channel#channel.bridge_id}
+       ,{<<"precedence">>, Channel#channel.precedence}
+       ,{<<"reseller_id">>, Channel#channel.reseller_id}
+       ,{<<"reseller_billing">>, Channel#channel.reseller_billing}
+       ,{<<"realm">>, Channel#channel.realm}
+       ,{<<"username">>, Channel#channel.username}
+       ,{<<"answered">>, Channel#channel.answered}
+       ,{<<"node">>, Channel#channel.node}
+       ,{<<"timestamp">>, Channel#channel.timestamp}
+       ,{<<"profile">>, Channel#channel.profile}
+       ,{<<"context">>, Channel#channel.context}
+       ,{<<"dialplan">>, Channel#channel.dialplan}
+       ,{<<"other_leg">>, Channel#channel.other_leg}
+      ]).
 
 %%%===================================================================
 %%% gen_server callbacks

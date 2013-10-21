@@ -50,7 +50,7 @@
 -record(channel, {uuid :: api_binary() | '$1' | '_'
                   ,destination :: api_binary() | '_'
                   ,direction :: api_binary() | '$1' | '_'
-                  ,account_id :: api_binary() | '$2' | '_'
+                  ,account_id :: api_binary() | '$1' | '$2' | '_'
                   ,account_billing :: api_binary() | '$7' | '_'
                   ,authorizing_id :: api_binary() | '$1' | '$3' | '_'
                   ,authorizing_type :: api_binary() | '_'
@@ -206,8 +206,14 @@
                                ,{<<"Fax-Identity-Name">>, <<"fax_header">>}
                                ,{<<"sip_rh_X-Redirect-Server">>, <<"sip_rh_X-Redirect-Server">>}
                                ,{<<"park_after_bridge">>, <<"park_after_bridge">>}
+                               ,{<<"Park-After-Pickup">>, <<"park_after_bridge">>}
+                               ,{<<"park_after_pickup">>, <<"park_after_bridge">>}
                                ,{<<"continue_on_fail">>, <<"continue_on_fail">>}
                                ,{<<"continue_on_cancel">>, <<"continue_on_cancel">>}
+                               ,{<<"Unbridged-Only">>, <<"intercept_unbridged_only">>}
+                               ,{<<"intercept_unbridged_only">>, <<"intercept_unbridged_only">>}
+                               ,{<<"Unanswered-Only">>, <<"intercept_unanswered_only">>}
+                               ,{<<"intercept_unanswered_only">>, <<"intercept_unanswered_only">>}
                                ,{<<"conference_member_nospeak_relational">>, <<"conference_member_nospeak_relational">>}
                                ,{<<"conference_member_nospeak_check">>, <<"conference_member_nospeak_check">>}
                               ]).

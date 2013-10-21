@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_park).
 
@@ -77,7 +78,7 @@ handle(Data, Call) ->
                     case retrieve(SlotNumber, ParkedCalls, Call) of
                         {'hungup', JObj} -> park_call(SlotNumber, Slot, JObj, 'undefined', Call);
                         {'error', _} -> park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Call);
-                        {'ok', _} -> 'ok'
+                        {'ok', _} -> cf_exe:continue(Call)
                     end
             end;
         'nomatch' ->
@@ -88,19 +89,6 @@ handle(Data, Call) ->
             lager:info("call was the result of an attended-transfer completion, updating call id"),
             {'ok', FoundInSlotNumber, Slot} = update_call_id(Replaces, ParkedCalls, Call),
             wait_for_pickup(FoundInSlotNumber, wh_json:get_value(<<"Ringback-ID">>, Slot), Call)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Determine the hostname of the switch
-%% @end
-%%--------------------------------------------------------------------
--spec get_channel_status(api_binary()) -> wh_json:object().
-get_channel_status(CallId) ->
-    case whapps_call_command:b_channel_status(CallId) of
-        {'error', _} -> wh_json:new();
-        {'ok', JObj} -> JObj
     end.
 
 %%--------------------------------------------------------------------
@@ -119,75 +107,71 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
             lager:info("the parking slot ~s is empty, unable to retrieve caller", [SlotNumber]),
             {'error', 'slot_empty'};
         Slot ->
-            CallerNode = whapps_call:switch_nodename(Call),
             ParkedCall = wh_json:get_ne_value(<<"Call-ID">>, Slot),
-            lager:info("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller", [SlotNumber, ParkedCall]),
-            ChannelStatus = get_channel_status(ParkedCall),
-            case wh_json:get_ne_value(<<"Switch-Nodename">>, ChannelStatus) of
-                'undefined' ->
-                    lager:info("the parked call has hungup, but is was still listed in the slot"),
-                    case cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)) of
-                        {'ok', JObj} -> {'hungup', JObj};
-                        {'error', _} -> {'hungup', ParkedCalls}
-                    end;
-                CallerNode ->
-                    ParkedCall = wh_json:get_ne_value(<<"Call-ID">>, Slot),
-                    case cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)) of
-                        {'ok', _}=Ok ->
-                            lager:info("retrieved parked call from slot, bridging to caller"),
-                            publish_usurp_control(ParkedCall, Call),
-                            Name = wh_json:get_value(<<"CID-Name">>, Slot, <<"Parking Slot ", SlotNumber/binary>>),
-                            Number = wh_json:get_value(<<"CID-Number">>, Slot, SlotNumber),
-                            Update = [{<<"Callee-ID-Name">>, Name}
-                                      ,{<<"Callee-ID-Number">>, Number}
-                                     ],
-                            _ = whapps_call_command:set(wh_json:from_list(Update), 'undefined', Call),
-                            _ = whapps_call_command:answer(Call),
-                            _ = whapps_call_command:b_pickup(ParkedCall, Call),
-                            cf_exe:continue(Call),
-                            Ok;
-                        %% if we cant clean up the slot then someone beat us to it
-                        {'error', _R}=E ->
-                            lager:info("unable to remove parked call from slot: ~p", [_R]),
-                            E
-                    end;
-                OtherNode ->
-                    lager:info("the parked call is on node ~s but this call is on node ~s, redirecting", [OtherNode, CallerNode]),
-                    URL = get_node_url(OtherNode, ChannelStatus),
-                    send_redirect(URL, Call),
-                    cf_exe:transfer(Call),
-                    {'ok', ParkedCalls}
+            lager:info("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller: ~p", [SlotNumber, ParkedCall, Slot]),
+
+            case maybe_retrieve_slot(SlotNumber, Slot, ParkedCall, Call) of
+                'ok' ->
+                    cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)),
+                    whapps_call_command:wait_for_hangup();
+                {'error', _E}=E ->
+                    lager:debug("failed to retrieve slot: ~p", [_E]),
+                    E
             end
     end.
 
--spec get_node_url(atom(), wh_json:object()) -> ne_binary().
-get_node_url(Node, JObj) ->
-    case wh_json:get_value(<<"Switch-URL">>, JObj) of
-        'undefined' ->
-            IP = get_node_ip(Node),
-            Port = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"parking_server_sip_port">>, 5060),
-            <<"sip:mod_sofia@", IP/binary, ":", Port/binary>>;
-        URL -> URL
+-spec maybe_retrieve_slot(ne_binary(), wh_json:object(), ne_binary(), whapps_call:call()) ->
+                                 'ok' |
+                                 {'error', _}.
+maybe_retrieve_slot(SlotNumber, Slot, ParkedCall, Call) ->
+    lager:info("retrieved parked call from slot, maybe bridging to caller ~s", [ParkedCall]),
+    %% publish_usurp_control(ParkedCall, Call),
+    Name = wh_json:get_value(<<"CID-Name">>, Slot, <<"Parking Slot ", SlotNumber/binary>>),
+    Number = wh_json:get_value(<<"CID-Number">>, Slot, SlotNumber),
+    Update = [{<<"Callee-ID-Name">>, Name}
+              ,{<<"Callee-ID-Number">>, Number}
+             ],
+    _ = whapps_call_command:set(wh_json:from_list(Update), 'undefined', Call),
+    _ = send_pickup(ParkedCall, Call),
+
+    wait_for_pickup(Call).
+
+-spec send_pickup(ne_binary(), whapps_call:call()) -> 'ok'.
+send_pickup(ParkedCall, Call) ->
+    Req = [{<<"Unbridged-Only">>, 'true'}
+           ,{<<"Application-Name">>, <<"call_pickup">>}
+           ,{<<"Target-Call-ID">>, ParkedCall}
+           ,{<<"Continue-On-Fail">>, 'false'}
+           ,{<<"Continue-On-Cancel">>, 'true'}
+           ,{<<"Park-After-Pickup">>, 'false'}
+          ],
+    whapps_call_command:send_command(Req, Call).
+
+-spec wait_for_pickup(whapps_call:call()) ->
+                             'ok' |
+                             {'error', 'timeout'} |
+                             {'error', 'failed'}.
+wait_for_pickup(Call) ->
+    case whapps_call_command:receive_event(10000) of
+        {'ok', Evt} ->
+            pickup_event(Call, wh_util:get_event_type(Evt), Evt);
+        {'error', 'timeout'}=E ->
+            lager:debug("timed out"),
+            E
     end.
 
--spec send_redirect(ne_binary(), whapps_call:call()) -> 'ok'.
-send_redirect(URL, Call) ->
-    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"redirect_via_proxy">>, 'true') of
-        'true' -> redirect_via_proxy(URL, Call);
-        'false' -> redirect_via_endpoint(URL, Call)
-    end.
-
--spec redirect_via_proxy(ne_binary(), whapps_call:call()) -> 'ok'.
-redirect_via_proxy(URL, Call) ->
-    Contact = <<"sip:", (whapps_call:to_user(Call))/binary
-                ,"@", (whapps_call:to_realm(Call))/binary>>,
-    CorrectedURL = binary:replace(URL, <<"mod_sofia@">>, <<>>),
-    whapps_call_command:redirect(Contact, CorrectedURL, Call).
-
--spec redirect_via_endpoint(ne_binary(), whapps_call:call()) -> 'ok'.
-redirect_via_endpoint(URL, Call) ->
-    CorrectedURL = binary:replace(URL, <<"mod_sofia">>, whapps_call:to_user(Call)),
-    whapps_call_command:redirect(CorrectedURL, Call).
+-spec pickup_event(whapps_call:call(), {ne_binary(), ne_binary()}, wh_json:object()) ->
+                          'ok' |
+                          {'error', 'timeout'} |
+                          {'error', 'failed'}.
+pickup_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
+    lager:debug("error in dialplan: ~s", [wh_json:get_value(<<"Error-Message">>, Evt)]),
+    {'error', 'failed'};
+pickup_event(_Call, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}, _Evt) ->
+    lager:debug("channel bridged to ~s", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, _Evt)]);
+pickup_event(Call, _Type, _Evt) ->
+    lager:debug("unhandled evt ~p", [_Type]),
+    wait_for_pickup(Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -382,7 +366,9 @@ update_call_id(_, _, _, Loops) when Loops > 5 ->
 update_call_id(Replaces, ParkedCalls, Call, Loops) ->
     CallId = cf_exe:callid(Call),
     lager:info("update parked call id ~s with new call id ~s", [Replaces, CallId]),
+
     Slots = wh_json:get_value(<<"slots">>, ParkedCalls, wh_json:new()),
+
     case find_slot_by_callid(Slots, Replaces) of
         {'ok', SlotNumber, Slot} ->
             lager:info("found parked call id ~s in slot ~s", [Replaces, SlotNumber]),
@@ -406,6 +392,7 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
                          end
                        ],
             UpdatedSlot = lists:foldr(fun(F, J) -> F(J) end, Slot, Updaters),
+
             JObj = wh_json:set_value([<<"slots">>, SlotNumber], UpdatedSlot, ParkedCalls),
             case couch_mgr:save_doc(whapps_call:account_db(Call), JObj) of
                 {'ok', _} ->
@@ -571,26 +558,6 @@ wait_for_pickup(SlotNumber, RingbackId, Call) ->
             _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
             cf_exe:transfer(Call)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Given a freeswitch node name try to determine the IP address,
-%% assumes that
-%% a) the hostname is resolvable by at least this server
-%% b) the IP is routable by the phone
-%% c) and above, that the port is 5060
-%% @end
-%%--------------------------------------------------------------------
--spec get_node_ip(ne_binary()) -> ne_binary().
-get_node_ip(Node) ->
-    [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
-    {'ok', Addresses} = inet:getaddrs(wh_util:to_list(Hostname), 'inet'),
-    {A, B, C, D} = hd(Addresses),
-    <<(wh_util:to_binary(A))/binary, "."
-      ,(wh_util:to_binary(B))/binary, "."
-      ,(wh_util:to_binary(C))/binary, "."
-      ,(wh_util:to_binary(D))/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private

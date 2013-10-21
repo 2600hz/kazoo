@@ -12,7 +12,7 @@
 -define(DEFAULT_ADMIN_PORT, 5986).
 -define(IBROWSE_OPTS, [{'max_sessions', 512}
                        ,{'max_pipeline_size', 10}
-                       ,{'connect_timeout', 100}
+                       ,{'connect_timeout', 300}
                       ]).
 
 -define(WH_COUCH_CACHE, 'whistle_couch_cache').

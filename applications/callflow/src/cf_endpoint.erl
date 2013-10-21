@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -335,7 +335,9 @@ flush(Db, Id) ->
          | wh_api:default_headers(<<"configuration">>, <<"doc_edited">>
                                       ,?APP_NAME, ?APP_VERSION)
         ],
-    Fun = fun(P) -> wapi_conf:publish_doc_update('edited', Db, <<"device">>, Id, P) end,
+    Fun = fun(P) ->
+                  wapi_conf:publish_doc_update('edited', Db, <<"device">>, Id, P)
+          end,
     whapps_util:amqp_pool_send(Props, Fun).
 
 %%--------------------------------------------------------------------

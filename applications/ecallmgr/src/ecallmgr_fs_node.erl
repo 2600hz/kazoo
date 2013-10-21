@@ -14,8 +14,10 @@
 -export([start_link/1, start_link/2]).
 -export([handle_reload_acls/2]).
 -export([handle_reload_gtws/2]).
--export([sync_channels/1]).
--export([sync_interface/1]).
+-export([sync_channels/1
+         ,sync_interface/1
+         ,sync_capabilities/1
+        ]).
 -export([sip_url/1]).
 -export([sip_external_ip/1]).
 -export([fs_node/1]).
@@ -63,9 +65,55 @@
                    }).
 -type interface() :: #interface{}.
 
+-define(DEFAULT_CAPABILITIES, [wh_json:from_list([{<<"module">>, <<"mod_conference">>}
+                                                  ,{<<"is_loaded">>, 'false'}
+                                                  ,{<<"capability">>, <<"conference">>}
+                                                 ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_channel_move">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"channel_move">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_http_cache">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"http_cache">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_dptools">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"dialplan">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_sofia">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"sip">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_spandsp">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"fax">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_flite">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"tts">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_freetdm">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"freetdm">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_skypopen">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"skype">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_dingaling">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"xmpp">>}
+                                                  ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_skinny">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"skinny">>}
+                                                  ])
+                              ]).
+
 -record(state, {node :: atom()
-                ,options = [] :: wh_proplist()
-                ,interface = #interface{} :: interface()
+                ,options = []                         :: wh_proplist()
+                ,interface = #interface{}             :: interface()
                }).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
@@ -91,6 +139,8 @@
 
 -define(FS_TIMEOUT, 5000).
 
+-type fs_node() :: atom() | ne_binary() | pid().
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -102,8 +152,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(atom()) -> {'ok', pid()} | {'error', term()}.
--spec start_link(atom(), proplist()) -> {'ok', pid()} | {'error', term()}.
+-spec start_link(atom()) -> startlink_ret().
+-spec start_link(atom(), wh_proplist()) -> startlink_ret().
 
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
@@ -114,11 +164,17 @@ start_link(Node, Options) ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Node, Options]).
 
--spec sync_channels(pid()) -> 'ok'.
-sync_channels(Srv) -> gen_server:cast(Srv, 'sync_channels').
+-spec sync_channels(fs_node()) -> 'ok'.
+sync_channels(Srv) ->
+    gen_server:cast(find_srv(Srv), 'sync_channels').
 
--spec sync_interface(pid()) -> 'ok'.
-sync_interface(Srv) -> gen_server:cast(Srv, 'sync_interface').
+-spec sync_interface(fs_node()) -> 'ok'.
+sync_interface(Srv) ->
+    gen_server:cast(find_srv(Srv), 'sync_interface').
+
+-spec sync_capabilities(fs_node()) -> 'ok'.
+sync_capabilities(Srv) ->
+    gen_server:cast(find_srv(Srv), 'sync_capabilities').
 
 -spec hostname(pid()) -> api_binary().
 hostname(Srv) ->
@@ -129,13 +185,13 @@ hostname(Srv) ->
             Hostname
     end.
 
--spec sip_url(pid()) -> api_binary().
+-spec sip_url(fs_node()) -> api_binary().
 sip_url(Srv) ->
-    gen_server:call(Srv, 'sip_url').
+    gen_server:call(find_srv(Srv), 'sip_url').
 
--spec sip_external_ip(pid()) -> api_binary().
+-spec sip_external_ip(fs_node()) -> api_binary().
 sip_external_ip(Srv) ->
-    gen_server:call(Srv, 'sip_external_ip').
+    gen_server:call(find_srv(Srv), 'sip_external_ip').
 
 -spec handle_reload_acls(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reload_acls(_JObj, Props) ->
@@ -160,12 +216,18 @@ handle_reload_gtws(_JObj, Props) ->
         {'error', _E} -> lager:debug("sofia ~s failed with error: ~p", [Args, _E])
     end.
 
--spec fs_node(pid()) -> atom().
+-spec fs_node(fs_node()) -> atom().
 fs_node(Srv) ->
-    case catch(gen_server:call(Srv, 'node', ?FS_TIMEOUT)) of
+    case catch(gen_server:call(find_srv(Srv), 'node', ?FS_TIMEOUT)) of
         {'EXIT', _} -> 'undefined';
         Else -> Else
     end.
+
+-spec find_srv(fs_node()) -> pid().
+find_srv(Pid) when is_pid(Pid) -> Pid;
+find_srv(Node) when is_binary(Node) -> find_srv(wh_util:to_atom(Node));
+find_srv(Node) when is_atom(Node) ->
+    ecallmgr_fs_node_sup:node_srv(ecallmgr_fs_sup:find_node(Node)).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -188,7 +250,9 @@ init([Node, Options]) ->
     lager:info("starting new fs node listener for ~s", [Node]),
     gproc:reg({'p', 'l', 'fs_node'}),
     sync_channels(self()),
-    run_start_cmds(Node),
+    _Pid = run_start_cmds(Node),
+    lager:debug("running start commands in ~p", [_Pid]),
+
     {'ok', #state{node=Node, options=Options}}.
 
 %%--------------------------------------------------------------------
@@ -225,6 +289,9 @@ handle_call('node', _, #state{node=Node}=State) ->
 handle_cast('sync_interface', #state{node=Node}=State) ->
     Interface = interface_from_props(ecallmgr_util:get_interface_properties(Node)),
     {'noreply', State#state{interface=Interface}};
+handle_cast('sync_capabilities', #state{node=Node}=State) ->
+    _ = spawn(fun() -> probe_capabilities(Node, ecallmgr_config:get(<<"capabilities">>, ?DEFAULT_CAPABILITIES)) end),
+    {'noreply', State};
 handle_cast('sync_channels', #state{node=Node}=State) ->
     Channels = [wh_json:get_value(<<"uuid">>, J)
                 || J <- channels_as_json(Node)
@@ -309,7 +376,8 @@ run_start_cmds(Node) ->
                            [] -> 'ok';
                            Errs -> print_api_responses(Errs)
                        end,
-                       sync_interface(Parent)
+                       sync_interface(Parent),
+                       sync_capabilities(Parent)
                end).
 
 -spec process_cmds(atom(), wh_json:object() | ne_binaries()) -> cmd_results().
@@ -450,4 +518,26 @@ split_codes(Key, Props) ->
      || Codec <- binary:split(props:get_value(Key, Props, <<>>), <<",">>, [global])
             ,not wh_util:is_empty(Codec)
     ].
-    
+
+-spec probe_capabilities(atom(), wh_json:objects()) -> 'ok'.
+probe_capabilities(Node, PossibleCapabilities) ->
+    lists:foreach(fun(Capability) ->
+                            maybe_add_capability(Node, Capability)
+                    end, PossibleCapabilities).
+
+-spec maybe_add_capability(atom(), wh_json:object()) -> any().
+maybe_add_capability(Node, Capability) ->
+    Module = wh_json:get_value(<<"module">>, Capability),
+    lager:debug("probing ~s about ~s", [Node, Module]),
+    case freeswitch:api(Node, 'module_exists', wh_util:to_binary(Module)) of
+        {'ok', Maybe} ->
+            case wh_util:is_true(Maybe) of
+                'true' ->
+                    lager:debug("adding capability of ~s", [Module]),
+                    ecallmgr_fs_nodes:add_capability(Node, wh_json:set_value(<<"is_loaded">>, 'true', Capability));
+                'false' ->
+                    ecallmgr_fs_nodes:add_capability(Node, wh_json:set_value(<<"is_loaded">>, 'false', Capability))
+            end;
+        {'error', _E} ->
+            lager:debug("failed to probe node ~s: ~p", [Node, _E])
+    end.
