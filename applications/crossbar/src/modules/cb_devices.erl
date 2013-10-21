@@ -37,6 +37,7 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
 -define(CB_LIST, <<"devices/crossbar_listing">>).
+-define(CB_LIST_MAC, <<"devices/listing_by_macaddress">>).
 
 %%%===================================================================
 %%% API
@@ -174,24 +175,26 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, DeviceId, <<"quickcall">>, _
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(#cb_context{}=Context, DeviceId) ->
-    Context1 = crossbar_doc:save(Context),
-    _ = maybe_aggregate_device(DeviceId, Context1),
-    _ = provisioner_util:maybe_provision(Context1),
-    _ = maybe_flush_caches(Context1),
-    Context1.
+    case changed_mac_address(Context) of
+        'true' -> 
+            Context1 = crossbar_doc:save(Context),
+            _ = maybe_aggregate_device(DeviceId, Context1),
+            _ = provisioner_util:maybe_provision(Context1),
+            Context1;
+        'false' ->
+            error_used_mac_address(Context)
+    end.
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(#cb_context{}=Context) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_device('undefined', Context1),
     _ = provisioner_util:maybe_provision(Context1),
-    _ = maybe_flush_caches(Context1),
     Context1.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(#cb_context{}=Context, DeviceId) ->
     Context1 = crossbar_doc:delete(Context),
-    _ = maybe_flush_caches(Context1),
     _ = provisioner_util:maybe_delete_provision(Context),
     _ = maybe_remove_aggregate(DeviceId, Context),
     Context1.
@@ -218,8 +221,51 @@ load_device_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
+validate_request('undefined', Context) ->
+    check_mac_address('undefined', Context);
 validate_request(DeviceId, Context) ->
     prepare_outbound_flags(DeviceId, Context).
+
+
+-spec changed_mac_address(cb_context:context()) -> boolean().
+changed_mac_address(#cb_context{req_data=JObj, storage=Storage, db_name=DbName}) ->
+    NewAddress = wh_json:get_ne_value(<<"mac_address">>, JObj),
+    OldAddress = wh_json:get_ne_value(<<"mac_address">>, props:get_value('db_doc', Storage)),
+    case NewAddress =:= OldAddress of
+        'true' -> 'true';
+        'false' -> 
+            unique_mac_address(NewAddress, DbName)
+    end.
+
+-spec check_mac_address(api_binary(), cb_context:context()) -> cb_context:context().
+check_mac_address(DeviceId, #cb_context{req_data=JObj, db_name=DbName}=Context) ->
+    case unique_mac_address(wh_json:get_ne_value(<<"mac_address">>, JObj), DbName) of
+        'true' -> 
+            prepare_outbound_flags(DeviceId, Context);
+        'false' ->
+           error_used_mac_address(Context)
+    end.
+
+-spec unique_mac_address(api_binary(), cb_context:context()) -> boolean().
+unique_mac_address('undefined', _) ->
+    'true';
+unique_mac_address(MacAddress, DbName) ->
+    not(lists:member(MacAddress, get_mac_addresses(DbName))).
+
+-spec error_used_mac_address(cb_context:context()) -> cb_context:context().
+error_used_mac_address(Context) ->
+    cb_context:add_validation_error(<<"mac_address">>
+                                    ,<<"unique">>
+                                    ,<<"mac address already in use">>
+                                    ,Context).
+
+get_mac_addresses(DbName) ->
+    case couch_mgr:get_all_results(DbName, ?CB_LIST_MAC) of
+        {'ok', AdJObj} -> 
+            couch_mgr:get_result_keys(AdJObj);
+        _ -> []
+    end.
+
 
 -spec prepare_outbound_flags(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_outbound_flags(DeviceId, #cb_context{req_data=JObj}=Context) ->
@@ -324,26 +370,6 @@ maybe_validate_quickcall(#cb_context{resp_status='success'
     of
         'false' -> cb_context:add_system_error('invalid_credentials', Context);
         'true' -> Context
-    end.
-
--spec maybe_flush_caches(cb_context:context()) -> 'ok'.
-maybe_flush_caches(#cb_context{resp_status='success'
-                               ,doc=JObj
-                              }=Context) ->
-    case wh_json:is_true(<<"enabled">>, JObj, 'false') of
-        'true' -> 'ok';
-        'false' ->
-            AccountRealm = crossbar_util:get_account_realm(Context),
-            Realm = wh_json:get_ne_value([<<"sip">>, <<"realm">>], JObj, AccountRealm),
-
-            Req = [{<<"Username">>, wh_json:get_value([<<"sip">>, <<"username">>], JObj)}
-                   ,{<<"Realm">>, Realm}
-                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                  ],
-            lager:debug("sending cache flush for ~s @ ~s", [wh_json:get_value([<<"sip">>, <<"username">>], JObj)
-                                                            ,Realm
-                                                           ]),
-            whapps_util:amqp_pool_send(Req, fun wapi_registration:publish_flush/1)
     end.
 
 %%--------------------------------------------------------------------
@@ -493,9 +519,7 @@ is_ip_sip_auth_unique(IP, DeviceId) ->
 %%--------------------------------------------------------------------
 -spec maybe_aggregate_device(api_binary(), cb_context:context()) -> boolean().
 maybe_aggregate_device(DeviceId, #cb_context{resp_status='success', doc=JObj}=Context) ->
-    case wh_util:is_true(cb_context:fetch('aggregate_device', Context)) andalso
-        wh_json:is_true(<<"enabled">>, JObj, 'false')
-    of
+    case wh_util:is_true(cb_context:fetch('aggregate_device', Context)) of
         'false' ->
             maybe_remove_aggregate(DeviceId, Context);
         'true' ->
