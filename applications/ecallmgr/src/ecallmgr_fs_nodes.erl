@@ -33,6 +33,7 @@
          ,set_capability/3
          ,add_capability/2
          ,get_capability/2, get_capabilities/1, get_capabilities/2
+         ,remove_capabilities/1, remove_capability/2
         ]).
 
 -export([init/1
@@ -157,8 +158,8 @@ details(NodeName) ->
             print_details([{'undefined', Node}])
     end.
 
--spec has_capability(atom(), ne_binary()) -> boolean().
-has_capability(Node, Capability) ->
+-spec has_capability(atom(), ne_binary() | wh_json:object()) -> boolean().
+has_capability(Node, Capability) when is_binary(Capability) ->
     MatchSpec = [{#capability{node='$1'
                               ,name='$2'
                               ,is_loaded='$3'
@@ -172,7 +173,9 @@ has_capability(Node, Capability) ->
     case ets:select(?CAPABILITY_TBL, MatchSpec) of
         [] -> 'false';
         [Loaded] -> Loaded
-    end.
+    end;
+has_capability(Node, Capability) ->
+    has_capability(Node, wh_json:get_value(<<"capability">>, Capability)).
 
 -spec remove_capabilities(atom()) -> non_neg_integer().
 remove_capabilities(Node) ->
@@ -248,7 +251,10 @@ set_capability(Node, Capability, Toggle) when is_boolean(Toggle) ->
 
 -spec add_capability(atom(), wh_json:object()) -> 'ok'.
 add_capability(Node, Capability) ->
-    gen_listener:call(?MODULE, {'add_capability', Node, Capability}).
+    case has_capability(Node, Capability) of
+        'true' -> 'ok';
+        'false' -> gen_listener:call(?MODULE, {'add_capability', Node, Capability})
+    end.
 
 capability_to_json(#capability{node=Node
                                ,name=Capability

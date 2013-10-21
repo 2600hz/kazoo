@@ -578,7 +578,7 @@ maybe_answer(_Node, _UUID, 'true') -> 'ok';
 maybe_answer(Node, UUID, 'false') ->
     ecallmgr_util:send_cmd(Node, UUID, <<"answer">>, <<>>).
 
--spec call_pickup_maybe_move(atom(), ne_binary(), wh_json:object(), ne_binary(), ne_binary()) ->
+-spec call_pickup_maybe_move(atom(), ne_binary(), wh_json:object(), ne_binary(), atom()) ->
                                     {ne_binary(), ne_binary()}.
 call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
     case wh_json:is_true(<<"Move-Channel-If-Necessary">>, JObj, 'false') of

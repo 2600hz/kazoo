@@ -13,6 +13,7 @@
 
 -include("ecallmgr.hrl").
 
+-spec move(ne_binary(), atom(), atom()) -> boolean().
 move(UUID, ONode, NNode) ->
     OriginalNode = wh_util:to_atom(ONode),
     NewNode = wh_util:to_atom(NNode),
@@ -34,6 +35,9 @@ move(UUID, ONode, NNode) ->
     end.
 
 %% listens for the event from FS with the XML
+-spec wait_for_teardown(ne_binary(), atom()) ->
+                               {'ok', wh_proplist()} |
+                               {'error', 'timeout'}.
 wait_for_teardown(UUID, OriginalNode) ->
     receive
         ?CHANNEL_MOVE_RELEASED_MSG(OriginalNode, UUID, Evt) ->
@@ -71,6 +75,7 @@ resume(UUID, NewNode, Evt) ->
 %% <sip_uri><sip:user@realm:port>;tag=abc</sip_uri>
 %% So this is an awesome search/replace list to convert the '<sip:'
 %% and its corresponding '>' to %3C and %3E as they should be
+-spec fix_metadata(ne_binary()) -> ne_binary().
 fix_metadata(Meta) ->
     Replacements = [
                     {<<"\<sip\:">>, <<"%3Csip:">>}
@@ -84,6 +89,7 @@ fix_metadata(Meta) ->
                         iolist_to_binary(re:replace(MetaAcc, S, R, ['global']))
                 end, Meta, Replacements).
 
+-spec wait_for_completion(ne_binary(), atom()) -> boolean().
 wait_for_completion(UUID, NewNode) ->
     lager:debug("waiting for confirmation from ~s of move", [NewNode]),
     receive
