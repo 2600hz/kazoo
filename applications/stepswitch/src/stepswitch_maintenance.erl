@@ -14,7 +14,9 @@
 -export([reverse_lookup/1]).
 -export([flush/0]).
 -export([refresh/0]).
--export([lookup_number/1]).
+-export([lookup_number/1
+         ,number_tree/1
+        ]).
 -export([reload_resources/0]).
 -export([process_number/1
          ,process_number/2
@@ -42,9 +44,40 @@ reverse_lookup(Thing) ->
     end.
 
 pretty_print_lookup([]) -> 'ok';
-pretty_print_lookup([{Key, Value}|Props]) -> 
+pretty_print_lookup([{Key, Value}|Props]) ->
     io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]),
     pretty_print_lookup(Props).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Displays account tree when given a DID
+%% @end
+%%--------------------------------------------------------------------
+-spec number_tree(ne_binary()) -> 'ok'.
+number_tree(DID) ->
+    case stepswitch_util:lookup_number(DID) of
+        {'error', _} -> io:format("DID ~s was not found~n", [DID]);
+        {'ok', AccountId, _Props} ->
+            case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+                {'ok', AccountDoc} -> number_tree(DID, AccountDoc);
+                {'error', _E} -> io:format("failed to find account doc for ~s(~s)~n", [AccountId, DID])
+            end
+    end.
+
+-spec number_tree(ne_binary(), wh_json:object()) -> 'ok'.
+number_tree(DID, AccountDoc) ->
+    io:format("~s tree ", [DID]),
+    Tree = wh_json:get_value(<<"pvt_tree">>, AccountDoc, []),
+    print_tree(Tree),
+    io:format(" ~s(~s)~n", [wh_json:get_value(<<"name">>, AccountDoc), wh_json:get_value(<<"_id">>, AccountDoc)]).
+
+-spec print_tree(ne_binaries()) -> 'ok'.
+print_tree([]) -> 'ok';
+print_tree([AccountId|Tree]) ->
+    {'ok', AccountDoc} = couch_mgr:open_cache_doc(<<"accounts">>, AccountId),
+    io:format(" ~s(~s) ->", [wh_json:get_value(<<"name">>, AccountDoc), wh_json:get_value(<<"_id">>, AccountDoc)]),
+    print_tree(Tree).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -63,13 +96,13 @@ pretty_print_resources([Resource|Resources]) ->
     pretty_print_resources(Resources).
 
 pretty_print_resource([]) -> 'ok';
-pretty_print_resource([{_, []}|Props]) -> 
-    pretty_print_resource(Props);    
-pretty_print_resource([{Key, Values}|Props]) when is_list(Values) -> 
+pretty_print_resource([{_, []}|Props]) ->
+    pretty_print_resource(Props);
+pretty_print_resource([{Key, Values}|Props]) when is_list(Values) ->
     _ = pretty_print_resource(Props),
     io:format("~s~n", [Key]),
     print_condensed_list(Values);
-pretty_print_resource([{Key, Value}|Props]) -> 
+pretty_print_resource([{Key, Value}|Props]) ->
     io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]),
     pretty_print_resource(Props).
 
@@ -128,7 +161,7 @@ lookup_number(Number) ->
 
 -spec pretty_print_number_props(wh_proplist()) -> 'ok'.
 pretty_print_number_props([]) -> 'ok';
-pretty_print_number_props([{Key, Value}|Props]) -> 
+pretty_print_number_props([{Key, Value}|Props]) ->
     io:format("~-19s: ~s~n", [wh_util:to_binary(Key)
                               ,wh_util:to_binary(Value)
                              ]),
@@ -152,7 +185,7 @@ reload_resources() -> 'ok'.
 %%--------------------------------------------------------------------
 -spec process_number(string()) -> any().
 process_number(Number) -> process_number(Number, 'undefined').
-    
+
 -spec process_number(string(), string()) -> any().
 process_number(Number, AccountId) when not is_binary(Number) ->
     process_number(wh_util:to_binary(Number), AccountId);
@@ -168,16 +201,16 @@ process_number(Number, AccountId) ->
     Endpoints = stepswitch_resources:endpoints(Number, JObj),
     pretty_print_endpoints(Endpoints).
 
--spec pretty_print_endpoints(wh_proplists()) -> any(). 
+-spec pretty_print_endpoints(wh_proplists()) -> any().
 pretty_print_endpoints([]) -> 'ok';
 pretty_print_endpoints([Endpoint|Endpoints]) ->
     _ = pretty_print_endpoint(Endpoint),
     io:format("~n"),
     pretty_print_endpoints(Endpoints).
 
--spec pretty_print_endpoint(wh_proplist()) -> any(). 
+-spec pretty_print_endpoint(wh_proplist()) -> any().
 pretty_print_endpoint([]) -> 'ok';
-pretty_print_endpoint([{_, []}|Props]) -> 
+pretty_print_endpoint([{_, []}|Props]) ->
     pretty_print_endpoint(Props);
 pretty_print_endpoint([{Key, Values}|Props]) when is_list(Values) ->
     _ = pretty_print_endpoint(Props),
@@ -191,7 +224,7 @@ pretty_print_endpoint([{<<"Custom-Channel-Vars">>, JObj}|Props]) ->
                                   ])
      || {Key, Value} <- wh_json:to_proplist(JObj)
     ];
-pretty_print_endpoint([{Key, Value}|Props]) -> 
+pretty_print_endpoint([{Key, Value}|Props]) ->
     io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]),
     pretty_print_endpoint(Props).
 
