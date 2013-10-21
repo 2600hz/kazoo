@@ -184,7 +184,7 @@ get_sip_from(Props, <<"outbound">>) ->
                                             ], Props, ?DEFAULT_REALM),
             props:get_value(<<"variable_sip_from_uri">>, Props,
                             <<Number/binary, "@", Realm/binary>>);
-        OtherChannel -> 
+        OtherChannel ->
             lists:last(binary:split(OtherChannel, <<"/">>, ['global']))
     end;
 get_sip_from(Props, _) ->
@@ -328,6 +328,16 @@ maybe_sanitize_fs_value(_, Val) -> Val.
 set(_, _, []) -> 'ok';
 set(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V}]) ->
     ecallmgr_fs_command:set(Node, UUID, [{<<"alert_info">>, <<"intercom">>}, get_fs_key_and_value(K, V, UUID)]);
+set(Node, UUID, [{<<"Hold-Media">>, Value}]) ->
+    Media = media_path(Value, 'extant', UUID, wh_json:new()),
+    AppArg = wh_util:to_list(<<"hold_music=", Media/binary>>),
+    %% NOTE: due to how we handle hold_music we need to export
+    %%    this var rather than set...
+    _ = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+                                        ,{"execute-app-name", "export"}
+                                        ,{"execute-app-arg", AppArg}
+                                       ]),
+    'ok';
 set(Node, UUID, [{K, V}]) ->
     ecallmgr_fs_command:set(Node, UUID, [get_fs_key_and_value(K, V, UUID)]);
 set(Node, UUID, [{_, _}|_]=Props) ->
@@ -356,7 +366,7 @@ set_fold(Node, UUID, {K, V}, Acc) ->
     %% NOTE: uuid_setXXX does not support vars:
     %%   switch_channel.c:1287 Invalid data (XXX contains a variable)
     %%   so issue a set command if it is present.
-    case binary:match(FSVariable, <<"${">>) =:= 'nomatch' 
+    case binary:match(FSVariable, <<"${">>) =:= 'nomatch'
         andalso binary:match(FSValue, <<"${">>) =:= 'nomatch'
     of
         'true' -> [{FSVariable, FSValue} | Acc];
