@@ -357,17 +357,16 @@ get_request_body(Req0) ->
             {ReqBody, Req1}
     end.
 
+-spec handle_chunked(cowboy_req:req()) -> {binary(), cowboy_req:req()}.
 handle_chunked(Req) ->
-    {ok, Data, Req2} = read_body(Req, <<>>, 1000000),
-    {Data, Req2}.
+    handle_chunked(Req, <<>>).
 
-read_body(Req, Acc, BodyLengthRemaining) ->
+-spec handle_chunked(cowboy_req:req(), binary()) -> {binary(), cowboy_req:req()}.
+handle_chunked(Req, Body) ->
     case cowboy_req:stream_body(Req) of
-        {ok, Data, Req2} ->
-            BodyLengthRem = BodyLengthRemaining - byte_size(Data),
-            read_body(Req2, <<Acc/binary, Data/binary>>, BodyLengthRem);
-        {done, Req2} ->
-            {ok, Acc, Req2}
+        {'done', Req2} -> {Body, Req2};
+        {'ok', Data, Req2} ->
+            handle_chunked(Req2, <<Body/binary, Data/binary>>)
     end.
 
 -type get_json_return() :: {wh_json:object(), cowboy_req:req()} |
