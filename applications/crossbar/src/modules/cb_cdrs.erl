@@ -225,7 +225,7 @@ load_cdr(<<Year:4/binary, Month:2/binary, "-", _/binary>> = CDRId, Context) ->
     crossbar_doc:load(CDRId, Context1);
 load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
-    cb_context:add_system_error('cdr_not_found', Context).
+    crossbar_util:response(error, <<"could not find cdr with supplied id">>, 404, Context).
 
 %%--------------------------------------------------------------------
 %% @private
