@@ -8,9 +8,10 @@
 %%%-------------------------------------------------------------------
 -module(wnm_other).
 
--export([find_numbers/3]).
+-export([find_numbers/4]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
+-export([is_number_billable/1]).
 
 -include("../wnm.hrl").
 
@@ -25,8 +26,8 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers/3 :: (ne_binary(), pos_integer(), wh_proplist()) -> {'error', _}.
-find_numbers(Number, Quantity, Props) ->
+-spec find_numbers/4 :: (ne_binary(), pos_integer(), wh_proplist(), ne_binary()) -> {'error', _}.
+find_numbers(Number, Quantity, Props, _AccountId) ->
 	case whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"url">>) of
 		'undefined' ->
 			{'error', 'non_available'};
@@ -40,6 +41,8 @@ find_numbers(Number, Quantity, Props) ->
 			end
 	end.
 
+-spec is_number_billable/1 :: (wnm_number()) -> 'true' | 'false'.
+is_number_billable(_Number) -> 'true'.
 
 
 %%--------------------------------------------------------------------
