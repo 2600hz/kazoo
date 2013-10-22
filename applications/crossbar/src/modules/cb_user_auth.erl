@@ -306,7 +306,7 @@ create_token(#cb_context{doc=JObj}=Context) ->
 -spec populate_resp(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
 populate_resp(JObj, AccountId, UserId) ->
     Routines = [fun(J) -> wh_json:set_value(<<"apps">>, load_apps(AccountId, UserId), J) end
-                ,fun(J) -> wh_json:set_value(<<"lang">>, get_language(AccountId, UserId), J) end
+                ,fun(J) -> wh_json:set_value(<<"language">>, get_language(AccountId, UserId), J) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
 

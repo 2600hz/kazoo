@@ -212,7 +212,7 @@ maybe_get_screenshot(Num, #cb_context{doc=JObj}=Context) ->
         _:_ -> 'error'
     end.
 
--spec maybe_get_screenshot(cb_context:context(), ne_binary()) -> 'error' | {'ok', ne_binary(), ne_binary()}.
+-spec maybe_get_attachment(cb_context:context(), ne_binary()) -> 'error' | {'ok', ne_binary(), ne_binary()}.
 maybe_get_attachment(#cb_context{doc=JObj}, Name) ->
     case wh_json:get_value([<<"_attachments">>, Name], JObj) of
         'undefined' -> 'error';

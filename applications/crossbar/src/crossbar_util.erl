@@ -334,7 +334,7 @@ response_auth(JObj) ->
     ConfId = wh_json:get_value(<<"conference_id">>, JObj, 'undefined'),
     IsModerator = wh_json:get_value(<<"is_moderator">>, JObj, 'undefined'),
     Apps = wh_json:get_value(<<"apps">>, JObj, 'undefined'),
-    Lang = wh_json:get_value(<<"lang">>, JObj, 'undefined'),
+    Lang = wh_json:get_value(<<"language">>, JObj, 'undefined'),
     IsReseller = wh_services:is_reseller(AccountId),
     ResellerId = wh_services:find_reseller_id(AccountId),
     wh_json:from_list(
@@ -346,7 +346,7 @@ response_auth(JObj) ->
              ,{<<"conference_id">>, ConfId}
              ,{<<"is_moderator">>, IsModerator}
              ,{<<"apps">>, Apps}
-             ,{<<"lang">>, Lang}
+             ,{<<"language">>, Lang}
             ]
         )
     ).
