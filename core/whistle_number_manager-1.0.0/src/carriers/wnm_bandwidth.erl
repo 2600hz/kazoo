@@ -9,10 +9,11 @@
 %%%-------------------------------------------------------------------
 -module(wnm_bandwidth).
 
--export([find_numbers/3]).
+-export([find_numbers/4]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
 -export([get_number_data/1]).
+-export([is_number_billable/1]).
 
 -include("../wnm.hrl").
 
@@ -61,13 +62,13 @@ get_number_data(Number) ->
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers/3 :: (ne_binary(), pos_integer(), wh_proplist()) -> {'ok', wh_json:object()} |
+-spec find_numbers/4 :: (ne_binary(), pos_integer(), wh_proplist(), ne_binary()) -> {'ok', wh_json:object()} |
                                                         {'error', term()}.
-find_numbers(<<"+", Rest/binary>>, Quanity, Opts) ->
-    find_numbers(Rest, Quanity, Opts);
-find_numbers(<<"1", Rest/binary>>, Quanity, Opts) ->
-    find_numbers(Rest, Quanity, Opts);
-find_numbers(<<NPA:3/binary>>, Quanity, _) ->
+find_numbers(<<"+", Rest/binary>>, Quanity, Opts, AccountId) ->
+    find_numbers(Rest, Quanity, Opts, AccountId);
+find_numbers(<<"1", Rest/binary>>, Quanity, Opts, AccountId) ->
+    find_numbers(Rest, Quanity, Opts, AccountId);
+find_numbers(<<NPA:3/binary>>, Quanity, _, _) ->
     Props = [{'areaCode', [wh_util:to_list(NPA)]}
              ,{'maxQuantity', [wh_util:to_list(Quanity)]}], 
     case make_numbers_request('areaCodeNumberSearch', Props) of
@@ -82,7 +83,7 @@ find_numbers(<<NPA:3/binary>>, Quanity, _) ->
                     || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)],
             {ok, wh_json:from_list(Resp)}
     end;
-find_numbers(Search, Quanity, _) ->
+find_numbers(Search, Quanity, _, _) ->
     NpaNxx = binary:part(Search, 0, (case size(Search) of L when L < 6 -> L; _ -> 6 end)),
     Props = [{'npaNxx', [wh_util:to_list(NpaNxx)]}
              ,{'maxQuantity', [wh_util:to_list(Quanity)]}], 
@@ -98,6 +99,9 @@ find_numbers(Search, Quanity, _) ->
                     || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)],
             {ok, wh_json:from_list(Resp)}
     end.
+
+-spec is_number_billable/1 :: (wnm_number()) -> 'true' | 'false'.
+is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
