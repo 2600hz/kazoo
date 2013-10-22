@@ -189,7 +189,8 @@ update_pvt_parameters(AccountId, Timestamp, JObj) ->
 
 -spec set_doc_id(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
 set_doc_id(_, Timestamp, JObj) ->
-    DocId = cdr_util:get_cdr_doc_id(Timestamp),
+    CallId = wh_json:get_value(<<"call_id">>, JObj),
+    DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
     wh_json:set_value(<<"_id">>, DocId, JObj).
 
 -spec save_cdr(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
