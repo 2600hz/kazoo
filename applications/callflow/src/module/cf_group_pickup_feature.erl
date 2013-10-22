@@ -63,73 +63,65 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Number = whapps_call:kvs_fetch(cf_capture_group, Call),
-	PickupType = wh_json:get_value(<<"type">>, Data),
-	case build_pickup_params(Number, PickupType, Call) of
-		{'ok', {Param, Value}} ->
-			Flow = wh_json:from_list([{<<"module">>,<<"group_pickup">>},{<<"data">>,wh_json:from_list([{Param,Value}])}]),
-			cf_exe:branch(Flow, Call);
-		{'error', E} -> 
-			lager:info("Error <<~s>> processing pickup '~s' for number ~s",[E,PickupType,Number]),
-			_ = whapps_call_command:b_play(<<"park-no_caller">>, Call),
-			cf_exe:stop(Call)
-	end.
+    Number = whapps_call:kvs_fetch('cf_capture_group', Call),
+    PickupType = wh_json:get_value(<<"type">>, Data),
+    case build_pickup_params(Number, PickupType, Call) of
+        {'ok', Params} ->
+            cf_group_pickup:handle(wh_json:from_list(Params), Call);
+        {'error', _E} -> 
+            lager:info("Error <<~s>> processing pickup '~s' for number ~s"
+                       ,[_E, PickupType, Number]),
+            _ = whapps_call_command:b_play(<<"park-no_caller">>, Call),
+            cf_exe:stop(Call)
+    end.
 
--spec build_pickup_params(ne_binary(), ne_binary(), whapps_call:call()) -> {'ok',{ne_binary(),ne_binary()}} | {'error', ne_binary()}.
-
-build_pickup_params(Number,<<"device">>, Call) ->
-	AccountDb = whapps_call:account_db(Call),
-	case cf_util:endpoint_id_by_sip_username(AccountDb, Number) of
-		{'ok',EndpointId} -> {'ok',{<<"device_id">>,EndpointId}};
-		{'error', _ }=E -> E
-	end;
-
-build_pickup_params(_Number,<<"user">>, _Call) ->
-	{'error', <<"work in progress">>};
-
-build_pickup_params(_Number,<<"group">>, _Call) ->
-	{'error', <<"work in progress">>};
-
-build_pickup_params(Number,<<"extension">>, Call) ->
-	AccountId = whapps_call:account_id(Call),
-	case cf_util:lookup_callflow(Number, AccountId) of
-		{'ok', FlowDoc, 'false' } ->
-			Data = wh_json:get_value([<<"flow">>,<<"data">>],FlowDoc),
-			Module = wh_json:get_value([<<"flow">>,<<"module">>],FlowDoc),
-			params_from_data(Module, Data,Call);
-		{'ok', _FlowDoc, 'true' } ->	
-			{'error', <<"no callflow with extension ",Number/binary>>};
-		{'error', _} = E -> E
-	end;
-
-build_pickup_params(_ ,'undefined', _ ) ->
-	{'error',<<"parameter 'type' not defined">>};
+-spec build_pickup_params(ne_binary(), ne_binary(), whapps_call:call()) -> 
+                                 {'ok', wh_proplist()} |
+                                 {'error', ne_binary()}.
+build_pickup_params(Number, <<"device">>, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    case cf_util:endpoint_id_by_sip_username(AccountDb, Number) of
+        {'ok', EndpointId} -> {'ok', [{<<"device_id">>, EndpointId}]};
+        {'error', _}=E -> E
+    end;
+build_pickup_params(_Number, <<"user">>, _Call) ->
+    {'error', <<"work in progress">>};
+build_pickup_params(_Number, <<"group">>, _Call) ->
+    {'error', <<"work in progress">>};
+build_pickup_params(Number, <<"extension">>, Call) ->
+    AccountId = whapps_call:account_id(Call),
+    case cf_util:lookup_callflow(Number, AccountId) of
+        {'ok', FlowDoc, 'false'} ->
+            Data = wh_json:get_value([<<"flow">>, <<"data">>], FlowDoc),
+            Module = wh_json:get_value([<<"flow">>, <<"module">>], FlowDoc),
+            params_from_data(Module, Data,Call);
+        {'ok', _FlowDoc, 'true'} ->	
+            {'error', <<"no callflow with extension ", Number/binary>>};
+        {'error', _} = E -> E
+    end;
+build_pickup_params(_ ,'undefined', _) ->
+    {'error', <<"parameter 'type' not defined">>};
 build_pickup_params(_, Other, _) ->
-	{'error', <<Other/binary," not implemented">>}.
+    {'error', <<Other/binary," not implemented">>}.
 
-
-
--spec params_from_data(ne_binary(), wh_json:object(), whapps_call:call()) -> {'ok',{ne_binary(),ne_binary()}} | {'error', ne_binary()}.
+-spec params_from_data(ne_binary(), wh_json:object(), whapps_call:call()) -> 
+                              {'ok', wh_proplist()} | 
+                              {'error', ne_binary()}.
 params_from_data(<<"user">>, Data, _Call) ->
-	EndpointId = wh_json:get_value(<<"id">>,Data),
-	{'ok',{<<"user_id">>,EndpointId}};
-
+    EndpointId = wh_json:get_value(<<"id">>,Data),
+    {'ok', [{<<"user_id">>, EndpointId}]};
 params_from_data(<<"device">>, Data, _Call) ->
-	EndpointId = wh_json:get_value(<<"id">>,Data),
-	{'ok',{<<"device_id">>,EndpointId}};			
-
+    EndpointId = wh_json:get_value(<<"id">>, Data),
+    {'ok', [{<<"device_id">>, EndpointId}]};			
 params_from_data(<<"ring_group">>, Data, _Call) ->
-	lager:info("ring_group"),
-	[Endpoint|_Endpoints] = wh_json:get_value(<<"endpoints">>,Data,[]),
-	EndpointType = wh_json:get_value(<<"endpoint_type">>,Endpoint),
-	{'ok',{<<EndpointType/binary,"_id">>,wh_json:get_value(<<"id">>,Endpoint)}};
-
+    [Endpoint |_Endpoints] = wh_json:get_value(<<"endpoints">>, Data, []),
+    EndpointType = wh_json:get_value(<<"endpoint_type">>, Endpoint),
+    {'ok', [{<<EndpointType/binary,"_id">>
+             ,wh_json:get_value(<<"id">>, Endpoint)}
+           ]};
 params_from_data(<<"page_group">>, Data, _Call) ->
-	params_from_data(<<"ring_group">>, Data, _Call);
-
+    params_from_data(<<"ring_group">>, Data, _Call);
 params_from_data('undefined', _, _) ->
-	{'error',<<"module not defined in callflow">>};
-
+    {'error',<<"module not defined in callflow">>};
 params_from_data(Other, _, _) ->
-	{'error',<<"module ",Other/binary," not implemented">>}.
-
+    {'error',<<"module ",Other/binary," not implemented">>}.
