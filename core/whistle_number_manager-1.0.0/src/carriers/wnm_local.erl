@@ -29,7 +29,7 @@ find_numbers(Number, Quanity, Opts) when size(Number) < 5 ->
 find_numbers(_Number, _Quanity, _Opts) ->
     %% TODO: given the requestors account number discovery wnm_local numbers that are
     %%       available but managed by accendants of the account.
-    {error, non_available}.
+    {'error', 'non_available'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -48,4 +48,4 @@ acquire_number(Number) -> Number.
 %%--------------------------------------------------------------------
 -spec disconnect_number/1 :: (wnm_number()) -> wnm_number().
 disconnect_number(Number) -> 
-	Number#number{state = <<"released">>, reserve_history=ordsets:new(), hard_delete=true}.
+	Number#number{state = <<"released">>, hard_delete='true'}.
