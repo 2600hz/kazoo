@@ -218,14 +218,14 @@ cdr_db_name(Year, Month, Context) ->
 %% Load a CDR document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr(ne_binary(), cb_context:context()) -> api_object().
+-spec load_cdr(ne_binary(), cb_context:context()) -> cb_context:context().
 load_cdr(<<Year:4/binary, Month:2/binary, "-", _/binary>> = CDRId, Context) ->
     AcctDb = cdr_db_name(wh_util:to_integer(Year), wh_util:to_integer(Month), Context),
     Context1 = cb_context:set_account_db(Context,AcctDb),
     crossbar_doc:load(CDRId, Context1);
 load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
-    {'error', 'not_found'}.
+    cb_context:add_system_error('cdr_not_found', Context).
 
 %%--------------------------------------------------------------------
 %% @private
