@@ -220,7 +220,7 @@ cdr_db_name(Year, Month, Context) ->
 %%--------------------------------------------------------------------
 -spec load_cdr(ne_binary(), cb_context:context()) -> api_object().
 load_cdr(CDRId, Context) ->
-    <<Year:4/binary, Month:2/binary, "-", _:32/binary>> = CDRId,
+    <<Year:4/binary, Month:2/binary, "-", _/binary>> = CDRId,
     AcctDb = cdr_db_name(wh_util:to_integer(Year), wh_util:to_integer(Month), Context),
     Context1 = cb_context:set_account_db(Context,AcctDb),
     crossbar_doc:load(CDRId, Context1).
