@@ -177,11 +177,11 @@ content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, _Number, ?POR
 authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[<<"prefix">>]}]
                          ,req_verb = ?HTTP_GET
                         }) ->
-    'true';
+    'false';
 authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>, []}]
                          ,req_verb = ?HTTP_GET
                         }) ->
-    'true'.
+    'false'.
 
 
 %%--------------------------------------------------------------------
@@ -364,12 +364,13 @@ delete(Context, Number, ?PORT_DOCS, Name) ->
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
     JObj = cb_context:query_string(Context),
+	AccountId = cb_context:auth_account_id(Context),
     OnSuccess = fun(C) ->
                         Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
                         Quantity = wh_json:get_ne_value(<<"quantity">>, JObj, 1),
                         cb_context:set_resp_data(
                           cb_context:set_resp_status(C, 'success')
-                          ,wh_number_manager:find(Prefix, Quantity, wh_json:to_proplist(JObj))
+                          ,wh_number_manager:find(Prefix, Quantity, wh_json:to_proplist(JObj), AccountId)
                          )
                 end,
     Schema = wh_json:decode(?FIND_NUMBER_SCHEMA),
