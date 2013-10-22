@@ -25,11 +25,10 @@ get_cdr_doc_id(Timestamp, CallId) ->
 
 -spec get_cdr_doc_id(pos_integer(), pos_integer(), api_binary()) -> ne_binary().
 get_cdr_doc_id(Year, Month, CallId) ->
-    lager:debug("Call-Id: ~p", [CallId]),
     <<(wh_util:to_binary(Year))/binary
       ,(wh_util:pad_month(Month))/binary
       ,"-"
-      ,(CallId)/binary>>.
+      ,CallId/binary>>.
 
 -spec save_cdr(api_binary(), wh_json:object()) -> 
                       'ok' | wh_std_return().

@@ -171,7 +171,8 @@ migrate_cdrs_for_date(AccountId, AccountDb, {Year, Month, _}=Date) ->
                               ,wh_month()) -> any().
 copy_cdr_to_account_mod(AccountId, AccountDb, CdrDoc, Year, Month) ->
     AccountMODb = wh_util:format_account_id(AccountId, Year, Month),
-    MODDocId = cdr_util:get_cdr_doc_id(Year, Month),
+    CallId = wh_json:get_value(<<"call_id">>, CdrDoc),
+    MODDocId = cdr_util:get_cdr_doc_id(Year, Month, CallId),
     JObj = wh_json:delete_key(<<"_rev">>, CdrDoc),
     JObj1 = wh_json:set_values([{<<"_id">>, MODDocId}
                                 ,{<<"pvt_account_id">>, AccountId}
