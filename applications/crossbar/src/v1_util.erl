@@ -344,6 +344,9 @@ corrected_base64_decode(Base64) ->
 -spec get_request_body(cowboy_req:req()) -> {binary(), cowboy_req:req()}.
 get_request_body(Req0) ->
     case cowboy_req:body(Req0) of
+        {'error', 'chunked'} ->
+            lager:debug("handling chunked request"),
+            handle_chunked(Req0);
         {'error', _E} ->
             lager:debug("request body had no payload: ~p", [_E]),
             {<<>>, Req0};
@@ -352,6 +355,19 @@ get_request_body(Req0) ->
             {<<>>, Req1};
         {'ok', ReqBody, Req1} ->
             {ReqBody, Req1}
+    end.
+
+handle_chunked(Req) ->
+    {ok, Data, Req2} = read_body(Req, <<>>, 1000000),
+    {Data, Req2}.
+
+read_body(Req, Acc, BodyLengthRemaining) ->
+    case cowboy_req:stream_body(Req) of
+        {ok, Data, Req2} ->
+            BodyLengthRem = BodyLengthRemaining - byte_size(Data),
+            read_body(Req2, <<Acc/binary, Data/binary>>, BodyLengthRem);
+        {done, Req2} ->
+            {ok, Acc, Req2}
     end.
 
 -type get_json_return() :: {wh_json:object(), cowboy_req:req()} |
