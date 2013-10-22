@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -87,7 +87,15 @@ handle_cdr(JObj, _Props) ->
     end.
 
 -spec maybe_add_hangup_specific(ne_binary(), wh_json:object()) -> wh_proplist().
+maybe_add_hangup_specific(<<"UNALLOCATED_NUMBER">>, JObj) ->
+    maybe_add_number_info(JObj);
 maybe_add_hangup_specific(<<"NO_ROUTE_DESTINATION">>, JObj) ->
+    maybe_add_number_info(JObj);
+maybe_add_hangup_specific(_HangupCause, JObj) ->
+    wh_json:to_proplist(JObj).
+
+-spec maybe_add_number_info(wh_json:object()) -> wh_proplist().
+maybe_add_number_info(JObj) ->
     Destination = find_destination(JObj),
     try stepswitch_util:lookup_number(Destination) of
         {'ok', AccountId, _Props} ->
@@ -100,9 +108,7 @@ maybe_add_hangup_specific(<<"NO_ROUTE_DESTINATION">>, JObj) ->
             ]
     catch
         _:_ -> wh_json:to_proplist(JObj)
-    end;
-maybe_add_hangup_specific(_HangupCause, JObj) ->
-    wh_json:to_proplist(JObj).
+    end.
 
 -spec build_account_tree(ne_binary()) -> wh_json:object().
 build_account_tree(AccountId) ->

@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -29,16 +29,16 @@
 
 cnam_request(PhoneNumber) ->
     AccountId = wh_json:get_ne_value(<<"pvt_assigned_to">>, PhoneNumber),
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {ok, Account} -> cnam_request(Account, PhoneNumber);
-        {error, Reason} ->
+        {'ok', Account} -> cnam_request(Account, PhoneNumber);
+        {'error', Reason} ->
             Number = wh_json:get_value(<<"_id">>, PhoneNumber),
             Subject = io_lib:format("unable to open account ~s for cnam update on ~s", [AccountId, Number]),
             Body = io_lib:format("Failed to open account ~s (~s) for cnam update on ~s.~nReason: ~p", [AccountId, AccountDb, Number, Reason]),
             generic_alert(Subject, Body)
     end.
-            
+
 cnam_request(PhoneNumber, Account) ->
     Notify = [{<<"Account">>, Account}
               ,{<<"Phone-Number">>, PhoneNumber}
@@ -51,15 +51,15 @@ cnam_request(PhoneNumber, Account) ->
 
 port_request(PhoneNumber) ->
     AccountId = wh_json:get_ne_value(<<"pvt_assigned_to">>, PhoneNumber),
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {ok, Account} -> cnam_request(Account, PhoneNumber);
-        {error, Reason} ->
+        {'ok', Account} -> cnam_request(Account, PhoneNumber);
+        {'error', Reason} ->
             Number = wh_json:get_value(<<"_id">>, PhoneNumber),
             Subject = io_lib:format("unable to open account ~s for port request of ~s", [AccountId, Number]),
             Body = io_lib:format("Failed to open account ~s (~s) for port request of ~s.~nReason: ~p", [AccountId, AccountDb, Number, Reason]),
             generic_alert(Subject, Body)
-    end.    
+    end.
 
 port_request(PhoneNumber, Account) ->
     Notify = [{<<"Account">>, Account}
@@ -76,8 +76,8 @@ deregister(LastReg) ->
     AuthorizingId = wh_json:get_value(<<"Authorizing-ID">>, LastReg),
     AccountDb = wh_json:get_value(<<"Account-DB">>, LastReg),
     case couch_mgr:open_cache_doc(AccountDb, AuthorizingId) of
-        {ok, Endpoint} -> deregister(LastReg, Endpoint);
-        {error, _R} ->
+        {'ok', Endpoint} -> deregister(LastReg, Endpoint);
+        {'error', _R} ->
             lager:info("unable to lookup endpoint ~s in database ~s for deregister notice: ~p", [AuthorizingId, AccountDb, _R])
     end.
 
@@ -85,8 +85,8 @@ deregister(LastReg, Endpoint) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, LastReg),
     AccountDb = wh_json:get_value(<<"Account-DB">>, LastReg),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {ok, Account} -> deregister(LastReg, Endpoint, Account);
-        {error, _R} ->
+        {'ok', Account} -> deregister(LastReg, Endpoint, Account);
+        {'error', _R} ->
             lager:info("unable to open account ~s deregister notice: ~p", [AccountId, _R])
     end.
 
@@ -99,31 +99,31 @@ deregister(LastReg, Endpoint, Account) ->
     wapi_notifications:publish_deregister(Notify).
 
 low_balance(_Account, _Credit) ->
-    ok.
+    'ok'.
 
 new_account(_User, _Account) ->
-    ok.
+    'ok'.
 
 pwd_recovery(_User, _Account) ->
-    ok.
+    'ok'.
 
 abnormal_hangup(_CDR, _Account) ->
-    ok.
+    'ok'.
 
 first_call(_Account) ->
-    ok.
+    'ok'.
 
 first_registration(_Account) ->
-    ok.
+    'ok'.
 
 -spec transaction(ne_binary(), wh_json:object()) -> 'ok'.
 -spec transaction(ne_binary(), wh_json:object(), api_object()) -> 'ok'.
 
 transaction(Account, Transaction) ->
-    transaction(Account, Transaction, undefined).
+    transaction(Account, Transaction, 'undefined').
 
 transaction(Account, Transaction, ServicePlan) ->
-    Notify = [{<<"Account-ID">>, wh_util:format_account_id(Account, raw)}
+    Notify = [{<<"Account-ID">>, wh_util:format_account_id(Account, 'raw')}
               ,{<<"Transaction">>, Transaction}
               ,{<<"Service-Plan">>, ServicePlan}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
@@ -131,7 +131,7 @@ transaction(Account, Transaction, ServicePlan) ->
     wapi_notifications:publish_transaction(props:filter_undefined(Notify)).
 
 -spec system_alert(atom() | string() | binary(), [term()]) -> 'ok'.
--spec system_alert(atom() | string() | binary(), [term()], proplist()) -> 'ok'.
+-spec system_alert(atom() | string() | binary(), [term()], wh_proplist()) -> 'ok'.
 
 system_alert(Format, Args) ->
     system_alert(Format, Args, []).
