@@ -538,8 +538,7 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
 -spec wait_for_pickup(ne_binary(), api_binary(), whapps_call:call()) -> any().
 wait_for_pickup(SlotNumber, 'undefined', Call) ->
     lager:info("(no ringback) waiting for parked caller to be picked up or hangup"),
-    _ = whapps_call_command:b_hold(Call),
-    lager:info("(no ringback) parked caller has been picked up or hungup"),
+    _ = whapps_call_command:b_hold(cf_attributes:moh_attributes(<<"media_id">>, Call), Call),
     cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call));
 wait_for_pickup(SlotNumber, RingbackId, Call) ->
     lager:info("waiting for parked caller to be picked up or hangup"),
