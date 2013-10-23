@@ -65,9 +65,18 @@ start_link(Node, Options) ->
 
 -spec handle_command(wh_json:object(), wh_proplist()) -> any().
 handle_command(JObj, _Props) ->
+    do_handle_command(JObj, 0).
+
+-spec do_handle_command(wh_json:object(), 0..3) -> 'ok'.
+do_handle_command(JObj, Tries) when Tries < 3 ->
     ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
-    {'ok', Node} = ecallmgr_fs_conferences:node(ConferenceId),
-    exec(Node, ConferenceId, JObj).
+    case ecallmgr_fs_conferences:node(ConferenceId) of
+        {'error', 'not_found'} ->
+            timer:sleep(50),
+            do_handle_command(JObj, Tries + 1);
+        {'ok', Node} -> exec(Node, ConferenceId, JObj)
+    end;
+do_handle_command(_, _) -> 'ok'.
 
 %%%===================================================================
 %%% gen_server callbacks
