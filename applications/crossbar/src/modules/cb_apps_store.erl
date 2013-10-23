@@ -18,7 +18,6 @@
          ,validate/1, validate/2, validate/3, validate/4
          ,content_types_provided/3 ,content_types_provided/4
          ,get/1, get/2, get/3, get/4
-         ,post/2
         ]).
 
 -include("../crossbar.hrl").
@@ -43,8 +42,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.apps_store">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.apps_store">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.apps_store">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.apps_store">>, ?MODULE, 'get'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.apps_store">>, ?MODULE, 'post').
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.apps_store">>, ?MODULE, 'get').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -80,7 +78,7 @@ authorize(_) -> 'false'.
 allowed_methods() ->
     [?HTTP_GET].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST].
+    [?HTTP_GET].
 allowed_methods(_, _) ->
     [?HTTP_GET].
 allowed_methods(_, _, _) ->
@@ -156,9 +154,7 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context).
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
-    read(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
-    update(Id, Context).
+    read(Id, Context).
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, <<"icon">>) ->
     get_icon(Id, Context).
@@ -207,6 +203,7 @@ get_sreenshot(Id, Context, Num) ->
         Context1 -> Context1
     end.
 
+-spec maybe_get_screenshot(ne_binary(), cb_context:context()) -> 'error' | cb_context:context().
 maybe_get_screenshot(Num, #cb_context{doc=JObj}=Context) ->
     Screenshots = wh_json:get_value(<<"screenshots">>, JObj),
     try lists:nth(wh_util:to_integer(Num)+1, Screenshots) of
@@ -215,6 +212,7 @@ maybe_get_screenshot(Num, #cb_context{doc=JObj}=Context) ->
         _:_ -> 'error'
     end.
 
+-spec maybe_get_attachment(cb_context:context(), ne_binary()) -> 'error' | {'ok', ne_binary(), ne_binary()}.
 maybe_get_attachment(#cb_context{doc=JObj}, Name) ->
     case wh_json:get_value([<<"_attachments">>, Name], JObj) of
         'undefined' -> 'error';
@@ -242,17 +240,6 @@ get(#cb_context{}=Context, _, _, _) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verib is POST, execute the actual action, usually a db save
-%% (after a merge perhaps).
-%% @end
-%%--------------------------------------------------------------------
--spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(#cb_context{}=Context, _) ->
-    crossbar_doc:save(Context).
-
-%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Load an instance from the database
@@ -260,20 +247,8 @@ post(#cb_context{}=Context, _) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing menu document with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
-update(Id, #cb_context{}=Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
-    cb_context:validate_request_data(<<"apps_store">>, Context, OnSuccess).
-
+    Context1 = set_master_account_db(Context),
+    crossbar_doc:load(Id, Context1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -283,20 +258,9 @@ update(Id, #cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation('undefined', #cb_context{doc=JObj}=Context) ->
-    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"app">>, JObj)};
-on_successful_validation(Id, #cb_context{}=Context) ->
-    crossbar_doc:load_merge(Id, Context).
+summary(Context) -> 
+    Context1 = set_master_account_db(Context),
+    crossbar_doc:load_view(?CB_LIST, [], Context1, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -307,4 +271,10 @@ on_successful_validation(Id, #cb_context{}=Context) ->
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
+
+-spec set_master_account_db(cb_context:context()) -> cb_context:context().
+set_master_account_db(Context) ->
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    MasterAccountDb = wh_util:format_account_id(MasterAccountId, 'encoded'),
+    cb_context:set_account_db(Context, MasterAccountDb).
 
