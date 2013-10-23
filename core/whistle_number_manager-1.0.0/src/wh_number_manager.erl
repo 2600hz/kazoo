@@ -166,12 +166,12 @@ create_number(Number, AssignTo, AuthBy) ->
 create_number(Number, AssignTo, AuthBy, PublicFields) ->
     lager:debug("attempting to create number ~s for account ~s", [Number, AssignTo]),
     Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
-                ,fun({not_found, #number{}=N}) ->
-                         AccountId = wh_util:format_account_id(AuthBy, raw),
-                         AccountDb = wh_util:format_account_id(AuthBy, encoded),
+                ,fun({'not_found', #number{}=N}) ->
+                         AccountId = wh_util:format_account_id(AuthBy, 'raw'),
+                         AccountDb = wh_util:format_account_id(AuthBy, 'encoded'),
                          try
-                             {ok, JObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-                             true = wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj),
+                             {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+                             'true' = wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj),
                              lager:debug("number doesnt exist but account ~s is authorized to create it", [AuthBy]),
                              NewNumber = N#number{number=Number
                                                   ,assign_to=AssignTo
@@ -180,7 +180,7 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
                                                  },
                              wnm_number:create_available(NewNumber)
                          catch
-                             error:{badmatch, Error} ->
+                             'error':{'badmatch', Error} ->
                                  lager:debug("account is not authorized to create a new number: ~p", [Error]),
                                  wnm_number:error_unauthorized(N)
                          end;
@@ -369,8 +369,18 @@ assign_number_to_account(Number, AssignTo, AuthBy) ->
 assign_number_to_account(Number, AssignTo, AuthBy, PublicFields) ->
     lager:debug("attempting to assign ~s to account ~s", [Number, AssignTo]),
     Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
-                ,fun({_, #number{}}=E) -> E;
-                    (#number{}=N) -> wnm_number:in_service(N#number{assign_to=AssignTo, auth_by=AuthBy})
+                ,fun({not_found, _}) ->
+                        NewNumber = #number{number=Number
+                                             ,module_name='wnm_other'
+                                             ,module_data=wh_json:new()
+                                             ,number_doc=wh_json:public_fields(PublicFields)
+                                },
+                        wnm_number:create_discovery(NewNumber);
+                    ({_, #number{}}=E) -> E;
+                    (#number{}=N) -> N
+                 end
+                ,fun ({_, #number{}}=E) -> E;
+                     (#number{}=N) -> wnm_number:in_service(N#number{assign_to=AssignTo, auth_by=AuthBy})
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
