@@ -191,6 +191,8 @@
                                ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                                ,{<<"Eavesdrop-Group-ID">>, <<"eavesdrop_group">>}
                                ,{<<"Loopback-Bowout">>, <<"loopback_bowout_on_execute">>}
+                               ,{<<"Secure-RTP">>, <<"sip_secure_media">>}
+                               ,{<<"Ignore-Completed-Elsewhere">>, <<"ignore_completed_elsewhere">>}
                                ,{<<"tts_engine">>, <<"tts_engine">>}
                                ,{<<"tts_voice">>, <<"tts_voice">>}
                                ,{<<"playback_terminators">>, <<"playback_terminators">>}
