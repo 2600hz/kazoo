@@ -55,5 +55,11 @@ stop() ->
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'inets', 'cowboy', 'whistle_amqp']],
+    _ = [wh_util:ensure_started(App) || App <- ['sasl'
+                                                ,'crypto'
+                                                ,'inets'
+                                                ,'ranch'
+                                                ,'cowboy'
+                                                ,'whistle_amqp'
+                                               ]],
     'ok'.
