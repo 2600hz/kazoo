@@ -35,9 +35,9 @@
 -define(BINDINGS, [{'call', [{'restrict_to', ['cdr']}
                              ,{'callid', <<"*">>}
                             ]}]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_NAME, <<"cdr_listener">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
