@@ -69,7 +69,7 @@ send_known_number_response(JObj, Q) ->
 -spec send_unknown_number_response(wh_json:object(), ne_binary()) -> 'ok'.
 send_unknown_number_response(JObj, Q) ->
     ErrorCode = whapps_config:get_binary(?APP_NAME, <<"unknown-error-code">>, <<"604">>),
-    ErrorMsg = whapps_config:get_binary(?APP_NAME, <<"unknown-error-message">>, <<"Nope">>),
+    ErrorMsg = whapps_config:get_binary(?APP_NAME, <<"unknown-error-message">>, <<"Nope Nope Nope">>),
     lager:debug("sending unknown number response: ~s ~s", [ErrorCode, ErrorMsg]),
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Method">>, <<"error">>}
