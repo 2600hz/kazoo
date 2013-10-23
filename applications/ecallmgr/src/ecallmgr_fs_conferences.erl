@@ -263,6 +263,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({'conference_create', Props, Node}, _, State) ->
+	lager:debug("created conference ~p", [Props]),
     Conference = conference_from_props(Props, Node),
     _ = ets:insert_new(?CONFERENCES_TBL, Conference),
     {'reply', Conference, State};

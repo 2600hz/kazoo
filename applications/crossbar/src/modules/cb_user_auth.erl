@@ -23,6 +23,7 @@
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
 -define(USERNAME_LIST, <<"users/list_by_username">>).
+-define(DEFAULT_LANGUAGE, <<"en-US">>).
 
 %%%===================================================================
 %%% API
@@ -291,7 +292,7 @@ create_token(#cb_context{doc=JObj}=Context) ->
                 {'ok', Doc} ->
                     AuthToken = wh_json:get_value(<<"_id">>, Doc),
                     lager:debug("created new local auth token ~s", [AuthToken]),
-                    JObj1 = wh_json:set_value(<<"apps">>, load_installed_apps(AccountId, OwnerId), JObj),
+                    JObj1 = populate_resp(JObj, AccountId, OwnerId),
                     crossbar_util:response(crossbar_util:response_auth(JObj1)
                                             ,Context#cb_context{auth_token=AuthToken
                                                                 ,auth_doc=Doc
@@ -302,98 +303,56 @@ create_token(#cb_context{doc=JObj}=Context) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to create a token and save it to the token db
-%% @end
-%%--------------------------------------------------------------------
--spec load_installed_apps(ne_binary(), ne_binary()) -> ne_binaries().
-load_installed_apps(AccountId, UserId) ->
-    AccoundDb = wh_util:format_account_id(AccountId, 'encoded'),
-    Routines = [fun(_) -> load_apps_ids(AccoundDb) end
-                ,fun(Ids) -> load_apps(AccoundDb, UserId, Ids) end
+-spec populate_resp(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
+populate_resp(JObj, AccountId, UserId) ->
+    Routines = [fun(J) -> wh_json:set_value(<<"apps">>, load_apps(AccountId, UserId), J) end
+                ,fun(J) -> wh_json:set_value(<<"language">>, get_language(AccountId, UserId), J) end
                ],
-    lists:foldl(fun(F, C) -> F(C) end, [], Routines).
+    lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to create a token and save it to the token db
-%% @end
-%%--------------------------------------------------------------------
--spec load_apps_ids(ne_binary()) -> ne_binaries() | [].
-load_apps_ids(AccoundDb) ->
-    case couch_mgr:get_all_results(AccoundDb, <<"apps_store/crossbar_listing">>) of
+-spec load_apps(ne_binary(), ne_binary()) -> wh_json:object().
+load_apps(AccountId, UserId) ->
+    MasterAccountDb = get_master_account_db(),
+    Lang = get_language(AccountId, UserId),
+    case couch_mgr:get_all_results(MasterAccountDb, <<"apps_store/crossbar_listing">>) of
+        {'error', _E} ->
+            lager:error("failed to load lookup apps in ~p", [MasterAccountDb]),
+            'undefined';
         {'ok', JObjs} ->
-            lists:foldl(
-                fun(JObj, Acc) ->
-                    case wh_json:get_value([<<"value">>, <<"installed">>], JObj) of
-                        'false' -> Acc;
-                        'true' -> 
-                            [wh_json:get_value(<<"key">>, JObj)|Acc]
-                    end
-                end
-                ,[]
-                ,JObjs);
-        {'error', _E} ->
-            []
+            filter_apps(JObjs, Lang)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to create a token and save it to the token db
-%% @end
-%%--------------------------------------------------------------------
--spec load_apps(ne_binary(), ne_binary(), ne_binaries()) -> ne_binaries() | [].
--spec load_apps(ne_binary(), ne_binary(), ne_binaries(), ne_binaries()) -> ne_binaries() | [].
+-spec filter_apps(wh_json:objects(), ne_binary()) -> wh_json:objects().
+-spec filter_apps(wh_json:object(), ne_binary(), wh_json:objects()) -> wh_json:objects().
+filter_apps(JObjs, Lang) ->
+    filter_apps(JObjs, Lang, []).
 
-load_apps(AccoundDb, UserId, Ids) ->
-    load_apps(AccoundDb, UserId, Ids, wh_json:new()).
-
-load_apps(_, _, [], Acc) ->
+filter_apps([], _, Acc) ->
     Acc;
-load_apps(AccoundDb, UserId, [Id|Ids], Acc) ->
-    case couch_mgr:open_doc(AccoundDb, Id) of
-        {'ok', JObj} ->
-            case wh_json:get_value([<<"installed">>, <<"all">>], JObj) of
-                'true' ->
-                    load_apps(AccoundDb
-                              ,UserId
-                              ,Ids
-                              ,wh_json:set_value(Id, get_app_info(JObj), Acc));
-                _ ->
-                    case is_app_used_by_user(JObj, UserId) of
-                        'true' ->
-                            load_apps(AccoundDb
-                                      ,UserId
-                                      ,Ids
-                                      ,wh_json:set_value(Id, get_app_info(JObj), Acc));
-                        'false' ->
-                            load_apps(AccoundDb, UserId, Ids, Acc)
-                    end
-            end;
-        {'error', _E} ->
-            load_apps(AccoundDb, UserId, Ids, Acc)
+filter_apps([JObj|JObjs], Lang, Acc) ->
+    App = wh_json:get_value(<<"value">>, JObj, wh_json:new()),
+    NewApp = wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, App)}
+                                ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
+                                ,{<<"label">>, wh_json:get_value([<<"i18n">>, Lang, <<"label">>], App)}
+                              ]),
+    filter_apps(JObjs, Lang, [NewApp|Acc]).
+
+-spec get_language(ne_binary(), ne_binary()) -> 'error' | ne_binary().
+get_language(AccountId, UserId) ->
+    case crossbar_util:get_user_lang(AccountId, UserId) of
+        {'ok', Lang} -> Lang;
+        'error' ->
+            case  crossbar_util:get_account_lang(AccountId) of
+                {'ok', Lang} -> Lang;
+                'error' -> ?DEFAULT_LANGUAGE
+            end
     end.
 
-is_app_used_by_user(AppJObj, UserId) ->
-    lists:foldl(
-        fun(User, Acc) ->
-            case wh_json:get_value(<<"id">>, User) =:= UserId of
-                'true' -> 'true';
-                'false' -> Acc
-            end
-        end
-        ,'false'
-        ,wh_json:get_value([<<"installed">>, <<"users">>], AppJObj)).
+-spec get_master_account_db() -> ne_binary().
+get_master_account_db() ->
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    wh_util:format_account_id(MasterAccountId, 'encoded').
 
-get_app_info(JObj) ->
-    wh_json:set_values([{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
-                        ,{<<"i18n">>, wh_json:get_value(<<"i18n">>, JObj)}
-                       ]
-                       ,wh_json:new()).
 
 
 %%--------------------------------------------------------------------

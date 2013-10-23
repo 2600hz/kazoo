@@ -14,26 +14,63 @@
 
 -spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
-    Call = whapps_call:from_route_req(JObj),
-    case whapps_call:authorizing_id(Call) =:= 'undefined' of
+    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj)
+        =:= 'undefined' 
+    of
         'true' ->
-            lager:info("received a request asking if callflows can route this call"),
+            lager:info("received a unauthorized route request"),
             ControllerQ = props:get_value('queue', Props),
-            send_route_response(JObj, ControllerQ);
+            maybe_known_number(ControllerQ, JObj);
         'false' -> 'ok'
     end.
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% send a route response for a route request that can be fulfilled by this
-%% process
-%% @end
-%%-----------------------------------------------------------------------------
--spec send_route_response/2 :: (wh_json:object(), ne_binary()) -> 'ok'.
-send_route_response(JObj, Q) ->
-    ErrorCode = whapps_config:get_binary(<<"reorder">>, <<"error-code">>, <<"604">>),
-    ErrorMsg = whapps_config:get_binary(<<"reorder">>, <<"error-message">>, <<"PEBCAK">>),
+-spec maybe_known_number(ne_binary(), wh_json:object()) -> 'ok'.
+maybe_known_number(ControllerQ, JObj) ->
+    Number = get_dest_number(JObj),
+    case wh_number_manager:lookup_account_by_number(Number) of
+        {'ok', _, _} -> send_known_number_response(JObj, ControllerQ);
+        {'error', _R} ->
+            lager:debug("~s is not associated with any account, ~p", [Number, _R]),
+            send_unknown_number_response(JObj, ControllerQ)
+    end.
+
+-spec get_dest_number(wh_json:object()) -> ne_binary().
+get_dest_number(JObj) ->
+    {User, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
+    case whapps_config:get_is_true(<<"reorder">>, <<"assume_inbound_e164">>) of
+        'true' ->
+            Number = assume_e164(User),
+            lager:debug("assuming number is e164, normalizing to ~s", [Number]),
+            Number;
+        _ ->
+            Number = wnm_util:normalize_number(User),
+            lager:debug("converted number to e164: ~s", [Number]),
+            Number
+    end.
+    
+-spec assume_e164(ne_binary()) -> ne_binary().
+assume_e164(<<$+, _/binary>> = Number) -> Number;
+assume_e164(Number) -> <<$+, Number/binary>>.
+
+-spec send_known_number_response(wh_json:object(), ne_binary()) -> 'ok'.
+send_known_number_response(JObj, Q) ->
+    ErrorCode = whapps_config:get_binary(?APP_NAME, <<"known-error-code">>, <<"686">>),
+    ErrorMsg = whapps_config:get_binary(?APP_NAME, <<"known-error-message">>, <<"PEBCAK">>),
+    lager:debug("sending known number response: ~s ~s", [ErrorCode, ErrorMsg]),
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            ,{<<"Method">>, <<"error">>}
+            ,{<<"Route-Error-Code">>, ErrorCode}
+            ,{<<"Route-Error-Message">>, ErrorMsg}
+            ,{<<"Defer-Response">>, <<"true">>}
+            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+
+-spec send_unknown_number_response(wh_json:object(), ne_binary()) -> 'ok'.
+send_unknown_number_response(JObj, Q) ->
+    ErrorCode = whapps_config:get_binary(?APP_NAME, <<"unknown-error-code">>, <<"604">>),
+    ErrorMsg = whapps_config:get_binary(?APP_NAME, <<"unknown-error-message">>, <<"Nope Nope Nope">>),
+    lager:debug("sending unknown number response: ~s ~s", [ErrorCode, ErrorMsg]),
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Method">>, <<"error">>}
             ,{<<"Route-Error-Code">>, ErrorCode}

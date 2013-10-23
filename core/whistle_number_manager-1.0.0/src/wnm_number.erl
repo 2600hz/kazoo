@@ -587,7 +587,7 @@ released(Number) ->
 
 -spec attempt_discconect_number(wnm_number()) -> wnm_number().
 attempt_discconect_number(#number{module_name=ModuleName}=Number) ->
-    try ModuleName:disconnect_number() of
+    try ModuleName:disconnect_number(Number) of
         #number{}=N -> N#number{reserve_history=ordsets:new()}
     catch
         _:_ -> error_carrier_fault(<<"Failed to disconnect number">>, Number)

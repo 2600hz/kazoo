@@ -618,6 +618,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
          ,{<<"Flags">>, get_outbound_flags(Endpoint)}
          ,{<<"Force-Fax">>, get_force_fax(Endpoint)}
+         ,{<<"Ignore-Completed-Elsewhere">>, wh_json:is_true(<<"ignore_complete_elsewhere">>, Endpoint)}
         ],
     wh_json:from_list(props:filter_undefined(Prop)).
 
@@ -778,6 +779,20 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                         case wh_json:get_value([<<"media">>, <<"fax_option">>], Endpoint) of
                             <<"auto">> -> wh_json:set_value(<<"Fax-Enabled">>, <<"true">>, J);
                             _Else -> J
+                        end
+                end
+               ,fun(J) -> 
+                        case wh_json:is_true([<<"media">>, <<"secure_rtp">>], Endpoint) of
+                            'false' -> J;
+                            'true' ->
+                                wh_json:set_value(<<"Secure-RTP">>, <<"true">>, J)
+                        end
+                end
+               ,fun(J) -> 
+                        case wh_json:is_true([<<"sip">>, <<"ignore_completed_elsewhere">>], Endpoint) of
+                            'false' -> J;
+                            'true' ->
+                                wh_json:set_value(<<"Ignore-Completed-Elsewhere">>, <<"true">>, J)
                         end
                 end
               ],
