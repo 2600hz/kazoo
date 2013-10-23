@@ -473,21 +473,9 @@ endpoint_jobj_to_record(Endpoint, IncludeVars) ->
                      ,channel_selection = get_endpoint_channel_selection(Endpoint)
                      ,interface = get_endpoint_interface(Endpoint)
                      ,sip_interface = wh_json:get_ne_value(<<"SIP-Interface">>, Endpoint)
-                     ,channel_vars = get_leg_vars(Endpoint, ToUser)
+                     ,channel_vars = ecallmgr_fs_xml:get_leg_vars(Endpoint)
                      ,include_channel_vars = IncludeVars
                     }.
-
--spec get_leg_vars(wh_json:object(), api_binary()) -> iolist().
-get_leg_vars(Endpoint, ToUser) ->
-    User = wh_json:get_ne_value(<<"To-Username">>, Endpoint, ToUser),
-    Realm = wh_json:get_ne_value(<<"To-Realm">>, Endpoint),
-    case wh_util:is_empty(User) orelse wh_util:is_empty(Realm) of
-        'true' -> ecallmgr_fs_xml:get_leg_vars(Endpoint);
-        'false' ->
-            ToURI = <<"sip:", User/binary, "@", Realm/binary>>,
-            E = wh_json:set_value(<<"To-URI">>, ToURI, Endpoint),
-            ecallmgr_fs_xml:get_leg_vars(E)
-    end.
 
 -spec get_endpoint_span(wh_json:object()) -> ne_binary().
 get_endpoint_span(Endpoint) ->
