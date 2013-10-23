@@ -14,15 +14,15 @@
 -include("whistle_media.hrl").
 
 -spec get_uri(ne_binaries() | ne_binary(), wh_json:object()) ->
-                           {'ok', ne_binary()} |
-                           {'error', 'not_found'} |
-                           {'error', 'no_data'} |
-                           {'error', 'no_stream_strategy'}.
+                     {'ok', ne_binary()} |
+                     {'error', 'not_found'} |
+                     {'error', 'no_data'} |
+                     {'error', 'no_stream_strategy'}.
 get_uri(Media, JObj) when is_binary(Media) ->
     wh_util:put_callid(JObj),
     Paths = [Path
-             || Path <- binary:split(Media, <<"/">>, ['global', 'trim'])
-                    ,(not wh_util:is_empty(Path))
+             || Path <- binary:split(Media, <<"/">>, ['global', 'trim']),
+                (not wh_util:is_empty(Path))
             ],
     get_uri(Paths, JObj);
 get_uri(Paths, JObj) ->
@@ -109,7 +109,7 @@ maybe_find_attachment(JObj, Db, Id) ->
                                      {'ok', ne_binary()} |
                                      {'error', 'no_stream_strategy'}.
 maybe_local_haproxy_uri(JObj, Db, Id, Attachment) ->
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_bigcouch_direct">>, 'false') of
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_bigcouch_direct">>, 'true') of
         'false' -> maybe_media_manager_proxy_uri(JObj, Db, Id, Attachment);
         'true' ->
             lager:debug("using local haproxy as proxy"),
@@ -133,7 +133,7 @@ maybe_local_haproxy_uri(JObj, Db, Id, Attachment) ->
                                            {'ok', ne_binary()} |
                                            {'error', 'no_stream_strategy'}.
 maybe_media_manager_proxy_uri(JObj, Db, Id, Attachment) ->
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_media_proxy">>, true) of
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_media_proxy">>, 'true') of
         'false' ->
             lager:warning("unable to build URL for media ~s ~s ~s", [Db, Id, Attachment]),
             {'error', 'no_stream_strategy'};

@@ -163,7 +163,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
 -spec get_node_url(atom(), wh_json:object()) -> ne_binary().
 get_node_url(Node, JObj) ->
     case wh_json:get_value(<<"Switch-URL">>, JObj) of
-        'undefined' -> 
+        'undefined' ->
             IP = get_node_ip(Node),
             Port = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"parking_server_sip_port">>, 5060),
             <<"sip:mod_sofia@", IP/binary, ":", Port/binary>>;
@@ -537,8 +537,7 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
 -spec wait_for_pickup(ne_binary(), api_binary(), whapps_call:call()) -> any().
 wait_for_pickup(SlotNumber, 'undefined', Call) ->
     lager:info("(no ringback) waiting for parked caller to be picked up or hangup"),
-    _ = whapps_call_command:b_hold(Call),
-    lager:info("(no ringback) parked caller has been picked up or hungup"),
+    _ = whapps_call_command:b_hold(cf_attributes:moh_attributes(<<"media_id">>, Call), Call),
     cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call));
 wait_for_pickup(SlotNumber, RingbackId, Call) ->
     lager:info("waiting for parked caller to be picked up or hangup"),
