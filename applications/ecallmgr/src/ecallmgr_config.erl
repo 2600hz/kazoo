@@ -161,14 +161,17 @@ set(Key, Value, Node) when not is_binary(Node) ->
 set(Key, Value, Node) ->
     CacheProps = [{'origin', {'db', ?WH_CONFIG_DB, <<"ecallmgr">>}}],
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node), Value, CacheProps),
-    Req = [{<<"Category">>, <<"ecallmgr">>}
-           ,{<<"Key">>, Key}
-           ,{<<"Value">>, Value}
-           ,{<<"Node">>, Node}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
+    Req =
+        props:filter_undefined(
+          [{<<"Node">>, Node}
+           | lists:keydelete(<<"Node">>, 1, [{<<"Category">>, <<"ecallmgr">>}
+                                             ,{<<"Key">>, Key}
+                                             ,{<<"Value">>, Value}
+                                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                            ])
+          ]),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,props:filter_undefined(Req)
+                                  ,Req
                                   ,fun wapi_sysconf:publish_set_req/1
                                   ,fun wh_amqp_worker:any_resp/1
                                  ),
