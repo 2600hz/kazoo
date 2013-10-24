@@ -488,7 +488,9 @@ create_endpoints(Endpoint, Properties, Call) ->
                                        wh_json:objects().
 try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_function(Routine, 3) ->
     try Routine(Endpoint, Properties, Call) of
-        {'error', _} -> Endpoints;
+        {'error', _R} -> 
+            lager:warning("failed to create endpoint: ~p", [_R]),
+            Endpoints;
         JObj -> [JObj|Endpoints]
     catch
         _E:_R ->
@@ -528,13 +530,15 @@ maybe_create_endpoint(Endpoint, Properties, Call) ->
     end.
 
 -spec maybe_create_endpoint(ne_binary(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                   wh_json:object().
+                                   wh_json:object() | {'error', ne_binary()}.
 maybe_create_endpoint(<<"sip">>, Endpoint, Properties, Call) ->
     lager:info("building a SIP endpoint"),
     create_sip_endpoint(Endpoint, Properties, Call);
 maybe_create_endpoint(<<"skype">>, Endpoint, Properties, Call) ->
     lager:info("building a Skype endpoint"),
-    create_skype_endpoint(Endpoint, Properties, Call).
+    create_skype_endpoint(Endpoint, Properties, Call);
+maybe_create_endpoint(UnknownType, _, _, _) ->
+    {'error', <<"unknown endpoint type ", (wh_util:to_binary(UnknownType))/binary>>}.
 
 -spec get_endpoint_type(wh_json:object()) -> ne_binary().
 get_endpoint_type(Endpoint) ->
@@ -551,7 +555,11 @@ guess_endpoint_type(Endpoint, [Type|Types]) ->
         'undefined' -> guess_endpoint_type(Endpoint, Types);
         _ -> Type
     end;
-guess_endpoint_type(_Endpoint, []) -> <<"sip">>.
+guess_endpoint_type(Endpoint, []) -> 
+    case wh_json:get_ne_value(<<"sip">>, Endpoint) of
+        'undefined' -> <<"unknown">>;
+        _Else -> <<"sip">>
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
