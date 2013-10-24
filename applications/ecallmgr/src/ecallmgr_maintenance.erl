@@ -58,12 +58,30 @@
 -spec add_fs_node(string() | binary() | atom()) -> 'ok'.
 add_fs_node(Node) when not is_atom(Node) ->
     add_fs_node(wh_util:to_atom(Node, 'true'));
-add_fs_node(Node) -> ecallmgr_fs_nodes:add(Node).
+add_fs_node(Node) ->
+    Nodes = ecallmgr_config:get(<<"fs_nodes">>, []),
+    NodeBin = wh_util:to_binary(Node),
+    case lists:member(NodeBin, Nodes) of
+        'true' -> 'ok';
+        'false' ->
+            io:format("adding ~s to ecallmgr.~s.fs_nodes~n", [Node, node()]),
+            ecallmgr_config:set(<<"fs_nodes">>, [NodeBin | Nodes])
+    end,
+    ecallmgr_fs_nodes:add(Node).
 
 -spec remove_fs_node(string() | binary() | atom()) -> 'ok'.
 remove_fs_node(Node) when not is_atom(Node) ->
     remove_fs_node(wh_util:to_atom(Node, 'true'));
-remove_fs_node(Node) -> ecallmgr_fs_nodes:remove(Node).
+remove_fs_node(Node) ->
+    Nodes = ecallmgr_config:get(<<"fs_nodes">>, []),
+    NodeBin = wh_util:to_binary(Node),
+    case lists:member(NodeBin, Nodes) of
+        'false' -> 'ok';
+        'true' ->
+            io:format("removing ~s from ecallmgr.~s.fs_nodes~n", [Node, node()]),
+            ecallmgr_config:set(<<"fs_nodes">>, lists:delete(NodeBin, Nodes))
+    end,
+    ecallmgr_fs_nodes:remove(Node).
 
 -spec list_fs_nodes() -> [atom(),...] | [].
 list_fs_nodes() -> ecallmgr_fs_nodes:connected().
