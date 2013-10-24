@@ -32,7 +32,6 @@ find_numbers(Number, Quantity, Opts) when size(Number) < 5 ->
     find_numbers(<<"+883", Number/binary>>, Quantity,Opts);
 find_numbers(Number, Quantity,Opts) ->
 	AccountId = props:get_value(<<"Account-ID">>, Opts),
-	lager:info("inum ~p /~p",[AccountId,Opts]),
 	case find_numbers_in_account(Number, Quantity,AccountId) of
 		{error, non_available}=A ->
 			case wh_services:find_reseller_id(AccountId) of

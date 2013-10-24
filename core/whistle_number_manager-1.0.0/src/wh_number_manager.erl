@@ -48,7 +48,7 @@ find(Number) ->
 find(Number, Quanity) ->
     find(Number, Quanity, []).
 
-find(<<"+",_N/binary>>=Number, Quanity, Opts) ->
+find(<<"$+",_N/binary>>=Number, Quanity, Opts) ->
 	lager:info("tem +"),
 	do_find(Number,Quanity,Opts);
 find(Number, Quanity, Opts) ->
@@ -679,8 +679,6 @@ prepare_find_results([], _, _, Found,_) ->
 prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) ->
 	Props = wh_json:get_value(Number, ModuleResults),
     Routines = [fun(A) ->
-						lager:info("cla ~p",[props:get_value(<<"Classification">>, Opts)]),								   
-						lager:info("ser ~p",[props:get_value(<<"Services">>, Opts)]),
 						case wh_services:activation_charges(<<"phone_numbers">>,props:get_value(<<"Classification">>, Opts),props:get_value(<<"Services">>, Opts)) of
                             'undefined' -> A;
                             Value -> props:set_value(<<"activation_charge">>, Value, A)
