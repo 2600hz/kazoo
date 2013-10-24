@@ -33,13 +33,13 @@ update_mwi(OwnerId, AccountDb) ->
 
 -spec get_devices_owned_by(ne_binary(), ne_binary()) -> wh_json:objects().
 get_devices_owned_by(OwnerID, DB) ->
-    case couch_mgr:get_results(DB, <<"cf_attributes/owned">>, [{key, [OwnerID, <<"device">>]}
-                                                               ,include_docs
+    case couch_mgr:get_results(DB, <<"cf_attributes/owned">>, [{'key', [OwnerID, <<"device">>]}
+                                                               ,'include_docs'
                                                               ]) of
-        {ok, JObjs} ->
+        {'ok', JObjs} ->
             lager:debug("Found ~b devices owned by ~s", [length(JObjs), OwnerID]),
             [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("unable to fetch devices: ~p", [_R]),
             []
     end.
@@ -54,18 +54,21 @@ maybe_originate_quickcall(#cb_context{}=Context) ->
     Call = create_call_from_context(Context),
     case get_endpoints(Call, Context) of
         [] ->
-            cb_context:add_system_error(unspecified_fault, Context);
+            cb_context:add_system_error('unspecified_fault', Context);
         Endpoints ->
             originate_quickcall(Endpoints, Call, default_bleg_cid(Call, Context))
     end.
 
-create_call_from_context(#cb_context{account_id=AccountId, db_name=AccountDb, doc=JObj}=Context) ->
+create_call_from_context(#cb_context{account_id=AccountId
+                                     ,db_name=AccountDb
+                                     ,doc=JObj
+                                    }=Context) ->
     Routines = [fun(C) -> whapps_call:set_account_db(AccountDb, C) end
                 ,fun(C) -> whapps_call:set_account_id(AccountId, C) end
                 ,fun(C) -> whapps_call:set_inception(<<"on-net">>, C) end
                 ,fun(C) ->
                          case wh_json:get_ne_value(<<"owner_id">>, JObj) of
-                             undefined -> C;
+                             'undefined' -> C;
                              OwnerId -> whapps_call:set_owner_id(OwnerId, C)
                          end
                  end
@@ -204,23 +207,23 @@ get_caller_id_number(#cb_context{query_json=JObj}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_superduper_admin(api_binary() | cb_context:context()) -> boolean().
-is_superduper_admin(undefined) -> false;
+is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(#cb_context{auth_account_id=AccountId}) ->
     is_superduper_admin(AccountId);
 is_superduper_admin(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {ok, JObj} ->
+        {'ok', JObj} ->
             %% more logging was called for
             case wh_json:is_true(<<"pvt_superduper_admin">>, JObj) of
-                true ->
+                'true' ->
                     lager:debug("the requestor is a superduper admin"),
-                    true;
-                false ->
+                    'true';
+                'false' ->
                     lager:debug("the requestor is not a superduper admin"),
-                    false
+                    'false'
             end;
-        {error, _} ->
+        {'error', _} ->
             lager:debug("not authorizing, error during lookup"),
-            false
+            'false'
     end.
