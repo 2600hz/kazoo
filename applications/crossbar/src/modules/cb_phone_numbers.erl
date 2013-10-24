@@ -437,28 +437,93 @@ summary(Context) ->
     case crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context) of
         #cb_context{resp_error_code=404}=C ->
             crossbar_util:response(wh_json:new(), C);
-        Else ->
-            cb_context:set_resp_data(Else, clean_summary(Else))
+        Context1 ->
+            cb_context:set_resp_data(Context1, clean_summary(Context1))
     end.
 
 -spec clean_summary(cb_context:context()) -> wh_json:object().
 clean_summary(Context) ->
     JObj = cb_context:resp_data(Context),
     AccountId = cb_context:account_id(Context),
-
-    Routines = [fun(J) ->
-                        wh_json:delete_key(<<"id">>, J)
+    Routines = [fun(J) -> wh_json:delete_key(<<"id">>, J) end
+                ,fun(J) -> maybe_update_locality(Context, J) end
+                ,fun(J) -> wh_json:set_value(<<"numbers">>, J, wh_json:new()) end
+                ,fun(J) ->
+                    Service =  wh_services:fetch(AccountId),
+                    Quantity = wh_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
+                    wh_json:set_value(<<"casquade_quantity">>, Quantity, J)
                 end
-                ,fun(J) ->
-                         wh_json:set_value(<<"numbers">>, J, wh_json:new())
-                 end
-                ,fun(J) ->
-                         Service =  wh_services:fetch(AccountId),
-                         Quantity = wh_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
-                         wh_json:set_value(<<"casquade_quantity">>, Quantity, J)
-                 end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
+
+
+maybe_update_locality(Context, JObj) ->
+    Numbers = wh_json:foldl(
+                fun(Number, Data, Acc) ->
+                    case wh_json:get_value(<<"locality">>, Data) of
+                        'undefined' -> [Number|Acc];
+                        _ -> Acc
+                    end
+                end
+                ,[]
+                ,JObj
+              ),
+    update_locality(Context, Numbers, JObj).
+
+update_locality(_, [], JObj) ->
+    JObj;
+update_locality(Context, Numbers, JObj) ->
+    case whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, <<"url">>) of
+        'undefined' ->
+            lager:error("could not get number location url", []),
+            JObj;
+        Url ->
+            ReqBody = wh_json:set_value(<<"data">>, Numbers, wh_json:new()),
+            Uri = <<Url/binary, "/location">>,
+            case ibrowse:send_req(binary:bin_to_list(Uri), [], 'post', wh_json:encode(ReqBody)) of
+                {'error', Reason} ->
+                    lager:error("number location lookup failed: ~p", [Reason]),
+                    JObj;
+                {'ok', "200", _Headers, Body} ->
+                    handle_location_resp(Context, wh_json:decode(Body), JObj);
+                {'ok', _Status, _, _Body} ->
+                    lager:error("number location lookup failed: ~p ~p", [_Status, _Body]),
+                    JObj
+            end
+    end.
+
+handle_location_resp(Context, Locations, JObj) ->
+    case wh_json:get_value(<<"status">>, Locations, <<"error">>) of
+        <<"success">> ->
+            merge_location(Context, wh_json:get_value(<<"data">>, Locations), JObj);
+        _E ->
+            lager:error("number location lookup failed, status: ~p", [_E]),
+            JObj
+    end.
+
+
+merge_location(Context, Locations, JObj) ->
+    NJObj = wh_json:foldl(
+                fun(Number, Loc, Acc) ->
+                    NumData = wh_json:get_value(Number, Acc),
+                    NumData1 = wh_json:set_value(<<"locality">>, Loc, NumData),
+                    wh_json:set_value(Number, NumData1, Acc)
+                end
+                ,JObj
+                ,Locations
+            ),
+    spawn(fun() -> update_phone_number_doc(Context, NJObj) end),
+    NJObj.
+
+update_phone_number_doc(Context, NJObj) ->
+    AccountDb = cb_context:account_db(Context),
+    DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context), <<"phone_numbers">>),
+    Props = wh_json:to_proplist(NJObj),
+    case couch_mgr:update_doc(AccountDb, DocId, Props) of
+        {'ok', _} -> 'ok';
+        {'error', _E} ->
+            lager:error("failed to update locality for ~p in ~p", [DocId, AccountDb])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
