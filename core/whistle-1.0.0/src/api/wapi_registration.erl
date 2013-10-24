@@ -61,8 +61,10 @@
 -define(REG_FLUSH_TYPES, []).
 
 %% Query Registrations
--define(REG_QUERY_HEADERS, [<<"Realm">>]).
--define(OPTIONAL_REG_QUERY_HEADERS, [<<"Username">>, <<"Fields">>]).
+-define(REG_QUERY_HEADERS, []).
+-define(OPTIONAL_REG_QUERY_HEADERS, [<<"Username">>, <<"Realm">>
+                                     ,<<"Count-Only">>, <<"Fields">>
+                                    ]).
 -define(REG_QUERY_VALUES, [{<<"Event-Category">>, <<"directory">>}
                            ,{<<"Event-Name">>, <<"reg_query">>}
                           ]).
@@ -73,11 +75,12 @@
                                                              end, 'true', Fs);
                                             (_) -> 'false'
                                          end}
+                          ,{<<"Count-Only">>, fun(N) -> wh_util:to_boolean(N) end}
                          ]).
 
 %% Registration Query Response
--define(REG_QUERY_RESP_HEADERS, [<<"Fields">>]).
--define(OPTIONAL_REG_QUERY_RESP_HEADERS, [<<"Registrar-Age">>]).
+-define(REG_QUERY_RESP_HEADERS, []).
+-define(OPTIONAL_REG_QUERY_RESP_HEADERS, [<<"Registrar-Age">>, <<"Count">>, <<"Fields">>]).
 -define(REG_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
                                 ,{<<"Event-Name">>, <<"reg_query_resp">>}
                                ]).
