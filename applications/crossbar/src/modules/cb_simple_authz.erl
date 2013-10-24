@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Simple authorization module
 %%%
@@ -13,7 +13,6 @@
 %%%-------------------------------------------------------------------
 -module(cb_simple_authz).
 
-
 -export([init/0
          ,authorize/1
         ]).
@@ -22,7 +21,11 @@
 
 -define(SERVER, ?MODULE).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
--define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"templates">>, <<"rates">>, <<"acls">>, <<"global_provisioner_templates">>]).
+-define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"templates">>
+                         ,<<"rates">>, <<"acls">>
+                         ,<<"global_provisioner_templates">>
+                         ,<<"registrations">>
+                        ]).
 
 %%%===================================================================
 %%% API
@@ -83,7 +86,7 @@ account_is_descendant('false', #cb_context{auth_account_id=AuthAccountId
             lager:debug("checking if account ~s is a descendant of ~s", [ReqAccountId, AuthAccountId]),
             ReqAccountDb = wh_util:format_account_id(ReqAccountId, 'encoded'),
             case ReqAccountId =:= AuthAccountId orelse couch_mgr:open_cache_doc(ReqAccountDb, ReqAccountId) of
-                'true' -> 
+                'true' ->
                     lager:debug("authorizing, requested account is the same as the auth token account"),
                     'true';
                 %% if the requested account exists, the second component of the key
