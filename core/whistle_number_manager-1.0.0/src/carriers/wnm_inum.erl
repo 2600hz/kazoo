@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(wnm_inum).
 
--export([find_numbers/4]).
+-export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
 -export([gen_numbers/3]).
@@ -26,22 +26,24 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers/4 :: (ne_binary(), pos_integer(), wh_proplist(), ne_binary()) -> {'ok', wh_json:object()} |
+-spec find_numbers/3 :: (ne_binary(), pos_integer(), wh_proplist()) -> {'ok', wh_json:object()} |
                                                         {'error', 'non_available'}.
-find_numbers(Number, Quantity, Opts, AccountId) when size(Number) < 5 ->
-    find_numbers(<<"+883", Number/binary>>, Quantity,Opts,AccountId);
-find_numbers(Number, Quantity,Opts,AccountId) ->
-	case find_numbers_in_account(Number, Quantity,Opts,AccountId) of
+find_numbers(Number, Quantity, Opts) when size(Number) < 5 ->
+    find_numbers(<<"+883", Number/binary>>, Quantity,Opts);
+find_numbers(Number, Quantity,Opts) ->
+	AccountId = props:get_value(<<"Account-ID">>, Opts),
+	lager:info("inum ~p /~p",[AccountId,Opts]),
+	case find_numbers_in_account(Number, Quantity,AccountId) of
 		{error, non_available}=A ->
 			case wh_services:find_reseller_id(AccountId) of
 				AccountId -> A;
-				ResellerId -> find_numbers_in_account(Number, Quantity,Opts,ResellerId)
+				ResellerId -> find_numbers_in_account(Number, Quantity,ResellerId)
 			end;							  
 		R -> R
 	end.
 		
 	
-find_numbers_in_account(Number, Quantity,Opts,AccountId) ->	
+find_numbers_in_account(Number, Quantity,AccountId) ->	
     ViewOptions = [{<<"startkey">>, [AccountId,<<"available">>, Number]}
                   ,{<<"endkey">>, [AccountId,<<"available">>, <<Number/binary, "\ufff0">>]}
                   ,{<<"limit">>, Quantity}
@@ -74,7 +76,7 @@ format_numbers_resp(JObjs) ->
 	wh_json:from_list(Numbers).
 
 -spec is_number_billable/1 :: (wnm_number()) -> 'true' | 'false'.
-is_number_billable(Number) -> 'false'.
+is_number_billable(_Number) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
