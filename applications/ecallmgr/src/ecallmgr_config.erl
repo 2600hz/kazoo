@@ -9,13 +9,18 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_config).
 
--export([flush/0, flush/1]).
+-export([flush/0, flush/1
+         ,flush_default/0, flush_default/1
+        ]).
 -export([get/1, get/2, get/3
          ,get_integer/1, get_integer/2, get_integer/3
          ,get_boolean/1, get_boolean/2, get_boolean/3
+         ,get_default/1, get_default/2
         ]).
 -export([fetch/1, fetch/2, fetch/3]).
--export([set/2, set/3]).
+-export([set/2, set/3
+         ,set_default/2
+        ]).
 
 -compile([{'no_auto_import', [get/1]}]).
 
@@ -26,12 +31,14 @@
 -spec flush(wh_json:key()) -> 'ok' | {'error', _}.
 
 flush() ->
-    wh_cache:flush_local(?ECALLMGR_UTIL_CACHE).
+    wh_cache:flush_local(?ECALLMGR_UTIL_CACHE),
+    flush('undefined').
 
 flush(Key) ->
     flush(Key, node()).
 
-flush(Key, Node) when not is_binary(Key) ->
+-spec flush(api_binary(), atom() | ne_binary()) -> 'ok'.
+flush(Key, Node) when not is_binary(Key), Key =/= 'undefined' ->
     flush(wh_util:to_binary(Key), Node);
 flush(Key, Node) when not is_binary(Node) ->
     flush(Key, wh_util:to_binary(Node));
@@ -49,6 +56,13 @@ flush(Key, Node) ->
                         ,props:filter_undefined(Req)
                         ,fun wapi_sysconf:publish_flush_req/1
                        ).
+
+-spec flush_default() -> 'ok'.
+-spec flush_default(api_binary()) -> 'ok'.
+flush_default() ->
+    flush('undefined', <<"default">>).
+flush_default(Key) ->
+    flush(Key, <<"default">>).
 
 -spec get(wh_json:key()) -> wh_json:json_term() | 'undefined'.
 -spec get(wh_json:key(), Default) -> wh_json:json_term() | Default.
@@ -73,6 +87,13 @@ get(Key, Default, Node) ->
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node), Value, CacheProps),
             Value
     end.
+
+-spec get_default(wh_json:key()) -> wh_json:json_term() | 'undefined'.
+-spec get_default(wh_json:key(), Default) -> wh_json:json_term() | Default.
+get_default(Key) ->
+    get(Key, 'undefined', <<"default">>).
+get_default(Key, Default) ->
+    get(Key, Default, <<"default">>).
 
 -spec get_integer(wh_json:key()) -> integer() | 'undefined'.
 -spec get_integer(wh_json:key(), Default) -> integer() | Default.
@@ -161,14 +182,17 @@ set(Key, Value, Node) when not is_binary(Node) ->
 set(Key, Value, Node) ->
     CacheProps = [{'origin', {'db', ?WH_CONFIG_DB, <<"ecallmgr">>}}],
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node), Value, CacheProps),
-    Req = [{<<"Category">>, <<"ecallmgr">>}
-           ,{<<"Key">>, Key}
-           ,{<<"Value">>, Value}
-           ,{<<"Node">>, Node}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
+    Req =
+        props:filter_undefined(
+          [{<<"Node">>, Node}
+           | lists:keydelete(<<"Node">>, 1, [{<<"Category">>, <<"ecallmgr">>}
+                                             ,{<<"Key">>, Key}
+                                             ,{<<"Value">>, Value}
+                                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                            ])
+          ]),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,props:filter_undefined(Req)
+                                  ,Req
                                   ,fun wapi_sysconf:publish_set_req/1
                                   ,fun wh_amqp_worker:any_resp/1
                                  ),
@@ -178,6 +202,10 @@ set(Key, Value, Node) ->
         {'ok', _} ->
             lager:debug("set config for key '~s' to new value: ~p", [Key, Value])
     end.
+
+-spec set_default(wh_json:key(), wh_json:json_term()) -> 'ok'.
+set_default(Key, Value) ->
+    set(Key, Value, <<"default">>).
 
 -spec get_response_value(wh_json:object(), term()) -> term().
 get_response_value(JObj, Default) ->
