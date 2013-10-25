@@ -456,7 +456,7 @@ clean_summary(Context) ->
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
 
-
+-spec maybe_update_locality(cb_context:context(), wh_json:object()) -> wh_json:object().
 maybe_update_locality(Context, JObj) ->
     Numbers = wh_json:foldl(
                 fun(Number, Data, Acc) ->
@@ -470,6 +470,7 @@ maybe_update_locality(Context, JObj) ->
               ),
     update_locality(Context, Numbers, JObj).
 
+-spec update_locality(cb_context:context(), ne_binaries(), wh_json:object()) -> wh_json:object().
 update_locality(_, [], JObj) ->
     JObj;
 update_locality(Context, Numbers, JObj) ->
@@ -492,6 +493,7 @@ update_locality(Context, Numbers, JObj) ->
             end
     end.
 
+-spec handle_location_resp(cb_context:context(), wh_json:object(), wh_json:object()) -> wh_json:object().
 handle_location_resp(Context, Locations, JObj) ->
     case wh_json:get_value(<<"status">>, Locations, <<"error">>) of
         <<"success">> ->
@@ -501,7 +503,7 @@ handle_location_resp(Context, Locations, JObj) ->
             JObj
     end.
 
-
+-spec merge_location(cb_context:context(), wh_json:object(), wh_json:object()) -> wh_json:object().
 merge_location(Context, Locations, JObj) ->
     NJObj = wh_json:foldl(
                 fun(Number, Loc, Acc) ->
@@ -515,6 +517,7 @@ merge_location(Context, Locations, JObj) ->
     spawn(fun() -> update_phone_number_doc(Context, NJObj) end),
     NJObj.
 
+-spec update_phone_number_doc(cb_context:context(), wh_json:object()) -> 'ok'.
 update_phone_number_doc(Context, NJObj) ->
     AccountDb = cb_context:account_db(Context),
     DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context), <<"phone_numbers">>),
