@@ -160,7 +160,7 @@ call_custom(Srv, Req, PubFun, VFun, Timeout, Bind) ->
         _Else ->
             lager:warning("poolboy error: ~p", [_Else]),
             {'error', 'poolboy_fault'}
-    end.    
+    end.
 
 -spec call_collect(server_ref(), api_terms(), publish_fun()) ->
                           {'ok', wh_json:objects()} |
@@ -182,7 +182,7 @@ call_collect(Srv, Req, PubFun, {_, _}=Until) ->
 call_collect(Srv, Req, PubFun, Timeout) ->
     call_collect(Srv, Req, PubFun, collect_until_timeout(), Timeout).
 
--spec call_collect(server_ref(), api_terms(), publish_fun(), collect_until(), wh_timeout()) -> 
+-spec call_collect(server_ref(), api_terms(), publish_fun(), collect_until(), wh_timeout()) ->
                           {'ok', wh_json:objects()} |
                           {'timeout', wh_json:objects()} |
                           {'error', _}.
