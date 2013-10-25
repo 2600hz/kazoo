@@ -17,8 +17,6 @@
          ,allow_sbc/2
          ,deny_carrier/2
          ,deny_sbc/2
-         ,remove_carrier/1
-         ,remove_sbc/1
          ,list_carrier_acls/0
          ,list_sbc_acls/0
          ,list_acls/0, list_acls/1
@@ -130,26 +128,6 @@ deny_carrier(CarrierName, CarrierIP) ->
 deny_sbc(SBCName, SBCIP) ->
     acl_builder(SBCName, SBCIP, <<"deny">>, fun sbc_acl/2, <<"SBC">>).
 
--spec remove_carrier(ne_binary()) -> 'ok'.
-remove_carrier(CarrierName) ->
-    remove_acl(CarrierName).
-
--spec remove_sbc(ne_binary()) -> 'ok'.
-remove_sbc(SBCName) ->
-    remove_acl(SBCName).
-
--spec remove_acl(ne_binary()) -> 'ok'.
-remove_acl(Name) ->
-    ACLs = ecallmgr_config:get_default(<<"acls">>, wh_json:new()),
-    case wh_json:get_value(Name, ACLs) of
-        'undefined' ->
-            io:format("failed to find ~s in the ACL list~n", [Name]);
-        ACL ->
-            io:format("removing ~s(~s) from the ACL list~n", [Name, wh_json:get_value(<<"cidr">>, ACL)]),
-            ecallmgr_config:set_default(<<"acls">>, wh_json:delete_key(Name, ACLs))
-    end,
-    'ok'.
-
 -spec list_carrier_acls() -> 'ok'.
 list_carrier_acls() ->
     list_acls(<<"trusted">>).
@@ -168,7 +146,7 @@ reload_acls() ->
     io:format("reloading of ACLs issued to all connected media switches~n", []).
 
 flush_acls() ->
-    ecallmgr_config:flush_default(<<"acls">>).
+    ecallmgr_config:flush(<<"acls">>).
 
 -spec list_acls('all' | ne_binary()) -> 'ok'.
 list_acls(Network) ->
@@ -177,7 +155,7 @@ list_acls(Network) ->
     wh_json:foreach(fun({Name, ACL}) ->
                             maybe_print_acl(Network, FormatString, Name, ACL)
                     end
-                    ,ecallmgr_config:get_default(<<"acls">>, wh_json:new())
+                    ,ecallmgr_config:get(<<"acls">>, wh_json:new())
                    ).
 
 maybe_print_acl('all', FormatString, Name, ACL) ->
@@ -196,7 +174,7 @@ maybe_print_acl(Network, FormatString, Name, ACL) ->
 
 -spec acl_builder(ne_binary(), ne_binary(), ne_binary(), fun((ne_binary(), ne_binary()) -> wh_json:object()), ne_binary()) -> 'ok'.
 acl_builder(Name, IP, Type, ACLBuilder, Class) ->
-    ACLs = ecallmgr_config:get_default(<<"acls">>, wh_json:new()),
+    ACLs = ecallmgr_config:get(<<"acls">>, wh_json:new()),
     IPBlock = maybe_fix_ip(IP),
     case wh_json:get_value(Name, ACLs) of
         'undefined' ->
