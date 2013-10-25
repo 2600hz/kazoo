@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Listener for sysconf_read, and sysconf_write AMQP requests
 %%% @end
@@ -23,16 +23,16 @@
 
 -include("sysconf.hrl").
 
--define(RESPONDERS, [{sysconf_get, [{<<"sysconf">>, <<"get_req">>}]}
-                     ,{sysconf_set, [{<<"sysconf">>, <<"set_req">>}]}
-                     ,{sysconf_flush, [{<<"sysconf">>, <<"flush_req">>}]}
+-define(RESPONDERS, [{'sysconf_get', [{<<"sysconf">>, <<"get_req">>}]}
+                     ,{'sysconf_set', [{<<"sysconf">>, <<"set_req">>}]}
+                     ,{'sysconf_flush', [{<<"sysconf">>, <<"flush_req">>}]}
                     ]).
--define(BINDINGS, [{sysconf, []}]).
+-define(BINDINGS, [{'sysconf', []}]).
 
 -define(SERVER, ?MODULE).
 -define(SYSCONF_QUEUE_NAME, <<"sysconf_listener">>).
--define(SYSCONF_QUEUE_OPTIONS, [{exclusive, false}]).
--define(SYSCONF_CONSUME_OPTIONS, [{exclusive, false}]).
+-define(SYSCONF_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(SYSCONF_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -46,11 +46,11 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                      ,{bindings, ?BINDINGS}
-                                      ,{queue_name, ?SYSCONF_QUEUE_NAME}
-                                      ,{queue_options, ?SYSCONF_QUEUE_OPTIONS}
-                                      ,{consume_options, ?SYSCONF_CONSUME_OPTIONS}
+    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+                                      ,{'bindings', ?BINDINGS}
+                                      ,{'queue_name', ?SYSCONF_QUEUE_NAME}
+                                      ,{'queue_options', ?SYSCONF_QUEUE_OPTIONS}
+                                      ,{'consume_options', ?SYSCONF_CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================
@@ -69,10 +69,10 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    process_flag(trap_exit, true),
+    process_flag('trap_exit', 'true'),
     lager:debug("starting new sysconf server"),
     _ = wh_couch_connections:add_change_handler(?WH_CONFIG_DB),
-    {ok, ok}.
+    {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -89,7 +89,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Msg, _From, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,7 +102,7 @@ handle_call(_Msg, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -114,17 +114,17 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({document_changes, _, _}, State) ->
+handle_info({'document_changes', _, _}, State) ->
     whapps_config:flush(),
-    lager:info("system configuration was updated, flushing whapps config cache", []),
-    {noreply, State};
-handle_info({document_deleted, _}, State) ->    
+    lager:info("system configuration was updated, flushing whapps config cache"),
+    {'noreply', State};
+handle_info({'document_deleted', _}, State) ->
     whapps_config:flush(),
-    lager:info("system configuration was updated, flushing whapps config cache", []),
-    {noreply, State};
+    lager:info("system configuration was updated, flushing whapps config cache"),
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -135,7 +135,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -161,7 +161,7 @@ terminate(_Reason, _) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
