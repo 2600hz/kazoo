@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -35,6 +35,16 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
+-define(IGNORE, [<<"NO_ANSWER">>
+                 ,<<"USER_BUSY">>
+                 ,<<"NO_USER_RESPONSE">>
+                 ,<<"LOSE_RACE">>
+                 ,<<"ATTENDED_TRANSFER">>
+                 ,<<"ORIGINATOR_CANCEL">>
+                 ,<<"NORMAL_CLEARING">>
+                 ,<<"ALLOTTED_TIMEOUT">>
+                ]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -57,15 +67,7 @@ start_link() ->
 -spec handle_cdr(wh_json:object(), proplist()) -> no_return().
 handle_cdr(JObj, _Props) ->
     'true' = wapi_call:cdr_v(JObj),
-    IgnoreCauses = whapps_config:get(<<"hangups">>, <<"ignore_hangup_causes">>, [<<"NO_ANSWER">>
-                                                                                     ,<<"USER_BUSY">>
-                                                                                     ,<<"NO_USER_RESPONSE">>
-                                                                                     ,<<"LOSE_RACE">>
-                                                                                     ,<<"ATTENDED_TRANSFER">>
-                                                                                     ,<<"ORIGINATOR_CANCEL">>
-                                                                                     ,<<"NORMAL_CLEARING">>
-                                                                                     ,<<"ALLOTTED_TIMEOUT">>
-                                                                                ]),
+    IgnoreCauses = whapps_config:get(<<"hangups">>, <<"ignore_hangup_causes">>, ?IGNORE),
     HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj, <<"unknown">>),
     case lists:member(HangupCause, IgnoreCauses) of
         'true' -> 'ok';
@@ -79,8 +81,46 @@ handle_cdr(JObj, _Props) ->
                                      ,find_direction(JObj)
                                      ,find_realm(JObj, AccountId)
                                      ,AccountId
-                                    ], wh_json:to_proplist(JObj))
+                                    ]
+                                   ,maybe_add_hangup_specific(HangupCause, JObj)
+                                  )
     end.
+
+-spec maybe_add_hangup_specific(ne_binary(), wh_json:object()) -> wh_proplist().
+maybe_add_hangup_specific(<<"UNALLOCATED_NUMBER">>, JObj) ->
+    maybe_add_number_info(JObj);
+maybe_add_hangup_specific(<<"NO_ROUTE_DESTINATION">>, JObj) ->
+    maybe_add_number_info(JObj);
+maybe_add_hangup_specific(_HangupCause, JObj) ->
+    wh_json:to_proplist(JObj).
+
+-spec maybe_add_number_info(wh_json:object()) -> wh_proplist().
+maybe_add_number_info(JObj) ->
+    Destination = find_destination(JObj),
+    try stepswitch_util:lookup_number(Destination) of
+        {'ok', AccountId, _Props} ->
+            [{<<"Account-Tree">>, build_account_tree(AccountId)}
+             | wh_json:to_proplist(JObj)
+            ];
+        {'error', _} ->
+            [{<<"Hangups-Message">>, <<"Destination was not found in numbers DBs">>}
+             | wh_json:to_proplist(JObj)
+            ]
+    catch
+        _:_ -> wh_json:to_proplist(JObj)
+    end.
+
+-spec build_account_tree(ne_binary()) -> wh_json:object().
+build_account_tree(AccountId) ->
+    {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
+    Tree = wh_json:get_value(<<"pvt_tree">>, AccountDoc, []),
+    build_account_tree(Tree, []).
+
+-spec build_account_tree(ne_binaries(), wh_proplist()) -> wh_json:object().
+build_account_tree([], Map) -> wh_json:from_list(Map);
+build_account_tree([AccountId|Tree], Map) ->
+    {'ok', AccountDoc} = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
+    build_account_tree(Tree, [{AccountId, wh_json:get_value(<<"name">>, AccountDoc)} | Map]).
 
 %%%===================================================================
 %%% gen_server callbacks
