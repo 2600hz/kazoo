@@ -13,10 +13,10 @@
          ,list_fs_nodes/0
         ]).
 
--export([allow_carrier/2
-         ,allow_sbc/2
-         ,deny_carrier/2
-         ,deny_sbc/2
+-export([allow_carrier/2, allow_carrier/3
+         ,allow_sbc/2, allow_sbc/3
+         ,deny_carrier/2, deny_carrier/3
+         ,deny_sbc/2, deny_sbc/3
          ,list_carrier_acls/0
          ,list_sbc_acls/0
          ,list_acls/0, list_acls/1
@@ -115,18 +115,38 @@ remove_fs_node(FSNode, AsDefault) ->
 list_fs_nodes() -> ecallmgr_fs_nodes:connected().
 
 -spec allow_carrier(ne_binary(), ne_binary()) -> 'ok'.
+-spec allow_carrier(ne_binary(), ne_binary(), boolean() | text()) -> 'ok'.
 allow_carrier(CarrierName, CarrierIP) ->
-    acl_builder(CarrierName, CarrierIP, <<"allow">>, fun carrier_acl/2, <<"carrier">>).
+    allow_carrier(CarrierName, CarrierIP, 'false').
+allow_carrier(CarrierName, CarrierIP, AsDefault) ->
+    acl_builder(CarrierName, CarrierIP, use_default(AsDefault)
+                ,<<"allow">>, fun carrier_acl/2, <<"carrier">>
+               ).
 -spec allow_sbc(ne_binary(), ne_binary()) -> 'ok'.
+-spec allow_sbc(ne_binary(), ne_binary(), boolean() | text()) -> 'ok'.
 allow_sbc(SBCName, SBCIP) ->
-    acl_builder(SBCName, SBCIP, <<"allow">>, fun sbc_acl/2, <<"SBC">>).
+    allow_sbc(SBCName, SBCIP, 'false').
+allow_sbc(SBCName, SBCIP, AsDefault) ->
+    acl_builder(SBCName, SBCIP, use_default(AsDefault)
+                ,<<"allow">>, fun sbc_acl/2, <<"SBC">>
+               ).
 
 -spec deny_carrier(ne_binary(), ne_binary()) -> 'ok'.
+-spec deny_carrier(ne_binary(), ne_binary(), boolean() | text()) -> 'ok'.
 deny_carrier(CarrierName, CarrierIP) ->
-    acl_builder(CarrierName, CarrierIP, <<"deny">>, fun carrier_acl/2, <<"carrier">>).
+    deny_carrier(CarrierName, CarrierIP, 'false').
+deny_carrier(CarrierName, CarrierIP, AsDefault) ->
+    acl_builder(CarrierName, CarrierIP, use_default(AsDefault)
+                ,<<"deny">>, fun carrier_acl/2, <<"carrier">>
+               ).
 -spec deny_sbc(ne_binary(), ne_binary()) -> 'ok'.
+-spec deny_sbc(ne_binary(), ne_binary(), boolean() | text()) -> 'ok'.
 deny_sbc(SBCName, SBCIP) ->
-    acl_builder(SBCName, SBCIP, <<"deny">>, fun sbc_acl/2, <<"SBC">>).
+    deny_sbc(SBCName, SBCIP, 'false').
+deny_sbc(SBCName, SBCIP, AsDefault) ->
+    acl_builder(SBCName, SBCIP, use_default(AsDefault)
+                ,<<"deny">>, fun sbc_acl/2, <<"SBC">>
+               ).
 
 -spec list_carrier_acls() -> 'ok'.
 list_carrier_acls() ->
@@ -172,20 +192,22 @@ maybe_print_acl(Network, FormatString, Name, ACL) ->
         'false' -> 'ok'
     end.
 
--spec acl_builder(ne_binary(), ne_binary(), ne_binary(), fun((ne_binary(), ne_binary()) -> wh_json:object()), ne_binary()) -> 'ok'.
-acl_builder(Name, IP, Type, ACLBuilder, Class) ->
-    ACLs = ecallmgr_config:get(<<"acls">>, wh_json:new()),
+-spec acl_builder(ne_binary(), ne_binary(), ne_binary(), ne_binary()
+                  ,fun((ne_binary(), ne_binary()) -> wh_json:object()), ne_binary()
+                 ) -> 'ok'.
+acl_builder(Name, IP, Node, Type, ACLBuilder, Class) ->
+    ACLs = ecallmgr_config:get(<<"acls">>, wh_json:new(), Node),
     IPBlock = maybe_fix_ip(IP),
     case wh_json:get_value(Name, ACLs) of
         'undefined' ->
             io:format("adding ~s ~s(~s) to ACLs and ~s traffic~n", [Class, Name, IPBlock, Type]),
-            ecallmgr_config:set_default(<<"acls">>, wh_json:set_value(Name, ACLBuilder(IPBlock, Type), ACLs));
+            ecallmgr_config:set(<<"acls">>, wh_json:set_value(Name, ACLBuilder(IPBlock, Type), ACLs), Node);
         ACL ->
             case wh_json:get_value(<<"type">>, ACL) of
                 Type -> io:format("~s ~s(~s) is already ~s~n", [Class, Name, IPBlock, Type]);
                 _OldType ->
                     io:format("moving ~s ~s(~s) from ~s to ~s~n", [Class, Name, IPBlock, _OldType, Type]),
-                    ecallmgr_config:set_default(<<"acls">>, wh_json:set_value(Name, ACLBuilder(IPBlock, Type), ACLs))
+                    ecallmgr_config:set(<<"acls">>, wh_json:set_value(Name, ACLBuilder(IPBlock, Type), ACLs), Node)
             end
     end,
     'ok'.
