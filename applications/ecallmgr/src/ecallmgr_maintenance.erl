@@ -179,8 +179,8 @@ flush_acls() ->
 list_acls(Network) ->
     list_acls(Network, 'false').
 list_acls(Network, AsDefault) ->
-    FormatString = "| ~-30s | ~-20s | ~-6s |~n",
-    io:format(FormatString, [<<"Name">>, <<"CIDR">>, <<"Type">>]),
+    FormatString = "| ~-30s | ~-20s | ~-6s | ~-32s | ~-16s |~n",
+    io:format(FormatString, [<<"Name">>, <<"CIDR">>, <<"Type">>, <<"Account ID">>, <<"Authorizing Type">>]),
     wh_json:foreach(fun({Name, ACL}) ->
                             maybe_print_acl(Network, FormatString, Name, ACL)
                     end
@@ -191,12 +191,16 @@ maybe_print_acl('all', FormatString, Name, ACL) ->
     io:format(FormatString, [Name
                              ,wh_json:get_value(<<"cidr">>, ACL)
                              ,wh_json:get_value(<<"type">>, ACL)
+                             ,wh_json:get_value(<<"account_id">>, ACL, <<>>)
+                             ,wh_json:get_value(<<"authorizing_type">>, ACL, <<>>)
                             ]);
 maybe_print_acl(Network, FormatString, Name, ACL) ->
     case wh_json:get_value(<<"network-list-name">>, ACL) =:= Network of
         'true' -> io:format(FormatString, [Name
                                            ,wh_json:get_value(<<"cidr">>, ACL)
                                            ,wh_json:get_value(<<"type">>, ACL)
+                                           ,wh_json:get_value(<<"account_id">>, ACL, <<>>)
+                                           ,wh_json:get_value(<<"authorizing_type">>, ACL, <<>>)
                                           ]);
         'false' -> 'ok'
     end.
@@ -205,7 +209,7 @@ maybe_print_acl(Network, FormatString, Name, ACL) ->
                   ,fun((ne_binary(), ne_binary()) -> wh_json:object()), ne_binary()
                  ) -> 'ok'.
 acl_builder(Name, IP, Node, Type, ACLBuilder, Class) ->
-    ACLs = ecallmgr_config:get(<<"acls">>, wh_json:new(), Node),
+    ACLs = filter_acls(ecallmgr_config:get(<<"acls">>, wh_json:new(), Node)),
     IPBlock = maybe_fix_ip(IP),
     case wh_json:get_value(Name, ACLs) of
         'undefined' ->
@@ -220,6 +224,14 @@ acl_builder(Name, IP, Node, Type, ACLBuilder, Class) ->
             end
     end,
     'ok'.
+
+-spec filter_acls(wh_json:object()) -> wh_json:object().
+filter_acls(ACLs) ->
+    wh_json:filter(fun filter_acls_fun/1, ACLs).
+
+-spec filter_acls_fun({wh_json:key(), wh_json:json_term()}) -> boolean().
+filter_acls_fun({_Name, ACL}) ->
+    wh_json:get_value(<<"authorizing_type">>, ACL) =:= 'undefined'.
 
 -spec carrier_acl(ne_binary(), ne_binary()) -> wh_json:object().
 carrier_acl(IP, Type) ->
