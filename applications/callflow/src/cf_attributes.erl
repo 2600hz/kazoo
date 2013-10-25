@@ -309,6 +309,7 @@ moh_attributes(Attribute, Call) ->
             maybe_normalize_moh_attribute(Value, Attribute, Call)
     end.
 
+moh_attributes('undefined', _, _) -> 'undefined';
 moh_attributes(EndpointId, Attribute, Call) when is_binary(EndpointId) ->
     case cf_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
