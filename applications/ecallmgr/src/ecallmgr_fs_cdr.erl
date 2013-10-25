@@ -12,7 +12,7 @@
 -export([start_link/1
          ,start_link/2
         ]).
--export([publish/2]).
+-export([maybe_publish/3,publish/3]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -139,8 +139,8 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'event', [UUID | Props]}, State) ->
-    spawn(?MODULE, 'publish', [UUID, Props]),
+handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
+    spawn(?MODULE, 'maybe_publish', [UUID, Props, Node]),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -174,11 +174,24 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec publish(ne_binary(), wh_proplist()) -> 'ok'.
-publish(UUID, Props) ->
-    put('callid', UUID),
+
+
+-spec maybe_publish(ne_binary(), wh_proplist(), atom()) -> 'ok'.
+maybe_publish(UUID, Props,Node) ->
+    put('callid', UUID),	
+	ThisNode = wh_util:to_binary(node()),
+	case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) of
+		'undefined' -> lager:debug("Ecallmgr-Node not defined processing cdr for node ~p",[Node]);
+		TargetNode -> case  TargetNode =:=  ThisNode of
+						  'true' -> publish(UUID, Props, Node);
+						  'false' -> lager:debug("cdr not published for target node ~p",[TargetNode])
+					  end
+	end.
+
+-spec publish(ne_binary(), wh_proplist(), atom()) -> 'ok'.
+publish(UUID, Props,_Node) ->
     CDR = create_cdr(Props),
-    lager:debug("publising cdr: ~p", [CDR]),
+    lager:debug("publishing cdr: ~p", [CDR]),
     wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
                         ,CDR
                         ,fun(P) -> wapi_call:publish_cdr(UUID, P) end
