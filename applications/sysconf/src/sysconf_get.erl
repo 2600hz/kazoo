@@ -1,8 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Handle requests to read configuration data
-%%% Support nested keys a la wh_json, with a # 
+%%% Support nested keys a la wh_json, with a #
 %%% as a separator i.e key#subkey#subsubkey
 %%% @end
 %%% @contributors
@@ -14,12 +14,11 @@
 
 -include("sysconf.hrl").
 
-init() ->
-    ok.
+init() -> 'ok'.
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
-    true = wapi_sysconf:get_req_v(ApiJObj),
+    'true' = wapi_sysconf:get_req_v(ApiJObj),
 
     Category = wh_json:get_binary_value(<<"Category">>, ApiJObj),
     Key = wh_json:get_binary_value(<<"Key">>, ApiJObj),
@@ -29,7 +28,7 @@ handle_req(ApiJObj, _Props) ->
 
     lager:debug("received sysconf get for ~s:~s from ~s", [Category, Key, Node]),
 
-    RespQ =  wh_json:get_value(<<"Server-ID">>, ApiJObj), 
+    RespQ =  wh_json:get_value(<<"Server-ID">>, ApiJObj),
     Resp = [{<<"Category">>, Category}
             ,{<<"Key">>, Key}
             ,{<<"Value">>, get_value(Category, Key, Default, Node)}
