@@ -670,7 +670,11 @@ load_fixture_from_file(App, File) ->
 normalize_jobj(JObj) -> normalize(JObj).
 
 -spec normalize(object()) -> object().
-normalize(JObj) -> map(fun(K, V) -> {normalize_key(K), normalize_value(V)} end, JObj).
+normalize(JObj) -> foldl(fun normalize_foldl/3, new(), JObj).
+
+-spec normalize_foldl(key(), json_term(), object()) -> object().
+normalize_foldl(_K, 'undefined', JObj) -> JObj;
+normalize_foldl(K, V, JObj) -> set_value(normalize_key(K), normalize_value(V), JObj).
 
 -spec normalize_value(json_term()) -> json_term().
 normalize_value([_|_]=As) -> [normalize_value(A) || A <- As];

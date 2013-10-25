@@ -218,8 +218,8 @@ ensure_account_has_realm(AccountId, #cb_context{req_data=JObj}=Context) ->
 -spec cleanup_leaky_keys(api_binary(), cb_context:context()) -> cb_context:context().
 cleanup_leaky_keys(AccountId, #cb_context{req_data=JObj}=Context) ->
     RemoveKeys = [<<"wnm_allow_additions">>
-                      ,<<"superduper_admin">>
-                      ,<<"billing_mode">>
+                  ,<<"superduper_admin">>
+                  ,<<"billing_mode">>
                  ],
     validate_realm_is_unique(AccountId, Context#cb_context{req_data=wh_json:delete_keys(RemoveKeys, JObj)}).
 
@@ -251,12 +251,13 @@ on_successful_validation(AccountId, #cb_context{}=Context) ->
 maybe_import_enabled(#cb_context{auth_account_id=AuthId, account_id=AuthId, doc=JObj}=Context) ->
     Context#cb_context{doc=wh_json:delete_key(<<"enabled">>, JObj)};
 maybe_import_enabled(#cb_context{auth_account_id=AuthId
-                                 ,resp_status=success, doc=JObj}=Context) ->
+                                 ,resp_status=success, doc=JObj
+                                }=Context) ->
 
     case lists:member(AuthId, wh_json:get_value(<<"pvt_tree">>, JObj, [])) of
-        false ->
+        'false' ->
             Context#cb_context{doc=wh_json:delete_key(<<"enabled">>, JObj)};
-        true ->
+        'true' ->
             case wh_json:get_value(<<"enabled">>, JObj) of
                 undefined ->
                     Context;
@@ -274,16 +275,16 @@ maybe_import_enabled(#cb_context{auth_account_id=AuthId
 %%--------------------------------------------------------------------
 -spec validate_delete_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_delete_request(AccountId, Context) ->
-    ViewOptions = [{<<"startkey">>, [AccountId]}
-                   ,{<<"endkey">>, [AccountId, wh_json:new()]}
+    ViewOptions = [{'startkey', [AccountId]}
+                   ,{'endkey', [AccountId, wh_json:new()]}
                   ],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_DESCENDANTS, ViewOptions) of
-        {error, not_found} -> cb_context:add_system_error(datastore_missing_view, Context);
-        {error, _} -> cb_context:add_system_error(datastore_fault, Context);
-        {ok, JObjs} ->
+        {'error', 'not_found'} -> cb_context:add_system_error('datastore_missing_view', Context);
+        {'error', _} -> cb_context:add_system_error('datastore_fault', Context);
+        {'ok', JObjs} ->
             case [JObj || JObj <- JObjs, wh_json:get_value(<<"id">>, JObj) =/= AccountId] of
-                [] -> Context#cb_context{resp_status=success};
-                _Else -> cb_context:add_system_error(account_has_descendants, Context)
+                [] -> Context#cb_context{resp_status='success'};
+                _Else -> cb_context:add_system_error('account_has_descendants', Context)
             end
     end.
 
@@ -304,18 +305,18 @@ load_account(AccountId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec leak_pvt_fields(cb_context:context()) -> cb_context:context().
-leak_pvt_fields(#cb_context{resp_status=success}=Context) ->
+leak_pvt_fields(#cb_context{resp_status='success'}=Context) ->
     leak_pvt_allow_additions(Context);
 leak_pvt_fields(Context) -> Context.
 
 -spec leak_pvt_allow_additions(cb_context:context()) -> cb_context:context().
 leak_pvt_allow_additions(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
-    AllowAdditions = wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj, false),
+    AllowAdditions = wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj, 'false'),
     leak_pvt_superduper_admin(Context#cb_context{resp_data=wh_json:set_value(<<"wnm_allow_additions">>, AllowAdditions, RespJObj)}).
 
 -spec leak_pvt_superduper_admin(cb_context:context()) -> cb_context:context().
 leak_pvt_superduper_admin(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
-    SuperAdmin = wh_json:is_true(<<"pvt_superduper_admin">>, JObj, false),
+    SuperAdmin = wh_json:is_true(<<"pvt_superduper_admin">>, JObj, 'false'),
     leak_pvt_enabled(Context#cb_context{resp_data=wh_json:set_value(<<"superduper_admin">>, SuperAdmin, RespJObj)}).
 
 -spec leak_pvt_enabled(#cb_context{}) -> #cb_context{}.

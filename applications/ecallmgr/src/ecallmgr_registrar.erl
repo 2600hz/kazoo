@@ -477,27 +477,47 @@ maybe_resp_to_query(JObj) ->
             wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
+-spec build_query_spec(wh_json:object(), boolean()) -> ets:match_spec().
+build_query_spec(JObj, CountOnly) ->
+    {SelectFormat, QueryFormat} =
+        case wh_util:to_lower_binary(wh_json:get_value(<<"Realm">>, JObj)) of
+            <<"all">> -> {#registration{_='_'}, {'=:=', 'undefined', 'undefined'}};
+            Realm ->
+                case wh_json:get_value(<<"Username">>, JObj) of
+                    'undefined' ->
+                        {#registration{id = {'_', '$1'}, _ = '_'}
+                         ,{'=:=', '$1', {'const', Realm}}
+                        };
+                    Username ->
+                        Id = registration_id(Username, Realm),
+                        {#registration{id = '$1', _ = '_'}
+                         ,{'=:=', '$1', {'const', Id}}
+                        }
+                end
+        end,
+    ResultFormat = case CountOnly of
+                       'true' -> 'true';
+                       'false' -> '$_'
+                   end,
+
+    [{SelectFormat
+      ,[QueryFormat]
+      ,[ResultFormat]
+     }].
+
+
 -spec resp_to_query(wh_json:object()) -> 'ok'.
 resp_to_query(JObj) ->
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),
-    Realm = wh_util:to_lower_binary(wh_json:get_value(<<"Realm">>, JObj)),
-    MatchSpec = case wh_json:get_value(<<"Username">>, JObj) of
-                    'undefined' ->
-                        [{#registration{id = {'_', '$1'}, _ = '_'}
-                          ,[{'=:=', '$1', {const, Realm}}]
-                          ,['$_']
-                         }];
-                    Username ->
-                        Id = registration_id(Username, Realm),
-                        [{#registration{id = '$1', _ = '_'}
-                          ,[{'=:=', '$1', {const, Id}}]
-                          ,['$_']
-                         }]
+    CountOnly = wh_json:is_true(<<"Count-Only">>, JObj, 'false'),
+
+    SelectFun = case CountOnly of
+                    'true' -> fun ets:select_count/2;
+                    'false' -> fun ets:select/2
                 end,
-    case [wh_json:from_list(to_props(Reg))
-          || Reg <- ets:select(?MODULE, MatchSpec)
-         ]
-    of
+    MatchSpec = build_query_spec(JObj, CountOnly),
+
+    case SelectFun(?MODULE, MatchSpec) of
         [] ->
             Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     ,{<<"Registrar-Age">>, gen_server:call(?MODULE, 'registrar_age')}
@@ -507,9 +527,17 @@ resp_to_query(JObj) ->
         [_|_]=Registrations ->
             Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     ,{<<"Registrar-Age">>, gen_server:call(?MODULE, 'registrar_age')}
-                    ,{<<"Fields">>, [filter(Fields, Registration)
-                                     || Registration <- Registrations
+                    ,{<<"Fields">>, [filter(Fields, wh_json:from_list(to_props(Registration)))
+                                            || Registration <- Registrations
                                     ]}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+        Count when is_integer(Count) ->
+            Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    ,{<<"Registrar-Age">>, gen_server:call(?MODULE, 'registrar_age')}
+                    ,{<<"Fields">>, []}
+                    ,{<<"Count">>, Count}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
