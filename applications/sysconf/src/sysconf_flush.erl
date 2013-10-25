@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%% @end
 %%% @contributors
@@ -16,11 +16,15 @@ init() ->
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
-    lager:debug("received sysconf flush"),
-    true = wapi_sysconf:flush_req_v(ApiJObj),
+    'true' = wapi_sysconf:flush_req_v(ApiJObj),
 
     Category = wh_json:get_value(<<"Category">>, ApiJObj),
-    Key = wh_json:get_value(<<"Key">>, ApiJObj),
     Node = wh_json:get_value(<<"Node">>, ApiJObj),
-
-    whapps_config:flush(Category, Key, Node).
+    case wh_json:get_value(<<"Key">>, ApiJObj) of
+        'undefined' ->
+            lager:debug("flushing ~s entirely", [Category]),
+            whapps_config:flush(Category);
+        Key ->
+            lager:debug("flushing ~s[~s.~s]", [Category, Node, Key]),
+            whapps_config:flush(Category, Key, Node)
+    end.
