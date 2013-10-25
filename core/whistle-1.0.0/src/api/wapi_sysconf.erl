@@ -50,8 +50,8 @@
 -define(OPTIONAL_SYSCONF_SET_REQ_HEADERS, []).
 -define(SYSCONF_SET_REQ_VALUES, [{<<"Event-Name">>, <<"set_req">>} | ?SYSCONF_VALUES]).
 
--define(SYSCONF_FLUSH_REQ_HEADERS, [<<"Category">>, <<"Key">>]).
--define(OPTIONAL_SYSCONF_FLUSH_REQ_HEADERS, []).
+-define(SYSCONF_FLUSH_REQ_HEADERS, [<<"Category">>]).
+-define(OPTIONAL_SYSCONF_FLUSH_REQ_HEADERS, [<<"Key">>]).
 -define(SYSCONF_FLUSH_REQ_VALUES, [{<<"Event-Name">>, <<"flush_req">>} | ?SYSCONF_VALUES]).
 
 %% answer to a write request
@@ -160,12 +160,16 @@ bind_q(Q, Prop) ->
 
 add_bindings(Q, 'undefined') ->
     _ = amqp_util:bind_q_to_sysconf(Q, routing_key_get()),
-    amqp_util:bind_q_to_sysconf(Q, routing_key_set());
+    _ = amqp_util:bind_q_to_sysconf(Q, routing_key_set()),
+    amqp_util:bind_q_to_sysconf(Q, routing_key_flush());
 add_bindings(Q, ['get'|T]) ->
     _ = amqp_util:bind_q_to_sysconf(Q, routing_key_get()),
     add_bindings(Q, T);
 add_bindings(Q, ['set'|T]) ->
     _ = amqp_util:bind_q_to_sysconf(Q, routing_key_set()),
+    add_bindings(Q, T);
+add_bindings(Q, ['flush'|T]) ->
+    _ = amqp_util:bind_q_to_sysconf(Q, routing_key_flush()),
     add_bindings(Q, T);
 add_bindings(Q, [_|T]) ->
     add_bindings(Q, T);
@@ -178,12 +182,16 @@ unbind_q(Q, Prop) ->
 
 rm_bindings(Q, 'undefined') ->
     _ = amqp_util:unbind_q_from_sysconf(Q, routing_key_get()),
-    amqp_util:unbind_q_from_sysconf(Q, routing_key_set());
+    _ = amqp_util:unbind_q_from_sysconf(Q, routing_key_set()),
+    _ = amqp_util:unbind_q_from_sysconf(Q, routing_key_flush());
 rm_bindings(Q, ['get'|T]) ->
     _ = amqp_util:unbind_q_from_sysconf(Q, routing_key_get()),
     rm_bindings(Q, T);
 rm_bindings(Q, ['set'|T]) ->
     _ = amqp_util:unbind_q_from_sysconf(Q, routing_key_set()),
+    rm_bindings(Q, T);
+rm_bindings(Q, ['flush'|T]) ->
+    _ = amqp_util:unbind_q_from_sysconf(Q, routing_key_flush()),
     rm_bindings(Q, T);
 rm_bindings(Q, [_|T]) ->
     rm_bindings(Q, T);
