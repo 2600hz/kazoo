@@ -17,9 +17,9 @@
          ,allow_sbc/2, allow_sbc/3
          ,deny_carrier/2, deny_carrier/3
          ,deny_sbc/2, deny_sbc/3
-         ,list_carrier_acls/0
-         ,list_sbc_acls/0
-         ,list_acls/0, list_acls/1
+         ,list_carrier_acls/0, list_carrier_acls/1
+         ,list_sbc_acls/0, list_sbc_acls/1
+         ,list_acls/0, list_acls/1, list_acls/2
          ,reload_acls/0
          ,flush_acls/0
         ]).
@@ -149,12 +149,18 @@ deny_sbc(SBCName, SBCIP, AsDefault) ->
                ).
 
 -spec list_carrier_acls() -> 'ok'.
+-spec list_carrier_acls(boolean() | text()) -> 'ok'.
 list_carrier_acls() ->
-    list_acls(<<"trusted">>).
+    list_acls(<<"trusted">>, 'false').
+list_carrier_acls(AsDefault) ->
+    list_acls(<<"trusted">>, AsDefault).
 
 -spec list_sbc_acls() -> 'ok'.
+-spec list_sbc_acls(boolean() | text()) -> 'ok'.
 list_sbc_acls() ->
-    list_acls(<<"authoritative">>).
+    list_acls(<<"authoritative">>, 'false').
+list_sbc_acls(AsDefault) ->
+    list_acls(<<"authoritative">>, AsDefault).
 
 -spec list_acls() -> 'ok'.
 list_acls() ->
@@ -169,13 +175,16 @@ flush_acls() ->
     ecallmgr_config:flush(<<"acls">>).
 
 -spec list_acls('all' | ne_binary()) -> 'ok'.
+-spec list_acls('all' | ne_binary(), boolean() | text()) -> 'ok'.
 list_acls(Network) ->
+    list_acls(Network, 'false').
+list_acls(Network, AsDefault) ->
     FormatString = "| ~-30s | ~-20s | ~-6s |~n",
     io:format(FormatString, [<<"Name">>, <<"CIDR">>, <<"Type">>]),
     wh_json:foreach(fun({Name, ACL}) ->
                             maybe_print_acl(Network, FormatString, Name, ACL)
                     end
-                    ,ecallmgr_config:get(<<"acls">>, wh_json:new())
+                    ,ecallmgr_config:get(<<"acls">>, wh_json:new(), use_default(AsDefault))
                    ).
 
 maybe_print_acl('all', FormatString, Name, ACL) ->
