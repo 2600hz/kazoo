@@ -65,6 +65,10 @@
                    }).
 -type interface() :: #interface{}.
 
+-define(DEFAULT_FS_COMMANDS, [wh_json:from_list([{<<"load">>, <<"mod_sofia">>}])
+                              ,wh_json:from_list([{<<"reloadacl">>, <<>>}])
+                             ]).
+
 -define(DEFAULT_CAPABILITIES, [wh_json:from_list([{<<"module">>, <<"mod_conference">>}
                                                   ,{<<"is_loaded">>, 'false'}
                                                   ,{<<"capability">>, <<"conference">>}
@@ -370,7 +374,7 @@ run_start_cmds(Node) ->
     Parent = self(),
     spawn_link(fun() ->
                        timer:sleep(5000),
-                       Cmds = ecallmgr_config:get(<<"fs_cmds">>, [], Node),
+                       Cmds = ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node),
                        Res = process_cmds(Node, Cmds),
                        case lists:filter(fun was_not_successful_cmd/1, Res) of
                            [] -> 'ok';
