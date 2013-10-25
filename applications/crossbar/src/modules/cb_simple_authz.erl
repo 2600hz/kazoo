@@ -21,10 +21,11 @@
 
 -define(SERVER, ?MODULE).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
--define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"templates">>
-                         ,<<"rates">>, <<"acls">>
+-define(SYS_ADMIN_MODS, [<<"global_resources">>
+                         ,<<"templates">>
+                         ,<<"rates">>
+                         ,<<"acls">>
                          ,<<"global_provisioner_templates">>
-                         ,<<"registrations">>
                         ]).
 
 %%%===================================================================
@@ -33,7 +34,7 @@
 init() -> crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize').
 
 -spec authorize(cb_context:context()) -> boolean().
-authorize(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB,[]}]
+authorize(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, []}]
                       ,req_verb=Verb
                      }=Context) ->
     case cb_modules_util:is_superduper_admin(Context) of
@@ -69,8 +70,8 @@ account_is_descendant('false', #cb_context{auth_account_id='undefined'}) ->
     lager:debug("not authorizing, auth account id is undefined"),
     'false';
 account_is_descendant('false', #cb_context{auth_account_id=AuthAccountId
-                                         ,req_nouns=Nouns
-                                        }) ->
+                                           ,req_nouns=Nouns
+                                          }) ->
     %% get the accounts/.... component from the URL
     case props:get_value(?WH_ACCOUNTS_DB, Nouns) of
         %% if the URL did not have the accounts noun then this module denies access

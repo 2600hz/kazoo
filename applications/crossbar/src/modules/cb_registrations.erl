@@ -26,8 +26,12 @@
 
 -include("../crossbar.hrl").
 
--define(MASK_REG_FIELDS, [<<"Account-DB">>, <<"Account-ID">>, <<"App-Name">>
-                          ,<<"App-Version">>, <<"Event-Category">>, <<"Event-Name">>
+-define(MASK_REG_FIELDS, [<<"Account-DB">>
+                          ,<<"Account-ID">>
+                          ,<<"App-Name">>
+                          ,<<"App-Version">>
+                          ,<<"Event-Category">>
+                          ,<<"Event-Name">>
                           ,<<"Server-ID">>
                          ]).
 
@@ -59,7 +63,9 @@ resource_exists(?COUNT_PATH_TOKEN) -> 'true'.
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context(), path_token()) -> boolean().
 
-authorize(#cb_context{req_nouns=[{<<"registrations">>, _}]}=Context, ?COUNT_PATH_TOKEN) ->
+authorize(#cb_context{req_nouns=[{<<"registrations">>
+                                      ,[?COUNT_PATH_TOKEN]}
+                                ]}=Context, ?COUNT_PATH_TOKEN) ->
     cb_modules_util:is_superduper_admin(Context);
 authorize(_, _) -> 'false'.
 
@@ -79,7 +85,7 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?COUNT_PATH_TOKEN) ->
     crossbar_util:response(
-      count_registrations(Context)
+      wh_json:from_list([{<<"count">>, count_registrations(Context)}])
       ,Context
      ).
 
@@ -88,7 +94,6 @@ lookup_regs(Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_db(Context),
     AccountRealm = wh_util:get_account_realm(AccountDb, AccountId),
-
     Req = [{<<"Realm">>, AccountRealm}
            ,{<<"Fields">>, []}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -126,10 +131,7 @@ merge_response(JObj, Regs) ->
 -spec normalize_registration(wh_json:object()) -> wh_json:object().
 normalize_registration(JObj) ->
     Contact = wh_json:get_binary_value(<<"Contact">>, JObj, <<>>),
-    Updaters = [fun(J) ->
-                        lager:debug("delete ~p", [?MASK_REG_FIELDS]),
-                        lager:debug("from ~p", [J]),
-                        wh_json:delete_keys(?MASK_REG_FIELDS, J) end
+    Updaters = [fun(J) -> wh_json:delete_keys(?MASK_REG_FIELDS, J) end
                 ,fun(J) ->
                          case re:run(Contact, "sip:[^@]+@(.*?):([0-9]+)", [{'capture', [1, 2], 'binary'}]) of
                              {'match',[Ip, Port]} ->
@@ -187,4 +189,3 @@ get_realm_for_counting(Context) ->
             lager:debug("no account id means all regs are counted"),
             <<"all">>
     end.
-
