@@ -269,29 +269,20 @@ is_system_admin(Account) ->
 %% 'false'.
 %% @end
 %%--------------------------------------------------------------------
--spec is_account_enabled(api_binary()) -> 'true'. %boolean().
-is_account_enabled('undefined') -> 'true';
-is_account_enabled(_AccountId) ->
-    %% See WHISTLE-1201
-    'true'.
-%%    case wh_cache:peek({?MODULE, is_account_enabled, AccountId}) of
-%%        {ok, Enabled} ->
-%%            lager:debug("account ~s enabled flag is ~s", [AccountId, Enabled]),
-%%            Enabled;
-%%        {error, not_found} ->
-%%            case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
-%%                {ok, JObj} ->
-%%                    PvtEnabled = wh_json:is_false(<<"pvt_enabled">>, JObj) =/= 'true',
-%%                    lager:debug("account ~s enabled flag is ~s", [AccountId, PvtEnabled]),
-%%                    wh_cache:store({?MODULE, is_account_enabled, AccountId}, PvtEnabled, 300),
-%%                    PvtEnabled;
-%%                {error, R} ->
-%%                    lager:debug("unable to find enabled status of account ~s: ~p", [AccountId, R]),
-%%                    wh_cache:store({?MODULE, is_account_enabled, AccountId}, 'true', 300),
-%%                    'true'
-%%            end
-%%    end.
-
+-spec is_account_enabled(api_binary()) -> boolean().
+is_account_enabled(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', _E} ->
+            lager:error("could not open account ~p in ~p", [AccountId, AccountDb]),
+            'false';
+        {'ok', JObj} ->
+            case wh_json:get_value(<<"pvt_enabled">>, JObj, 'true') of
+                'true' -> 'true';
+                _ -> 'false'
+            end
+    end.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
