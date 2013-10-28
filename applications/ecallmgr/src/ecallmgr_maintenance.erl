@@ -229,7 +229,7 @@ maybe_print_acl(Network, FormatString, Name, ACL) ->
                   ,fun((ne_binary(), ne_binary()) -> wh_json:object()), ne_binary()
                  ) -> 'ok'.
 acl_builder(Name, IP, Node, Type, ACLBuilder, Class) ->
-    ACLs = filter_acls(ecallmgr_config:get(<<"acls">>, wh_json:new(), Node)),
+    ACLs = filter_acls(get_acls(Node)),
     IPBlock = maybe_fix_ip(IP),
     case wh_json:get_value(Name, ACLs) of
         'undefined' ->
