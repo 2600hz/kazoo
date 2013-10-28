@@ -71,13 +71,13 @@
 -spec add_fs_node(string() | binary() | atom()) -> 'ok'.
 -spec add_fs_node(string() | binary() | atom(), text() | boolean()) -> 'ok'.
 add_fs_node(FSNode) ->
-    add_fs_node(FSNode, 'false').
+    add_fs_node(FSNode, 'true').
 
 add_fs_node(FSNode, AsDefault) when not is_atom(FSNode) ->
     add_fs_node(wh_util:to_atom(FSNode, 'true'), AsDefault);
 add_fs_node(FSNode, AsDefault) ->
     Node = use_default(AsDefault),
-    FSNodes = ecallmgr_config:get(<<"fs_nodes">>, [], Node),
+    FSNodes = get_fs_nodes(Node),
     FSNodeBin = wh_util:to_binary(FSNode),
     case lists:member(FSNodeBin, FSNodes) of
         'true' -> 'ok';
@@ -95,13 +95,13 @@ use_default(AsDefault) -> use_default(wh_util:is_true(AsDefault)).
 -spec remove_fs_node(string() | binary() | atom()) -> 'ok'.
 -spec remove_fs_node(string() | binary() | atom(), boolean() | text()) -> 'ok'.
 remove_fs_node(FSNode) ->
-    remove_fs_node(FSNode, 'false').
+    remove_fs_node(FSNode, 'true').
 
 remove_fs_node(FSNode, AsDefault) when not is_atom(FSNode) ->
     remove_fs_node(wh_util:to_atom(FSNode, 'true'), AsDefault);
 remove_fs_node(FSNode, AsDefault) ->
     Node = use_default(AsDefault),
-    FSNodes = ecallmgr_config:get(<<"fs_nodes">>, [], Node),
+    FSNodes = get_fs_nodes(Node),
     FSNodeBin = wh_util:to_binary(FSNode),
     case lists:member(FSNodeBin, FSNodes) of
         'false' -> 'ok';
@@ -113,6 +113,16 @@ remove_fs_node(FSNode, AsDefault) ->
 
 -spec list_fs_nodes() -> atoms().
 list_fs_nodes() -> ecallmgr_fs_nodes:connected().
+
+-spec get_fs_nodes(ne_binary()) -> ne_binaries().
+get_fs_nodes(Node) ->
+    case ecallmgr_config:get(<<"fs_nodes">>, [], Node) of
+        [_|_]=FSNodes -> FSNodes;
+        [] -> [];
+        _Other ->
+            io:format("fs_nodes in ~s was misconfigured(~p), using []~n", [Node, _Other]),
+            []
+    end.
 
 -spec allow_carrier(ne_binary(), ne_binary()) -> 'ok'.
 -spec allow_carrier(ne_binary(), ne_binary(), boolean() | text()) -> 'ok'.
