@@ -35,6 +35,7 @@
 %% @public
 %% @doc
 %% Query the various providers for available numbers.
+%% force leading +
 %% @end
 %%--------------------------------------------------------------------
 -spec find/1 :: (ne_binary()) -> [] | [ne_binary(),...].
@@ -45,20 +46,30 @@ find(Number) ->
     find(Number, <<"1">>, []).
 
 find(Number, Quanity) ->
-    Num = wnm_util:normalize_number(Number),
-    lager:debug("attempting to find ~p numbers with prefix '~s'", [Quanity, Number]),
-    Results = [{Module, catch(Module:find_numbers(Num, Quanity, []))}
-               || Module <- wnm_util:list_carrier_modules()
-              ],
-    prepare_find_results(Results, []).
+    find(Number, Quanity, []).
 
+find(<<"$+",_N/binary>>=Number, Quanity, Opts) ->
+	lager:info("tem +"),
+	do_find(Number,Quanity,Opts);
 find(Number, Quanity, Opts) ->
+	do_find(<<"+",Number/binary>>,Quanity,Opts).
+
+do_find(Number, Quanity, Opts) ->
+    AccountId = props:get_value(<<"Account-ID">>, Opts),
     Num = wnm_util:normalize_number(Number),
-    lager:debug("attempting to find ~p numbers with prefix '~s'", [Quanity, Number]),
+    lager:info("attempting to find ~p numbers with prefix '~s' for Account ~p", [Quanity, Number,AccountId]),
     Results = [{Module, catch(Module:find_numbers(Num, Quanity, Opts))}
                || Module <- wnm_util:list_carrier_modules()
               ],
-    prepare_find_results(Results, []).
+    Routines = [fun(A) ->
+                  props:set_value(<<"Classification">>, wnm_util:classify_number(Num), A)
+                end,
+                fun(A) ->
+                  props:set_value(<<"Services">>, wh_services:fetch(AccountId), A)
+                end
+               ],
+    NewOpts = lists:foldl(fun(F, J) -> F(J) end, Opts, Routines),
+    prepare_find_results(Results, [], NewOpts).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -645,51 +656,59 @@ track_assignment(Numbers, Assignment) ->
 %% ensure the modules data is stored for later acquisition.
 %% @end
 %%--------------------------------------------------------------------
--spec prepare_find_results/2 :: (wh_proplist(), [] | [wh_json:json_strings(),...]) -> wh_json:json_strings().
--spec prepare_find_results/4 :: (wh_json:json_strings(), atom(), wh_json:object(), wh_json:json_strings())
+-spec prepare_find_results/3 :: (wh_proplist(), [], wh_proplist() | [wh_json:json_strings(),...]) -> wh_json:json_strings().
+-spec prepare_find_results/5 :: (wh_json:json_strings(), atom(), wh_json:object(), wh_json:json_strings(), wh_proplist())
                                 -> wh_json:json_strings().
 
-prepare_find_results([], Found) ->
+prepare_find_results([], Found, _) ->
     Found;
-prepare_find_results([{'wnm_other', {'ok', ModuleResults}}|T], Found) ->
-    prepare_find_results(T, ModuleResults++Found);
-prepare_find_results([{Module, {'ok', ModuleResults}}|T], Found) ->
+prepare_find_results([{'wnm_other', {'ok', ModuleResults}}|T], Found, Opts) ->
+    prepare_find_results(T, ModuleResults++Found,Opts);
+prepare_find_results([{Module, {'ok', ModuleResults}}|T], Found, Opts) ->
     case wh_json:get_keys(ModuleResults) of
-        [] -> prepare_find_results(T, Found);
+        [] -> prepare_find_results(T, Found,Opts);
         Numbers ->
-            Results = prepare_find_results(Numbers, Module
-                                           ,ModuleResults, Found),
-            prepare_find_results(T, Results)
+            Results = prepare_find_results(Numbers, Module,ModuleResults, Found, Opts),
+            prepare_find_results(T, Results,Opts)
     end;
-prepare_find_results([_|T], Found) ->
-    prepare_find_results(T, Found).
+prepare_find_results([_|T], Found,Opts) ->
+    prepare_find_results(T, Found,Opts).
 
-prepare_find_results([], _, _, Found) ->
+prepare_find_results([], _, _, Found,_) ->
     Found;
-prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
-    Result = [wh_json:from_list([{<<"number">>, Number}])|Found],
+prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) ->
+	Props = wh_json:get_value(Number, ModuleResults),
+    Routines = [fun(A) ->
+						case wh_services:activation_charges(<<"phone_numbers">>,props:get_value(<<"Classification">>, Opts),props:get_value(<<"Services">>, Opts)) of
+                            'undefined' -> A;
+                            Value -> props:set_value(<<"activation_charge">>, Value, A)
+                        end
+                end
+               ],
+    PropsUpdated = lists:foldl(fun(F, J) -> F(J) end, Props, Routines),
+    Result = [wh_json:from_list(PropsUpdated)|Found],
     case catch wnm_number:get(Number) of
         #number{state=State} ->
             case lists:member(State, ?WNM_AVALIABLE_STATES) of
                 true ->
-                    prepare_find_results(Numbers, ModuleName, ModuleResults, Result);
+                    prepare_find_results(Numbers, ModuleName, ModuleResults, Result,Opts);
                 false ->
                     lager:debug("the discovery '~s' is not available: ~s", [Number, State]),
-                    prepare_find_results(Numbers, ModuleName, ModuleResults, Found)
+                    prepare_find_results(Numbers, ModuleName, ModuleResults, Found,Opts)
             end;
         {not_found, #number{}=N} ->
             NewNumber = N#number{number=Number
                                  ,module_name = ModuleName
-                                 ,module_data=wh_json:get_value(Number, ModuleResults)
+                                 ,module_data=wh_json:from_list(wh_json:get_value(Number, ModuleResults))
                                 },
             case catch wnm_number:save(wnm_number:create_discovery(NewNumber)) of
                 #number{} ->
-                    prepare_find_results(Numbers, ModuleName, ModuleResults, Result);
+                    prepare_find_results(Numbers, ModuleName, ModuleResults, Result,Opts);
                 {_R, #number{}} ->
                     lager:debug("failed to store discovery ~s: ~p", [Number, _R]),
-                    prepare_find_results(Numbers, ModuleName, ModuleResults, Found)
+                    prepare_find_results(Numbers, ModuleName, ModuleResults, Found,Opts)
             end;
         {_R, #number{}} ->
             lager:debug("failed to determine state of discovery ~s: ~p", [Number, _R]),
-            prepare_find_results(Numbers, ModuleName, ModuleResults, Found)
+            prepare_find_results(Numbers, ModuleName, ModuleResults, Found,Opts)
     end.
