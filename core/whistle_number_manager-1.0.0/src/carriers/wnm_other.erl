@@ -27,7 +27,7 @@
 %%--------------------------------------------------------------------
 -spec find_numbers/3 :: (ne_binary(), pos_integer(), wh_proplist()) -> {'error', _}.
 find_numbers(Number, Quantity, Props) ->
-	case whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"url">>) of
+	case whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
 		'undefined' ->
 			{'error', 'non_available'};
 		Url ->
@@ -51,7 +51,7 @@ find_numbers(Number, Quantity, Props) ->
 -spec acquire_number/1 :: (wnm_number()) -> wnm_number().
 acquire_number(#number{number=Num}=Number) ->
 	DefaultCountry = whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
-	case whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"url">>) of
+	case whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
 		'undefined' ->
 			Error = <<"Unable to acquire numbers missing provider url">>,
     		wnm_number:error_carrier_fault(Error, Number);

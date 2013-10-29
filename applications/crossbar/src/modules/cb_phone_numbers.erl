@@ -402,7 +402,7 @@ find_prefix(Context) ->
 -spec get_prefix(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
 get_prefix(City) ->
     Country = whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
-    case whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, <<"url">>) of
+    case whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' ->
             {'error', <<"Unable to acquire numbers missing carrier url">>};
         Url ->
@@ -474,7 +474,7 @@ maybe_update_locality(Context, JObj) ->
 update_locality(_, [], JObj) ->
     JObj;
 update_locality(Context, Numbers, JObj) ->
-    case whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, <<"url">>) of
+    case whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' ->
             lager:error("could not get number location url", []),
             JObj;
@@ -486,25 +486,25 @@ update_locality(Context, Numbers, JObj) ->
                     lager:error("number location lookup failed: ~p", [Reason]),
                     JObj;
                 {'ok', "200", _Headers, Body} ->
-                    handle_location_resp(Context, wh_json:decode(Body), JObj);
+                    handle_locality_resp(Context, wh_json:decode(Body), JObj);
                 {'ok', _Status, _, _Body} ->
-                    lager:error("number location lookup failed: ~p ~p", [_Status, _Body]),
+                    lager:error("number locality lookup failed: ~p ~p", [_Status, _Body]),
                     JObj
             end
     end.
 
--spec handle_location_resp(cb_context:context(), wh_json:object(), wh_json:object()) -> wh_json:object().
-handle_location_resp(Context, Locations, JObj) ->
-    case wh_json:get_value(<<"status">>, Locations, <<"error">>) of
+-spec handle_locality_resp(cb_context:context(), wh_json:object(), wh_json:object()) -> wh_json:object().
+handle_locality_resp(Context, Localities, JObj) ->
+    case wh_json:get_value(<<"status">>, Localities, <<"error">>) of
         <<"success">> ->
-            merge_location(Context, wh_json:get_value(<<"data">>, Locations), JObj);
+            merge_locality(Context, wh_json:get_value(<<"data">>, Localities), JObj);
         _E ->
-            lager:error("number location lookup failed, status: ~p", [_E]),
+            lager:error("number locality lookup failed, status: ~p", [_E]),
             JObj
     end.
 
--spec merge_location(cb_context:context(), wh_json:object(), wh_json:object()) -> wh_json:object().
-merge_location(Context, Locations, JObj) ->
+-spec merge_locality(cb_context:context(), wh_json:object(), wh_json:object()) -> wh_json:object().
+merge_locality(Context, Locations, JObj) ->
     NJObj = wh_json:foldl(
                 fun(Number, Loc, Acc) ->
                     NumData = wh_json:get_value(Number, Acc),
