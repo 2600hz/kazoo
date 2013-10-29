@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_config).
 
--export([flush/0, flush/1
+-export([flush/0, flush/1, flush/2
          ,flush_default/0, flush_default/1
         ]).
 -export([get/1, get/2, get/3
