@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, 2600Hz
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%% Receive call events for various scenarios
 %%% @end
