@@ -273,13 +273,17 @@ is_system_admin(Account) ->
 is_account_enabled(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _E} ->
             lager:error("could not open account ~p in ~p", [AccountId, AccountDb]),
             'false';
         {'ok', JObj} ->
             case wh_json:get_value(<<"pvt_enabled">>, JObj, 'true') of
-                'true' -> 'true';
+                'true' ->
+                    case wh_json:get_value(<<"enabled">>, JObj, 'true') of
+                        'true' -> 'true';
+                        _ -> 'false'
+                    end;
                 _ -> 'false'
             end
     end.
