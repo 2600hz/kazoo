@@ -45,17 +45,15 @@ find(Number) ->
     find(Number, <<"1">>, []).
 
 find(Number, Quanity) ->
-    Num = wnm_util:normalize_number(Number),
     lager:debug("attempting to find ~p numbers with prefix '~s'", [Quanity, Number]),
-    Results = [{Module, catch(Module:find_numbers(Num, Quanity, []))}
+    Results = [{Module, catch(Module:find_numbers(Number, Quanity, []))}
                || Module <- wnm_util:list_carrier_modules()
               ],
     prepare_find_results(Results, []).
 
 find(Number, Quanity, Opts) ->
-    Num = wnm_util:normalize_number(Number),
     lager:debug("attempting to find ~p numbers with prefix '~s'", [Quanity, Number]),
-    Results = [{Module, catch(Module:find_numbers(Num, Quanity, Opts))}
+    Results = [{Module, catch(Module:find_numbers(Number, Quanity, Opts))}
                || Module <- wnm_util:list_carrier_modules()
               ],
     prepare_find_results(Results, []).
@@ -72,6 +70,9 @@ find(Number, Quanity, Opts) ->
 lookup_account_by_number(undefined) ->
     {error, not_reconcilable};
 lookup_account_by_number(Number) ->
+
+    io:format("MARKER0 ~p~n", [Number]),
+
     try wnm_number:get(Number) of
         #number{assigned_to=undefined} ->
             lager:debug("number ~s not assigned to an account", [Number]),
