@@ -370,7 +370,7 @@ assign_number_to_account(Number, AssignTo, AuthBy) ->
 assign_number_to_account(Number, AssignTo, AuthBy, PublicFields) ->
     lager:debug("attempting to assign ~s to account ~s", [Number, AssignTo]),
     Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
-                ,fun({not_found, _}) ->
+                ,fun({'not_found', _}) ->
                         NewNumber = #number{number=Number
                                              ,module_name='wnm_other'
                                              ,module_data=wh_json:new()
