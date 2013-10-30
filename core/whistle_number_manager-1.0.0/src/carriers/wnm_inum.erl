@@ -28,9 +28,7 @@
 %%--------------------------------------------------------------------
 -spec find_numbers/3 :: (ne_binary(), pos_integer(), wh_proplist()) -> {'ok', wh_json:object()} |
                                                         {'error', 'non_available'}.
-find_numbers(Number, Quantity, Opts) when size(Number) < 5 ->
-    find_numbers(<<"+883", Number/binary>>, Quantity,Opts);
-find_numbers(Number, Quantity,Opts) ->
+find_numbers(<<"+", _/binary>>=Number, Quantity,Opts) ->
 	AccountId = props:get_value(<<"Account-ID">>, Opts),
 	case find_numbers_in_account(Number, Quantity,AccountId) of
 		{error, non_available}=A ->
@@ -39,7 +37,9 @@ find_numbers(Number, Quantity,Opts) ->
 				ResellerId -> find_numbers_in_account(Number, Quantity,ResellerId)
 			end;							  
 		R -> R
-	end.
+	end;
+find_numbers(Number, Quantity, Opts) ->
+    find_numbers(<<"+",Number/binary>>, Quantity,Opts).
 		
 	
 find_numbers_in_account(Number, Quantity,AccountId) ->	
