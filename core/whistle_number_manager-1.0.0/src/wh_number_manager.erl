@@ -45,14 +45,14 @@
 find(Number) ->
     find(Number, <<"1">>).
 
-find(Number, Quanity) ->
-    find(Number, Quanity, []).
+find(Number, Quantity) ->
+    find(Number, Quantity, []).
 
-find(Number, Quanity, Opts) ->
+find(Number, Quantity, Opts) ->
     AccountId = props:get_value(<<"Account-ID">>, Opts),
     Num = wnm_util:normalize_number(Number),
-    lager:info("attempting to find ~p numbers with prefix '~s' for Account ~p", [Quanity, Number,AccountId]),
-    Results = [{Module, catch(Module:find_numbers(Num, Quanity, Opts))}
+    lager:info("attempting to find ~p numbers with prefix '~s' for Account ~p", [Quantity, Number,AccountId]),
+    Results = [{Module, catch(Module:find_numbers(Num, Quantity, Opts))}
                || Module <- wnm_util:list_carrier_modules()
               ],
     NewOpts = [{<<"classification">>, wnm_util:classify_number(Num)}

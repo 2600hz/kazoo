@@ -101,7 +101,7 @@ get_numbers(Url, Number, Quantity, Props) ->
 	Offset = props:get_value(<<"offset">>, Props, <<"0">>),
 	Country = whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
 	ReqBody = <<"?pattern=", Number/binary, "&limit=", Quantity/binary, "&offset=", Offset/binary>>,
-	Uri = <<Url/binary, Country/binary, "/search", ReqBody/binary>>,
+	Uri = <<Url/binary, "/", Country/binary, "/search", ReqBody/binary>>,
 	case ibrowse:send_req(binary:bin_to_list(Uri), [], 'get') of
 		{'error', Reason} ->
 			lager:error("number lookup error: ~p", [Reason]),
@@ -123,7 +123,7 @@ get_blocks(Url, Number, Quantity, Props) ->
 				,"&size=", Quantity/binary
 				,"&offset=", Offset/binary
 				,"&limit=", Limit/binary>>,
-	Uri = <<Url/binary, Country/binary, "/block_search", ReqBody/binary>>,
+	Uri = <<Url/binary, "/", Country/binary, "/block_search", ReqBody/binary>>,
 	case ibrowse:send_req(binary:bin_to_list(Uri), [], 'get') of
 		{'error', Reason} ->
 			lager:error("block lookup error: ~p", [Reason]),
