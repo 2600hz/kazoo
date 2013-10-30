@@ -363,7 +363,8 @@ delete(Context, Number, ?PORT_DOCS, Name) ->
 %%--------------------------------------------------------------------
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
-    JObj = cb_context:query_string(Context),
+    AccountId = cb_context:auth_account_id(Context),
+    JObj = wh_json:set_value(<<"Account-ID">>, AccountId, cb_context:query_string(Context)),
     OnSuccess = fun(C) ->
                         Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
                         Quantity = wh_json:get_ne_value(<<"quantity">>, JObj, 1),

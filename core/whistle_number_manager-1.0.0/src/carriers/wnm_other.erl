@@ -11,6 +11,7 @@
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
+-export([is_number_billable/1]).
 
 -include("../wnm.hrl").
 
@@ -40,6 +41,8 @@ find_numbers(Number, Quantity, Props) ->
 			end
 	end.
 
+-spec is_number_billable/1 :: (wnm_number()) -> 'true' | 'false'.
+is_number_billable(_Number) -> 'true'.
 
 
 %%--------------------------------------------------------------------

@@ -102,13 +102,22 @@ update_number_quantities(Number, Services) ->
     end.
 
 is_number_billable(DID) ->
-    case wnm_number:get(DID) of
-        #number{module_name = <<"wnm_local">>} ->
-            lager:debug("number is not billable: wnm_local"),
-            'false';
-        #number{module_name=_Mod} ->
-            lager:debug("number is billable: ~s", [_Mod]),
-            'true'
+    case catch wnm_number:get(DID) of
+        #number{module_name=Module}=Number ->
+			case catch Module:is_number_billable(Number) of
+				'true' -> 
+                    lager:debug("number ~s is billable: ~s", [DID,Module]),
+                    'true';
+				'false' -> 
+                    lager:debug("number ~s is not billable: ~s", [DID,Module]),
+                    'false';
+				Err -> 
+                    lager:debug("number ~s is not billable due to provider ~s error: ~p", [DID,Module,Err]),
+                    'false'
+			end;
+		Other -> 
+            lager:debug("number ~s is not billable due to number error: ~p", [DID,Other]),
+			'false'
     end.
 
 %%--------------------------------------------------------------------
