@@ -21,7 +21,7 @@
          ,list_sbc_acls/0, list_sbc_acls/1
          ,list_acls/0, list_acls/1, list_acls/2
          ,reload_acls/0
-         ,flush_acls/0
+         ,flush_acls/0, flush_acls/1
         ]).
 
 -export([node_summary/0]).
@@ -181,8 +181,12 @@ reload_acls() ->
     wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, [], fun(_) -> wapi_switch:publish_reload_acls() end),
     io:format("reloading of ACLs issued to all connected media switches~n", []).
 
+-spec flush_acls() -> 'ok'.
+-spec flush_acls(text() | boolean()) -> 'ok'.
 flush_acls() ->
-    ecallmgr_config:flush(<<"acls">>).
+    flush_acls('true').
+flush_acls(AsDefault) ->
+    ecallmgr_config:flush(<<"acls">>, use_default(AsDefault)).
 
 -spec list_acls('all' | ne_binary()) -> 'ok'.
 -spec list_acls('all' | ne_binary(), boolean() | text()) -> 'ok'.

@@ -239,10 +239,11 @@ play(Call, XmlText, Attrs) ->
     lager:debug("PLAY '~s'", [PlayMe]),
 
     Props = kzt_util:xml_attributes_to_proplist(Attrs),
+    Terminators = get_terminators(Props),
 
     case loop_count(Props) of
-        0 -> kzt_receiver:play_loop(Call, PlayMe, 'infinity');
-        N when N > 0 -> kzt_receiver:play_loop(Call, PlayMe, N)
+        0 -> kzt_receiver:play_loop(Call, PlayMe, Terminators, 'infinity');
+        N when N > 0 -> kzt_receiver:play_loop(Call, PlayMe, Terminators, N)
     end.
 
 redirect(Call, XmlText, Attrs) ->
@@ -446,6 +447,7 @@ get_engine(Props) ->
 
 get_finish_key(Props) ->
     wapi_dialplan:terminators(props:get_binary_value('finishOnKey', Props)).
+
 get_terminators(Props) ->
     wapi_dialplan:terminators(props:get_binary_value('terminators', Props)).
 
