@@ -280,8 +280,12 @@ remove_acl(Name, 'false') ->
 
 -spec reload_acls() -> 'no_return'.
 reload_acls() ->
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, [], fun(_) -> wapi_switch:publish_reload_acls() end),
-    io:format("reloading of ACLs issued to all connected media switches~n", []),
+    _ = [begin
+             io:format("issued reload ACLs to ~s~n", [Node]),
+             freeswitch:bgapi(Node, 'reloadacl', "")
+         end
+         || Node <- ecallmgr_fs_nodes:connected()
+        ],
     'no_return'.
 
 -spec flush_acls() -> 'ok'.

@@ -5,7 +5,6 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
-%% {Pids, _} = lists:split(10, lists:reverse(lists:sort([{process_info(P, memory), P} || P <-  erlang:processes()]))), [process_info(P, backtrace) || P <- Pids]
 %%%-------------------------------------------------------------------
 -module(whapps_config).
 
