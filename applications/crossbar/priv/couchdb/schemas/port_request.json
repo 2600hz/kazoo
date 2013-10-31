@@ -1,0 +1,14 @@
+{
+    "_id":"port_requests",
+    "$schema":"http://json-schema.org/draft-03/schema#",
+    "id":"http://json-schema.org/draft-03/schema#",
+    "description":"Schema for a port request",
+    "properties":{
+        "numbers":{
+            "name":"Numbers"
+            ,"description":"The numbers to port in"
+            ,"required":"true"
+            ,"type":"object"
+        }
+    }
+}
