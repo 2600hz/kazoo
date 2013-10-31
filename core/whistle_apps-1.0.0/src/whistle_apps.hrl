@@ -3,6 +3,20 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_system_config.hrl").
 
--define(WHAPPS_CONFIG_CACHE, whapps_config_cache).
+-define(WHAPPS_CONFIG_CACHE, 'whapps_config_cache').
 
--define(WHAPPS_AMQP_POOL, whapps_amqp_pool).
+-define(WHAPPS_AMQP_POOL, 'whapps_amqp_pool').
+
+-define(DEFAULT_WHAPPS, ['registrar'
+                         ,'stepswitch'
+                         ,'sysconf'
+                         ,'media_mgr'
+                         ,'callflow'
+                         ,'notify'
+                         ,'cdr'
+                         ,'crossbar'
+                         ,'trunkstore'
+                         ,'conference'
+                         ,'fax'
+                         ,'hangups'
+                        ]).

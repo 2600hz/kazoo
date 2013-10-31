@@ -184,7 +184,7 @@ init([]) ->
     spawn(fun() ->
                   put('callid', ?LOG_SYSTEM_ID),
                   [ maybe_init_mod(Mod)
-                    || Mod <- whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, [])
+                    || Mod <- whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES)
                   ]
           end),
 

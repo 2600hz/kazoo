@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(whapps_config).
 
--include("whistle_apps.hrl").
+-include("whistle_config.hrl").
 
 -export([get/2, get/3, get/4, get_all_kvs/1]).
 -export([get_string/2, get_string/3, get_string/4]).
@@ -450,9 +450,38 @@ cache_jobj(Category, JObj) ->
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
-%%
+%% convert the category name to a corresponding flat file that contains those
+%% initial (default) settings
 %% @end
 %%-----------------------------------------------------------------------------
+-spec category_to_file(ne_binary()) -> iolist() | 'undefined'.
+category_to_file(<<"notify.voicemail_to_email">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_vm.config"];
+category_to_file(<<"notify.fax_to_email">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_fax.config"];
+category_to_file(<<"notify.deregister">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_deregister.config"];
+category_to_file(<<"notify.password_recovery">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_pwd_recovery.config"];
+category_to_file(<<"notify.new_account">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_new_account.config"];
+category_to_file(<<"notify.first_occurrence">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_first_occurrence.config"];
+category_to_file(<<"notify.cnam_request">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_cnam_request.config"];
+category_to_file(<<"notify.port_request">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_port_request.config"];
+category_to_file(<<"notify.ported">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_ported.config"];
+category_to_file(<<"notify.low_balance">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_low_balance.config"];
+category_to_file(<<"notify.system_alert">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_system_alert.config"];
+category_to_file(<<"notify.transaction">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_transaction.config"];
+category_to_file(_) ->
+    'undefined'.
+
 -spec category_key(Cat) -> {?MODULE, Cat}.
 category_key(Category) ->
     {?MODULE, Category}.

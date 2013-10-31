@@ -112,7 +112,7 @@ initialize_whapps() ->
         'false' -> whapps_maintenance:refresh();
         'true' -> 'ok'
     end,
-    WhApps = whapps_config:get(?MODULE, <<"whapps">>, []),
+    WhApps = whapps_config:get(?MODULE, <<"whapps">>, ?DEFAULT_WHAPPS),
     StartWhApps = [wh_util:to_atom(WhApp, 'true') || WhApp <- WhApps],
     %_ = whistle_apps_sup:initialize_whapps([]),
     [?MODULE:start_app(A) || A <- StartWhApps],

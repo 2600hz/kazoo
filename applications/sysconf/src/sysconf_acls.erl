@@ -67,7 +67,7 @@ offnet_resources(ACLs) ->
     end.
 
 -spec handle_resource_result(wh_json:object(), acls()) -> acls().
-handle_resource_result(JObj, ACLs) ->
+handle_resource_result(JObj, ACLs) ->    
     IPs = resource_ips(wh_json:get_value(<<"doc">>, JObj)),
     AuthorizingId = wh_json:get_value(<<"id">>, JObj),
     add_trusted_objects(IPs, 'undefined', AuthorizingId, <<"resource">>, ACLs).

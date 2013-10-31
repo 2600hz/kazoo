@@ -947,14 +947,15 @@ get_mailbox_profile(Data, Call) ->
                 case whapps_account_config:get(whapps_call:account_id(Call)
                                                ,?CF_CONFIG_CAT
                                                ,[<<"voicemail">>, <<"max_message_count">>]
-                                              ) of
+                                              ) 
+                of
                     'undefined' ->
                         whapps_config:get(?CF_CONFIG_CAT
                                           ,[<<"voicemail">>, <<"max_message_count">>]
                                           ,?MAILBOX_DEFAULT_SIZE
                                          );
                     MMC -> MMC
-                end,
+                end, 
             MsgCount = count_non_deleted_messages(wh_json:get_value(<<"messages">>, JObj, [])),
 
             lager:info("mailbox limited to ~p voicemail messages (has ~b currently)", [MaxMessageCount, MsgCount]),
@@ -1123,7 +1124,19 @@ store_recording(AttachmentName, DocId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
-            MinLength = whapps_config:get_integer(<<"voicemail">>, <<"min_message_size">>, 500),
+            MinLength =
+                case whapps_account_config:get_integer(whapps_call:account_id(Call)
+                                                       ,?CF_CONFIG_CAT
+                                                       ,[<<"voicemail">>, <<"min_message_size">>]
+                                                      ) 
+                of
+                    'undefined' ->
+                        whapps_config:get_integer_value(?CF_CONFIG_CAT
+                                                        ,[<<"voicemail">>, <<"min_message_size">>]
+                                                        ,500
+                                                       );
+                    MML -> MML
+                end,
             AttachmentLength = wh_json:get_integer_value([<<"_attachments">>, AttachmentName, <<"length">>], JObj, 0),
             lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
             AttachmentLength > MinLength;
@@ -1420,7 +1433,10 @@ find_max_message_length([JObj | T]) ->
         _ -> find_max_message_length(T)
     end;
 find_max_message_length([]) ->
-    whapps_config:get_integer(<<"voicemail">>, <<"max_message_length">>, 120).
+    whapps_config:get_integer(?CF_CONFIG_CAT
+                              ,[<<"voicemail">>, <<"max_message_length">>]
+                              ,500
+                             ).
 
 -spec is_owner(whapps_call:call(), ne_binary()) -> boolean().
 is_owner(Call, OwnerId) ->

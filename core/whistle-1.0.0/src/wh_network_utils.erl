@@ -12,6 +12,9 @@
 -export([get_hostname/0]).
 -export([is_ipv4/1]).
 -export([is_ipv6/1]).
+-export([to_cidr/1
+         ,to_cidr/2
+        ]).
 -export([verify_cidr/2]).
 -export([expand_cidr/1]).
 -export([resolve/1]).
@@ -45,6 +48,25 @@ is_ipv6(Address) when is_list(Address) ->
     case inet_parse:ipv6_address(Address) of
         {'ok', _} -> 'true';
         {'error', _} -> 'false'
+    end.
+
+-spec to_cidr(ne_binary()) -> ne_binary().
+to_cidr(IP) -> to_cidr(IP, <<"32">>).
+
+-spec to_cidr(ne_binary(), ne_binary()) -> ne_binary().
+to_cidr(IP, Prefix) when not is_binary(IP) -> 
+    to_cidr(wh_util:to_binary(IP), Prefix);
+to_cidr(IP, Prefix) when not is_binary(Prefix) -> 
+    to_cidr(IP, wh_util:to_binary(Prefix));
+to_cidr(IP, Prefix) ->    
+    case wh_network_utils:is_ipv4(IP) 
+        andalso  wh_util:to_integer(Prefix) =< 32
+    of
+        'true' ->
+            lager:debug("adjusting ip from ~s to ~s/~s~n", [IP, IP, Prefix]),
+            <<IP/binary, "/", Prefix/binary>>;
+        'false' ->
+            IP
     end.
 
 -spec verify_cidr(text(), text()) -> boolean().
