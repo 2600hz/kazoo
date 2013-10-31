@@ -8,6 +8,7 @@
 -define(WHAPPS_AMQP_POOL, 'whapps_amqp_pool').
 
 -define(DEFAULT_WHAPPS, ['registrar'
+                         ,'reorder'
                          ,'stepswitch'
                          ,'sysconf'
                          ,'media_mgr'
@@ -19,4 +20,7 @@
                          ,'conference'
                          ,'fax'
                          ,'hangups'
+                         ,'omnipresence'
+                         ,'milliwatt'
+                         ,'pivot'
                         ]).
