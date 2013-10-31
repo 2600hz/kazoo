@@ -70,6 +70,8 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
+    _ = couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
+
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.port_requests">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.port_requests">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.port_requests">>, ?MODULE, 'content_types_provided'),

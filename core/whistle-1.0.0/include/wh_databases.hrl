@@ -1,4 +1,4 @@
--ifndef(WHISTLE_DBS_INCLUDED).
+-ifndef(WH_DATABASES_HRL).
 
 -define(WH_CONFIG_DB, <<"system_config">>).
 -define(WH_SCHEMA_DB, <<"system_schemas">>).
@@ -17,5 +17,7 @@
 
 -define(KZ_WEBHOOKS_DB, <<"webhooks">>).
 
--define(WHISTLE_DBS_INCLUDED, 'true').
+-define(KZ_PORT_REQUESTS_DB, <<"port_requests">>).
+
+-define(WH_DATABASES_HRL, 'true').
 -endif.
