@@ -270,6 +270,7 @@ is_system_admin(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_account_enabled(api_binary()) -> boolean().
+is_account_enabled('undefined') -> 'false';
 is_account_enabled(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
