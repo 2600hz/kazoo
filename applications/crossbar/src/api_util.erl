@@ -623,18 +623,18 @@ is_known_content_type(Req, #cb_context{content_types_accepted=[]}=Context, CT) -
 
 is_known_content_type(Req, #cb_context{content_types_accepted=CTAs}=Context, CT) ->
     CTA = lists:foldr(fun({_Fun, L}, Acc) ->
-                              lists:foldl(fun({Type, Sub}, Acc1) ->
-                                                  [{Type, Sub, []} | Acc1]
-                                          end, Acc, L);
+                              lists:foldl(fun fold_in_content_type/2, Acc, L);
                          (L, Acc) ->
-                              lists:foldl(fun({Type, Sub}, Acc1) ->
-                                                  [{Type, Sub, []} | Acc1]
-                                          end, Acc, L)
+                              lists:foldl(fun fold_in_content_type/2, Acc, L)
                       end, [], CTAs),
 
     IsAcceptable = is_acceptable_content_type(CT, CTA),
     lager:debug("is ~s acceptable content type: ~s", [CT, IsAcceptable]),
     {IsAcceptable, Req, Context}.
+
+-spec fold_in_content_type({ne_binary(), ne_binary()}, list()) -> list().
+fold_in_content_type({Type, Sub}, Acc) ->
+    [{Type, Sub, []} | Acc].
 
 -spec is_acceptable_content_type(content_type(), [content_type(),...] | []) -> boolean().
 is_acceptable_content_type(CTA, CTAs) ->
