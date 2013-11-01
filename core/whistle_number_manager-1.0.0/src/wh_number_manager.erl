@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -38,9 +38,9 @@
 %% force leading +
 %% @end
 %%--------------------------------------------------------------------
--spec find/1 :: (ne_binary()) -> [] | [ne_binary(),...].
--spec find/2 :: (ne_binary(), ne_binary()) -> [] | [ne_binary(),...].
--spec find/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> [] | [ne_binary(),...].
+-spec find(ne_binary()) -> ne_binaries().
+-spec find(ne_binary(), ne_binary()) -> ne_binaries().
+-spec find(ne_binary(), ne_binary(), wh_proplist()) -> ne_binaries().
 
 find(Number) ->
     find(Number, <<"1">>).
@@ -68,10 +68,14 @@ find(Number, Quantity, Opts) ->
 %% assignment
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_account_by_number(ne_binary()) -> {'ok', ne_binary(), wh_proplist()} |
-                                                     {'error', _}.
+-type lookup_errors() ::'not_reconcilable' |
+                        'unassigned' |
+                        {wnm_failures(), api_object() | ne_binary()}.
+-spec lookup_account_by_number(ne_binary()) ->
+                                      {'ok', ne_binary(), wh_proplist()} |
+                                      {'error', lookup_errors()}.
 lookup_account_by_number('undefined') ->
-   {'error', 'not_reconcilable'};
+    {'error', 'not_reconcilable'};
 lookup_account_by_number(Number) ->
     try wnm_number:get(Number) of
         Number1 -> maybe_check_account(Number1)
@@ -198,7 +202,7 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
                                  wnm_number:error_unauthorized(N)
                          end;
                     ({_, #number{}}=E) -> E;
-                    (#number{}=N) -> 
+                    (#number{}=N) ->
                         case N#number.current_state of
                             <<"available">> ->
                                 N;
@@ -701,15 +705,19 @@ prepare_find_results([_|T], Found, Opts) ->
 prepare_find_results([], _, _, Found,_) ->
     Found;
 prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) ->
-	JObj = wh_json:get_value(Number, ModuleResults),
+    JObj = wh_json:get_value(Number, ModuleResults),
     Result = case wh_services:activation_charges(<<"phone_numbers">>
-                                                        ,props:get_value(<<"classification">>, Opts)
-                                                        ,props:get_value(<<"services">>, Opts))
+                                                 ,props:get_value(<<"classification">>, Opts)
+                                                 ,props:get_value(<<"services">>, Opts)
+                                                )
              of
-                'undefined' -> [wh_json:set_value(<<"number">>, Number, JObj)|Found];
-                Value -> [wh_json:set_values([{<<"activation_charge">>, Value}
-                                              ,{<<"number">>, Number}
-                                             ], JObj)|Found]
+                 'undefined' ->
+                     [wh_json:set_value(<<"number">>, Number, JObj) | Found];
+                 Value ->
+                     [wh_json:set_values([{<<"activation_charge">>, Value}
+                                          ,{<<"number">>, Number}
+                                         ], JObj)
+                      | Found]
              end,
     case catch wnm_number:get(Number) of
         #number{state=State} ->

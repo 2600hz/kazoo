@@ -146,9 +146,9 @@ change_syslog_log_level(L) ->
 %% @end
 %%--------------------------------------------------------------------
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
--spec format_account_id(ne_binaries() | ne_binary() | wh_json:object()) -> ne_binary().
--spec format_account_id(ne_binaries() | ne_binary() | wh_json:object(), account_format()) -> ne_binary().
--spec format_account_id(ne_binaries() | ne_binary(), wh_year(), wh_month()) -> ne_binary().
+-spec format_account_id(ne_binaries() | api_binary() | wh_json:object()) -> ne_binary().
+-spec format_account_id(ne_binaries() | api_binary() | wh_json:object(), account_format()) -> ne_binary().
+-spec format_account_id(ne_binaries() | api_binary(), wh_year(), wh_month()) -> ne_binary().
 
 format_account_id(Doc) -> format_account_id(Doc, 'unencoded').
 

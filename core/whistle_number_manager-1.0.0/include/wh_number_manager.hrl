@@ -52,17 +52,18 @@
 
 -define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
 
--type wnm_failures() :: invalid_state_transition |  
-                        unauthorized |
-                        number_exists |
-                        not_found |
-                        no_change_required |
-                        not_reconcilable |
-                        database_error |
-                        unknown_carrier |
-                        service_restriction |
-                        provider_fault |
-                        carrier_fault.
+-type wnm_failures() :: 'invalid_state_transition' |
+                        'unauthorized' |
+                        'number_exists' |
+                        'not_found' |
+                        'no_change_required' |
+                        'not_reconcilable' |
+                        'database_error' |
+                        'unknown_carrier' |
+                        'service_restriction' |
+                        'provider_fault' |
+                        'carrier_fault' |
+                        api_binary().
 
 -type operation_return() :: {'ok', wh_json:object()} |
                             {wnm_failures(), wh_json:object()}.
