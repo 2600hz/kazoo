@@ -37,7 +37,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-         ,content_types_provided/4
+         ,content_types_provided/1, content_types_provided/4
          ,content_types_accepted/3, content_types_accepted/4
          ,validate/1, validate/2, validate/3, validate/4
          ,get/1, get/2, get/4
@@ -50,6 +50,7 @@
                                 ,{<<"application">>, <<"octet-stream">>}
                                 ,{<<"text">>, <<"plain">>}
                                ]).
+-define(PORT_WAITING, <<"waiting">>).
 -define(PORT_READY, <<"ready">>).
 -define(PORT_PROGRESS, <<"progress">>).
 -define(PORT_COMPLETE, <<"completion">>).
@@ -71,6 +72,7 @@
 -spec init() -> 'ok'.
 init() ->
     _ = couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
+    _ = couch_mgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
 
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.port_requests">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.port_requests">>, ?MODULE, 'resource_exists'),
@@ -147,8 +149,13 @@ resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 %% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
+-spec content_types_provided(cb_context:context()) ->
+                                    cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
+content_types_provided(#cb_context{}=Context) ->
+    Context.
+
 content_types_provided(#cb_context{req_verb=?HTTP_GET}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     case read(Id, Context) of
         #cb_context{resp_status='success', doc=JObj} ->
@@ -328,8 +335,27 @@ update(Id, #cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Context.
-%% crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    ViewOptions = [{'startkey', [cb_context:account_id(Context)]}
+                   ,{'endkey', [cb_context:account_id(Context), wh_json:new()]}
+                   ,'include_docs'
+                  ],
+
+    crossbar_doc:load_view(<<"port_requests/crossbar_listing">>
+                           ,ViewOptions
+                           ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                           ,fun normalize_view_results/2
+                          ).
+
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+normalize_view_results(Res, Acc) ->
+    [create_public_port_request_doc(wh_json:get_value(<<"doc">>, Res)) | Acc].
+
+-spec create_public_port_request_doc(wh_json:object()) -> wh_json:object().
+create_public_port_request_doc(JObj) ->
+    wh_json:set_values([{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
+                        ,{<<"created">>, wh_json:get_value(<<"pvt_created">>, JObj)}
+                        ,{<<"updated">>, wh_json:get_value(<<"pvt_modified">>, JObj)}
+                       ], wh_doc:public_fields(JObj)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -339,6 +365,8 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', #cb_context{doc=JObj}=Context) ->
-    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"port_request">>, JObj)};
+    Context#cb_context{doc=wh_json:set_values([{<<"pvt_type">>, <<"port_request">>}
+                                               ,{<<"state">>, ?PORT_WAITING}
+                                              ], JObj)};
 on_successful_validation(Id, #cb_context{}=Context) ->
     crossbar_doc:load_merge(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
