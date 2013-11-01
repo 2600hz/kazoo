@@ -155,7 +155,7 @@ maybe_authenticate_user(#cb_context{doc=JObj}=Context) ->
             lager:debug("failed to find account DB from realm ~s", [AccountRealm]),
             cb_context:add_system_error('invalid_credentials', Context);
         {'ok', Account} ->
-            maybe_authenticate_user(Context, Credentials, Method, Account)
+            maybe_account_is_enabled(Context, Credentials, Method, Account)
     end.
 
 maybe_authenticate_user(Context, _, _, []) ->
@@ -212,6 +212,20 @@ maybe_authenticate_user(Context, Credentials, <<"sha">>, Account) ->
 maybe_authenticate_user(Context, _, _, _) ->
     lager:debug("invalid creds"),
     cb_context:add_system_error('invalid_credentials', Context).
+
+
+-spec maybe_account_is_enabled(cb_context:context(), ne_binary(), ne_binary(), wh_json:key()) ->
+                                     cb_context:context().
+maybe_account_is_enabled(Context, Credentials, Method, Account) ->
+    case wh_util:is_account_enabled(Account) of
+        'true' ->
+            maybe_authenticate_user(Context, Credentials, Method, Account);
+        'false' ->
+            lager:debug("account ~p is disabled", [Account]),
+            Props = [{'details', <<"account_disabled">>}],
+            cb_context:add_system_error('forbidden', Props, Context)
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
