@@ -150,6 +150,7 @@ load_view(View, Options, Context) ->
                        | props:delete('include_docs', Options)
                       ]
         end,
+
     case couch_mgr:get_results(Db, View, ViewOptions) of
         {'error', Error} -> handle_couch_mgr_errors(Error, View, Context);
         {'ok', JObjs} when HasFilter ->
@@ -329,7 +330,7 @@ save_attachment(DocId, AName, Contents, Context) -> save_attachment(DocId, AName
 %%--------------------------------------------------------------------
 -spec save_attachment(ne_binary(), ne_binary(), ne_binary(), cb_context:context(), wh_proplist()) -> cb_context:context().
 save_attachment(DocId, AName, Contents, #cb_context{db_name=Db}=Context, Options) ->
-    Opts1 = case props:get_value(rev, Options) of
+    Opts1 = case props:get_value('rev', Options) of
                 'undefined' ->
                     {'ok', Rev} = couch_mgr:lookup_doc_rev(Db, DocId),
                     [{'rev', Rev} | Options];
@@ -532,8 +533,8 @@ handle_couch_mgr_errors(Else, _, Context) ->
                                          wh_json:object() | wh_json:objects().
 update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
     [update_pvt_parameters(JObj, Context) || JObj <- JObjs];
-update_pvt_parameters(JObj0, #cb_context{db_name=DbName}) ->
-    lists:foldl(fun(Fun, JObj) -> Fun(JObj, DbName) end, JObj0, ?PVT_FUNS).
+update_pvt_parameters(JObj0, Context) ->
+    lists:foldl(fun(Fun, JObj) -> Fun(JObj, Context) end, JObj0, ?PVT_FUNS).
 
 add_pvt_vsn(JObj, _) ->
     case wh_json:get_value(<<"pvt_vsn">>, JObj) of
@@ -541,17 +542,17 @@ add_pvt_vsn(JObj, _) ->
         _ -> JObj
     end.
 
-add_pvt_account_db(JObj, DbName) ->
+add_pvt_account_db(JObj, Context) ->
     case wh_json:get_value(<<"pvt_account_db">>, JObj) of
         'undefined' ->
-            wh_json:set_value(<<"pvt_account_db">>, DbName, JObj);
+            wh_json:set_value(<<"pvt_account_db">>, cb_context:account_db(Context), JObj);
         _Else -> JObj
     end.
 
-add_pvt_account_id(JObj, DbName) ->
+add_pvt_account_id(JObj, Context) ->
     case wh_json:get_value(<<"pvt_account_id">>, JObj) of
         'undefined' ->
-            wh_json:set_value(<<"pvt_account_id">>, wh_util:format_account_id(DbName, 'raw'), JObj);
+            wh_json:set_value(<<"pvt_account_id">>, cb_context:account_id(Context), JObj);
         _Else -> JObj
     end.
 
