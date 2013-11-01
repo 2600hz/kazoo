@@ -244,7 +244,7 @@ post(#cb_context{doc=JObj}=Context, MediaId) ->
                 ,fun(#cb_context{resp_status='success', doc=J1}=C) when TTS ->
                          J2 = wh_json:set_value(<<"media_source">>, <<"tts">>, J1),
                          crossbar_doc:save(C#cb_context{doc=wh_json:set_value(<<"pvt_previous_tts">>, Text, J2)});
-                    (#cb_context{resp_status='success'}=C) -> 
+                    (#cb_context{resp_status='success'}=C) ->
                          crossbar_doc:save(C);
                     (C) -> C
                  end
@@ -285,7 +285,7 @@ load_media_meta(MediaId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
@@ -301,7 +301,7 @@ on_successful_validation('undefined', #cb_context{doc=Doc}=Context) ->
              ,{<<"media_source">>, <<"upload">>}
             ],
     Context#cb_context{doc=wh_json:set_values(Props, Doc)};
-on_successful_validation(MediaId, Context) -> 
+on_successful_validation(MediaId, Context) ->
     crossbar_doc:load_merge(MediaId, Context).
 
 %%--------------------------------------------------------------------
@@ -364,7 +364,6 @@ update_media_binary(MediaID, #cb_context{doc=JObj
          || Attachment <- wh_json:get_keys(OldAttachments)
         ],
     crossbar_doc:save_attachment(MediaID, attachment_name(Filename, CT), Contents, Context, Opts).
-    
 
 %%--------------------------------------------------------------------
 %% @private
