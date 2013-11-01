@@ -203,7 +203,9 @@ get_sreenshot(Id, Context, Num) ->
         Context1 -> Context1
     end.
 
--spec maybe_get_screenshot(ne_binary(), cb_context:context()) -> 'error' | cb_context:context().
+-spec maybe_get_screenshot(ne_binary(), cb_context:context()) ->
+                                  'error' |
+                                  {'ok', ne_binary(), ne_binary()}.
 maybe_get_screenshot(Num, #cb_context{doc=JObj}=Context) ->
     Screenshots = wh_json:get_value(<<"screenshots">>, JObj),
     try lists:nth(wh_util:to_integer(Num)+1, Screenshots) of
@@ -212,7 +214,9 @@ maybe_get_screenshot(Num, #cb_context{doc=JObj}=Context) ->
         _:_ -> 'error'
     end.
 
--spec maybe_get_attachment(cb_context:context(), ne_binary()) -> 'error' | {'ok', ne_binary(), ne_binary()}.
+-spec maybe_get_attachment(cb_context:context(), ne_binary()) ->
+                                  'error' |
+                                  {'ok', ne_binary(), wh_json:object()}.
 maybe_get_attachment(#cb_context{doc=JObj}, Name) ->
     case wh_json:get_value([<<"_attachments">>, Name], JObj) of
         'undefined' -> 'error';
@@ -258,7 +262,7 @@ read(Id, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) -> 
+summary(Context) ->
     Context1 = set_master_account_db(Context),
     crossbar_doc:load_view(?CB_LIST, [], Context1, fun normalize_view_results/2).
 
