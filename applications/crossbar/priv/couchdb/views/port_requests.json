@@ -1,0 +1,15 @@
+{
+    "_id":"_design/port_requests"
+    ,"language":"javascript"
+    ,"views": {
+        "crossbar_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return; emit([doc.pvt_account_id, doc._id], null); }"
+        }
+        ,"port_in_numbers":{
+            "map":"function(doc) { if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return; for (i in doc.numbers) { emit([doc.pvt_account_id, doc.numbers[i][0]], null); } }"
+        }
+        ,"listing_by_port_state":{
+            "map":"function(doc) { if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return; emit([doc.pvt_account_id, doc.state], null); }"
+        }
+    }
+}
