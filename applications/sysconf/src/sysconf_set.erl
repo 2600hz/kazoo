@@ -18,19 +18,22 @@ init() -> 'ok'.
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
     'true' = wapi_sysconf:set_req_v(ApiJObj),
-
     Category = wh_json:get_value(<<"Category">>, ApiJObj),
     Key = wh_json:get_value(<<"Key">>, ApiJObj),
     Value = wh_json:get_value(<<"Value">>, ApiJObj),
-    MsgID = wh_json:get_value(<<"Msg-ID">>, ApiJObj),
     Node = wh_json:get_value(<<"Node">>, ApiJObj),
-
-    lager:debug("received sysconf set for ~s[~s.~s]", [Category, Node, Key]),
-
-    {'ok', _} = whapps_config:set(Category, Key, Value, Node),
-
+    {'ok', _} = case wh_json:is_true(<<"Node-Specific">>, ApiJObj) of
+                    'true' ->
+                        lager:debug("received sysconf node specific setting for ~s[~s.~s]"
+                                    ,[Category, Node, Key]),
+                        whapps_config:set_node(Category, Key, Value, Node);
+                    'false' -> 
+                        lager:debug("received sysconf setting for ~s[~s.~s]"
+                                    ,[Category, Node, Key]),
+                        whapps_config:set(Category, Key, Value, Node)
+                end,
+    MsgID = wh_json:get_value(<<"Msg-ID">>, ApiJObj),
     RespQ =  wh_json:get_value(<<"Server-ID">>, ApiJObj),
-
     Resp = [{<<"Category">>, Category}
             ,{<<"Key">>, Key}
             ,{<<"Value">>, Value}

@@ -138,8 +138,27 @@ compile_default_subject_template(TemplateModule, Category) ->
     compile_default_template(TemplateModule, Category, 'default_subject_template').
 
 compile_default_template(TemplateModule, Category, Key) ->
-    {'ok', TemplateModule} = erlydtl:compile(whapps_config:get(Category, Key), TemplateModule).
+    Template = case whapps_config:get(Category, Key) of
+                   'undefined' -> get_default_template(Category, Key);
+                   Else -> Else
+               end,
+    {'ok', TemplateModule} = erlydtl:compile(Template, TemplateModule).
 
+get_default_template(Category, Key) ->
+    File = category_to_file(Category),
+    case file:consult(File) of
+        {'ok', Props} -> 
+            case props:get_value(Key, Props) of
+                'undefined' -> 'undefined';
+                Template ->
+                    _ = whapps_config:set(Category, Key, Template),
+                    Template
+            end;
+         {'error', _R} ->
+            lager:warning("failed to find default template for ~s/~s: ~p", [Category, Key, _R]),
+            'undefined'
+    end.
+                     
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -327,3 +346,31 @@ get_account_doc(JObj) ->
         {Db, AccountId} ->
             couch_mgr:open_doc(Db, AccountId)
     end.
+
+-spec category_to_file(ne_binary()) -> iolist() | 'undefined'.
+category_to_file(<<"notify.voicemail_to_email">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_vm.config"];
+category_to_file(<<"notify.fax_to_email">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_fax.config"];
+category_to_file(<<"notify.deregister">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_deregister.config"];
+category_to_file(<<"notify.password_recovery">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_pwd_recovery.config"];
+category_to_file(<<"notify.new_account">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_new_account.config"];
+category_to_file(<<"notify.first_occurrence">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_first_occurrence.config"];
+category_to_file(<<"notify.cnam_request">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_cnam_request.config"];
+category_to_file(<<"notify.port_request">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_port_request.config"];
+category_to_file(<<"notify.ported">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_ported.config"];
+category_to_file(<<"notify.low_balance">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_low_balance.config"];
+category_to_file(<<"notify.system_alert">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_system_alert.config"];
+category_to_file(<<"notify.transaction">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_transaction.config"];
+category_to_file(_) ->
+    'undefined'.

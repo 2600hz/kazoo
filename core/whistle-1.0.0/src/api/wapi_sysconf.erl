@@ -47,7 +47,7 @@
 
 %% request a write
 -define(SYSCONF_SET_REQ_HEADERS, [<<"Category">>, <<"Key">>, <<"Value">>]).
--define(OPTIONAL_SYSCONF_SET_REQ_HEADERS, []).
+-define(OPTIONAL_SYSCONF_SET_REQ_HEADERS, [<<"Node-Specific">>]).
 -define(SYSCONF_SET_REQ_VALUES, [{<<"Event-Name">>, <<"set_req">>} | ?SYSCONF_VALUES]).
 
 -define(SYSCONF_FLUSH_REQ_HEADERS, [<<"Category">>]).

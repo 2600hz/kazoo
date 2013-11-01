@@ -184,7 +184,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('bind_to_presence_events', #state{node=Node}=State) ->
-    _ = case wh_util:is_true(ecallmgr_config:get(<<"distribute_presence">>, <<"false">>)) of
+    _ = case ecallmgr_config:get_boolean(<<"distribute_presence">>, 'false') of
             'false' -> gen_server:cast(self(), 'bind_to_message_events');
             'true' ->
                 %%                ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
@@ -211,7 +211,7 @@ handle_cast('bind_to_notify_presence', #state{node=Node}=State) ->
     gen_server:cast(self(), 'bind_to_message_events'),
     {'noreply', State};
 handle_cast('bind_to_message_events', #state{node=Node}=State) ->
-    _ = case wh_util:is_true(ecallmgr_config:get(<<"distribute_message_query">>, <<"false">>)) of
+    _ = case ecallmgr_config:get_boolean(<<"distribute_message_query">>, 'false') of
             'false' -> 'ok';
             'true' ->
                 %%            ok = freeswitch:event(Node, ['MESSAGE_QUERY']),

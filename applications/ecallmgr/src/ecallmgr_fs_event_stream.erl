@@ -275,7 +275,7 @@ maybe_start_event_listener(Node, UUID) ->
 
 -spec publish_new_channel_event(wh_proplist()) -> 'ok'.
 publish_new_channel_event(Props) ->
-    case ecallmgr_config:get_boolean(?PUBLISH_CHANNEL_STATE, 'false') of
+    case ecallmgr_config:get_boolean(?PUBLISH_CHANNEL_STATE, 'true') of
         'false' -> 'ok';
         'true' ->
             Req = wh_api:default_headers(<<"channel">>, <<"new">>, ?APP_NAME, ?APP_VERSION) ++

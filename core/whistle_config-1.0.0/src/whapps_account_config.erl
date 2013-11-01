@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(whapps_account_config).
 
--include("whistle_apps.hrl").
+-include("whistle_config.hrl").
 
 -export([get/2, get/3, get/4
          ,get_global/3, get_global/4

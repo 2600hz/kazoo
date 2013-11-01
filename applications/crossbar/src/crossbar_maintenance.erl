@@ -37,7 +37,7 @@
 migrate() ->
     io:format("updating default crossbar modules~n", []),
     whapps_config:flush(),
-    StartModules = sets:from_list(whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, [])),
+    StartModules = sets:from_list(whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, ?DEFAULT_MODULES)),
     XbarUpdates = [fun(L) -> sets:del_element(<<"cb_cdr">>, L) end
                    ,fun(L) -> sets:del_element(<<"cb_signups">>, L) end
                    ,fun(L) -> sets:del_element(<<"cb_resources">>, L) end

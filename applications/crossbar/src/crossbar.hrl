@@ -45,6 +45,46 @@
                               ,{?WH_ACCOUNTS_DB, [_]}
                              ]).
 
+-define(DEFAULT_MODULES, ['cb_about'
+                          ,'cb_accounts'
+                          ,'cb_acls'
+                          ,'cb_apps_store'
+                          ,'cb_api_auth'
+                          ,'cb_bulk'
+                          ,'cb_callflows'
+                          ,'cb_cdrs'
+                          ,'cb_clicktocall'
+                          ,'cb_conferences'
+                          ,'cb_configs'
+                          ,'cb_connectivity'
+                          ,'cb_contact_list'
+                          ,'cb_devices'
+                          ,'cb_directories'
+                          ,'cb_faxes'
+                          ,'cb_global_resources'
+                          ,'cb_groups'
+                          ,'cb_hotdesks'
+                          ,'cb_ip_auth'
+                          ,'cb_limits'
+                          ,'cb_local_resources'
+                          ,'cb_media'
+                          ,'cb_menus'
+                          ,'cb_phone_numbers'
+                          ,'cb_rates'
+                          ,'cb_registrations'
+                          ,'cb_schemas'
+                          ,'cb_service_plans'
+                          ,'cb_services'
+                          ,'cb_simple_authz'
+                          ,'cb_temporal_rules'
+                          ,'cb_token_auth'
+                          ,'cb_transactions'
+                          ,'cb_user_auth'
+                          ,'cb_users'
+                          ,'cb_vmboxes'
+                          ,'cb_whitelabel'
+                         ]).
+
 -record(cb_context, {
            content_types_provided = [] :: crossbar_content_handlers()
           ,content_types_accepted = [] :: crossbar_content_handlers()
