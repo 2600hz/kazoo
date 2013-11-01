@@ -219,12 +219,14 @@ is_valid_attribute({<<"patternProperties">>, PatternProperties, _}, JObj, Key) -
     Patterns = wh_json:get_keys(PatternProperties),
     Object = wh_json:get_value(Key, JObj),
 
-    case wh_json:filter(fun({ObjectKey, ObjectValue}) ->
-                                not maybe_match_patterns(ObjectKey, ObjectValue, Patterns, PatternProperties)
-                        end
-                        ,Object
-                       )
+    case wh_json:is_json_object(Object)
+        andalso wh_json:filter(fun({ObjectKey, ObjectValue}) ->
+                                       not maybe_match_patterns(ObjectKey, ObjectValue, Patterns, PatternProperties)
+                               end
+                               ,Object
+                              )
     of
+        'false' -> {'fail', {Key, <<"type:Value must be a JSON object">>}};
         ?EMPTY_JSON_OBJECT -> {'pass', JObj};
         _ -> {'fail', {Key, <<"patternProperties:Object keys were not all matched by patterns">>}}
     end;
@@ -234,8 +236,11 @@ is_valid_attribute({<<"additionalProperties">>, _, _}, JObj, _Key) -> {'pass', J
 
 is_valid_attribute({<<"minProperties">>, MinProperties, _AttrJObj}, JObj, Key) ->
     Min = wh_util:to_integer(MinProperties),
-    case length(wh_json:get_keys(Key, JObj)) of
-        N when N < Min -> {'fail', {Key, <<"minProperties: not enough keys on the object">>}};
+    case wh_json:is_json_object(Key, JObj)
+        andalso length(wh_json:get_keys(Key, JObj))
+    of
+        'false' -> {'fail', {Key, <<"type:Value must be a JSON object">>}};
+        N when N < Min -> {'fail', {Key, <<"minProperties:Not enough keys on the object">>}};
         _N -> {'pass', JObj}
     end;
 
