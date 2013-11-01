@@ -279,14 +279,9 @@ is_account_enabled(Account) ->
             lager:error("could not open account ~p in ~p", [AccountId, AccountDb]),
             'false';
         {'ok', JObj} ->
-            case wh_json:is_true(<<"pvt_enabled">>, JObj, 'true') of
-                'true' ->
-                    case wh_json:get_value(<<"enabled">>, JObj, 'true') of
-                        'true' -> 'true';
-                        _ -> 'false'
-                    end;
-                _ -> 'false'
-            end
+            wh_json:is_true(<<"pvt_enabled">>, JObj, 'true') 
+                andalso wh_json:is_true(<<"enabled">>, JObj, 'true')
+
     end.
 %%--------------------------------------------------------------------
 %% @public

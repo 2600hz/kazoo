@@ -81,7 +81,7 @@ lookup_account_by_number(Number) ->
     end.
 
 -spec maybe_check_account(ne_binary()) -> {'ok', ne_binary(), wh_proplist()} |
-                                                     {'error', _}.
+                                          {'error', _}.
 maybe_check_account(#number{assigned_to='undefined'}=N) ->
     lager:debug("number ~p not assigned to an account", [N]),
     {'error', 'unassigned'};
@@ -98,6 +98,8 @@ maybe_check_account(#number{assigned_to=AssignedTo, state=State}=N) ->
     lager:debug("number ~p assigned to acccount id ~p but in state ~p", [N, AssignedTo, State]),
     {'error', {'not_in_service', AssignedTo}}.
 
+-spec check_account(ne_binary()) -> {'ok', ne_binary(), wh_proplist()} |
+                                    {'error', _}.
 check_account(#number{assigned_to=AssignedTo}=N) ->
     case wh_util:is_account_enabled(AssignedTo) of
         'false' -> {'error', {'account_disabled', AssignedTo}};
