@@ -57,7 +57,6 @@ init(Parent) ->
     ?MODULE:cleanup_loop(?LOOP_TIMEOUT).
 
 -spec finish_request(cb_context:context()) -> any().
-finish_request(#cb_context{auth_doc = <<>>}) -> 'ok';
 finish_request(#cb_context{auth_doc='undefined'}) -> 'ok';
 finish_request(#cb_context{auth_doc=AuthDoc}=Context) ->
     cb_context:put_reqid(Context),
@@ -123,7 +122,7 @@ check_auth_token(#cb_context{auth_token = <<>>}) -> 'false';
 check_auth_token(#cb_context{auth_token='undefined'}) -> 'false';
 check_auth_token(#cb_context{auth_token=AuthToken}=Context) ->
     lager:debug("checking auth token: ~s", [AuthToken]),
-    case couch_mgr:open_cache_doc(?TOKEN_DB, AuthToken) of
+    case couch_mgr:open_doc(?TOKEN_DB, AuthToken) of
         {'ok', JObj} ->
             lager:debug("token auth is valid, authenticating"),
             {'true', cb_context:set_auth_doc(

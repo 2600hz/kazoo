@@ -161,7 +161,7 @@ update(Id, #cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
@@ -285,7 +285,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
             %% The idea here is the more expensive rate will have a higher CostF
             %% and decrement it from the weight so it has a lower weight #
             %% meaning it should be more likely used
-            Weight = constrain_weight(byte_size(wh_util:to_binay(Prefix)) * 10
+            Weight = constrain_weight(byte_size(wh_util:to_binary(Prefix)) * 10
                                       - trunc(InternalRate * 100)),
             Id = <<ISO/binary, "-", (wh_util:to_binary(Prefix))/binary>>,
             Props = props:filter_undefined([{<<"_id">>, Id}
@@ -305,7 +305,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
                                             ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
                                             ,{?HTTP_OPTIONS, []}
                                          ]),
-                
+
             {Count + 1, [wh_json:from_list(Props) | JObjs]}
     end.
 
@@ -314,7 +314,7 @@ get_row_prefix([Prefix | _]=_R) ->
     try wh_util:to_integer(Prefix) of
         P -> P
     catch
-        _:_ -> 
+        _:_ ->
             lager:info("non-integer prefix on row: ~p", [_R]),
             'undefined'
     end;
@@ -347,7 +347,7 @@ get_row_surcharge([_, _, _, Surcharge, _, _]) ->
     get_row_surcharge(Surcharge);
 get_row_surcharge([_, _, _, _, Surcharge, _ | _]) ->
     get_row_surcharge(Surcharge);
-get_row_surcharge([_|_]=_R) -> 
+get_row_surcharge([_|_]=_R) ->
     lager:info("surcharge not found on row: ~p", [_R]),
     'undefined';
 get_row_surcharge(Surcharge) ->
@@ -359,7 +359,7 @@ get_row_internal_rate([_, _, _, InternalRate, _]) ->
     get_row_internal_rate(InternalRate);
 get_row_internal_rate([_, _, _, _, InternalRate, _]) ->
     get_row_internal_rate(InternalRate);
-get_row_internal_rate([_, _, _, _, _, InternalRate | _]) -> 
+get_row_internal_rate([_, _, _, _, _, InternalRate | _]) ->
     get_row_internal_rate(InternalRate);
 get_row_internal_rate([_|_]=_R) ->
     lager:info("internal rate not found on row: ~p", [_R]),
