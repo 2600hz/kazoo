@@ -47,6 +47,7 @@
 -type context() :: #cb_context{}.
 -export_type([context/0]).
 
+-spec req_value(context(), wh_json:key()) -> wh_json:json_term().
 req_value(Context, Key) -> req_value(Context, Key, 'undefined').
 req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
     wh_json:find(Key, [ReqData, QS], Default).
