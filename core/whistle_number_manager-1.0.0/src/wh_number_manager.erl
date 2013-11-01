@@ -80,6 +80,8 @@ lookup_account_by_number(Number) ->
             {'error', Error}
     end.
 
+-spec maybe_check_account(ne_binary()) -> {'ok', ne_binary(), wh_proplist()} |
+                                                     {'error', _}.
 maybe_check_account(#number{assigned_to='undefined'}=N) ->
     lager:debug("number ~p not assigned to an account", [N]),
     {'error', 'unassigned'};
