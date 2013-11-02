@@ -1,6 +1,6 @@
 # Credentials Hash: 4d02ff46ad889921836b706c3c0e0b36
 # Account Name: Master
-# Auth Token ID: bbaad7318fb4ca87a276388f7cc5bdf6
+# Auth Token ID: 362e883ba4a648be66bdcdaf8384a980
 # Account ID: 5b78db2f23f35aa022f5c3c0a5df1b92
 # Port Request ID: 2b9890bc15b943484ffed4bf84d38284
 
@@ -8,13 +8,19 @@
 curl -v -X PUT -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/user_auth -d '{"data":{"credentials":"4d02ff46ad889921836b706c3c0e0b36", "account_name":"Master"}}' | pp
 
 # List port requests
-curl -v -X GET -H "X-Auth-Token: bbaad7318fb4ca87a276388f7cc5bdf6" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests | pp
+curl -v -X GET -H "X-Auth-Token: 362e883ba4a648be66bdcdaf8384a980" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests | pp
 
 # Create a new port request
-curl -v -X PUT -H "X-Auth-Token: bbaad7318fb4ca87a276388f7cc5bdf6" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests -d '{"data":{"numbers":{"+12025559000":{}}}}' | pp
+curl -v -X PUT -H "X-Auth-Token: 362e883ba4a648be66bdcdaf8384a980" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests -d '{"data":{"numbers":{"+12025559000":{}}}}' | pp
 
 # List port request details
-curl -v -X GET -H "X-Auth-Token: bbaad7318fb4ca87a276388f7cc5bdf6" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests/2b9890bc15b943484ffed4bf84d38284 | pp
+curl -v -X GET -H "X-Auth-Token: 362e883ba4a648be66bdcdaf8384a980" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests/2b9890bc15b943484ffed4bf84d38284 | pp
 
 # Edit a port request
-curl -v -X POST -H "X-Auth-Token: bbaad7318fb4ca87a276388f7cc5bdf6" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests/2b9890bc15b943484ffed4bf84d38284 -d '{}' | pp
+curl -v -X POST -H "X-Auth-Token: 362e883ba4a648be66bdcdaf8384a980" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests/2b9890bc15b943484ffed4bf84d38284 -d '{}' | pp
+
+# List attachments on a port request
+curl -v -X GET -H "X-Auth-Token: 362e883ba4a648be66bdcdaf8384a980" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests/2b9890bc15b943484ffed4bf84d38284/attachments -d '{}' | pp
+
+# Add an attachment to a port request
+curl -v -X PUT -H "X-Auth-Token: 362e883ba4a648be66bdcdaf8384a980" -H "Content-Type: application/pdf" 'http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests/2b9890bc15b943484ffed4bf84d38284/attachments?filename=otp.pdf' --data-binary @/home/james/Documents/ErlangandOTPinAction.pdf | pp
