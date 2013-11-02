@@ -17,10 +17,11 @@
 %%% POST /port_requests/{id} - update a port request
 %%% DELETE /port_requests/{id} - delete a port request, only if in "waiting" or "rejected"
 %%%
-%%% PUT /port_request/{id}/attachment - upload a document
-%%% GET /port_request/{id}/attachment/{attachment_id} - download the document
-%%% POST /port_request/{id}/attachment/{attachment_id} - replace a document
-%%% DELETE /port_request/{id}/attachment/{attachment_id} - delete a document
+%%% GET /port_request/{id}/attachments - List attachments on the port request
+%%% PUT /port_request/{id}/attachments - upload a document
+%%% GET /port_request/{id}/attachments/{attachment_id} - download the document
+%%% POST /port_request/{id}/attachments/{attachment_id} - replace a document
+%%% DELETE /port_request/{id}/attachments/{attachment_id} - delete a document
 %%%
 %%% { "numbers":{
 %%%   "+12225559999":{
@@ -37,10 +38,9 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-         ,content_types_provided/1, content_types_provided/4
+         ,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4
          ,content_types_accepted/3, content_types_accepted/4
          ,validate/1, validate/2, validate/3, validate/4
-         ,get/1, get/2, get/4
          ,put/1, put/3
          ,post/2, post/4
          ,delete/2, delete/4
@@ -55,7 +55,7 @@
 -define(PORT_PROGRESS, <<"progress">>).
 -define(PORT_COMPLETE, <<"completion">>).
 -define(PORT_REJECT, <<"rejection">>).
--define(PORT_ATTACHMENT, <<"attachment">>).
+-define(PORT_ATTACHMENT, <<"attachments">>).
 
 -include("../crossbar.hrl").
 
@@ -110,7 +110,7 @@ allowed_methods(_Id, ?PORT_COMPLETE) ->
 allowed_methods(_Id, ?PORT_REJECT) ->
     [?HTTP_PUT];
 allowed_methods(_Id, ?PORT_ATTACHMENT) ->
-    [?HTTP_PUT].
+    [?HTTP_GET, ?HTTP_PUT].
 
 allowed_methods(_Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
@@ -151,21 +151,34 @@ resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) ->
                                     cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token()) ->
+                                    cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
+                                    cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided(#cb_context{}=Context) ->
     Context.
-
+content_types_provided(#cb_context{}=Context, _Id) ->
+    Context.
+content_types_provided(#cb_context{}=Context, _Id, ?PORT_ATTACHMENT) ->
+    Context.
 content_types_provided(#cb_context{req_verb=?HTTP_GET}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
-    case read(Id, Context) of
-        #cb_context{resp_status='success', doc=JObj} ->
+    case crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)) of
+        #cb_context{resp_status='success', doc=JObj}=Context1 ->
+            lager:debug("ctp: ~p", [JObj]),
             ContentTypeKey = [<<"_attachments">>, AttachmentId, <<"content_type">>],
+            lager:debug("ctp: ~s", [ContentTypeKey]),
             case wh_json:get_value(ContentTypeKey, JObj) of
-                'undefined' -> Context;
+                'undefined' ->
+                    lager:debug("no content type defined"),
+                    Context1;
                 ContentType ->
+                    lager:debug("found content type ~s", [ContentType]),
                     [Type, SubType] = binary:split(ContentType, <<"/">>),
-                    Context#cb_context{content_types_provided=[{'to_binary', [{Type, SubType}]}]}
-            end
+                    Context1#cb_context{content_types_provided=[{'to_binary', [{Type, SubType}]}]}
+            end;
+        Context1 -> Context1
     end;
 content_types_provided(#cb_context{}=Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     Context.
@@ -224,32 +237,16 @@ validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Id, ?PORT_COMPLETE) ->
     Context;
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Id, ?PORT_REJECT) ->
     Context;
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Id, ?PORT_ATTACHMENT) ->
-    Context.
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?PORT_ATTACHMENT) ->
+    summary_attachments(Id, Context);
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_ATTACHMENT) ->
+    read(Id, Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
-    Context;
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
+    load_attachment(Id, AttachmentId, Context);
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     Context;
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
-    Context.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is a GET, execute necessary code to fulfill the GET
-%% request. Generally, this will involve stripping pvt fields and loading
-%% the resource into the resp_data, resp_headers, etc...
-%% @end
-%%--------------------------------------------------------------------
--spec get(cb_context:context()) -> cb_context:context().
--spec get(cb_context:context(), path_token()) -> cb_context:context().
--spec get(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-get(#cb_context{}=Context) ->
-    Context.
-get(#cb_context{}=Context, _Id) ->
-    Context.
-get(#cb_context{}=Context, _Id, ?PORT_ATTACHMENT, _AttachmentName) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -262,8 +259,27 @@ get(#cb_context{}=Context, _Id, ?PORT_ATTACHMENT, _AttachmentName) ->
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(#cb_context{}=Context) ->
     crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
-put(#cb_context{}=Context, _Id, ?PORT_ATTACHMENT) ->
-    crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
+
+put(#cb_context{}=Context, Id, ?PORT_ATTACHMENT) ->
+    [{Filename, FileJObj}] = cb_context:req_files(Context),
+
+    Contents = wh_json:get_value(<<"contents">>, FileJObj),
+
+    Opts = [{'headers', [{'content_type', CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj)}
+                        ]
+            }],
+    OldAttachments = wh_json:get_value(<<"_attachments">>, cb_context:doc(Context), wh_json:new()),
+
+    _Del = [couch_mgr:delete_attachment(cb_context:account_db(Context), Id, Attachment)
+            || Attachment <- wh_json:get_keys(OldAttachments)
+           ],
+
+    crossbar_doc:save_attachment(Id
+                                 ,cb_modules_util:attachment_name(Filename, CT)
+                                 ,Contents
+                                 ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                                 ,Opts
+                                ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -275,9 +291,27 @@ put(#cb_context{}=Context, _Id, ?PORT_ATTACHMENT) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(#cb_context{}=Context, _Id) ->
-    crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
-post(#cb_context{}=Context, _Id, ?PORT_ATTACHMENT, _AttachmentName) ->
-    crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
+    case crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)) of
+        #cb_context{resp_status='success'}=Context1 ->
+            cb_context:set_resp_data(Context1, create_public_port_request_doc(cb_context:doc(Context1)));
+        Context1 ->
+            Context1
+    end.
+
+post(#cb_context{}=Context, Id, ?PORT_ATTACHMENT, _AttachmentName) ->
+    [{Filename, FileJObj}] = cb_context:req_files(Context),
+    Contents = wh_json:get_value(<<"contents">>, FileJObj),
+    CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
+    lager:debug("file content type: ~s", [CT]),
+    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    OldAttachments = wh_json:get_value(<<"_attachments">>, cb_context:doc(Context), wh_json:new()),
+    Id = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
+    _ = [couch_mgr:delete_attachment(cb_context:account_db(Context), Id, Attachment)
+         || Attachment <- wh_json:get_keys(OldAttachments)
+        ],
+    crossbar_doc:save_attachment(Id, cb_modules_util:attachment_name(Filename, CT)
+                                 ,Contents, Context, Opts
+                                ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -311,7 +345,8 @@ create(#cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
+    Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
+    cb_context:set_doc(Context1, create_public_port_request_doc(cb_context:doc(Context1))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -355,7 +390,15 @@ create_public_port_request_doc(JObj) ->
     wh_json:set_values([{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
                         ,{<<"created">>, wh_json:get_value(<<"pvt_created">>, JObj)}
                         ,{<<"updated">>, wh_json:get_value(<<"pvt_modified">>, JObj)}
+                        ,{<<"port_state">>, wh_json:get_value(<<"pvt_port_state">>, JObj, ?PORT_WAITING)}
                        ], wh_doc:public_fields(JObj)).
+
+-spec summary_attachments(ne_binary(), cb_context:context()) -> cb_context:context().
+summary_attachments(Id, Context) ->
+    Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
+    cb_context:set_resp_data(Context1
+                             ,wh_json:get_value(<<"_attachments">>, cb_context:doc(Context1), [])
+                            ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -365,8 +408,30 @@ create_public_port_request_doc(JObj) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', #cb_context{doc=JObj}=Context) ->
-    Context#cb_context{doc=wh_json:set_values([{<<"pvt_type">>, <<"port_request">>}
-                                               ,{<<"state">>, ?PORT_WAITING}
-                                              ], JObj)};
+    cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, <<"port_request">>}
+                                                    ,{<<"pvt_port_state">>, ?PORT_WAITING}
+                                                   ], JObj));
 on_successful_validation(Id, #cb_context{}=Context) ->
     crossbar_doc:load_merge(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
+
+load_attachment(Id, AttachmentId, Context) ->
+    Context1 = read(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' -> load_attachment(AttachmentId, Context1);
+        _ -> Context1
+    end.
+
+load_attachment(AttachmentId, Context) ->
+    AttachmentMeta = wh_json:get_value([<<"_attachments">>, AttachmentId], cb_context:doc(Context)),
+
+    lists:foldl(fun({K, V}, C) ->
+                        cb_context:add_resp_header(K, V, C)
+                end
+                ,crossbar_doc:load_attachment(cb_context:doc(Context)
+                                              ,AttachmentId
+                                              ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                                             )
+                ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
+                  ,{<<"Content-Type">>, wh_json:get_value([<<"content_type">>], AttachmentMeta)}
+                  ,{<<"Content-Length">>, wh_json:get_value([<<"length">>], AttachmentMeta)}
+                 ]).
