@@ -277,13 +277,16 @@ extract_multipart_content({{'data', Datum}, Req}, JObj) ->
                           {cb_context:context(), cowboy_req:req()}.
 extract_file(Context, ContentType, Req0) ->
     case cowboy_req:body(Req0) of
-        {'error', 'badarg'} -> {Context, Req0};
+        {'error', 'badarg'} ->
+            lager:debug("failed to extract file body"),
+            {Context, Req0};
         {'ok', FileContents, Req1} ->
             %% http://tools.ietf.org/html/rfc2045#page-17
             case cowboy_req:header(<<"content-transfer-encoding">>, Req1) of
-                <<"base64">> -> decode_base64(Context, ContentType, Req1);
-                _Else ->
-                    {ContentLength, Req2} = cowboy_req:header(<<"content-length">>, Req1),
+                {<<"base64">>, Req2} -> decode_base64(Context, ContentType, Req2);
+                {_Else, Req2} ->
+                    lager:debug("encoding: ~p", [_Else]),
+                    {ContentLength, Req3} = cowboy_req:header(<<"content-length">>, Req2),
                     Headers = wh_json:from_list([{<<"content_type">>, ContentType}
                                                  ,{<<"content_length">>, ContentLength}
                                                 ]),
@@ -291,11 +294,23 @@ extract_file(Context, ContentType, Req0) ->
                                                   ,{<<"contents">>, FileContents}
                                                  ]),
                     lager:debug("request is a file upload of type: ~s", [ContentType]),
-                    FileName = <<"uploaded_file_"
-                                 ,(wh_util:to_binary(wh_util:current_tstamp()))/binary>>,
-                    {Context#cb_context{req_files=[{FileName, FileJObj}]}, Req2}
+
+                    Filename = uploaded_filename(Context),
+                    {Context#cb_context{req_files=[{Filename, FileJObj}]}, Req3}
             end
     end.
+
+-spec uploaded_filename(cb_context:context()) -> ne_binary().
+uploaded_filename(Context) ->
+    case cb_context:req_value(Context, <<"filename">>) of
+        'undefined' -> default_filename();
+        Filename ->
+            lager:debug("found filename on request: ~s", [Filename]),
+            Filename
+    end.
+
+default_filename() ->
+    <<"uploaded_file_", (wh_util:to_binary(wh_util:current_tstamp()))/binary>>.
 
 -spec decode_base64(cb_context:context(), ne_binary(), cowboy_req:req()) ->
                            {cb_context:context(), cowboy_req:req()}.
