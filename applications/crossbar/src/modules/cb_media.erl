@@ -363,7 +363,9 @@ update_media_binary(MediaID, #cb_context{doc=JObj
     _ = [couch_mgr:delete_attachment(Db, Id, Attachment)
          || Attachment <- wh_json:get_keys(OldAttachments)
         ],
-    crossbar_doc:save_attachment(MediaID, attachment_name(Filename, CT), Contents, Context, Opts).
+    crossbar_doc:save_attachment(MediaID, cb_modules_util:attachment_name(Filename, CT)
+                                 , Contents, Context, Opts
+                                ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -383,42 +385,3 @@ delete_media_binary(MediaID, Context) ->
             end;
         Context1 -> Context1
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generate an attachment name if one is not provided and ensure
-%% it has an extension (for the associated content type)
-%% @end
-%%--------------------------------------------------------------------
--spec attachment_name(ne_binary(), ne_binary()) -> ne_binary().
-attachment_name(Filename, CT) ->
-    Generators = [fun(A) ->
-                          case wh_util:is_empty(A) of
-                              true -> wh_util:to_hex_binary(crypto:rand_bytes(16));
-                              false -> A
-                          end
-                  end
-                  ,fun(A) ->
-                           case wh_util:is_empty(filename:extension(A)) of
-                               false -> A;
-                               true ->
-                                   <<A/binary, ".", (content_type_to_extension(CT))/binary>>
-                           end
-                   end
-                 ],
-    lists:foldr(fun(F, A) -> F(A) end, Filename, Generators).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert known media types to extensions
-%% @end
-%%--------------------------------------------------------------------
--spec content_type_to_extension(ne_binary()) -> ne_binary().
-content_type_to_extension(<<"audio/wav">>) -> <<"wav">>;
-content_type_to_extension(<<"audio/x-wav">>) -> <<"wav">>;
-content_type_to_extension(<<"audio/mpeg">>) -> <<"mp3">>;
-content_type_to_extension(<<"audio/mpeg3">>) -> <<"mp3">>;
-content_type_to_extension(<<"audio/mp3">>) -> <<"mp3">>;
-content_type_to_extension(<<"audio/ogg">>) -> <<"ogg">>.

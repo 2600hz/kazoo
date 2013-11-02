@@ -13,6 +13,7 @@
          ,get_devices_owned_by/2
          ,maybe_originate_quickcall/1
          ,is_superduper_admin/1
+         ,attachment_name/2
         ]).
 
 -include("../crossbar.hrl").
@@ -231,3 +232,45 @@ is_superduper_admin(AccountId) ->
             lager:debug("not authorizing, error during lookup"),
             'false'
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Generate an attachment name if one is not provided and ensure
+%% it has an extension (for the associated content type)
+%% @end
+%%--------------------------------------------------------------------
+-spec attachment_name(ne_binary(), text()) -> ne_binary().
+attachment_name(Filename, CT) ->
+    Generators = [fun(A) ->
+                          case wh_util:is_empty(A) of
+                              'true' -> wh_util:to_hex_binary(crypto:rand_bytes(16));
+                              'false' -> A
+                          end
+                  end
+                  ,fun(A) ->
+                           case wh_util:is_empty(filename:extension(A)) of
+                               'false' -> A;
+                               'true' ->
+                                   <<A/binary, ".", (content_type_to_extension(CT))/binary>>
+                           end
+                   end
+                 ],
+    lists:foldr(fun(F, A) -> F(A) end, Filename, Generators).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert known media types to extensions
+%% @end
+%%--------------------------------------------------------------------
+-spec content_type_to_extension(text()) -> ne_binary().
+content_type_to_extension(L) when not is_binary(L) ->
+    content_type_to_extension(wh_util:to_binary(L));
+content_type_to_extension(<<"audio/wav">>) -> <<"wav">>;
+content_type_to_extension(<<"audio/x-wav">>) -> <<"wav">>;
+content_type_to_extension(<<"audio/mpeg">>) -> <<"mp3">>;
+content_type_to_extension(<<"audio/mpeg3">>) -> <<"mp3">>;
+content_type_to_extension(<<"audio/mp3">>) -> <<"mp3">>;
+content_type_to_extension(<<"audio/ogg">>) -> <<"ogg">>;
+content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>.
