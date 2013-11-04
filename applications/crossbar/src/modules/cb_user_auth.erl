@@ -347,6 +347,7 @@ filter_apps([JObj|JObjs], Lang, Acc) ->
     App = wh_json:get_value(<<"value">>, JObj, wh_json:new()),
     NewApp = wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, App)}
                                 ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
+                                ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, App)}
                                 ,{<<"label">>, wh_json:get_value([<<"i18n">>, Lang, <<"label">>], App)}
                               ]),
     filter_apps(JObjs, Lang, [NewApp|Acc]).
