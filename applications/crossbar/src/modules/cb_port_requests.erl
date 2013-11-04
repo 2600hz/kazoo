@@ -396,9 +396,20 @@ create_public_port_request_doc(JObj) ->
 -spec summary_attachments(ne_binary(), cb_context:context()) -> cb_context:context().
 summary_attachments(Id, Context) ->
     Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
+
+    A = wh_json:get_value(<<"_attachments">>, cb_context:doc(Context1), []),
     cb_context:set_resp_data(Context1
-                             ,wh_json:get_value(<<"_attachments">>, cb_context:doc(Context1), [])
+                             ,normalize_attachments(A)
                             ).
+
+-spec normalize_attachments(wh_json:object()) -> wh_json:object().
+normalize_attachments(Attachments) ->
+    wh_json:map(fun normalize_attachments_map/2, Attachments).
+
+-spec normalize_attachments_map(wh_json:key(), wh_json:json_term()) ->
+                                       {wh_json:key(), wh_json:json_term()}.
+normalize_attachments_map(K, V) ->
+    {K, wh_json:delete_keys([<<"digest">>, <<"revpos">>, <<"stub">>], V)}.
 
 %%--------------------------------------------------------------------
 %% @private
