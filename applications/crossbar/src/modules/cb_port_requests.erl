@@ -244,10 +244,10 @@ validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_ATTACHMENT) ->
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     load_attachment(Id, AttachmentId, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
-    Context;
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
-    Context.
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
+    load_attachment(Id, AttachmentId, Context);
+validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
+    load_attachment(Id, AttachmentId, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -268,11 +268,6 @@ put(#cb_context{}=Context, Id, ?PORT_ATTACHMENT) ->
     Opts = [{'headers', [{'content_type', CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj)}
                         ]
             }],
-    OldAttachments = wh_json:get_value(<<"_attachments">>, cb_context:doc(Context), wh_json:new()),
-
-    _Del = [couch_mgr:delete_attachment(cb_context:account_db(Context), Id, Attachment)
-            || Attachment <- wh_json:get_keys(OldAttachments)
-           ],
 
     crossbar_doc:save_attachment(Id
                                  ,cb_modules_util:attachment_name(Filename, CT)
@@ -298,19 +293,27 @@ post(#cb_context{}=Context, _Id) ->
             Context1
     end.
 
-post(#cb_context{}=Context, Id, ?PORT_ATTACHMENT, _AttachmentName) ->
-    [{Filename, FileJObj}] = cb_context:req_files(Context),
+post(#cb_context{}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
+    [{_Filename, FileJObj}] = cb_context:req_files(Context),
+
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
-    CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
-    lager:debug("file content type: ~s", [CT]),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+
+    Opts = [{'headers', [{'content_type', wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj)}]
+            }],
     OldAttachments = wh_json:get_value(<<"_attachments">>, cb_context:doc(Context), wh_json:new()),
-    Id = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
-    _ = [couch_mgr:delete_attachment(cb_context:account_db(Context), Id, Attachment)
-         || Attachment <- wh_json:get_keys(OldAttachments)
-        ],
-    crossbar_doc:save_attachment(Id, cb_modules_util:attachment_name(Filename, CT)
-                                 ,Contents, Context, Opts
+
+    case wh_json:get_value(AttachmentId, OldAttachments) of
+        'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);
+        _AttachmentMeta ->
+            lager:debug("deleting old attachment ~s", [AttachmentId]),
+            couch_mgr:delete_attachment(cb_context:account_db(Context), Id, AttachmentId)
+    end,
+
+    crossbar_doc:save_attachment(Id
+                                 ,AttachmentId
+                                 ,Contents
+                                 ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                                 ,Opts
                                 ).
 
 %%--------------------------------------------------------------------
