@@ -1,0 +1,80 @@
+<h1>Federation Status</h1>
+<div class="section">
+  <h2>Running Links</h2>
+  <div class="hider updatable">
+<% if (links.length > 0) { %>
+<table class="list">
+ <thead>
+  <tr>
+    <th>Connection</th>
+    <th>URI</th>
+<% if (vhosts_interesting) { %>
+    <th>Virtual Host</th>
+<% } %>
+    <th>Exchange / Queue</th>
+<% if (nodes_interesting) { %>
+    <th>Node</th>
+<% } %>
+    <th>State</th>
+    <th>Inbound message rate</th>
+    <th>Last changed</th>
+  </tr>
+ </thead>
+ <tbody>
+<%
+ for (var i = 0; i < links.length; i++) {
+    var link = links[i];
+%>
+   <tr<%= alt_rows(i)%>>
+    <td>
+      <%= fmt_string(link.connection) %>
+      <% if (link.name != link.upstream_name) { %>
+      <sub><%= fmt_string(link.upstream_name) %></sub>
+      <% } %>
+    </td>
+    <td><%= fmt_string(link.uri) %></td>
+<% if (vhosts_interesting) { %>
+    <td><%= fmt_string(link.vhost) %></td>
+<% } %>
+    <td>
+      <% if (link.type == 'exchange') { %>
+        <%= link_exchange(link.vhost, link.name) %>
+      <% } else { %>
+        <%= link_queue(link.vhost, link.name) %>
+      <% } %>
+    <sub><%= fmt_string(link.type) %></sub>
+    </td>
+<% if (nodes_interesting) { %>
+    <td><%= fmt_node(link.node) %></td>
+<% } %>
+<% if (link.error) { %>
+    <td>
+       <div class="status-red"><acronym title="<%= fmt_escape_html_one_line(link.error) %>"><%= link.status %></acronym></div>
+    </td>
+    <td></td>
+    <td><%= link.timestamp %></td>
+  </tr>
+<% } else { %>
+    <td>
+       <% if (link.status == 'starting') { %>
+         <div class="status-yellow"><%= link.status %></div>
+       <% } else { %>
+         <div class="status-green"><%= link.status %></div>
+      <% } %>
+    </td>
+    <td class="r">
+      <% if (link.local_channel) { %>
+        <%= fmt_rate(link.local_channel.message_stats, 'confirm') %>
+      <% } %>
+    </td>
+    <td><%= link.timestamp %></td>
+  </tr>
+<% } %>
+  <% } %>
+ </tbody>
+</table>
+<% } else { %>
+  <p>... no links ...</p>
+<% } %>
+</div>
+</div>

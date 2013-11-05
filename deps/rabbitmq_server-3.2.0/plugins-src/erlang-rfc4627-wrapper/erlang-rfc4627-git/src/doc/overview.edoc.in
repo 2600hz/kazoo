@@ -1,0 +1,130 @@
+@title RFC4627 (JSON) and JSON-RPC for Erlang
+@author Tony Garnock-Jones <tonyg@lshift.net>
+@author LShift Ltd. <query@lshift.net>
+@copyright 2007-2010, 2011, 2012 Tony Garnock-Jones and 2007-2010 LShift Ltd.
+
+@version %%VERSION%%
+
+@reference <a href="http://www.ietf.org/rfc/rfc4627.txt">RFC 4627</a>,
+the JSON RFC
+
+@reference The <a
+href="http://json-rpc.org/wd/JSON-RPC-1-1-WD-20060807.html">JSON-RPC
+specification</a> 1.1 working draft (<a
+href="JSON-RPC-1-1-WD-20060807.html">mirrored locally</a>).
+
+@doc <p>An implementation of JSON and JSON-RPC for Erlang.</p>
+
+See {@link rfc4627}, the JSON/RFC4627 codec itself, to learn how to
+encode and decode JSON objects from Erlang code.
+
+== Providing and calling JSON-RPC services ==
+
+See {@link rfc4627_jsonrpc}, a JSON-RPC service registry and
+transport-neutral service method invocation mechanism, to learn how to
+expose Erlang processes as remotely-callable JSON-RPC services, and to
+learn how to invoke local JSON-RPC services from Erlang without the
+overhead of HTTP.
+
+== Exposing JSON-RPC services over HTTP ==
+
+=== Using Inets ===
+
+See {@link rfc4627_jsonrpc_inets}, an Inets HTTP transport binding for
+JSON-RPC, to learn how to configure the Inets HTTP server to respond
+to JSON-RPC requests.
+
+=== Using Mochiweb ===
+
+See {@link rfc4627_jsonrpc_mochiweb} to learn how to delegate incoming
+Mochiweb HTTP requests to the JSON-RPC service dispatcher.
+
+=== Using Cowboy ===
+
+See {@link rfc4627_jsonrpc_cowboy} to learn how to delegate incoming
+Cowboy HTTP requests to the JSON-RPC service dispatcher.
+
+== Running the example test service that comes with the source code ==
+
+Included with the Erlang RFC4627 source code is a small Inets-based
+example that defines a "hello world"-style JSON-RPC service, and calls
+it from a Javascript program embedded in a web page.
+
+At your Erlang shell,
+
+<ul>
+<li>after compiling the code with "`make all test-compile'",</li>
+<li>when your current working directory contains the "test" directory
+from the distribution, such that "test/server_root/conf/httpd.conf"
+exists,</li>
+</ul>
+
+type `test_jsonrpc_inets:start_httpd()'. This will
+
+<ul>
+<li>start the inets httpd on port 5671 (from test/server_root/conf/httpd.conf)</li>
+<li>allow HTTP access to JSON-RPC services via a url prefix of "/rpc" (again from httpd.conf)</li>
+<li>start the `rfc4627_jsonrpc' service registry</li>
+<li>register the test service</li>
+</ul>
+
+Visiting [http://localhost:5671/] in your browser should load a page
+that uses javascript to invoke the Erlang-implemented JSON-RPC test
+service.
+
+== Invoking JSON-RPC procedures from Javascript ==
+
+Once {@link rfc4627_jsonrpc_inets} is configured as part of a running
+inets httpd, services can be accessed via HTTP POST and
+(conditionally) HTTP GET. This distribution includes Javascript code
+for invoking JSON-RPC services from within a web browser:
+
+<ul>
+  <li><a href="../test/server_root/htdocs/json.js">json.js</a>: a slightly modified version of the original json.org Javascript JSON codec</li>
+  <li><a href="../test/server_root/htdocs/jsonrpc.js">jsonrpc.js</a>: classes for XmlHttpRequest-based JSON-RPC service access</li>
+  <li><a href="../test/server_root/htdocs/prototype-1.4.0.js">prototype-1.4.0.js</a>: provides cross-browser XmlHttpRequest implementation, as well as many very useful utilities and a framework for class-based programming in Javascript</li>
+  <li><a href="../test/server_root/htdocs/test-client.js">test-client.js</a>: running-example javascript client code</li>
+  <li><a href="../test/server_root/htdocs/index.html">index.html</a>: loads and runs the running-example client</li>
+</ul>
+
+The main class for JSON-RPC service access is jsonrpc.js's `JsonRpcService' class.
+
+```
+var serviceName = "test"; // or whatever your service is registered as
+var locationBase = document.location; // e.g. "http://localhost:5671/"
+var jsonRpcPrefix = "rpc/"; // or as configured in your httpd.conf
+
+var testService = new JsonRpcService(locationBase + jsonRpcPrefix + serviceName, onReady);
+
+function onReady() {
+    // callback invoked when the service is opened and ready for requests
+    testService.test_proc("Hello, world!").addCallback(process_reply);
+    function process_reply(reply) {
+        // ...
+    }
+}
+'''
+
+When an instance of `JsonRpcService' is constructed, it immediately
+calls the `system.describe' method of the service. When the result
+arrives, it uses the service description to add methods for each
+available service procedure to itself (see `installGenericProxy' in
+jsonrpc.js), and then calls the `onReady' callback supplied to the
+constructor to indicate that it is ready to process requests.
+
+Javascript's network primitives force you to work in
+continuation-passing-style. Every service procedure available on a
+`JsonRpcService' instance is asynchronous: calling one returns an
+instance of `JsonRpcTransaction'. The `addCallback' method of
+`JsonRpcTransaction' can be used to add a handler for processing the
+result of a JSON-RPC service request. The `addErrorCallback' is used
+to catch notifications of error responses to a JSON-RPC service
+request.
+
+```
+myService.myServiceProcedure(arg).addCallback(myReplyHandler).addErrorCallback(myErrorHandler);
+'''
+
+(note that `addCallback' and `addErrorCallback' return the
+`JsonRpcTransaction' object for convenience, to allow chaining as seen
+above.)
