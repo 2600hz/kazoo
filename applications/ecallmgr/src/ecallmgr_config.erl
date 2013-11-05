@@ -166,8 +166,22 @@ fetch(Key, Default, Node) ->
             lager:debug("unable to get config for key '~s' failed: ~p", [Key, _R]),
             Default;
         {'ok', JObj} ->
-            get_response_value(JObj, Default)
+            Value = get_response_value(JObj, Default),
+            _ = maybe_cache_resp(Key, Node, Value),
+            Value
+
     end.
+
+maybe_cache_resp(_, _ , 'undefined') -> 'ok';
+maybe_cache_resp(_, _ , 'null') -> 'ok';
+maybe_cache_resp(_, _ , <<"undefined">>) -> 'ok';
+maybe_cache_resp(_, _ , <<"null">>) -> 'ok';
+maybe_cache_resp(Key, Node, Value) ->
+    CacheProps = [{'origin', {'db', ?WH_CONFIG_DB, <<"ecallmgr">>}}],
+    wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+                         ,cache_key(Key, Node)
+                         ,Value
+                         ,CacheProps).
 
 -spec set(wh_json:key(), wh_json:json_term()) -> 'ok'.
 -spec set(wh_json:key(), wh_json:json_term(), wh_json:key() | atom()) -> 'ok'.
@@ -197,10 +211,9 @@ set(Key, Value, Node) ->
                                   ,fun wh_amqp_worker:any_resp/1
                                  ),
     case ReqResp of
+        {'ok', _} -> maybe_cache_resp(Key, Node, Value);
         {'error', _R} ->
-            lager:debug("set config for key '~s' failed: ~p", [Key, _R]);
-        {'ok', _} ->
-            lager:debug("set config for key '~s' to new value: ~p", [Key, Value])
+            lager:debug("set config for key '~s' failed: ~p", [Key, _R])
     end.
 
 -spec set_default(wh_json:key(), wh_json:json_term()) -> 'ok'.
