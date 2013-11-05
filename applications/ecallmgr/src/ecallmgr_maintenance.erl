@@ -8,21 +8,43 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_maintenance).
 
--export([add_fs_node/1, add_fs_node/2
-         ,remove_fs_node/1, remove_fs_node/2
-         ,list_fs_nodes/0
+-export([add_fs_node/1
+         ,add_fs_node/2
+        ]).
+-export([remove_fs_node/1
+         ,remove_fs_node/2
+        ]).
+-export([list_fs_nodes/0]).
+-export([get_fs_nodes/0]).
+
+-export([carrier_acls/0
+         ,carrier_acls/1
+        ]).
+-export([allow_carrier/2
+         ,allow_carrier/3
+        ]).
+-export([deny_carrier/2
+         ,deny_carrier/3
         ]).
 
--export([allow_carrier/2, allow_carrier/3
-         ,allow_sbc/2, allow_sbc/3
-         ,deny_carrier/2, deny_carrier/3
-         ,deny_sbc/2, deny_sbc/3
-         ,list_carrier_acls/0, list_carrier_acls/1
-         ,list_sbc_acls/0, list_sbc_acls/1
-         ,list_acls/0, list_acls/1, list_acls/2
-         ,reload_acls/0
-         ,flush_acls/0, flush_acls/1
+-export([sbc_acls/0
+         ,sbc_acls/1
         ]).
+-export([allow_sbc/2
+         ,allow_sbc/3
+        ]).
+-export([deny_sbc/2
+         ,deny_sbc/3
+         ]).
+
+-export([remove_acl/1
+         ,remove_acl/2
+        ]).
+-export([acl_summary/0
+         ,acl_summary/1
+        ]).
+-export([reload_acls/0]).
+-export([flush_acls/0]).
 
 -export([node_summary/0]).
 -export([node_details/0
@@ -68,217 +90,207 @@
 
 -include("ecallmgr.hrl").
 
--spec add_fs_node(string() | binary() | atom()) -> 'ok'.
--spec add_fs_node(string() | binary() | atom(), text() | boolean()) -> 'ok'.
+-spec add_fs_node(text()) -> 'ok'.
 add_fs_node(FSNode) ->
-    add_fs_node(FSNode, 'true').
+    FSNodes = get_fs_nodes(node()),
+    add_fs_node(FSNode, FSNodes, fun ecallmgr_config:set/2).
 
-add_fs_node(FSNode, AsDefault) when not is_atom(FSNode) ->
-    add_fs_node(wh_util:to_atom(FSNode, 'true'), AsDefault);
-add_fs_node(FSNode, AsDefault) ->
-    Node = use_default(AsDefault),
-    FSNodes = get_fs_nodes(Node),
-    FSNodeBin = wh_util:to_binary(FSNode),
-    case lists:member(FSNodeBin, FSNodes) of
-        'true' -> 'ok';
-        'false' ->
-            io:format("adding ~s to ecallmgr.~s.fs_nodes~n", [FSNode, Node]),
-            ecallmgr_config:set(<<"fs_nodes">>, [FSNodeBin | FSNodes], Node)
-    end,
-    ecallmgr_fs_nodes:add(FSNode).
+-spec add_fs_node(text(), text() | boolean()) -> 'ok'.
+add_fs_node(FSNode, AsDefault) when not is_boolean(AsDefault) ->
+    add_fs_node(FSNode, wh_util:is_true(AsDefault));
+add_fs_node(FSNode, 'true') ->
+    FSNodes = get_fs_nodes(<<"default">>),
+    add_fs_node(FSNode, FSNodes, fun ecallmgr_config:set_default/2);
+add_fs_node(FSNode, 'false') ->
+    FSNodes = get_fs_nodes(node()),
+    add_fs_node(FSNode, FSNodes, fun ecallmgr_config:set_node/2).
 
--spec use_default(boolean() | ne_binary()) -> ne_binary().
-use_default('true') -> <<"default">>;
-use_default('false') -> wh_util:to_binary(node());
-use_default(AsDefault) -> use_default(wh_util:is_true(AsDefault)).
-
--spec remove_fs_node(string() | binary() | atom()) -> 'ok'.
--spec remove_fs_node(string() | binary() | atom(), boolean() | text()) -> 'ok'.
+-spec remove_fs_node(text() | atom()) -> 'ok'.
 remove_fs_node(FSNode) ->
-    remove_fs_node(FSNode, 'true').
+    FSNodes = get_fs_nodes(node()),
+    remove_fs_node(FSNode, FSNodes, fun ecallmgr_config:set/2).
 
-remove_fs_node(FSNode, AsDefault) when not is_atom(FSNode) ->
-    remove_fs_node(wh_util:to_atom(FSNode, 'true'), AsDefault);
-remove_fs_node(FSNode, AsDefault) ->
-    Node = use_default(AsDefault),
-    FSNodes = get_fs_nodes(Node),
-    FSNodeBin = wh_util:to_binary(FSNode),
-    case lists:member(FSNodeBin, FSNodes) of
-        'false' -> 'ok';
-        'true' ->
-            io:format("removing ~s from ecallmgr.~s.fs_nodes~n", [FSNode, Node]),
-            ecallmgr_config:set(<<"fs_nodes">>, lists:delete(FSNodeBin, FSNodes), Node)
-    end,
-    ecallmgr_fs_nodes:remove(FSNode).
+-spec remove_fs_node(text(), text() | boolean()) -> 'ok'.
+remove_fs_node(FSNode, AsDefault) when not is_boolean(AsDefault) ->
+    remove_fs_node(FSNode, wh_util:is_true(AsDefault));
+remove_fs_node(FSNode, 'true') ->
+    FSNodes = get_fs_nodes(<<"default">>),
+    remove_fs_node(FSNode, FSNodes, fun ecallmgr_config:set_default/2);
+remove_fs_node(FSNode, 'false') ->
+    FSNodes = get_fs_nodes(node()),
+    remove_fs_node(FSNode, FSNodes, fun ecallmgr_config:set_node/2).
 
--spec list_fs_nodes() -> atoms().
-list_fs_nodes() -> ecallmgr_fs_nodes:connected().
+-spec list_fs_nodes() -> 'no_return'.
+list_fs_nodes() -> 
+    [io:format("~s~n", [Node]) || Node <- ecallmgr_fs_nodes:connected()],
+    'no_return'.
 
--spec get_fs_nodes(ne_binary()) -> ne_binaries().
-get_fs_nodes(Node) ->
-    case ecallmgr_config:get(<<"fs_nodes">>, [], Node) of
-        [_|_]=FSNodes -> FSNodes;
-        [] -> [];
-        _Other ->
-            io:format("fs_nodes in ~s was misconfigured(~p), using []~n", [Node, _Other]),
-            []
-    end.
+-spec get_fs_nodes() -> 'no_return'.
+get_fs_nodes() -> 
+    [io:format("~s~n", [Node]) || Node <- get_fs_nodes(node())],
+    'no_return'.
 
--spec allow_carrier(ne_binary(), ne_binary()) -> 'ok'.
--spec allow_carrier(ne_binary(), ne_binary(), boolean() | text()) -> 'ok'.
-allow_carrier(CarrierName, CarrierIP) ->
-    allow_carrier(CarrierName, CarrierIP, 'true').
-allow_carrier(CarrierName, CarrierIP, AsDefault) ->
-    acl_builder(CarrierName, CarrierIP, use_default(AsDefault)
-                ,<<"allow">>, fun carrier_acl/2, <<"carrier">>
-               ).
--spec allow_sbc(ne_binary(), ne_binary()) -> 'ok'.
--spec allow_sbc(ne_binary(), ne_binary(), boolean() | text()) -> 'ok'.
-allow_sbc(SBCName, SBCIP) ->
-    allow_sbc(SBCName, SBCIP, 'true').
-allow_sbc(SBCName, SBCIP, AsDefault) ->
-    acl_builder(SBCName, SBCIP, use_default(AsDefault)
-                ,<<"allow">>, fun sbc_acl/2, <<"SBC">>
-               ).
+-spec carrier_acls() -> 'ok'.
+carrier_acls() -> carrier_acls('false').
 
--spec deny_carrier(ne_binary(), ne_binary()) -> 'ok'.
--spec deny_carrier(ne_binary(), ne_binary(), boolean() | text()) -> 'ok'.
-deny_carrier(CarrierName, CarrierIP) ->
-    deny_carrier(CarrierName, CarrierIP, 'true').
-deny_carrier(CarrierName, CarrierIP, AsDefault) ->
-    acl_builder(CarrierName, CarrierIP, use_default(AsDefault)
-                ,<<"deny">>, fun carrier_acl/2, <<"carrier">>
-               ).
--spec deny_sbc(ne_binary(), ne_binary()) -> 'ok'.
--spec deny_sbc(ne_binary(), ne_binary(), boolean() | text()) -> 'ok'.
-deny_sbc(SBCName, SBCIP) ->
-    deny_sbc(SBCName, SBCIP, 'true').
-deny_sbc(SBCName, SBCIP, AsDefault) ->
-    acl_builder(SBCName, SBCIP, use_default(AsDefault)
-                ,<<"deny">>, fun sbc_acl/2, <<"SBC">>
-               ).
+-spec carrier_acls(boolean() | text()) -> 'ok'.
+carrier_acls(AsDefault) when not is_boolean(AsDefault) ->
+    carrier_acls(wh_util:is_true(AsDefault));
+carrier_acls('true') ->
+    list_acls(get_acls(<<"default">>), <<"trusted">>);
+carrier_acls('false') ->
+    list_acls(get_acls(), <<"trusted">>).
 
--spec list_carrier_acls() -> 'ok'.
--spec list_carrier_acls(boolean() | text()) -> 'ok'.
-list_carrier_acls() ->
-    list_acls(<<"trusted">>, 'true').
-list_carrier_acls(AsDefault) ->
-    list_acls(<<"trusted">>, AsDefault).
+-spec allow_carrier(ne_binary(), ne_binary()) -> 'no_return'.
+allow_carrier(Name, IP) ->
+    modify_acls(wh_util:to_binary(Name)
+                ,wh_util:to_binary(IP)
+                ,get_acls()
+                ,fun carrier_acl/1
+                ,fun ecallmgr_config:set/2).
 
--spec list_sbc_acls() -> 'ok'.
--spec list_sbc_acls(boolean() | text()) -> 'ok'.
-list_sbc_acls() ->
-    list_acls(<<"authoritative">>, 'true').
-list_sbc_acls(AsDefault) ->
-    list_acls(<<"authoritative">>, AsDefault).
+-spec allow_carrier(ne_binary(), ne_binary(), boolean() | text()) -> 'no_return'.
+allow_carrier(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
+    allow_carrier(Name, IP, wh_util:is_true(AsDefault));
+allow_carrier(Name, IP, 'true') ->
+    modify_acls(wh_util:to_binary(Name)
+                ,wh_util:to_binary(IP)
+                ,get_acls(<<"default">>)
+                ,fun carrier_acl/1
+                ,fun ecallmgr_config:set_default/2);
+allow_carrier(Name, IP, 'false') ->
+    modify_acls(Name
+                ,IP
+                ,get_acls()
+                ,fun carrier_acl/1
+                ,fun ecallmgr_config:set_node/2).
 
--spec list_acls() -> 'ok'.
-list_acls() ->
-    list_acls('all').
+-spec deny_carrier(ne_binary(), ne_binary()) -> 'no_return'.
+deny_carrier(Name, IP) ->
+    modify_acls(wh_util:to_binary(Name)
+                ,wh_util:to_binary(IP)
+                ,get_acls()
+                ,fun(_) -> carrier_acl(IP, <<"deny">>) end
+                ,fun ecallmgr_config:set/2).
 
--spec reload_acls() -> 'ok'.
+-spec deny_carrier(ne_binary(), ne_binary(), boolean() | text()) -> 'no_return'.
+deny_carrier(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
+    deny_carrier(Name, IP, wh_util:is_true(AsDefault));
+deny_carrier(Name, IP, 'true') ->
+    modify_acls(wh_util:to_binary(Name)
+                ,wh_util:to_binary(IP)
+                ,get_acls(<<"default">>)
+                ,fun(_) -> carrier_acl(IP, <<"deny">>) end
+                ,fun ecallmgr_config:set_default/2);
+deny_carrier(Name, IP, 'false') ->
+    modify_acls(wh_util:to_binary(Name)
+                ,wh_util:to_binary(IP)
+                ,get_acls()
+                ,fun(_) -> carrier_acl(IP, <<"deny">>) end
+                ,fun ecallmgr_config:set_node/2).
+
+-spec sbc_acls() -> 'ok'.
+sbc_acls() -> sbc_acls('false').
+
+-spec sbc_acls(boolean() | text()) -> 'ok'.
+sbc_acls(AsDefault) when not is_boolean(AsDefault) ->
+    sbc_acls(wh_util:is_true(AsDefault));
+sbc_acls('true') ->
+    list_acls(get_acls(<<"default">>), <<"authoritative">>);
+sbc_acls('false') ->    
+    list_acls(get_acls(), <<"authoritative">>).
+
+-spec allow_sbc(ne_binary(), ne_binary()) -> 'no_return'.
+allow_sbc(Name, IP) ->
+    modify_acls(wh_util:to_binary(Name)
+                ,wh_util:to_binary(IP)
+                ,get_acls()
+                ,fun sbc_acl/1
+                ,fun ecallmgr_config:set/2).
+
+-spec allow_sbc(ne_binary(), ne_binary(), boolean() | text()) -> 'no_return'.
+allow_sbc(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
+    allow_sbc(Name, IP, wh_util:is_true(AsDefault));
+allow_sbc(Name, IP, 'true') ->
+    modify_acls(wh_util:to_binary(Name)
+                ,wh_util:to_binary(IP)
+                ,get_acls(<<"default">>)
+                ,fun sbc_acl/1
+                ,fun ecallmgr_config:set_default/2);
+allow_sbc(Name, IP, 'false') ->
+    modify_acls(wh_util:to_binary(Name)
+                ,wh_util:to_binary(IP)
+                ,get_acls()
+                ,fun sbc_acl/1
+                ,fun ecallmgr_config:set_node/2).
+
+-spec deny_sbc(ne_binary(), ne_binary()) -> 'no_return'.
+deny_sbc(Name, IP) ->
+    modify_acls(wh_util:to_binary(Name)
+                ,wh_util:to_binary(IP)
+                ,get_acls()
+                ,fun(_) -> sbc_acl(IP, <<"deny">>) end
+                ,fun ecallmgr_config:set/2).
+
+-spec deny_sbc(ne_binary(), ne_binary(), boolean() | text()) -> 'no_return'.
+deny_sbc(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
+    deny_sbc(Name, IP, wh_util:is_true(AsDefault));
+deny_sbc(Name, IP, 'true') ->
+    modify_acls(wh_util:to_binary(Name)
+                ,wh_util:to_binary(IP)
+                ,get_acls(<<"default">>)
+                ,fun(_) -> sbc_acl(IP, <<"deny">>) end
+                ,fun ecallmgr_config:set_default/2);
+deny_sbc(Name, IP, 'false') ->
+    modify_acls(wh_util:to_binary(Name)
+                ,wh_util:to_binary(IP)
+                ,get_acls()
+                ,fun(_) -> sbc_acl(IP, <<"deny">>) end
+                ,fun ecallmgr_config:set_node/2).
+
+-spec acl_summary() -> 'ok'.
+acl_summary() ->
+    list_acls(get_acls(), 'undefined').
+
+-spec acl_summary(wh_json:object()) -> 'ok'.
+acl_summary(AsDefault) when not is_boolean(AsDefault) ->
+    acl_summary(wh_util:is_true(AsDefault));
+acl_summary('true') ->
+    list_acls(get_acls(<<"default">>), 'undefined');
+acl_summary('false') ->
+    list_acls(get_acls(), 'undefined').
+
+-spec remove_acl(text()) -> 'no_return'.                            
+remove_acl(Name) ->
+    remove_acl(wh_util:to_binary(Name)
+               ,get_acls()
+               ,fun ecallmgr_config:set/2).
+
+-spec remove_acl(text(), text() | boolean()) -> 'no_return'.
+remove_acl(Name, AsDefault) when not is_boolean(AsDefault) ->
+    remove_acl(Name, wh_util:is_true(AsDefault));
+remove_acl(Name, 'true') ->
+    remove_acl(wh_util:to_binary(Name)
+               ,get_acls(<<"default">>)
+               ,fun ecallmgr_config:set_default/2);
+remove_acl(Name, 'false') ->
+    remove_acl(wh_util:to_binary(Name)
+               ,get_acls()
+               ,fun ecallmgr_config:set_node/2).
+
+-spec reload_acls() -> 'no_return'.
 reload_acls() ->
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, [], fun(_) -> wapi_switch:publish_reload_acls() end),
-    io:format("reloading of ACLs issued to all connected media switches~n", []).
+    _ = [begin
+             io:format("issued reload ACLs to ~s~n", [Node]),
+             freeswitch:bgapi(Node, 'reloadacl', "")
+         end
+         || Node <- ecallmgr_fs_nodes:connected()
+        ],
+    'no_return'.
 
 -spec flush_acls() -> 'ok'.
--spec flush_acls(text() | boolean()) -> 'ok'.
 flush_acls() ->
-    flush_acls('true').
-flush_acls(AsDefault) ->
-    ecallmgr_config:flush(<<"acls">>, use_default(AsDefault)).
-
--spec list_acls('all' | ne_binary()) -> 'ok'.
--spec list_acls('all' | ne_binary(), boolean() | text()) -> 'ok'.
-list_acls(Network) ->
-    list_acls(Network, 'true').
-list_acls(Network, AsDefault) ->
-    FormatString = "| ~-30s | ~-20s | ~-6s | ~-32s | ~-16s |~n",
-    io:format(FormatString, [<<"Name">>, <<"CIDR">>, <<"Type">>, <<"Account ID">>, <<"Authorizing Type">>]),
-    wh_json:foreach(fun({Name, ACL}) ->
-                            maybe_print_acl(Network, FormatString, Name, ACL)
-                    end
-                    ,get_acls(use_default(AsDefault))
-                   ).
-
--spec get_acls(ne_binary()) -> wh_json:object().
-get_acls(Node) ->
-    ACLs = ecallmgr_config:get(<<"acls">>, wh_json:new(), Node),
-    case wh_json:is_json_object(ACLs) of
-        'true' -> ACLs;
-        'false' ->
-            io:format("failed to load json object for ACLs from ~s, got ~p, using empty json object instead~n", [Node, ACLs]),
-            wh_json:new()
-    end.
-
-maybe_print_acl('all', FormatString, Name, ACL) ->
-    io:format(FormatString, [Name
-                             ,wh_json:get_value(<<"cidr">>, ACL)
-                             ,wh_json:get_value(<<"type">>, ACL)
-                             ,wh_json:get_value(<<"account_id">>, ACL, <<>>)
-                             ,wh_json:get_value(<<"authorizing_type">>, ACL, <<>>)
-                            ]);
-maybe_print_acl(Network, FormatString, Name, ACL) ->
-    case wh_json:get_value(<<"network-list-name">>, ACL) =:= Network of
-        'true' -> io:format(FormatString, [Name
-                                           ,wh_json:get_value(<<"cidr">>, ACL)
-                                           ,wh_json:get_value(<<"type">>, ACL)
-                                           ,wh_json:get_value(<<"account_id">>, ACL, <<>>)
-                                           ,wh_json:get_value(<<"authorizing_type">>, ACL, <<>>)
-                                          ]);
-        'false' -> 'ok'
-    end.
-
--spec acl_builder(ne_binary(), ne_binary(), ne_binary(), ne_binary()
-                  ,fun((ne_binary(), ne_binary()) -> wh_json:object()), ne_binary()
-                 ) -> 'ok'.
-acl_builder(Name, IP, Node, Type, ACLBuilder, Class) ->
-    ACLs = filter_acls(get_acls(Node)),
-    IPBlock = maybe_fix_ip(IP),
-    case wh_json:get_value(Name, ACLs) of
-        'undefined' ->
-            io:format("adding ~s ~s(~s) to ACLs and ~s traffic~n", [Class, Name, IPBlock, Type]),
-            ecallmgr_config:set(<<"acls">>, wh_json:set_value(Name, ACLBuilder(IPBlock, Type), ACLs), Node);
-        ACL ->
-            case wh_json:get_value(<<"type">>, ACL) of
-                Type -> io:format("~s ~s(~s) is already ~s~n", [Class, Name, IPBlock, Type]);
-                _OldType ->
-                    io:format("moving ~s ~s(~s) from ~s to ~s~n", [Class, Name, IPBlock, _OldType, Type]),
-                    ecallmgr_config:set(<<"acls">>, wh_json:set_value(Name, ACLBuilder(IPBlock, Type), ACLs), Node)
-            end
-    end,
-    'ok'.
-
--spec filter_acls(wh_json:object()) -> wh_json:object().
-filter_acls(ACLs) ->
-    wh_json:filter(fun filter_acls_fun/1, ACLs).
-
--spec filter_acls_fun({wh_json:key(), wh_json:json_term()}) -> boolean().
-filter_acls_fun({_Name, ACL}) ->
-    wh_json:get_value(<<"authorizing_type">>, ACL) =:= 'undefined'.
-
--spec carrier_acl(ne_binary(), ne_binary()) -> wh_json:object().
-carrier_acl(IP, Type) ->
-    wh_json:from_list([{<<"type">>, Type}
-                       ,{<<"network-list-name">>, <<"trusted">>}
-                       ,{<<"cidr">>, maybe_fix_ip(IP)}
-                      ]).
--spec sbc_acl(ne_binary(), ne_binary()) -> wh_json:object().
-sbc_acl(IP, Type) ->
-    wh_json:from_list([{<<"type">>, Type}
-                       ,{<<"network-list-name">>, <<"authoritative">>}
-                       ,{<<"cidr">>, maybe_fix_ip(IP)}
-                      ]).
-
--spec maybe_fix_ip(ne_binary()) -> ne_binary().
-maybe_fix_ip(IP) ->
-    case wh_network_utils:is_ipv4(IP) of
-        'true' ->
-            io:format("adjusting ip from ~s to ~s/32~n", [IP, IP]),
-            <<IP/binary, "/32">>;
-        'false' ->
-            IP
-    end.
+    ecallmgr_config:flush(<<"acls">>).
 
 -spec node_summary() -> 'no_return'.
 node_summary() ->
@@ -431,3 +443,157 @@ show_channels() ->
 show_calls() ->
     io:format("This function is depreciated, please use channel_summary or channel_detail~n"),
     'no_return'.
+
+
+
+-spec add_fs_node(text(), ne_binaries(), function()) -> 'ok' | {'error', _}.
+add_fs_node(FSNode, FSNodes, ConfigFun) when not is_binary(FSNode) ->
+    add_fs_node(wh_util:to_binary(FSNode), FSNodes, ConfigFun);
+add_fs_node(FSNode, FSNodes, ConfigFun) ->
+    _ = case lists:member(FSNode, FSNodes) of
+            'true' -> 'ok';
+            'false' ->
+                io:format("adding ~s to ecallmgr system config~n"
+                          ,[FSNode]),
+                ConfigFun(<<"fs_nodes">>, [FSNode | FSNodes])
+        end,
+    ecallmgr_fs_nodes:add(wh_util:to_atom(FSNode, 'true')).    
+
+-spec remove_fs_node(text(), ne_binaries(), function()) -> 'ok' | {'error', _}.
+remove_fs_node(FSNode, FSNodes, ConfigFun) when not is_binary(FSNode) ->
+    remove_fs_node(wh_util:to_binary(FSNode), FSNodes, ConfigFun);
+remove_fs_node(FSNode, FSNodes, ConfigFun) ->
+    _ = case lists:member(FSNode, FSNodes) of
+            'false' -> 'ok';
+            'true' ->
+                io:format("removing ~s from ecallmgr system config~n"
+                          ,[FSNode]),
+                ConfigFun(<<"fs_nodes">>, lists:delete(FSNode, FSNodes))
+        end,
+    ecallmgr_fs_nodes:remove(wh_util:to_atom(FSNode, 'true')).
+
+-spec get_fs_nodes(ne_binary()) -> ne_binaries().
+get_fs_nodes(Node) ->
+    case ecallmgr_config:get(<<"fs_nodes">>, 'undefined', Node) of
+        [_|_]=FSNodes -> FSNodes;
+        [] -> [];
+        _Other ->
+            io:format("fs_nodes in ~s was misconfigured(~p), using []~n", [Node, _Other]),
+            []
+    end.
+
+-spec modify_acls(ne_binary(), ne_binary(), wh_json:object(), function(), function()) -> 'no_return'.
+modify_acls(Name, IP, ACLS, ACLFun, ConfigFun) ->
+    ACL = ACLFun(IP),
+    io:format("updating ~s ACLs ~s(~s) to ~s traffic~n"
+              ,[wh_json:get_value(<<"network-list-name">>, ACL)
+                ,Name
+                ,wh_json:get_value(<<"cidr">>, ACL)
+                ,wh_json:get_value(<<"type">>, ACL)
+               ]),
+    ConfigFun(<<"acls">>, wh_json:set_value(Name, ACL, filter_acls(ACLS))),
+    ecallmgr_config:flush(<<"acls">>),
+    reload_acls(),
+    'no_return'.
+
+remove_acl(Name, ACLs, ConfigFun) ->
+    FilteredACLs = filter_acls(ACLs),
+    _ = case wh_json:get_value(Name, FilteredACLs) of
+            'undefined' -> 'ok';
+            ACL ->
+                io:format("removing ~s ACLs ~s(~s) from ecallmgr system config~n"
+                          ,[wh_json:get_value(<<"network-list-name">>, ACL)
+                            ,Name
+                            ,wh_json:get_value(<<"cidr">>, ACL)
+                           ]),
+                ConfigFun(<<"acls">>, wh_json:delete_key(Name, FilteredACLs))
+        end,
+    ecallmgr_config:flush(<<"acls">>),
+    reload_acls(),
+    'no_return'.
+
+-spec list_acls(wh_json:object(), api_binary()) -> 'no_return'.
+list_acls(ACLs, Network) ->
+    io:format("+--------------------------------+-------------------+---------------+-------+------------------+----------------------------------+~n", []),
+    FormatString = "| ~-30s | ~-17s | ~-13s | ~-5s | ~-16s | ~-32s |~n",
+    io:format(FormatString, [<<"Name">>, <<"CIDR">>, <<"List">>, <<"Type">>, <<"Authorizing Type">>, <<"ID">>]),
+    io:format("+================================+===================+===============+=======+==================+==================================+~n", []),
+    Props = wh_json:foldl(fun(Name, ACL, Acc) -> 
+                                  [{wh_json:get_value(<<"network-list-name">>, ACL)
+                                    ,wh_json:set_value(<<"name">>, Name, ACL)} 
+                                   | Acc
+                                  ]
+                          end, [], ACLs),
+    _ = [maybe_print_acl(Network, FormatString, ACL) 
+         || {_, ACL} <- lists:sort(fun list_acls_sort/2, Props)
+        ],
+    io:format("+--------------------------------+-------------------+---------------+-------+------------------+----------------------------------+~n", []),
+    'no_return'.
+
+list_acls_sort({Network1, _}, {Network2, _}) -> 
+    Network1 =< Network2.
+
+maybe_print_acl('undefined', FormatString, ACL) ->
+    io:format(FormatString, [wh_json:get_value(<<"name">>, ACL)
+                             ,wh_json:get_value(<<"cidr">>, ACL)
+                             ,wh_json:get_value(<<"network-list-name">>, ACL)
+                             ,wh_json:get_value(<<"type">>, ACL)
+                             ,wh_json:get_value(<<"authorizing_type">>, ACL, <<"system_config">>)
+                             ,wh_json:get_first_defined([<<"account_id">>
+                                                         ,<<"authorizing_id">>
+                                                        ], ACL, <<>>)
+                            ]);
+maybe_print_acl(Network, FormatString, ACL) ->
+    case wh_json:get_value(<<"network-list-name">>, ACL) =:= Network of
+        'true' -> io:format(FormatString, [wh_json:get_value(<<"name">>, ACL)
+                                           ,wh_json:get_value(<<"cidr">>, ACL)
+                                           ,wh_json:get_value(<<"network-list-name">>, ACL)
+                                           ,wh_json:get_value(<<"type">>, ACL)
+                                           ,wh_json:get_value(<<"authorizing_type">>, ACL, <<"system_config">>)
+                                           ,wh_json:get_first_defined([<<"account_id">>
+                                                                       ,<<"authorizing_id">>
+                                                                      ], ACL, <<>>)
+                                          ]);
+        'false' -> 'ok'
+    end.
+
+-spec get_acls() -> wh_json:object().
+get_acls() -> get_acls(node()).
+    
+-spec get_acls(ne_binary()) -> wh_json:object().
+get_acls(Node) ->
+    ACLs = ecallmgr_config:fetch(<<"acls">>, 'undefined', Node),
+    case wh_json:is_json_object(ACLs) of
+        'true' -> ACLs;
+        'false' ->
+            io:format("failed to load json object for ACLs from ~s, got ~p, using empty json object instead~n", [Node, ACLs]),
+            wh_json:new()
+    end.
+
+-spec filter_acls(wh_json:object()) -> wh_json:object().
+filter_acls(ACLs) ->
+    wh_json:filter(fun filter_acls_fun/1, ACLs).
+
+-spec filter_acls_fun({wh_json:key(), wh_json:json_term()}) -> boolean().
+filter_acls_fun({_Name, ACL}) ->
+    wh_json:get_value(<<"authorizing_type">>, ACL) =:= 'undefined'.
+
+-spec carrier_acl(ne_binary()) -> wh_json:object().
+carrier_acl(IP) -> carrier_acl(IP, <<"allow">>).
+
+-spec carrier_acl(ne_binary(), ne_binary()) -> wh_json:object().
+carrier_acl(IP, Type) ->
+    wh_json:from_list([{<<"type">>, Type}
+                       ,{<<"network-list-name">>, <<"trusted">>}
+                       ,{<<"cidr">>, wh_network_utils:to_cidr(IP)}
+                      ]).
+
+-spec sbc_acl(ne_binary()) -> wh_json:object().
+sbc_acl(IP) -> sbc_acl(IP, <<"allow">>).
+
+-spec sbc_acl(ne_binary(), ne_binary()) -> wh_json:object().
+sbc_acl(IP, Type) ->
+    wh_json:from_list([{<<"type">>, Type}
+                       ,{<<"network-list-name">>, <<"authoritative">>}
+                       ,{<<"cidr">>, wh_network_utils:to_cidr(IP)}
+                      ]).

@@ -732,25 +732,19 @@ print_capability(Capability) ->
 print_summary([]) ->
     io:format("No nodes found!~n", []);
 print_summary(Nodes) ->
-    io:format("+----------------------------------------------------+-----------+----------------------------------+----------------------+--------------------~n"),
-    io:format("| Node Name                                          | Connected | Cookie                           | Version              | Capabilities~n"),
-    io:format("+====================================================+===========+==================================+======================+====================~n"),
+    io:format("+----------------------------------------------------+-----------+----------------------------------+----------------------+~n"),
+    io:format("| Node Name                                          | Connected | Cookie                           | Version              |~n"),
+    io:format("+====================================================+===========+==================================+======================+~n"),
     print_summary(Nodes, 0).
 
 print_summary([], Count) ->
-    io:format("+----------------------------------------------------+-----------+----------------------------------+----------------------+--------------------~n"),
+    io:format("+----------------------------------------------------+-----------+----------------------------------+----------------------+~n"),
     io:format("Found ~p nodes~n", [Count]);
 print_summary([{_, Node}|Nodes], Count) ->
-    Capabilities = ecallmgr_fs_nodes:get_capabilities(Node#node.node),
-    Loaded = [wh_json:get_value(<<"capability">>, Capability)
-              || Capability <- Capabilities,
-                 wh_json:is_true(<<"is_loaded">>, Capability)
-             ],
-    io:format("| ~-50s | ~-9s | ~-32s | ~-20s | ~s~n"
+    io:format("| ~-50s | ~-9s | ~-32s | ~-20s |~n"
               ,[Node#node.node
                 ,Node#node.connected
                 ,Node#node.cookie
                 ,Node#node.client_version
-                ,wh_util:join_binary(Loaded, <<", ">>)
                ]),
     print_summary(Nodes, Count + 1).

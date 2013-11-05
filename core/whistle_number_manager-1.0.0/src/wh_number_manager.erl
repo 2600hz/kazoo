@@ -73,6 +73,9 @@ find(Number, Quantity, Opts) ->
 lookup_account_by_number('undefined') ->
    {'error', 'not_reconcilable'};
 lookup_account_by_number(Number) ->
+
+    io:format("MARKER0 ~p~n", [Number]),
+
     try wnm_number:get(Number) of
         Number1 -> maybe_check_account(Number1)
     catch

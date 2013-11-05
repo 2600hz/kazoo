@@ -18,8 +18,9 @@
          ,get_default/1, get_default/2
         ]).
 -export([fetch/1, fetch/2, fetch/3]).
--export([set/2, set/3
+-export([set/2
          ,set_default/2
+         ,set_node/2
         ]).
 
 -compile([{'no_auto_import', [get/1]}]).
@@ -35,9 +36,11 @@ flush() ->
     flush('undefined').
 
 flush(Key) ->
-    flush(Key, node()).
+    flush(Key, '_').
 
 -spec flush(api_binary(), atom() | ne_binary()) -> 'ok'.
+flush(Key, 'undefined') -> 
+    flush(Key);
 flush(Key, Node) when not is_binary(Key), Key =/= 'undefined' ->
     flush(wh_util:to_binary(Key), Node);
 flush(Key, Node) when not is_binary(Node) ->
@@ -74,6 +77,8 @@ get(Key) ->
 get(Key, Default) ->
     get(Key, Default, wh_util:to_binary(node())).
 
+get(Key, Default, 'undefined') ->
+    get(Key, Default);
 get(Key, Default, Node) when not is_binary(Key) ->
     get(wh_util:to_binary(Key), Default, Node);
 get(Key, Default, Node) when not is_binary(Node) ->
@@ -82,10 +87,7 @@ get(Key, Default, Node) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node)) of
         {'ok', V} -> V;
         {'error', E} when E =:= 'not_found' orelse E =:= 'undefined' ->
-            Value = fetch(Key, Default, Node),
-            CacheProps = [{'origin', {'db', ?WH_CONFIG_DB, <<"ecallmgr">>}}],
-            wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node), Value, CacheProps),
-            Value
+            fetch(Key, Default, Node)
     end.
 
 -spec get_default(wh_json:key()) -> wh_json:json_term() | 'undefined'.
@@ -143,6 +145,8 @@ fetch(Key) ->
 fetch(Key, Default) ->
     fetch(Key, Default, wh_util:to_binary(node())).
 
+fetch(Key, Default, 'undefined') ->
+    fetch(Key, Default);
 fetch(Key, Default, Node) when not is_binary(Key) ->
     fetch(wh_util:to_binary(Key), Default, Node);
 fetch(Key, Default, Node) when not is_binary(Node) ->
@@ -184,29 +188,36 @@ maybe_cache_resp(Key, Node, Value) ->
                          ,CacheProps).
 
 -spec set(wh_json:key(), wh_json:json_term()) -> 'ok'.
--spec set(wh_json:key(), wh_json:json_term(), wh_json:key() | atom()) -> 'ok'.
-
 set(Key, Value) ->
-    set(Key, Value, wh_util:to_binary(node())).
+    set(Key, Value, wh_util:to_binary(node()), []).
 
-set(Key, Value, Node) when not is_binary(Key) ->
-    set(wh_util:to_binary(Key), Value, Node);
-set(Key, Value, Node) when not is_binary(Node) ->
-    set(Key, Value, wh_util:to_binary(Node));
-set(Key, Value, Node) ->
-    CacheProps = [{'origin', {'db', ?WH_CONFIG_DB, <<"ecallmgr">>}}],
-    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node), Value, CacheProps),
-    Req =
-        props:filter_undefined(
-          [{<<"Node">>, Node}
-           | lists:keydelete(<<"Node">>, 1, [{<<"Category">>, <<"ecallmgr">>}
-                                             ,{<<"Key">>, Key}
-                                             ,{<<"Value">>, Value}
-                                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                            ])
-          ]),
+-spec set_default(wh_json:key(), wh_json:json_term()) -> 'ok'.
+set_default(Key, Value) ->
+    set(Key, Value, <<"default">>, []).
+
+-spec set_node(wh_json:key(), wh_json:json_term()) -> 'ok'.
+set_node(Key, Value) ->
+    set(Key, Value, wh_util:to_binary(node()), [{'node_specific', 'true'}]).
+
+-spec set(wh_json:key(), wh_json:json_term(), wh_json:key() | atom(), wh_proplist()) -> 'ok'.
+set(Key, Value, 'undefined', Opt) ->
+    set(Key, Value, <<"default">>, Opt);
+set(Key, Value, Node, Opt) when not is_binary(Key) ->
+    set(wh_util:to_binary(Key), Value, Node, Opt);
+set(Key, Value, Node, Opt) when not is_binary(Node) ->
+    set(Key, Value, wh_util:to_binary(Node), Opt);
+set(Key, Value, Node, Opt) ->
+    Props = [{<<"Category">>, <<"ecallmgr">>}
+             ,{<<"Key">>, Key}
+             ,{<<"Value">>, Value}
+             ,{<<"Node-Specific">>, props:is_true('node_specific', Opt, 'false')}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    Req =[{<<"Node">>, Node}
+          | lists:keydelete(<<"Node">>, 1, Props)
+         ],
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,Req
+                                  ,props:filter_undefined(Req)
                                   ,fun wapi_sysconf:publish_set_req/1
                                   ,fun wh_amqp_worker:any_resp/1
                                  ),
@@ -215,10 +226,6 @@ set(Key, Value, Node) ->
         {'error', _R} ->
             lager:debug("set config for key '~s' failed: ~p", [Key, _R])
     end.
-
--spec set_default(wh_json:key(), wh_json:json_term()) -> 'ok'.
-set_default(Key, Value) ->
-    set(Key, Value, <<"default">>).
 
 -spec get_response_value(wh_json:object(), term()) -> term().
 get_response_value(JObj, Default) ->

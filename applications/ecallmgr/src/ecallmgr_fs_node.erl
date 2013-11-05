@@ -212,7 +212,7 @@ handle_reload_gtws(_JObj, Props) ->
             ,?DEFAULT_FS_PROFILE
             ," rescan"
            ],
-    case wh_util:is_true(ecallmgr_config:get(<<"process_gateways">>, 'false'))
+    case ecallmgr_config:get_boolean(<<"process_gateways">>, 'false')
         andalso freeswitch:bgapi(Node, 'sofia', lists:flatten(Args))
     of
         'false' -> 'ok';
