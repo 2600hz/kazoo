@@ -11,7 +11,7 @@
             ,"type":"object"
             ,"minProperties":1
             ,"patternProperties":{
-              "\\+[0-9]+":{"type":"object"}
+              "\\+?[0-9]+":{"type":"object"}
             }
         }
     }
