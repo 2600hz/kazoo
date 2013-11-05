@@ -25,6 +25,8 @@
          ,update_pvt_parameters/2
         ]).
 
+-export([handle_json_success/2]).
+
 -include("crossbar.hrl").
 
 -define(CROSSBAR_DOC_VSN, <<"1">>).
