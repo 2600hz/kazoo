@@ -69,7 +69,7 @@ acquire_number(#number{number=Num}=Number) ->
 			ReqBody0 = wh_json:set_value(<<"data">>, wh_json:new(), wh_json:new()),
 			ReqBody1 = wh_json:set_value([<<"data">>, <<"numbers">>], [Num], ReqBody0),
 			ReqBody = wh_json:set_value([<<"data">>, <<"hosts">>], Hosts, ReqBody1),
-			Uri = <<Url/binary, DefaultCountry/binary, "/order">>,
+			Uri = <<Url/binary,  "/", DefaultCountry/binary, "/order">>,
 			case ibrowse:send_req(binary:bin_to_list(Uri), [], 'put', wh_json:encode(ReqBody)) of
 				{'error', Reason} ->
 					lager:error("number lookup failed: ~p", [Reason]),
