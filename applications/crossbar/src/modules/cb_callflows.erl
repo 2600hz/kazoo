@@ -210,7 +210,6 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 maybe_reconcile_numbers(#cb_context{resp_status=success, doc=JObj
                                     ,account_id=AssignTo, auth_account_id=AuthBy}=Context) ->
-
     case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, true) of
         false -> Context;
         true ->
@@ -233,19 +232,23 @@ maybe_reconcile_numbers(Context) -> Context.
 %% @end
 %%--------------------------------------------------------------------
 -spec  track_assignment(cb_context:context()) ->cb_context:context().
-track_assignment(#cb_context{doc=JObj, storage=Storage}=Context) ->
+track_assignment(#cb_context{doc=JObj, storage=Storage, account_id=AcctId}=Context) ->
     OldNums = wh_json:get_value(<<"numbers">>, props:get_value('db_doc', Storage), []),
     NewNums = wh_json:get_value(<<"numbers">>, JObj, []),
     Unassigned = lists:foldl(
         fun(Num, Acc) ->
             case lists:member(Num, NewNums) of
                 'true' -> Acc;
-                'false' -> [Num|Acc]
+                'false' -> [{Num, <<>>}|Acc]
             end
         end, [], OldNums
     ),
-    wh_number_manager:track_assignment(Unassigned),
-    wh_number_manager:track_assignment(NewNums, <<"callflow">>),
+    Assigned = lists:foldl(
+        fun(Num, Acc) ->
+            [{Num, <<"callflow">>}|Acc]
+        end, [], NewNums
+    ),
+    'ok' = wh_number_manager:track_assignment(AcctId, Unassigned ++ Assigned),
     Context.
 
 %%--------------------------------------------------------------------

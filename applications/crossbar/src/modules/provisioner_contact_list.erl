@@ -55,7 +55,6 @@ get_extension_contacts(AccountDb) ->
         {error, _} -> [];
         {ok, JObjs} ->
             Includes = get_contact_list_includes(AccountDb),
-            io:format("~p~n", [Includes]),
             lists:foldr(fun(JObj, Contacts) ->
                                 Key = wh_json:get_value(<<"key">>, JObj),
                                 case wh_util:is_empty(Includes)

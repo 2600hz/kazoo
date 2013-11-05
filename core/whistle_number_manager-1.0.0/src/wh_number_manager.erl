@@ -25,7 +25,7 @@
 -export([put_attachment/5]).
 -export([delete_attachment/3]).
 -export([get_public_fields/2, set_public_fields/3]).
--export ([track_assignment/1, track_assignment/2]).
+-export ([track_assignment/2]).
 
 -include("wnm.hrl").
 
@@ -73,9 +73,6 @@ find(Number, Quantity, Opts) ->
 lookup_account_by_number('undefined') ->
    {'error', 'not_reconcilable'};
 lookup_account_by_number(Number) ->
-
-    io:format("MARKER0 ~p~n", [Number]),
-
     try wnm_number:get(Number) of
         Number1 -> maybe_check_account(Number1)
     catch
@@ -625,34 +622,63 @@ set_public_fields(Number, PublicFields, AuthBy) ->
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, wnm_number:get(Number, PublicFields), Routines).
 
--spec track_assignment(ne_binaries()) -> 'ok'.
--spec track_assignment(ne_binaries(), binary()) -> 'ok'.
-track_assignment(Numbers) ->
-    track_assignment(Numbers, <<>>).
 
-track_assignment([], _) ->
-    'ok';
-track_assignment(Numbers, Assignment) ->
-    Routines = [fun(Nums) ->
-                    lists:foldl(
-                        fun(Num, Acc) ->
-                            case wnm_util:is_reconcilable(Num) of
-                                'true' -> [Num|Acc];
-                                'false' -> Acc
-                            end
-                        end, [], Nums
-                    )
-                end
-                ,fun(Nums)->
-                    lists:foreach(
-                        fun(Num) ->
-                            NumRecord = wnm_number:get(Num),
-                            wnm_number:save(NumRecord#number{used_by=Assignment})
-                        end, Nums
-                    )
-                end
-               ],
-    lists:foldl(fun(F, J) -> catch F(J) end, Numbers, Routines).
+-spec track_assignment(ne_binaries(), wh_proplist()) -> 'ok' | 'error'.
+track_assignment(Account, Props) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, <<"phone_numbers">>) of
+        {'error', _E} ->
+            lager:error("could not open phone_numbers doc in ~p: ~p ", [AccountDb ,_E]),
+            'error';
+        {'ok', JObj} ->
+            Updated = update_assignment(JObj, Props),
+            case couch_mgr:save_doc(AccountDb, Updated) of
+                {'error', _E} ->
+                    lager:error("could not save phone_numbers doc in ~p: ~p ", [AccountDb ,_E]),
+                    'error';
+                {'ok', _R} -> 'ok'
+            end
+    end.
+
+-spec update_assignment(wh_json:object(), wh_proplist()) -> wh_json:object().
+update_assignment(JObj, Props) ->
+    lists:foldl(
+        fun({Num, Assignment}, Acc) ->
+            case wh_json:get_value(Num, Acc) of
+                'undefined' -> Acc;
+                NumJobj ->
+                    NumJobj1 = wh_json:set_value(<<"used_by">>, Assignment, NumJobj),
+                    wh_json:set_value(Num, NumJobj1, Acc)
+            end
+        end, JObj, Props
+    ).
+
+% track_assignment(Numbers) ->
+%     track_assignment(Numbers, <<>>).
+
+% track_assignment([], _) ->
+%     'ok';
+% track_assignment(Numbers, Assignment) ->
+%     Routines = [fun(Nums) ->
+%                     lists:foldl(
+%                         fun(Num, Acc) ->
+%                             case wnm_util:is_reconcilable(Num) of
+%                                 'true' -> [Num|Acc];
+%                                 'false' -> Acc
+%                             end
+%                         end, [], Nums
+%                     )
+%                 end
+%                 ,fun(Nums)->
+%                     lists:foreach(
+%                         fun(Num) ->
+%                             NumRecord = wnm_number:get(Num),
+%                             wnm_number:save(NumRecord#number{used_by=Assignment})
+%                         end, Nums
+%                     )
+%                 end
+%                ],
+%     lists:foldl(fun(F, J) -> catch F(J) end, Numbers, Routines).
 
 %%--------------------------------------------------------------------
 %% @private
