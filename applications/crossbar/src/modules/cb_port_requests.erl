@@ -459,12 +459,77 @@ normalize_attachments_map(K, V) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation('undefined', #cb_context{doc=JObj}=Context) ->
+on_successful_validation(Id, #cb_context{}=Context) ->
+    JObj = cb_context:doc(Context),
+    Numbers = wh_json:get_keys(wh_json:get_value(<<"numbers">>, JObj)),
+
+    Context1 = lists:foldl(fun(Number, ContextAcc) ->
+                                   check_number_portability(Id, Number, ContextAcc)
+                           end, Context, Numbers),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            lager:debug("number(s) checked out for ~s", [Id]),
+            successful_validation(Id, Context);
+        _ -> Context1
+    end.
+
+-spec successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+successful_validation('undefined', Context) ->
+    JObj = cb_context:doc(Context),
+    lager:debug("create doc: ~p", [JObj]),
     cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, <<"port_request">>}
                                                     ,{<<"pvt_port_state">>, ?PORT_WAITING}
                                                    ], JObj));
-on_successful_validation(Id, #cb_context{}=Context) ->
+successful_validation(Id, #cb_context{}=Context) ->
     crossbar_doc:load_merge(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
+
+-spec check_number_portability(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+check_number_portability(PortId, Number, Context) ->
+    E164 = wnm_util:to_e164(Number),
+    lager:debug("checking ~s(~s) for portability", [E164, Number]),
+
+    PortOptions = [{'key', E164}],
+    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB, <<"port_requests/port_in_numbers">>, PortOptions) of
+        {'ok', []} -> check_number_existence(E164, Number, Context);
+        {'ok', [PortReq]} ->
+            case {wh_json:get_value(<<"value">>, PortReq) =:= cb_context:account_id(Context)
+                  ,wh_json:get_value(<<"id">>, PortReq) =:= PortId
+                  }
+            of
+                {'true', 'true'} ->
+                    lager:debug("number ~s(~s) is on this existing port request for this account(~s)"
+                                ,[E164, Number, cb_context:account_id(Context)]
+                               ),
+                    cb_context:set_resp_status(Context, 'success');
+                {'true', 'false'} ->
+                    lager:debug("number ~s(~s) is on a different port request in this account(~s): ~s"
+                                ,[E164, Number, cb_context:account_id(Context), wh_json:get_value(<<"id">>, PortReq)]
+                               ),
+                    cb_context:add_validation_error(Number, <<"type">>, <<"Number is on a port request already: ", (wh_json:get_value(<<"id">>, PortReq))/binary>>, Context);
+                {'false', _} ->
+                    lager:debug("number ~s(~s) is on existing port request for other account(~s)"
+                                ,[E164, Number, wh_json:get_value(<<"value">>, PortReq)]
+                               ),
+                    cb_context:add_validation_error(Number, <<"type">>, <<"Number is being ported to a different account">>, Context)
+            end;
+        {'ok', [_|_]=_PortReqs} ->
+            lager:debug("number ~s(~s) exists on multiple port request docs. That's bad!", [E164, Number]),
+            cb_context:add_validation_error(Number, <<"type">>, <<"Number is currently on multiple port requests. Contact a system admin to rectify">>, Context);
+        {'error', _E} ->
+            lager:debug("failed to query the port request view: ~p", [_E]),
+            cb_context:add_validation_error(Number, <<"type">>, <<"Failed to query backend services, cannot port at this time">>, Context)
+    end.
+
+-spec check_number_existence(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+check_number_existence(E164, Number, Context) ->
+    case wh_number_manager:lookup_account_by_number(E164) of
+        {'ok', _AccountId, _} ->
+            lager:debug("number ~s exists and belongs to ~s", [E164, _AccountId]),
+            cb_context:add_validation_error(Number, <<"type">>, <<"Number exists on the system already">>, Context);
+        {'error', 'not_found'} ->
+            lager:debug("number ~s not found in numbers db (portable!)", [E164]),
+            cb_context:set_resp_status(Context, 'success')
+    end.
 
 load_attachment(Id, AttachmentId, Context) ->
     Context1 = read(Id, Context),
