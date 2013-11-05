@@ -62,9 +62,9 @@ allowed_methods(_) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists() ->
-    true.
+    'true'.
 resource_exists(_) ->
-    true.
+    'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,7 +91,7 @@ validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
 
 -spec post(#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _) ->
-    track_assignment(Context),
+    track_assignment('update', Context),
     crossbar_doc:save(Context).
 
 -spec put(#cb_context{}) -> #cb_context{}.
@@ -100,6 +100,7 @@ put(Context) ->
 
 -spec delete(#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _) ->
+    track_assignment('delete', Context),
     crossbar_doc:delete(Context).
 
 %%%===================================================================
@@ -113,8 +114,8 @@ delete(Context, _) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  track_assignment(cb_context:context()) ->cb_context:context().
-track_assignment(#cb_context{doc=JObj, storage=Storage, account_id=AcctId}=Context) ->
+-spec  track_assignment(atom(), cb_context:context()) ->cb_context:context().
+track_assignment('update', #cb_context{doc=JObj, storage=Storage, account_id=AcctId}=Context) ->
     OldNums = get_numbers(props:get_value('db_doc', Storage)),
     NewNums = get_numbers(JObj),
     Assigned = lists:foldl(
@@ -129,11 +130,20 @@ track_assignment(#cb_context{doc=JObj, storage=Storage, account_id=AcctId}=Conte
         fun(Num, Acc) ->
             case lists:member(Num, NewNums) of
                 'true' -> Acc;
-                'false' -> [{Num, <<"trunkstore">>}|Acc]
+                'false' -> [{Num, <<>>}|Acc]
             end
         end, [], OldNums
     ),
     'ok' = wh_number_manager:track_assignment(AcctId, Assigned ++ Unassigned),
+    Context;
+track_assignment('delete', #cb_context{doc=JObj,account_id=AcctId}=Context) ->
+    Nums = get_numbers(JObj),
+    Unassigned = lists:foldl(
+        fun(Num, Acc) ->
+            [{Num, <<>>}|Acc]
+        end, [], Nums
+    ),
+    'ok' = wh_number_manager:track_assignment(AcctId, Unassigned),
     Context.
 
 %%--------------------------------------------------------------------

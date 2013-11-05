@@ -101,7 +101,7 @@ put(Context) ->
 
 -spec delete(#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _DocId) ->
-    crossbar_doc:delete(Context).
+    crossbar_doc:delete(track_assignment('delete', Context)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -222,7 +222,7 @@ maybe_reconcile_numbers(#cb_context{resp_status=success, doc=JObj
                 ],
             Context
     end,
-    track_assignment(Context);
+    track_assignment('update', Context);
 maybe_reconcile_numbers(Context) -> Context.
 
 %%--------------------------------------------------------------------
@@ -231,8 +231,8 @@ maybe_reconcile_numbers(Context) -> Context.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  track_assignment(cb_context:context()) ->cb_context:context().
-track_assignment(#cb_context{doc=JObj, storage=Storage, account_id=AcctId}=Context) ->
+-spec  track_assignment(atom(), cb_context:context()) ->cb_context:context().
+track_assignment('update', #cb_context{doc=JObj, storage=Storage, account_id=AcctId}=Context) ->
     OldNums = wh_json:get_value(<<"numbers">>, props:get_value('db_doc', Storage), []),
     NewNums = wh_json:get_value(<<"numbers">>, JObj, []),
     Unassigned = lists:foldl(
@@ -249,6 +249,15 @@ track_assignment(#cb_context{doc=JObj, storage=Storage, account_id=AcctId}=Conte
         end, [], NewNums
     ),
     'ok' = wh_number_manager:track_assignment(AcctId, Unassigned ++ Assigned),
+    Context;
+track_assignment('delete', #cb_context{doc=JObj, account_id=AcctId}=Context) ->
+    Nums = wh_json:get_value(<<"numbers">>, JObj, []),
+    Unassigned = lists:foldl(
+        fun(Num, Acc) ->
+            [{Num, <<>>}|Acc]
+        end, [], Nums
+    ),
+    'ok' = wh_number_manager:track_assignment(AcctId, Unassigned),
     Context.
 
 %%--------------------------------------------------------------------
