@@ -10,6 +10,9 @@ curl -v -X PUT -H "content-type:application/json" http://thinky64.2600hz.com:800
 # List port requests
 curl -v -X GET -H "X-Auth-Token: 47e0286a9f1659fc813b42e6853a95aa" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests | pp
 
+# List port requests of self and sub accounts
+curl -v -X GET -H "X-Auth-Token: 47e0286a9f1659fc813b42e6853a95aa" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests/descendants | pp
+
 # Create a new port request
 curl -v -X PUT -H "X-Auth-Token: 47e0286a9f1659fc813b42e6853a95aa" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests -d '{"data":{"numbers":{"+12025559000":{}}}}' | pp
 

@@ -4,6 +4,7 @@
 %%%
 %%% Handles port request lifecycles
 %%% GET /port_requests - list all the account's port requests
+%%% GET /port_requests/descendants - detailed report of a port request
 %%% GET /port_requests/{id} - detailed report of a port request
 %%%
 %%% PUT /port_requests - start a new port request
@@ -56,6 +57,9 @@
 -define(PORT_COMPLETE, <<"completion">>).
 -define(PORT_REJECT, <<"rejection">>).
 -define(PORT_ATTACHMENT, <<"attachments">>).
+-define(PORT_DESCENDANTS, <<"descendants">>).
+
+-define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
 
 -include("../crossbar.hrl").
 
@@ -98,6 +102,8 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
+allowed_methods(?PORT_DESCENDANTS) ->
+    [?HTTP_GET];
 allowed_methods(_Id) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
@@ -222,6 +228,8 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     create(Context).
 
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?PORT_DESCENDANTS) ->
+    read_descendants(Context);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
@@ -350,6 +358,36 @@ create(#cb_context{}=Context) ->
 read(Id, Context) ->
     Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
     cb_context:set_doc(Context1, create_public_port_request_doc(cb_context:doc(Context1))).
+
+-spec read_descendants(cb_context:context()) -> cb_context:context().
+read_descendants(Context) ->
+    Context1 = crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
+                                      , [{<<"startkey">>, [cb_context:account_id(Context)]}
+                                         ,{<<"endkey">>, [cb_context:account_id(Context), wh_json:new()]}
+                                        ]
+                                      ,cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)
+                                     ),
+    case cb_context:resp_status(Context1) of
+        'success' -> read_descendants(Context1, cb_context:doc(Context1));
+        _ -> Context1
+    end.
+
+read_descendants(Context, SubAccounts) ->
+    AllPortRequests = lists:foldl(fun(Account, Acc) ->
+                                          AccountId = wh_json:get_value(<<"id">>, Account),
+                                          PortRequests = read_descendant(Context, AccountId),
+                                          wh_json:set_value(AccountId, PortRequests, Acc)
+                                  end, wh_json:new(), SubAccounts),
+    crossbar_doc:handle_json_success(AllPortRequests, Context).
+
+-spec read_descendant(cb_context:context(), ne_binary()) -> wh_json:object().
+read_descendant(Context, Id) ->
+    Context1 = summary(cb_context:set_account_id(Context, Id)),
+    case cb_context:resp_status(Context1) of
+        'success' -> cb_context:doc(Context1);
+        _ -> wh_json:new()
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
