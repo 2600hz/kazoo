@@ -410,11 +410,12 @@ fold_bind_results(MFs, Payload, Route) ->
 
 -spec fold_bind_results([{atom(), atom()},...] | [], term(), ne_binary(), non_neg_integer(), [{atom(), atom()},...] | []) -> term().
 fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
-    %% lager:debug("executing(fold) ~s:~s/~p", [M, F, length(Payload)]),
-    case catch apply(M, F, Payload) of
-        'eoq' -> lager:debug("putting ~s to eoq", [M]), fold_bind_results(MFs, Payload, Route, MFsLen, [{M,F}|ReRunQ]);
+    try apply(M, F, Payload) of
+        'eoq' ->
+            lager:debug("putting ~s to eoq", [M]),
+            fold_bind_results(MFs, Payload, Route, MFsLen, [{M,F}|ReRunQ]);
         {'error', _E}=E ->
-            lager:debug("~s:~s/~p terminated fold with error: ~p", [M, F, length(Payload), _E]),
+            lager:debug("error: ~p", [_E]),
             E;
         {'EXIT', {'undef', [{_M, _F, _A, _}|_]}} ->
             lager:debug("~s:~s/~p not defined, in call ~s:~s/~p"
@@ -430,6 +431,10 @@ fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
             fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         Pay1 ->
             fold_bind_results(MFs, [Pay1|Tokens], Route, MFsLen, ReRunQ)
+    catch
+        _T:_E ->
+            lager:debug("excepted: ~s: ~p", [_T, _E]),
+            fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ)
     end;
 fold_bind_results([], Payload, Route, MFsLen, ReRunQ) ->
     case length(ReRunQ) of
