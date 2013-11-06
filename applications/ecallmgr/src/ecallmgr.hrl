@@ -264,22 +264,20 @@
                               ]).
 
 -define(CALL_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_EXECUTE_ERROR">>
-                          ,<<"CHANNEL_HANGUP">>, <<"CHANNEL_HANGUP_COMPLETE">>
                           ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
                           ,<<"CHANNEL_CREATE">>, <<"CHANNEL_DESTROY">>
                           ,<<"RECORD_START">>, <<"RECORD_STOP">>
                           ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>
-                          ,<<"CHANNEL_PROGRESS_MEDIA">>
-                          ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PARK">>
+                          ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PROGRESS_MEDIA">>
                           ,<<"CHANNEL_TRANSFEREE">>, <<"CHANNEL_TRANSFEROR">>
-                          ,<<"CHANNEL_REPLACED">>
+                          ,<<"CHANNEL_REPLACED">>, <<"CHANNEL_HANGUP">>
                      ]).
 
 -define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_DESTROY'
-                    ,'CHANNEL_PARK', 'CHANNEL_ANSWER', 'CALL_UPDATE', 'DETECTED_TONE'
+                    ,'CHANNEL_ANSWER', 'CALL_UPDATE', 'DETECTED_TONE'
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
                     ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE'
-                    ,'CHANNEL_HANGUP', 'CHANNEL_HANGUP_COMPLETE', 'CHANNEL_DATA'
+                    ,'CHANNEL_HANGUP', 'CHANNEL_DATA'
                    ]).
 
 -define(FS_CUSTOM_EVENTS, ['whistle::noop', 'whistle::masquerade'

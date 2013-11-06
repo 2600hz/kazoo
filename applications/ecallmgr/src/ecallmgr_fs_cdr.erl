@@ -122,7 +122,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('bind_to_events', #state{node=Node}=State) ->
-    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_HANGUP_COMPLETE">>}}) =:= 'true' of
+    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_HANGUP">>}}) =:= 'true' of
         'true' -> {'noreply', State};
         'false' -> {'stop', 'gproc_badarg', State}
     end;
