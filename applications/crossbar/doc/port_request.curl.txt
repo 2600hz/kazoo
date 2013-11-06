@@ -38,3 +38,8 @@ curl -v -X POST -H "X-Auth-Token: 2343afea29eb6204f14490f90a875a92" -H "Content-
 
 # Delete an attachment on a port request
 curl -v -X DELETE -H "X-Auth-Token: 2343afea29eb6204f14490f90a875a92" -H "Content-Type: application/json" 'http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests/2b9890bc15b943484ffed4bf84d38284/attachments/otp.pdf'
+
+## State changes
+
+# Indicate a port is ready to be processed
+curl -v -X PUT -H "X-Auth-Token: 2343afea29eb6204f14490f90a875a92" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests/2b9890bc15b943484ffed4bf84d38284/ready | pp
