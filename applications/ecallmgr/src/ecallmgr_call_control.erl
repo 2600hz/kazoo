@@ -669,7 +669,10 @@ handle_event_execute_complete(AppName, JObj, #state{current_app=CurrApp}=State) 
 -spec handle_sofia_replaced(ne_binary(), state()) -> state().
 handle_sofia_replaced(CallId, #state{callid=CallId}=State) ->
     State;
-handle_sofia_replaced(ReplacedBy, #state{callid=CallId, node=Node, other_legs=Legs}=State) ->
+handle_sofia_replaced(ReplacedBy, #state{callid=CallId
+                                         ,node=Node
+                                         ,other_legs=Legs
+                                         ,command_q=CommandQ}=State) ->
     lager:info("updating callid from ~s to ~s", [CallId, ReplacedBy]),
     unbind_from_events(Node, CallId),
     gen_listener:rm_binding(self(), 'call', [{'callid', CallId}]),
@@ -679,8 +682,12 @@ handle_sofia_replaced(ReplacedBy, #state{callid=CallId, node=Node, other_legs=Le
     lager:debug("ensuring event listener exists"),
     _ = ecallmgr_call_sup:start_event_process(Node, ReplacedBy),
     lager:info("...call id updated, continuing post-transfer"),
+    Commands = [wh_json:set_value(<<"Call-ID">>, ReplacedBy, JObj)
+                || JObj <- queue:to_list(CommandQ)
+               ],
     State#state{callid=ReplacedBy
                 ,other_legs=lists:delete(ReplacedBy, Legs)
+                ,command_q=queue:from_list(Commands)
                }.
 
 -spec handle_channel_create(wh_proplist(), atom(), ne_binary()) -> 'ok'.

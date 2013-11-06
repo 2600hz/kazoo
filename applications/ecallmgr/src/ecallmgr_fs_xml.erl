@@ -14,6 +14,7 @@
          ,route_resp_xml/1 ,authn_resp_xml/1, reverse_authn_resp_xml/1
          ,acl_xml/1, not_found/0, empty_response/0
          ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
+         ,sip_channel_xml/1
          ,escape/2
          ,conference_resp_xml/1
         ]).
@@ -40,6 +41,15 @@ sip_profiles_xml(JObj) ->
     SectionEl = section_el(<<"configuration">>, ConfigEl),
 
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+sip_channel_xml(Props) ->
+    ParamsEl = params_el([param_el(K, V) || {K, V} <- Props]),
+    
+    ChannelEl = channel_el(props:get_value(<<"uuid">>, Props), ParamsEl),
+
+    SectionEl = section_el(<<"channels">>, ChannelEl),
+
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.            
 
 -spec authn_resp_xml(api_terms()) -> {'ok', iolist()}.
 -spec authn_resp_xml(ne_binary(), wh_json:object()) -> {'ok', xml_els()}.
@@ -517,6 +527,19 @@ config_el(Name, Desc, Content) ->
                 ,content=Content
                }.
 
+channel_el(UUID, Content) ->
+    channel_el(UUID, <<"channel ", (wh_util:to_binary(UUID))/binary, " tracked by kazoo">>, Content).
+
+channel_el(UUID, Desc, #xmlElement{}=Content) ->
+    channel_el(UUID, Desc, [Content]);
+channel_el(UUID, Desc, Content) ->
+    #xmlElement{name='channel'
+                ,attributes=[xml_attrib('uuid', UUID)
+                             ,xml_attrib('description', Desc)
+                            ]
+                ,content=Content
+               }.
+
 -spec section_el(xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
 -spec section_el(xml_attrib_value(), xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
 section_el(Name, #xmlElement{}=Content) ->
@@ -549,7 +572,9 @@ domain_el(Name, Children) ->
 -spec user_el(xml_attrib_value(), xml_els()) -> xml_el().
 user_el(Id, Children) ->
     #xmlElement{name='user'
-                ,attributes=[xml_attrib('id', Id)]
+                ,attributes=[xml_attrib('id', Id)
+                             ,xml_attrib('cacheable', 3600000000)
+                            ]
                 ,content=Children
                }.
 

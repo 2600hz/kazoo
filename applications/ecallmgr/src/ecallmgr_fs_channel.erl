@@ -25,6 +25,7 @@
          ,to_json/1
          ,to_props/1
         ]).
+-export([handle_channel_req/3]).
 -export([process_event/3]).
 -export([init/1
          ,handle_call/3
@@ -253,6 +254,7 @@ handle_cast('bind_to_events', #state{node=Node}=State) ->
         andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_ANSWER">>}}) =:= 'true'
         andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_BRIDGE">>}}) =:= 'true'
         andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_UNBRIDGE">>}}) =:= 'true'
+        andalso freeswitch:bind(Node, 'channels') =:= 'ok'
     of
         'true' -> {'noreply', State};
         'false' -> {'stop', 'gproc_badarg', State}
@@ -272,6 +274,14 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
     _ = spawn(?MODULE, 'process_event', [UUID, Props, Node]),
+    {'noreply', State};
+handle_info({'fetch', 'channels', <<"channel">>, <<"uuid">>, UUID, FetchId, _}, #state{node=Node}=State) ->
+    spawn(?MODULE, 'handle_channel_req', [UUID, FetchId, Node]),
+    {'noreply', State};
+handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, _Data}, #state{node=Node}=State) ->
+    lager:debug("unhandled fetch from section ~s for ~s:~s", [_Section, _Something, _Key]),
+    {'ok', Resp} = ecallmgr_fs_xml:not_found(),
+    _ = freeswitch:fetch_reply(Node, ID, 'configuration', iolist_to_binary(Resp)),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -316,6 +326,27 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec handle_channel_req(ne_binary(), ne_binary(), atom()) -> 'ok'.
+handle_channel_req(UUID, FetchId, Node) ->
+    case ecallmgr_fs_channel:fetch(UUID, 'proplist') of
+        {'ok', Props} ->
+            ChannelNode = props:get_value(<<"node">>, Props),
+            URL = ecallmgr_fs_nodes:sip_url(ChannelNode),
+            try ecallmgr_fs_xml:sip_channel_xml([{<<"sip-url">>, URL}|Props]) of
+                {'ok', ConfigXml} ->
+                    lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
+                    freeswitch:fetch_reply(Node, FetchId, 'channels', erlang:iolist_to_binary(ConfigXml))
+            catch
+                _E:_R ->
+                    lager:info("sofia profile resp failed to convert to XML (~s): ~p", [_E, _R]),
+                    {'ok', Resp} = ecallmgr_fs_xml:not_found(),
+                    freeswitch:fetch_reply(Node, FetchId, 'channels', iolist_to_binary(Resp))
+            end;
+        {'error', 'not_found'} ->
+            {'ok', Resp} = ecallmgr_fs_xml:not_found(),
+            freeswitch:fetch_reply(Node, FetchId, 'channels', iolist_to_binary(Resp))
+    end.
+
 process_event(UUID, Props, Node) ->
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
     process_event(EventName, UUID, Props, Node).
