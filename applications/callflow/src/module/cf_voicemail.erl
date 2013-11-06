@@ -1125,17 +1125,17 @@ store_recording(AttachmentName, DocId, Call) ->
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
             MinLength =
-                case whapps_account_config:get_integer(whapps_call:account_id(Call)
-                                                       ,?CF_CONFIG_CAT
-                                                       ,[<<"voicemail">>, <<"min_message_size">>]
-                                                      ) 
+                case whapps_account_config:get(whapps_call:account_id(Call)
+                                               ,?CF_CONFIG_CAT
+                                               ,[<<"voicemail">>, <<"min_message_size">>]
+                                              )
                 of
                     'undefined' ->
-                        whapps_config:get_integer_value(?CF_CONFIG_CAT
-                                                        ,[<<"voicemail">>, <<"min_message_size">>]
-                                                        ,500
-                                                       );
-                    MML -> MML
+                        whapps_config:get_integer(?CF_CONFIG_CAT
+                                                  ,[<<"voicemail">>, <<"min_message_size">>]
+                                                  ,500
+                                                 );
+                    MML -> wh_util:to_integer(MML)
                 end,
             AttachmentLength = wh_json:get_integer_value([<<"_attachments">>, AttachmentName, <<"length">>], JObj, 0),
             lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
