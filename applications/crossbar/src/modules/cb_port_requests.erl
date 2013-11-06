@@ -167,7 +167,7 @@ content_types_provided(#cb_context{}=Context) ->
     Context.
 content_types_provided(#cb_context{}=Context, _Id) ->
     Context.
-content_types_provided(#cb_context{}=Context, _Id, ?PORT_ATTACHMENT) ->
+content_types_provided(#cb_context{}=Context, _Id, _) ->
     Context.
 content_types_provided(#cb_context{req_verb=?HTTP_GET}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     case crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)) of
@@ -237,14 +237,14 @@ validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
     read(Id, Context).
 
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Id, ?PORT_READY) ->
-    Context;
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Id, ?PORT_PROGRESS) ->
-    Context;
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Id, ?PORT_COMPLETE) ->
-    Context;
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Id, ?PORT_REJECT) ->
-    Context;
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_READY) ->
+    maybe_move_state(Id, Context, ?PORT_READY);
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_PROGRESS) ->
+    maybe_move_state(Id, Context, ?PORT_PROGRESS);
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_COMPLETE) ->
+    maybe_move_state(Id, Context, ?PORT_COMPLETE);
+validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_REJECT) ->
+    maybe_move_state(Id, Context, ?PORT_REJECT);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?PORT_ATTACHMENT) ->
     summary_attachments(Id, Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_ATTACHMENT) ->
@@ -531,6 +531,7 @@ check_number_existence(E164, Number, Context) ->
             cb_context:set_resp_status(Context, 'success')
     end.
 
+-spec load_attachment(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 load_attachment(Id, AttachmentId, Context) ->
     Context1 = read(Id, Context),
     case cb_context:resp_status(Context1) of
@@ -538,6 +539,7 @@ load_attachment(Id, AttachmentId, Context) ->
         _ -> Context1
     end.
 
+-spec load_attachment(ne_binary(), cb_context:context()) -> cb_context:context().
 load_attachment(AttachmentId, Context) ->
     AttachmentMeta = wh_json:get_value([<<"_attachments">>, AttachmentId], cb_context:doc(Context)),
 
@@ -552,3 +554,23 @@ load_attachment(AttachmentId, Context) ->
                   ,{<<"Content-Type">>, wh_json:get_value([<<"content_type">>], AttachmentMeta)}
                   ,{<<"Content-Length">>, wh_json:get_value([<<"length">>], AttachmentMeta)}
                  ]).
+
+-spec maybe_move_state(ne_binary(), cb_context:context(), ne_binary()) ->
+                              cb_context:context().
+-spec maybe_move_state(cb_context:context(), wh_json:object(), ne_binary(), ne_binary()) ->
+                              cb_context:context().
+maybe_move_state(Id, Context, PortState) ->
+    Context1 = read(Id, Context),
+    case cb_context:resp_status(Context1) =:= 'success'
+        andalso cb_context:doc(Context1)
+    of
+        'false' ->
+            lager:debug("reading ~s failed", [Id]),
+            Context1;
+        PortRequest ->
+            maybe_move_state(Context1, PortRequest, wh_json:get_value(<<"port_state">>, PortRequest), PortState)
+    end.
+
+maybe_move_state(Context, _PortRequest, CurrentState, PortState) ->
+    lager:debug("maybe move from ~s to ~s", [CurrentState, PortState]),
+    Context.
