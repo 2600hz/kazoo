@@ -14,5 +14,10 @@
               "\\+?[0-9]+":{"type":"object"}
             }
         }
+        ,"port_state":{
+            "type":"string"
+            ,"description":"What state the port request is currently in"
+            ,"enum":["waiting","ready","progress","completion","rejection"]
+        }
     }
 }
