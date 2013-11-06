@@ -432,6 +432,12 @@ fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
         Pay1 ->
             fold_bind_results(MFs, [Pay1|Tokens], Route, MFsLen, ReRunQ)
     catch
+        'error':'function_clause' ->
+            lager:debug("failed to find matching function clause for ~s:~s/~b", [M, F, length(Payload)]),
+            fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
+        'error':'undef' ->
+            lager:debug("undefined function ~s:~s/~b", [M, F, length(Payload)]),
+            fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         _T:_E ->
             lager:debug("excepted: ~s: ~p", [_T, _E]),
             fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ)
