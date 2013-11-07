@@ -474,8 +474,6 @@ generic_call_event_props(Props) ->
      ,{<<"Disposition">>, get_disposition(Props)}
      ,{<<"Raw-Application-Name">>, get_raw_application_name(Props)}
      ,{<<"Channel-Moving">>, get_channel_moving(Props)}
-     ,{<<"Fax-Success">>, get_fax_success(Props)}
-     ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
      ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
      ,{<<"Caller-ID-Number">>, props:get_first_defined([<<"variable_effective_caller_id_number">>
                                                         ,<<"Caller-Caller-ID-Number">>
@@ -492,12 +490,6 @@ generic_call_event_props(Props) ->
      ,{<<"Other-Leg-Call-ID">>, props:get_first_defined([<<"Other-Leg-Unique-ID">>
                                                          ,<<"variable_holding_uuid">>
                                                         ], Props)}
-     ,{<<"Fax-Result-Code">>, props:get_value(<<"variable_fax_result_code">>, Props)}
-     ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
-     ,{<<"Fax-Transferred-Pages">>, props:get_value(<<"variable_fax_document_transferred_pages">>, Props)}
-     ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
-     ,{<<"Fax-Bad-Rows">>, props:get_value(<<"variable_fax_bad_rows">>, Props)}
-     ,{<<"Fax-Transfer-Rate">>, props:get_value(<<"variable_fax_transfer_rate">>, Props)}
      ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
      ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
@@ -586,7 +578,9 @@ specific_call_event_props(<<"CHANNEL_ANSWER">>, _, Props) ->
      ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
     ];
 specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
-    [{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+    [{<<"Fax-Success">>, get_fax_success(Props)}
+     ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
+     ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
      ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
      ,{<<"To-Uri">>, props:get_value(<<"variable_sip_to_uri">>, Props)}
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
@@ -597,6 +591,12 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
      ,{<<"Billing-Seconds">>, props:get_value(<<"variable_billsec">>, Props)}
      ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
      ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
+     ,{<<"Fax-Result-Code">>, props:get_value(<<"variable_fax_result_code">>, Props)}
+     ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
+     ,{<<"Fax-Transferred-Pages">>, props:get_value(<<"variable_fax_document_transferred_pages">>, Props)}
+     ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
+     ,{<<"Fax-Bad-Rows">>, props:get_value(<<"variable_fax_bad_rows">>, Props)}
+     ,{<<"Fax-Transfer-Rate">>, props:get_value(<<"variable_fax_transfer_rate">>, Props)}
     ];
 specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}

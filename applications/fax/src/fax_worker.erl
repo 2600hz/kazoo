@@ -40,7 +40,7 @@
                       ,[{<<"resource">>, <<"offnet_resp">>}]
                      }
                      ,{{?MODULE, 'handle_call_event'}
-                       ,[{<<"call_detail">>, <<"cdr">>}]
+                       ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -532,7 +532,9 @@ send_fax(JobId, JObj, Q) ->
                ,{<<"Outbound-Call-ID">>, CallId}
                | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
               ]),
-    gen_listener:add_binding(self(), 'call', [{'restrict_to', ['cdr']}, {'callid', CallId}]),
+    gen_listener:add_binding(self(), 'call', [{'callid', CallId}
+                                              ,{'restrict_to', [<<"CHANNEL_DESTROY">>]}
+                                             ]),
     wapi_offnet_resource:publish_req(Request).
 
 -spec get_proxy_url(ne_binary()) -> ne_binary().
