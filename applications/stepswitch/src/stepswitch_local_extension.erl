@@ -49,8 +49,9 @@
 start_link(Props, JObj) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     Bindings = [{'call', [{'callid', CallId}
-                          ,{'restrict_to', ['events'
-                                            ,'destroy_channel'
+                          ,{'restrict_to', [<<"CHANNEL_DESTROY">>
+                                            ,<<"CHANNEL_EXECUTE_COMPLETE">>
+                                            ,<<"CHANNEL_BRIDGE">>
                                            ]}
                          ]}
                 ,{'self', []}
@@ -186,7 +187,7 @@ handle_event(JObj, #state{request_handler=RequestHandler, resource_req=Request})
             lager:debug("channel execute complete for execute extension", []),
             gen_listener:cast(RequestHandler, {'local_extension_result', local_extension_success(Request)});
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
-            CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
+            CallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
             gen_listener:cast(RequestHandler, {'bridged', CallId});
         _ -> 'ok'
     end,

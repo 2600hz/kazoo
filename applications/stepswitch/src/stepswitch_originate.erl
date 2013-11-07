@@ -142,8 +142,9 @@ handle_cast({'bind_to_call', 'undefined'}, #state{resource_req=Request}=State) -
 handle_cast({'bind_to_call', CallId}, State) ->
     wh_util:put_callid(CallId),
     Props = [{'callid', CallId}
-             ,{'restrict_to', ['events'
-                               ,'destroy_channel'
+             ,{'restrict_to', [<<"CHANNEL_DESTROY">>
+                               ,<<"CHANNEL_BRIDGE">>
+                               ,<<"CHANNEL_ANSWER">>
                               ]}
             ],
     gen_listener:add_binding(self(), 'call', Props),
@@ -187,7 +188,7 @@ handle_event(JObj, #state{request_handler=RequestHandler, resource_req=Request, 
             lager:debug("channel was destroy while waiting for execute extension", []),
             gen_listener:cast(RequestHandler, {'originate_result', originate_success(JObj, Request)});
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
-            CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
+            CallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
             gen_listener:cast(RequestHandler, {'bridged', CallId});
         {<<"call_event">>, <<"CHANNEL_ANSWER">>} ->
             gen_listener:cast(RequestHandler, 'answered');
