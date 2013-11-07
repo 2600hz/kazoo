@@ -1620,9 +1620,6 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s", [Application]),
                     {'error', 'channel_destroy'};
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    lager:debug("channel was hungup while waiting for ~s", [Application]),
-                    {'error', 'channel_hungup'};
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
                     {'error', JObj};
@@ -1717,9 +1714,6 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
                     {'error', JObj};
-                {<<"call_event">>,<<"CHANNEL_DESTROY">>,_} ->
-                    lager:debug("hangup occurred, waiting 60000 ms for ~s event", [Application]),
-                    wait_for_headless_application(Application, Event, Type, 60000);
                 {<<"call_event">>,<<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("destroy occurred, waiting 60000 ms for ~s event", [Application]),
                     wait_for_headless_application(Application, Event, Type, 60000);
@@ -1752,9 +1746,6 @@ wait_for_dtmf(Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     lager:debug("channel was destroyed while waiting for DTMF"),
                     {'error', 'channel_destroy'};
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-                    lager:debug("channel was destroyed while waiting for DTMF"),
-                    {'error', 'channel_hungup'};
                 {<<"error">>, _} ->
                     lager:debug("channel execution error while waiting for DTMF: ~s", [wh_json:encode(JObj)]),
                     {'error', JObj};
@@ -1938,9 +1929,6 @@ wait_for_application_or_dtmf(Application, Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s or DTMF", [Application]),
                     {'error', 'channel_destroy'};
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    lager:debug("channel was hungup while waiting for ~s or DTMF", [Application]),
-                    {'error', 'channel_hungup'};
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting ~s or DTMF: ~s", [Application, wh_json:encode(JObj)]),
                     {'error', JObj};
