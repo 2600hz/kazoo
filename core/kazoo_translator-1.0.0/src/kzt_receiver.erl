@@ -252,7 +252,7 @@ wait_for_noop(Call, NoopId) ->
 process_noop_event(Call, NoopId, JObj) ->
     case wh_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'error', 'channel_destroy', Call};
-        {<<"call_event">>, <<"CHANNEL_HANGUP_COMPLETE">>} -> {'error', 'channel_hungup', Call};
+        {<<"call_event">>, <<"CHANNEL_DESTROY_COMPLETE">>} -> {'error', 'channel_hungup', Call};
         {<<"call_event">>, <<"DTMF">>} ->
             DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
             lager:info("adding dtmf tone '~s' to collection", [DTMF]),
@@ -371,8 +371,8 @@ process_offnet_event(#dial_req{call=Call
                     whapps_call_command:hangup(Call)
             end;
         {{<<"call_event">>, <<"LEG_CREATED">>}, CallId} ->
-            BLeg = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-            lager:info("b-leg created: ~s", [BLeg]),
+            BLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
+            lager:debug("b-leg created: ~s", [BLeg]),
             Srv = kzt_util:get_amqp_listener(Call),
             lager:debug("adding binding to ~p", [Srv]),
 
@@ -395,8 +395,7 @@ process_offnet_event(#dial_req{call=Call
                                     }));
         {{<<"call_event">>, <<"CHANNEL_BRIDGE">>}, CallId} ->
             MediaJObj = maybe_start_recording(OffnetReq),
-
-            lager:info("b-leg bridged: ~s", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]),
+            lager:debug("b-leg bridged: ~s", [wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)]),
 
             Updates = [{MediaJObj, fun kzt_util:set_media_meta/2}
                        ,{?STATUS_ANSWERED, fun kzt_util:update_call_status/2}
@@ -413,7 +412,7 @@ process_offnet_event(#dial_req{call=Call
                                     }));
 
         {{<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, CallId} ->
-            case wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj) of
+            case wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj) of
                 CallBLeg ->
                     HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
                     lager:info("a-leg (~s) has unbridged from ~s(~s), continuing the call", [CallId, CallBLeg, HangupCause]);
