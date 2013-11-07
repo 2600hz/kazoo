@@ -35,7 +35,10 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS(CallId), [{'call', [{'callid', CallId}
-                                     ,{'restrict_to', ['events', 'cdr']}
+                                     ,{'restrict_to', [<<"RECORD_STOP">>
+                                                       ,<<"CHANNEL_DESTROY">>
+                                                       ,<<"CHANNEL_EXECUTE_COMPLETE">>   
+                                                      ]}
                                     ]}
                            ,{'self', []}
                           ]).
@@ -74,8 +77,6 @@ handle_call_event(JObj, Props) ->
             lager:debug("record_stop event recv'd"),
             gen_listener:cast(props:get_value('server', Props), 'store_recording');
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-            gen_listener:cast(props:get_value('server', Props), 'stop_call');
-        {<<"call_detail">>, <<"cdr">>} ->
             gen_listener:cast(props:get_value('server', Props), 'stop_call');
         {<<"call_event">>, <<"channel_status_resp">>} ->
             gen_listener:cast(props:get_value('server', Props), {'channel_status', wh_json:get_value(<<"Status">>, JObj)});
