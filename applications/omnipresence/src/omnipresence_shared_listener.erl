@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(omnip_shared_listener).
+-module(omnipresence_shared_listener).
 
 -behaviour(gen_listener).
 
@@ -28,30 +28,12 @@
                 ,subs_ref :: reference()
                }).
 
-handle_call_event(_AccountId, <<"new">>, JObj) ->
-    omnip_subscriptions:handle_new_channel(JObj);
-handle_call_event(_AccountId, <<"answered">>, JObj) ->
-    omnip_subscriptions:handle_answered_channel(JObj);
-handle_call_event(_AccountId, <<"cdr">>, JObj) ->
-    omnip_subscriptions:handle_cdr(JObj);
-handle_call_event(_AccountId, <<"destroy">>, JObj) ->
-    omnip_subscriptions:handle_destroyed_channel(JObj).
-
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
                    ,{'presence', [{'restrict_to', ['update', 'reset']}]}
                    ,{'notifications', [{'restrict_to', ['presence_update']}]}
                   ]).
--define(RESPONDERS, [{{'omnip_subscriptions', 'handle_new_channel'}
-                      ,[{<<"channel">>, <<"new">>}]
-                     }
-                     ,{{'omnip_subscriptions', 'handle_answered_channel'}
-                       ,[{<<"channel">>, <<"answered">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_cdr'}
-                       ,[{<<"call_detail">>, <<"cdr">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_presence_update'}
+-define(RESPONDERS, [{{'omnip_subscriptions', 'handle_presence_update'}
                        ,[{<<"notification">>, <<"presence_update">>}]
                       }
                      ,{{'omnip_subscriptions', 'handle_subscribe'}
@@ -79,10 +61,9 @@ handle_call_event(_AccountId, <<"destroy">>, JObj) ->
 start_link() ->
     gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                      %%,{'basic_qos', 1}                % only needed if prefetch controls
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================
@@ -146,7 +127,6 @@ handle_cast({'find_subscriptions_srv'}, #state{subs_pid=_Pid}=State) ->
                                     ,subs_ref=erlang:monitor('process', P)
                                    }}
     end;
-
 handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
@@ -220,3 +200,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+handle_call_event(_AccountId, <<"new">>, JObj) ->
+    omnip_subscriptions:handle_new_channel(JObj);
+handle_call_event(_AccountId, <<"answered">>, JObj) ->
+    omnip_subscriptions:handle_answered_channel(JObj);
+handle_call_event(_AccountId, <<"destroy">>, JObj) ->
+    omnip_subscriptions:handle_destroyed_channel(JObj).

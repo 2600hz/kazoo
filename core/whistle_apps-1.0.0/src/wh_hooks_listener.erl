@@ -30,15 +30,15 @@
 -define(CACHE_NAME, 'wh_hooks_cache').
 
 %% Three main call events
--define(BINDINGS, [{'call', [{'restrict_to', ['new_channel'
-                                              ,'answered_channel'
-                                              ,'destroy_channel'
+-define(BINDINGS, [{'call', [{'restrict_to', ['CHANNEL_CREATE'
+                                              ,'CHANNEL_ANSWER'
+                                              ,'CHANNEL_DESTROY'
                                              ]}
                             ]}
                    ,{'route', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_call_event'}
-                       ,[{<<"channel">>, <<"*">>}
+                       ,[{<<"call_event">>, <<"*">>}
                          ,{<<"dialplan">>, <<"route_req">>}
                         ]
                       }
@@ -86,22 +86,20 @@ register(AccountId, EventName) ->
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, _Props) ->
+    'true' = wapi_call:event_v(JObj),
     HookEvent = wh_json:get_value(<<"Event-Name">>, JObj),
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>]
-                                  ,JObj
-                                 ),
+    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>
+                                   ,<<"Account-ID">>
+                                  ], JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-
     wh_util:put_callid(CallId),
-
-    lager:debug("handle ~s(~s)", [HookEvent, AccountId]),
-
+    lager:info("handle ~s(~s)", [HookEvent, AccountId]),
     handle_call_event(JObj, AccountId, HookEvent, CallId).
 
 -spec handle_call_event(wh_json:object(), api_binary(), ne_binary(), ne_binary()) ->
                                'ok'.
-handle_call_event(JObj, 'undefined', <<"new">>, CallId) ->
-    lager:debug("event 'new' had no account id, caching"),
+handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId) ->
+    lager:debug("event 'channel_create' had no account id, caching"),
     maybe_cache_call_event(JObj, CallId);
 handle_call_event(_JObj, 'undefined', _HookEvent, _CallId) ->
     lager:debug("event '~s' had no account id, ignoring", [_HookEvent]);
@@ -120,7 +118,7 @@ handle_call_event(JObj, AccountId, HookEvent, _CallId) ->
 maybe_cache_call_event(JObj, CallId) ->
     case wh_cache:peek_local(?CACHE_NAME, CallId) of
         {'error', 'not_found'} ->
-            wh_cache:store_local(?CACHE_NAME, CallId, {'new', JObj}, [{'expires', 5000}]);
+            wh_cache:store_local(?CACHE_NAME, CallId, {'CHANNEL_CREATE', JObj}, [{'expires', 5000}]);
         {'ok', {'account_id', AccountId}} ->
             handle_call_event(JObj
                               ,AccountId
@@ -134,7 +132,7 @@ maybe_relay_new_event(AccountId, CallId) ->
     case wh_cache:peek_local(?CACHE_NAME, CallId) of
         {'error', 'not_found'} ->
             wh_cache:store_local(?CACHE_NAME, CallId, {'account_id', AccountId}, [{'expires', 5000}]);
-        {'ok', {'new', JObj}} ->
+        {'ok', {'CHANNEL_CREATE', JObj}} ->
             handle_call_event(JObj
                               ,AccountId
                               ,wh_json:get_value(<<"Event-Name">>, JObj)
