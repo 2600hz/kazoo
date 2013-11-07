@@ -252,7 +252,6 @@ wait_for_noop(Call, NoopId) ->
 process_noop_event(Call, NoopId, JObj) ->
     case wh_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'error', 'channel_destroy', Call};
-        {<<"call_event">>, <<"CHANNEL_DESTROY_COMPLETE">>} -> {'error', 'channel_hungup', Call};
         {<<"call_event">>, <<"DTMF">>} ->
             DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
             lager:info("adding dtmf tone '~s' to collection", [DTMF]),
