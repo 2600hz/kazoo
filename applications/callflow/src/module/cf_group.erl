@@ -7,7 +7,7 @@
 %%%   Karl Anderson
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cf_ring_group).
+-module(cf_group).
 
 -include("../callflow.hrl").
 
@@ -25,7 +25,7 @@
 handle(Data, Call) ->
     case get_endpoints(wh_json:get_value(<<"endpoints">>, Data, []), Call) of
         [] ->
-            lager:notice("ring group has no endpoints, moving to next callflow element"),
+            lager:notice("group has no endpoints, moving to next callflow element"),
             cf_exe:continue(Call);
         Endpoints -> attempt_endpoints(Endpoints, Data, Call)
     end.
@@ -35,10 +35,10 @@ attempt_endpoints(Endpoints, Data, Call) ->
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
-    lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
+    lager:info("attempting group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
     case whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
         {'ok', _} ->
-            lager:info("completed successful bridge to the ring group - call finished normally"),
+            lager:info("completed successful bridge to the group - call finished normally"),
             cf_exe:stop(Call);
         {'fail', _}=F ->
             case cf_util:handle_bridge_failure(F, Call) of
@@ -46,7 +46,7 @@ attempt_endpoints(Endpoints, Data, Call) ->
                 'not_found' -> cf_exe:continue(Call)
             end;
         {'error', _R} ->
-            lager:info("error bridging to ring group: ~p"
+            lager:info("error bridging to group: ~p"
                        ,[wh_json:get_value(<<"Error-Message">>, _R)]
                       ),
             cf_exe:continue(Call)
