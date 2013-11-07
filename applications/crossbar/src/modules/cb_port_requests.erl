@@ -377,7 +377,6 @@ read(Id, Context) ->
     cb_context:set_resp_data(cb_context:set_doc(Context1, PubDoc)
                              ,PubDoc).
 
-
 -spec read_descendants(cb_context:context()) -> cb_context:context().
 read_descendants(Context) ->
     Context1 = crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
