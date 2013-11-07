@@ -9,7 +9,6 @@
 -module(acdc_queue_handler).
 
 -export([handle_call_event/2
-         ,handle_cdr/2
          ,handle_member_call/3
          ,handle_member_resp/2
          ,handle_member_accepted/2
@@ -23,19 +22,22 @@
 handle_call_event(JObj, Props) ->
     'true' = wapi_call:event_v(JObj),
     {Cat, Name} = wh_util:get_event_type(JObj),
-    acdc_queue_fsm:call_event(props:get_value('fsm_pid', Props), Cat, Name, JObj).
+    handle_call_event(Cat, Name, JObj, Props).
 
-handle_cdr(JObj, Props) ->
-    'true' = wapi_call:cdr_v(JObj),
-    %% send CDR to URL
+handle_call_event(_, <<"CHANNEL_DESTROY">>, JObj, Props) ->
     case acdc_queue_fsm:cdr_url(props:get_value('fsm_pid', Props)) of
         'undefined' -> 'ok';
-        Url ->
+        Url -> 
             acdc_util:send_cdr(Url, JObj),
-            acdc_queue_listener:unbind_from_cdr(props:get_value('server', Props)
-                                                ,wh_json:get_value(<<"Call-ID">>, JObj)
-                                               )
-    end.
+            Srv = props:get_value('server', Props),
+            CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+            acdc_util:unbind_from_call_events(CallId, Srv)
+    end;
+handle_call_event(Category, Name, JObj, Props) ->
+    acdc_queue_fsm:call_event(props:get_value('fsm_pid', Props)
+                              ,Category
+                              ,Name
+                              ,JObj).
 
 handle_member_call(JObj, Props, Delivery) ->
     'true' = wapi_acdc_queue:member_call_v(JObj),

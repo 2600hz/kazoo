@@ -33,7 +33,6 @@
          ,send_sync_req/2
          ,config/1
          ,send_sync_resp/4
-         ,unbind_from_cdr/2
         ]).
 
 %% gen_server callbacks
@@ -73,9 +72,6 @@
 -define(RESPONDERS, [{{acdc_queue_handler, handle_call_event}
                       ,[{<<"call_event">>, <<"*">>}]
                      }
-                     ,{{acdc_queue_handler, handle_cdr}
-                       ,[{<<"call_detail">>, <<"cdr">>}]
-                      }
                      ,{{acdc_queue_handler, handle_call_event}
                        ,[{<<"error">>, <<"*">>}]
                       }
@@ -158,8 +154,6 @@ config(Srv) -> gen_listener:call(Srv, 'config').
 
 send_sync_resp(Srv, Strategy, StrategyState, ReqJObj) ->
     gen_listener:cast(Srv, {'send_sync_resp', Strategy, StrategyState, ReqJObj}).
-
-unbind_from_cdr(Srv, CallId) -> gen_listener:cast(Srv, {'unbind_from_cdr', CallId}).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -273,7 +267,7 @@ handle_cast({'start_friends', QueueJObj}, #state{worker_sup=WorkerSup
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{my_q='undefined'}=State) ->
     {'noreply', State#state{my_q=Q}, 'hibernate'};
 
-handle_cast({'member_connect_req', MemberCallJObj, Delivery, Url}
+handle_cast({'member_connect_req', MemberCallJObj, Delivery, _Url}
             ,#state{my_q=MyQ
                     ,my_id=MyId
                     ,acct_id=AcctId
@@ -283,7 +277,7 @@ handle_cast({'member_connect_req', MemberCallJObj, Delivery, Url}
 
     put('callid', whapps_call:call_id(Call)),
 
-    acdc_util:bind_to_call_events(Call, Url),
+    acdc_util:bind_to_call_events(Call),
     send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId),
 
     {'noreply', State#state{call=Call
@@ -437,15 +431,9 @@ handle_cast({'send_sync_req', Type}, #state{my_q=MyQ
                                            }=State) ->
     send_sync_req(MyQ, MyId, AcctId, QueueId, Type),
     {'noreply', State};
-
-handle_cast({'unbind_from_cdr', CallId}, State) ->
-    acdc_util:unbind_from_cdr(CallId),
-    {'noreply', State};
-
 handle_cast({'send_sync_resp', Strategy, StrategyState, ReqJObj}, #state{my_id=Id}=State) ->
     publish_sync_resp(Strategy, StrategyState, ReqJObj, Id),
     {'noreply', State};
-
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->

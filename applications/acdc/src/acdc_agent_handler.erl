@@ -207,11 +207,12 @@ handle_sync_resp(JObj, Props) ->
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
+    _ = wh_util:put_callid(JObj),
     FSM = props:get_value('fsm_pid', Props),
     case wapi_call:event_v(JObj) of
         'true' ->
-            {Cat, Name} = wh_util:get_event_type(JObj),
-            acdc_agent_fsm:call_event(FSM, Cat, Name, JObj);
+            {Category, Name} = wh_util:get_event_type(JObj),
+            handle_call_event(Category, Name, FSM, JObj, Props);
         'false' ->
             'true' = wh_api:error_resp_v(JObj),
 
@@ -221,8 +222,21 @@ handle_call_event(JObj, Props) ->
             end
     end.
 
+handle_call_event(_, <<"CHANNEL_DESTROY">>, _, JObj, Props) ->
+    Urls = props:get_value('cdr_urls', Props),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    case catch dict:fetch(CallId, Urls) of
+        {'EXIT', _} -> lager:debug("no cdr url for call ~s", [CallId]);
+        Url -> acdc_util:send_cdr(Url, JObj)
+    end,
+    Srv = props:get_value('server', Props),
+    _ = acdc_agent:remove_cdr_urls(Srv, CallId),
+    acdc_util:unbind_from_call_events(CallId, Srv);
+handle_call_event(Category, Name, FSM, JObj, _) ->
+    acdc_agent_fsm:call_event(FSM, Category, Name, JObj).
+
 handle_new_channel(JObj, _Props) ->
-    'true' = wapi_call:new_channel_v(JObj),
+    'true' = wapi_call:event_v(JObj),
     _ = wh_util:put_callid(JObj),
     handle_new_channel_acct(JObj, wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)).
 
@@ -406,7 +420,7 @@ send_probe(JObj, State) ->
     wapi_notifications:publish_presence_update(PresenceUpdate).
 
 handle_destroy(JObj, Props) ->
-    'true' = wapi_call:destroy_channel_v(JObj),
+    'true' = wapi_call:event_v(JObj),
     FSM = props:get_value('fsm_pid', Props),
     acdc_agent_fsm:call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj).
 
@@ -416,8 +430,6 @@ presence_id(JObj, AgentId) ->
     lager:debug("find presence in ~p", [JObj]),
     wh_json:get_value(<<"Presence-ID">>, JObj, AgentId).
 
-presence_state(JObj) ->
-    presence_state(JObj, 'undefined').
 presence_state(JObj, State) ->
     wh_json:get_value(<<"Presence-State">>, JObj, State).
 

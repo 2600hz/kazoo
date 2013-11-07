@@ -34,7 +34,7 @@
          ,fsm_started/2
          ,add_endpoint_bindings/3, remove_endpoint_bindings/3
          ,outbound_call_id/2
-         ,unbind_from_cdr/2
+         ,remove_cdr_urls/2
          ,logout_agent/1
          ,agent_info/2
          ,maybe_update_presence_id/2
@@ -126,9 +126,6 @@
                       }
                      ,{{'acdc_agent_handler', 'handle_call_event'}
                        ,[{<<"call_event">>, <<"*">>}]
-                      }
-                     ,{{'acdc_agent_handler', 'handle_cdr'}
-                       ,[{<<"call_detail">>, <<"cdr">>}]
                       }
                      ,{{'acdc_agent_handler', 'handle_originate_resp'}
                        ,[{<<"resource">>, <<"*">>}]
@@ -286,7 +283,7 @@ remove_endpoint_bindings(Srv, Realm, User) ->
                                            ,{'user', User}
                                           ]).
 
-unbind_from_cdr(Srv, CallId) -> gen_listener:cast(Srv, {'unbind_from_cdr', CallId}).
+remove_cdr_urls(Srv, CallId) -> gen_listener:cast(Srv, {'remove_cdr_urls', CallId}).
 
 logout_agent(Srv) -> gen_listener:cast(Srv, 'logout_agent').
 
@@ -559,7 +556,7 @@ handle_cast({'bridge_to_member', Call, WinJObj, EPs, CDRUrl, RecordingUrl}, #sta
                                            ,wh_json:is_true(<<"Record-Caller">>, WinJObj, 'false')
                                           ),
 
-    acdc_util:bind_to_call_events(Call, CDRUrl),
+    acdc_util:bind_to_call_events(Call),
 
     AgentCallIds = maybe_connect_to_agent(MyQ, EPs, Call, RingTimeout, AgentId, CDRUrl),
 
@@ -583,10 +580,10 @@ handle_cast({'bridge_to_member', Call, WinJObj, _, CDRUrl, RecordingUrl}, #state
                                                                                 }=State) ->
     _ = whapps_call:put_callid(Call),
     lager:debug("connecting to thief at ~s", [whapps_call:call_id(Agent)]),
-    acdc_util:bind_to_call_events(Call, CDRUrl),
+    acdc_util:bind_to_call_events(Call),
 
     AgentCallId = outbound_call_id(Call, AgentId),
-    acdc_util:bind_to_call_events(AgentCallId, CDRUrl),
+    acdc_util:bind_to_call_events(AgentCallId),
 
     ShouldRecord = record_calls(Agent) orelse wh_json:is_true(<<"Record-Caller">>, WinJObj, 'false'),
 
@@ -657,10 +654,10 @@ handle_cast({'member_connect_resp', ReqJObj}, #state{agent_id=AgentId
              ,'hibernate'}
     end;
 
-handle_cast({'monitor_call', Call, CDRUrl, RecordingUrl}, State) ->
+handle_cast({'monitor_call', Call, _CDRUrl, RecordingUrl}, State) ->
     _ = whapps_call:put_callid(Call),
 
-    acdc_util:bind_to_call_events(Call, CDRUrl),
+    acdc_util:bind_to_call_events(Call),
 
     lager:debug("monitoring member call ~s", [whapps_call:call_id(Call)]),
 
@@ -729,8 +726,7 @@ handle_cast({'call_status_req', CallId}, #state{my_q=Q}=State) when is_binary(Ca
 handle_cast({'call_status_req', Call}, State) ->
     handle_cast({'call_status_req', whapps_call:call_id(Call)}, State);
 
-handle_cast({'unbind_from_cdr', CallId}, #state{cdr_urls=Urls}=State) ->
-    acdc_util:unbind_from_cdr(CallId),
+handle_cast({'remove_cdr_urls', CallId}, #state{cdr_urls=Urls}=State) ->
     {'noreply', State#state{cdr_urls=dict:erase(CallId, Urls)}, 'hibernate'};
 
 handle_cast('logout_agent', #state{acct_id=AcctId
@@ -965,7 +961,7 @@ call_id(Call) ->
 
 -spec maybe_connect_to_agent(ne_binary(), wh_json:objects(), whapps_call:call(), api_integer(), ne_binary(), api_binary()) ->
                                     ne_binaries().
-maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, CdrUrl) ->
+maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
     MCallId = whapps_call:call_id(Call),
     put('callid', MCallId),
 
@@ -981,7 +977,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, CdrUrl) ->
 
     {ACallIds, Endpoints} = lists:foldl(fun(EP, {Cs, Es}) ->
                                                 ACallId = outbound_call_id(Call, AgentId),
-                                                acdc_util:bind_to_call_events(ACallId, CdrUrl),
+                                                acdc_util:bind_to_call_events(ACallId),
 
                                                 {[ACallId | Cs]
                                                  ,[wh_json:set_values([{<<"Endpoint-Timeout">>, Timeout}

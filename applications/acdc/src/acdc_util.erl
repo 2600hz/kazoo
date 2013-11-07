@@ -10,8 +10,8 @@
 
 -export([get_endpoints/2
          ,bind_to_call_events/1, bind_to_call_events/2
-         ,unbind_from_call_events/1, unbind_from_call_events/2
-         ,unbind_from_cdr/1
+         ,unbind_from_call_events/1
+         ,unbind_from_call_events/2
          ,agents_in_queue/2
          ,agent_devices/2
          ,proc_id/0, proc_id/1, proc_id/2
@@ -87,45 +87,27 @@ get_endpoints(Call, ?NE_BINARY = AgentId) ->
     cf_user:get_endpoints(AgentId, [], Call).
 
 %% Handles subscribing/unsubscribing from call events
--spec bind_to_call_events(api_binary() | whapps_call:call()) -> 'ok'.
--spec bind_to_call_events(api_binary() | whapps_call:call(), api_binary()) -> 'ok'.
+-spec bind_to_call_events(api_binary() | {api_binary(), _} | whapps_call:call()) -> 'ok'.
+bind_to_call_events(Call) ->
+    bind_to_call_events(Call, self()).
 
--spec unbind_from_call_events(api_binary() | whapps_call:call()) -> 'ok'.
--spec unbind_from_call_events(api_binary() | whapps_call:call(), api_binary()) -> 'ok'.
--spec unbind_from_cdr(api_binary()) -> 'ok'.
-
-bind_to_call_events('undefined') -> 'ok';
-bind_to_call_events(?NE_BINARY = CallId) -> bind(CallId, ['events', 'error']);
-bind_to_call_events(Call) -> bind_to_call_events(whapps_call:call_id(Call)).
-
+-spec bind_to_call_events(api_binary() | {api_binary(), _} | whapps_call:call(), pid()) -> 'ok'.
 bind_to_call_events('undefined', _) -> 'ok';
-bind_to_call_events(Call, 'undefined') -> bind_to_call_events(Call);
-bind_to_call_events(?NE_BINARY = CallId, _Url) -> bind(CallId, ['events', 'error', 'cdr']);
-bind_to_call_events(Call, Url) -> bind_to_call_events(whapps_call:call_id(Call), Url).
+bind_to_call_events(?NE_BINARY = CallId, Pid) -> 
+    gen_listener:add_binding(Pid, 'call', [{'callid', CallId}]);
+bind_to_call_events({CallId, _}, Pid) -> bind_to_call_events(CallId, Pid);
+bind_to_call_events(Call, Pid) -> bind_to_call_events(whapps_call:call_id(Call), Pid).
 
-bind(CallId, Restrict) ->
-    gen_listener:add_binding(self(), 'call', [{'callid', CallId}
-                                              ,{'restrict_to', ['destroy_channel' | Restrict]}
-                                             ]).
+-spec unbind_from_call_events(api_binary() | {api_binary(), _} | whapps_call:call()) -> 'ok'.
+unbind_from_call_events(Call) ->
+    unbind_from_call_events(Call, self()).
 
-unbind_from_call_events('undefined') -> 'ok';
-unbind_from_call_events(?NE_BINARY = CallId) -> unbind(CallId, ['events', 'error']);
-unbind_from_call_events({CallId, _}) -> unbind_from_call_events(CallId);
-unbind_from_call_events(Call) -> unbind_from_call_events(whapps_call:call_id(Call)).
-
+-spec unbind_from_call_events(api_binary() | {api_binary(), _} | whapps_call:call(), pid()) -> 'ok'.
 unbind_from_call_events('undefined', _) -> 'ok';
-unbind_from_call_events(Call, 'undefined') -> unbind_from_call_events(Call);
-unbind_from_call_events(?NE_BINARY = CallId, _Url) -> unbind(CallId, ['events', 'error', 'cdr']);
-unbind_from_call_events({CallId, _}, Url) -> unbind_from_call_events(CallId, Url);
-unbind_from_call_events(Call, Url) -> unbind_from_call_events(whapps_call:call_id(Call), Url).
-
-unbind_from_cdr('undefined') -> 'ok';
-unbind_from_cdr(CallId) -> unbind(CallId, ['cdr']).
-
-unbind(CallId, Restrict) ->
-    gen_listener:rm_binding(self(), 'call', [{'callid', CallId}
-                                             ,{'restrict_to', ['destroy_channel' | Restrict]}
-                                            ]).
+unbind_from_call_events(?NE_BINARY = CallId, Pid) -> 
+    gen_listener:rm_binding(Pid, 'call', [{'callid', CallId}]);
+unbind_from_call_events({CallId, _}, Pid) -> unbind_from_call_events(CallId, Pid);
+unbind_from_call_events(Call, Pid) -> unbind_from_call_events(whapps_call:call_id(Call), Pid).
 
 -spec proc_id() -> ne_binary().
 -spec proc_id(pid()) -> ne_binary().
