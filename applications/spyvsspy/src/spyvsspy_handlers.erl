@@ -8,8 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(spyvsspy_handlers).
 
--export([handle_eavesdrop_req/2
-        ]).
+-export([handle_eavesdrop_req/2]).
 
 -include("spyvsspy.hrl").
 
