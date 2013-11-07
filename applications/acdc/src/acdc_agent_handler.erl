@@ -14,7 +14,6 @@
          ,handle_sync_resp/2
          ,handle_call_event/2
          ,handle_new_channel/2
-         ,handle_cdr/2
          ,handle_originate_resp/2
          ,handle_member_message/2
          ,handle_agent_message/2
@@ -253,19 +252,6 @@ handle_new_channel_acct(JObj, AcctId) ->
     gproc:send(?NEW_CHANNEL_REG(AcctId, FromUser), ?NEW_CHANNEL_FROM(CallId)),
     gproc:send(?NEW_CHANNEL_REG(AcctId, ToUser), ?NEW_CHANNEL_TO(CallId)),
     gproc:send(?NEW_CHANNEL_REG(AcctId, ReqUser), ?NEW_CHANNEL_TO(CallId)).
-
-handle_cdr(JObj, Props) ->
-    'true' = wapi_call:cdr_v(JObj),
-    _ = wh_util:put_callid(JObj),
-
-    Urls = props:get_value('cdr_urls', Props),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-
-    case catch dict:fetch(CallId, Urls) of
-        {'EXIT', _} -> lager:debug("no cdr url for call ~s", [CallId]);
-        Url -> acdc_util:send_cdr(Url, JObj)
-    end,
-    acdc_agent:unbind_from_cdr(props:get_value('server', Props), CallId).
 
 handle_originate_resp(JObj, Props) ->
     case wh_json:get_value(<<"Event-Name">>, JObj) of
