@@ -1527,7 +1527,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                 {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _} ->
                     lager:debug("channel was unbridged while collecting digits"),
                     {'error', 'channel_unbridge'};
-                {<<"call_event">>, <<"CHANNEL_HANGUP">>, _} ->
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was hungup while collecting digits"),
                     {'error', 'channel_hungup'};
                 {<<"error">>, _, <<"noop">>} ->
@@ -1620,7 +1620,7 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s", [Application]),
                     {'error', 'channel_destroy'};
-                {<<"call_event">>, <<"CHANNEL_HANGUP">>, _} ->
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was hungup while waiting for ~s", [Application]),
                     {'error', 'channel_hungup'};
                 {<<"error">>, _, Application} ->
@@ -1717,7 +1717,7 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
                     {'error', JObj};
-                {<<"call_event">>,<<"CHANNEL_HANGUP_COMPLETE">>,_} ->
+                {<<"call_event">>,<<"CHANNEL_DESTROY">>,_} ->
                     lager:debug("hangup occurred, waiting 60000 ms for ~s event", [Application]),
                     wait_for_headless_application(Application, Event, Type, 60000);
                 {<<"call_event">>,<<"CHANNEL_DESTROY">>, _} ->
@@ -1752,7 +1752,7 @@ wait_for_dtmf(Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     lager:debug("channel was destroyed while waiting for DTMF"),
                     {'error', 'channel_destroy'};
-                {<<"call_event">>, <<"CHANNEL_HANGUP">>} ->
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     lager:debug("channel was destroyed while waiting for DTMF"),
                     {'error', 'channel_hungup'};
                 {<<"error">>, _} ->
@@ -1806,7 +1806,7 @@ wait_for_bridge(Timeout, Fun, Call) ->
                     lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:encode(JObj)]),
                     {'error', JObj};
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
-                    CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
+                    CallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
                     lager:debug("channel bridged to ~s", [CallId]),
                     case is_function(Fun, 1) of
                         'false' -> 'ok';
@@ -1898,7 +1898,7 @@ wait_for_hangup() ->
     receive
         {'amqp_msg', JObj} ->
             case whapps_util:get_event_type(JObj) of
-                {<<"call_event">>, <<"CHANNEL_HANGUP">>} -> {'ok', 'channel_hungup'};
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', 'channel_hungup'};
                 _ -> wait_for_hangup()
             end;
         _ -> wait_for_hangup()
@@ -1938,7 +1938,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s or DTMF", [Application]),
                     {'error', 'channel_destroy'};
-                {<<"call_event">>, <<"CHANNEL_HANGUP">>, _} ->
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was hungup while waiting for ~s or DTMF", [Application]),
                     {'error', 'channel_hungup'};
                 {<<"error">>, _, Application} ->
