@@ -78,7 +78,6 @@
 
 -export([publish_action/2, publish_action/3
          ,publish_error/2, publish_error/3
-         ,publish_event/2, publish_event/3
          ,publish_command/2, publish_command/3
          ,publish_originate_ready/2, publish_originate_ready/3
          ,publish_originate_execute/2, publish_originate_execute/3
@@ -948,14 +947,7 @@ publish_error(CallID, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, [{<<"Event-Name">>, <<"dialplan">>}
                                                      | ?ERROR_RESP_VALUES
                                                     ], fun ?MODULE:error/1),
-    amqp_util:callevt_publish(CallID, Payload, 'event', ContentType).
-
--spec publish_event(ne_binary(), api_terms()) -> 'ok'.
--spec publish_event(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_event(CallID, JObj) ->
-    publish_event(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_event(CallID, Payload, ContentType) ->
-    amqp_util:callevt_publish(CallID, Payload, 'event', ContentType).
+    amqp_util:callevt_publish(wapi_call:event_routing_key(<<"diaplan">>, CallID), Payload, ContentType).
 
 -spec publish_originate_ready(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_originate_ready(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
