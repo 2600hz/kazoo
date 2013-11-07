@@ -270,14 +270,14 @@
                           ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>
                           ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PROGRESS_MEDIA">>
                           ,<<"CHANNEL_TRANSFEREE">>, <<"CHANNEL_TRANSFEROR">>
-                          ,<<"CHANNEL_REPLACED">>, <<"CHANNEL_HANGUP">>
+                          ,<<"CHANNEL_REPLACED">>
                      ]).
 
 -define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_DESTROY'
                     ,'CHANNEL_ANSWER', 'CALL_UPDATE', 'DETECTED_TONE'
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
                     ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE'
-                    ,'CHANNEL_HANGUP', 'CHANNEL_DATA'
+                    ,'CHANNEL_DATA'
                    ]).
 
 -define(FS_CUSTOM_EVENTS, ['whistle::noop', 'whistle::masquerade'

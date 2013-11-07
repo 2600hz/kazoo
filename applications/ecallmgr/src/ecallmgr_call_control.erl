@@ -133,7 +133,7 @@ start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
     %% try to handlecall more than once on a UUID we had to leave the
     %% call_events running on another ecallmgr... fun fun
     Bindings = [{'call', [{'callid', CallId}
-                          ,{'restrict_to', ['events']}
+                          ,{'restrict_to', [<<"usurp_control">>]}
                          ]}
                 ,{'dialplan', []}
                 ,{'self', []}
@@ -460,7 +460,10 @@ handle_info({'event', [CallId | Props]}, #state{callid=CallId
                                                 ,fetch_id=FetchId}=State) ->
     JObj = ecallmgr_call_events:to_json(Props),
     Application = wh_json:get_value(<<"Application-Name">>, JObj),
-    case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
+    case props:get_first_defined([<<"Event-Subclass">>
+                                  ,<<"Event-Name">>
+                                 ], Props)
+    of
         <<"whistle::", _/binary>> ->
             gen_listener:cast(self(), {'event_execute_complete', CallId, Application, JObj}),
             {'noreply', State};
@@ -498,7 +501,10 @@ handle_info({'event', [CallId | Props]}, #state{callid=CallId
             {'noreply', State}
     end;
 handle_info({'event', [_ | Props]}, #state{node=Node, callid=CallId}=State) ->
-    _ = case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
+    _ = case props:get_first_defined([<<"Event-Subclass">>
+                                      ,<<"Event-Name">>
+                                     ], Props)
+        of
             <<"CHANNEL_DESTROY">> -> handle_channel_destroy(Props, Node, CallId);
             <<"CHANNEL_CREATE">> -> handle_channel_create(Props, Node, CallId);
             _Else -> 'ok'
@@ -767,7 +773,7 @@ insert_command(#state{node=Node
                      ,{<<"Request">>, JObj}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
-            wapi_call:publish_event(CallId, Props),
+            wapi_call:publish_event(Props),
             CommandQ;
         <<"queue">> ->
             'true' = wapi_dialplan:queue_v(JObj),

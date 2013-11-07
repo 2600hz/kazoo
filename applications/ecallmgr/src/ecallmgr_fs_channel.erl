@@ -248,12 +248,12 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('bind_to_events', #state{node=Node}=State) ->
-    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_DATA">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_DESTROY">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_ANSWER">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_BRIDGE">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_UNBRIDGE">>}}) =:= 'true'
+    case gproc:reg({'p', 'l',  ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_DATA">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_CREATE">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_DESTROY">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_ANSWER">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_BRIDGE">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_UNBRIDGE">>)}) =:= 'true'
         andalso freeswitch:bind(Node, 'channels') =:= 'ok'
     of
         'true' -> {'noreply', State};
@@ -354,13 +354,16 @@ process_event(UUID, Props, Node) ->
 -spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     _ = ecallmgr_fs_channels:new(props_to_record(Props, Node)),
+    _ = ecallmgr_call_events:process_channel_event(Props),
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) =:= wh_util:to_binary(node()) of
         'true' -> ecallmgr_fs_authz:authorize(Props, UUID, Node);
         'false' -> 'ok'
     end;
-process_event(<<"CHANNEL_DESTROY">>, UUID, _, Node) ->
+process_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
+    _ = ecallmgr_call_events:process_channel_event(Props),
     ecallmgr_fs_channels:destroy(UUID, Node);
-process_event(<<"CHANNEL_ANSWER">>, UUID, _, _) ->
+process_event(<<"CHANNEL_ANSWER">>, UUID, Props, _) ->
+    _ = ecallmgr_call_events:process_channel_event(Props),
     ecallmgr_fs_channels:update(UUID, #channel.answered, 'true');
 process_event(<<"CHANNEL_DATA">>, UUID, Props, _) ->
     ecallmgr_fs_channels:updates(UUID, props_to_update(Props));
