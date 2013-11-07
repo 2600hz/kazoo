@@ -104,7 +104,7 @@ wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
 process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}) ->
     lager:info("member was bridged to agent, yay! took ~b s", [wh_util:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
-process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_HANGUP">>}) ->
+process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_DESTROY">>}) ->
     lager:info("member hungup while waiting in the queue (was there ~b s)", [wh_util:elapsed_s(Start)]),
     cancel_member_call(Call, <<"member_hungup">>),
     cf_exe:stop(Call);
