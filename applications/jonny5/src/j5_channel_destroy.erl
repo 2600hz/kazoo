@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(j5_call_cdr).
+-module(j5_channel_destroy).
 
 -export([handle_req/2]).
 
@@ -13,8 +13,9 @@
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_call:cdr_v(JObj),
+    'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
+    io:format("~p~n", [JObj]),
     timer:sleep(crypto:rand_uniform(1000, 3000)),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     CCV = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),

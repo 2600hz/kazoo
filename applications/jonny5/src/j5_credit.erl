@@ -32,6 +32,7 @@ reauthorize(#limits{reserve_amount=ReserveAmount}=Limits, JObj) ->
 -spec reconcile_cdr(ne_binary(), wh_json:object()) -> 'ok'.
 reconcile_cdr(Account, JObj) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    io:format("~p ~p~n", [wh_transactions:call_charges(Account, CallId), (-1 * wht_util:call_cost(JObj))]),
     Units = wh_transactions:call_charges(Account, CallId)
         - (-1 * wht_util:call_cost(JObj)),
     case Units > 0 of
