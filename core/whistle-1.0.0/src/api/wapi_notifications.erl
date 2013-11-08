@@ -202,8 +202,8 @@
 -define(NEW_ACCOUNT_TYPES, []).
 
 %% Notify Port Request
--define(PORT_REQUEST_HEADERS, [<<"Account-ID">>, <<"Number">>, <<"Port">>]).
--define(OPTIONAL_PORT_REQUEST_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>]).
+-define(PORT_REQUEST_HEADERS, [<<"Account-ID">>, <<"Port-Request-ID">>]).
+-define(OPTIONAL_PORT_REQUEST_HEADERS, [<<"Authorized-By">>]).
 -define(PORT_REQUEST_VALUES, [{<<"Event-Category">>, <<"notification">>}
                               ,{<<"Event-Name">>, <<"port_request">>}
                              ]).
@@ -213,8 +213,8 @@
 -define(PORTED_HEADERS, [<<"Account-ID">>, <<"Number">>, <<"Port">>]).
 -define(OPTIONAL_PORTED_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>]).
 -define(PORTED_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                ,{<<"Event-Name">>, <<"ported">>}
-                               ]).
+                        ,{<<"Event-Name">>, <<"ported">>}
+                       ]).
 -define(PORTED_TYPES, []).
 
 %% Notify Cnam Request

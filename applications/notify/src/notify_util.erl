@@ -147,7 +147,7 @@ compile_default_template(TemplateModule, Category, Key) ->
 get_default_template(Category, Key) ->
     File = category_to_file(Category),
     case file:consult(File) of
-        {'ok', Props} -> 
+        {'ok', Props} ->
             case props:get_value(Key, Props) of
                 'undefined' -> 'undefined';
                 Template ->
@@ -158,7 +158,7 @@ get_default_template(Category, Key) ->
             lager:warning("failed to find default template for ~s/~s: ~p", [Category, Key, _R]),
             'undefined'
     end.
-                     
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -333,18 +333,18 @@ find_admin(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_account_doc(wh_json:object()) ->
-                                   {'ok', wh_json:object()} |
-                                   {'error', term()} |
-                                   'undefined'.
+                             {'ok', wh_json:object()} |
+                             {'error', term()} |
+                             'undefined'.
 get_account_doc(JObj) ->
     case {wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Account-ID">>, JObj)} of
         {'undefined', 'undefined'} -> 'undefined';
-        {'undefined', Id1} ->
-            couch_mgr:open_doc(wh_util:format_account_id(Id1, 'encoded'), Id1);
-        {Id2, 'undefined'} ->
-            couch_mgr:open_doc(Id2, wh_util:format_account_id(Id2, 'raw'));
+        {'undefined', Id} ->
+            couch_mgr:open_cache_doc(wh_util:format_account_id(Id, 'encoded'), Id);
+        {Db, 'undefined'} ->
+            couch_mgr:open_cache_doc(Db, wh_util:format_account_id(Db, 'raw'));
         {Db, AccountId} ->
-            couch_mgr:open_doc(Db, AccountId)
+            couch_mgr:open_cache_doc(Db, AccountId)
     end.
 
 -spec category_to_file(ne_binary()) -> iolist() | 'undefined'.
