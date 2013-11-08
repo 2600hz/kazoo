@@ -71,7 +71,7 @@ load(DocId, #cb_context{}=Context, Opts) when is_binary(DocId) ->
             lager:debug("loaded doc ~s(~s) from ~s"
                         ,[DocId, wh_json:get_value(<<"_rev">>, JObj), cb_context:account_db(Context)]
                        ),
-            case wh_util:is_true(wh_json:get_value(<<"pvt_deleted">>, JObj)) of
+            case wh_json:is_true(<<"pvt_deleted">>, JObj) of
                 'true' -> cb_context:add_system_error('bad_identifier', [{'details', DocId}],  Context);
                 'false' -> cb_context:store('db_doc', JObj, handle_couch_mgr_success(JObj, Context))
             end
