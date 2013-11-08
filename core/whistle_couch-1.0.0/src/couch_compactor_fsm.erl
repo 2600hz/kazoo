@@ -18,6 +18,7 @@
          ,status/0
          ,is_compactor_running/0
          ,cancel_current_job/0
+         ,cancel_current_shard/0
          ,cancel_all_jobs/0
          ,start_auto_compaction/0
          ,stop_auto_compaction/0
@@ -186,6 +187,15 @@ cancel_current_job() ->
         'false' -> {'error', 'compactor_down'}
     end.
 
+-spec cancel_current_shard() -> {'ok', 'shard_cancelled'} |
+                                {'error', 'no_shard_running'} |
+                                not_compacting().
+cancel_current_shard() ->
+    case is_compactor_running() of
+        'true' -> gen_fsm:sync_send_event(?SERVER, 'cancel_current_shard');
+        'false' -> {'error', 'compactor_down'}
+    end.
+
 -spec cancel_all_jobs() -> {'ok', 'jobs_cancelled'} | not_compacting().
 cancel_all_jobs() ->
     case is_compactor_running() of
@@ -333,6 +343,8 @@ ready('status', _, #state{}=State) ->
 
 ready('cancel_current_job', _, State) ->
     {'reply', {'error', 'no_job_running'}, 'ready', State};
+ready('cancel_current_shard', _, State) ->
+    {'reply', {'error', 'no_shard_running'}, 'ready', State};
 
 ready('cancel_all_jobs', _, #state{queued_jobs=Jobs}=State) ->
     _ = [ maybe_send_update(P, Ref, 'job_cancelled') || {_, P, Ref} <- queue:to_list(Jobs)],
@@ -855,6 +867,12 @@ compact('status', _, #state{current_node=N
                       ,{'dbs_left', length(Dbs)}
                      ]}, 'compact', State};
 
+compact('cancel_current_shard', _, #state{shards_pid_ref='undefined'}=State) ->
+    {'reply', {'ok', 'shard_cancelled'}, 'compact', State};
+compact('cancel_current_shard', _, #state{shards_pid_ref={Pid, Ref}}=State) ->
+    lager:debug("cancelling pidref ~p(~p)", [Pid, Ref]),
+    Pid ! 'cancel_shard',
+    {'reply', {'ok', 'shard_cancelled'}, 'compact', State};
 compact('cancel_current_job', _, #state{current_job_pid=Pid
                                         ,current_job_ref=Ref
                                        }=State) ->
@@ -935,6 +953,8 @@ wait('status', _, #state{current_node=N
      ,'wait'
      ,State
     };
+wait('cancel_current_shard', _, State) ->
+    {'reply', {'error', 'no_shard_running'}, 'wait', State, 'hibernate'};
 wait('cancel_current_job', _, #state{current_job_pid=Pid
                                      ,current_job_ref=Ref
                                      ,wait_ref=WRef
@@ -1219,16 +1239,12 @@ compact_shards(AdminConn, Node, Ss, DDs) ->
 wait_for_pids(_, []) -> lager:debug("done waiting for compaction pids");
 wait_for_pids(MaxWait, [{P,Ref}|Ps]) ->
     lager:debug("waiting ~p for compaction pid ~p(~p)", [MaxWait, P, Ref]),
-    case erlang:is_process_alive(P) of
-        'true' -> wait_for_pids(MaxWait, Ps, P, Ref);
-        'false' ->
-            lager:debug("compaction for ~p(~p) already done", [P, Ref]),
-            wait_for_pids(MaxWait, Ps)
-    end.
-
-wait_for_pids(MaxWait, Ps, P, Ref) ->
-    receive {'DOWN', Ref, 'process', P, _} ->
+    receive
+        {'DOWN', Ref, 'process', P, _} ->
             lager:debug("recv down from ~p(~p)", [P, Ref]),
+            wait_for_pids(MaxWait, Ps);
+        'cancel_shard' ->
+            lager:debug("cancelling waiting for ~p(~p)", [P, Ref]),
             wait_for_pids(MaxWait, Ps)
     after MaxWait ->
             lager:debug("timed out waiting for ~p(~p), moving on", [P, Ref]),
