@@ -243,7 +243,7 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
     update(Id, Context);
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
-    read(Id, Context).
+    is_deletable(read(Id, Context)).
 
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_READY) ->
     maybe_move_state(Id, Context, ?PORT_READY);
@@ -263,7 +263,20 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?PORT_ATTACHMENT, Attach
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     load_attachment(Id, AttachmentId, Context);
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
-    load_attachment(Id, AttachmentId, Context).
+    is_deletable(load_attachment(Id, AttachmentId, Context)).
+
+-spec is_deletable(cb_context:context()) -> cb_context:context().
+-spec is_deletable(cb_context:context(), ne_binary()) -> cb_context:context().
+is_deletable(Context) ->
+    is_deletable(Context, wh_json:get_value(?PORT_STATE, cb_context:doc(Context))).
+is_deletable(Context, ?PORT_WAITING) ->
+    Context;
+is_deletable(Context, ?PORT_REJECT) ->
+    Context;
+is_deletable(Context, _PortState) ->
+    lager:debug("port is in state ~s, can't modify", [_PortState]),
+    cb_context:add_system_error(<<"port request is not modifiable in this state">>, Context).
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -392,7 +405,8 @@ read(Id, Context) ->
     Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
     PubDoc = create_public_port_request_doc(cb_context:doc(Context1)),
     cb_context:set_resp_data(cb_context:set_doc(Context1, PubDoc)
-                             ,PubDoc).
+                             ,PubDoc
+                            ).
 
 -spec read_descendants(cb_context:context()) -> cb_context:context().
 read_descendants(Context) ->
