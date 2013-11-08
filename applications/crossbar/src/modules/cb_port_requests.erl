@@ -292,13 +292,30 @@ put(#cb_context{}=Context, Id, ?PORT_ATTACHMENT) ->
                                  ,Opts
                                 );
 put(#cb_context{}=Context, Id, ?PORT_READY) ->
-    post(Context, Id);
+    try send_port_request_notification(Context, Id) of
+        _ ->
+            lager:debug("port request notification sent"),
+            post(Context, Id)
+    catch
+        _E:_R ->
+            lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
+            cb_context:add_system_error(<<"failed to send port request email to system admins">>, Context)
+    end;
 put(#cb_context{}=Context, Id, ?PORT_PROGRESS) ->
     post(Context, Id);
 put(#cb_context{}=Context, Id, ?PORT_COMPLETE) ->
     post(Context, Id);
 put(#cb_context{}=Context, Id, ?PORT_REJECT) ->
     post(Context, Id).
+
+-spec send_port_request_notification(cb_context:context(), ne_binary()) -> 'ok'.
+send_port_request_notification(Context, Id) ->
+    Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
+           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
+           ,{<<"Port-Request-ID">>, Id}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_request/1).
 
 %%--------------------------------------------------------------------
 %% @public
