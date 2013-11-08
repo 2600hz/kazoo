@@ -243,7 +243,7 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
     update(Id, Context);
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
-    is_deletable(read(Id, Context)).
+    is_deletable(crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB))).
 
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_READY) ->
     maybe_move_state(Id, Context, ?PORT_READY);
@@ -268,7 +268,7 @@ validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id, ?PORT_ATTACHMENT, Att
 -spec is_deletable(cb_context:context()) -> cb_context:context().
 -spec is_deletable(cb_context:context(), ne_binary()) -> cb_context:context().
 is_deletable(Context) ->
-    is_deletable(Context, wh_json:get_value(?PORT_STATE, cb_context:doc(Context))).
+    is_deletable(Context, wh_json:get_first_defined([?PORT_PVT_STATE, ?PORT_STATE], cb_context:doc(Context))).
 is_deletable(Context, ?PORT_WAITING) ->
     Context;
 is_deletable(Context, ?PORT_REJECT) ->
@@ -276,7 +276,6 @@ is_deletable(Context, ?PORT_REJECT) ->
 is_deletable(Context, _PortState) ->
     lager:debug("port is in state ~s, can't modify", [_PortState]),
     cb_context:add_system_error(<<"port request is not modifiable in this state">>, Context).
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -403,10 +402,14 @@ create(#cb_context{}=Context) ->
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
-    PubDoc = create_public_port_request_doc(cb_context:doc(Context1)),
-    cb_context:set_resp_data(cb_context:set_doc(Context1, PubDoc)
-                             ,PubDoc
-                            ).
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            PubDoc = create_public_port_request_doc(cb_context:doc(Context1)),
+            cb_context:set_resp_data(cb_context:set_doc(Context1, PubDoc)
+                                     ,PubDoc
+                                    );
+        _ -> Context1
+    end.
 
 -spec read_descendants(cb_context:context()) -> cb_context:context().
 read_descendants(Context) ->
@@ -513,8 +516,11 @@ normalize_attachments_map(K, V) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation(Id, #cb_context{}=Context) ->
-    on_successful_validation(Id, Context, can_update_port_request(Context)).
+on_successful_validation('undefined', #cb_context{}=Context) ->
+    on_successful_validation('undefined', Context, 'true');
+on_successful_validation(Id, Context) ->
+    Context1 = crossbar_doc:load_merge(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
+    on_successful_validation(Id, Context1, can_update_port_request(Context1)).
 
 on_successful_validation(Id, Context, 'true') ->
     JObj = cb_context:doc(Context),
@@ -539,7 +545,10 @@ on_successful_validation(_Id, Context, 'false') ->
 -spec can_update_port_request(cb_context:context()) -> boolean().
 -spec can_update_port_request(cb_context:context(), ne_binary()) -> boolean().
 can_update_port_request(Context) ->
-    can_update_port_request(Context, wh_json:get_value(?PORT_STATE, cb_context:doc(Context))).
+    lager:debug("port req: ~p", [cb_context:doc(Context)]),
+    can_update_port_request(Context, wh_json:get_first_defined([?PORT_PVT_STATE, ?PORT_STATE]
+                                                               ,cb_context:doc(Context)
+                                                              )).
 can_update_port_request(_Context, ?PORT_WAITING) ->
     'true';
 can_update_port_request(Context, ?PORT_READY) ->
@@ -554,12 +563,11 @@ can_update_port_request(_Context, ?PORT_REJECT) ->
 -spec successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 successful_validation('undefined', Context) ->
     JObj = cb_context:doc(Context),
-    lager:debug("create doc: ~p", [JObj]),
     cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, <<"port_request">>}
                                                     ,{?PORT_PVT_STATE, ?PORT_WAITING}
                                                    ], JObj));
-successful_validation(Id, #cb_context{}=Context) ->
-    crossbar_doc:load_merge(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
+successful_validation(_Id, #cb_context{}=Context) ->
+    Context.
 
 -spec check_number_portability(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 check_number_portability(PortId, Number, Context) ->
