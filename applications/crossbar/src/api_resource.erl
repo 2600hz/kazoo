@@ -577,7 +577,7 @@ maybe_flatten_jobj(#cb_context{resp_data=RespData
                               }) ->
     Query = wh_json:to_proplist(JsonQuery),
     case proplists:get_all_values(<<"identifier">>, Query) of
-        [] -> 
+        [] ->
             Routines = [fun(J) -> check_integrity(J) end
                         ,fun(J) -> create_csv_header(J) end
                         ,fun(J) -> json_objs_to_csv(J) end
