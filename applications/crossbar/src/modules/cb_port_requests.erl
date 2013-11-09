@@ -205,7 +205,9 @@ content_types_provided(#cb_context{}=Context, _Id, ?PORT_ATTACHMENT, _Attachment
                                     cb_context:context().
 content_types_accepted(#cb_context{}=Context, _Id, ?PORT_ATTACHMENT) ->
     CTA = [{'from_binary', ?ATTACHMENT_MIME_TYPES}],
-    Context#cb_context{content_types_accepted=CTA}.
+    Context#cb_context{content_types_accepted=CTA};
+content_types_accepted(#cb_context{}=Context, _Id, _) ->
+    Context.
 
 content_types_accepted(#cb_context{req_verb=?HTTP_POST}=Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     CTA = [{'from_binary', ?ATTACHMENT_MIME_TYPES}],
