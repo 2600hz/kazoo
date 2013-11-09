@@ -41,27 +41,34 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:object(), proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:port_request_v(JObj),
     whapps_util:put_callid(JObj),
 
     lager:debug("a port change has been requested, sending email notification"),
 
-    {'ok', AccountJObj} = notify_util:get_account_doc(JObj),
+    {'ok', AccountDoc} = notify_util:get_account_doc(JObj),
+    AccountJObj = wh_doc:public_fields(AccountDoc),
 
-    lager:debug("creating port change notice"),
+    lager:debug("creating port change notice for ~s(~s)", [wh_json:get_value(<<"name">>, AccountJObj)
+                                                           ,wh_json:get_value(<<"pvt_account_id">>, AccountDoc)
+                                                          ]),
 
     Props = create_template_props(JObj, AccountJObj),
+    [lager:debug("tmpl: ~p", [P]) || P <- Props],
 
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"port_request">>, <<"email_text_template">>], AccountJObj),
     {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
+    lager:debug("txt body: ~s", [TxtBody]),
 
     CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"port_request">>, <<"email_html_template">>], AccountJObj),
     {'ok', HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
+    lager:debug("html body: ~s", [HTMLBody]),
 
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"port_request">>, <<"email_subject_template">>], AccountJObj),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
+    lager:debug("subject: ~s", [Subject]),
 
     PortRequestId = wh_json:get_value(<<"Port-Request-ID">>, JObj),
     EmailAttachments =
@@ -90,10 +97,9 @@ handle_req(JObj, _Props) ->
 create_template_props(NotifyJObj, AccountJObj) ->
     Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, NotifyJObj)),
 
-    {'ok', PortReq} = couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, wh_json:get_value(<<"Port-Request-ID">>, NotifyJObj)),
+    {'ok', PortDoc} = couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, wh_json:get_value(<<"Port-Request-ID">>, NotifyJObj)),
 
-
-    [{<<"request">>, notify_util:json_to_template_props(PortReq)}
+    [{<<"request">>, notify_util:json_to_template_props(wh_doc:public_fields(PortDoc))}
      ,{<<"account">>, notify_util:json_to_template_props(AccountJObj)}
      ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
      ,{<<"service">>, notify_util:get_service_props(AccountJObj, ?MOD_CONFIG_CAT)}
@@ -125,6 +131,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
                } | Attachements
               ]
             },
+    lager:debug("sending email from ~s to ~s", [From, To]),
     notify_util:send_email(From, To, Email),
     'ok'.
 
