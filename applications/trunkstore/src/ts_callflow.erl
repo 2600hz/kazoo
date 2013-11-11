@@ -160,14 +160,14 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
             end;
 
         { _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
-            BLeg = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
+            BLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
             lager:info("bridged from ~s to ~s successful", [ALeg, BLeg]),
 
             _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
             _ = amqp_util:basic_consume(Q),
             {'bridged', State#ts_callflow_state{bleg_callid=BLeg}};
 
-        { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+        { _, <<"CHANNEL_DESTROY">>, <<"call_event">> } ->
             lager:info("channel hungup before bridge"),
             {'hangup', State};
 
@@ -263,7 +263,7 @@ process_event_for_cdr(#ts_callflow_state{aleg_callid=ALeg}=State, JObj) ->
                     ignore
             end;
 
-        { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
+        { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
             lager:info("Hangup received, waiting on CDR"),
             {hangup, State};
 
