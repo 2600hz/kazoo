@@ -16,11 +16,10 @@
 -include("amqp_util.hrl").
 
 -define(SERVER, ?MODULE).
--define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{wh_amqp_connection_sup, supervisor}
-                   ,{wh_amqp_channels, worker}
-                   ,{wh_amqp_connections, worker}
-                   ,{wh_amqp_bootstrap, worker}
+-define(CHILDREN, [?SUPER('wh_amqp_connection_sup')
+                   ,?WORKER('wh_amqp_channels')
+                   ,?WORKER('wh_amqp_connections')
+                   ,?WORKER('wh_amqp_bootstrap')
                   ]).
 
 %% ===================================================================
@@ -35,11 +34,11 @@
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 -spec stop_bootstrap/0 :: () -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 stop_bootstrap() ->
-    _ = supervisor:terminate_child(?SERVER, wh_amqp_bootstrap).
+    _ = supervisor:terminate_child(?SERVER, 'wh_amqp_bootstrap').
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -56,11 +55,10 @@ stop_bootstrap() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

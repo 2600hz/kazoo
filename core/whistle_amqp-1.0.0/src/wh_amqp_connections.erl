@@ -26,6 +26,7 @@
 -export([disconnected/1]).
 -export([declare_exchange/1]).
 -export([redeclare_exchanges/1]).
+-export([all/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -117,7 +118,9 @@ remove(URI) ->
 -spec current() -> {'ok', wh_amqp_connection()} |
                    {'error', 'no_available_connection'}.
 current() ->
-    Match = #wh_amqp_connection{available='true', _='_'},
+    Match = #wh_amqp_connection{available='true'
+                                ,crossconnect='false'
+                                ,_='_'},
     case ets:match_object(?TAB, Match) of
         [Connection|_] ->
             {'ok', Connection};
@@ -173,7 +176,11 @@ update_exchanges(URI, Exchanges) ->
     gen_server:cast(?MODULE, {'update_exchanges', wh_util:to_binary(URI), Exchanges}).
 
 -spec connected(wh_amqp_connection()) -> wh_amqp_connection().
-connected(#wh_amqp_connection{connection=Pid, uri=NewURI}=Connection) when is_pid(Pid) ->
+connected(#wh_amqp_connection{connection=Pid
+                              ,crossconnect='true'}=Connection) when is_pid(Pid) ->
+    gen_server:call(?MODULE, {'connected', Connection});
+connected(#wh_amqp_connection{connection=Pid
+                              ,uri=NewURI}=Connection) when is_pid(Pid) ->
     case current() of
         {'ok', #wh_amqp_connection{uri=CurrentURI}} ->
             C = gen_server:call(?MODULE, {'connected', Connection}),
@@ -203,6 +210,8 @@ declare_exchange(#'exchange.declare'{}=Command) ->
 redeclare_exchanges(#wh_amqp_connection{}=Connection) ->
     redeclare_exchanges(exchanges(), Connection).
 
+all() ->
+    ets:tab2list(?TAB). 
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -254,18 +263,28 @@ handle_call({'connected', #wh_amqp_connection{uri=URI
                ,{#wh_amqp_connection.connection_ref, Ref}
                ,{#wh_amqp_connection.available, 'true'}
                ,{#wh_amqp_connection.control_channel, CtrlPid}
+               ,{#wh_amqp_connection.started, now()}
               ],
     ets:update_element(?TAB, URI, Updates),
-    {'reply', C#wh_amqp_connection{available='true'}, ensure_same_connection(State)};
+    case C#wh_amqp_connection.crossconnect of
+        'true' -> {'reply', C#wh_amqp_connection{available='true'}, State};
+        'false' -> {'reply', C#wh_amqp_connection{available='true'}
+                    ,ensure_same_connection(State)}
+    end;
 handle_call({'disconnected', #wh_amqp_connection{uri=URI}=C}, _, State) ->
     Updates = [{#wh_amqp_connection.connection, 'undefined'}
                ,{#wh_amqp_connection.connection_ref, 'undefined'}
                ,{#wh_amqp_connection.available, 'false'}
                ,{#wh_amqp_connection.exchanges, []}
                ,{#wh_amqp_connection.control_channel, 'undefined'}
+               ,{#wh_amqp_connection.started, 'undefined'}
               ],
     ets:update_element(?TAB, URI, Updates),
-    {'reply', C#wh_amqp_connection{available='false'}, ensure_same_connection(State)};
+    case C#wh_amqp_connection.crossconnect of
+        'true' -> {'reply', C#wh_amqp_connection{available='false'}, State};
+        'false' ->  {'reply', C#wh_amqp_connection{available='false'}
+                     ,ensure_same_connection(State)}
+    end;
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 

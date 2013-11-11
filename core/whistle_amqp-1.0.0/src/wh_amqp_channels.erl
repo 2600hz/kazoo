@@ -30,6 +30,7 @@
 -export([monitor_consumer/1]).
 -export([demonitor_channel/1]).
 -export([demonitor_consumer/1]).
+-export([all/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -141,6 +142,9 @@ demonitor_consumer(#wh_amqp_channel{consumer_ref=Ref}=Channel) when is_reference
     gen_server:call(?MODULE, {'demonitor_consumer', Channel});
 demonitor_consumer(Channel) -> Channel.
 
+all() ->
+    ets:tab2list(?TAB).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -231,7 +235,7 @@ handle_cast({'force_reconnect', #wh_amqp_connection{uri=URI}=Connection}, State)
                   end
           end),
     {'noreply', State};
-handle_cast({command, Pid, #'basic.qos'{}=Command}, State) ->
+handle_cast({'command', Pid, #'basic.qos'{}=Command}, State) ->
     _ = case ets:match(?TAB, #wh_amqp_channel{consumer=Pid, commands='$1', _='_'}) of
             [] -> 'ok';
             [[Commands]] ->
@@ -243,16 +247,16 @@ handle_cast({command, Pid, #'basic.qos'{}=Command}, State) ->
                 ets:update_element(?TAB, Pid, {#wh_amqp_channel.commands, C})
         end,
     {'noreply', State};
-handle_cast({command, Pid, #'queue.delete'{queue=Queue}}, State) ->
+handle_cast({'command', Pid, #'queue.delete'{queue=Queue}}, State) ->
     Filter = fun(#'queue.declare'{queue=Q}) when Q =:= Queue -> 'false';
                 (_) -> 'true'
              end,
     _ = filter_commands(Pid, Filter),
     {'noreply', State};
-handle_cast({command, Pid, #'queue.unbind'{queue=Queue
-                                           ,exchange=Exchange
-                                           ,routing_key=RoutingKey
-                                          }}, State) ->
+handle_cast({'command', Pid, #'queue.unbind'{queue=Queue
+                                             ,exchange=Exchange
+                                             ,routing_key=RoutingKey
+                                            }}, State) ->
     Filter = fun(#'queue.bind'{queue=Q, exchange=E, routing_key=R})
                    when Q =:= Queue, E =:= Exchange, R =:= RoutingKey ->
                      'false';

@@ -18,8 +18,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILD(Name, Type, Args), fun(N, T, A) -> {N, {wh_amqp_connection, start_link, [A]}, permanent, 5000, T, [N]} end(Name, Type, Args)).
-
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -32,17 +30,16 @@
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 -spec add/1 :: (#wh_amqp_connection{}) -> {'error', _} | {'ok','undefined' | pid()} | {'ok','undefined' | pid(), _}.
 add(#wh_amqp_connection{manager=Name}=Connection) ->
-    supervisor:start_child(?SERVER, ?CHILD(Name, worker, Connection)).
+    supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS('wh_amqp_connection', Name, [Connection])).
 
 -spec remove/1 :: (#wh_amqp_connection{} | text()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
-remove(#wh_amqp_connection{manager=Name}) ->
-    remove(Name);
+remove(#wh_amqp_connection{manager=Name}) -> remove(Name);
 remove(URI) ->
-    Name = wh_util:to_atom(URI, true),
+    Name = wh_util:to_atom(URI, 'true'),
     _ = supervisor:terminate_child(?SERVER, Name),
     supervisor:delete_child(?SERVER, Name).
 
@@ -61,11 +58,11 @@ remove(URI) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     Children = [],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, Children}}.

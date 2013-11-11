@@ -135,9 +135,11 @@
                              ,connection :: pid() | '_'
                              ,connection_ref :: reference() | '_'
                              ,control_channel :: 'undefined' | pid() | '_'
-                             ,available = false :: boolean()
+                             ,available = 'false' :: boolean()
+                             ,crossconnect = 'false' :: boolean()
                              ,prechannels = [] :: [{reference(), pid()},...] | [] | '_'
                              ,exchanges = [] :: wh_exchanges() | '_'
+                             ,started = now() :: wh_now() | '_'
                             }).
 -type wh_amqp_connection() :: #wh_amqp_connection{}.
 -type wh_amqp_connections() :: [wh_amqp_connection(),...] | [].

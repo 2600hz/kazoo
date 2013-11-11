@@ -155,7 +155,8 @@ publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg)
     end.
 
 -spec retry_publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
-retry_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
+retry_publish(#'basic.publish'{exchange=_Exchange
+                               ,routing_key=_RK}=BasicPub, AmqpMsg) ->
     case wh_amqp_channels:get_channel() of
         #wh_amqp_channel{channel=Pid, uri=URI} when is_pid(Pid) ->
             amqp_channel:call(Pid, BasicPub, AmqpMsg),
@@ -240,7 +241,9 @@ handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
     _ = wh_amqp_channels:command(Channel, Command#'queue.declare'{queue=Q}),
     {'ok', Ok};
 handle_command_result(#'queue.unbind_ok'{}
-                      ,#'queue.unbind'{exchange=_Exchange, routing_key=_RK, queue=_Q}=Command
+                      ,#'queue.unbind'{exchange=_Exchange
+                                       ,routing_key=_RK
+                                       ,queue=_Q}=Command
                       ,#wh_amqp_channel{channel=Pid}=Channel) ->
     lager:debug("unbound ~s from ~s exchange (routing key ~s) via channel ~p", [_Q, _Exchange, _RK, Pid]),
     _ = wh_amqp_channels:command(Channel, Command),
