@@ -354,16 +354,18 @@ process_event(UUID, Props, Node) ->
 -spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     _ = ecallmgr_fs_channels:new(props_to_record(Props, Node)),
-    _ = ecallmgr_call_events:process_channel_event(Props),
-    case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) =:= wh_util:to_binary(node()) of
+    _ = maybe_publish_channel_state(Props, Node),
+    case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
+        =:= wh_util:to_binary(node()) 
+    of
         'true' -> ecallmgr_fs_authz:authorize(Props, UUID, Node);
         'false' -> 'ok'
     end;
 process_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
-    _ = ecallmgr_call_events:process_channel_event(Props),
+    _ = maybe_publish_channel_state(Props, Node),
     ecallmgr_fs_channels:destroy(UUID, Node);
-process_event(<<"CHANNEL_ANSWER">>, UUID, Props, _) ->
-    _ = ecallmgr_call_events:process_channel_event(Props),
+process_event(<<"CHANNEL_ANSWER">>, UUID, Props, Node) ->
+    _ = maybe_publish_channel_state(Props, Node),
     ecallmgr_fs_channels:update(UUID, #channel.answered, 'true');
 process_event(<<"CHANNEL_DATA">>, UUID, Props, _) ->
     ecallmgr_fs_channels:updates(UUID, props_to_update(Props));
@@ -377,6 +379,22 @@ process_event(<<"CHANNEL_UNBRIDGE">>, UUID, Props, _) ->
     ecallmgr_fs_channels:update(OtherLeg, #channel.other_leg, 'undefined');
 process_event(_, _, _, _) ->
     'ok'.
+
+-spec maybe_publish_channel_state(wh_proplist(), atom() | ne_binary()) -> 'ok'.
+maybe_publish_channel_state(Props, Node) when not is_binary(Node) ->
+    maybe_publish_channel_state(Props, wh_util:to_binary(Node));
+maybe_publish_channel_state(Props, Node) ->
+    %% NOTE: this will significantly reduce AMQP request however if a ecallmgr
+    %%   becomes disconnected any calls it previsouly controlled will not produce
+    %%   CDRs.  The long-term strategy is to round-robin CDR events from mod_kazoo.
+    case ecallmgr_config:get_boolean(<<"restrict_channel_state_publisher">>, 'true') of
+        'false' -> ecallmgr_call_events:process_channel_event(Props);
+        'true' ->
+            case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props, Node) =:= Node of
+                'true' -> ecallmgr_call_events:process_channel_event(Props);
+                'false' -> lager:debug("channel state for call controlled by another ecallmgr, not publishing")
+            end
+    end.
 
 -spec props_to_record(wh_proplist(), atom()) -> channel().
 props_to_record(Props, Node) ->
