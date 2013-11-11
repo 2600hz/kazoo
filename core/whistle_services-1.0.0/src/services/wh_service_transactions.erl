@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2013, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -19,11 +19,11 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec current_billing_period(ne_binary(), atom()) -> [wh_json:object(), ...] | atom().
+-spec current_billing_period(ne_binary(), atom()) -> wh_json:objects() | atom().
 current_billing_period(AccountId, 'subscriptions') ->
     wh_bookkeeper_braintree:subscriptions(AccountId).
 
--spec current_billing_period(ne_binary(), atom(), tuple()) -> [wh_json:object(), ...] | atom().
+-spec current_billing_period(ne_binary(), atom(), tuple()) -> wh_json:objects() | atom().
 current_billing_period(AccountId, 'transactions', {Min, Max}) ->
     wh_bookkeeper_braintree:transactions(AccountId, Min, Max).
 
@@ -33,6 +33,6 @@ current_billing_period(AccountId, 'transactions', {Min, Max}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile/1 :: (wh_services:services()) -> wh_services:services().
+-spec reconcile(wh_services:services()) -> wh_services:services().
 reconcile(Services) ->
     Services.
