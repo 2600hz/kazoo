@@ -392,7 +392,6 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
             JObj = wh_json:set_value([<<"slots">>, SlotNumber], UpdatedSlot, ParkedCalls),
             case couch_mgr:save_doc(whapps_call:account_db(Call), JObj) of
                 {'ok', _} ->
-                    publish_usurp_control(Call),
                     PresenceId = wh_json:get_value(<<"Presence-ID">>, Slot),
                     ParkingId = wh_util:to_hex_binary(crypto:md5(PresenceId)),
                     lager:info("update presence-id '~s' with state: early", [PresenceId]),
@@ -564,29 +563,6 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
             _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
             cf_exe:transfer(Call)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Kill any other cf_exe or ecallmgr_call_control processes that are
-%% hanging around waiting for the parked call on hold to hit the
-%% timeout.
-%% @end
-%%--------------------------------------------------------------------
--spec publish_usurp_control(whapps_call:call()) -> 'ok'.
-publish_usurp_control(Call) ->
-    publish_usurp_control(cf_exe:callid(Call), Call).
-
--spec publish_usurp_control(ne_binary(), whapps_call:call()) -> 'ok'.
-publish_usurp_control(CallId, Call) ->
-    ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-    lager:info("usurp call control of ~s", [ExeFetchId]),
-    Notice = [{<<"Call-ID">>, CallId}
-              ,{<<"Fetch-ID">>, ExeFetchId}
-              ,{<<"Reason">>, <<"park">>}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ],
-    wapi_call:publish_usurp_control(CallId, Notice).
 
 %%--------------------------------------------------------------------
 %% @private

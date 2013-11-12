@@ -39,11 +39,17 @@ handle(Data, Call) ->
         {'ok', _} ->
             lager:info("completed successful bridge to user"),
             cf_exe:stop(Call);
-        {'fail', _}=F ->
-            cf_util:handle_bridge_failure(F, Call);
+        {'fail', _}=Reason -> maybe_handle_bridge_failure(Reason, Call);
         {'error', _R} ->
             lager:info("error bridging to user: ~p", [_R]),
             cf_exe:continue(Call)
+    end.
+
+-spec maybe_handle_bridge_failure(_, whapps_call:call()) -> 'ok'.
+maybe_handle_bridge_failure(Reason, Call) ->
+    case cf_util:handle_bridge_failure(Reason, Call) of
+        'not_found' -> cf_exe:continue(Call);
+        'ok' -> 'ok'
     end.
 
 %%--------------------------------------------------------------------
