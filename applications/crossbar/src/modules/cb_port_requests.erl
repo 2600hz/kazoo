@@ -662,12 +662,21 @@ maybe_move_state(Id, Context, PortState) ->
     end.
 
 maybe_move_state(Context, PortRequest, ?PORT_WAITING, ?PORT_READY) ->
-    lager:debug("moving port request to 'ready'"),
-    cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_READY}
-                                                    ,{?PORT_STATE, ?PORT_READY}
-                                                   ]
-                                                   ,PortRequest
-                                                  ));
+    lager:debug("maybe moving port request to 'ready'"),
+
+    try lists:all(fun create_port_in/1, wh_json:get_value(<<"numbers">>, PortRequest)) of
+        'true' ->
+            lager:debug("created port-in numbers"),
+            cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_READY}
+                                                            ,{?PORT_STATE, ?PORT_READY}
+                                                           ]
+                                                           ,PortRequest
+                                                          ))
+    catch
+        'throw':{Error, _N, Reason} ->
+            lager:debug("failed to create port-in: ~s: ~s", [Error, Reason]),
+            cb_context:add_validation_error(<<"numbers">>, Error, Reason, Context)
+    end;
 maybe_move_state(Context, PortRequest, ?PORT_READY, ?PORT_PROGRESS) ->
     lager:debug("moving port request to 'progress'"),
     cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_PROGRESS}
@@ -699,3 +708,11 @@ maybe_move_state(Context, PortRequest, ?PORT_REJECT, ?PORT_READY) ->
 maybe_move_state(Context, _PortRequest, _PortState, CurrentState) ->
     lager:debug("maybe move from ~s to ~s", [CurrentState, _PortState]),
     cb_context:add_validation_error(CurrentState, <<"type">>, <<"Transitioning to new state not allowed">>, Context).
+
+-spec create_port_in(ne_binary()) -> 'true'.
+create_port_in(Number) ->
+    N = wnm_number:get(Number),
+    N1 = wnm_number:create_port_in(N),
+    N2 = wnm_number:activate_feature(<<"port">>, N1),
+    wnm_number:save(N2),
+    'true'.
