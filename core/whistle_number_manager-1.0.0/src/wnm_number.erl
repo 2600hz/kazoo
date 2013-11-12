@@ -1015,23 +1015,32 @@ commit_activations(#number{activations=Activations, services=Services}=N) ->
 -spec activate_feature(ne_binary(), wnm_number()) -> wnm_number().
 -spec activate_feature(ne_binary(), integer(), wnm_number()) -> wnm_number().
 
-activate_feature(Feature, #number{billing_id='undefined', assigned_to=Account}=N) ->
+activate_feature(Feature, #number{billing_id='undefined'
+                                  ,assigned_to=Account
+                                 }=N) ->
     activate_feature(Feature, N#number{billing_id=wh_services:get_billing_id(Account)});
-activate_feature(Feature, #number{services='undefined', billing_id=Account}=N) ->
+activate_feature(Feature, #number{services='undefined'
+                                  ,billing_id=Account
+                                 }=N) ->
     activate_feature(Feature, N#number{services=wh_services:fetch(Account)});
 activate_feature(Feature, #number{services=Services}=N) ->
     Units = wh_service_phone_numbers:feature_activation_charge(Feature, Services),
     activate_feature(Feature, Units, N).
+
 activate_feature(Feature, 0, #number{features=Features}=N) ->
     lager:debug("no activation charge for ~s", [Feature]),
     N#number{features=sets:add_element(Feature, Features)};
-activate_feature(Feature, Units, #number{current_balance='undefined', billing_id=Account}=N) ->
+activate_feature(Feature, Units, #number{current_balance='undefined'
+                                         ,billing_id=Account
+                                        }=N) ->
     activate_feature(Feature, Units, N#number{current_balance=wht_util:current_balance(Account)});
 activate_feature(Feature, Units, #number{current_balance=Balance}=N) when Balance - Units < 0 ->
     Reason = io_lib:format("not enough credit to activate feature '~s' for $~p", [Feature, wht_util:units_to_dollars(Units)]),
-    lager:debug("~s", [Reason]),
+    lager:debug("failed to activate: ~s", [Reason]),
     error_service_restriction(Reason, N);
-activate_feature(Feature, Units, #number{current_balance=Balance, features=Features}=N) ->
+activate_feature(Feature, Units, #number{current_balance=Balance
+                                         ,features=Features
+                                        }=N) ->
     N#number{activations=append_feature_debit(Feature, Units, N)
              ,features=sets:add_element(Feature, Features)
              ,current_balance=Balance - Units
