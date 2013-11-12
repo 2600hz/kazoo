@@ -27,6 +27,10 @@ deps/rabbitmq_server-*/plugins-src/eldap-wrapper/eldap-git/generated/
 deps/rabbitmq_server-*/plugins-src/rabbitmq-erlang-client/deps.mk
 deps/rabbitmq_server-*/plugins-src/rabbitmq-erlang-client/deps/
 deps/rabbitmq_server-*/plugins-src/rabbitmq-server
+deps/rabbitmq_server-*/plugins-src/rabbitmq-amqp1.0/include/rabbit_amqp1_0_framing.hrl
+deps/rabbitmq_server-*/plugins-src/rabbitmq-amqp1.0/src/rabbit_amqp1_0_framing0.erl
+deps/rabbitmq_server-*/plugins-src/sockjs-erlang-wrapper/hash.mk
+deps/rabbitmq_server-*/plugins-src/sockjs-erlang-wrapper/hash.mk
 deps/rabbitmq_server-*/plugins/
 deps/rabbitmq_server-*/src/rabbit_ctl_usage.erl
 deps/rabbitmq_server-*/src/rabbit_framing_amqp_0_8.erl
