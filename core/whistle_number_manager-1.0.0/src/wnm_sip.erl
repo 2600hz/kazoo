@@ -45,11 +45,14 @@ encode(#sip_uri{scheme=S, user=U, host=H, port=5060}) ->
 encode(#sip_uri{scheme=S, user=U, host=H, port=P}) ->
     list_to_binary([atom_to_list(S), ":", U, "@", H, ":", integer_to_list(P)]).
 
+-spec parse_user(binary(), sip_uri()) -> sip_uri().
 parse_user(Bin, Uri) ->
     case parse_until(<<"@">>, Bin) of
         {_, <<>>} -> throw({'invalid_uri_user', Bin});
         {User, Rest} -> parse_host(Rest, Uri#sip_uri{user=User})
     end.
+
+-spec parse_host(binary(), sip_uri()) -> sip_uri().
 parse_host(Bin, Uri) ->
     case parse_until(<<":">>, Bin) of
         {<<>>, _} -> throw({'invalid_uri_host', Bin});
