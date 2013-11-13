@@ -60,13 +60,17 @@ exchange_declared(URI, #'exchange.declare'{}=Command) ->
         {'error', 'not_found'} -> 'ok'
     end.
 
--spec get_channel(wh_amqp_connection()) -> {'ok', pid()} | {'error', _}.
-get_channel(#wh_amqp_connection{manager=Srv}=Connection) ->
-    case gen_server:call(Srv, 'get_channel') of
-        {'ok', _}=Ok -> Ok;
-        {'error', 'no_channels'} ->
-            lager:debug("no prechannels available", []),
-            open_channel(Connection);
+-spec get_channel(ne_binary()) -> {'ok', pid()} | {'error', _}.
+get_channel(URI) ->
+    case wh_amqp_connections:find(URI) of
+        #wh_amqp_connection{manager=Srv}=Connection ->    
+            case gen_server:call(Srv, 'get_channel') of
+                {'ok', _}=Ok -> Ok;
+                {'error', 'no_channels'} ->
+                    lager:debug("no prechannels available", []),
+                    open_channel(Connection);
+                {'error', _}=E -> E
+            end;
         {'error', _}=E -> E
     end.
 

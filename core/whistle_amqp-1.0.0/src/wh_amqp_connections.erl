@@ -110,20 +110,20 @@ remove(URI) ->
     case ets:lookup(?TAB, URI) of
         [] -> 'ok';
         [#wh_amqp_connection{}=Connection] ->
-            _ = wh_amqp_channels:lost_connection(Connection),
+            _ = wh_amqp_channels:lost_connection(URI),
             _ = wh_amqp_connection_sup:remove(Connection),
             'ok'
     end.
 
--spec current() -> {'ok', wh_amqp_connection()} |
+-spec current() -> {'ok', ne_binary()} |
                    {'error', 'no_available_connection'}.
 current() ->
     Match = #wh_amqp_connection{available='true'
                                 ,crossconnect='false'
                                 ,_='_'},
     case ets:match_object(?TAB, Match) of
-        [Connection|_] ->
-            {'ok', Connection};
+        [#wh_amqp_connection{uri=URI}|_] ->
+            {'ok', URI};
         _Else ->
             {'error', 'no_available_connection'}
     end.
@@ -197,8 +197,8 @@ connected(#wh_amqp_connection{connection=Pid
     end.
 
 -spec disconnected(wh_amqp_connection()) -> wh_amqp_connection().
-disconnected(#wh_amqp_connection{}=Connection) ->
-    _ = wh_amqp_channels:lost_connection(Connection),
+disconnected(#wh_amqp_connection{uri=URI}=Connection) ->
+    _ = wh_amqp_channels:lost_connection(URI),
     gen_server:call(?MODULE, {'disconnected', Connection}).
 
 -spec declare_exchange(#'exchange.declare'{}) -> 'ok'.
@@ -328,8 +328,8 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info('$ensure_same_connection', State) ->
     _ = case current() of
-            {'ok', #wh_amqp_connection{}=Connection} ->
-                wh_amqp_channels:force_reconnect(Connection);
+            {'ok', URI} ->
+                wh_amqp_channels:force_reconnect(URI);
             {'error', _} -> 'ok'
         end,
     {'noreply', State};
