@@ -34,7 +34,6 @@ handle(Req0, State) ->
             {'ok', Req2} = case file:read_file(File) of
                                {'ok', Content} ->
                                    lager:debug("sending fax contents", []),
-                                   TmpDir = whapps_config:get_binary(?CONFIG_CAT, <<"file_cache_path">>, <<"/tmp/">>),
                                    Headers = [{<<"Content-Type">>, <<"image/tiff">>}],
                                    cowboy_req:reply(200, Headers, Content, Req1);
                                {'error', _Reason} ->
