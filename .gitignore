@@ -43,3 +43,4 @@ deps/rabbitmq_client-*
 applications/*/priv/archive_data/*
 /deps/rabbitmq_server-3.2.0/plugins-src/rabbitmq-amqp1.0/include/rabbit_amqp1_0_framing.hrl
 /deps/rabbitmq_server-3.2.0/plugins-src/rabbitmq-amqp1.0/src/rabbit_amqp1_0_framing0.erl
+/.edts
