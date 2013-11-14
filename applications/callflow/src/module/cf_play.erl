@@ -26,6 +26,7 @@ handle(Data, Call) ->
         <<"/system_media", _/binary>> = Path -> play(Data, Call, Path);
         <<"system_media", _/binary>> = Path -> play(Data, Call, Path);
         <<"local_stream://",_/binary>> = Path -> play(Data, Call, Path);
+        <<"silence_stream://",_/binary>> = Path -> play(Data, Call, Path);
         Path when AccountId =/= 'undefined' ->
             lager:info("prepending media ID with /~s/", [AccountId]),
             Path1 = <<$/, (wh_util:to_binary(AccountId))/binary, $/, Path/binary>>,
