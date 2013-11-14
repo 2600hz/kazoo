@@ -408,7 +408,7 @@ get_prefix(City) ->
             {'error', <<"Unable to acquire numbers missing carrier url">>};
         Url ->
             ReqParam  = wh_util:uri_encode(binary:bin_to_list(City)),
-            Req = binary:bin_to_list(<<Url/binary, Country/binary, "/city?pattern=">>),
+            Req = binary:bin_to_list(<<Url/binary, "/", Country/binary, "/city?pattern=">>),
             Uri = lists:append(Req, ReqParam),
             case ibrowse:send_req(Uri, [], 'get') of
                 {'error', Reason} ->
@@ -420,7 +420,7 @@ get_prefix(City) ->
                         Data -> {'ok', Data}
                     end;
                 {'ok', _Status, _Headers, Body} ->
-                    {'error', Body}
+                    {'error', wh_json:decode(Body)}
             end
     end.
             
