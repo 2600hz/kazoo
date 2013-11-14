@@ -1865,7 +1865,7 @@ is_call_up(CallId) when is_binary(CallId) ->
         {'error', _} -> 'false';
         {'ok', Resp} ->
                     case wapi_call:get_status(Resp) of
-                        <<"success">> -> 'true';
+                        <<"active">> -> 'true';
                         _ -> 'false'
                     end
     end;
