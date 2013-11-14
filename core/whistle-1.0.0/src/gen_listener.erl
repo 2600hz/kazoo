@@ -502,7 +502,7 @@ handle_info({'$initialize_gen_listener', Timeout}, #state{bindings=Bindings
                                    }}
     end;
 handle_info('$is_gen_listener_consuming', #state{is_consuming='false'}=State) ->
-    catch wh_amqp_channel:remove(),
+    catch wh_amqp_channels:remove(),
     self() ! ?INITIALIZE_MSG,
     {'noreply', State#state{queue='undefined'}};
 handle_info('$is_gen_listener_consuming', State) ->

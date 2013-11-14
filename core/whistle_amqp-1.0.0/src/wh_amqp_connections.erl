@@ -299,7 +299,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'force_reconnect', Connection}, State) ->
-    wh_amqp_channels:force_reconnect(Connection),
+    wh_amqp_channels:force_reconnect(Connection#wh_amqp_connection.uri),
     {'noreply', State};
 handle_cast({'add_exchange', #'exchange.declare'{exchange=Name}=Command}
             ,#state{exchanges=Exchanges}=State) ->

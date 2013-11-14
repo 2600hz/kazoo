@@ -12,12 +12,8 @@
          ,consumer_pid/1
          ,remove_consumer_pid/0
         ]).
--export([close/0
-         ,close/1
-        ]).
--export([remove/0
-         ,remove/1
-        ]).
+-export([open/1]).
+-export([close/1]).
 -export([maybe_publish/2]).
 -export([publish/2]).
 -export([command/1
@@ -39,20 +35,24 @@ consumer_pid(Pid) when is_pid(Pid) -> put('$wh_amqp_consumer', Pid).
 -spec remove_consumer_pid() -> 'undefined'.
 remove_consumer_pid() -> put('$wh_amqp_consumer', 'undefined').
 
--spec remove() -> 'ok'.
-remove() ->
-    case wh_amqp_channels:find() of
-        {'error', _} -> 'ok';
-        #wh_amqp_channel{}=Channel -> remove(Channel)
-    end.
+-spec open(wh_amqp_channel()) -> wh_amqp_channel().
+open(#wh_amqp_channel{}=Channel) ->
+    _ = notify_consumer(Channel),
+    _ = maybe_reestablish(Channel),
+    Channel#wh_amqp_channel{reconnecting='false'}.
 
--spec remove(wh_amqp_channel()) -> 'ok'.
-remove(#wh_amqp_channel{consumer_ref=Ref}=Channel) when is_reference(Ref) ->
-    remove(wh_amqp_channels:demonitor_consumer(Channel));
-remove(#wh_amqp_channel{channel=Pid}=Channel) when is_pid(Pid) ->
-    remove(close(Channel));
-remove(#wh_amqp_channel{}=Channel) ->
-    wh_amqp_channels:remove(Channel).
+-spec close(wh_amqp_channel()) -> wh_amqp_channel().
+close(#wh_amqp_channel{commands=[_|_]
+                       ,channel=Pid}=Channel)
+  when is_pid(Pid) ->
+    _ = cancel_consumers(Channel),
+    _ = cancel_queues(Channel),
+    close(Channel#wh_amqp_channel{commands=[]});
+close(#wh_amqp_channel{channel=Pid, uri=URI}=Channel) when is_pid(Pid) ->
+    lager:debug("closed channel ~p on ~s", [Pid, URI]),
+    catch gen_server:call(Pid, {'close', 200, <<"Goodbye">>}, 5000),
+    Channel#wh_amqp_channel{channel='undefined'};
+close(Channel) -> Channel.
 
 %% maybe publish will only publish a message if the requestor already has a channel
 -spec maybe_publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
@@ -202,25 +202,25 @@ handle_command_result(_Else, _R, _) ->
     lager:warning("unexpected AMQP command result: ~p", [_R]),
     {'error', 'unexpected_result'}.
 
--spec close() -> wh_amqp_channel().
-close() ->
-    case wh_amqp_channels:find() of
-        {'error', _} -> #wh_amqp_channel{};
-        #wh_amqp_channel{}=Channel -> close(Channel)
-    end.
+-spec notify_consumer(wh_amqp_channel()) -> 'ok'.
+notify_consumer(#wh_amqp_channel{consumer=Consumer
+                                 ,reconnecting=Reconnecting}) ->
+    gen_server:cast(Consumer, {'wh_amqp_channel', {'new_channel', Reconnecting}}).
 
--spec close(wh_amqp_channel()) -> wh_amqp_channel().
-close(#wh_amqp_channel{commands=[_|_]}=Channel) ->
-    _ = cancel_consumers(Channel),
-    _ = cancel_queues(Channel),
-    close(Channel#wh_amqp_channel{commands=[]});
-close(#wh_amqp_channel{channel=Pid, uri=URI}=Channel) when is_pid(Pid) ->
-    lager:debug("closed channel ~p on ~s", [Pid, URI]),
-    C = wh_amqp_channels:demonitor_channel(Channel),
-    catch gen_server:call(Pid, {'close', 200, <<"Goodbye">>}, 5000),
-    C;
-close(Channel) ->
-    Channel.
+-spec maybe_reestablish(wh_amqp_channel()) -> 'ok' | pid().
+maybe_reestablish(#wh_amqp_channel{commands=[]}) -> 'ok';
+maybe_reestablish(#wh_amqp_channel{commands=Commands}=Channel) ->
+    spawn(fun() -> 
+                  reestablish(Channel#wh_amqp_channel{commands=lists:reverse(Commands)
+                                                      ,reconnecting='true'
+                                                     })
+          end).
+
+-spec reestablish(wh_amqp_channel()) -> 'ok'.
+reestablish(#wh_amqp_channel{commands=[]}) -> 'ok';
+reestablish(#wh_amqp_channel{commands=[Command|Commands]}=Channel) ->
+    catch command(Channel#wh_amqp_channel{commands=[]}, Command),
+    reestablish(Channel#wh_amqp_channel{commands=Commands}).
 
 -spec cancel_consumers(wh_amqp_channel()) -> 'ok'.
 cancel_consumers(#wh_amqp_channel{commands=[]}) -> 'ok';

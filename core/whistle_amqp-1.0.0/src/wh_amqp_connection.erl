@@ -64,13 +64,13 @@ exchange_declared(URI, #'exchange.declare'{}=Command) ->
 get_channel(URI) ->
     case wh_amqp_connections:find(URI) of
         #wh_amqp_connection{manager=Srv}=Connection ->    
-            case gen_server:call(Srv, 'get_channel') of
-                {'ok', _}=Ok -> Ok;
-                {'error', 'no_channels'} ->
+%%            case gen_server:call(Srv, 'get_channel') of
+%%                {'ok', _}=Ok -> Ok;
+%%                {'error', 'no_channels'} ->
                     lager:debug("no prechannels available", []),
                     open_channel(Connection);
-                {'error', _}=E -> E
-            end;
+%%                {'error', _}=E -> E
+%%            end;
         {'error', _}=E -> E
     end.
 
@@ -96,11 +96,7 @@ init([#wh_amqp_connection{uri=URI}=Connection]) ->
     _ = process_flag('trap_exit', 'true'),
     put('callid', ?LOG_SYSTEM_ID),
     self() ! {'connect', ?START_TIMEOUT},
-    %% in case we crashed and our sup has restarted us....
-    case wh_amqp_connections:find(URI) of
-        {'error', 'not_found'} -> {'ok', Connection};
-        Conn -> Conn
-    end.
+    {'ok', Connection};
 
 %%--------------------------------------------------------------------
 %% @private
