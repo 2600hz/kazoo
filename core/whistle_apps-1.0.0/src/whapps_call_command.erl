@@ -1638,7 +1638,7 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
             wait_for_message(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
     after
         RecvTimeout ->
-            case is_call_up(Call) of
+            case Timeout =:= 'infinity' andalso is_call_up(Call) of
                 'true' ->
                     wait_for_message(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start));
                 'false' -> {'error', 'timeout'}
@@ -1691,7 +1691,7 @@ wait_for_application(Call, Application, Event, Type, Timeout) ->
             wait_for_application(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
     after
         RecvTimeout ->
-            case is_call_up(Call) of
+            case Timeout =:= 'infinity' andalso is_call_up(Call) of
                 'true' -> wait_for_application(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start));
                 'false' -> {'error', 'timeout'}
             end
@@ -1847,7 +1847,7 @@ wait_for_bridge(Timeout, Fun, Call) ->
         _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call)
     after
         RecvTimeout ->
-            case is_call_up(Call) of
+            case Timeout =:= 'infinity' andalso is_call_up(Call) of
                 'true' -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call);
                 'false' -> {'error', 'timeout'}
             end
