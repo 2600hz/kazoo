@@ -427,7 +427,7 @@ get_channel_vars_fold({K, V}, Acc) ->
 codec_mappings(<<"G722_32">>) ->
     <<"G7221@32000h">>;
 codec_mappings(<<"G722_16">>) ->
-    <<"G7221@16000h">>;
+    <<"G722:G7221@16000h">>;
 codec_mappings(<<"CELT_32">>) ->
     <<"CELT@32000h">>;
 codec_mappings(<<"CELT_48">>) ->
