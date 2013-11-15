@@ -664,7 +664,9 @@ maybe_move_state(Id, Context, PortState) ->
 maybe_move_state(Context, PortRequest, ?PORT_WAITING, ?PORT_READY) ->
     lager:debug("maybe moving port request to 'ready'"),
 
-    try lists:all(fun create_port_in/1, wh_json:get_value(<<"numbers">>, PortRequest)) of
+    Numbers = wh_json:get_keys(wh_json:get_value(<<"numbers">>, PortRequest, wh_json:new())),
+
+    try lists:all(fun create_port_in/1, Numbers) of
         'true' ->
             lager:debug("created port-in numbers"),
             cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_READY}
@@ -710,7 +712,7 @@ maybe_move_state(Context, _PortRequest, _PortState, CurrentState) ->
     cb_context:add_validation_error(CurrentState, <<"type">>, <<"Transitioning to new state not allowed">>, Context).
 
 -spec create_port_in(ne_binary()) -> 'true'.
-create_port_in(Number) ->
+create_port_in(?NE_BINARY = Number) ->
     N = wnm_number:get(Number),
     N1 = wnm_number:create_port_in(N),
     N2 = wnm_number:activate_feature(<<"port">>, N1),
