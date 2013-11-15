@@ -118,7 +118,9 @@ lookup_auth_user(Username, Realm) ->
                              {'error', _}.
 check_auth_user(JObj, Username, Realm) ->
     case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], JObj))
-        andalso wh_json:is_true([<<"doc">>, <<"enabled">>], JObj, 'false')
+        andalso 
+        (wh_json:get_value(<<"pvt_type">>, JObj) =/= <<"device">>
+             orelse wh_json:is_true([<<"doc">>, <<"enabled">>], JObj, 'false'))
     of
         'false' -> {'error', 'not_found'};
         'true' -> {'ok', jobj_to_auth_user(JObj, Username, Realm)}
