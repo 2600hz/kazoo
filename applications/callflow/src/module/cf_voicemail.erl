@@ -370,10 +370,12 @@ main_menu(#mailbox{is_setup='false'}=Box, Call) ->
     main_menu(setup_mailbox(Box, Call), Call, 1);
 main_menu(Box, Call) -> main_menu(Box, Call, 1).
 
-main_menu(_, Call, Loop) when Loop > 4 ->
+main_menu(#mailbox{owner_id=OwnerId}, Call, Loop) when Loop > 4 ->
     %% If there have been too may loops with no action from the caller this
     %% is likely a abandonded channel, terminate
+    AccountDb = whapps_call:account_db(Call),
     lager:info("entered main menu with too many invalid entries"),
+    _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
     _ = whapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
     'ok';
 main_menu(#mailbox{owner_id=OwnerId
