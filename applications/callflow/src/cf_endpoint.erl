@@ -571,32 +571,37 @@ guess_endpoint_type(Endpoint, []) ->
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
+-record(clid, {caller_number
+               ,caller_name
+               ,callee_name
+               ,callee_number}).
+
+-spec get_clid(wh_json:object(), wh_json:object(), whapps_call:call()) -> #clid{}.
+get_clid(Endpoint, Properties, Call) ->
+    case wh_json:is_true(<<"suppress_clid">>, Properties) of
+        'true' -> #clid{};
+        'false' ->
+            {InternalNumber, InternalName} = cf_attributes:caller_id(<<"internal">>, Call),
+            CallerNumber = case whapps_call:caller_id_number(Call) of
+                               InternalNumber -> 'undefined';
+                               Number -> Number
+                           end,
+            CallerName = case whapps_call:caller_id_name(Call) of 
+                             InternalName -> 'undefined'; 
+                             Name -> Name
+                         end,
+            {CalleeNumber, CalleeName} = cf_attributes:callee_id(Endpoint, Call),
+            #clid{caller_number=CallerNumber
+                  ,caller_name=CallerName
+                  ,callee_number=CalleeNumber
+                  ,callee_name=CalleeName}
+    end.
+
 -spec create_sip_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                  wh_json:object().
 create_sip_endpoint(Endpoint, Properties, Call) ->
-    CIDName = whapps_call:caller_id_name(Call),
-    CIDNum = whapps_call:caller_id_number(Call),
-
-    {CalleeNum, CalleeName} = cf_attributes:callee_id(Endpoint, Call),
-
-    {IntCIDNumber, IntCIDName} =
-        case cf_attributes:caller_id(<<"internal">>, Call) of
-            %% if both the internal name and number are the same as the current
-            %% caller id then leave it alone
-            {CIDNum, CIDName} -> {'undefined', 'undefined'};
-            %% if both the internal name is the same as the current
-            %% caller id then leave it alone
-            {AltCIDNum, CIDName} -> {AltCIDNum, 'undefined'};
-            %% if both the internal number is the same as the current
-            %% caller id then leave it alone
-            {CIDNum, AltCIDName} -> {'undefined', AltCIDName};
-            %% if both the internal number and name are different, use them!
-            {AltCIDNum, AltCIDName} -> {AltCIDNum, AltCIDName}
-        end,
-
-    OutgoingCIDNum = maybe_format_caller_id_number(Endpoint, IntCIDNumber, Call),
+    Clid= get_clid(Endpoint, Properties, Call),
     SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
-
     Prop =
         [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
          ,{<<"To-User">>, get_to_user(SIPJObj, Properties)}
@@ -607,12 +612,12 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Route">>, wh_json:get_value(<<"route">>, SIPJObj)}
          ,{<<"Proxy-IP">>, wh_json:get_value(<<"proxy">>, SIPJObj)}
          ,{<<"Forward-IP">>, wh_json:get_value(<<"forward">>, SIPJObj)}
-         ,{<<"Callee-ID-Name">>, CalleeName}
-         ,{<<"Callee-ID-Number">>, CalleeNum}
-         ,{<<"Outbound-Callee-ID-Name">>, CalleeName}
-         ,{<<"Outbound-Callee-ID-Number">>, CalleeNum}
-         ,{<<"Outbound-Caller-ID-Number">>, OutgoingCIDNum}
-         ,{<<"Outbound-Caller-ID-Name">>, IntCIDName}
+         ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
+         ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
+         ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
+         ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
+         ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
+         ,{<<"Outbound-Caller-ID-Name">>, Clid#clid.caller_name}
          ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Endpoint)}
          ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
          ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
@@ -886,28 +891,3 @@ get_force_fax(JObj) ->
         'false' -> 'undefined';
         'true' -> <<"self">>
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Conditionally formats the caller id number
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_format_caller_id_number(wh_json:object(), ne_binary(), whapps_call:call()) -> ne_binary().
-maybe_format_caller_id_number(_Endpoint, CIDNum, _Call) ->
-%% TODO: MOVE FROM CF_ATTRIBUTES
-    CIDNum.
-%%    case cf_attributes:caller_id_attributes(Endpoint, <<"format">>, Call) of
-%%        'undefined' -> CIDNum;
-%%        FormatObj ->
-%%            case wh_json:is_json_object(FormatObj) of
-%%                false -> CIDNum;
-%%                true -> wh_json:foldl(fun(Key, Value, CIDNum1) ->
-%%                                              format_caller_id_number_flag(Key, Value, CIDNum1)
-%%                                      end, CIDNum, FormatObj)
-%%            end
-%%    end.
-%%
-%%-spec format_caller_id_number_flag(ne_binary(), term(), ne_binary()) -> ne_binary().
-%%format_caller_id_number_flag(<<"remove_plus">>, true, <<$+, CIDNum/binary>>) -> CIDNum;
-%%format_caller_id_number_flag(_Key, _Value, CIDNum) -> CIDNum.
