@@ -147,8 +147,6 @@
 -type audio_macro_prompts() :: [audio_macro_prompt(),...] | [].
 -export_type([audio_macro_prompt/0]).
 
--define(HOUR_IN_MS, 360000).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -1616,7 +1614,6 @@ wait_for_message(Call, Application, Event, Type) ->
 
 wait_for_message(Call, Application, Event, Type, Timeout) ->
     Start = erlang:now(),
-    RecvTimeout = recv_timeout(Timeout),
     receive
         {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
@@ -1637,12 +1634,7 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
         _ ->
             wait_for_message(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
     after
-        RecvTimeout ->
-            case Timeout =:= 'infinity' andalso is_call_up(Call) of
-                'true' ->
-                    wait_for_message(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start));
-                'false' -> {'error', 'timeout'}
-            end
+        Timeout -> {'error', 'timeout'}
     end.
 
 %%--------------------------------------------------------------------
@@ -1672,7 +1664,6 @@ wait_for_application(Call, Application, Event, Type) ->
 
 wait_for_application(Call, Application, Event, Type, Timeout) ->
     Start = erlang:now(),
-    RecvTimeout = recv_timeout(Timeout),
     receive
         {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
@@ -1690,11 +1681,7 @@ wait_for_application(Call, Application, Event, Type, Timeout) ->
         _ ->
             wait_for_application(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
     after
-        RecvTimeout ->
-            case Timeout =:= 'infinity' andalso is_call_up(Call) of
-                'true' -> wait_for_application(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start));
-                'false' -> {'error', 'timeout'}
-            end
+        Timeout -> {'error', 'timeout'}
     end.
 
 %%--------------------------------------------------------------------
@@ -1802,9 +1789,6 @@ wait_for_bridge(Timeout, _, _) when Timeout < 0 ->
     {'error', 'timeout'};
 wait_for_bridge(Timeout, Fun, Call) ->
     Start = erlang:now(),
-
-    RecvTimeout = recv_timeout(Timeout),
-
     receive
         {'amqp_msg', JObj} ->
             Disposition = wh_json:get_value(<<"Disposition">>, JObj),
@@ -1846,35 +1830,8 @@ wait_for_bridge(Timeout, Fun, Call) ->
         %%   this process hangs around...
         _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call)
     after
-        RecvTimeout ->
-            case Timeout =:= 'infinity' andalso is_call_up(Call) of
-                'true' -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call);
-                'false' -> {'error', 'timeout'}
-            end
+        Timeout -> {'error', 'timeout'}
     end.
-
--spec is_call_up(whapps_call:call() | ne_binary()) -> boolean().
-is_call_up(CallId) when is_binary(CallId) ->
-    case whapps_util:amqp_pool_request([{<<"Call-ID">>, CallId}
-                                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                       ]
-                                       ,fun wapi_call:publish_channel_status_req/1
-                                       ,fun wapi_call:channel_status_resp_v/1
-                                      )
-    of
-        {'error', _} -> 'false';
-        {'ok', Resp} ->
-                    case wapi_call:get_status(Resp) of
-                        <<"active">> -> 'true';
-                        _ -> 'false'
-                    end
-    end;
-is_call_up(Call) ->
-    is_call_up(whapps_call:call_id_direct(Call)).
-
--spec recv_timeout(wh_timeout()) -> integer().
-recv_timeout('infinity') -> ?HOUR_IN_MS;
-recv_timeout(T) -> T.
 
 %%--------------------------------------------------------------------
 %% @public
