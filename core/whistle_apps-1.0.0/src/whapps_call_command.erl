@@ -1958,7 +1958,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
     end.
 
 -type wait_for_fax_ret() :: {'ok', wh_json:object()} |
-                            {'error', 'channel_destroy' | 'channel_hungup' | wh_json:object()}.
+                            {'error', 'timeout' | wh_json:object()}.
 
 -define(WAIT_FOR_FAX_TIMEOUT, whapps_config:get_integer(<<"fax">>, <<"wait_for_fax_timeout_ms">>, 3600000)).
 
@@ -1977,8 +1977,9 @@ wait_for_fax(Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"receive_fax">>} ->
                     {'ok', wh_json:set_value(<<"Fax-Success">>, 'true', JObj)};
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    lager:debug("channel hungup but no end of fax"),
-                    {'error', 'channel_hungup'};
+                    %% NOTE: 
+                    lager:debug("channel hungup but no end of fax, maybe its coming next..."),
+                    wait_for_fax(5000);
                 _ -> wait_for_fax(whapps_util:decr_timeout(Timeout, Start))
             end;
         _ -> wait_for_fax(whapps_util:decr_timeout(Timeout, Start))
