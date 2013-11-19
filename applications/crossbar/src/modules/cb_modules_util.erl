@@ -92,8 +92,9 @@ request_specific_extraction_funs(_) ->
     [].
 
 get_endpoints(Call, #cb_context{doc=JObj, req_nouns=?DEVICES_QCALL_NOUNS}) ->
-    Properties = wh_json:from_list([{<<"can_call_self">>, true}
-                                    ,{<<"source">>, cb_devices}
+    Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
+                                    ,{<<"suppress_clid">>, 'true'}
+                                    ,{<<"source">>, 'cb_devices'}
                                    ]),
     case cf_endpoint:build(JObj, Properties, aleg_cid(_Number, Call)) of
         {error, _} -> [];
@@ -101,8 +102,9 @@ get_endpoints(Call, #cb_context{doc=JObj, req_nouns=?DEVICES_QCALL_NOUNS}) ->
         {ok, Endpoints} -> Endpoints
     end;
 get_endpoints(Call, #cb_context{req_nouns=?USERS_QCALL_NOUNS}) ->
-    Properties = wh_json:from_list([{<<"can_call_self">>, true}
-                                    ,{<<"source">>, cb_users}
+    Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
+                                    ,{<<"suppress_clid">>, 'true'}
+                                    ,{<<"source">>, 'cb_users'}
                                    ]),
     lists:foldr(fun(EndpointId, Acc) ->
                         case cf_endpoint:build(EndpointId, Properties, aleg_cid(_Number, Call)) of
