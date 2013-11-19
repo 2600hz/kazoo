@@ -317,7 +317,12 @@ leak_pvt_allow_additions(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
 -spec leak_pvt_superduper_admin(cb_context:context()) -> cb_context:context().
 leak_pvt_superduper_admin(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
     SuperAdmin = wh_json:is_true(<<"pvt_superduper_admin">>, JObj, 'false'),
-    leak_pvt_enabled(Context#cb_context{resp_data=wh_json:set_value(<<"superduper_admin">>, SuperAdmin, RespJObj)}).
+    leak_pvt_created(Context#cb_context{resp_data=wh_json:set_value(<<"superduper_admin">>, SuperAdmin, RespJObj)}).
+
+-spec leak_pvt_created(cb_context:context()) -> cb_context:context().
+leak_pvt_created(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
+    Created = wh_json:get_value(<<"pvt_created">>, JObj),
+    leak_pvt_enabled(Context#cb_context{resp_data=wh_json:set_value(<<"created">>, Created, RespJObj)}).
 
 -spec leak_pvt_enabled(#cb_context{}) -> #cb_context{}.
 leak_pvt_enabled(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
