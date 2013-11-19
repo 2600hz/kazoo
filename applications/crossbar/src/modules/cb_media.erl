@@ -184,7 +184,9 @@ put(#cb_context{doc=JObj}=Context) ->
                 ,fun(#cb_context{resp_status='success', doc=J}=C) when TTS ->
                          Voice = wh_json:get_value([<<"tts">>, <<"voice">>], J, <<"female/en-US">>),
                          case whapps_speech:create(Text, Voice) of
-                             {'error', R} -> crossbar_util:response('error', wh_util:to_binary(R), C);
+                             {'error', R} ->
+                                crossbar_doc:delete(C),
+                                crossbar_util:response('error', wh_util:to_binary(R), C);
                              {'ok', ContentType, Content} ->
                                  MediaId = wh_json:get_value(<<"_id">>, J),
                                  Headers = wh_json:from_list([{<<"content_type">>, ContentType}
