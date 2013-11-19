@@ -193,10 +193,7 @@ receive_fax(Call, OwnerId) ->
         {'ok', RecvJObj} ->
             lager:debug("rxfax resp: ~p", [RecvJObj]),
             whapps_call_command:hangup(Call),
-
             maybe_store_fax(Call, OwnerId, RecvJObj);
-        {'error', 'channel_hungup'} ->
-            lager:debug("rxfax hungup prematurely");
         _Resp ->
             lager:debug("rxfax unhandled: ~p", [_Resp])
     end.
@@ -206,7 +203,6 @@ maybe_store_fax(Call, OwnerId, RecvJObj) ->
     case store_fax(Call, OwnerId, RecvJObj) of
         {'ok', FaxId} ->
             lager:debug("storing fax successfully into ~s", [FaxId]),
-
             wapi_notifications:publish_fax(
               props:filter_empty(
                 fax_fields(RecvJObj) ++
