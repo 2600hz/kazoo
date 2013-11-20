@@ -409,7 +409,8 @@ emergency_cid_number(Requested, [Candidate|Candidates], E911Enabled) ->
 -spec contains_emergency_endpoints(wh_json:objects()) -> boolean().
 contains_emergency_endpoints([]) -> 'false';
 contains_emergency_endpoints([Endpoint|Endpoints]) ->
-    case wh_json:is_true(?CCV(<<"Emergency-Resource">>), Endpoint) of
+    CCVs = props:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
+    case wh_json:is_true(<<"Emergency-Resource">>, CCVs) of
         'true' -> 'true';
         'false' -> contains_emergency_endpoints(Endpoints)
     end.
