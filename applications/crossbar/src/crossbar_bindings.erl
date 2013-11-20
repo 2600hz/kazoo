@@ -96,7 +96,11 @@ get_bindings(Routing) ->
     [Vsn, Action | _] = binary:split(Routing, <<".">>, ['global']),
 
     ets:select(?MODULE, [{ {'_', '_', '_', '$1'}
-                           ,[{'=:=', '$1', <<Vsn/binary, ".", Action/binary>>}]
+                           ,[{'orelse', 
+                                {'=:=', '$1', <<Vsn/binary, ".", Action/binary>>}
+                                ,{'=:=', '$1', <<"*.", Action/binary>>}
+                             }
+                            ]
                            ,['$_']
                          }]).
 %% ets:match(?MODULE, ['$_']).

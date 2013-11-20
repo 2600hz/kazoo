@@ -9,7 +9,7 @@
 %%%   Karl Anderson
 %%%   Jon Blanton
 %%%-------------------------------------------------------------------
--module(v1_util).
+-module(api_util).
 
 -export([is_cors_preflight/1
          ,is_cors_request/1
@@ -33,6 +33,7 @@
          ,halt/2
          ,content_type_matches/2
          ,ensure_content_type/1
+         ,create_event_name/2
         ]).
 
 -include("crossbar.hrl").
@@ -891,3 +892,9 @@ halt(Req0, #cb_context{resp_error_code=StatusCode}=Context) ->
     lager:debug("setting status code: ~p", [StatusCode]),
     {'ok', Req3} = cowboy_req:reply(StatusCode, Req2),
     {'halt', Req3, Context}.
+
+-spec create_event_name(cb_context:context(), ne_binary()) -> ne_binary().
+create_event_name(#cb_context{api_version=ApiVersion}, Name) ->
+    <<ApiVersion/binary, "_resource.", Name/binary>>.
+
+
