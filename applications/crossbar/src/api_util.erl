@@ -673,7 +673,7 @@ ensure_content_type(CT) -> CT.
 does_resource_exist(#cb_context{req_nouns=[{Mod, Params}|_]}=C) ->
     Event = api_util:create_event_name(C, <<"resource_exists.", Mod/binary>>),
     Responses = crossbar_bindings:map(Event, Params),
-    crossbar_bindings:all(Responses) and 'true';
+    crossbar_bindings:any(Responses) and 'true';
 does_resource_exist(_Context) ->
     'false'.
 

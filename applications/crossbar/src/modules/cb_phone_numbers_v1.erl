@@ -1,8 +1,6 @@
 -module(cb_phone_numbers_v1).
 
-
--export([validate/1, validate/2, validate/3, validate/4]).
-
+-export([validate/1]).
 
 -include("../crossbar.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
@@ -19,25 +17,24 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-
 validate(#cb_context{req_verb = ?HTTP_GET
                      ,account_id='undefined'
                     }=Context) ->
     find_numbers(Context);
-validate(Context) ->
-    cb_phone_numbers:validate(Context).
-
-validate(Context, PathToken1) ->
-    cb_phone_numbers:validate(Context, PathToken1).
-
-validate(Context, PathToken1, PathToken2) ->
-    cb_phone_numbers:validate(Context, PathToken1, PathToken2).
-
-validate(Context, PathToken1, PathToken2, PathToken3) ->
-    cb_phone_numbers:validate(Context, PathToken1, PathToken2, PathToken3).
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+    case cb_phone_numbers:summary(Context) of
+        #cb_context{resp_status='success'}=C ->
+            Resp = cb_context:resp_data(C),
+            JObj = wh_json:foldl(
+                     fun(Number, Value, J) ->
+                             wh_json:set_value([<<"numbers">>, Number]
+                                               ,wh_json:delete_key(<<"locality">>, Value)
+                                               ,J)
+                     end, Resp, wh_json:get_value(<<"numbers">>, Resp)
+                    ),
+            cb_context:set_resp_data(C, JObj);
+        Else -> Else
+    end.
 
 %%%===================================================================
 %%% Internal functions
@@ -65,7 +62,13 @@ find_numbers(Context) ->
                                      ,OnSuccess
                                     ).
 
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_numbers(wh_json:object()) -> ne_binaries().
 get_numbers(QueryString) ->
     Prefix = wh_json:get_ne_value(<<"prefix">>, QueryString),
     Quantity = wh_json:get_ne_value(<<"quantity">>, QueryString, 1),
