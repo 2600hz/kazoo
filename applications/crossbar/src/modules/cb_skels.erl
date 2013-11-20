@@ -48,24 +48,24 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.skels">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.skels">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.skels">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.skels">>, ?MODULE, 'content_types_accepted'),
-    _ = crossbar_bindings:bind(<<"v1_resource.languages_provided.skels">>, ?MODULE, 'languages_provided'),
-    _ = crossbar_bindings:bind(<<"v1_resource.charsets_provided.skels">>, ?MODULE, 'charsets_provided'),
-    _ = crossbar_bindings:bind(<<"v1_resource.encodings_provided.skels">>, ?MODULE, 'encodings_provided'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.skels">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, 'billing'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.skels">>, ?MODULE, 'get'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.skels">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.skels">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.skels">>, ?MODULE, 'delete'),
-    _ = crossbar_bindings:bind(<<"v1_resource.etag.skels">>, ?MODULE, 'etag'),
-    _ = crossbar_bindings:bind(<<"v1_resource.expires.skels">>, ?MODULE, 'expires'),
-    _ = crossbar_bindings:bind(<<"v1_resource.finish_request">>, ?MODULE, 'finish_request').
+    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.skels">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.skels">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.skels">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.content_types_accepted.skels">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"*.languages_provided.skels">>, ?MODULE, 'languages_provided'),
+    _ = crossbar_bindings:bind(<<"*.charsets_provided.skels">>, ?MODULE, 'charsets_provided'),
+    _ = crossbar_bindings:bind(<<"*.encodings_provided.skels">>, ?MODULE, 'encodings_provided'),
+    _ = crossbar_bindings:bind(<<"*.validate.skels">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.billing">>, ?MODULE, 'billing'),
+    _ = crossbar_bindings:bind(<<"*.execute.get.skels">>, ?MODULE, 'get'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.skels">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.skels">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.skels">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(<<"*.etag.skels">>, ?MODULE, 'etag'),
+    _ = crossbar_bindings:bind(<<"*.expires.skels">>, ?MODULE, 'expires'),
+    _ = crossbar_bindings:bind(<<"*.finish_request">>, ?MODULE, 'finish_request').
 
 %%--------------------------------------------------------------------
 %% @public

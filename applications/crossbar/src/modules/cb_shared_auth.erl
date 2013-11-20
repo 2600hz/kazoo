@@ -41,12 +41,12 @@ init() ->
 
     lager:debug("shared auth started up, using ~s as authoritative crossbar", [Url]),
 
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.shared_auth">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.shared_auth">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.shared_auth">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.shared_auth">>, ?MODULE, put).
+    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, authenticate),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, authorize),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.shared_auth">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.shared_auth">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.shared_auth">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.put.shared_auth">>, ?MODULE, put).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -279,7 +279,7 @@ import_missing_account(AccountId, Account) ->
                 {error, not_found} ->
                     lager:debug("missing local account definition, creating from shared auth response"),
                     Doc = wh_json:delete_key(<<"_rev">>, Account),
-                    Event = <<"v1_resource.execute.post.accounts">>,
+                    Event = <<"*.execute.post.accounts">>,
                     case crossbar_bindings:fold(Event, [#cb_context{doc=Doc, db_name=Db}, AccountId]) of
                         #cb_context{resp_status=success} ->
                             lager:debug("udpated account definition"),
@@ -295,7 +295,7 @@ import_missing_account(AccountId, Account) ->
         false ->
             lager:debug("remote account db ~s does not exist locally, creating", [AccountId]),
             Doc = wh_json:delete_key(<<"_rev">>, Account),
-            Event = <<"v1_resource.execute.put.accounts">>,
+            Event = <<"*.execute.put.accounts">>,
             case crossbar_bindings:fold(Event, [#cb_context{doc=Doc}]) of
                 #cb_context{resp_status=success} ->
                     lager:debug("imported account"),
@@ -328,7 +328,7 @@ import_missing_user(AccountId, UserId, User) ->
             true;
         _Else ->
             Doc = wh_json:delete_key(<<"_rev">>, User),
-            Event = <<"v1_resource.execute.put.users">>,
+            Event = <<"*.execute.put.users">>,
             case crossbar_bindings:fold(Event, [#cb_context{doc=Doc, db_name=Db}]) of
                 #cb_context{resp_status=success} ->
                     lager:debug("imported user ~s in account ~s", [UserId, AccountId]),

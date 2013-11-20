@@ -53,13 +53,13 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.signup">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.signup">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.signup">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.signup">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.signup">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.signup">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.signup">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.signup">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.signup">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.signup">>, ?MODULE, 'put'),
 
     _ = couch_mgr:db_create(?SIGNUP_DB),
 
@@ -307,7 +307,7 @@ activate_signup(JObj) ->
 activate_account(undefined) ->
     {error, account_undefined};
 activate_account(Account) ->
-    Event = <<"v1_resource.execute.put.accounts">>,
+    Event = <<"*.execute.put.accounts">>,
     Payload = [#cb_context{doc=Account}],
     case crossbar_bindings:fold(Event, Payload) of
         #cb_context{resp_status=success, resp_data=JObj} ->
@@ -334,7 +334,7 @@ activate_user(_, undefined) ->
 activate_user(Account, User) ->
     AccountId = wh_json:get_value(<<"id">>, Account),
     Db = wh_util:format_account_id(AccountId, encoded),
-    Event = <<"v1_resource.execute.put.users">>,
+    Event = <<"*.execute.put.users">>,
     Payload = [#cb_context{doc=User, db_name=Db}],
     case crossbar_bindings:fold(Event, Payload) of
         #cb_context{resp_status=success, resp_data=JObj} ->

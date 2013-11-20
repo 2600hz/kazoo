@@ -29,12 +29,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.menus">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.menus">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.menus">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.menus">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.menus">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.menus">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.menus">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.menus">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.menus">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.put.menus">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.menus">>, ?MODULE, post),
+    crossbar_bindings:bind(<<"*.execute.delete.menus">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @private

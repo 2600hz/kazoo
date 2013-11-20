@@ -37,8 +37,8 @@ init() ->
         {'error', _R} -> lager:debug("failed to start fprof: ~p", [_R])
     end,
 
-    _ = crossbar_bindings:bind(<<"v1_resource.init">>, ?MODULE, 'req_init'),
-    _ = crossbar_bindings:bind(<<"v1_resource.finish_request.*.*">>, ?MODULE, 'req_finish').
+    _ = crossbar_bindings:bind(<<"*.init">>, ?MODULE, 'req_init'),
+    _ = crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'req_finish').
 
 -spec req_init({cb_context:context(), cowboy_req:req()}) ->
                       {cb_context:context(), cowboy_req:req()}.

@@ -31,7 +31,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-init() -> crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize').
+init() -> crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize').
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, []}]

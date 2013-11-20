@@ -22,7 +22,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate).
+    crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, authenticate).
 
 authenticate(#cb_context{}) ->
     lager:debug("noauthn authenticating request"),

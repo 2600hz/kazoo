@@ -49,15 +49,15 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.global_provisioner_templates">>, ?MODULE, content_types_provided),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.global_provisioner_templates">>, ?MODULE, content_types_accepted),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.global_provisioner_templates">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.global_provisioner_templates">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.global_provisioner_templates">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.global_provisioner_templates">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.global_provisioner_templates">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.global_provisioner_templates">>, ?MODULE, delete),
-    crossbar_bindings:bind(<<"v1_resource.finish_request.put.devices">>, ?MODULE, device_updated).
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.global_provisioner_templates">>, ?MODULE, content_types_provided),
+    _ = crossbar_bindings:bind(<<"*.content_types_accepted.global_provisioner_templates">>, ?MODULE, content_types_accepted),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.global_provisioner_templates">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.global_provisioner_templates">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.global_provisioner_templates">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.put.global_provisioner_templates">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.global_provisioner_templates">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.global_provisioner_templates">>, ?MODULE, delete),
+    crossbar_bindings:bind(<<"*.finish_request.put.devices">>, ?MODULE, device_updated).
 
 %%--------------------------------------------------------------------
 %% @public

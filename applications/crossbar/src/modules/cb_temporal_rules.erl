@@ -26,12 +26,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.temporal_rules">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.temporal_rules">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.temporal_rules">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.temporal_rules">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.temporal_rules">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.temporal_rules">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.temporal_rules">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.temporal_rules">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.temporal_rules">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.put.temporal_rules">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.temporal_rules">>, ?MODULE, post),
+    crossbar_bindings:bind(<<"*.execute.delete.temporal_rules">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public

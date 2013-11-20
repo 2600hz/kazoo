@@ -36,13 +36,13 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.services">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.services">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.services">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.services">>, ?MODULE, get),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.services">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.services">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.services">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.services">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.services">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.services">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.get.services">>, ?MODULE, get),
+    _ = crossbar_bindings:bind(<<"*.execute.put.services">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.services">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.services">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public

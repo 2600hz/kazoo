@@ -46,12 +46,12 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.accounts">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.accounts">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.accounts">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.accounts">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.accounts">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.accounts">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.accounts">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.accounts">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.accounts">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.accounts">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.accounts">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.accounts">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public

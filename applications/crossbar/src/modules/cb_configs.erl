@@ -35,13 +35,13 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.configs">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.configs">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.configs">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.configs">>, ?MODULE, get),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.configs">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.configs">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.configs">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.configs">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.configs">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.configs">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.get.configs">>, ?MODULE, get),
+    _ = crossbar_bindings:bind(<<"*.execute.put.configs">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.configs">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.configs">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public

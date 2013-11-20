@@ -33,12 +33,12 @@
 %%--------------------------------------------------------------------
 -spec init/0 :: () -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.bulk">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.bulk">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.bulk">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.bulk">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.bulk">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.bulk">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.bulk">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.bulk">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.bulk">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.put.bulk">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.bulk">>, ?MODULE, post),
+    crossbar_bindings:bind(<<"*.execute.delete.bulk">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public

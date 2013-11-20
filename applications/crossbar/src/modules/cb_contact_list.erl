@@ -31,9 +31,9 @@
 %%--------------------------------------------------------------------
 -spec init/0 :: () -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.contact_list">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.contact_list">>, ?MODULE, resource_exists),
-    crossbar_bindings:bind(<<"v1_resource.validate.contact_list">>, ?MODULE, validate).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.contact_list">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.contact_list">>, ?MODULE, resource_exists),
+    crossbar_bindings:bind(<<"*.validate.contact_list">>, ?MODULE, validate).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -31,12 +31,12 @@
 %%%===================================================================
 init() ->
     _ = couch_mgr:revise_doc_from_file(?GLOBAL_RESOURCE_DB, crossbar, "views/global_resources.json"),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.global_resources">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.global_resources">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.global_resources">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.global_resources">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.global_resources">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.global_resources">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.global_resources">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.global_resources">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.global_resources">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.put.global_resources">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.global_resources">>, ?MODULE, post),
+    crossbar_bindings:bind(<<"*.execute.delete.global_resources">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public

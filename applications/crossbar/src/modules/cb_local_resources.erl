@@ -29,12 +29,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.local_resources">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.local_resources">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.local_resources">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.local_resources">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.local_resources">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.local_resources">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.local_resources">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.local_resources">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.local_resources">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.put.local_resources">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.local_resources">>, ?MODULE, post),
+    crossbar_bindings:bind(<<"*.execute.delete.local_resources">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public

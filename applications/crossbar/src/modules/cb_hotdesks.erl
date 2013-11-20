@@ -27,12 +27,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.hotdesks">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.hotdesks">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.hotdesks">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.hotdesks">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.hotdesks">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.hotdesks">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.hotdesks">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.hotdesks">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.hotdesks">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.put.hotdesks">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.hotdesks">>, ?MODULE, post),
+    crossbar_bindings:bind(<<"*.execute.delete.hotdesks">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public

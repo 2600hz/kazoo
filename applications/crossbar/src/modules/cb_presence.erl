@@ -24,10 +24,10 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.presence">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.presence">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.presence">>, ?MODULE, 'validate'),
-    crossbar_bindings:bind(<<"v1_resource.execute.post.presence">>, ?MODULE, 'post').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.presence">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.presence">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.presence">>, ?MODULE, 'validate'),
+    crossbar_bindings:bind(<<"*.execute.post.presence">>, ?MODULE, 'post').
 
 %%--------------------------------------------------------------------
 %% @private
