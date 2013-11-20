@@ -522,7 +522,7 @@ is_authentic(Req, #cb_context{req_verb = ?HTTP_OPTIONS}=Context) ->
     %% all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {'true', Req, Context};
 is_authentic(Req0, Context0) ->
-    Event = <<"v1_resource.authenticate">>,
+    Event = api_util:create_event_name(Context0, <<"authenticate">>),
     {Req1, Context1} = get_auth_token(Req0, Context0),
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context1)) of
         [] ->
@@ -579,7 +579,7 @@ is_permitted(Req, #cb_context{req_verb = ?HTTP_OPTIONS}=Context) ->
 is_permitted(Req0, #cb_context{req_nouns=[{<<"404">>, []}]}=Context0) ->
     ?MODULE:halt(Req0, cb_context:add_system_error('not_found', Context0));
 is_permitted(Req0, Context0) ->
-    Event = <<"v1_resource.authorize">>,
+    Event = api_util:create_event_name(Context0, <<"authorize">>),
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
             lager:debug("no on authz the request"),
@@ -607,7 +607,7 @@ is_known_content_type(Req, #cb_context{req_verb = ?HTTP_DELETE}=Context) ->
 is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     Context1 =
         lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                            Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
+                            Event = api_util:create_event_name(Context0, <<"content_types_accepted.", Mod/binary>>),
                             Payload = [ContextAcc | Params],
                             crossbar_bindings:fold(Event, Payload)
                     end, Context0, Nouns),
@@ -670,8 +670,8 @@ ensure_content_type(CT) -> CT.
 %% @end
 %%--------------------------------------------------------------------
 -spec does_resource_exist(cb_context:context()) -> boolean().
-does_resource_exist(#cb_context{req_nouns=[{Mod, Params}|_]}) ->
-    Event = <<"v1_resource.resource_exists.", Mod/binary>>,
+does_resource_exist(#cb_context{req_nouns=[{Mod, Params}|_]}=C) ->
+    Event = api_util:create_event_name(C, <<"resource_exists.", Mod/binary>>),
     Responses = crossbar_bindings:map(Event, Params),
     crossbar_bindings:all(Responses) and 'true';
 does_resource_exist(_Context) ->
@@ -687,7 +687,7 @@ does_resource_exist(_Context) ->
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(#cb_context{req_nouns=Nouns}=Context0) ->
     Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                                   Event = <<"v1_resource.validate.", Mod/binary>>,
+                                   Event = api_util:create_event_name(Context0, <<"validate.", Mod/binary>>),
                                    Payload = [ContextAcc#cb_context{resp_status='fatal'} | Params],
                                    crossbar_bindings:fold(Event, Payload)
                            end
@@ -707,7 +707,7 @@ validate(#cb_context{req_nouns=Nouns}=Context0) ->
 %%--------------------------------------------------------------------
 -spec process_billing(cb_context:context()) -> cb_context:context().
 process_billing(Context0)->
-    Event = <<"v1_resource.billing">>,
+    Event = api_util:create_event_name(Context0, <<"billing">>),
     case crossbar_bindings:fold(Event, Context0) of
         #cb_context{resp_status='success'}=Resp -> lager:debug("billing returned"), Resp;
         #cb_context{}=Resp -> lager:debug("billing failed"), Resp;
@@ -728,7 +728,7 @@ succeeded(Context) -> cb_context:resp_status(Context) =:='success'.
 execute_request(Req, #cb_context{req_nouns=[{Mod, Params}|_]
                                  ,req_verb=Verb
                                 }=Context) ->
-    Event = <<"v1_resource.execute.", (wh_util:to_lower_binary(Verb))/binary, ".", Mod/binary>>,
+    Event = api_util:create_event_name(Context, <<"execute.", (wh_util:to_lower_binary(Verb))/binary, ".", Mod/binary>>),
     Payload = [Context | Params],
     case crossbar_bindings:fold(Event, Payload) of
         #cb_context{resp_status='success'}=Context1 ->
@@ -762,7 +762,7 @@ execute_request_results(Req, Context) ->
 %%--------------------------------------------------------------------
 -spec finish_request(cowboy_req:req(), cb_context:context()) -> 'ok'.
 finish_request(_Req, #cb_context{req_nouns=[{Mod, _}|_], req_verb=Verb}=Context) ->
-    Event = <<"v1_resource.finish_request.", Verb/binary, ".", Mod/binary>>,
+    Event = api_util:create_event_name(Context, <<"finish_request.", Verb/binary, ".", Mod/binary>>),
     _ = spawn('crossbar_bindings', 'map', [Event, Context]),
     'ok'.
 

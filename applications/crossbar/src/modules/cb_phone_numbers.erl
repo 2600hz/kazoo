@@ -63,7 +63,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.phone_numbers">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.phone_numbers">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.phone_numbers">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.phone_numbers">>, 'cb_phone_numbers_v1', 'validate'),
+    _ = crossbar_bindings:bind(<<"v2_resource.validate.phone_numbers">>, 'cb_phone_numbers_v2', 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.phone_numbers">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.phone_numbers">>, ?MODULE, 'post'),
     crossbar_bindings:bind(<<"*.execute.delete.phone_numbers">>, ?MODULE, 'delete').
@@ -218,10 +219,6 @@ authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}]
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
-validate(#cb_context{req_verb = ?HTTP_GET
-                     ,account_id='undefined'
-                    }=Context) ->
-    find_numbers(Context);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context).
 
@@ -360,37 +357,6 @@ delete(Context, Number, ?PORT_DOCS, Name) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec find_numbers(cb_context:context()) -> cb_context:context().
-find_numbers(Context) ->
-    AccountId = cb_context:auth_account_id(Context),
-    JObj = wh_json:set_value(<<"Account-ID">>, AccountId, cb_context:query_string(Context)),
-    OnSuccess = fun(C) ->
-                        Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
-                        Quantity = wh_json:get_ne_value(<<"quantity">>, JObj, 1),
-                        cb_context:set_resp_data(
-                          cb_context:set_resp_status(C, 'success')
-                          ,wh_number_manager:find(Prefix, Quantity, wh_json:to_proplist(JObj))
-                         )
-                end,
-    Schema = wh_json:decode(?FIND_NUMBER_SCHEMA),
-    cb_context:validate_request_data(Schema
-                                     ,cb_context:set_req_data(Context, JObj)
-                                     ,OnSuccess
-                                    ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% resource.
-%% @end
-%%--------------------------------------------------------------------
 -spec find_prefix(cb_context:context()) -> cb_context:context().
 find_prefix(Context) ->
     QS = cb_context:query_string(Context),
