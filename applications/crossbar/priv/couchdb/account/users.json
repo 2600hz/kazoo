@@ -3,7 +3,7 @@
     ,"language": "javascript"
     ,"views": {
     	"crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'user' || doc.pvt_deleted) return; var features = [];  if(doc.hotdesk && doc.hotdesk.enabled) { features.push('hotdesk'); }if(doc.call_forward && doc.call_forward.enabled) {features.push('call_forward'); } if(doc.caller_id && doc.caller_id.internal && doc.caller_id.internal.number) { features.push('caller_id'); } if(doc.vm_to_email_enabled) { features.push('vm_to_email'); } emit(doc._id, {'id': doc._id, 'features': features, 'username': doc.username, 'email': doc.email ,'first_name': doc.first_name, 'last_name': doc.last_name, 'priv_level': doc.priv_level}); }"
+            "map": "function(doc) { if (doc.pvt_type != 'user' || doc.pvt_deleted) return; var features = []; if(doc.smartpbx) { if(doc.smartpbx.conferencing && doc.smartpbx.conferencing.enabled) { features.push('conferencing'); } if(doc.smartpbx.faxing && doc.smartpbx.faxing.enabled) { features.push('faxing'); }} if(doc.hotdesk && doc.hotdesk.enabled) { features.push('hotdesk'); }if(doc.call_forward && doc.call_forward.enabled) {features.push('call_forward'); } if(doc.caller_id && doc.caller_id.internal && doc.caller_id.internal.number) { features.push('caller_id'); } if(doc.vm_to_email_enabled) { features.push('vm_to_email'); } emit(doc._id, {'id': doc._id, 'features': features, 'username': doc.username, 'email': doc.email ,'first_name': doc.first_name, 'last_name': doc.last_name, 'priv_level': doc.priv_level}); }"
         },
         "list_by_username": {
           "map": "function(doc) { if(doc.pvt_type != 'user' || !doc.username || doc.pvt_deleted) return; emit(doc.username, null); }"
