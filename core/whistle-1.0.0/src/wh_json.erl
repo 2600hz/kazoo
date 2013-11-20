@@ -22,6 +22,7 @@
 -export([get_number_value/2, get_number_value/3]).
 -export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
+-export([get_lower_binary/2, get_lower_binary/3]).
 -export([get_atom_value/2, get_atom_value/3]).
 -export([get_string_value/2, get_string_value/3]).
 -export([get_json_value/2, get_json_value/3]).
@@ -300,6 +301,15 @@ get_binary_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
         Value -> wh_util:to_binary(Value)
+    end.
+
+-spec get_lower_binary(key(), object() | objects()) -> 'undefined' | binary().
+-spec get_lower_binary(key(), object() | objects(), Default) -> binary() | Default.
+get_lower_binary(Key, JObj) -> get_lower_binary(Key, JObj, 'undefined').
+get_lower_binary(Key, JObj, Default) ->
+    case get_value(Key, JObj) of
+        'undefined' -> Default;
+        Value -> wh_util:to_lower_binary(Value)
     end.
 
 %% must be an existing atom
