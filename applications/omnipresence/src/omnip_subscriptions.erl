@@ -393,11 +393,10 @@ dedup([], Dictionary) ->
     [Subscription || {_, Subscription} <- dict:to_list(Dictionary)];
 dedup([#omnip_subscription{user=User
                            ,stalker=Stalker
-                           ,from=From
                           }=Subscription
        |Subscriptions
       ], Dictionary) ->
-    dedup(Subscriptions, dict:store({User, From, Stalker}, Subscription, Dictionary)).
+    dedup(Subscriptions, dict:store({User, Stalker}, Subscription, Dictionary)).
 
 expire_old_subscriptions() ->
     Now = wh_util:current_tstamp(),
