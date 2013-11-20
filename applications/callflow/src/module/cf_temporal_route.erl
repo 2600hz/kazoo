@@ -222,7 +222,12 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, Rules) ->
 -spec get_temporal_route(wh_json:object(), whapps_call:call()) -> temporal().
 get_temporal_route(JObj, Call) ->
     lager:info("loading temporal route"),
-    {'branch_keys', Keys} = cf_exe:get_branch_keys(Call),
+    Keys = case wh_json:get_value(<<"rules">>, JObj, []) of
+        [] ->
+            {'branch_keys', Rules} = cf_exe:get_branch_keys(Call),
+            Rules;
+        Rules -> Rules
+    end,
     load_current_time(#temporal{routes = Keys
                                 ,timezone = wh_json:get_value(<<"timezone">>, JObj, ?TEMPORAL_DEFAULT_TIMEZONE)
                                }).
