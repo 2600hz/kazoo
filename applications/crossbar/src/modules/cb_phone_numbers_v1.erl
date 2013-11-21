@@ -22,19 +22,7 @@ validate(#cb_context{req_verb = ?HTTP_GET
                     }=Context) ->
     find_numbers(Context);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
-    case cb_phone_numbers:summary(Context) of
-        #cb_context{resp_status='success'}=C ->
-            Resp = cb_context:resp_data(C),
-            JObj = wh_json:foldl(
-                     fun(Number, Value, J) ->
-                             wh_json:set_value([<<"numbers">>, Number]
-                                               ,wh_json:delete_key(<<"locality">>, Value)
-                                               ,J)
-                     end, Resp, wh_json:get_value(<<"numbers">>, Resp)
-                    ),
-            cb_context:set_resp_data(C, JObj);
-        Else -> Else
-    end.
+    cb_phone_numbers:summary(Context).
 
 %%%===================================================================
 %%% Internal functions
