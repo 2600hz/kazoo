@@ -107,7 +107,7 @@ reconcile(Account) ->
         Any -> Any
     catch
         _E:_R ->
-            io:format("failed to reconcile account ~s(~p): ~p~n", [Account, _E, _R])
+            io:format("failed to reconcile account ~s(~p):~n  ~p~n", [Account, _E, _R])
     end.
 
 %%--------------------------------------------------------------------
@@ -121,8 +121,7 @@ reconcile(Account) ->
 sync(Account) when not is_binary(Account) ->
     sync(wh_util:to_binary(Account));
 sync(Account) ->
-    wh_service_sync:sync(Account),
-    'ok'.
+    wh_service_sync:sync(Account).
 
 %%--------------------------------------------------------------------
 %% @public
