@@ -51,7 +51,7 @@
 -define(DEFAULT_COUNTRY, <<"US">>).
 -define(PHONE_NUMBERS_CONFIG_CAT, <<"crossbar.phone_numbers">>).
 -define(FREE_URL, <<"phonebook_url">>).
--define(PAYED_URL, <<"phonebook_url_prenium">>).
+-define(PAYED_URL, <<"phonebook_url_premium">>).
 
 %%%===================================================================
 %%% API
