@@ -35,12 +35,12 @@
 %%%===================================================================
 init() ->
     couch_mgr:db_create(?TOKEN_DB),
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.api_auth">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.api_auth">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.api_auth">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.api_auth">>, ?MODULE, 'put').
+    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.api_auth">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.api_auth">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.api_auth">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.api_auth">>, ?MODULE, 'put').
 
 %%--------------------------------------------------------------------
 %% @public

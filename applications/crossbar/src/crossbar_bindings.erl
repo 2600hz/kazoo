@@ -42,6 +42,7 @@
 %% Internally-used functions
 -export([map_processor/5
          ,fold_processor/5
+         ,get_bindings/1
         ]).
 
 %% gen_server callbacks
@@ -96,7 +97,11 @@ get_bindings(Routing) ->
     [Vsn, Action | _] = binary:split(Routing, <<".">>, ['global']),
 
     ets:select(?MODULE, [{ {'_', '_', '_', '$1'}
-                           ,[{'=:=', '$1', <<Vsn/binary, ".", Action/binary>>}]
+                           ,[{'orelse', 
+                                {'=:=', '$1', <<Vsn/binary, ".", Action/binary>>}
+                                ,{'=:=', '$1', <<"*.", Action/binary>>}
+                             }
+                            ]
                            ,['$_']
                          }]).
 %% ets:match(?MODULE, ['$_']).
@@ -405,10 +410,20 @@ fold_bind_results(MFs, Payload, Route) ->
 
 -spec fold_bind_results([{atom(), atom()},...] | [], term(), ne_binary(), non_neg_integer(), [{atom(), atom()},...] | []) -> term().
 fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
+    %% lager:debug("executing(fold) ~s:~s/~p", [M, F, length(Payload)]),
     case catch apply(M, F, Payload) of
         'eoq' -> lager:debug("putting ~s to eoq", [M]), fold_bind_results(MFs, Payload, Route, MFsLen, [{M,F}|ReRunQ]);
-        {'error', _E}=E -> lager:debug("error, E"), E;
-        {'EXIT', _E} -> lager:debug("excepted: ignoring"), fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
+        {'error', _E}=E ->
+            lager:debug("~s:~s/~p terminated fold with error: ~p", [M, F, length(Payload), _E]),
+            E;
+        {'EXIT', {'undef', _}} ->
+            lager:debug("~s:~s/~p not defined, ignoring", [M, F, length(Payload)]),
+            fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);            
+        {'EXIT', _E} -> 
+            ST = erlang:get_stacktrace(),
+            lager:debug("~s:~s/~p died unexpectedly: ~p", [M, F, length(Payload), _E]),
+            wh_util:log_stacktrace(ST),
+            fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         Pay1 ->
             fold_bind_results(MFs, [Pay1|Tokens], Route, MFsLen, ReRunQ)
     end;
@@ -474,6 +489,7 @@ map_processor(Routing, Payload, Bs) when not is_list(Payload) ->
 map_processor(Routing, Payload, Bs) ->
     RoutingParts = lists:reverse(binary:split(Routing, <<".">>, ['global'])),
     Map = fun({Mod, Fun}) when is_atom(Mod) ->
+                  %% lager:debug("executing(map) ~s:~s/~p", [Mod, Fun, length(Payload)]),
                   apply(Mod, Fun, Payload)
           end,
     lists:foldl(fun({B, _, MFs, _Pre}, Acc) when B =:= Routing ->

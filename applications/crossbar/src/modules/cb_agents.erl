@@ -54,11 +54,11 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.agents">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.agents">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.agents">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.agents">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.agents">>, ?MODULE, 'validate').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.agents">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.agents">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.agents">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.agents">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.validate.agents">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
 %% @public

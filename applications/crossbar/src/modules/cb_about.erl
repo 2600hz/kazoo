@@ -22,9 +22,9 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.about">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.about">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.about">>, ?MODULE, 'validate').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.about">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.about">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.about">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
 %% @public

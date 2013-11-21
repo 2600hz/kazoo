@@ -45,15 +45,15 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.media">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.media">>, ?MODULE, 'content_types_accepted'),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.media">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.media">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.media">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.media">>, ?MODULE, 'get'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.media">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.media">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.media">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.media">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.content_types_accepted.media">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.media">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.media">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.media">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.get.media">>, ?MODULE, 'get'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.media">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.media">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.media">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public

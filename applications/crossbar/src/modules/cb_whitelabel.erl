@@ -41,17 +41,17 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.whitelabel">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.whitelabel">>, ?MODULE, 'content_types_accepted'),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.whitelabel">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.whitelabel">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.whitelabel">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.whitelabel">>, ?MODULE, 'get'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.whitelabel">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.whitelabel">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.whitelabel">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.whitelabel">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.content_types_accepted.whitelabel">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.whitelabel">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.whitelabel">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.whitelabel">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.get.whitelabel">>, ?MODULE, 'get'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.whitelabel">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.whitelabel">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.whitelabel">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public

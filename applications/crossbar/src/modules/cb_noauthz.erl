@@ -22,7 +22,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize).
+    crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, authorize).
 
 -spec authorize(#cb_context{}) -> 'true'.
 authorize(_) ->

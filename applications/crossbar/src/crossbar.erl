@@ -29,7 +29,7 @@ start_link() ->
     _ = declare_exchanges(),
     Dispatch = cowboy_router:compile([
                                       %% {HostMatch, list({PathMatch, Handler, Opts})}
-                                      {'_', [{<<"/v1/[...]">>, 'v1_resource', []}
+                                      {'_', [{<<"/:version/[...]">>, 'api_resource', []}
                                              ,{'_', 'crossbar_default_handler', []}
                                             ]}
                                      ]),
@@ -48,8 +48,8 @@ start() ->
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
 stop() ->
-    cowboy:stop_listener('v1_resource'),
-    cowboy:stop_listener('v1_resource_ssl'),
+    cowboy:stop_listener('api_resource'),
+    cowboy:stop_listener('api_resource_ssl'),
     exit(whereis('crossbar_sup'), 'shutdown').
 
 %%--------------------------------------------------------------------
@@ -150,7 +150,7 @@ maybe_start_plaintext(Dispatch) ->
             Workers = whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 100),
 
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
-            try cowboy:start_http('v1_resource', Workers
+            try cowboy:start_http('api_resource', Workers
                                   ,[{'port', Port}]
                                   ,[{'env', [{'dispatch', Dispatch}
                                              ,{'timeout', ReqTimeout}
@@ -183,7 +183,7 @@ start_ssl(Dispatch) ->
             ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
             Workers = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_workers">>, 100),
 
-            try cowboy:start_https('v1_resource_ssl', Workers
+            try cowboy:start_https('api_resource_ssl', Workers
                                    ,SSLOpts
                                    ,[{'env', [{'dispatch', Dispatch}
                                               ,{'timeout', ReqTimeout}

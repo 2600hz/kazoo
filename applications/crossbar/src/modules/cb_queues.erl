@@ -89,13 +89,13 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.queues">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.queues">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.queues">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.queues">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.queues">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.queues">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.queues">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.queues">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.queues">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.queues">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.validate.queues">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.queues">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.queues">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.queues">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public

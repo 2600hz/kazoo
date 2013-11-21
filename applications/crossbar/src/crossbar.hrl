@@ -124,6 +124,7 @@
           ,client_ip = <<"127.0.0.1">> :: ne_binary()
           ,load_merge_bypass :: api_object()
           ,profile_id :: api_binary()
+          ,api_version = <<"v1">> :: binary()
          }).
 
 -define(CROSSBAR_HRL, 'true').

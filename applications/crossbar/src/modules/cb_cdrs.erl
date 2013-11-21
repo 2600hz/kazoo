@@ -32,10 +32,10 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.cdrs">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.cdrs">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.cdrs">>, ?MODULE, content_types_provided),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.cdrs">>, ?MODULE, validate).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.cdrs">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.cdrs">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.cdrs">>, ?MODULE, content_types_provided),
+    _ = crossbar_bindings:bind(<<"*.validate.cdrs">>, ?MODULE, validate).
 
 %%%===================================================================
 %%% Internal functions

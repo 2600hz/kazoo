@@ -33,9 +33,9 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.acls">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.acls">>, ?MODULE, 'resource_exists'),
-    crossbar_bindings:bind(<<"v1_resource.validate.acls">>, ?MODULE, 'validate').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.acls">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.acls">>, ?MODULE, 'resource_exists'),
+    crossbar_bindings:bind(<<"*.validate.acls">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
 %% @public

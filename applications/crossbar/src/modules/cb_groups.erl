@@ -36,12 +36,12 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.groups">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.groups">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.groups">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.groups">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.groups">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.groups">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.groups">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.groups">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.groups">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.put.groups">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.groups">>, ?MODULE, post),
+    crossbar_bindings:bind(<<"*.execute.delete.groups">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public

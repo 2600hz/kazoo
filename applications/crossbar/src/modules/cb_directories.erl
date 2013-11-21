@@ -29,12 +29,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.directories">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.directories">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.directories">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.directories">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.directories">>, ?MODULE, 'post'),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.directories">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.directories">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.directories">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.directories">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.directories">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.directories">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"*.execute.delete.directories">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public

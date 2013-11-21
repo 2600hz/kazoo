@@ -48,8 +48,8 @@ init() ->
 
     _ = supervisor:start_child('crossbar_sup', ?CHILDSPEC),
 
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
-    crossbar_bindings:bind(<<"v1_resource.finish_request.*.*">>, ?MODULE, 'finish_request').
+    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'finish_request').
 
 stop() ->
     'ok' = supervisor:terminate_child('crossbar_sup', ?MODULE),

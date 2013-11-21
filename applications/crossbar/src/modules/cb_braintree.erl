@@ -36,12 +36,12 @@
 %%%===================================================================
 init() ->
     _ = ssl:start(),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.braintree">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.braintree">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.braintree">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.braintree">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.braintree">>, ?MODULE, 'post'),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.braintree">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.braintree">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.braintree">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.braintree">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.braintree">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.braintree">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"*.execute.delete.braintree">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public

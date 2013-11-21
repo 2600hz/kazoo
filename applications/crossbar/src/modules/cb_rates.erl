@@ -33,13 +33,13 @@
 %%%===================================================================
 init() ->
     _ = init_db(),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.rates">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.rates">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.rates">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.rates">>, ?MODULE, 'content_types_accepted'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.rates">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.rates">>, ?MODULE, 'post'),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.rates">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.rates">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.rates">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.rates">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.content_types_accepted.rates">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.rates">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.rates">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"*.execute.delete.rates">>, ?MODULE, 'delete').
 
 init_db() ->
     _ = couch_mgr:db_create(?WH_RATES_DB),

@@ -28,12 +28,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.connectivity">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.connectivity">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.connectivity">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.connectivity">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.connectivity">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.connectivity">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.connectivity">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.connectivity">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.connectivity">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.put.connectivity">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.connectivity">>, ?MODULE, post),
+    crossbar_bindings:bind(<<"*.execute.delete.connectivity">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public

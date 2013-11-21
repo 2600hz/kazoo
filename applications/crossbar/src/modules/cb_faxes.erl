@@ -43,14 +43,14 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.faxes">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.faxes">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.faxes">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.faxes">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.faxes">>, ?MODULE, 'get'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.faxes">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.faxes">>, ?MODULE, 'post'),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.faxes">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.faxes">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.faxes">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.faxes">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.validate.faxes">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.get.faxes">>, ?MODULE, 'get'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.faxes">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.faxes">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"*.execute.delete.faxes">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public

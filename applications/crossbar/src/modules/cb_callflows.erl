@@ -32,12 +32,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.callflows">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.callflows">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.callflows">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.callflows">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.callflows">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.callflows">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.callflows">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.callflows">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.callflows">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.put.callflows">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.callflows">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.callflows">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public

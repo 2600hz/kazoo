@@ -29,12 +29,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.conferences">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.conferences">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.conferences">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.conferences">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.conferences">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.conferences">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.conferences">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.conferences">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.conferences">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.put.conferences">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.conferences">>, ?MODULE, post),
+    crossbar_bindings:bind(<<"*.execute.delete.conferences">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public

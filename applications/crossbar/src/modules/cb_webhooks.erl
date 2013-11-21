@@ -28,12 +28,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.webhooks">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.webhooks">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.webhooks">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.webhooks">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.webhooks">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.webhooks">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.webhooks">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.webhooks">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.webhooks">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.put.webhooks">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.post.webhooks">>, ?MODULE, post),
+    crossbar_bindings:bind(<<"*.execute.delete.webhooks">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public

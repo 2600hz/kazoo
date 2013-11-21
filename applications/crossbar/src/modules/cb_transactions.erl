@@ -38,9 +38,9 @@
 %%--------------------------------------------------------------------
 -spec init/0 :: () -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.transactions">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.transactions">>, ?MODULE, 'resource_exists'),
-    crossbar_bindings:bind(<<"v1_resource.validate.transactions">>, ?MODULE, 'validate').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.transactions">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.transactions">>, ?MODULE, 'resource_exists'),
+    crossbar_bindings:bind(<<"*.validate.transactions">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
 %% @public
