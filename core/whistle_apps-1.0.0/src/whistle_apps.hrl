@@ -1,3 +1,5 @@
+-ifndef(WHISTLE_APPS_HRL).
+
 -include_lib("whistle/include/wh_databases.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -24,3 +26,6 @@
                          ,'milliwatt'
                          ,'pivot'
                         ]).
+
+-define(WHISTLE_APPS_HRL, 'true').
+-endif.

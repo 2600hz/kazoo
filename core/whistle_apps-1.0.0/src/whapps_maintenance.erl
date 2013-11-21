@@ -9,9 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(whapps_maintenance).
 
--include_lib("whistle/include/wh_databases.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_types.hrl").
+-include("whistle_apps.hrl").
 
 -export([migrate/0]).
 -export([find_invalid_acccount_dbs/0]).
@@ -77,8 +75,9 @@ migrate() ->
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
                      ,fun(L) -> [<<"acdc">> | lists:delete(<<"acdc">>, L)] end
                      ,fun(L) -> [<<"reorder">> | lists:delete(<<"reorder">>, L)] end
+                     ,fun(L) -> [<<"omnipresence">> | lists:delete(<<"omnipresence">>, L)] end
                     ],
-    StartWhapps = whapps_config:get(<<"whapps_controller">>, <<"whapps">>, []),
+    StartWhapps = whapps_config:get(<<"whapps_controller">>, <<"whapps">>, ?DEFAULT_WHAPPS),
     _ = whapps_config:set_default(<<"whapps_controller">>
                                   ,<<"whapps">>
                                   ,lists:foldr(fun(F, L) -> F(L) end, StartWhapps, WhappsUpdates)
