@@ -119,22 +119,24 @@ current_balance(AccountId) ->
 %%--------------------------------------------------------------------
 -spec call_cost(wh_json:object()) -> integer().
 call_cost(JObj) ->
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
-    BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj)
-        - wh_json:get_integer_value(<<"Billing-Seconds-Offset">>, CCVs, 0),
+    CCVs = wh_json:get_first_defined([<<"Custom-Channel-Vars">>
+                                          ,<<"custom_channel_vars">>
+                                     ], JObj, wh_json:new()),
+    BillingSecs = get_integer_value(<<"Billing-Seconds">>, JObj)
+        - get_integer_value(<<"Billing-Seconds-Offset">>, CCVs),
     %% if we transition from allotment to per_minute the offset has a slight
     %% fudge factor to allow accounts with no credit to terminate the call
     %% on the next re-authorization cycle (to allow for the in-flight time)
     case BillingSecs =< 0 of
         'true' -> 0;
         'false' ->
-            Rate = wh_json:get_integer_value(<<"Rate">>, CCVs, 0),
-            RateIncr = wh_json:get_integer_value(<<"Rate-Increment">>, CCVs, 60),
-            RateMin = wh_json:get_integer_value(<<"Rate-Minimum">>, CCVs, 0),
-            Surcharge = wh_json:get_integer_value(<<"Surcharge">>, CCVs, 0),
+            Rate = get_integer_value(<<"Rate">>, CCVs),
+            RateIncr = get_integer_value(<<"Rate-Increment">>, CCVs, 60),
+            RateMin = get_integer_value(<<"Rate-Minimum">>, CCVs),
+            Surcharge = get_integer_value(<<"Surcharge">>, CCVs),
             Cost = calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
-            Discount = (wh_json:get_integer_value(<<"Discount-Percentage">>, CCVs, 0) * 0.01) * Cost,
-            lager:warning("rate $~p/~ps, minimum ~ps, surcharge $~p, for ~ps, sub total $~p, discount $~p, total $~p"
+            Discount = (get_integer_value(<<"Discount-Percentage">>, CCVs) * 0.01) * Cost,
+            lager:info("rate $~p/~ps, minimum ~ps, surcharge $~p, for ~ps, sub total $~p, discount $~p, total $~p"
                         ,[units_to_dollars(Rate)
                           ,RateIncr, RateMin
                           ,units_to_dollars(Surcharge)
@@ -145,6 +147,16 @@ call_cost(JObj) ->
                          ]),
             trunc(Cost - Discount)
     end.
+
+
+-spec get_integer_value(ne_binary(), wh_json:object()) -> integer().
+get_integer_value(Key, JObj) ->
+    get_integer_value(Key, JObj, 0).
+
+-spec get_integer_value(ne_binary(), wh_json:object(), any()) -> integer().
+get_integer_value(Key, JObj, Default) ->
+    Keys = [Key, wh_json:normalize_key(Key)],
+    wh_util:to_integer(wh_json:get_first_defined(Keys, JObj, Default)).
 
 %%--------------------------------------------------------------------
 %% @public
