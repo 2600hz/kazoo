@@ -21,6 +21,7 @@
          ,reject_code/1
          ,get_engine/1
          ,get_voice/1
+         ,exec_gather_els/3
         ]).
 
 parse_cmds(XMLString) ->
@@ -268,17 +269,23 @@ redirect(Call, XmlText, Attrs) ->
               ],
     {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}.
 
+exec_gather_els(_Parent, Call, SubActions) ->
+    lager:debug("subacts: ~p", [SubActions]),
+    exec_elements(Call, SubActions).
+
+exec_gather_els(Call, SubActions) ->
+    {_Pid, _Ref}=PidRef =
+        spawn_monitor(?MODULE, 'exec_gather_els', [self(), Call, SubActions]),
+    lager:debug("started to exec gather els: ~p(~p)", [_Pid, _Ref]),
+    {'ok', kzt_util:set_gather_pidref(PidRef, Call)}.
+
 gather(Call, [], Attrs) -> gather(Call, Attrs);
 gather(Call, SubActions, Attrs) ->
     lager:debug("GATHER: exec sub actions"),
-    case exec_elements(kzt_util:clear_digits_collected(Call)
-                       ,kzt_util:xml_elements(SubActions)
-                      )
-    of
-        {'ok', C} -> gather(C, Attrs);
-        {'stop', C} -> gather(C, Attrs);
-        Other -> lager:debug("gather sub returned: ~p", [Other]), Other
-    end.
+    {'ok', C} = exec_gather_els(kzt_util:clear_digits_collected(Call)
+                                ,kzt_util:xml_elements(SubActions)
+                               ),
+    gather(C, Attrs).
 
 gather(Call, Attrs) ->
     whapps_call_command:answer(Call),
