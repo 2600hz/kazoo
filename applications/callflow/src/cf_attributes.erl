@@ -414,7 +414,7 @@ presence_id(Endpoint, Call) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec owned_by(api_binary(), whapps_call:call()) -> api_binaries().
--spec owned_by(api_binary(), ne_binary(), whapps_call:call()) -> api_binaries().
+-spec owned_by(api_binary() | api_binaries(), ne_binary(), whapps_call:call()) -> api_binaries().
 
 owned_by('undefined', _) -> [];
 owned_by(OwnerId, Call) ->
@@ -430,13 +430,19 @@ owned_by(OwnerId, Call) ->
     end.
 
 owned_by('undefined', _, _) -> [];
+owned_by([_|_]=OwnerIds, Type, Call) ->
+    Keys = [[OwnerId, Type] || OwnerId <- OwnerIds],
+    owned_by_query([{'keys', Keys}], Call);
 owned_by(OwnerId, Type, Call) ->
+    owned_by_query([{'key', [OwnerId, Type]}], Call).
+
+-spec owned_by_query(list(), whapps_call:call()) -> api_binaries().
+owned_by_query(ViewOptions, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    ViewOptions = [{'key', [OwnerId, Type]}],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
-            lager:warning("unable to find ~s documents owned by ~s: ~p", [Type, OwnerId, _R]),
+            lager:warning("unable to find owned documents (~p) using ~p", [_R, ViewOptions]),
             []
     end.
 
