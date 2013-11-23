@@ -268,9 +268,9 @@ find_endpoints(Ids, GroupEndpoints, Call) ->
 -spec find_user_endpoints(ne_binaries(), ne_binaries(), whapps_call:call()) ->
                                  ne_binaries().
 find_user_endpoints([], DeviceIds, _) -> DeviceIds;
-find_user_endpoints([UserId|UserIds], DeviceIds, Call) ->
-    UserDeviceIds = cf_attributes:owned_by(UserId, <<"device">>, Call),
-    find_user_endpoints(UserIds, lists:merge(lists:sort(UserDeviceIds), DeviceIds), Call).
+find_user_endpoints(UserIds, DeviceIds, Call) ->
+    UserDeviceIds = cf_attributes:owned_by(UserIds, <<"device">>, Call),
+    lists:merge(lists:sort(UserDeviceIds), DeviceIds).
 
 -spec no_users_in_group(whapps_call:call()) -> 'ok'.
 no_users_in_group(Call) ->
