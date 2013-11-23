@@ -411,13 +411,12 @@ lookup_callflow(Call) ->
     lookup_callflow(whapps_call:request_user(Call), whapps_call:account_id(Call)).
 
 -spec lookup_callflow(ne_binary(), ne_binary()) -> lookup_callflow_ret().
+lookup_callflow(Number, AccountId) when not is_binary(Number) ->
+    lookup_callflow(wh_util:to_binary(Number), AccountId);
+lookup_callflow(<<>>, _) -> {'error', 'invalid_number'};
 lookup_callflow(Number, AccountId) ->
-    case wh_util:is_empty(Number) of
-        'true' -> {'error', 'invalid_number'};
-        'false' ->
-            Db = wh_util:format_account_id(AccountId, 'encoded'),
-            do_lookup_callflow(wh_util:to_binary(Number), Db)
-    end.
+    Db = wh_util:format_account_id(AccountId, 'encoded'),
+    do_lookup_callflow(Number, Db).
 
 do_lookup_callflow(Number, Db) ->
     lager:info("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
