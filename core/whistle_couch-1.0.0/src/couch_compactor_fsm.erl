@@ -549,11 +549,15 @@ compact('compact', #state{nodes=[]
 compact('compact', #state{nodes=[{N, _}=Node|Ns]}=State) ->
     lager:debug("compact node ~s", [N]),
     gen_fsm:send_event(self(), {'compact', Node}),
-    {'next_state', 'compact', State#state{nodes=Ns}};
+    {'next_state', 'compact', State#state{conn='undefined'
+                                         ,admin_conn='undefined'
+                                         ,nodes=Ns}};
 compact('compact', #state{nodes=[N|Ns]}=State) ->
     lager:debug("compact node ~s", [N]),
     gen_fsm:send_event(self(), {'compact', N}),
-    {'next_state', 'compact', State#state{nodes=Ns}};
+    {'next_state', 'compact', State#state{conn='undefined'
+                                         ,admin_conn='undefined'
+                                         ,nodes=Ns}};
 
 compact({'compact', {N, _}}, #state{admin_conn=AdminConn}=State) ->
     lager:debug("compacting node ~s w/ options", [N]),
@@ -580,6 +584,10 @@ compact({'compact', {N, _}, D}, State) ->
     lager:debug("compacting node ~s db ~s", [N, D]),
     gen_fsm:send_event(self(), {'compact', N, D}),
     {'next_state', 'compact', State};
+
+
+
+
 compact({'compact', N, D}, #state{conn=Conn
                                   ,admin_conn=AdminConn
                                   ,dbs=[]
@@ -713,14 +721,14 @@ compact({'compact', N, D, Ss, DDs}, #state{admin_conn=AdminConn
     try lists:split(?MAX_COMPACTING_SHARDS, Ss) of
         {Compact, Shards} ->
             lager:debug("compacting ~b shards for ~s on ~s", [?MAX_COMPACTING_SHARDS, D, N]),
-            ShardsPidRef = compact_shards(AdminConn, Compact, DDs),
+            ShardsPidRef = compact_shards(AdminConn, N, Compact, DDs),
             {'next_state', 'compact', State#state{shards_pid_ref=ShardsPidRef
                                                   ,next_compaction_msg={'compact', N, D, Shards, DDs}
                                                  }}
     catch
         'error':'badarg' ->
             lager:debug("compacting last of the shards for ~s on ~s", [D, N]),
-            ShardsPidRef = compact_shards(AdminConn, Ss, DDs),
+            ShardsPidRef = compact_shards(AdminConn, N, Ss, DDs),
             {'next_state', 'compact', State#state{shards_pid_ref=ShardsPidRef
                                                   ,next_compaction_msg='compact'
                                                  }}
@@ -731,14 +739,14 @@ compact({'compact', N, D, Ss, DDs}, #state{admin_conn=AdminConn
     try lists:split(?MAX_COMPACTING_SHARDS, Ss) of
         {Compact, Shards} ->
             lager:debug("compacting ~b shards for ~s on ~s", [?MAX_COMPACTING_SHARDS, D, N]),
-            ShardsPidRef = compact_shards(AdminConn, Compact, DDs),
+            ShardsPidRef = compact_shards(AdminConn, N, Compact, DDs),
             {'next_state', 'compact', State#state{shards_pid_ref=ShardsPidRef
                                                   ,next_compaction_msg={'compact', N, D, Shards, DDs}
                                                  }}
     catch
         'error':'badarg' ->
             lager:debug("compacting last of the shards for ~s on ~s", [D, N]),
-            ShardsPidRef = compact_shards(AdminConn, Ss, DDs),
+            ShardsPidRef = compact_shards(AdminConn, N, Ss, DDs),
             {'next_state', 'compact', State#state{dbs=Dbs
                                                   ,shards_pid_ref=ShardsPidRef
                                                   ,next_compaction_msg={'compact', N, Db}
@@ -770,7 +778,10 @@ compact({'compact_db', N, D, [], _}, #state{nodes=[]
                                        }};
 
 compact({'rebuild_views', N, D, DDs}, #state{conn=Conn}=State) ->
-    _P = spawn(?MODULE, 'rebuild_design_docs', [Conn, D, DDs]),
+    _P = spawn(fun() ->
+                       put('callid', N),
+                       ?MODULE:rebuild_design_docs(Conn, encode_db(D), DDs)
+               end),
     lager:debug("rebuilding views in ~p", [_P]),
     gen_fsm:send_event(self(), {'compact_db', N, D, [], DDs}),
     {'next_state', 'compact', State};
@@ -778,20 +789,22 @@ compact({'rebuild_views', N, D, DDs}, #state{conn=Conn}=State) ->
 compact({'compact_db', N, D, [], _}, #state{nodes=[Node|Ns]}=State) ->
     lager:debug("no shards left to compact for db '~s' on node '~s'", [D, N]),
     gen_fsm:send_event(self(), {'compact_db', Node, D}),
-    {'next_state', 'compact', State#state{nodes=Ns
+    {'next_state', 'compact', State#state{conn='undefined'
+                                         ,admin_conn='undefined'
+                                         ,nodes=Ns
                                          ,dbs=[D]
                                          }};
 compact({'compact_db', N, D, Ss, DDs}, #state{admin_conn=AdminConn}=State) ->
     lager:debug("compacting shards for db '~s' on node '~s'", [D, N]),
     try lists:split(?MAX_COMPACTING_SHARDS, Ss) of
         {Compact, Shards} ->
-            ShardsPidRef = compact_shards(AdminConn, Compact, DDs),
+            ShardsPidRef = compact_shards(AdminConn, N, Compact, DDs),
             {'next_state', 'compact', State#state{shards_pid_ref=ShardsPidRef
                                                   ,next_compaction_msg={'compact_db', N, D, Shards, DDs}
                                                  }}
     catch
         'error':'badarg' ->
-            ShardsPidRef = compact_shards(AdminConn, Ss, DDs),
+            ShardsPidRef = compact_shards(AdminConn, N, Ss, DDs),
             {'next_state', 'compact', State#state{shards_pid_ref=ShardsPidRef
                                                   ,next_compaction_msg={'rebuild_views', N, D, DDs}
                                                  }}
@@ -1087,7 +1100,6 @@ db_design_docs(Conn, D) ->
 -spec rebuild_design_docs(server(), ne_binary(), ne_binaries()) -> 'ok'.
 -spec rebuild_design_doc(server(), ne_binary(), ne_binary()) -> 'ok'.
 rebuild_design_docs(Conn, D, DDs) ->
-    put('callid', 'rebuild_design_docs'),
     _ = [rebuild_design_doc(Conn, D, DD) || DD <- DDs],
     'ok'.
 
@@ -1126,16 +1138,15 @@ rebuild_view(Conn, D, DD, View) ->
             'ok' = timer:sleep(?SLEEP_BETWEEN_VIEWS)
     end.
 
--spec compact_shards(server(), list(), list()) -> {pid(), reference()}.
-compact_shards(AdminConn, Ss, DDs) ->
-    LogId = get('callid'),
+-spec compact_shards(server(), list(), list(), list()) -> {pid(), reference()}.
+compact_shards(AdminConn, Node, Ss, DDs) ->
     PR = spawn_monitor(fun() ->
-                               put('callid', LogId),
+                               put('callid', Node),
                                Ps = [spawn_monitor(?MODULE, 'compact_shard', [AdminConn, Shard, DDs]) || Shard <- Ss],
                                lager:debug("shard compaction pids: ~p", [Ps]),
                                wait_for_pids(?MAX_WAIT_FOR_COMPACTION_PIDS, Ps)
                        end),
-    lager:debug("compacting shards in ~p", [PR]),
+    lager:debug("compacting ~s shards in ~p", [Node, PR]),
     PR.
 
 wait_for_pids(_, []) -> lager:debug("done waiting for compaction pids");
@@ -1210,8 +1221,10 @@ wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'error', {'conn_failed', 
     lager:debug("connecting to BigCouch timed out, waiting then retrying"),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
     wait_for_design_compaction(AdminConn, Shard, DDs, DD, couch_util:design_info(AdminConn, Shard, DD));
+wait_for_design_compaction(AdminConn, Shard, DDs, _DD, {'error', 'not_found'}) ->
+    wait_for_design_compaction(AdminConn, Shard, DDs);
 wait_for_design_compaction(AdminConn, Shard, DDs, _DD, {'error', _E}) ->
-    lager:debug("failed design status for '~s': ~p", [_DD, _E]),
+    lager:debug("failed design status for '~s/~s': ~p", [Shard, _DD, _E]),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
     wait_for_design_compaction(AdminConn, Shard, DDs);
 wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'ok', DesignInfo}) ->
