@@ -79,6 +79,7 @@ send_park(#ts_callflow_state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj
                              ,acctid=AccountId}=State) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
+            ,{<<"Pre-Park">>, pre_park_action()}
             ,{<<"Method">>, <<"park">>}
             ,{<<"From-Realm">>, wh_util:get_account_realm(AccountId)}
             ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())}
@@ -386,4 +387,11 @@ is_trunkstore_acct(JObj) ->
         <<"sys_info">> -> true;
         undefined -> true;
         _ -> false
+    end.
+
+-spec pre_park_action() -> ne_binary().
+pre_park_action() ->
+    case whapps_config:get_is_true(<<"trunkstore">>, <<"ring_ready_offnet">>, 'true') of
+        'false' -> <<"none">>;
+        'true' -> <<"ring_ready">>
     end.
