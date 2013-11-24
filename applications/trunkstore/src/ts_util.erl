@@ -23,6 +23,8 @@
          ,ignore_early_media/1, ep_timeout/1, caller_id/1, offnet_flags/1
         ]).
 
+-export([maybe_ensure_cid_valid/4]).
+
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 
@@ -213,3 +215,53 @@ simple_extract([JObj | T]) ->
     end;
 simple_extract([]) ->
     undefined.
+
+maybe_ensure_cid_valid('external', CIDNum, FromUser, AcctID) ->
+    case whapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_caller_id">>, 'false') of
+         'true' ->
+             case wh_number_manager:lookup_account_by_number(CIDNum) of
+                  {'ok', AcctID, _} -> CIDNum;
+                  _Else ->
+                      case wh_number_manager:lookup_account_by_number(FromUser) of
+                           {'ok', AcctID, _} -> FromUser;
+                           _NothingLeft -> whapps_config:get(<<"trunkstore">>, <<"default_caller_id_number">>, <<"00000000000000">>)
+                      end
+              end;
+          'false' ->
+                  CIDNum
+    end;
+maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, AcctID) ->
+    case whapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_caller_id">>, 'false') of
+         'true' ->
+             case wh_number_manager:lookup_account_by_number(ECIDNum) of
+                  {'ok', AcctID, _} -> ensure_valid_emergency_number(ECIDNum, AcctID);
+                  _Else -> valid_emergency_number(AcctID)
+             end;
+          'false' ->
+                  ECIDNum
+    end.
+
+ensure_valid_emergency_number(ECIDNum, AcctID) ->
+    Numbers = valid_emergency_numbers(AcctID),
+    case lists:member(ECIDNum, Numbers) of
+        'true' ->
+            ECIDNum;
+        'false' ->
+            valid_emergency_number(AcctID)
+    end.
+
+valid_emergency_numbers(AcctID) ->
+    AccountDb = wh_util:format_account_id(AcctID, encoded),
+    case couch_mgr:open_cache_doc(AccountDb, <<"phone_numbers">>) of
+        {'ok', JObj} ->
+            [Number
+             || Number <- wh_json:get_keys(JObj)
+                    ,lists:member(<<"dash_e911">>, wh_json:get_value([Number, <<"features">>], JObj, []))
+            ];
+        {'error', _} ->
+           whapps_config:get_non_empty(<<"trunkstore">>, <<"default_emergency_number">>, <<>>)
+    end.
+
+valid_emergency_number(AcctID)->
+    [H|_] = valid_emergency_numbers(AcctID),
+    H.

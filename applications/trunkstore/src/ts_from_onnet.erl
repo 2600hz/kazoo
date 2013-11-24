@@ -77,7 +77,7 @@ onnet_data(State) ->
                             {undefined, undefined} -> [];
                             {ECIDName, ECIDNum} ->
                                 [{<<"Emergency-Caller-ID-Name">>, ECIDName}
-                                 ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
+                                 ,{<<"Emergency-Caller-ID-Number">>, ts_util:maybe_ensure_cid_valid('emergency', ECIDNum, FromUser, AcctID)}
                                  ]
                         end,
     CallerID = case ts_util:caller_id([
@@ -85,13 +85,24 @@ onnet_data(State) ->
                                        ,wh_json:get_value(<<"caller_id">>, SrvOptions)
                                        ,wh_json:get_value(<<"caller_id">>, AcctOptions)
                                       ]) of
-                   {undefined, undefined} -> EmergencyCallerID;
+                   {undefined, undefined} ->
+                       case whapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_caller_id">>, 'false') of
+                            'true' ->
+                                ValidCID = ts_util:maybe_ensure_cid_valid('external', 'undefined', FromUser, AcctID),
+                                [{<<"Outbound-Caller-ID-Name">>, ValidCID}
+                                 ,{<<"Outbound-Caller-ID-Number">>, ValidCID}
+                                 | EmergencyCallerID
+                                ];
+                             'false' ->
+                                EmergencyCallerID
+                       end;
                    {CIDName, CIDNum} ->
                        [{<<"Outbound-Caller-ID-Name">>, CIDName}
-                        ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+                        ,{<<"Outbound-Caller-ID-Number">>, ts_util:maybe_ensure_cid_valid('external', CIDNum, FromUser, AcctID)}
                         | EmergencyCallerID
                        ]
                end,
+
 
     DIDFlags = ts_util:offnet_flags([wh_json:get_value(<<"DID_Opts">>, DIDOptions)
                                      ,wh_json:get_value(<<"flags">>, SrvOptions)
