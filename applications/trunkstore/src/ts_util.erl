@@ -231,7 +231,7 @@ maybe_ensure_cid_valid('external', CIDNum, FromUser, AcctID) ->
                   CIDNum
     end;
 maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, AcctID) ->
-    case whapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_caller_id">>, 'false') of
+    case whapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_emergency_number">>, 'false') of
          'true' ->
              case wh_number_manager:lookup_account_by_number(ECIDNum) of
                   {'ok', AcctID, _} -> ensure_valid_emergency_number(ECIDNum, AcctID);
