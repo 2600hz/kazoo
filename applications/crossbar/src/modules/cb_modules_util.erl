@@ -97,9 +97,9 @@ get_endpoints(Call, #cb_context{doc=JObj, req_nouns=?DEVICES_QCALL_NOUNS}) ->
                                     ,{<<"source">>, 'cb_devices'}
                                    ]),
     case cf_endpoint:build(JObj, Properties, aleg_cid(_Number, Call)) of
-        {error, _} -> [];
-        {ok, []} -> [];
-        {ok, Endpoints} -> Endpoints
+        {'error', _} -> [];
+        {'ok', []} -> [];
+        {'ok', Endpoints} -> Endpoints
     end;
 get_endpoints(Call, #cb_context{req_nouns=?USERS_QCALL_NOUNS}) ->
     Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
@@ -108,8 +108,8 @@ get_endpoints(Call, #cb_context{req_nouns=?USERS_QCALL_NOUNS}) ->
                                    ]),
     lists:foldr(fun(EndpointId, Acc) ->
                         case cf_endpoint:build(EndpointId, Properties, aleg_cid(_Number, Call)) of
-                            {ok, Endpoint} -> Endpoint ++ Acc;
-                            {error, _E} -> Acc
+                            {'ok', Endpoint} -> Endpoint ++ Acc;
+                            {'error', _E} -> Acc
                         end
                 end, [], cf_attributes:owned_by(_UserId, <<"device">>, Call));
 get_endpoints(_, _) ->
@@ -129,7 +129,9 @@ default_bleg_cid(Call, #cb_context{query_json=JObj}=Context) ->
                                  ]),
     Context#cb_context{query_json=wh_json:merge_jobjs(JObj, Defaults)}.
 
-originate_quickcall(Endpoints, Call, #cb_context{account_id=AccountId, req_id=RequestId}=Context) ->
+originate_quickcall(Endpoints, Call, #cb_context{account_id=AccountId
+                                                 ,req_id=RequestId
+                                                }=Context) ->
     CCVs = [{<<"Account-ID">>, AccountId}
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Inherit-Codec">>, <<"false">>}
@@ -138,8 +140,8 @@ originate_quickcall(Endpoints, Call, #cb_context{account_id=AccountId, req_id=Re
             ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
            ],
     MsgId = case wh_util:is_empty(RequestId) of
-                true -> wh_util:rand_hex_binary(16);
-                false -> wh_util:to_binary(RequestId)
+                'true' -> wh_util:rand_hex_binary(16);
+                'false' -> wh_util:to_binary(RequestId)
             end,
     Request = [{<<"Application-Name">>, <<"transfer">>}
                ,{<<"Application-Data">>, get_application_data(Context)}
@@ -153,7 +155,7 @@ originate_quickcall(Endpoints, Call, #cb_context{account_id=AccountId, req_id=Re
                ,{<<"Outbound-Callee-ID-Name">>, get_caller_id_name(Context)}
                ,{<<"Outbound-Callee-ID-Number">>, get_caller_id_number(Context)}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
-               ,{<<"Continue-On-Fail">>, <<"false">>}
+               ,{<<"Continue-On-Fail">>, 'false'}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
                ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
                | wh_api:default_headers(<<>>, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
@@ -192,13 +194,13 @@ get_media(#cb_context{query_json=JObj}) ->
 
 get_caller_id_name(#cb_context{query_json=JObj}) ->
     case wh_json:get_binary_value(<<"cid-name">>, JObj) of
-        undefined -> undefined;
+        'undefined' -> 'undefined';
         CIDName -> wh_util:uri_decode(CIDName)
     end.
 
 get_caller_id_number(#cb_context{query_json=JObj}) ->
     case wh_json:get_binary_value(<<"cid-number">>, JObj) of
-        undefined -> undefined;
+        'undefined' -> 'undefined';
         CIDNumber -> wh_util:uri_decode(CIDNumber)
     end.
 

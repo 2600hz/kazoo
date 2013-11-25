@@ -30,6 +30,7 @@
 
 -include("../crossbar.hrl").
 
+-define(QUICKCALL_PATH_TOKEN, <<"quickcall">>).
 -define(QUICKCALL_URL, [{<<"devices">>, [_, <<"quickcall">>, _]}
                         ,{?WH_ACCOUNTS_DB, [_]}
                        ]).
@@ -75,7 +76,7 @@ allowed_methods(<<"status">>) ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
-allowed_methods(_, <<"quickcall">>, _) ->
+allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -92,7 +93,7 @@ allowed_methods(_, <<"quickcall">>, _) ->
 
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
-resource_exists(_, <<"quickcall">>, _) -> 'true'.
+resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -154,7 +155,7 @@ reconcile_services(#cb_context{account_id=AccountId}=Context) ->
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     load_device_summary(Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    validate_request(undefined, Context).
+    validate_request('undefined', Context).
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, <<"status">>) ->
     load_device_status(Context);
@@ -165,7 +166,7 @@ validate(#cb_context{req_verb = ?HTTP_POST}=Context, DeviceId) ->
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DeviceId) ->
     load_device(DeviceId, Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, DeviceId, <<"quickcall">>, _) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
     Context1 = maybe_validate_quickcall(load_device(DeviceId, Context)),
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
@@ -176,7 +177,7 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, DeviceId, <<"quickcall">>, _
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(#cb_context{}=Context, DeviceId) ->
     case changed_mac_address(Context) of
-        'true' -> 
+        'true' ->
             Context1 = crossbar_doc:save(Context),
             _ = maybe_aggregate_device(DeviceId, Context1),
             _ = provisioner_util:maybe_provision(Context1),
@@ -233,14 +234,14 @@ changed_mac_address(#cb_context{req_data=JObj, storage=Storage, db_name=DbName})
     OldAddress = wh_json:get_ne_value(<<"mac_address">>, props:get_value('db_doc', Storage)),
     case NewAddress =:= OldAddress of
         'true' -> 'true';
-        'false' -> 
+        'false' ->
             unique_mac_address(NewAddress, DbName)
     end.
 
 -spec check_mac_address(api_binary(), cb_context:context()) -> cb_context:context().
 check_mac_address(DeviceId, #cb_context{req_data=JObj, db_name=DbName}=Context) ->
     case unique_mac_address(wh_json:get_ne_value(<<"mac_address">>, JObj), DbName) of
-        'true' -> 
+        'true' ->
             prepare_outbound_flags(DeviceId, Context);
         'false' ->
            error_used_mac_address(Context)
@@ -261,7 +262,7 @@ error_used_mac_address(Context) ->
 
 get_mac_addresses(DbName) ->
     case couch_mgr:get_all_results(DbName, ?CB_LIST_MAC) of
-        {'ok', AdJObj} -> 
+        {'ok', AdJObj} ->
             couch_mgr:get_result_keys(AdJObj);
         _ -> []
     end.

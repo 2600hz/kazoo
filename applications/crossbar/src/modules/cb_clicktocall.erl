@@ -259,7 +259,7 @@ originate_call(Contact, JObj, AccountId) ->
                ,{<<"Outbound-Caller-ID-Number">>, Contact}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-               ,{<<"Continue-On-Fail">>, <<"true">>}
+               ,{<<"Continue-On-Fail">>, 'true'}
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
                ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
