@@ -279,7 +279,7 @@ is_account_enabled(Account) ->
             lager:error("could not open account ~p in ~p", [AccountId, AccountDb]),
             'false';
         {'ok', JObj} ->
-            wh_json:is_true(<<"pvt_enabled">>, JObj, 'true') 
+            wh_json:is_true(<<"pvt_enabled">>, JObj, 'true')
                 andalso wh_json:is_true(<<"enabled">>, JObj, 'true')
 
     end.
@@ -494,7 +494,7 @@ uri_encode(Atom) when is_atom(Atom) ->
 
 -spec to_integer(string() | binary() | integer() | float()) -> integer().
 -spec to_integer(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
-to_integer(X) -> to_integer(X, notstrict).
+to_integer(X) -> to_integer(X, 'notstrict').
 
 to_integer(X, 'strict') when is_float(X) -> erlang:error('badarg');
 to_integer(X, 'notstrict') when is_float(X) -> round(X);
