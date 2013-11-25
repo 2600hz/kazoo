@@ -472,10 +472,13 @@ identify_account(_, Props) ->
             lager:debug("authz identify request lookup failed: ~p", [_R]),
             {'error', 'unidentified_channel'};
         {'ok', RespJObj} ->
+            AuthzRequired = wh_json:is_true(<<"Required">>, RespJObj, 'true'),
             GlobalResource = wh_json:get_value(<<"Global-Resource">>, RespJObj, 'true'),
             RestrictLocal = ecallmgr_config:get(<<"authz_local_resources">>, <<"false">>),
-            case wh_util:is_true(GlobalResource)
-                orelse wh_util:is_true(RestrictLocal)
+            case (AuthzRequired)
+                andalso (wh_util:is_true(GlobalResource)
+                    orelse wh_util:is_true(RestrictLocal))
+
             of
                 'false' ->
                     lager:debug("identified channel as a local resource, allowing"),

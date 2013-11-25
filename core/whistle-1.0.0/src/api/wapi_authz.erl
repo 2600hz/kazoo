@@ -115,7 +115,7 @@
 
 %% Authorization Identify Responses
 -define(AUTHZ_IDENT_RESP_HEADERS, [<<"Call-ID">>, <<"Account-ID">>]).
--define(OPTIONAL_AUTHZ_IDENT_RESP_HEADERS, [<<"Reseller-ID">>, <<"Global-Resource">>]).
+-define(OPTIONAL_AUTHZ_IDENT_RESP_HEADERS, [<<"Reseller-ID">>, <<"Global-Resource">>, <<"Required">>]).
 -define(AUTHZ_IDENT_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                                   ,{<<"Event-Name">>, <<"identify_resp">>}
                                   ,{<<"Global-Resource">>, [<<"true">>, <<"false">>]}
