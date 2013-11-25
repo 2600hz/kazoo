@@ -17,7 +17,7 @@
          ,say_loop/6, say_loop/7
          ,play_loop/3, play_loop/4
          ,record_loop/2
-         ,collect_dtmfs/4
+         ,collect_dtmfs/4, collect_dtmfs/5
 
          ,recording_meta/2
         ]).
@@ -34,11 +34,16 @@
 
 -define(DEFAULT_EVENT_WAIT, 10000). % 10s or 10000ms
 
+default_on_first_fun(_) -> 'ok'.
+
 collect_dtmfs(Call, FinishKey, Timeout, N) ->
-    collect_dtmfs(Call, FinishKey, Timeout, N, kzt_util:get_digits_collected(Call)).
-collect_dtmfs(Call, _FinishKey, _Timeout, N, Collected) when byte_size(Collected) =:= N ->
+    collect_dtmfs(Call, FinishKey, Timeout, N, fun default_on_first_fun/1, kzt_util:get_digits_collected(Call)).
+collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun) when is_function(OnFirstFun, 1) ->
+    collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, kzt_util:get_digits_collected(Call)).
+
+collect_dtmfs(Call, _FinishKey, _Timeout, N, _OnFirstFun, Collected) when byte_size(Collected) =:= N ->
     {'ok', Call};
-collect_dtmfs(Call, FinishKey, Timeout, N, Collected) ->
+collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected) ->
     lager:debug("collect_dtmfs: n: ~p collected: ~s", [N, Collected]),
     case whapps_call_command:wait_for_dtmf(Timeout) of
         {'ok', FinishKey} ->
@@ -47,10 +52,15 @@ collect_dtmfs(Call, FinishKey, Timeout, N, Collected) ->
         {'ok', <<>>} ->
             lager:debug("no dtmf pressed in time"),
             {'ok', 'timeout', Call};
+        {'ok', DTMF} when Collected =:= <<>> ->
+            lager:debug("first dtmf pressed: ~s", [DTMF]),
+            Call1 = kzt_util:add_digit_collected(DTMF, Call),
+            _ = try OnFirstFun(Call1) of _ -> 'ok' catch _:_ -> 'ok' end,
+            collect_dtmfs(Call1, FinishKey, Timeout, N, fun default_on_first_fun/1, <<DTMF/binary, Collected/binary>>);
         {'ok', DTMF} ->
             lager:debug("dtmf pressed: ~s", [DTMF]),
             collect_dtmfs(kzt_util:add_digit_collected(DTMF, Call)
-                          ,FinishKey, Timeout, N, <<DTMF/binary, Collected/binary>>
+                          ,FinishKey, Timeout, N, OnFirstFun, <<DTMF/binary, Collected/binary>>
                          );
         {'error', 'channel_hungup'} -> {'stop', Call};
         {'error', 'channel_destroy'} -> {'stop', Call};

@@ -21,6 +21,7 @@
          ,reject_code/1
          ,get_engine/1
          ,get_voice/1
+         ,exec_gather_els/3
         ]).
 
 parse_cmds(XMLString) ->
@@ -268,17 +269,33 @@ redirect(Call, XmlText, Attrs) ->
               ],
     {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}.
 
+exec_gather_els(_Parent, _Call, []) ->
+    lager:debug("finished gather sub elements");
+exec_gather_els(Parent, Call, [SubAction|SubActions]) ->
+    whapps_call:put_callid(Call),
+    lager:debug("subact: ~p", [SubAction]),
+
+    case exec_element(Call, SubAction) of
+        {'stop', _} -> lager:debug("sub els stopping");
+        {'error', _} -> lager:debug("sub els erroring");
+        {'ok', Call1} ->
+            lager:debug("exec done"),
+            exec_gather_els(Parent, Call1, SubActions)
+    end.
+
+exec_gather_els(Call, SubActions) ->
+    {_Pid, _Ref}=PidRef =
+        spawn_monitor(?MODULE, 'exec_gather_els', [self(), Call, SubActions]),
+    lager:debug("started to exec gather els: ~p(~p)", [_Pid, _Ref]),
+    {'ok', kzt_util:set_gather_pidref(PidRef, Call)}.
+
 gather(Call, [], Attrs) -> gather(Call, Attrs);
 gather(Call, SubActions, Attrs) ->
     lager:debug("GATHER: exec sub actions"),
-    case exec_elements(kzt_util:clear_digits_collected(Call)
-                       ,kzt_util:xml_elements(SubActions)
-                      )
-    of
-        {'ok', C} -> gather(C, Attrs);
-        {'stop', C} -> gather(C, Attrs);
-        Other -> lager:debug("gather sub returned: ~p", [Other]), Other
-    end.
+    {'ok', C} = exec_gather_els(kzt_util:clear_digits_collected(Call)
+                                ,kzt_util:xml_elements(SubActions)
+                               ),
+    gather(C, Attrs).
 
 gather(Call, Attrs) ->
     whapps_call_command:answer(Call),
@@ -291,12 +308,22 @@ gather(Call, Attrs) ->
     gather(Call, FinishKey, Timeout, Props, num_digits(Props)).
 
 gather(Call, FinishKey, Timeout, Props, N) ->
-    case kzt_receiver:collect_dtmfs(Call, FinishKey, Timeout, N) of
+    case kzt_receiver:collect_dtmfs(Call, FinishKey, Timeout, N, fun on_first_dtmf/1) of
         {'ok', 'timeout', C} -> gather_finished(C, Props);
         {'ok', 'dtmf_finish', C} -> gather_finished(C, Props);
         {'ok', C} -> gather_finished(C, Props);
         {'error', _E, _C}=ERR -> ERR;
         {'stop', _C}=STOP -> STOP
+    end.
+
+-spec on_first_dtmf(whapps_call:call()) -> 'ok' | 'stop'.
+on_first_dtmf(Call) ->
+    case kzt_util:get_gather_pidref(Call) of
+        'undefined' -> 'ok';
+        {Pid, Ref} ->
+            erlang:demonitor(Ref, ['flush']),
+            lager:debug("first dtmf recv, stopping ~p(~p)", [Pid, Ref]),
+            exit(Pid, 'kill')
     end.
 
 gather_finished(Call, Props) ->

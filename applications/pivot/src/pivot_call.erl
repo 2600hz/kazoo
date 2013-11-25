@@ -47,6 +47,7 @@
          ,response_body :: binary()
          ,response_content_type :: binary()
          ,response_pid :: pid() %% pid of the processing of the response
+         ,response_event_handlers = [] :: pids()
          ,response_ref :: reference() %% monitor ref for the pid
          }).
 -type state() :: #state{}.
@@ -102,6 +103,12 @@ maybe_relay_event(JObj, Props) ->
         P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
         _ -> 'ok'
     end,
+    case props:get_value('pids', Props) of
+        [_|_]=Pids ->
+            [whapps_call_command:relay_event(P, JObj) || P <- Pids];
+        _ -> 'ok'
+    end,
+
     relay_cdr_event(JObj, Props).
 
 relay_cdr_event(JObj, Props) ->
@@ -214,6 +221,13 @@ handle_cast({'cdr', JObj}, #state{cdr_uri=Url}=State) when Url =/= 'undefined'->
     lager:debug("cdr callback resp from server: ~p", [_R]),
     {'stop', 'normal', State};
 
+handle_cast({'add_event_handler', {Pid, _Ref}}, #state{response_event_handlers=Pids}=State) ->
+    lager:debug("adding event handler ~p", [Pid]),
+    {'noreply', State#state{response_event_handlers=[Pid | Pids]}};
+handle_cast({'add_event_handler', Pid}, #state{response_event_handlers=Pids}=State) when is_pid(Pid) ->
+    lager:debug("adding event handler ~p", [Pid]),
+    {'noreply', State#state{response_event_handlers=[Pid | Pids]}};
+
 handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
@@ -313,8 +327,12 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_event(wh_json:object(), state()) -> gen_listener:handle_event_return().
-handle_event(_JObj, #state{response_pid=Pid}) ->
-    {'reply', [{'pid', Pid}]}.
+handle_event(_JObj, #state{response_pid=Pid
+                           ,response_event_handlers=Pids
+                          }) ->
+    {'reply', [{'pid', Pid}
+               ,{'pids', Pids}
+              ]}.
 
 %%--------------------------------------------------------------------
 %% @private
