@@ -101,14 +101,16 @@ update_number_quantities(Number, Services) ->
             wh_services:update(<<"phone_numbers">>, Classification, Quantity + 1, Services)
     end.
 
+-spec is_number_billable(ne_binary()) -> boolean().
 is_number_billable(DID) ->
-    case wnm_number:get(DID) of
+    case catch wnm_number:get(DID) of
         #number{module_name = <<"wnm_local">>} ->
             lager:debug("number is not billable: wnm_local"),
             'false';
         #number{module_name=_Mod} ->
             lager:debug("number is billable: ~s", [_Mod]),
-            'true'
+            'true';
+        _Else -> 'false'
     end.
 
 %%--------------------------------------------------------------------
