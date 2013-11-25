@@ -233,7 +233,9 @@ get_amqp_listener(Call) -> whapps_call:kvs_fetch(<<"amqp_listener">>, Call).
 
 -spec set_gather_pidref({pid(), reference()}, whapps_call:call()) -> whapps_call:call().
 -spec get_gather_pidref(whapps_call:call()) -> {pid(), reference()} | 'undefined'.
-set_gather_pidref(PidRef, Call) -> whapps_call:kvs_store(<<"gather_pidref">>, PidRef, Call).
+set_gather_pidref(PidRef, Call) ->
+    gen_listener:cast(get_amqp_listener(Call), {'add_event_handler', PidRef}),
+    whapps_call:kvs_store(<<"gather_pidref">>, PidRef, Call).
 get_gather_pidref(Call) -> whapps_call:kvs_fetch(<<"gather_pidref">>, Call).
 
 set_conference_profile(JObj, Call) -> whapps_call:kvs_store(<<"conference_profile">>, JObj, Call).
