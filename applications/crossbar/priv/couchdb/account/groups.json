@@ -3,7 +3,7 @@
     ,"language": "javascript"
     ,"views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'group' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'endpoints': Object.keys(doc.endpoints).length});}"
+            "map": "function (doc) { if (doc.pvt_type != 'group' || doc.pvt_deleted) return; var features = []; if (doc.smartpbx) { for(var feature in doc.smartpbx) { if(doc.smartpbx[feature].enabled) { features.push(feature); }}} if(doc.music_on_hold && doc.music_on_hold.media_id) { features.push('music_on_hold'); } emit(doc._id, { 'id':doc._id, 'name':doc.name, 'features':features, 'endpoints':Object.keys(doc.endpoints).length }); }"
         }
     }
 }
