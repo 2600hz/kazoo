@@ -609,7 +609,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call))}
          ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
          ,{<<"To-IP">>, wh_json:get_value(<<"ip">>, SIPJObj)}
-         ,{<<"SIP-Transport">>, get_sip_transport(SIPJObj)
+         ,{<<"SIP-Transport">>, get_sip_transport(SIPJObj)}
          ,{<<"Route">>, wh_json:get_value(<<"route">>, SIPJObj)}
          ,{<<"Proxy-IP">>, wh_json:get_value(<<"proxy">>, SIPJObj)}
          ,{<<"Forward-IP">>, wh_json:get_value(<<"forward">>, SIPJObj)}
@@ -649,12 +649,12 @@ get_sip_transport(SIPJObj) ->
         Transport -> Transport
     end.
 
--spec validate_sip_transport(any()) -> <<"tcp">> | <<"udp">> | <<"tls">> | <<"sctp">> | 'undefined'.
+-spec validate_sip_transport(any()) -> ne_binary() | 'undefined'.
 validate_sip_transport(<<"tcp">>) -> <<"tcp">>;
 validate_sip_transport(<<"udp">>) -> <<"udp">>;
 validate_sip_transport(<<"tls">>) -> <<"tls">>;
-validate_sip_transport(<<"sctp">>) -> <<"sctp">>
-validate_sip_transport(_) -> 'undefined';
+validate_sip_transport(<<"sctp">>) -> <<"sctp">>;
+validate_sip_transport(_) -> 'undefined'.
 
 %%--------------------------------------------------------------------
 %% @private
