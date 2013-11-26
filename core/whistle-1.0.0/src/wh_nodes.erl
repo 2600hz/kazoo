@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(wh_nodes).
 
@@ -46,7 +47,7 @@
 -define(APP_VERSION, <<"0.1.0">>).
 
 -record(state, {heartbeat_ref :: 'undefined' | reference()
-                ,tab
+                ,tab :: ets:tid()
                 ,notify_new = sets:new() :: set()
                 ,notify_expire = sets:new() :: set()
                }).
@@ -172,6 +173,11 @@ init([]) ->
     wapi_self:declare_exchanges(),
     Tab = ets:new(?MODULE, ['set', 'protected', 'named_table', {'keypos', #node.node}]),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
+
+    net_kernel:monitor_nodes('true', ['nodedown_reason'
+                                      ,{'node_type', 'all'}
+                                     ]),
+
     {'ok', #state{tab=Tab}}.
 
 %%--------------------------------------------------------------------
@@ -261,7 +267,23 @@ handle_info({'DOWN', Ref, 'process', Pid, _}, #state{notify_new=NewSet
                                                      ,notify_expire=ExpireSet}=State) ->
     erlang:demonitor(Ref, ['flush']),
     {'noreply', State#state{notify_new=sets:del_element(Pid, NewSet)
-                          ,notify_expire=sets:del_element(Pid, ExpireSet)}};
+                            ,notify_expire=sets:del_element(Pid, ExpireSet)
+                           }};
+
+handle_info({'nodedown', Node, InfoList}, State) ->
+    lager:info("VM ~s is no longer connected:", [Node]),
+    [lager:info(" ~p: ~p", [K, V]) || {K, V} <- InfoList],
+    {'noreply', State};
+handle_info({'nodedown', Node}, State) ->
+    lager:info("VM ~s is no longer connected", [Node]),
+    {'noreply', State};
+handle_info({'nodeup', Node, InfoList}, State) ->
+    lager:info("VM ~s is now connected:", [Node]),
+    [lager:info(" ~p: ~p", [K, V]) || {K, V} <- InfoList],
+    {'noreply', State};
+handle_info({'nodeup', Node}, State) ->
+    lager:info("VM ~s is now connected", [Node]),
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
