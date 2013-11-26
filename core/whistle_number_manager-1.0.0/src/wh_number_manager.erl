@@ -624,61 +624,54 @@ set_public_fields(Number, PublicFields, AuthBy) ->
 
 
 -spec track_assignment(ne_binaries(), wh_proplist()) -> 'ok' | 'error'.
+-spec track_assignment(ne_binaries(), wh_proplist(), integer()) -> 'ok' | 'error'.
 track_assignment(Account, Props) ->
+    track_assignment(Account, Props, 3).
+
+track_assignment(Account, Props, Try) when Try > 0 ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:open_doc(AccountDb, <<"phone_numbers">>) of
         {'error', _E} ->
             lager:error("could not open phone_numbers doc in ~p: ~p ", [AccountDb ,_E]),
-            'error';
+            track_assignment(Account, Props, Try-1);
         {'ok', JObj} ->
-            Updated = update_assignment(JObj, Props),
-            case couch_mgr:save_doc(AccountDb, Updated) of
-                {'error', _E} ->
-                    lager:error("could not save phone_numbers doc in ~p: ~p ", [AccountDb ,_E]),
-                    'error';
-                {'ok', _R} -> 'ok'
-            end
+            update_assignment(AccountDb, JObj, Props, Try)
+    end;
+track_assignment(Account, _Props, _) ->
+    lager:error("too many attempt on ~p phone_numbers doc", [Account]),
+    'error'.
+
+-spec update_assignment(ne_binary(), wh_json:object(), wh_proplist(), integer()) -> 'ok' | 'error'.
+update_assignment(AccountDb, JObj, Props, Try) ->
+    UpdatedDoc = lists:foldl(
+                    fun({Num, Assignment}, {Updated, Acc}) ->
+                        case wh_json:get_value(Num, Acc) of
+                            'undefined' -> {Updated, Acc};
+                            NumJobj ->
+                                NumJobj1 = wh_json:set_value(<<"used_by">>, Assignment, NumJobj),
+                                {'true', wh_json:set_value(Num, NumJobj1, Acc)}
+                        end
+                    end, {'false', JObj}, Props
+                 ),
+    case UpdatedDoc of
+        {'false', _} ->
+            lager:debug("no need to update phone_numbers in ~p", [AccountDb]),
+            'ok';
+        {'true', Doc} ->
+            save_assignment(AccountDb, Doc, Props, Try)
     end.
 
--spec update_assignment(wh_json:object(), wh_proplist()) -> wh_json:object().
-update_assignment(JObj, Props) ->
-    lists:foldl(
-        fun({Num, Assignment}, Acc) ->
-            case wh_json:get_value(Num, Acc) of
-                'undefined' -> Acc;
-                NumJobj ->
-                    NumJobj1 = wh_json:set_value(<<"used_by">>, Assignment, NumJobj),
-                    wh_json:set_value(Num, NumJobj1, Acc)
-            end
-        end, JObj, Props
-    ).
-
-% track_assignment(Numbers) ->
-%     track_assignment(Numbers, <<>>).
-
-% track_assignment([], _) ->
-%     'ok';
-% track_assignment(Numbers, Assignment) ->
-%     Routines = [fun(Nums) ->
-%                     lists:foldl(
-%                         fun(Num, Acc) ->
-%                             case wnm_util:is_reconcilable(Num) of
-%                                 'true' -> [Num|Acc];
-%                                 'false' -> Acc
-%                             end
-%                         end, [], Nums
-%                     )
-%                 end
-%                 ,fun(Nums)->
-%                     lists:foreach(
-%                         fun(Num) ->
-%                             NumRecord = wnm_number:get(Num),
-%                             wnm_number:save(NumRecord#number{used_by=Assignment})
-%                         end, Nums
-%                     )
-%                 end
-%                ],
-%     lists:foldl(fun(F, J) -> catch F(J) end, Numbers, Routines).
+-spec save_assignment(ne_binary(), wh_json:object(), wh_proplist(), integer()) -> 'ok' | 'error'.
+save_assignment(AccountDb, Updated, Props, Try) ->
+    case couch_mgr:save_doc(AccountDb, Updated) of
+        {'error', 'conflict'} ->
+            lager:warning("could not save phone_numbers doc in ~p: conflict retrying...", [AccountDb]),
+            track_assignment(AccountDb, Props, Try-1);
+        {'error', _E} ->
+            lager:error("could not save phone_numbers doc in ~p: ~p ", [AccountDb ,_E]),
+            'error';
+        {'ok', _R} -> 'ok'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
