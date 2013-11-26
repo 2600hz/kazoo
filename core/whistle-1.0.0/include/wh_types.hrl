@@ -1,9 +1,12 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
 -include_lib("xmerl/include/xmerl.hrl").
 
+-define(MILLISECONDS_IN_MINUTE, 60000).
+-define(MILLISECONDS_IN_HOUR, 3600000).
 -define(MILLISECONDS_IN_DAY, 86400000).
--define(SECONDS_IN_DAY, 86400).
+
 -define(SECONDS_IN_HOUR, 3600).
+-define(SECONDS_IN_DAY, 86400).
 
 -define(ANY_DIGIT, [<<"1">>, <<"2">>, <<"3">>
                     ,<<"4">>, <<"5">>, <<"6">>

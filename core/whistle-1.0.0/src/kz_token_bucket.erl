@@ -19,7 +19,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/2, start_link/3
+-export([start_link/2, start_link/3, start_link/4
          ,consume/2
          ,tokens/1
         ]).
@@ -38,9 +38,14 @@
 
 -define(TOKEN_FILL_TIME, 'fill_er_up').
 
+-type fill_rate_time() :: 'second' | 'minute' | 'hour' | 'day'.
+
+-export_type([fill_rate_time/0]).
+
 -record(state, {max_tokens = 100 :: pos_integer() % max size of bucket
                 ,tokens = 0 :: non_neg_integer() % current count
-                ,fill_rate = 1 :: pos_integer() % tokens/sec added
+                ,fill_rate = 1 :: pos_integer() % tokens/fill_rate_time() added
+                ,fill_rate_time = 'second' :: fill_rate_time()
                 ,fill_ref :: reference()
                 ,fill_as_block = 'true' :: boolean()
                }).
@@ -59,10 +64,18 @@
 -spec start_link(pos_integer(), pos_integer()) -> startlink_ret().
 -spec start_link(pos_integer(), pos_integer(), boolean()) -> startlink_ret().
 start_link(Max, FillRate) -> start_link(Max, FillRate, 'true').
-start_link(Max, FillRate, FillBlock) when is_integer(FillRate), FillRate > 0,
-                                          is_integer(Max), Max > 0,
-                                          is_boolean(FillBlock) ->
-    gen_server:start_link(?MODULE, [Max, FillRate, FillBlock], []).
+start_link(Max, FillRate, FillBlock) ->
+    start_link(Max, FillRate, FillBlock, 'second').
+start_link(Max, FillRate, FillBlock, FillTime) when is_integer(FillRate), FillRate > 0,
+                                                    is_integer(Max), Max > 0,
+                                                    is_boolean(FillBlock),
+                                                    (FillTime =:= 'second'
+                                                     orelse FillTime =:= 'minute'
+                                                     orelse FillTime =:= 'hour'
+                                                     orelse FillTime =:= 'day'
+                                                    )
+                                                    ->
+    gen_server:start_link(?MODULE, [Max, FillRate, FillBlock, FillTime], []).
 
 -spec consume(pid(), pos_integer()) -> boolean().
 consume(Srv, Tokens) when is_integer(Tokens) andalso Tokens > 0 ->
@@ -86,11 +99,14 @@ tokens(Srv) -> gen_server:call(Srv, {'tokens'}).
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Max, FillRate, FillBlock]) ->
-    lager:debug("starting token bucket with ~b max, filling at ~b/s, in a block: ~s", [Max, FillRate, FillBlock]),
+init([Max, FillRate, FillBlock, FillTime]) ->
+    lager:debug("starting token bucket with ~b max, filling at ~b/~s, in a block: ~s"
+                ,[Max, FillRate,FillTime, FillBlock]
+               ),
     {'ok', #state{max_tokens=Max
                   ,fill_rate=FillRate
-                  ,fill_ref=start_fill_timer(FillRate, FillBlock)
+                  ,fill_rate_time=FillTime
+                  ,fill_ref=start_fill_timer(FillRate, FillBlock, FillTime)
                   ,fill_as_block=FillBlock
                   ,tokens=Max
                  }}.
@@ -111,8 +127,12 @@ init([Max, FillRate, FillBlock]) ->
 %%--------------------------------------------------------------------
 handle_call({'consume', Req}, _From, #state{tokens=Current}=State) ->
     case Current - Req of
-        N when N >= 0 -> {'reply', 'true', State#state{tokens=N}};
-        _ -> {'reply', 'false', State}
+        N when N >= 0 ->
+            lager:debug("consumed ~p, ~p left", [Req, N]),
+            {'reply', 'true', State#state{tokens=N}};
+        _ ->
+            lager:debug("not enough tokens (~p) to consume ~p", [Current, Req]),
+            {'reply', 'false', State}
     end;
 handle_call({'tokens'}, _From, #state{tokens=Current}=State) ->
     {'reply', Current, State};
@@ -144,13 +164,14 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'timeout', Ref, ?TOKEN_FILL_TIME}, #state{max_tokens=Max
-                                                      ,tokens=Current
-                                                      ,fill_rate=FillRate
-                                                      ,fill_ref=Ref
-                                                      ,fill_as_block=FillBlock
+                                                       ,tokens=Current
+                                                       ,fill_rate=FillRate
+                                                       ,fill_rate_time=FillTime
+                                                       ,fill_ref=Ref
+                                                       ,fill_as_block=FillBlock
                                                      }=State) ->
-    {'noreply', State#state{tokens=add_tokens(Max, Current, FillRate, FillBlock)
-                            ,fill_ref=start_fill_timer(FillRate, FillBlock)
+    {'noreply', State#state{tokens=add_tokens(Max, Current, FillRate, FillBlock, FillTime)
+                            ,fill_ref=start_fill_timer(FillRate, FillBlock, FillTime)
                            }};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -192,22 +213,30 @@ code_change(_OldVsn, State, _Extra) ->
 %%   If fill_rate is 100 tokens/s, (1s / 100 tokens/s) * 1000ms = 10ms
 %%   Maxes out at 1ms
 
-start_fill_timer(_FillRate, 'true') -> start_fill_timer(1000);
-start_fill_timer(FillRate, 'false') -> start_fill_timer(fill_timeout(FillRate)).
+fill_time_in_ms('second') -> 1000;
+fill_time_in_ms('minute') -> ?MILLISECONDS_IN_MINUTE;
+fill_time_in_ms('hour') -> ?MILLISECONDS_IN_HOUR;
+fill_time_in_ms('day') -> ?MILLISECONDS_IN_DAY;
+fill_time_in_ms(N) when is_integer(N) -> N.
 
-fill_timeout(FillRate) ->
-    case 1000 div FillRate of
+start_fill_timer(_FillRate, 'true', FillTime) ->
+    start_fill_timer(fill_time_in_ms(FillTime));
+start_fill_timer(FillRate, 'false', FillTime) ->
+    start_fill_timer(fill_timeout(FillRate, fill_time_in_ms(FillTime))).
+
+fill_timeout(FillRate, FillTime) ->
+    case FillTime div FillRate of
         N when N < 1 -> 1;
         N -> N
     end.
 
 start_fill_timer(Timeout) -> erlang:start_timer(Timeout, self(), ?TOKEN_FILL_TIME).
 
-add_tokens(Max, Count, FillRate, 'true') ->
+add_tokens(Max, Count, FillRate, 'true', _FillTime) ->
     constrain(Max, Count, FillRate);
-add_tokens(Max, Count, FillRate, 'false') ->
-    FillTimeout = fill_timeout(FillRate),
-    FillShard = FillRate div FillTimeout,
+add_tokens(Max, Count, FillRate, 'false', FillTime) ->
+    FillTimeout = fill_timeout(FillRate, fill_time_in_ms(FillTime)),
+    FillShard = FillTimeout div FillRate,
     constrain(Max, Count, FillShard).
 
 constrain(Max, Count, Inc) ->
