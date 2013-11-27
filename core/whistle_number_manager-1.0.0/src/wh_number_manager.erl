@@ -70,9 +70,6 @@ find(Number, Quanity, Opts) ->
 lookup_account_by_number(undefined) ->
     {error, not_reconcilable};
 lookup_account_by_number(Number) ->
-
-    io:format("MARKER0 ~p~n", [Number]),
-
     try wnm_number:get(Number) of
         #number{assigned_to=undefined} ->
             lager:debug("number ~s not assigned to an account", [Number]),
