@@ -324,7 +324,7 @@ bridge_caller_id(Endpoints, JObj) ->
 -spec bridge_emergency_caller_id(wh_json:object()) -> {api_binary(), api_binary()}.
 bridge_emergency_caller_id(JObj) ->
     lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
-    {emergency_cid_number(JObj)
+    {maybe_emergency_cid_number(JObj)
      ,wh_json:get_first_defined([<<"Emergency-Caller-ID-Name">>
                                  ,<<"Outbound-Caller-ID-Name">>
                                 ], JObj)
@@ -356,6 +356,19 @@ bridge_from_uri(CIDNum, JObj) ->
             FromURI
     end.
 
+-spec maybe_emergency_cid_number(wh_json:object()) -> api_binary().
+maybe_emergency_cid_number(JObj) ->
+    %% NOTE: if this request had a hunt-account-id then we
+    %%   are assuming it was for a local resource (at the
+    %%   time of this commit offnet DB is still in use)
+    case wh_json:get_value(<<"Hunt-Account-ID">>, JObj) of
+        'undefined' -> emergency_cid_number(JObj);
+        _Else ->
+            wh_json:get_first_defined([<<"Emergency-Caller-ID-Number">>
+                                       ,<<"Outbound-Caller-ID-Number">>
+                                      ], JObj)
+    end.
+
 -spec emergency_cid_number(wh_json:object()) -> ne_binary().
 emergency_cid_number(JObj) ->
     Account = wh_json:get_value(<<"Account-ID">>, JObj),
@@ -366,6 +379,7 @@ emergency_cid_number(JObj) ->
     Requested = wh_json:get_first_defined([<<"Emergency-Caller-ID-Number">>
                                            ,<<"Outbound-Caller-ID-Number">>
                                           ], JObj),
+    lager:debug("ensuring requested CID is e911 enabled: ~s", [Requested]),
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'ok', PhoneNumbers} ->
             Numbers = wh_json:get_keys(wh_json:public_fields(PhoneNumbers)),
