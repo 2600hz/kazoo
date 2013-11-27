@@ -1294,6 +1294,12 @@ get_node_connections(Host, Port, User, Pass, AdminPort, Retries) ->
         {_, {'error', 'timeout'}} ->
             lager:debug("timed out getting connection for ~s, try again", [Host]),
             get_node_connections(Host, Port, User, Pass, AdminPort, Retries+1);
+        {{'error', _E}, _} ->
+            lager:debug("error getting conn: ~p", [_E]),
+            get_node_connections(Host, Port, User, Pass, AdminPort, Retries+1);
+        {_, {'error', _E}} ->
+            lager:debug("error getting admin conn: ~p", [_E]),
+            get_node_connections(Host, Port, User, Pass, AdminPort, Retries+1);
         {_Conn, _AdminConn}=Conns -> Conns
     catch
         _E:_R ->
