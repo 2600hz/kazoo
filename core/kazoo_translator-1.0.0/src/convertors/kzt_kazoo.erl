@@ -31,7 +31,7 @@ parse_cmds(JSON) ->
         JObj -> {'ok', JObj}
     catch
         _E:_R ->
-            lager:debug("failed to process json: ~s: ~p", [_E, _R]),
+            lager:info("failed to process json: ~s: ~p", [_E, _R]),
             {'error', 'not_parsed'}
     end.
 
