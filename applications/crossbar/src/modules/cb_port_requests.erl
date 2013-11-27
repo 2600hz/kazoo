@@ -616,7 +616,13 @@ check_number_existence(E164, Number, Context) ->
             cb_context:add_validation_error(Number, <<"type">>, <<"Number exists on the system already">>, Context);
         {'error', 'not_found'} ->
             lager:debug("number ~s not found in numbers db (portable!)", [E164]),
-            cb_context:set_resp_status(Context, 'success')
+            cb_context:set_resp_status(Context, 'success');
+        {'error', 'unassigned'} ->
+            lager:debug("number ~s not assigned to an account (portable!)", [E164]),
+            cb_context:set_resp_status(Context, 'success');
+        {'error', E} ->
+            lager:debug("number ~s errored when looking up: ~p", [E164, E]),
+            cb_context:add_validation_error(Number, <<"type">>, wh_util:to_binary(E), Context)
     end.
 
 -spec load_attachment(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
