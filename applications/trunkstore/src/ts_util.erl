@@ -138,6 +138,13 @@ invite_format(<<"e.164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, wnm_util:to_e164(To)}];
 invite_format(<<"e164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, wnm_util:to_e164(To)}];
+invite_format(<<"e164_without_plus">>, To) ->
+    case wnm_util:to_e164(To) of 
+        <<$+, Plusless_DID/binary>> ->
+            lager:info("While processing 'e164_without_plus' flag, DID ~p converted to E.164 with truncated '+': ~p",[To, Plusless_DID]),
+            [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, Plusless_DID}];
+        AsIs_DID -> [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, AsIs_DID}]
+    end;
 invite_format(<<"1npanxxxxxx">>, To) ->
     [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, wnm_util:to_1npan(To)}];
 invite_format(<<"1npan">>, To) ->
