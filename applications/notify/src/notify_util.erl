@@ -142,6 +142,7 @@ compile_default_template(TemplateModule, Category, Key) ->
                    'undefined' -> get_default_template(Category, Key);
                    Else -> Else
                end,
+    lager:debug("compiling ~s: '~s'", [TemplateModule, Template]),
     {'ok', TemplateModule} = erlydtl:compile(Template, TemplateModule).
 
 get_default_template(Category, Key) ->
@@ -151,6 +152,7 @@ get_default_template(Category, Key) ->
             case props:get_value(Key, Props) of
                 'undefined' -> 'undefined';
                 Template ->
+                    lager:debug("loading ~s from file ~s", [Key, File]),
                     _ = whapps_config:set(Category, Key, Template),
                     Template
             end;
