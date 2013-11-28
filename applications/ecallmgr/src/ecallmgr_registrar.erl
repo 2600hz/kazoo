@@ -163,7 +163,7 @@ summary(Realm) when not is_binary(Realm) ->
     summary(wh_util:to_binary(Realm));
 summary(Realm) ->
     R = wh_util:to_lower_binary(Realm),
-    MatchSpec = [{#registration{account_realm = {'_', '$1'}, _ = '_'}
+    MatchSpec = [{#registration{account_realm = '$1', _ = '_'}
                   ,[{'=:=', '$1', {const, R}}]
                   ,['$_']
                  }],
@@ -185,7 +185,7 @@ details(User) ->
         [Username, Realm] -> details(Username, Realm);
          _Else ->
             Realm = wh_util:to_lower_binary(User),
-            MatchSpec = [{#registration{account_realm = {'_', '$1'}, _ = '_'}
+            MatchSpec = [{#registration{account_realm = '$1', _ = '_'}
                           ,[{'=:=', '$1', {const, Realm}}]
                           ,['$_']
                          }],
@@ -316,7 +316,7 @@ handle_cast('flush', State) ->
     {'noreply', State};
 handle_cast({'flush', Realm}, State) ->
     R = wh_util:to_lower_binary(Realm),
-    MatchSpec = [{#registration{account_realm = {'_', '$1'}, _ = '_'}
+    MatchSpec = [{#registration{account_realm = '$1', _ = '_'}
                   ,[{'=:=', '$1', {const, R}}]
                   ,['true']
                  }],
@@ -487,7 +487,7 @@ build_query_spec(JObj, CountOnly) ->
             Realm ->
                 case wh_json:get_value(<<"Username">>, JObj) of
                     'undefined' ->
-                        {#registration{account_realm = {'_', '$1'}, _ = '_'}
+                        {#registration{account_realm = '$1', _ = '_'}
                          ,{'=:=', '$1', {'const', Realm}}
                         };
                     Username ->
