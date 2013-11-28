@@ -56,7 +56,6 @@ handle_req(JObj, _Props) ->
                                                           ]),
 
     Props = create_template_props(JObj, AccountJObj),
-    [lager:debug("tmpl: ~p", [P]) || P <- Props],
 
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"port_request">>, <<"email_text_template">>], AccountJObj),
     {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
@@ -99,7 +98,12 @@ create_template_props(NotifyJObj, AccountJObj) ->
 
     {'ok', PortDoc} = couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, wh_json:get_value(<<"Port-Request-ID">>, NotifyJObj)),
 
-    [{<<"request">>, notify_util:json_to_template_props(wh_doc:public_fields(PortDoc))}
+    PortData = notify_util:json_to_template_props(wh_doc:public_fields(PortDoc)),
+    Numbers = props:get_value(<<"numbers">>, PortData, []),
+    Request = props:delete_keys([<<"uploads">>, <<"numbers">>], PortData),
+
+    [{<<"numbers">>, Numbers}
+     ,{<<"request">>, Request}
      ,{<<"account">>, notify_util:json_to_template_props(AccountJObj)}
      ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
      ,{<<"service">>, notify_util:get_service_props(AccountJObj, ?MOD_CONFIG_CAT)}
