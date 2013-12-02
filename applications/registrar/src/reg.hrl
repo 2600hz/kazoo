@@ -20,6 +20,8 @@
                     ,method
                     ,owner_id
                     ,suppress_unregister_notifications
+                    ,account_realm
+                    ,account_name
                    }).
 -type auth_user() :: #auth_user{}.
 

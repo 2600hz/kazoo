@@ -89,6 +89,8 @@ create_ccvs(#auth_user{}=AuthUser) ->
              ,{<<"Authorizing-Type">>, AuthUser#auth_user.authorizing_type}
              ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
              ,{<<"Inception">>, <<"on-net">>}
+             ,{<<"Account-Realm">>, AuthUser#auth_user.account_realm}
+             ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
             ],
     wh_json:from_list(props:filter_undefined(Props)).
 
@@ -117,14 +119,50 @@ lookup_auth_user(Username, Realm) ->
                              {'ok', auth_user()} |
                              {'error', _}.
 check_auth_user(JObj, Username, Realm) ->
-    case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], JObj))
-        andalso 
-        (wh_json:get_value(<<"pvt_type">>, JObj) =/= <<"device">>
-             orelse wh_json:is_true([<<"doc">>, <<"enabled">>], JObj, 'false'))
+	AccountId = wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], JObj),
+    case wh_util:is_account_enabled(AccountId)
+        andalso wh_json:is_true([<<"doc">>, <<"enabled">>], JObj, 'false')
     of
-        'false' -> {'error', 'not_found'};
-        'true' -> {'ok', jobj_to_auth_user(JObj, Username, Realm)}
+        'false' -> lager:debug("user ~s or account ~s is disabled when checking ~s credentials",[Username,AccountId,Username]),
+				   {'error', 'not_found'};
+        'true' -> check_auth_owner(JObj, Username, Realm)
     end.
+
+-spec check_auth_owner(wh_json:object(), ne_binary(), ne_binary()) ->
+                             {'ok', auth_user()} |
+                             {'error', _}.
+check_auth_owner(JObj, Username, Realm) ->
+	UserDoc = wh_json:get_value(<<"doc">>, JObj),
+    case wh_json:get_value(<<"owner_id">>, UserDoc) of
+        'undefined' -> check_auth_account(JObj, Username, Realm);
+        OwnerId -> case couch_mgr:open_cache_doc(get_account_db(UserDoc), OwnerId, []) of
+                       {'error', _} -> lager:debug("Owner doc ~s not found when checking ~s credentials",[OwnerId,Username]),
+                                       {'error', 'not_found'};
+                       {'ok', OwnerDoc} -> case wh_json:is_true(<<"enabled">>, OwnerDoc, 'false') of
+                                                'false' -> lager:debug("owner ~s is disabled when checking ~s credentials",[OwnerId,Username]),
+                                                           {'error', 'not_found'};
+                                                'true' -> check_auth_account(JObj, Username, Realm)
+                                           end
+                   end
+    end.
+
+-spec check_auth_account(wh_json:object(), ne_binary(), ne_binary()) ->
+                             {'ok', auth_user()} |
+                             {'error', _}.
+check_auth_account(JObj, Username, Realm) ->
+	UserDoc = wh_json:get_value(<<"doc">>, JObj),
+	AccountId = get_account_id(UserDoc),
+	AccountDoc = get_account_doc(AccountId),
+    case wh_json:is_true(<<"enabled">>, AccountDoc, 'true') of
+        'false' -> lager:debug("account ~s is disabled when checking ~s credentials",[AccountId,Username]),
+                   {'error', 'not_found'};
+        'true' ->
+            NewJObj = wh_json:set_values([{<<"account_realm">>, wh_json:get_value(<<"realm">>, AccountDoc)}
+                                         ,{<<"account_name">>,wh_json:get_value(<<"name">>, AccountDoc)}
+                                         ], JObj),
+            {'ok', jobj_to_auth_user(NewJObj, Username, Realm)}
+    end.
+
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -225,6 +263,8 @@ jobj_to_auth_user(JObj, Username, Realm) ->
                ,method = get_auth_method(AuthValue)
                ,owner_id = wh_json:get_value(<<"owner_id">>, AuthDoc)
                ,suppress_unregister_notifications = wh_json:is_true(<<"suppress_unregister_notifications">>, AuthDoc)
+               ,account_realm = wh_json:get_value(<<"account_realm">>, JObj)
+               ,account_name = wh_json:get_value(<<"account_name">>, JObj)
               }.
 
 %%-----------------------------------------------------------------------------
@@ -271,3 +311,19 @@ get_account_db(JObj) ->
 get_auth_method(JObj) ->
     Method = wh_json:get_binary_value(<<"method">>, JObj, <<"password">>),
     wh_util:to_lower_binary(Method).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Retrieves the account realm
+%% @end
+%%--------------------------------------------------------------------
+
+get_account_doc(AccountId) ->
+	_Db = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:open_cache_doc(<<"accounts">>, AccountId) of
+        {ok, JObj} -> JObj;
+        {error, _R} ->
+            'undefined'
+    end.
