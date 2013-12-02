@@ -85,6 +85,8 @@
                        ,authorizing_type
                        ,owner_id
                        ,initial = 'true'
+                       ,account_realm
+                       ,account_name
                       }).
 
 -type registration() :: #registration{}.
@@ -161,7 +163,7 @@ summary(Realm) when not is_binary(Realm) ->
     summary(wh_util:to_binary(Realm));
 summary(Realm) ->
     R = wh_util:to_lower_binary(Realm),
-    MatchSpec = [{#registration{id = {'_', '$1'}, _ = '_'}
+    MatchSpec = [{#registration{account_realm = '$1', _ = '_'}
                   ,[{'=:=', '$1', {const, R}}]
                   ,['$_']
                  }],
@@ -183,7 +185,7 @@ details(User) ->
         [Username, Realm] -> details(Username, Realm);
          _Else ->
             Realm = wh_util:to_lower_binary(User),
-            MatchSpec = [{#registration{id = {'_', '$1'}, _ = '_'}
+            MatchSpec = [{#registration{account_realm = '$1', _ = '_'}
                           ,[{'=:=', '$1', {const, Realm}}]
                           ,['$_']
                          }],
@@ -314,7 +316,7 @@ handle_cast('flush', State) ->
     {'noreply', State};
 handle_cast({'flush', Realm}, State) ->
     R = wh_util:to_lower_binary(Realm),
-    MatchSpec = [{#registration{id = {'_', '$1'}, _ = '_'}
+    MatchSpec = [{#registration{account_realm = '$1', _ = '_'}
                   ,[{'=:=', '$1', {const, R}}]
                   ,['true']
                  }],
@@ -485,7 +487,7 @@ build_query_spec(JObj, CountOnly) ->
             Realm ->
                 case wh_json:get_value(<<"Username">>, JObj) of
                     'undefined' ->
-                        {#registration{id = {'_', '$1'}, _ = '_'}
+                        {#registration{account_realm = '$1', _ = '_'}
                          ,{'=:=', '$1', {'const', Realm}}
                         };
                     Username ->
@@ -619,6 +621,8 @@ maybe_query_authn(#registration{username=Username
                              ,authorizing_type = wh_json:get_value(<<"Authorizing-Type">>, CCVs)
                              ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
                              ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
+                             ,account_realm = wh_json:get_value(<<"Account-Realm">>, CCVs)
+                             ,account_name = wh_json:get_value(<<"Account-Name">>, CCVs)
                             }
     end.
 
@@ -671,6 +675,8 @@ query_authn(#registration{username=Username
                              ,authorizing_type = wh_json:get_value(<<"Authorizing-Type">>, CCVs)
                              ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
                              ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
+                             ,account_realm = wh_json:get_value(<<"Account-Realm">>, CCVs)
+                             ,account_name = wh_json:get_value(<<"Account-Name">>, CCVs)
                             }
     end.
 
@@ -682,6 +688,8 @@ update_cache(#registration{authorizing_id=AuthorizingId
                            ,suppress_unregister=SuppressUnregister
                            ,owner_id=OwnerId
                            ,id=Id
+                           ,account_realm=AccountRealm
+                           ,account_name=AccountName
                           }=Reg) ->
     Props = [{#registration.account_id, AccountId}
              ,{#registration.account_db, AccountDb}
@@ -689,6 +697,8 @@ update_cache(#registration{authorizing_id=AuthorizingId
              ,{#registration.authorizing_type, AuthorizingType}
              ,{#registration.owner_id, OwnerId}
              ,{#registration.suppress_unregister, SuppressUnregister}
+             ,{#registration.account_realm, AccountRealm}
+             ,{#registration.account_name, AccountName}
             ],
     gen_server:cast(?MODULE, {'update_registration', Id, Props}),
     Reg.
