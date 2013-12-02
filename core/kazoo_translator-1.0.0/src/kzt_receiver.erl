@@ -34,10 +34,27 @@
 
 -define(DEFAULT_EVENT_WAIT, 10000). % 10s or 10000ms
 
+-type collect_dtmfs_return() :: {'ok', whapps_call:call()} |
+                                {'ok', 'timeout', whapps_call:call()} |
+                                {'ok', 'dtmf_finish', whapps_call:call()} |
+                                {'stop', whapps_call:call()}.
+-export_types([collect_dtmfs_return/0]).
+
+-spec default_on_first_fun(any()) -> 'ok'.
 default_on_first_fun(_) -> 'ok'.
+
+-spec collect_dtmfs(whapps_call:call(), api_binary(), wh_timeout(), pos_integer()) ->
+                           collect_dtmfs_return().
+-spec collect_dtmfs(whapps_call:call(), api_binary(), wh_timeout(), pos_integer(), function()) ->
+                           collect_dtmfs_return().
+-spec collect_dtmfs(whapps_call:call(), api_binary(), wh_timeout(), pos_integer(), function(), binary()) ->
+                           collect_dtmfs_return().
+-spec collect_dtmfs(whapps_call:call(), api_binary(), wh_timeout(), pos_integer(), function(), binary(), wh_json:object()) ->
+                           collect_dtmfs_return().
 
 collect_dtmfs(Call, FinishKey, Timeout, N) ->
     collect_dtmfs(Call, FinishKey, Timeout, N, fun default_on_first_fun/1, kzt_util:get_digits_collected(Call)).
+
 collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun) when is_function(OnFirstFun, 1) ->
     collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, kzt_util:get_digits_collected(Call)).
 
@@ -45,28 +62,76 @@ collect_dtmfs(Call, _FinishKey, _Timeout, N, _OnFirstFun, Collected) when byte_s
     {'ok', Call};
 collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected) ->
     lager:debug("collect_dtmfs: n: ~p collected: ~s", [N, Collected]),
-    case whapps_call_command:wait_for_dtmf(Timeout) of
-        {'ok', FinishKey} ->
-            lager:debug("finish key pressed"),
-            {'ok', 'dtmf_finish', Call};
-        {'ok', <<>>} ->
-            lager:debug("no dtmf pressed in time"),
-            {'ok', 'timeout', Call};
-        {'ok', DTMF} when Collected =:= <<>> ->
-            lager:debug("first dtmf pressed: ~s", [DTMF]),
-            Call1 = kzt_util:add_digit_collected(DTMF, Call),
-            _ = try OnFirstFun(Call1) of _ -> 'ok' catch _:_ -> 'ok' end,
-            collect_dtmfs(Call1, FinishKey, Timeout, N, fun default_on_first_fun/1, <<DTMF/binary, Collected/binary>>);
-        {'ok', DTMF} ->
-            lager:debug("dtmf pressed: ~s", [DTMF]),
-            collect_dtmfs(kzt_util:add_digit_collected(DTMF, Call)
-                          ,FinishKey, Timeout, N, OnFirstFun, <<DTMF/binary, Collected/binary>>
+    Start = erlang:now(),
+
+    case whapps_call_command:receive_event(collect_timeout(Call, Timeout), 'false') of
+        {'ok', JObj} ->
+            collect_dtmfs(Call, FinishKey, collect_decr_timeout(Call, Timeout, Start)
+                          ,N, OnFirstFun, Collected, JObj
                          );
-        {'error', 'channel_hungup'} -> {'stop', Call};
-        {'error', 'channel_destroy'} -> {'stop', Call};
-        {'error', E} ->
-            lager:debug("error: ~p", [E]),
-            {'error', E, Call}
+        {'error', 'timeout'} -> {'ok', 'timeout', Call};
+        {'other', {'DOWN', Ref, 'process', Pid, _Reason}} ->
+            case kzt_util:get_gather_pidref(Call) of
+                {Pid, Ref} when is_pid(Pid), is_reference(Ref) ->
+                    lager:debug("subactions are done, timer can start"),
+                    collect_dtmfs(kzt_util:set_gather_pidref('undefined', Call)
+                                  ,FinishKey, collect_decr_timeout(Call, Timeout, Start), N, OnFirstFun, Collected
+                                 );
+                _ ->
+                    collect_dtmfs(Call, FinishKey, collect_decr_timeout(Call, Timeout, Start), N, OnFirstFun, Collected)
+            end;
+        {'other', OtherJObj} ->
+            lager:debug("other message: ~p", [OtherJObj]),
+            collect_dtmfs(Call, FinishKey, collect_decr_timeout(Call, Timeout, Start), N, OnFirstFun, Collected);
+        _Msg ->
+            lager:debug("unhandled message: ~p", [_Msg]),
+            collect_dtmfs(Call, FinishKey, collect_decr_timeout(Call, Timeout, Start), N, OnFirstFun, Collected)
+    end.
+
+collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected, JObj) ->
+    case wh_util:get_event_type(JObj) of
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+            {'stop', Call};
+        {<<"call_event">>, <<"DTMF">>} ->
+            handle_dtmf(Call, FinishKey, Timeout, N, OnFirstFun, Collected, wh_json:get_value(<<"DTMF-Digit">>, JObj, <<>>));
+        _Evt ->
+            lager:debug("ignore event ~p", [_Evt]),
+            collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected)
+    end.
+
+-spec handle_dtmf(whapps_call:call(), api_binary(), wh_timeout(), pos_integer(), function(), binary(), binary()) ->
+                         collect_dtmfs_return().
+handle_dtmf(Call, FinishKey, _Timeout, _N, _OnFirstFun, _Collected, FinishKey) ->
+    lager:info("finish key '~s' pressed", [FinishKey]),
+    {'ok', 'dtmf_finish', Call};
+handle_dtmf(Call, _FinishKey, _Timeout, _N, _OnFirstFun, _Collected, <<>>) ->
+    lager:info("no dtmf pressed in time"),
+    {'ok', 'timeout', Call};
+handle_dtmf(Call, FinishKey, Timeout, N, OnFirstFun, <<>>, DTMF) ->
+    lager:info("first dtmf pressed: ~s", [DTMF]),
+    Call1 = kzt_util:add_digit_collected(DTMF, Call),
+    _ = try OnFirstFun(Call1) of _ -> 'ok' catch _:_ -> 'ok' end,
+    collect_dtmfs(kzt_util:set_gather_pidref('undefined', Call1)
+                  ,FinishKey, Timeout, N, fun default_on_first_fun/1, DTMF
+                 );
+handle_dtmf(Call, FinishKey, Timeout, N, OnFirstFun, Collected, DTMF) ->
+    lager:debug("dtmf pressed: '~s'", [DTMF]),
+    collect_dtmfs(kzt_util:add_digit_collected(DTMF, Call)
+                  ,FinishKey, Timeout, N, OnFirstFun, <<DTMF/binary, Collected/binary>>
+                 ).
+
+-spec collect_decr_timeout(whapps_call:call(), wh_timeout(), wh_now()) -> wh_timeout().
+collect_decr_timeout(Call, Timeout, Start) ->
+    case kzt_util:get_gather_pidref(Call) of
+        {_Pid, _Ref} when is_pid(_Pid) andalso is_reference(_Ref) -> Timeout;
+        _ -> whapps_util:decr_timeout(Timeout, Start)
+    end.
+
+-spec collect_timeout(whapps_call:call(), wh_timeout()) -> wh_timeout().
+collect_timeout(Call, Timeout) ->
+    case kzt_util:get_gather_pidref(Call) of
+        {_Pid, _Ref} when is_pid(_Pid) andalso is_reference(_Ref) -> 'infinity';
+        _ -> Timeout
     end.
 
 -spec say_loop(whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_timeout()) ->
@@ -98,8 +163,12 @@ play_loop(Call, PlayMe, Terminators, N) ->
     NoopId = whapps_call_command:play(PlayMe, Terminators, Call),
     lager:debug("terminators: ~p loop: ~p noop: ~s", [Terminators, N, NoopId]),
     case wait_for_noop(Call, NoopId) of
-        {'ok', C} -> lager:debug("noop recv"), play_loop(C, PlayMe, Terminators, decr_loop_counter(N));
-        {'error', _, _}=ERR -> lager:debug("err: ~p", [ERR]), ERR
+        {'ok', C} ->
+            lager:debug("noop recv"),
+            play_loop(C, PlayMe, Terminators, decr_loop_counter(N));
+        {'error', _, _}=ERR ->
+            lager:debug("err: ~p", [ERR]),
+            ERR
     end.
 
 -spec record_loop(whapps_call:call(), pos_integer()) ->
@@ -134,7 +203,9 @@ record_loop(Call, SilenceTimeout) ->
                   ,{fun kzt_util:set_recording_duration/2, Len}
                  ],
             {'ok', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Fs)};
-        {'error', E, _}=ERR -> lager:debug("error: ~p", [E]), ERR
+        {'error', E, _}=ERR ->
+            lager:debug("error: ~p", [E]),
+            ERR
     end.
 
 wait_for_call_event(Call, EvtName) ->
@@ -184,7 +255,7 @@ process_noop_event(Call, NoopId, JObj) ->
         {<<"call_event">>, <<"CHANNEL_HANGUP_COMPLETE">>} -> {'error', 'channel_hungup', Call};
         {<<"call_event">>, <<"DTMF">>} ->
             DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
-            lager:debug("adding dtmf tone '~s' to collection", [DTMF]),
+            lager:info("adding dtmf tone '~s' to collection", [DTMF]),
             wait_for_noop(kzt_util:add_digit_collected(DTMF, Call), NoopId);
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
             case wh_json:get_value(<<"Application-Response">>, JObj) of
@@ -220,7 +291,7 @@ wait_for_hangup(Call) ->
                 { <<"resource">>, <<"offnet_resp">> } ->
                     RespMsg = wh_json:get_value(<<"Response-Message">>, JObj),
                     RespCode = wh_json:get_value(<<"Response-Code">>, JObj),
-                    lager:debug("offnet resp finished: ~s(~s)", [RespCode, RespMsg]),
+                    lager:info("offnet resp finished: ~s(~s)", [RespCode, RespMsg]),
                     {'ok', kzt_util:update_call_status(call_status(RespMsg), Call)};
                 {<<"call_event">>,<<"CHANNEL_DESTROY">>} ->
                     lager:debug("channel was destroyed"),
@@ -267,8 +338,9 @@ wait_for_offnet_events(#dial_req{call_timeout=CallTimeout
     case whapps_call_command:receive_event(RecvTimeout) of
         {'ok', JObj} -> process_offnet_event(OffnetReq, JObj);
         {'error', 'timeout'} -> handle_offnet_timeout(OffnetReq);
-        _O -> lager:debug("recv offnet other: ~p", [_O]),
-              wait_for_offnet_events(OffnetReq)
+        _O ->
+            lager:debug("recv offnet other: ~p", [_O]),
+            wait_for_offnet_events(OffnetReq)
     end.
 
 process_offnet_event(#dial_req{call=Call
@@ -282,12 +354,12 @@ process_offnet_event(#dial_req{call=Call
         {{<<"resource">>, <<"offnet_resp">>}, _} ->
             RespMsg = wh_json:get_value(<<"Response-Message">>, JObj),
             RespCode = wh_json:get_value(<<"Response-Code">>, JObj),
-            lager:debug("offnet resp: ~s(~s)", [RespMsg, RespCode]),
+            lager:info("offnet resp: ~s(~s)", [RespMsg, RespCode]),
             {'ok', kzt_util:update_call_status(call_status(RespMsg), Call)};
         {{<<"call_event">>, <<"DTMF">>}, CallId} ->
             case (DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj)) =:= HangupDTMF of
                 'false' ->
-                    lager:debug("caller pressed dtmf tone '~s', adding to collection", [DTMF]),
+                    lager:info("caller pressed dtmf tone '~s', adding to collection", [DTMF]),
 
                     wait_for_offnet_events(
                       update_offnet_timers(
@@ -295,12 +367,12 @@ process_offnet_event(#dial_req{call=Call
                           call=kzt_util:add_digit_collected(DTMF, Call)
                          }));
                 'true' ->
-                    lager:debug("recv'd hangup DTMF '~s'", [HangupDTMF]),
+                    lager:info("recv'd hangup DTMF '~s'", [HangupDTMF]),
                     whapps_call_command:hangup(Call)
             end;
         {{<<"call_event">>, <<"LEG_CREATED">>}, CallId} ->
             BLeg = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-            lager:debug("b-leg created: ~s", [BLeg]),
+            lager:info("b-leg created: ~s", [BLeg]),
             Srv = kzt_util:get_amqp_listener(Call),
             lager:debug("adding binding to ~p", [Srv]),
 
@@ -324,7 +396,7 @@ process_offnet_event(#dial_req{call=Call
         {{<<"call_event">>, <<"CHANNEL_BRIDGE">>}, CallId} ->
             MediaJObj = maybe_start_recording(OffnetReq),
 
-            lager:debug("b-leg bridged: ~s", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]),
+            lager:info("b-leg bridged: ~s", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]),
 
             Updates = [{MediaJObj, fun kzt_util:set_media_meta/2}
                        ,{?STATUS_ANSWERED, fun kzt_util:update_call_status/2}
@@ -344,9 +416,9 @@ process_offnet_event(#dial_req{call=Call
             case wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj) of
                 CallBLeg ->
                     HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
-                    lager:debug("a-leg (~s) has unbridged from ~s(~s), continuing the call", [CallId, CallBLeg, HangupCause]);
+                    lager:info("a-leg (~s) has unbridged from ~s(~s), continuing the call", [CallId, CallBLeg, HangupCause]);
                 _O ->
-                    lager:debug("unknown b-leg (~s) unbridged (waiting on ~s)", [_O, CallBLeg])
+                    lager:info("unknown b-leg (~s) unbridged (waiting on ~s)", [_O, CallBLeg])
             end,
             wait_for_offnet_events(update_offnet_timers(OffnetReq));
 
@@ -406,8 +478,9 @@ wait_for_conference_events(#dial_req{call_timeout=CallTimeout
     case whapps_call_command:receive_event(RecvTimeout) of
         {'ok', JObj} -> process_conference_event(OffnetReq, JObj);
         {'error', 'timeout'} -> handle_conference_timeout(OffnetReq);
-        _O -> lager:debug("recv offnet other: ~p", [_O]),
-              wait_for_conference_events(OffnetReq)
+        _O ->
+            lager:debug("recv offnet other: ~p", [_O]),
+            wait_for_conference_events(OffnetReq)
     end.
 
 process_conference_event(#dial_req{call=Call
@@ -489,7 +562,7 @@ maybe_start_recording(#dial_req{record_call='true'
     OtherLegId = kzt_util:get_dial_call_sid(Call),
     RecordingName = recording_name(whapps_call:call_id(Call), OtherLegId),
 
-    lager:debug("starting recording '~s'", [RecordingName]),
+    lager:info("starting recording '~s'", [RecordingName]),
     {'ok', MediaJObj} = recording_meta(Call, RecordingName),
     whapps_call_command:record_call(RecordingName, <<"start">>
                                     ,CallTimeLimit, Call
@@ -528,7 +601,7 @@ handle_offnet_timeout(#dial_req{
                          call=Call
                          ,call_timeout='undefined'
                         }) ->
-    lager:debug("time limit for call exceeded"),
+    lager:info("time limit for call exceeded"),
     whapps_call_command:hangup(Call),
     {'ok', kzt_util:update_call_status(?STATUS_COMPLETED, Call)};
 handle_offnet_timeout(#dial_req{call=Call}) ->

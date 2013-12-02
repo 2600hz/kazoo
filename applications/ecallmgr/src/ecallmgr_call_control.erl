@@ -85,7 +85,7 @@
          ,command_q = queue:new() :: queue()
          ,current_app :: api_binary()
          ,current_cmd :: api_object()
-         ,start_time = erlang:now() :: wh_now()
+         ,start_time = os:timestamp() :: wh_now()
          ,is_call_up = 'true' :: boolean()
          ,is_node_up = 'true' :: boolean()
          ,keep_alive_ref :: api_reference()
@@ -234,7 +234,7 @@ init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
     {'ok', #state{node=Node
                   ,callid=CallId
                   ,command_q=queue:new()
-                  ,start_time=erlang:now()
+                  ,start_time=os:timestamp()
                   ,fetch_id=FetchId
                   ,controller_q=ControllerQ
                   ,initial_ccvs=CCVs
@@ -611,7 +611,7 @@ terminate(_Reason, #state{start_time=StartTime
                          }) ->
     catch (erlang:cancel_timer(SCTRef)),
     catch (erlang:cancel_timer(KATRef)),
-    lager:debug("control queue was up for ~p microseconds", [timer:now_diff(erlang:now(), StartTime)]),
+    lager:debug("control queue was up for ~p microseconds", [timer:now_diff(os:timestamp(), StartTime)]),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -750,7 +750,7 @@ insert_command(#state{node=Node
         'false' ->
             lager:debug("node ~s is not avaliable", [Node]),
             lager:debug("sending execution error for command ~s", [AName]),
-            {Mega,Sec,Micro} = erlang:now(),
+            {Mega,Sec,Micro} = os:timestamp(),
             Props = [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_ERROR">>}
                      ,{<<"Event-Date-Timestamp">>, ( (Mega * 1000000 + Sec) * 1000000 + Micro )}
                      ,{<<"Call-ID">>, CallId}

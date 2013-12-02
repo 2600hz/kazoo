@@ -24,8 +24,9 @@ exec(Call, FlowJObj) ->
     wapi_callflow:publish_resume(Prop),
     {'usurp', Call}.
 
--spec parse_cmds(ne_binary()) -> {'ok', wh_json:object()} |
-                                 {'error', 'not_parsed'}.
+-spec parse_cmds(ne_binary()) ->
+                        {'ok', wh_json:object()} |
+                        {'error', 'not_parsed'}.
 parse_cmds(JSON) ->
     try wh_json:decode(JSON) of
         JObj -> {'ok', JObj}

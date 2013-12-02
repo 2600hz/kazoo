@@ -284,7 +284,7 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
             process_channel_event(Props),
             %% NOTE: if we are the transferee upstream apps need
             %%   to unbind from the C leg call events and bind to
-            %%   our A leg events.  Give them time by buffering 
+            %%   our A leg events.  Give them time by buffering
             %%   into our mailbox for 1 second...
             lager:debug("buffering call events for 1 second post transfer"),
             timer:sleep(1000),
@@ -473,7 +473,7 @@ create_event(EventName, ApplicationName, Props) ->
 create_event_props(EventName, ApplicationName, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
 
-    {Mega,Sec,Micro} = erlang:now(),
+    {Mega,Sec,Micro} = os:timestamp(),
     Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
 
     %% Unix-epoch, in microseconds

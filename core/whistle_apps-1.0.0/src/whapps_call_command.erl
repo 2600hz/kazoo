@@ -281,7 +281,7 @@ relay_event(Pid, JObj) -> Pid ! {'amqp_msg', JObj}.
 receive_event(Timeout) -> receive_event(Timeout, 'true').
 receive_event(T, _) when T =< 0 -> {'error', 'timeout'};
 receive_event(Timeout, IgnoreOthers) ->
-    Start = erlang:now(),
+    Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} -> {'ok', JObj};
         _ when IgnoreOthers ->
@@ -1520,7 +1520,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
     collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, <<>>, ?MILLISECONDS_IN_DAY).
 
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After) ->
-    Start = erlang:now(),
+    Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
@@ -1613,7 +1613,7 @@ wait_for_message(Call, Application, Event, Type) ->
     wait_for_message(Call, Application, Event, Type, 5000).
 
 wait_for_message(Call, Application, Event, Type, Timeout) ->
-    Start = erlang:now(),
+    Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
@@ -1663,7 +1663,7 @@ wait_for_application(Call, Application, Event, Type) ->
     wait_for_application(Call, Application, Event, Type, 500000).
 
 wait_for_application(Call, Application, Event, Type, Timeout) ->
-    Start = erlang:now(),
+    Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
@@ -1710,7 +1710,7 @@ wait_for_headless_application(Application, Event, Type) ->
     wait_for_headless_application(Application, Event, Type, 500000).
 
 wait_for_headless_application(Application, Event, Type, Timeout) ->
-    Start = erlang:now(),
+    Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
@@ -1745,7 +1745,7 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
                            {'error', 'channel_hungup' | wh_json:object()} |
                            {'ok', binary()}.
 wait_for_dtmf(Timeout) ->
-    Start = erlang:now(),
+    Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} ->
             case whapps_util:get_event_type(JObj) of
@@ -1788,7 +1788,7 @@ wait_for_bridge(Timeout, Call) ->
 wait_for_bridge(Timeout, _, _) when Timeout < 0 ->
     {'error', 'timeout'};
 wait_for_bridge(Timeout, Fun, Call) ->
-    Start = erlang:now(),
+    Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} ->
             Disposition = wh_json:get_value(<<"Disposition">>, JObj),
@@ -1814,12 +1814,12 @@ wait_for_bridge(Timeout, Fun, Call) ->
                     end,
                     wait_for_bridge('infinity', Fun, Call);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    %% TODO: reduce log level if no issue is found with 
+                    %% TODO: reduce log level if no issue is found with
                     %%    basing the Result on Disposition
                     lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
                     {Result, JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-                    %% TODO: reduce log level if no issue is found with 
+                    %% TODO: reduce log level if no issue is found with
                     %%    basing the Result on Disposition
                     lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
                     {Result, JObj};
@@ -1931,7 +1931,7 @@ wait_for_unbridge() ->
                                           whapps_api_std_return() |
                                           {'dtmf', binary()}.
 wait_for_application_or_dtmf(Application, Timeout) ->
-    Start = erlang:now(),
+    Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
@@ -1966,7 +1966,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
 -spec wait_for_fax(wh_timeout()) -> wait_for_fax_ret().
 wait_for_fax() -> wait_for_fax(?WAIT_FOR_FAX_TIMEOUT).
 wait_for_fax(Timeout) ->
-    Start = erlang:now(),
+    Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} ->
             case get_event_type(JObj) of
@@ -1977,7 +1977,7 @@ wait_for_fax(Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"receive_fax">>} ->
                     {'ok', wh_json:set_value(<<"Fax-Success">>, 'true', JObj)};
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    %% NOTE: 
+                    %% NOTE:
                     lager:debug("channel hungup but no end of fax, maybe its coming next..."),
                     wait_for_fax(5000);
                 _ -> wait_for_fax(whapps_util:decr_timeout(Timeout, Start))

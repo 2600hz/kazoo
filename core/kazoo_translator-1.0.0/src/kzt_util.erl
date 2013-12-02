@@ -231,9 +231,11 @@ get_media_meta(Call) -> whapps_call:kvs_fetch(<<"media_meta">>, Call).
 set_amqp_listener(Pid, Call) -> whapps_call:kvs_store(<<"amqp_listener">>, Pid, Call).
 get_amqp_listener(Call) -> whapps_call:kvs_fetch(<<"amqp_listener">>, Call).
 
--spec set_gather_pidref({pid(), reference()}, whapps_call:call()) -> whapps_call:call().
+-spec set_gather_pidref({pid(), reference()} | 'undefined', whapps_call:call()) -> whapps_call:call().
 -spec get_gather_pidref(whapps_call:call()) -> {pid(), reference()} | 'undefined'.
-set_gather_pidref(PidRef, Call) ->
+set_gather_pidref('undefined', Call) ->
+    whapps_call:kvs_store(<<"gather_pidref">>, 'undefined', Call);
+set_gather_pidref({_, _}=PidRef, Call) ->
     gen_listener:cast(get_amqp_listener(Call), {'add_event_handler', PidRef}),
     whapps_call:kvs_store(<<"gather_pidref">>, PidRef, Call).
 get_gather_pidref(Call) -> whapps_call:kvs_fetch(<<"gather_pidref">>, Call).

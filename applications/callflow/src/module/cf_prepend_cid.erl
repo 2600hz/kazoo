@@ -23,7 +23,7 @@ handle(Data, Call) ->
                 }
         end,
 
-    lager:debug("update prefix with name: ~s num: ~s", [CIDNamePrefix, CIDNumberPrefix]),
+    lager:info("update prefix with name: ~s num: ~s", [CIDNamePrefix, CIDNumberPrefix]),
 
     Updates = [fun(C) -> set_cid_name_prefix(C, CIDNamePrefix) end
                ,fun(C) -> set_cid_number_prefix(C, CIDNumberPrefix) end
