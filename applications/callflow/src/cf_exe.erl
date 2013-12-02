@@ -664,7 +664,7 @@ log_call_information(Call) ->
     lager:info("CID ~s ~s", [whapps_call:caller_id_name(Call), whapps_call:caller_id_number(Call)]),
     case whapps_call:inception(Call) of
         <<"offnet">> = I -> lager:info("inception ~s: call began from outside the network", [I]);
-        <<"onnet">> = I -> lager:info("inception ~s: call began on the network", [I]);
+        <<"on-net">> = I -> lager:info("inception ~s: call began on the network", [I]);
         I -> lager:info("inception ~s", [I])
     end,
     lager:info("authorizing id ~s", [whapps_call:authorizing_id(Call)]).
