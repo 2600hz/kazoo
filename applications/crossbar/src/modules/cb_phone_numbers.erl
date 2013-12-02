@@ -48,6 +48,8 @@
                     ]).
 -define(PHONE_NUMBERS_CONFIG_CAT, <<"crossbar.phone_numbers">>).
 
+-define(MAX_TOKENS, whapps_config:get_integer(?PHONE_NUMBERS_CONFIG_CAT, <<"activations_per_day">>, 100)).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -231,7 +233,10 @@ validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, _Number) ->
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, ?COLLECTION, ?ACTIVATE) ->
     validate_request(Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?ACTIVATE) ->
-    validate_request(Context);
+    case has_tokens(Context) of
+        'true' -> validate_request(Context);
+        'false' -> cb_context:add_system_error('too_many_requests', Context)
+    end;
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?RESERVE) ->
     validate_request(Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?PORT) ->
@@ -596,4 +601,29 @@ collection_action(#cb_context{account_id=AssignTo
         {'ok', RJObj} ->
             {'ok', wh_json:delete_key(<<"numbers">>, RJObj)};
         Else -> Else
+    end.
+
+-spec has_tokens(cb_context:context()) -> boolean().
+-spec has_tokens(cb_context:context(), pos_integer()) -> boolean().
+has_tokens(Context) ->
+    has_tokens(Context, 1).
+has_tokens(Context, Count) ->
+    case cb_buckets_ets:has_tokens(?PHONE_NUMBERS_CONFIG_CAT, cb_context:account_id(Context), Count, 'false') of
+        'false' ->
+            lager:debug("no tokens for this request, checking if bucket exists"),
+            case cb_buckets_ets:has_bucket(?PHONE_NUMBERS_CONFIG_CAT, cb_context:account_id(Context)) of
+                'true' ->
+                    lager:warning("rate limiting activation limit reached, rejecting"),
+                    'false';
+                'false' ->
+                    cb_buckets_ets:start_bucket(?PHONE_NUMBERS_CONFIG_CAT
+                                                ,cb_context:account_id(Context)
+                                                ,?MAX_TOKENS
+                                                ,?MAX_TOKENS
+                                                ,'day'
+                                               ),
+                    'true'
+            end;
+        'true' ->
+            'true'
     end.

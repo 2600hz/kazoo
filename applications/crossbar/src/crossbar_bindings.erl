@@ -97,7 +97,7 @@ get_bindings(Routing) ->
     [Vsn, Action | _] = binary:split(Routing, <<".">>, ['global']),
 
     ets:select(?MODULE, [{ {'_', '_', '_', '$1'}
-                           ,[{'orelse', 
+                           ,[{'orelse',
                                 {'=:=', '$1', <<Vsn/binary, ".", Action/binary>>}
                                 ,{'=:=', '$1', <<"*.", Action/binary>>}
                              }
@@ -293,7 +293,7 @@ flush_mod(CBMod, {Binding, _BParts, MFs, _Prefix}) ->
             lager:debug("removing mod ~s from ~s", [CBMod, Binding]),
             ets:update_element(?MODULE, Binding, {3, Filtered})
     end.
-            
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -418,8 +418,8 @@ fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
             E;
         {'EXIT', {'undef', _}} ->
             lager:debug("~s:~s/~p not defined, ignoring", [M, F, length(Payload)]),
-            fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);            
-        {'EXIT', _E} -> 
+            fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
+        {'EXIT', _E} ->
             ST = erlang:get_stacktrace(),
             lager:debug("~s:~s/~p died unexpectedly: ~p", [M, F, length(Payload), _E]),
             wh_util:log_stacktrace(ST),

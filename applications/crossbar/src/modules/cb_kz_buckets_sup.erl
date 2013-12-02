@@ -12,8 +12,8 @@
 
 %% API
 -export([start_link/0
-         ,start_child/0
-         ,stop_child/1
+         ,start_bucket/3
+         ,stop_bucket/1
         ]).
 
 %% Supervisor callbacks
@@ -22,8 +22,6 @@
 -include("../crossbar.hrl").
 
 -define(SERVER, ?MODULE).
--define(MAX_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"max_bucket_tokens">>, 100)).
--define(FILL_RATE, whapps_config:get_integer(?CONFIG_CAT, <<"tokens_fill_rate">>, 10)).
 
 %%%===================================================================
 %%% API functions
@@ -39,10 +37,13 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
-start_child() ->
-    supervisor:start_child(?SERVER, [?MAX_TOKENS, ?FILL_RATE]).
+-spec start_bucket(pos_integer(), pos_integer(), kz_token_bucket:fill_rate_time()) -> any().
+-spec stop_bucket(pid()) -> any().
 
-stop_child(Pid) ->
+start_bucket(MaxTokens, FillRate, FillTime) ->
+    supervisor:start_child(?SERVER, [MaxTokens, FillRate, 'false', FillTime]).
+
+stop_bucket(Pid) ->
     supervisor:terminate_child(?SERVER, Pid).
 
 %%%===================================================================

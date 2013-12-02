@@ -67,7 +67,9 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, []}}.
+    Children = [?SUPER('cb_buckets_sup')],
+
+    {'ok', {SupFlags, Children}}.
 
 %%%===================================================================
 %%% Internal functions

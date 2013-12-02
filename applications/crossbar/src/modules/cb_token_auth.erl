@@ -42,7 +42,6 @@ start_link() ->
 
 init() ->
     couch_mgr:db_create(?TOKEN_DB),
-    crossbar_module_sup:start_child('cb_buckets_sup', 'supervisor'),
 
     _ = couch_mgr:revise_doc_from_file(?TOKEN_DB, 'crossbar', "views/token_auth.json"),
 
@@ -53,7 +52,6 @@ init() ->
 
 stop() ->
     'ok' = supervisor:terminate_child('crossbar_sup', ?MODULE),
-    'ok' = supervisor:terminate_child('crossbar_module_sup', 'cb_buckets_sup'),
     'ok' = supervisor:delete_child('crossbar_sup', ?MODULE).
 
 init(Parent) ->
@@ -118,7 +116,7 @@ prepare_token_for_deletion(Token) ->
                           {'true' | 'halt', cb_context:context()}.
 authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
-    case cb_buckets_ets:has_tokens(Context) of
+    case cb_buckets_ets:has_token(Context) of
         'true' -> check_auth_token(Context);
         'false' ->
             lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
