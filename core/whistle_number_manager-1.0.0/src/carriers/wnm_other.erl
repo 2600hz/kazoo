@@ -37,7 +37,6 @@ find_numbers(Number, Quantity, Props) ->
 					get_numbers(Url, Number, Quantity, Props);
 				_ ->
 					get_blocks(Url, Number, Quantity, Props)
-				
 			end
 	end.
 
@@ -82,7 +81,7 @@ acquire_number(#number{number=Num}=Number) ->
 			end
 	end.
 
-	
+
 
 
 %%--------------------------------------------------------------------
@@ -95,7 +94,7 @@ acquire_number(#number{number=Num}=Number) ->
 disconnect_number(Number) -> Number.
 
 
--spec get_numbers/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 
+-spec get_numbers/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
 	{'error', 'non_available'} | [wh_json:object(), ...].
 get_numbers(Url, Number, Quantity, Props) ->
 	Offset = props:get_value(<<"offset">>, Props, <<"0">>),
@@ -113,7 +112,7 @@ get_numbers(Url, Number, Quantity, Props) ->
 			{'error', 'non_available'}
 	end.
 
--spec get_blocks/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 
+-spec get_blocks/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
 	{'error', 'non_available'} | [wh_json:object(), ...].
 get_blocks(Url, Number, Quantity, Props) ->
 	Offset = props:get_value(<<"offset">>, Props, <<"0">>),

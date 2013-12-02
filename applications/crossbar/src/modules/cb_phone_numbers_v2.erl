@@ -126,13 +126,13 @@ summary(Context) ->
 find_numbers(Context) ->
     AccountId = cb_context:auth_account_id(Context),
     JObj = wh_json:set_value(<<"Account-ID">>, AccountId, cb_context:query_string(Context)),
+    Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
+    Quantity = wh_json:get_ne_value(<<"quantity">>, JObj, 1),
     OnSuccess = fun(C) ->
-                        Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
-                        Quantity = wh_json:get_ne_value(<<"quantity">>, JObj, 1),
-                        cb_context:set_resp_data(
-                          cb_context:set_resp_status(C, 'success')
-                          ,wh_number_manager:find(Prefix, Quantity, wh_json:to_proplist(JObj))
-                         )
+                    cb_context:set_resp_data(
+                      cb_context:set_resp_status(C, 'success')
+                      ,wh_number_manager:find(Prefix, Quantity, wh_json:to_proplist(JObj))
+                     )
                 end,
     Schema = wh_json:decode(?FIND_NUMBER_SCHEMA),
     cb_context:validate_request_data(Schema
@@ -143,7 +143,7 @@ find_numbers(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_prefix(cb_context:context()) -> cb_context:context().
@@ -264,7 +264,7 @@ update_locality(Context, Numbers) ->
     case get_locality(Numbers, ?FREE_URL) of
         {'error', _} -> Context;
         Localities ->
-            spawn(fun() -> 
+            spawn(fun() ->
                           update_phone_numbers_locality(Context, Localities)
                   end),
             update_context_locality(Context, Localities)
