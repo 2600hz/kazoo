@@ -34,10 +34,26 @@
 
 -define(DEFAULT_EVENT_WAIT, 10000). % 10s or 10000ms
 
+-spec default_on_first_fun(any()) -> 'ok'.
 default_on_first_fun(_) -> 'ok'.
+
+-type collect_dtmfs_return() :: {'ok', whapps_call:call()} |
+                                {'ok', 'timeout', whapps_call:call()} |
+                                {'ok', 'dtmf_finish', whapps_call:call()} |
+                                {'stop', whapps_call:call()}.
+
+-spec collect_dtmfs(whapps_call:call(), api_binary(), wh_timeout(), pos_integer()) ->
+                           collect_dtmfs_return().
+-spec collect_dtmfs(whapps_call:call(), api_binary(), wh_timeout(), pos_integer(), function()) ->
+                           collect_dtmfs_return().
+-spec collect_dtmfs(whapps_call:call(), api_binary(), wh_timeout(), pos_integer(), function(), binary()) ->
+                           collect_dtmfs_return().
+-spec collect_dtmfs(whapps_call:call(), api_binary(), wh_timeout(), pos_integer(), function(), binary(), wh_json:object()) ->
+                           collect_dtmfs_return().
 
 collect_dtmfs(Call, FinishKey, Timeout, N) ->
     collect_dtmfs(Call, FinishKey, Timeout, N, fun default_on_first_fun/1, kzt_util:get_digits_collected(Call)).
+
 collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun) when is_function(OnFirstFun, 1) ->
     collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, kzt_util:get_digits_collected(Call)).
 
@@ -84,6 +100,8 @@ collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected, JObj) ->
             collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected)
     end.
 
+-spec handle_dtmf(whapps_call:call(), api_binary(), wh_timeout(), pos_integer(), function(), binary(), binary()) ->
+                         collect_dtmfs_return().
 handle_dtmf(Call, FinishKey, _Timeout, _N, _OnFirstFun, _Collected, FinishKey) ->
     lager:debug("finish key pressed"),
     {'ok', 'dtmf_finish', Call};
@@ -103,12 +121,14 @@ handle_dtmf(Call, FinishKey, Timeout, N, OnFirstFun, Collected, DTMF) ->
                   ,FinishKey, Timeout, N, OnFirstFun, <<DTMF/binary, Collected/binary>>
                  ).
 
+-spec collect_decr_timeout(whapps_call:call(), wh_timeout(), wh_now()) -> wh_timeout().
 collect_decr_timeout(Call, Timeout, Start) ->
     case kzt_util:get_gather_pidref(Call) of
         {_Pid, _Ref} when is_pid(_Pid) andalso is_reference(_Ref) -> Timeout;
         _ -> whapps_util:decr_timeout(Timeout, Start)
     end.
 
+-spec collect_timeout(whapps_call:call(), wh_timeout()) -> wh_timeout().
 collect_timeout(Call, Timeout) ->
     case kzt_util:get_gather_pidref(Call) of
         {_Pid, _Ref} when is_pid(_Pid) andalso is_reference(_Ref) -> 'infinity';
