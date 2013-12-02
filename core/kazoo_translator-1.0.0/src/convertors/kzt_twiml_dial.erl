@@ -31,7 +31,7 @@ exec(Call, [#xmlElement{name='Conference'
     whapps_call_command:answer(Call),
 
     ConfId = conference_id(ConfIdTxts),
-    lager:debug("dial into conference '~s'", [ConfId]),
+    lager:info("dialing into conference '~s'", [ConfId]),
 
     ConfProps = kzt_util:xml_attributes_to_proplist(ConfAttrs),
     DialProps = kzt_util:xml_attributes_to_proplist(DialAttrs),
@@ -86,7 +86,7 @@ exec(Call, [#xmlElement{name='Queue'
               ,DialProps
              ),
 
-    lager:debug("dial into queue ~s, unsupported", [QueueId]),
+    lager:info("dialing into queue ~s, unsupported", [QueueId]),
     {'stop', Call1};
 
 exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
@@ -97,7 +97,7 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
 
     case xml_elements_to_endpoints(Call1, Endpoints) of
         [] ->
-            lager:debug("no endpoints were available"),
+            lager:info("no endpoints were found to dial"),
             {'stop', Call1};
         EPs ->
             lager:debug("endpoints created, sending dial"),
@@ -114,7 +114,7 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
     end.
 
 dial_me(Call, Attrs, DialMe) ->
-    lager:debug("dial text DID '~s'", [DialMe]),
+    lager:info("dial text DID '~s'", [DialMe]),
 
     Props = kzt_util:xml_attributes_to_proplist(Attrs),
 
@@ -144,7 +144,7 @@ send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     whapps_call_command:send_command(B, Call).
-        
+
 setup_call_for_dial(Call, Props) ->
     Setters = [{fun whapps_call:set_caller_id_number/2, caller_id(Props, Call)}
                ,{fun kzt_util:set_hangup_dtmf/2, hangup_dtmf(Props)}

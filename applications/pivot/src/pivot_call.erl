@@ -111,10 +111,11 @@ maybe_relay_event(JObj, Props) ->
 
     relay_cdr_event(JObj, Props).
 
+-spec relay_cdr_event(wh_json:object(), wh_proplist()) -> 'ok'.
 relay_cdr_event(JObj, Props) ->
     case wh_util:get_event_type(JObj) of
         {<<"call_detail">>, <<"cdr">>} ->
-            Pid = proplists:get_value('server', Props),
+            Pid = props:get_value('server', Props),
             gen_listener:cast(Pid, {'cdr', JObj});
         _ -> 'ok'
     end.
@@ -248,9 +249,7 @@ handle_cast(_Req, State) ->
 %%--------------------------------------------------------------------
 handle_info({'ibrowse_async_headers', ReqId, "200", RespHeaders}
             ,#state{request_id=ReqId}=State) ->
-    CT = wh_util:to_binary(props:get_value("Content-Type", RespHeaders)),
-    lager:debug("recv 200 response, content-type: ~s", [CT]),
-    {'noreply', State#state{response_content_type=CT}};
+    {'noreply', State#state{response_content_type=find_content_type(RespHeaders)}};
 
 handle_info({'ibrowse_async_headers', ReqId, "302", RespHeaders}
             ,#state{voice_uri=Uri
@@ -259,25 +258,25 @@ handle_info({'ibrowse_async_headers', ReqId, "302", RespHeaders}
                     ,request_params=Params
                    }=State) ->
     Redirect = props:get_value("Location", RespHeaders),
-    lager:debug("recv 302: redirect to ~s", [Redirect]),
+    lager:info("recv 302: redirect to ~s", [Redirect]),
     Redirect1 = kzt_util:resolve_uri(Uri, Redirect),
 
     ?MODULE:new_request(self(), Redirect1, Method, Params),
     {'noreply', State};
 handle_info({'ibrowse_async_headers', ReqId, "4"++ StatusCode, _RespHeaders}
             ,#state{request_id=ReqId}=State) ->
-    lager:debug("recv client failure status code 4~s", [StatusCode]),
+    lager:info("recv client failure status code 4~s", [StatusCode]),
     {'noreply', State};
 handle_info({'ibrowse_async_headers', ReqId, "5"++ StatusCode, _RespHeaders}
             ,#state{request_id=ReqId}=State) ->
-    lager:debug("recv server failure status code 5~s", [StatusCode]),
+    lager:info("recv server failure status code 5~s", [StatusCode]),
     {'noreply', State};
 
 handle_info({'ibrowse_async_response', ReqId, {'error', 'connection_closed'}}
             ,#state{request_id=ReqId
                     ,response_body=_RespBody
                    }=State) ->
-    lager:debug("connection closed unexpectedly: collected: ~s", [_RespBody]),
+    lager:info("connection closed unexpectedly: collected: ~s", [_RespBody]),
     {'noreply', State};
 handle_info({'ibrowse_async_response', ReqId, Chunk}
             ,#state{request_id=ReqId
@@ -347,7 +346,7 @@ handle_event(_JObj, #state{response_pid=Pid
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{call=Call}) ->
     _ = whapps_call_command:hangup(Call),
-    lager:debug("pivot call terminating: ~p", [_Reason]).
+    lager:info("pivot call terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -381,11 +380,11 @@ send_req(Call, Uri, 'post', BaseParams) when is_list(BaseParams) ->
     send_req(Call, Uri, 'post', wh_json:to_proplist(BaseParams)).
 
 -spec send(whapps_call:call(), iolist(), atom(), wh_proplist(), iolist()) ->
-                        'ok' |
-                        {'ok', ibrowse_req_id()} |
-                        {'stop', whapps_call:call()}.
+                  'ok' |
+                  {'ok', ibrowse_req_id()} |
+                  {'stop', whapps_call:call()}.
 send(Call, Uri, Method, ReqHdrs, ReqBody) ->
-    lager:debug("sending req to ~s(~s): ~s", [iolist_to_binary(Uri), Method, iolist_to_binary(ReqBody)]),
+    lager:info("sending req to ~s(~s): ~s", [iolist_to_binary(Uri), Method, iolist_to_binary(ReqBody)]),
 
     Opts = [{'stream_to', self()}
             | ?DEFAULT_OPTS
@@ -396,16 +395,16 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
             lager:debug("response coming in asynchronosly to ~p", [ReqId]),
             {'ok', ReqId, Call};
         {'ok', "200", RespHdrs, RespBody} ->
-            lager:debug("recv 200: ~s", [RespBody]),
+            lager:info("recv 200: ~s", [RespBody]),
             handle_resp(Call, RespHdrs, RespBody);
         {'ok', "302", Hdrs, _RespBody} ->
             Redirect = props:get_value("Location", Hdrs),
-            lager:debug("recv 302: redirect to ~s", [Redirect]),
+            lager:info("recv 302: redirect to ~s", [Redirect]),
             Redirect1 = kzt_util:resolve_uri(Uri, Redirect),
             send(Call, Redirect1, Method, ReqHdrs, ReqBody);
         {'ok', _RespCode, _Hdrs, _RespBody} ->
-            lager:debug("recv other: ~s: ~s", [_RespCode, _RespBody]),
-            lager:debug("other hrds: ~p", [_Hdrs]),
+            lager:info("recv other: ~s: ~s", [_RespCode, _RespBody]),
+            [lager:debug("other hrds: ~p", [_Hdr]) || _Hdr <- _Hdrs],
             {'stop', Call};
         {'error', {'conn_failed', {'error', 'econnrefused'}}} ->
             lager:debug("connection to host refused, going down"),
@@ -432,12 +431,18 @@ handle_resp(Call, CT, RespBody) ->
                                )
     end.
 
+-spec process_resp(whapps_call:call(), list() | binary(), binary()) ->
+                          {'stop', whapps_call:call()} |
+                          {'ok', whapps_call:call()} |
+                          {'request', whapps_call:call()} |
+                          {'usurp', whapps_call:call()}.
 process_resp(Call, _, <<>>) ->
     lager:debug("no response body, finishing up"),
     {'stop', Call};
 process_resp(Call, Hdrs, RespBody) when is_list(Hdrs) ->
-    handle_resp(Call, props:get_value("Content-Type", Hdrs), RespBody);
+    handle_resp(Call, find_content_type(Hdrs), RespBody);
 process_resp(Call, CT, RespBody) ->
+    lager:info("finding translator for content type ~s", [CT]),
     try kzt_translator:exec(Call, wh_util:to_list(RespBody), CT) of
         {'stop', _Call1}=Stop ->
             lager:debug("translator says stop"),
@@ -449,19 +454,27 @@ process_resp(Call, CT, RespBody) ->
             lager:debug("translator says make another request"),
             Req;
         {'usurp', _Call1}=U ->
-            lager:debug("translator has been usurped"),
+            lager:info("translator has been usurped"),
             U;
         {'error', Call1} ->
             lager:debug("error in translator, FAIL"),
             {'stop', Call1}
     catch
         'throw':{'error', 'no_translators', _CT} ->
-            lager:debug("unknown content type ~s, no translators", [_CT]),
+            lager:info("unknown content type ~s, no translators", [_CT]),
             {'stop', Call};
         'throw':{'error', 'unrecognized_cmds'} ->
-            lager:debug("no translators recognize the supplied commands: ~s", [RespBody]),
+            lager:info("no translators recognize the supplied commands: ~s", [RespBody]),
             {'stop', Call}
     end.
+
+-spec find_content_type(wh_proplist()) -> api_binary().
+find_content_type([{K, V}|Hdrs]) ->
+    case wh_json:normalize_key(wh_util:to_binary(K)) of
+        <<"content_type">> -> wh_util:to_binary(V);
+        _ -> find_content_type(Hdrs)
+    end;
+find_content_type([]) -> 'undefined'.
 
 -spec uri(ne_binary(), iolist()) -> iolist().
 uri(URI, QueryString) ->
