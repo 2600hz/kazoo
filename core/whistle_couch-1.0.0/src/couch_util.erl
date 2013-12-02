@@ -97,7 +97,8 @@ get_new_connection(Host, Port, User, Pass) ->
 
 -spec get_new_conn(nonempty_string() | ne_binary(), pos_integer(), wh_proplist()) ->
                           server() |
-                          {'error', 'timeout'}.
+                          {'error', 'timeout'} |
+                          {'error', 'ehostunreach'}.
 get_new_conn(Host, Port, Opts) ->
     Conn = couchbeam:server_connection(wh_util:to_list(Host), Port, "", Opts),
     lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
@@ -111,7 +112,13 @@ get_new_conn(Host, Port, Opts) ->
             Conn;
         {'error', {'conn_failed', {'error', 'timeout'}}} ->
             lager:warning("connection timed out for ~s:~p", [Host, Port]),
-            {'error', 'timeout'}
+            {'error', 'timeout'};
+        {'error', {'conn_failed', {'error', 'ehostunreach'}}} ->
+            lager:warning("connection to ~s:~p failed: Host is unreachable", [Host, Port]),
+            {'error', 'ehostunreach'};
+        {'error', _E}=E ->
+            lager:warning("connection to ~s:~p failed: ~p", [Host, Port, _E]),
+            E
     end.
 
 server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
@@ -497,7 +504,7 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
         {Save, Cont} ->
             PreparedDocs = [maybe_set_docid(D) || D <- Save],
             case ?RETRY_504(couchbeam:save_docs(Db, PreparedDocs, Options)) of
-                {'ok', JObjs} -> 
+                {'ok', JObjs} ->
                     _ = maybe_publish_docs(Db, PreparedDocs, JObjs),
                     do_save_docs(Db, Cont, Options, JObjs ++ Acc);
                 {'error', _}=E -> E
@@ -640,7 +647,7 @@ retry504s(Fun, Cnt) ->
         {'error', {'ok', ErrCode, _Hdrs, _Body}} ->
             whistle_stats:increment_counter(<<"bigcouch-other-error">>),
             {'error', wh_util:to_integer(ErrCode)};
-        {'error', _Other}=E -> 
+        {'error', _Other}=E ->
             whistle_stats:increment_counter(<<"bigcouch-other-error">>),
             E;
         {'ok', _Other}=OK -> OK;
@@ -661,7 +668,7 @@ maybe_publish_docs(#db{name=DbName}=Db, Docs, JObjs) ->
                                                 ,{?MODULE, DbName, doc_id(Doc)})
                            || Doc <- Docs
                           ],
-                          [publish_doc(Db, Doc, JObj) 
+                          [publish_doc(Db, Doc, JObj)
                            || {Doc, JObj} <- lists:zip(Docs, JObjs)
                                   ,should_publish_doc(Doc)
                           ]
@@ -670,9 +677,9 @@ maybe_publish_docs(#db{name=DbName}=Db, Docs, JObjs) ->
     end.
 
 -spec maybe_publish_doc(couchbeam_db(), wh_json:object(), wh_json:object()) -> 'ok'.
-maybe_publish_doc(#db{name=DbName}=Db, Doc, JObj) ->    
+maybe_publish_doc(#db{name=DbName}=Db, Doc, JObj) ->
     wh_cache:erase_local(?WH_COUCH_CACHE, {?MODULE, DbName, doc_id(Doc)}),
-    case couch_mgr:change_notice() 
+    case couch_mgr:change_notice()
         andalso should_publish_doc(Doc)
     of
         'true' -> spawn(fun() -> publish_doc(Db, Doc, JObj) end);
@@ -688,15 +695,15 @@ should_publish_doc(Doc) ->
 
 -spec publish_doc(couchbeam_db(), wh_json:object(), wh_json:object()) -> 'ok'.
 publish_doc(#db{name=DbName}, Doc, JObj) ->
-    case wh_json:is_true(<<"pvt_deleted">>, Doc) 
-        orelse wh_json:is_true(<<"_deleted">>, Doc)        
+    case wh_json:is_true(<<"pvt_deleted">>, Doc)
+        orelse wh_json:is_true(<<"_deleted">>, Doc)
     of
         'true' -> publish('deleted', DbName, Doc);
         'false' ->
             case wh_json:get_value(<<"_rev">>, JObj) of
-                <<"1-", _/binary>> -> 
+                <<"1-", _/binary>> ->
                     publish('created', DbName, JObj);
-                _Else -> 
+                _Else ->
                     publish('edited', DbName, JObj)
             end
     end.
