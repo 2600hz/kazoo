@@ -320,7 +320,7 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
                           ,neg_resp_count = 0
                           ,current_msg_id = MsgID
                           ,req_timeout_ref = start_req_timeout(Timeout)
-                          ,req_start_time = erlang:now()
+                          ,req_start_time = os:timestamp()
                           ,callid = CallID
                          }, 'hibernate'};
         {'EXIT', Err} ->
@@ -352,7 +352,7 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout}
                         ,neg_resp_count = 0
                         ,current_msg_id = MsgID
                         ,req_timeout_ref = start_req_timeout(Timeout)
-                        ,req_start_time = erlang:now()
+                        ,req_start_time = os:timestamp()
                         ,callid = CallID
                        }, 'hibernate'};
         {'EXIT', Err} ->
@@ -390,7 +390,7 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
         'true' ->
             case wh_json:is_true(<<"Defer-Response">>, JObj) of
                 'false' ->
-                    lager:debug("response for msg id ~s took ~b micro to return", [MsgId, timer:now_diff(erlang:now(), StartTime)]),
+                    lager:debug("response for msg id ~s took ~b micro to return", [MsgId, timer:now_diff(os:timestamp(), StartTime)]),
                     gen_server:reply(From, {'ok', JObj}),
                     {'noreply', reset(State), 'hibernate'};
                 'true' ->
@@ -415,7 +415,7 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
     case UntilFun(Responses) of
         'true' ->
             lager:debug("responses have apparently met the criteria for the client, returning", []),
-            lager:debug("response for msg id ~s took ~b micro to return", [MsgId, timer:now_diff(erlang:now(), StartTime)]),
+            lager:debug("response for msg id ~s took ~b micro to return", [MsgId, timer:now_diff(os:timestamp(), StartTime)]),
             gen_server:reply(From, {'ok', Responses}),
             {'noreply', reset(State), 'hibernate'};
         'false' ->
