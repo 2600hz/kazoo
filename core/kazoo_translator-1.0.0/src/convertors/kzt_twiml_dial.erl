@@ -19,7 +19,7 @@ exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
 
     case wnm_util:to_e164(cleanup_dial_me(kzt_util:xml_text_to_binary(DialMeTxts))) of
         <<>> ->
-            lager:debug("no text to dial, using only xml elements"),
+            lager:info("no text to dial, using only xml elements"),
             exec(Call, kzt_util:xml_elements(DialMeTxts), Attrs);
         DialMe -> dial_me(Call, Attrs, DialMe)
     end;
@@ -31,7 +31,7 @@ exec(Call, [#xmlElement{name='Conference'
     whapps_call_command:answer(Call),
 
     ConfId = conference_id(ConfIdTxts),
-    lager:debug("dial into conference '~s'", [ConfId]),
+    lager:info("dial into conference '~s'", [ConfId]),
 
     ConfProps = kzt_util:xml_attributes_to_proplist(ConfAttrs),
     DialProps = kzt_util:xml_attributes_to_proplist(DialAttrs),
@@ -50,7 +50,7 @@ exec(Call, [#xmlElement{name='Conference'
               ],
     wapi_conference:publish_discovery_req(ConfReq),
 
-    lager:debug("published conference request"),
+    lager:info("published conference request"),
 
     %% Will need to support fetching media OR TwiML
     _WaitUrl = props:get_value('waitUrl', ConfProps),
@@ -63,7 +63,7 @@ exec(Call, [#xmlElement{name='Conference'
                                                                      ))
                      ),
 
-    lager:debug("waited for offnet, maybe ending dial"),
+    lager:info("waited for offnet, maybe ending dial"),
 
     maybe_end_dial(Call1),
     {'stop', Call1};
@@ -86,21 +86,21 @@ exec(Call, [#xmlElement{name='Queue'
               ,DialProps
              ),
 
-    lager:debug("dial into queue ~s, unsupported", [QueueId]),
+    lager:info("dial into queue ~s, unsupported", [QueueId]),
     {'stop', Call1};
 
 exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
-    lager:debug("dialing endpoints"),
+    lager:info("dialing endpoints"),
 
     Props = kzt_util:xml_attributes_to_proplist(Attrs),
     Call1 = setup_call_for_dial(Call, Props),
 
     case xml_elements_to_endpoints(Call1, Endpoints) of
         [] ->
-            lager:debug("no endpoints were available"),
+            lager:info("no endpoints were available"),
             {'stop', Call1};
         EPs ->
-            lager:debug("endpoints created, sending dial"),
+            lager:info("endpoints created, sending dial"),
             Timeout = dial_timeout(Props),
             IgnoreEarlyMedia = cf_util:ignore_early_media(EPs),
             Strategy = dial_strategy(Props),
@@ -114,7 +114,7 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
     end.
 
 dial_me(Call, Attrs, DialMe) ->
-    lager:debug("dial text DID '~s'", [DialMe]),
+    lager:info("dial text DID '~s'", [DialMe]),
 
     Props = kzt_util:xml_attributes_to_proplist(Attrs),
 
@@ -164,7 +164,7 @@ maybe_end_dial(Call) ->
     case kzt_util:get_call_status(Call) of
         ?STATUS_COMPLETED -> {'stop', Call};
         _Status ->
-            lager:debug("a-leg status after bridge: ~s", [_Status]),
+            lager:info("a-leg status after bridge: ~s", [_Status]),
             {'ok', Call} % will progress to next TwiML element
     end.
 
@@ -197,14 +197,14 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
                                  | EPs], Acc
                          ) ->
     DeviceId = kzt_util:xml_text_to_binary(DeviceIdTxt),
-    lager:debug("maybe adding device ~s to ring group", [DeviceId]),
+    lager:info("maybe adding device ~s to ring group", [DeviceId]),
     case cf_endpoint:build(DeviceId, Call) of
         {'ok', []} ->
-            lager:debug("no device endpoint built for ~s, skipping", [DeviceId]),
+            lager:info("no device endpoint built for ~s, skipping", [DeviceId]),
             xml_elements_to_endpoints(Call, EPs, Acc);
         {'ok', DeviceEPs} -> xml_elements_to_endpoints(Call, EPs, DeviceEPs ++ Acc);
         {'error', _E} ->
-            lager:debug("failed to add device ~s: ~p", [DeviceId, _E]),
+            lager:info("failed to add device ~s: ~p", [DeviceId, _E]),
             xml_elements_to_endpoints(Call, EPs, Acc)
     end;
 xml_elements_to_endpoints(Call, [#xmlElement{name='User'
@@ -213,11 +213,11 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='User'
                                             }
                                 | EPs], Acc) ->
     UserId = kzt_util:xml_text_to_binary(UserIdTxt),
-    lager:debug("maybe adding user ~s to ring group", [UserId]),
+    lager:info("maybe adding user ~s to ring group", [UserId]),
 
     case cf_user:get_endpoints(UserId, wh_json:new(), Call) of
         [] ->
-            lager:debug("no user endpoints built for ~s, skipping", [UserId]),
+            lager:info("no user endpoints built for ~s, skipping", [UserId]),
             xml_elements_to_endpoints(Call, EPs, Acc);
         UserEPs -> xml_elements_to_endpoints(Call, EPs, UserEPs ++ Acc)
     end;
@@ -234,7 +234,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
 
     DialMe = wnm_util:to_e164(kzt_util:xml_text_to_binary(Number)),
 
-    lager:debug("maybe add number ~s: send ~s", [DialMe, SendDigits]),
+    lager:info("maybe add number ~s: send ~s", [DialMe, SendDigits]),
 
     CallFwd = wh_json:from_list([{<<"number">>, DialMe}
                                  ,{<<"require_keypress">>, 'false'}
@@ -254,7 +254,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
 
     try wnm_sip:parse(kzt_util:xml_text_to_binary(Number)) of
         Uri ->
-            lager:debug("maybe add SIP ~s", [wnm_sip:encode(Uri)]),
+            lager:info("maybe add SIP ~s", [wnm_sip:encode(Uri)]),
             SipJObj = wh_json:from_list([{<<"invite_format">>, <<"route">>}
                                          ,{<<"route">>, wnm_sip:encode(Uri)}
                                         ]),
@@ -264,12 +264,12 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
             xml_elements_to_endpoints(Call, EPs, [EP|Acc])
     catch
         'throw':_E ->
-            lager:debug("failed to parse SIP uri: ~p", [_E]),
+            lager:info("failed to parse SIP uri: ~p", [_E]),
             xml_elements_to_endpoints(Call, EPs, Acc)
     end;
 
 xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
-    lager:debug("unknown endpoint, skipping: ~p", [_Xml]),
+    lager:info("unknown endpoint, skipping: ~p", [_Xml]),
     xml_elements_to_endpoints(Call, EPs, Acc).
 
 request_id(N, Call) -> iolist_to_binary([N, <<"@">>, whapps_call:from_realm(Call)]).
@@ -356,7 +356,7 @@ moderator_flags(_, _) -> wh_json:new().
 conference_id(Txts) ->
     Id = kzt_util:xml_text_to_binary(Txts),
     MD5 = wh_util:to_hex_binary(erlang:md5(Id)),
-    lager:debug("conf name: ~s (~s)", [Id, MD5]),
+    lager:info("conf name: ~s (~s)", [Id, MD5]),
     MD5.
 
 
