@@ -214,7 +214,7 @@ cast(Srv, Req, PubFun) ->
             poolboy:checkin(Srv, W),
             gen_listener:cast(W, {'publish', Prop, PubFun});
         'full' ->
-            lager:debug("failed to checkout worker: full"),
+            lager:critical("failed to checkout worker: full"),
             {'error', 'pool_full'};
         _Else ->
             lager:debug("poolboy error: ~p", [_Else]),

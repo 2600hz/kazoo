@@ -45,9 +45,9 @@
          ,code_change/4
 
          %% state functions
-         ,ready/2, ready/3                     % FSM is 'ready' to compact something
-         ,compact/2, compact/3         % FSM is compacting all nodes
-         ,wait/2, wait/3                       % FSM is waiting to compact the next thing
+         ,ready/2, ready/3     % FSM is 'ready' to compact something
+         ,compact/2, compact/3 % FSM is compacting all nodes
+         ,wait/2, wait/3       % FSM is waiting to compact the next thing
         ]).
 
 -include("wh_couch.hrl").
@@ -73,7 +73,7 @@
              <<"infinity">> -> 'infinity';
              N -> wh_util:to_integer(N)
          end
-       ). % five minutes
+       ).
 
 -define(AUTOCOMPACTION_CHECK_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"autocompaction_check">>, 60000)).
 
