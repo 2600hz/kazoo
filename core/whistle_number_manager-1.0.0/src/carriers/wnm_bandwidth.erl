@@ -49,12 +49,12 @@ get_number_data(Number) ->
              ,{'getValue', [wh_util:to_list(Number)]}
             ],
     case make_numbers_request('getTelephoneNumber', Props) of
-        {error, _} -> wh_json:new(); 
+        {error, _} -> wh_json:new();
         {ok, Xml} ->
             Response = xmerl_xpath:string("/getResponse/telephoneNumber", Xml),
             number_search_response_to_json(Response)
     end.
-                
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -70,7 +70,7 @@ find_numbers(<<"1", Rest/binary>>, Quanity, Opts) ->
     find_numbers(Rest, Quanity, Opts);
 find_numbers(<<NPA:3/binary>>, Quanity, _) ->
     Props = [{'areaCode', [wh_util:to_list(NPA)]}
-             ,{'maxQuantity', [wh_util:to_list(Quanity)]}], 
+             ,{'maxQuantity', [wh_util:to_list(Quanity)]}],
     case make_numbers_request('areaCodeNumberSearch', Props) of
         {error, _}=E -> E;
         {ok, Xml} ->
@@ -86,7 +86,7 @@ find_numbers(<<NPA:3/binary>>, Quanity, _) ->
 find_numbers(Search, Quanity, _) ->
     NpaNxx = binary:part(Search, 0, (case size(Search) of L when L < 6 -> L; _ -> 6 end)),
     Props = [{'npaNxx', [wh_util:to_list(NpaNxx)]}
-             ,{'maxQuantity', [wh_util:to_list(Quanity)]}], 
+             ,{'maxQuantity', [wh_util:to_list(Quanity)]}],
     case make_numbers_request('npaNxxNumberSearch', Props) of
         {error, _}=E -> E;
         {ok, Xml} ->
@@ -113,10 +113,10 @@ is_number_billable(_Number) -> 'true'.
 acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}=N) ->
     Debug = whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, true),
     case whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"enable_provisioning">>, true) of
-        false when Debug -> 
+        false when Debug ->
             lager:debug("allowing sandbox provisioning", []),
             N;
-        false -> 
+        false ->
             Error = <<"Unable to acquire numbers on this system, carrier provisioning is disabled">>,
             wnm_number:error_carrier_fault(Error, N);
         true ->
@@ -130,8 +130,8 @@ acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}
                     end,
             OrderNamePrefix = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Kazoo">>),
             OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
-            ExtRef = case wh_util:is_empty(AuthBy) of true -> "no_authorizing_account"; false -> wh_util:to_list(AuthBy) end, 
-            AcquireFor = case wh_util:is_empty(AuthBy) of true -> "no_assigned_account"; false -> wh_util:to_list(AssignedTo) end, 
+            ExtRef = case wh_util:is_empty(AuthBy) of true -> "no_authorizing_account"; false -> wh_util:to_list(AuthBy) end,
+            AcquireFor = case wh_util:is_empty(AuthBy) of true -> "no_assigned_account"; false -> wh_util:to_list(AssignedTo) end,
             Props = [{'orderName', [wh_util:to_list(OrderName)]}
                      ,{'extRefID', [wh_util:to_list(ExtRef)]}
                      ,{'numberIDs', [{'id', [Id]}]}
@@ -156,7 +156,7 @@ acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}
 %%--------------------------------------------------------------------
 -spec disconnect_number/1 :: (wnm_number()) -> wnm_number().
 disconnect_number(Number) -> Number.
-        
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -312,7 +312,7 @@ rate_center_to_json(Xml) ->
 -spec verify_response/1 :: (term()) -> {ok, term()} | {error, undefined | binary() | [binary(),...]}.
 verify_response(Xml) ->
     case wh_util:get_xml_value("/*/status/text()", Xml) of
-        <<"success">> -> 
+        <<"success">> ->
             lager:debug("request was successful"),
             {ok, Xml};
         _ ->

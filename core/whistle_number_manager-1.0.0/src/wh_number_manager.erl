@@ -692,7 +692,7 @@ prepare_find_results([{Module, {'ok', ModuleResults}}|T], Found, Opts) ->
     case wh_json:get_keys(ModuleResults) of
         [] -> prepare_find_results(T, Found, Opts);
         Numbers ->
-            Results = prepare_find_results(Numbers, Module,ModuleResults, Found, Opts),
+            Results = prepare_find_results(Numbers, Module, ModuleResults, Found, Opts),
             prepare_find_results(T, Results, Opts)
     end;
 prepare_find_results([_|T], Found, Opts) ->
@@ -701,19 +701,16 @@ prepare_find_results([_|T], Found, Opts) ->
 prepare_find_results([], _, _, Found,_) ->
     Found;
 prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) ->
-	Props = wh_json:get_value(Number, ModuleResults),
-    Routines = [fun(A) ->
-					case wh_services:activation_charges(<<"phone_numbers">>
+	JObj = wh_json:get_value(Number, ModuleResults),
+    Result = case wh_services:activation_charges(<<"phone_numbers">>
                                                         ,props:get_value(<<"classification">>, Opts)
                                                         ,props:get_value(<<"services">>, Opts))
-                    of
-                        'undefined' -> A;
-                        Value -> props:set_value(<<"activation_charge">>, Value, A)
-                    end
-                end
-               ],
-    PropsUpdated = lists:foldl(fun(F, J) -> F(J) end, Props, Routines),
-    Result = [wh_json:from_list(PropsUpdated)|Found],
+             of
+                'undefined' -> [wh_json:set_value(<<"number">>, Number, JObj)|Found];
+                Value -> [wh_json:set_values([{<<"activation_charge">>, Value}
+                                              ,{<<"number">>, Number}
+                                             ], JObj)|Found]
+             end,
     case catch wnm_number:get(Number) of
         #number{state=State} ->
             case lists:member(State, ?WNM_AVALIABLE_STATES) of
@@ -726,7 +723,7 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) -
         {'not_found', #number{}=N} ->
             NewNumber = N#number{number=Number
                                  ,module_name = ModuleName
-                                 ,module_data=wh_json:from_list(wh_json:get_value(Number, ModuleResults))
+                                 ,module_data=JObj
                                 },
             case catch wnm_number:save(wnm_number:create_discovery(NewNumber)) of
                 #number{} ->
