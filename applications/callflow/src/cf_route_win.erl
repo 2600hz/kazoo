@@ -174,8 +174,14 @@ store_owner_id(Call) ->
 %%-----------------------------------------------------------------------------
 -spec update_ccvs(whapps_call:call()) -> whapps_call:call().
 update_ccvs(Call) ->
-    {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
-    Props = props:filter_undefined([{<<"Hold-Media">>, cf_attributes:moh_attributes(<<"media_id">>, Call)}
+    CallerIdType = case whapps_call:inception(Call) of
+        <<"offnet">> = I -> <<"external">>;
+        <<"on-net">> = I -> <<"internal">>;
+        I -> <<"external">>
+    end,
+    lager:info("inception ~s", [I]),
+    {CIDNumber, CIDName} = cf_attributes:caller_id(CallerIdType, Call),
+	Props = props:filter_undefined([{<<"Hold-Media">>, cf_attributes:moh_attributes(<<"media_id">>, Call)}
                                     ,{<<"Caller-ID-Name">>, CIDName}
                                     ,{<<"Caller-ID-Number">>, CIDNumber}
                                    ]),
