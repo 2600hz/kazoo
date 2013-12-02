@@ -23,43 +23,57 @@ handle_req(JObj, _Props) ->
     lager:debug("trying to authenticate ~s@~s", [Username, Realm]),
     case lookup_auth_user(Username, Realm) of
         {'ok', #auth_user{}=AuthUser} ->
-            send_auth_resp(AuthUser, JObj);
-        {'error', 'not_found'} ->
-            IPAddress = wh_json:get_value(<<"Orig-IP">>, JObj),
-            lager:notice("auth failure for ~s@~s from ip ~s", [Username, Realm, IPAddress]),
+            maybe_add_account_name(AuthUser, JObj);
+        {'error', _R} ->
+            lager:notice("auth failure for ~s@~s: ~p"
+                         ,[Username, Realm, _R]),
             send_auth_error(JObj)
     end.
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% extract the auth realm from the API request, using the requests to domain
-%% when provided with an IP
-%% @end
-%%-----------------------------------------------------------------------------
+-spec maybe_add_account_name(auth_user(), wh_json:object()) -> 'ok'.
+maybe_add_account_name(#auth_user{account_name='undefined'
+                                  ,account_id=AccountId}=AuthUser
+                       ,JObj) when is_binary(AccountId) ->
+    case wh_json:get_value(<<"Method">>, JObj) of
+        <<"INVITE">> -> send_auth_resp(AuthUser, JObj);
+        _Else -> add_account_name(AuthUser, JObj)
+    end;
+maybe_add_account_name(AuthUser, JObj) ->
+    send_auth_resp(AuthUser, JObj).
+
+-spec add_account_name(auth_user(), wh_json:object()) -> 'ok'.
+add_account_name(#auth_user{account_id=AccountId}=AuthUser, JObj) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'error', _} -> send_auth_resp(AuthUser, JObj);
+        {'ok', Account} ->  
+            send_auth_resp(
+              AuthUser#auth_user{account_name=wh_json:get_value(<<"name">>, Account)
+                                 ,account_realm=wh_json:get_lower_binary(<<"realm">>, Account)}
+              ,JObj)
+    end.
+
 -spec send_auth_resp(auth_user(), wh_json:object()) -> 'ok'.
 send_auth_resp(#auth_user{password=Password
                           ,method=Method
+                          ,account_realm=Realm
+                          ,account_name=Name
                           ,suppress_unregister_notifications=SupressUnregister
                          }=AuthUser, JObj) ->
     Category = wh_json:get_value(<<"Event-Category">>, JObj),
-    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            ,{<<"Auth-Password">>, Password}
-            ,{<<"Auth-Method">>, Method}
-            ,{<<"Suppress-Unregister-Notifications">>, SupressUnregister}
-            ,{<<"Custom-Channel-Vars">>, create_ccvs(AuthUser)}
-            | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
-           ],
+    Resp = props:filter_undefined(
+             [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+              ,{<<"Auth-Password">>, Password}
+              ,{<<"Auth-Method">>, Method}             
+              ,{<<"Account-Realm">>, Realm}
+              ,{<<"Account-Name">>, Name}              
+              ,{<<"Suppress-Unregister-Notifications">>, SupressUnregister}
+              ,{<<"Custom-Channel-Vars">>, create_ccvs(AuthUser)}
+              | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
+             ]),
     lager:debug("sending SIP authentication reply, with credentials"),
     wapi_authn:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% extract the auth realm from the API request, using the requests to domain
-%% when provided with an IP
-%% @end
-%%-----------------------------------------------------------------------------
 -spec send_auth_error(wh_json:object()) -> 'ok'.
 send_auth_error(JObj) ->
 %% NOTE: Kamailio needs registrar errors since it is blocking with no
@@ -74,12 +88,6 @@ send_auth_error(JObj) ->
     lager:debug("sending SIP authentication error"),
     wapi_authn:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%-----------------------------------------------------------------------------
 -spec create_ccvs(auth_user()) -> wh_json:object().
 create_ccvs(#auth_user{}=AuthUser) ->
     Props = [{<<"Username">>, AuthUser#auth_user.username}
@@ -100,38 +108,13 @@ create_ccvs(#auth_user{}=AuthUser) ->
 %%-----------------------------------------------------------------------------
 -spec lookup_auth_user(ne_binary(), ne_binary()) ->
                               {'ok', auth_user()} |
-                              {'error', 'not_found'}.
+                              {'error', _}.
 lookup_auth_user(Username, Realm) ->
     case get_auth_user(Username, Realm) of
         {'error', _}=E -> E;
         {'ok', JObj} -> check_auth_user(JObj, Username, Realm)
     end.
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%-----------------------------------------------------------------------------
--spec check_auth_user(wh_json:object(), ne_binary(), ne_binary()) ->
-                             {'ok', auth_user()} |
-                             {'error', _}.
-check_auth_user(JObj, Username, Realm) ->
-    case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], JObj))
-        andalso 
-        (wh_json:get_value(<<"pvt_type">>, JObj) =/= <<"device">>
-             orelse wh_json:is_true([<<"doc">>, <<"enabled">>], JObj, 'false'))
-    of
-        'false' -> {'error', 'not_found'};
-        'true' -> {'ok', jobj_to_auth_user(JObj, Username, Realm)}
-    end.
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%-----------------------------------------------------------------------------
 -spec get_auth_user(ne_binary(), ne_binary()) ->
                            {'ok', wh_json:object()} |
                            {'error', 'not_found'}.
@@ -150,12 +133,6 @@ get_auth_user(Username, Realm) ->
             get_auth_user_in_account(Username, Realm, AccountDB)
     end.
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%-----------------------------------------------------------------------------
 -spec get_auth_user_in_agg(ne_binary(), ne_binary()) ->
                                   {'ok', wh_json:object()} |
                                   {'error', 'not_found'}.
@@ -180,12 +157,6 @@ get_auth_user_in_agg(Username, Realm) ->
             {'ok', User}
     end.
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%-----------------------------------------------------------------------------
 -spec get_auth_user_in_account(ne_binary(), ne_binary(), ne_binary()) ->
                                       {'ok', wh_json:object()} |
                                       {'error', 'not_found'}.
@@ -211,18 +182,82 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
+-spec check_auth_user(wh_json:object(), ne_binary(), ne_binary()) -> 
+                             {'ok', auth_user()} |
+                             {'error', _}.                             
+check_auth_user(JObj, Username, Realm) ->
+    case is_account_enabled(JObj)
+        andalso maybe_auth_type_enabled(JObj)
+        andalso maybe_owner_enabled(JObj)
+    of
+        'true' -> {'ok', jobj_to_auth_user(JObj, Username, Realm)};
+        'false' -> {'error', 'disabled'}
+    end.
+
+-spec is_account_enabled(wh_json:object()) -> boolean().
+is_account_enabled(JObj) ->
+    AccountId = get_account_id(JObj),
+    case wh_util:is_account_enabled(AccountId) of
+        'true' -> 'true';
+        'false' ->
+            lager:notice("rejecting authn for disabled account ~s", [AccountId]),
+            'false'
+    end.
+
+-spec maybe_auth_type_enabled(wh_json:object()) -> boolean().
+maybe_auth_type_enabled(JObj) ->
+    case wh_json:get_value([<<"doc">>, <<"pvt_type">>], JObj) of
+        <<"device">> -> is_device_enabled(JObj);
+        _Else -> 'true'
+    end.
+
+-spec is_device_enabled(wh_json:object()) -> boolean().
+is_device_enabled(JObj) ->
+    Default = whapps_config:get_is_true(?CONFIG_CAT, <<"device_enabled_default">>, 'false'),
+    case wh_json:is_true([<<"doc">>, <<"enabled">>], JObj, Default) of
+        'true' -> 'true';
+        'false' ->
+            lager:notice("rejecting authn for disabled device ~s"
+                         ,[wh_json:get_value(<<"id">>, JObj)]),
+            'false'
+    end.
+
+-spec maybe_owner_enabled(wh_json:object()) -> boolean().
+maybe_owner_enabled(JObj) ->
+    case wh_json:get_value([<<"doc">>, <<"owner_id">>], JObj) of
+        'undefined' -> 'true';
+        OwnerId -> is_owner_enabled(get_account_db(JObj), OwnerId)
+    end.
+
+-spec is_owner_enabled(ne_binary(), ne_binary()) -> boolean().
+is_owner_enabled(AccountDb, OwnerId) ->
+    Default = whapps_config:get_is_true(?CONFIG_CAT, <<"owner_enabled_default">>, 'false'),
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+        {'ok', JObj} ->
+            case wh_json:is_true(<<"enabled">>, JObj, Default) of
+                'true' -> 'true';
+                'false' ->
+                    lager:notice("rejecting authn for disabled owner ~s"
+                                 ,[OwnerId]),
+                    'false'
+            end;
+        {'error', _R} ->
+            lager:debug("unable to fetch owner doc ~s: ~p", [OwnerId, _R]),
+            'true'
+    end.
+
 -spec jobj_to_auth_user(wh_json:object(), ne_binary(), ne_binary()) -> auth_user().
 jobj_to_auth_user(JObj, Username, Realm) ->
     AuthValue = wh_json:get_value(<<"value">>, JObj),
     AuthDoc = wh_json:get_value(<<"doc">>, JObj),
     #auth_user{realm = Realm
                ,username = Username
-               ,password = wh_json:get_value(<<"password">>, AuthValue)
                ,account_id = get_account_id(AuthDoc)
                ,account_db = get_account_db(AuthDoc)
+               ,password = wh_json:get_value(<<"password">>, AuthValue)
                ,authorizing_type = wh_json:get_value(<<"authorizing_type">>, AuthValue, <<"anonymous">>)
                ,authorizing_id = wh_json:get_value(<<"id">>, JObj)
-               ,method = get_auth_method(AuthValue)
+               ,method = wh_json:get_lower_binary(<<"method">>, AuthValue, <<"password">>)
                ,owner_id = wh_json:get_value(<<"owner_id">>, AuthDoc)
                ,suppress_unregister_notifications = wh_json:is_true(<<"suppress_unregister_notifications">>, AuthDoc)
               }.
@@ -235,13 +270,14 @@ jobj_to_auth_user(JObj, Username, Realm) ->
 %%-----------------------------------------------------------------------------
 -spec get_account_id(wh_json:object()) -> api_binary().
 get_account_id(JObj) ->
-    case wh_json:get_value(<<"pvt_account_id">>, JObj) of
-        'undefined' ->
-            case wh_json:get_value(<<"pvt_account_db">>, JObj) of
-                'undefined' -> 'undefined';
-                AccountDb -> wh_util:format_account_id(AccountDb, 'raw')
-            end;
-        AccountId -> AccountId
+    case wh_json:get_first_defined([[<<"doc">>, <<"pvt_account_id">>]
+                                    ,<<"pvt_account_id">>
+                                    ,[<<"doc">>, <<"pvt_account_db">>]
+                                    ,<<"pvt_account_db">>
+                                   ], JObj)
+    of
+        'undefined' -> 'undefined';
+        AccountId -> wh_util:format_account_id(AccountId, 'raw')
     end.
 
 %%-----------------------------------------------------------------------------
@@ -252,22 +288,12 @@ get_account_id(JObj) ->
 %%-----------------------------------------------------------------------------
 -spec get_account_db(wh_json:object()) -> api_binary().
 get_account_db(JObj) ->
-    case wh_json:get_value(<<"pvt_account_db">>, JObj) of
-        'undefined' ->
-            case wh_json:get_value(<<"pvt_account_id">>, JObj) of
-                'undefined' -> 'undefined';
-                AccountId -> wh_util:format_account_id(AccountId, 'encoded')
-            end;
-        AccountDb -> AccountDb
+    case wh_json:get_first_defined([[<<"doc">>, <<"pvt_account_db">>]
+                                    ,<<"pvt_account_db">>
+                                    ,[<<"doc">>, <<"pvt_account_id">>]
+                                    ,<<"pvt_account_id">>
+                                   ], JObj)
+    of
+        'undefined' -> 'undefined';
+        AccountDb -> wh_util:format_account_id(AccountDb, 'encoded')
     end.
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%-----------------------------------------------------------------------------
--spec get_auth_method(wh_json:object()) -> ne_binary().
-get_auth_method(JObj) ->
-    Method = wh_json:get_binary_value(<<"method">>, JObj, <<"password">>),
-    wh_util:to_lower_binary(Method).

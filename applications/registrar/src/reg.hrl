@@ -8,8 +8,6 @@
 
 -define(CONFIG_CAT, <<"registrar">>).
 
--define(REGISTRAR_CACHE, 'registrar_cache').
-
 -record(auth_user, {realm
                     ,username
                     ,password
@@ -20,6 +18,8 @@
                     ,method
                     ,owner_id
                     ,suppress_unregister_notifications
+                    ,account_realm
+                    ,account_name
                    }).
 -type auth_user() :: #auth_user{}.
 
