@@ -49,6 +49,8 @@
 -define(AUTHN_RESP_HEADERS, [<<"Auth-Method">>, <<"Auth-Password">>]).
 -define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Custom-Channel-Vars">>
                                       ,<<"Auth-Username">>
+                                      ,<<"Account-Realm">>
+                                      ,<<"Account-Name">>
                                       ,<<"Suppress-Unregister-Notifications">>
                                      ]).
 -define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}

@@ -14,13 +14,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
-                          ,[{'type', <<"device">>}]
-                         ]).
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
--define(CHILDREN, [?CACHE_ARGS(?REGISTRAR_CACHE, ?CACHE_PROPS)
-                   ,?WORKER('registrar_shared_listener')
-                  ]).
+-define(CHILDREN, [?WORKER('registrar_shared_listener')]).
 
 %% ===================================================================
 %% API functions

@@ -163,8 +163,12 @@ summary(Realm) when not is_binary(Realm) ->
     summary(wh_util:to_binary(Realm));
 summary(Realm) ->
     R = wh_util:to_lower_binary(Realm),
-    MatchSpec = [{#registration{account_realm = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {const, R}}]
+    MatchSpec = [{#registration{realm = '$1'
+                                ,account_realm = '$2'
+                                ,_ = '_'}
+                  ,[{'orelse', {'=:=', '$1', {'const', R}}
+                     ,{'=:=', '$2', {'const', R}}}
+                   ]
                   ,['$_']
                  }],
     print_summary(ets:select(?MODULE, MatchSpec, 1)).
@@ -185,8 +189,12 @@ details(User) ->
         [Username, Realm] -> details(Username, Realm);
          _Else ->
             Realm = wh_util:to_lower_binary(User),
-            MatchSpec = [{#registration{account_realm = '$1', _ = '_'}
-                          ,[{'=:=', '$1', {const, Realm}}]
+            MatchSpec = [{#registration{realm = '$1'
+                                        ,account_realm = '$2'
+                                        ,_ = '_'}
+                          ,[{'orelse', {'=:=', '$1', {'const', Realm}}
+                             ,{'=:=', '$2', {'const', Realm}}}
+                           ]
                           ,['$_']
                          }],
             print_details(ets:select(?MODULE, MatchSpec, 1))
@@ -316,8 +324,12 @@ handle_cast('flush', State) ->
     {'noreply', State};
 handle_cast({'flush', Realm}, State) ->
     R = wh_util:to_lower_binary(Realm),
-    MatchSpec = [{#registration{account_realm = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {const, R}}]
+    MatchSpec = [{#registration{realm = '$1'
+                                ,account_realm = '$2'
+                                ,_ = '_'}
+                  ,[{'orelse', {'=:=', '$1', {'const', R}}
+                     ,{'=:=', '$2', {'const', R}}}
+                   ]
                   ,['true']
                  }],
     NumberDeleted = ets:select_delete(?MODULE, MatchSpec),
@@ -487,9 +499,12 @@ build_query_spec(JObj, CountOnly) ->
             Realm ->
                 case wh_json:get_value(<<"Username">>, JObj) of
                     'undefined' ->
-                        {#registration{account_realm = '$1', _ = '_'}
-                         ,{'=:=', '$1', {'const', Realm}}
-                        };
+                        {#registration{realm = '$1'
+                                       ,account_realm = '$2'
+                                       ,_ = '_'}
+                         ,[{'orelse', {'=:=', '$1', {'const', Realm}}
+                            ,{'=:=', '$2', {'const', Realm}}}
+                          ]};
                     Username ->
                         Id = registration_id(Username, Realm),
                         {#registration{id = '$1', _ = '_'}
@@ -620,9 +635,9 @@ maybe_query_authn(#registration{username=Username
                              ,authorizing_id = wh_json:get_value(<<"Authorizing-ID">>, CCVs)
                              ,authorizing_type = wh_json:get_value(<<"Authorizing-Type">>, CCVs)
                              ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
+                             ,account_realm = wh_json:get_value(<<"Account-Realm">>, JObj)
+                             ,account_name = wh_json:get_value(<<"Account-Name">>, JObj)
                              ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
-                             ,account_realm = wh_json:get_value(<<"Account-Realm">>, CCVs)
-                             ,account_name = wh_json:get_value(<<"Account-Name">>, CCVs)
                             }
     end.
 
@@ -675,8 +690,8 @@ query_authn(#registration{username=Username
                              ,authorizing_type = wh_json:get_value(<<"Authorizing-Type">>, CCVs)
                              ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
                              ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
-                             ,account_realm = wh_json:get_value(<<"Account-Realm">>, CCVs)
-                             ,account_name = wh_json:get_value(<<"Account-Name">>, CCVs)
+                             ,account_realm = wh_json:get_value(<<"Account-Realm">>, JObj)
+                             ,account_name = wh_json:get_value(<<"Account-Name">>, JObj)
                             }
     end.
 
@@ -743,6 +758,8 @@ to_props(Reg) ->
      ,{<<"Expires">>, Reg#registration.expires}
      ,{<<"Account-ID">>, Reg#registration.account_id}
      ,{<<"Account-DB">>, Reg#registration.account_db}
+     ,{<<"Account-Realm">>, Reg#registration.account_realm}
+     ,{<<"Account-Name">>, Reg#registration.account_name}
      ,{<<"Authorizing-ID">>, Reg#registration.authorizing_id}
      ,{<<"Authorizing-Type">>, Reg#registration.authorizing_type}
      ,{<<"Suppress-Unregister-Notify">>, Reg#registration.suppress_unregister}
