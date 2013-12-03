@@ -1,6 +1,8 @@
 -module(cb_phone_numbers_v1).
 
--export([validate/1]).
+-export([validate/1
+         ,validate/2
+        ]).
 
 -include("../crossbar.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
@@ -23,6 +25,11 @@ validate(#cb_context{req_verb = ?HTTP_GET
     find_numbers(Context);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     cb_phone_numbers:summary(Context).
+
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number) ->
+    cb_phone_numbers:read(Number, Context);
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, _Number) ->
+    cb_phone_numbers:validate_request(Context).
 
 %%%===================================================================
 %%% Internal functions
