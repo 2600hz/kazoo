@@ -16,6 +16,11 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE('webhooks_cache')
+                   ,?WORKER_ARGS('kazoo_etsmgr_srv', [{'table_id', webhooks_listener:table_id()}
+                                                      ,{'find_me_function', fun webhooks_listener:find_me/0}
+                                                      ,{'table_options', webhooks_listener:table_options()}
+                                                      ,{'gift_data', webhooks_listener:gift_data()}
+                                                     ])
                    ,?WORKER('webhooks_listener')
                   ]).
 

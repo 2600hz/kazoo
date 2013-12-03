@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -19,25 +19,28 @@
          ,code_change/3
         ]).
 
+%% ETS Management
+-export([table_id/0
+         ,table_options/0
+         ,find_me_function/0
+         ,gift_data/0
+        ]).
+
+%% Internal Exports
+-export([load_hooks/1]).
+
 -include("webhooks.hrl").
 
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'route', []}
+-define(BINDINGS, [{'call', []}
                    ,{'self', []}
                   ]).
--define(RESPONDERS, [
-                     %% Received because of our route binding
-                     {{'webhooks_handlers', 'handle_route_req'}, [{<<"dialplan">>, <<"route_req">>}]}
-
-                     %% Received because of our self binding (route_wins are sent to the route_resp's Server-ID
-                     %% which is usually populated with the listener's queue name
-                     ,{{'webhooks_handlers', 'handle_route_win'}, [{<<"dialplan">>, <<"route_win">>}]}
-                    ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(RESPONDERS, []).
+-define(QUEUE_NAME, <<"webhooks_listener">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -57,8 +60,27 @@ start_link() ->
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                      %%,{basic_qos, 1}                % only needed if prefetch controls
                                      ], []).
+
+-record(hook, {id :: api_binary()
+               ,account_id :: ne_binary()
+               ,hook :: ne_binary()
+               ,uri :: ne_binary()
+               ,http_verb = 'get' :: 'get' | 'post'
+               ,retries = 3 :: pos_integer()
+              }).
+
+-spec table_id() -> ?MODULE.
+table_id() -> ?MODULE.
+
+-spec table_options() -> list().
+table_options() -> ['set', 'protected', {'keypos', #hook.id}].
+
+-spec find_me_function() -> api_pid().
+find_me_function() -> whereis(?MODULE).
+
+-spec gift_data() -> 'ok'.
+gift_data() -> 'ok'.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -105,6 +127,12 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'wh_amqp_channel', {'new_channel', _IsNew}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -118,6 +146,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
+    lager:debug("write access to table ~s available", [_TblId]),
+    spawn(?MODULE, 'load_hooks', [self()]),
+    {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -160,3 +192,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+load_hooks(Srv) ->
+    wh_util:put_callid(?MODULE),
+    lager:debug("loading hooks into memory"),
+    'ok'.
