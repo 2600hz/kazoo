@@ -219,11 +219,7 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?CLASSIFIERS) ->
     cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                              ,wnm_util:available_classifiers()
                             );
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number) ->
-    read(Number, Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number) ->
-    validate_request(Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, _Number) ->
     validate_request(Context);
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, _Number) ->
     validate_delete(Context).

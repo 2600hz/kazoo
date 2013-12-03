@@ -90,8 +90,12 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?PREFIX) ->
     find_prefix(Context);
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number) ->
+    cb_phone_numbers:read(Number, Context);
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, ?LOCALITY) ->
-    find_locality(Context).
+    find_locality(Context);
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, _Number) ->
+    cb_phone_numbers:validate_request(Context).
 
 %%--------------------------------------------------------------------
 %% @public
