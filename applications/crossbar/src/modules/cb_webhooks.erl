@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle CRUD operations for WebHooks
@@ -22,18 +22,17 @@
 -include("../crossbar.hrl").
 
 -define(CB_LIST, <<"webhooks/crossbar_listing">>).
--define(CB_USERS_LIST, <<"webhooks/users_listing">>).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.webhooks">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.webhooks">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.validate.webhooks">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"*.execute.put.webhooks">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"*.execute.post.webhooks">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"*.execute.delete.webhooks">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.webhooks">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.webhooks">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.webhooks">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.webhooks">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.webhooks">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"*.execute.delete.webhooks">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -61,10 +60,8 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() ->
-    true.
-resource_exists(_) ->
-    true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -75,8 +72,8 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
@@ -89,15 +86,15 @@ validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
     read(Id, Context).
 
--spec post(#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     crossbar_doc:save(Context).
 
--spec put(#cb_context{}) -> #cb_context{}.
+-spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(Context).
 
--spec delete(#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     crossbar_doc:delete(Context).
 
@@ -111,9 +108,9 @@ delete(Context, _) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create(#cb_context{}) -> #cb_context{}.
+-spec create(cb_context:context()) -> cb_context:context().
 create(#cb_context{}=Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
@@ -122,20 +119,9 @@ create(#cb_context{}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    case crossbar_doc:load(Id, Context) of
-        #cb_context{resp_status=success}=Context1 ->
-            load_webhook_users(Id, Context1);
-        Context1 -> Context1
-    end.
-
-load_webhook_users(Id, #cb_context{resp_data=Webhook}=Context) ->
-    case crossbar_doc:load_view(?CB_USERS_LIST, [{<<"key">>, Id}], Context, fun normalize_users_results/2) of
-        #cb_context{resp_status=success, resp_data=Users} ->
-            Context#cb_context{resp_data=wh_json:set_value(<<"users">>, Users, Webhook)};
-        _ -> Context
-    end.
+    crossbar_doc:load(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -144,7 +130,7 @@ load_webhook_users(Id, #cb_context{resp_data=Webhook}=Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec update(ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, #cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
@@ -156,17 +142,17 @@ update(Id, #cb_context{}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary(#cb_context{}) -> #cb_context{}.
+-spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
     Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"webhook">>, JObj)};
 on_successful_validation(Id, #cb_context{}=Context) ->
@@ -181,10 +167,3 @@ on_successful_validation(Id, #cb_context{}=Context) ->
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
--spec normalize_users_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
-normalize_users_results(JObj, Acc) ->
-    [wh_json:set_values([{<<"user_id">>, wh_json:get_value(<<"id">>, JObj)}
-                         ,{<<"callflow_id">>, wh_json:get_value(<<"value">>, JObj)}
-                        ], wh_json:new())
-     | Acc].
