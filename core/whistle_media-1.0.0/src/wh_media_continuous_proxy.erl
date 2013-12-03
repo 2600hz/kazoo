@@ -1,7 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
-%%% Handles single requests for media binaries
+%%% Handles continuous requests for media binaries
+%%% New requests enter the stream with the rest of requestors
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -42,7 +43,7 @@ init_from_doc(Db, Id, Attachment, Req) ->
     lager:debug("fetching ~s/~s/~s", [Db, Id, Attachment]),
     case wh_media_cache_sup:find_file_server(Db, Id, Attachment) of
         {'ok', Pid} ->
-            {'ok', Req, wh_media_file_cache:single(Pid)};
+            {'ok', Req, wh_media_file_cache:continuous(Pid)};
         {'error', _} ->
             lager:debug("missing file server: 404"),
             {'ok', Req1} = cowboy_req:reply(404, Req),
@@ -57,27 +58,32 @@ handle(Req0, {Meta, Bin}) ->
     MediaName = wh_json:get_value(<<"media_name">>, Meta, <<>>),
     Url = wh_json:get_value(<<"url">>, Meta, <<>>),
 
+    lager:debug("media: ~s content-type: ~s size: ~b", [MediaName, ContentType, Size]),
+
     Req2 = case ContentType of
                CT when CT =:= <<"audio/mpeg">> orelse CT =:= <<"audio/mp3">> ->
                    Req1 = set_resp_headers(Req0, ChunkSize, ContentType, MediaName, Url),
-                   cowboy_req:set_resp_body_fun(Size
-                                                ,fun(Socket, Transport) ->
-                                                         wh_media_proxy_util:stream(Socket, Transport, ChunkSize, Bin
-                                                                                    ,wh_media_proxy_util:get_shout_header(MediaName, Url)
-                                                                                    , 'true')
-                                                 end
-                                                ,Req1);
+                   cowboy_req:set_resp_body_fun(
+                     Size
+                     ,fun(Socket, Transport) ->
+                              lager:debug("ready to stream file using transport ~p to socket ~p", [Transport, Socket]),
+                              wh_media_proxy_util:stream(Socket, Transport, ChunkSize, Bin
+                                                         ,wh_media_proxy_util:get_shout_header(MediaName, Url)
+                                                         , 'true')
+                      end
+                     ,Req1);
                CT ->
-                   Req1 = set_resp_headers(Req0, CT),
-
-                   cowboy_req:set_resp_body_fun(Size
-                                                ,fun(Socket, Transport) ->
-                                                         wh_media_proxy_util:stream(Socket, Transport, ChunkSize, Bin, 'undefined', 'false')
-                                                 end
-                                                ,Req1)
+                   cowboy_req:set_resp_body_fun(
+                     Size
+                     ,fun(Socket, Transport) ->
+                              lager:debug("ready to stream file using transport ~p to socket ~p", [Transport, Socket]),
+                              wh_media_proxy_util:stream(Socket, Transport, ChunkSize, Bin, 'undefined', 'false')
+                      end
+                     ,set_resp_headers(Req0, CT))
            end,
 
-    {'ok', Req3} = cowboy_req:chunked_reply(200, Req2),
+    {'ok', Req3} = cowboy_req:reply(200, Req2),
+    lager:debug("sending reply"),
 
     {'ok', Req3, 'ok'}.
 
