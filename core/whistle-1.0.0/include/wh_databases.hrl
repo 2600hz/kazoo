@@ -15,5 +15,7 @@
 
 -define(WH_ACCOUNT_CONFIGS, <<"configs_">>).
 
--define(WHISTLE_DBS_INCLUDED, true).
+-define(KZ_WEBHOOKS_DB, <<"webhooks">>).
+
+-define(WHISTLE_DBS_INCLUDED, 'true').
 -endif.
