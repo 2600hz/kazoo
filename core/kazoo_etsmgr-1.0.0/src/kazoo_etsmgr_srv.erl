@@ -1,7 +1,10 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% Manage the ETS table lookup for token server to account/client IP
+%%% Manage the ETS table separate from the main process to use the ETS table
+%%% Protects against the main writer dying
+%%%
+%%% Inspired by: http://steve.vinoski.net/blog/2011/03/23/dont-lose-your-ets-tables/
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -11,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1]).
+-export([start_link/1, start_link/2]).
 
 %% gen_server callbacks
 -export([init/1
@@ -65,6 +68,11 @@
 start_link(Opts) ->
     'true' = valid_options(Opts),
     gen_server:start_link(?MODULE, [Opts], []).
+
+-spec start_link(atom(), start_args()) -> startlink_ret().
+start_link(Name, Opts) ->
+    'true' = valid_options(Opts),
+    gen_server:start_link({'local', Name}, ?MODULE, [Opts], []).
 
 valid_options(Opts) ->
     (TID = props:get_value('table_id', Opts)) =/= 'undefined'
