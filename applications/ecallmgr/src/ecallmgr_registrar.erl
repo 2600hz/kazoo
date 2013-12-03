@@ -502,9 +502,9 @@ build_query_spec(JObj, CountOnly) ->
                         {#registration{realm = '$1'
                                        ,account_realm = '$2'
                                        ,_ = '_'}
-                         ,[{'orelse', {'=:=', '$1', {'const', Realm}}
+                         ,{'orelse', {'=:=', '$1', {'const', Realm}}
                             ,{'=:=', '$2', {'const', Realm}}}
-                          ]};
+                          };
                     Username ->
                         Id = registration_id(Username, Realm),
                         {#registration{id = '$1', _ = '_'}
