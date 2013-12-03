@@ -141,8 +141,19 @@ handle_call('single', From, #state{reqs=Reqs
                                   }=State) ->
     lager:debug("file not ready for ~p, queueing", [From]),
     {'noreply', State#state{reqs=[From | Reqs]}};
-handle_call('continuous', _From, #state{}=State) ->
-    {'reply', 'ok', State}.
+handle_call('continuous', From, #state{reqs=Reqs
+                                       ,status='streaming'
+                                      }=State) ->
+    lager:debug("file not ready for ~p, queueing", [From]),
+    {'noreply', State#state{reqs=[From | Reqs]}};
+handle_call('continuous', _From, #state{meta=Meta
+                                        ,contents=Contents
+                                        ,status='ready'
+                                        ,timer_ref=TRef
+                                       }=State) ->
+    lager:debug("returning media contents"),
+    _ = stop_timer(TRef),
+    {'reply', {Meta, Contents}, State#state{timer_ref=start_timer()}}.
 
 %%--------------------------------------------------------------------
 %% @private
