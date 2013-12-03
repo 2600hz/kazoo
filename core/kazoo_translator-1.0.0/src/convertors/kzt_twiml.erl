@@ -280,7 +280,7 @@ redirect(Call, XmlText, Attrs) ->
 
 -spec exec_gather_els(pid(), whapps_call:call(), list()) -> 'ok'.
 exec_gather_els(_Parent, _Call, []) ->
-    lager:debug("finished gather sub elements");
+    lager:info("finished gather sub elements");
 exec_gather_els(Parent, Call, [SubAction|SubActions]) ->
     whapps_call:put_callid(Call),
 
