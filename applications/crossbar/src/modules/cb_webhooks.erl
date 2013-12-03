@@ -27,6 +27,9 @@
 %%% API
 %%%===================================================================
 init() ->
+    _ = couch_mgr:db_create(?KZ_WEBHOOKS_DB),
+    _ = couch_mgr:revise_doc_from_file(?TOKEN_DB, 'crossbar', <<"views/webhooks.json">>),
+
     _ = crossbar_bindings:bind(<<"*.allowed_methods.webhooks">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.webhooks">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.webhooks">>, ?MODULE, 'validate'),
@@ -75,28 +78,28 @@ resource_exists(_) -> 'true'.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
-    summary(Context);
+    summary(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB));
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    create(Context).
+    create(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
-    read(Id, Context);
+    read(Id, cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB));
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
-    update(Id, Context);
+    update(Id, cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB));
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
-    read(Id, Context).
+    read(Id, cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
-    crossbar_doc:save(Context).
+    crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(Context).
+    crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
-    crossbar_doc:delete(Context).
+    crossbar_doc:delete(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
 
 %%%===================================================================
 %%% Internal functions
