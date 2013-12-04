@@ -63,6 +63,7 @@
 
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
 
+-include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 -include("../crossbar.hrl").
 
 %%%===================================================================
@@ -672,7 +673,7 @@ maybe_move_state(Context, PortRequest, ?PORT_WAITING, ?PORT_READY) ->
 
     Numbers = wh_json:get_keys(wh_json:get_value(<<"numbers">>, PortRequest, wh_json:new())),
 
-    try lists:all(fun create_port_in/1, Numbers) of
+    try lists:all(fun(N) -> create_port_in(Context, N) end, Numbers) of
         'true' ->
             lager:debug("created port-in numbers"),
             cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_READY}
@@ -683,7 +684,10 @@ maybe_move_state(Context, PortRequest, ?PORT_WAITING, ?PORT_READY) ->
     catch
         'throw':{Error, _N, Reason} ->
             lager:debug("failed to create port-in: ~s: ~s", [Error, Reason]),
-            cb_context:add_validation_error(<<"numbers">>, Error, Reason, Context)
+            cb_context:add_validation_error(<<"numbers">>, Error, Reason, Context);
+        _E:_R ->
+            lager:debug("failed to create port-in: ~s: ~p", [_E, _R]),
+            cb_context:add_validation_error(<<"numbers">>, <<"items">>, <<"failed to create port request">>, Context)
     end;
 maybe_move_state(Context, PortRequest, ?PORT_READY, ?PORT_PROGRESS) ->
     lager:debug("moving port request to 'progress'"),
@@ -717,10 +721,25 @@ maybe_move_state(Context, _PortRequest, _PortState, CurrentState) ->
     lager:debug("maybe move from ~s to ~s", [CurrentState, _PortState]),
     cb_context:add_validation_error(CurrentState, <<"type">>, <<"Transitioning to new state not allowed">>, Context).
 
--spec create_port_in(ne_binary()) -> 'true'.
-create_port_in(?NE_BINARY = Number) ->
-    N = wnm_number:get(Number),
-    N1 = wnm_number:create_port_in(N),
-    N2 = wnm_number:activate_feature(<<"port">>, N1),
-    wnm_number:save(N2),
-    'true'.
+-spec create_port_in(cb_context:context(), ne_binary()) -> boolean().
+-spec create_port_in(cb_context:context(), ne_binary(), non_neg_integer()) -> boolean().
+create_port_in(Context, ?NE_BINARY = Number) ->
+    create_port_in(Context, Number, 1).
+create_port_in(_Context, _Number, AttemptsLeft) when AttemptsLeft < 0 ->
+    'false';
+create_port_in(Context, Number, AttemptsLeft) ->
+    case wnm_number:get(Number) of
+        #number{}=N ->
+            N1 = wnm_number:create_port_in(N),
+            N2 = wnm_number:activate_feature(<<"port">>, N1),
+            wnm_number:save(N2),
+            'true';
+        {'not_found', #number{}} ->
+            lager:debug("number ~s wasn't found", [Number]),
+            {'ok', _} = wh_number_manager:create_number(Number
+                                                        ,cb_context:account_id(Context)
+                                                        ,cb_context:auth_account_id(Context)
+                                                        ,cb_context:doc(Context)
+                                                       ),
+            create_port_in(Context, Number, AttemptsLeft-1)
+    end.
