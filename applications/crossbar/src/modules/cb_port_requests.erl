@@ -669,26 +669,12 @@ maybe_move_state(Id, Context, PortState) ->
     end.
 
 maybe_move_state(Context, PortRequest, ?PORT_WAITING, ?PORT_READY) ->
-    lager:debug("maybe moving port request to 'ready'"),
-
-    Numbers = wh_json:get_keys(wh_json:get_value(<<"numbers">>, PortRequest, wh_json:new())),
-
-    try lists:all(fun(N) -> create_port_in(Context, N) end, Numbers) of
-        'true' ->
-            lager:debug("created port-in numbers"),
-            cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_READY}
-                                                            ,{?PORT_STATE, ?PORT_READY}
-                                                           ]
-                                                           ,PortRequest
-                                                          ))
-    catch
-        'throw':{Error, _N, Reason} ->
-            lager:debug("failed to create port-in: ~s: ~s", [Error, Reason]),
-            cb_context:add_validation_error(<<"numbers">>, Error, Reason, Context);
-        _E:_R ->
-            lager:debug("failed to create port-in: ~s: ~p", [_E, _R]),
-            cb_context:add_validation_error(<<"numbers">>, <<"items">>, <<"failed to create port request">>, Context)
-    end;
+    lager:debug("moving port request to 'ready'"),
+    cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_READY}
+                                                    ,{?PORT_STATE, ?PORT_READY}
+                                                   ]
+                                                   ,PortRequest
+                                                  ));
 maybe_move_state(Context, PortRequest, ?PORT_READY, ?PORT_PROGRESS) ->
     lager:debug("moving port request to 'progress'"),
     cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_PROGRESS}
@@ -697,12 +683,17 @@ maybe_move_state(Context, PortRequest, ?PORT_READY, ?PORT_PROGRESS) ->
                                                    ,PortRequest
                                                   ));
 maybe_move_state(Context, PortRequest, ?PORT_PROGRESS, ?PORT_COMPLETE) ->
-    lager:debug("moving port request to 'completed'"),
-    cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_COMPLETE}
-                                                    ,{?PORT_STATE, ?PORT_COMPLETE}
-                                                   ]
-                                                   ,PortRequest
-                                                  ));
+    lager:debug("maybe moving port request to 'completed'"),
+    case maybe_bill_for_port(Context) of
+        'true' ->
+            cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_COMPLETE}
+                                                            ,{?PORT_STATE, ?PORT_COMPLETE}
+                                                           ]
+                                                           ,PortRequest
+                                                          ));
+        'false' ->
+            'ok'
+    end;
 maybe_move_state(Context, PortRequest, ?PORT_PROGRESS, ?PORT_REJECT) ->
     lager:debug("moving port request to 'reject'"),
     cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_REJECT}
@@ -721,25 +712,7 @@ maybe_move_state(Context, _PortRequest, _PortState, CurrentState) ->
     lager:debug("maybe move from ~s to ~s", [CurrentState, _PortState]),
     cb_context:add_validation_error(CurrentState, <<"type">>, <<"Transitioning to new state not allowed">>, Context).
 
--spec create_port_in(cb_context:context(), ne_binary()) -> boolean().
--spec create_port_in(cb_context:context(), ne_binary(), non_neg_integer()) -> boolean().
-create_port_in(Context, ?NE_BINARY = Number) ->
-    create_port_in(Context, Number, 1).
-create_port_in(_Context, _Number, AttemptsLeft) when AttemptsLeft < 0 ->
-    'false';
-create_port_in(Context, Number, AttemptsLeft) ->
-    case wnm_number:get(Number) of
-        #number{}=N ->
-            N1 = wnm_number:create_port_in(N),
-            N2 = wnm_number:activate_feature(<<"port">>, N1),
-            wnm_number:save(N2),
-            'true';
-        {'not_found', #number{}} ->
-            lager:debug("number ~s wasn't found", [Number]),
-            {'ok', _} = wh_number_manager:create_number(Number
-                                                        ,cb_context:account_id(Context)
-                                                        ,cb_context:auth_account_id(Context)
-                                                        ,cb_context:doc(Context)
-                                                       ),
-            create_port_in(Context, Number, AttemptsLeft-1)
-    end.
+-spec maybe_bill_for_port(cb_context:context()) -> cb_context:context().
+maybe_bill_for_port(Context) ->
+    wh_services:activation_charges(<<"number_services">>, <<"port">>, cb_context:account_id(Context)),
+    cb_context:add_system_error('no_credit', Context).
