@@ -234,9 +234,54 @@ store_fax(Call, OwnerId, JObj) ->
 
     lager:debug("storing fax ~s to ~s", [FaxFile, FaxUrl]),
 
-    case whapps_call_command:b_store_fax(FaxUrl, Call) of
-        {'ok', _JObj} -> {'ok', FaxDocId};
-        E -> lager:debug("store_fax error: ~p", [E]), E
+    _Res = whapps_call_command:b_store_fax(FaxUrl, Call),
+
+    check_for_upload(Call, FaxDocId).
+
+-spec check_for_upload(whapps_call:call(), ne_binary()) ->
+                              {'ok', ne_binary()} |
+                              {'error', 'upload_failed'}.
+-spec check_for_upload(whapps_call:call(), ne_binary(), non_neg_integer()) ->
+                              {'ok', ne_binary()} |
+                              {'error', 'upload_failed'}.
+check_for_upload(Call, FaxDocId) ->
+    check_for_upload(Call, FaxDocId, 3).
+check_for_upload(_Call, _FaxDocId, Retries) when Retries < 0 ->
+    {'error', 'store_failed'};
+check_for_upload(Call, FaxDocId, Retries) ->
+    case couch_mgr:open_doc(whapps_call:account_db(Call), FaxDocId) of
+        {'ok', FaxDoc} ->
+            check_upload_for_attachment(Call, FaxDocId, Retries, FaxDoc);
+        {'error', _E} ->
+            lager:debug("failed to fetch fax doc ~s: ~p", [FaxDocId, _E]),
+            timer:sleep(500),
+            check_for_upload(Call, FaxDocId, Retries-1)
+    end.
+
+-spec check_upload_for_attachment(whapps_call:call(), ne_binary(), non_neg_integer(), wh_json:object()) ->
+                                         {'ok', ne_binary()} |
+                                         {'error', 'upload_failed'}.
+check_upload_for_attachment(Call, FaxDocId, Retries, FaxDoc) ->
+    case wh_json:get_keys(<<"_attachments">>, FaxDoc) of
+        [] ->
+            lager:debug("attachment hasn't saved yet"),
+            timer:sleep(500),
+            check_for_upload(Call, FaxDocId, Retries-1);
+        [AttachmentName] ->
+            check_attachment_for_data(Call, FaxDocId, Retries, FaxDoc, AttachmentName)
+    end.
+
+-spec check_attachment_for_data(whapps_call:call(), ne_binary(), non_neg_integer(), wh_json:object(), ne_binary()) ->
+                                       {'ok', ne_binary()} |
+                                       {'error', 'upload_failed'}.
+check_attachment_for_data(Call, FaxDocId, Retries, FaxDoc, AttachmentName) ->
+    case wh_json:get_value([<<"_attachments">>, AttachmentName, <<"length">>], FaxDoc) of
+        0 ->
+            lager:debug("no data is available yet in attachment ~s", [AttachmentName]),
+            timer:sleep(500),
+            check_for_upload(Call, FaxDocId, Retries-1);
+        _Len ->
+            {'ok', FaxDocId}
     end.
 
 create_fax_doc(Call, OwnerId, JObj) ->
@@ -275,7 +320,7 @@ attachment_url(Call, File, FaxDocId) ->
     AccountDb = whapps_call:account_db(Call),
     _ = case couch_mgr:open_doc(AccountDb, FaxDocId) of
             {'ok', JObj} ->
-                case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
+                case wh_json:get_keys(<<"_attachments">>, JObj) of
                     [] -> 'ok';
                     Existing -> [couch_mgr:delete_attachment(AccountDb, FaxDocId, Attach) || Attach <- Existing]
                 end;
