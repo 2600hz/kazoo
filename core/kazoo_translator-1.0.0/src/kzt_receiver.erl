@@ -73,7 +73,7 @@ collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected) ->
         {'other', {'DOWN', Ref, 'process', Pid, _Reason}} ->
             case kzt_util:get_gather_pidref(Call) of
                 {Pid, Ref} when is_pid(Pid), is_reference(Ref) ->
-                    lager:debug("subactions are done, timer can start"),
+                    lager:info("subactions are done, timer can start"),
                     collect_dtmfs(kzt_util:set_gather_pidref('undefined', Call)
                                   ,FinishKey, collect_decr_timeout(Call, Timeout, Start), N, OnFirstFun, Collected
                                  );

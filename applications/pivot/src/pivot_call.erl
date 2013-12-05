@@ -282,7 +282,7 @@ handle_info({'ibrowse_async_response', ReqId, Chunk}
             ,#state{request_id=ReqId
                     ,response_body=RespBody
                    }=State) ->
-    lager:debug("adding response chunk: '~s'", [Chunk]),
+    lager:info("adding response chunk: '~s'", [Chunk]),
     {'noreply', State#state{response_body = <<RespBody/binary, Chunk/binary>>}};
 
 handle_info({'ibrowse_async_response_end', ReqId}, #state{request_id=ReqId
