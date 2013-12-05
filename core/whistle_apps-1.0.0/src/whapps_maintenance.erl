@@ -238,8 +238,8 @@ refresh_account_db(AccountDb, AccountId, Views, JObj) ->
 
     _ = case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, ['include_docs']) of
             {'ok', Devices} ->
-                _ = refresh_account_devices(AccountDb, AccountRealm, Devices),
-                remove_aggregate_devices(AccountDb, AccountRealm, Devices);
+                _ = remove_aggregate_devices(AccountDb, AccountRealm, Devices),
+                refresh_account_devices(AccountDb, AccountRealm, Devices);
             {'error', _} -> 'ok'
         end,
     io:format("    updating views in ~s~n", [AccountDb]),
@@ -256,7 +256,7 @@ remove_aggregate_devices(AccountDb, AccountRealm, Devices) ->
     [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
      || Device <- Devices,
         wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =:= AccountRealm
-            orelse wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, 'undefined') =:= 'undefined'
+            andalso wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, 'undefined') =:= 'undefined'
     ].
 
 refresh_from_accounts_db(AccountDb, AccountId) ->
