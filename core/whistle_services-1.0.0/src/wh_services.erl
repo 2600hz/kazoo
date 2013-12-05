@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2013, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -107,7 +107,8 @@ new(AccountId) ->
                  ,dirty='true'
                  ,billing_id=BillingId
                  ,current_billing_id=BillingId
-                 ,deleted=wh_json:is_true(<<"pvt_deleted">>, Account)}.
+                 ,deleted=wh_json:is_true(<<"pvt_deleted">>, Account)
+                }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -205,7 +206,7 @@ save(#wh_services{jobj=JObj, updates=UpdatedQuantities, account_id=AccountId, di
                                  ,current_billing_id=BillingId
                                  ,deleted=wh_json:is_true(<<"pvt_deleted">>, NewJObj)};
         {'error', 'not_found'} ->
-            lager:debug("service database does not exist, attempting to create", []),
+            lager:debug("service database does not exist, attempting to create"),
             'true' = couch_mgr:db_create(?WH_SERVICES_DB),
             save(Services);
         {'error', 'conflict'} ->
@@ -443,10 +444,10 @@ maybe_allow_updates(AccountId, ServicesJObj) ->
     Plans = wh_service_plans:plan_summary(ServicesJObj),
     case wh_util:is_empty(Plans) orelse wh_json:get_value(<<"pvt_status">>, ServicesJObj) of
         'true' ->
-            lager:debug("allowing request for account with no service plans", []),
+            lager:debug("allowing request for account with no service plans"),
             'true';
         <<"good_standing">> ->
-            lager:debug("allowing request for account in good standing", []),
+            lager:debug("allowing request for account in good standing"),
             'true';
         Status ->
             %% TODO: support other bookkeepers
