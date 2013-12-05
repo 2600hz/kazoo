@@ -608,7 +608,7 @@ attempt_discconect_number(#number{module_name=ModuleName}=Number) ->
     catch
         _:_ -> error_carrier_fault(<<"Failed to disconnect number">>, Number)
     end.
-            
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -1010,8 +1010,8 @@ update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssign
 
 commit_activations(#number{billing_id=undefined}=Number) ->
     Number;
-commit_activations(#number{activations=Activations}=N) ->
-    _ = wh_transactions:save(Activations),
+commit_activations(#number{activations=Activations, services=Services}=N) ->
+    _ = wh_services:commit_transactions(Services, Activations),
     N.
 
 %%--------------------------------------------------------------------

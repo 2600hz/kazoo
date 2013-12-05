@@ -11,6 +11,9 @@
 -export([is_good_standing/1]).
 -export([transactions/3]).
 -export([subscriptions/1]).
+-export([commit_transactions/2]).
+-export ([charge_transactions/2]).
+
 
 -include("../whistle_services.hrl").
 
@@ -84,13 +87,13 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec transactions(ne_binary(), atom(), atom()) -> atom() | [wh_json:object(), ...].
 transactions(AccountId, Min, Max) ->
     try braintree_transaction:find_by_customer(AccountId, Min, Max) of
-        Transactions -> 
+        Transactions ->
             [braintree_transaction:record_to_json(Tr) || Tr <- Transactions]
     catch
         throw:{'not_found', _} -> 'not_found';
@@ -100,18 +103,69 @@ transactions(AccountId, Min, Max) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
-%%--------------------------------------------------------------------s
+%%--------------------------------------------------------------------
 -spec subscriptions(ne_binary()) -> atom() | [wh_json:object(), ...].
 subscriptions(AccountId) ->
     try braintree_customer:find(AccountId) of
-        Customer -> 
+        Customer ->
             [braintree_subscription:record_to_json(Sub) || Sub <-  braintree_customer:get_subscriptions(Customer)]
     catch
         throw:{'not_found', _} -> 'not_found';
         _:_ -> 'unknow_error'
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec commit_transactions(ne_binary(),wh_transactions:wh_transactions()) -> 'ok'.
+-spec commit_transactions(ne_binary(), wh_transactions:wh_transactions(), integer()) -> 'ok'.
+commit_transactions(BillingId, Transactions) ->
+    commit_transactions(BillingId, Transactions, 3).
+
+commit_transactions(BillingId, Transactions, Try) when Try > 0 ->
+    case couch_mgr:open_doc(?WH_SERVICES_DB, BillingId) of
+        {'error', _E} ->
+            lager:error("could not open services for ~p : ~p retrying...", [BillingId, _E]),
+            commit_transactions(BillingId, Transactions, Try-1);
+        {'ok', JObj} ->
+            NewTransactions = wh_json:get_value(<<"transactions">>, JObj, [])
+                               ++ wh_transactions:to_json(Transactions),
+            JObj1 = wh_json:set_values([{<<"pvt_dirty">>, 'true'}
+                                        ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                        ,{<<"transactions">>, NewTransactions}
+                                       ], JObj),
+            case couch_mgr:save_doc(?WH_SERVICES_DB, JObj1) of
+                {'error', _E} ->
+                    lager:error("could not save services for ~p : ~p retrying...", [BillingId, _E]),
+                    commit_transactions(BillingId, Transactions, Try-1);
+                {'ok', JObj} -> 'ok'
+            end
+    end;
+commit_transactions(BillingId, _Transactions, _Try) ->
+    lager:error("too many attempts writing transaction to services in ~p", [BillingId]),
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec charge_transactions(ne_binary(), wh_transactions:wh_transactions()) -> 'ok'.
+charge_transactions(BillingId, Transactions) ->
+    Amount = lists:foldl(fun(JObj, Acc) ->
+                            wh_json:get_value(<<"pvt_amount">>, JObj, 0) + Acc
+                         end
+                         ,0
+                         ,Transactions
+                        ),
+    braintree_transaction:quick_sale(BillingId, Amount),
+    'ok'.
 
 
 %%--------------------------------------------------------------------
