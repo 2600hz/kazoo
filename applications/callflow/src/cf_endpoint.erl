@@ -490,7 +490,7 @@ create_endpoints(Endpoint, Properties, Call) ->
                                        wh_json:objects().
 try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_function(Routine, 3) ->
     try Routine(Endpoint, Properties, Call) of
-        {'error', _R} -> 
+        {'error', _R} ->
             lager:warning("failed to create endpoint: ~p", [_R]),
             Endpoints;
         JObj -> [JObj|Endpoints]
@@ -557,7 +557,7 @@ guess_endpoint_type(Endpoint, [Type|Types]) ->
         'undefined' -> guess_endpoint_type(Endpoint, Types);
         _ -> Type
     end;
-guess_endpoint_type(Endpoint, []) -> 
+guess_endpoint_type(Endpoint, []) ->
     case wh_json:get_ne_value(<<"sip">>, Endpoint) of
         'undefined' -> <<"unknown">>;
         _Else -> <<"sip">>
@@ -571,12 +571,14 @@ guess_endpoint_type(Endpoint, []) ->
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
--record(clid, {caller_number
-               ,caller_name
-               ,callee_name
-               ,callee_number}).
+-record(clid, {caller_number :: api_binary()
+               ,caller_name :: api_binary()
+               ,callee_name :: api_binary()
+               ,callee_number :: api_binary()
+              }).
+-type clid() :: #clid{}.
 
--spec get_clid(wh_json:object(), wh_json:object(), whapps_call:call()) -> #clid{}.
+-spec get_clid(wh_json:object(), wh_json:object(), whapps_call:call()) -> clid().
 get_clid(Endpoint, Properties, Call) ->
     case wh_json:is_true(<<"suppress_clid">>, Properties) of
         'true' -> #clid{};
@@ -584,17 +586,18 @@ get_clid(Endpoint, Properties, Call) ->
             {InternalNumber, InternalName} = cf_attributes:caller_id(<<"internal">>, Call),
             CallerNumber = case whapps_call:caller_id_number(Call) of
                                InternalNumber -> 'undefined';
-                               Number -> Number
+                               _Number -> InternalNumber
                            end,
-            CallerName = case whapps_call:caller_id_name(Call) of 
-                             InternalName -> 'undefined'; 
-                             Name -> Name
+            CallerName = case whapps_call:caller_id_name(Call) of
+                             InternalName -> 'undefined';
+                             _Name -> InternalName
                          end,
             {CalleeNumber, CalleeName} = cf_attributes:callee_id(Endpoint, Call),
             #clid{caller_number=CallerNumber
                   ,caller_name=CallerName
                   ,callee_number=CalleeNumber
-                  ,callee_name=CalleeName}
+                  ,callee_name=CalleeName
+                 }
     end.
 
 -spec create_sip_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
@@ -794,14 +797,14 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                             _Else -> J
                         end
                 end
-               ,fun(J) -> 
+               ,fun(J) ->
                         case wh_json:is_true([<<"media">>, <<"secure_rtp">>], Endpoint) of
                             'false' -> J;
                             'true' ->
                                 wh_json:set_value(<<"Secure-RTP">>, <<"true">>, J)
                         end
                 end
-               ,fun(J) -> 
+               ,fun(J) ->
                         case wh_json:is_true([<<"sip">>, <<"ignore_completed_elsewhere">>], Endpoint) of
                             'false' -> J;
                             'true' ->
