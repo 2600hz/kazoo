@@ -265,6 +265,8 @@ validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
 -spec add_system_error(atom() | binary(), context()) -> context().
 add_system_error('too_many_requests', Context) ->
     crossbar_util:response('fatal', <<"too many requests">>, 429, Context);
+add_system_error('no_credit', Context) ->
+    crossbar_util:response('error', <<"not enough credit to perform action">>, 402, Context);
 add_system_error('unspecified_fault', Context) ->
     crossbar_util:response('fatal', <<"unspecified fault">>, Context);
 add_system_error('account_cant_create_tree', Context) ->
