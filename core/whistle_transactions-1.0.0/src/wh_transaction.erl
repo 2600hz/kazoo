@@ -394,7 +394,7 @@ to_public_json(Transaction) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec clean_jobj/1 :: (wh_json:object()) -> wh_json:object().
@@ -570,8 +570,8 @@ prepare_manual_addition_transaction(Transaction) ->
 create(Ledger, Amount, Type) ->
     #wh_transaction{pvt_type=Type
                     ,pvt_amount=abs(Amount)
-                    ,pvt_account_id=wh_util:format_account_id(Ledger, raw)
-                    ,pvt_account_db=wh_util:format_account_id(Ledger, encoded)
+                    ,pvt_account_id=wh_util:format_account_id(Ledger, 'raw')
+                    ,pvt_account_db=wh_util:format_account_id(Ledger, 'encoded')
                     ,pvt_created=wh_util:current_tstamp()
                     ,pvt_modified=wh_util:current_tstamp()
                    }.

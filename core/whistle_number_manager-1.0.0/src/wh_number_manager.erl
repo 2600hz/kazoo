@@ -716,7 +716,7 @@ prepare_find_results([], _, _, Found,_) -> Found;
 prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) ->
     JObj = wh_json:get_value(Number, ModuleResults),
     Result = case wh_services:activation_charges(<<"phone_numbers">>
-                                                     ,props:get_value(<<"classification">>, Opts)
+                                                 ,props:get_value(<<"classification">>, Opts)
                                                  ,props:get_value(<<"services">>, Opts)
                                                 )
              of

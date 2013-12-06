@@ -428,12 +428,12 @@ reserved(Number) ->
 -spec in_service(wnm_number()) -> wnm_number().
 in_service(#number{state = <<"discovery">>}=Number) ->
     Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy}=N) ->
-                        case AuthBy =:= system orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo, true) of
-                            false -> error_unauthorized(N);
-                            true -> N
+                        case AuthBy =:= 'system' orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo, 'true') of
+                            'false' -> error_unauthorized(N);
+                            'true' -> N
                         end
                 end
-                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) ->
+                ,fun(#number{assigned_to='undefined', assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo};
                     (#number{assigned_to=AssignedTo, assign_to=AssignedTo}=N) ->
                          N#number{state = <<"in_service">>};
@@ -441,7 +441,7 @@ in_service(#number{state = <<"discovery">>}=Number) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
                  end
                 ,fun(#number{}=N) -> activate_phone_number(N) end
-                ,fun(#number{module_name=undefined}=N) ->
+                ,fun(#number{module_name='undefined'}=N) ->
                          error_carrier_not_specified(N);
                     (#number{module_name=Module}=N) ->
                          Module:acquire_number(N)
@@ -450,21 +450,21 @@ in_service(#number{state = <<"discovery">>}=Number) ->
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = <<"port_in">>}=Number) ->
     Routines = [fun(#number{assigned_to=AssignedTo, auth_by=AuthBy}=N) ->
-                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
-                            false -> error_unauthorized(N);
-                            true -> N#number{state = <<"in_service">>}
+                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
+                            'false' -> error_unauthorized(N);
+                            'true' -> N#number{state = <<"in_service">>}
                         end
                 end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = <<"available">>}=Number) ->
     Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy}=N) ->
-                        case AuthBy =:= system orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo, true) of
-                            false -> error_unauthorized(N);
-                            true -> N
+                        case AuthBy =:= 'system' orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo, 'true') of
+                            'false' -> error_unauthorized(N);
+                            'true' -> N
                         end
                 end
-                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) ->
+                ,fun(#number{assigned_to='undefined', assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo};
                     (#number{assigned_to=AssignedTo, assign_to=AssignedTo}=N) ->
                          N#number{state = <<"in_service">>};
@@ -476,15 +476,15 @@ in_service(#number{state = <<"available">>}=Number) ->
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = <<"reserved">>}=Number) ->
     Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy, assigned_to=AssignedTo}=N) ->
-                         case (wh_util:is_in_account_hierarchy(AssignedTo, AuthBy, true)
-                               orelse wh_util:is_in_account_hierarchy(AuthBy, AssignedTo))
-                             andalso wh_util:is_in_account_hierarchy(AssignedTo, AssignTo, true)
-                         of
-                            false -> error_unauthorized(N);
-                            true -> N
+                        case (wh_util:is_in_account_hierarchy(AssignedTo, AuthBy, 'true')
+                              orelse wh_util:is_in_account_hierarchy(AuthBy, AssignedTo))
+                            andalso wh_util:is_in_account_hierarchy(AssignedTo, AssignTo, 'true')
+                        of
+                            'false' -> error_unauthorized(N);
+                            'true' -> N
                         end
                 end
-                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) ->
+                ,fun(#number{assigned_to='undefined', assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo};
                     (#number{assigned_to=AssignedTo, assign_to=AssignedTo}=N) ->
                          N#number{state = <<"in_service">>};
@@ -498,12 +498,12 @@ in_service(#number{state = <<"in_service">>, assigned_to=AssignedTo, assign_to=A
     error_no_change_required(<<"in_service">>, Number);
 in_service(#number{state = <<"in_service">>}=Number) ->
     Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy}=N) ->
-                    case (wh_util:is_in_account_hierarchy(AssignTo, AuthBy, true)
-                        orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo))
-                    of
-                        false -> error_unauthorized(N);
-                        true -> N
-                    end
+                        case (wh_util:is_in_account_hierarchy(AssignTo, AuthBy, 'true')
+                              orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo))
+                        of
+                            'false' -> error_unauthorized(N);
+                            'true' -> N
+                        end
                 end
                 ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo};
@@ -630,7 +630,7 @@ disconnected(Number) ->
 -spec json_to_record(wh_json:object(), boolean() | wnm_number()) -> wnm_number().
 -spec json_to_record(wh_json:object(), boolean(), wnm_number()) -> wnm_number().
 json_to_record(JObj, #number{}=Number) ->
-    json_to_record(JObj, false, Number);
+    json_to_record(JObj, 'false', Number);
 json_to_record(JObj, IsNew) when is_boolean(IsNew) ->
     json_to_record(JObj, IsNew, #number{}).
 
@@ -648,7 +648,7 @@ json_to_record(JObj, IsNew, #number{number=Num, number_db=Db}=Number) ->
       ,features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
       ,current_features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
       ,number_doc=JObj
-      ,current_number_doc=case IsNew of true -> wh_json:new(); false -> JObj end
+      ,current_number_doc=case IsNew of 'true' -> wh_json:new(); 'false' -> JObj end
       ,used_by=wh_json:get_value(<<"used_by">>, JObj, <<>>)
      }.
 
@@ -673,7 +673,7 @@ record_to_json(#number{number_doc=JObj}=N) ->
                ,{<<"pvt_created">>, wh_json:get_value(<<"pvt_created">>, JObj, wh_util:current_tstamp())}
                ,{<<"used_by">>, N#number.used_by}
               ],
-    lists:foldl(fun({K, undefined}, J) -> wh_json:delete_key(K, J);
+    lists:foldl(fun({K, 'undefined'}, J) -> wh_json:delete_key(K, J);
                    ({K, V}, J) -> wh_json:set_value(K, V, J)
                 end, JObj, Updates).
 
@@ -700,17 +700,20 @@ merge_public_fields(PublicFields, #number{number_doc=JObj}=N) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec save_number_doc(wnm_number()) -> wnm_number().
-save_number_doc(#number{number_db=Db, number=Num, number_doc=JObj}=Number) ->
+save_number_doc(#number{number_db=Db
+                        ,number=Num
+                        ,number_doc=JObj
+                       }=Number) ->
     case couch_mgr:save_doc(Db, set_locality(JObj, Number)) of
-        {error, not_found} ->
+        {'error', 'not_found'} ->
             lager:debug("attempting to creating new database '~s' for number '~s'", [Db, Num]),
-            true = couch_mgr:db_create(Db),
-            couch_mgr:revise_views_from_folder(Db, whistle_number_manager),
+            'true' = couch_mgr:db_create(Db),
+            couch_mgr:revise_views_from_folder(Db, 'whistle_number_manager'),
             save_number_doc(Number);
-        {error, Reason} ->
+        {'error', Reason} ->
             lager:debug("failed to save '~s' in '~s': ~p", [Num, Db, Reason]),
             error_number_database(Reason, Number);
-        {ok, J} ->
+        {'ok', J} ->
             lager:debug("saved '~s' in '~s'", [Num, Db]),
             Number#number{number_doc=J}
     end.
@@ -722,12 +725,15 @@ save_number_doc(#number{number_db=Db, number=Num, number_doc=JObj}=Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_number_doc(wnm_number()) -> wnm_number().
-delete_number_doc(#number{number_db=Db, number=Num, number_doc=JObj}=Number) ->
+delete_number_doc(#number{number_db=Db
+                          ,number=Num
+                          ,number_doc=JObj
+                         }=Number) ->
     case couch_mgr:del_doc(Db, JObj) of
-        {ok, _} ->
+        {'ok', _} ->
             lager:debug("deleted '~s' from '~s'", [Num, Db]),
             Number#number{number_doc=wh_json:new()};
-        {error, Reason} ->
+        {'error', Reason} ->
             lager:debug("failed to delete '~s' in '~s': ~p", [Num, Db, Reason]),
             error_number_database(Reason, Number)
     end.
@@ -739,17 +745,18 @@ delete_number_doc(#number{number_db=Db, number=Num, number_doc=JObj}=Number) ->
 %% into the current phone_numbers doc.
 %% @end
 %%--------------------------------------------------------------------
--spec resolve_account_phone_numbers_conflict(wh_json:object(), ne_binary(), ne_binary()) -> {'ok', wh_json:object()} |
-                                                                                                       {'error', _}.
+-spec resolve_account_phone_numbers_conflict(wh_json:object(), ne_binary(), ne_binary()) ->
+                                                    {'ok', wh_json:object()} |
+                                                    {'error', _}.
 resolve_account_phone_numbers_conflict(JObj, Num, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {error, _R}=E ->
+        {'error', _R}=E ->
             lager:info("failed to resolve phone numbers conflict in account ~s: ~p", [AccountDb, _R]),
             E;
-        {ok, J} ->
+        {'ok', J} ->
             case wh_json:get_value(Num, JObj) of
-                undefined -> {ok, wh_json:delete_key(Num, J)};
-                Update -> {ok, wh_json:set_value(Num, Update, J)}
+                'undefined' -> {'ok', wh_json:delete_key(Num, J)};
+                Update -> {'ok', wh_json:set_value(Num, Update, J)}
             end
     end.
 
@@ -761,7 +768,7 @@ resolve_account_phone_numbers_conflict(JObj, Num, AccountDb) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec exec_providers(wnm_number(), atom()) -> wnm_number().
--spec exec_providers([ne_binary(),...] | [], atom(), wnm_number()) -> wnm_number().
+-spec exec_providers(ne_binaries(), atom(), wnm_number()) -> wnm_number().
 
 exec_providers(Number, Action) ->
     Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, ?WNM_DEAFULT_PROVIDER_MODULES),
@@ -770,13 +777,13 @@ exec_providers(Number, Action) ->
 exec_providers([], _, Number) -> Number;
 exec_providers([Provider|Providers], Action, Number) ->
     case wh_util:try_load_module(<<"wnm_", Provider/binary>>) of
-        false ->
+        'false' ->
             lager:debug("provider ~s is unknown, skipping", [Provider]),
             exec_providers(Providers, Action, Number);
         Mod ->
             case apply(Mod, Action, [Number]) of
                 #number{}=N -> exec_providers(Providers, Action, N);
-                {error, Reason} ->
+                {'error', Reason} ->
                     Errors = wh_json:from_list([{Provider, Reason}]),
                     wnm_number:error_provider_fault(Errors, Number)
             end
@@ -792,64 +799,86 @@ exec_providers([Provider|Providers], Action, Number) ->
 error_invalid_state_transition(Transition, #number{state = State}=N) ->
     Error = list_to_binary(["Invalid state transition from ", State, " to ", Transition]),
     lager:debug("~s", [Error]),
-    throw({invalid_state_transition, N#number{error_jobj=wh_json:from_list([{<<"state_transition">>, Error}])}}).
+    throw({'invalid_state_transition'
+           ,N#number{error_jobj=wh_json:from_list([{<<"state_transition">>, Error}])}
+          }).
 
 -spec error_unauthorized(wnm_number()) -> no_return().
 error_unauthorized(N) ->
     Error = <<"Not authorized to perform requested number operation">>,
     lager:debug("~s", [Error]),
-    throw({unauthorized, N#number{error_jobj=wh_json:from_list([{<<"unauthorized">>, Error}])}}).
+    throw({'unauthorized'
+           ,N#number{error_jobj=wh_json:from_list([{<<"unauthorized">>, Error}])}
+          }).
 
 -spec error_no_change_required(ne_binary(), wnm_number()) -> no_return().
 error_no_change_required(State, N) ->
     Error = <<"Number is already in state ", State/binary>>,
     lager:debug("~s", [Error]),
-    throw({no_change_required, N#number{error_jobj=wh_json:from_list([{<<"no_change">>, Error}])}}).
+    throw({'no_change_required'
+           ,N#number{error_jobj=wh_json:from_list([{<<"no_change">>, Error}])}
+          }).
 
 -spec error_not_reconcilable(wnm_number()) -> no_return().
 error_not_reconcilable(N) ->
     Error = <<"The number does not meet the minium requirements for reconciliation">>,
     lager:debug("~s", [Error]),
-    throw({not_reconcilable, N#number{error_jobj=wh_json:from_list([{<<"not_routable">>, Error}])}}).
+    throw({'not_reconcilable'
+           ,N#number{error_jobj=wh_json:from_list([{<<"not_routable">>, Error}])}
+          }).
 
 -spec error_number_database(atom(), wnm_number()) -> no_return().
 error_number_database(Reason, N) ->
     Error = <<"The number database returned an error ", (wh_util:to_binary(Reason))/binary>>,
     lager:debug("~s", [Error]),
-    throw({database_error, N#number{error_jobj=wh_json:from_list([{<<"number_database">>, Error}])}}).
+    throw({'database_error'
+           ,N#number{error_jobj=wh_json:from_list([{<<"number_database">>, Error}])}
+          }).
 
 -spec error_carrier_not_specified(wnm_number()) -> no_return().
 error_carrier_not_specified(N) ->
     Error = <<"The number does not have a known/valid carrier associated with it">>,
     lager:debug("~s", [Error]),
-    throw({unknown_carrier, N#number{error_jobj=wh_json:from_list([{<<"unknown_carrier">>, Error}])}}).
+    throw({'unknown_carrier'
+           ,N#number{error_jobj=wh_json:from_list([{<<"unknown_carrier">>, Error}])}
+          }).
 
 -spec error_number_not_found(wnm_number()) -> no_return().
 error_number_not_found(N) ->
     Error = <<"The number could not be found">>,
     lager:debug("~s", [Error]),
-    throw({not_found, N#number{error_jobj=wh_json:from_list([{<<"not_found">>, Error}])}}).
+    throw({'not_found'
+           ,N#number{error_jobj=wh_json:from_list([{<<"not_found">>, Error}])}
+          }).
 
 -spec error_number_exists(wnm_number()) -> no_return().
 error_number_exists(N) ->
     Error = <<"The number already exists">>,
     lager:debug("~s", [Error]),
-    throw({number_exists, N#number{error_jobj=wh_json:from_list([{<<"number_exists">>, Error}])}}).
+    throw({'number_exists'
+           ,N#number{error_jobj=wh_json:from_list([{<<"number_exists">>, Error}])}
+          }).
 
 -spec error_service_restriction(iolist() | ne_binary(), wnm_number()) -> no_return().
 error_service_restriction(Reason, N) ->
     lager:debug("number billing restriction: ~s", [Reason]),
-    throw({service_restriction, N#number{error_jobj=wh_json:from_list([{<<"credit">>, wh_util:to_binary(Reason)}])}}).
+    throw({'service_restriction'
+           ,N#number{error_jobj=wh_json:from_list([{<<"credit">>, wh_util:to_binary(Reason)}])}
+          }).
 
 -spec error_provider_fault(wh_json:object(), wnm_number()) -> no_return().
 error_provider_fault(Reason, N) ->
     lager:debug("feature provider(s) fault: ~p", [wh_json:encode(Reason)]),
-    throw({provider_fault, N#number{error_jobj=wh_json:from_list([{<<"provider_fault">>, Reason}])}}).
+    throw({'provider_fault'
+           ,N#number{error_jobj=wh_json:from_list([{<<"provider_fault">>, Reason}])}
+          }).
 
 -spec error_carrier_fault(wh_json:object() | ne_binary(), wnm_number()) -> no_return().
 error_carrier_fault(Reason, N) ->
     lager:debug("carrier provider fault: ~p", [wh_json:encode(Reason)]),
-    throw({carrier_fault, N#number{error_jobj=wh_json:from_list([{<<"carrier_fault">>, Reason}])}}).
+    throw({'carrier_fault'
+           ,N#number{error_jobj=wh_json:from_list([{<<"carrier_fault">>, Reason}])}
+          }).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -858,11 +887,11 @@ error_carrier_fault(Reason, N) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_updated_phone_number_docs(wnm_number()) -> wnm_number().
-get_updated_phone_number_docs(#number{phone_number_docs=undefined}=Number) ->
+get_updated_phone_number_docs(#number{phone_number_docs='undefined'}=Number) ->
     get_updated_phone_number_docs(Number#number{phone_number_docs=dict:new()});
 get_updated_phone_number_docs(#number{state=State}=Number) ->
     Unavailable = lists:member(State, ?WNM_UNAVAILABLE_STATES),
-    Routines = [fun(#number{prev_assigned_to=undefined}=N) -> N;
+    Routines = [fun(#number{prev_assigned_to='undefined'}=N) -> N;
                    (#number{prev_assigned_to=PrevAssigned
                             ,assigned_to=PrevAssigned}=N) -> N;
                    (#number{prev_assigned_to=PrevAssigned}=N) ->
@@ -871,11 +900,11 @@ get_updated_phone_number_docs(#number{state=State}=Number) ->
                 ,fun(#number{reserve_history=History}=N) ->
                          lists:foldl(fun update_phone_number_doc/2, N, ordsets:to_list(History))
                  end
-                ,fun(#number{assigned_to=undefined}=N) -> N;
+                ,fun(#number{assigned_to='undefined'}=N) -> N;
                     (#number{assigned_to=AssignedTo}=N) when Unavailable ->
                          update_phone_number_doc(AssignedTo, N);
                     (#number{assigned_to=AssignedTo}=N) ->
-                        remove_from_phone_number_doc(AssignedTo, N)
+                         remove_from_phone_number_doc(AssignedTo, N)
                  end
                ],
     lists:foldl(fun(F, N) -> F(N) end, Number, Routines).
@@ -889,8 +918,8 @@ get_updated_phone_number_docs(#number{state=State}=Number) ->
 -spec remove_from_phone_number_doc(ne_binary(), wnm_number()) -> wnm_number().
 remove_from_phone_number_doc(Account, #number{number=Num, phone_number_docs=PhoneNumberDocs}=Number) ->
     case get_phone_number_doc(Account, Number) of
-        {error, _} -> Number;
-        {ok, JObj} ->
+        {'error', _} -> Number;
+        {'ok', JObj} ->
             case wh_json:delete_key(Num, JObj) of
                 JObj ->
                     lager:debug("no need to remove ~s on phone_numbers for account ~s", [Num, Account]),
@@ -910,8 +939,8 @@ remove_from_phone_number_doc(Account, #number{number=Num, phone_number_docs=Phon
 -spec update_phone_number_doc(ne_binary(), wnm_number()) -> wnm_number().
 update_phone_number_doc(Account, #number{number=Num, phone_number_docs=PhoneNumberDocs}=Number) ->
     case get_phone_number_doc(Account, Number) of
-        {error, _} -> Number;
-        {ok, JObj} ->
+        {'error', _} -> Number;
+        {'ok', JObj} ->
             Features = create_number_summary(Account, Number),
             case wh_json:set_value(Num, Features, JObj) of
                 JObj ->
@@ -929,12 +958,13 @@ update_phone_number_doc(Account, #number{number=Num, phone_number_docs=PhoneNumb
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_phone_number_doc(ne_binary(), wnm_number()) -> {'ok', wh_json:object()} |
-                                                               {'error', _}.
+-spec get_phone_number_doc(ne_binary(), wnm_number()) ->
+                                  {'ok', wh_json:object()} |
+                                  {'error', _}.
 get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
     case dict:find(Account, Docs) of
-        error -> load_phone_number_doc(Account);
-        {ok, _}=Ok -> Ok
+        'error' -> load_phone_number_doc(Account);
+        {'ok', _}=Ok -> Ok
     end.
 
 %%--------------------------------------------------------------------
@@ -944,12 +974,17 @@ get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_number_summary(ne_binary(), wnm_number()) -> wh_json:object().
-create_number_summary(_Account, #number{state=State, features=Features, module_name=ModuleName
-                                ,assigned_to=AssignedTo, number_doc=Doc, used_by=UsedBy}) ->
+create_number_summary(_Account, #number{state=State
+                                        ,features=Features
+                                        ,module_name=ModuleName
+                                        ,assigned_to=AssignedTo
+                                        ,number_doc=Doc
+                                        ,used_by=UsedBy
+                                       }) ->
     MaybeOwned = case (ModuleName == 'wnm_local') of
-        'true' -> ['local'];
-        'false' -> []
-    end,
+                     'true' -> ['local'];
+                     'false' -> []
+                 end,
     NFeatures =  lists:merge([wh_util:to_binary(F) || F <- sets:to_list(Features)], MaybeOwned),
     wh_json:from_list([{<<"state">>, State}
                        ,{<<"features">>, NFeatures}
@@ -965,11 +1000,12 @@ create_number_summary(_Account, #number{state=State, features=Features, module_n
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_phone_number_doc(ne_binary()) -> {'ok', wh_json:object()} |
-                                                  {'error', _}.
+-spec load_phone_number_doc(ne_binary()) ->
+                                   {'ok', wh_json:object()} |
+                                   {'error', _}.
 load_phone_number_doc(Account) ->
-    AccountDb = wh_util:format_account_id(Account, encoded),
-    AccountId = wh_util:format_account_id(Account, raw),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
     PVTs = [{<<"_id">>, ?WNM_PHONE_NUMBER_DOC}
             ,{<<"pvt_account_db">>, AccountDb}
             ,{<<"pvt_account_id">>, AccountId}
@@ -978,13 +1014,13 @@ load_phone_number_doc(Account) ->
             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
            ],
     case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {ok, J} ->
+        {'ok', J} ->
             lager:debug("loaded phone_numbers from ~s", [AccountId]),
-            {ok, wh_json:set_values(PVTs, J)};
-        {error, not_found} ->
+            {'ok', wh_json:set_values(PVTs, J)};
+        {'error', 'not_found'} ->
             lager:debug("creating phone_numbers in ~s", [AccountId]),
-            {ok, wh_json:from_list([{<<"pvt_created">>, wh_util:current_tstamp()} | PVTs])};
-        {error, _}=E -> E
+            {'ok', wh_json:from_list([{<<"pvt_created">>, wh_util:current_tstamp()} | PVTs])};
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -1000,7 +1036,7 @@ update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssign
     _ = commit_activations(N),
     N.
 
-commit_activations(#number{billing_id=undefined}=Number) ->
+commit_activations(#number{billing_id='undefined'}=Number) ->
     Number;
 commit_activations(#number{activations=Activations, services=Services}=N) ->
     _ = wh_services:commit_transactions(Services, Activations),
@@ -1073,7 +1109,8 @@ activate_phone_number(Units, #number{current_balance=Balance}=N) when Balance - 
     error_service_restriction(Reason, N);
 activate_phone_number(Units, #number{current_balance=Balance}=N) ->
     N#number{activations=append_phone_number_debit(Units, N)
-             ,current_balance=Balance - Units}.
+             ,current_balance=Balance - Units
+            }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1101,7 +1138,8 @@ append_feature_debit(Feature, Units, #number{billing_id=Ledger
                 ,fun(T) -> wh_transaction:set_number(Number, T) end
                 ,fun(T) ->
                          wh_transaction:set_description(<<"number feature activation for "
-                                                          ,(wh_util:to_binary(Feature))/binary>>, T)
+                                                          ,(wh_util:to_binary(Feature))/binary>>
+                                                        ,T)
                  end
                ],
     lager:debug("staging feature '~s' activation charge $~p for ~s via billing account ~s"
@@ -1115,8 +1153,11 @@ append_feature_debit(Feature, Units, #number{billing_id=Ledger
 %% @end
 %%--------------------------------------------------------------------
 -spec append_phone_number_debit(integer(), wnm_number()) -> wh_json:objects().
-append_phone_number_debit(Units, #number{billing_id=Ledger, assigned_to=AccountId
-                                         ,activations=Activations, number=Number}) ->
+append_phone_number_debit(Units, #number{billing_id=Ledger
+                                         ,assigned_to=AccountId
+                                         ,activations=Activations
+                                         ,number=Number
+                                        }) ->
     LedgerId =  wh_util:format_account_id(Ledger, 'raw'),
     Routines = [fun(T) ->
                         case LedgerId =/= AccountId of
