@@ -81,7 +81,34 @@ lookup_account_by_number(Number) ->
         Number1 -> maybe_check_account(Number1)
     catch
         'throw':{Error, #number{}} ->
-            {'error', Error}
+            lookup_account_in_ports(Number, Error)
+    end.
+
+-spec lookup_account_in_ports(ne_binary(), {'error', lookup_errors()}) ->
+                                     {'ok', ne_binary(), wh_proplist()} |
+                                     {'error', lookup_errors()}.
+lookup_account_in_ports(N, Error) ->
+    Number = wnm_util:to_e164(N),
+    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB
+                               ,<<"port_requests/port_in_numbers">>
+                               ,[{'key', Number}]
+                              )
+    of
+        {'ok', []} -> Error;
+        {'ok', [Port]} ->
+            AccountId = wh_json:get_value(<<"value">>, Port),
+            {'ok', AccountId
+             ,[{'force_outbound', 'true'}
+               ,{'pending_port', 'true'}
+               ,{'local', 'wnm_local'}
+               ,{'inbound_cnam', 'false'}
+               ,{'number', Number}
+               ,{'account_id', AccountId}
+              ]
+            };
+        {'error', _E} ->
+            lager:debug("failed to query for port number '~s': ~p", [Number, _E]),
+            Error
     end.
 
 -spec maybe_check_account(ne_binary()) ->
