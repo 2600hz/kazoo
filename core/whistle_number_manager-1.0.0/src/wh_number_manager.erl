@@ -25,7 +25,7 @@
 -export([put_attachment/5]).
 -export([delete_attachment/3]).
 -export([get_public_fields/2, set_public_fields/3]).
--export ([track_assignment/2]).
+-export([track_assignment/2]).
 
 -include("wnm.hrl").
 
@@ -117,13 +117,13 @@ lookup_account_in_ports(N, Error) ->
 maybe_check_account(#number{assigned_to='undefined', number=_Num}=_N) ->
     lager:debug("number ~p not assigned to an account", [_Num]),
     {'error', 'unassigned'};
-maybe_check_account(#number{assigned_to=AssignedTo, state = <<"port_in">>}=N) ->
+maybe_check_account(#number{assigned_to=AssignedTo, state = ?NUMBER_STATE_PORT_IN}=N) ->
     lager:debug("number ~p is assigned to ~p in state port_in", [N, AssignedTo]),
     check_account(N);
-maybe_check_account(#number{assigned_to=AssignedTo, state = <<"in_service">>}=N) ->
+maybe_check_account(#number{assigned_to=AssignedTo, state = ?NUMBER_STATE_IN_SERVICE}=N) ->
     lager:debug("number ~p is assigned to ~p in state in_service", [N, AssignedTo]),
     check_account(N);
-maybe_check_account(#number{assigned_to=AssignedTo, state = <<"port_out">>}=N) ->
+maybe_check_account(#number{assigned_to=AssignedTo, state = ?NUMBER_STATE_PORT_OUT}=N) ->
     lager:debug("number ~p is assigned to ~p in state port_in", [N, AssignedTo]),
     check_account(N);
 maybe_check_account(#number{assigned_to=AssignedTo, state=State}=N) ->
@@ -146,7 +146,7 @@ number_options(#number{state=State
                        ,assigned_to=AssignedTo
                       }=Number) ->
     [{'force_outbound', should_force_outbound(Number)}
-     ,{'pending_port', State =:= <<"port_in">>}
+     ,{'pending_port', State =:= ?NUMBER_STATE_PORT_IN}
      ,{'local', Module =:= 'wnm_local'}
      ,{'inbound_cnam', sets:is_element(<<"inbound_cnam">>, Features)}
      ,{'ringback_media', find_early_ringback(Number)}
@@ -156,8 +156,8 @@ number_options(#number{state=State
     ].
 
 should_force_outbound(#number{module_name='wnm_local'}) -> 'true';
-should_force_outbound(#number{state = <<"port_in">>}) -> 'true';
-should_force_outbound(#number{state = <<"port_out">>}) -> 'true';
+should_force_outbound(#number{state = ?NUMBER_STATE_PORT_IN}) -> 'true';
+should_force_outbound(#number{state = ?NUMBER_STATE_PORT_OUT}) -> 'true';
 should_force_outbound(#number{number_doc=JObj}) ->
     wh_json:is_true(<<"force_outbound">>, JObj, 'false').
 
@@ -176,7 +176,7 @@ find_transfer_ringback(#number{number_doc=JObj}) ->
 -spec ported(ne_binary()) -> operation_return().
 ported(Number) ->
     Routines = [fun({_, #number{}}=E) -> E;
-                   (#number{state = <<"port_in">>, assigned_to=AssignedTo}=N) ->
+                   (#number{state = ?NUMBER_STATE_PORT_IN, assigned_to=AssignedTo}=N) ->
                         lager:debug("attempting to move port_in number ~s to in_service for account ~s", [Number, AssignedTo]),
                         N#number{auth_by=AssignedTo};
                    (#number{}=N) ->
@@ -234,7 +234,7 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
                                  wnm_number:error_unauthorized(N)
                          end;
                     ({_, #number{}}=E) -> E;
-                    (#number{current_state = <<"available">>}=N) -> N;
+                    (#number{current_state = ?NUMBER_STATE_AVAILABLE}=N) -> N;
                     (#number{}=N) -> wnm_number:error_number_exists(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
@@ -484,7 +484,7 @@ list_attachments(Number, AuthBy) ->
     lager:debug("attempting to list attachements on ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
                 ,fun({_, #number{}}=E) -> E;
-                    (#number{state = <<"port_in">>}=N) -> N;
+                    (#number{state = ?NUMBER_STATE_PORT_IN}=N) -> N;
                     (#number{}=N) -> wnm_number:error_unauthorized(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
@@ -515,7 +515,7 @@ fetch_attachment(Number, Name, AuthBy) ->
     lager:debug("fetch attachement on ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
                 ,fun({_, #number{}}=E) -> E;
-                    (#number{state = <<"port_in">>}=N) -> N;
+                    (#number{state = ?NUMBER_STATE_PORT_IN}=N) -> N;
                     (#number{}=N) -> wnm_number:error_unauthorized(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
@@ -548,7 +548,7 @@ put_attachment(Number, Name, Content, Options, AuthBy) ->
     lager:debug("add attachement to ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
                 ,fun({_, #number{}}=E) -> E;
-                    (#number{state = <<"port_in">>}=N) -> N;
+                    (#number{state = ?NUMBER_STATE_PORT_IN}=N) -> N;
                     (#number{}=N) -> wnm_number:error_unauthorized(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
@@ -582,7 +582,7 @@ delete_attachment(Number, Name, AuthBy) ->
     lager:debug("delete attachement from ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
                 ,fun({_, #number{}}=E) -> E;
-                    (#number{state = <<"port_in">>}=N) -> N;
+                    (#number{state = ?NUMBER_STATE_PORT_IN}=N) -> N;
                     (#number{}=N) -> wnm_number:error_unauthorized(N)
                  end
                 ,fun({_, #number{}}=E) -> E;

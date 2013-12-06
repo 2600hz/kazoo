@@ -44,13 +44,6 @@
 
 -export_type([wnm_number/0]).
 
--define(NUMBER_STATE_PORT_IN, <<"port_in">>).
--define(NUMBER_STATE_DISCOVERY, <<"discovery">>).
--define(NUMBER_STATE_IN_SERVICE, <<"in_service">>).
--define(NUMBER_STATE_RELEASED, <<"released">>).
--define(NUMBER_STATE_RESERVED, <<"reserved">>).
--define(NUMBER_STATE_AVAILABLE, <<"available">>).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
