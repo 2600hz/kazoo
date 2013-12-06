@@ -232,23 +232,7 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
     lager:debug("attempting to create number ~s for account ~s", [Number, AssignTo]),
     Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
                 ,fun({'not_found', #number{}=N}) ->
-                         AccountId = wh_util:format_account_id(AuthBy, 'raw'),
-                         AccountDb = wh_util:format_account_id(AuthBy, 'encoded'),
-                         try
-                             {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-                             'true' = wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj),
-                             lager:debug("number doesnt exist but account ~s is authorized to create it", [AuthBy]),
-                             NewNumber = N#number{number=Number
-                                                  ,assign_to=AssignTo
-                                                  ,auth_by=AuthBy
-                                                  ,number_doc=PublicFields
-                                                 },
-                             wnm_number:create_available(NewNumber)
-                         catch
-                             'error':{'badmatch', Error} ->
-                                 lager:debug("account is not authorized to create a new number: ~p", [Error]),
-                                 wnm_number:error_unauthorized(N)
-                         end;
+                         create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N);
                     ({_, #number{}}=E) -> E;
                     (#number{current_state = ?NUMBER_STATE_AVAILABLE}=N) -> N;
                     (#number{}=N) -> wnm_number:error_number_exists(N)
@@ -268,6 +252,34 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
                  end
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).
+
+-spec create_not_found_number(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), wnm_number()) ->
+                                     operation_return().
+create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N) ->
+    AccountId = wh_util:format_account_id(AuthBy, 'raw'),
+    AccountDb = wh_util:format_account_id(AuthBy, 'encoded'),
+    try
+        {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+        'true' = wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj),
+        lager:debug("number doesnt exist but account ~s is authorized to create it", [AuthBy]),
+        case wnm_number:find_port_in_number(N) of
+            {'ok', _Doc} ->
+                lager:debug("number is being ported in for account ~s", [wh_json:get_value(<<"pvt_account_id">>, _Doc)]),
+                wnm_number:error_number_is_porting(N);
+            {'error', 'not_found'} ->
+                lager:debug("number is not in a port request"),
+                NewNumber = N#number{number=Number
+                                     ,assign_to=AssignTo
+                                     ,auth_by=AuthBy
+                                     ,number_doc=PublicFields
+                                    },
+                wnm_number:create_available(NewNumber)
+        end
+    catch
+        'error':{'badmatch', Error} ->
+            lager:debug("account is not authorized to create a new number: ~p", [Error]),
+            wnm_number:error_unauthorized(N)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

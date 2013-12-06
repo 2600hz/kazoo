@@ -12,7 +12,9 @@
 
 -export([create_discovery/1]).
 -export([create_available/1]).
--export([create_port_in/1]).
+-export([create_port_in/1
+         ,find_port_in_number/1
+        ]).
 -export([get/1, get/2]).
 -export([save/1]).
 -export([save_phone_number_docs/1]).
@@ -39,6 +41,7 @@
 -export([error_service_restriction/2]).
 -export([error_provider_fault/2]).
 -export([error_carrier_fault/2]).
+-export([error_number_is_porting/1]).
 
 -include("wnm.hrl").
 
@@ -145,7 +148,7 @@ get(Number, PublicFields) ->
                 ,fun(#number{number_db=Db}=N) ->
                          case couch_mgr:open_doc(Db, Num) of
                              {'ok', JObj} -> merge_public_fields(PublicFields, json_to_record(JObj, N));
-                             {'error', 'not_found'} -> get_number_in_ports(N);
+                             {'error', 'not_found'} -> error_number_not_found(N);
                              {'error', Reason} -> error_number_database(Reason, N)
                          end
                  end
@@ -914,6 +917,13 @@ error_carrier_fault(Reason, N) ->
     lager:debug("carrier provider fault: ~p", [wh_json:encode(Reason)]),
     throw({'carrier_fault'
            ,N#number{error_jobj=wh_json:from_list([{<<"carrier_fault">>, Reason}])}
+          }).
+
+-spec error_number_is_porting(wnm_number()) -> no_return().
+error_number_is_porting(#number{number=_Number}=N) ->
+    lager:debug("number is porting: ~s", [_Number]),
+    throw({'number_porting'
+           ,N#number{error_jobj=wh_json:from_list([{<<"number_is_porting">>, 'true'}])}
           }).
 
 %%--------------------------------------------------------------------
