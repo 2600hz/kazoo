@@ -81,7 +81,7 @@ lookup_account_by_number(Number) ->
         Number1 -> maybe_check_account(Number1)
     catch
         'throw':{Error, #number{}} ->
-            lookup_account_in_ports(Number, Error)
+            lookup_account_in_ports(Number, {'error', Error})
     end.
 
 -spec lookup_account_in_ports(ne_binary(), {'error', lookup_errors()}) ->
@@ -94,7 +94,9 @@ lookup_account_in_ports(N, Error) ->
                                ,[{'key', Number}]
                               )
     of
-        {'ok', []} -> Error;
+        {'ok', []} ->
+            lager:debug("no port for ~s: ~p", [Number, Error]),
+            Error;
         {'ok', [Port]} ->
             AccountId = wh_json:get_value(<<"value">>, Port),
             {'ok', AccountId

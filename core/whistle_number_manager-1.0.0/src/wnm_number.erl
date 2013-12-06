@@ -883,7 +883,6 @@ error_carrier_not_specified(N) ->
 -spec error_number_not_found(wnm_number()) -> no_return().
 error_number_not_found(N) ->
     Error = <<"The number could not be found">>,
-    lager:debug("~s", [Error]),
     throw({'not_found'
            ,N#number{error_jobj=wh_json:from_list([{<<"not_found">>, Error}])}
           }).
