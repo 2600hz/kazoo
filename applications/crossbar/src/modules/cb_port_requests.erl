@@ -714,5 +714,15 @@ maybe_move_state(Context, _PortRequest, _PortState, CurrentState) ->
 
 -spec maybe_bill_for_port(cb_context:context()) -> cb_context:context().
 maybe_bill_for_port(Context) ->
-    wh_services:activation_charges(<<"number_services">>, <<"port">>, cb_context:account_id(Context)),
-    cb_context:add_system_error('no_credit', Context).
+    case wh_services:activation_charges(<<"number_services">>, <<"port">>, cb_context:account_id(Context)) of
+        'undefined' ->
+            lager:debug("failed to find activation charges"),
+            cb_context:add_system_error('no_credit', Context);
+        Value ->
+            lager:debug("port activiation has ~p value", [Value]),
+            bill_for_port(Context, Value)
+    end.
+
+bill_for_port(Context, Units) ->
+    Transaction = wh_transaction:debit(cb_context:account_id(Context), Units),
+    wh_transaction:save(Transaction).
