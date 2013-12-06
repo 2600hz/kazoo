@@ -568,9 +568,21 @@ successful_validation('undefined', Context) ->
     JObj = cb_context:doc(Context),
     cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, <<"port_request">>}
                                                     ,{?PORT_PVT_STATE, ?PORT_WAITING}
-                                                   ], JObj));
+                                                   ]
+                                                   ,normalize_numbers(JObj)
+                                                  ));
 successful_validation(_Id, #cb_context{}=Context) ->
-    Context.
+    cb_context:set_doc(Context, normalize_numbers(cb_context:doc(Context))).
+
+-spec normalize_numbers(wh_json:object()) -> wh_json:object().
+normalize_numbers(JObj) ->
+    Numbers = wh_json:get_value(<<"numbers">>, JObj, wh_json:new()),
+    wh_json:set_value(<<"numbers">>
+                      ,wh_json:map(fun(N, Meta) ->
+                                           {wnm_util:to_e164(N), Meta}
+                                   end, Numbers)
+                      ,JObj
+                     ).
 
 -spec check_number_portability(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 check_number_portability(PortId, Number, Context) ->
