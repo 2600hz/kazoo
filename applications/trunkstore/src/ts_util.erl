@@ -23,6 +23,8 @@
          ,ignore_early_media/1, ep_timeout/1, caller_id/1, offnet_flags/1
         ]).
 
+-export([maybe_ensure_cid_valid/4]).
+
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 
@@ -136,6 +138,13 @@ invite_format(<<"e.164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, wnm_util:to_e164(To)}];
 invite_format(<<"e164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, wnm_util:to_e164(To)}];
+invite_format(<<"e164_without_plus">>, To) ->
+    case wnm_util:to_e164(To) of 
+        <<$+, Plusless_DID/binary>> ->
+            lager:info("While processing 'e164_without_plus' flag, DID ~p converted to E.164 with truncated '+': ~p",[To, Plusless_DID]),
+            [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, Plusless_DID}];
+        AsIs_DID -> [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, AsIs_DID}]
+    end;
 invite_format(<<"1npanxxxxxx">>, To) ->
     [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, wnm_util:to_1npan(To)}];
 invite_format(<<"1npan">>, To) ->
@@ -213,3 +222,63 @@ simple_extract([JObj | T]) ->
     end;
 simple_extract([]) ->
     undefined.
+
+maybe_ensure_cid_valid('external', CIDNum, FromUser, AcctID) ->
+    case whapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_caller_id">>, 'false') of
+         'true' ->
+             lager:info("An ensure_valid_caller_id flag detected. Will check whether CID is legal..."),
+             case wh_number_manager:lookup_account_by_number(CIDNum) of
+                  {'ok', AcctID, _} -> CIDNum;
+                  _Else ->
+                      Normalized_FromUser = wnm_util:normalize_number(FromUser),
+                      case wh_number_manager:lookup_account_by_number(Normalized_FromUser) of
+                           {'ok', AcctID, _} -> 
+                               lager:info("CID Number derived from CID Name, normalized and set to: ~p", [Normalized_FromUser]),
+                               Normalized_FromUser;
+                           _NothingLeft ->
+                               Default_CID = whapps_config:get(<<"trunkstore">>, <<"default_caller_id_number">>, <<"00000000000000">>),
+                               lager:info("No valid caller id identified! Will use default trunkstore caller id: ~p",[Default_CID]),
+                               Default_CID
+                      end
+              end;
+          'false' ->
+                  CIDNum
+    end;
+maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, AcctID) ->
+    case whapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_emergency_number">>, 'false') of
+         'true' ->
+             lager:info("An ensure_valid_emergency_number flag detected. Will check whether ECID is legal..."),
+             case wh_number_manager:lookup_account_by_number(ECIDNum) of
+                  {'ok', AcctID, _} -> ensure_valid_emergency_number(ECIDNum, AcctID);
+                  _Else -> valid_emergency_number(AcctID)
+             end;
+          'false' ->
+                  ECIDNum
+    end.
+
+ensure_valid_emergency_number(ECIDNum, AcctID) ->
+    Numbers = valid_emergency_numbers(AcctID),
+    case lists:member(ECIDNum, Numbers) of
+        'true' ->
+            ECIDNum;
+        'false' ->
+            valid_emergency_number(AcctID)
+    end.
+
+valid_emergency_numbers(AcctID) ->
+    AccountDb = wh_util:format_account_id(AcctID, encoded),
+    case couch_mgr:open_cache_doc(AccountDb, <<"phone_numbers">>) of
+        {'ok', JObj} ->
+            [Number
+             || Number <- wh_json:get_keys(JObj)
+                    ,lists:member(<<"dash_e911">>, wh_json:get_value([Number, <<"features">>], JObj, []))
+            ];
+        {'error', _} ->
+           Default_ECID = whapps_config:get_non_empty(<<"trunkstore">>, <<"default_emergency_number">>, <<>>),
+           lager:info("No valid caller id identified! Will use default trunkstore caller id: ~p",[Default_ECID]),
+           Default_ECID
+    end.
+
+valid_emergency_number(AcctID)->
+    [H|_] = valid_emergency_numbers(AcctID),
+    H.
