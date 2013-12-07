@@ -191,7 +191,10 @@ find_transfer_ringback(#number{number_doc=JObj}) ->
 %%--------------------------------------------------------------------
 -spec ported(ne_binary()) -> operation_return().
 ported(Number) ->
-    Routines = [fun({_, #number{}}=E) -> E;
+    Routines = [fun({'not_found', #number{}=N}) ->
+                        lager:debug("number ~s not found, checking ports", [Number]),
+                        check_ports(N);
+                   ({_, #number{}}=E) -> E;
                    (#number{state = ?NUMBER_STATE_PORT_IN, assigned_to=AssignedTo}=N) ->
                         lager:debug("attempting to move port_in number ~s to in_service for account ~s", [Number, AssignedTo]),
                         N#number{auth_by=AssignedTo};
@@ -213,6 +216,23 @@ ported(Number) ->
                  end
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, catch wnm_number:get(Number), Routines).
+
+-spec check_ports(wnm_number()) -> operation_return().
+check_ports(Number) ->
+    case wnm_number:find_port_in_number(Number) of
+        {'ok', PortDoc} ->
+            AccountId = wh_json:get_value(<<"pvt_account_id">>, PortDoc),
+            #number{} = N = create_number(Number, AccountId, AccountId),
+
+            couch_mgr:save_doc(?KZ_PORT_REQUESTS_DB, wh_json:set_value(<<"pvt_port_state">>, <<"completed">>, PortDoc)),
+
+            Numbers = wh_json:get_keys(<<"numbers">>, PortDoc, []),
+            [spawn(?MODULE, 'ported', [PortNumber]) || PortNumber <- Numbers],
+            lager:debug("found port doc with number ~s in account ~s, moving over in ~p", [Number, AccountId, _Pid]),
+            N;
+        {'error', 'not_found'} ->
+            {'not_found', Number}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
