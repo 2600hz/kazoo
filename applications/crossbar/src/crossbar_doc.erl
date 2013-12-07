@@ -201,7 +201,7 @@ load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) -
     case couch_mgr:all_docs(Db) of
         {'error', Error} -> handle_couch_mgr_errors(Error, <<"all_docs">>, Context);
         {'ok', JObjs} ->
-            Filtered = [JObj 
+            Filtered = [JObj
                         || JObj <- lists:foldl(Filter, [], JObjs)
                                ,(not wh_util:is_empty(JObj))
                        ],
@@ -260,24 +260,24 @@ save(#cb_context{doc=[]}=Context, _Options) ->
 save(#cb_context{db_name=Db, doc=[_|_]=JObjs}=Context, Options) ->
     JObjs0 = update_pvt_parameters(JObjs, Context),
     case couch_mgr:save_docs(Db, JObjs0, Options) of
-        {'error', Error} -> 
+        {'error', Error} ->
             IDs = [wh_json:get_value(<<"_id">>, J) || J <- JObjs],
             handle_couch_mgr_errors(Error, IDs, Context);
         {'ok', JObj1} ->
-            IDs = [wh_json:get_value(<<"_id">>, J) || J <- JObjs],
-            lists:map(fun(DocId) -> couch_mgr:flush_cache_doc(Db, DocId) end, IDs),
+            _ = [couch_mgr:flush_cache_doc(Db, wh_json:get_value(<<"_id">>, JObj))
+                 || JObj <- JObjs
+                ],
             Context1 = handle_couch_mgr_success(JObj1, Context),
             provisioner_util:maybe_send_contact_list(Context1)
     end;
 save(#cb_context{db_name=Db, doc=JObj}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:save_doc(Db, JObj0, Options) of
-        {'error', Error} -> 
+        {'error', Error} ->
             DocId = wh_json:get_value(<<"_id">>, JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
-            DocId = wh_json:get_value(<<"_id">>, JObj1),
-            couch_mgr:flush_cache_doc(Db, DocId),
+            couch_mgr:flush_cache_doc(Db, wh_json:get_value(<<"_id">>, JObj1)),
             Context1 = handle_couch_mgr_success(JObj1, Context),
             provisioner_util:maybe_send_contact_list(Context1)
     end.
@@ -299,7 +299,7 @@ ensure_saved(#cb_context{}=Context) -> ensure_saved(Context, []).
 ensure_saved(#cb_context{db_name=Db, doc=JObj}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:ensure_saved(Db, JObj0, Options) of
-        {'error', Error} -> 
+        {'error', Error} ->
             DocId = wh_json:get_value(<<"_id">>, JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
@@ -365,7 +365,7 @@ delete(#cb_context{db_name=Db, doc=JObj0}=Context) ->
     JObj2 = wh_json:set_value(<<"pvt_deleted">>, 'true', JObj1),
     case couch_mgr:save_doc(Db, JObj2) of
         {'error', 'not_found'} -> handle_couch_mgr_success(JObj0, Context);
-        {'error', Error} -> 
+        {'error', Error} ->
             DocId = wh_json:get_value(<<"_id">>, JObj2),
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', _} ->
@@ -377,13 +377,13 @@ delete(#cb_context{db_name=Db, doc=JObj0}=Context) ->
 delete(#cb_context{db_name=Db, doc=JObj0}=Context, 'permanent') ->
     case couch_mgr:del_doc(Db, JObj0) of
         {'error', 'not_found'} -> handle_couch_mgr_success(JObj0, Context);
-        {'error', Error} -> 
+        {'error', Error} ->
             DocId = wh_json:get_value(<<"_id">>, JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', _} ->
             lager:debug("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj0), Db]),
             Context1 = handle_couch_mgr_success(JObj0, Context),
-            provisioner_util:maybe_send_contact_list(Context1)           
+            provisioner_util:maybe_send_contact_list(Context1)
     end.
 
 %%--------------------------------------------------------------------
@@ -456,7 +456,7 @@ handle_thing_success(Thing, Context) ->
 handle_json_success([_|_]=JObjs, #cb_context{req_verb = ?HTTP_PUT, resp_headers=Headers}=Context) ->
     Context#cb_context{doc=JObjs
                        ,resp_status='success'
-                       ,resp_data=[wh_json:public_fields(JObj) 
+                       ,resp_data=[wh_json:public_fields(JObj)
                                    || JObj <- JObjs,
                                       wh_json:is_false(<<"pvt_deleted">>, JObj, 'true')
                                   ]
@@ -469,7 +469,7 @@ handle_json_success([_|_]=JObjs, #cb_context{req_verb = ?HTTP_PUT, resp_headers=
 handle_json_success([_|_]=JObjs, Context) ->
     Context#cb_context{doc=JObjs
                        ,resp_status='success'
-                       ,resp_data=[wh_json:public_fields(JObj) 
+                       ,resp_data=[wh_json:public_fields(JObj)
                                    || JObj <- JObjs,
                                       wh_json:is_false(<<"pvt_deleted">>, JObj, 'true')
                                   ]
@@ -505,7 +505,7 @@ handle_couch_mgr_errors('db_not_reachable', _DocId, #cb_context{db_name=Db}=Cont
     cb_context:add_system_error('datastore_unreachable', Context);
 handle_couch_mgr_errors('not_found', DocId, #cb_context{db_name=Db}=Context) ->
     lager:debug("operation on doc ~s from ~s failed: not_found", [DocId, Db]),
-    cb_context:add_system_error('bad_identifier', [{'details', DocId}],  Context);    
+    cb_context:add_system_error('bad_identifier', [{'details', DocId}],  Context);
 handle_couch_mgr_errors('conflict', DocId, #cb_context{db_name=Db}=Context) ->
     lager:debug("failed to update doc ~s in ~s: conflicts", [DocId, Db]),
     cb_context:add_system_error('datastore_conflict', Context);
