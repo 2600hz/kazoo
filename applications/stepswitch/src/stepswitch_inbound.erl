@@ -31,10 +31,11 @@ handle_req(JObj, _Props) ->
 %% handle a request inbound from offnet
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_relay_request(wh_json:object()) -> wh_json:object().
 maybe_relay_request(JObj) ->
     Number = stepswitch_util:get_inbound_destination(JObj),
     case stepswitch_util:lookup_number(Number) of
-        {'error', _R} -> 
+        {'error', _R} ->
             lager:info("unable to determine account for ~s: ~p", [Number, _R]);
         {'ok', _, Props} ->
             lager:debug("relaying route request"),
@@ -91,7 +92,7 @@ maybe_find_resource(_, JObj) ->
                 'false' -> JObj
             end
     end.
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
