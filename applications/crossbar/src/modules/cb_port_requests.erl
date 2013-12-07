@@ -51,19 +51,11 @@
                                 ,{<<"application">>, <<"octet-stream">>}
                                 ,{<<"text">>, <<"plain">>}
                                ]).
--define(PORT_WAITING, <<"waiting">>).
--define(PORT_READY, <<"ready">>).
--define(PORT_PROGRESS, <<"progress">>).
--define(PORT_COMPLETE, <<"completion">>).
--define(PORT_REJECT, <<"rejection">>).
--define(PORT_ATTACHMENT, <<"attachments">>).
--define(PORT_DESCENDANTS, <<"descendants">>).
--define(PORT_PVT_STATE, <<"pvt_port_state">>).
--define(PORT_STATE, <<"port_state">>).
 
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
 
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("whistle_number_manager/include/wh_port_request.hrl").
 -include("../crossbar.hrl").
 
 %%%===================================================================
@@ -78,8 +70,7 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
-    _ = couch_mgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
+    wh_port_request:init(),
 
     _ = crossbar_bindings:bind(<<"*.allowed_methods.port_requests">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.port_requests">>, ?MODULE, 'resource_exists'),
@@ -271,7 +262,7 @@ validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id, ?PORT_ATTACHMENT, Att
 -spec is_deletable(cb_context:context()) -> cb_context:context().
 -spec is_deletable(cb_context:context(), ne_binary()) -> cb_context:context().
 is_deletable(Context) ->
-    is_deletable(Context, wh_json:get_first_defined([?PORT_PVT_STATE, ?PORT_STATE], cb_context:doc(Context))).
+    is_deletable(Context, wh_port_request:current_state(cb_context:doc(Context))).
 is_deletable(Context, ?PORT_WAITING) ->
     Context;
 is_deletable(Context, ?PORT_REJECT) ->
@@ -344,7 +335,7 @@ send_port_request_notification(Context, Id) ->
 post(#cb_context{}=Context, _Id) ->
     case crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)) of
         #cb_context{resp_status='success'}=Context1 ->
-            cb_context:set_resp_data(Context1, create_public_port_request_doc(cb_context:doc(Context1)));
+            cb_context:set_resp_data(Context1, wh_port_request:public_fields(cb_context:doc(Context1)));
         Context1 ->
             Context1
     end.
@@ -407,7 +398,7 @@ read(Id, Context) ->
     Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            PubDoc = create_public_port_request_doc(cb_context:doc(Context1)),
+            PubDoc = wh_port_request:public_fields(cb_context:doc(Context1)),
             cb_context:set_resp_data(cb_context:set_doc(Context1, PubDoc)
                                      ,PubDoc
                                     );
@@ -479,20 +470,7 @@ summary(Context) ->
 
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(Res, Acc) ->
-    [create_public_port_request_doc(wh_json:get_value(<<"doc">>, Res)) | Acc].
-
--spec create_public_port_request_doc(wh_json:object()) -> wh_json:object().
-create_public_port_request_doc(JObj) ->
-
-    As = wh_json:get_value(<<"_attachments">>, JObj, wh_json:new()),
-    NormalizedAs = normalize_attachments(As),
-
-    wh_json:set_values([{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
-                        ,{<<"created">>, wh_json:get_value(<<"pvt_created">>, JObj)}
-                        ,{<<"updated">>, wh_json:get_value(<<"pvt_modified">>, JObj)}
-                        ,{<<"uploads">>, NormalizedAs}
-                        ,{?PORT_STATE, wh_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING)}
-                       ], wh_doc:public_fields(JObj)).
+    [wh_port_request:public_fields(wh_json:get_value(<<"doc">>, Res)) | Acc].
 
 -spec summary_attachments(ne_binary(), cb_context:context()) -> cb_context:context().
 summary_attachments(Id, Context) ->
@@ -500,17 +478,8 @@ summary_attachments(Id, Context) ->
 
     A = wh_json:get_value(<<"_attachments">>, cb_context:doc(Context1), wh_json:new()),
     cb_context:set_resp_data(Context1
-                             ,normalize_attachments(A)
+                             ,wh_port_request:normalize_attachments(A)
                             ).
-
--spec normalize_attachments(wh_json:object()) -> wh_json:object().
-normalize_attachments(Attachments) ->
-    wh_json:map(fun normalize_attachments_map/2, Attachments).
-
--spec normalize_attachments_map(wh_json:key(), wh_json:json_term()) ->
-                                       {wh_json:key(), wh_json:json_term()}.
-normalize_attachments_map(K, V) ->
-    {K, wh_json:delete_keys([<<"digest">>, <<"revpos">>, <<"stub">>], V)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -549,9 +518,8 @@ on_successful_validation(_Id, Context, 'false') ->
 -spec can_update_port_request(cb_context:context(), ne_binary()) -> boolean().
 can_update_port_request(Context) ->
     lager:debug("port req: ~p", [cb_context:doc(Context)]),
-    can_update_port_request(Context, wh_json:get_first_defined([?PORT_PVT_STATE, ?PORT_STATE]
-                                                               ,cb_context:doc(Context)
-                                                              )).
+    can_update_port_request(Context, wh_port_request:current_state(cb_context:doc(Context))).
+
 can_update_port_request(_Context, ?PORT_WAITING) ->
     'true';
 can_update_port_request(Context, ?PORT_READY) ->
@@ -569,20 +537,10 @@ successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, <<"port_request">>}
                                                     ,{?PORT_PVT_STATE, ?PORT_WAITING}
                                                    ]
-                                                   ,normalize_numbers(JObj)
+                                                   ,wh_port_request:normalize_numbers(JObj)
                                                   ));
 successful_validation(_Id, #cb_context{}=Context) ->
-    cb_context:set_doc(Context, normalize_numbers(cb_context:doc(Context))).
-
--spec normalize_numbers(wh_json:object()) -> wh_json:object().
-normalize_numbers(JObj) ->
-    Numbers = wh_json:get_value(<<"numbers">>, JObj, wh_json:new()),
-    wh_json:set_value(<<"numbers">>
-                      ,wh_json:map(fun(N, Meta) ->
-                                           {wnm_util:to_e164(N), Meta}
-                                   end, Numbers)
-                      ,JObj
-                     ).
+    cb_context:set_doc(Context, wh_port_request:normalize_numbers(cb_context:doc(Context))).
 
 -spec check_number_portability(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 check_number_portability(PortId, Number, Context) ->
@@ -669,72 +627,11 @@ load_attachment(AttachmentId, Context) ->
 maybe_move_state(Id, Context, PortState) ->
     Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
     case cb_context:resp_status(Context1) =:= 'success'
-        andalso cb_context:doc(Context1)
+        andalso wh_port_request:transition_state(cb_context:doc(Context1), PortState)
     of
         'false' -> Context1;
-        PortRequest ->
-            maybe_move_state(Context1
-                             ,PortRequest
-                             ,wh_json:get_value(?PORT_PVT_STATE, PortRequest, ?PORT_WAITING)
-                             ,PortState
-                            )
+        {'ok', PortRequest} ->
+            cb_context:set_doc(Context1, PortRequest);
+        {'error', 'invalid_state_transition'} ->
+            cb_context:add_validation_error(<<"port_state">>, <<"enum">>, <<"cannot move to new state from current state">>, Context)
     end.
-
-maybe_move_state(Context, PortRequest, ?PORT_WAITING, ?PORT_READY) ->
-    lager:debug("moving port request to 'ready'"),
-    cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_READY}
-                                                    ,{?PORT_STATE, ?PORT_READY}
-                                                   ]
-                                                   ,PortRequest
-                                                  ));
-maybe_move_state(Context, PortRequest, ?PORT_READY, ?PORT_PROGRESS) ->
-    lager:debug("moving port request to 'progress'"),
-    cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_PROGRESS}
-                                                    ,{?PORT_STATE, ?PORT_PROGRESS}
-                                                   ]
-                                                   ,PortRequest
-                                                  ));
-maybe_move_state(Context, PortRequest, ?PORT_PROGRESS, ?PORT_COMPLETE) ->
-    lager:debug("maybe moving port request to 'completed'"),
-    case maybe_bill_for_port(Context) of
-        'true' ->
-            cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_COMPLETE}
-                                                            ,{?PORT_STATE, ?PORT_COMPLETE}
-                                                           ]
-                                                           ,PortRequest
-                                                          ));
-        'false' ->
-            'ok'
-    end;
-maybe_move_state(Context, PortRequest, ?PORT_PROGRESS, ?PORT_REJECT) ->
-    lager:debug("moving port request to 'reject'"),
-    cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_REJECT}
-                                                    ,{?PORT_STATE, ?PORT_REJECT}
-                                                   ]
-                                                   ,PortRequest
-                                                  ));
-maybe_move_state(Context, PortRequest, ?PORT_REJECT, ?PORT_READY) ->
-    lager:debug("moving port request to 'ready'"),
-    cb_context:set_doc(Context, wh_json:set_values([{?PORT_PVT_STATE, ?PORT_READY}
-                                                    ,{?PORT_STATE, ?PORT_READY}
-                                                   ]
-                                                   ,PortRequest
-                                                  ));
-maybe_move_state(Context, _PortRequest, _PortState, CurrentState) ->
-    lager:debug("maybe move from ~s to ~s", [CurrentState, _PortState]),
-    cb_context:add_validation_error(CurrentState, <<"type">>, <<"Transitioning to new state not allowed">>, Context).
-
--spec maybe_bill_for_port(cb_context:context()) -> cb_context:context().
-maybe_bill_for_port(Context) ->
-    case wh_services:activation_charges(<<"number_services">>, <<"port">>, cb_context:account_id(Context)) of
-        'undefined' ->
-            lager:debug("failed to find activation charges"),
-            cb_context:add_system_error('no_credit', Context);
-        Value ->
-            lager:debug("port activiation has ~p value", [Value]),
-            bill_for_port(Context, Value)
-    end.
-
-bill_for_port(Context, Units) ->
-    Transaction = wh_transaction:debit(cb_context:account_id(Context), Units),
-    wh_transaction:save(Transaction).
