@@ -264,6 +264,8 @@ save(#cb_context{db_name=Db, doc=[_|_]=JObjs}=Context, Options) ->
             IDs = [wh_json:get_value(<<"_id">>, J) || J <- JObjs],
             handle_couch_mgr_errors(Error, IDs, Context);
         {'ok', JObj1} ->
+            IDs = [wh_json:get_value(<<"_id">>, J) || J <- JObjs],
+            lists:map(fun(DocId) -> couch_mgr:flush_cache_doc(Db, DocId) end, IDs),
             Context1 = handle_couch_mgr_success(JObj1, Context),
             provisioner_util:maybe_send_contact_list(Context1)
     end;
@@ -274,6 +276,8 @@ save(#cb_context{db_name=Db, doc=JObj}=Context, Options) ->
             DocId = wh_json:get_value(<<"_id">>, JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
+            DocId = wh_json:get_value(<<"_id">>, JObj1),
+            couch_mgr:flush_cache_doc(Db, DocId),
             Context1 = handle_couch_mgr_success(JObj1, Context),
             provisioner_util:maybe_send_contact_list(Context1)
     end.
