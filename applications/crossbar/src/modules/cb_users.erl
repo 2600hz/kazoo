@@ -29,7 +29,7 @@
 -define(SERVER, ?MODULE).
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
--define (CURRENT_CHANNELS, <<"current_channels">>).
+-define(CHANNELS, <<"channels">>).
 
 %%%===================================================================
 %%% API
@@ -71,7 +71,7 @@ allowed_methods() ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
-allowed_methods(_, ?CURRENT_CHANNELS) ->
+allowed_methods(_, ?CHANNELS) ->
     [?HTTP_GET].
 
 allowed_methods(_, <<"quickcall">>, _) ->
@@ -91,7 +91,7 @@ allowed_methods(_, <<"quickcall">>, _) ->
 
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
-resource_exists(_, ?CURRENT_CHANNELS) -> 'true'.
+resource_exists(_, ?CHANNELS) -> 'true'.
 resource_exists(_, <<"quickcall">>, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -134,9 +134,9 @@ validate(#cb_context{req_verb = ?HTTP_POST}=Context, UserId) ->
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, UserId) ->
     load_user(UserId, Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, UserId, ?CURRENT_CHANNELS) ->
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, UserId, ?CHANNELS) ->
     Context1 = load_user(UserId, Context),
-    get_current_channels(Context1).
+    get_channels(Context1).
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, UserId, <<"quickcall">>, _) ->
     Context1 = maybe_validate_quickcall(load_user(UserId, Context)),
@@ -158,8 +158,13 @@ put(Context) ->
 delete(Context, _) ->
     crossbar_doc:delete(Context).
 
-
-get_current_channels(#cb_context{doc=Doc, account_id=AccountId}=Context) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_channels(cb_context:context()) -> cb_context:context().
+get_channels(#cb_context{doc=Doc, account_id=AccountId}=Context) ->
     Realm = crossbar_util:get_account_realm(AccountId),
     Username = wh_json:get_value(<<"username">>, Doc),
     Req = [{<<"Realm">>, Realm}

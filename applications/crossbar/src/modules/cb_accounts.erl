@@ -37,6 +37,7 @@
 -define(AGG_VIEW_REALM, <<"accounts/listing_by_realm">>).
 
 -define(PVT_TYPE, <<"account">>).
+-define(CHANNELS, <<"channels">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -70,7 +71,7 @@ allowed_methods() ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_, Path) ->
-    case lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]) of
+    case lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>, ?CHANNELS]) of
         'true' -> [?HTTP_GET];
         'false' -> []
     end.
@@ -89,7 +90,7 @@ allowed_methods(_, Path) ->
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 resource_exists(_, Path) ->
-    lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]).
+    lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>, ?CHANNELS]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -117,6 +118,8 @@ validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = ?HTTP_DELETE}=
     validate_delete_request(AccountId, prepare_context(AccountId, Context));
 validate(#cb_context{}=Context, AccountId) -> load_account_db(AccountId, Context).
 
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, AccountId, ?CHANNELS) ->
+    get_channels(AccountId, Context);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, AccountId, <<"children">>) ->
     load_children(AccountId, prepare_context('undefined', Context));
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, AccountId, <<"descendants">>) ->
@@ -179,6 +182,38 @@ delete(Context, Account) ->
         'false' -> cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context);
         'true' -> delete_remove_services(Context#cb_context{db_name=AccountDb, account_id=AccountId})
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_channels(ne_binary(), cb_context:context()) -> cb_context:context().
+get_channels(AccountId, Context) ->
+    Realm = crossbar_util:get_account_realm(AccountId),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    Usernames = case couch_mgr:get_all_results(AccountDb, <<"users/list_by_username">>) of
+                    {'error', _} ->
+                        lager:error("could not get user or account ~p", [AccountId]),
+                        [];
+                    {'ok', JObjs} -> couch_mgr:get_result_keys(JObjs)
+                end,
+    Req = [{<<"Realm">>, Realm}
+            ,{<<"Usernames">>, Usernames}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case whapps_util:amqp_pool_request(Req
+                                       ,fun wapi_call:publish_query_user_channels_req/1
+                                       ,fun wapi_call:query_user_channels_resp_v/1
+                                      )
+    of
+        {'ok', Resp} ->
+            cb_context:set_resp_data(Context, wh_json:get_value(<<"Channels">>, Resp, []));
+        {'error', _E} ->
+            lager:error("could not reach ecallmgr channels: ~p", [_E]),
+            crossbar_util:response('error', <<"could not reach ecallmgr channels">>, Context)
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
