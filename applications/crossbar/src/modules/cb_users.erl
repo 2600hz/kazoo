@@ -14,11 +14,11 @@
 
 -export([create_user/1]).
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/3
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,authenticate/1
          ,authorize/1
-         ,validate/1, validate/2, validate/4
+         ,validate/1, validate/2, validate/3, validate/4
          ,put/1
          ,post/2
          ,delete/2
@@ -27,9 +27,9 @@
 -include("../crossbar.hrl").
 
 -define(SERVER, ?MODULE).
-
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
+-define (CURRENT_CHANNELS, <<"current_channels">>).
 
 %%%===================================================================
 %%% API
@@ -71,6 +71,9 @@ allowed_methods() ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
+allowed_methods(_, ?CURRENT_CHANNELS) ->
+    [?HTTP_GET].
+
 allowed_methods(_, <<"quickcall">>, _) ->
     [?HTTP_GET].
 
@@ -88,6 +91,7 @@ allowed_methods(_, <<"quickcall">>, _) ->
 
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
+resource_exists(_, ?CURRENT_CHANNELS) -> 'true'.
 resource_exists(_, <<"quickcall">>, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -130,11 +134,15 @@ validate(#cb_context{req_verb = ?HTTP_POST}=Context, UserId) ->
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, UserId) ->
     load_user(UserId, Context).
 
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, UserId, ?CURRENT_CHANNELS) ->
+    Context1 = load_user(UserId, Context),
+    get_current_channels(Context1).
+
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, UserId, <<"quickcall">>, _) ->
     Context1 = maybe_validate_quickcall(load_user(UserId, Context)),
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
-        'false' -> 
+        'false' ->
             cb_modules_util:maybe_originate_quickcall(Context1)
     end.
 
@@ -149,6 +157,27 @@ put(Context) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     crossbar_doc:delete(Context).
+
+
+get_current_channels(#cb_context{doc=Doc, account_id=AccountId}=Context) ->
+    Realm = crossbar_util:get_account_realm(AccountId),
+    Username = wh_json:get_value(<<"username">>, Doc),
+    Req = [{<<"Realm">>, Realm}
+           ,{<<"Username">>, Username}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case whapps_util:amqp_pool_request(Req
+                                       ,fun wapi_call:publish_query_user_channels_req/1
+                                       ,fun wapi_call:query_user_channels_resp_v/1
+                                      )
+    of
+        {'ok', Resp} ->
+            cb_context:set_resp_data(Context, wh_json:get_value(<<"Channels">>, Resp, []));
+        {'error', _E} ->
+            lager:error("could not reach ecallmgr channels: ~p", [_E]),
+            crossbar_util:response('error', <<"could not reach ecallmgr channels">>, Context)
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -173,7 +202,7 @@ load_user(UserId, Context) -> crossbar_doc:load(UserId, Context).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
@@ -195,7 +224,7 @@ check_user_schema(UserId, Context) ->
 on_successful_validation('undefined', #cb_context{doc=Doc}=Context) ->
     Props = [{<<"pvt_type">>, <<"user">>}],
     maybe_import_credintials('undefined', Context#cb_context{doc=wh_json:set_values(Props, Doc)});
-on_successful_validation(UserId, #cb_context{}=Context) -> 
+on_successful_validation(UserId, #cb_context{}=Context) ->
     maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context)).
 
 maybe_import_credintials(UserId, #cb_context{doc=JObj}=Context) ->
@@ -213,7 +242,7 @@ maybe_validate_username(UserId, #cb_context{doc=JObj}=Context) ->
     NewUsername = wh_json:get_ne_value(<<"username">>, JObj),
     CurrentUsername = case cb_context:fetch('db_doc', Context) of
                           'undefined' -> NewUsername;
-                          CurrentJObj -> 
+                          CurrentJObj ->
                               wh_json:get_ne_value(<<"username">>, CurrentJObj, NewUsername)
                       end,
     case wh_util:is_empty(NewUsername)
@@ -223,7 +252,7 @@ maybe_validate_username(UserId, #cb_context{doc=JObj}=Context) ->
         %% username is unchanged
         'true' -> maybe_rehash_creds(UserId, NewUsername, Context);
         %% updated username that doesnt exist
-        'undefined' -> 
+        'undefined' ->
             manditory_rehash_creds(UserId, NewUsername, Context);
         %% updated username to existing, collect any further errors...
         _Else ->
@@ -237,7 +266,7 @@ maybe_validate_username(UserId, #cb_context{doc=JObj}=Context) ->
 maybe_rehash_creds(UserId, Username, #cb_context{doc=JObj}=Context) ->
     case wh_json:get_ne_value(<<"password">>, JObj) of
         %% No username or hash, no creds for you!
-        'undefined' when Username =:= 'undefined' -> 
+        'undefined' when Username =:= 'undefined' ->
             HashKeys = [<<"pvt_md5_auth">>, <<"pvt_sha1_auth">>],
             Context#cb_context{doc=wh_json:delete_keys(HashKeys, JObj)};
         %% Username without password, creds status quo
@@ -248,7 +277,7 @@ maybe_rehash_creds(UserId, Username, #cb_context{doc=JObj}=Context) ->
 
 manditory_rehash_creds(UserId, Username, #cb_context{doc=JObj}=Context) ->
     case wh_json:get_ne_value(<<"password">>, JObj) of
-        'undefined' -> 
+        'undefined' ->
             cb_context:add_validation_error(<<"password">>
                                             ,<<"required">>
                                             ,<<"The password must be provided when updating the username">>
@@ -267,7 +296,7 @@ rehash_creds(_, Username, Password, #cb_context{doc=JObj}=Context) ->
     JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
                                 ,{<<"pvt_sha1_auth">>, SHA1}
                                ], JObj),
-    Context#cb_context{doc=wh_json:delete_key(<<"password">>, JObj1)}. 
+    Context#cb_context{doc=wh_json:delete_key(<<"password">>, JObj1)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -280,7 +309,7 @@ maybe_validate_quickcall(#cb_context{resp_status='success'
                                      ,auth_token=AuthToken
                                     }=Context) ->
     case (not wh_util:is_empty(AuthToken))
-          orelse wh_json:is_true(<<"allow_anoymous_quickcalls">>, JObj) 
+          orelse wh_json:is_true(<<"allow_anoymous_quickcalls">>, JObj)
     of
         'false' -> cb_context:add_system_error('invalid_credentials', Context);
         'true' -> Context
