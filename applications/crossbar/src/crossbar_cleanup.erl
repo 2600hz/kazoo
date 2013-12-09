@@ -162,30 +162,6 @@ handle_info(_Msg, 'ok') ->
     lager:debug("unhandled msg: ~p", [_Msg]),
     {'noreply', 'ok'}.
 
--spec start_cleanup_pass() -> 'ok'.
-start_cleanup_pass() ->
-    {'ok', Dbs} = couch_mgr:db_info(),
-    lager:debug("starting cleanup pass of databases"),
-
-    _ = [crossbar_bindings:map(db_routing_key(Db), Db)
-         || Db <- Dbs
-        ],
-    lager:debug("pass completed").
-
-db_routing_key(Db) ->
-    Classifiers = [{fun whapps_util:is_account_db/1, fun binding_account/0}
-                   ,{fun whapps_util:is_account_mod/1, fun binding_account_mod/0}
-                   ,{fun wh_util:is_system_db/1, fun binding_system/0}
-                  ],
-    db_routing_key(Db, Classifiers).
-db_routing_key(_Db, []) ->
-    binding_other();
-db_routing_key(Db, [{Classifier, BindingFun} | Classifiers]) ->
-    case Classifier(Db) of
-        'true' -> BindingFun();
-        'false' -> db_routing_key(Db, Classifiers)
-    end.
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -214,6 +190,30 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec start_cleanup_pass() -> 'ok'.
+start_cleanup_pass() ->
+    {'ok', Dbs} = couch_mgr:db_info(),
+    lager:debug("starting cleanup pass of databases"),
+
+    _ = [crossbar_bindings:map(db_routing_key(Db), Db)
+         || Db <- Dbs
+        ],
+    lager:debug("pass completed").
+
+db_routing_key(Db) ->
+    Classifiers = [{fun whapps_util:is_account_db/1, fun binding_account/0}
+                   ,{fun whapps_util:is_account_mod/1, fun binding_account_mod/0}
+                   ,{fun wh_util:is_system_db/1, fun binding_system/0}
+                  ],
+    db_routing_key(Db, Classifiers).
+db_routing_key(_Db, []) ->
+    binding_other();
+db_routing_key(Db, [{Classifier, BindingFun} | Classifiers]) ->
+    case Classifier(Db) of
+        'true' -> BindingFun();
+        'false' -> db_routing_key(Db, Classifiers)
+    end.
+
 -spec start_timers() -> 'ok'.
 start_timers() ->
     _ = start_cleanup_timer(),
