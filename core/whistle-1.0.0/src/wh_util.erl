@@ -14,7 +14,9 @@
          ,format_account_mod_id/2, format_account_mod_id/3
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
--export([is_system_admin/1]).
+-export([is_system_admin/1
+         ,is_system_db/1
+        ]).
 -export([get_account_realm/1, get_account_realm/2]).
 -export([is_account_enabled/1]).
 
@@ -141,8 +143,8 @@ change_syslog_log_level(L) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Given a representation of an account return it in a encoded,
-%% unencoded or raw format.
+%% Given a representation of an account return it in a 'encoded',
+%% unencoded or 'raw' format.
 %% @end
 %%--------------------------------------------------------------------
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
@@ -228,14 +230,14 @@ is_in_account_hierarchy(CheckFor, InAccount) ->
 is_in_account_hierarchy('undefined', _, _) -> 'false';
 is_in_account_hierarchy(_, 'undefined', _) -> 'false';
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
-    CheckId = wh_util:format_account_id(CheckFor, raw),
-    AccountId = wh_util:format_account_id(InAccount, raw),
-    AccountDb = wh_util:format_account_id(InAccount, encoded),
+    CheckId = wh_util:format_account_id(CheckFor, 'raw'),
+    AccountId = wh_util:format_account_id(InAccount, 'raw'),
+    AccountDb = wh_util:format_account_id(InAccount, 'encoded'),
     case (IncludeSelf andalso AccountId =:= CheckId) orelse couch_mgr:open_cache_doc(AccountDb, AccountId) of
         'true' ->
             lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
             'true';
-        {ok, JObj} ->
+        {'ok', JObj} ->
             Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
             case lists:member(CheckId, Tree) of
                 'true' ->
@@ -245,7 +247,7 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
                     lager:debug("account ~s was not found in the account hierarchy of ~s", [CheckId, AccountId]),
                     'false'
             end;
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("failed to get the ancestory of the account ~s: ~p", [AccountId, _R]),
             'false'
     end.
@@ -259,14 +261,18 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
 -spec is_system_admin(api_binary()) -> boolean().
 is_system_admin('undefined') -> 'false';
 is_system_admin(Account) ->
-    AccountId = wh_util:format_account_id(Account, raw),
-    AccountDb = wh_util:format_account_id(Account, encoded),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {ok, JObj} -> wh_json:is_true(<<"pvt_superduper_admin">>, JObj);
-        {error, _R} ->
+        {'ok', JObj} -> wh_json:is_true(<<"pvt_superduper_admin">>, JObj);
+        {'error', _R} ->
             lager:debug("unable to open account definition for ~s: ~p", [Account, _R]),
             'false'
     end.
+
+-spec is_system_db(ne_binary()) -> boolean().
+is_system_db(Db) ->
+    lists:member(Db, ?KZ_SYSTEM_DBS).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -301,15 +307,15 @@ is_account_enabled(Account) ->
 -spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
 get_account_realm(AccountId) ->
     get_account_realm(
-      wh_util:format_account_id(AccountId, encoded)
-      ,wh_util:format_account_id(AccountId, raw)
+      wh_util:format_account_id(AccountId, 'encoded')
+      ,wh_util:format_account_id(AccountId, 'raw')
      ).
 
 get_account_realm('undefined', _) -> 'undefined';
 get_account_realm(Db, AccountId) ->
     case couch_mgr:open_cache_doc(Db, AccountId) of
-        {ok, JObj} -> wh_json:get_ne_value(<<"realm">>, JObj);
-        {error, R} ->
+        {'ok', JObj} -> wh_json:get_ne_value(<<"realm">>, JObj);
+        {'error', R} ->
             lager:debug("error while looking up account realm in ~s: ~p", [AccountId, R]),
             'undefined'
     end.
@@ -741,7 +747,7 @@ whistle_version(FileName) ->
     case file:read_file(FileName) of
         {'ok', Version} ->
             wh_cache:store(?WHISTLE_VERSION_CACHE_KEY, Version),
-            list_to_binary(string:strip(binary_to_list(Version), right, $\n));
+            list_to_binary(string:strip(binary_to_list(Version), 'right', $\n));
         _ ->
             Version = <<"not available">>,
             wh_cache:store(?WHISTLE_VERSION_CACHE_KEY, Version),

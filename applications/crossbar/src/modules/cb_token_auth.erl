@@ -14,16 +14,9 @@
 -module(cb_token_auth).
 
 -export([init/0
-         ,stop/0
          ,authenticate/1
          ,finish_request/1
-         ,clean_expired/1
-        ]).
-
-%% cleanup proc
--export([start_link/0
-         ,init/1
-         ,cleanup_loop/1
+         ,clean_expired/0
         ]).
 
 -include("../crossbar.hrl").
@@ -33,28 +26,15 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-start_link() ->
-    proc_lib:start_link(?MODULE, 'init', [self()]).
-
 init() ->
     couch_mgr:db_create(?TOKEN_DB),
 
     _ = couch_mgr:revise_doc_from_file(?TOKEN_DB, 'crossbar', "views/token_auth.json"),
 
-    _ = supervisor:start_child('crossbar_sup', ?WORKER(?MODULE)),
+    crossbar_bindings:bind(crossbar_cleanup:binding_hour(), ?MODULE, 'clean_expired'),
 
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'finish_request').
-
-stop() ->
-    'ok' = supervisor:terminate_child('crossbar_sup', ?MODULE),
-    'ok' = supervisor:delete_child('crossbar_sup', ?MODULE).
-
-init(Parent) ->
-    proc_lib:init_ack(Parent, {'ok', self()}),
-    put('callid', ?LOG_SYSTEM_ID),
-
-    ?MODULE:cleanup_loop(?LOOP_TIMEOUT).
 
 -spec finish_request(cb_context:context()) -> any().
 finish_request(#cb_context{auth_doc='undefined'}) -> 'ok';
@@ -67,25 +47,15 @@ finish_request(#cb_context{auth_doc=AuthDoc}=Context) ->
     couch_mgr:save_doc(?TOKEN_DB, AuthDoc),
     couch_mgr:enable_change_notice().
 
-cleanup_loop(Expiry) ->
-    Timeout = Expiry * 1000,
-    lager:debug("waiting ~b s before cleaning", [Expiry]),
-    receive
-    after
-        Timeout ->
-            ?MODULE:clean_expired(Expiry),
-            ?MODULE:cleanup_loop(?LOOP_TIMEOUT)
-    end.
-
-clean_expired(Expiry) ->
-    CreatedBefore = wh_util:current_tstamp() - Expiry, % gregorian seconds - Expiry time
+clean_expired() ->
+    CreatedBefore = wh_util:current_tstamp() - ?LOOP_TIMEOUT, % gregorian seconds - Expiry time
     ViewOpts = [{'startkey', 0}
                 ,{'endkey', CreatedBefore}
                 ,{'limit', 5000}
                ],
 
     case couch_mgr:get_results(?TOKEN_DB, <<"token_auth/listing_by_mtime">>, ViewOpts) of
-        {'ok', []} -> lager:debug("no expired tokens found"), 'ok';
+        {'ok', []} -> lager:debug("no expired tokens found");
         {'ok', L} ->
             lager:debug("removing ~b expired tokens", [length(L)]),
             _ = couch_mgr:del_docs(?TOKEN_DB, prepare_tokens_for_deletion(L)),
