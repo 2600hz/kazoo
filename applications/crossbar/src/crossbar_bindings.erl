@@ -147,8 +147,14 @@ start_link() ->
 
 stop() -> gen_server:cast(?SERVER, 'stop').
 
--spec bind(ne_binary(), atom(), atom()) -> 'ok' | {'error', 'exists'}.
-bind(Binding, Module, Fun) ->
+-type bind_result() :: 'ok' |
+                       {'error', 'exists'}.
+-type bind_results() :: [bind_result(),...] | [].
+-spec bind(ne_binary() | ne_binaries(), atom(), atom()) ->
+                  bind_result() | bind_results().
+bind([_|_]=Bindings, Module, Fun) ->
+    [bind(Binding, Module, Fun) || Binding <- Bindings];
+bind(Binding, Module, Fun) when is_binary(Binding) ->
     gen_server:call(?MODULE, {'bind', Binding, Module, Fun}, 'infinity').
 
 -spec flush() -> 'ok'.
