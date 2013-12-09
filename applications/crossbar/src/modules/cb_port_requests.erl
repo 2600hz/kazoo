@@ -622,8 +622,6 @@ load_attachment(AttachmentId, Context) ->
 
 -spec maybe_move_state(ne_binary(), cb_context:context(), ne_binary()) ->
                               cb_context:context().
--spec maybe_move_state(cb_context:context(), wh_json:object(), ne_binary(), ne_binary()) ->
-                              cb_context:context().
 maybe_move_state(Id, Context, PortState) ->
     Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
     case cb_context:resp_status(Context1) =:= 'success'
