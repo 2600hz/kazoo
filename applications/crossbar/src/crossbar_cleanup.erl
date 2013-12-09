@@ -148,18 +148,15 @@ handle_info('cleanup', 'ok') ->
     {'noreply', 'ok'};
 handle_info('minute_cleanup', 'ok') ->
     _Pid = spawn('crossbar_bindings', 'map', [binding_minute(), []]),
-    lager:debug("minute cleanup binding fired"),
-    start_minute_timer(),
+    _ = start_minute_timer(),
     {'noreply', 'ok'};
 handle_info('hour_cleanup', 'ok') ->
     _Pid = spawn('crossbar_bindings', 'map', [binding_hour(), []]),
-    lager:debug("hour cleanup binding fired"),
-    start_hour_timer(),
+    _ = start_hour_timer(),
     {'noreply', 'ok'};
 handle_info('day_cleanup', 'ok') ->
     _Pid = spawn('crossbar_bindings', 'map', [binding_day(), []]),
-    lager:debug("day cleanup binding fired"),
-    start_day_timer(),
+    _ = start_day_timer(),
     {'noreply', 'ok'};
 handle_info(_Msg, 'ok') ->
     lager:debug("unhandled msg: ~p", [_Msg]),
