@@ -122,8 +122,8 @@ subscriptions(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec commit_transactions(ne_binary(),wh_transactions:wh_transactions()) -> 'ok'.
--spec commit_transactions(ne_binary(), wh_transactions:wh_transactions(), integer()) -> 'ok'.
+-spec commit_transactions(ne_binary(),wh_transactions:wh_transactions()) -> 'ok' | 'error'.
+-spec commit_transactions(ne_binary(), wh_transactions:wh_transactions(), integer()) -> 'ok' | 'error'.
 commit_transactions(BillingId, Transactions) ->
     commit_transactions(BillingId, Transactions, 3).
 
@@ -148,7 +148,7 @@ commit_transactions(BillingId, Transactions, Try) when Try > 0 ->
     end;
 commit_transactions(BillingId, _Transactions, _Try) ->
     lager:error("too many attempts writing transaction to services in ~p", [BillingId]),
-    'ok'.
+    'error'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -156,7 +156,7 @@ commit_transactions(BillingId, _Transactions, _Try) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec charge_transactions(ne_binary(), wh_transactions:wh_transactions()) -> 'ok'.
+-spec charge_transactions(ne_binary(), wh_transactions:wh_transactions()) -> 'ok' | 'error'.
 charge_transactions(BillingId, Transactions) ->
     Amount = lists:foldl(fun(JObj, Acc) ->
                             wh_json:get_value(<<"pvt_amount">>, JObj, 0) + Acc
@@ -164,9 +164,13 @@ charge_transactions(BillingId, Transactions) ->
                          ,0
                          ,Transactions
                         ),
-    braintree_transaction:quick_sale(BillingId, Amount),
-    'ok'.
-
+    try braintree_transaction:quick_sale(BillingId, Amount) of
+        _ -> 'ok'
+    catch
+        _E:_R ->
+            lager:error("error chrging transaction for ~p of ~p : ~p", [BillingId, Amount, _E])
+            'error'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

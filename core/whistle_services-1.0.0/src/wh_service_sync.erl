@@ -181,7 +181,7 @@ bump_modified(JObj) ->
             maybe_follow_billing_id(AccountId, NewJObj)
     end.
 
--spec maybe_follow_billing_id/2 :: (ne_binary(), wh_json:object()) -> wh_std_return().
+-spec maybe_follow_billing_id(ne_binary(), wh_json:object()) -> wh_std_return().
 maybe_follow_billing_id(AccountId, ServiceJObj) ->
     case get_billing_id(AccountId, ServiceJObj) of
         AccountId -> maybe_sync_services(AccountId, ServiceJObj);
@@ -201,7 +201,7 @@ follow_billing_id(BillingId, AccountId, ServiceJObj) ->
             E
     end.
 
--spec maybe_sync_services/2 :: (ne_binary(), wh_json:object()) -> wh_std_return().
+-spec maybe_sync_services(ne_binary(), wh_json:object()) -> wh_std_return().
 maybe_sync_services(AccountId, ServiceJObj) ->
     case wh_service_plans:create_items(ServiceJObj) of
         {'error', 'no_plans'} ->
@@ -246,7 +246,7 @@ sync_services_bookkeeper(AccountId, ServiceJObj, ServiceItems) ->
             end
     end.
 
--spec maybe_sync_reseller/2 :: (ne_binary(), wh_json:object()) -> wh_std_return().
+-spec maybe_sync_reseller(ne_binary(), wh_json:object()) -> wh_std_return().
 maybe_sync_reseller(AccountId, ServiceJObj) ->
     case wh_json:get_ne_value(<<"pvt_reseller_id">>, ServiceJObj, AccountId) of
         AccountId -> {'ok', ServiceJObj};
@@ -255,14 +255,14 @@ maybe_sync_reseller(AccountId, ServiceJObj) ->
             mark_dirty(ResellerId)
     end.
 
--spec get_billing_id/2 :: (ne_binary(), wh_json:object()) -> ne_binary().
+-spec get_billing_id(ne_binary(), wh_json:object()) -> ne_binary().
 get_billing_id(AccountId, JObj) ->
     case wh_json:is_true(<<"pvt_reseller">>, JObj) of
         'true' -> AccountId;
         'false' -> wh_json:get_ne_value(<<"billing_id">>, JObj, AccountId)
     end.
 
--spec mark_dirty/1 :: (ne_binary() | wh_json:object()) -> wh_std_return().
+-spec mark_dirty(ne_binary() | wh_json:object()) -> wh_std_return().
 mark_dirty(AccountId) when is_binary(AccountId) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _}=E -> E;
@@ -273,7 +273,7 @@ mark_dirty(JObj) ->
                                                             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                                            ], JObj)).
 
--spec mark_clean/1 :: (ne_binary() | wh_json:object()) -> wh_std_return().
+-spec mark_clean(ne_binary() | wh_json:object()) -> wh_std_return().
 mark_clean(AccountId) when is_binary(AccountId) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _}=E -> E;
@@ -283,7 +283,7 @@ mark_clean(JObj) ->
     couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"pvt_dirty">>, false, JObj)).
 
 
--spec mark_clean_and_status/2 :: (ne_binary(), ne_binary() | wh_json:object()) -> wh_std_return().
+-spec mark_clean_and_status(ne_binary(), ne_binary() | wh_json:object()) -> wh_std_return().
 mark_clean_and_status(Status, AccountId) when is_binary(AccountId) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _}=E -> E;
@@ -302,7 +302,7 @@ mark_status(Status, JObj) ->
                                                             ,{<<"pvt_status">>, Status}
                                                            ], JObj)).
 
--spec maybe_update_billing_id/3 :: (ne_binary(), ne_binary(), wh_json:object()) -> wh_std_return().
+-spec maybe_update_billing_id(ne_binary(), ne_binary(), wh_json:object()) -> wh_std_return().
 maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, BillingId) of
         {'error', _} ->
@@ -317,8 +317,8 @@ maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
             end
     end.
 
--spec immediate_sync/1 :: (ne_binary()) -> wh_std_return().
--spec immediate_sync/2 :: (ne_binary(), wh_json:object()) -> wh_std_return().
+-spec immediate_sync(ne_binary()) -> wh_std_return().
+-spec immediate_sync(ne_binary(), wh_json:object()) -> wh_std_return().
 
 immediate_sync(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
