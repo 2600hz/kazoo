@@ -73,7 +73,7 @@ load(DocId, #cb_context{}=Context, Opts) when is_binary(DocId) ->
                        ),
             case wh_json:is_true(<<"pvt_deleted">>, JObj) of
                 'true' -> cb_context:add_system_error('bad_identifier', [{'details', DocId}],  Context);
-                'false' -> cb_context:store('db_doc', JObj, handle_couch_mgr_success(JObj, Context))
+                'false' -> cb_context:store(handle_couch_mgr_success(JObj, Context), 'db_doc', JObj)
             end
     end;
 load([], Context, _) -> cb_context:add_system_error('bad_identifier',  Context);
@@ -94,7 +94,9 @@ load([_|_]=IDs, Context, Opts) ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_from_file(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', atom()}.
+-spec load_from_file(ne_binary(), ne_binary()) ->
+                            {'ok', wh_json:object()} |
+                            {'error', atom()}.
 load_from_file(Db, File) -> couch_mgr:load_doc_from_file(Db, 'crossbar', File).
 
 %%--------------------------------------------------------------------
@@ -107,8 +109,10 @@ load_from_file(Db, File) -> couch_mgr:load_doc_from_file(Db, 'crossbar', File).
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_merge(ne_binary(), cb_context:context()) -> cb_context:context().
--spec load_merge(ne_binary(), wh_json:object(), cb_context:context()) -> cb_context:context().
+-spec load_merge(ne_binary(), cb_context:context()) ->
+                        cb_context:context().
+-spec load_merge(ne_binary(), wh_json:object(), cb_context:context()) ->
+                        cb_context:context().
 
 load_merge(DocId, #cb_context{}=Context) ->
     load_merge(DocId, cb_context:doc(Context), Context).
@@ -125,7 +129,8 @@ load_merge(DocId, DataJObj, #cb_context{load_merge_bypass='undefined'}=Context) 
 load_merge(_, _, #cb_context{load_merge_bypass=JObj}=Context) ->
     handle_couch_mgr_success(JObj, Context).
 
--spec merge(wh_json:object(), wh_json:object(), cb_context:context()) -> cb_context:context().
+-spec merge(wh_json:object(), wh_json:object(), cb_context:context()) ->
+                   cb_context:context().
 merge(DataJObj, JObj, Context) ->
     PrivJObj = wh_json:private_fields(JObj),
     handle_couch_mgr_success(wh_json:merge_jobjs(PrivJObj, DataJObj), Context).
@@ -139,7 +144,8 @@ merge(DataJObj, JObj, Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_view(ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
+-spec load_view(ne_binary(), wh_proplist(), cb_context:context()) ->
+                       cb_context:context().
 load_view(View, Options, Context) ->
     Db = cb_context:account_db(Context),
     QS = cb_context:query_string(Context),

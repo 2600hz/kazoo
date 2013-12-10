@@ -292,7 +292,7 @@ prepare_device_realm(DeviceId, #cb_context{}=Context) ->
             JObj = wh_json:delete_key([<<"sip">>, <<"realm">>], cb_context:req_data(Context)),
             validate_device_creds(Realm, DeviceId, cb_context:set_req_data(Context, JObj));
         'false' ->
-            validate_device_creds(Realm, DeviceId, cb_context:store('aggregate_device', 'true', Context))
+            validate_device_creds(Realm, DeviceId, cb_context:store(Context, 'aggregate_device', 'true'))
     end.
 
 -spec validate_device_creds(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
@@ -341,7 +341,7 @@ validate_device_ip(IP, DeviceId, Context) ->
 validate_device_ip_unique(IP, DeviceId, Context) ->
     case is_ip_unique(IP, DeviceId) of
         'true' ->
-            check_device_schema(DeviceId, cb_context:store('aggregate_device', 'true', Context));
+            check_device_schema(DeviceId, cb_context:store(Context, 'aggregate_device', 'true'));
         'false' ->
             C = cb_context:add_validation_error([<<"sip">>, <<"ip">>]
                                                 ,<<"unique">>

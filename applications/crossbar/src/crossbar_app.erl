@@ -25,6 +25,7 @@
 %%--------------------------------------------------------------------
 -spec start(term(), term()) ->
                    {'ok', pid()} |
+                   {'ok', pid(), term()} |
                    {'error', startlink_err()}.
 start(_StartType, _StartArgs) -> crossbar:start_link().
 

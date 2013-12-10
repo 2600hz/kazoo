@@ -85,6 +85,8 @@
                           ,'cb_whitelabel'
                          ]).
 
+-type resp_data() :: wh_json:object() | wh_json:objects() | api_binary() | wh_json:json_term().
+
 -record(cb_context, {
            content_types_provided = [] :: crossbar_content_handlers()
           ,content_types_accepted = [] :: crossbar_content_handlers()
@@ -110,7 +112,7 @@
           ,resp_status = 'error' :: crossbar_status()
           ,resp_error_msg :: wh_json:json_string()
           ,resp_error_code :: pos_integer()
-          ,resp_data :: wh_json:object() | wh_json:objects() | api_binary() | wh_json:json_term()
+          ,resp_data :: resp_data()
           ,resp_headers = [] :: wh_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
           ,start = os:timestamp() :: wh_now()
           ,req_id = ?LOG_SYSTEM_ID :: ne_binary()

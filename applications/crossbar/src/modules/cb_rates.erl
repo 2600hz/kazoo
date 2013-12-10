@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%% Upload a rate deck, query rates for a given DID
 %%% @end
@@ -261,7 +261,7 @@ csv_to_rates(CSV, Context) ->
 %%    [Prefix, ISO, Desc, Surcharge, InternalRate, Rate]
 %%    [Prefix, ISO, Desc, InternalSurcharge, Surcharge, InternalRate, Rate]
 
--type rate_row() :: [string(),...].
+-type rate_row() :: [string(),...] | string().
 -type rate_row_acc() :: {integer(), wh_json:objects()}.
 
 -spec process_row(#cb_context{}, rate_row(), integer(), wh_json:objects(), integer()) -> rate_row_acc().
@@ -335,14 +335,14 @@ get_row_description(_R) ->
     lager:info("description not found on row: ~p", [_R]),
     'undefined'.
 
--spec get_row_internal_surcharge(rate_row()) -> api_binary().
+-spec get_row_internal_surcharge(rate_row()) -> api_float().
 get_row_internal_surcharge([_, _, _, InternalSurcharge, _, _ | _]) ->
     wh_util:to_float(InternalSurcharge);
 get_row_internal_surcharge(_R) ->
     lager:info("internal surcharge not found on row: ~p", [_R]),
     'undefined'.
 
--spec get_row_surcharge(rate_row()) -> api_binary().
+-spec get_row_surcharge(rate_row()) -> api_float().
 get_row_surcharge([_, _, _, Surcharge, _, _]) ->
     get_row_surcharge(Surcharge);
 get_row_surcharge([_, _, _, _, Surcharge, _ | _]) ->
@@ -353,7 +353,7 @@ get_row_surcharge([_|_]=_R) ->
 get_row_surcharge(Surcharge) ->
     wh_util:to_float(Surcharge).
 
--spec get_row_internal_rate(rate_row()) -> api_binary().
+-spec get_row_internal_rate(rate_row()) -> api_float().
 get_row_internal_rate([_, _, _, Rate]) -> get_row_internal_rate(Rate);
 get_row_internal_rate([_, _, _, InternalRate, _]) ->
     get_row_internal_rate(InternalRate);
@@ -367,7 +367,7 @@ get_row_internal_rate([_|_]=_R) ->
 get_row_internal_rate(InternalRate) ->
     wh_util:to_float(InternalRate).
 
--spec get_row_rate(rate_row()) -> api_binary().
+-spec get_row_rate(rate_row()) -> float().
 get_row_rate([_, _, _, Rate]) -> get_row_rate(Rate);
 get_row_rate([_, _, _, _, Rate]) -> get_row_rate(Rate);
 get_row_rate([_, _, _, _, _, Rate]) -> get_row_rate(Rate);

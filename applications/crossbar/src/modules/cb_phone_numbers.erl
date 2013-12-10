@@ -25,6 +25,8 @@
          ,summary/1
          ,read/2
          ,populate_phone_numbers/1
+         ,read/2
+         ,validate_request/1
         ]).
 
 -include("../crossbar.hrl").
@@ -263,8 +265,7 @@ validate(Context, _, ?PORT_DOCS, _) ->
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) ->
                   cb_context:context().
 post(Context, ?COLLECTION) ->
-    Results = collection_process(Context),
-    set_response(Results, <<>>, Context);
+    set_response(collection_process(Context), <<>>, Context);
 post(Context, Number) ->
     Result = wh_number_manager:set_public_fields(Number
                                                  ,cb_context:doc(Context)
@@ -504,8 +505,13 @@ put_attachments(Number, Context, [{Filename, FileObj}|Files]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_response(operation_return() | {binary(), binary()}, binary(), cb_context:context()) ->
+-spec set_response({'ok', operation_return()} |
+                   operation_return() |
+                   {binary(), binary()}, binary()
+                   ,cb_context:context()) ->
                           cb_context:context().
+set_response({'ok', {'ok', Doc}}, _, Context) ->
+    crossbar_util:response(Doc, Context);
 set_response({'ok', Doc}, _, Context) ->
     crossbar_util:response(Doc, Context);
 set_response({Error, Reason}, _, Context) ->

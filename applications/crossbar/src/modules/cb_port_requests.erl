@@ -591,7 +591,10 @@ successful_validation('undefined', Context) ->
 successful_validation(_Id, #cb_context{}=Context) ->
     cb_context:set_doc(Context, wh_port_request:normalize_numbers(cb_context:doc(Context))).
 
--spec check_number_portability(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec check_number_portability(api_binary(), ne_binary(), cb_context:context()) ->
+                                      cb_context:context().
+-spec check_number_portability(api_binary(), ne_binary(), cb_context:context(), ne_binary(), wh_json:object()) ->
+                                      cb_context:context().
 check_number_portability(PortId, Number, Context) ->
     E164 = wnm_util:to_e164(Number),
     lager:debug("checking ~s(~s) for portability", [E164, Number]),
@@ -600,26 +603,7 @@ check_number_portability(PortId, Number, Context) ->
     case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB, <<"port_requests/port_in_numbers">>, PortOptions) of
         {'ok', []} -> check_number_existence(E164, Number, Context);
         {'ok', [PortReq]} ->
-            case {wh_json:get_value(<<"value">>, PortReq) =:= cb_context:account_id(Context)
-                  ,wh_json:get_value(<<"id">>, PortReq) =:= PortId
-                  }
-            of
-                {'true', 'true'} ->
-                    lager:debug("number ~s(~s) is on this existing port request for this account(~s)"
-                                ,[E164, Number, cb_context:account_id(Context)]
-                               ),
-                    cb_context:set_resp_status(Context, 'success');
-                {'true', 'false'} ->
-                    lager:debug("number ~s(~s) is on a different port request in this account(~s): ~s"
-                                ,[E164, Number, cb_context:account_id(Context), wh_json:get_value(<<"id">>, PortReq)]
-                               ),
-                    cb_context:add_validation_error(Number, <<"type">>, <<"Number is on a port request already: ", (wh_json:get_value(<<"id">>, PortReq))/binary>>, Context);
-                {'false', _} ->
-                    lager:debug("number ~s(~s) is on existing port request for other account(~s)"
-                                ,[E164, Number, wh_json:get_value(<<"value">>, PortReq)]
-                               ),
-                    cb_context:add_validation_error(Number, <<"type">>, <<"Number is being ported to a different account">>, Context)
-            end;
+            check_number_portability(PortId, Number, Context, E164, PortReq);
         {'ok', [_|_]=_PortReqs} ->
             lager:debug("number ~s(~s) exists on multiple port request docs. That's bad!", [E164, Number]),
             cb_context:add_validation_error(Number, <<"type">>, <<"Number is currently on multiple port requests. Contact a system admin to rectify">>, Context);
@@ -628,7 +612,30 @@ check_number_portability(PortId, Number, Context) ->
             cb_context:add_validation_error(Number, <<"type">>, <<"Failed to query backend services, cannot port at this time">>, Context)
     end.
 
--spec check_number_existence(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+check_number_portability(PortId, Number, Context, E164, PortReq) ->
+    case {wh_json:get_value(<<"value">>, PortReq) =:= cb_context:account_id(Context)
+          ,wh_json:get_value(<<"id">>, PortReq) =:= PortId
+         }
+    of
+        {'true', 'true'} ->
+            lager:debug("number ~s(~s) is on this existing port request for this account(~s)"
+                        ,[E164, Number, cb_context:account_id(Context)]
+                       ),
+            cb_context:set_resp_status(Context, 'success');
+        {'true', 'false'} ->
+            lager:debug("number ~s(~s) is on a different port request in this account(~s): ~s"
+                        ,[E164, Number, cb_context:account_id(Context), wh_json:get_value(<<"id">>, PortReq)]
+                       ),
+            cb_context:add_validation_error(Number, <<"type">>, <<"Number is on a port request already: ", (wh_json:get_value(<<"id">>, PortReq))/binary>>, Context);
+        {'false', _} ->
+            lager:debug("number ~s(~s) is on existing port request for other account(~s)"
+                        ,[E164, Number, wh_json:get_value(<<"value">>, PortReq)]
+                       ),
+            cb_context:add_validation_error(Number, <<"type">>, <<"Number is being ported for a different account">>, Context)
+    end.
+
+-spec check_number_existence(ne_binary(), ne_binary(), cb_context:context()) ->
+                                    cb_context:context().
 check_number_existence(E164, Number, Context) ->
     case wh_number_manager:lookup_account_by_number(E164) of
         {'ok', _AccountId, _} ->
@@ -645,7 +652,8 @@ check_number_existence(E164, Number, Context) ->
             cb_context:add_validation_error(Number, <<"type">>, wh_util:to_binary(E), Context)
     end.
 
--spec load_attachment(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_attachment(ne_binary(), ne_binary(), cb_context:context()) ->
+                             cb_context:context().
 load_attachment(Id, AttachmentId, Context) ->
     Context1 = read(Id, Context),
     case cb_context:resp_status(Context1) of
@@ -653,21 +661,21 @@ load_attachment(Id, AttachmentId, Context) ->
         _ -> Context1
     end.
 
--spec load_attachment(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_attachment(ne_binary(), cb_context:context()) ->
+                             cb_context:context().
 load_attachment(AttachmentId, Context) ->
     AttachmentMeta = wh_json:get_value([<<"_attachments">>, AttachmentId], cb_context:doc(Context)),
 
-    lists:foldl(fun({K, V}, C) ->
-                        cb_context:add_resp_header(K, V, C)
-                end
-                ,crossbar_doc:load_attachment(cb_context:doc(Context)
-                                              ,AttachmentId
-                                              ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                                             )
-                ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-                  ,{<<"Content-Type">>, wh_json:get_value([<<"content_type">>], AttachmentMeta)}
-                  ,{<<"Content-Length">>, wh_json:get_value([<<"length">>], AttachmentMeta)}
-                 ]).
+
+    cb_context:add_resp_headers(
+      crossbar_doc:load_attachment(cb_context:doc(Context)
+                                   ,AttachmentId
+                                   ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                                  )
+      ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
+        ,{<<"Content-Type">>, wh_json:get_value([<<"content_type">>], AttachmentMeta)}
+        ,{<<"Content-Length">>, wh_json:get_value([<<"length">>], AttachmentMeta)}
+       ]).
 
 -spec maybe_move_state(ne_binary(), cb_context:context(), ne_binary()) ->
                               cb_context:context().

@@ -50,7 +50,8 @@ start() ->
 stop() ->
     cowboy:stop_listener('api_resource'),
     cowboy:stop_listener('api_resource_ssl'),
-    exit(whereis('crossbar_sup'), 'shutdown').
+    exit(whereis('crossbar_sup'), 'shutdown'),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public

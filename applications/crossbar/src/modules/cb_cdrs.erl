@@ -123,7 +123,8 @@ load_cdr_summary(#cb_context{req_nouns=[_, {<<"users">>, [UserId] } | _]}=Contex
         {'ok', ViewOptions} ->
             load_view(?CB_LIST_BY_USER
                       ,ViewOptions
-                      ,cb_context:set_query_string(Context, wh_json:new()));
+                      ,cb_context:set_query_string(Context, wh_json:new())
+                     );
         Else -> Else
     end;
 load_cdr_summary(Context) ->
