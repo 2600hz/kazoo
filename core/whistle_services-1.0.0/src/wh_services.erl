@@ -22,6 +22,8 @@
 -export([delete/1]).
 
 -export([activation_charges/3]).
+-export([commit_transactions/2]).
+-export([select_bookkeeper/1]).
 -export([set_billing_id/2]).
 -export([get_billing_id/1]).
 -export([find_reseller_id/1]).
@@ -312,6 +314,34 @@ activation_charges(Category, Item, #wh_services{jobj=ServicesJObj}) ->
     wh_service_plans:activation_charges(Category, Item, Plans);
 activation_charges(Category, Item, Account) ->
     activation_charges(Category, Item, fetch(Account)).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec commit_transactions(services(), wh_transactions:wh_transactions()) -> atom().
+commit_transactions(#wh_services{billing_id=BillingId}, Activations) ->
+    Bookkeeper = select_bookkeeper(BillingId),
+    Bookkeeper:commit_transactions(BillingId, Activations).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec select_bookkeeper(ne_binary()) -> atom().
+select_bookkeeper(BillingId) ->
+    ResellerId = get_reseller_id(BillingId),
+    MasterAccountId = whapps_util:get_master_account_id(),
+    case ResellerId =:= MasterAccountId of
+        'true' -> 'wh_bookkeeper_local';
+        'false' ->
+            whapps_config:get_atom(?WHS_CONFIG_CAT, <<"master_account_bookkeeper">>, 'wh_bookkeeper_local')
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
