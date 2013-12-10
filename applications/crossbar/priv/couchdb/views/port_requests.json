@@ -6,10 +6,10 @@
             "map": "function(doc) { if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return; emit([doc.pvt_account_id, doc._id], null); }"
         }
         ,"port_in_numbers":{
-            "map":"function(doc) { if (doc.pvt_type != 'port_request' || doc.pvt_deleted || doc.pvt_port_state == 'completed') return; for (i in doc.numbers) { emit(i, doc.pvt_account_id); } }"
+            "map":"function(doc) { if (doc.pvt_type != 'port_request' || doc.pvt_deleted || doc.pvt_port_state == 'completed' || doc.pvt_port_state == 'waiting') return; for (i in doc.numbers) { emit(i, doc.pvt_account_id); } }"
         }
-        ,"listing_by_port_state":{
-            "map":"function(doc) { if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return; emit([doc.pvt_account_id, doc.state], null); }"
+        ,"listing_by_modified":{
+            "map":"function(doc) { if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return; emit([doc.pvt_modified, doc.pvt_port_state], null); }"
         }
     }
 }
