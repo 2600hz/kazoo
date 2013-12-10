@@ -45,6 +45,7 @@
          ,put/1, put/3
          ,post/2, post/4
          ,delete/2, delete/4
+         ,cleanup/1
         ]).
 
 -define(ATTACHMENT_MIME_TYPES, [{<<"application">>, <<"pdf">>}
@@ -53,6 +54,10 @@
                                ]).
 
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
+
+-define(UNFINISHED_PORT_REQUEST_LIFETIME
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
+       ).
 
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 -include_lib("whistle_number_manager/include/wh_port_request.hrl").
@@ -72,6 +77,8 @@
 init() ->
     wh_port_request:init(),
 
+    _ = crossbar_bindings:bind(crossbar_cleanup:binding_system(), ?MODULE, 'cleanup'),
+
     _ = crossbar_bindings:bind(<<"*.allowed_methods.port_requests">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.port_requests">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.port_requests">>, ?MODULE, 'content_types_provided'),
@@ -81,6 +88,48 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.port_requests">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.port_requests">>, ?MODULE, 'post'),
     crossbar_bindings:bind(<<"*.execute.delete.port_requests">>, ?MODULE, 'delete').
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Cleanup expired port requests
+%% @end
+%%--------------------------------------------------------------------
+-spec cleanup(ne_binary()) -> 'ok'.
+-spec cleanup(ne_binary(), wh_json:objects()) -> 'ok'.
+
+cleanup(?KZ_PORT_REQUESTS_DB = Db) ->
+    ModifiedBefore = wh_util:current_tstamp() - ?UNFINISHED_PORT_REQUEST_LIFETIME,
+    ViewOpts = [{'startkey', [0]}
+                ,{'endkey', [ModifiedBefore]}
+                ,{'limit', 5000}
+                ,'include_docs'
+               ],
+    case couch_mgr:get_results(Db, <<"port_requests/listing_by_modified">>, ViewOpts) of
+        {'ok', []} -> lager:debug("no port requests older than ~p", [ModifiedBefore]);
+        {'ok', OldPortReqeusts} -> cleanup(Db, OldPortReqeusts);
+        {'error', _E} -> lager:debug("failed to query old port requests: ~p", [_E])
+    end;
+cleanup(_) -> 'ok'.
+
+cleanup(Db, OldPortRequests) ->
+    lager:debug("checking ~b old port requests", [length(OldPortRequests)]),
+
+    Deletable = [wh_json:get_value(<<"doc">>, OldPortRequest)
+                 || OldPortRequest <- OldPortRequests,
+                    should_delete_port_request(wh_json:get_value(<<"key">>, OldPortRequest))
+                ],
+    lager:debug("found ~p deletable", [length(Deletable)]),
+    couch_mgr:del_docs(Db, Deletable),
+    'ok'.
+
+-spec should_delete_port_request([pos_integer() | ne_binary(),...]) -> boolean().
+should_delete_port_request([_Modified, ?PORT_READY]) ->
+    'false';
+should_delete_port_request([_Modified, ?PORT_PROGRESS]) ->
+    'false';
+should_delete_port_request(_) ->
+    'true'.
 
 %%--------------------------------------------------------------------
 %% @public
