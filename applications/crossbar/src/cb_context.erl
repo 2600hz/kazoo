@@ -36,9 +36,11 @@
          ,resp_data/1, set_resp_data/2
          ,resp_status/1, set_resp_status/2
          ,api_version/1, set_api_version/2
-         ,resp_headers/1, set_resp_headers/2
-         ,set_resp_header/3, add_resp_header/3
          ,resp_etag/1, set_resp_etag/2
+
+         ,resp_headers/1
+         ,set_resp_headers/2, set_resp_header/3
+         ,add_resp_headers/2, add_resp_header/3
 
          %% Special accessors
          ,req_value/2, req_value/3
@@ -53,7 +55,9 @@
              ]).
 
 -spec req_value(context(), wh_json:key()) -> wh_json:json_term().
-req_value(Context, Key) -> req_value(Context, Key, 'undefined').
+-spec req_value(context(), wh_json:key(), term()) -> wh_json:json_term().
+req_value(#cb_context{}=Context, Key) ->
+    req_value(Context, Key, 'undefined').
 req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
     wh_json:find(Key, [ReqData, QS], Default).
 
@@ -77,46 +81,68 @@ api_version(#cb_context{api_version=ApiVersion}) -> ApiVersion.
 resp_etag(#cb_context{resp_etag=ETag}) -> ETag.
 
 %% Setters
+-spec set_account_id(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec set_account_db(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec set_auth_token(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec set_auth_doc(cb_context:context(), wh_json:object()) -> cb_context:context().
+-spec set_auth_account_id(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec set_req_verb(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec set_req_data(cb_context:context(), wh_json:object() | ne_binary()) -> cb_context:context().
+-spec set_req_files(cb_context:context(), wh_json:objects()) -> cb_context:context().
+-spec set_query_string(cb_context:context(), wh_json:object()) -> cb_context:context().
+-spec set_req_id(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec set_doc(cb_context:context(), api_object() | wh_json:objects()) -> cb_context:context().
+-spec set_resp_data(cb_context:context(), resp_data()) -> cb_context:context().
+-spec set_resp_status(cb_context:context(), crossbar_status()) -> cb_context:context().
+-spec set_api_version(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec set_resp_etag(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec set_resp_headers(cb_context:context(), wh_proplist()) -> cb_context:context().
+-spec add_resp_headers(cb_context:context(), wh_proplist()) -> cb_context:context().
+-spec set_resp_header(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec add_resp_header(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
 set_auth_token(#cb_context{}=Context, AuthToken) -> Context#cb_context{auth_token=AuthToken}.
-set_auth_doc(Context, AuthDoc) -> Context#cb_context{auth_doc=AuthDoc}.
+set_auth_doc(#cb_context{}=Context, AuthDoc) -> Context#cb_context{auth_doc=AuthDoc}.
 set_auth_account_id(#cb_context{}=Context, AuthBy) -> Context#cb_context{auth_account_id=AuthBy}.
 set_req_verb(#cb_context{}=Context, ReqVerb) -> Context#cb_context{req_verb=ReqVerb}.
 set_req_data(#cb_context{}=Context, ReqData) -> Context#cb_context{req_data=ReqData}.
-set_req_files(Context, ReqFiles) -> Context#cb_context{req_files=ReqFiles}.
+set_req_files(#cb_context{}=Context, ReqFiles) -> Context#cb_context{req_files=ReqFiles}.
 set_query_string(#cb_context{}=Context, Q) -> Context#cb_context{query_json=Q}.
 set_req_id(#cb_context{}=Context, ReqId) -> Context#cb_context{req_id=ReqId}.
 set_doc(#cb_context{}=Context, Doc) -> Context#cb_context{doc=Doc}.
 set_resp_data(#cb_context{}=Context, RespData) -> Context#cb_context{resp_data=RespData}.
 set_resp_status(#cb_context{}=Context, RespStatus) -> Context#cb_context{resp_status=RespStatus}.
 set_api_version(#cb_context{}=Context, ApiVersion) -> Context#cb_context{api_version=ApiVersion}.
-set_resp_headers(Context, Headers) ->
-    lists:foldl(fun({K, V}, C) ->
-                        set_resp_header(K, V, C)
-                end, Context, Headers
-               ).
-set_resp_header(K, V, #cb_context{resp_headers=RespHeaders}=Context) ->
+set_resp_etag(#cb_context{}=Context, ETag) -> Context#cb_context{resp_etag=ETag}.
+
+set_resp_headers(#cb_context{}=Context, Headers) ->
+    lists:foldl(fun set_resp_header_fold/2, Context, Headers).
+set_resp_header(#cb_context{resp_headers=RespHeaders}=Context, K, V) ->
     Context#cb_context{resp_headers=lists:keystore(K, 1, RespHeaders, {K, V})}.
-add_resp_header(K, V, #cb_context{resp_headers=RespHeaders}=Context) ->
+set_resp_header_fold({K, V}, Hs) -> lists:keystore(K, 1, Hs, {K, V}).
+
+add_resp_headers(#cb_context{resp_headers=RespHeaders}=Context, Headers) ->
+    Context#cb_context{resp_headers=lists:foldl(fun add_resp_headers_fold/2, RespHeaders, Headers)}.
+add_resp_header(#cb_context{resp_headers=RespHeaders}=Context, K, V) ->
     Context#cb_context{resp_headers=[{K, V} | RespHeaders]}.
-set_resp_etag(#cb_context{}=Context, ETag) ->
-    Context#cb_context{resp_etag=ETag}.
+add_resp_headers_fold({K, V}, Hs) -> [{K, V} | Hs].
 
 %% Helpers
 
 -spec add_content_types_provided(context(), crossbar_content_handler() | crossbar_content_handlers()) ->
-                                              context().
+                                        context().
 add_content_types_provided(#cb_context{content_types_provided=CTPs}=Context, [_|_]=NewCTPs) ->
     Context#cb_context{content_types_provided = NewCTPs ++ CTPs};
-add_content_types_provided(Context, {_, _}=NewCTP) ->
+add_content_types_provided(#cb_context{}=Context, {_, _}=NewCTP) ->
     add_content_types_provided(Context,[NewCTP]).
 
 -spec add_content_types_accepted(context(), crossbar_content_handler() | crossbar_content_handlers()) ->
-                                              context().
+                                        context().
 add_content_types_accepted(#cb_context{content_types_accepted=CTAs}=Context, [_|_]=NewCTAs) ->
     Context#cb_context{content_types_provided = NewCTAs ++ CTAs};
-add_content_types_accepted(Context, {_, _}=NewCTA) ->
+add_content_types_accepted(#cb_context{}=Context, {_, _}=NewCTA) ->
     add_content_types_provided(Context,[NewCTA]).
 
 %%--------------------------------------------------------------------
@@ -127,8 +153,8 @@ add_content_types_accepted(Context, {_, _}=NewCTA) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec store(term(), term(), context()) -> context().
-store(Key, Data, #cb_context{storage=Storage}=Context) ->
-    Context#cb_context{storage=[{Key, Data}|props:delete(Key, Storage)]}.
+store(#cb_context{storage=Storage}=Context, Key, Data) ->
+    Context#cb_context{storage=[{Key, Data} | props:delete(Key, Storage)]}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -165,9 +191,11 @@ put_reqid(#cb_context{req_id=ReqId}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-has_errors(#cb_context{validation_errors=JObj, resp_status='success'}) ->
+has_errors(#cb_context{validation_errors=JObj
+                       ,resp_status='success'
+                      }) ->
     (not wh_util:is_empty(JObj));
-has_errors(_) -> 'true'.
+has_errors(#cb_context{}) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
