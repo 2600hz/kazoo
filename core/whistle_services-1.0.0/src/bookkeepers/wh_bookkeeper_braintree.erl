@@ -12,7 +12,7 @@
 -export([transactions/3]).
 -export([subscriptions/1]).
 -export([commit_transactions/2]).
--export ([charge_transactions/2]).
+-export([charge_transactions/2]).
 
 
 -include("../whistle_services.hrl").
@@ -156,7 +156,7 @@ commit_transactions(BillingId, _Transactions, _Try) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec charge_transactions(ne_binary(), wh_transactions:wh_transactions()) -> 'ok' | 'error'.
+-spec charge_transactions(ne_binary(), wh_transactions:wh_transactions()) -> 'ok'.
 charge_transactions(BillingId, Transactions) ->
     Amount = lists:foldl(fun(JObj, Acc) ->
                             wh_json:get_value(<<"pvt_amount">>, JObj, 0) + Acc
@@ -164,13 +164,8 @@ charge_transactions(BillingId, Transactions) ->
                          ,0
                          ,Transactions
                         ),
-    try braintree_transaction:quick_sale(BillingId, Amount) of
-        _ -> 'ok'
-    catch
-        _E:_R ->
-            lager:error("error chrging transaction for ~p of ~p : ~p", [BillingId, Amount, _E])
-            'error'
-    end.
+     braintree_transaction:quick_sale(BillingId, Amount),
+     'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
