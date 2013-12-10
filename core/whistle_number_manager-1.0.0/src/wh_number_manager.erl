@@ -228,7 +228,7 @@ check_ports(Number) ->
 
             Numbers = wh_json:get_keys(<<"numbers">>, PortDoc, []),
             [spawn(?MODULE, 'ported', [PortNumber]) || PortNumber <- Numbers],
-            lager:debug("found port doc with number ~s in account ~s, moving over in ~p", [Number, AccountId, _Pid]),
+            lager:debug("found port doc with number ~s in account ~s, moving over in ~p", [Number, AccountId]),
             N;
         {'error', 'not_found'} ->
             {'not_found', Number}

@@ -74,16 +74,16 @@ transition_to_ready(JObj) ->
 transition_to_progress(JObj) ->
     transition(JObj, [?PORT_READY], ?PORT_PROGRESS).
 transition_to_complete(JObj) ->
-    transition(JObj, [?PORT_READY, ?PORT_PROGRESS, ?PORT_REJECTED], ?PORT_COMPLETE).
+    transition(JObj, [?PORT_READY, ?PORT_PROGRESS, ?PORT_REJECT], ?PORT_COMPLETE).
 transition_to_rejected(JObj) ->
-    transition(JObj, [?PORT_READY, ?PORT_PROGRESS], ?PORT_REJECTED).
+    transition(JObj, [?PORT_READY, ?PORT_PROGRESS], ?PORT_REJECT).
 
 -spec transition(wh_json:object(), ne_binaries(), ne_binary()) ->
                         {'ok', wh_json:object()} |
                         {'error', 'invalid_state_transition'}.
 transition(JObj, FromStates, ToState) ->
     transition(JObj, FromStates, ToState, current_state(JObj)).
-transition(JObj, [], _ToState, _CurrentState) ->
+transition(_JObj, [], _ToState, _CurrentState) ->
     {'error', 'invalid_state_transition'};
 transition(JObj, [CurrentState | _], ToState, CurrentState) ->
     wh_json:set_values([{?PORT_PVT_STATE, ToState}
