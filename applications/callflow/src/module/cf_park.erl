@@ -611,7 +611,7 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
                     'answered';
                 {'error', 'channel_hungup'} ->
                     lager:info("channel_hungup during ringback"),
-                    'channel_hungup'
+                    'channel_hungup';
                 _Else ->
                     lager:info("ringback failed, returning caller to parking slot: ~p" , [_Else]),
                     'failed'
