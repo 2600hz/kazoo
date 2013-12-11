@@ -79,8 +79,8 @@ transition_to_progress(JObj) ->
 transition_to_complete(JObj) ->
     case transition(JObj, [?PORT_READY, ?PORT_PROGRESS, ?PORT_REJECT], ?PORT_COMPLETE) of
         {'error', _}=E -> E;
-        Transitioned -> charge_for_port(Transitioned)
-    end;
+        Transitioned -> completed_port(Transitioned)
+    end.
 transition_to_rejected(JObj) ->
     transition(JObj, [?PORT_READY, ?PORT_PROGRESS], ?PORT_REJECT).
 
@@ -111,8 +111,64 @@ transition(JObj, [_FromState | FromStates], ToState, CurrentState) ->
     transition(JObj, FromStates, ToState, CurrentState).
 
 %% charge for port
+-spec charge_for_port(wh_json:object()) -> 'ok' | 'error'.
+-spec charge_for_port(wh_json:object(), ne_binary()) -> 'ok' | 'error'.
 charge_for_port(JObj) ->
     charge_for_port(JObj, wh_json:get_value(<<"pvt_account_id">>, JObj)).
-charge_for_port(JObj, AccountId) ->
+charge_for_port(_JObj, AccountId) ->
     Services = wh_services:fetch(AccountId),
-    Transaction = wh_transaction:debit(AccountId, Cost).
+    Cost = wh_services:activation_charges(<<"number_services">>, <<"port">>, Services),
+    Transaction = wh_transaction:debit(AccountId, Cost),
+    wh_services:commit_transactions(Services, [Transaction]).
+
+-spec completed_port(wh_json:object()) ->
+                            transition_response().
+completed_port(PortReq) ->
+    case charge_for_port(PortReq) of
+        'ok' ->
+            lager:debug("successfully charged for port, transtitioning numbers to active"),
+            transition_numbers(PortReq);
+        'error' ->
+            throw({'error', 'failed_to_charge'})
+    end.
+
+-spec transition_numbers(wh_json:object()) ->
+                                transition_response().
+transition_numbers(PortReq) ->
+    Numbers = wh_json:get_keys(<<"numbers">>, PortReq),
+    PortOps = [enable_number(N) || N <- Numbers],
+    case lists:all(fun(X) -> wh_util:is_true(X) end, PortOps) of
+        'true' ->
+            lager:debug("all numbers ported, removing from port req"),
+            clear_numbers_from_port(PortReq);
+        'false' ->
+            lager:debug("failed to transition numbers")
+    end.
+
+-spec clear_numbers_from_port(wh_json:object()) -> wh_json:object().
+clear_numbers_from_port(PortReq) ->
+    case couch_mgr:save_doc(?KZ_PORT_REQUESTS_DB, wh_json:set_value(<<"numbers">>, [], PortReq)) of
+        {'ok', PortReq1} -> lager:debug("port numbers cleared"), PortReq1;
+        {'error', 'conflict'} ->
+            lager:debug("port request doc was updated before we could re-save"),
+            PortReq;
+        {'error', _E} ->
+            lager:debug("failed to clear numbers: ~p", [_E]),
+            PortReq
+    end.
+
+
+-spec enable_number(ne_binary()) -> boolean().
+enable_number(N) ->
+    try wh_number_manager:ported(N) of
+        {'ok', _NumberDoc} ->
+            lager:debug("ported ~s: ~p", [N, _NumberDoc]),
+            'true';
+        _E ->
+            lager:debug("unexpected result to ported(~s): ~p", [N, _E]),
+            {'false', N}
+    catch
+        'throw':_E ->
+            lager:debug("throw from ported(~s): ~p", [N, _E]),
+            {'false', N}
+    end.
