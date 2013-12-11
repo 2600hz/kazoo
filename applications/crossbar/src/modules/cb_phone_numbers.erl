@@ -16,12 +16,14 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,content_types_accepted/4
          ,validate/2, validate/3, validate/4
+         ,validate_request/1
          ,authorize/1
          ,authenticate/1
          ,put/2, put/3, put/4
          ,post/2, post/4
          ,delete/2, delete/4
          ,summary/1
+         ,read/2
          ,populate_phone_numbers/1
         ]).
 
