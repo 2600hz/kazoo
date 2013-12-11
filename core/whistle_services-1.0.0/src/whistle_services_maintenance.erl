@@ -121,7 +121,8 @@ reconcile(Account) ->
 sync(Account) when not is_binary(Account) ->
     sync(wh_util:to_binary(Account));
 sync(Account) ->
-    wh_service_sync:sync(Account).
+    wh_service_sync:sync(Account),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public

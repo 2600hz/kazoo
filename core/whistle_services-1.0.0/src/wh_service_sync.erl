@@ -35,12 +35,15 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
+-spec sync(ne_binary()) -> wh_std_return().
 sync(Account) ->
     immediate_sync(Account).
 
+-spec clean(ne_binary()) -> wh_std_return().
 clean(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
@@ -64,6 +67,7 @@ clean(Account) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', #state{}}.
 init([]) ->
     case whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"sync_services">>, 'false') of
         'false' -> {'ok', #state{}};
@@ -119,6 +123,7 @@ handle_info({'try_sync_service'}, State) ->
     _TRef = erlang:send_after(ScanRate, self(), {'try_sync_service'}),
     {'noreply', State};
 handle_info(_Info, State) ->
+    lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -149,7 +154,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_sync_service/0 :: () -> wh_json:objects().
+-spec maybe_sync_service() -> wh_json:objects().
 maybe_sync_service() ->
     SyncBufferPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_buffer_period">>, 600),
     ViewOptions = [{'limit', 1}
@@ -162,7 +167,7 @@ maybe_sync_service() ->
         {'ok', _} -> {'error', 'no_dirty_services'}
     end.
 
--spec bump_modified/1 :: (wh_json:object()) -> _.
+-spec bump_modified(wh_json:object()) -> wh_std_return().
 bump_modified(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     UpdatedJObj = wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), JObj),
@@ -188,7 +193,7 @@ maybe_follow_billing_id(AccountId, ServiceJObj) ->
         BillingId -> follow_billing_id(BillingId, AccountId, ServiceJObj)
     end.
 
--spec follow_billing_id/3 :: (ne_binary(), ne_binary(), wh_json:object()) -> wh_std_return().
+-spec follow_billing_id(ne_binary(), ne_binary(), wh_json:object()) -> wh_std_return().
 follow_billing_id(BillingId, AccountId, ServiceJObj) ->
     case mark_dirty(BillingId) of
         {'ok', _} ->
@@ -214,7 +219,7 @@ maybe_sync_services(AccountId, ServiceJObj) ->
 
 -spec sync_services(ne_binary(), wh_json:object(), wh_service_items:items()) -> wh_std_return().
 sync_services(AccountId, ServiceJObj, ServiceItems) ->
-    try sync_services_bookkeeper(AccountId, ServiceItems, AccountId) of
+    try sync_services_bookkeeper(AccountId, ServiceJObj, ServiceItems) of
         'ok' ->
             _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
             lager:debug("synchronization with bookkeeper complete", []),
@@ -281,7 +286,6 @@ mark_clean(AccountId) when is_binary(AccountId) ->
     end;
 mark_clean(JObj) ->
     couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"pvt_dirty">>, false, JObj)).
-
 
 -spec mark_clean_and_status(ne_binary(), ne_binary() | wh_json:object()) -> wh_std_return().
 mark_clean_and_status(Status, AccountId) when is_binary(AccountId) ->
