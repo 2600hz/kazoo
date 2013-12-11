@@ -15,13 +15,13 @@
 -include("ts.hrl").
 
 start_link(RouteReqJObj) ->
-    proc_lib:start_link(?MODULE, init, [self(), RouteReqJObj]).
+    proc_lib:start_link(?MODULE, 'init', [self(), RouteReqJObj]).
 
 init(Parent, RouteReqJObj) ->
-    proc_lib:init_ack(Parent, {ok, self()}),
+    proc_lib:init_ack(Parent, {'ok', self()}),
     start_amqp(ts_callflow:init(RouteReqJObj)).
 
-start_amqp({error, not_ts_account}) -> ok;
+start_amqp({'error', 'not_ts_account'}) -> 'ok';
 start_amqp(State) ->
     endpoint_data(ts_callflow:start_amqp(State)).
 
@@ -29,12 +29,12 @@ endpoint_data(State) ->
     JObj = ts_callflow:get_request_data(State),
 
     try get_endpoint_data(JObj) of
-        {endpoint, EP} ->
+        {'endpoint', EP} ->
             proceed_with_endpoint(State, EP, JObj)
     catch
-        throw:no_did_found ->
+        'throw':'no_did_found' ->
             lager:info("call was not for a trunkstore number");
-        throw:_E ->
+        'throw':_E ->
             lager:info("thrown exception caught, not continuing: ~p", [_E])
     end.
 
@@ -42,13 +42,13 @@ proceed_with_endpoint(State, EP, JObj) ->
     CallID = ts_callflow:get_aleg_id(State),
     Q = ts_callflow:get_my_queue(State),
 
-    true = wapi_dialplan:bridge_endpoint_v(EP),
+    'true' = wapi_dialplan:bridge_endpoint_v(EP),
 
     MediaHandling = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Offnet-Loopback-Number">>], JObj) of
-                        undefined ->
+                        'undefined' ->
                             case wh_util:is_false(wh_json:get_value(<<"Bypass-Media">>, EP)) of
-                                true -> <<"process">>; %% bypass media is false, process media
-                                false -> <<"bypass">>
+                                'true' -> <<"process">>; %% bypass media is false, process media
+                                'false' -> <<"bypass">>
                             end;
                         _ -> <<"process">>
                     end,
@@ -72,11 +72,11 @@ send_park(State, Command) ->
 
 wait_for_win(State, Command) ->
     case ts_callflow:wait_for_win(State) of
-        {won, State1} ->
+        {'won', State1} ->
             lager:info("route won, sending command"),
             send_onnet(State1, Command);
-        {lost, _} ->
-            normal
+        {'lost', _} ->
+            'normal'
     end.
 
 send_onnet(State, Command) ->
@@ -103,7 +103,7 @@ wait_for_bridge(State) ->
 
 wait_for_cdr(State) ->
     case ts_callflow:wait_for_cdr(State) of
-        {cdr, aleg, _CDR, State1} ->
+        {'cdr', 'aleg', _CDR, State1} ->
             AcctID = ts_callflow:get_account_id(State1),
             Cost = ts_callflow:get_call_cost(State1),
 
@@ -113,36 +113,36 @@ wait_for_cdr(State) ->
                 <<>> ->
                     ALeg = ts_callflow:get_aleg_id(State1),
                     ts_callflow:finish_leg(State1, ALeg);
-                _Else -> wait_for_other_leg(State1, bleg)
+                _Else -> wait_for_other_leg(State1, 'bleg')
             end;
-        {cdr, bleg, _CDR, State2} ->
+        {'cdr', 'bleg', _CDR, State2} ->
             BLeg = ts_callflow:get_bleg_id(State2),
             AcctID = ts_callflow:get_account_id(State2),
             Cost = ts_callflow:get_call_cost(State2),
 
             lager:info("b-leg ~s CDR for ~s costs ~p", [BLeg, AcctID, Cost]),
 
-            wait_for_other_leg(State2, aleg);
-        {timeout, State3} ->
+            wait_for_other_leg(State2, 'aleg');
+        {'timeout', State3} ->
             lager:info("Timed out waiting for CDRs, cleaning up"),
             CallID = ts_callflow:get_aleg_id(State3),
             ts_callflow:finish_leg(State3, CallID)
     end.
 
-wait_for_other_leg(State, aleg) ->
+wait_for_other_leg(State, 'aleg') ->
     ts_callflow:send_hangup(State),
-    wait_for_other_leg(State, aleg, ts_callflow:wait_for_cdr(State));
-wait_for_other_leg(State, bleg) ->
-    wait_for_other_leg(State, bleg, ts_callflow:wait_for_cdr(State)).
+    wait_for_other_leg(State, 'aleg', ts_callflow:wait_for_cdr(State));
+wait_for_other_leg(State, 'bleg') ->
+    wait_for_other_leg(State, 'bleg', ts_callflow:wait_for_cdr(State)).
 
-wait_for_other_leg(_State, aleg, {cdr, aleg, _CDR, State1}) ->
+wait_for_other_leg(_State, 'aleg', {'cdr', 'aleg', _CDR, State1}) ->
     ts_callflow:finish_leg(State1, ts_callflow:get_aleg_id(State1));
-wait_for_other_leg(_State, bleg, {cdr, bleg, _CDR, State1}) ->
+wait_for_other_leg(_State, 'bleg', {'cdr', 'bleg', _CDR, State1}) ->
     ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1));
-wait_for_other_leg(_State, Leg, {cdr, _OtherLeg, _CDR, State1}) ->
+wait_for_other_leg(_State, Leg, {'cdr', _OtherLeg, _CDR, State1}) ->
     lager:info("waiting for leg ~s, got cdr for ~s again, ignoring", [Leg, _OtherLeg]),
     wait_for_other_leg(State1, Leg);
-wait_for_other_leg(_State, Leg, {timeout, State1}) ->
+wait_for_other_leg(_State, Leg, {'timeout', State1}) ->
     lager:info("timed out waiting for ~s CDR, cleaning up", [Leg]),
 
     ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1)).
@@ -153,26 +153,26 @@ try_failover(State) ->
             lager:info("no callctl for failover"),
             ts_callflow:send_hangup(State),
             wait_for_cdr(State);
-        {_, undefined} ->
+        {_, 'undefined'} ->
             lager:info("no failover defined"),
             ts_callflow:send_hangup(State),
             wait_for_cdr(State);
         {_, Failover} ->
             case wh_json:is_empty(Failover) of
-                true ->
+                'true' ->
                     lager:info("no failover configured"),
                     ts_callflow:send_hangup(State),
                     wait_for_cdr(State);
-                false ->
+                'false' ->
                     lager:info("trying failover"),
                     case wh_json:get_value(<<"e164">>, Failover) of
-                        undefined -> try_failover_sip(State, wh_json:get_value(<<"sip">>, Failover));
+                        'undefined' -> try_failover_sip(State, wh_json:get_value(<<"sip">>, Failover));
                         DID -> try_failover_e164(State, DID)
                     end
             end
     end.
 
-try_failover_sip(State, undefined) ->
+try_failover_sip(State, 'undefined') ->
     lager:info("SIP failover undefined"),
     wait_for_cdr(State);
 try_failover_sip(State, SIPUri) ->
@@ -198,7 +198,6 @@ try_failover_sip(State, SIPUri) ->
 
 try_failover_e164(State, ToDID) ->
     CallID = ts_callflow:get_aleg_id(State),
-
     AcctID = ts_callflow:get_account_id(State),
     EP = ts_callflow:get_endpoint_data(State),
     CtlQ = ts_callflow:get_control_queue(State),
@@ -219,11 +218,11 @@ try_failover_e164(State, ToDID) ->
            ,{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"Outbound-Caller-ID-Name">>, EP)}
            ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"Outbound-Caller-ID-Number">>, EP)}
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
+           ,{<<"Hunt-Account-ID">>, wh_json:get_value(<<"Hunt-Account-ID">>, EP)}
            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
           ],
     lager:info("sending offnet request for DID ~s", [ToDID]),
-    wapi_offnet_resource:publish_req(Req),
-
+    wapi_offnet_resource:publish_req(props:filter_undefined(Req)),
     wait_for_bridge(ts_callflow:set_failover(State, wh_json:new())).
 
 %%--------------------------------------------------------------------
@@ -231,12 +230,13 @@ try_failover_e164(State, ToDID) ->
 %%--------------------------------------------------------------------
 -spec get_endpoint_data(wh_json:object()) -> {'endpoint', wh_json:object()}.
 get_endpoint_data(JObj) ->
+
     %% wh_timer:tick("inbound_route/1"),
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     ToDID = wnm_util:to_e164(ToUser),
 
-    {ok, AcctId, NumberProps} = wh_number_manager:lookup_account_by_number(ToDID),
-    ForceOut = props:get_value(force_outbound, NumberProps),
+    {'ok', AcctId, NumberProps} = wh_number_manager:lookup_account_by_number(ToDID),
+    ForceOut = props:get_value('force_outbound', NumberProps),
     lager:info("acct ~s force out ~s", [AcctId, ForceOut]),
 
     RoutingData = routing_data(ToDID, AcctId),
@@ -247,7 +247,7 @@ get_endpoint_data(JObj) ->
     InFormat = props:get_value(<<"Invite-Format">>, RoutingData, <<"username">>),
     Invite = ts_util:invite_format(wh_util:to_lower_binary(InFormat), ToDID) ++ RoutingData,
 
-    {endpoint, wh_json:from_list([{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Auth-User">>, AuthUser}
+    {'endpoint', wh_json:from_list([{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Auth-User">>, AuthUser}
                                                                                  ,{<<"Auth-Realm">>, AuthRealm}
                                                                                  ,{<<"Direction">>, <<"inbound">>}
                                                                                  ,{<<"Account-ID">>, AcctId}
@@ -261,30 +261,31 @@ get_endpoint_data(JObj) ->
 -spec routing_data(ne_binary(), ne_binary(), wh_json:object()) -> [{<<_:48,_:_*8>>,_},...] | [].
 routing_data(ToDID, AcctID) ->
     case ts_util:lookup_did(ToDID, AcctID) of
-        {ok, Settings} ->
+        {'ok', Settings} ->
             lager:info("got settings for DID ~s", [ToDID]),
             routing_data(ToDID, AcctID, Settings);
-        {error, no_did_found} ->
+        {'error', 'no_did_found'} ->
             lager:info("DID ~s not found in ~s", [ToDID, AcctID]),
-            throw(no_did_found)
+            throw('no_did_found')
     end.
 
 routing_data(ToDID, AcctID, Settings) ->
     AuthOpts = wh_json:get_value(<<"auth">>, Settings, wh_json:new()),
     Acct = wh_json:get_value(<<"account">>, Settings, wh_json:new()),
     DIDOptions = wh_json:get_value(<<"DID_Opts">>, Settings, wh_json:new()),
+    HuntAccountId = wh_json:get_value([<<"server">>, <<"hunt_account_id">>], Settings),
     RouteOpts = wh_json:get_value(<<"options">>, DIDOptions, []),
 
     NumConfig = case wh_number_manager:get_public_fields(ToDID, AcctID) of
-                    {ok, Fields} -> Fields;
-                    {error, _} -> wh_json:new()
+                    {'ok', Fields} -> Fields;
+                    {'error', _} -> wh_json:new()
                 end,
 
     AuthU = wh_json:get_value(<<"auth_user">>, AuthOpts),
     AuthR = wh_json:get_value(<<"auth_realm">>, AuthOpts, wh_json:get_value(<<"auth_realm">>, Acct)),
 
     {Srv, AcctStuff} = try
-                           {ok, AccountSettings} = ts_util:lookup_user_flags(AuthU, AuthR, AcctID),
+                           {'ok', AccountSettings} = ts_util:lookup_user_flags(AuthU, AuthR, AcctID),
                            lager:info("got account settings"),
                            {
                              wh_json:get_value(<<"server">>, AccountSettings, wh_json:new())
@@ -299,8 +300,8 @@ routing_data(ToDID, AcctID, Settings) ->
     SrvOptions = wh_json:get_value(<<"options">>, Srv, wh_json:new()),
 
     case wh_util:is_true(wh_json:get_value(<<"enabled">>, SrvOptions)) of
-        false -> throw({server_disabled, wh_json:get_value(<<"id">>, Srv)});
-        true -> ok
+        'false' -> throw({'server_disabled', wh_json:get_value(<<"id">>, Srv)});
+        'true' -> 'ok'
     end,
 
     InboundFormat = wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>),
@@ -375,22 +376,23 @@ routing_data(ToDID, AcctID, Settings) ->
                          ,{<<"To-Realm">>, AuthR}
                          ,{<<"To-DID">>, ToDID}
                          ,{<<"Route-Options">>, RouteOpts}
+                         ,{<<"Hunt-Account-ID">>, HuntAccountId}
                        ],
-           V =/= undefined,
+           V =/= 'undefined',
            V =/= <<>>
     ].
 
-callee_id([]) -> {undefined, undefined};
-callee_id([undefined | T]) -> callee_id(T);
+callee_id([]) -> {'undefined', 'undefined'};
+callee_id(['undefined' | T]) -> callee_id(T);
 callee_id([<<>> | T]) -> callee_id(T);
 callee_id([JObj | T]) ->
     case wh_json:is_json_object(JObj) andalso (not wh_json:is_empty(JObj)) of
-        true ->
+        'true' ->
             case {wh_json:get_value(<<"cid_name">>, JObj), wh_json:get_value(<<"cid_number">>, JObj)} of
-                {undefined, undefined} ->
+                {'undefined', 'undefined'} ->
                     callee_id(T);
                 CalleeID -> CalleeID
             end;
-        false ->
+        'false' ->
             callee_id(T)
     end.
