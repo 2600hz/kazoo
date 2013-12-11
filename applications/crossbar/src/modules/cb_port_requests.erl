@@ -686,7 +686,16 @@ maybe_move_state(Id, Context, PortState) ->
     of
         'false' -> Context1;
         {'ok', PortRequest} ->
-            cb_context:set_doc(Context1, PortRequest);
+            try_and_move_state(Context1, PortState, PortRequest);
+        {'error', 'invalid_state_transition'} ->
+            cb_context:add_validation_error(<<"port_state">>, <<"enum">>, <<"cannot move to new state from current state">>, Context)
+    end.
+
+-spec try_and_move_state(cb_context:context(), ne_binary(), wh_json:object()) -> cb_context:context().
+try_and_move_state(Context, PortState, PortRequest) ->
+    case wh_port_request:maybe_transition(PortRequest, PortState) of
+        {'ok', Transitioned} ->
+            cb_context:set_doc(Context, Transitioned);
         {'error', 'invalid_state_transition'} ->
             cb_context:add_validation_error(<<"port_state">>, <<"enum">>, <<"cannot move to new state from current state">>, Context)
     end.

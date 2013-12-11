@@ -17,10 +17,14 @@
          ,transition_to_progress/1
          ,transition_to_complete/1
          ,transition_to_rejected/1
+         ,maybe_transition/2
         ]).
 
 -include("wnm.hrl").
 -include_lib("whistle_number_manager/include/wh_port_request.hrl").
+
+-type transition_response() :: {'ok', wh_json:object()} |
+                               {'error', 'invalid_state_transition'}.
 
 -spec init() -> any().
 init() ->
@@ -61,9 +65,6 @@ normalize_numbers(JObj) ->
                       ,JObj
                      ).
 
--type transition_response() :: {'ok', wh_json:object()} |
-                               {'error', 'invalid_state_transition'}.
-
 -spec transition_to_ready(wh_json:object()) -> transition_response().
 -spec transition_to_progress(wh_json:object()) -> transition_response().
 -spec transition_to_complete(wh_json:object()) -> transition_response().
@@ -78,9 +79,17 @@ transition_to_complete(JObj) ->
 transition_to_rejected(JObj) ->
     transition(JObj, [?PORT_READY, ?PORT_PROGRESS], ?PORT_REJECT).
 
--spec transition(wh_json:object(), ne_binaries(), ne_binary()) ->
-                        {'ok', wh_json:object()} |
-                        {'error', 'invalid_state_transition'}.
+-spec maybe_transition(wh_json:object(), ne_binary()) -> transition_response().
+maybe_transition(PortReq, ?PORT_READY) ->
+    transition_to_ready(PortReq);
+maybe_transition(PortReq, ?PORT_PROGRESS) ->
+    transition_to_progress(PortReq);
+maybe_transition(PortReq, ?PORT_COMPLETE) ->
+    transition_to_complete(PortReq);
+maybe_transition(PortReq, ?PORT_REJECT) ->
+    transition_to_rejected(PortReq).
+
+-spec transition(wh_json:object(), ne_binaries(), ne_binary()) -> transition_response().
 transition(JObj, FromStates, ToState) ->
     transition(JObj, FromStates, ToState, current_state(JObj)).
 transition(_JObj, [], _ToState, _CurrentState) ->
