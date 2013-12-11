@@ -115,6 +115,10 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
                     cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)),
                     whapps_call_command:wait_for_hangup();
                 {'error', _E}=E ->
+                    PresenceId = wh_json:get_value(<<"Presence-ID">>, Slot),
+                    ParkingId = wh_util:to_hex_binary(crypto:md5(PresenceId)),
+                    lager:info("update presence-id '~s' with state: terminated", [PresenceId]),
+                    _ = whapps_call_command:presence(<<"terminated">>, PresenceId, ParkingId),
                     lager:debug("failed to retrieve slot: ~p", [_E]),
                     E
             end
@@ -210,6 +214,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
             TmpCID = <<"Parking slot ", SlotNumber/binary, " occupied">>,
             case ringback_parker(wh_json:get_value(<<"Ringback-ID">>, Slot), SlotNumber, TmpCID, Call) of
                 'answered' -> cf_exe:continue(Call);
+                'channel_hungup' -> cf_exe:stop(Call);
                 'failed' ->
                     whapps_call_command:hangup(Call),
                     cf_exe:stop(Call)
@@ -369,7 +374,7 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
                                      'false' -> J;
                                      'true' ->
                                          case cf_attributes:moh_attributes(RingbackId, <<"media_id">>, Call) of
-                                             'undefined' -> J;                                             
+                                             'undefined' -> J;
                                              RingbackHoldMedia ->
                                                  wh_json:set_value(<<"Hold-Media">>, RingbackHoldMedia, J)
                                          end
@@ -380,7 +385,7 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
                                      'undefined' ->
                                          case maybe_get_ringback_id(Call) of
                                              'undefined' -> J;
-                                             RingbackId ->                                                 
+                                             RingbackId ->
                                                  wh_json:set_value(<<"Ringback-ID">>, RingbackId, J)
                                          end;
                                      _Else -> J
@@ -549,7 +554,7 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
                 'failed' ->
                     lager:info("ringback was not answered, continuing to hold parked call"),
                     wait_for_pickup(SlotNumber, Slot, Call);
-                'false' ->
+                _Else ->
                     lager:info("parked call doesnt exist anymore, hangup"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
                     cf_exe:stop(Call)
@@ -586,7 +591,7 @@ get_endpoint_id(Username, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec ringback_parker(api_binary(), ne_binary(), ne_binary(), whapps_call:call()) ->
-                             'answered' | 'failed'.
+                             'answered' | 'failed' | 'channel_hungup'.
 ringback_parker('undefined', _, _, _) -> 'failed';
 ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
     case cf_endpoint:build(EndpointId, wh_json:from_list([{<<"can_call_self">>, 'true'}]), Call) of
@@ -604,8 +609,11 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
                 {'ok', _} ->
                     lager:info("completed successful bridge to the ringback device"),
                     'answered';
+                {'error', 'channel_hungup'} ->
+                    lager:info("channel_hungup during ringback"),
+                    'channel_hungup'
                 _Else ->
-                    lager:info("ringback failed, returning caller to parking slot"),
+                    lager:info("ringback failed, returning caller to parking slot: ~p" , [_Else]),
                     'failed'
             end;
         _ -> 'failed'
