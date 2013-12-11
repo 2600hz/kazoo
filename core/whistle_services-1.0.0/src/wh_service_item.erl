@@ -249,7 +249,7 @@ set_cumulative_discount_rate(Rate, #wh_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bookkeeper(wh_json:json_key(), item()) -> 'undefined' | term().
+-spec bookkeeper(wh_json:key(), item()) -> api_object().
 bookkeeper(Bookkeeper, #wh_service_item{bookkeepers=Bookkeepers}) ->
     wh_json:get_ne_value(Bookkeeper, Bookkeepers).
 

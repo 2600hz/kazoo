@@ -154,7 +154,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_sync_service() -> wh_json:objects().
+-spec maybe_sync_service() -> wh_std_return().
 maybe_sync_service() ->
     SyncBufferPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_buffer_period">>, 600),
     ViewOptions = [{'limit', 1}
@@ -278,21 +278,11 @@ mark_dirty(JObj) ->
                                                             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                                            ], JObj)).
 
--spec mark_clean(ne_binary() | wh_json:object()) -> wh_std_return().
-mark_clean(AccountId) when is_binary(AccountId) ->
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
-        {'error', _}=E -> E;
-        {'ok', JObj} -> mark_clean(JObj)
-    end;
+-spec mark_clean(wh_json:object()) -> wh_std_return().
 mark_clean(JObj) ->
-    couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"pvt_dirty">>, false, JObj)).
+    couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"pvt_dirty">>, 'false', JObj)).
 
--spec mark_clean_and_status(ne_binary(), ne_binary() | wh_json:object()) -> wh_std_return().
-mark_clean_and_status(Status, AccountId) when is_binary(AccountId) ->
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
-        {'error', _}=E -> E;
-        {'ok', JObj} -> mark_clean_and_status(Status, JObj)
-    end;
+-spec mark_clean_and_status(ne_binary(), wh_json:object()) -> wh_std_return().
 mark_clean_and_status(Status, JObj) ->
     lager:debug("marking services clean with status ~s", [Status]),
     couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_values([{<<"pvt_dirty">>, 'false'}

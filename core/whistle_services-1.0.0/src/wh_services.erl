@@ -743,7 +743,7 @@ populate_service_plans(JObj, ResellerId) ->
     Plans = incorporate_default_service_plan(ResellerId, master_default_service_plan()),
     incorporate_depreciated_service_plans(Plans, JObj).
 
--spec default_service_plan_id(ne_binary()) -> api_object().
+-spec default_service_plan_id(ne_binary()) -> api_binary().
 default_service_plan_id(ResellerId) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, ResellerId) of
         {'ok', JObj} -> wh_json:get_value(<<"default_service_plan">>, JObj);
@@ -752,7 +752,7 @@ default_service_plan_id(ResellerId) ->
             'undefined'
     end.
 
--spec depreciated_default_service_plan_id(ne_binary()) -> api_object().
+-spec depreciated_default_service_plan_id(ne_binary()) -> api_binary().
 depreciated_default_service_plan_id(ResellerId) ->
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
     case couch_mgr:open_doc(ResellerDb, ResellerId) of

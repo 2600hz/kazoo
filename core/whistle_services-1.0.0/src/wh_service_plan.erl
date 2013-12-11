@@ -48,8 +48,10 @@ activation_charges(Category, Item, ServicePlan) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_items(wh_json:object(), wh_service_items:items(), wh_services:services()) -> wh_service_items:items().
--spec create_items(ne_binary(), ne_binary(), wh_json:object(), wh_service_items:items(), wh_services:services()) -> wh_service_items:items().
+-spec create_items(wh_json:object(), wh_service_items:items(), wh_services:services()) ->
+                          wh_service_items:items().
+-spec create_items(ne_binary(), ne_binary(), wh_service_items:items(), wh_json:object(), wh_services:services()) ->
+                          wh_service_items:items().
 
 create_items(ServicePlan, ServiceItems, Services) ->
     Plan = wh_json:get_value(<<"plan">>, ServicePlan, wh_json:new()),

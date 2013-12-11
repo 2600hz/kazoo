@@ -18,11 +18,11 @@
 -include("../whistle_services.hrl").
 
 -record(wh_service_update, {bt_subscription
-                            ,plan_id
+                            ,plan_id :: api_binary()
                            }).
 
--record(wh_service_updates, {bt_subscriptions = []
-                             ,account_id
+-record(wh_service_updates, {bt_subscriptions = [] :: [update(),...] | []
+                             ,account_id :: api_binary()
                              ,bt_customer
                             }).
 
@@ -287,7 +287,7 @@ braintree_plan_addon_id(ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec braintree_cumulative_discount_id(wh_service_item:item()) -> api_binary().
+-spec braintree_cumulative_discount_id(wh_service_item:item()) -> api_object().
 braintree_cumulative_discount_id(ServiceItem) ->
     wh_service_item:bookkeeper([<<"braintree">>, <<"discounts">>, <<"cumulative">>], ServiceItem).
 
@@ -298,6 +298,6 @@ braintree_cumulative_discount_id(ServiceItem) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec braintree_single_discount_id(wh_service_items:item()) ->
-                                                {api_binary(), api_binary()}.
+                                          api_object().
 braintree_single_discount_id(ServiceItem) ->
     wh_service_item:bookkeeper([<<"braintree">>, <<"discounts">>, <<"single">>], ServiceItem).
