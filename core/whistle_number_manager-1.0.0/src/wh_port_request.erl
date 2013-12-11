@@ -18,6 +18,7 @@
          ,transition_to_complete/1
          ,transition_to_rejected/1
          ,maybe_transition/2
+         ,charge_for_port/1, charge_for_port/2
         ]).
 
 -include("wnm.hrl").
@@ -35,6 +36,7 @@ init() ->
 current_state(JObj) ->
     wh_json:get_first_defined([?PORT_PVT_STATE, ?PORT_STATE], JObj, ?PORT_WAITING).
 
+-spec public_fields(wh_json:object()) -> wh_json:object().
 public_fields(JObj) ->
     As = wh_json:get_value(<<"_attachments">>, JObj, wh_json:new()),
     NormalizedAs = normalize_attachments(As),
@@ -75,7 +77,10 @@ transition_to_ready(JObj) ->
 transition_to_progress(JObj) ->
     transition(JObj, [?PORT_READY], ?PORT_PROGRESS).
 transition_to_complete(JObj) ->
-    transition(JObj, [?PORT_READY, ?PORT_PROGRESS, ?PORT_REJECT], ?PORT_COMPLETE).
+    case transition(JObj, [?PORT_READY, ?PORT_PROGRESS, ?PORT_REJECT], ?PORT_COMPLETE) of
+        {'error', _}=E -> E;
+        Transitioned -> charge_for_port(Transitioned)
+    end;
 transition_to_rejected(JObj) ->
     transition(JObj, [?PORT_READY, ?PORT_PROGRESS], ?PORT_REJECT).
 
@@ -89,7 +94,10 @@ maybe_transition(PortReq, ?PORT_COMPLETE) ->
 maybe_transition(PortReq, ?PORT_REJECT) ->
     transition_to_rejected(PortReq).
 
--spec transition(wh_json:object(), ne_binaries(), ne_binary()) -> transition_response().
+-spec transition(wh_json:object(), ne_binaries(), ne_binary()) ->
+                        transition_response().
+-spec transition(wh_json:object(), ne_binaries(), ne_binary(), ne_binary()) ->
+                        transition_response().
 transition(JObj, FromStates, ToState) ->
     transition(JObj, FromStates, ToState, current_state(JObj)).
 transition(_JObj, [], _ToState, _CurrentState) ->
@@ -102,5 +110,9 @@ transition(JObj, [CurrentState | _], ToState, CurrentState) ->
 transition(JObj, [_FromState | FromStates], ToState, CurrentState) ->
     transition(JObj, FromStates, ToState, CurrentState).
 
-%% generic transition_state()
 %% charge for port
+charge_for_port(JObj) ->
+    charge_for_port(JObj, wh_json:get_value(<<"pvt_account_id">>, JObj)).
+charge_for_port(JObj, AccountId) ->
+    Services = wh_services:fetch(AccountId),
+    Transaction = wh_transaction:debit(AccountId, Cost).
