@@ -20,6 +20,8 @@
          ,add_content_types_provided/2
          ,add_content_types_accepted/2
 
+         ,is_context/1
+
          %% Getters / Setters
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
@@ -53,6 +55,10 @@
 -export_type([context/0
               ,setter_fun/0
              ]).
+
+-spec is_context(any()) -> boolean().
+is_context(#cb_context{}) -> 'true';
+is_context(_) -> 'false'.
 
 -spec req_value(context(), wh_json:key()) -> wh_json:json_term().
 -spec req_value(context(), wh_json:key(), term()) -> wh_json:json_term().
@@ -152,7 +158,7 @@ add_content_types_accepted(#cb_context{}=Context, {_, _}=NewCTA) ->
 %% this request.
 %% @end
 %%--------------------------------------------------------------------
--spec store(term(), term(), context()) -> context().
+-spec store(context(), term(), term()) -> context().
 store(#cb_context{storage=Storage}=Context, Key, Data) ->
     Context#cb_context{storage=[{Key, Data} | props:delete(Key, Storage)]}.
 
@@ -162,13 +168,13 @@ store(#cb_context{storage=Storage}=Context, Key, Data) ->
 %% Fetches a previously stored value from the current request.
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(term(), context()) -> term().
--spec fetch(term(), context(), term()) -> term().
+-spec fetch(context(), term()) -> term().
+-spec fetch(context(), term(), term()) -> term().
 
-fetch(Key, #cb_context{}=Context) ->
-    fetch(Key, Context, 'undefined').
+fetch(#cb_context{}=Context, Key) ->
+    fetch(Context, Key, 'undefined').
 
-fetch(Key, #cb_context{storage=Storage}, Default) ->
+fetch(#cb_context{storage=Storage}, Key, Default) ->
     case props:get_value(Key, Storage) of
         'undefined' -> Default;
         Else -> Else

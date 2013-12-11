@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% Common functions for the provisioner modules
@@ -31,14 +31,16 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec get_mac_address(cb_context:context()) -> 'undefined' | string().
-get_mac_address(#cb_context{doc=JObj}) ->
-    case wh_json:get_ne_value(<<"mac_address">>, JObj) of
+get_mac_address(Context) ->
+    case wh_json:get_ne_value(<<"mac_address">>, cb_context:doc(Context)) of
         'undefined' -> 'undefined';
         MACAddress ->
             re:replace(wh_util:to_list(MACAddress)
                        ,"[^0-9a-fA-F]"
                        ,""
-                       ,[{'return', 'list'}, 'global'])
+                       ,[{'return', 'list'}
+                         ,'global'
+                        ])
     end.
 
 %%--------------------------------------------------------------------
@@ -48,8 +50,8 @@ get_mac_address(#cb_context{doc=JObj}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_old_mac_address(cb_context:context()) -> 'undefined' | string().
-get_old_mac_address(#cb_context{storage=Prop}) ->
-    case proplists:get_value('db_doc', Prop, 'undefined') of
+get_old_mac_address(Context) ->
+    case cb_context:fetch(Context, 'db_doc') of
         'undefined' -> 'undefined';
         JObj ->
             case wh_json:get_ne_value(<<"mac_address">>, JObj) of
@@ -58,10 +60,11 @@ get_old_mac_address(#cb_context{storage=Prop}) ->
                     re:replace(wh_util:to_list(MACAddress)
                                ,"[^0-9a-fA-F]"
                                ,""
-                               ,[{'return', 'list'}, 'global'])
+                               ,[{'return', 'list'}
+                                 ,'global'
+                                ])
             end
     end.
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -70,26 +73,29 @@ get_old_mac_address(#cb_context{storage=Prop}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_provision(cb_context:context()) -> boolean().
-maybe_provision(#cb_context{resp_status='success'}=Context) ->
+-spec maybe_provision(cb_context:context(), crossbar_status()) -> boolean().
+maybe_provision(Context) ->
+    maybe_provision(Context, cb_context:resp_status(Context)).
+maybe_provision(Context, 'success') ->
     MACAddress = get_mac_address(Context),
     case MACAddress =/= 'undefined'
         andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>)
     of
         <<"super_awesome_provisioner">> ->
-            spawn(fun() ->
-                          do_full_provisioner_provider(MACAddress, Context),
-                          do_full_provision(MACAddress, Context)
-                  end),
-            true;
+            _ = spawn(fun() ->
+                              do_full_provisioner_provider(MACAddress, Context),
+                              do_full_provision(MACAddress, Context)
+                      end),
+            'true';
         <<"awesome_provisioner">> ->
-            spawn(fun() -> do_awesome_provision(MACAddress, Context) end),
+            _ = spawn(fun() -> do_awesome_provision(MACAddress, Context) end),
             'true';
         <<"simple_provisioner">>  ->
-            spawn(fun() -> do_simple_provision(MACAddress, Context) end),
+            _ = spawn(fun() -> do_simple_provision(MACAddress, Context) end),
             'true';
         _ -> 'false'
     end;
-maybe_provision(_) -> 'false'.
+maybe_provision(_Context, _Status) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -98,20 +104,22 @@ maybe_provision(_) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_delete_provision(cb_context:context()) -> boolean().
-maybe_delete_provision(#cb_context{resp_status='success'}=Context) ->
+-spec maybe_delete_provision(cb_context:context(), crossbar_status()) -> boolean().
+maybe_delete_provision(Context) ->
+    maybe_delete_provision(Context, cb_context:resp_status(Context)).
+maybe_delete_provision(Context, 'success') ->
     MACAddress = get_mac_address(Context),
     case MACAddress =/= 'undefined'
         andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>)
     of
         <<"super_awesome_provisioner">> ->
-            spawn(fun() ->
-                          delete_full_provision(MACAddress, Context)
-                  end),
+            _ = spawn(fun() ->
+                              delete_full_provision(MACAddress, Context)
+                      end),
             'true';
         _ -> 'false'
     end;
-
-maybe_delete_provision(_) -> 'false'.
+maybe_delete_provision(_Context, _Status) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -120,45 +128,44 @@ maybe_delete_provision(_) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_delete_account(cb_context:context()) -> boolean().
-maybe_delete_account(#cb_context{}=Context) ->
-    case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>) of
+maybe_delete_account(Context) ->
+    case cb_context:is_context(Context)
+        andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>)
+    of
+        'false' -> 'false';
         <<"super_awesome_provisioner">> ->
-            spawn(fun() ->
-                          delete_account(Context)
-                  end),
+            _ = spawn(fun() ->
+                              delete_account(Context)
+                      end),
             'true';
         _ -> 'false'
-    end;
-
-maybe_delete_account(_) -> 'false'.
-
+    end.
 
 -spec maybe_send_contact_list(cb_context:context()) -> cb_context:context().
-maybe_send_contact_list(#cb_context{resp_status='success'}=Context) ->
+-spec maybe_send_contact_list(cb_context:context(), crossbar_status()) -> cb_context:context().
+maybe_send_contact_list(Context) ->
+    maybe_send_contact_list(Context, cb_context:resp_status(Context)).
+maybe_send_contact_list(Context, 'success') ->
     _ = case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>) of
             <<"super_awesome_provisioner">> ->
                 spawn(fun() -> do_full_provision_contact_list(Context) end);
             _ -> 'ok'
         end,
     Context;
-maybe_send_contact_list(Context) ->
+maybe_send_contact_list(Context, _Status) ->
     Context.
 
 -spec do_full_provisioner_provider(any(), cb_context:context()) -> boolean().
-do_full_provisioner_provider(_, #cb_context{db_name=AccountDb
-                                            ,account_id=AccountId
-                                           }) ->
-    do_full_provision_contact_list(AccountId, AccountDb).
+do_full_provisioner_provider(_, Context) ->
+    do_full_provision_contact_list(cb_context:account_id(Context), cb_context:account_db(Context)).
 
 -spec do_full_provision_contact_list(cb_context:context()) -> boolean().
--spec do_full_provision_contact_list(text(), ne_binary()) -> boolean().
+-spec do_full_provision_contact_list(ne_binary(), ne_binary()) -> boolean().
 
-do_full_provision_contact_list(#cb_context{db_name=AccountDb
-                                           ,account_id=AccountId
-                                          }=Context) ->
+do_full_provision_contact_list(Context) ->
     case should_build_contact_list(Context) of
         'false' -> 'false';
-        'true' -> do_full_provision_contact_list(AccountId, AccountDb)
+        'true' -> do_full_provision_contact_list(cb_context:account_id(Context), cb_context:account_db(Context))
     end.
 
 do_full_provision_contact_list(AccountId, AccountDb) ->
@@ -183,8 +190,10 @@ do_full_provision_contact_list(AccountId, AccountDb) ->
             'false'
     end.
 
-should_build_contact_list(#cb_context{doc=JObj}=Context) ->
-    OriginalJObj = cb_context:fetch('db_doc', Context),
+-spec should_build_contact_list(cb_context:context()) -> boolean().
+should_build_contact_list(Context) ->
+    OriginalJObj = cb_context:fetch(Context, 'db_doc'),
+    JObj = cb_context:doc(Context),
     case wh_json:is_json_object(OriginalJObj) of
         'false' ->
             wh_json:get_value(<<"pvt_type">>, JObj) =:= <<"callflow">>;
@@ -193,8 +202,8 @@ should_build_contact_list(#cb_context{doc=JObj}=Context) ->
                 orelse wh_json:get_value(<<"name">>, JObj) =/=  wh_json:get_value(<<"name">>, OriginalJObj)
                 orelse wh_json:get_value(<<"first_name">>, JObj) =/=  wh_json:get_value(<<"first_name">>, OriginalJObj)
                 orelse wh_json:get_value(<<"last_name">>, JObj) =/=  wh_json:get_value(<<"last_name">>, OriginalJObj)
-                orelse wh_json:get_value([<<"contact_list">>, <<"exclude">>], JObj)
-                =/=  wh_json:get_value([<<"contact_list">>, <<"exclude">>], OriginalJObj)
+                orelse wh_json:get_value([<<"contact_list">>, <<"exclude">>], JObj) =/=
+                wh_json:get_value([<<"contact_list">>, <<"exclude">>], OriginalJObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -294,10 +303,10 @@ delete_full_provision(MACAddress, JObj) ->
                    ,"/", (wh_util:to_binary(MACAddress))/binary>>,
     send_to_full_provisioner(PartialURL).
 
--spec do_full_provision(string(), cb_context:context()) -> boolean().
+-spec do_full_provision(string(), cb_context:context() | wh_json:object()) -> boolean().
 do_full_provision(MACAddress, #cb_context{}=Context) ->
     case get_merged_device(MACAddress, Context) of
-        {'ok', #cb_context{doc=JObj}} ->
+        {'ok', Context1} ->
             OldMACAddress = provisioner_util:get_old_mac_address(Context),
             case OldMACAddress =/= MACAddress
                 andalso OldMACAddress =/= 'undefined'
@@ -305,7 +314,7 @@ do_full_provision(MACAddress, #cb_context{}=Context) ->
                 'true' -> delete_full_provision(OldMACAddress, Context);
                 _ -> 'ok'
             end,
-            do_full_provision(MACAddress, JObj)
+            do_full_provision(MACAddress, cb_context:doc(Context1))
     end;
 do_full_provision(MACAddress, JObj) ->
     PartialURL = <<(wh_json:get_binary_value(<<"account_id">>, JObj))/binary
@@ -453,9 +462,11 @@ send_provisioning_template(JObj, #cb_context{doc=Device}=Context) ->
 -spec get_template(cb_context:context()) ->
                           {'ok', wh_json:object()} |
                           {'error', term()}.
-get_template(#cb_context{doc=Device, db_name=Db}) ->
-    DocId = wh_json:get_value([<<"provision">>, <<"id">>], Device),
-    case is_binary(DocId) andalso couch_mgr:fetch_attachment(Db, DocId, ?TEMPLATE_ATTCH) of
+get_template(Context) ->
+    DocId = wh_json:get_value([<<"provision">>, <<"id">>], cb_context:doc(Context)),
+    case is_binary(DocId)
+        andalso couch_mgr:fetch_attachment(cb_context:account_db(Context), DocId, ?TEMPLATE_ATTCH)
+    of
         'false' ->
             lager:debug("unknown template id ~s", [DocId]),
             {'error', 'not_found'};
@@ -474,7 +485,8 @@ get_template(#cb_context{doc=Device, db_name=Db}) ->
 %%--------------------------------------------------------------------
 -spec set_account_id(cb_context:context()) ->
                             [fun((wh_json:object()) -> wh_json:object()),...].
-set_account_id(#cb_context{auth_account_id=AccountId}) ->
+set_account_id(Context) ->
+    AccountId = cb_context:auth_account_id(Context),
     [fun(J) -> wh_json:set_value(<<"account_id">>, AccountId, J) end].
 
 %%--------------------------------------------------------------------
@@ -486,9 +498,8 @@ set_account_id(#cb_context{auth_account_id=AccountId}) ->
 %%--------------------------------------------------------------------
 -spec set_account_line_defaults(cb_context:context()) ->
                                        [fun((wh_json:object()) -> wh_json:object()),...].
-set_account_line_defaults(#cb_context{account_id=AccountId}) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    Account = case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+set_account_line_defaults(Context) ->
+    Account = case couch_mgr:open_cache_doc(cb_context:account_db(Context), cb_context:account_id(Context)) of
                   {'ok', JObj} -> JObj;
                   {'error', _} -> wh_json:new()
               end,
@@ -515,7 +526,8 @@ set_account_line_defaults(#cb_context{account_id=AccountId}) ->
 %%--------------------------------------------------------------------
 -spec set_device_line_defaults(cb_context:context()) ->
                                       [fun((wh_json:object()) -> wh_json:object()),...].
-set_device_line_defaults(#cb_context{doc=Device}) ->
+set_device_line_defaults(Context) ->
+    Device = cb_context:doc(Context),
     [fun(J) ->
              case wh_json:get_ne_value([<<"sip">>, <<"username">>], Device) of
                  'undefined' -> J;
@@ -577,9 +589,8 @@ set_global_overrides(_) ->
 %%--------------------------------------------------------------------
 -spec set_account_overrides(cb_context:context()) ->
                                    [fun((wh_json:object()) -> wh_json:object()),...].
-set_account_overrides(#cb_context{account_id=AccountId}) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    Account = case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+set_account_overrides(Context) ->
+    Account = case couch_mgr:open_cache_doc(cb_context:account_db(Context), cb_context:account_id(Context)) of
                   {'ok', JObj} -> JObj;
                   {'error', _} -> wh_json:new()
               end,
@@ -599,10 +610,9 @@ set_account_overrides(#cb_context{account_id=AccountId}) ->
 %%--------------------------------------------------------------------
 -spec set_user_overrides(cb_context:context()) ->
                                 [fun((wh_json:object()) -> wh_json:object()),...].
-set_user_overrides(#cb_context{doc=Device, account_id=AccountId}) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    OwnerId = wh_json:get_ne_value(<<"owner_id">>, Device),
-    User = case is_binary(OwnerId) andalso couch_mgr:open_doc(AccountDb, OwnerId) of
+set_user_overrides(Context) ->
+    OwnerId = wh_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context)),
+    User = case is_binary(OwnerId) andalso couch_mgr:open_doc(cb_context:account_db(Context), OwnerId) of
                {'ok', JObj} -> JObj;
                _Else -> wh_json:new()
            end,
@@ -622,7 +632,8 @@ set_user_overrides(#cb_context{doc=Device, account_id=AccountId}) ->
 %%--------------------------------------------------------------------
 -spec set_device_overrides(cb_context:context()) ->
                                   [fun((wh_json:object()) -> wh_json:object()),...].
-set_device_overrides(#cb_context{doc=Device}) ->
+set_device_overrides(Context) ->
+    Device = cb_context:doc(Context),
     [fun(J) ->
              case wh_json:get_value([<<"provision">>, <<"overrides">>], Device) of
                  'undefined' -> J;

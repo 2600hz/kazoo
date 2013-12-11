@@ -1,5 +1,5 @@
 %%%----------------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Callflow gen server for CRUD
 %%%
@@ -32,12 +32,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.callflows">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.callflows">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.validate.callflows">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"*.execute.put.callflows">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"*.execute.post.callflows">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.callflows">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.callflows">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.callflows">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.callflows">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.callflows">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.callflows">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.callflows">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -65,8 +65,8 @@ allowed_methods(_MediaID) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -77,12 +77,12 @@ resource_exists(_) -> true.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     load_callflow_summary(Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    validate_request(undefined, Context).
+    validate_request('undefined', Context).
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId) ->
     load_callflow(DocId, Context);
@@ -91,15 +91,15 @@ validate(#cb_context{req_verb = ?HTTP_POST}=Context, DocId) ->
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DocId) ->
     load_callflow(DocId, Context).
 
--spec post(#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
     maybe_reconcile_numbers(crossbar_doc:save(Context)).
 
--spec put(#cb_context{}) -> #cb_context{}.
+-spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     maybe_reconcile_numbers(crossbar_doc:save(Context)).
 
--spec delete(#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _DocId) ->
     crossbar_doc:delete(track_assignment('delete', Context)).
 
@@ -110,7 +110,7 @@ delete(Context, _DocId) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_callflow_summary(#cb_context{}) -> #cb_context{}.
+-spec load_callflow_summary(cb_context:context()) -> cb_context:context().
 load_callflow_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -120,7 +120,7 @@ load_callflow_summary(Context) ->
 %% Load a callflow document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_callflow(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_callflow(ne_binary(), cb_context:context()) -> cb_context:context().
 load_callflow(DocId, Context) ->
     case crossbar_doc:load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc, resp_data=Data, db_name=Db}=Context1 ->
@@ -189,7 +189,7 @@ check_callflow_schema(CallflowId, Context) ->
 on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
     Props = [{<<"pvt_type">>, <<"callflow">>}],
     Context#cb_context{doc=wh_json:set_values(Props, Doc)};
-on_successful_validation(CallflowId, #cb_context{}=Context) ->
+on_successful_validation(CallflowId, Context) ->
     crossbar_doc:load_merge(CallflowId, Context).
 
 %%--------------------------------------------------------------------
@@ -198,7 +198,8 @@ on_successful_validation(CallflowId, #cb_context{}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
+                                    wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -208,15 +209,18 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-maybe_reconcile_numbers(#cb_context{resp_status=success, doc=JObj
-                                    ,account_id=AssignTo, auth_account_id=AuthBy}=Context) ->
-    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, true) of
-        false -> Context;
-        true ->
-            CurrentJObj = cb_context:fetch(db_doc, Context, wh_json:new()),
+maybe_reconcile_numbers(#cb_context{resp_status='success'}=Context) ->
+    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, 'true') of
+        'false' -> Context;
+        'true' ->
+            CurrentJObj = cb_context:fetch(Context, 'db_doc', wh_json:new()),
             Set1 = sets:from_list(wh_json:get_value(<<"numbers">>, CurrentJObj, [])),
-            Set2 = sets:from_list(wh_json:get_value(<<"numbers">>, JObj, [])),
+            Set2 = sets:from_list(wh_json:get_value(<<"numbers">>, cb_context:doc(Context), [])),
             NewNumbers = sets:subtract(Set2, Set1),
+
+            AssignTo = cb_context:account_id(Context),
+            AuthBy = cb_context:auth_account_id(Context),
+
             _ = [wh_number_manager:reconcile_number(Number, AssignTo, AuthBy)
                  || Number <- sets:to_list(NewNumbers)
                 ],
@@ -232,32 +236,35 @@ maybe_reconcile_numbers(Context) -> Context.
 %% @end
 %%--------------------------------------------------------------------
 -spec  track_assignment(atom(), cb_context:context()) ->cb_context:context().
-track_assignment('update', #cb_context{doc=JObj, storage=Storage, account_id=AcctId}=Context) ->
-    OldNums = wh_json:get_value(<<"numbers">>, props:get_value('db_doc', Storage), []),
-    NewNums = wh_json:get_value(<<"numbers">>, JObj, []),
+track_assignment('update', Context) ->
+    NewNums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
+
     Unassigned = lists:foldl(
-        fun(Num, Acc) ->
-            case lists:member(Num, NewNums) of
-                'true' -> Acc;
-                'false' -> [{Num, <<>>}|Acc]
-            end
-        end, [], OldNums
-    ),
+                   fun(Num, Acc) ->
+                           case lists:member(Num, NewNums) of
+                               'true' -> Acc;
+                               'false' -> [{Num, <<>>}|Acc]
+                           end
+                   end
+                   ,[]
+                   ,wh_json:get_value(<<"numbers">>, cb_context:fetch(Context, 'db_doc'), [])
+                  ),
     Assigned = lists:foldl(
-        fun(Num, Acc) ->
-            [{Num, <<"callflow">>}|Acc]
-        end, [], NewNums
-    ),
-    'ok' = wh_number_manager:track_assignment(AcctId, Unassigned ++ Assigned),
+                 fun(Num, Acc) ->
+                         [{Num, <<"callflow">>}|Acc]
+                 end
+                 ,[]
+                 ,NewNums
+                ),
+    'ok' = wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned ++ Assigned),
     Context;
-track_assignment('delete', #cb_context{doc=JObj, account_id=AcctId}=Context) ->
-    Nums = wh_json:get_value(<<"numbers">>, JObj, []),
+track_assignment('delete', Context) ->
     Unassigned = lists:foldl(
-        fun(Num, Acc) ->
-            [{Num, <<>>}|Acc]
-        end, [], Nums
-    ),
-    'ok' = wh_number_manager:track_assignment(AcctId, Unassigned),
+                   fun(Num, Acc) ->
+                           [{Num, <<>>}|Acc]
+                   end, [], wh_json:get_value(<<"numbers">>, cb_context:doc(Context), [])
+                  ),
+    'ok' = wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned),
     Context.
 
 %%--------------------------------------------------------------------
@@ -266,14 +273,17 @@ track_assignment('delete', #cb_context{doc=JObj, account_id=AcctId}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec check_uniqueness(ne_binaries(), wh_json:objects(), cb_context:context()) ->
+                              cb_context:context().
 check_uniqueness(Numbers, JObjs, Context) ->
     Routines = [fun(C) -> check_numbers_uniqueness(Numbers, JObjs, C) end
                 ,fun(C) -> check_patterns_uniqueness(Numbers, JObjs, C) end
                ],
     lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
 
-check_numbers_uniqueness([], _, Context) ->
-    Context;
+-spec check_numbers_uniqueness(ne_binaries(), wh_json:objects(), cb_context:context()) ->
+                                      cb_context:context().
+check_numbers_uniqueness([], _, Context) -> Context;
 check_numbers_uniqueness([Number|Numbers], JObjs, Context) ->
     case lists:dropwhile(fun(J) ->
                                  N = wh_json:get_ne_value([<<"doc">>, <<"numbers">>], J, []),
@@ -286,8 +296,9 @@ check_numbers_uniqueness([Number|Numbers], JObjs, Context) ->
             check_numbers_uniqueness(Numbers, JObjs, C)
     end.
 
-check_patterns_uniqueness([], _, Context) ->
-    Context;
+-spec check_patterns_uniqueness(ne_binaries(), wh_json:objects(), cb_context:context()) ->
+                                       cb_context:context().
+check_patterns_uniqueness([], _, Context) -> Context;
 check_patterns_uniqueness([Number|Numbers], JObjs, Context) ->
     case lists:dropwhile(fun(J) ->
                                  Patterns = wh_json:get_ne_value([<<"doc">>, <<"patterns">>], J, []),
@@ -299,31 +310,38 @@ check_patterns_uniqueness([Number|Numbers], JObjs, Context) ->
             C = add_number_conflict(Number, JObj, Context),
             check_patterns_uniqueness(Numbers, JObjs, C)
     end.
-filter_callflow_list(undefined, JObjs) ->
-    JObjs;
+
+-spec filter_callflow_list(api_binary(), wh_json:objects()) -> wh_json:objects().
+filter_callflow_list('undefined', JObjs) -> JObjs;
 filter_callflow_list(CallflowId, JObjs) ->
     [JObj
-     || JObj <- JObjs
-            ,wh_json:get_value(<<"id">>, JObj) =/= CallflowId
+     || JObj <- JObjs,
+        wh_json:get_value(<<"id">>, JObj) =/= CallflowId
     ].
 
+-spec patterns_dont_match(ne_binary(), ne_binaries()) -> boolean().
 patterns_dont_match(Number, Patterns) ->
-    lists:dropwhile(fun(Pattern) -> re:run(Number, Pattern) =:=  nomatch end, Patterns) =:= [].
+    [] =:= lists:dropwhile(fun(Pattern) ->
+                                   re:run(Number, Pattern) =:= 'nomatch'
+                           end, Patterns).
 
+-spec add_number_conflict(ne_binary(), wh_json:object(), cb_context:context()) ->
+                                 cb_context:context().
 add_number_conflict(Number, JObj, Context) ->
     Id = wh_json:get_value(<<"id">>, JObj),
     case wh_json:get_ne_value([<<"doc">>, <<"featurecode">>, <<"name">>], JObj) of
-        undefined ->
+        'undefined' ->
             cb_context:add_validation_error(<<"numbers">>
-                                                ,<<"unique">>
-                                                ,<<"Number ", Number/binary, " exists in callflow ", Id/binary>>
-                                                ,Context);
+                                            ,<<"unique">>
+                                            ,<<"Number ", Number/binary, " exists in callflow ", Id/binary>>
+                                            ,Context
+                                           );
         _Else ->
-
             cb_context:add_validation_error(<<"numbers">>
-                                                ,<<"unique">>
-                                                ,<<"Number ", Number/binary, " conflicts with featurecode callflow ", Id/binary>>
-                                                ,Context)
+                                            ,<<"unique">>
+                                            ,<<"Number ", Number/binary, " conflicts with featurecode callflow ", Id/binary>>
+                                            ,Context
+                                           )
     end.
 
 %%--------------------------------------------------------------------
@@ -332,18 +350,18 @@ add_number_conflict(Number, JObj, Context) ->
 %% collect addional informat about the objects referenced in the flow
 %% @end
 %%--------------------------------------------------------------------
--spec get_metadata('undefined' | wh_json:object(), ne_binary(), wh_json:object()) -> wh_json:object().
-get_metadata(undefined, _, JObj) ->
-    JObj;
+-spec get_metadata(api_object(), ne_binary(), wh_json:object()) ->
+                          wh_json:object().
+get_metadata('undefined', _, JObj) -> JObj;
 get_metadata(Flow, Db, JObj) ->
     JObj1 = case wh_json:get_value([<<"data">>, <<"id">>], Flow) of
                 %% this node has no id, dont change the metadata
-                undefined -> JObj;
+                'undefined' -> JObj;
                 %% node has an id, try to update the metadata
                 Id -> create_metadata(Db, Id, JObj)
             end,
     case wh_json:get_value(<<"children">>, Flow) of
-        undefined -> JObj1;
+        'undefined' -> JObj1;
         Children ->
             %% iterate through each child, collecting metadata on the
             %% branch name (things like temporal routes)
@@ -360,21 +378,17 @@ get_metadata(Flow, Db, JObj) ->
 %% exists in metadata.
 %% @end
 %%--------------------------------------------------------------------
--spec create_metadata/3 :: (ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+-spec create_metadata(ne_binary(), ne_binary(), wh_json:object()) ->
+                             wh_json:object().
 create_metadata(_, <<"_">>, JObj) -> JObj;
 create_metadata(_, Id, JObj) when byte_size(Id) < 2 -> JObj;
 create_metadata(Db, Id, JObj) ->
-    case wh_json:get_value(Id, JObj) =:= undefined
-        andalso couch_mgr:open_cache_doc(Db, Id) of
-        false  ->
-            %% the id already exists in the metadata
-            JObj;
-        {ok, Doc} ->
-            %% the id was found in the db
-            wh_json:set_value(Id, create_metadata(Doc), JObj);
-        _ ->
-            %% eh, whatevs
-            JObj
+    case wh_json:get_value(Id, JObj) =:= 'undefined'
+        andalso couch_mgr:open_cache_doc(Db, Id)
+    of
+        'false'  -> JObj;
+        {'ok', Doc} ->  wh_json:set_value(Id, create_metadata(Doc), JObj);
+        {'error', _E} -> JObj
     end.
 
 -spec create_metadata(wh_json:object()) -> wh_json:object().
@@ -384,30 +398,34 @@ create_metadata(Doc) ->
     Metadata = fun(<<"name">> = K, D, J) ->
                        case wh_json:get_value(<<"pvt_type">>, D) of
                            <<"user">> ->
-                               Name = <<(wh_json:get_binary_value(<<"first_name">>, D, <<>>))/binary
+                               case <<(wh_json:get_binary_value(<<"first_name">>, D, <<>>))/binary
                                         ," "
-                                        ,(wh_json:get_binary_value(<<"last_name">>, D, <<>>))/binary>>,
-                               case Name of
+                                        ,(wh_json:get_binary_value(<<"last_name">>, D, <<>>))/binary
+                                      >>
+                               of
                                    <<>> -> J;
-                                   _ -> wh_json:set_value(<<"name">>, Name, J)
+                                   <<" ">> -> J;
+                                   Name -> wh_json:set_value(<<"name">>, Name, J)
                                end;
-                           _ ->
+                           _Type ->
                                case wh_json:get_value(K, D) of
-                                   undefined -> J;
+                                   'undefined' -> J;
                                    V -> wh_json:set_value(K, V, J)
                                end
                        end;
                   (K, D, J) ->
                        case wh_json:get_value(K, D) of
-                           undefined -> J;
+                           'undefined' -> J;
                            V -> wh_json:set_value(K, V, J)
                        end
                end,
     %% list of keys to extract from documents and set on the metadata
-    Funs = [fun(D, J) -> Metadata(<<"name">>, D, J) end,
-            fun(D, J) -> Metadata(<<"numbers">>, D, J) end,
-            fun(D, J) -> Metadata(<<"pvt_type">>, D, J) end],
+    Funs = [fun(D, J) -> Metadata(<<"name">>, D, J) end
+            ,fun(D, J) -> Metadata(<<"numbers">>, D, J) end
+            ,fun(D, J) -> Metadata(<<"pvt_type">>, D, J) end
+           ],
     %% do it
     lists:foldl(fun(Fun, JObj) ->
                          Fun(Doc, JObj)
-                end, wh_json:new(), Funs).
+                end, wh_json:new(), Funs
+               ).

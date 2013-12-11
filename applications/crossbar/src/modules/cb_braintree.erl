@@ -272,10 +272,12 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?TRANSACTIONS_PATH_TOKEN, Tr
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end.
 
--spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token()) ->
+                  cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) ->
+                  cb_context:context().
 post(Context, ?CUSTOMER_PATH_TOKEN) ->
-    try braintree_customer:update(cb_context:fetch('braintree', Context)) of
+    try braintree_customer:update(cb_context:fetch(Context, 'braintree')) of
         #bt_customer{}=Customer ->
             Resp = braintree_customer:record_to_json(Customer),
             crossbar_util:response(Resp, Context)
@@ -289,7 +291,7 @@ post(Context, ?CUSTOMER_PATH_TOKEN) ->
     end.
 
 post(Context, ?CARDS_PATH_TOKEN, CardId) ->
-    try braintree_card:update(cb_context:fetch('braintree', Context)) of
+    try braintree_card:update(cb_context:fetch(Context, 'braintree')) of
         #bt_card{}=Card ->
             Resp = braintree_card:record_to_json(Card),
             crossbar_util:response(Resp, Context)
@@ -302,7 +304,7 @@ post(Context, ?CARDS_PATH_TOKEN, CardId) ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end;
 post(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
-    try braintree_address:update(cb_context:fetch('braintree', Context)) of
+    try braintree_address:update(cb_context:fetch(Context, 'braintree')) of
         #bt_address{}=Address ->
             Resp = braintree_address:record_to_json(Address),
             crossbar_util:response(Resp, Context)
@@ -345,7 +347,7 @@ put(#cb_context{req_data=ReqData
             crossbar_util:response('error', <<"transaction error">>, 500, Reason, Context)
     end;
 put(Context, ?ADDRESSES_PATH_TOKEN) ->
-    try braintree_address:create(cb_context:fetch('braintree', Context)) of
+    try braintree_address:create(cb_context:fetch(Context, 'braintree')) of
         #bt_address{}=Address ->
             Resp = braintree_address:record_to_json(Address),
             crossbar_util:response(Resp, Context)
@@ -356,7 +358,7 @@ put(Context, ?ADDRESSES_PATH_TOKEN) ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end;
 put(Context, ?CARDS_PATH_TOKEN) ->
-    try braintree_card:create(cb_context:fetch('braintree', Context)) of
+    try braintree_card:create(cb_context:fetch(Context, 'braintree')) of
         #bt_card{}=Card ->
             Resp = braintree_card:record_to_json(Card),
             crossbar_util:response(Resp, Context)
@@ -401,15 +403,15 @@ delete(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_braintree_customer(cb_context:context()) -> cb_context:context().
-create_braintree_customer(#cb_context{account_id=AccountId}=Context) ->
+create_braintree_customer(Context) ->
     try
-        case cb_context:fetch('braintree', Context) of
+        case cb_context:fetch(Context, 'braintree') of
             #bt_customer{}=Customer ->
                 C = braintree_customer:create(Customer),
                 Resp = braintree_customer:record_to_json(C),
                 crossbar_util:response(Resp, Context);
             _Else ->
-                C = braintree_customer:create(AccountId),
+                C = braintree_customer:create(cb_context:account_id(Context)),
                 Resp = braintree_customer:record_to_json(C),
                 crossbar_util:response(Resp, Context)
         end

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for local resource documents
@@ -29,12 +29,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.local_resources">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.local_resources">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.validate.local_resources">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"*.execute.put.local_resources">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"*.execute.post.local_resources">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"*.execute.delete.local_resources">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.local_resources">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.local_resources">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.local_resources">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.local_resources">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.local_resources">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"*.execute.delete.local_resources">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -250,7 +250,7 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec maybe_aggregate_resource(cb_context:context()) -> boolean().
 maybe_aggregate_resource(#cb_context{resp_status='success', doc=JObj}=Context) ->
-    case wh_util:is_true(cb_context:fetch('aggregate_resource', Context)) of
+    case wh_util:is_true(cb_context:fetch(Context, 'aggregate_resource')) of
         'false' ->
             ResourceId = wh_json:get_value(<<"_id">>, JObj),
             maybe_remove_aggregate(ResourceId, Context);

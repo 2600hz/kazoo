@@ -848,26 +848,24 @@ create_pull_response(Req0, Context) ->
 %% This function extracts the reponse fields and puts them in a proplist
 %% @end
 %%--------------------------------------------------------------------
--spec create_resp_envelope(cb_context:context()) -> wh_json:json_proplist(<<_:32,_:_*8>>).
+-spec create_resp_envelope(cb_context:context()) -> wh_proplist().
+-spec do_create_resp_envelope(cb_context:context()) -> wh_proplist().
 create_resp_envelope(Context) ->
     do_create_resp_envelope(cb_context:import_errors(Context)).
 
-do_create_resp_envelope(#cb_context{auth_token=AuthToken
-                                    ,resp_etag=ETag
-                                    ,req_id=RequestId
-                                   }=Context) ->
+do_create_resp_envelope(Context) ->
     Resp = case cb_context:response(Context) of
                {'ok', RespData} ->
-                   [{<<"auth_token">>, AuthToken}
+                   [{<<"auth_token">>, cb_context:auth_token(Context)}
                     ,{<<"status">>, <<"success">>}
-                    ,{<<"request_id">>, RequestId}
-                    ,{<<"revision">>, wh_util:to_binary(ETag)}
+                    ,{<<"request_id">>, cb_context:req_id(Context)}
+                    ,{<<"revision">>, wh_util:to_binary(cb_context:resp_etag(Context))}
                     ,{<<"data">>, RespData}
                    ];
                {'error', {ErrorCode, ErrorMsg, RespData}} ->
                    lager:debug("generating error ~b ~s response", [ErrorCode, ErrorMsg]),
-                   [{<<"auth_token">>, wh_util:to_binary(AuthToken)}
-                    ,{<<"request_id">>, RequestId}
+                   [{<<"auth_token">>, wh_util:to_binary(cb_context:auth_token(Context))}
+                    ,{<<"request_id">>, cb_context:req_id(Context)}
                     ,{<<"status">>, <<"error">>}
                     ,{<<"message">>, ErrorMsg}
                     ,{<<"error">>, wh_util:to_binary(ErrorCode)}
@@ -882,13 +880,16 @@ do_create_resp_envelope(#cb_context{auth_token=AuthToken
 %% Iterate through #cb_context.resp_headers, setting the headers specified
 %% @end
 %%--------------------------------------------------------------------
--spec set_resp_headers(cowboy_req:req(), cb_context:context()) -> cowboy_req:req().
-set_resp_headers(Req0, #cb_context{resp_headers=[]}) -> Req0;
-set_resp_headers(Req0, #cb_context{resp_headers=Headers}) ->
+-spec set_resp_headers(cowboy_req:req(), cb_context:context() | wh_proplist()) ->
+                              cowboy_req:req().
+set_resp_headers(Req0, []) -> Req0;
+set_resp_headers(Req0, [_|_]=Headers) ->
     lists:foldl(fun({Header, Value}, ReqAcc) ->
                         {H, V} = fix_header(Header, Value, ReqAcc),
                         cowboy_req:set_resp_header(H, V, ReqAcc)
-                end, Req0, props:filter_empty(Headers)).
+                end, Req0, props:filter_empty(Headers));
+set_resp_headers(Req0, Context) ->
+    set_resp_headers(Req0, cb_context:resp_headers(Context)).
 
 -spec fix_header(text(), text(), cowboy_req:req()) ->
                         {binary(), binary()}.

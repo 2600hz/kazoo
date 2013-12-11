@@ -228,9 +228,9 @@ validate_request(DeviceId, Context) ->
     prepare_outbound_flags(DeviceId, Context).
 
 -spec changed_mac_address(cb_context:context()) -> boolean().
-changed_mac_address(#cb_context{}=Context) ->
+changed_mac_address(Context) ->
     NewAddress = cb_context:req_value(Context, <<"mac_address">>),
-    OldAddress = wh_json:get_ne_value(<<"mac_address">>, cb_context:fetch('db_doc', Context)),
+    OldAddress = wh_json:get_ne_value(<<"mac_address">>, cb_context:fetch(Context, 'db_doc')),
     case NewAddress =:= OldAddress of
         'true' -> 'true';
         'false' ->
@@ -526,7 +526,7 @@ is_ip_sip_auth_unique(IP, DeviceId) ->
 maybe_aggregate_device(DeviceId, Context) ->
     maybe_aggregate_device(DeviceId, Context, cb_context:resp_status(Context)).
 maybe_aggregate_device(DeviceId, Context, 'success') ->
-    case wh_util:is_true(cb_context:fetch('aggregate_device', Context)) of
+    case wh_util:is_true(cb_context:fetch(Context, 'aggregate_device')) of
         'false' ->
             maybe_remove_aggregate(DeviceId, Context);
         'true' ->

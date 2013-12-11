@@ -521,9 +521,11 @@ set_response(_Else, _, Context) ->
     cb_context:add_system_error('unspecified_fault', Context).
 
 -spec collection_process(cb_context:context()) ->
-                                operation_return().
+                                operation_return() |
+                                {'ok', operation_return()}.
 -spec collection_process(cb_context:context(), ne_binary() | ne_binaries()) ->
-                                operation_return().
+                                operation_return() |
+                                {'ok', operation_return()}.
 collection_process(Context) ->
     Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     Result = collection_process(Context, Numbers),

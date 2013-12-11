@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%% Users module
 %%%
@@ -36,6 +36,7 @@
 %%%===================================================================
 
 %% SUPPORT FOR THE DEPRECIATED CB_SIGNUPS...
+-spec create_user(cb_context:context()) -> cb_context:context().
 create_user(Context) ->
     case validate_request('undefined', Context#cb_context{req_verb = ?HTTP_PUT}) of
         #cb_context{resp_status='success'}=C1 -> ?MODULE:put(C1);
@@ -245,7 +246,7 @@ maybe_import_credintials(UserId, #cb_context{doc=JObj}=Context) ->
 
 maybe_validate_username(UserId, #cb_context{doc=JObj}=Context) ->
     NewUsername = wh_json:get_ne_value(<<"username">>, JObj),
-    CurrentUsername = case cb_context:fetch('db_doc', Context) of
+    CurrentUsername = case cb_context:fetch(Context, 'db_doc') of
                           'undefined' -> NewUsername;
                           CurrentJObj ->
                               wh_json:get_ne_value(<<"username">>, CurrentJObj, NewUsername)
@@ -262,46 +263,53 @@ maybe_validate_username(UserId, #cb_context{doc=JObj}=Context) ->
         %% updated username to existing, collect any further errors...
         _Else ->
             C = cb_context:add_validation_error(<<"username">>
-                                                   ,<<"unique">>
-                                                   ,<<"Username is not unique for this account">>
-                                                   ,Context),
+                                                ,<<"unique">>
+                                                ,<<"Username is not unique for this account">>
+                                                ,Context
+                                               ),
             manditory_rehash_creds(UserId, NewUsername, C)
     end.
 
-maybe_rehash_creds(UserId, Username, #cb_context{doc=JObj}=Context) ->
-    case wh_json:get_ne_value(<<"password">>, JObj) of
+maybe_rehash_creds(UserId, Username, Context) ->
+    case wh_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
         %% No username or hash, no creds for you!
         'undefined' when Username =:= 'undefined' ->
             HashKeys = [<<"pvt_md5_auth">>, <<"pvt_sha1_auth">>],
-            Context#cb_context{doc=wh_json:delete_keys(HashKeys, JObj)};
+            cb_context:set_doc(Context, wh_json:delete_keys(HashKeys, cb_context:doc(Context)));
         %% Username without password, creds status quo
         'undefined' -> Context;
         %% Got a password, hope you also have a username...
         Password -> rehash_creds(UserId, Username, Password, Context)
     end.
 
-manditory_rehash_creds(UserId, Username, #cb_context{doc=JObj}=Context) ->
-    case wh_json:get_ne_value(<<"password">>, JObj) of
+-spec manditory_rehash_creds(ne_binary(), ne_binary(), cb_context:context()) ->
+                                    cb_context:context().
+manditory_rehash_creds(UserId, Username, Context) ->
+    case wh_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
         'undefined' ->
             cb_context:add_validation_error(<<"password">>
                                             ,<<"required">>
                                             ,<<"The password must be provided when updating the username">>
-                                            ,Context);
+                                            ,Context
+                                           );
         Password -> rehash_creds(UserId, Username, Password, Context)
     end.
 
+-spec rehash_creds(_, api_binary(), ne_binary(), cb_context:context()) ->
+                          cb_context:context().
 rehash_creds(_, 'undefined', _, Context) ->
     cb_context:add_validation_error(<<"username">>
                                     ,<<"required">>
                                     ,<<"The username must be provided when updating the password">>
-                                    ,Context);
-rehash_creds(_, Username, Password, #cb_context{doc=JObj}=Context) ->
+                                    ,Context
+                                   );
+rehash_creds(_, Username, Password, Context) ->
     lager:debug("password set on doc, updating hashes for ~s", [Username]),
     {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
     JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
                                 ,{<<"pvt_sha1_auth">>, SHA1}
-                               ], JObj),
-    Context#cb_context{doc=wh_json:delete_key(<<"password">>, JObj1)}.
+                               ], cb_context:doc(Context)),
+    cb_context:set_doc(Context, wh_json:delete_key(<<"password">>, JObj1)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -309,16 +317,20 @@ rehash_creds(_, Username, Password, #cb_context{doc=JObj}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-maybe_validate_quickcall(#cb_context{resp_status='success'
-                                     ,doc=JObj
-                                     ,auth_token=AuthToken
-                                    }=Context) ->
-    case (not wh_util:is_empty(AuthToken))
-          orelse wh_json:is_true(<<"allow_anoymous_quickcalls">>, JObj)
+-spec maybe_validate_quickcall(cb_context:context()) -> cb_context:context().
+-spec maybe_validate_quickcall(cb_context:context(), crossbar_status()) -> cb_context:context().
+maybe_validate_quickcall(Context) ->
+    maybe_validate_quickcall(Context, cb_context:resp_status(Context)).
+
+maybe_validate_quickcall(Context, 'success') ->
+    case (not wh_util:is_empty(db_context:auth_token(Context)))
+        orelse wh_json:is_true(<<"allow_anoymous_quickcalls">>, cb_context:doc(Context))
     of
         'false' -> cb_context:add_system_error('invalid_credentials', Context);
         'true' -> Context
-    end.
+    end;
+maybe_validate_quickcall(Context, _) ->
+    cb_context:add_system_error('invalid_credentials', Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -328,15 +340,19 @@ maybe_validate_quickcall(#cb_context{resp_status='success'
 %% @end
 %%--------------------------------------------------------------------
 -spec username_doc_id(api_binary(), cb_context:context()) -> api_binary().
-username_doc_id(_, #cb_context{db_name='undefined'}) ->
-    'undefined';
 username_doc_id(Username, Context) ->
+    username_doc_id(Username, Context, cb_context:account_db(Context)).
+username_doc_id(_, _, 'undefined') ->
+    'undefined';
+username_doc_id(Username, Context, _AccountDb) ->
     Username = wh_util:to_lower_binary(Username),
-    JObj = case crossbar_doc:load_view(?LIST_BY_USERNAME, [{<<"key">>, Username}], Context) of
-               #cb_context{resp_status='success', doc=[J]} -> J;
-               _ -> wh_json:new()
-           end,
-    wh_json:get_value(<<"id">>, JObj).
+    Context1 = crossbar_doc:load_view(?LIST_BY_USERNAME, [{'key', Username}], Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            [JObj] = cb_context:doc(Context1),
+            wh_json:get_value(<<"id">>, JObj);
+        _ -> 'undefined'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
