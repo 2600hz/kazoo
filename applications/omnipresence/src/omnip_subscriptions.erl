@@ -135,6 +135,12 @@ handle_answered_channel(JObj, _Props) ->
 handle_cdr(JObj, _Props) ->
     'true' = wapi_call:cdr_v(JObj),
     wh_util:put_callid(JObj),
+    maybe_send_update(JObj, ?PRESENCE_HANGUP),
+    %% When multiple omnipresence instances are in multiple
+    %% zones its possible (due to the round-robin) for the
+    %% instance closest to rabbitmq to process the terminate
+    %% before a confirm/early if both are sent immediately.
+    timer:sleep(1000),
     maybe_send_update(JObj, ?PRESENCE_HANGUP).
 
 %%%===================================================================
