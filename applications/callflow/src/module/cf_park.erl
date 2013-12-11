@@ -605,16 +605,27 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
                          end,
             Call1 = whapps_call:set_caller_id_name(TmpCID, Call),
             whapps_call_command:bridge(Endpoints, ?DEFAULT_TIMEOUT_S, Call1),
-            case whapps_call_command:wait_for_bridge(30000, CleanUpFun, Call1) of
-                {'ok', _} ->
-                    lager:info("completed successful bridge to the ringback device"),
-                    'answered';
-                {'error', 'channel_hungup'} ->
-                    lager:info("channel_hungup during ringback"),
-                    'channel_hungup';
-                _Else ->
-                    lager:info("ringback failed, returning caller to parking slot: ~p" , [_Else]),
-                    'failed'
-            end;
+            wait_for_ringback(CleanUpFun, Call1);
         _ -> 'failed'
+    end.
+
+-spec wait_for_ringback(api_binary(), whapps_call:call()) ->
+                             'answered' | 'failed' | 'channel_hungup'.
+wait_for_ringback(Fun, Call) ->
+     case whapps_call_command:wait_for_bridge(30000, Fun, Call) of
+        {'ok', _} ->
+            lager:info("completed successful bridge to the ringback device"),
+            'answered';
+        {'fail', JObj} ->
+            case wh_json:get_value(<<"Disposition">>, JObj) of
+                <<"NO_ANSWER">> ->
+                    lager:info("ringback failed, returning caller to parking slot"),
+                    'failed';
+                _Else ->
+                    lager:info("channel hungup during ringback: ~p", [_Else]),
+                    'channel_hungup'
+            end;
+        _Else ->
+            lager:info("ringback failed, returning caller to parking slot: ~p" , [_Else]),
+            'failed'
     end.
