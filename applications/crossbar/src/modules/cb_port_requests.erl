@@ -43,6 +43,7 @@
          ,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4
          ,content_types_accepted/3, content_types_accepted/4
          ,validate/1, validate/2, validate/3, validate/4
+         ,get/3
          ,put/1, put/3
          ,post/2, post/4
          ,delete/2, delete/4
@@ -341,6 +342,17 @@ is_deletable(Context, ?PORT_REJECT) -> Context;
 is_deletable(Context, _PortState) ->
     lager:debug("port is in state ~s, can't modify", [_PortState]),
     cb_context:add_system_error(<<"port request is not modifiable in this state">>, Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% @end
+%%--------------------------------------------------------------------
+-spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+get(Context, Id, ?PATH_TOKEN_LOA) ->
+    lager:debug("load LOA for ~s", [Id]),
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
