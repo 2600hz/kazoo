@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2013, 2600Hz INC
 %%% @doc
 %%% Preforms maintenance operations against the stepswitch dbs
 %%% @end
@@ -20,10 +20,6 @@
 -export([reload_resources/0]).
 -export([process_number/1
          ,process_number/2
-        ]).
--export([emergency_cid/1
-         ,emergency_cid/2
-         ,emergency_cid/3
         ]).
 
 %%--------------------------------------------------------------------
@@ -149,7 +145,7 @@ refresh() ->
 %% Lookup a number in the route db and return the account ID if known
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_number(string()) -> any().
+-spec lookup_number(text()) -> 'ok'.
 lookup_number(Number) ->
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
@@ -186,7 +182,7 @@ reload_resources() -> 'ok'.
 -spec process_number(string()) -> any().
 process_number(Number) -> process_number(Number, 'undefined').
 
--spec process_number(string(), string()) -> any().
+-spec process_number(text(), text() | 'undefined') -> any().
 process_number(Number, AccountId) when not is_binary(Number) ->
     process_number(wh_util:to_binary(Number), AccountId);
 process_number(Number, 'undefined') ->
@@ -228,28 +224,6 @@ pretty_print_endpoint([{Key, Value}|Props]) ->
     io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]),
     pretty_print_endpoint(Props).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec emergency_cid(ne_binary()) -> 'ok'.
--spec emergency_cid(ne_binary(), text()) -> 'ok'.
--spec emergency_cid(ne_binary(), 'undefined' | text(), text()) -> 'ok'.
-
-emergency_cid(Account) -> emergency_cid(Account, 'undefined').
-emergency_cid(Account, ECID) -> emergency_cid(Account, ECID, 'undefined').
-emergency_cid(Account, ECID, OCID) ->
-    wh_cache:flush(),
-    Props = [{<<"Account-ID">>, wh_util:to_binary(Account)}
-             ,{<<"Emergency-Caller-ID-Number">>, ECID}
-             ,{<<"Outbound-Caller-ID-Number">>, OCID}
-            ],
-    JObj = wh_json:from_list(props:filter_empty(Props)),
-    CID = stepswitch_outbound:get_emergency_cid_number(JObj),
-    lager:info("Emergency offnet requests for account ~s (given the following CIDs ~s and ~s) will use ~s"
-               ,[Account, ECID, OCID, CID]).
 
 %%--------------------------------------------------------------------
 %% @private
