@@ -400,10 +400,11 @@ send_update(Props, _, #omnip_subscription{user=User}=Subscription) ->
 
 -spec send_update(wh_proplist(), subscription()) -> 'ok'.
 send_update(Props, #omnip_subscription{stalker=Q
-                                        ,protocol=Protocol
+                                       ,protocol=Protoco
+                                       ,from=F
                                        }) ->
     To = props:get_value(<<"To">>, Props),
-    From = props:get_value(<<"From">>, Props),
+    From = props:get_value(<<"From">>, Props, F),
     State = props:get_value(<<"State">>, Props),
     lager:debug("sending update ~s/~s ~s to '~s'", [To, From, State, Q]),
     whapps_util:amqp_pool_send([{<<"To">>, <<Protocol/binary, ":", To/binary>>}
