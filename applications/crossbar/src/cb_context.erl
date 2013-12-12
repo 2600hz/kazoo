@@ -123,8 +123,8 @@ set_resp_status(#cb_context{}=Context, RespStatus) -> Context#cb_context{resp_st
 set_api_version(#cb_context{}=Context, ApiVersion) -> Context#cb_context{api_version=ApiVersion}.
 set_resp_etag(#cb_context{}=Context, ETag) -> Context#cb_context{resp_etag=ETag}.
 
-set_resp_headers(#cb_context{}=Context, Headers) ->
-    lists:foldl(fun set_resp_header_fold/2, Context, Headers).
+set_resp_headers(#cb_context{resp_headers=Hs}=Context, Headers) ->
+    Context#cb_context{resp_headers=lists:foldl(fun set_resp_header_fold/2, Hs, Headers)}.
 set_resp_header(#cb_context{resp_headers=RespHeaders}=Context, K, V) ->
     Context#cb_context{resp_headers=lists:keystore(K, 1, RespHeaders, {K, V})}.
 set_resp_header_fold({K, V}, Hs) -> lists:keystore(K, 1, Hs, {K, V}).
