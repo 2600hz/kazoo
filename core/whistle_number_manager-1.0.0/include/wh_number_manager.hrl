@@ -3,7 +3,7 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 
--record(number, {number :: wh_json:json_string()
+-record(number, {number :: api_binary()
                  ,number_db :: api_binary()
                  ,state = <<"discovery">> :: ne_binary()
                  ,current_state = <<"discovery">> :: ne_binary()
@@ -18,12 +18,12 @@
                  ,current_features = sets:new() :: set()
                  ,number_doc = wh_json:new() :: wh_json:object()
                  ,current_number_doc = wh_json:new() :: wh_json:object()
-                 ,phone_number_docs :: dict()
-                 ,hard_delete = false :: boolean()
+                 ,phone_number_docs :: 'undefined' | dict()
+                 ,hard_delete = 'false' :: boolean()
                  ,error_jobj = wh_json:new() :: wh_json:object()
                  ,activations = [] :: wh_json:objects()
                  ,services :: wh_services:services()
-                 ,current_balance :: float() | integer()
+                 ,current_balance :: 'undefined' | number()
                  ,billing_id :: api_binary()
                  ,used_by = <<>> :: binary()
                 }).
@@ -63,6 +63,8 @@
                         'service_restriction' |
                         'provider_fault' |
                         'carrier_fault' |
+                        'not_in_service' |
+                        'account_disabled' |
                         api_binary().
 
 -type operation_return() :: {'ok', wh_json:object()} |
