@@ -26,7 +26,7 @@
           menu_id :: api_binary()
          ,name = <<>> :: binary()
          ,retries = 3 :: pos_integer()
-         ,timeout = 2000 :: pos_integer()
+         ,timeout = 10000 :: pos_integer()
          ,max_length = 4 :: pos_integer()
          ,hunt = 'false' :: boolean()
          ,hunt_deny = <<>> :: binary()
