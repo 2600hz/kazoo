@@ -6,6 +6,7 @@
 %%% GET /port_requests - list all the account's port requests
 %%% GET /port_requests/descendants - detailed report of a port request
 %%% GET /port_requests/{id} - detailed report of a port request
+%%% GET /port_requests/{id}/loa - build an LOA (Letter of Authorization) PDF
 %%%
 %%% PUT /port_requests - start a new port request
 %%% PUT /port_requests/{id}/ready - indicate a port request is ready and let port dept know
@@ -58,6 +59,8 @@
 -define(UNFINISHED_PORT_REQUEST_LIFETIME
         ,whapps_config:get_integer(?CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
        ).
+
+-define(PATH_TOKEN_LOA, <<"loa">>).
 
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 -include_lib("whistle_number_manager/include/wh_port_request.hrl").
@@ -159,7 +162,9 @@ allowed_methods(_Id, ?PORT_COMPLETE) ->
 allowed_methods(_Id, ?PORT_REJECT) ->
     [?HTTP_PUT];
 allowed_methods(_Id, ?PORT_ATTACHMENT) ->
-    [?HTTP_GET, ?HTTP_PUT].
+    [?HTTP_GET, ?HTTP_PUT];
+allowed_methods(_Id, ?PATH_TOKEN_LOA) ->
+    [?HTTP_GET].
 
 allowed_methods(_Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
@@ -186,6 +191,7 @@ resource_exists(_Id, ?PORT_PROGRESS) -> 'true';
 resource_exists(_Id, ?PORT_COMPLETE) -> 'true';
 resource_exists(_Id, ?PORT_REJECT) -> 'true';
 resource_exists(_Id, ?PORT_ATTACHMENT) -> 'true';
+resource_exists(_Id, ?PATH_TOKEN_LOA) -> 'true';
 resource_exists(_Id, _Unknown) -> 'false'.
 
 resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
@@ -208,29 +214,24 @@ resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
                                     cb_context:context().
 content_types_provided(#cb_context{}=Context) ->
     Context.
+
 content_types_provided(#cb_context{}=Context, _Id) ->
     Context.
+
+content_types_provided(#cb_context{}=Context, _Id, ?PATH_TOKEN_LOA) ->
+    cb_context:add_content_types_provided(Context, [{'to_binary', [{<<"application">>, <<"x-pdf">>}]}]);
 content_types_provided(#cb_context{}=Context, _Id, _) ->
     Context.
+
 content_types_provided(#cb_context{req_verb=?HTTP_GET}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
-    case crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)) of
-        #cb_context{resp_status='success', doc=JObj}=Context1 ->
-            lager:debug("ctp: ~p", [JObj]),
-            ContentTypeKey = [<<"_attachments">>, AttachmentId, <<"content_type">>],
-            lager:debug("ctp: ~s", [ContentTypeKey]),
-            case wh_json:get_value(ContentTypeKey, JObj) of
-                'undefined' ->
-                    lager:debug("no content type defined"),
-                    Context1;
-                ContentType ->
-                    lager:debug("found content type ~s", [ContentType]),
-                    [Type, SubType] = binary:split(ContentType, <<"/">>),
-                    Context1#cb_context{content_types_provided=[{'to_binary', [{Type, SubType}]}]}
-            end;
-        Context1 -> Context1
-    end;
-content_types_provided(#cb_context{}=Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
-    Context.
+    case cb_context:req_verb(Context) of
+        ?HTTP_GET -> content_types_provided_get(Context, Id, AttachmentId);
+        _Verb -> Context
+    end.
+
+-spec content_types_provided_get(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+content_types_provided_get(Context, Id, AttachmentId) ->
+    cb_context:add_attachment_content_type(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB), Id, AttachmentId).
 
 %%--------------------------------------------------------------------
 %% @public
