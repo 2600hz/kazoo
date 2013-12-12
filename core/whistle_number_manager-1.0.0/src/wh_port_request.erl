@@ -11,6 +11,7 @@
 -export([init/0
          ,current_state/1
          ,public_fields/1
+         ,get/1
          ,normalize_attachments/1
          ,normalize_numbers/1
          ,transition_to_ready/1
@@ -20,6 +21,8 @@
          ,maybe_transition/2
          ,charge_for_port/1, charge_for_port/2
         ]).
+
+-compile({'no_auto_import', [get/1]}).
 
 -include("wnm.hrl").
 -include_lib("whistle_number_manager/include/wh_port_request.hrl").
@@ -36,6 +39,12 @@ init() ->
 current_state(JObj) ->
     lager:debug("current state: ~p", [JObj]),
     wh_json:get_first_defined([?PORT_PVT_STATE, ?PORT_STATE], JObj, ?PORT_WAITING).
+
+-spec get(ne_binary()) ->
+                 {'ok', wh_json:object()} |
+                 {'error', 'not_found'}.
+get(Number) ->
+    wnm_number:find_port_in_number(Number).
 
 -spec public_fields(wh_json:object()) -> wh_json:object().
 public_fields(JObj) ->
