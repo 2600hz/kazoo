@@ -148,7 +148,7 @@ add_content_types_provided(#cb_context{}=Context, {_, _}=NewCTP) ->
 -spec add_content_types_accepted(context(), crossbar_content_handler() | crossbar_content_handlers()) ->
                                         context().
 add_content_types_accepted(#cb_context{content_types_accepted=CTAs}=Context, [_|_]=NewCTAs) ->
-    Context#cb_context{content_types_provided = NewCTAs ++ CTAs};
+    Context#cb_context{content_types_accepted = NewCTAs ++ CTAs};
 add_content_types_accepted(#cb_context{}=Context, {_, _}=NewCTA) ->
     add_content_types_provided(Context,[NewCTA]).
 
