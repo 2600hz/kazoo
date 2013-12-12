@@ -689,6 +689,7 @@ from_ordinal(<<"fifth">>) -> 4.
 -spec to_dow(wday()) -> wh_daynum().
 to_dow(<<"monday">>) -> 1;
 to_dow(<<"tuesday">>) -> 2;
+to_dow(<<"wednesday">>) -> 3;
 to_dow(<<"wensday">>) -> 3;
 to_dow(<<"thursday">>) -> 4;
 to_dow(<<"friday">>) -> 5;
