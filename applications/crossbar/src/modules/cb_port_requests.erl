@@ -212,18 +212,18 @@ resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
                                     cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_provided(#cb_context{}=Context) ->
+content_types_provided(Context) ->
     Context.
 
-content_types_provided(#cb_context{}=Context, _Id) ->
+content_types_provided(Context, _Id) ->
     Context.
 
-content_types_provided(#cb_context{}=Context, _Id, ?PATH_TOKEN_LOA) ->
+content_types_provided(Context, _Id, ?PATH_TOKEN_LOA) ->
     cb_context:add_content_types_provided(Context, [{'to_binary', [{<<"application">>, <<"x-pdf">>}]}]);
-content_types_provided(#cb_context{}=Context, _Id, _) ->
+content_types_provided(Context, _Id, _) ->
     Context.
 
-content_types_provided(#cb_context{req_verb=?HTTP_GET}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
+content_types_provided(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     case cb_context:req_verb(Context) of
         ?HTTP_GET -> content_types_provided_get(Context, Id, AttachmentId);
         _Verb -> Context
@@ -231,7 +231,11 @@ content_types_provided(#cb_context{req_verb=?HTTP_GET}=Context, Id, ?PORT_ATTACH
 
 -spec content_types_provided_get(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 content_types_provided_get(Context, Id, AttachmentId) ->
-    cb_context:add_attachment_content_type(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB), Id, AttachmentId).
+    cb_context:add_attachment_content_type(
+      cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+      ,Id
+      ,AttachmentId
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -245,17 +249,20 @@ content_types_provided_get(Context, Id, AttachmentId) ->
                                     cb_context:context().
 -spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_accepted(#cb_context{}=Context, _Id, ?PORT_ATTACHMENT) ->
+content_types_accepted(Context, _Id, ?PORT_ATTACHMENT) ->
     CTA = [{'from_binary', ?ATTACHMENT_MIME_TYPES}],
-    Context#cb_context{content_types_accepted=CTA};
-content_types_accepted(#cb_context{}=Context, _Id, _) ->
+    cb_context:add_content_types_accepted(Context, CTA);
+content_types_accepted(Context, _Id, _) ->
     Context.
 
-content_types_accepted(#cb_context{req_verb=?HTTP_POST}=Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
-    CTA = [{'from_binary', ?ATTACHMENT_MIME_TYPES}],
-    Context#cb_context{content_types_accepted=CTA};
 content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
-    Context.
+    case cb_context:req_verb(Context) of
+        ?HTTP_POST ->
+            CTA = [{'from_binary', ?ATTACHMENT_MIME_TYPES}],
+            cb_context:add_content_types_accepted(Context, CTA);
+        _Verb ->
+            Context
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -275,48 +282,62 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
                       cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) ->
                       cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+validate(Context) ->
+    validate_port_requests(Context, cb_context:req_verb(Context)).
+
+validate_port_requests(Context, ?HTTP_GET) ->
     summary(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
+validate_port_requests(Context, ?HTTP_PUT) ->
     create(Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?PORT_DESCENDANTS) ->
+validate(Context, ?PORT_DESCENDANTS) ->
     read_descendants(Context);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
+validate(Context, Id) ->
+    validate_port_request(Context, Id, cb_context:req_verb(Context)).
+
+validate_port_request(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
+validate_port_request(Context, Id, ?HTTP_POST) ->
     update(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
+validate_port_request(Context, Id, ?HTTP_DELETE) ->
     is_deletable(crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB))).
 
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_READY) ->
+validate(Context, Id, ?PORT_READY) ->
     maybe_move_state(Id, Context, ?PORT_READY);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_PROGRESS) ->
+validate(Context, Id, ?PORT_PROGRESS) ->
     maybe_move_state(Id, Context, ?PORT_PROGRESS);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_COMPLETE) ->
+validate(Context, Id, ?PORT_COMPLETE) ->
     maybe_move_state(Id, Context, ?PORT_COMPLETE);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_REJECT) ->
+validate(Context, Id, ?PORT_REJECT) ->
     maybe_move_state(Id, Context, ?PORT_REJECT);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?PORT_ATTACHMENT) ->
-    summary_attachments(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?PORT_ATTACHMENT) ->
+validate(Context, Id, ?PORT_ATTACHMENT) ->
+    validate_attachments(Context, Id, cb_context:req_verb(Context));
+validate(Context, Id, ?PATH_TOKEN_LOA) ->
     read(Id, Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
+validate_attachments(Context, Id, ?HTTP_GET) ->
+    summary_attachments(Id, Context);
+validate_attachments(Context, Id, ?HTTP_PUT) ->
+    read(Id, Context).
+
+validate(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
+    validate_attachment(Context, Id, AttachmentId, cb_context:req_verb(Context)).
+
+-spec validate_attachment(cb_context:context(), ne_binary(), ne_binary(), http_method()) ->
+                                 cb_context:context().
+validate_attachment(Context, Id, AttachmentId, ?HTTP_GET) ->
     load_attachment(Id, AttachmentId, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
+validate_attachment(Context, Id, AttachmentId, ?HTTP_POST) ->
     load_attachment(Id, AttachmentId, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
+validate_attachment(Context, Id, AttachmentId, ?HTTP_DELETE) ->
     is_deletable(load_attachment(Id, AttachmentId, Context)).
 
 -spec is_deletable(cb_context:context()) -> cb_context:context().
 -spec is_deletable(cb_context:context(), ne_binary()) -> cb_context:context().
 is_deletable(Context) ->
     is_deletable(Context, wh_port_request:current_state(cb_context:doc(Context))).
-is_deletable(Context, ?PORT_WAITING) ->
-    Context;
-is_deletable(Context, ?PORT_REJECT) ->
-    Context;
+is_deletable(Context, ?PORT_WAITING) -> Context;
+is_deletable(Context, ?PORT_REJECT) -> Context;
 is_deletable(Context, _PortState) ->
     lager:debug("port is in state ~s, can't modify", [_PortState]),
     cb_context:add_system_error(<<"port request is not modifiable in this state">>, Context).
@@ -329,17 +350,16 @@ is_deletable(Context, _PortState) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-put(#cb_context{}=Context) ->
+put(Context) ->
     crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
 
-put(#cb_context{}=Context, Id, ?PORT_ATTACHMENT) ->
+put(Context, Id, ?PORT_ATTACHMENT) ->
     [{Filename, FileJObj}] = cb_context:req_files(Context),
 
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
 
-    Opts = [{'headers', [{'content_type', CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj)}
-                        ]
-            }],
+    CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
+    Opts = [{'headers', [{'content_type', CT}]}],
 
     crossbar_doc:save_attachment(Id
                                  ,cb_modules_util:attachment_name(Filename, CT)
@@ -347,7 +367,7 @@ put(#cb_context{}=Context, Id, ?PORT_ATTACHMENT) ->
                                  ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                                  ,Opts
                                 );
-put(#cb_context{}=Context, Id, ?PORT_READY) ->
+put(Context, Id, ?PORT_READY) ->
     try send_port_request_notification(Context, Id) of
         _ ->
             lager:debug("port request notification sent"),
@@ -357,11 +377,11 @@ put(#cb_context{}=Context, Id, ?PORT_READY) ->
             lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(<<"failed to send port request email to system admins">>, Context)
     end;
-put(#cb_context{}=Context, Id, ?PORT_PROGRESS) ->
+put(Context, Id, ?PORT_PROGRESS) ->
     post(Context, Id);
-put(#cb_context{}=Context, Id, ?PORT_COMPLETE) ->
+put(Context, Id, ?PORT_COMPLETE) ->
     post(Context, Id);
-put(#cb_context{}=Context, Id, ?PORT_REJECT) ->
+put(Context, Id, ?PORT_REJECT) ->
     post(Context, Id).
 
 -spec send_port_request_notification(cb_context:context(), ne_binary()) -> 'ok'.
@@ -382,21 +402,22 @@ send_port_request_notification(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-post(#cb_context{}=Context, _Id) ->
-    case crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)) of
-        #cb_context{resp_status='success'}=Context1 ->
+post(Context, _Id) ->
+    Context1 = crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
             cb_context:set_resp_data(Context1, wh_port_request:public_fields(cb_context:doc(Context1)));
-        Context1 ->
+        _Status ->
             Context1
     end.
 
-post(#cb_context{}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
+post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
 
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
 
-    Opts = [{'headers', [{'content_type', wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj)}]
-            }],
+    CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
+    Opts = [{'headers', [{'content_type', CT}]}],
     OldAttachments = wh_json:get_value(<<"_attachments">>, cb_context:doc(Context), wh_json:new()),
 
     case wh_json:get_value(AttachmentId, OldAttachments) of
@@ -409,7 +430,7 @@ post(#cb_context{}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     crossbar_doc:save_attachment(Id
                                  ,AttachmentId
                                  ,Contents
-                                 ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                                 ,Context
                                  ,Opts
                                 ).
 
@@ -419,12 +440,14 @@ post(#cb_context{}=Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete(cb_context:context(), path_token()) -> cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-delete(#cb_context{}=Context, _Id) ->
-    crossbar_doc:delete(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
-delete(#cb_context{}=Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
-    crossbar_doc:delete_attachment(Id, AttachmentName, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
+-spec delete(cb_context:context(), path_token()) ->
+                    cb_context:context().
+-spec delete(cb_context:context(), path_token(), path_token(), path_token()) ->
+                    cb_context:context().
+delete(Context, _Id) ->
+    crossbar_doc:delete(Context).
+delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
+    crossbar_doc:delete_attachment(Id, AttachmentName, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -433,7 +456,7 @@ delete(#cb_context{}=Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
-create(#cb_context{}=Context) ->
+create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"port_requests">>, Context, OnSuccess).
 
@@ -493,7 +516,7 @@ read_descendant(Context, Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), cb_context:context()) -> cb_context:context().
-update(Id, #cb_context{}=Context) ->
+update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"port_requests">>, Context, OnSuccess).
 
@@ -538,7 +561,7 @@ summary_attachments(Id, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation('undefined', #cb_context{}=Context) ->
+on_successful_validation('undefined', Context) ->
     on_successful_validation('undefined', Context, 'true');
 on_successful_validation(Id, Context) ->
     Context1 = crossbar_doc:load_merge(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
@@ -589,7 +612,7 @@ successful_validation('undefined', Context) ->
                                                    ]
                                                    ,wh_port_request:normalize_numbers(JObj)
                                                   ));
-successful_validation(_Id, #cb_context{}=Context) ->
+successful_validation(_Id, Context) ->
     cb_context:set_doc(Context, wh_port_request:normalize_numbers(cb_context:doc(Context))).
 
 -spec check_number_portability(api_binary(), ne_binary(), cb_context:context()) ->
