@@ -31,7 +31,7 @@ handle_req(JObj, _Props) ->
 %% handle a request inbound from offnet
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_relay_request(wh_json:object()) -> wh_json:object().
+-spec maybe_relay_request(wh_json:object()) -> 'ok'.
 maybe_relay_request(JObj) ->
     Number = stepswitch_util:get_inbound_destination(JObj),
     case stepswitch_util:lookup_number(Number) of
@@ -48,9 +48,10 @@ maybe_relay_request(JObj) ->
                         ,fun relay_request/2
                         ,fun maybe_transition_port_in/2
                        ],
-            lists:foldl(fun(F, J) ->  F(Props, J) end
-                        ,JObj
-                        ,Routines)
+            _ = lists:foldl(fun(F, J) ->  F(Props, J) end
+                            ,JObj
+                            ,Routines),
+            'ok'
     end.
 
 %%--------------------------------------------------------------------
@@ -141,10 +142,10 @@ maybe_lookup_cnam(Props, JObj) ->
 %% relay a route request once populated with the new properties
 %% @end
 %%--------------------------------------------------------------------
--spec relay_request(wh_proplist(), wh_json:object()) -> wh_json:object().
+-spec relay_request(wh_proplist(), wh_json:object()) ->
+                           wh_json:object().
 relay_request(_, JObj) ->
     wapi_route:publish_req(JObj).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,11 +153,16 @@ relay_request(_, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_transition_port_in(wh_proplist(), wh_json:object()) -> wh_json:object().
-maybe_transition_port_in(Props, _) ->
-    case props:get_value('pending_port', Props) of
-        'false' -> 'false';
-        'true' ->
-            Number = props:get_value('number', Props),
-            wh_number_manager:ported(wnm_util:normalize_number(Number))
-  end.
+-spec maybe_transition_port_in(wh_proplist(), wh_json:object()) ->
+                                      wh_json:object().
+maybe_transition_port_in(Props, JObj) ->
+    _ = case props:get_value('pending_port', Props) of
+            'false' -> 'ok';
+            'true' ->
+                case wh_port_request:get(props:get_value('number', Props)) of
+                    {'ok', PortReq} ->
+                        _ = wh_port_request:transition_to_complete(PortReq);
+                    _ -> 'ok'
+                end
+        end,
+    JObj.
