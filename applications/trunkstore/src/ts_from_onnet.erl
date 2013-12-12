@@ -56,7 +56,6 @@ onnet_data(State) ->
     AccountOptions = wh_json:get_value(<<"account">>, Options, wh_json:new()),
     SrvOptions = wh_json:get_value([<<"server">>, <<"options">>], Options, wh_json:new()),
 
-
     MediaHandling = ts_util:get_media_handling([
                                                 wh_json:get_value(<<"media_handling">>, DIDOptions)
                                                 ,wh_json:get_value(<<"media_handling">>, SrvOptions)
@@ -126,6 +125,7 @@ onnet_data(State) ->
                         ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
                         ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
                         ,{<<"SIP-Headers">>, SIPHeaders}
+                        ,{<<"Hunt-Account-ID">>, wh_json:get_value(<<"hunt_account_id">>, SrvOptions)}
                         ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Inception">>, <<"on-net">>}
                                                                         ,{<<"Account-ID">>, AccountId}
                                                                        ])}
