@@ -557,7 +557,7 @@ on_successful_validation(Id, Context, 'true') ->
         _ -> Context1
     end;
 on_successful_validation(_Id, Context, 'false') ->
-    PortState = wh_json:get_value(?PORT_STATE, cb_context:doc(Context)),
+    PortState = wh_json:get_value(?PORT_PVT_STATE, cb_context:doc(Context)),
     lager:debug("port state ~s is not valid for updating a port request"
                 ,[PortState]
                ),
@@ -666,7 +666,6 @@ load_attachment(Id, AttachmentId, Context) ->
 load_attachment(AttachmentId, Context) ->
     AttachmentMeta = wh_json:get_value([<<"_attachments">>, AttachmentId], cb_context:doc(Context)),
 
-
     cb_context:add_resp_headers(
       crossbar_doc:load_attachment(cb_context:doc(Context)
                                    ,AttachmentId
@@ -682,20 +681,14 @@ load_attachment(AttachmentId, Context) ->
 maybe_move_state(Id, Context, PortState) ->
     Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
     case cb_context:resp_status(Context1) =:= 'success'
-        andalso wh_port_request:transition_state(cb_context:doc(Context1), PortState)
+        andalso wh_port_request:maybe_transition(cb_context:doc(Context1), PortState)
     of
         'false' -> Context1;
         {'ok', PortRequest} ->
-            try_and_move_state(Context1, PortState, PortRequest);
+            lager:debug("loaded new port request state ~s", [PortState]),
+            cb_context:set_doc(Context1, PortRequest);
         {'error', 'invalid_state_transition'} ->
-            cb_context:add_validation_error(<<"port_state">>, <<"enum">>, <<"cannot move to new state from current state">>, Context)
-    end.
-
--spec try_and_move_state(cb_context:context(), ne_binary(), wh_json:object()) -> cb_context:context().
-try_and_move_state(Context, PortState, PortRequest) ->
-    case wh_port_request:maybe_transition(PortRequest, PortState) of
-        {'ok', Transitioned} ->
-            cb_context:set_doc(Context, Transitioned);
-        {'error', 'invalid_state_transition'} ->
-            cb_context:add_validation_error(<<"port_state">>, <<"enum">>, <<"cannot move to new state from current state">>, Context)
+            cb_context:add_validation_error(<<"port_state">>, <<"enum">>, <<"cannot move to new state from current state">>, Context);
+        {'error', _E} ->
+            cb_context:add_validation_error(<<"port_state">>, <<"enum">>, <<"failed to move to new state from current state">>, Context)
     end.
