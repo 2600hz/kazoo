@@ -19,6 +19,7 @@
          ,validate_request_data/2, validate_request_data/3, validate_request_data/4
          ,add_content_types_provided/2
          ,add_content_types_accepted/2
+         ,add_attachment_content_type/3
 
          ,is_context/1
 
@@ -150,6 +151,26 @@ add_content_types_accepted(#cb_context{content_types_accepted=CTAs}=Context, [_|
     Context#cb_context{content_types_provided = NewCTAs ++ CTAs};
 add_content_types_accepted(#cb_context{}=Context, {_, _}=NewCTA) ->
     add_content_types_provided(Context,[NewCTA]).
+
+-spec add_attachment_content_type(context(), ne_binary(), ne_binary()) -> context().
+add_attachment_content_type(#cb_context{}=Context, DocId, AttachmentId) ->
+    Context1 = crossbar_doc:load(DocId, Context),
+    case resp_status(Context1) of
+        'success' ->
+            maybe_add_content_type_provided(Context1, AttachmentId);
+        _Status -> Context1
+    end.
+
+-spec maybe_add_content_type_provided(context(), ne_binary()) -> context().
+maybe_add_content_type_provided(Context, AttachmentId) ->
+    ContentTypeKey = [<<"_attachments">>, AttachmentId, <<"content_type">>],
+    case wh_json:get_value(ContentTypeKey, doc(Context)) of
+        'undefined' -> Context;
+        ContentType ->
+            lager:debug("found content type ~s", [ContentType]),
+            [Type, SubType] = binary:split(ContentType, <<"/">>),
+            add_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
