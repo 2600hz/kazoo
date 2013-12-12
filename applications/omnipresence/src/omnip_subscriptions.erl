@@ -361,7 +361,7 @@ maybe_send_update(JObj, State) ->
     To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
     From = wh_json:get_value(<<"From">>, JObj),
     Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
-    {User, Props} = 
+    {User, Props} =
         case Direction =:= <<"inbound">> of
             'true' ->
                 {From, props:filter_undefined(
@@ -383,7 +383,7 @@ maybe_send_update(JObj, State) ->
                          ])}
             end,
     case find_subscriptions(User) of
-        {'ok', Subs} -> 
+        {'ok', Subs} ->
             [send_update(Props, Direction, S)
              || S <- Subs
             ];
@@ -400,7 +400,7 @@ send_update(Props, _, #omnip_subscription{user=User}=Subscription) ->
 
 -spec send_update(wh_proplist(), subscription()) -> 'ok'.
 send_update(Props, #omnip_subscription{stalker=Q
-                                       ,protocol=Protoco
+                                       ,protocol=Protocol
                                        ,from=F
                                        }) ->
     To = props:get_value(<<"To">>, Props),
@@ -468,14 +468,14 @@ table_config() ->
 -spec search_for_subscriptions(ne_binary()) -> subscriptions().
 -spec search_for_subscriptions(ne_binary(), ne_binary() | '_') -> subscriptions().
 search_for_subscriptions(Realm) ->
-    MatchSpec = 
+    MatchSpec =
         #omnip_subscription{realm=wh_util:to_lower_binary(Realm)
                             ,_='_'
                            },
     ets:match_object(table_id(), MatchSpec).
 
 search_for_subscriptions(Realm, Username) ->
-    MatchSpec = 
+    MatchSpec =
         #omnip_subscription{username=wh_util:to_lower_binary(Username)
                             ,realm=wh_util:to_lower_binary(Realm)
                             ,_='_'
@@ -483,7 +483,7 @@ search_for_subscriptions(Realm, Username) ->
     ets:match_object(table_id(), MatchSpec).
 
 publish_flush([]) -> 'ok';
-publish_flush([#omnip_subscription{stalker=Q, user=User} | Subscriptions]) -> 
+publish_flush([#omnip_subscription{stalker=Q, user=User} | Subscriptions]) ->
     Props = [{<<"Type">>, <<"id">>}
              ,{<<"User">>, <<"sip:", User/binary>>}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
