@@ -14,6 +14,8 @@
 -export([create_available/1]).
 -export([create_port_in/1
          ,find_port_in_number/1
+         ,get_number_in_ports/1
+         ,number_from_port_doc/2
         ]).
 -export([get/1, get/2]).
 -export([save/1]).
@@ -134,8 +136,7 @@ create_port_in(#number{number=Number
 -spec get(ne_binary()) -> wnm_number().
 -spec get(ne_binary(), api_object()) -> wnm_number().
 
-get(Number) ->
-    get(Number, 'undefined').
+get(Number) -> get(Number, 'undefined').
 
 get(Number, PublicFields) ->
     Num = wnm_util:normalize_number(Number),
@@ -185,15 +186,6 @@ get_number_in_ports(#number{number=Number}=N) ->
         {'ok', PortDoc} ->
             {'ok', number_from_port_doc(N, PortDoc)}
     end.
-
--spec number_from_port_doc(wnm_number(), wh_json:object()) -> wnm_number().
-number_from_port_doc(Number, JObj) ->
-    Number#number{
-      number_db=wh_json:get_value(<<"pvt_account_id">>, JObj)
-      ,state = ?NUMBER_STATE_PORT_IN
-      ,current_state = ?NUMBER_STATE_PORT_IN
-      ,assigned_to=wh_json:get_ne_value(<<"pvt_account_id">>, JObj)
-     }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -690,6 +682,16 @@ json_to_record(JObj, IsNew, #number{number=Num, number_db=Db}=Number) ->
       ,number_doc=JObj
       ,current_number_doc=case IsNew of 'true' -> wh_json:new(); 'false' -> JObj end
       ,used_by=wh_json:get_value(<<"used_by">>, JObj, <<>>)
+     }.
+
+-spec number_from_port_doc(wnm_number(), wh_json:object()) -> wnm_number().
+number_from_port_doc(#number{number=N}=Number, JObj) ->
+    Number#number{
+      number_db=wnm_util:number_to_db_name(N)
+      ,state = ?NUMBER_STATE_PORT_IN
+      ,current_state = ?NUMBER_STATE_PORT_IN
+      ,assigned_to=wh_json:get_ne_value(<<"pvt_account_id">>, JObj)
+      ,auth_by=wh_json:get_ne_value(<<"pvt_account_id">>, JObj)
      }.
 
 %%--------------------------------------------------------------------

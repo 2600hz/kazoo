@@ -70,6 +70,7 @@ find(Number, Quantity, Opts) ->
 %%--------------------------------------------------------------------
 -type lookup_errors() ::'not_reconcilable' |
                         'unassigned' |
+                        'not_found' |
                         {wnm_failures(), api_object() | ne_binary()}.
 -spec lookup_account_by_number(ne_binary()) ->
                                       {'ok', ne_binary(), wh_proplist()} |
@@ -108,12 +109,15 @@ lookup_account_in_ports(N, Error) ->
                ,{'account_id', AccountId}
               ]
             };
+        {'error', 'not_found'}=E ->
+            lager:debug("port number ~s not found", [Number]),
+            E;
         {'error', _E} ->
             lager:debug("failed to query for port number '~s': ~p", [Number, _E]),
             Error
     end.
 
--spec maybe_check_account(ne_binary()) ->
+-spec maybe_check_account(wnm_number()) ->
                                  {'ok', ne_binary(), wh_proplist()} |
                                  {'error', _}.
 maybe_check_account(#number{assigned_to='undefined'
@@ -146,7 +150,7 @@ maybe_check_account(#number{assigned_to=AssignedTo
     lager:debug("number ~p assigned to acccount id ~p but in state ~p", [_Number, AssignedTo, State]),
     {'error', {'not_in_service', AssignedTo}}.
 
--spec check_account(ne_binary()) ->
+-spec check_account(wnm_number()) ->
                            {'ok', ne_binary(), wh_proplist()} |
                            {'error', _}.
 check_account(#number{assigned_to=AssignedTo}=N) ->
@@ -218,19 +222,15 @@ ported(Number) ->
     lists:foldl(fun(F, J) -> catch F(J) end, catch wnm_number:get(Number), Routines).
 
 -spec check_ports(wnm_number()) -> operation_return().
-check_ports(Number) ->
+check_ports(#number{number=MaybePortNumber}=Number) ->
     case wnm_number:find_port_in_number(Number) of
         {'ok', PortDoc} ->
-            AccountId = wh_json:get_value(<<"pvt_account_id">>, PortDoc),
-            #number{} = N = create_number(Number, AccountId, AccountId),
-
-            couch_mgr:save_doc(?KZ_PORT_REQUESTS_DB, wh_json:set_value(<<"pvt_port_state">>, <<"completed">>, PortDoc)),
-
-            Numbers = wh_json:get_keys(<<"numbers">>, PortDoc, []),
-            [spawn(?MODULE, 'ported', [PortNumber]) || PortNumber <- Numbers],
-            lager:debug("found port doc with number ~s in account ~s, moving over in ~p", [Number, AccountId]),
-            N;
+            lager:debug("found port doc with number ~s for account ~s"
+                        ,[MaybePortNumber, wh_json:get_value(<<"pvt_account_id">>, PortDoc)]
+                       ),
+            wnm_number:number_from_port_doc(Number, PortDoc);
         {'error', 'not_found'} ->
+            lager:debug("number not found in ports"),
             {'not_found', Number}
     end.
 
@@ -240,9 +240,9 @@ check_ports(Number) ->
 %% Add and reserve a number for an account
 %% @end
 %%--------------------------------------------------------------------
--spec create_number(ne_binary(), ne_binary(), ne_binary()) ->
+-spec create_number(ne_binary(), api_binary(), ne_binary() | 'system') ->
                            operation_return().
--spec create_number(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) ->
+-spec create_number(ne_binary(), api_binary(), ne_binary() | 'system', wh_json:object()) ->
                            operation_return().
 
 create_number(Number, AssignTo, AuthBy) ->
@@ -250,8 +250,10 @@ create_number(Number, AssignTo, AuthBy) ->
 
 create_number(Number, AssignTo, AuthBy, PublicFields) ->
     lager:debug("attempting to create number ~s for account ~s", [Number, AssignTo]),
+
     Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
                 ,fun({'not_found', #number{}=N}) ->
+                         lager:debug("try to create not_found number ~s", [Number]),
                          create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N);
                     ({_, #number{}}=E) -> E;
                     (#number{current_state = ?NUMBER_STATE_AVAILABLE}=N) -> N;
@@ -273,7 +275,7 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).
 
--spec create_not_found_number(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), wnm_number()) ->
+-spec create_not_found_number(ne_binary(), api_binary(), 'system' | ne_binary(), wh_json:object(), wnm_number()) ->
                                      operation_return().
 create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N) ->
     AccountId = wh_util:format_account_id(AuthBy, 'raw'),
@@ -284,7 +286,9 @@ create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N) ->
         lager:debug("number doesnt exist but account ~s is authorized to create it", [AuthBy]),
         case wnm_number:find_port_in_number(N) of
             {'ok', _Doc} ->
-                lager:debug("number is being ported in for account ~s", [wh_json:get_value(<<"pvt_account_id">>, _Doc)]),
+                lager:debug("number is being ported in for account ~s"
+                            ,[wh_json:get_value(<<"pvt_account_id">>, _Doc)]
+                           ),
                 wnm_number:error_number_is_porting(N);
             {'error', 'not_found'} ->
                 lager:debug("number is not in a port request"),
@@ -710,9 +714,9 @@ set_public_fields(Number, PublicFields, AuthBy) ->
     lists:foldl(fun(F, J) -> catch F(J) end, wnm_number:get(Number, PublicFields), Routines).
 
 
--spec track_assignment(ne_binaries(), wh_proplist()) ->
+-spec track_assignment(ne_binary(), wh_proplist()) ->
                               'ok' | 'error'.
--spec track_assignment(ne_binaries(), wh_proplist(), integer()) ->
+-spec track_assignment(ne_binary(), wh_proplist(), integer()) ->
                               'ok' | 'error'.
 track_assignment(Account, Props) ->
     track_assignment(Account, Props, 3).
