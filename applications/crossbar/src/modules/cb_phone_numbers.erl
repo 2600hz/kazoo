@@ -23,10 +23,8 @@
          ,post/2, post/4
          ,delete/2, delete/4
          ,summary/1
-         ,read/2
          ,populate_phone_numbers/1
          ,read/2
-         ,validate_request/1
         ]).
 
 -include("../crossbar.hrl").
