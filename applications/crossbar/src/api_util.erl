@@ -910,7 +910,8 @@ halt(Req0, #cb_context{resp_error_code=StatusCode}=Context) ->
     {'halt', Req3, Context}.
 
 -spec create_event_name(cb_context:context(), ne_binary()) -> ne_binary().
-create_event_name(#cb_context{api_version=ApiVersion}, Name) ->
+create_event_name(Context, Name) ->
+    ApiVersion = cb_context:api_version(Context),
     <<ApiVersion/binary, "_resource.", Name/binary>>.
 
 

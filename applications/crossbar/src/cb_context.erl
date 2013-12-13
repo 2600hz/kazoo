@@ -33,13 +33,17 @@
          ,req_data/1, set_req_data/2
          ,req_id/1, set_req_id/2
          ,req_files/1, set_req_files/2
+         ,req_nouns/1, set_req_nouns/2
          ,query_string/1, set_query_string/2
          ,client_ip/1
          ,doc/1, set_doc/2
+         ,start/1, set_start/2
          ,resp_data/1, set_resp_data/2
          ,resp_status/1, set_resp_status/2
          ,api_version/1, set_api_version/2
          ,resp_etag/1, set_resp_etag/2
+         ,allow_methods/1, set_allow_methods/2
+         ,allowed_methods/1, set_allowed_methods/2
 
          ,resp_headers/1
          ,set_resp_headers/2, set_resp_header/3
@@ -52,7 +56,7 @@
 -include("crossbar.hrl").
 
 -type context() :: #cb_context{}.
--type setter_fun() :: fun((cb_context:context(), term()) -> cb_context:context()).
+-type setter_fun() :: fun((context(), term()) -> context()).
 -export_type([context/0
               ,setter_fun/0
              ]).
@@ -77,36 +81,45 @@ auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
 req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
 req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_files(#cb_context{req_files=ReqFiles}) -> ReqFiles.
+req_nouns(#cb_context{req_nouns=ReqNouns}) -> ReqNouns.
 query_string(#cb_context{query_json=Q}) -> Q.
 client_ip(#cb_context{client_ip=IP}) -> IP.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
 doc(#cb_context{doc=Doc}) -> Doc.
+start(#cb_context{start=Start}) -> Start.
 resp_data(#cb_context{resp_data=RespData}) -> RespData.
 resp_status(#cb_context{resp_status=RespStatus}) -> RespStatus.
 resp_headers(#cb_context{resp_headers=RespHeaders}) -> RespHeaders.
 api_version(#cb_context{api_version=ApiVersion}) -> ApiVersion.
 resp_etag(#cb_context{resp_etag=ETag}) -> ETag.
 
+allow_methods(#cb_context{allow_methods=AMs}) -> AMs.
+allowed_methods(#cb_context{allowed_methods=AMs}) -> AMs.
+
 %% Setters
--spec set_account_id(cb_context:context(), ne_binary()) -> cb_context:context().
--spec set_account_db(cb_context:context(), ne_binary()) -> cb_context:context().
--spec set_auth_token(cb_context:context(), ne_binary()) -> cb_context:context().
--spec set_auth_doc(cb_context:context(), wh_json:object()) -> cb_context:context().
--spec set_auth_account_id(cb_context:context(), ne_binary()) -> cb_context:context().
--spec set_req_verb(cb_context:context(), ne_binary()) -> cb_context:context().
--spec set_req_data(cb_context:context(), wh_json:object() | ne_binary()) -> cb_context:context().
--spec set_req_files(cb_context:context(), wh_json:objects()) -> cb_context:context().
--spec set_query_string(cb_context:context(), wh_json:object()) -> cb_context:context().
--spec set_req_id(cb_context:context(), ne_binary()) -> cb_context:context().
--spec set_doc(cb_context:context(), api_object() | wh_json:objects()) -> cb_context:context().
--spec set_resp_data(cb_context:context(), resp_data()) -> cb_context:context().
--spec set_resp_status(cb_context:context(), crossbar_status()) -> cb_context:context().
--spec set_api_version(cb_context:context(), ne_binary()) -> cb_context:context().
--spec set_resp_etag(cb_context:context(), ne_binary()) -> cb_context:context().
--spec set_resp_headers(cb_context:context(), wh_proplist()) -> cb_context:context().
--spec add_resp_headers(cb_context:context(), wh_proplist()) -> cb_context:context().
--spec set_resp_header(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
--spec add_resp_header(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec set_account_id(context(), ne_binary()) -> context().
+-spec set_account_db(context(), ne_binary()) -> context().
+-spec set_auth_token(context(), ne_binary()) -> context().
+-spec set_auth_doc(context(), wh_json:object()) -> context().
+-spec set_auth_account_id(context(), ne_binary()) -> context().
+-spec set_req_verb(context(), ne_binary()) -> context().
+-spec set_req_data(context(), wh_json:object() | ne_binary()) -> context().
+-spec set_req_files(context(), wh_json:objects()) -> context().
+-spec set_req_nouns(context(), path_tokens()) -> context().
+-spec set_query_string(context(), wh_json:object()) -> context().
+-spec set_req_id(context(), ne_binary()) -> context().
+-spec set_doc(context(), api_object() | wh_json:objects()) -> context().
+-spec set_start(context(), wh_timeout()) -> context().
+-spec set_resp_data(context(), resp_data()) -> context().
+-spec set_resp_status(context(), crossbar_status()) -> context().
+-spec set_api_version(context(), ne_binary()) -> context().
+-spec set_resp_etag(context(), ne_binary()) -> context().
+-spec set_resp_headers(context(), wh_proplist()) -> context().
+-spec add_resp_headers(context(), wh_proplist()) -> context().
+-spec set_resp_header(context(), ne_binary(), ne_binary()) -> context().
+-spec add_resp_header(context(), ne_binary(), ne_binary()) -> context().
+-spec set_allow_methods(context(), http_methods()) -> context().
+-spec set_allowed_methods(context(), http_methods()) -> context().
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
@@ -116,13 +129,18 @@ set_auth_account_id(#cb_context{}=Context, AuthBy) -> Context#cb_context{auth_ac
 set_req_verb(#cb_context{}=Context, ReqVerb) -> Context#cb_context{req_verb=ReqVerb}.
 set_req_data(#cb_context{}=Context, ReqData) -> Context#cb_context{req_data=ReqData}.
 set_req_files(#cb_context{}=Context, ReqFiles) -> Context#cb_context{req_files=ReqFiles}.
+set_req_nouns(#cb_context{}=Context, ReqNouns) -> Context#cb_context{req_nouns=ReqNouns}.
 set_query_string(#cb_context{}=Context, Q) -> Context#cb_context{query_json=Q}.
 set_req_id(#cb_context{}=Context, ReqId) -> Context#cb_context{req_id=ReqId}.
 set_doc(#cb_context{}=Context, Doc) -> Context#cb_context{doc=Doc}.
+set_start(#cb_context{}=Context, Start) -> Context#cb_context{start=Start}.
 set_resp_data(#cb_context{}=Context, RespData) -> Context#cb_context{resp_data=RespData}.
 set_resp_status(#cb_context{}=Context, RespStatus) -> Context#cb_context{resp_status=RespStatus}.
 set_api_version(#cb_context{}=Context, ApiVersion) -> Context#cb_context{api_version=ApiVersion}.
 set_resp_etag(#cb_context{}=Context, ETag) -> Context#cb_context{resp_etag=ETag}.
+
+set_allow_methods(#cb_context{}=Context, AMs) -> Context#cb_context{allow_methods=AMs}.
+set_allowed_methods(#cb_context{}=Context, AMs) -> Context#cb_context{allowed_methods=AMs}.
 
 set_resp_headers(#cb_context{resp_headers=Hs}=Context, Headers) ->
     Context#cb_context{resp_headers=lists:foldl(fun set_resp_header_fold/2, Hs, Headers)}.
