@@ -194,7 +194,7 @@ save_phone_number_docs(#number{phone_number_docs=PhoneNumberDocs}=Number) ->
 save_phone_number_docs([], Number) -> Number;
 save_phone_number_docs([{Account, JObj}|Props], #number{number=Num}=Number) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:save_doc(AccountDb, set_locality('phone_number_docs', JObj, Number)) of
+    case couch_mgr:save_doc(AccountDb, JObj) of
         {'ok', _} ->
             lager:debug("saved updated phone_numbers doc in account db ~s", [AccountDb]),
             save_phone_number_docs(Props, Number);
@@ -208,20 +208,12 @@ save_phone_number_docs([{Account, JObj}|Props], #number{number=Num}=Number) ->
             save_phone_number_docs(Props, Number)
     end.
 
--spec set_locality(atom(), wh_json:object(), wnm_number()) -> wh_json:object().
-set_locality('number_doc', JObj, #number{number=Num}) ->
+-spec set_locality(wh_json:object(), wnm_number()) -> wh_json:object().
+set_locality(JObj, #number{number=Num}) ->
     case wh_json:get_value([<<"pvt_module_data">>, Num, <<"locality">>], JObj) of
         'undefined' -> JObj;
         Loc ->
             wh_json:set_value(<<"locality">>, Loc, JObj)
-    end;
-set_locality('phone_number_docs', JObj, #number{number=Num, module_data=Data}) ->
-    case wh_json:get_value([Num, <<"locality">>], Data) of
-        'undefined' -> JObj;
-        Loc ->
-            NumberJobj = wh_json:get_value(Num, JObj),
-            NumberJobj1 = wh_json:set_value(<<"locality">>, Loc, NumberJobj),
-            wh_json:set_value(Num, NumberJobj1, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -709,7 +701,7 @@ merge_public_fields(PublicFields, #number{number_doc=JObj}=N) ->
 %%--------------------------------------------------------------------
 -spec save_number_doc(wnm_number()) -> wnm_number().
 save_number_doc(#number{number_db=Db, number=Num, number_doc=JObj}=Number) ->
-    case couch_mgr:save_doc(Db, set_locality('number_doc', JObj, Number)) of
+    case couch_mgr:save_doc(Db, set_locality(JObj, Number)) of
         {error, not_found} ->
             lager:debug("attempting to creating new database '~s' for number '~s'", [Db, Num]),
             true = couch_mgr:db_create(Db),
