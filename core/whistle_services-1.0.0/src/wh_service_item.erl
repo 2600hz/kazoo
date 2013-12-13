@@ -159,7 +159,9 @@ rate(#wh_service_item{rate=Rate}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_rate(ne_binary() | float(), item()) -> item().
+-spec set_rate(api_binary() | float(), item()) -> item().
+set_rate('undefined', #wh_service_item{}=ServiceItem) ->
+    ServiceItem#wh_service_item{rate='undefined'};
 set_rate(Rate, #wh_service_item{}=ServiceItem) ->
     ServiceItem#wh_service_item{rate=wh_util:to_float(Rate)}.
 
