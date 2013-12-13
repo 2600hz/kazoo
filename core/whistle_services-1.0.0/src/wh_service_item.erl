@@ -41,12 +41,12 @@
 
 -record(wh_service_item, {category :: api_binary()
                           ,item :: api_binary()
-                          ,quantity = 0 :: integer()
-                          ,rate = 0.0 :: float()
+                          ,quantity = 0 :: api_integer()
+                          ,rate = 0.0 :: api_float()
                           ,single_discount = 'false' :: boolean()
-                          ,single_discount_rate = 0.00 :: float()
-                          ,cumulative_discount = 0 :: integer()
-                          ,cumulative_discount_rate = 0.00 :: float()
+                          ,single_discount_rate = 0.00 :: api_float()
+                          ,cumulative_discount = 0 :: api_integer()
+                          ,cumulative_discount_rate = 0.00 :: api_float()
                           ,bookkeepers = wh_json:new() :: wh_json:object()
                          }).
 
@@ -102,7 +102,6 @@ category(#wh_service_item{category=Category}) ->
 set_category(Category, #wh_service_item{}=ServiceItem) ->
     ServiceItem#wh_service_item{category=Category}.
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -139,7 +138,9 @@ quantity(#wh_service_item{quantity=Quantity}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_quantity(ne_binary() | integer(), item()) -> item().
+-spec set_quantity(api_binary() | integer(), item()) -> item().
+set_quantity('undefined', #wh_service_item{}=ServiceItem) ->
+    ServiceItem#wh_service_item{quantity='undefined'};
 set_quantity(Quantity, #wh_service_item{}=ServiceItem) ->
     ServiceItem#wh_service_item{quantity=wh_util:to_integer(Quantity)}.
 
@@ -149,7 +150,7 @@ set_quantity(Quantity, #wh_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec rate(item()) -> float().
+-spec rate(item()) -> api_float().
 rate(#wh_service_item{rate=Rate}) ->
     Rate.
 
@@ -191,7 +192,7 @@ set_single_discount(SingleDiscount, #wh_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec single_discount_rate(item()) -> float().
+-spec single_discount_rate(item()) -> api_float().
 single_discount_rate(#wh_service_item{single_discount_rate=Rate}) ->
     Rate.
 
@@ -201,7 +202,9 @@ single_discount_rate(#wh_service_item{single_discount_rate=Rate}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_single_discount_rate(ne_binary() | float(), item()) -> item().
+-spec set_single_discount_rate(api_binary() | float(), item()) -> item().
+set_single_discount_rate('undefined', #wh_service_item{}=ServiceItem) ->
+    ServiceItem#wh_service_item{single_discount_rate='undefined'};
 set_single_discount_rate(Rate, #wh_service_item{}=ServiceItem) ->
     ServiceItem#wh_service_item{single_discount_rate=wh_util:to_float(Rate)}.
 
@@ -211,7 +214,7 @@ set_single_discount_rate(Rate, #wh_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cumulative_discount(item()) -> integer().
+-spec cumulative_discount(item()) -> api_integer().
 cumulative_discount(#wh_service_item{cumulative_discount=Quantity}) ->
     Quantity.
 
@@ -221,7 +224,9 @@ cumulative_discount(#wh_service_item{cumulative_discount=Quantity}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_cumulative_discount(ne_binary() | integer(), item()) -> item().
+-spec set_cumulative_discount(api_binary() | integer(), item()) -> item().
+set_cumulative_discount('undefined', #wh_service_item{}=ServiceItem) ->
+    ServiceItem#wh_service_item{cumulative_discount='undefined'};
 set_cumulative_discount(Quantity, #wh_service_item{}=ServiceItem) ->
     ServiceItem#wh_service_item{cumulative_discount=wh_util:to_integer(Quantity)}.
 
@@ -231,7 +236,7 @@ set_cumulative_discount(Quantity, #wh_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cumulative_discount_rate(item()) -> float().
+-spec cumulative_discount_rate(item()) -> api_float().
 cumulative_discount_rate(#wh_service_item{cumulative_discount_rate=Rate}) ->
     Rate.
 
@@ -241,7 +246,9 @@ cumulative_discount_rate(#wh_service_item{cumulative_discount_rate=Rate}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_cumulative_discount_rate(ne_binary() | float(), item()) -> item().
+-spec set_cumulative_discount_rate(api_binary() | float(), item()) -> item().
+set_cumulative_discount_rate('undefined', #wh_service_item{}=ServiceItem) ->
+    ServiceItem#wh_service_item{cumulative_discount_rate='undefined'};
 set_cumulative_discount_rate(Rate, #wh_service_item{}=ServiceItem) ->
     ServiceItem#wh_service_item{cumulative_discount_rate=wh_util:to_float(Rate)}.
 
