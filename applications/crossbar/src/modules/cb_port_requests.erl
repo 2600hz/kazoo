@@ -352,7 +352,7 @@ is_deletable(Context, _PortState) ->
 -spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 get(Context, Id, ?PATH_TOKEN_LOA) ->
     lager:debug("load LOA for ~s", [Id]),
-    Context.
+    cb_context:set_resp_data(Context, wh_json:encode(cb_context:doc(Context))).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -55,3 +55,8 @@ curl -v -X PUT -H "X-Auth-Token: 82e2f0e778b55f215cbacf71f7bd4f13" -H "Content-T
 
 # Port is rejected
 curl -v -X PUT -H "X-Auth-Token: 82e2f0e778b55f215cbacf71f7bd4f13" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests/b38b134866f87eb196c408f40ededc83/rejection | pp
+
+## Extra features
+
+# Build an LOA PDF from a port request
+curl -v -X GET -H "Accepts: application/x-pdf" -H "X-Auth-Token: 82e2f0e778b55f215cbacf71f7bd4f13" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests/b38b134866f87eb196c408f40ededc83/loa | pp
