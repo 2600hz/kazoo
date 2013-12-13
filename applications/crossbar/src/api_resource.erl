@@ -98,15 +98,18 @@ rest_init(Req0, Opts) ->
 terminate(_Req, _Context) ->
     lager:debug("session finished").
 
-rest_terminate(Req, #cb_context{start=T1
-                                ,method = ?HTTP_OPTIONS
-                               }=Context) ->
-    lager:info("OPTIONS request fulfilled in ~p ms", [wh_util:elapsed_ms(T1)]),
+rest_terminate(Req, Context) ->
+    rest_terminate(Req, Context, cb_context:method(Context)).
+
+rest_terminate(Req, Context, ?HTTP_OPTIONS) ->
+    lager:info("OPTIONS request fulfilled in ~p ms"
+               ,[wh_util:elapsed_ms(cb_context:start(Context))]
+              ),
     _ = api_util:finish_request(Req, Context);
-rest_terminate(Req, #cb_context{start=T1
-                                ,req_verb=Verb
-                               }=Context) ->
-    lager:info("~s request fulfilled in ~p ms", [Verb, wh_util:elapsed_ms(T1)]),
+rest_terminate(Req, Context, Verb) ->
+    lager:info("~s request fulfilled in ~p ms"
+               ,[Verb, wh_util:elapsed_ms(cb_context:start(Context))]
+              ),
     _ = api_util:finish_request(Req, Context).
 
 %%%===================================================================
@@ -115,13 +118,18 @@ rest_terminate(Req, #cb_context{start=T1
 -spec known_methods(cowboy_req:req(), cb_context:context()) ->
                            {http_methods(), cowboy_req:req(), cb_context:context()}.
 known_methods(Req, Context) ->
-    {?ALLOWED_METHODS, Req, Context#cb_context{allow_methods=?ALLOWED_METHODS
-                                               ,allowed_methods=?ALLOWED_METHODS
-                                              }}.
+    {?ALLOWED_METHODS
+     ,Req
+     ,cb_context:set_allowed_methods(
+        cb_context:set_allow_methods(Context, ?ALLOWED_METHODS)
+        ,?ALLOWED_METHODS
+       )
+    }.
 
 -spec allowed_methods(cowboy_req:req(), cb_context:context()) ->
                              {http_methods() | 'halt', cowboy_req:req(), cb_context:context()}.
-allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
+allowed_methods(Req0, Context) ->
+    Methods = cb_context:allowed_methods(Context),
     {Tokens, Req1} = cowboy_req:path_info(Req0),
     case api_util:parse_path_tokens(Tokens) of
         [_|_] = Nouns ->
@@ -132,28 +140,31 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
                 {'halt', Context1, Req2} ->
                     api_util:halt(Req2, cb_context:add_system_error('parse_error', Context1));
                 {Context1, Req2} ->
-                    determine_http_verb(Req2, Context1#cb_context{req_nouns=Nouns})
+                    determine_http_verb(Req2, cb_context:set_req_nouns(Context1, Nouns))
             end;
         [] ->
-            lager:debug("no path tokens: ~p", [Methods]),
-            {Methods, Req1, Context#cb_context{allow_methods=Methods}}
+            {Methods, Req1, cb_context:set_allow_methods(Context, Methods)}
     end.
 
 -spec determine_http_verb(cowboy_req:req(), cb_context:context()) ->
                                  {http_methods() | 'halt', cowboy_req:req(), cb_context:context()}.
 determine_http_verb(Req0, Context) ->
     {Method, Req1} = cowboy_req:method(Req0),
-    find_allowed_methods(Req1, Context#cb_context{req_verb=api_util:get_http_verb(Method, Context)}).
+    ReqVerb = api_util:get_http_verb(Method, Context),
+    find_allowed_methods(Req1, cb_context:set_req_verb(Context, ReqVerb)).
 
-find_allowed_methods(Req0, #cb_context{allowed_methods=Methods
-                                       ,req_verb=Verb
-                                       ,req_nouns=[{Mod, Params}|_]
-                                      }=Context) ->
+find_allowed_methods(Req0, Context) ->
+    [{Mod, Params}|_] = cb_context:req_nouns(Context),
+
     Event = api_util:create_event_name(Context, <<"allowed_methods">>),
     Responses = crossbar_bindings:map(<<Event/binary, ".", Mod/binary>>, Params),
     {Method, Req1} = cowboy_req:method(Req0),
-    AllowMethods = api_util:allow_methods(Responses, Methods, Verb, wh_util:to_binary(Method)),
-    maybe_add_cors_headers(Req1, Context#cb_context{allow_methods=AllowMethods}).
+    AllowMethods = api_util:allow_methods(Responses
+                                          ,cb_context:allowed_methods(Context)
+                                          ,cb_context:req_verb(Context)
+                                          ,wh_util:to_binary(Method)
+                                         ),
+    maybe_add_cors_headers(Req1, cb_context:set_allow_methods(Context, AllowMethods)).
 
 -spec maybe_add_cors_headers(cowboy_req:req(), cb_context:context()) ->
                                     {http_methods() | 'halt', cowboy_req:req(), cb_context:context()}.
@@ -168,10 +179,13 @@ maybe_add_cors_headers(Req0, Context) ->
 
 -spec check_preflight(cowboy_req:req(), cb_context:context()) ->
                              {http_methods(), cowboy_req:req(), cb_context:context()}.
-check_preflight(Req0, #cb_context{req_verb = ?HTTP_OPTIONS}=Context) ->
+check_preflight(Req0, Context) ->
+    check_preflight(Req0, Context, cb_context:req_verb(Context)).
+
+check_preflight(Req0, Context, ?HTTP_OPTIONS) ->
     lager:debug("allowing OPTIONS request for CORS preflight"),
     {[?HTTP_OPTIONS], Req0, Context};
-check_preflight(Req0, Context) ->
+check_preflight(Req0, Context, _Verb) ->
     maybe_allow_method(Req0, Context).
 
 maybe_allow_method(Req0, #cb_context{allow_methods=[]}=Context) ->
@@ -546,7 +560,8 @@ to_json(Req, Context) ->
 
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->
                        {binary(), cowboy_req:req(), cb_context:context()}.
-to_binary(Req, #cb_context{resp_data=RespData}=Context) ->
+to_binary(Req, Context) ->
+    RespData = cb_context:resp_data(Context),
     Event = api_util:create_event_name(Context, <<"to_binary">>),
     _ = crossbar_bindings:map(Event, {Req, Context}),
     lager:debug("responding to_binary"),
