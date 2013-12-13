@@ -179,29 +179,28 @@ maybe_add_cors_headers(Req0, Context) ->
 
 -spec check_preflight(cowboy_req:req(), cb_context:context()) ->
                              {http_methods(), cowboy_req:req(), cb_context:context()}.
-check_preflight(Req0, Context) ->
-    check_preflight(Req0, Context, cb_context:req_verb(Context)).
+check_preflight(Req, Context) ->
+    check_preflight(Req, Context, cb_context:req_verb(Context)).
 
-check_preflight(Req0, Context, ?HTTP_OPTIONS) ->
+check_preflight(Req, Context, ?HTTP_OPTIONS) ->
     lager:debug("allowing OPTIONS request for CORS preflight"),
-    {[?HTTP_OPTIONS], Req0, Context};
-check_preflight(Req0, Context, _Verb) ->
-    maybe_allow_method(Req0, Context).
+    {[?HTTP_OPTIONS], Req, Context};
+check_preflight(Req, Context, _Verb) ->
+    maybe_allow_method(Req, Context).
 
-maybe_allow_method(Req0, #cb_context{allow_methods=[]}=Context) ->
+maybe_allow_method(Req, Context) ->
+    maybe_allow_method(Req, Context, cb_context:allow_methods(Context), cb_context:req_verb(Context)).
+
+maybe_allow_method(Req, Context, [], _Verb) ->
     lager:debug("no allow methods"),
-    api_util:halt(Req0, cb_context:add_system_error('not_found', Context));
-maybe_allow_method(Req0, #cb_context{allow_methods=[Verb]=Methods
-                                     ,req_verb=Verb
-                                    }=Context) ->
-    {Methods, Req0, Context};
-maybe_allow_method(Req0, #cb_context{allow_methods=Methods
-                                     ,req_verb=Verb
-                                    }=Context) ->
+    api_util:halt(Req, cb_context:add_system_error('not_found', Context));
+maybe_allow_method(Req, Context, [Verb]=Methods, Verb) ->
+    {Methods, Req, Context};
+maybe_allow_method(Req, Context, Methods, Verb) ->
     case lists:member(Verb, Methods) of
-        'true' -> {Methods, Req0, Context};
+        'true' -> {Methods, Req, Context};
         'false' ->
-            api_util:halt(Req0, cb_context:add_system_error('invalid_method', Context))
+            api_util:halt(Req, cb_context:add_system_error('invalid_method', Context))
     end.
 
 malformed_request(Req, #cb_context{req_json={'malformed', _}}=Context) ->
