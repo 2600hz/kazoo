@@ -8,6 +8,14 @@
 -type path_token() :: ne_binary().
 -type path_tokens() :: [path_token(),...] | [].
 
+-type resp_data() :: wh_json:object() | wh_json:objects() | api_binary() | wh_json:json_term().
+
+ %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
+-type req_file() :: {ne_binary(), wh_json:object()}.
+-type req_files() :: [req_file(),...] | [].
+
+-type req_nouns() :: [{ne_binary(), wh_json:json_strings()},...] | [].
+
 %% {handler_fun, {type, sub_type}} => {to_json, [{<<"application">>, <<"json">>}]}
 
 %% {Type, SubType, Options}

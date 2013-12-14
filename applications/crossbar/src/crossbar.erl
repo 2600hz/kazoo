@@ -128,7 +128,7 @@ declare_exchanges() ->
 on_request(Req0) ->
     {Method, Req1} = cowboy_req:method(Req0),
     case Method of
-        'OPTIONS' -> Req1;
+        ?HTTP_OPTIONS -> Req1;
         _ -> Req1
     end.
 
@@ -137,7 +137,6 @@ on_response(_Status, _Headers, _Body, Req0) ->
     {Method, Req1} = cowboy_req:method(Req0),
     case Method of
         ?HTTP_OPTIONS -> Req1;
-        'OPTIONS' -> Req1;
         _ -> Req1
     end.
 
@@ -161,9 +160,7 @@ maybe_start_plaintext(Dispatch) ->
                                    ]
                                  ) of
                 {'ok', _} ->
-                    lager:info("started plaintext API server");
-                _Err ->
-                    lager:info("unexpected result when starting API server: ~p", [_Err])
+                    lager:info("started plaintext API server")
             catch
                 _E:_R ->
                     lager:warning("crashed starting API server: ~s: ~p", [_E, _R])
@@ -197,9 +194,7 @@ start_ssl(Dispatch) ->
                                   )
             of
                 {'ok', _} ->
-                    lager:info("started SSL API server on port ~b", [props:get_value('port', SSLOpts)]);
-                _Err ->
-                    lager:info("unexpected result when starting SSL API server: ~p", [_Err])
+                    lager:info("started SSL API server on port ~b", [props:get_value('port', SSLOpts)])
             catch
                 'throw':{'invalid_file', _File} ->
                     lager:info("SSL disabled: failed to find ~s", [_File]);

@@ -46,6 +46,10 @@
          ,allowed_methods/1, set_allowed_methods/2
          ,method/1, set_method/2
 
+         ,req_json/1, set_req_json/2
+         ,content_types_accepted/1, set_content_types_accepted/2
+         ,resp_error_code/1, set_resp_error_code/2
+
          ,resp_headers/1
          ,set_resp_headers/2, set_resp_header/3
          ,add_resp_headers/2, add_resp_header/3
@@ -98,6 +102,10 @@ allow_methods(#cb_context{allow_methods=AMs}) -> AMs.
 allowed_methods(#cb_context{allowed_methods=AMs}) -> AMs.
 method(#cb_context{method=M}) -> M.
 
+req_json(#cb_context{req_json=RJ}) -> RJ.
+content_types_accepted(#cb_context{content_types_accepted=CTAs}) -> CTAs.
+resp_error_code(#cb_context{resp_error_code=Code}) -> Code.
+
 %% Setters
 -spec set_account_id(context(), ne_binary()) -> context().
 -spec set_account_db(context(), ne_binary()) -> context().
@@ -106,8 +114,8 @@ method(#cb_context{method=M}) -> M.
 -spec set_auth_account_id(context(), ne_binary()) -> context().
 -spec set_req_verb(context(), ne_binary()) -> context().
 -spec set_req_data(context(), wh_json:object() | ne_binary()) -> context().
--spec set_req_files(context(), wh_json:objects()) -> context().
--spec set_req_nouns(context(), wh_proplist()) -> context().
+-spec set_req_files(context(), req_files()) -> context().
+-spec set_req_nouns(context(), req_nouns()) -> context().
 -spec set_query_string(context(), wh_json:object()) -> context().
 -spec set_req_id(context(), ne_binary()) -> context().
 -spec set_doc(context(), api_object() | wh_json:objects()) -> context().
@@ -123,6 +131,9 @@ method(#cb_context{method=M}) -> M.
 -spec set_allow_methods(context(), http_methods()) -> context().
 -spec set_allowed_methods(context(), http_methods()) -> context().
 -spec set_method(context(), http_method()) -> context().
+-spec set_req_json(context(), wh_json:object()) -> context().
+-spec set_content_types_accepted(context(), crossbar_content_handlers()) -> context().
+-spec set_resp_error_code(context(), integer()) -> context().
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
@@ -145,6 +156,10 @@ set_resp_etag(#cb_context{}=Context, ETag) -> Context#cb_context{resp_etag=ETag}
 set_allow_methods(#cb_context{}=Context, AMs) -> Context#cb_context{allow_methods=AMs}.
 set_allowed_methods(#cb_context{}=Context, AMs) -> Context#cb_context{allowed_methods=AMs}.
 set_method(#cb_context{}=Context, M) -> Context#cb_context{method=M}.
+
+set_req_json(#cb_context{}=Context, RJ) -> Context#cb_context{req_json=RJ}.
+set_content_types_accepted(#cb_context{}=Context, CTAs) -> Context#cb_context{content_types_accepted=CTAs}.
+set_resp_error_code(#cb_context{}=Context, Code) -> Context#cb_context{resp_error_code=Code}.
 
 set_resp_headers(#cb_context{resp_headers=Hs}=Context, Headers) ->
     Context#cb_context{resp_headers=lists:foldl(fun set_resp_header_fold/2, Hs, Headers)}.

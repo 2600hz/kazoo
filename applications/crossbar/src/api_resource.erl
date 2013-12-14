@@ -320,7 +320,7 @@ content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                     end, Context0, Nouns),
 
     case cowboy_req:parse_header(<<"content-type">>, Req0) of
-        {'undefined', 'undefined', Req1} -> default_content_types_accepted(Req1, Context1);
+        {'undefined', <<>>, Req1} -> default_content_types_accepted(Req1, Context1);
         {'ok', CT, Req1} -> content_types_accepted(CT, Req1, Context1)
     end.
 
@@ -406,26 +406,32 @@ encodings_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
 resource_exists(Req, #cb_context{req_nouns=[{<<"404">>,_}|_]}=Context) ->
     lager:debug("failed to tokenize request, returning 404"),
     {'false', Req, Context};
-resource_exists(Req0, Context0) ->
+resource_exists(Req, Context) ->
     lager:debug("run: resource_exists"),
-    case api_util:does_resource_exist(Context0) of
+    case api_util:does_resource_exist(Context) of
         'true' ->
-            lager:debug("requested resource exists, validating it"),
-            #cb_context{req_verb=Verb}=Context1 = api_util:validate(Context0),
-            case api_util:succeeded(Context1) of
-                'true' when Verb =/= ?HTTP_PUT ->
-                    lager:debug("requested resource update validated"),
-                    {'true', Req0, Context1};
-                'true' ->
-                    lager:debug("requested resource creation validated"),
-                    {'false', Req0, Context1};
-                'false' ->
-                    lager:debug("failed to validate resource"),
-                    api_util:halt(Req0, Context1)
-            end;
+            does_request_validate(Req, Context);
         'false' ->
             lager:debug("requested resource does not exist"),
-            {'false', Req0, Context0}
+            {'false', Req, Context}
+    end.
+
+-spec does_request_validate(cowboy_req:req(), cb_context:context()) ->
+                                   {boolean(), cowboy_req:req(), cb_context:context()}.
+does_request_validate(Req, Context) ->
+    lager:debug("requested resource exists, validating it"),
+    Context1 = api_util:validate(Context),
+    Verb = cb_context:req_verb(Context1),
+    case api_util:succeeded(Context1) of
+        'true' when Verb =/= ?HTTP_PUT ->
+            lager:debug("requested resource update validated"),
+            {'true', Req, Context1};
+        'true' ->
+            lager:debug("requested resource creation validated"),
+            {'false', Req, Context1};
+        'false' ->
+            lager:debug("failed to validate resource"),
+            api_util:halt(Req, Context1)
     end.
 
 -spec moved_temporarily(cowboy_req:req(), cb_context:context()) ->
@@ -689,8 +695,8 @@ multiple_choices(Req, Context) ->
                            {ne_binary(), cowboy_req:req(), cb_context:context()}.
 generate_etag(Req0, Context0) ->
     Event = api_util:create_event_name(Context0, <<"etag">>),
-    {Req1, #cb_context{resp_etag=ETag}=Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
-    case ETag of
+    {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
+    case cb_context:resp_etag(Context1) of
         'automatic' ->
             {Content, _} = api_util:create_resp_content(Req1, Context1),
             Tag = wh_util:to_hex_binary(crypto:md5(Content)),
