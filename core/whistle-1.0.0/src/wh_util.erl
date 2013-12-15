@@ -397,8 +397,10 @@ randomize_list(T, List) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid(wh_json:object() | wh_proplist() | ne_binary()) -> api_binary().
+-spec put_callid(wh_json:object() | wh_proplist() | ne_binary() | atom()) ->
+                        api_binary().
 put_callid(?NE_BINARY = CallId) -> erlang:put('callid', CallId);
+put_callid(Atom) when is_atom(Atom) -> erlang:put('callid', Atom);
 put_callid(Prop) when is_list(Prop) -> erlang:put('callid', callid(Prop));
 put_callid(JObj) -> erlang:put('callid', callid(JObj)).
 

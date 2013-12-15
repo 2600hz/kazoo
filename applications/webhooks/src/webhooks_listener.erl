@@ -333,7 +333,7 @@ jobj_to_rec(Hook) ->
              ,uri = wh_json:get_value(<<"uri">>, Hook)
              ,http_verb = http_verb(wh_json:get_value(<<"http_verb">>, Hook))
              ,hook_event = hook_event(wh_json:get_value(<<"hook">>, Hook))
-             ,retries = retries(wh_json:get_integer(<<"retries">>, Hook, 3))
+             ,retries = retries(wh_json:get_integer_value(<<"retries">>, Hook, 3))
              ,account_id = wh_json:get_value(<<"pvt_account_id">>, Hook)
             }.
 
