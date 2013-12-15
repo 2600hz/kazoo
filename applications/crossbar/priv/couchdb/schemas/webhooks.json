@@ -29,9 +29,9 @@
           "type":"string",
           "enum":[
               "new_channel"
-              ,"ringing_channel"
               ,"answered_channel"
               ,"hungup_channel"
+              ,"all"
           ]
       }
        ,"retries":{
