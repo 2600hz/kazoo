@@ -6,13 +6,14 @@
 -module(couchbeam_httpc).
 
 -include_lib("ibrowse/include/ibrowse.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 -export([request/4, request/5, request/6,
         request_stream/4, request_stream/5, request_stream/6,
         clean_mailbox_req/1,
         redirect_url/2]).
 
--define(TIMEOUT, infinity).
+-define(TIMEOUT, ?MILLISECONDS_IN_MINUTE * 5).
 
 %% @doc send an ibrowse request
 -type error_possibilities() ::
