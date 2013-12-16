@@ -28,7 +28,8 @@
 %%%===================================================================
 init() ->
     _ = couch_mgr:db_create(?KZ_WEBHOOKS_DB),
-    _ = couch_mgr:revise_doc_from_file(?TOKEN_DB, 'crossbar', <<"views/webhooks.json">>),
+    _ = couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
+    _ = couch_mgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
 
     _ = crossbar_bindings:bind(<<"*.allowed_methods.webhooks">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.webhooks">>, ?MODULE, 'resource_exists'),
@@ -112,7 +113,7 @@ delete(Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
-create(#cb_context{}=Context) ->
+create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
 
@@ -134,7 +135,7 @@ read(Id, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), cb_context:context()) -> cb_context:context().
-update(Id, #cb_context{}=Context) ->
+update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
 
@@ -156,9 +157,13 @@ summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
-    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"webhook">>, JObj)};
-on_successful_validation(Id, #cb_context{}=Context) ->
+on_successful_validation('undefined', Context) ->
+    cb_context:set_doc(Context
+                       ,wh_json:set_values([{<<"pvt_type">>, <<"webhook">>}
+                                            ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
+                                           ], cb_context:doc(Context))
+                      );
+on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
 %%--------------------------------------------------------------------
