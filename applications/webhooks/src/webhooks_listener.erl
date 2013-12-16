@@ -12,6 +12,7 @@
 -export([start_link/0
          ,handle_config/2
          ,handle_call_event/2
+         ,hooks_configured/0, hooks_configured/1
         ]).
 -export([init/1
          ,handle_call/3
@@ -25,7 +26,7 @@
 %% ETS Management
 -export([table_id/0
          ,table_options/0
-         ,find_me_function/0
+         ,find_me/0
          ,gift_data/0
         ]).
 
@@ -46,6 +47,8 @@
           ,retries = 3 :: 1..5
           ,account_id :: ne_binary()
          }).
+-type webhook() :: #webhook{}.
+-type webhooks() :: [webhook(),...] | [].
 
 %% Three main call events
 -define(BINDINGS, [{'call', [{'restrict_to', ['new_channel'
@@ -92,10 +95,10 @@ start_link() ->
 table_id() -> ?MODULE.
 
 -spec table_options() -> list().
-table_options() -> ['set', 'protected', {'keypos', #webhook.id}].
+table_options() -> ['set', 'protected', {'keypos', #webhook.id}, 'named_table'].
 
--spec find_me_function() -> api_pid().
-find_me_function() -> whereis(?MODULE).
+-spec find_me() -> api_pid().
+find_me() -> whereis(?MODULE).
 
 -spec gift_data() -> 'ok'.
 gift_data() -> 'ok'.
@@ -105,7 +108,7 @@ gift_data() -> 'ok'.
 handle_config(JObj, Props) ->
     handle_config(JObj
                   ,props:get_value('server', Props)
-                  ,wh_json:get_value(<<"Event-Type">>, JObj)
+                  ,wh_json:get_value(<<"Event-Name">>, JObj)
                  ).
 handle_config(JObj, Srv, <<"doc_created">>) ->
     case wapi_conf:get_doc(JObj) of
@@ -156,7 +159,7 @@ find_and_remove_hook(JObj, Srv) ->
                        {'ok', wh_json:object()} |
                        {'error', _}.
 find_hook(JObj) ->
-    couch_mgr:open_doc(wapi_conf:get_account_db(JObj)
+    couch_mgr:open_doc(?KZ_WEBHOOKS_DB
                        ,wapi_conf:get_id(JObj)
                       ).
 
@@ -166,7 +169,140 @@ handle_call_event(JObj, _Props) ->
     AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>]
                                   ,JObj
                                  ),
-    lager:debug("handle event ~s: ~s", [HookEvent, AccountId]).
+
+    case find_webhooks(HookEvent, AccountId) of
+        [] -> lager:debug("no hooks to handle ~s for ~s", [HookEvent, AccountId]);
+        Hooks -> fire_hooks(format_event(JObj, AccountId, HookEvent), Hooks)
+    end.
+
+-spec format_event(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
+format_event(JObj, AccountId, <<"new">>) ->
+    wh_json:set_value(<<"hook_event">>, <<"new_channel">>
+                      ,base_hook_event(JObj, AccountId)
+                     );
+format_event(JObj, AccountId, <<"answered">>) ->
+    wh_json:set_value(<<"hook_event">>, <<"answered_channel">>
+                      ,base_hook_event(JObj, AccountId)
+                     );
+format_event(JObj, AccountId, <<"destroy">>) ->
+    wh_json:set_value(<<"hook_event">>, <<"destroy_channel">>
+                      ,base_hook_event(JObj, AccountId)
+                     ).
+
+-spec base_hook_event(wh_json:object(), ne_binary()) -> wh_json:object().
+base_hook_event(JObj, AccountId) ->
+    wh_json:from_list([{<<"call_direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
+                       ,{<<"timestamp">>, wh_json:get_value(<<"Timestamp">>, JObj)}
+                       ,{<<"account_id">>, AccountId}
+                       ,{<<"request">>, wh_json:get_value(<<"Request">>, JObj)}
+                       ,{<<"to">>, wh_json:get_value(<<"To">>, JObj)}
+                       ,{<<"from">>, wh_json:get_value(<<"From">>, JObj)}
+                       ,{<<"inception">>, wh_json:get_value(<<"Inception">>, JObj)}
+                       ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                      ]).
+
+fire_hooks(_, []) -> 'ok';
+fire_hooks(JObj, [Hook | Hooks]) ->
+    fire_hook(JObj, Hook),
+    fire_hooks(JObj, Hooks).
+
+fire_hook(JObj, #webhook{uri=URI
+                         ,http_verb=Method
+                         ,retries=Retries
+                        }) ->
+    fire_hook(JObj, wh_util:to_list(URI), Method, Retries).
+
+fire_hook(_JObj, _URI, _Method, 0) ->
+    lager:debug("retries exhausted for ~s", [_URI]);
+fire_hook(JObj, URI, 'get', Retries) ->
+    lager:debug("sending event via 'get'(~b): ~s", [Retries, URI]),
+
+    fire_hook(JObj, URI, 'get', Retries
+              ,ibrowse:send_req(URI
+                                ,[{"Content-Type", "application/x-www-form-urlencoded"}]
+                                ,'get'
+                                ,wh_json:to_querystring(JObj)
+                                ,[{'connect_timeout', 1000}]
+                                ,1000
+                               ));
+fire_hook(JObj, URI, 'post', Retries) ->
+    lager:debug("sending event via 'post'(~b): ~s", [Retries, URI]),
+
+    fire_hook(JObj, URI, 'post', Retries
+              ,ibrowse:send_req(URI
+                                ,[{"Content-Type", "application/json"}]
+                                ,'post'
+                                ,wh_json:encode(JObj)
+                                ,[{'connect_timeout', 1000}]
+                                ,1000
+                               )).
+
+fire_hook(_JObj, _URI, _Method, _Retries, {'ok', "200", _, _RespBody}) ->
+    lager:debug("sent hook call event");
+fire_hook(JObj, URI, Method, Retries, {'ok', RespCode, _, _}) ->
+    lager:debug("non-200 response code: ~s", [RespCode]),
+    fire_hook(JObj, URI, Method, Retries-1);
+fire_hook(JObj, URI, Method, Retries, {'error', _E}) ->
+    lager:debug("failed to fire hook: ~p", [_E]),
+    fire_hook(JObj, URI, Method, Retries-1).
+
+-spec find_webhooks(ne_binary(), api_binary()) -> webhooks().
+find_webhooks(_HookEvent, 'undefined') -> [];
+find_webhooks(HookEvent, AccountId) ->
+    MatchSpec = [{#webhook{account_id = '$1'
+                           ,hook_event = '$2'
+                           ,_='_'
+                          }
+                  ,[{'andalso'
+                     ,{'=:=', '$1', {'const', AccountId}}
+                     ,{'orelse'
+                       ,{'=:=', '$2', {'const', HookEvent}}
+                       ,{'=:=', '$2', {'const', <<"all">>}}
+                      }
+                    }]
+                  ,['$_']
+                 }],
+    ets:select(?MODULE, MatchSpec).
+
+-spec hooks_configured() -> 'ok'.
+-spec hooks_configured(ne_binary()) -> 'ok'.
+hooks_configured() ->
+    MatchSpec = [{#webhook{_ = '_'}
+                  ,[]
+                  ,['$_']
+                 }],
+    print_summary(ets:select(?MODULE, MatchSpec, 1)).
+hooks_configured(AccountId) ->
+    MatchSpec = [{#webhook{account_id = '$1'
+                           ,_ = '_'
+                          }
+                  ,[{'=:=', '$1', {'const', AccountId}}]
+                  ,['$_']
+                 }],
+    print_summary(ets:select(?MODULE, MatchSpec, 1)).
+
+-define(FORMAT_STRING_SUMMARY, "| ~-45s | ~-5s | ~-20s | ~-10s | ~-32s |~n").
+
+print_summary('$end_of_table') ->
+    io:format("no webhooks configured~n", []);
+print_summary(Match) ->
+    io:format(?FORMAT_STRING_SUMMARY
+                ,[<<"URI">>, <<"VERB">>, <<"EVENT">>, <<"RETRIES">>, <<"ACCOUNT ID">>]
+                ),
+    print_summary(Match, 0).
+
+print_summary('$end_of_table', Count) ->
+    io:format("found ~p webhooks~n", [Count]);
+print_summary({[#webhook{uri=URI
+                        ,http_verb=Verb
+                        ,hook_event=Event
+                        ,retries=Retries
+                        ,account_id=AccountId
+                       }], Continuation}, Count) ->
+    io:format(?FORMAT_STRING_SUMMARY
+              ,[URI, Verb, Event, wh_util:to_binary(Retries), AccountId]
+             ),
+    print_summary(ets:select(Continuation), Count+1).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -184,6 +320,7 @@ handle_call_event(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    lager:debug("started ~s", [?MODULE]),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -246,7 +383,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
-    lager:debug("write access to table ~s available", [_TblId]),
+    lager:debug("write access to table '~p' available", [_TblId]),
     spawn(?MODULE, 'load_hooks', [self()]),
     {'noreply', State};
 handle_info(_Info, State) ->
@@ -305,9 +442,20 @@ load_hooks(Srv) ->
             lager:debug("no configured webhooks");
         {'ok', WebHooks} ->
             load_hooks(Srv, WebHooks);
+        {'error', 'not_found'} ->
+            lager:debug("db or view not found, initing"),
+            init_webhooks(),
+            load_hooks(Srv);
         {'error', _E} ->
             lager:debug("failed to load webhooks: ~p", [_E])
     end.
+
+-spec init_webhooks() -> 'ok'.
+init_webhooks() ->
+    _ = couch_mgr:db_create(?KZ_WEBHOOKS_DB),
+    _ = couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
+    _ = couch_mgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
+    'ok'.
 
 -spec load_hooks(pid(), wh_json:objects()) -> 'ok'.
 load_hooks(Srv, WebHooks) ->
@@ -327,7 +475,7 @@ load_hook(Srv, WebHook) ->
                          ])
     end.
 
--spec jobj_to_rec(wh_json:object()) -> #webhook{}.
+-spec jobj_to_rec(wh_json:object()) -> webhook().
 jobj_to_rec(Hook) ->
     #webhook{id = hook_id(Hook)
              ,uri = wh_json:get_value(<<"uri">>, Hook)
@@ -363,9 +511,9 @@ http_verb(_) -> 'get'.
 -spec hook_event_lowered(ne_binary()) -> ne_binary().
 hook_event(Bin) -> hook_event_lowered(wh_util:to_lower_binary(Bin)).
 
-hook_event_lowered(<<"new_channel">>) -> <<"new_channel">>;
-hook_event_lowered(<<"answered_channel">>) -> <<"answered_channel">>;
-hook_event_lowered(<<"destroy_channel">>) -> <<"destroy_channel">>;
+hook_event_lowered(<<"new_channel">>) -> <<"new">>;
+hook_event_lowered(<<"answered_channel">>) -> <<"answered">>;
+hook_event_lowered(<<"destroy_channel">>) -> <<"destroy">>;
 hook_event_lowered(<<"all">>) -> <<"all">>;
 hook_event_lowered(Bin) -> throw({'bad_hook', Bin}).
 
@@ -373,4 +521,3 @@ hook_event_lowered(Bin) -> throw({'bad_hook', Bin}).
 retries(N) when N > 0, N < 5 -> N;
 retries(N) when N < 1 -> 1;
 retries(_) -> 5.
-
