@@ -347,10 +347,10 @@ username_doc_id(_, _, 'undefined') ->
 username_doc_id(Username, Context, _AccountDb) ->
     Username = wh_util:to_lower_binary(Username),
     Context1 = crossbar_doc:load_view(?LIST_BY_USERNAME, [{'key', Username}], Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            [JObj] = cb_context:doc(Context1),
-            wh_json:get_value(<<"id">>, JObj);
+    case cb_context:resp_status(Context1) =:= 'success'
+        andalso cb_context:doc(Context1)
+    of
+        [JObj] -> wh_json:get_value(<<"id">>, JObj);
         _ -> 'undefined'
     end.
 
