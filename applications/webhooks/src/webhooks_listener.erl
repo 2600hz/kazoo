@@ -36,17 +36,19 @@
 -include("webhooks.hrl").
 
 -record(state, {}).
+-type state() :: #state{}.
 
 -type http_verb() :: 'get' | 'post'.
+-type hook_retries() :: 1..5.
 
 -record(webhook, {
-          id :: ne_binary()
-          ,uri :: ne_binary()
-          ,http_verb :: http_verb()
-          ,hook_event :: ne_binary()
-          ,hook_id :: ne_binary()
-          ,retries = 3 :: 1..5
-          ,account_id :: ne_binary()
+          id :: ne_binary() | '_'
+          ,uri :: ne_binary() | '_'
+          ,http_verb :: http_verb() | '_'
+          ,hook_event :: ne_binary() | '_' | '$2'
+          ,hook_id :: ne_binary() | '_'
+          ,retries = 3 :: hook_retries() | '_'
+          ,account_id :: ne_binary() | '_' | '$1'
          }).
 -type webhook() :: #webhook{}.
 -type webhooks() :: [webhook(),...] | [].
@@ -203,11 +205,14 @@ base_hook_event(JObj, AccountId) ->
                        ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                       ]).
 
+-spec fire_hooks(wh_json:object(), webhooks()) -> 'ok'.
 fire_hooks(_, []) -> 'ok';
 fire_hooks(JObj, [Hook | Hooks]) ->
     fire_hook(JObj, Hook),
     fire_hooks(JObj, Hooks).
 
+-spec fire_hook(wh_json:object(), webhook()) -> 'ok'.
+-spec fire_hook(wh_json:object(), webhook(), string(), http_verb(), 0 | hook_retries()) -> 'ok'.
 fire_hook(JObj, #webhook{uri=URI
                          ,http_verb=Method
                          ,retries=Retries
@@ -240,6 +245,7 @@ fire_hook(JObj, Hook, URI, 'post', Retries) ->
                                 ,1000
                                )).
 
+-spec fire_hook(wh_json:object(), webhook(), string(), http_verb(), hook_retries(), ibrowse_ret()) -> 'ok'.
 fire_hook(_JObj, Hook, _URI, _Method, _Retries, {'ok', "200", _, _RespBody}) ->
     lager:debug("sent hook call event successfully"),
     successful_hook(Hook);
@@ -252,6 +258,7 @@ fire_hook(JObj, Hook, URI, Method, Retries, {'error', E}) ->
     failed_hook(Hook, Retries, E),
     fire_hook(JObj, Hook, URI, Method, Retries-1).
 
+-spec successful_hook(webhook()) -> 'ok'.
 successful_hook(#webhook{hook_id=HookId
                          ,account_id=AccountId
                         }) ->
@@ -260,6 +267,9 @@ successful_hook(#webhook{hook_id=HookId
                                 ]),
     save_attempt(Attempt, AccountId).
 
+-spec failed_hook(webhook()) -> 'ok'.
+-spec failed_hook(webhook(), hook_retries(), term()) -> 'ok'.
+-spec failed_hook(webhook(), hook_retries(), string(), binary()) -> 'ok'.
 failed_hook(#webhook{hook_id=HookId
                      ,account_id=AccountId
                     }) ->
@@ -301,15 +311,17 @@ failed_hook(#webhook{hook_id=HookId
                                 ]),
     save_attempt(Attempt, AccountId).
 
+-spec save_attempt(wh_json:object(), ne_binary()) -> 'ok'.
 save_attempt(Attempt, AccountId) ->
     Now = wh_util:current_tstamp(),
     ModDb = wh_util:format_account_mod_id(AccountId, Now),
-    couch_mgr:save_doc(ModDb, wh_json:set_values([{<<"pvt_account_db">>, ModDb}
-                                                  ,{<<"pvt_account_id">>, AccountId}
-                                                  ,{<<"pvt_type">>, <<"webhook_attempt">>}
-                                                  ,{<<"pvt_created">>, Now}
-                                                  ,{<<"pvt_modified">>, Now}
-                                                 ], Attempt)).
+    _ = couch_mgr:save_doc(ModDb, wh_json:set_values([{<<"pvt_account_db">>, ModDb}
+                                                      ,{<<"pvt_account_id">>, AccountId}
+                                                      ,{<<"pvt_type">>, <<"webhook_attempt">>}
+                                                      ,{<<"pvt_created">>, Now}
+                                                      ,{<<"pvt_modified">>, Now}
+                                                     ], Attempt)),
+    'ok'.
 
 -spec find_webhooks(ne_binary(), api_binary()) -> webhooks().
 find_webhooks(_HookEvent, 'undefined') -> [];
@@ -348,6 +360,8 @@ hooks_configured(AccountId) ->
 
 -define(FORMAT_STRING_SUMMARY, "| ~-45s | ~-5s | ~-20s | ~-10s | ~-32s |~n").
 
+-spec print_summary('$end_of_table' | {webhooks(), term()}) -> 'ok'.
+-spec print_summary('$end_of_table' | {webhooks(), term()}, non_neg_integer()) -> 'ok'.
 print_summary('$end_of_table') ->
     io:format("no webhooks configured~n", []);
 print_summary(Match) ->
@@ -384,6 +398,7 @@ print_summary({[#webhook{uri=URI
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     lager:debug("started ~s", [?MODULE]),
     {'ok', #state{}}.
@@ -612,7 +627,7 @@ hook_event_lowered(<<"destroy_channel">>) -> <<"destroy">>;
 hook_event_lowered(<<"all">>) -> <<"all">>;
 hook_event_lowered(Bin) -> throw({'bad_hook', Bin}).
 
--spec retries(integer()) -> 1..5.
+-spec retries(integer()) -> hook_retries().
 retries(N) when N > 0, N < 5 -> N;
 retries(N) when N < 1 -> 1;
 retries(_) -> 5.
