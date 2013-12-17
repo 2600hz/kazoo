@@ -148,7 +148,7 @@ change_syslog_log_level(L) ->
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
 -spec format_account_id(ne_binaries() | ne_binary() | wh_json:object()) -> ne_binary().
 -spec format_account_id(ne_binaries() | ne_binary() | wh_json:object(), account_format()) -> ne_binary().
--spec format_account_id(ne_binaries(), wh_year(), wh_month()) -> ne_binary().
+-spec format_account_id(ne_binaries() | ne_binary(), wh_year(), wh_month()) -> ne_binary().
 
 format_account_id(Doc) -> format_account_id(Doc, 'unencoded').
 
@@ -413,15 +413,9 @@ put_callid(Prop) when is_list(Prop) -> erlang:put('callid', callid(Prop));
 put_callid(JObj) -> erlang:put('callid', callid(JObj)).
 
 callid(Prop) when is_list(Prop) ->
-    case props:get_value(<<"Call-ID">>, Prop) of
-        'undefined' -> props:get_value(<<"Msg-ID">>, Prop, ?LOG_SYSTEM_ID);
-        C -> C
-    end;
+    props:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], Prop, ?LOG_SYSTEM_ID);
 callid(JObj) ->
-    case wh_json:get_binary_value(<<"Call-ID">>, JObj) of
-        'undefined' -> wh_json:get_binary_value(<<"Msg-ID">>, JObj, ?LOG_SYSTEM_ID);
-        C -> C
-    end.
+    wh_json:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], JObj, ?LOG_SYSTEM_ID).
 
 %%--------------------------------------------------------------------
 %% @public

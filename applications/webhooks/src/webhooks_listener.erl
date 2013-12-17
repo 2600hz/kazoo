@@ -179,7 +179,7 @@ handle_call_event(JObj, _Props) ->
         Hooks -> fire_hooks(format_event(JObj, AccountId, HookEvent), Hooks)
     end.
 
--spec format_event(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
+-spec format_event(wh_json:object(), api_binary(), ne_binary()) -> wh_json:object().
 format_event(JObj, AccountId, <<"new">>) ->
     wh_json:set_value(<<"hook_event">>, <<"new_channel">>
                       ,base_hook_event(JObj, AccountId)
@@ -193,17 +193,19 @@ format_event(JObj, AccountId, <<"destroy">>) ->
                       ,base_hook_event(JObj, AccountId)
                      ).
 
--spec base_hook_event(wh_json:object(), ne_binary()) -> wh_json:object().
+-spec base_hook_event(wh_json:object(), api_binary()) -> wh_json:object().
 base_hook_event(JObj, AccountId) ->
-    wh_json:from_list([{<<"call_direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
-                       ,{<<"timestamp">>, wh_json:get_value(<<"Timestamp">>, JObj)}
-                       ,{<<"account_id">>, AccountId}
-                       ,{<<"request">>, wh_json:get_value(<<"Request">>, JObj)}
-                       ,{<<"to">>, wh_json:get_value(<<"To">>, JObj)}
-                       ,{<<"from">>, wh_json:get_value(<<"From">>, JObj)}
-                       ,{<<"inception">>, wh_json:get_value(<<"Inception">>, JObj)}
-                       ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                      ]).
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"call_direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
+         ,{<<"timestamp">>, wh_json:get_value(<<"Timestamp">>, JObj)}
+         ,{<<"account_id">>, AccountId}
+         ,{<<"request">>, wh_json:get_value(<<"Request">>, JObj)}
+         ,{<<"to">>, wh_json:get_value(<<"To">>, JObj)}
+         ,{<<"from">>, wh_json:get_value(<<"From">>, JObj)}
+         ,{<<"inception">>, wh_json:get_value(<<"Inception">>, JObj)}
+         ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+        ])).
 
 -spec fire_hooks(wh_json:object(), webhooks()) -> 'ok'.
 fire_hooks(_, []) -> 'ok';
@@ -251,11 +253,11 @@ fire_hook(_JObj, Hook, _URI, _Method, _Retries, {'ok', "200", _, _RespBody}) ->
     successful_hook(Hook);
 fire_hook(JObj, Hook, URI, Method, Retries, {'ok', RespCode, _, RespBody}) ->
     lager:debug("non-200 response code: ~s", [RespCode]),
-    failed_hook(Hook, Retries, RespCode, RespBody),
+    _ = failed_hook(Hook, Retries, RespCode, RespBody),
     fire_hook(JObj, Hook, URI, Method, Retries-1);
 fire_hook(JObj, Hook, URI, Method, Retries, {'error', E}) ->
     lager:debug("failed to fire hook: ~p", [E]),
-    failed_hook(Hook, Retries, E),
+    _ = failed_hook(Hook, Retries, E),
     fire_hook(JObj, Hook, URI, Method, Retries-1).
 
 -spec successful_hook(webhook()) -> 'ok'.
@@ -311,16 +313,21 @@ failed_hook(#webhook{hook_id=HookId
                                 ]),
     save_attempt(Attempt, AccountId).
 
--spec save_attempt(wh_json:object(), ne_binary()) -> 'ok'.
+-spec save_attempt(wh_json:object(), api_binary()) -> 'ok'.
 save_attempt(Attempt, AccountId) ->
     Now = wh_util:current_tstamp(),
     ModDb = wh_util:format_account_mod_id(AccountId, Now),
-    _ = couch_mgr:save_doc(ModDb, wh_json:set_values([{<<"pvt_account_db">>, ModDb}
-                                                      ,{<<"pvt_account_id">>, AccountId}
-                                                      ,{<<"pvt_type">>, <<"webhook_attempt">>}
-                                                      ,{<<"pvt_created">>, Now}
-                                                      ,{<<"pvt_modified">>, Now}
-                                                     ], Attempt)),
+
+    Doc = wh_json:set_values(
+            props:filter_undefined(
+              [{<<"pvt_account_db">>, ModDb}
+               ,{<<"pvt_account_id">>, AccountId}
+               ,{<<"pvt_type">>, <<"webhook_attempt">>}
+               ,{<<"pvt_created">>, Now}
+               ,{<<"pvt_modified">>, Now}
+              ]), Attempt),
+
+    _ = couch_mgr:save_doc(ModDb, Doc),
     'ok'.
 
 -spec find_webhooks(ne_binary(), api_binary()) -> webhooks().
@@ -531,6 +538,8 @@ load_hooks(Srv) ->
     end,
     init_mods().
 
+-spec init_mods() -> 'ok'.
+-spec init_mods(wh_json:objects()) -> 'ok'.
 init_mods() ->
     case couch_mgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
@@ -553,6 +562,7 @@ init_mods([Acct|Accts], Year, Month) ->
     init_mod(Acct, Year, Month),
     init_mods(Accts, Year, Month).
 
+-spec init_mod(wh_json:object(), wh_year(), wh_month()) -> 'ok'.
 init_mod(Acct, Year, Month) ->
     Db = wh_util:format_account_id(wh_json:get_value(<<"key">>, Acct), Year, Month),
     _ = couch_mgr:db_create(Db),
