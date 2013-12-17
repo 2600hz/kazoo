@@ -26,9 +26,9 @@ init(Parent, RouteReqJObj) ->
 
 start_amqp({'error', 'not_ts_account'}) -> 'ok';
 start_amqp(State) ->
-    onnet_data(ts_callflow:start_amqp(State)).
+    maybe_onnet_data(ts_callflow:start_amqp(State)).
 
-onnet_data(State) ->
+maybe_onnet_data(State) ->
     JObj = ts_callflow:get_request_data(State),
 
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
@@ -51,7 +51,18 @@ onnet_data(State) ->
                           _ -> wh_json:new()
                       end
               end,
+    SrvOptions = wh_json:get_value([<<"server">>, <<"options">>], Options, wh_json:new()),
 
+    case wna_util:is_reconcilable(ToDID)
+    orelse wh_json:get_value(<<"allow_non_reconcilable">>, SrvOptions, 'false') of
+        'false' ->
+            lager:debug("number ~p is non_reconcilable and the server does not allow it", [ToDID]);
+        'true' ->
+            onnet_data(CallID, AccountId, FromUser, ToDID, Options, State)
+    end.
+
+
+onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
     DIDOptions = wh_json:get_value(<<"DID_Opts">>, Options, wh_json:new()),
     AccountOptions = wh_json:get_value(<<"account">>, Options, wh_json:new()),
     SrvOptions = wh_json:get_value([<<"server">>, <<"options">>], Options, wh_json:new()),

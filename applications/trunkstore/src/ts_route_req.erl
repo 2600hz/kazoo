@@ -18,9 +18,9 @@ init() -> 'ok'.
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(ApiJObj, _Options) ->
-    true = wapi_route:req_v(ApiJObj),
+    'true' = wapi_route:req_v(ApiJObj),
     CallID = wh_json:get_value(<<"Call-ID">>, ApiJObj),
-    put(callid, CallID),
+    put('callid', CallID),
 
     lager:info("received a request asking if trunkstore can route this call"),
 
@@ -28,7 +28,7 @@ handle_req(ApiJObj, _Options) ->
           ,wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], ApiJObj)
          }
     of
-        {AcctID, undefined} when is_binary(AcctID) ->
+        {AcctID, 'undefined'} when is_binary(AcctID) ->
             %% Coming from carrier (off-net)
             lager:info("call began from outside the network"),
             ts_offnet_sup:start_handler(<<"offnet-", CallID/binary>>, ApiJObj);
