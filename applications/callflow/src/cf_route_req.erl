@@ -69,6 +69,10 @@ callflow_should_respond(Call) ->
         <<"callforward">> -> 'true';
         <<"clicktocall">> -> 'true';
         <<"resource">> -> 'true';
+        <<"sys_info">> ->
+            timer:sleep(500),
+            Number = whapps_call:request_user(Call),
+            (not wnm_util:is_reconcilable(Number));
         'undefined' -> 'true';
         _Else -> 'false'
     end.
