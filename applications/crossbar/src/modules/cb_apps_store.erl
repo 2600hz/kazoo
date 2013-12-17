@@ -171,7 +171,7 @@ get_icon(Id, Context) ->
                 'undefined' -> crossbar_util:response_bad_identifier(Id, Context);
                 Attachment ->
                     lists:foldl(fun({K, V}, C) ->
-                                    cb_context:add_resp_header(K, V, C)
+                                    cb_context:add_resp_header(C, K, V)
                                 end
                                 ,crossbar_doc:load_attachment(Id, Icon, Con)
                                 ,[{<<"Content-Disposition">>, <<"attachment; filename=", Icon/binary>>}
@@ -192,7 +192,7 @@ get_sreenshot(Id, Context, Num) ->
                 {'ok', Screenshot, Attachment} ->
                     lists:foldl(
                         fun({K, V}, C) ->
-                            cb_context:add_resp_header(K, V, C)
+                            cb_context:add_resp_header(C, K, V)
                         end
                         ,crossbar_doc:load_attachment(Id, Screenshot, Con)
                         ,[{<<"Content-Disposition">>, <<"attachment; filename=", Screenshot/binary>>}
