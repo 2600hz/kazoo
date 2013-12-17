@@ -416,8 +416,12 @@ fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
         {'error', _E}=E ->
             lager:debug("~s:~s/~p terminated fold with error: ~p", [M, F, length(Payload), _E]),
             E;
-        {'EXIT', {'undef', _}} ->
-            lager:debug("~s:~s/~p not defined, ignoring", [M, F, length(Payload)]),
+        {'EXIT', {'undef', [{_M, _F, _A, _}|_]}} ->
+            lager:debug("~s:~s/~p not defined, in call ~s:~s/~p"
+                        ,[_M, _F, length(_A)
+                          ,M, F, length(Payload)
+                         ]
+                       ),
             fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         {'EXIT', _E} ->
             ST = erlang:get_stacktrace(),
