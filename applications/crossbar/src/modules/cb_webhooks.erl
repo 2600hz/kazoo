@@ -11,9 +11,9 @@
 -module(cb_webhooks).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,validate/1, validate/2, validate/3
          ,put/1
          ,post/2
          ,delete/2
@@ -22,6 +22,11 @@
 -include("../crossbar.hrl").
 
 -define(CB_LIST, <<"webhooks/crossbar_listing">>).
+
+-define(PATH_TOKEN_ATTEMPTS, <<"attempts">>).
+
+-define(ATTEMPTS_BY_ACCOUNT, <<"webhooks/attempts_by_time_listing">>).
+-define(ATTEMPTS_BY_HOOK, <<"webhooks/attempts_by_hook_listing">>).
 
 %%%===================================================================
 %%% API
@@ -49,10 +54,15 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+allowed_methods(?PATH_TOKEN_ATTEMPTS) ->
+    [?HTTP_GET];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+allowed_methods(_Id, ?PATH_TOKEN_ATTEMPTS) ->
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -64,8 +74,10 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
+resource_exists(_Id, ?PATH_TOKEN_ATTEMPTS) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -83,12 +95,17 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     create(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
 
+validate(Context, ?PATH_TOKEN_ATTEMPTS) ->
+    summary_attempts(Context);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
     read(Id, cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB));
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
     update(Id, cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB));
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
     read(Id, cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
+
+validate(Context, Id, ?PATH_TOKEN_ATTEMPTS) ->
+    summary_attempts(Context, Id).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
@@ -149,6 +166,43 @@ update(Id, Context) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+
+summary_attempts(Context) ->
+    summary_attempts(Context, 'undefined').
+summary_attempts(Context, 'undefined') ->
+    ViewOptions = [{'endkey', [cb_context:account_id(Context), 0]}
+                   ,{'startkey', [cb_context:account_id(Context), wh_json:new()]}
+                   ,{'limit', 15}
+                   ,'include_docs'
+                   ,'descending'
+                  ],
+    summary_attempts_fetch(Context, ViewOptions, ?ATTEMPTS_BY_ACCOUNT);
+summary_attempts(Context, HookId) ->
+    ViewOptions = [{'endkey', [cb_context:account_id(Context), HookId, 0]}
+                   ,{'startkey', [cb_context:account_id(Context), HookId, wh_json:new()]}
+                   ,{'limit', 15}
+                   ,'include_docs'
+                   ,'descending'
+                  ],
+    summary_attempts_fetch(Context, ViewOptions, ?ATTEMPTS_BY_HOOK).
+
+summary_attempts_fetch(Context, ViewOptions, View) ->
+    Db = wh_util:format_account_mod_id(cb_context:account_id(Context), wh_util:current_tstamp()),
+
+    crossbar_doc:load_view(View
+                           ,ViewOptions
+                           ,cb_context:set_account_db(Context, Db)
+                           ,fun normalize_attempt_results/2
+                          ).
+
+normalize_attempt_results(JObj, Acc) ->
+    Doc = wh_json:get_value(<<"doc">>, JObj),
+    Timestamp = wh_json:get_value(<<"pvt_created">>, Doc),
+    [wh_json:delete_keys([<<"id">>, <<"_id">>]
+                        ,wh_json:set_value(<<"timestamp">>, Timestamp, Doc)
+                        )
+     | Acc
+    ].
 
 %%--------------------------------------------------------------------
 %% @private

@@ -9,10 +9,9 @@
 %%%-------------------------------------------------------------------
 -module(wh_util).
 
--export([log_stacktrace/0, log_stacktrace/1]).
--export([format_account_id/1
-         ,format_account_id/2
-         ,format_account_id/3
+-export([log_stacktrace/0, log_stacktrace/1
+         ,format_account_id/1, format_account_id/2, format_account_id/3
+         ,format_account_mod_id/2, format_account_mod_id/3
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1]).
@@ -149,7 +148,7 @@ change_syslog_log_level(L) ->
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
 -spec format_account_id(ne_binaries() | ne_binary() | wh_json:object()) -> ne_binary().
 -spec format_account_id(ne_binaries() | ne_binary() | wh_json:object(), account_format()) -> ne_binary().
--spec format_account_id(ne_binaries(), pos_integer(), pos_integer()) -> ne_binary().
+-spec format_account_id(ne_binaries(), wh_year(), wh_month()) -> ne_binary().
 
 format_account_id(Doc) -> format_account_id(Doc, 'unencoded').
 
@@ -195,7 +194,16 @@ format_account_id(AccountId, Year, Month) when is_integer(Year), is_integer(Mont
     <<(format_account_id(AccountId, 'encoded'))/binary
       ,"-"
       ,(to_binary(Year))/binary
-      ,(pad_month(Month))/binary>>.
+      ,(pad_month(Month))/binary
+    >>.
+
+-spec format_account_mod_id(ne_binary(), pos_integer()) -> ne_binary().
+-spec format_account_mod_id(ne_binary(), wh_year(), wh_month()) -> ne_binary().
+format_account_mod_id(AccountId, Timestamp) ->
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    format_account_id(AccountId, Year, Month).
+format_account_mod_id(AccountId, Year, Month) ->
+    format_account_id(AccountId, Year, Month).
 
 -spec pad_month(pos_integer()) -> ne_binary().
 pad_month(Month) when Month < 10 ->

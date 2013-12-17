@@ -44,6 +44,7 @@
           ,uri :: ne_binary()
           ,http_verb :: http_verb()
           ,hook_event :: ne_binary()
+          ,hook_id :: ne_binary()
           ,retries = 3 :: 1..5
           ,account_id :: ne_binary()
          }).
@@ -209,15 +210,16 @@ fire_hooks(JObj, [Hook | Hooks]) ->
 fire_hook(JObj, #webhook{uri=URI
                          ,http_verb=Method
                          ,retries=Retries
-                        }) ->
-    fire_hook(JObj, wh_util:to_list(URI), Method, Retries).
+                        }=Hook) ->
+    fire_hook(JObj, Hook, wh_util:to_list(URI), Method, Retries).
 
-fire_hook(_JObj, _URI, _Method, 0) ->
+fire_hook(_JObj, Hook, _URI, _Method, 0) ->
+    failed_hook(Hook),
     lager:debug("retries exhausted for ~s", [_URI]);
-fire_hook(JObj, URI, 'get', Retries) ->
+fire_hook(JObj, Hook, URI, 'get', Retries) ->
     lager:debug("sending event via 'get'(~b): ~s", [Retries, URI]),
 
-    fire_hook(JObj, URI, 'get', Retries
+    fire_hook(JObj, Hook, URI, 'get', Retries
               ,ibrowse:send_req(URI
                                 ,[{"Content-Type", "application/x-www-form-urlencoded"}]
                                 ,'get'
@@ -225,10 +227,10 @@ fire_hook(JObj, URI, 'get', Retries) ->
                                 ,[{'connect_timeout', 1000}]
                                 ,1000
                                ));
-fire_hook(JObj, URI, 'post', Retries) ->
+fire_hook(JObj, Hook, URI, 'post', Retries) ->
     lager:debug("sending event via 'post'(~b): ~s", [Retries, URI]),
 
-    fire_hook(JObj, URI, 'post', Retries
+    fire_hook(JObj, Hook, URI, 'post', Retries
               ,ibrowse:send_req(URI
                                 ,[{"Content-Type", "application/json"}]
                                 ,'post'
@@ -237,14 +239,76 @@ fire_hook(JObj, URI, 'post', Retries) ->
                                 ,1000
                                )).
 
-fire_hook(_JObj, _URI, _Method, _Retries, {'ok', "200", _, _RespBody}) ->
-    lager:debug("sent hook call event");
-fire_hook(JObj, URI, Method, Retries, {'ok', RespCode, _, _}) ->
+fire_hook(_JObj, Hook, _URI, _Method, _Retries, {'ok', "200", _, _RespBody}) ->
+    lager:debug("sent hook call event successfully"),
+    successful_hook(Hook);
+fire_hook(JObj, Hook, URI, Method, Retries, {'ok', RespCode, _, RespBody}) ->
     lager:debug("non-200 response code: ~s", [RespCode]),
-    fire_hook(JObj, URI, Method, Retries-1);
-fire_hook(JObj, URI, Method, Retries, {'error', _E}) ->
-    lager:debug("failed to fire hook: ~p", [_E]),
-    fire_hook(JObj, URI, Method, Retries-1).
+    failed_hook(Hook, Retries, RespCode, RespBody),
+    fire_hook(JObj, Hook, URI, Method, Retries-1);
+fire_hook(JObj, Hook, URI, Method, Retries, {'error', E}) ->
+    lager:debug("failed to fire hook: ~p", [E]),
+    failed_hook(Hook, Retries, E),
+    fire_hook(JObj, Hook, URI, Method, Retries-1).
+
+successful_hook(#webhook{hook_id=HookId
+                         ,account_id=AccountId
+                        }) ->
+    Attempt = wh_json:from_list([{<<"hook_id">>, HookId}
+                                 ,{<<"result">>, <<"success">>}
+                                ]),
+    save_attempt(Attempt, AccountId).
+
+failed_hook(#webhook{hook_id=HookId
+                     ,account_id=AccountId
+                    }) ->
+    Attempt = wh_json:from_list([{<<"hook_id">>, HookId}
+                                 ,{<<"result">>, <<"failure">>}
+                                 ,{<<"reason">>, <<"retries exceeded">>}
+                                ]),
+    save_attempt(Attempt, AccountId).
+
+failed_hook(#webhook{hook_id=HookId
+                     ,account_id=AccountId
+                    }
+            ,Retries, RespCode, RespBody) ->
+    Attempt = wh_json:from_list([{<<"hook_id">>, HookId}
+                                 ,{<<"result">>, <<"failure">>}
+                                 ,{<<"reason">>, <<"bad response code">>}
+                                 ,{<<"response_code">>, RespCode}
+                                 ,{<<"response_body">>, RespBody}
+                                 ,{<<"retries left">>, Retries-1}
+                                ]),
+    save_attempt(Attempt, AccountId).
+
+failed_hook(#webhook{hook_id=HookId
+                     ,account_id=AccountId
+                    }
+            ,Retries, E) ->
+    Error = try wh_util:to_binary(E) of
+                Bin -> Bin
+            catch
+                _E:_R ->
+                    lager:debug("failed to convert error ~p", [E]),
+                    <<"unknown">>
+            end,
+    Attempt = wh_json:from_list([{<<"hook_id">>, HookId}
+                                 ,{<<"result">>, <<"failure">>}
+                                 ,{<<"reason">>, <<"kazoo http client error">>}
+                                 ,{<<"retries left">>, Retries-1}
+                                 ,{<<"client_error">>, Error}
+                                ]),
+    save_attempt(Attempt, AccountId).
+
+save_attempt(Attempt, AccountId) ->
+    Now = wh_util:current_tstamp(),
+    ModDb = wh_util:format_account_mod_id(AccountId, Now),
+    couch_mgr:save_doc(ModDb, wh_json:set_values([{<<"pvt_account_db">>, ModDb}
+                                                  ,{<<"pvt_account_id">>, AccountId}
+                                                  ,{<<"pvt_type">>, <<"webhook_attempt">>}
+                                                  ,{<<"pvt_created">>, Now}
+                                                  ,{<<"pvt_modified">>, Now}
+                                                 ], Attempt)).
 
 -spec find_webhooks(ne_binary(), api_binary()) -> webhooks().
 find_webhooks(_HookEvent, 'undefined') -> [];
@@ -448,7 +512,36 @@ load_hooks(Srv) ->
             load_hooks(Srv);
         {'error', _E} ->
             lager:debug("failed to load webhooks: ~p", [_E])
+    end,
+    init_mods().
+
+init_mods() ->
+    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
+                               ,<<"webhooks/accounts_listing">>
+                               ,[{'group_level', 1}]
+                              )
+    of
+        {'ok', []} ->
+            lager:debug("no accounts to load views into the MODs");
+        {'ok', Accts} ->
+            init_mods(Accts);
+        {'error', _E} ->
+            lager:debug("failed to load accounts_listing: ~p", [_E])
     end.
+
+init_mods(Accts) ->
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(wh_util:current_tstamp()),
+    init_mods(Accts, Year, Month).
+init_mods([], _, _) -> 'ok';
+init_mods([Acct|Accts], Year, Month) ->
+    init_mod(Acct, Year, Month),
+    init_mods(Accts, Year, Month).
+
+init_mod(Acct, Year, Month) ->
+    Db = wh_util:format_account_id(wh_json:get_value(<<"key">>, Acct), Year, Month),
+    _ = couch_mgr:db_create(Db),
+    _ = couch_mgr:revise_doc_from_file(Db, 'crossbar', <<"views/webhooks.json">>),
+    lager:debug("updated account_mod ~s", [Db]).
 
 -spec init_webhooks() -> 'ok'.
 init_webhooks() ->
@@ -481,6 +574,7 @@ jobj_to_rec(Hook) ->
              ,uri = wh_json:get_value(<<"uri">>, Hook)
              ,http_verb = http_verb(wh_json:get_value(<<"http_verb">>, Hook))
              ,hook_event = hook_event(wh_json:get_value(<<"hook">>, Hook))
+             ,hook_id = wh_json:get_first_defined([<<"_id">>, <<"ID">>], Hook)
              ,retries = retries(wh_json:get_integer_value(<<"retries">>, Hook, 3))
              ,account_id = wh_json:get_value(<<"pvt_account_id">>, Hook)
             }.
