@@ -314,7 +314,7 @@ validate(Context, Id, ?PORT_REJECT) ->
 validate(Context, Id, ?PORT_ATTACHMENT) ->
     validate_attachments(Context, Id, cb_context:req_verb(Context));
 validate(Context, Id, ?PATH_TOKEN_LOA) ->
-    read(Id, Context).
+    generate_loa(read(Id, Context)).
 
 validate_attachments(Context, Id, ?HTTP_GET) ->
     summary_attachments(Id, Context);
@@ -728,3 +728,20 @@ maybe_move_state(Id, Context, PortState) ->
         {'error', _E} ->
             cb_context:add_validation_error(<<"port_state">>, <<"enum">>, <<"failed to move to new state from current state">>, Context)
     end.
+
+-spec generate_loa(cb_context:context()) -> cb_context:context().
+-spec generate_loa(cb_context:context(), crossbar_status()) -> cb_context:context().
+generate_loa(Context) ->
+    generate_loa(Context, cb_context:resp_status(Context)).
+generate_loa(Context, 'success') ->
+    generate_loa_from_port(Context, cb_context:doc(Context));
+generate_loa(Context, _RespStatus) ->
+    Context.
+
+-spec generate_loa_from_port(cb_context:context(), wh_json:object()) -> cb_context:context().
+generate_loa_from_port(Context, PortRequest) ->
+    Ns = wh_json:get_value(<<"numbers">>, PortRequest, wh_json:object()),
+
+    Template = 'ok'.
+
+
