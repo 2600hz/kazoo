@@ -746,7 +746,7 @@ is_private_key(<<"_", _/binary>>) -> 'true';
 is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
 
--spec flatten(object(), integer(), list()) -> objects().
+-spec flatten(object() | objects(), integer(), list()) -> objects().
 -spec flatten(any(), list(), list(), integer()) -> objects().
 flatten([], _, _) -> [];
 flatten(JObj, Depth, Ids) when is_list(Ids) ->
