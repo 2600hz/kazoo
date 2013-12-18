@@ -23,10 +23,9 @@
          ,encodings_provided/1
          ,validate/1, validate/2
          ,billing/1
-         ,get/1, get/2
-         ,put/1, put/2
-         ,post/1, post/2
-         ,delete/1, delete/2
+         ,put/1
+         ,post/2
+         ,delete/2
          ,etag/1
          ,expires/1
          ,finish_request/1
@@ -124,7 +123,7 @@ resource_exists(_) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
-content_types_provided(#cb_context{}=Context) ->
+content_types_provided(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -136,7 +135,7 @@ content_types_provided(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
-content_types_accepted(#cb_context{}=Context) ->
+content_types_accepted(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -148,7 +147,7 @@ content_types_accepted(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec languages_provided(cb_context:context()) -> cb_context:context().
-languages_provided(#cb_context{}=Context) ->
+languages_provided(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -160,7 +159,7 @@ languages_provided(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec charsets_provided(cb_context:context()) -> cb_context:context().
-charsets_provided(#cb_context{}=Context) ->
+charsets_provided(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -172,7 +171,7 @@ charsets_provided(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec encodings_provided(cb_context:context()) -> cb_context:context().
-encodings_provided(#cb_context{}=Context) ->
+encodings_provided(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -187,16 +186,23 @@ encodings_provided(#cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+validate(Context) ->
+    validate_skels(Context, cb_context:req_verb(Context)).
+validate(Context, Id) ->
+    validate_skel(Context, Id, cb_context:req_verb(Context)).
+
+-spec validate_skels(cb_context:context(), http_method()) -> cb_context:context().
+validate_skels(Context, ?HTTP_GET) ->
     summary(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
+validate_skels(Context, ?HTTP_PUT) ->
     create(Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
+-spec validate_skel(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_skel(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
+validate_skel(Context, Id, ?HTTP_POST) ->
     update(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
+validate_skel(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
 %%--------------------------------------------------------------------
@@ -207,22 +213,7 @@ validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec billing(cb_context:context()) -> cb_context:context().
-billing(#cb_context{}=Context) ->
-    Context.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is a GET, execute necessary code to fulfill the GET
-%% request. Generally, this will involve stripping pvt fields and loading
-%% the resource into the resp_data, resp_headers, etc...
-%% @end
-%%--------------------------------------------------------------------
--spec get(cb_context:context()) -> cb_context:context().
--spec get(cb_context:context(), path_token()) -> cb_context:context().
-get(#cb_context{}=Context) ->
-    Context.
-get(#cb_context{}=Context, _) ->
+billing(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -232,10 +223,7 @@ get(#cb_context{}=Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
--spec put(cb_context:context(), path_token()) -> cb_context:context().
-put(#cb_context{}=Context) ->
-    crossbar_doc:save(Context).
-put(#cb_context{}=Context, _) ->
+put(Context) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -245,11 +233,8 @@ put(#cb_context{}=Context, _) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post(cb_context:context()) -> cb_context:context().
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(#cb_context{}=Context) ->
-    crossbar_doc:save(Context).
-post(#cb_context{}=Context, _) ->
+post(Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -258,11 +243,8 @@ post(#cb_context{}=Context, _) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete(cb_context:context()) -> cb_context:context().
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(#cb_context{}=Context) ->
-    crossbar_doc:delete(Context).
-delete(#cb_context{}=Context, _) ->
+delete(Context, _) ->
     crossbar_doc:delete(Context).
 
 %%--------------------------------------------------------------------
@@ -272,7 +254,7 @@ delete(#cb_context{}=Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec etag(cb_context:context()) -> cb_context:context().
-etag(#cb_context{}=Context) ->
+etag(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -282,7 +264,7 @@ etag(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec expires(cb_context:context()) -> cb_context:context().
-expires(#cb_context{}=Context) ->
+expires(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -292,7 +274,7 @@ expires(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec finish_request(cb_context:context()) -> cb_context:context().
-finish_request(#cb_context{}=Context) ->
+finish_request(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -302,7 +284,7 @@ finish_request(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
-create(#cb_context{}=Context) ->
+create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"skels">>, Context, OnSuccess).
 
@@ -324,10 +306,9 @@ read(Id, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), cb_context:context()) -> cb_context:context().
-update(Id, #cb_context{}=Context) ->
+update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"skels">>, Context, OnSuccess).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -347,9 +328,9 @@ summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation('undefined', #cb_context{doc=JObj}=Context) ->
-    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"skel">>, JObj)};
-on_successful_validation(Id, #cb_context{}=Context) ->
+on_successful_validation('undefined', Context) ->
+    cb_context:set_doc(Context, wh_json:set_value(<<"pvt_type">>, <<"skel">>, cb_context:doc(Context)));
+on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
 %%--------------------------------------------------------------------
