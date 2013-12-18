@@ -40,6 +40,7 @@
          ,start/1, set_start/2
          ,resp_data/1, set_resp_data/2
          ,resp_status/1, set_resp_status/2
+         ,resp_expires/1, set_resp_expires/2
          ,api_version/1, set_api_version/2
          ,resp_etag/1, set_resp_etag/2
          ,allow_methods/1, set_allow_methods/2
@@ -47,12 +48,16 @@
          ,method/1, set_method/2
 
          ,req_json/1, set_req_json/2
-         ,content_types_accepted/1, set_content_types_accepted/2
          ,resp_error_code/1, set_resp_error_code/2
 
          ,resp_headers/1
          ,set_resp_headers/2, set_resp_header/3
          ,add_resp_headers/2, add_resp_header/3
+
+         ,content_types_accepted/1, set_content_types_accepted/2
+         ,content_types_provided/1, set_content_types_provided/2
+         ,languages_provided/1, set_languages_provided/2
+         ,encodings_provided/1, set_encodings_provided/2
 
          %% Special accessors
          ,req_value/2, req_value/3
@@ -94,6 +99,7 @@ doc(#cb_context{doc=Doc}) -> Doc.
 start(#cb_context{start=Start}) -> Start.
 resp_data(#cb_context{resp_data=RespData}) -> RespData.
 resp_status(#cb_context{resp_status=RespStatus}) -> RespStatus.
+resp_expires(#cb_context{resp_expires=RespExpires}) -> RespExpires.
 resp_headers(#cb_context{resp_headers=RespHeaders}) -> RespHeaders.
 api_version(#cb_context{api_version=ApiVersion}) -> ApiVersion.
 resp_etag(#cb_context{resp_etag=ETag}) -> ETag.
@@ -104,6 +110,10 @@ method(#cb_context{method=M}) -> M.
 
 req_json(#cb_context{req_json=RJ}) -> RJ.
 content_types_accepted(#cb_context{content_types_accepted=CTAs}) -> CTAs.
+content_types_provided(#cb_context{content_types_provided=CTPs}) -> CTPs.
+languages_provided(#cb_context{languages_provided=LP}) -> LP.
+encodings_provided(#cb_context{encodings_provided=EP}) -> EP.
+
 resp_error_code(#cb_context{resp_error_code=Code}) -> Code.
 
 %% Setters
@@ -122,8 +132,9 @@ resp_error_code(#cb_context{resp_error_code=Code}) -> Code.
 -spec set_start(context(), wh_timeout()) -> context().
 -spec set_resp_data(context(), resp_data()) -> context().
 -spec set_resp_status(context(), crossbar_status()) -> context().
+-spec set_resp_expires(context(), wh_datetime()) -> context().
 -spec set_api_version(context(), ne_binary()) -> context().
--spec set_resp_etag(context(), ne_binary()) -> context().
+-spec set_resp_etag(context(), api_binary()) -> context().
 -spec set_resp_headers(context(), wh_proplist()) -> context().
 -spec add_resp_headers(context(), wh_proplist()) -> context().
 -spec set_resp_header(context(), ne_binary(), ne_binary()) -> context().
@@ -133,6 +144,9 @@ resp_error_code(#cb_context{resp_error_code=Code}) -> Code.
 -spec set_method(context(), http_method()) -> context().
 -spec set_req_json(context(), wh_json:object()) -> context().
 -spec set_content_types_accepted(context(), crossbar_content_handlers()) -> context().
+-spec set_content_types_provided(context(), crossbar_content_handlers()) -> context().
+-spec set_languages_provided(context(), ne_binaries()) -> context().
+-spec set_encodings_provided(context(), ne_binaries()) -> context().
 -spec set_resp_error_code(context(), integer()) -> context().
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
@@ -150,6 +164,7 @@ set_doc(#cb_context{}=Context, Doc) -> Context#cb_context{doc=Doc}.
 set_start(#cb_context{}=Context, Start) -> Context#cb_context{start=Start}.
 set_resp_data(#cb_context{}=Context, RespData) -> Context#cb_context{resp_data=RespData}.
 set_resp_status(#cb_context{}=Context, RespStatus) -> Context#cb_context{resp_status=RespStatus}.
+set_resp_expires(#cb_context{}=Context, RespExpires) -> Context#cb_context{resp_expires=RespExpires}.
 set_api_version(#cb_context{}=Context, ApiVersion) -> Context#cb_context{api_version=ApiVersion}.
 set_resp_etag(#cb_context{}=Context, ETag) -> Context#cb_context{resp_etag=ETag}.
 
@@ -159,6 +174,10 @@ set_method(#cb_context{}=Context, M) -> Context#cb_context{method=M}.
 
 set_req_json(#cb_context{}=Context, RJ) -> Context#cb_context{req_json=RJ}.
 set_content_types_accepted(#cb_context{}=Context, CTAs) -> Context#cb_context{content_types_accepted=CTAs}.
+set_content_types_provided(#cb_context{}=Context, CTPs) -> Context#cb_context{content_types_provided=CTPs}.
+set_languages_provided(#cb_context{}=Context, LP) -> Context#cb_context{languages_provided=LP}.
+set_encodings_provided(#cb_context{}=Context, EP) -> Context#cb_context{encodings_provided=EP}.
+
 set_resp_error_code(#cb_context{}=Context, Code) -> Context#cb_context{resp_error_code=Code}.
 
 set_resp_headers(#cb_context{resp_headers=Hs}=Context, Headers) ->

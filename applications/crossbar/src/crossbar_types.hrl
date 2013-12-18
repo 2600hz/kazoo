@@ -13,6 +13,7 @@
  %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
 -type req_file() :: {ne_binary(), wh_json:object()}.
 -type req_files() :: [req_file(),...] | [].
+-type req_json() :: wh_json:object() | {'malformed', binary()}.
 
 -type req_nouns() :: [{ne_binary(), wh_json:json_strings()},...] | [].
 

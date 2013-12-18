@@ -98,7 +98,7 @@
           ,auth_doc :: api_object()
           ,req_verb = ?HTTP_GET :: http_method() % see ?ALLOWED_METHODS
           ,req_nouns = [{<<"404">>, []}] :: req_nouns() % {module, [id]} most typical
-          ,req_json = wh_json:new() :: wh_json:object() | {'malformed', binary()} %% the request JSON envelope
+          ,req_json = wh_json:new() :: req_json()
           ,req_files = [] :: req_files()
           ,req_data :: wh_json:json_term()  % the "data" from the request JSON envelope
           ,query_json = wh_json:new() :: wh_json:object()
