@@ -24,7 +24,9 @@
 -export([is_account_db/1
         ,is_account_mod/1
         ]).
--export([get_account_by_realm/1,get_accounts_by_name/1]).
+-export([get_account_by_realm/1
+         ,get_accounts_by_name/1
+        ]).
 -export([get_master_account_id/0]).
 -export([find_oldest_doc/1]).
 -export([get_event_type/1, put_callid/1]).
@@ -230,11 +232,11 @@ is_matched_account_mod(_, _) -> false.
 -spec is_account_mod(ne_binary()) -> boolean().
 is_account_mod(<<"account/", _AccountId:34/binary, "-", _Date:6/binary>>) -> 'true';
 is_account_mod(<<"account%2F", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'true';
-is_account_mod(_) -> 'false'. 
+is_account_mod(_) -> 'false'.
 
 -spec is_account_db(ne_binary()) -> boolean().
 is_account_db(<<"account/", _AccountId:34/binary, "-", _Date:6/binary>>) -> 'false';
-is_account_db(<<"account%2F", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'false'; 
+is_account_db(<<"account%2F", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'false';
 is_account_db(<<"account/", _/binary>>) -> 'true';
 is_account_db(<<"account%2f", _/binary>>) -> 'true';
 is_account_db(<<"account%2F", _/binary>>) -> 'true';
@@ -617,9 +619,9 @@ write_tts_file(Path, Say) ->
 
 -spec decr_timeout(wh_timeout(), non_neg_integer() | wh_now()) -> wh_timeout().
 decr_timeout('infinity', _) -> 'infinity';
-decr_timeout(Timeout, Elapsed) when is_integer(Elapsed) -> 
+decr_timeout(Timeout, Elapsed) when is_integer(Elapsed) ->
     Diff = Timeout - Elapsed,
-    case Diff < 0 of        
+    case Diff < 0 of
         'true' -> 0;
         'false' -> Diff
     end;
