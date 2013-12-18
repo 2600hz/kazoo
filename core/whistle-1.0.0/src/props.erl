@@ -157,6 +157,8 @@ delete(K, Props) ->
         'false' -> lists:delete(K, Props)
     end.
 
+-spec delete_keys(ne_binaries(), wh_proplist()) -> wh_proplist().
+delete_keys([], Props) -> Props;
 delete_keys([_|_]=Ks, Props) -> lists:foldl(fun ?MODULE:delete/2, Props, Ks).
 
 -spec is_defined(wh_proplist_key(), wh_proplist()) -> boolean().
