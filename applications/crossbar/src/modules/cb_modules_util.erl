@@ -51,6 +51,7 @@ get_devices_owned_by(OwnerID, DB) ->
 %% TODO: this breaks the callflow/crossbar seperation....
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_originate_quickcall(cb_context:context()) -> cb_context:context().
 maybe_originate_quickcall(Context) ->
     Call = create_call_from_context(Context),
     case get_endpoints(Call, Context) of
@@ -60,6 +61,7 @@ maybe_originate_quickcall(Context) ->
             originate_quickcall(Endpoints, Call, default_bleg_cid(Call, Context))
     end.
 
+-spec create_call_from_context(cb_context:context()) -> whapps_call:call().
 create_call_from_context(Context) ->
     Routines = [fun(C) -> whapps_call:set_account_db(cb_context:account_db(Context), C) end
                 ,fun(C) -> whapps_call:set_account_id(cb_context:account_id(Context), C) end
@@ -74,6 +76,8 @@ create_call_from_context(Context) ->
                ],
     lists:foldl(fun(F, C) -> F(C) end, whapps_call:new(), Routines).
 
+-spec request_specific_extraction_funs(cb_context:context()) -> [function(),...] | [].
+-spec request_specific_extraction_funs_from_nouns(req_nouns()) -> [function(),...] | [].
 request_specific_extraction_funs(Context) ->
     request_specific_extraction_funs_from_nouns(cb_context:req_nouns(Context)).
 
@@ -92,6 +96,8 @@ request_specific_extraction_funs_from_nouns(?USERS_QCALL_NOUNS) ->
 request_specific_extraction_funs_from_nouns(_ReqNouns) ->
     [].
 
+-spec get_endpoints(whapps_call:call(), cb_context:context()) -> wh_json:objects().
+-spec get_endpoints(whapps_call:call(), cb_context:context(), req_nouns()) -> wh_json:objects().
 get_endpoints(Call, Context) ->
     get_endpoints(Call, Context, cb_context:req_nouns(Context)).
 
@@ -119,6 +125,7 @@ get_endpoints(Call, _Context, ?USERS_QCALL_NOUNS) ->
 get_endpoints(_Call, _Context, _ReqNouns) ->
     [].
 
+-spec aleg_cid(ne_binary(), whapps_call:call()) -> whapps_call:call().
 aleg_cid(Number, Call) ->
     Routines = [fun(C) -> whapps_call:set_custom_channel_var(<<"Retain-CID">>, <<"true">>, C) end
                 ,fun(C) -> whapps_call:set_caller_id_name(<<"QuickCall">>, C) end
@@ -126,6 +133,7 @@ aleg_cid(Number, Call) ->
                ],
     lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
 
+-spec default_bleg_cid(whapps_call:call(), cb_context:context()) -> cb_context:context().
 default_bleg_cid(Call, Context) ->
     {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
     Defaults = wh_json:from_list([{<<"cid-name">>, CIDName}
@@ -135,6 +143,7 @@ default_bleg_cid(Call, Context) ->
                                 ,wh_json:merge_jobjs(cb_context:query_string(Context), Defaults)
                                ).
 
+-spec originate_quickcall(wh_json:objects(), whapps_call:call(), cb_context:context()) -> cb_context:context().
 originate_quickcall(Endpoints, Call, Context) ->
     CCVs = [{<<"Account-ID">>, cb_context:account_id(Context)}
             ,{<<"Retain-CID">>, <<"true">>}
@@ -167,11 +176,14 @@ originate_quickcall(Endpoints, Call, Context) ->
     wapi_resource:publish_originate_req(props:filter_undefined(Request)),
     crossbar_util:response_202(<<"processing request">>, cb_context:set_resp_data(Context, Request)).
 
+-spec maybe_auto_answer(wh_json:objects()) -> wh_json:objects().
 maybe_auto_answer([Endpoint]) ->
     [wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], <<"true">>, Endpoint)];
 maybe_auto_answer(Endpoints) ->
     Endpoints.
 
+-spec get_application_data(cb_context:context()) -> wh_json:object().
+-spec get_application_data_from_nouns(req_nouns()) -> wh_json:object().
 get_application_data(Context) ->
     get_application_data_from_nouns(cb_context:req_nouns(Context)).
 
@@ -182,29 +194,34 @@ get_application_data_from_nouns(?USERS_QCALL_NOUNS) ->
 get_application_data_from_nouns(_Nouns) ->
     wh_json:from_list([{<<"Route">>, <<"0">>}]).
 
+-spec get_timeout(cb_context:context()) -> pos_integer().
 get_timeout(Context) ->
-    try cb_context:req_value(Context, <<"timeout">>, 30) of
+    try wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>, 30)) of
         Timeout when Timeout > 3 -> Timeout;
         _ -> 30
     catch
         _:_ -> 30
     end.
 
+-spec get_ignore_early_media(cb_context:context()) -> boolean().
 get_ignore_early_media(Context) ->
-    wh_json:is_true(cb_context:req_value(Context, <<"ignore-early-media">>)).
+    wh_util:is_true(cb_context:req_value(Context, <<"ignore-early-media">>)).
 
+-spec get_media(cb_context:context()) -> ne_binary().
 get_media(Context) ->
     case cb_context:req_value(Context, <<"media">>) of
         <<"bypass">> -> <<"bypass">>;
         _Else -> <<"process">>
     end.
 
+-spec get_caller_id_name(cb_context:context()) -> api_binary().
 get_caller_id_name(Context) ->
     case cb_context:req_value(Context, <<"cid-name">>) of
         'undefined' -> 'undefined';
         CIDName -> wh_util:uri_decode(CIDName)
     end.
 
+-spec get_caller_id_number(cb_context:context()) -> api_binary().
 get_caller_id_number(Context) ->
     case cb_context:req_value(Context, <<"cid-number">>) of
         'undefined' -> 'undefined';
@@ -218,6 +235,7 @@ get_caller_id_number(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_superduper_admin(api_binary() | cb_context:context()) -> boolean().
+-spec is_superduper_admin(ne_binary(), ne_binary()) -> boolean().
 is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(AccountId) when is_binary(AccountId) ->
     is_superduper_admin(AccountId, wh_util:format_account_id(AccountId, 'encoded'));
