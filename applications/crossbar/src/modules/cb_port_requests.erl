@@ -48,7 +48,14 @@
          ,post/2, post/4
          ,delete/2, delete/4
          ,cleanup/1
+
+         ,update_default_template/0
         ]).
+
+-define(MY_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".port_requests">>).
+-define(HTML_TO_PDF, <<"/usr/bin/htmldoc --quiet --webpage -f $pdf$ $html$">>).
+-define(TEMPLATE_DOC_ID, <<"notify.loa">>).
+-define(TEMPLATE_ATTACHMENT_ID, <<"template">>).
 
 -define(ATTACHMENT_MIME_TYPES, [{<<"application">>, <<"pdf">>}
                                 ,{<<"application">>, <<"octet-stream">>}
@@ -58,7 +65,7 @@
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
 
 -define(UNFINISHED_PORT_REQUEST_LIFETIME
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
+        ,whapps_config:get_integer(?MY_CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
        ).
 
 -define(PATH_TOKEN_LOA, <<"loa">>).
@@ -740,8 +747,109 @@ generate_loa(Context, _RespStatus) ->
 
 -spec generate_loa_from_port(cb_context:context(), wh_json:object()) -> cb_context:context().
 generate_loa_from_port(Context, PortRequest) ->
-    Ns = wh_json:get_value(<<"numbers">>, PortRequest, wh_json:object()),
+    AccountId = cb_context:account_id(Context),
 
-    Template = 'ok'.
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    ResellerDoc = cb_context:account_doc(cb_context:set_account_id(Context, ResellerId)),
 
+    AccountDoc = cb_context:account_doc(Context),
+    Now = wh_util:pretty_print_datetime(wh_util:current_tstamp()),
 
+    Numbers = wh_json:get_keys(<<"numbers">>, PortRequest),
+
+    generate_loa_from_template(Context
+                               ,wh_json:set_values([{<<"account_id">>, AccountId}
+                                                    ,{<<"reseller_id">>, ResellerId}
+                                                    ,{<<"reseller_name">>, wh_json:get_value(<<"name">>, ResellerDoc)}
+                                                    ,{<<"account_name">>, wh_json:get_value(<<"name">>, AccountDoc)}
+                                                    ,{<<"now">>, Now}
+                                                    ,{<<"numbers">>, Numbers}
+                                                   ], PortRequest)
+                               ,ResellerId
+                              ).
+
+-spec generate_loa_from_template(cb_context:context(), wh_json:object(), ne_binary()) -> cb_context:context().
+generate_loa_from_template(Context, TemplateData, ResellerId) ->
+    Template = find_template(ResellerId),
+
+    Renderer = wh_util:to_atom(<<ResellerId/binary, "_loa">>, 'true'),
+    {'ok', Renderer} = erlydtl:compile(Template, Renderer),
+    {'ok', LOA} = Renderer:render(wh_json:to_proplist(TemplateData)),
+
+    code:purge(Renderer),
+    code:delete(Renderer),
+
+    Prefix = <<ResellerId/binary, "-", (cb_context:req_id(Context))/binary>>,
+    HTMLFile = filename:join([<<"/tmp">>, <<Prefix/binary, "-loa.html">>]),
+    PDFFile = filename:join([<<"/tmp">>, <<Prefix/binary, "-loa.pdf">>]),
+
+    'ok' = file:write_file(HTMLFile, LOA),
+
+    RawCmd = whapps_config:get(?MY_CONFIG_CAT, <<"html2pdf">>, ?HTML_TO_PDF),
+
+    Cmd = lists:foldl(fun cmd_fold/2
+                      ,RawCmd
+                      ,[{<<"$pdf$">>, PDFFile}
+                        ,{<<"$html$">>, HTMLFile}
+                       ]
+                     ),
+    lager:debug("exec ~s", [Cmd]),
+    case os:cmd(wh_util:to_list(Cmd)) of
+        [] ->
+            {'ok', PDF} = file:read_file(PDFFile),
+            cb_context:set_resp_status(
+              cb_context:set_resp_data(Context, PDF)
+              ,'success'
+             );
+        _E ->
+            lager:debug("failed to exec ~s: ~s", [Cmd, _E]),
+            cb_context:set_resp_status(Context, 'error')
+    end.
+
+-spec cmd_fold({ne_binary(), ne_binary()}, ne_binary()) -> ne_binary().
+cmd_fold({Search, Replace}, Subject) ->
+    binary:replace(Subject, Search, Replace).
+
+-spec find_template(ne_binary()) -> ne_binary().
+find_template(ResellerId) ->
+    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
+    case couch_mgr:fetch_attachment(ResellerDb, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID) of
+        {'ok', Template} -> Template;
+        {'error', _} -> default_template()
+    end.
+
+-spec default_template() -> ne_binary().
+default_template() ->
+    case couch_mgr:fetch_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID) of
+        {'ok', Template} -> Template;
+        {'error', _} -> create_default_template()
+    end.
+
+-spec create_default_template() -> ne_binary().
+create_default_template() ->
+    {'ok', _Doc} =
+        couch_mgr:save_doc(?WH_CONFIG_DB
+                           ,wh_json:from_list([{<<"template_name">>, <<"loa">>}
+                                               ,{<<"_id">>, ?TEMPLATE_DOC_ID}
+                                              ])
+                          ),
+    save_default_template().
+
+-spec update_default_template() -> ne_binary().
+update_default_template() ->
+    case couch_mgr:open_doc(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID) of
+        {'ok', _Doc} -> save_default_template();
+        {'error', 'not_found'} -> create_default_template()
+    end.
+
+-spec save_default_template() -> ne_binary().
+save_default_template() ->
+    PrivDir = code:priv_dir('crossbar'),
+    TemplateFile = filename:join([PrivDir, <<"couchdb">>, <<"templates">>, <<"loa.tmpl">>]),
+    lager:debug("loading template from ~s", [TemplateFile]),
+
+    {'ok', Template} = file:read_file(TemplateFile),
+
+    {'ok', _} =
+        couch_mgr:put_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID, Template),
+    Template.
