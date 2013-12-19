@@ -756,15 +756,17 @@ generate_loa_from_port(Context, PortRequest) ->
 
     Numbers = [wnm_util:pretty_print(N) || N <- wh_json:get_keys(<<"numbers">>, PortRequest)],
 
-    lager:debug("port: ~p", [PortRequest]),
+    QRCode = create_qr_code(cb_context:account_id(Context), wh_json:get_first_defined([<<"_id">>, <<"id">>], PortRequest)),
 
     generate_loa_from_template(Context
-                               ,[{<<"reseller">>, wh_json:to_proplist(ResellerDoc)}
-                                 ,{<<"account">>, wh_json:to_proplist(AccountDoc)}
-                                 ,{<<"numbers">>, Numbers}
-                                 ,{<<"bill">>, wh_json:to_proplist(wh_json:get_value(<<"bill">>, PortRequest, wh_json:new()))}
-                                 ,{<<"request">>, wh_json:to_proplist(PortRequest)}
-                                ]
+                               ,props:filter_undefined(
+                                  [{<<"reseller">>, wh_json:to_proplist(ResellerDoc)}
+                                   ,{<<"account">>, wh_json:to_proplist(AccountDoc)}
+                                   ,{<<"numbers">>, Numbers}
+                                   ,{<<"bill">>, wh_json:to_proplist(wh_json:get_value(<<"bill">>, PortRequest, wh_json:new()))}
+                                   ,{<<"request">>, wh_json:to_proplist(PortRequest)}
+                                   ,{<<"qr_code">>, QRCode}
+                                  ])
                                ,ResellerId
                               ).
 
@@ -775,8 +777,6 @@ generate_loa_from_template(Context, TemplateData, ResellerId) ->
     Renderer = wh_util:to_atom(<<ResellerId/binary, "_loa">>, 'true'),
     {'ok', Renderer} = erlydtl:compile(Template, Renderer),
     {'ok', LOA} = Renderer:render(TemplateData),
-
-    [lager:debug("tmpl: ~p", [T]) || T <- TemplateData],
 
     code:purge(Renderer),
     code:delete(Renderer),
@@ -855,3 +855,26 @@ save_default_template() ->
     {'ok', _} =
         couch_mgr:put_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID, Template),
     Template.
+
+-spec create_qr_code(api_binary(), api_binary()) -> wh_proplist() | 'undefined'.
+create_qr_code('undefined', _) -> 'undefined';
+create_qr_code(_, 'undefined') -> 'undefined';
+create_qr_code(AccountId, PortRequestId) ->
+    lager:debug("create qr code for ~s - ~s", [AccountId, PortRequestId]),
+    CHL = <<AccountId/binary, "-", PortRequestId/binary>>,
+    Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
+
+    case ibrowse:send_req(wh_util:to_list(Url)
+                          ,[]
+                          ,'get'
+                          ,[]
+                          ,[{'response', 'binary'}]
+                         )
+    of
+        {'ok', "200", _RespHeaders, RespBody} ->
+            lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
+            [{<<"image">>, base64:encode(RespBody)}];
+        _E ->
+            lager:debug("failed to generate QR code: ~p", [_E]),
+            'undefined'
+    end.
