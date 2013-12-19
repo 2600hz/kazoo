@@ -43,9 +43,9 @@
         <p>Only one (1) BTN may be associated with each LOA. If you have additional BTNs, you must submit an LOA for each BTN. Please contact your {{reseller.name|default:""}} representative if you need assistance identifying each BTN.</p>
         <h3>Telephone Numbers to be Ported</h3>
         <p>Instructions: The numbers listed in this upper table WILL BE PORTED. YOU SHOULD NOT INCLUDE FAX LINES, MODEM LINES, OR ALARM LINES or any line used for non-voice communications. Just include your phone numbers which people use to call you for a voice conversation. If any of these numbers are associated with a DSL line or a Centrex type service, please note that next to the number. It might also help to note any specific use next to the number.</p>
-        <p>Example: <em>111-111-1111 DSL Line</em> or <em>111-111-1111 Main number<em></p>
+        <p>Example: <em>111-111-1111 DSL Line</em> or <em>111-111-1111 Main number</em></p>
         <p>Every phone number on the account must be listed either in the upper table TO BE PORTED or in the lower table NOT TO BE PORTED. If you are not sure, please call {{reseller.name|default:""}} to dicuss your concern.</p>
-        <h4>List telephone numbers TO BE PORTED</h3>
+        <h4>List telephone numbers TO BE PORTED</h4>
         <ul>
           {% for n in numbers %}
           <li><em>{{n|default:""}}</em></li>
@@ -62,5 +62,9 @@
           <li>_________________________________________</li>
           <li>_________________________________________</li>
         </ul>
+        {% if qr_code %}
+        <div style="page-break-after:always">&nbsp;</div>
+        <img src="data:image/png;base64,{{qr_code.image}}" width="300" height="300"/>
+        {% endif %}
   </body>
 </html>
