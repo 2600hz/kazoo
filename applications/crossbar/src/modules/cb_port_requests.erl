@@ -57,6 +57,8 @@
 -define(TEMPLATE_DOC_ID, <<"notify.loa">>).
 -define(TEMPLATE_ATTACHMENT_ID, <<"template">>).
 
+-define(LOA_BUILDER, whapps_config:get(?MY_CONFIG_CAT, <<"loa_builder">>, <<"htmldoc">>)).
+
 -define(ATTACHMENT_MIME_TYPES, [{<<"application">>, <<"pdf">>}
                                 ,{<<"application">>, <<"octet-stream">>}
                                 ,{<<"text">>, <<"plain">>}
@@ -736,8 +738,10 @@ maybe_move_state(Id, Context, PortState) ->
             cb_context:add_validation_error(<<"port_state">>, <<"enum">>, <<"failed to move to new state from current state">>, Context)
     end.
 
--spec generate_loa(cb_context:context()) -> cb_context:context().
--spec generate_loa(cb_context:context(), crossbar_status()) -> cb_context:context().
+-spec generate_loa(cb_context:context()) ->
+                          cb_context:context().
+-spec generate_loa(cb_context:context(), crossbar_status()) ->
+                          cb_context:context().
 generate_loa(Context) ->
     generate_loa(Context, cb_context:resp_status(Context)).
 generate_loa(Context, 'success') ->
@@ -745,8 +749,14 @@ generate_loa(Context, 'success') ->
 generate_loa(Context, _RespStatus) ->
     Context.
 
--spec generate_loa_from_port(cb_context:context(), wh_json:object()) -> cb_context:context().
+-spec generate_loa_from_port(cb_context:context(), wh_json:object()) ->
+                                    cb_context:context().
+-spec generate_loa_from_port(cb_context:context(), wh_json:object(), ne_binary()) ->
+                                    cb_context:context().
 generate_loa_from_port(Context, PortRequest) ->
+    generate_loa_from_port(Context, PortRequest, ?LOA_BUILDER).
+
+generate_loa_from_port(Context, PortRequest, <<"htmldoc">>) ->
     AccountId = cb_context:account_id(Context),
 
     ResellerId = wh_services:find_reseller_id(AccountId),
