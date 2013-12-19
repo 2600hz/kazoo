@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2013, 2600Hz INC
 %%% @doc
 %%%
 %%% Handles port request lifecycles
@@ -803,4 +803,3 @@ save_default_template() ->
     {'ok', _} =
         couch_mgr:put_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID, Template),
     Template.
-

@@ -1,18 +1,18 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013, 2600Hz INC
 %%% @doc
-%%% Builds an LOA doc using HTMLDoc (http://www.msweet.org/projects.php?Z1)
+%%% Builds an LOA doc using wkhtmltopdf (https://code.google.com/p/wkhtmltopdf/)
 %%% @end
 %%% @contributors:
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cb_loa_htmldoc).
+-module(cb_loa_wkhtmltopdf).
 
 -export([generate_loa/2]).
 
 -include("../crossbar.hrl").
 -define(MY_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".port_requests">>).
--define(HTML_TO_PDF, <<"/usr/bin/htmldoc --quiet --webpage -f $pdf$ $html$">>).
+-define(HTML_TO_PDF, <<"/usr/bin/wkhtmltopdf --quiet $html$ $pdf$">>).
 
 generate_loa(Context, PortRequest) ->
     AccountId = cb_context:account_id(Context),
