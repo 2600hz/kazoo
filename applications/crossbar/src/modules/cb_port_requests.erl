@@ -753,28 +753,30 @@ generate_loa_from_port(Context, PortRequest) ->
     ResellerDoc = cb_context:account_doc(cb_context:set_account_id(Context, ResellerId)),
 
     AccountDoc = cb_context:account_doc(Context),
-    Now = wh_util:pretty_print_datetime(wh_util:current_tstamp()),
 
-    Numbers = wh_json:get_keys(<<"numbers">>, PortRequest),
+    Numbers = [wnm_util:pretty_print(N) || N <- wh_json:get_keys(<<"numbers">>, PortRequest)],
+
+    lager:debug("port: ~p", [PortRequest]),
 
     generate_loa_from_template(Context
-                               ,wh_json:set_values([{<<"account_id">>, AccountId}
-                                                    ,{<<"reseller_id">>, ResellerId}
-                                                    ,{<<"reseller_name">>, wh_json:get_value(<<"name">>, ResellerDoc)}
-                                                    ,{<<"account_name">>, wh_json:get_value(<<"name">>, AccountDoc)}
-                                                    ,{<<"now">>, Now}
-                                                    ,{<<"numbers">>, Numbers}
-                                                   ], PortRequest)
+                               ,[{<<"reseller">>, wh_json:to_proplist(ResellerDoc)}
+                                 ,{<<"account">>, wh_json:to_proplist(AccountDoc)}
+                                 ,{<<"numbers">>, Numbers}
+                                 ,{<<"bill">>, wh_json:to_proplist(wh_json:get_value(<<"bill">>, PortRequest, wh_json:new()))}
+                                 ,{<<"request">>, wh_json:to_proplist(PortRequest)}
+                                ]
                                ,ResellerId
                               ).
 
--spec generate_loa_from_template(cb_context:context(), wh_json:object(), ne_binary()) -> cb_context:context().
+-spec generate_loa_from_template(cb_context:context(), wh_proplist(), ne_binary()) -> cb_context:context().
 generate_loa_from_template(Context, TemplateData, ResellerId) ->
     Template = find_template(ResellerId),
 
     Renderer = wh_util:to_atom(<<ResellerId/binary, "_loa">>, 'true'),
     {'ok', Renderer} = erlydtl:compile(Template, Renderer),
-    {'ok', LOA} = Renderer:render(wh_json:to_proplist(TemplateData)),
+    {'ok', LOA} = Renderer:render(TemplateData),
+
+    [lager:debug("tmpl: ~p", [T]) || T <- TemplateData],
 
     code:purge(Renderer),
     code:delete(Renderer),

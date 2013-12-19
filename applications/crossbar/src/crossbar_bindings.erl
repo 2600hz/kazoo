@@ -444,7 +444,9 @@ fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
             wh_util:log_stacktrace(ST),
             fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         'error':'undef' ->
+            ST = erlang:get_stacktrace(),
             lager:debug("undefined function ~s:~s/~b", [M, F, length(Payload)]),
+            wh_util:log_stacktrace(ST),
             fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         _T:_E ->
             ST = erlang:get_stacktrace(),

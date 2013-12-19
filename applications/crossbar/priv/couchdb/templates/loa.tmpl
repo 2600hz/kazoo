@@ -2,19 +2,19 @@
   <body>
     <h1>Letter of Authorization</h1>
     <p>My signature below certifies that I am the customer of record or the authorized representative for payment for each of the telephone numbers listed below.</p>
-    <p>For each of the telephone numbers listed herein and on Attachment A, I appoint {{reseller_name}} (hereinafter "TELCO") to act as my Agent for the purpose of collecting my account information with my current local telephone carrier or provider (hereinafter "Provider").</p>
+    <p>For each of the telephone numbers listed herein and on Attachment A, I appoint {{reseller.name|default:""}} (hereinafter "TELCO") to act as my Agent for the purpose of collecting my account information with my current local telephone carrier or provider (hereinafter "Provider").</p>
     <p>By selecting TELCO to act as my Agent to research my current services with my current Provider of local telephone service, I am authorizing the change of my local telephone Provider from that/those, which I am currently using to TELCO. This authorization will expire only upon written notification.</p>
     <form>
       <ul>
-        <li><label for="billing_telephone_number">Billing Telephone Number (BTN): </label><input name="billing_telephone_number"/></li>
-        <li><label for="losing_carrier_name">Losing Carrier: </label><input name="losing_carrier_name"/></li>
-        <li><label for="losing_carrier_account_id">Losing Carrier Account Number: </label><input name="losing_carrier_account_id"/></li>
+        <li><label for="billing_telephone_number">Billing Telephone Number (BTN): </label></li>
+        <li><label for="losing_carrier_name">Losing Carrier: </label>{{request.carrier|default:""}}</li>
+        <li><label for="losing_carrier_account_id">Losing Carrier Account Number: </label></li>
       </ul>
     </form>
 
     <h2>LOA Instructions</h2>
     <ol>
-      <li>Only one BTN may be associated with each LOA. If you have additional BTNs, you must submit an LOA for each BTN. Plese contact your {{reseller_name}} representative if you need assistance indentifying each BTN.</li>
+      <li>Only one BTN may be associated with each LOA. If you have additional BTNs, you must submit an LOA for each BTN. Plese contact your {{reseller.name|default:""}} representative if you need assistance indentifying each BTN.</li>
       <li>Please provide a copy of the most recent losing carrier invoice for the BTN listed above (must include ALL pages). The information on this LOA MUST match the losing carrier invoice or Customer Service Records.</li>
       <li>Use Attachment A for listing all telephone numbers associated with this BTN.</li>
     </ol>
@@ -22,49 +22,45 @@
     <p>This information MUST match your current invoice and account information</p>
     <form>
       <ul>
-        <li><label for="company_name">Customer (Company) Name: </label><input name="company_name" /></li>
-        <li><label for="company_address">Service address: </label><input name="company_address" /></li>
-        <li><label for="city_state_zip">City, State ZIP: </label><input name="city_state_zip" /></li>
-        <li><label for="company_contact">Account Contact: </label><input name="company_contact" /></li>
-        <li><label for="company_contact_title">Title: </label><input name="company_contact_title" /></li>
-        <li><label for="company_contact_number">Contact's Number (not BTN): </label><input name="company_contact_number" /></li>
-        <li><label for="company_print_name">Print Name: </label><input name="company_print_name" /></li>
+        <li><label for="company_name">Customer (Company) Name: </label>{{account.name|default:""}}</li>
+        <li><label for="company_address">Service address: </label>{{bill.address|default:""}}</li>
+        <li><label for="city_state_zip">City, State ZIP: </label>{{bill.city|default:""}}, {{bill.state|default:""}} {{bill.zip_code|default:""}}</li>
+        <li><label for="company_contact">Account Contact: </label>{{bill.name|default:""}}</li>
+        <li><label for="company_contact_title">Title: </label></li>
+        <li><label for="company_contact_number">Contact's Number (not BTN): </label></li>
+        <li><label for="company_contact_email">Contact's Email: </label>{{account.email|default:""}}</li>
+        <li><label for="company_print_name">Print Name: </label></li>
         <li>Signature:__________________________________________________</li>
         <li>Date:________________</li>
       </ul>
-      <p>Please fax this signed LOA to {{reseller_fax_number}}</p>
-      <p>(please also email a copy to {{reseller_email}})</p>
+      {% if reseller.fax_number %}<p>Please fax this signed LOA to {{reseller.fax_number|default:""}}</p>{% endif %}
+      {% if reseller.email %}<p>(please also email a copy to {{reseller.email|default:""}})</p>{% endif %}
       <div style="page-break-after:always">&nbsp;</div>
       <h1>Letter of Authorization</h1>
       <h2>Attachment A</h2>
       <form>
-        <p><label for="attachment_a_btn">Billing Telephone Number (BTN): </label><input name="attachment_a_btn" /></p>
-        <p>Only one (1) BTN may be associated with each LOA. If you have additional BTNs, you must submit an LOA for each BTN. Please contact your {{reseller_name}} representative if you need assistance identifying each BTN.</p>
+        <p><label for="attachment_a_btn">Billing Telephone Number (BTN): </label></p>
+        <p>Only one (1) BTN may be associated with each LOA. If you have additional BTNs, you must submit an LOA for each BTN. Please contact your {{reseller.name|default:""}} representative if you need assistance identifying each BTN.</p>
         <h3>Telephone Numbers to be Ported</h3>
         <p>Instructions: The numbers listed in this upper table WILL BE PORTED. YOU SHOULD NOT INCLUDE FAX LINES, MODEM LINES, OR ALARM LINES or any line used for non-voice communications. Just include your phone numbers which people use to call you for a voice conversation. If any of these numbers are associated with a DSL line or a Centrex type service, please note that next to the number. It might also help to note any specific use next to the number.</p>
         <p>Example: <em>111-111-1111 DSL Line</em> or <em>111-111-1111 Main number<em></p>
-        <p>Every phone number on the account must be listed either in the upper table TO BE PORTED or in the lower table NOT TO BE PORTED. If you are not sure, please call {{reseller_name}} to dicuss your concern.</p>
+        <p>Every phone number on the account must be listed either in the upper table TO BE PORTED or in the lower table NOT TO BE PORTED. If you are not sure, please call {{reseller.name|default:""}} to dicuss your concern.</p>
         <h4>List telephone numbers TO BE PORTED</h3>
         <ul>
           {% for n in numbers %}
-          <li><input name="port_number_{{forloop.counter0}}"/>{{n}}</li>
+          <li><em>{{n|default:""}}</em></li>
           {% endfor %}
         </ul>
         <h3>Telephone Number NOT TO BE PORTED</h3>
-        <p>Instructions: Any numbers listed in this lower table WILL NOT BE PORTED to {{reseller_name}}'s system and will remain with your existing Carrier. Every phone number on the account must be listed either in the upper table TO BE PORTED or in the lower table NOT TO BE PORTED. If all numbers are not so accounted-for, the porting request will be rejected for inaccuracies.</p>
+        <p>Instructions: Any numbers listed in this lower table WILL NOT BE PORTED to {{reseller.name|default:""}}'s system and will remain with your existing Carrier. Every phone number on the account must be listed either in the upper table TO BE PORTED or in the lower table NOT TO BE PORTED. If all numbers are not so accounted-for, the porting request will be rejected for inaccuracies.</p>
         <p>Note: If your BTN is being ported, then you must identify another number, not being ported, to become the new BTN. If none is selected, we will select one for you. If you are not sure, contact us to discuss your concern.</p>
         <p>List telephone numbers here which are NOT TO BE PORTED, one per line. Listing a number as NOT TO BE PORTED will not result in that number beind deleted or disconnected. This requires specific orders from the owner to do so. If you have not signed a disconnect order, the lines will not be disconnected!</p>
         <ul>
-          <li><input name="do_not_port_number_0" />_________________________________________</li>
-          <li><input name="do_not_port_number_1" />_________________________________________</li>
-          <li><input name="do_not_port_number_2" />_________________________________________</li>
-          <li><input name="do_not_port_number_3" />_________________________________________</li>
-          <li><input name="do_not_port_number_4" />_________________________________________</li>
-          <li><input name="do_not_port_number_5" />_________________________________________</li>
-          <li><input name="do_not_port_number_6" />_________________________________________</li>
-          <li><input name="do_not_port_number_7" />_________________________________________</li>
-          <li><input name="do_not_port_number_8" />_________________________________________</li>
-          <li><input name="do_not_port_number_9" />_________________________________________</li>
+          <li>_________________________________________</li>
+          <li>_________________________________________</li>
+          <li>_________________________________________</li>
+          <li>_________________________________________</li>
+          <li>_________________________________________</li>
         </ul>
   </body>
 </html>
