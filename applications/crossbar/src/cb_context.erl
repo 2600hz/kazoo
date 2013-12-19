@@ -26,6 +26,7 @@
          %% Getters / Setters
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
+         ,account_doc/1
          ,auth_token/1, set_auth_token/2
          ,auth_doc/1, set_auth_doc/2
          ,auth_account_id/1, set_auth_account_id/2
@@ -83,8 +84,15 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
     wh_json:find(Key, [ReqData, QS], Default).
 
 %% Accessors
+-spec account_doc(context()) -> wh_json:object().
+
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
+account_doc(#cb_context{}=Context) ->
+    AccountId = account_id(Context),
+    {'ok', Doc} =
+        couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), AccountId),
+    Doc.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
 auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.

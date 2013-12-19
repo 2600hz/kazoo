@@ -591,7 +591,6 @@ to_binary(Req, Context) ->
     RespData = cb_context:resp_data(Context),
     Event = api_util:create_event_name(Context, <<"to_binary">>),
     _ = crossbar_bindings:map(Event, {Req, Context}),
-    lager:debug("responding to_binary"),
     {RespData, api_util:set_resp_headers(Req, Context), Context}.
 
 -spec to_csv(cowboy_req:req(), cb_context:context()) ->

@@ -439,13 +439,17 @@ fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
             fold_bind_results(MFs, [Pay1|Tokens], Route, MFsLen, ReRunQ)
     catch
         'error':'function_clause' ->
+            ST = erlang:get_stacktrace(),
             lager:debug("failed to find matching function clause for ~s:~s/~b", [M, F, length(Payload)]),
+            wh_util:log_stacktrace(ST),
             fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         'error':'undef' ->
             lager:debug("undefined function ~s:~s/~b", [M, F, length(Payload)]),
             fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         _T:_E ->
+            ST = erlang:get_stacktrace(),
             lager:debug("excepted: ~s: ~p", [_T, _E]),
+            wh_util:log_stacktrace(ST),
             fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ)
     end;
 fold_bind_results([], Payload, Route, MFsLen, ReRunQ) ->
