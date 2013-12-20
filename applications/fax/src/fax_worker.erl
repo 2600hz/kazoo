@@ -511,7 +511,8 @@ normalize_content_type(CT) ->
 send_fax(JobId, JObj, Q) ->
     IgnoreEarlyMedia = wh_util:to_binary(whapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
     CallId = wh_util:rand_hex_binary(8),
-    Request = [{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
+    Request = props:filter_undefined([
+                {<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
                ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
                ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
                ,{<<"To-DID">>, wnm_util:to_e164(wh_json:get_value(<<"to_number">>, JObj))}
@@ -524,12 +525,13 @@ send_fax(JobId, JObj, Q) ->
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Authorizing-ID">>, JobId}
                                                                ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
                                                               ])}
+               ,{<<"SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
                ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>]}
                ,{<<"Application-Name">>, <<"fax">>}
                ,{<<"Application-Data">>, get_proxy_url(JobId)}
                ,{<<"Outbound-Call-ID">>, CallId}
                | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-              ],
+              ]),
     gen_listener:add_binding(self(), 'call', [{'restrict_to', ['cdr']}, {'callid', CallId}]),
     wapi_offnet_resource:publish_req(Request).
 
