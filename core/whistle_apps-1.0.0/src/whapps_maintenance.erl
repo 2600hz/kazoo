@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
@@ -224,6 +225,9 @@ refresh(Account, Views) ->
     _ = couch_mgr:del_doc(AccountDb, <<"_design/limits">>),
     _ = couch_mgr:del_doc(AccountDb, <<"_design/sub_account_reps">>),
 
+    %% Update MOD Views
+    _ = refresh_account_mods(AccountDb),
+    
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'error', 'not_found'} ->
             _ = refresh_from_accounts_db(AccountDb, AccountId),
@@ -231,7 +235,7 @@ refresh(Account, Views) ->
         {'ok', JObj} ->
             refresh_account_db(AccountDb, AccountId, Views, JObj)
     end.
-
+    
 refresh_account_db(AccountDb, AccountId, Views, JObj) ->
     _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
     AccountRealm = crossbar_util:get_account_realm(AccountDb, AccountId),
@@ -244,6 +248,17 @@ refresh_account_db(AccountDb, AccountId, Views, JObj) ->
         end,
     io:format("    updating views in ~s~n", [AccountDb]),
     whapps_util:update_views(AccountDb, Views, 'true').
+
+refresh_account_mods(AccountDb) ->
+    Views = get_all_account_mod_views(),
+    MODs = whapps_util:get_account_mods(AccountDb),
+    [refresh_account_mod(AccountMOD, Views) 
+     || AccountMOD <- MODs
+    ].
+
+refresh_account_mod(AccountMOD, Views) ->
+    io:format("    updating views in mod ~s~n", [AccountMOD]),
+    whapps_util:update_views(AccountMOD, Views).
 
 refresh_account_devices(AccountDb, AccountRealm, Devices) ->
     [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
@@ -690,6 +705,15 @@ get_all_account_views() ->
      |whapps_util:get_views_json('crossbar', "account")
      ++ whapps_util:get_views_json('callflow', "views")
     ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+get_all_account_mod_views() ->
+    [whapps_util:get_view_json('crossbar', <<"account/cdrs.json">>)].
 
 -spec call_id_status(ne_binary()) -> 'ok'.
 -spec call_id_status(ne_binary(), boolean() | ne_binary()) -> 'ok'.
