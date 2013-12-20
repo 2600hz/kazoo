@@ -69,7 +69,7 @@ format_numbers_resp(JObjs) ->
 													  ,{<<"rate">>,wh_json:get_value(<<"rate">>,Doc,<<"1">>)}
 													  ,{<<"activation_charge">>,wh_json:get_value(<<"activation_charge">>,Doc,<<"0">>)}
 													  ]),
-					   [{<<(wh_json:get_value(<<"_id">>,Doc))/binary>>,Props} | Acc]
+					   [{<<(wh_json:get_value(<<"_id">>,Doc))/binary>>,wh_json:from_list(Props)} | Acc]
 			   end
 						,[]	,JObjs),
 	wh_json:from_list(Numbers).
