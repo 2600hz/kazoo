@@ -50,7 +50,7 @@
          ,cleanup/1
 
          ,update_default_template/0
-         ,find_template/1
+         ,find_template/1, find_template/2
         ]).
 
 -define(MY_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".port_requests">>).
@@ -761,6 +761,7 @@ generate_loa_from_port(Context, PortRequest, <<"htmldoc">>) ->
     cb_loa_htmldoc:generate_loa(Context, PortRequest).
 
 -spec find_template(ne_binary()) -> ne_binary().
+-spec find_template(ne_binary(), api_binary()) -> ne_binary().
 find_template(ResellerId) ->
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
     case couch_mgr:fetch_attachment(ResellerDb, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID) of
@@ -768,11 +769,39 @@ find_template(ResellerId) ->
         {'error', _} -> default_template()
     end.
 
+find_template(ResellerId, 'undefined') ->
+    find_template(ResellerId);
+find_template(ResellerId, CarrierName) ->
+    CarrierTemplate = list_to_binary([?TEMPLATE_DOC_ID
+                                      ,<<".">>
+                                      ,wh_util:to_lower_binary(wh_util:uri_encode(CarrierName))
+                                     ]),
+    lager:debug("looking for carrier template ~s or plain template for reseller ~s", [CarrierTemplate, ResellerId]),
+    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
+    case couch_mgr:fetch_attachment(ResellerDb, CarrierTemplate, ?TEMPLATE_ATTACHMENT_ID) of
+        {'ok', Template} -> Template;
+        {'error', _} -> find_carrier_template(ResellerDb, CarrierTemplate)
+    end.
+
+-spec find_carrier_template(ne_binary(), ne_binary()) -> ne_binary().
+find_carrier_template(ResellerDb, CarrierTemplate) ->
+    case couch_mgr:fetch_attachment(ResellerDb, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID) of
+        {'ok', Template} -> Template;
+        {'error', _} -> default_carrier_template(CarrierTemplate)
+    end.
+
 -spec default_template() -> ne_binary().
 default_template() ->
     case couch_mgr:fetch_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID) of
         {'ok', Template} -> Template;
         {'error', _} -> create_default_template()
+    end.
+
+-spec default_carrier_template(ne_binary()) -> ne_binary().
+default_carrier_template(CarrierTemplate) ->
+    case couch_mgr:fetch_attachment(?WH_CONFIG_DB, CarrierTemplate, ?TEMPLATE_ATTACHMENT_ID) of
+        {'ok', Template} -> Template;
+        {'error', _} -> default_template()
     end.
 
 -spec create_default_template() -> ne_binary().

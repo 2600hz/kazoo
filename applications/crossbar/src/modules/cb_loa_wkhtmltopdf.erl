@@ -36,11 +36,13 @@ generate_loa(Context, PortRequest) ->
                                    ,{<<"qr_code">>, QRCode}
                                   ])
                                ,ResellerId
+                               ,wh_json:get_value(<<"carrier">>, PortRequest)
                               ).
 
--spec generate_loa_from_template(cb_context:context(), wh_proplist(), ne_binary()) -> cb_context:context().
-generate_loa_from_template(Context, TemplateData, ResellerId) ->
-    Template = cb_port_requests:find_template(ResellerId),
+-spec generate_loa_from_template(cb_context:context(), wh_proplist(), ne_binary(), api_binary()) ->
+                                        cb_context:context().
+generate_loa_from_template(Context, TemplateData, ResellerId, Carrier) ->
+    Template = cb_port_requests:find_template(ResellerId, Carrier),
 
     Renderer = wh_util:to_atom(<<ResellerId/binary, "_loa">>, 'true'),
     {'ok', Renderer} = erlydtl:compile(Template, Renderer),
