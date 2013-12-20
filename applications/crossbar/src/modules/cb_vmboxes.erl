@@ -34,13 +34,13 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.vmboxes">>, ?MODULE, content_types_provided),
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.vmboxes">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.vmboxes">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.validate.vmboxes">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"*.execute.put.vmboxes">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.vmboxes">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.vmboxes">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.vmboxes">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.vmboxes">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.vmboxes">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete').
 
 
 %%--------------------------------------------------------------------
@@ -80,11 +80,11 @@ allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists() -> true.
-resource_exists(_) -> true.
-resource_exists(_, ?MESSAGES_RESOURCE) -> true.
-resource_exists(_, ?MESSAGES_RESOURCE, _) -> true.
-resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
+resource_exists(_, ?MESSAGES_RESOURCE) -> 'true'.
+resource_exists(_, ?MESSAGES_RESOURCE, _) -> 'true'.
+resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -96,7 +96,7 @@ resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> true.
 -spec content_types_provided(#cb_context{}, path_token(), path_token(), path_token(), path_token()) -> #cb_context{}.
 content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context
                        ,_VMBox, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
-    CTP = [{to_binary, ?MEDIA_MIME_TYPES}],
+    CTP = [{'to_binary', ?MEDIA_MIME_TYPES}],
     Context#cb_context{content_types_provided=CTP}.
 
 %%--------------------------------------------------------------------
@@ -117,7 +117,7 @@ content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     load_vmbox_summary(Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    validate_request(undefined, Context).
+    validate_request('undefined', Context).
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId) ->
     load_vmbox(DocId, Context);
@@ -130,17 +130,19 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId, ?MESSAGES_RESOURCE) -
     load_message_summary(DocId, Context).
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
-    case load_message(DocId, MediaId, undefined, Context) of
-        {true, #cb_context{resp_data=Data}=C1} ->
+    case load_message(DocId, MediaId, 'undefined', Context) of
+        {'true', #cb_context{resp_data=Data}=C1} ->
             C2 = crossbar_doc:save(C1),
             update_mwi(C2#cb_context{resp_data=Data});
         {_, C} -> C
     end;
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
-    load_message(DocId, MediaId, undefined, Context);
+    {_, C} = load_message(DocId, MediaId, 'undefined', Context),
+    C;
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
     Update = wh_json:from_list([{<<"folder">>, <<"deleted">>}]),
-    load_message(DocId, MediaId, Update, Context).
+    {_, C} = load_message(DocId, MediaId, Update, Context),
+    C.
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
     case load_message_binary(DocId, MediaId, Context) of
@@ -213,7 +215,7 @@ check_vmbox_schema(VMBoxId, Context) ->
 on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
     Props = [{<<"pvt_type">>, <<"vmbox">>}],
     Context#cb_context{doc=wh_json:set_values(Props, Doc)};
-on_successful_validation(VMBoxId, #cb_context{}=Context) -> 
+on_successful_validation(VMBoxId, #cb_context{}=Context) ->
     crossbar_doc:load_merge(VMBoxId, Context).
 
 %%--------------------------------------------------------------------
@@ -246,7 +248,7 @@ normalize_view_results(JObj, Acc) ->
 load_message_summary(DocId, Context) ->
     case crossbar_doc:load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc}=C ->
-            Messages = [Message 
+            Messages = [Message
                         || Message <- wh_json:get_ne_value(<<"messages">>, Doc, []),
                            wh_json:get_value(<<"folder">>, Message) =/= <<"deleted">>
                        ],
@@ -263,19 +265,21 @@ load_message_summary(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_message(ne_binary(), ne_binary(), 'undefined' | wh_json:object(), #cb_context{}) ->
                                 {boolean(), #cb_context{}}.
-load_message(DocId, MediaId, undefined, Context) ->
+load_message(DocId, MediaId, 'undefined', Context) ->
     load_message(DocId, MediaId, wh_json:new(), Context);
-load_message(DocId, MediaId, UpdateJObj, #cb_context{req_data=ReqData, query_json=QueryData}=Context) ->
+load_message(DocId, MediaId, UpdateJObj, #cb_context{}=Context) ->
     case crossbar_doc:load(DocId, Context) of
-        #cb_context{resp_status=success, doc=Doc}=C ->        
+        #cb_context{resp_status='success', doc=Doc}=C ->
             Messages = wh_json:get_value(<<"messages">>, Doc, []),
             case get_message_index(MediaId, Messages) of
-                false -> {false, cb_context:add_system_error(bad_identifier, [{details, DocId}], Context)};
+                'false' -> {'false', cb_context:add_system_error('bad_identifier', [{'details', DocId}], Context)};
                 Index ->
                     CurrentMetaData = wh_json:get_value([<<"messages">>, Index], Doc, wh_json:new()),
                     CurrentFolder = wh_json:get_value(<<"folder">>, CurrentMetaData, <<"new">>),
-                    RequestedFolder = wh_json:get_ne_value(<<"folder">>, QueryData
-                                                           ,wh_json:get_ne_value(<<"folder">>, ReqData, CurrentFolder)),
+
+                    RequestedFolder = cb_context:req_value(Context
+                                                           ,<<"folder">>
+                                                           ,wh_json:get_value(<<"folder">>, UpdateJObj, CurrentFolder)),
                     lager:debug("Ensuring message is in folder ~s", [RequestedFolder]),
                     MetaData = wh_json:merge_jobjs(wh_json:set_value(<<"folder">>, RequestedFolder, UpdateJObj)
                                                    ,CurrentMetaData),
@@ -285,7 +289,7 @@ load_message(DocId, MediaId, UpdateJObj, #cb_context{req_data=ReqData, query_jso
                                   }}
             end;
         Else ->
-            {false, Else}
+            {'false', Else}
     end.
 
 %%--------------------------------------------------------------------
@@ -298,11 +302,11 @@ load_message(DocId, MediaId, UpdateJObj, #cb_context{req_data=ReqData, query_jso
 %%--------------------------------------------------------------------
 -spec load_message_binary(ne_binary(), ne_binary(), #cb_context{}) -> {boolean(), #cb_context{}}.
 load_message_binary(DocId, MediaId, #cb_context{db_name=Db, resp_headers=RespHeaders}=Context) ->
-    case load_message(DocId, MediaId, undefined, Context) of
-        {Update, #cb_context{resp_status=success, resp_data=VMMetaJObj, doc=Doc}=C} ->
+    case load_message(DocId, MediaId, 'undefined', Context) of
+        {Update, #cb_context{resp_status='success', resp_data=VMMetaJObj, doc=Doc}=C} ->
             case couch_mgr:open_doc(Db, MediaId) of
-                {error, _R} -> cb_context:add_system_error(bad_identifier, [{details, MediaId}], C);
-                {ok, Media} ->
+                {'error', _R} -> cb_context:add_system_error('bad_identifier', [{'details', MediaId}], C);
+                {'ok', Media} ->
                     [AttachmentId] = wh_json:get_keys(<<"_attachments">>, Media),
                     Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
                                                    ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
@@ -310,20 +314,20 @@ load_message_binary(DocId, MediaId, #cb_context{db_name=Db, resp_headers=RespHea
                                                    ,wh_json:get_value(<<"timezone">>, Doc)
                                                   ),
                     case couch_mgr:fetch_attachment(Db, MediaId, AttachmentId) of
-                        {error, db_not_reachable} ->
-                            {false, cb_context:add_system_error(datastore_unreachable, C)};
-                        {error, not_found} ->
-                            {false, cb_context:add_system_error(bad_identifier, [{details, MediaId}], C)};
-                        {ok, AttachBin} ->
+                        {'error', 'db_not_reachable'} ->
+                            {'false', cb_context:add_system_error('datastore_unreachable', C)};
+                        {'error', 'not_found'} ->
+                            {'false', cb_context:add_system_error('bad_identifier', [{'details', MediaId}], C)};
+                        {'ok', AttachBin} ->
                             lager:debug("Sending file with filename ~s", [Filename]),
                             {Update
-                             ,C#cb_context{resp_status=success
+                             ,C#cb_context{resp_status='success'
                                            ,resp_headers=[{<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], Doc)}
                                                           ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
                                                           ,{<<"Content-Length">>, wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], Doc))}
                                                           | RespHeaders
                                                          ]
-                                           ,resp_etag=undefined
+                                           ,resp_etag='undefined'
                                            ,resp_data=AttachBin
                                           }}
                     end
@@ -345,7 +349,7 @@ get_message_index(MediaId, Messages) ->
                                  wh_json:get_value(<<"media_id">>, Message) =/= MediaId
                          end, Messages)
     of
-        Messages -> false;
+        Messages -> 'false';
         List -> length(List) + 1
     end.
 
@@ -368,7 +372,7 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
     Date = wh_util:pretty_print_datetime(LocalTime),
 
     case CallerId of
-        undefined -> list_to_binary(["unknown_", Date, Ext]);
+        'undefined' -> list_to_binary(["unknown_", Date, Ext]);
         _ -> list_to_binary([CallerId, "_", Date, Ext])
     end.
 
@@ -382,22 +386,22 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 check_uniqueness(VMBoxId, #cb_context{db_name=AccountDb, req_data=JObj}) ->
     try wh_json:get_integer_value(<<"mailbox">>, JObj) of
         Mailbox ->
-            ViewOptions = [{key, Mailbox}],
+            ViewOptions = [{'key', Mailbox}],
             case couch_mgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
-                {ok, []} -> true;
-                {ok, [VMBox]} ->
+                {'ok', []} -> 'true';
+                {'ok', [VMBox]} ->
                     VMBoxId =:= wh_json:get_value(<<"id">>, VMBox);
-                {ok, _} -> 
+                {'ok', _} ->
                     lager:debug("found multiple mailboxs for '~p'", [Mailbox]),
-                    false;
-                {error, _E} ->
+                    'false';
+                {'error', _E} ->
                     lager:debug("failed to load listing_by_mailbox view: ~p", [_E]),
-                    false
+                    'false'
             end
     catch
         _:_ ->
             lager:debug("can't convert mailbox number to integer", []),
-            false
+            'false'
     end.
 
 %%--------------------------------------------------------------------
@@ -407,7 +411,7 @@ check_uniqueness(VMBoxId, #cb_context{db_name=AccountDb, req_data=JObj}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_mwi(#cb_context{}) -> #cb_context{}.
-update_mwi(#cb_context{resp_status=success, db_name=AccountDb, doc=JObj}=Context) ->
+update_mwi(#cb_context{resp_status='success', db_name=AccountDb, doc=JObj}=Context) ->
     OwnerId = wh_json:get_value(<<"owner_id">>, JObj),
     _ = cb_modules_util:update_mwi(OwnerId, AccountDb),
     Context;
