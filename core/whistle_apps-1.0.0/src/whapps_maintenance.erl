@@ -1,4 +1,3 @@
-
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
@@ -235,7 +234,7 @@ refresh(Account, Views) ->
         {'ok', JObj} ->
             refresh_account_db(AccountDb, AccountId, Views, JObj)
     end.
-    
+
 refresh_account_db(AccountDb, AccountId, Views, JObj) ->
     _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
     AccountRealm = crossbar_util:get_account_realm(AccountDb, AccountId),
