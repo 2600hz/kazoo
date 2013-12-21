@@ -22,17 +22,21 @@
 -define(QUERY_REQ_ROUTING_KEY, <<"hangups.query">>).
 
 -define(QUERY_REQ_HEADERS, [<<"Hangup-Cause">>]).
--define(OPTIONAL_QUERY_REQ_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_QUERY_REQ_HEADERS, [<<"Account-ID">>, <<"Raw-Data">>]).
 -define(QUERY_REQ_VALUES, [{<<"Event-Category">>, <<"hangups">>}
                            ,{<<"Event-Name">>, <<"query_req">>}
                           ]).
--define(QUERY_REQ_TYPES, []).
+-define(QUERY_REQ_TYPES, [{<<"Raw-Data">>, fun wh_util:is_boolean/1}]).
 
--define(QUERY_RESP_HEADERS, [<<"Hangup-Cause">>]).
--define(OPTIONAL_QUERY_RESP_HEADERS, [<<"Account-ID">>]).
+-define(QUERY_RESP_HEADERS, [<<"one">>, <<"five">>, <<"fifteen">>, <<"day">>
+                             ,<<"count">>, <<"start_time">>
+                            ]).
+-define(OPTIONAL_QUERY_RESP_HEADERS, [<<"mean">>
+                                      ,<<"one_to_five">>, <<"five_to_fifteen">>, <<"one_to_fifteen">>
+                                     ]).
 -define(QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"hangups">>}
                             ,{<<"Event-Name">>, <<"query_resp">>}
-                          ]).
+                           ]).
 -define(QUERY_RESP_TYPES, []).
 
 %%--------------------------------------------------------------------
