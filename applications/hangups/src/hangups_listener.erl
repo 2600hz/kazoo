@@ -12,10 +12,6 @@
 
 -behaviour(gen_listener).
 
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_databases.hrl").
-
 -export([start_link/0]).
 -export([handle_cdr/2]).
 -export([init/1
@@ -27,10 +23,16 @@
          ,code_change/3
         ]).
 
--define(SERVER, ?MODULE).
+-include("hangups.hrl").
 
--define(RESPONDERS, [{{?MODULE, 'handle_cdr'}, [{<<"call_detail">>, <<"cdr">>}]}]).
--define(BINDINGS, [{'call', [{'restrict_to', ['cdr']}, {'callid', <<"*">>}]}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_cdr'}
+                      ,[{<<"call_detail">>, <<"cdr">>}]
+                     }
+                    ]).
+-define(BINDINGS, [{'call', [{'restrict_to', ['cdr']}
+                             ,{'callid', <<"*">>}
+                            ]}
+                  ]).
 -define(QUEUE_NAME, <<"hangups_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
@@ -56,6 +58,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
                                       ,{'bindings', ?BINDINGS}
@@ -64,7 +67,7 @@ start_link() ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
--spec handle_cdr(wh_json:object(), proplist()) -> no_return().
+-spec handle_cdr(wh_json:object(), wh_proplist()) -> any().
 handle_cdr(JObj, _Props) ->
     'true' = wapi_call:cdr_v(JObj),
     IgnoreCauses = whapps_config:get(<<"hangups">>, <<"ignore_hangup_causes">>, ?IGNORE),
@@ -83,7 +86,8 @@ handle_cdr(JObj, _Props) ->
                                      ,AccountId
                                     ]
                                    ,maybe_add_hangup_specific(HangupCause, JObj)
-                                  )
+                                  ),
+            add_to_meters(AccountId, HangupCause)
     end.
 
 -spec maybe_add_hangup_specific(ne_binary(), wh_json:object()) -> wh_proplist().
@@ -169,6 +173,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -182,6 +187,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
+    lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -287,3 +293,41 @@ find_source(JObj) ->
 -spec find_direction(wh_json:object()) -> ne_binary().
 find_direction(JObj) ->
     wh_json:get_value(<<"Call-Direction">>, JObj, <<"unknown">>).
+
+-spec start_meters(ne_binary()) -> 'ok'.
+-spec start_meters(api_binary(), api_binary()) -> 'ok'.
+start_meters(HangupCause) ->
+    _ = folsom_metrics:new_meter(meter_name(HangupCause)).
+
+start_meters('undefined', _) -> 'ok';
+start_meters(_, 'undefined') -> 'ok';
+start_meters(AccountId, HangupCause) ->
+    _ = folsom_metrics:new_meter(meter_name(AccountId, HangupCause)).
+
+-spec meter_name(ne_binary()) -> ne_binary().
+-spec meter_name(ne_binary(), ne_binary()) -> ne_binary().
+meter_name(HangupCause) ->
+    HangupCause.
+meter_name(AccountId, HangupCause) ->
+    <<AccountId/binary, ".", HangupCause/binary>>.
+
+-spec add_to_meters(api_binary(), api_binary()) -> 'ok'.
+add_to_meters(AccountId, HangupCause) ->
+    lager:debug("add to meter ~s/~s", [AccountId, HangupCause]),
+
+    start_meters(HangupCause),
+    start_meters(AccountId, HangupCause),
+
+    notify_meters(HangupCause),
+    notify_meters(AccountId, HangupCause),
+    'ok'.
+
+-spec notify_meters(ne_binary()) -> any().
+-spec notify_meters(api_binary(), api_binary()) -> any().
+notify_meters(HangupCause) ->
+    folsom_metrics_meter:mark(meter_name(HangupCause)).
+
+notify_meters('undefined', _) -> 'ok';
+notify_meters(_, 'undefined') -> 'ok';
+notify_meters(AccountId, HangupCause) ->
+    folsom_metrics_meter:mark(meter_name(AccountId, HangupCause)).
