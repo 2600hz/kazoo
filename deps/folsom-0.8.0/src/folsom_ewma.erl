@@ -29,18 +29,12 @@
 
 -module(folsom_ewma).
 
+-include_lib("folsom/include/folsom.hrl").
+
 -define(M1_ALPHA,   1 - math:exp(-5 / 60.0)).
 -define(M5_ALPHA,   1 - math:exp(-5 / 60.0 / 5)).
 -define(M15_ALPHA,  1 - math:exp(-5 / 60.0 / 15)).
 -define(D1_ALPHA,   1 - math:exp(-5 / 60.0 / 1440)).
-
--record(ewma, {
-          alpha,
-          interval = 5, % seconds
-          initialized = false,
-          rate = 0,
-          total = 0
-         }).
 
 -export([update/2,
          new/2,

@@ -30,19 +30,10 @@
          mark/2,
          get_values/1,
          get_acceleration/1
+         ,get_value/1
         ]).
 
-
--record(meter, {
-          one,
-          five,
-          fifteen,
-          day,
-          count = 0,
-          start_time
-         }).
-
--include("folsom.hrl").
+-include_lib("folsom/include/folsom.hrl").
 
 new(Name) ->
     OneMin = folsom_ewma:one_minute_ewma(),

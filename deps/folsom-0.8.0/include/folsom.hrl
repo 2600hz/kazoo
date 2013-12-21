@@ -192,3 +192,19 @@
                       priority,
                       tos
                      ]).
+
+-record(meter, {
+          one,
+          five,
+          fifteen,
+          day,
+          count = 0,
+          start_time
+         }).
+-record(ewma, {
+          alpha,
+          interval = 5, % seconds
+          initialized = false,
+          rate = 0,
+          total = 0
+         }).
