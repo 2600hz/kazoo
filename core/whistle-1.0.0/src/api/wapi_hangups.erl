@@ -76,12 +76,29 @@ query_resp_v(Prop) when is_list(Prop) ->
 query_resp_v(JObj) -> query_resp_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
-bind_q(Queue, Props) ->
+bind_q(Queue, _Props) ->
     'ok' = amqp_util:bind_q_to_whapps(Queue, ?QUERY_REQ_ROUTING_KEY).
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
-unbind_q(Queue, Props) ->
+unbind_q(Queue, _Props) ->
     'ok' = amqp_util:unbind_q_from_whapps(Queue, ?QUERY_REQ_ROUTING_KEY).
 
+-spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:whapps_exchange().
+
+-spec publish_query_req(wh_json:object()) -> 'ok'.
+-spec publish_query_req(api_terms(), ne_binary()) -> 'ok'.
+publish_query_req(JObj) ->
+    publish_query_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_query_req(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?QUERY_REQ_VALUES, fun ?MODULE:query_req/1),
+    amqp_util:whapps_publish(?QUERY_REQ_ROUTING_KEY, Payload, ContentType).
+
+-spec publish_query_resp(ne_binary(), wh_json:object()) -> 'ok'.
+-spec publish_query_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_query_resp(RespQ, JObj) ->
+    publish_query_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_query_resp(RespQ, API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?QUERY_RESP_VALUES, fun ?MODULE:query_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
