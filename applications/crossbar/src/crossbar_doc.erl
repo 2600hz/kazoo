@@ -550,7 +550,7 @@ add_pvt_account_db(JObj, DbName) ->
 add_pvt_account_id(JObj, DbName) ->
     case wh_json:get_value(<<"pvt_account_id">>, JObj) of
         'undefined' ->
-            wh_json:set_value(<<"pvt_account_id">>, wh_util:format_account_id(DbName, raw), JObj);
+            wh_json:set_value(<<"pvt_account_id">>, wh_util:format_account_id(DbName, 'raw'), JObj);
         _Else -> JObj
     end.
 

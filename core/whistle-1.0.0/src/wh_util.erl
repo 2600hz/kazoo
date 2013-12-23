@@ -9,10 +9,9 @@
 %%%-------------------------------------------------------------------
 -module(wh_util).
 
--export([log_stacktrace/0, log_stacktrace/1]).
--export([format_account_id/1
-         ,format_account_id/2
-         ,format_account_id/3
+-export([log_stacktrace/0, log_stacktrace/1
+         ,format_account_id/1, format_account_id/2, format_account_id/3
+         ,format_account_mod_id/2, format_account_mod_id/3
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1]).
@@ -149,7 +148,7 @@ change_syslog_log_level(L) ->
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
 -spec format_account_id(ne_binaries() | ne_binary() | wh_json:object()) -> ne_binary().
 -spec format_account_id(ne_binaries() | ne_binary() | wh_json:object(), account_format()) -> ne_binary().
--spec format_account_id(ne_binaries(), pos_integer(), pos_integer()) -> ne_binary().
+-spec format_account_id(ne_binaries() | ne_binary(), wh_year(), wh_month()) -> ne_binary().
 
 format_account_id(Doc) -> format_account_id(Doc, 'unencoded').
 
@@ -195,7 +194,16 @@ format_account_id(AccountId, Year, Month) when is_integer(Year), is_integer(Mont
     <<(format_account_id(AccountId, 'encoded'))/binary
       ,"-"
       ,(to_binary(Year))/binary
-      ,(pad_month(Month))/binary>>.
+      ,(pad_month(Month))/binary
+    >>.
+
+-spec format_account_mod_id(ne_binary(), pos_integer()) -> ne_binary().
+-spec format_account_mod_id(ne_binary(), wh_year(), wh_month()) -> ne_binary().
+format_account_mod_id(AccountId, Timestamp) ->
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    format_account_id(AccountId, Year, Month).
+format_account_mod_id(AccountId, Year, Month) ->
+    format_account_id(AccountId, Year, Month).
 
 -spec pad_month(pos_integer()) -> ne_binary().
 pad_month(Month) when Month < 10 ->
@@ -397,21 +405,17 @@ randomize_list(T, List) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid(wh_json:object() | wh_proplist() | ne_binary()) -> api_binary().
+-spec put_callid(wh_json:object() | wh_proplist() | ne_binary() | atom()) ->
+                        api_binary().
 put_callid(?NE_BINARY = CallId) -> erlang:put('callid', CallId);
+put_callid(Atom) when is_atom(Atom) -> erlang:put('callid', Atom);
 put_callid(Prop) when is_list(Prop) -> erlang:put('callid', callid(Prop));
 put_callid(JObj) -> erlang:put('callid', callid(JObj)).
 
 callid(Prop) when is_list(Prop) ->
-    case props:get_value(<<"Call-ID">>, Prop) of
-        'undefined' -> props:get_value(<<"Msg-ID">>, Prop, ?LOG_SYSTEM_ID);
-        C -> C
-    end;
+    props:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], Prop, ?LOG_SYSTEM_ID);
 callid(JObj) ->
-    case wh_json:get_binary_value(<<"Call-ID">>, JObj) of
-        'undefined' -> wh_json:get_binary_value(<<"Msg-ID">>, JObj, ?LOG_SYSTEM_ID);
-        C -> C
-    end.
+    wh_json:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], JObj, ?LOG_SYSTEM_ID).
 
 %%--------------------------------------------------------------------
 %% @public

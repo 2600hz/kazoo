@@ -22,6 +22,9 @@
 -type atoms() :: [atom(),...] | [].
 -type pids() :: [pid(),...] | [].
 
+-type pid_ref() :: {pid(), reference()}.
+-type pid_refs() :: [pid_ref(),...] | [].
+
 -type api_terms() :: wh_json:object() | wh_json:json_proplist().
 -type api_binary() :: ne_binary() | 'undefined'.
 -type api_binaries() :: [api_binary(),...] | [] | 'undefined'.
@@ -118,7 +121,7 @@
 -type startlink_err() :: {'already_started', pid()} | 'shutdown' | term().
 -type startlink_ret() :: {'ok', pid()} | 'ignore' | {'error', startlink_err()}.
 
--type call_from() :: {pid(), reference()}.
+-type call_from() :: pid_ref().
 -type gen_server_timeout() :: 'hibernate' | non_neg_integer().
 -type handle_call_ret() :: {'reply', term(), term()} | {'reply', term(), term(), gen_server_timeout()} |
                            {'noreply', term()} | {'noreply', term(), gen_server_timeout()} |
@@ -134,6 +137,7 @@
 
 %% Ibrowse-related types
 -type ibrowse_ret() :: {'ok', string(), wh_proplist(), string() | binary()} |
+                       {'ibrowse_req_id', term()} |
                        {'error', 'req_timedout' | 'sel_conn_closed' | {'EXIT', term()}}.
 %% When using the stream_to option, ibrowse:send_req returns this tuple ReqID
 -type ibrowse_req_id() :: {pos_integer(), pos_integer(), pos_integer()}.

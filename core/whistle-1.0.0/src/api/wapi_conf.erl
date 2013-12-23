@@ -30,8 +30,8 @@
                                           ]).
 -define(CONF_DOC_UPDATE_VALUES, [{<<"Event-Category">>, <<"configuration">>}
                                  ,{<<"Event-Name">>, [<<"doc_edited">>
-                                                          ,<<"doc_created">>
-                                                          ,<<"doc_deleted">>
+                                                      ,<<"doc_created">>
+                                                      ,<<"doc_deleted">>
                                                      ]}
                                 ]).
 -define(CONF_DOC_UPDATE_TYPES, [{<<"ID">>, fun is_binary/1}

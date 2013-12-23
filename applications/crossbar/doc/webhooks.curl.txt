@@ -1,0 +1,23 @@
+# Credentials Hash: 4d02ff46ad889921836b706c3c0e0b36
+# Account Name: Master
+# Auth Token ID: e1e74dd10f1603d4c568ca1cb7b215b7
+# Account ID: 5b78db2f23f35aa022f5c3c0a5df1b92
+# Webhook ID: 1922832e9e3c1909bc25bd236938d4f4
+
+# Create an auth token on the master account
+curl -v -X PUT -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/user_auth -d '{"data":{"credentials":"4d02ff46ad889921836b706c3c0e0b36", "account_name":"Master"}}' | pp
+
+# List webhooks
+curl -v -X GET -H "X-Auth-Token: e1e74dd10f1603d4c568ca1cb7b215b7" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/webhooks | pp
+
+# Create webhook
+curl -v -X PUT -H "X-Auth-Token: e1e74dd10f1603d4c568ca1cb7b215b7" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/webhooks -d '{"data":{"name":"New Calls", "uri":"http://my.server.com/calls/new.php", "http_verb":"post", "hook":"new_channel", "retries":3}}' | pp
+
+# Get details of the webhook
+curl -v -X GET -H "X-Auth-Token: e1e74dd10f1603d4c568ca1cb7b215b7" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/webhooks/1922832e9e3c1909bc25bd236938d4f4 | pp
+
+# Edit webhook
+curl -v -X POST -H "X-Auth-Token: e1e74dd10f1603d4c568ca1cb7b215b7" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/webhooks/1922832e9e3c1909bc25bd236938d4f4 -d '{"data":{"name":"New Calls", "uri":"http://my.server.com/calls/new_calls.php", "http_verb":"post", "hook":"new_channel", "retries":3}}' | pp
+
+# Delete a webhook
+curl -v -X DELETE -H "X-Auth-Token: e1e74dd10f1603d4c568ca1cb7b215b7" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/webhooks/1922832e9e3c1909bc25bd236938d4f4 | pp

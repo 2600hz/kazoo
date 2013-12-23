@@ -1,7 +1,10 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% Manage the ETS table lookup for token server to account/client IP
+%%% Manage the ETS table separate from the main process to use the ETS table
+%%% Protects against the main writer dying
+%%%
+%%% Inspired by: http://steve.vinoski.net/blog/2011/03/23/dont-lose-your-ets-tables/
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -11,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1]).
+-export([start_link/1, start_link/2]).
 
 %% gen_server callbacks
 -export([init/1
@@ -66,6 +69,11 @@ start_link(Opts) ->
     'true' = valid_options(Opts),
     gen_server:start_link(?MODULE, [Opts], []).
 
+-spec start_link(atom(), start_args()) -> startlink_ret().
+start_link(Name, Opts) ->
+    'true' = valid_options(Opts),
+    gen_server:start_link({'local', Name}, ?MODULE, [Opts], []).
+
 valid_options(Opts) ->
     (TID = props:get_value('table_id', Opts)) =/= 'undefined'
         andalso is_atom(TID)
@@ -95,7 +103,7 @@ init([Opts]) ->
     put('callid', <<"etssrv_", (wh_util:to_binary(TableId))/binary>>),
     gen_server:cast(self(), {'begin', TableId, TableOptions}),
 
-    lager:debug("started etsmgr for stats for ~s", [TableId]),
+    lager:debug("started etsmgr for table ~p", [TableId]),
 
     {'ok', #state{table_id=TableId
                   ,find_me_fun=opt_find_me_fun(Opts)
@@ -145,6 +153,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'begin', TableId, TableOptions}, #state{gift_data=GiftData}=State) ->
     TID = ets:new(TableId, TableOptions),
 
+    lager:debug("created new table ~p(~p): ~p", [TableId, TID, TableOptions]),
     ets:setopts(TID, {'heir', self(), GiftData}),
     send_give_away_retry(TID),
     {'noreply', State#state{table_id=TID}};
@@ -175,9 +184,9 @@ handle_info({'ETS-TRANSFER', Tbl, Pid, _Data}, #state{table_id=Tbl
     send_give_away_retry(Tbl),
     {'noreply', State#state{give_away_pid='undefined'}};
 handle_info({'give_away', Tbl}, #state{table_id=Tbl
-                                             ,give_away_pid='undefined'
-                                             ,find_me_fun=F
-                                            }=State) ->
+                                       ,give_away_pid='undefined'
+                                       ,find_me_fun=F
+                                      }=State) ->
     lager:debug("give away ~p", [Tbl]),
     {_P, _R}=FindMe = spawn_monitor(?MODULE, 'find_me', [F, self()]),
     lager:debug("finding the successor in ~p", [FindMe]),
@@ -209,15 +218,20 @@ handle_info(_Info, State) ->
 send_give_away_retry(Tbl) ->
     erlang:send(self(), {'give_away', Tbl}).
 
+-spec find_me(find_me_fun(), pid()) -> 'ok'.
 find_me(Fun, Srv) ->
     lager:debug("trying to find successor for ~p", [Srv]),
-    P = Fun(),
-    case is_pid(P) of
-        'true' ->
+    try Fun() of
+        P when is_pid(P) ->
             Srv ! {'found_me', P},
             lager:debug("successor ~p found", [P]);
-        'false' ->
-            lager:debug("successor not found: ~p", [P])
+        'undefined' ->
+            timer:sleep(250),
+            lager:debug("haven't found a successor yet"),
+            find_me(Fun, Srv)
+    catch
+        _E:_R ->
+            lager:debug("failed to find successor: ~s: ~p", [_E, _R])
     end.
 
 %%--------------------------------------------------------------------

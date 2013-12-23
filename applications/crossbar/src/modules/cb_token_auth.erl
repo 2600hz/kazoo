@@ -28,10 +28,6 @@
 
 -include("../crossbar.hrl").
 
--define(CHILDSPEC, {?MODULE, {?MODULE, 'start_link', []}
-                    ,'permanent', 5000, 'worker', [?MODULE]
-                   }).
-
 -define(LOOP_TIMEOUT, whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)).
 
 %%%===================================================================
@@ -45,7 +41,7 @@ init() ->
 
     _ = couch_mgr:revise_doc_from_file(?TOKEN_DB, 'crossbar', "views/token_auth.json"),
 
-    _ = supervisor:start_child('crossbar_sup', ?CHILDSPEC),
+    _ = supervisor:start_child('crossbar_sup', ?WORKER(?MODULE)),
 
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'finish_request').

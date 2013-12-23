@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% CDR
@@ -32,10 +32,10 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.cdrs">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.cdrs">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.cdrs">>, ?MODULE, content_types_provided),
-    _ = crossbar_bindings:bind(<<"*.validate.cdrs">>, ?MODULE, validate).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.cdrs">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.cdrs">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.cdrs">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.validate.cdrs">>, ?MODULE, 'validate').
 
 %%%===================================================================
 %%% Internal functions
@@ -111,7 +111,7 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, CDRId) ->
 load_cdr_summary(#cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, [_]} | _]}=Context) ->
     lager:debug("loading cdrs for account ~s", [cb_context:account_id(Context)]),
     case create_view_options('undefined', Context) of
-        {'ok', ViewOptions} -> 
+        {'ok', ViewOptions} ->
             load_view(?CB_LIST
                       ,ViewOptions
                       ,cb_context:set_query_string(Context, wh_json:new()));
@@ -120,7 +120,7 @@ load_cdr_summary(#cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, [_]} | _]}=Context)
 load_cdr_summary(#cb_context{req_nouns=[_, {<<"users">>, [UserId] } | _]}=Context) ->
     lager:debug("loading cdrs for user ~s", [UserId]),
     case create_view_options(UserId, Context) of
-        {'ok', ViewOptions} -> 
+        {'ok', ViewOptions} ->
             load_view(?CB_LIST_BY_USER
                       ,ViewOptions
                       ,cb_context:set_query_string(Context, wh_json:new()));
@@ -146,24 +146,24 @@ load_view(View, ViewOptions, Context) ->
 -spec fetch_cdrs(ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
 fetch_cdrs(View, ViewOptions, Context) ->
     case {cdr_db(view_key_created_from(ViewOptions), Context)
-          ,cdr_db(view_key_created_to(ViewOptions), Context)} 
+          ,cdr_db(view_key_created_to(ViewOptions), Context)}
     of
         {Db, Db} -> fetch_cdrs([Db], View, ViewOptions, Context);
-        {PastDb, PresentDb} -> 
+        {PastDb, PresentDb} ->
             fetch_cdrs([PastDb, PresentDb], View, ViewOptions, Context)
     end.
 
 -spec fetch_cdrs(ne_binaries(), ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
 fetch_cdrs([], _, _, Context) -> Context;
-fetch_cdrs([Db|Dbs], View, ViewOptions, Context) -> 
+fetch_cdrs([Db|Dbs], View, ViewOptions, Context) ->
     C = crossbar_doc:load_view(View
                                ,ViewOptions
                                ,cb_context:set_account_db(Context, Db)
                                ,fun(JObj, JObjs) -> normalize_view_results(JObj, JObjs) end
-                              ),   
+                              ),
     case cb_context:resp_status(C) of
-        'success' ->            
-            JObjs = cb_context:doc(Context) 
+        'success' ->
+            JObjs = cb_context:doc(Context)
                 ++ cb_context:doc(C),
             fetch_cdrs(Dbs
                        ,View
@@ -195,19 +195,18 @@ view_key_created_from(Props) ->
     case props:get_value('endkey', Props) of
         [_, CreatedFrom] -> CreatedFrom;
         CreatedFrom -> CreatedFrom
-    end.             
+    end.
 
 -spec create_view_options(api_binary(), cb_context:context()) ->
                                  {'ok', wh_proplist()} |
                                  cb_context:context().
 create_view_options(OwnerId, Context) ->
-    JObj = cb_context:query_string(Context),
     TStamp =  wh_util:current_tstamp(),
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, 6048000),
-    CreatedTo = wh_json:get_integer_value(<<"created_to">>, JObj, TStamp),
-    CreatedFrom = wh_json:get_integer_value(<<"created_from">>, JObj, TStamp - MaxRange),
+    CreatedTo = cb_context:req_value(Context, <<"created_to">>, TStamp),
+    CreatedFrom = cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange),
     Diff = CreatedTo - CreatedFrom,
-    if 
+    if
         Diff < 0 ->
             Message = <<"created_from is prior to created_to">>,
             cb_context:add_validation_error(<<"created_from">>
@@ -283,4 +282,4 @@ load_cdr(<<Year:4/binary, Month:2/binary, "-", _/binary>> = CDRId, Context) ->
     crossbar_doc:load(CDRId, Context1);
 load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
-    crossbar_util:response(error, <<"could not find cdr with supplied id">>, 404, Context).
+    crossbar_util:response('error', <<"could not find cdr with supplied id">>, 404, Context).

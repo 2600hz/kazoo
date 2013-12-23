@@ -5,39 +5,39 @@
    "description":"Web Hooks are subscriptions to allowed events that, when the event occurs, the event data is sent to the uri set in the Web Hook document.",
    "properties":{
       "name":{
-         "description":"A friendly name for the webhook",
-         "type":"string"
-      },
-      "callback_uri":{
-         "description":"The 3rd party URI to call out to on event",
-         "required":"true",
-         "type":"string",
-         "format":"uri"
-      },
-      "callback_method":{
-         "description":"What HTTP method to use when contacting the server",
-         "default":"post",
-         "type":"string",
-         "enum":[
-            "get",
-            "put",
-            "post"
-         ]
-      },
-      "bind_event":{
-         "description":"The trigger event for a request being made to 'callback_uri'.",
-         "required":"true",
-         "type":"string",
-         "enum":[
-            "authn",
-            "authz",
-            "route"
-         ]
-      },
-      "retries":{
-         "description":"Retry the request this many times (if it fails)",
-         "default":3,
-         "type":"integer"
+          "description":"A friendly name for the webhook",
+          "type":"string"
       }
+       ,"uri":{
+           "description":"The 3rd party URI to call out to on event",
+           "required":"true",
+           "type":"string",
+           "format":"uri"
+      }
+       ,"http_verb":{
+           "description":"What HTTP method to use when contacting the server",
+           "default":"post",
+           "type":"string",
+           "enum":[
+               "get",
+               "post"
+           ]
+       }
+      ,"hook":{
+          "description":"The trigger event for a request being made to 'callback_uri'.",
+          "required":"true",
+          "type":"string",
+          "enum":[
+              "new_channel"
+              ,"answered_channel"
+              ,"hungup_channel"
+              ,"all"
+          ]
+      }
+       ,"retries":{
+           "description":"Retry the request this many times (if it fails)",
+           "default":3,
+           "type":"integer"
+       }
    }
 }
